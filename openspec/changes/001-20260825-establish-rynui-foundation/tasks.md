@@ -27,7 +27,7 @@
 - [x] 4.2 实现 Component 首次 mount 与 `Scope` 所有权，通过执行计数测试证明普通属性更新不重新执行 Component
 - [x] 4.3 实现 `Constraints` 校验、内部 `BoxLayout` 和 horizontal/vertical `FlexLayout` 的 Measure/Place，通过边界和非法 Constraints 测试验证确定布局，且不暴露与后续 Ant Design `Flex`/`Space`/`Grid` 冲突的公开 API
 - [x] 4.4 实现 `DirtyFlags` 到 Layout/Material/Transform/Geometry 队列的映射，通过计数测试证明 color/opacity/translation 不触发 Measure 或 Layout，size 会触发受影响布局根
-- [ ] 4.5 运行 Node、lifecycle、layout 和 dirty 全部测试以及 `git diff --check`，使用英文 commit message 提交本阶段
+- [x] 4.5 运行 Node、lifecycle、layout 和 dirty 全部测试以及 `git diff --check`，使用英文 commit message 提交本阶段
 
 ## 5. Quad Primitive 局部 GPU 更新闭环
 
