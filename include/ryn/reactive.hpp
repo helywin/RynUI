@@ -137,6 +137,33 @@ private:
 };
 
 class Effect;
+class BindingHandle;
+class Scope;
+
+template <typename T>
+class Binding;
+
+template <typename T, typename Apply>
+BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& apply);
+
+template <typename T>
+class Binding final {
+public:
+    explicit Binding(std::function<T()> compute) : compute_(std::move(compute)) {}
+
+    [[nodiscard]] T get() const {
+        return compute_();
+    }
+
+private:
+    std::function<T()> compute_;
+};
+
+template <typename Function>
+auto bind(Function&& function) {
+    using Result = std::remove_cvref_t<std::invoke_result_t<Function>>;
+    return Binding<Result>(std::function<Result()>(std::forward<Function>(function)));
+}
 
 class Scope final {
 public:
@@ -154,6 +181,11 @@ public:
 private:
     template <typename Function>
     friend Effect effect(Scope& scope, Function&& function);
+    template <typename T, typename Apply>
+    friend BindingHandle connect_binding(
+        Scope& scope,
+        const Binding<T>& binding,
+        Apply&& apply);
 
     void own_observer(std::shared_ptr<detail::ObserverNode> observer);
 
@@ -180,6 +212,28 @@ private:
     std::weak_ptr<detail::ObserverNode> observer_;
 };
 
+class BindingHandle final {
+public:
+    BindingHandle() = default;
+
+    [[nodiscard]] bool active() const noexcept {
+        const auto observer = observer_.lock();
+        return observer && observer->active();
+    }
+
+private:
+    template <typename T, typename Apply>
+    friend BindingHandle connect_binding(
+        Scope& scope,
+        const Binding<T>& binding,
+        Apply&& apply);
+
+    explicit BindingHandle(const std::shared_ptr<detail::ObserverNode>& observer)
+        : observer_(observer) {}
+
+    std::weak_ptr<detail::ObserverNode> observer_;
+};
+
 template <typename Function>
 Effect effect(Scope& scope, Function&& function) {
     if (!scope.active()) {
@@ -192,6 +246,22 @@ Effect effect(Scope& scope, Function&& function) {
     observer->run();
     scope.own_observer(observer);
     return Effect(observer);
+}
+
+template <typename T, typename Apply>
+BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& apply) {
+    if (!scope.active()) {
+        return BindingHandle{};
+    }
+    auto observer = detail::observe(
+        detail::ObserverPhase::binding,
+        [binding, apply_function = std::function<void(T)>(std::forward<Apply>(apply))]() mutable {
+            apply_function(binding.get());
+        },
+        false);
+    observer->run();
+    scope.own_observer(observer);
+    return BindingHandle(observer);
 }
 
 template <typename Function>

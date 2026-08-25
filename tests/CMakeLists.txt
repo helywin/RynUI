@@ -59,6 +59,15 @@ target_include_directories(rynui_quad_primitive_tests PRIVATE "${PROJECT_SOURCE_
 target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_graphics)
 add_test(NAME rynui.quad_primitive COMMAND rynui_quad_primitive_tests)
 
+add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_binding_quad_integration_tests)
+target_include_directories(rynui_binding_quad_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_binding_quad_integration_tests
+    PRIVATE rynui_graphics rynui_reactive
+)
+add_test(NAME rynui.binding_quad_integration COMMAND rynui_binding_quad_integration_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
