@@ -14,6 +14,11 @@ rynui_configure_cpp_target(rynui_memo_tests)
 target_link_libraries(rynui_memo_tests PRIVATE rynui_reactive)
 add_test(NAME rynui.memo COMMAND rynui_memo_tests)
 
+add_executable(rynui_batch_tests batch_tests.cpp)
+rynui_configure_cpp_target(rynui_batch_tests)
+target_link_libraries(rynui_batch_tests PRIVATE rynui_reactive)
+add_test(NAME rynui.batch COMMAND rynui_batch_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

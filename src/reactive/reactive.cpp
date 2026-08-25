@@ -148,7 +148,7 @@ void Scheduler::schedule(const std::shared_ptr<ObserverNode>& observer) {
         pending_effects_.push_back(observer);
         break;
     }
-    if (notification_depth_ == 0 && !flushing_) {
+    if (notification_depth_ == 0 && batch_depth_ == 0 && !flushing_) {
         flush();
     }
 }
@@ -162,7 +162,21 @@ void Scheduler::end_notification() {
         throw std::logic_error("Reactive notification depth underflow");
     }
     --notification_depth_;
-    if (notification_depth_ == 0 && !flushing_) {
+    if (notification_depth_ == 0 && batch_depth_ == 0 && !flushing_) {
+        flush();
+    }
+}
+
+void Scheduler::begin_batch() noexcept {
+    ++batch_depth_;
+}
+
+void Scheduler::end_batch() {
+    if (batch_depth_ == 0) {
+        throw std::logic_error("Reactive batch depth underflow");
+    }
+    --batch_depth_;
+    if (batch_depth_ == 0 && notification_depth_ == 0 && !flushing_) {
         flush();
     }
 }

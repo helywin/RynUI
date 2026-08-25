@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <utility>
 
 namespace ryn {
@@ -134,5 +135,31 @@ public:
 private:
     std::shared_ptr<detail::MemoCell<T, Equal>> cell_;
 };
+
+template <typename Function>
+std::invoke_result_t<Function> batch(Function&& function) {
+    using Result = std::invoke_result_t<Function>;
+    auto& scheduler = detail::Scheduler::current();
+    scheduler.begin_batch();
+
+    if constexpr (std::is_void_v<Result>) {
+        try {
+            std::invoke(std::forward<Function>(function));
+        } catch (...) {
+            scheduler.end_batch();
+            throw;
+        }
+        scheduler.end_batch();
+    } else {
+        try {
+            Result result = std::invoke(std::forward<Function>(function));
+            scheduler.end_batch();
+            return result;
+        } catch (...) {
+            scheduler.end_batch();
+            throw;
+        }
+    }
+}
 
 } // namespace ryn
