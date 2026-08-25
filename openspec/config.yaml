@@ -1,0 +1,37 @@
+schema: spec-driven
+
+context: |
+  Project: RynUI
+  C++ namespace: ryn
+  Language: Simplified Chinese (zh-CN)
+  所有 OpenSpec 产物的说明性正文必须使用简体中文。
+  OpenSpec 结构关键字、路径、命令、API、代码标识符与专有名词保持原文。
+  必须保留 ADDED、MODIFIED、REMOVED、RENAMED、Requirement、Scenario、WHEN、THEN、SHALL、MUST 等结构关键字为英文。
+  change 名称必须使用 NNN-YYYYMMDD-lowercase-kebab-case，例如 001-20260908-my-first-change。
+  NNN 为三位递增序号，YYYYMMDD 为创建日期，末尾为能表达目标的 lowercase-kebab-case slug。
+
+rules:
+  proposal:
+    - 明确范围、非目标、风险与可验证结果
+    - 不把规划状态描述为已实现状态
+  design:
+    - 说明关键架构决策、备选方案、性能边界与兼容性影响
+    - 项目名称统一使用 RynUI，C++ 示例统一使用 ryn 命名空间
+  specs:
+    - 每个 Requirement 至少包含一个 Scenario
+    - 需求和场景正文使用简体中文，OpenSpec 结构关键字保持英文
+  tasks:
+    - 按可独立验证的增量拆分任务
+    - 每个阶段包含对应测试或真实运行验收
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
