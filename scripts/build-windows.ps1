@@ -3,6 +3,11 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Debug',
 
+    [ValidateSet('BUNDLED', 'SYSTEM')]
+    [string] $DependencyMode = 'BUNDLED',
+
+    [string] $Sdl3Root,
+
     [switch] $Fresh,
 
     [switch] $SkipTests
@@ -49,9 +54,23 @@ Enter-VsDevShell -VsInstallPath $vsInstallPath -SkipAutomaticLocation `
     -Arch amd64 -HostArch amd64
 
 $presetSuffix = $Configuration.ToLowerInvariant()
-$configureArguments = @('--preset', 'windows-msvc')
+$configurePreset = if($DependencyMode -eq 'SYSTEM') {
+    'windows-msvc-system'
+} else {
+    'windows-msvc'
+}
+
+$configureArguments = @('--preset', $configurePreset)
 if($Fresh) {
     $configureArguments = @('--fresh') + $configureArguments
+}
+if($Sdl3Root) {
+    if($DependencyMode -ne 'SYSTEM') {
+        throw '-Sdl3Root can only be used with -DependencyMode SYSTEM.'
+    }
+
+    $resolvedSdl3Root = (Resolve-Path -LiteralPath $Sdl3Root).Path
+    $configureArguments += "-DSDL3_ROOT=$resolvedSdl3Root"
 }
 
 cmake @configureArguments
@@ -59,13 +78,13 @@ if($LASTEXITCODE -ne 0) {
     throw "CMake configure failed with exit code $LASTEXITCODE."
 }
 
-cmake --build --preset "windows-msvc-$presetSuffix"
+cmake --build --preset "$configurePreset-$presetSuffix"
 if($LASTEXITCODE -ne 0) {
     throw "CMake build failed with exit code $LASTEXITCODE."
 }
 
 if(-not $SkipTests) {
-    ctest --preset "windows-msvc-$presetSuffix"
+    ctest --preset "$configurePreset-$presetSuffix"
     if($LASTEXITCODE -ne 0) {
         throw "CTest failed with exit code $LASTEXITCODE."
     }

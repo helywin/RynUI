@@ -425,6 +425,8 @@ RynUI/
 
 正式构建统一由仓库内的 `CMakePresets.json` 管理，生成器使用 `Ninja Multi-Config`。Windows 使用 MSVC x64 工具链，Linux 分别提供 GCC 与 Clang 配置；Debug/Release 由 build/test preset 的 `configuration` 选择。Windows 配置必须在 Visual Studio Developer Environment 中执行，并在 configure 阶段拒绝 MinGW 等非 MSVC 工具链。个人路径和本机覆盖只进入不提交的 `CMakeUserPresets.json`。
 
+第三方依赖统一由 `cmake/dependencies/` 解析，只允许显式 `BUNDLED` 或 `SYSTEM` 模式。BUNDLED 使用固定 source URL 与 SHA256，SYSTEM 由 vcpkg、Conan、发行版 package 或 superbuild 提供规范 CMake target；不使用 Git submodule，也不提供 system-first 自动回退。SDL3 始终归一为 `SDL3::SDL3`，SDL_shadercross 只作为离线 shader 构建的 host tool，不进入应用运行时链接和公开 API。
+
 模块只能沿架构向下依赖；`reactive` 不依赖 UI，`layout` 不依赖具体 GPU 后端，`components` 不直接调用 SDL3。
 
 ## 14. 实现阶段

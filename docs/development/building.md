@@ -12,6 +12,8 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 
 `CMakeUserPresets.json` 已被忽略，可用于个人路径和本机 cache variable 覆盖；不要把这些值写入共享的 `CMakePresets.json`。
 
+默认 preset 使用锁定归档的 `BUNDLED` 依赖模式。系统或 package-manager 提供的 SDL3 使用带 `-system` 后缀的 configure/build/test preset；完整规则与锁定值见 [第三方依赖](third-party.md)。
+
 ## Windows / MSVC
 
 推荐从普通 PowerShell 运行仓库包装脚本。脚本只负责定位 Visual Studio、进入 x64 Developer Environment，随后仍通过 presets 完成全部操作：
@@ -19,6 +21,12 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 ```powershell
 ./scripts/build-windows.ps1 -Configuration Debug
 ./scripts/build-windows.ps1 -Configuration Release
+```
+
+使用已有 SDL3 CMake package：
+
+```powershell
+./scripts/build-windows.ps1 -Configuration Debug -DependencyMode SYSTEM -Sdl3Root D:/deps/SDL3
 ```
 
 需要丢弃旧 CMake cache 并重新探测工具链时，加上 `-Fresh`。
@@ -61,4 +69,4 @@ ctest --preset linux-clang-debug
 | `rynui_graphics` | 平台无关图形层 | `rynui_layout` |
 | `rynui` / `RynUI::RynUI` | 公开 facade | `rynui_graphics` |
 
-CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。测试目标只依赖当前公开 facade，不依赖 SDL3。
+CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。测试目标本身只依赖当前公开 facade，不链接 SDL3。

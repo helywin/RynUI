@@ -14,7 +14,8 @@
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
         "BUILD_TESTING": "ON",
-        "RYNUI_BUILD_EXAMPLES": "ON"
+        "RYNUI_BUILD_EXAMPLES": "ON",
+        "RYNUI_DEPENDENCY_MODE": "BUNDLED"
       }
     },
     {
@@ -33,6 +34,15 @@
       }
     },
     {
+      "name": "windows-msvc-system",
+      "displayName": "Windows x64 / MSVC / system dependencies",
+      "description": "Provide SDL3_ROOT or a package-manager toolchain.",
+      "inherits": "windows-msvc",
+      "cacheVariables": {
+        "RYNUI_DEPENDENCY_MODE": "SYSTEM"
+      }
+    },
+    {
       "name": "linux-gcc",
       "displayName": "Linux x64 / GCC",
       "inherits": "base",
@@ -44,6 +54,14 @@
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++",
         "RYNUI_EXPECTED_TOOLCHAIN": "gcc"
+      }
+    },
+    {
+      "name": "linux-gcc-system",
+      "displayName": "Linux x64 / GCC / system dependencies",
+      "inherits": "linux-gcc",
+      "cacheVariables": {
+        "RYNUI_DEPENDENCY_MODE": "SYSTEM"
       }
     },
     {
@@ -59,6 +77,14 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "RYNUI_EXPECTED_TOOLCHAIN": "clang"
       }
+    },
+    {
+      "name": "linux-clang-system",
+      "displayName": "Linux x64 / Clang / system dependencies",
+      "inherits": "linux-clang",
+      "cacheVariables": {
+        "RYNUI_DEPENDENCY_MODE": "SYSTEM"
+      }
     }
   ],
   "buildPresets": [
@@ -73,6 +99,16 @@
       "configuration": "Release"
     },
     {
+      "name": "windows-msvc-system-debug",
+      "configurePreset": "windows-msvc-system",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-system-release",
+      "configurePreset": "windows-msvc-system",
+      "configuration": "Release"
+    },
+    {
       "name": "linux-gcc-debug",
       "configurePreset": "linux-gcc",
       "configuration": "Debug"
@@ -83,6 +119,16 @@
       "configuration": "Release"
     },
     {
+      "name": "linux-gcc-system-debug",
+      "configurePreset": "linux-gcc-system",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-system-release",
+      "configurePreset": "linux-gcc-system",
+      "configuration": "Release"
+    },
+    {
       "name": "linux-clang-debug",
       "configurePreset": "linux-clang",
       "configuration": "Debug"
@@ -90,6 +136,16 @@
     {
       "name": "linux-clang-release",
       "configurePreset": "linux-clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-system-debug",
+      "configurePreset": "linux-clang-system",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-system-release",
+      "configurePreset": "linux-clang-system",
       "configuration": "Release"
     }
   ],
@@ -109,6 +165,20 @@
       "execution": { "noTestsAction": "error" }
     },
     {
+      "name": "windows-msvc-system-debug",
+      "configurePreset": "windows-msvc-system",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "windows-msvc-system-release",
+      "configurePreset": "windows-msvc-system",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
       "name": "linux-gcc-debug",
       "configurePreset": "linux-gcc",
       "configuration": "Debug",
@@ -123,6 +193,20 @@
       "execution": { "noTestsAction": "error" }
     },
     {
+      "name": "linux-gcc-system-debug",
+      "configurePreset": "linux-gcc-system",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-gcc-system-release",
+      "configurePreset": "linux-gcc-system",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
       "name": "linux-clang-debug",
       "configurePreset": "linux-clang",
       "configuration": "Debug",
@@ -132,6 +216,20 @@
     {
       "name": "linux-clang-release",
       "configurePreset": "linux-clang",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-clang-system-debug",
+      "configurePreset": "linux-clang-system",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "linux-clang-system-release",
+      "configurePreset": "linux-clang-system",
       "configuration": "Release",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }

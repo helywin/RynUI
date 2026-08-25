@@ -25,6 +25,7 @@
 - 不使用 Virtual DOM；普通属性更新不得重新执行无关 Component。
 - SDL3 类型不得泄漏到 Reactive、Layout、Component 或公开 API。
 - 正式构建统一通过 `CMakePresets.json` 驱动并使用 `Ninja Multi-Config`；Windows 必须使用 MSVC，不得用 MinGW 结果代替 Windows 验收。
+- 第三方依赖只允许显式 `BUNDLED|SYSTEM` 模式；版本、source SHA256 和 license 必须集中锁定，不使用 Git submodule 或隐式 system-first fallback。
 
 ## OpenSpec 工作流
 
