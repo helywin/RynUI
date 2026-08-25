@@ -62,6 +62,21 @@ public:
         PlatformGpuDeviceHandle device) const noexcept override {
         return SDL_GetGPUDeviceDriver(static_cast<SDL_GPUDevice*>(device));
     }
+
+    [[nodiscard]] bool poll_quit_requested() noexcept override {
+        SDL_Event event{};
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_EVENT_QUIT
+                    || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void delay(std::uint32_t milliseconds) noexcept override {
+        SDL_Delay(milliseconds);
+    }
 };
 
 PlatformCreateResult failed_create(
@@ -151,6 +166,14 @@ const char* PlatformState::gpu_driver() const noexcept {
 
 bool PlatformState::is_owner_thread() const noexcept {
     return owner_thread_ == std::this_thread::get_id();
+}
+
+bool PlatformState::poll_quit_requested() noexcept {
+    return api_->poll_quit_requested();
+}
+
+void PlatformState::delay(std::uint32_t milliseconds) noexcept {
+    api_->delay(milliseconds);
 }
 
 } // namespace ryn::detail

@@ -10,7 +10,7 @@
 - [x] 2.1 建立集中依赖 lock 与 license 记录，固定 SDL3 和 `SDL_shadercross` 的不可变 source URL 与 SHA256；实现只接受 `BUNDLED|SYSTEM` 的 `RYNUI_DEPENDENCY_MODE`，分别通过校验后的 `FetchContent` archive 和 `find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3)` 产生 `SDL3::SDL3`，验证无效模式、内容校验失败或规范 target 缺失时 configure fail-fast
 - [x] 2.2 添加 HLSL Quad shader 与离线 DXIL/SPIR-V 生成流程，支持 `RYNUI_SHADERCROSS_EXECUTABLE` host tool override；验证缺少工具链或交叉编译未提供 host tool 时 configure fail-fast，工具齐全时 build tree 生成对应 shader，应用目标不链接 `SDL3_shadercross` 运行时库
 - [x] 2.3 实现 SDL init、Window、GPU device、claim 和逆序释放的 RAII 状态机，通过故障注入测试验证每个初始化失败点只释放已取得资源
-- [ ] 2.4 实现 UI 线程 command buffer、swapchain acquire、clear/present 与最小化空 texture 分支，在 Windows 真实窗口验证启动、至少一次帧提交、关闭和退出码
+- [x] 2.4 实现 UI 线程 command buffer、swapchain acquire、clear/present 与最小化空 texture 分支，在 Windows 真实窗口验证启动、至少一次帧提交、关闭和退出码
 - [ ] 2.5 运行本阶段自动测试与真实窗口 smoke，保存 GPU driver 和生命周期摘要，执行 `git diff --check` 后使用英文 commit message 提交本阶段
 
 ## 3. Fine-grained Reactive Runtime

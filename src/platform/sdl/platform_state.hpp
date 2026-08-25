@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -51,6 +52,8 @@ public:
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
     [[nodiscard]] virtual const char* gpu_driver(
         PlatformGpuDeviceHandle device) const noexcept = 0;
+    [[nodiscard]] virtual bool poll_quit_requested() noexcept = 0;
+    virtual void delay(std::uint32_t milliseconds) noexcept = 0;
 };
 
 struct PlatformCreateResult;
@@ -72,6 +75,8 @@ public:
     [[nodiscard]] PlatformGpuDeviceHandle gpu_device() const noexcept;
     [[nodiscard]] const char* gpu_driver() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
+    [[nodiscard]] bool poll_quit_requested() noexcept;
+    void delay(std::uint32_t milliseconds) noexcept;
 
 private:
     explicit PlatformState(PlatformApi& api) noexcept;

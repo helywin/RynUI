@@ -10,6 +10,11 @@ target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOU
 target_link_libraries(rynui_platform_lifecycle_tests PRIVATE rynui_platform_sdl)
 add_test(NAME rynui.platform_lifecycle COMMAND rynui_platform_lifecycle_tests)
 
+add_executable(rynui_frame_renderer_tests frame_renderer_tests.cpp)
+rynui_configure_cpp_target(rynui_frame_renderer_tests)
+target_link_libraries(rynui_frame_renderer_tests PRIVATE rynui_renderer_sdl)
+add_test(NAME rynui.frame_renderer COMMAND rynui_frame_renderer_tests)
+
 add_test(
     NAME rynui.generated_shaders
     COMMAND ${CMAKE_COMMAND}

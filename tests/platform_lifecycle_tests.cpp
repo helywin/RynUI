@@ -71,6 +71,12 @@ public:
         return "fake-gpu";
     }
 
+    [[nodiscard]] bool poll_quit_requested() noexcept override {
+        return false;
+    }
+
+    void delay(std::uint32_t) noexcept override {}
+
     std::vector<std::string> calls;
 
 private:
