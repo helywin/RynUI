@@ -5,7 +5,7 @@
 ## ADDED Requirements
 
 ### Requirement: 可配置的 C++20 工程
-RynUI 工程 SHALL 能够通过文档化的 CMake 流程完成配置、构建和测试，公开 C++ API MUST 位于 `ryn` 命名空间。
+RynUI 工程 SHALL 能够通过仓库提交的 `CMakePresets.json` 和 `Ninja Multi-Config` 完成配置、构建和测试，公开 C++ API MUST 位于 `ryn` 命名空间。
 
 #### Scenario: 配置并构建开发目标
 - **WHEN** 开发者在受支持的工具链环境中执行文档化的 configure 和 build 命令
@@ -14,6 +14,14 @@ RynUI 工程 SHALL 能够通过文档化的 CMake 流程完成配置、构建和
 #### Scenario: 使用公开命名空间
 - **WHEN** 下游示例包含 RynUI 公开头文件并调用公开 API
 - **THEN** 该 API MUST 通过 `ryn` 命名空间访问，且不得要求使用内部命名空间
+
+#### Scenario: Windows 使用 MSVC preset
+- **WHEN** 开发者在 Windows Visual Studio Developer Environment 中执行 `windows-msvc` configure preset
+- **THEN** 工程 MUST 使用 MSVC x64 和 `Ninja Multi-Config` 完成配置，并且非 MSVC 工具链 MUST 在 configure 阶段失败
+
+#### Scenario: Linux 选择受支持工具链
+- **WHEN** 开发者在 Linux 中选择 `linux-gcc` 或 `linux-clang` configure preset
+- **THEN** 工程 MUST 使用对应编译器和 `Ninja Multi-Config` 完成配置
 
 ### Requirement: 窗口与 GPU 生命周期
 最小应用 SHALL 创建可见窗口、完成 GPU 初始化、处理关闭事件，并在正常退出或初始化失败时释放已取得的资源。

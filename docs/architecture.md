@@ -397,6 +397,8 @@ Scheduler 必须支持批处理、Dirty root 合并、确定性队列顺序，�
 ```text
 RynUI/
   CMakeLists.txt
+  CMakePresets.json
+  cmake/
   include/ryn/
   src/
     base/
@@ -420,6 +422,8 @@ RynUI/
   docs/
   openspec/
 ```
+
+正式构建统一由仓库内的 `CMakePresets.json` 管理，生成器使用 `Ninja Multi-Config`。Windows 使用 MSVC x64 工具链，Linux 分别提供 GCC 与 Clang 配置；Debug/Release 由 build/test preset 的 `configuration` 选择。Windows 配置必须在 Visual Studio Developer Environment 中执行，并在 configure 阶段拒绝 MinGW 等非 MSVC 工具链。个人路径和本机覆盖只进入不提交的 `CMakeUserPresets.json`。
 
 模块只能沿架构向下依赖；`reactive` 不依赖 UI，`layout` 不依赖具体 GPU 后端，`components` 不直接调用 SDL3。
 

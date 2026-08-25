@@ -25,7 +25,15 @@ SDL3 当前约束会直接影响生命周期设计：Window 必须先被 GPU dev
 
 ## Decisions
 
-### 1. 工程目标按架构层拆分
+### 1. Preset 统一平台和配置矩阵
+
+仓库提交 `CMakePresets.json`，所有正式 configure、build 和 test 流程使用 `Ninja Multi-Config`。configure preset 至少包含 `windows-msvc`、`linux-gcc` 和 `linux-clang`，并通过 `condition` 只在匹配的 host 上启用；build/test preset 使用 `Debug` 或 `Release` configuration，不为每种配置复制 configure tree。
+
+Windows preset 必须在 Visual Studio Developer Environment 中解析到 MSVC x64，并由根工程在 configure 阶段检查 `MSVC`，发现 MinGW、GCC 或 Clang 时立即失败。Linux preset 分别显式选择 GCC 与 Clang。共享 cache variables 放在 hidden base preset，本机 Visual Studio 路径、SDK 路径或其他个人覆盖只允许写入不提交的 `CMakeUserPresets.json`。
+
+这套约束让 preset 成为平台构建合同，同时保持 Ninja 生成和构建行为一致。备选方案包括 Visual Studio generator 和 Windows 上的 MinGW；前者会造成 Windows/Linux 生成模型分叉，后者不满足 Windows/MSVC 验收要求，因此均不作为正式基线。
+
+### 2. 工程目标按架构层拆分
 
 CMake 目标按以下依赖方向建立：
 
@@ -48,7 +56,7 @@ rynui = public facade target
 
 备选方案是先建立单个静态库。该方案文件更少，但会让纯响应测试被平台依赖污染，也无法通过链接边界阻止向上依赖，因此不采用。
 
-### 2. SDL3 使用固定版本的 vendored source，并保留 system package 开关
+### 3. SDL3 使用固定版本的 vendored source，并保留 system package 开关
 
 默认构建从 `third_party/SDL` 的固定 Git revision 使用 `add_subdirectory()`；高级用户可以打开 `RYNUI_USE_SYSTEM_SDL3`，改用 `find_package(SDL3 CONFIG REQUIRED)`。两条路径都只链接 SDL3 官方 CMake target `SDL3::SDL3`。
 
@@ -56,7 +64,7 @@ rynui = public facade target
 
 备选方案是构建时直接下载最新 SDL3。该方案无法稳定复现，也会让离线配置失败，因此不采用。
 
-### 3. Shader 使用离线编译，不在应用运行时转换
+### 4. Shader 使用离线编译，不在应用运行时转换
 
 Quad shader 的单一源文件使用 HLSL。构建阶段调用固定版本的 `SDL_shadercross` CLI，为本 change 生成 Windows/D3D12 所需的 DXIL 和 Linux/Vulkan 所需的 SPIR-V；生成物位于 build tree，不手工编辑。
 
@@ -64,7 +72,7 @@ Quad shader 的单一源文件使用 HLSL。构建阶段调用固定版本的 `S
 
 备选方案包括运行时调用 `SDL_shadercross` 和分别维护多份 shader 源码。前者增加部署依赖与启动失败面，后者容易发生语义漂移，因此不采用。
 
-### 4. 平台对象使用显式 RAII 状态机
+### 5. 平台对象使用显式 RAII 状态机
 
 应用平台层按以下顺序取得资源：
 
@@ -82,7 +90,7 @@ SDL init
 
 备选方案是把 GPU 提交放到独立 render thread。首个闭环不需要跨线程吞吐，且 SDL3 的 Window/swapchain 线程约束会显著增加同步复杂度，因此推迟。
 
-### 5. Reactive Runtime 先保证生命周期正确，再替换存储优化
+### 6. Reactive Runtime 先保证生命周期正确，再替换存储优化
 
 `Signal<T>` 是共享持有 `SignalCell<T>` 的轻量值类型；创建 Signal 时允许一次堆分配，普通 read/write 不分配。`Observer` 由 `Scope` 稳定拥有，依赖边在每次响应计算前解除并在读取时重建。
 
@@ -99,7 +107,7 @@ SDL init
 
 备选方案是第一版直接实现完整 intrusive graph 和自定义 allocator。它的调试成本会妨碍验证行为合同，因此不采用。
 
-### 6. Node 使用 generation handle，Component 只负责首次挂载
+### 7. Node 使用 generation handle，Component 只负责首次挂载
 
 Node 存放在拥有稳定 slot 的容器中，以 `{index, generation}` 形式对外引用。删除后增加 generation，旧 handle 必须被诊断为失效，不得访问复用后的 Node。
 
@@ -107,13 +115,13 @@ Component mount 创建 `Scope` 和 Node；普通 Binding 更新只修改 Node pr
 
 备选方案是让公开 API 暴露裸 Node 指针。该方案无法可靠诊断销毁后的访问，也会阻碍未来结构响应，因此不采用。
 
-### 7. Layout Engine 只实现内部 Box 与 Flex 核心
+### 8. Layout Engine 只实现内部 Box 与 Flex 核心
 
 `Constraints` 在入口验证 `min <= max`。Measure 返回 size，Place 写入最终 bounds；每个 Layout pass 使用递增 generation，测试可以读取节点的 measure/place 次数。
 
 首个闭环内部只支持 `BoxLayout`、可切换 horizontal/vertical 的 `FlexLayout` 以及固定尺寸、fill、padding 和 gap 所需数据。公开布局层未来按照 Ant Design 6 提供 `Flex`、`Space`、`Grid`（`Row`/`Col`）和 `Layout`；本 change 不把内部 Layout 类型承诺为稳定公开 API。Grid、Scroll、intrinsic measurement 和 baseline alignment 不进入本 change。
 
-### 8. Ant Design 决定公开组件合同，Compose 只提供机制参考
+### 9. Ant Design 决定公开组件合同，Compose 只提供机制参考
 
 RynUI 的基础组件、公开布局、Design Token、主题算法和交互状态以 Ant Design 6 为设计基线；初始对照版本为 `6.5.0`。RynUI 只映射设计语义到原生 C++ Runtime，不依赖 React、DOM 或 CSS-in-JS。
 
@@ -138,7 +146,7 @@ Component(
 
 备选方案包括完整 Compose-style 公开 API、自创组件体系和直接模仿 Ant Design React Props。第一种会造成 `Modifier` 与 Token 冲突，第二种失去一致的企业级设计基线，第三种会把 DOM/CSS 字段带入原生 Runtime，因此都不采用。
 
-### 9. DirtyFlags 显式映射到最小更新队列
+### 10. DirtyFlags 显式映射到最小更新队列
 
 每个可绑定属性在定义处固定 Dirty 映射：
 
@@ -150,7 +158,7 @@ Scheduler 分别维护 Layout roots、Primitive updates 和 frame request。Mate
 
 如果一个更新同时产生多个 flags，采用包含其全部正确性的最小上界，但不得无条件提升为全树 Layout 或 Scene rebuild。
 
-### 10. 示例与可观测性属于完成条件
+### 11. 示例与可观测性属于完成条件
 
 最小示例使用可点击/定时切换的彩色 Quad，不依赖尚未实现的 Text。窗口标题或控制台输出以下计数：
 

@@ -24,6 +24,7 @@
 - Compose 只作为 slot composition、Constraints 和 phased invalidation 的机制参考，不使用通用 `Modifier` 作为稳定组件的视觉入口。
 - 不使用 Virtual DOM；普通属性更新不得重新执行无关 Component。
 - SDL3 类型不得泄漏到 Reactive、Layout、Component 或公开 API。
+- 正式构建统一通过 `CMakePresets.json` 驱动并使用 `Ninja Multi-Config`；Windows 必须使用 MSVC，不得用 MinGW 结果代替 Windows 验收。
 
 ## OpenSpec 工作流
 

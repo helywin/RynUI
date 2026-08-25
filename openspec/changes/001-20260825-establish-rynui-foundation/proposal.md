@@ -4,7 +4,7 @@ RynUI 目前只有架构结论和项目约定，还没有可以构建、运行�
 
 ## What Changes
 
-- 建立 C++20、CMake、测试和 benchmark 工程骨架，公开 API 使用 `ryn` 命名空间。
+- 建立 C++20、CMake、测试和 benchmark 工程骨架，以 `CMakePresets.json` 和 `Ninja Multi-Config` 管理 Windows/MSVC、Linux/GCC 与 Linux/Clang 构建，公开 API 使用 `ryn` 命名空间。
 - 接入 SDL3 Window、事件循环与 SDL3 GPU 的最小 clear/present 生命周期。
 - 实现 `Signal`、`Memo`、`Effect`、`Binding`、`Scope`、`batch()` 和单 UI 线程 `Scheduler` 的最小语义。
 - 建立持久化 `Node`、Constraints 布局、`DirtyFlags` 和 `QuadPrimitive` 数据边界。
@@ -32,4 +32,5 @@ RynUI 目前只有架构结论和项目约定，还没有可以构建、运行�
 - 首批公开 API 进入 `ryn` 命名空间，后续 change 必须兼容或显式说明破坏性变更。
 - 后续基础组件、公开布局、Design Token、主题和交互状态以 Ant Design 6 为设计基线，公开层采用 typed Props、typed slots 和 reactive `Prop<T>`；本 change 不引入 React、CSS-in-JS 或通用组件视觉 `Modifier`。
 - Windows 和 Linux 是本 change 的必验平台；macOS 保留架构兼容性，但不作为本 change 的完成门槛。
+- Windows 构建和验收必须使用 MSVC；MinGW 不属于受支持的 Windows 工具链，也不能替代 Windows 验收。
 - 主要风险是响应依赖生命周期、Scheduler 重入、GPU device/窗口资源清理，以及 Dirty 范围被意外扩大。

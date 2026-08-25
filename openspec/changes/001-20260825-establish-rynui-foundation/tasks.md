@@ -1,8 +1,9 @@
 ## 1. C++ 工程与测试基线
 
 - [ ] 1.1 创建 C++20/CMake 目录和分层 targets，提供 `rynui` public facade 与 `include/ryn/` 核心公开头文件，通过 configure 验证 target 依赖方向正确，并确认没有提前暴露通用组件视觉 `Modifier` 或与 typed Props/slots 冲突的 API
-- [ ] 1.2 建立不依赖 SDL3 的 CTest 测试入口和最小 `ryn` API smoke test，并在 Windows 上运行 build 与 `ctest --output-on-failure`
-- [ ] 1.3 补充开发构建说明、生成物忽略规则和依赖边界检查，运行 `git diff --check` 后使用英文 commit message 提交本阶段
+- [ ] 1.2 创建基于 hidden base preset 的 `CMakePresets.json`，以 `Ninja Multi-Config` 管理 `windows-msvc`、`linux-gcc` 和 `linux-clang` configure preset 及对应 Debug/Release build/test preset；Windows configure 必须拒绝非 MSVC 工具链
+- [ ] 1.3 建立不依赖 SDL3 的 CTest 测试入口和最小 `ryn` API smoke test，并使用 `windows-msvc` preset 在 Windows 上运行 Debug build 与 `ctest --output-on-failure`
+- [ ] 1.4 补充 Visual Studio Developer Environment、跨平台 preset、生成物忽略规则和依赖边界说明，运行 `git diff --check` 后使用英文 commit message 提交本阶段
 
 ## 2. SDL3 平台与 GPU 生命周期
 
