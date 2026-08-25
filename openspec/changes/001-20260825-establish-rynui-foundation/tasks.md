@@ -11,7 +11,7 @@
 - [x] 2.2 添加 HLSL Quad shader 与离线 DXIL/SPIR-V 生成流程，支持 `RYNUI_SHADERCROSS_EXECUTABLE` host tool override；验证缺少工具链或交叉编译未提供 host tool 时 configure fail-fast，工具齐全时 build tree 生成对应 shader，应用目标不链接 `SDL3_shadercross` 运行时库
 - [x] 2.3 实现 SDL init、Window、GPU device、claim 和逆序释放的 RAII 状态机，通过故障注入测试验证每个初始化失败点只释放已取得资源
 - [x] 2.4 实现 UI 线程 command buffer、swapchain acquire、clear/present 与最小化空 texture 分支，在 Windows 真实窗口验证启动、至少一次帧提交、关闭和退出码
-- [ ] 2.5 运行本阶段自动测试与真实窗口 smoke，保存 GPU driver 和生命周期摘要，执行 `git diff --check` 后使用英文 commit message 提交本阶段
+- [x] 2.5 运行本阶段自动测试与真实窗口 smoke，保存 GPU driver 和生命周期摘要，执行 `git diff --check` 后使用英文 commit message 提交本阶段
 
 ## 3. Fine-grained Reactive Runtime
 

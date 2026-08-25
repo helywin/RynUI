@@ -87,6 +87,10 @@ ctest --preset linux-clang-debug
 | `rynui_runtime` | 持久化 UI Runtime | `rynui_reactive` |
 | `rynui_layout` | Layout 核心 | `rynui_runtime` |
 | `rynui_graphics` | 平台无关图形层 | `rynui_layout` |
+| `rynui_platform_sdl` | SDL init、Window 与 GPU device 生命周期 | `SDL3::SDL3` |
+| `rynui_renderer_sdl` | command buffer 与 clear/present | `rynui_platform_sdl`、`SDL3::SDL3` |
 | `rynui` / `RynUI::RynUI` | 公开 facade | `rynui_graphics` |
 
-CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。测试目标本身只依赖当前公开 facade，不链接 SDL3；示例应用也会检查自身没有链接仅供构建使用的 `SDL3_shadercross` library。
+CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。公开 API smoke test 只依赖当前 facade；平台与 renderer 测试分别链接最小内部 target。示例应用会检查自身没有链接仅供构建使用的 `SDL3_shadercross` library。
+
+Windows 的 SDL/GPU 生命周期实测记录见 [Windows GPU 生命周期验收](../validation/windows-gpu-lifecycle.md)。
