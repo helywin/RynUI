@@ -30,6 +30,11 @@ struct PlatformConfig {
     bool gpu_debug{false};
 };
 
+struct PlatformEvents {
+    bool quit_requested{false};
+    bool frame_requested{false};
+};
+
 class PlatformApi {
 public:
     virtual ~PlatformApi() = default;
@@ -54,6 +59,14 @@ public:
         PlatformGpuDeviceHandle device) const noexcept = 0;
     [[nodiscard]] virtual bool poll_quit_requested() noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
+    [[nodiscard]] virtual PlatformEvents poll_events() noexcept {
+        return {poll_quit_requested(), false};
+    }
+    [[nodiscard]] virtual PlatformEvents wait_events(
+        std::uint32_t timeout_milliseconds) noexcept {
+        delay(timeout_milliseconds);
+        return poll_events();
+    }
 };
 
 struct PlatformCreateResult;
@@ -76,6 +89,8 @@ public:
     [[nodiscard]] const char* gpu_driver() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] bool poll_quit_requested() noexcept;
+    [[nodiscard]] PlatformEvents poll_events() noexcept;
+    [[nodiscard]] PlatformEvents wait_events(std::uint32_t timeout_milliseconds) noexcept;
     void delay(std::uint32_t milliseconds) noexcept;
 
 private:

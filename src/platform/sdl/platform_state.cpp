@@ -64,18 +64,44 @@ public:
     }
 
     [[nodiscard]] bool poll_quit_requested() noexcept override {
+        return poll_events().quit_requested;
+    }
+
+    [[nodiscard]] PlatformEvents poll_events() noexcept override {
+        PlatformEvents result;
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT
-                    || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-                return true;
-            }
+            merge_event(result, event);
         }
-        return false;
+        return result;
     }
 
     void delay(std::uint32_t milliseconds) noexcept override {
         SDL_Delay(milliseconds);
+    }
+
+    [[nodiscard]] PlatformEvents wait_events(
+        std::uint32_t timeout_milliseconds) noexcept override {
+        PlatformEvents result;
+        SDL_Event event{};
+        if (SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout_milliseconds))) {
+            merge_event(result, event);
+            SDL_Event queued{};
+            while (SDL_PollEvent(&queued)) {
+                merge_event(result, queued);
+            }
+        }
+        return result;
+    }
+
+private:
+    static void merge_event(PlatformEvents& result, const SDL_Event& event) noexcept {
+        if (event.type == SDL_EVENT_QUIT
+                || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+            result.quit_requested = true;
+            return;
+        }
+        result.frame_requested = true;
     }
 };
 
@@ -170,6 +196,14 @@ bool PlatformState::is_owner_thread() const noexcept {
 
 bool PlatformState::poll_quit_requested() noexcept {
     return api_->poll_quit_requested();
+}
+
+PlatformEvents PlatformState::poll_events() noexcept {
+    return api_->poll_events();
+}
+
+PlatformEvents PlatformState::wait_events(std::uint32_t timeout_milliseconds) noexcept {
+    return api_->wait_events(timeout_milliseconds);
 }
 
 void PlatformState::delay(std::uint32_t milliseconds) noexcept {
