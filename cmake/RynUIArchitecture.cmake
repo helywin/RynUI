@@ -1,0 +1,79 @@
+include_guard(GLOBAL)
+
+function(rynui_verify_build_contract)
+    if(NOT CMAKE_GENERATOR STREQUAL "Ninja Multi-Config")
+        message(FATAL_ERROR
+            "RynUI official builds require the Ninja Multi-Config generator. "
+            "Configure with a repository CMake preset.")
+    endif()
+
+    if(WIN32 AND NOT MSVC)
+        message(FATAL_ERROR
+            "RynUI Windows builds require MSVC. Enter a Visual Studio Developer "
+            "Environment before using the windows-msvc preset.")
+    endif()
+
+    if(RYNUI_EXPECTED_TOOLCHAIN STREQUAL "msvc" AND NOT MSVC)
+        message(FATAL_ERROR "The selected preset requires MSVC.")
+    elseif(RYNUI_EXPECTED_TOOLCHAIN STREQUAL "gcc"
+            AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "The selected preset requires GCC.")
+    elseif(RYNUI_EXPECTED_TOOLCHAIN STREQUAL "clang"
+            AND NOT CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+        message(FATAL_ERROR "The selected preset requires Clang.")
+    endif()
+endfunction()
+
+function(rynui_configure_cpp_target target)
+    target_compile_features(${target} PUBLIC cxx_std_20)
+
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive- /Zc:__cplusplus /utf-8)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endfunction()
+
+function(rynui_assert_direct_dependencies target)
+    get_target_property(target_type ${target} TYPE)
+    if(target_type STREQUAL "INTERFACE_LIBRARY")
+        set(property_name INTERFACE_LINK_LIBRARIES)
+    else()
+        set(property_name LINK_LIBRARIES)
+    endif()
+
+    get_property(property_is_set TARGET ${target} PROPERTY ${property_name} SET)
+    if(property_is_set)
+        get_target_property(actual_dependencies ${target} ${property_name})
+    else()
+        set(actual_dependencies "")
+    endif()
+
+    set(expected_dependencies ${ARGN})
+    list(SORT actual_dependencies)
+    list(SORT expected_dependencies)
+
+    if(NOT "${actual_dependencies}" STREQUAL "${expected_dependencies}")
+        message(FATAL_ERROR
+            "Invalid direct dependencies for ${target}: expected "
+            "[${expected_dependencies}], got [${actual_dependencies}].")
+    endif()
+endfunction()
+
+function(rynui_verify_public_api public_include_directory)
+    file(GLOB_RECURSE public_headers CONFIGURE_DEPENDS
+        "${public_include_directory}/*.h"
+        "${public_include_directory}/*.hpp")
+
+    foreach(public_header IN LISTS public_headers)
+        file(READ "${public_header}" header_contents)
+        string(REGEX MATCH
+            "(class|struct|using|typedef)[ \t\r\n]+Modifier([^A-Za-z0-9_]|$)"
+            forbidden_modifier "${header_contents}")
+        if(forbidden_modifier)
+            message(FATAL_ERROR
+                "Public header ${public_header} exposes a generic Modifier type. "
+                "Use typed Props, typed slots, LayoutStyle, and Theme tokens instead.")
+        endif()
+    endforeach()
+endfunction()

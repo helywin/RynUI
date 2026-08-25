@@ -1,0 +1,5 @@
+add_executable(rynui_public_api_smoke public_api_smoke.cpp)
+rynui_configure_cpp_target(rynui_public_api_smoke)
+target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
+
+add_test(NAME rynui.public_api_smoke COMMAND rynui_public_api_smoke)
