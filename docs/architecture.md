@@ -10,7 +10,7 @@
 
 RynUI 是一个桌面优先、GPU-first、细粒度响应式的现代 C++ UI 框架：
 
-> C++20 声明式 API + SolidJS 式 Fine-grained Reactivity + Retained UI Tree + Compose 式 Constraints/Modifier/Dirty Phase + 专用轻量 GPU Renderer。
+> Ant Design-native Typed Component API + C++ Declarative Slot DSL + SolidJS 式 Fine-grained Reactivity + Retained UI Tree + Constraints/Phased Invalidation + 专用轻量 GPU Renderer。
 
 主要目标场景包括桌面工具、工业控制、机器人应用、监控面板、IDE 类工具以及包含大型 Table/Tree 的数据密集界面。
 
@@ -22,6 +22,7 @@ RynUI 是一个桌面优先、GPU-first、细粒度响应式的现代 C++ UI 框
 - 从第一阶段支持 UTF-8、中文字体回退与桌面输入模型。
 - Windows、Linux 和 macOS 共享统一的上层运行时与渲染抽象。
 - 架构允许按需替换平台和渲染后端，而不污染组件 API。
+- 基础 UI 组件、公开布局语义、Design Token、主题算法和交互状态统一参照 Ant Design 6。
 
 ### 2.2 非目标
 
@@ -30,6 +31,7 @@ RynUI 是一个桌面优先、GPU-first、细粒度响应式的现代 C++ UI 框
 - 不复制 Web DOM/CSS 全部语义。
 - 不以每帧重建整棵 UI 描述树作为默认响应模型。
 - 不承诺在没有 benchmark 和真实窗口证据时达到具体性能数字。
+- 不复制 Ant Design 的 React、DOM 或 CSS-in-JS 实现；RynUI 只把其设计语言和行为合同映射到原生 C++ Runtime。
 
 ## 3. 总体架构
 
@@ -45,7 +47,7 @@ Signal / Memo / Effect / Binding / Scope
     |
     v
 UI Runtime
-Component / Node / If / For / Context / Modifier
+Component / Typed Props / Slots / Node / If / For / Context
     |
     v
 Layout Engine
@@ -116,37 +118,70 @@ GPU instance update
 
 能只更新 GPU instance 的变化不得触发 Layout；能局部 Layout 的变化不得重建组件子树。
 
-## 5. 公开 API 方向
+### 4.5 公开组件只有一套样式来源
 
-所有公开 API 使用 `ryn` 命名空间：
+Ant Design 组件不能同时接受无约束的 Compose-style `Modifier` 和 Design Token，否则 Button 等组件会出现 Token、variant 与任意 background/border/font override 互相竞争的问题。
+
+公开组件必须遵守以下分工：
+
+- typed Props 表达组件语义、variant、size、status、disabled、loading、事件和 typed slot。
+- reactive `Prop<T>` 让 Props 接受静态值、`Signal<T>` 或 `Binding<T>`。
+- `LayoutStyle` 只控制组件外部 width、height、margin、flex、alignSelf、order 等布局关系。
+- Theme 和 Component Token 是稳定组件的唯一视觉样式来源。
+- `PrimitiveStyle` 只开放给 `Surface`、`Canvas` 和自定义组件，不作为 Button/Input/Table 等稳定组件的通用入口。
+
+## 5. 公开 API：Typed Props + Slots + Reactive Prop
+
+所有公开 API 使用 `ryn` 命名空间。公开组件名和 Props 语义按 Ant Design 组织；C++ slot/lambda 只负责声明父子关系，不模拟 Kotlin 语法：
 
 ```cpp
 void CounterPage()
 {
     auto count = ryn::state(0);
 
-    auto doubled = ryn::memo([=] {
-        return count() * 2;
-    });
-
-    ryn::Column(
-        ryn::Modifier()
-            .fillMaxSize()
-            .padding(24_dp)
-            .gap(12_dp),
+    ryn::Flex(
+        ryn::FlexProps{}
+            .vertical(true)
+            .gap(ryn::SpaceSize::Middle)
+            .layout(
+                ryn::LayoutStyle{}
+                    .fill()
+                    .padding(24_dp)
+            ),
         [=] {
-            ryn::Text(ryn::bind([=] {
-                return std::format("Count: {}", count());
-            }));
+            ryn::Title(
+                ryn::TitleProps{}.level(4),
+                ryn::bind([=] {
+                    return std::format("Count: {}", count());
+                })
+            );
 
-            ryn::Row(ryn::Modifier().gap(8_dp), [=] {
-                ryn::Button("Decrease", [=] {
-                    count.update([](int value) { return value - 1; });
-                });
-                ryn::Button("Increase", [=] {
-                    count.update([](int value) { return value + 1; });
-                });
-            });
+            ryn::Space(
+                ryn::SpaceProps{}.size(ryn::SpaceSize::Small),
+                [=] {
+                    ryn::Button(
+                        ryn::ButtonProps{}
+                            .onClick([=] {
+                                count.update([](int value) {
+                                    return value - 1;
+                                });
+                            }),
+                        [] { ryn::Text("Decrease"); }
+                    );
+
+                    ryn::Button(
+                        ryn::ButtonProps{}
+                            .type(ryn::ButtonType::Primary)
+                            .size(ryn::ControlSize::Middle)
+                            .onClick([=] {
+                                count.update([](int value) {
+                                    return value + 1;
+                                });
+                            }),
+                        [] { ryn::Text("Increase"); }
+                    );
+                }
+            );
 
             ryn::If(
                 [=] { return count() >= 10; },
@@ -157,7 +192,9 @@ void CounterPage()
 }
 ```
 
-API 设计避免依赖大量宏，也不强行模拟 Kotlin 语法。实现阶段可以调整具体函数签名，但不得破坏细粒度响应和生命周期边界。
+`ButtonProps::loading()`、`InputProps::status()`、`FlexProps::gap()` 等响应式字段在类型层使用 `Prop<T>`，可接受静态 `T`、`Signal<T>` 或 `Binding<T>`。typed slot 用 lambda 承载 `content`、`icon`、`prefix`、`suffix`、`title`、`footer` 等结构；组件只暴露其真实支持的 slot。
+
+API 不依赖宏或 Kotlin compiler plugin。Compose 的 slot composition、Constraints 和 phased state read 只作为 Runtime 机制参考；RynUI 不公开通用 Compose `Modifier` 链，也不复制 Ant Design React Props 的 DOM/CSS 字段。
 
 ## 6. Reactive Runtime
 
@@ -211,7 +248,7 @@ enum class DirtyFlags : std::uint32_t {
 
 每种公开属性都必须声明它的最小失效范围，并通过测试证明不会扩大为无关阶段。
 
-## 8. Layout 与 Modifier
+## 8. Layout Engine 与公开 LayoutStyle
 
 Layout 使用父节点向子节点传递 `Constraints`、子节点返回尺寸、父节点执行 `place` 的模型：
 
@@ -224,13 +261,79 @@ struct Constraints {
 };
 ```
 
-第一阶段实现 `Box`、`Row`、`Column` 和基础 `Scroll`；随后扩展 `Flex`、`Grid`、`LazyColumn`、`VirtualTable` 与 `VirtualTree`。
+Layout Engine 内部先实现 `BoxLayout` 和可切换 horizontal/vertical 的 `FlexLayout`；公开布局 API 采用 Ant Design 的 `Flex`、`Space`、`Grid`（`Row`/`Col`）和 `Layout` 语义。响应式断点基于窗口内容区尺寸计算，不使用显示器型号或固定设备硬编码。
 
-`Modifier` 在挂载时编译为 Node 的 Layout、Render、Input 和 Semantics 属性，不为每个链式调用创建额外 Wrapper Node。
+`LayoutStyle` 在挂载时编译为 Node 的外部布局属性，不创建额外 Wrapper Node，也不允许覆盖组件内部颜色、边框、字体、状态层或动画。组件内部视觉由 Theme/Component Token 决定；低层 `Surface`/`Canvas` 才接受 `PrimitiveStyle`。
 
-## 9. GPU Scene 与 Renderer
+## 9. Ant Design 组件、布局与样式基线
 
-### 9.1 Primitive
+RynUI 的原生 Design System 以 Ant Design 6 为初始基线，本文整理时对应参考版本为 `6.5.0`。后续升级参考版本必须通过独立 OpenSpec change 评估视觉、交互和兼容性影响，不能静默跟随上游变化。
+
+### 9.1 公开组件模型
+
+RynUI 使用自己的 typed C++ API 表达 Ant Design，不采用 Compose-style 通用 `Modifier`，也不照抄 React Props：
+
+```text
+Component(
+  TypedProps<Prop<T>, Event>,
+  TypedSlots<lambda>
+)
+  + LayoutStyle        # 只控制外部布局
+  + Theme/Token        # 控制稳定视觉
+  + Binding            # 细粒度更新具体属性
+```
+
+Props builder 是规范入口，简单组件可以提供不损失语义的 convenience overload。所有 overload 最终必须归一化为同一个 typed Props/Slots 模型，避免出现两套生命周期或样式行为。
+
+### 9.2 对齐范围
+
+- 组件信息架构与语义：General、Layout、Navigation、Data Entry、Data Display、Feedback 等类别保持一致的职责边界。
+- 基础组件：Button、Icon、Typography、Input、Checkbox、Radio、Switch、Slider、Select、Tabs、Menu、Tooltip、Popover、Card、Table、Tree、Modal/Dialog、Drawer、Alert、Message、Notification、Progress、Skeleton 和 Spin 等按 Ant Design 的外观层级、尺寸、状态和交互规则设计。
+- 布局：`Flex` 负责主轴/交叉轴、wrap 和 gap；`Space` 负责相邻内容的一致间距；`Grid` 使用 `Row`/`Col`、gutter、span、offset、order 和响应式断点；`Layout` 负责应用级 Header/Sider/Content/Footer 结构。
+- 交互状态：default、hover、active/pressed、focus-visible、selected/checked、disabled、loading、success、warning 和 error 必须完整、可预测且跨组件一致。
+- 图标、文案、空状态、反馈时机和危险操作层级遵循 Ant Design 的企业级信息表达原则。
+
+对齐目标是视觉与行为合同，不是 React API 的逐字移植。RynUI 可以使用符合 C++ 生命周期和类型系统的 API，但同一组件在相同状态下必须给用户相同的层级、反馈和操作预期。
+
+### 9.3 Layout 响应规则
+
+`Grid` 的断点命名与初始阈值采用 Ant Design 6：`xs=480`、`sm=576`、`md=768`、`lg=992`、`xl=1200`、`xxl=1600`、`xxxl=1920`。阈值以窗口可用内容宽度为输入，并通过 Theme/Scale 配置保留受控覆盖能力。
+
+桌面窗口缩放时，布局必须按断点、flex、wrap、gutter 和 content constraints 重排；不得把单一设备分辨率写死到组件实现。
+
+### 9.4 Design Token 与主题
+
+Theme Runtime 采用与 Ant Design 对应的分层 Token 模型：
+
+```text
+Seed Token
+  -> Theme Algorithm
+  -> Map Token
+  -> Alias Token
+  -> Component Token
+```
+
+- Seed Token 表达品牌输入，例如 `colorPrimary`、字体、基础圆角和尺寸密度。
+- Map Token 由主题算法派生完整色板、字体阶梯、间距、阴影和控制尺寸。
+- Alias Token 表达跨组件语义，例如 text、surface、border、focus、success、warning、error 和 disabled。
+- Component Token 只覆盖具体组件，不允许复制一套脱离全局语义的颜色与间距常量。
+- 初始主题算法提供 Default、Dark 与 Compact；组件可以受控覆盖 Token，但默认继承全局算法。
+
+Token 本身是响应式上下文。主题切换只使读取相关 Token 的属性失效；纯颜色主题变化不得无条件触发全树 Layout。
+
+### 9.5 验收方式
+
+每个基础组件在进入稳定 API 前必须提供：
+
+- 与选定 Ant Design 参考版本的状态矩阵和视觉对照。
+- Keyboard、Focus、Pointer、disabled/loading/error 等交互验收。
+- Default、Dark、Compact 主题与 Component Token 覆盖测试。
+- 不同窗口宽度下的 Flex/Grid/Space 响应式布局截图或可重复视觉测试。
+- RynUI 特有性能指标，包括 Component 执行、Layout、Primitive 更新和 GPU upload 范围。
+
+## 10. GPU Scene 与 Renderer
+
+### 10.1 Primitive
 
 普通 UI 首先映射为少量 Primitive：
 
@@ -242,7 +345,7 @@ struct Constraints {
 
 `QuadPrimitive` 应支持 GPU instancing，并允许 `Binding` 直接更新颜色、透明度和变换等 instance 字段。
 
-### 9.2 渲染边界
+### 10.2 渲染边界
 
 - `Renderer` 只消费与平台无关的 Scene/Primitive 数据。
 - SDL3 GPU 是第一阶段后端，不进入 Reactive、Runtime、Layout 或 Component API。
@@ -250,7 +353,7 @@ struct Constraints {
 - Skia 不属于核心依赖；复杂 Canvas、Path、PDF、滤镜等未来通过可选模块接入。
 - 批处理必须保持正确的 Z order、Clip、Texture 和 Blend 语义，不能为了减少 draw call 破坏视觉正确性。
 
-## 10. Text 与桌面输入
+## 11. Text 与桌面输入
 
 文本链路采用：
 
@@ -268,7 +371,7 @@ UTF-8
 
 输入事件通过 HitTest 定位目标 Node，并支持 Capture、Target、Bubble 三阶段传播。Focus、Pointer capture、Keyboard、IME、Cursor、Clipboard 和 DragDrop 由独立管理器维护。
 
-## 11. 线程与帧调度
+## 12. 线程与帧调度
 
 UI Runtime 使用单 UI 线程。后台任务通过 `ryn::post()` 或线程安全 Channel 把不可变消息送入 UI 队列。
 
@@ -289,7 +392,7 @@ Input
 
 Scheduler 必须支持批处理、Dirty root 合并、确定性队列顺序，以及更新过程中再次失效时的边界控制。
 
-## 12. 建议工程结构
+## 13. 建议工程结构
 
 ```text
 RynUI/
@@ -320,7 +423,7 @@ RynUI/
 
 模块只能沿架构向下依赖；`reactive` 不依赖 UI，`layout` 不依赖具体 GPU 后端，`components` 不直接调用 SDL3。
 
-## 13. 实现阶段
+## 14. 实现阶段
 
 ### Phase 0：工程与验证基线
 
@@ -332,7 +435,7 @@ RynUI/
 
 - `Signal`、`Memo`、`Effect`、`Binding`、`Scope`、`Scheduler`。
 - 持久化 `Node` 树和基本生命周期。
-- `Box`、`Row`、`Column` 与 Constraints。
+- 内部 `BoxLayout`、`FlexLayout` 与 Constraints。
 - `QuadPrimitive`、instance buffer 与基础 shader。
 - `Signal -> Binding -> DirtyFlags -> Node -> QuadPrimitive -> SDL_GPU` 闭环。
 
@@ -340,14 +443,14 @@ RynUI/
 
 - Text、CJK 字体回退、GlyphAtlas。
 - HitTest、Pointer、Focus、Button。
-- `Modifier`、`If`、`For`。
+- Ant Design 风格的 `Flex`、`Space`、typed `ButtonProps`/slots、reactive `Prop<T>`、`LayoutStyle`、`If`、`For`。
 - Scroll、Clip 和基础动画。
 
 ### Phase 3：桌面能力
 
 - TextInput、IME、Selection、Clipboard、Undo/Redo。
 - VirtualList、VirtualTable、VirtualTree。
-- Theme、Design tokens 和基础组件集。
+- Ant Design 6 对齐的 Seed/Map/Alias/Component Token、Default/Dark/Compact 主题和基础组件集。
 - Inspector、Dirty reason 和 Frame profiler。
 
 ### Phase 4：扩展能力
@@ -356,7 +459,7 @@ RynUI/
 - 复杂动画和自定义渲染扩展。
 - 可选 Skia/高级 Path 插件。
 
-## 14. 首个 MVP 验收
+## 15. 首个 MVP 验收
 
 首个真实 Demo 使用 Device Monitor 场景，包含动态 CPU、Memory、Temperature、日志列表以及 Start/Stop 操作。
 
@@ -372,15 +475,16 @@ RynUI/
 
 性能目标必须由 benchmark 固化。`0 heap allocations/frame`、10,000 Node、144Hz 动画和 100,000 行虚拟表格属于长期目标，不作为未经验证的当前承诺。
 
-## 15. 关键风险
+## 16. 关键风险
 
 - Reactive 依赖图、Node 生命周期和结构更新之间可能产生悬空引用或重入问题。
 - Clip/Z order/Blend 会限制跨节点批处理，需要优先保证正确性。
 - CJK、IME、字体回退和文本选择可能显著扩大 TextInput 复杂度。
 - SDL3 GPU 的平台差异需要通过真实 D3D12、Vulkan、Metal 环境验证。
+- Ant Design 上游版本演进可能改变 Token、组件状态或响应式布局语义，必须固定参考版本并通过 OpenSpec change 升级。
 - 过早扩展组件库会掩盖核心闭环问题，因此阶段边界必须由 OpenSpec change 和验收证据控制。
 
-## 16. 决策摘要
+## 17. 决策摘要
 
 | 主题 | 最终决策 |
 |---|---|
@@ -390,6 +494,11 @@ RynUI/
 | 响应模型 | Fine-grained `Signal`，默认不重跑 Component |
 | UI 树 | Retained UI Tree |
 | 布局 | Constraints + Measure + Place |
+| 公开组件 API | Typed Props + typed slots + reactive `Prop<T>` |
+| Compose 借鉴范围 | Slot composition、Constraints、phased invalidation；不使用通用 `Modifier` 作为组件 API |
+| 公开布局 | Ant Design `Flex` / `Space` / `Grid` / `Layout` 语义 |
+| 基础组件与样式 | Ant Design 6.5.0 初始设计基线 |
+| 主题 | Seed / Map / Alias / Component Token + Default / Dark / Compact |
 | 平台/GPU | SDL3 + SDL3 GPU |
 | 普通 UI 渲染 | 自研 Primitive/Batch Renderer |
 | 文本 | FreeType + HarfBuzz + GlyphAtlas |

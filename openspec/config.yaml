@@ -3,12 +3,16 @@ schema: spec-driven
 context: |
   Project: RynUI
   C++ namespace: ryn
+  Design system baseline: Ant Design 6
   Language: Simplified Chinese (zh-CN)
   所有 OpenSpec 产物的说明性正文必须使用简体中文。
   OpenSpec 结构关键字、路径、命令、API、代码标识符与专有名词保持原文。
   必须保留 ADDED、MODIFIED、REMOVED、RENAMED、Requirement、Scenario、WHEN、THEN、SHALL、MUST 等结构关键字为英文。
   change 名称必须使用 NNN-YYYYMMDD-lowercase-kebab-case，例如 001-20260908-my-first-change。
   NNN 为三位递增序号，YYYYMMDD 为创建日期，末尾为能表达目标的 lowercase-kebab-case slug。
+  基础 UI 组件、公开布局、Design Token、主题和交互状态必须参照 Ant Design 6；只借鉴设计合同，不引入 React 或 CSS-in-JS 实现依赖。
+  公开组件 API 必须采用 typed Props、typed slots 和 reactive Prop<T>；LayoutStyle 只控制外部布局，稳定组件的视觉样式只通过 Theme 与 Component Token 控制。
+  Compose 仅作为 slot composition、Constraints 和 phased invalidation 的机制参考，不得把通用 Modifier 作为稳定组件的视觉样式入口。
 
 rules:
   proposal:
@@ -17,12 +21,19 @@ rules:
   design:
     - 说明关键架构决策、备选方案、性能边界与兼容性影响
     - 项目名称统一使用 RynUI，C++ 示例统一使用 ryn 命名空间
+    - 公开组件接口统一使用 typed Props、typed slots 和 reactive Prop<T>，不得混用通用 Modifier 与 Component Token 控制视觉样式
   specs:
     - 每个 Requirement 至少包含一个 Scenario
     - 需求和场景正文使用简体中文，OpenSpec 结构关键字保持英文
   tasks:
     - 按可独立验证的增量拆分任务
     - 每个阶段包含对应测试或真实运行验收
+
+operations:
+  apply:
+    guidance:
+      - 每完成一个可独立验证的小阶段就创建一次 Git commit
+      - Git commit message 必须使用英文，并且不得把未完成或未验证的工作描述为已完成
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.

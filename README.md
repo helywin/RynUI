@@ -1,6 +1,6 @@
 # RynUI
 
-RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项目目标是把 Compose 风格的声明式 API、SolidJS 式细粒度响应、持久化 UI 树与专用 GPU 渲染链路组合起来，让状态变化尽可能直接更新受影响的 UI 属性和 GPU 数据。
+RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项目目标是把 Ant Design-native typed component API、C++ declarative slot DSL、SolidJS 式细粒度响应、持久化 UI 树与专用 GPU 渲染链路组合起来，让状态变化尽可能直接更新受影响的 UI 属性和 GPU 数据。
 
 > 当前状态：项目已完成 Git、OpenSpec 和正式架构文档初始化，尚未进入代码实现阶段。
 
@@ -10,6 +10,9 @@ RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项�
 - 不使用 Virtual DOM；组件默认只在挂载时执行一次。
 - 使用 `Signal`、`Memo`、`Effect`、`Binding` 和 `Scope` 构建细粒度响应图。
 - 使用 Retained UI Tree、Constraints 布局与分阶段 Dirty 传播。
+- 基础 UI 组件、公开布局语义、Design Token、主题和交互状态统一参照 Ant Design 6；底层仍为原生 C++ 实现，不依赖 React 或 CSS-in-JS。
+- 公开组件使用 typed Props、typed slots 与 reactive `Prop<T>`；通用 `Modifier` 不作为组件视觉样式入口。
+- Compose 仅作为 slot composition、Constraints 与 phased invalidation 的机制参考，不定义 RynUI 的公开组件语言。
 - 普通 UI 走自研轻量 GPU Renderer，优先映射为 `Quad`、`Glyph`、`Image`、`Clip` 等 Primitive。
 - SDL3 负责窗口、输入、IME、剪贴板和跨平台 GPU 接入。
 - FreeType 与 HarfBuzz 负责字体栅格化和文本整形。
@@ -18,19 +21,12 @@ RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项�
 ## 文档
 
 - [最终架构与实现路线](docs/architecture.md)
-- [OpenSpec 项目配置](openspec/config.yaml)
+- [首个实现 change](openspec/changes/001-20260825-establish-rynui-foundation)
+- [Agent 协作规则](AGENTS.md)
 
-## OpenSpec 约定
+## 当前开发阶段
 
-- change 名称：`NNN-YYYYMMDD-lowercase-kebab-case`
-- 示例：`001-20260908-my-first-change`
-- `NNN` 是三位递增序号，`YYYYMMDD` 是创建日期。
-- OpenSpec 说明性正文使用简体中文。
-- `ADDED`、`MODIFIED`、`REMOVED`、`RENAMED`、`Requirement`、`Scenario`、`WHEN`、`THEN`、`SHALL`、`MUST` 等结构关键字保持英文。
-
-## 规划边界
-
-首个实现阶段只验证一条最小闭环：
+首个实现 change 只验证一条最小技术闭环：
 
 ```text
 Signal
