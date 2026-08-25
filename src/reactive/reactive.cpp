@@ -1,4 +1,4 @@
-#include <ryn/detail/reactive_runtime.hpp>
+#include <ryn/reactive.hpp>
 #include <ryn/version.hpp>
 
 #include "internal/layer_anchors.hpp"
@@ -94,8 +94,16 @@ void ObserverNode::run() {
     }
     dependencies_.clear();
 
-    ActiveObserverGuard guard(this);
-    callback_();
+    auto& scheduler = Scheduler::current();
+    scheduler.begin_observer();
+    try {
+        ActiveObserverGuard guard(this);
+        callback_();
+    } catch (...) {
+        scheduler.end_observer();
+        throw;
+    }
+    scheduler.end_observer();
 }
 
 void ObserverNode::deactivate() noexcept {
@@ -148,7 +156,10 @@ void Scheduler::schedule(const std::shared_ptr<ObserverNode>& observer) {
         pending_effects_.push_back(observer);
         break;
     }
-    if (notification_depth_ == 0 && batch_depth_ == 0 && !flushing_) {
+    if (notification_depth_ == 0
+            && batch_depth_ == 0
+            && observer_depth_ == 0
+            && !flushing_) {
         flush();
     }
 }
@@ -162,7 +173,10 @@ void Scheduler::end_notification() {
         throw std::logic_error("Reactive notification depth underflow");
     }
     --notification_depth_;
-    if (notification_depth_ == 0 && batch_depth_ == 0 && !flushing_) {
+    if (notification_depth_ == 0
+            && batch_depth_ == 0
+            && observer_depth_ == 0
+            && !flushing_) {
         flush();
     }
 }
@@ -176,7 +190,27 @@ void Scheduler::end_batch() {
         throw std::logic_error("Reactive batch depth underflow");
     }
     --batch_depth_;
-    if (batch_depth_ == 0 && notification_depth_ == 0 && !flushing_) {
+    if (batch_depth_ == 0
+            && notification_depth_ == 0
+            && observer_depth_ == 0
+            && !flushing_) {
+        flush();
+    }
+}
+
+void Scheduler::begin_observer() noexcept {
+    ++observer_depth_;
+}
+
+void Scheduler::end_observer() {
+    if (observer_depth_ == 0) {
+        throw std::logic_error("Reactive observer depth underflow");
+    }
+    --observer_depth_;
+    if (observer_depth_ == 0
+            && batch_depth_ == 0
+            && notification_depth_ == 0
+            && !flushing_) {
         flush();
     }
 }
@@ -241,4 +275,58 @@ void record_dependency(ReactiveSource& source) {
 }
 
 } // namespace detail
+
+struct Scope::State {
+    std::vector<std::shared_ptr<detail::ObserverNode>> observers;
+    std::vector<std::function<void()>> cleanups;
+    bool active{true};
+};
+
+Scope::Scope() : state_(std::make_unique<State>()) {}
+
+Scope::~Scope() {
+    dispose();
+}
+
+void Scope::on_cleanup(std::function<void()> cleanup) {
+    if (!state_->active) {
+        cleanup();
+        return;
+    }
+    state_->cleanups.push_back(std::move(cleanup));
+}
+
+void Scope::dispose() noexcept {
+    if (!state_->active) {
+        return;
+    }
+    state_->active = false;
+    for (const auto& observer : state_->observers) {
+        observer->deactivate();
+    }
+    state_->observers.clear();
+
+    for (auto iterator = state_->cleanups.rbegin();
+         iterator != state_->cleanups.rend();
+         ++iterator) {
+        try {
+            (*iterator)();
+        } catch (...) {
+        }
+    }
+    state_->cleanups.clear();
+}
+
+bool Scope::active() const noexcept {
+    return state_->active;
+}
+
+void Scope::own_observer(std::shared_ptr<detail::ObserverNode> observer) {
+    if (!state_->active) {
+        observer->deactivate();
+        return;
+    }
+    state_->observers.push_back(std::move(observer));
+}
+
 } // namespace ryn

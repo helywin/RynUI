@@ -136,6 +136,64 @@ private:
     std::shared_ptr<detail::MemoCell<T, Equal>> cell_;
 };
 
+class Effect;
+
+class Scope final {
+public:
+    Scope();
+    Scope(const Scope&) = delete;
+    Scope& operator=(const Scope&) = delete;
+    Scope(Scope&&) = delete;
+    Scope& operator=(Scope&&) = delete;
+    ~Scope();
+
+    void on_cleanup(std::function<void()> cleanup);
+    void dispose() noexcept;
+    [[nodiscard]] bool active() const noexcept;
+
+private:
+    template <typename Function>
+    friend Effect effect(Scope& scope, Function&& function);
+
+    void own_observer(std::shared_ptr<detail::ObserverNode> observer);
+
+    struct State;
+    std::unique_ptr<State> state_;
+};
+
+class Effect final {
+public:
+    Effect() = default;
+
+    [[nodiscard]] bool active() const noexcept {
+        const auto observer = observer_.lock();
+        return observer && observer->active();
+    }
+
+private:
+    template <typename Function>
+    friend Effect effect(Scope& scope, Function&& function);
+
+    explicit Effect(const std::shared_ptr<detail::ObserverNode>& observer)
+        : observer_(observer) {}
+
+    std::weak_ptr<detail::ObserverNode> observer_;
+};
+
+template <typename Function>
+Effect effect(Scope& scope, Function&& function) {
+    if (!scope.active()) {
+        return Effect{};
+    }
+    auto observer = detail::observe(
+        detail::ObserverPhase::effect,
+        std::function<void()>(std::forward<Function>(function)),
+        false);
+    observer->run();
+    scope.own_observer(observer);
+    return Effect(observer);
+}
+
 template <typename Function>
 std::invoke_result_t<Function> batch(Function&& function) {
     using Result = std::invoke_result_t<Function>;
@@ -146,19 +204,27 @@ std::invoke_result_t<Function> batch(Function&& function) {
         try {
             std::invoke(std::forward<Function>(function));
         } catch (...) {
-            scheduler.end_batch();
+            try {
+                scheduler.end_batch();
+            } catch (...) {
+            }
             throw;
         }
         scheduler.end_batch();
     } else {
-        try {
-            Result result = std::invoke(std::forward<Function>(function));
-            scheduler.end_batch();
-            return result;
-        } catch (...) {
-            scheduler.end_batch();
-            throw;
-        }
+        Result result = [&]() -> Result {
+            try {
+                return std::invoke(std::forward<Function>(function));
+            } catch (...) {
+                try {
+                    scheduler.end_batch();
+                } catch (...) {
+                }
+                throw;
+            }
+        }();
+        scheduler.end_batch();
+        return result;
     }
 }
 

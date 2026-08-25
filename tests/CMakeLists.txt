@@ -19,6 +19,11 @@ rynui_configure_cpp_target(rynui_batch_tests)
 target_link_libraries(rynui_batch_tests PRIVATE rynui_reactive)
 add_test(NAME rynui.batch COMMAND rynui_batch_tests)
 
+add_executable(rynui_scope_effect_tests scope_effect_tests.cpp)
+rynui_configure_cpp_target(rynui_scope_effect_tests)
+target_link_libraries(rynui_scope_effect_tests PRIVATE rynui_reactive)
+add_test(NAME rynui.scope_effect COMMAND rynui_scope_effect_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

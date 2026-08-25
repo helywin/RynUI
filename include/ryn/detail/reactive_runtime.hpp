@@ -66,6 +66,8 @@ public:
     void end_notification();
     void begin_batch() noexcept;
     void end_batch();
+    void begin_observer() noexcept;
+    void end_observer();
     void flush();
 
     [[nodiscard]] std::size_t epoch() const noexcept;
@@ -81,6 +83,7 @@ private:
     std::size_t epoch_{0};
     std::size_t notification_depth_{0};
     std::size_t batch_depth_{0};
+    std::size_t observer_depth_{0};
     bool flushing_{false};
 };
 
