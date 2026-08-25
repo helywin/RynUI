@@ -19,7 +19,7 @@
 - [x] 3.2 实现缓存 `Memo<T>` 与动态依赖切换，使用单元测试证明有效缓存不重算、旧依赖解除、新依赖生效
 - [x] 3.3 实现 `batch()`、去重 dirty queue 和 epoch 传播，使用单元测试证明多次写入只排队一次并产生最终稳定值
 - [x] 3.4 实现 `Scope`、Effect 阶段、清理与重入保护，使用单元测试证明销毁后不通知、清理只执行一次、Effect 不发生无界同步递归
-- [ ] 3.5 添加 steady-state 更新分配计数 benchmark，证明已挂载图上的 Signal write/flush 路径不产生 heap allocation，执行全部 reactive 测试后使用英文 commit message 提交本阶段
+- [x] 3.5 添加 steady-state 更新分配计数 benchmark，证明已挂载图上的 Signal write/flush 路径不产生 heap allocation，执行全部 reactive 测试后使用英文 commit message 提交本阶段
 
 ## 4. 持久化 Node 与最小 Layout
 
