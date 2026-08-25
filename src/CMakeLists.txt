@@ -2,7 +2,7 @@ add_library(rynui_reactive STATIC
     reactive/reactive.cpp
 )
 rynui_configure_cpp_target(rynui_reactive)
-target_include_directories(rynui_reactive PRIVATE
+target_include_directories(rynui_reactive PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
