@@ -22,6 +22,7 @@ target_include_directories(rynui_runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_runtime PRIVATE rynui_reactive)
 
 add_library(rynui_layout STATIC
+    layout/layout_engine.cpp
     layout/layout.cpp
 )
 rynui_configure_cpp_target(rynui_layout)

@@ -89,7 +89,9 @@ NodeId NodeStore::create(std::optional<NodeId> parent) {
 
     auto& slot = slots_[index];
     const NodeId id{index, slot.generation};
-    slot.node = Node{id, parent, {}, 1.0F};
+    slot.node = {};
+    slot.node.id = id;
+    slot.node.parent = parent;
     slot.occupied = true;
     ++live_nodes_;
 

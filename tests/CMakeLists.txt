@@ -41,6 +41,12 @@ target_include_directories(rynui_component_mount_tests PRIVATE "${PROJECT_SOURCE
 target_link_libraries(rynui_component_mount_tests PRIVATE rynui_runtime rynui_reactive)
 add_test(NAME rynui.component_mount COMMAND rynui_component_mount_tests)
 
+add_executable(rynui_layout_engine_tests layout_engine_tests.cpp)
+rynui_configure_cpp_target(rynui_layout_engine_tests)
+target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_layout_engine_tests PRIVATE rynui_layout)
+add_test(NAME rynui.layout_engine COMMAND rynui_layout_engine_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

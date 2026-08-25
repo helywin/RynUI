@@ -1,5 +1,7 @@
 #pragma once
 
+#include "runtime/geometry.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -28,6 +30,12 @@ struct Node {
     std::optional<NodeId> parent;
     std::vector<NodeId> children;
     float opacity{1.0F};
+    Size measured_size;
+    Rect bounds;
+    std::uint64_t measure_count{0};
+    std::uint64_t place_count{0};
+    std::uint64_t measure_generation{0};
+    std::uint64_t place_generation{0};
 };
 
 class NodeStore final {
