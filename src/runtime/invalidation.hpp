@@ -8,6 +8,8 @@
 
 namespace ryn::runtime {
 
+class FrameRequestState;
+
 enum class DirtyFlags : std::uint32_t {
     None = 0,
     Structure = 1U << 0U,
@@ -57,7 +59,7 @@ enum class NodeProperty {
 
 class DirtyQueues final {
 public:
-    explicit DirtyQueues(NodeStore& nodes) noexcept;
+    explicit DirtyQueues(NodeStore& nodes, FrameRequestState* frames = nullptr) noexcept;
 
     void invalidate(NodeId id, DirtyFlags flags);
     void clear() noexcept;
@@ -72,6 +74,7 @@ private:
     static void enqueue_unique(std::vector<NodeId>& queue, NodeId id);
 
     NodeStore* nodes_;
+    FrameRequestState* frames_;
     std::vector<NodeId> layout_roots_;
     std::vector<NodeId> material_nodes_;
     std::vector<NodeId> transform_nodes_;

@@ -1,15 +1,21 @@
 #include "runtime/invalidation.hpp"
 
+#include "runtime/frame_scheduler.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
 namespace ryn::runtime {
 
-DirtyQueues::DirtyQueues(NodeStore& nodes) noexcept : nodes_(&nodes) {}
+DirtyQueues::DirtyQueues(NodeStore& nodes, FrameRequestState* frames) noexcept
+    : nodes_(&nodes), frames_(frames) {}
 
 void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
     static_cast<void>(nodes_->require(id));
+    if (flags != DirtyFlags::None && frames_ != nullptr) {
+        frames_->request_frame();
+    }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
         enqueue_unique(layout_roots_, layout_root_for(id));
     }

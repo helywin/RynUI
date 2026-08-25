@@ -68,6 +68,12 @@ target_link_libraries(
 )
 add_test(NAME rynui.binding_quad_integration COMMAND rynui_binding_quad_integration_tests)
 
+add_executable(rynui_frame_scheduler_tests frame_scheduler_tests.cpp)
+rynui_configure_cpp_target(rynui_frame_scheduler_tests)
+target_include_directories(rynui_frame_scheduler_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_frame_scheduler_tests PRIVATE rynui_runtime)
+add_test(NAME rynui.frame_scheduler COMMAND rynui_frame_scheduler_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
