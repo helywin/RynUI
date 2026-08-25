@@ -2,7 +2,7 @@
 
 RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项目目标是把 Ant Design-native typed component API、C++ declarative slot DSL、SolidJS 式细粒度响应、持久化 UI 树与专用 GPU 渲染链路组合起来，让状态变化尽可能直接更新受影响的 UI 属性和 GPU 数据。
 
-> 当前状态：项目已进入首个 OpenSpec change 的工程基线实现阶段。
+> 当前状态：首个 OpenSpec change 已完成，Windows/MSVC/D3D12 与 Linux/GCC/Vulkan 的最小响应式 GPU 闭环均已通过验收。
 
 ## 核心方向
 
@@ -25,9 +25,9 @@ RynUI 是一个面向桌面应用的现代 C++ 响应式 UI 框架方案。项�
 - [首个实现 change](openspec/changes/001-20260825-establish-rynui-foundation)
 - [Agent 协作规则](AGENTS.md)
 
-## 当前开发阶段
+## 已完成基线
 
-首个实现 change 只验证一条最小技术闭环：
+首个实现 change 已验证以下最小技术闭环：
 
 ```text
 Signal
@@ -38,4 +38,4 @@ Signal
   -> SDL_GPU
 ```
 
-在这条链路通过真实窗口、自动测试和性能观测验证之前，不扩展完整组件库、复杂 Path、无障碍平台适配或多窗口能力。
+该链路已通过双平台真实窗口、自动测试和性能观测验证。完整 Ant Design 基础组件库、复杂 Path、无障碍平台适配和多窗口能力仍属于后续 change，不在当前基线中。

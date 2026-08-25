@@ -27,3 +27,12 @@ Windows Graphics Capture 对 WSLg 窗口的核对结果为：深色背景上的�
 | `SYSTEM` | Debug | Fresh configure，23/23 CTest PASS | exit 0，`gpu_driver=direct3d12 shader_format=DXIL ... submits=4 idle_waits=138` |
 
 `BUNDLED` cache 明确记录 `RYNUI_DEPENDENCY_MODE=BUNDLED`；`SYSTEM` 独立 build tree 明确记录 `RYNUI_DEPENDENCY_MODE=SYSTEM`、调用方提供的 `SDL3_DIR` 和 `RYNUI_SHADERCROSS_EXECUTABLE`，且不会构建 bundled shadercross override 测试，因此完整测试数为 23。两条路径分别对应文档中的锁定 archive 解析和调用方 CMake package/host tool 解析，没有隐式 fallback。
+
+## OpenSpec 与仓库收口
+
+| Check | Result |
+| --- | --- |
+| `openspec doctor --json` | `healthy=true`，无 status issue |
+| `openspec validate --all --strict --no-interactive` | 1/1 PASS |
+| `git diff --check` | PASS |
+| change scope | worktree 仅包含本 change 的 README、验收记录和任务状态更新 |
