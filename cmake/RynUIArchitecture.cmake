@@ -24,6 +24,22 @@ function(rynui_verify_build_contract)
     endif()
 endfunction()
 
+function(rynui_assert_no_link_dependency_matching target forbidden_pattern)
+    foreach(property_name IN ITEMS LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+        get_property(property_is_set TARGET ${target} PROPERTY ${property_name} SET)
+        if(property_is_set)
+            get_target_property(link_dependencies ${target} ${property_name})
+            foreach(link_dependency IN LISTS link_dependencies)
+                if(link_dependency MATCHES "${forbidden_pattern}")
+                    message(FATAL_ERROR
+                        "Target ${target} must not link build-time dependency "
+                        "${link_dependency}.")
+                endif()
+            endforeach()
+        endif()
+    endforeach()
+endfunction()
+
 function(rynui_configure_cpp_target target)
     target_compile_features(${target} PUBLIC cxx_std_20)
 

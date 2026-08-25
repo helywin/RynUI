@@ -16,3 +16,21 @@ set(RYNUI_SDL_SHADERCROSS_SOURCE_URL
 set(RYNUI_SDL_SHADERCROSS_SOURCE_SHA256
     "342bb6a8e734745eb5951f25c87fa7aad62f46b3736def8681d9fa7ad046887f")
 set(RYNUI_SDL_SHADERCROSS_LICENSE "Zlib")
+
+set(RYNUI_SPIRV_CROSS_COMMIT "1a6169566c73d3da552748fc372fe2bbb856e46e")
+set(RYNUI_SPIRV_CROSS_SOURCE_URL
+    "https://github.com/KhronosGroup/SPIRV-Cross/archive/1a6169566c73d3da552748fc372fe2bbb856e46e.tar.gz")
+set(RYNUI_SPIRV_CROSS_SOURCE_SHA256
+    "0f295b214b164e42a1d21537c8da7b44569806c16220dda9798558edfaacd11e")
+set(RYNUI_SPIRV_CROSS_LICENSE "Apache-2.0 OR MIT")
+
+set(RYNUI_DXC_VERSION "1.8.2502")
+set(RYNUI_DXC_WINDOWS_X64_URL
+    "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/dxc_2025_02_20.zip")
+set(RYNUI_DXC_WINDOWS_X64_SHA256
+    "70b1913a1bfce4a3e1a5311d16246f4ecdf3a3e613abec8aa529e57668426f85")
+set(RYNUI_DXC_LINUX_X64_URL
+    "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2502/linux_dxc_2025_02_20.x86_64.tar.gz")
+set(RYNUI_DXC_LINUX_X64_SHA256
+    "e0580d90dbf6053a783ddd8d5153285f0606e5deaad17a7a6452f03acdf88c71")
+set(RYNUI_DXC_LICENSE "NCSA + MIT + Microsoft Software License Terms")

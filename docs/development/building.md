@@ -9,6 +9,7 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 - 支持 C++20 的工具链。
 - Windows：带有 x64 C++ tools 的 Visual Studio，编译器必须为 MSVC。
 - Linux：GCC 或 Clang。
+- 原生 `BUNDLED` 构建会下载锁定的 shader host tool 输入；`SYSTEM` 或交叉编译需要一份可在构建主机执行的 SDL_shadercross CLI。
 
 `CMakeUserPresets.json` 已被忽略，可用于个人路径和本机 cache variable 覆盖；不要把这些值写入共享的 `CMakePresets.json`。
 
@@ -26,7 +27,9 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 使用已有 SDL3 CMake package：
 
 ```powershell
-./scripts/build-windows.ps1 -Configuration Debug -DependencyMode SYSTEM -Sdl3Root D:/deps/SDL3
+./scripts/build-windows.ps1 -Configuration Debug -DependencyMode SYSTEM `
+  -Sdl3Root D:/deps/SDL3 `
+  -ShadercrossExecutable D:/tools/shadercross.exe
 ```
 
 需要丢弃旧 CMake cache 并重新探测工具链时，加上 `-Fresh`。
@@ -40,6 +43,23 @@ ctest --preset windows-msvc-debug
 ```
 
 根工程会检查 generator 和编译器。Windows 上没有解析到 MSVC，或 generator 不是 `Ninja Multi-Config` 时，configure 会立即失败。
+
+## 离线 shader
+
+`rynui_shaders` target 从单一 `shaders/quad.hlsl` 离线生成 vertex/fragment 的 DXIL 与 SPIR-V：
+
+```powershell
+cmake --build --preset windows-msvc-debug --target rynui_shaders
+```
+
+输出位于对应 build tree 的 `generated/shaders/`。原生 `BUNDLED` 模式会构建锁定的 host CLI；要使用已准备的工具，可以在任意模式传入：
+
+```powershell
+cmake --preset windows-msvc `
+  -DRYNUI_SHADERCROSS_EXECUTABLE=D:/tools/shadercross.exe
+```
+
+configure 会执行 `shadercross --help` 验证 override。交叉编译不会尝试执行 target binary；未提供 host override 时会立即失败。
 
 ## Linux / GCC
 
@@ -69,4 +89,4 @@ ctest --preset linux-clang-debug
 | `rynui_graphics` | 平台无关图形层 | `rynui_layout` |
 | `rynui` / `RynUI::RynUI` | 公开 facade | `rynui_graphics` |
 
-CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。测试目标本身只依赖当前公开 facade，不链接 SDL3。
+CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。测试目标本身只依赖当前公开 facade，不链接 SDL3；示例应用也会检查自身没有链接仅供构建使用的 `SDL3_shadercross` library。

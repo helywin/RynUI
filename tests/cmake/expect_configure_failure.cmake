@@ -31,6 +31,29 @@ elseif(TEST_CASE STREQUAL "missing-target")
         -DRYNUI_DEPENDENCY_MODE=SYSTEM
         "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3-no-target")
     set(expected_diagnostic "did not define required target SDL3::SDL3")
+elseif(TEST_CASE STREQUAL "missing-shadercross")
+    list(APPEND configure_arguments
+        -DRYNUI_DEPENDENCY_MODE=SYSTEM
+        "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3")
+    set(expected_diagnostic "SYSTEM requires RYNUI_SHADERCROSS_EXECUTABLE")
+elseif(TEST_CASE STREQUAL "invalid-shadercross")
+    list(APPEND configure_arguments
+        -DRYNUI_DEPENDENCY_MODE=SYSTEM
+        "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3"
+        "-DRYNUI_SHADERCROSS_EXECUTABLE=${TEST_BINARY_DIR}/missing-shadercross")
+    set(expected_diagnostic "RYNUI_SHADERCROSS_EXECUTABLE does not exist")
+elseif(TEST_CASE STREQUAL "wrong-shadercross")
+    list(APPEND configure_arguments
+        -DRYNUI_DEPENDENCY_MODE=SYSTEM
+        "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3"
+        "-DRYNUI_SHADERCROSS_EXECUTABLE=${TEST_CMAKE_COMMAND}")
+    set(expected_diagnostic "is not a runnable SDL_shadercross host tool")
+elseif(TEST_CASE STREQUAL "cross-missing-shadercross")
+    list(APPEND configure_arguments
+        -DRYNUI_DEPENDENCY_MODE=SYSTEM
+        "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3"
+        "-DCMAKE_SYSTEM_NAME=${TEST_SYSTEM_NAME}")
+    set(expected_diagnostic "Cross-compiling requires a runnable host SDL_shadercross CLI")
 else()
     message(FATAL_ERROR "Unknown TEST_CASE: ${TEST_CASE}")
 endif()

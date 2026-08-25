@@ -5,13 +5,26 @@ target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
 add_test(NAME rynui.public_api_smoke COMMAND rynui_public_api_smoke)
 
 add_test(
+    NAME rynui.generated_shaders
+    COMMAND ${CMAKE_COMMAND}
+        "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_generated_shaders.cmake"
+)
+
+add_test(
     NAME rynui.dependency_lock
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
 
-foreach(contract_case IN ITEMS invalid-mode missing-target)
+foreach(contract_case IN ITEMS
+        invalid-mode
+        missing-target
+        missing-shadercross
+        invalid-shadercross
+        wrong-shadercross
+        cross-missing-shadercross)
     add_test(
         NAME "rynui.dependency_contract.${contract_case}"
         COMMAND ${CMAKE_COMMAND}
@@ -20,7 +33,24 @@ foreach(contract_case IN ITEMS invalid-mode missing-target)
             "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
             "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DTEST_EXPECTED_TOOLCHAIN=${RYNUI_EXPECTED_TOOLCHAIN}"
+            "-DTEST_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}"
+            "-DTEST_CMAKE_COMMAND=${CMAKE_COMMAND}"
             "-DTEST_CASE=${contract_case}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/expect_configure_failure.cmake"
     )
 endforeach()
+
+if(TARGET shadercross)
+    add_test(
+        NAME rynui.shadercross_override
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/shadercross-override"
+            "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DTEST_EXPECTED_TOOLCHAIN=${RYNUI_EXPECTED_TOOLCHAIN}"
+            "-DTEST_SHADERCROSS_EXECUTABLE=$<TARGET_FILE:shadercross>"
+            "-DTEST_CONFIGURATION=$<CONFIG>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_shadercross_override.cmake"
+    )
+endif()

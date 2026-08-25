@@ -8,6 +8,8 @@ param(
 
     [string] $Sdl3Root,
 
+    [string] $ShadercrossExecutable,
+
     [switch] $Fresh,
 
     [switch] $SkipTests
@@ -71,6 +73,10 @@ if($Sdl3Root) {
 
     $resolvedSdl3Root = (Resolve-Path -LiteralPath $Sdl3Root).Path
     $configureArguments += "-DSDL3_ROOT=$resolvedSdl3Root"
+}
+if($ShadercrossExecutable) {
+    $resolvedShadercrossExecutable = (Resolve-Path -LiteralPath $ShadercrossExecutable).Path
+    $configureArguments += "-DRYNUI_SHADERCROSS_EXECUTABLE=$resolvedShadercrossExecutable"
 }
 
 cmake @configureArguments
