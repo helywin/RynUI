@@ -29,6 +29,12 @@ rynui_configure_cpp_target(rynui_reactive_allocation_benchmark)
 target_link_libraries(rynui_reactive_allocation_benchmark PRIVATE rynui_reactive)
 add_test(NAME rynui.reactive_allocation COMMAND rynui_reactive_allocation_benchmark)
 
+add_executable(rynui_node_store_tests node_store_tests.cpp)
+rynui_configure_cpp_target(rynui_node_store_tests)
+target_include_directories(rynui_node_store_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_node_store_tests PRIVATE rynui_runtime)
+add_test(NAME rynui.node_store COMMAND rynui_node_store_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

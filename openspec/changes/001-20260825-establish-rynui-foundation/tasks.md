@@ -23,7 +23,7 @@
 
 ## 4. 持久化 Node 与最小 Layout
 
-- [ ] 4.1 实现 generation-checked `NodeId`、稳定 slot 存储、parent/child 和销毁失效，通过单元测试证明旧 handle 不能访问复用 slot
+- [x] 4.1 实现 generation-checked `NodeId`、稳定 slot 存储、parent/child 和销毁失效，通过单元测试证明旧 handle 不能访问复用 slot
 - [ ] 4.2 实现 Component 首次 mount 与 `Scope` 所有权，通过执行计数测试证明普通属性更新不重新执行 Component
 - [ ] 4.3 实现 `Constraints` 校验、内部 `BoxLayout` 和 horizontal/vertical `FlexLayout` 的 Measure/Place，通过边界和非法 Constraints 测试验证确定布局，且不暴露与后续 Ant Design `Flex`/`Space`/`Grid` 冲突的公开 API
 - [ ] 4.4 实现 `DirtyFlags` 到 Layout/Material/Transform/Geometry 队列的映射，通过计数测试证明 color/opacity/translation 不触发 Measure 或 Layout，size 会触发受影响布局根

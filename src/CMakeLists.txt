@@ -13,6 +13,7 @@ target_compile_definitions(rynui_reactive PRIVATE
 )
 
 add_library(rynui_runtime STATIC
+    runtime/node_store.cpp
     runtime/runtime.cpp
 )
 rynui_configure_cpp_target(rynui_runtime)
