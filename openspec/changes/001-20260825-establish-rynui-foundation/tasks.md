@@ -31,7 +31,7 @@
 
 ## 5. Quad Primitive 局部 GPU 更新闭环
 
-- [ ] 5.1 实现 `QuadPrimitive`、CPU-side instance store、SDF Quad pipeline 和初次 GPU upload，通过离屏数据测试验证 instance layout 与 shader binding 一致
+- [x] 5.1 实现 `QuadPrimitive`、CPU-side instance store、SDF Quad pipeline 和初次 GPU upload，通过离屏数据测试验证 instance layout 与 shader binding 一致
 - [ ] 5.2 实现 Binding 到 Node property、Dirty queue、Primitive 和 instance range 的连接，通过集成测试证明 color/opacity/translation 只更新目标 Quad 数据
 - [ ] 5.3 实现 frame request 与按需提交状态机，通过可控 clock/event 测试证明更新会请求帧、稳定后不按刷新率持续 submit、后续输入能重新唤醒
 - [ ] 5.4 创建彩色 Quad 真实窗口示例，输出 Component、Signal、Observer、Measure、Layout、Primitive、GPU upload、submit 和 idle wake 计数

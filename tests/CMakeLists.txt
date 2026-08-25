@@ -53,6 +53,12 @@ target_include_directories(rynui_dirty_queue_tests PRIVATE "${PROJECT_SOURCE_DIR
 target_link_libraries(rynui_dirty_queue_tests PRIVATE rynui_layout)
 add_test(NAME rynui.dirty_queue COMMAND rynui_dirty_queue_tests)
 
+add_executable(rynui_quad_primitive_tests quad_primitive_tests.cpp)
+rynui_configure_cpp_target(rynui_quad_primitive_tests)
+target_include_directories(rynui_quad_primitive_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_graphics)
+add_test(NAME rynui.quad_primitive COMMAND rynui_quad_primitive_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
