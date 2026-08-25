@@ -39,7 +39,7 @@
 
 ## 6. Linux 验收与 change 收口
 
-- [ ] 6.1 在 Linux/Vulkan 环境完成 configure、build、CTest 和真实窗口运行，记录 GPU driver、shader format、退出码与计数摘要
+- [x] 6.1 在 Linux/Vulkan 环境完成 configure、build、CTest 和真实窗口运行，记录 GPU driver、shader format、退出码与计数摘要
 - [ ] 6.2 在 Windows/D3D12 环境重新运行 clean configure、build、CTest 和真实窗口验收，确认 `BUNDLED|SYSTEM` 选择与文档一致
 - [ ] 6.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 和 `git diff --check`，更新任务与验收证据但不得提前勾选未通过的平台结果
 - [ ] 6.4 确认 worktree 只包含本 change 相关文件，使用英文 commit message 提交最终验收阶段，并记录最终 commit SHA

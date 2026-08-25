@@ -1,0 +1,17 @@
+# Cross-platform foundation validation
+
+验证日期：2026-08-26
+
+## Linux / WSL 2 / Vulkan
+
+验收环境为 WSL 2 Ubuntu 24.04，内核 `6.18.33.2-microsoft-standard-WSL2`，GCC 13.3、CMake 3.28.3、Ninja 1.11.1。WSLg 提供 Wayland、X11、`DISPLAY=:0`、`WAYLAND_DISPLAY=wayland-0` 和 `/dev/dxg`；SDL3 3.4.14 的 configure 摘要启用了 Wayland/X11 video backend 与 Vulkan GPU driver。
+
+| Check | Command / mode | Result |
+| --- | --- | --- |
+| configure | `cmake --preset linux-gcc` | PASS，`Ninja Multi-Config`、GCC、`RYNUI_DEPENDENCY_MODE=BUNDLED` |
+| build | `cmake --build --preset linux-gcc-debug` | PASS |
+| tests | `ctest --preset linux-gcc-debug` | 24/24 PASS |
+| timed real-window smoke | `rynui_minimal --smoke` | exit 0，`gpu_driver=vulkan shader_format=SPIR-V component_runs=1 signal_writes=4 observer_executions=8 measure=4 layout=4 primitive_rebuilds=1 instance_updates=3 gpu_uploads=4 gpu_uploaded_bytes=192 submits=4 idle_wakes=0 idle_waits=121` |
+| interactive real window | WSLg window close event | exit 0，`gpu_driver=vulkan shader_format=SPIR-V ... submits=7 idle_wakes=2 idle_waits=5735` |
+
+Windows Graphics Capture 对 WSLg 窗口的核对结果为：深色背景上的紫色圆角 Quad，尺寸、位移、圆角和透明度混合与 Windows/D3D12 结果一致。点击窗口关闭按钮后事件循环收到 close event 并正常退出。
