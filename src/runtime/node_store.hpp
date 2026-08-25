@@ -27,6 +27,7 @@ struct Node {
     NodeId id;
     std::optional<NodeId> parent;
     std::vector<NodeId> children;
+    float opacity{1.0F};
 };
 
 class NodeStore final {
