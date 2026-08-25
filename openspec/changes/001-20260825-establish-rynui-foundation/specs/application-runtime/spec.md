@@ -23,6 +23,32 @@ RynUI 工程 SHALL 能够通过仓库提交的 `CMakePresets.json` 和 `Ninja Mu
 - **WHEN** 开发者在 Linux 中选择 `linux-gcc` 或 `linux-clang` configure preset
 - **THEN** 工程 MUST 使用对应编译器和 `Ninja Multi-Config` 完成配置
 
+### Requirement: 可复现的第三方依赖
+RynUI 工程 SHALL 通过显式依赖模式解析 SDL3，锁定的第三方源码 MUST 记录不可变版本、归档 SHA256 和 license，并且第三方类型不得进入公开 `ryn` API。
+
+#### Scenario: 使用 BUNDLED 模式
+- **WHEN** 开发者选择 `BUNDLED` 依赖模式并且锁定源码已下载或通过本地 source override 提供
+- **THEN** configure MUST 只使用锁定版本和校验值，并产生 SDL3 官方 target `SDL3::SDL3`
+
+#### Scenario: 使用 SYSTEM 模式
+- **WHEN** 开发者选择 `SYSTEM` 依赖模式且兼容的 SDL3 CMake package 可用
+- **THEN** configure MUST 通过 `find_package(SDL3 CONFIG REQUIRED)` 解析 `SDL3::SDL3`，且不得回退到未声明的下载
+
+#### Scenario: 依赖模式或内容无效
+- **WHEN** 依赖模式不是受支持值、锁定归档校验失败，或所选模式不能提供规范 target
+- **THEN** configure MUST 以包含依赖名称和修复方向的诊断失败
+
+### Requirement: Shader 工具与运行时分离
+`SDL_shadercross` SHALL 只作为构建期 host tool 离线生成 shader，RynUI 应用运行时 MUST 不链接 `SDL_shadercross` 转换库。
+
+#### Scenario: 显式提供 host tool
+- **WHEN** 开发者设置可执行的 `RYNUI_SHADERCROSS_EXECUTABLE`
+- **THEN** shader 构建 MUST 使用该 host executable，并在生成前验证它可运行
+
+#### Scenario: 交叉编译时缺少 host tool
+- **WHEN** 工程处于交叉编译且没有提供可在 host 上执行的 shadercross CLI
+- **THEN** configure MUST 给出可执行的缺失工具诊断，而不得尝试运行 target binary
+
 ### Requirement: 窗口与 GPU 生命周期
 最小应用 SHALL 创建可见窗口、完成 GPU 初始化、处理关闭事件，并在正常退出或初始化失败时释放已取得的资源。
 

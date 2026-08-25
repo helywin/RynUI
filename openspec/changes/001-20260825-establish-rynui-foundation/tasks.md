@@ -7,8 +7,8 @@
 
 ## 2. SDL3 平台与 GPU 生命周期
 
-- [ ] 2.1 固定 SDL3 与 `SDL_shadercross` revision、记录 license，并实现 vendored source 与 `RYNUI_USE_SYSTEM_SDL3` 两种 CMake 路径，分别验证最终链接 target 为 `SDL3::SDL3`
-- [ ] 2.2 添加 HLSL Quad shader 与离线 DXIL/SPIR-V 生成流程，验证缺少工具链时 configure fail-fast、工具齐全时 build tree 生成对应 shader
+- [ ] 2.1 建立集中依赖 lock 与 license 记录，固定 SDL3 和 `SDL_shadercross` 的不可变 source URL 与 SHA256；实现只接受 `BUNDLED|SYSTEM` 的 `RYNUI_DEPENDENCY_MODE`，分别通过校验后的 `FetchContent` archive 和 `find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3)` 产生 `SDL3::SDL3`，验证无效模式、内容校验失败或规范 target 缺失时 configure fail-fast
+- [ ] 2.2 添加 HLSL Quad shader 与离线 DXIL/SPIR-V 生成流程，支持 `RYNUI_SHADERCROSS_EXECUTABLE` host tool override；验证缺少工具链或交叉编译未提供 host tool 时 configure fail-fast，工具齐全时 build tree 生成对应 shader，应用目标不链接 `SDL3_shadercross` 运行时库
 - [ ] 2.3 实现 SDL init、Window、GPU device、claim 和逆序释放的 RAII 状态机，通过故障注入测试验证每个初始化失败点只释放已取得资源
 - [ ] 2.4 实现 UI 线程 command buffer、swapchain acquire、clear/present 与最小化空 texture 分支，在 Windows 真实窗口验证启动、至少一次帧提交、关闭和退出码
 - [ ] 2.5 运行本阶段自动测试与真实窗口 smoke，保存 GPU driver 和生命周期摘要，执行 `git diff --check` 后使用英文 commit message 提交本阶段
@@ -40,6 +40,6 @@
 ## 6. Linux 验收与 change 收口
 
 - [ ] 6.1 在 Linux/Vulkan 环境完成 configure、build、CTest 和真实窗口运行，记录 GPU driver、shader format、退出码与计数摘要
-- [ ] 6.2 在 Windows/D3D12 环境重新运行 clean configure、build、CTest 和真实窗口验收，确认 system/vendored 选择与文档一致
+- [ ] 6.2 在 Windows/D3D12 环境重新运行 clean configure、build、CTest 和真实窗口验收，确认 `BUNDLED|SYSTEM` 选择与文档一致
 - [ ] 6.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 和 `git diff --check`，更新任务与验收证据但不得提前勾选未通过的平台结果
 - [ ] 6.4 确认 worktree 只包含本 change 相关文件，使用英文 commit message 提交最终验收阶段，并记录最终 commit SHA

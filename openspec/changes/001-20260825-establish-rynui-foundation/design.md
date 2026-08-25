@@ -56,19 +56,21 @@ rynui = public facade target
 
 备选方案是先建立单个静态库。该方案文件更少，但会让纯响应测试被平台依赖污染，也无法通过链接边界阻止向上依赖，因此不采用。
 
-### 3. SDL3 使用固定版本的 vendored source，并保留 system package 开关
+### 3. 第三方依赖使用显式 BUNDLED 或 SYSTEM 模式
 
-默认构建从 `third_party/SDL` 的固定 Git revision 使用 `add_subdirectory()`；高级用户可以打开 `RYNUI_USE_SYSTEM_SDL3`，改用 `find_package(SDL3 CONFIG REQUIRED)`。两条路径都只链接 SDL3 官方 CMake target `SDL3::SDL3`。
+根工程提供 cache string `RYNUI_DEPENDENCY_MODE`，只接受 `BUNDLED` 与 `SYSTEM`，不提供会因机器环境而选择不同版本的 `AUTO`。所有依赖解析集中在 `cmake/dependencies/`，版本、不可变 source URL、SHA256、license 标识和规范 target 记录在同一 lock 文件；第三方配置不得散落到业务 targets。
 
-默认 vendored source 提供一致的 Windows/Linux 基线，system package 开关便于发行版集成。SDL revision 和依赖许可记录必须进入仓库文档，不能跟随浮动分支。
+`BUNDLED` 模式使用 `FetchContent` 获取固定 SDL3 release archive，并通过 `URL_HASH SHA256=...` 验证内容。离线或镜像环境可使用 CMake 标准 `FETCHCONTENT_SOURCE_DIR_SDL3` 指向预先准备的源码；仓库不提交 SDL3 Git submodule，也不在 configure 时跟随分支或解析 latest release。
 
-备选方案是构建时直接下载最新 SDL3。该方案无法稳定复现，也会让离线配置失败，因此不采用。
+`SYSTEM` 模式只调用 `find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3)`。vcpkg、Conan 和 Linux 发行版 package 均通过向该模式提供 CMake package 参与，不成为 RynUI 强制依赖管理器。两种模式必须产生 SDL3 官方规范 target `SDL3::SDL3`，平台层之外的 target 不得直接链接它。
+
+默认模式为 `BUNDLED`，保证开发与 CI 使用相同来源；发行版集成和已有 superbuild 显式选择 `SYSTEM`。备选方案包括 Git submodule、只支持 system package 和 system-first fallback：submodule 增加递归 clone 与工作树状态，system-only 不能提供一致的 Windows 基线，隐式 fallback 不能稳定复现，因此均不采用。
 
 ### 4. Shader 使用离线编译，不在应用运行时转换
 
-Quad shader 的单一源文件使用 HLSL。构建阶段调用固定版本的 `SDL_shadercross` CLI，为本 change 生成 Windows/D3D12 所需的 DXIL 和 Linux/Vulkan 所需的 SPIR-V；生成物位于 build tree，不手工编辑。
+Quad shader 的单一源文件使用 HLSL。构建阶段调用固定版本的 `SDL_shadercross` CLI，为本 change 生成 Windows/D3D12 所需的 DXIL 和 Linux/Vulkan 所需的 SPIR-V；生成物位于 build tree，不手工编辑。`SDL_shadercross` 的版本、source URL、SHA256 和 license 与 SDL3 一起进入依赖锁定记录。
 
-配置阶段必须检查 shader 工具链并给出可执行的缺失依赖错误。应用运行时只加载与当前 SDL GPU driver 匹配的已编译 shader，不携带运行时转换依赖。macOS/MSL 输出留给后续 change。
+`RYNUI_SHADERCROSS_EXECUTABLE` 可显式指定已安装或预构建的 host CLI；未指定时，原生 `BUNDLED` 构建可以从锁定源码生成 host tool。交叉编译不得执行 target binary，必须显式提供 host executable。配置阶段检查工具可执行性并给出可执行的缺失依赖错误。应用运行时只加载与当前 SDL GPU driver 匹配的已编译 shader，不链接 `SDL3_shadercross` 运行时转换库。macOS/MSL 输出留给后续 change。
 
 备选方案包括运行时调用 `SDL_shadercross` 和分别维护多份 shader 源码。前者增加部署依赖与启动失败面，后者容易发生语义漂移，因此不采用。
 
@@ -172,7 +174,7 @@ Scheduler 分别维护 Layout roots、Primitive updates 和 frame request。Mate
 
 ## Risks / Trade-offs
 
-- [vendored SDL3 与 `SDL_shadercross` 增加首次 clone/build 体积] -> 固定 revision、记录 license，并让 CI 缓存构建产物；system package 仅作为显式选项。
+- [BUNDLED SDL3 与 `SDL_shadercross` 增加首次下载/build 体积] -> 固定 archive 与 SHA256、记录 license、允许标准 source override，并让 CI 缓存下载和构建产物；`SYSTEM` 仅作为显式模式。
 - [DXIL/SPIR-V 工具链在开发机缺失] -> configure 阶段 fail-fast，输出精确安装/路径说明，不在运行时静默降级。
 - [共享持有 SignalCell 可能产生额外原子开销] -> 只在对象复制/销毁时发生；先用 benchmark 量化，再决定是否改为 intrusive reference count。
 - [Observer 销毁与 dirty queue 交错会产生悬空访问] -> dirty queue 保存 generation-checked handle，Scope 销毁同时使 queued entry 失效。

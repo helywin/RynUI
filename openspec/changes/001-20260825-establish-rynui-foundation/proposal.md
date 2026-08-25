@@ -5,6 +5,7 @@ RynUI 目前只有架构结论和项目约定，还没有可以构建、运行�
 ## What Changes
 
 - 建立 C++20、CMake、测试和 benchmark 工程骨架，以 `CMakePresets.json` 和 `Ninja Multi-Config` 管理 Windows/MSVC、Linux/GCC 与 Linux/Clang 构建，公开 API 使用 `ryn` 命名空间。
+- 建立 package-manager-neutral 的第三方依赖 resolver，以显式 `BUNDLED` 或 `SYSTEM` 模式接入锁定版本的 SDL3，并把 `SDL_shadercross` 限定为离线 shader 构建所需的 host tool。
 - 接入 SDL3 Window、事件循环与 SDL3 GPU 的最小 clear/present 生命周期。
 - 实现 `Signal`、`Memo`、`Effect`、`Binding`、`Scope`、`batch()` 和单 UI 线程 `Scheduler` 的最小语义。
 - 建立持久化 `Node`、Constraints 布局、`DirtyFlags` 和 `QuadPrimitive` 数据边界。
@@ -28,7 +29,7 @@ RynUI 目前只有架构结论和项目约定，还没有可以构建、运行�
 ## Impact
 
 - 新增 C++20/CMake 工程、公开头文件、内部模块、测试、benchmark 和示例目录。
-- 引入 SDL3 作为平台与 GPU 依赖；测试框架的具体选择在实现设计中固定。
+- 引入 SDL3 作为平台与 GPU 依赖；依赖版本、归档 SHA256 与 license 进入仓库锁定记录，vcpkg、Conan 和发行版 package 通过 `SYSTEM` 模式接入而不成为 RynUI 的强制工具链。
 - 首批公开 API 进入 `ryn` 命名空间，后续 change 必须兼容或显式说明破坏性变更。
 - 后续基础组件、公开布局、Design Token、主题和交互状态以 Ant Design 6 为设计基线，公开层采用 typed Props、typed slots 和 reactive `Prop<T>`；本 change 不引入 React、CSS-in-JS 或通用组件视觉 `Modifier`。
 - Windows 和 Linux 是本 change 的必验平台；macOS 保留架构兼容性，但不作为本 change 的完成门槛。
