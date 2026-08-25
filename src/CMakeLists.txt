@@ -14,6 +14,7 @@ target_compile_definitions(rynui_reactive PRIVATE
 
 add_library(rynui_runtime STATIC
     runtime/component_mount.cpp
+    runtime/invalidation.cpp
     runtime/node_store.cpp
     runtime/runtime.cpp
 )

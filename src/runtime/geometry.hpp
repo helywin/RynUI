@@ -25,4 +25,13 @@ struct Rect {
     friend constexpr bool operator==(Rect, Rect) = default;
 };
 
+struct Color {
+    float red{1.0F};
+    float green{1.0F};
+    float blue{1.0F};
+    float alpha{1.0F};
+
+    friend constexpr bool operator==(Color, Color) = default;
+};
+
 } // namespace ryn::runtime

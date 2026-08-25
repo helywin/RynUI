@@ -29,7 +29,10 @@ struct Node {
     NodeId id;
     std::optional<NodeId> parent;
     std::vector<NodeId> children;
+    Color color;
     float opacity{1.0F};
+    Point translation;
+    Size requested_size;
     Size measured_size;
     Rect bounds;
     std::uint64_t measure_count{0};

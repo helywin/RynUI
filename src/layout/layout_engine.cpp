@@ -78,7 +78,7 @@ runtime::Size Constraints::constrain(runtime::Size size) const {
 LayoutEngine::LayoutEngine(runtime::NodeStore& nodes) noexcept : nodes_(&nodes) {}
 
 void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
-    static_cast<void>(nodes_->require(id));
+    auto& node = nodes_->require(id);
     std::visit([](const auto& model) {
         using Model = std::decay_t<decltype(model)>;
         if constexpr (std::is_same_v<Model, LeafLayout>) {
@@ -96,6 +96,10 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
             }
         }
     }, layout);
+
+    if (const auto* leaf = std::get_if<LeafLayout>(&layout)) {
+        node.requested_size = leaf->preferred_size;
+    }
 
     if (layouts_.size() <= id.index) {
         layouts_.resize(static_cast<std::size_t>(id.index) + 1);
@@ -154,7 +158,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
     std::visit([&](const auto& current) {
         using Model = std::decay_t<decltype(current)>;
         if constexpr (std::is_same_v<Model, LeafLayout>) {
-            measured = constraints.constrain(current.preferred_size);
+            measured = constraints.constrain(node.requested_size);
         } else if constexpr (std::is_same_v<Model, BoxLayout>) {
             const auto child_constraints = content_constraints(constraints, current.padding);
             runtime::Size content{};

@@ -47,6 +47,12 @@ target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_D
 target_link_libraries(rynui_layout_engine_tests PRIVATE rynui_layout)
 add_test(NAME rynui.layout_engine COMMAND rynui_layout_engine_tests)
 
+add_executable(rynui_dirty_queue_tests dirty_queue_tests.cpp)
+rynui_configure_cpp_target(rynui_dirty_queue_tests)
+target_include_directories(rynui_dirty_queue_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_dirty_queue_tests PRIVATE rynui_layout)
+add_test(NAME rynui.dirty_queue COMMAND rynui_dirty_queue_tests)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
