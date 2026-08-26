@@ -91,5 +91,18 @@ function(rynui_verify_public_api public_include_directory)
                 "Public header ${public_header} exposes a generic Modifier type. "
                 "Use typed Props, typed slots, LayoutStyle, and Theme tokens instead.")
         endif()
+
+        foreach(forbidden_include IN ITEMS
+                "ft2build\\.h"
+                "freetype/"
+                "hb\\.h"
+                "hb-ft\\.h"
+                "SDL3/")
+            if(header_contents MATCHES "#[ \t]*include[ \t]*[<\"][^>\"]*${forbidden_include}")
+                message(FATAL_ERROR
+                    "Public header ${public_header} exposes forbidden third-party "
+                    "include matching ${forbidden_include}.")
+            endif()
+        endforeach()
     endforeach()
 endfunction()

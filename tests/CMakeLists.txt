@@ -4,6 +4,11 @@ target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
 
 add_test(NAME rynui.public_api_smoke COMMAND rynui_public_api_smoke)
 
+add_executable(rynui_string_tests string_tests.cpp)
+rynui_configure_cpp_target(rynui_string_tests)
+target_link_libraries(rynui_string_tests PRIVATE rynui_string)
+add_test(NAME rynui.string COMMAND rynui_string_tests)
+
 add_executable(rynui_signal_tests signal_tests.cpp)
 rynui_configure_cpp_target(rynui_signal_tests)
 target_link_libraries(rynui_signal_tests PRIVATE rynui_reactive)

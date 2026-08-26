@@ -1,3 +1,11 @@
+add_library(rynui_string STATIC
+    text/string.cpp
+)
+rynui_configure_cpp_target(rynui_string)
+target_include_directories(rynui_string PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+
 add_library(rynui_reactive STATIC
     reactive/reactive.cpp
 )
@@ -62,12 +70,13 @@ target_compile_features(rynui INTERFACE cxx_std_20)
 target_include_directories(rynui INTERFACE
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
-target_link_libraries(rynui INTERFACE rynui_graphics)
+target_link_libraries(rynui INTERFACE rynui_graphics rynui_string)
 
+rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_layout)
 rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3)
 rynui_assert_direct_dependencies(rynui_renderer_sdl SDL3::SDL3 rynui_graphics rynui_platform_sdl)
-rynui_assert_direct_dependencies(rynui rynui_graphics)
+rynui_assert_direct_dependencies(rynui rynui_graphics rynui_string)

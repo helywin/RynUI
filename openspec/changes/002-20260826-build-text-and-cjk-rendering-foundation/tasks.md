@@ -1,10 +1,10 @@
 ## 1. C++20 UTF-8 String 值类型
 
-- [ ] 1.1 在 `include/ryn/string.hpp` 与对应 source 中实现拥有内容的 `ryn::String`、UTF-8 strict parse result、带 byte offset 的 typed error 和 lossy replacement result，通过单元测试覆盖 ASCII、CJK、空文本、截断序列、非法 continuation byte、overlong encoding、surrogate 与越界 scalar
-- [ ] 1.2 实现非拥有的 `ryn::StringView`、byte length/empty/view 和显式 `char8_t`/UTF-8 byte adapters，通过 API 测试证明 view 无分配借用且没有把 byte index 伪装成 Unicode 字符索引的 `operator[]`
-- [ ] 1.3 实现只匹配 `const char8_t (&)[N]` 的 owning String literal 构造路径，使 `ryn::String title = u8"设备监控"` 与 owning String 属性无需 helper；不提供 `char`、runtime pointer、宏或 user-defined literal 路径，通过 compile/run test 验证 CJK bytes，并通过 compile-fail contract 验证未带 `u8` 的 literal 与 runtime pointer 不能隐式绕过 UTF-8 校验
-- [ ] 1.4 从 `include/ryn/rynui.hpp` 导出 String API，并运行 public-header isolation/leak check，证明 consumer 只需 C++20 标准头且不包含 FreeType、HarfBuzz 或 SDL3 header
-- [ ] 1.5 使用 `windows-msvc` preset 完成 Debug configure、build 与 CTest，运行 `git diff --check`；以英文 `feat: add UTF-8 string values` 提交，仅包含本阶段文件，fetch/rebase 后 push 并核对 remote SHA 等于本地 HEAD
+- [x] 1.1 在 `include/ryn/string.hpp` 与对应 source 中实现拥有内容的 `ryn::String`、UTF-8 strict parse result、带 byte offset 的 typed error 和 lossy replacement result，通过单元测试覆盖 ASCII、CJK、空文本、截断序列、非法 continuation byte、overlong encoding、surrogate 与越界 scalar
+- [x] 1.2 实现非拥有的 `ryn::StringView`、byte length/empty/view 和显式 `char8_t`/UTF-8 byte adapters，通过 API 测试证明 view 无分配借用且没有把 byte index 伪装成 Unicode 字符索引的 `operator[]`
+- [x] 1.3 实现只匹配 `const char8_t (&)[N]` 的 owning String literal 构造路径，使 `ryn::String title = u8"设备监控"` 与 owning String 属性无需 helper；不提供 `char`、runtime pointer、宏或 user-defined literal 路径，通过 compile/run test 验证 CJK bytes，并通过 compile-fail contract 验证未带 `u8` 的 literal 与 runtime pointer 不能隐式绕过 UTF-8 校验
+- [x] 1.4 从 `include/ryn/rynui.hpp` 导出 String API，并运行 public-header isolation/leak check，证明 consumer 只需 C++20 标准头且不包含 FreeType、HarfBuzz 或 SDL3 header
+- [x] 1.5 使用 `windows-msvc` preset 完成 Debug configure、build 与 CTest，运行 `git diff --check`；以英文 `feat: add UTF-8 string values` 提交，仅包含本阶段文件，fetch/rebase 后 push 并核对 remote SHA 等于本地 HEAD
 
 ## 2. Font 与 shaping 依赖合同
 
