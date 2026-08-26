@@ -123,6 +123,28 @@ target_include_directories(rynui_quad_primitive_tests PRIVATE "${PROJECT_SOURCE_
 target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_graphics)
 add_test(NAME rynui.quad_primitive COMMAND rynui_quad_primitive_tests)
 
+add_executable(rynui_glyph_atlas_tests glyph_atlas_tests.cpp)
+rynui_configure_cpp_target(rynui_glyph_atlas_tests)
+target_include_directories(rynui_glyph_atlas_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_glyph_atlas_tests PRIVATE rynui_graphics)
+target_compile_definitions(
+    rynui_glyph_atlas_tests
+    PRIVATE "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+)
+add_test(NAME rynui.glyph_atlas COMMAND rynui_glyph_atlas_tests)
+
+add_executable(rynui_glyph_scene_tests glyph_scene_tests.cpp)
+rynui_configure_cpp_target(rynui_glyph_scene_tests)
+target_include_directories(rynui_glyph_scene_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_glyph_scene_tests PRIVATE rynui_graphics rynui_text)
+target_compile_definitions(
+    rynui_glyph_scene_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.glyph_scene COMMAND rynui_glyph_scene_tests)
+
 add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_binding_quad_integration_tests)
 target_include_directories(rynui_binding_quad_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -154,6 +176,14 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_generated_shaders.cmake"
+)
+
+add_test(
+    NAME rynui.glyph_shader_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/glyph.hlsl"
+        "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_glyph_shader_contract.cmake"
 )
 
 add_test(

@@ -8,7 +8,11 @@ foreach(shader_name IN ITEMS
         quad.vertex.dxil
         quad.fragment.dxil
         quad.vertex.spv
-        quad.fragment.spv)
+        quad.fragment.spv
+        glyph.vertex.dxil
+        glyph.fragment.dxil
+        glyph.vertex.spv
+        glyph.fragment.spv)
     set(shader_path "${SHADER_DIRECTORY}/${shader_name}")
     if(NOT EXISTS "${shader_path}")
         message(FATAL_ERROR "Generated shader is missing: ${shader_path}")
@@ -26,5 +30,16 @@ foreach(shader_name IN ITEMS
     elseif(shader_name MATCHES "[.]spv$" AND NOT shader_magic STREQUAL "03022307")
         message(FATAL_ERROR
             "SPIR-V module has invalid magic ${shader_magic}: ${shader_path}")
+    endif()
+endforeach()
+
+foreach(glyph_stage IN ITEMS vertex fragment)
+    set(glyph_reflection "${SHADER_DIRECTORY}/glyph.${glyph_stage}.json")
+    if(NOT EXISTS "${glyph_reflection}")
+        message(FATAL_ERROR "Generated glyph reflection is missing: ${glyph_reflection}")
+    endif()
+    file(SIZE "${glyph_reflection}" glyph_reflection_size)
+    if(glyph_reflection_size LESS 16)
+        message(FATAL_ERROR "Generated glyph reflection is unexpectedly small")
     endif()
 endforeach()

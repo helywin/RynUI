@@ -35,12 +35,12 @@
 
 ## 5. GlyphAtlas、Scene 与 shader
 
-- [ ] 5.1 实现 1024×1024 `R8_UNORM` CPU atlas page、1px 清零 padding、确定 shelf allocator、最多 8 页和追加式稳定 entry，通过 non-overlap、边界、分页、超大 glyph、容量耗尽及 UV/page 稳定测试验证
-- [ ] 5.2 把 rasterized glyph cache 接入 atlas key，记录新增 entry 的 dirty rectangle、row pitch 与 uploaded-byte 计划；通过首次 glyph、重复 cache hit、空白 glyph 和 Material-only update 测试证明只新增必要 region
-- [ ] 5.3 定义平台无关 `GlyphInstance`、Glyph range 与 ordered Scene draw command，正确应用 baseline、bearing、shaping offset、clip、translation、颜色和 opacity；通过 Quad/Glyph 交错、多 atlas page 与空格测试验证实例位置和稳定 Z order
-- [ ] 5.4 增加单一 HLSL glyph shader、coverage alpha/blend 合同及 ShaderCross DXIL/SPIR-V 产物规则，通过 shader reflection/layout test 验证 instance binding、sampler/texture slot 和两种 binary format，且应用 target 不链接 ShaderCross runtime
-- [ ] 5.5 为 Glyph instance store 实现 geometry/clip 与 Material dirty range 合并，通过范围测试证明颜色更新不改 atlas、translation 不 shaping、多个不相邻更新不扩大为全量 upload
-- [ ] 5.6 运行 atlas/scene/shader 全部测试、MSVC Debug/Release build/CTest 与 `git diff --check`；以英文 `feat: add glyph atlas and scene data` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
+- [x] 5.1 实现 1024×1024 `R8_UNORM` CPU atlas page、1px 清零 padding、确定 shelf allocator、最多 8 页和追加式稳定 entry，通过 non-overlap、边界、分页、超大 glyph、容量耗尽及 UV/page 稳定测试验证
+- [x] 5.2 把 rasterized glyph cache 接入 atlas key，记录新增 entry 的 dirty rectangle、row pitch 与 uploaded-byte 计划；通过首次 glyph、重复 cache hit、空白 glyph 和 Material-only update 测试证明只新增必要 region
+- [x] 5.3 定义平台无关 `GlyphInstance`、Glyph range 与 ordered Scene draw command，正确应用 baseline、bearing、shaping offset、clip、translation、颜色和 opacity；通过 Quad/Glyph 交错、多 atlas page 与空格测试验证实例位置和稳定 Z order
+- [x] 5.4 增加单一 HLSL glyph shader、coverage alpha/blend 合同及 ShaderCross DXIL/SPIR-V 产物规则，通过 shader reflection/layout test 验证 instance binding、sampler/texture slot 和两种 binary format，且应用 target 不链接 ShaderCross runtime
+- [x] 5.5 为 Glyph instance store 实现 geometry/clip 与 Material dirty range 合并，通过范围测试证明颜色更新不改 atlas、translation 不 shaping、多个不相邻更新不扩大为全量 upload
+- [x] 5.6 运行 atlas/scene/shader 全部测试、MSVC Debug/Release build/CTest 与 `git diff --check`；以英文 `feat: add glyph atlas and scene data` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
 
 ## 6. SDL3 GPU glyph pipeline 与 Windows 真实窗口
 

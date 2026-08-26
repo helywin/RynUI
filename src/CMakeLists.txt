@@ -58,13 +58,15 @@ target_include_directories(rynui_layout PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_layout PRIVATE rynui_runtime)
 
 add_library(rynui_graphics STATIC
+    graphics/glyph_atlas.cpp
+    graphics/glyph_scene.cpp
     graphics/graphics.cpp
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
 )
 rynui_configure_cpp_target(rynui_graphics)
 target_include_directories(rynui_graphics PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(rynui_graphics PRIVATE rynui_layout)
+target_link_libraries(rynui_graphics PRIVATE rynui_font rynui_layout rynui_text)
 
 add_library(rynui_platform_sdl STATIC
     platform/sdl/platform_state.cpp
@@ -96,7 +98,7 @@ rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
-rynui_assert_direct_dependencies(rynui_graphics rynui_layout)
+rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)
 rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3)
 rynui_assert_direct_dependencies(rynui_renderer_sdl SDL3::SDL3 rynui_graphics rynui_platform_sdl)
 rynui_assert_direct_dependencies(rynui rynui_graphics rynui_string)

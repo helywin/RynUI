@@ -27,7 +27,7 @@ rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE
     RYNUI_VALIDATION_CJK_FONT_FILE
 )
-rynui_add_quad_shader_target(
+rynui_add_shader_targets(
     "${RYNUI_SHADERCROSS_COMMAND}"
     "${RYNUI_SHADERCROSS_DEPENDENCY}"
 )
