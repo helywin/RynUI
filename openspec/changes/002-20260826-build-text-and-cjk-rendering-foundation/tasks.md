@@ -25,13 +25,13 @@
 
 ## 4. HarfBuzz shaping、measurement 与基础换行
 
-- [ ] 4.1 实现合法 `StringView` 到 Unicode scalar/规范化 UTF-8 byte range 的 decoder，并把 raw-byte 防御入口接到 String lossy result；通过 byte-offset 与 replacement 计数测试证明输出不越界且后续有效文本可继续处理
-- [ ] 4.2 实现 Font fallback 分段和 HarfBuzz buffer/hb-ft adapter，为 run 设置或推断 segment properties，并把 glyph id、绝对 byte cluster、advance、offset 与 Font identity 转换为 RynUI 自有值类型；通过 Latin/CJK fallback 真实字体测试验证至少两个有序 run
-- [ ] 4.3 固定可单调追溯的 cluster 行为并处理连字/中性标点，通过 ligature 与重复 shaping 测试证明 cluster 不丢失、不重复且第三方 handle/enum/error 不进入跨模块头文件
-- [ ] 4.4 实现从 shaped advances、offsets、font metrics 与 line height 计算 text bounds、baseline 和 line box，通过空文本、相同 codepoint 数但不同 advance、bearing/offset 与确定重复测量测试验证不得按字符数估宽
-- [ ] 4.5 实现显式 newline、无限宽单行及有限宽下的空白/CJK 基础换行，只在 HarfBuzz cluster 边界断行；通过 CJK 多行、Latin 空白、连字、超宽单 cluster overflow 和 mixed-direction capability diagnostic 测试验证范围边界
-- [ ] 4.6 建立持久化 engine Text state 与 shape/measure 计数，使 content/font/size/line-height/constraint revision 只重算对应 Text，color/opacity revision 不触发 shaping 或 layout；通过 Signal 集成测试证明不重新执行无关 Component
-- [ ] 4.7 运行 shaping/measurement/layout 全部测试、MSVC Debug/Release CTest 与 `git diff --check`；以英文 `feat: add text shaping` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
+- [x] 4.1 实现合法 `StringView` 到 Unicode scalar/规范化 UTF-8 byte range 的 decoder，并把 raw-byte 防御入口接到 String lossy result；通过 byte-offset 与 replacement 计数测试证明输出不越界且后续有效文本可继续处理
+- [x] 4.2 实现 Font fallback 分段和 HarfBuzz buffer/hb-ft adapter，为 run 设置或推断 segment properties，并把 glyph id、绝对 byte cluster、advance、offset 与 Font identity 转换为 RynUI 自有值类型；通过 Latin/CJK fallback 真实字体测试验证至少两个有序 run
+- [x] 4.3 固定可单调追溯的 cluster 行为并处理连字/中性标点，通过 ligature 与重复 shaping 测试证明 cluster 不丢失、不重复且第三方 handle/enum/error 不进入跨模块头文件
+- [x] 4.4 实现从 shaped advances、offsets、font metrics 与 line height 计算 text bounds、baseline 和 line box，通过空文本、相同 codepoint 数但不同 advance、bearing/offset 与确定重复测量测试验证不得按字符数估宽
+- [x] 4.5 实现显式 newline、无限宽单行及有限宽下的空白/CJK 基础换行，只在 HarfBuzz cluster 边界断行；通过 CJK 多行、Latin 空白、连字、超宽单 cluster overflow 和 mixed-direction capability diagnostic 测试验证范围边界
+- [x] 4.6 建立持久化 engine Text state 与 shape/measure 计数，使 content/font/size/line-height/constraint revision 只重算对应 Text，color/opacity revision 不触发 shaping 或 layout；通过 Signal 集成测试证明不重新执行无关 Component
+- [x] 4.7 运行 shaping/measurement/layout 全部测试、MSVC Debug/Release CTest 与 `git diff --check`；以英文 `feat: add text shaping` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
 
 ## 5. GlyphAtlas、Scene 与 shader
 

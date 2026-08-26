@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ryn::font {
@@ -21,6 +22,7 @@ enum class FontErrorStage : std::uint8_t {
     pixel_size_configuration,
     coverage_query,
     rasterization,
+    shaping,
     destruction,
 };
 
@@ -38,6 +40,7 @@ enum class FontErrorKind : std::uint8_t {
     missing_glyph,
     unsupported_bitmap,
     rasterization_failed,
+    shaping_failed,
 };
 
 struct FontIdentity {
@@ -128,6 +131,29 @@ struct GlyphBitmap {
 struct GlyphRasterResult {
     const GlyphBitmap* glyph{};
     bool cache_hit{};
+    FontError error{};
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return !error;
+    }
+};
+
+struct FontShapedGlyph {
+    std::uint32_t glyph_id{};
+    std::size_t cluster{};
+    float advance_x{};
+    float advance_y{};
+    float offset_x{};
+    float offset_y{};
+    float extent_x_bearing{};
+    float extent_y_bearing{};
+    float extent_width{};
+    float extent_height{};
+};
+
+struct FontShapeResult {
+    std::vector<FontShapedGlyph> glyphs;
+    bool right_to_left{};
     FontError error{};
 
     [[nodiscard]] explicit operator bool() const noexcept {
@@ -227,6 +253,12 @@ public:
         std::uint32_t glyph_id,
         GlyphRasterMode mode = GlyphRasterMode::grayscale,
         FontFailurePoint failure_point = FontFailurePoint::none);
+
+    [[nodiscard]] FontShapeResult shape_utf8_segment(
+        FontIdentity font,
+        std::string_view normalized_utf8,
+        std::size_t byte_offset,
+        std::size_t byte_length) const;
 
     [[nodiscard]] FontActionResult remove_font(FontIdentity font);
     [[nodiscard]] FontActionResult shutdown();

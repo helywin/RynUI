@@ -10,6 +10,8 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <hb-ft.h>
+#include <hb.h>
 
 namespace ryn::font {
 namespace {
@@ -64,6 +66,7 @@ struct FontRuntime::Impl {
         FontRecord(FontRecord&& other) noexcept
             : bytes(std::move(other.bytes)),
               face(std::exchange(other.face, nullptr)),
+              harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)),
               metrics(other.metrics),
               owns_bytes(std::exchange(other.owns_bytes, false)),
               counters(std::move(other.counters)) {}
@@ -75,6 +78,10 @@ struct FontRuntime::Impl {
         }
 
         void release() noexcept {
+            if (harfbuzz_font != nullptr) {
+                hb_font_destroy(harfbuzz_font);
+                harfbuzz_font = nullptr;
+            }
             if (face != nullptr) {
                 FT_Done_Face(face);
                 face = nullptr;
@@ -89,6 +96,7 @@ struct FontRuntime::Impl {
 
         std::vector<std::byte> bytes;
         FT_Face face{};
+        hb_font_t* harfbuzz_font{};
         FontMetrics metrics{};
         bool owns_bytes{};
         std::shared_ptr<FontRuntimeCounters> counters;
@@ -366,6 +374,15 @@ FontLoadResult FontRuntime::load_font_bytes(
         fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender));
     record.metrics.pixel_size = pixel_size;
 
+    record.harfbuzz_font = hb_ft_font_create_referenced(record.face);
+    if (record.harfbuzz_font == nullptr) {
+        return fail(make_error(
+            FontErrorStage::shaping,
+            FontErrorKind::shaping_failed,
+            "HarfBuzz could not create an immutable font adapter."));
+    }
+    hb_ft_font_set_load_flags(record.harfbuzz_font, FT_LOAD_DEFAULT);
+
     std::size_t slot_index = 0;
     for (; slot_index < impl_->fonts.size(); ++slot_index) {
         if (!impl_->fonts[slot_index].record) {
@@ -619,6 +636,112 @@ GlyphRasterResult FontRuntime::rasterize(
         };
     }
     return {&entry->second, false, {}};
+}
+
+FontShapeResult FontRuntime::shape_utf8_segment(
+    FontIdentity font,
+    std::string_view normalized_utf8,
+    std::size_t byte_offset,
+    std::size_t byte_length) const {
+    if (!impl_->is_owner_thread()) {
+        return {{}, false, impl_->owner_error(FontErrorStage::shaping)};
+    }
+    const Impl::FontRecord* record = impl_->find(font);
+    if (record == nullptr) {
+        return {
+            {},
+            false,
+            make_error(
+                FontErrorStage::shaping,
+                FontErrorKind::invalid_identity,
+                "Font identity is stale or unknown.",
+                font),
+        };
+    }
+    if (byte_offset > normalized_utf8.size()
+            || byte_length > normalized_utf8.size() - byte_offset
+            || normalized_utf8.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())
+            || byte_offset > std::numeric_limits<unsigned int>::max()
+            || byte_length > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return {
+            {},
+            false,
+            make_error(
+                FontErrorStage::shaping,
+                FontErrorKind::shaping_failed,
+                "UTF-8 shaping byte range is outside the normalized input.",
+                font),
+        };
+    }
+    if (byte_length == 0) {
+        return {};
+    }
+
+    using BufferHandle = std::unique_ptr<hb_buffer_t, decltype(&hb_buffer_destroy)>;
+    BufferHandle buffer{hb_buffer_create(), &hb_buffer_destroy};
+    if (buffer == nullptr || !hb_buffer_allocation_successful(buffer.get())) {
+        return {
+            {},
+            false,
+            make_error(
+                FontErrorStage::shaping,
+                FontErrorKind::shaping_failed,
+                "HarfBuzz buffer allocation failed.",
+                font),
+        };
+    }
+
+    hb_buffer_set_cluster_level(
+        buffer.get(), HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+    hb_buffer_add_utf8(
+        buffer.get(),
+        normalized_utf8.data(),
+        static_cast<int>(normalized_utf8.size()),
+        static_cast<unsigned int>(byte_offset),
+        static_cast<int>(byte_length));
+    hb_buffer_guess_segment_properties(buffer.get());
+    hb_shape(record->harfbuzz_font, buffer.get(), nullptr, 0);
+
+    unsigned int glyph_count = 0;
+    const hb_glyph_info_t* glyph_info = hb_buffer_get_glyph_infos(
+        buffer.get(), &glyph_count);
+    const hb_glyph_position_t* glyph_positions = hb_buffer_get_glyph_positions(
+        buffer.get(), &glyph_count);
+    if ((glyph_count != 0 && (glyph_info == nullptr || glyph_positions == nullptr))
+            || !hb_buffer_allocation_successful(buffer.get())) {
+        return {
+            {},
+            false,
+            make_error(
+                FontErrorStage::shaping,
+                FontErrorKind::shaping_failed,
+                "HarfBuzz could not produce shaped glyph data.",
+                font),
+        };
+    }
+
+    FontShapeResult result;
+    result.right_to_left = HB_DIRECTION_IS_BACKWARD(
+        hb_buffer_get_direction(buffer.get()));
+    result.glyphs.reserve(glyph_count);
+    for (unsigned int index = 0; index < glyph_count; ++index) {
+        hb_glyph_extents_t extents{};
+        static_cast<void>(hb_font_get_glyph_extents(
+            record->harfbuzz_font, glyph_info[index].codepoint, &extents));
+        result.glyphs.push_back({
+            glyph_info[index].codepoint,
+            glyph_info[index].cluster,
+            fixed_26_6_to_pixels(glyph_positions[index].x_advance),
+            fixed_26_6_to_pixels(glyph_positions[index].y_advance),
+            fixed_26_6_to_pixels(glyph_positions[index].x_offset),
+            fixed_26_6_to_pixels(glyph_positions[index].y_offset),
+            fixed_26_6_to_pixels(extents.x_bearing),
+            fixed_26_6_to_pixels(extents.y_bearing),
+            fixed_26_6_to_pixels(extents.width),
+            fixed_26_6_to_pixels(extents.height),
+        });
+    }
+    return result;
 }
 
 FontActionResult FontRuntime::remove_font(FontIdentity font) {

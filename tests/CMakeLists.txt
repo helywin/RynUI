@@ -42,6 +42,32 @@ target_compile_definitions(
 )
 add_test(NAME rynui.font_runtime COMMAND rynui_font_runtime_tests)
 
+add_executable(rynui_text_engine_tests text_engine_tests.cpp)
+rynui_configure_cpp_target(rynui_text_engine_tests)
+target_link_libraries(rynui_text_engine_tests PRIVATE rynui_text)
+target_compile_definitions(
+    rynui_text_engine_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.text_engine COMMAND rynui_text_engine_tests)
+
+add_executable(rynui_text_state_tests text_state_tests.cpp)
+rynui_configure_cpp_target(rynui_text_state_tests)
+target_include_directories(rynui_text_state_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_text_state_tests
+    PRIVATE rynui_text rynui_runtime rynui_reactive
+)
+target_compile_definitions(
+    rynui_text_state_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.text_state COMMAND rynui_text_state_tests)
+
 add_executable(rynui_signal_tests signal_tests.cpp)
 rynui_configure_cpp_target(rynui_signal_tests)
 target_link_libraries(rynui_signal_tests PRIVATE rynui_reactive)
