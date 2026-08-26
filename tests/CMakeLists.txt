@@ -31,6 +31,17 @@ add_test(
     COMMAND rynui_font_dependency_contract_tests
 )
 
+add_executable(rynui_font_runtime_tests font_runtime_tests.cpp)
+rynui_configure_cpp_target(rynui_font_runtime_tests)
+target_link_libraries(rynui_font_runtime_tests PRIVATE rynui_font)
+target_compile_definitions(
+    rynui_font_runtime_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.font_runtime COMMAND rynui_font_runtime_tests)
+
 add_executable(rynui_signal_tests signal_tests.cpp)
 rynui_configure_cpp_target(rynui_signal_tests)
 target_link_libraries(rynui_signal_tests PRIVATE rynui_reactive)

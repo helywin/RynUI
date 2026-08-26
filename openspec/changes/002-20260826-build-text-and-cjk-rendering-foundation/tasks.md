@@ -16,12 +16,12 @@
 
 ## 3. FreeType Font Runtime
 
-- [ ] 3.1 建立 `ryn_font` target 与私有 FreeType adapter，实现 library、字体 bytes、face 和 pixel-size 配置的 RAII 状态机、阶段化错误与 generation-checked Font identity；通过故障注入测试验证每个初始化失败点只释放已取得资源且旧 identity 不访问复用 slot
-- [ ] 3.2 实现 Unicode charmap 选择、正 pixel size 校验及 ascent/descent/line gap/units 转换，通过锁定真实字体测试核对 metrics 稳定且无 Unicode charmap、非法 face index 与零字号返回明确错误
-- [ ] 3.3 实现 Unicode scalar coverage 查询、按声明顺序的 fallback chain 与 replacement/missing-glyph 诊断，通过 Latin/CJK 真实字体测试证明不同字体选择、重复结果稳定及全缺字路径可诊断
-- [ ] 3.4 实现 `FT_Load_Glyph`/灰度 rasterization adapter，将正负 pitch 规范为单通道 coverage 并保留 bearing、advance 与 visible bounds；通过真实 glyph、构造的负 pitch seam、空格与零面积 bitmap 测试验证行方向和 metrics
-- [ ] 3.5 实现以 Font generation、glyph id、pixel size 与 raster mode 为 key 的 glyph cache 及 Font Runtime owner-thread guard，通过计数测试证明重复请求不 rasterize，并通过错误线程测试证明 coverage、mutation 与销毁 fail-fast 且状态不变
-- [ ] 3.6 运行 Font Runtime 全部单元/真实字体集成测试、MSVC Debug/Release CTest、public dependency leak check 与 `git diff --check`；以英文 `feat: add font runtime` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
+- [x] 3.1 建立 `ryn_font` target 与私有 FreeType adapter，实现 library、字体 bytes、face 和 pixel-size 配置的 RAII 状态机、阶段化错误与 generation-checked Font identity；通过故障注入测试验证每个初始化失败点只释放已取得资源且旧 identity 不访问复用 slot
+- [x] 3.2 实现 Unicode charmap 选择、正 pixel size 校验及 ascent/descent/line gap/units 转换，通过锁定真实字体测试核对 metrics 稳定且无 Unicode charmap、非法 face index 与零字号返回明确错误
+- [x] 3.3 实现 Unicode scalar coverage 查询、按声明顺序的 fallback chain 与 replacement/missing-glyph 诊断，通过 Latin/CJK 真实字体测试证明不同字体选择、重复结果稳定及全缺字路径可诊断
+- [x] 3.4 实现 `FT_Load_Glyph`/灰度 rasterization adapter，将正负 pitch 规范为单通道 coverage 并保留 bearing、advance 与 visible bounds；通过真实 glyph、构造的负 pitch seam、空格与零面积 bitmap 测试验证行方向和 metrics
+- [x] 3.5 实现以 Font generation、glyph id、pixel size 与 raster mode 为 key 的 glyph cache 及 Font Runtime owner-thread guard，通过计数测试证明重复请求不 rasterize，并通过错误线程测试证明 coverage、mutation 与销毁 fail-fast 且状态不变
+- [x] 3.6 运行 Font Runtime 全部单元/真实字体集成测试、MSVC Debug/Release CTest、public dependency leak check 与 `git diff --check`；以英文 `feat: add font runtime` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
 
 ## 4. HarfBuzz shaping、measurement 与基础换行
 

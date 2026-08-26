@@ -6,6 +6,15 @@ target_include_directories(rynui_string PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
 )
 
+add_library(rynui_font STATIC
+    font/font_runtime.cpp
+)
+rynui_configure_cpp_target(rynui_font)
+target_include_directories(rynui_font PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(rynui_font PRIVATE RynUI::FreeType)
+
 add_library(rynui_reactive STATIC
     reactive/reactive.cpp
 )
@@ -73,6 +82,7 @@ target_include_directories(rynui INTERFACE
 target_link_libraries(rynui INTERFACE rynui_graphics rynui_string)
 
 rynui_assert_direct_dependencies(rynui_string)
+rynui_assert_direct_dependencies(rynui_font RynUI::FreeType)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
