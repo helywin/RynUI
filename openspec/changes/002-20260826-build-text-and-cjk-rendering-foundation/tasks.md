@@ -53,9 +53,9 @@
 
 ## 7. Linux 验收与 change 收口
 
-- [ ] 7.1 在 WSL/Linux 使用 `linux-gcc` preset 完成 clean configure、Debug/Release build 与 CTest，验证 Ninja Multi-Config、锁定 BUNDLED 依赖、HarfBuzz/FreeType target 和 SPIR-V shader 均来自预期来源
+- [x] 7.1 在 WSL/Linux 使用 `linux-gcc` preset 完成 clean configure、Debug/Release build 与 CTest，验证 Ninja Multi-Config、锁定 BUNDLED 依赖、HarfBuzz/FreeType target 和 SPIR-V shader 均来自预期来源
 - [ ] 7.2 使用 `linux-clang` preset 至少完成 Debug configure/build/CTest，确认公共 String、Font、Text、Glyph 与 renderer 代码不依赖 GCC 扩展；若环境缺少 Clang，必须保留未完成状态并记录可复现阻塞而不得声称通过
-- [ ] 7.3 在 Linux/GCC/Vulkan 真实窗口运行与 Windows 相同的 Latin/CJK 示例，触发 content、color、constraint 和 resize 更新并正常退出；保存截图/driver/退出码/计数证据，核对 fallback、局部 atlas upload、稳定 Z order 与 idle 无持续 submit
-- [ ] 7.4 运行隔离的 `SYSTEM` positive/negative contract suite 与 public-header dependency leak check，确认显式 package/font 输入成功、缺失或不兼容输入 fail-fast，且 `BUNDLED`/`SYSTEM` 都不使用 submodule 或 system-first fallback
-- [ ] 7.5 运行 Windows 与 Linux 全量 CTest、shader/lock/license/evidence 检查、`openspec doctor --json`、`openspec validate --all --strict --no-interactive` 和 `git diff --check`，只在所有对应证据通过后勾选任务并记录最终验收摘要
-- [ ] 7.6 确认 worktree 只包含本 change 相关文件且 README、AGENTS 与 architecture 职责未混写；以英文 `test: validate cross-platform text rendering` 提交最终验收，fetch/rebase 后 push 并核对 remote SHA 与 clean worktree
+- [x] 7.3 在 Linux/GCC/Vulkan 真实窗口运行与 Windows 相同的 Latin/CJK 示例，触发 content、color、constraint 和 resize 更新并正常退出；保存截图/driver/退出码/计数证据，核对 fallback、局部 atlas upload、稳定 Z order 与 idle 无持续 submit
+- [x] 7.4 运行隔离的 `SYSTEM` positive/negative contract suite 与 public-header dependency leak check，确认显式 package/font 输入成功、缺失或不兼容输入 fail-fast，且 `BUNDLED`/`SYSTEM` 都不使用 submodule 或 system-first fallback
+- [x] 7.5 运行 Windows 与 Linux 全量 CTest、shader/lock/license/evidence 检查、`openspec doctor --json`、`openspec validate --all --strict --no-interactive` 和 `git diff --check`，只在所有对应证据通过后勾选任务并记录最终验收摘要
+- [x] 7.6 确认 worktree 只包含本 change 相关文件且 README、AGENTS 与 architecture 职责未混写；以英文 `test: validate cross-platform text rendering` 提交最终验收，fetch/rebase 后 push 并核对 remote SHA 与 clean worktree
