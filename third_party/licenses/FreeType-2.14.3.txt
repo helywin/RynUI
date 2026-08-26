@@ -1,0 +1,8 @@
+Package: FreeType 2.14.3
+Source commit: 0a0221a1347e2f1e07c395263540026e9a0aa7c7
+License expression: FTL OR GPL-2.0-only
+Upstream license files: docs/FTL.TXT and docs/GPLv2.TXT in the locked source archive
+Upstream license page: https://freetype.org/license.html
+
+RynUI uses FreeType under the FreeType License option. Distribution must retain
+the applicable upstream copyright and license notices from the locked archive.

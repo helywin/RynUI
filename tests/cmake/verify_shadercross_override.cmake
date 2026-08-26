@@ -6,7 +6,9 @@ foreach(required_variable IN ITEMS
         TEST_GENERATOR
         TEST_CXX_COMPILER
         TEST_SHADERCROSS_EXECUTABLE
-        TEST_CONFIGURATION)
+        TEST_CONFIGURATION
+        TEST_LATIN_FONT
+        TEST_CJK_FONT)
     if(NOT DEFINED ${required_variable} OR "${${required_variable}}" STREQUAL "")
         message(FATAL_ERROR "${required_variable} is required.")
     endif()
@@ -23,7 +25,11 @@ execute_process(
         "-DRYNUI_EXPECTED_TOOLCHAIN=${TEST_EXPECTED_TOOLCHAIN}"
         -DRYNUI_DEPENDENCY_MODE=SYSTEM
         "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3"
+        "-DFreetype_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-freetype"
+        "-Dharfbuzz_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-harfbuzz"
         "-DRYNUI_SHADERCROSS_EXECUTABLE=${TEST_SHADERCROSS_EXECUTABLE}"
+        "-DRYNUI_SYSTEM_LATIN_FONT_FILE=${TEST_LATIN_FONT}"
+        "-DRYNUI_SYSTEM_CJK_FONT_FILE=${TEST_CJK_FONT}"
         -DBUILD_TESTING=OFF
         -DRYNUI_BUILD_EXAMPLES=ON
     RESULT_VARIABLE configure_result

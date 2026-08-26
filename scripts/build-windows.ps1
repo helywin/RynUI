@@ -8,7 +8,15 @@ param(
 
     [string] $Sdl3Root,
 
+    [string] $FreeTypeRoot,
+
+    [string] $HarfBuzzRoot,
+
     [string] $ShadercrossExecutable,
+
+    [string] $LatinFontFile,
+
+    [string] $CjkFontFile,
 
     [switch] $Fresh,
 
@@ -74,9 +82,33 @@ if($Sdl3Root) {
     $resolvedSdl3Root = (Resolve-Path -LiteralPath $Sdl3Root).Path
     $configureArguments += "-DSDL3_ROOT=$resolvedSdl3Root"
 }
+foreach($systemRoot in @(
+    @{ Name = 'FreeTypeRoot'; Value = $FreeTypeRoot; Cache = 'Freetype_ROOT' },
+    @{ Name = 'HarfBuzzRoot'; Value = $HarfBuzzRoot; Cache = 'harfbuzz_ROOT' }
+)) {
+    if($systemRoot.Value) {
+        if($DependencyMode -ne 'SYSTEM') {
+            throw "-$($systemRoot.Name) can only be used with -DependencyMode SYSTEM."
+        }
+        $resolvedRoot = (Resolve-Path -LiteralPath $systemRoot.Value).Path
+        $configureArguments += "-D$($systemRoot.Cache)=$resolvedRoot"
+    }
+}
 if($ShadercrossExecutable) {
     $resolvedShadercrossExecutable = (Resolve-Path -LiteralPath $ShadercrossExecutable).Path
     $configureArguments += "-DRYNUI_SHADERCROSS_EXECUTABLE=$resolvedShadercrossExecutable"
+}
+foreach($font in @(
+    @{ Name = 'LatinFontFile'; Value = $LatinFontFile; Cache = 'RYNUI_SYSTEM_LATIN_FONT_FILE' },
+    @{ Name = 'CjkFontFile'; Value = $CjkFontFile; Cache = 'RYNUI_SYSTEM_CJK_FONT_FILE' }
+)) {
+    if($font.Value) {
+        if($DependencyMode -ne 'SYSTEM') {
+            throw "-$($font.Name) can only be used with -DependencyMode SYSTEM."
+        }
+        $resolvedFont = (Resolve-Path -LiteralPath $font.Value).Path
+        $configureArguments += "-D$($font.Cache)=$resolvedFont"
+    }
 }
 
 cmake @configureArguments

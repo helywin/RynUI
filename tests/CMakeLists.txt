@@ -1,3 +1,5 @@
+find_package(Git REQUIRED)
+
 add_executable(rynui_public_api_smoke public_api_smoke.cpp)
 rynui_configure_cpp_target(rynui_public_api_smoke)
 target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
@@ -8,6 +10,26 @@ add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)
 add_test(NAME rynui.string COMMAND rynui_string_tests)
+
+add_executable(
+    rynui_font_dependency_contract_tests
+    font_dependency_contract_tests.cpp
+)
+rynui_configure_cpp_target(rynui_font_dependency_contract_tests)
+target_link_libraries(
+    rynui_font_dependency_contract_tests
+    PRIVATE RynUI::FreeType RynUI::HarfBuzz
+)
+target_compile_definitions(
+    rynui_font_dependency_contract_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(
+    NAME rynui.font_dependency_contract
+    COMMAND rynui_font_dependency_contract_tests
+)
 
 add_executable(rynui_signal_tests signal_tests.cpp)
 rynui_configure_cpp_target(rynui_signal_tests)
@@ -101,8 +123,18 @@ add_test(
     NAME rynui.dependency_lock
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_GIT_EXECUTABLE=${GIT_EXECUTABLE}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
+
+if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
+    add_test(
+        NAME rynui.text_dependency_options
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_CACHE_FILE=${CMAKE_BINARY_DIR}/CMakeCache.txt"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_text_dependency_options.cmake"
+    )
+endif()
 
 foreach(contract_case IN ITEMS
         invalid-mode
@@ -126,6 +158,26 @@ foreach(contract_case IN ITEMS
     )
 endforeach()
 
+foreach(text_contract_case IN ITEMS
+        positive
+        missing-package
+        wrong-version
+        missing-target
+        missing-font)
+    add_test(
+        NAME "rynui.text_dependency_contract.${text_contract_case}"
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/text-contract-tests/${text_contract_case}"
+            "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DTEST_CASE=${text_contract_case}"
+            "-DTEST_LATIN_FONT=${RYNUI_VALIDATION_LATIN_FONT_FILE}"
+            "-DTEST_CJK_FONT=${RYNUI_VALIDATION_CJK_FONT_FILE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_text_dependency_contract.cmake"
+    )
+endforeach()
+
 if(TARGET shadercross)
     add_test(
         NAME rynui.shadercross_override
@@ -137,6 +189,8 @@ if(TARGET shadercross)
             "-DTEST_EXPECTED_TOOLCHAIN=${RYNUI_EXPECTED_TOOLCHAIN}"
             "-DTEST_SHADERCROSS_EXECUTABLE=$<TARGET_FILE:shadercross>"
             "-DTEST_CONFIGURATION=$<CONFIG>"
+            "-DTEST_LATIN_FONT=${RYNUI_VALIDATION_LATIN_FONT_FILE}"
+            "-DTEST_CJK_FONT=${RYNUI_VALIDATION_CJK_FONT_FILE}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_shadercross_override.cmake"
     )
 endif()

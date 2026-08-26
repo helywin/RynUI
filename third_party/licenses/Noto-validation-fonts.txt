@@ -1,0 +1,12 @@
+Packages: Noto Sans 2.008 and Noto Sans CJK SC 2.004
+Source commits:
+- Noto Sans: ffebf8c1ee449e544955a7e813c54f9b73848eac
+- Noto Sans CJK SC: 523d033d6cb47f4a80c58a35753646f5c3608a78
+License expression: OFL-1.1
+Upstream source snapshots:
+- https://github.com/notofonts/noto-fonts/tree/ffebf8c1ee449e544955a7e813c54f9b73848eac
+- https://github.com/notofonts/noto-cjk/tree/523d033d6cb47f4a80c58a35753646f5c3608a78
+
+The font binaries are build-time validation fixtures and are not committed to
+RynUI. Redistribution must retain the SIL Open Font License notice supplied by
+the upstream projects.

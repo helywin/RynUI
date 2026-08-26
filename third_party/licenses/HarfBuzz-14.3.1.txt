@@ -1,0 +1,8 @@
+Package: HarfBuzz 14.3.1
+Source commit: ab5ecbb83985034a76214ac0b2b833dcd590d774
+License expression: MIT
+Upstream license file: COPYING in the locked source archive
+Upstream source: https://github.com/harfbuzz/harfbuzz/tree/14.3.1
+
+Distribution must retain the upstream copyright and license notice from the
+locked archive.

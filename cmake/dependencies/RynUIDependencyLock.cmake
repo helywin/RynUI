@@ -34,3 +34,37 @@ set(RYNUI_DXC_LINUX_X64_URL
 set(RYNUI_DXC_LINUX_X64_SHA256
     "e0580d90dbf6053a783ddd8d5153285f0606e5deaad17a7a6452f03acdf88c71")
 set(RYNUI_DXC_LICENSE "NCSA + MIT + Microsoft Software License Terms")
+
+set(RYNUI_FREETYPE_VERSION "2.14.3")
+set(RYNUI_FREETYPE_COMMIT "0a0221a1347e2f1e07c395263540026e9a0aa7c7")
+set(RYNUI_FREETYPE_SOURCE_URL
+    "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz")
+set(RYNUI_FREETYPE_SOURCE_SHA256
+    "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f")
+set(RYNUI_FREETYPE_LICENSE "FTL OR GPL-2.0-only")
+
+set(RYNUI_HARFBUZZ_VERSION "14.3.1")
+set(RYNUI_HARFBUZZ_COMMIT "ab5ecbb83985034a76214ac0b2b833dcd590d774")
+set(RYNUI_HARFBUZZ_SOURCE_URL
+    "https://github.com/harfbuzz/harfbuzz/releases/download/14.3.1/harfbuzz-14.3.1.tar.xz")
+set(RYNUI_HARFBUZZ_SOURCE_SHA256
+    "9dae9538aae2ffdf70cec31f2c27bf68e2aaeeae3112688467697d5faf6194f7")
+set(RYNUI_HARFBUZZ_LICENSE "MIT")
+
+# Validation fonts are build-time fixtures. Their binaries are downloaded to
+# the build tree and are never committed to this repository.
+set(RYNUI_NOTO_SANS_VERSION "2.008")
+set(RYNUI_NOTO_SANS_COMMIT "ffebf8c1ee449e544955a7e813c54f9b73848eac")
+set(RYNUI_NOTO_SANS_SOURCE_URL
+    "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-Regular.ttf")
+set(RYNUI_NOTO_SANS_SOURCE_SHA256
+    "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5")
+set(RYNUI_NOTO_SANS_LICENSE "OFL-1.1")
+
+set(RYNUI_NOTO_SANS_CJK_SC_VERSION "2.004")
+set(RYNUI_NOTO_SANS_CJK_SC_COMMIT "523d033d6cb47f4a80c58a35753646f5c3608a78")
+set(RYNUI_NOTO_SANS_CJK_SC_SOURCE_URL
+    "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf")
+set(RYNUI_NOTO_SANS_CJK_SC_SOURCE_SHA256
+    "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b")
+set(RYNUI_NOTO_SANS_CJK_SC_LICENSE "OFL-1.1")

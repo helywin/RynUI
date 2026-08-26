@@ -8,11 +8,11 @@
 
 ## 2. Font 与 shaping 依赖合同
 
-- [ ] 2.1 在集中 dependency lock 与 license 清单中固定 FreeType 2.14.3、HarfBuzz 14.3.1、Latin 验收字体与 Noto Sans CJK SC 的不可变 URL、SHA256、版本和 license，并以 lock/schema test 验证字段完整且 Git 未跟踪字体二进制
-- [ ] 2.2 扩展 `BUNDLED` resolver：FreeType 使用发行源码 CMake、HarfBuzz 使用固定发行源码携带的 CMake target，关闭设计中列出的非必要模块并建立 `RynUI::FreeType`/`RynUI::HarfBuzz` canonical target；通过 `windows-msvc` clean configure/build 与 target contract test 验证单向依赖和选项
-- [ ] 2.3 扩展 `SYSTEM` resolver，只接受版本匹配的规范 package target 与显式字体路径；通过隔离的 positive fixture 证明 canonical target 可链接，并通过缺 package、错误版本、错误 target、缺字体和无效 mode 的 configure-fail tests 证明绝不回退到 `BUNDLED`
-- [ ] 2.4 实现验收字体资源解析：`BUNDLED` 下载到 build/cache 并校验 SHA256，`SYSTEM` 校验调用方提供的两个文件；通过测试证明首选 Latin 字体缺少目标 CJK glyph、后备字体覆盖它，且运行时不发生网络下载或系统字体扫描
-- [ ] 2.5 运行 Windows/MSVC Debug 与 Release build/CTest、dependency license 检查和 `git diff --check`；以英文 `build: add text dependencies` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
+- [x] 2.1 在集中 dependency lock 与 license 清单中固定 FreeType 2.14.3、HarfBuzz 14.3.1、Latin 验收字体与 Noto Sans CJK SC 的不可变 URL、SHA256、版本和 license，并以 lock/schema test 验证字段完整且 Git 未跟踪字体二进制
+- [x] 2.2 扩展 `BUNDLED` resolver：FreeType 使用发行源码 CMake、HarfBuzz 使用固定发行源码携带的 CMake target，关闭设计中列出的非必要模块并建立 `RynUI::FreeType`/`RynUI::HarfBuzz` canonical target；通过 `windows-msvc` clean configure/build 与 target contract test 验证单向依赖和选项
+- [x] 2.3 扩展 `SYSTEM` resolver，只接受版本匹配的规范 package target 与显式字体路径；通过隔离的 positive fixture 证明 canonical target 可链接，并通过缺 package、错误版本、错误 target、缺字体和无效 mode 的 configure-fail tests 证明绝不回退到 `BUNDLED`
+- [x] 2.4 实现验收字体资源解析：`BUNDLED` 下载到 build/cache 并校验 SHA256，`SYSTEM` 校验调用方提供的两个文件；通过测试证明首选 Latin 字体缺少目标 CJK glyph、后备字体覆盖它，且运行时不发生网络下载或系统字体扫描
+- [x] 2.5 运行 Windows/MSVC Debug 与 Release build/CTest、dependency license 检查和 `git diff --check`；以英文 `build: add text dependencies` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
 
 ## 3. FreeType Font Runtime
 
