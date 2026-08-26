@@ -44,12 +44,12 @@
 
 ## 6. SDL3 GPU glyph pipeline 与 Windows 真实窗口
 
-- [ ] 6.1 在 SDL renderer 内实现 atlas `R8_UNORM` texture、sampler、transfer buffer、局部 texture region upload 与逆序释放，通过故障注入和 upload recorder 测试验证 pitch/alignment、page 绑定、只上传 dirty rectangles 以及资源失败无泄漏
-- [ ] 6.2 扩展 Renderer 按 Scene command 顺序切换 Quad/Glyph pipeline 与 atlas page，只合并相邻兼容 range；通过 recording backend 测试证明不跨 Z/clip/texture 边界重排并保持 coverage blend 合同
-- [ ] 6.3 把 Text shape/atlas/instance dirty 接入现有按需帧状态机和诊断计数，通过可控 event/clock 集成测试证明新增 glyph 请求帧、纯颜色只更新 Material、稳定文本停止 submit、后续变化可唤醒
-- [ ] 6.4 创建 Latin/CJK 真实窗口示例，使用直接构造 String 的 `u8` literal、锁定 fallback fonts、14px Ant Design 6.5.0 正文与次级语义色，输出 Font、replacement、fallback、shape、atlas、instance、upload、draw、submit 和 idle 计数；通过 snapshot/日志 contract test 验证示例输入与计数字段
-- [ ] 6.5 使用 `windows-msvc` preset 完成 clean configure、Debug/Release build 与 CTest，在 D3D12/DXIL 真实窗口触发 content、color、constraint 和 resize 更新并正常退出；保存截图/driver/退出码/计数证据，人工核对 12–16px Latin/CJK 清晰度、fallback 与局部更新关系
-- [ ] 6.6 运行 Windows 阶段回归、evidence 完整性检查与 `git diff --check`；以英文 `feat: render glyphs with SDL GPU` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
+- [x] 6.1 在 SDL renderer 内实现 atlas `R8_UNORM` texture、sampler、transfer buffer、局部 texture region upload 与逆序释放，通过故障注入和 upload recorder 测试验证 pitch/alignment、page 绑定、只上传 dirty rectangles 以及资源失败无泄漏
+- [x] 6.2 扩展 Renderer 按 Scene command 顺序切换 Quad/Glyph pipeline 与 atlas page，只合并相邻兼容 range；通过 recording backend 测试证明不跨 Z/clip/texture 边界重排并保持 coverage blend 合同
+- [x] 6.3 把 Text shape/atlas/instance dirty 接入现有按需帧状态机和诊断计数，通过可控 event/clock 集成测试证明新增 glyph 请求帧、纯颜色只更新 Material、稳定文本停止 submit、后续变化可唤醒
+- [x] 6.4 创建 Latin/CJK 真实窗口示例，使用直接构造 String 的 `u8` literal、锁定 fallback fonts、14px Ant Design 6.5.0 正文与次级语义色，输出 Font、replacement、fallback、shape、atlas、instance、upload、draw、submit 和 idle 计数；通过 snapshot/日志 contract test 验证示例输入与计数字段
+- [x] 6.5 使用 `windows-msvc` preset 完成 clean configure、Debug/Release build 与 CTest，在 D3D12/DXIL 真实窗口触发 content、color、constraint 和 resize 更新并正常退出；保存截图/driver/退出码/计数证据，人工核对 12–16px Latin/CJK 清晰度、fallback 与局部更新关系
+- [x] 6.6 运行 Windows 阶段回归、evidence 完整性检查与 `git diff --check`；以英文 `feat: render glyphs with SDL GPU` 提交本阶段，fetch/rebase 后 push 并核对 remote SHA
 
 ## 7. Linux 验收与 change 收口
 

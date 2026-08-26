@@ -171,6 +171,37 @@ rynui_configure_cpp_target(rynui_frame_renderer_tests)
 target_link_libraries(rynui_frame_renderer_tests PRIVATE rynui_renderer_sdl)
 add_test(NAME rynui.frame_renderer COMMAND rynui_frame_renderer_tests)
 
+add_executable(rynui_glyph_gpu_resources_tests glyph_gpu_resources_tests.cpp)
+rynui_configure_cpp_target(rynui_glyph_gpu_resources_tests)
+target_link_libraries(rynui_glyph_gpu_resources_tests PRIVATE rynui_renderer_sdl)
+add_test(NAME rynui.glyph_gpu_resources COMMAND rynui_glyph_gpu_resources_tests)
+
+add_executable(rynui_text_render_integration_tests text_render_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_text_render_integration_tests)
+target_link_libraries(rynui_text_render_integration_tests PRIVATE rynui_renderer_sdl)
+target_compile_definitions(
+    rynui_text_render_integration_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.text_render_integration COMMAND rynui_text_render_integration_tests)
+
+add_test(
+    NAME rynui.text_example_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DEXAMPLE_SOURCE=${PROJECT_SOURCE_DIR}/examples/text/main.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_text_example_contract.cmake"
+)
+
+add_test(
+    NAME rynui.windows_text_evidence
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE_REPORT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/windows-msvc.md"
+        "-DEVIDENCE_SCREENSHOT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/windows-msvc-debug.png"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_text_evidence.cmake"
+)
+
 add_test(
     NAME rynui.generated_shaders
     COMMAND ${CMAKE_COMMAND}

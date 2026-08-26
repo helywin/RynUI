@@ -77,12 +77,24 @@ target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3)
 
 add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
+    renderer/sdl/glyph_gpu_resources.cpp
     renderer/sdl/quad_renderer.cpp
+    renderer/sdl/scene_renderer.cpp
+    renderer/sdl/text_render_controller.cpp
 )
 rynui_configure_cpp_target(rynui_renderer_sdl)
 target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(rynui_renderer_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(rynui_renderer_sdl PRIVATE rynui_graphics rynui_platform_sdl SDL3::SDL3)
+target_include_directories(rynui_renderer_sdl PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(rynui_renderer_sdl PRIVATE
+    rynui_graphics
+    rynui_platform_sdl
+    rynui_runtime
+    rynui_text
+    SDL3::SDL3
+)
 
 add_library(rynui INTERFACE)
 add_library(RynUI::RynUI ALIAS rynui)
@@ -100,5 +112,12 @@ rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)
 rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3)
-rynui_assert_direct_dependencies(rynui_renderer_sdl SDL3::SDL3 rynui_graphics rynui_platform_sdl)
+rynui_assert_direct_dependencies(
+    rynui_renderer_sdl
+    SDL3::SDL3
+    rynui_graphics
+    rynui_platform_sdl
+    rynui_runtime
+    rynui_text
+)
 rynui_assert_direct_dependencies(rynui rynui_graphics rynui_string)
