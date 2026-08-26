@@ -373,13 +373,43 @@ UTF-8
 
 ## 12. 线程与帧调度
 
-UI Runtime 使用单 UI 线程。后台任务通过 `ryn::post()` 或线程安全 Channel 把不可变消息送入 UI 队列。
+### 12.1 UI 线程归属
+
+UI Runtime 使用单 UI 线程。参与 UI 响应图的 `Signal`、`Memo`、`Effect`、`Binding`、`Scope`、Component、Node、Layout 与渲染状态都归属创建它们的 Runtime owner thread。这些对象不是通用并发状态容器，不通过给每个 `Signal` 加锁来提供跨线程读写。
+
+非 owner thread 不得直接调用 UI `Signal::get()`/`set()`、运行响应 Observer、处置 `Scope` 或修改 Node/Layout/Renderer。`batch()` 只合并 owner thread 内的响应传播，不是互斥锁或跨线程事务。Runtime 必须记录 owner thread，并在开发和测试构建中对越界访问 fail-fast，而不是静默地在调用线程执行 Binding 或 Effect。
+
+每个 Window/Runtime 拥有独立的 UI Scheduler 和跨线程收件箱。多窗口之间通过消息或不可变快照交换数据，不共享可写 UI `Signal`。
+
+### 12.2 跨线程消息边界
+
+后台任务通过 `ryn::post()` 或 typed Channel 把不可变消息送入目标 Runtime 的线程安全队列。跨线程消息只携带值、共享的不可变快照或明确转移所有权的资源；不得携带指向 Component、`Scope`、Node 或可写 UI 状态的裸指针。
+
+`ryn::post()` 必须始终入队，即使由 UI 线程调用也不在当前栈内立即执行，以避免输入、Binding 或 Effect 内的不可控重入。入队成功后必须通过平台抽象唤醒按需帧循环；公开 API 不得因此暴露 SDL3 类型。
+
+邮件箱消费任务时必须检查与 `Scope` 或对象生命周期关联的 generation/token。对象已销毁或任务已取消时丢弃该任务，不得在队列闭包中依赖裸 `this` 的存活。后台任务的停止与 join 责任必须归属明确的 Task/Scope owner。
+
+### 12.3 状态、事件与背压
+
+跨线程 Channel 必须按数据语义区分两类，不提供隐式丢数据的“通用队列”：
+
+- 最新状态：CPU、温度、窗口尺寸等只关心最新值的数据可以按 key 合并，慢 UI 只消费最新快照。
+- 不可丢事件：用户命令、任务完成、日志记录和协议事件使用有界 FIFO，不得按最新值合并。
+
+队列容量和满载策略必须显式选择 `coalesce`、`block producer`、`drop oldest`、`drop newest` 或 `fail`，并暴露对应计数；默认不允许无界增长。每次 UI drain 应有可配置的数量或时间预算，防止高频生产者长期阻塞输入与渲染。
+
+MPSC 队列只保证每个生产者内的发布顺序；当多个生产者的先后关系影响业务结果时，消息必须携带 revision/sequence，并由 UI reducer 明确处理过期、重复和冲突。多个字段的不变量通过一个完整消息或不可变 snapshot 表达，由 UI reducer 在一次 `batch()` 中提交，避免 Observer 看到部分状态。
+
+必须分离领域并发状态与 UI 响应状态。后台子系统可以在自己的边界内使用 `std::atomic` 保护独立标量，或使用 mutex 保护组合不变量；向 UI 发布前必须在锁内复制快照、释放锁，再入队，不得持有领域锁执行 UI 回调。
+
+### 12.4 确定性帧阶段
 
 单帧顺序固定为：
 
 ```text
-Input
-  -> queued writes
+Input / mailbox wake
+  -> drain external messages
+  -> batch queued writes
   -> Memo propagation
   -> Structural updates
   -> Measure
@@ -390,7 +420,9 @@ Input
   -> Effect
 ```
 
-Scheduler 必须支持批处理、Dirty root 合并、确定性队列顺序，以及更新过程中再次失效时的边界控制。
+Scheduler 必须支持批处理、Dirty root 合并、确定性队列顺序，以及更新过程中再次失效时的边界控制。同一次 drain 中接受的状态消息默认在一个外层 `batch()` 中应用；不可丢事件仍按队列顺序逐个还原，不得因批处理改变事件语义。
+
+响应传播、结构更新、Layout、GPU 提交和 Effect 仍只在 UI thread 执行。后台任务的完成通知是下一个 UI epoch 的输入，不允许在 worker 完成栈上同步继续 UI Effect。
 
 ## 13. 建议工程结构
 
@@ -473,6 +505,8 @@ RynUI/
 
 - 真实窗口能够在目标平台启动、交互和正确退出。
 - 后台线程数据通过 UI 队列安全更新。
+- 非 owner thread 直接访问 UI 响应状态能被 fail-fast 检出，Binding、Effect、Node、Layout 和 GPU 工作不在 worker thread 执行。
+- 最新状态合并、不可丢事件顺序、有界背压、过期 revision 和 Scope 销毁后任务丢弃都有确定测试。
 - 高频数值更新不重新执行页面 Component。
 - 纯颜色/透明度/变换更新不触发 Layout。
 - 无变化时不持续提交满帧渲染。
@@ -484,6 +518,7 @@ RynUI/
 ## 16. 关键风险
 
 - Reactive 依赖图、Node 生命周期和结构更新之间可能产生悬空引用或重入问题。
+- 跨线程邮件箱的无界增长、错误合并、多生产者乱序或已销毁对象回调可能造成内存、正确性和生命周期故障，必须通过 typed message、有界策略、revision 和 generation/token 约束。
 - Clip/Z order/Blend 会限制跨节点批处理，需要优先保证正确性。
 - CJK、IME、字体回退和文本选择可能显著扩大 TextInput 复杂度。
 - SDL3 GPU 的平台差异需要通过真实 D3D12、Vulkan、Metal 环境验证。
