@@ -151,7 +151,7 @@ public:
                 std::max(0.0F, viewport_->height - 40.0F),
             };
             if (!application_->layout_and_synchronize(
-                    *viewport_, clip, {32.0F, 28.0F}, 0.0F)) {
+                    *viewport_, clip, {24.0F, 28.0F}, 0.0F)) {
                 last_error_ = "Layout demo layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }

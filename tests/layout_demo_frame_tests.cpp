@@ -301,6 +301,9 @@ void test_responsive_layout_demo_frame_contract() {
     }
     require(near(right->x - (left->x + left->width), 10.0F),
             "wide Flex did not apply the main-axis custom gap");
+    require(near(left->x, 24.0F)
+                && near(720.0F - (right->x + right->width), 24.0F),
+            "wide Flex did not preserve symmetric horizontal insets");
 
     submitter.set_viewport({260.0F, 480.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
@@ -321,6 +324,11 @@ void test_responsive_layout_demo_frame_contract() {
     require(narrow_first.x + narrow_first.width <= 236.25F
                 && narrow_second.x + narrow_second.width <= 236.25F,
             "narrow Flex content exceeded the viewport right inset");
+    require(near(narrow_first.x, 24.0F)
+                && near(260.0F - (narrow_first.x + narrow_first.width), 24.0F)
+                && near(narrow_second.x, 24.0F)
+                && near(260.0F - (narrow_second.x + narrow_second.width), 24.0F),
+            "narrow Flex did not preserve symmetric horizontal insets");
     require(fixture.layout.flex_layout_diagnostics(components.root(space)).line_count >= 1,
             "nested Space did not participate in responsive measurement");
 
