@@ -11,6 +11,11 @@ rynui_configure_cpp_target(rynui_prop_public_api_tests)
 target_link_libraries(rynui_prop_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.prop_public_api COMMAND rynui_prop_public_api_tests)
 
+add_executable(rynui_component_public_api_tests component_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_component_public_api_tests)
+target_link_libraries(rynui_component_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.component_public_api COMMAND rynui_component_public_api_tests)
+
 add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)

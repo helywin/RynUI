@@ -129,5 +129,22 @@ function(rynui_verify_public_api public_include_directory)
                 endif()
             endforeach()
         endif()
+
+        if(public_header MATCHES "/component\\.hpp$")
+            foreach(forbidden_component_symbol IN ITEMS
+                    ComponentHost
+                    MountContext
+                    NodeId
+                    Layout
+                    Scene
+                    GPU
+                    SDL)
+                if(header_contents MATCHES "${forbidden_component_symbol}")
+                    message(FATAL_ERROR
+                        "Public component header ${public_header} exposes forbidden "
+                        "symbol ${forbidden_component_symbol}.")
+                endif()
+            endforeach()
+        endif()
     endforeach()
 endfunction()

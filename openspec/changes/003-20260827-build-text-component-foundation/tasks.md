@@ -7,11 +7,11 @@
 
 ## 2. Component Host、identity 与 typed composition
 
-- [ ] 2.1 建立内部 component slot + generation registry，使 record 持有 Scope、root Node、类型 state 与声明顺序，通过 create/find/destroy/reuse tests 证明 stale identity 不访问复用 slot
-- [ ] 2.2 实现 UI owner-thread active mount stack 与公开 typed content closure 入口，使 `ryn::Text` 类 DSL 可以取得当前父级而不公开 `MountContext`；通过嵌套 slot、兄弟顺序、无 active Host、错误线程、异常退出和重入测试验证 stack 始终恢复
-- [ ] 2.3 实现 Host/component dispose 顺序：先停止 Scope/Prop Observer，再移除类型资源与 Scene range，最后销毁 Node 子树并推进 generation；通过重复 dispose、父子清理和销毁后 Signal write 测试证明没有重复释放、帧请求或 stale callback
-- [ ] 2.4 增加 typed slot compile contracts，证明合法 content 按声明顺序挂载、不支持的 prefix/footer 等 slot 在类型层不存在，且普通 Prop 更新不重新执行 content closure或改变兄弟 identity
-- [ ] 2.5 运行 component/Scope/Node 生命周期测试、GCC/Clang Debug build/CTest 与 `git diff --check`；以英文 `feat: add component composition host` 提交本阶段相关文件
+- [x] 2.1 建立内部 component slot + generation registry，使 record 持有 Scope、root Node、类型 state 与声明顺序，通过 create/find/destroy/reuse tests 证明 stale identity 不访问复用 slot
+- [x] 2.2 实现 UI owner-thread active mount stack 与公开 typed content closure 入口，使 `ryn::Text` 类 DSL 可以取得当前父级而不公开 `MountContext`；通过嵌套 slot、兄弟顺序、无 active Host、错误线程、异常退出和重入测试验证 stack 始终恢复
+- [x] 2.3 实现 Host/component dispose 顺序：先停止 Scope/Prop Observer，再移除类型资源与 Scene range，最后销毁 Node 子树并推进 generation；通过重复 dispose、父子清理和销毁后 Signal write 测试证明没有重复释放、帧请求或 stale callback
+- [x] 2.4 增加 typed slot compile contracts，证明合法 content 按声明顺序挂载、不支持的 prefix/footer 等 slot 在类型层不存在，且普通 Prop 更新不重新执行 content closure或改变兄弟 identity
+- [x] 2.5 运行 component/Scope/Node 生命周期测试、GCC/Clang Debug build/CTest 与 `git diff --check`；以英文 `feat: add component composition host` 提交本阶段相关文件
 
 ## 3. LayoutStyle 与 intrinsic measurement
 
