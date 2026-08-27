@@ -155,6 +155,7 @@ private:
 enum class SceneDrawKind : std::uint8_t {
     quad,
     glyph,
+    rounded_effect,
 };
 
 struct SceneDrawCommand {

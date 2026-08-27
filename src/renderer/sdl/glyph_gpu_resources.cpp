@@ -219,13 +219,19 @@ void GlyphGpuResources::upload_instance_ranges(
 
 void draw_ordered_scene(const graphics::OrderedScene& scene, SceneDrawApi& api) {
     for (const graphics::SceneDrawCommand command : scene.commands()) {
-        if (command.kind == graphics::SceneDrawKind::quad) {
+        switch (command.kind) {
+        case graphics::SceneDrawKind::quad:
             api.draw_quad(command.first_instance, command.instance_count);
-        } else {
+            break;
+        case graphics::SceneDrawKind::glyph:
             api.draw_glyph(
                 command.atlas_page,
                 command.first_instance,
                 command.instance_count);
+            break;
+        case graphics::SceneDrawKind::rounded_effect:
+            throw std::logic_error(
+                "Rounded effect draw commands require the rounded-effect renderer");
         }
     }
 }

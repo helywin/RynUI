@@ -470,6 +470,32 @@ target_compile_definitions(
 )
 add_test(NAME rynui.glyph_scene COMMAND rynui_glyph_scene_tests)
 
+function(add_rynui_rounded_effect_test test_name source_name)
+    add_executable(
+        rynui_rounded_effect_${test_name}_tests
+        ${source_name}
+    )
+    rynui_configure_cpp_target(rynui_rounded_effect_${test_name}_tests)
+    target_include_directories(
+        rynui_rounded_effect_${test_name}_tests
+        PRIVATE "${PROJECT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(
+        rynui_rounded_effect_${test_name}_tests
+        PRIVATE rynui_graphics rynui_text
+    )
+    add_test(
+        NAME rynui.rounded_effect_${test_name}
+        COMMAND rynui_rounded_effect_${test_name}_tests
+    )
+endfunction()
+
+add_rynui_rounded_effect_test(math rounded_effect_math_tests.cpp)
+add_rynui_rounded_effect_test(store rounded_effect_store_tests.cpp)
+add_rynui_rounded_effect_test(scene rounded_effect_scene_tests.cpp)
+add_rynui_rounded_effect_test(
+    allocation_benchmark rounded_effect_allocation_benchmark.cpp)
+
 add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_binding_quad_integration_tests)
 target_include_directories(rynui_binding_quad_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

@@ -109,6 +109,7 @@ add_library(rynui_graphics STATIC
     graphics/graphics.cpp
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
+    graphics/rounded_effect.cpp
 )
 rynui_configure_cpp_target(rynui_graphics)
 target_include_directories(rynui_graphics PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

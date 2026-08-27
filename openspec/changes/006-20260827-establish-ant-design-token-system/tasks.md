@@ -34,12 +34,12 @@
 
 ## 5. RoundedEffect 模型、Scene 与 CPU reference
 
-- [ ] 5.1 定义内部 `RoundedEffectInstance`、effect kind、logical rounded rect、offset、blur、spread、outline width/offset、color/opacity、translation 与 clip identity；通过 value/layout contract tests 覆盖 outer、inset、negative spread、空 shadow 和非法参数
-- [ ] 5.2 实现 rounded-rect signed-distance CPU reference，outer shadow 采用 spread 后 `sigma = blur / 2` coverage，inset 反向计算，outline 用两个 SDF boundary 相减；通过解析点、golden mask 和 property tests 验证无硬边、透明 gap 与 corner symmetry
-- [ ] 5.3 实现包含 offset、positive spread、`3*sigma` 和 antialias guard 的 tight effect bounds，保持 negative spread、translation、ancestor clip 与 surface content clip 语义；通过极值、DPI scale、部分/完全裁剪和无隐式 child clip tests 验证不裁切字母或阴影边缘
-- [ ] 5.4 将有序 `ShadowList` 展开为 retained effect child，保证 outer 位于所属 surface fill 前、inset 位于 surface 内且跨组件服从 scene paint order；通过 nested/sibling、clip、destroy/reuse 和 Button-like composition tests 验证顺序
-- [ ] 5.5 为 effect geometry/material 建立独立 store、dirty range、compact/cull 和诊断，不扩大普通 `QuadInstance`；通过 sparse update、capacity reuse、空 shadow、1k effect benchmark 与 idle tests 验证 retained 性能边界
-- [ ] 5.6 运行 effect math、bounds、scene order、clip、store/benchmark 与 `git diff --check`；以英文 `feat: add retained rounded effects` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 5.1 定义内部 `RoundedEffectInstance`、effect kind、logical rounded rect、offset、blur、spread、outline width/offset、color/opacity、translation 与 clip identity；通过 value/layout contract tests 覆盖 outer、inset、negative spread、空 shadow 和非法参数
+- [x] 5.2 实现 rounded-rect signed-distance CPU reference，outer shadow 采用 spread 后 `sigma = blur / 2` coverage，inset 反向计算，outline 用两个 SDF boundary 相减；通过解析点、golden mask 和 property tests 验证无硬边、透明 gap 与 corner symmetry
+- [x] 5.3 实现包含 offset、positive spread、`3*sigma` 和 antialias guard 的 tight effect bounds，保持 negative spread、translation、ancestor clip 与 surface content clip 语义；通过极值、DPI scale、部分/完全裁剪和无隐式 child clip tests 验证不裁切字母或阴影边缘
+- [x] 5.4 将有序 `ShadowList` 展开为 retained effect child，保证 outer 位于所属 surface fill 前、inset 位于 surface 内且跨组件服从 scene paint order；通过 nested/sibling、clip、destroy/reuse 和 Button-like composition tests 验证顺序
+- [x] 5.5 为 effect geometry/material 建立独立 store、dirty range、compact/cull 和诊断，不扩大普通 `QuadInstance`；通过 sparse update、capacity reuse、空 shadow、1k effect benchmark 与 idle tests 验证 retained 性能边界
+- [x] 5.6 运行 effect math、bounds、scene order、clip、store/benchmark 与 `git diff --check`；以英文 `feat: add retained rounded effects` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 6. 共享 HLSL 与 GPU effect pipeline
 
