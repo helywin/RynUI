@@ -50,7 +50,7 @@
 
 ## 7. Windows 验收清单
 
-- [ ] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、标准 C++20、BUNDLED 依赖和 D3D12/DXIL 锁定来源，保存 Windows 构建结果
+- [x] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、标准 C++20、BUNDLED 依赖和 D3D12/DXIL 锁定来源，保存 Windows 构建结果
 - [ ] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
 - [ ] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、DirectWrite 的 Segoe UI/Microsoft YaHei UI family/source 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [ ] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
