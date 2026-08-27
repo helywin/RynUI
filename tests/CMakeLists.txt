@@ -501,6 +501,16 @@ add_test(
 )
 
 add_test(
+    NAME rynui.deployed_shaders
+    COMMAND ${CMAKE_COMMAND}
+        "-DGENERATED_SHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        "-DMINIMAL_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_minimal>/shaders"
+        "-DTEXT_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_text_demo>/shaders"
+        "-DBUTTON_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_button_demo>/shaders"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_deployed_shaders.cmake"
+)
+
+add_test(
     NAME rynui.glyph_shader_contract
     COMMAND ${CMAKE_COMMAND}
         "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/glyph.hlsl"

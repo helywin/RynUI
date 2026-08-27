@@ -76,3 +76,31 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
     set(RYNUI_GENERATED_SHADER_DIRECTORY "${shader_output_directory}"
         CACHE INTERNAL "RynUI generated shader directory")
 endfunction()
+
+function(rynui_deploy_target_shaders target)
+    if(NOT TARGET "${target}")
+        message(FATAL_ERROR "Cannot deploy shaders for unknown target: ${target}")
+    endif()
+    if(NOT ARGN)
+        message(FATAL_ERROR "No shaders were requested for target: ${target}")
+    endif()
+
+    set(shader_sources)
+    foreach(shader_file IN LISTS ARGN)
+        list(APPEND shader_sources
+            "${RYNUI_GENERATED_SHADER_DIRECTORY}/${shader_file}")
+    endforeach()
+
+    set(deployment_target "${target}_shader_assets")
+    add_custom_target("${deployment_target}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:${target}>/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${shader_sources}
+            "$<TARGET_FILE_DIR:${target}>/shaders"
+        COMMENT "Deploying shaders for ${target}"
+        VERBATIM
+    )
+    add_dependencies("${deployment_target}" rynui_shaders)
+    add_dependencies("${target}" "${deployment_target}")
+endfunction()
