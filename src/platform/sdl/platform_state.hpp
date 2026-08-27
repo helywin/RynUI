@@ -2,6 +2,7 @@
 
 #include "input/platform_input.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -30,6 +31,45 @@ struct PlatformConfig {
     int width{960};
     int height{640};
     bool gpu_debug{false};
+    bool high_pixel_density{true};
+};
+
+struct PlatformWindowMetrics {
+    int coordinate_width{0};
+    int coordinate_height{0};
+    int pixel_width{0};
+    int pixel_height{0};
+    float pixel_density{1.0F};
+    float display_scale{1.0F};
+
+    [[nodiscard]] float logical_width() const noexcept {
+        return logical_extent(pixel_width, coordinate_width);
+    }
+
+    [[nodiscard]] float logical_height() const noexcept {
+        return logical_extent(pixel_height, coordinate_height);
+    }
+
+    [[nodiscard]] float coordinate_to_logical_scale() const noexcept {
+        return valid_scale(pixel_density) / valid_scale(display_scale);
+    }
+
+    friend bool operator==(const PlatformWindowMetrics&, const PlatformWindowMetrics&) =
+        default;
+
+private:
+    [[nodiscard]] static float valid_scale(float value) noexcept {
+        return std::isfinite(value) && value > 0.0F ? value : 1.0F;
+    }
+
+    [[nodiscard]] float logical_extent(int pixels, int coordinates) const noexcept {
+        if (pixels > 0) {
+            return static_cast<float>(pixels) / valid_scale(display_scale);
+        }
+        return coordinates > 0
+            ? static_cast<float>(coordinates) * coordinate_to_logical_scale()
+            : 0.0F;
+    }
 };
 
 struct PlatformEvents {
@@ -69,7 +109,8 @@ public:
     virtual PlatformWindowHandle create_window(
         const char* title,
         int width,
-        int height) = 0;
+        int height,
+        bool high_pixel_density) = 0;
     virtual void destroy_window(PlatformWindowHandle window) noexcept = 0;
     virtual PlatformGpuDeviceHandle create_gpu_device(bool debug_mode) = 0;
     virtual void destroy_gpu_device(PlatformGpuDeviceHandle device) noexcept = 0;
@@ -82,7 +123,7 @@ public:
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
     [[nodiscard]] virtual const char* gpu_driver(
         PlatformGpuDeviceHandle device) const noexcept = 0;
-    [[nodiscard]] virtual float display_scale(
+    [[nodiscard]] virtual PlatformWindowMetrics window_metrics(
         PlatformWindowHandle window) const noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
     virtual void poll_events(
@@ -116,6 +157,7 @@ public:
     [[nodiscard]] PlatformWindowHandle window() const noexcept;
     [[nodiscard]] PlatformGpuDeviceHandle gpu_device() const noexcept;
     [[nodiscard]] const char* gpu_driver() const noexcept;
+    [[nodiscard]] PlatformWindowMetrics window_metrics() const noexcept;
     [[nodiscard]] float display_scale() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] bool poll_quit_requested();

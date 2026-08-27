@@ -37,6 +37,7 @@
 - [x] 5.2 增加多 viewport headless frame tests，覆盖宽/窄 line break、双轴 gap、grow/shrink、align/order、pointer/keyboard 激活后布局更新、identity/dirty 计数和 idle；锁定 content closure 只执行一次且 scene topology 不因普通 Props 变化重建
 - [x] 5.3 增加平台独立 layout evidence schema，要求 preset、compiler、window system/display scale、viewport、line/layout/scene/submit 计数和宽/窄截图路径；Linux 与 Windows 使用独立文件且交叉平台 identity 必须被合同拒绝
 - [x] 5.4 运行 Flex/Space example source contract、headless frame integration、evidence schema、public dependency、未跟踪依赖与 `git diff --check`；以英文 `feat: add responsive layout demo` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 5.5 修复 SDL high-DPI platform boundary：启用 high-pixel-density window，分离 window/drawable/logical metrics，以 `drawable / display scale` 计算 viewport、以 `pixel density / display scale` 归一 pointer，并覆盖 resize/pixel-size/display-scale change；通过 platform lifecycle、SDL adapter、frame 与示例 smoke tests 后以英文 `fix: honor Windows display scaling` 提交并推送
 
 ## 6. Linux 验收清单
 
@@ -48,10 +49,10 @@
 
 ## 7. Windows 验收清单
 
-- [x] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、标准 C++20、BUNDLED 依赖和 D3D12/DXIL 锁定来源，保存 Windows 构建结果
-- [x] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
-- [x] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
-- [x] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
+- [ ] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、标准 C++20、BUNDLED 依赖和 D3D12/DXIL 锁定来源，保存 Windows 构建结果
+- [ ] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
+- [ ] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
+- [ ] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
 
 ## 8. Change 收口
 

@@ -6,10 +6,7 @@
 
 namespace ryn::detail {
 
-struct SdlWindowMetrics {
-    int width{0};
-    int height{0};
-};
+using SdlWindowMetrics = PlatformWindowMetrics;
 
 class SdlEventAdapter final {
 public:

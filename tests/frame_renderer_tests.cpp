@@ -16,7 +16,9 @@ class FakePlatformApi final : public PlatformApi {
 public:
     bool init_video() override { return true; }
     void quit() noexcept override {}
-    PlatformWindowHandle create_window(const char*, int, int) override { return &window_; }
+    PlatformWindowHandle create_window(const char*, int, int, bool) override {
+        return &window_;
+    }
     void destroy_window(PlatformWindowHandle) noexcept override {}
     PlatformGpuDeviceHandle create_gpu_device(bool) override { return &device_; }
     void destroy_gpu_device(PlatformGpuDeviceHandle) noexcept override {}
@@ -26,9 +28,9 @@ public:
     [[nodiscard]] const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override {
         return "fake-gpu";
     }
-    [[nodiscard]] float display_scale(
+    [[nodiscard]] PlatformWindowMetrics window_metrics(
         PlatformWindowHandle) const noexcept override {
-        return 1.0F;
+        return {960, 640, 960, 640, 1.0F, 1.0F};
     }
     void delay(std::uint32_t) noexcept override {}
 

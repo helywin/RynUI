@@ -217,13 +217,14 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
     try {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
         const auto executable = executable_directory(argv[0]);
-        ryn::runtime::Size viewport{960.0F, 720.0F};
+        constexpr ryn::runtime::Size requested_window{960.0F, 720.0F};
+        ryn::runtime::Size viewport = requested_window;
         constexpr std::uint32_t pixel_size = 14;
 
         ryn::detail::PlatformConfig platform_config;
         platform_config.title = "RynUI Public Flex and Space DSL";
-        platform_config.width = static_cast<int>(viewport.width);
-        platform_config.height = static_cast<int>(viewport.height);
+        platform_config.width = static_cast<int>(requested_window.width);
+        platform_config.height = static_cast<int>(requested_window.height);
 #if !defined(NDEBUG)
         platform_config.gpu_debug = true;
 #endif
@@ -233,6 +234,15 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             return 1;
         }
         auto& platform = *platform_result.state;
+        const auto initial_window_metrics = platform.window_metrics();
+        viewport = {
+            initial_window_metrics.logical_width(),
+            initial_window_metrics.logical_height(),
+        };
+        if (viewport.width <= 0.0F || viewport.height <= 0.0F) {
+            std::cerr << "platform_error=window metrics did not provide a logical viewport\n";
+            return 1;
+        }
 
         auto font_result = ryn::font::FontRuntime::create();
         if (!font_result) {
@@ -305,10 +315,16 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         const auto scene = application.scene_composer().diagnostics();
         const auto renderer_counters = renderer.counters();
         const auto loop_counters = loop.counters();
+        const auto window_metrics = platform.window_metrics();
         std::cout
             << "gpu_driver=" << platform.gpu_driver()
             << " shader_format=" << renderer.shader_format()
             << " display_scale=" << platform.display_scale()
+            << " pixel_density=" << window_metrics.pixel_density
+            << " window_size=" << window_metrics.coordinate_width << 'x'
+            << window_metrics.coordinate_height
+            << " pixel_size=" << window_metrics.pixel_width << 'x'
+            << window_metrics.pixel_height
             << " viewport=" << viewport.width << 'x' << viewport.height
             << " line_count=" << layout_diagnostics.line_count
             << " content_runs=" << telemetry.content_runs

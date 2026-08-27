@@ -125,15 +125,15 @@ struct ExampleCounters {
 int main(int argc, char** argv) {
     try {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
-        constexpr ryn::runtime::Size viewport{960.0F, 640.0F};
+        constexpr ryn::runtime::Size requested_window{960.0F, 640.0F};
         const auto current = ryn::version();
         std::cout << "RynUI " << current.major << '.' << current.minor << '.'
                   << current.patch << '\n';
 
         ryn::detail::PlatformConfig config;
         config.title = "RynUI Reactive Quad";
-        config.width = static_cast<int>(viewport.width);
-        config.height = static_cast<int>(viewport.height);
+        config.width = static_cast<int>(requested_window.width);
+        config.height = static_cast<int>(requested_window.height);
 #if !defined(NDEBUG)
         config.gpu_debug = true;
 #endif
@@ -145,6 +145,15 @@ int main(int argc, char** argv) {
             return 1;
         }
         auto& platform = *created.state;
+        const auto initial_window_metrics = platform.window_metrics();
+        const ryn::runtime::Size viewport{
+            initial_window_metrics.logical_width(),
+            initial_window_metrics.logical_height(),
+        };
+        if (viewport.width <= 0.0F || viewport.height <= 0.0F) {
+            std::cerr << "platform_error=window metrics did not provide a logical viewport\n";
+            return 1;
+        }
 
         ryn::Signal<ryn::runtime::Color> color{{0.12F, 0.48F, 0.95F, 1.0F}};
         ryn::Signal<float> opacity{0.95F};
@@ -269,9 +278,17 @@ int main(int argc, char** argv) {
         const auto& upload_counters = gpu_buffer.counters();
         const auto& renderer_counters = renderer.counters();
         const auto& loop_counters = frame_loop.counters();
+        const auto window_metrics = platform.window_metrics();
         std::cout
             << "gpu_driver=" << platform.gpu_driver()
             << " shader_format=" << renderer.shader_format()
+            << " display_scale=" << window_metrics.display_scale
+            << " pixel_density=" << window_metrics.pixel_density
+            << " window_size=" << window_metrics.coordinate_width << 'x'
+            << window_metrics.coordinate_height
+            << " pixel_size=" << window_metrics.pixel_width << 'x'
+            << window_metrics.pixel_height
+            << " viewport=" << viewport.width << 'x' << viewport.height
             << " component_runs=" << component.mount_runs()
             << " signal_writes=" << example_counters.signal_writes
             << " observer_executions=" << example_counters.observer_executions

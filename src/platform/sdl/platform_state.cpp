@@ -22,8 +22,13 @@ public:
     PlatformWindowHandle create_window(
         const char* title,
         int width,
-        int height) override {
-        return SDL_CreateWindow(title, width, height, SDL_WINDOW_RESIZABLE);
+        int height,
+        bool high_pixel_density) override {
+        SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+        if (high_pixel_density) {
+            flags = static_cast<SDL_WindowFlags>(flags | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+        }
+        return SDL_CreateWindow(title, width, height, flags);
     }
 
     void destroy_window(PlatformWindowHandle window) noexcept override {
@@ -65,9 +70,9 @@ public:
         return SDL_GetGPUDeviceDriver(static_cast<SDL_GPUDevice*>(device));
     }
 
-    [[nodiscard]] float display_scale(
+    [[nodiscard]] PlatformWindowMetrics window_metrics(
         PlatformWindowHandle window) const noexcept override {
-        return SDL_GetWindowDisplayScale(static_cast<SDL_Window*>(window));
+        return query_window_metrics(window);
     }
 
     void poll_events(
@@ -76,6 +81,7 @@ public:
         auto metrics = window_metrics(window);
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
+            refresh_window_metrics(window, event, metrics);
             SdlEventAdapter::merge(result, event, metrics);
         }
     }
@@ -91,24 +97,46 @@ public:
         auto metrics = window_metrics(window);
         SDL_Event event{};
         if (SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout_milliseconds))) {
+            refresh_window_metrics(window, event, metrics);
             SdlEventAdapter::merge(result, event, metrics);
             SDL_Event queued{};
             while (SDL_PollEvent(&queued)) {
+                refresh_window_metrics(window, queued, metrics);
                 SdlEventAdapter::merge(result, queued, metrics);
             }
         }
     }
 
 private:
-    static SdlWindowMetrics window_metrics(PlatformWindowHandle window) noexcept {
-        SdlWindowMetrics metrics;
+    static PlatformWindowMetrics query_window_metrics(
+        PlatformWindowHandle window) noexcept {
+        PlatformWindowMetrics metrics;
         if (window != nullptr) {
             static_cast<void>(SDL_GetWindowSize(
                 static_cast<SDL_Window*>(window),
-                &metrics.width,
-                &metrics.height));
+                &metrics.coordinate_width,
+                &metrics.coordinate_height));
+            static_cast<void>(SDL_GetWindowSizeInPixels(
+                static_cast<SDL_Window*>(window),
+                &metrics.pixel_width,
+                &metrics.pixel_height));
+            metrics.pixel_density = SDL_GetWindowPixelDensity(
+                static_cast<SDL_Window*>(window));
+            metrics.display_scale = SDL_GetWindowDisplayScale(
+                static_cast<SDL_Window*>(window));
         }
         return metrics;
+    }
+
+    static void refresh_window_metrics(
+        PlatformWindowHandle window,
+        const SDL_Event& event,
+        PlatformWindowMetrics& metrics) noexcept {
+        if (event.type == SDL_EVENT_WINDOW_RESIZED
+                || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
+                || event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
+            metrics = query_window_metrics(window);
+        }
     }
 };
 
@@ -169,7 +197,8 @@ PlatformCreateResult PlatformState::create(
     state->window_ = api.create_window(
         config.title.c_str(),
         config.width,
-        config.height);
+        config.height,
+        config.high_pixel_density);
     if (state->window_ == nullptr) {
         return failed_create(std::move(state), api, PlatformStage::window);
     }
@@ -200,7 +229,11 @@ const char* PlatformState::gpu_driver() const noexcept {
 }
 
 float PlatformState::display_scale() const noexcept {
-    return api_->display_scale(window_);
+    return window_metrics().display_scale;
+}
+
+PlatformWindowMetrics PlatformState::window_metrics() const noexcept {
+    return api_->window_metrics(window_);
 }
 
 bool PlatformState::is_owner_thread() const noexcept {

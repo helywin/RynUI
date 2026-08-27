@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -25,6 +26,10 @@ void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+bool near(float left, float right) noexcept {
+    return std::abs(left - right) < 0.001F;
 }
 
 SDL_Event touch_event(
@@ -187,6 +192,47 @@ void test_keyboard_focus_resize_and_cancel_order() {
             "resize did not update touch logical conversion");
 }
 
+void test_display_scale_maps_pixels_and_pointer_to_logical_coordinates() {
+    PlatformEvents result;
+    result.input.reserve(8);
+    SdlWindowMetrics metrics{960, 720, 960, 720, 1.0F, 1.5F};
+
+    SdlEventAdapter::merge(result, mouse_motion(7, 150.0F, 90.0F), metrics);
+    SdlEventAdapter::merge(
+        result, touch_event(SDL_EVENT_FINGER_DOWN, 4, 5, 0.5F, 0.25F), metrics);
+
+    SDL_Event pixel_size{};
+    pixel_size.type = SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
+    pixel_size.window.data1 = 1200;
+    pixel_size.window.data2 = 900;
+    SdlEventAdapter::merge(result, pixel_size, metrics);
+
+    require(result.input.size() == 3, "DPI mapping lost normalized input");
+    const auto& mouse = std::get<PointerInputEvent>(result.input.events()[0]);
+    const auto& touch = std::get<PointerInputEvent>(result.input.events()[1]);
+    const auto& resize = std::get<WindowInputEvent>(result.input.events()[2]);
+    require(near(mouse.x, 100.0F) && near(mouse.y, 60.0F),
+            "mouse coordinates were not converted from Window coordinates to logical UI");
+    require(near(touch.x, 320.0F) && near(touch.y, 120.0F),
+            "touch coordinates were not converted to logical UI");
+    require(resize.action == WindowInputAction::resized
+                && resize.width == 800
+                && resize.height == 600,
+            "drawable pixel resize was not divided by display scale");
+
+    PlatformEvents scale_result;
+    metrics.display_scale = 2.0F;
+    SDL_Event scale_changed{};
+    scale_changed.type = SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED;
+    SdlEventAdapter::merge(scale_result, scale_changed, metrics);
+    require(scale_result.input.size() == 1,
+            "display-scale change did not emit a logical viewport update");
+    const auto& scaled = std::get<WindowInputEvent>(
+        scale_result.input.events().front());
+    require(scaled.width == 600 && scaled.height == 450,
+            "display-scale change retained the stale logical viewport");
+}
+
 void test_quit_and_frame_summary_regression() {
     SdlWindowMetrics metrics{640, 480};
 
@@ -228,6 +274,7 @@ int main() {
         test_touch_sequence_uses_logical_coordinates_and_identity();
         test_compatibility_mouse_is_suppressed_without_hiding_real_mouse();
         test_keyboard_focus_resize_and_cancel_order();
+        test_display_scale_maps_pixels_and_pointer_to_logical_coordinates();
         test_quit_and_frame_summary_regression();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

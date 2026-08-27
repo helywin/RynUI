@@ -112,6 +112,7 @@ using ryn::detail::PlatformEvents;
 using ryn::detail::PlatformGpuDeviceHandle;
 using ryn::detail::PlatformState;
 using ryn::detail::PlatformWindowHandle;
+using ryn::detail::PlatformWindowMetrics;
 using ryn::input::Key;
 using ryn::input::KeyAction;
 using ryn::input::KeyModifier;
@@ -128,7 +129,7 @@ public:
     bool init_video() override { return true; }
     void quit() noexcept override {}
 
-    PlatformWindowHandle create_window(const char*, int, int) override {
+    PlatformWindowHandle create_window(const char*, int, int, bool) override {
         return &window_token_;
     }
 
@@ -149,8 +150,9 @@ public:
     [[nodiscard]] const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override {
         return "fake";
     }
-    [[nodiscard]] float display_scale(PlatformWindowHandle) const noexcept override {
-        return 1.0F;
+    [[nodiscard]] PlatformWindowMetrics window_metrics(
+        PlatformWindowHandle) const noexcept override {
+        return {960, 640, 960, 640, 1.0F, 1.0F};
     }
     void delay(std::uint32_t) noexcept override {}
 

@@ -90,6 +90,8 @@ gap/justify/align/order 变化不重建 component/scene topology。justify/align
 
 正式 build 继续使用 `CMakePresets.json` 与 Ninja Multi-Config：Linux 使用 `linux-gcc`/`linux-clang`，Windows 仅使用 `windows-msvc`。evidence 文件、截图和 checklist 分平台保存；本机覆盖只进入未提交的 `CMakeUserPresets.json`。
 
+SDL window 使用 `SDL_WINDOW_HIGH_PIXEL_DENSITY`。平台边界同时保存 window coordinate size、drawable pixel size、pixel density 与 display scale；RynUI logical viewport 计算为 `drawable pixels / display scale`，SDL mouse/touch coordinate 计算为 `window coordinate * pixel density / display scale`。这样 LayoutEngine、Theme token 与 `ryn::dp` 继续使用不随显示器改变的 logical value，GPU clip-space 归一化则自然把 logical geometry 映射到实际 swapchain。`SDL_EVENT_WINDOW_RESIZED`、`SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` 与 `SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED` 都重新查询 metrics 并发布 logical resize，避免窗口跨输出后保留旧比例。
+
 ## Risks / Trade-offs
 
 - **[flex freeze/redistribute 的浮点误差导致边界抖动]** → 使用稳定排序、有限迭代、epsilon 和确定余数接收者，并用 fractional constraints 重复运行测试锁定结果。
@@ -98,6 +100,7 @@ gap/justify/align/order 变化不重建 component/scene topology。justify/align
 - **[order 与 keyboard focus 顺序不同令用户困惑]** → 明确 order 只控制 layout；示例避免把交互流程依赖于视觉重排，未来若需要 visual-order navigation 由 Accessibility/focus policy change 决定。
 - **[Space 不建 wrapper 限制 separator/Compact]** → 将两者明确排除；未来 change 可以引入受控 item layer，不伪装首批已支持。
 - **[Windows 与 Linux 字体度量或像素舍入不同]** → 自动测试锁定 logical bounds，真实窗口证据各自保存；任何平台结果不外推另一平台。
+- **[字体 atlas 在 fractional scale 下被 GPU 采样放大]** → 本阶段先保证 UI 物理尺寸、布局与命中一致；独立 typography/raster-density change 再定义多 density glyph cache 与跨输出重栅格化，不在 Flex/Space change 内改写字体 identity。
 
 ## Migration Plan
 

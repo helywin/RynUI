@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <cmath>
 #include <optional>
 #include <utility>
 
@@ -101,6 +103,28 @@ bool is_pen_mouse(const SDL_Event& event) noexcept {
     return false;
 }
 
+float to_logical_coordinate(float value, const SdlWindowMetrics& metrics) noexcept {
+    return value * metrics.coordinate_to_logical_scale();
+}
+
+int rounded_logical_extent(float value) noexcept {
+    return std::max(1, static_cast<int>(std::lround(value)));
+}
+
+void append_logical_resize(
+    PlatformEvents& result,
+    const SdlWindowMetrics& metrics) {
+    const float width = metrics.logical_width();
+    const float height = metrics.logical_height();
+    if (width > 0.0F && height > 0.0F) {
+        append_if_valid(result, WindowInputEvent{
+            WindowInputAction::resized,
+            rounded_logical_extent(width),
+            rounded_logical_extent(height),
+        });
+    }
+}
+
 } // namespace
 
 void SdlEventAdapter::merge(
@@ -129,8 +153,8 @@ void SdlEventAdapter::merge(
             PointerIdentity::mouse(),
             PointerAction::move,
             PointerButton::none,
-            event.motion.x,
-            event.motion.y,
+            to_logical_coordinate(event.motion.x, metrics),
+            to_logical_coordinate(event.motion.y, metrics),
         });
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -143,8 +167,8 @@ void SdlEventAdapter::merge(
                 PointerIdentity::mouse(),
                 action,
                 PointerButton::primary,
-                event.button.x,
-                event.button.y,
+                to_logical_coordinate(event.button.x, metrics),
+                to_logical_coordinate(event.button.y, metrics),
             });
         }
         return;
@@ -153,13 +177,15 @@ void SdlEventAdapter::merge(
     case SDL_EVENT_FINGER_MOTION:
     case SDL_EVENT_FINGER_CANCELED: {
         const auto action = map_touch_action(event.type);
-        if (action.has_value() && metrics.width > 0 && metrics.height > 0) {
+        if (action.has_value()
+                && metrics.logical_width() > 0.0F
+                && metrics.logical_height() > 0.0F) {
             append_if_valid(result, PointerInputEvent{
                 PointerIdentity::touch(event.tfinger.touchID, event.tfinger.fingerID),
                 *action,
                 button_for(*action),
-                event.tfinger.x * static_cast<float>(metrics.width),
-                event.tfinger.y * static_cast<float>(metrics.height),
+                event.tfinger.x * metrics.logical_width(),
+                event.tfinger.y * metrics.logical_height(),
             });
         }
         return;
@@ -185,14 +211,20 @@ void SdlEventAdapter::merge(
         return;
     case SDL_EVENT_WINDOW_RESIZED:
         if (event.window.data1 > 0 && event.window.data2 > 0) {
-            metrics.width = event.window.data1;
-            metrics.height = event.window.data2;
-            append_if_valid(result, WindowInputEvent{
-                WindowInputAction::resized,
-                metrics.width,
-                metrics.height,
-            });
+            metrics.coordinate_width = event.window.data1;
+            metrics.coordinate_height = event.window.data2;
+            append_logical_resize(result, metrics);
         }
+        return;
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        if (event.window.data1 > 0 && event.window.data2 > 0) {
+            metrics.pixel_width = event.window.data1;
+            metrics.pixel_height = event.window.data2;
+            append_logical_resize(result, metrics);
+        }
+        return;
+    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        append_logical_resize(result, metrics);
         return;
     default:
         return;

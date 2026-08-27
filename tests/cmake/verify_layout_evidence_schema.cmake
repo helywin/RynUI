@@ -28,8 +28,14 @@ set(required_keys
     dependency_mode
     window_system
     display_scale
+    pixel_density
+    window_size_wide
+    window_size_narrow
+    pixel_size_wide
+    pixel_size_narrow
     viewport_wide
     viewport_narrow
+    dpi_scale_applied
     gpu_driver
     shader_format
     exit_code

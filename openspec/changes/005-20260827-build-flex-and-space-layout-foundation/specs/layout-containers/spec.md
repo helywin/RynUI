@@ -105,6 +105,17 @@ Flex/Space Props 和 flex child `LayoutStyle` 的普通响应式更新 SHALL 在
 - **WHEN** Flex/Space、父 Scope 或 Host 被销毁后源 Signal 再次更新
 - **THEN** 所有相关订阅和 child 资源已释放，更新不访问 stale identity 且不请求新帧
 
+### Requirement: 平台边界保持 DPI 下的逻辑 UI 尺寸
+SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。
+
+#### Scenario: Windows 150% 缩放保持设计尺寸
+- **WHEN** Windows display scale 为 1.5、window coordinate 与 drawable pixel size 都是 960×720
+- **THEN** RynUI 使用 640×480 logical viewport 渲染，14 logical pixel 字体与 32 logical pixel Button 按系统期望显示为正常物理尺寸，Pointer 命中与视觉 bounds 一致
+
+#### Scenario: Drawable 或 display scale 变化刷新 viewport
+- **WHEN** SDL 报告 window pixel size 或 display scale 变化
+- **THEN** 平台边界重新查询窗口 metrics，发出新的 logical resize，目标布局重新计算但 Theme token 和公开 `LogicalLength` 数值不被改写
+
 ### Requirement: 平台验收证据相互独立
 系统 MUST 为 Linux 与 Windows 保存独立 Flex/Space 构建、CTest、真实窗口和截图清单；Linux 结果不得标记 Windows 项通过，Windows 结果也不得回退或替代 Linux 项。
 

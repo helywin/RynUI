@@ -14,6 +14,7 @@ using ryn::detail::PlatformGpuDeviceHandle;
 using ryn::detail::PlatformStage;
 using ryn::detail::PlatformState;
 using ryn::detail::PlatformWindowHandle;
+using ryn::detail::PlatformWindowMetrics;
 
 enum class FailurePoint {
     none,
@@ -36,8 +37,9 @@ public:
         calls.emplace_back("quit");
     }
 
-    PlatformWindowHandle create_window(const char*, int, int) override {
+    PlatformWindowHandle create_window(const char*, int, int, bool high_pixel_density) override {
         calls.emplace_back("create_window");
+        high_pixel_density_requested = high_pixel_density;
         return failure_ == FailurePoint::window ? nullptr : &window_token_;
     }
 
@@ -71,14 +73,15 @@ public:
         return "fake-gpu";
     }
 
-    [[nodiscard]] float display_scale(
+    [[nodiscard]] PlatformWindowMetrics window_metrics(
         PlatformWindowHandle) const noexcept override {
-        return 1.25F;
+        return {960, 720, 1200, 900, 1.25F, 1.25F};
     }
 
     void delay(std::uint32_t) noexcept override {}
 
     std::vector<std::string> calls;
+    bool high_pixel_density_requested{false};
 
 private:
     FailurePoint failure_;
@@ -132,6 +135,10 @@ void test_success_cleanup() {
         require(result.state->gpu_device() != nullptr, "GPU handle is missing");
         require(std::string(result.state->gpu_driver()) == "fake-gpu", "GPU driver differs");
         require(result.state->display_scale() == 1.25F, "display scale differs");
+        require(result.state->window_metrics().logical_width() == 960.0F,
+                "logical viewport width differs");
+        require(api.high_pixel_density_requested,
+                "platform did not request a high-pixel-density window");
         require(result.state->is_owner_thread(), "lifecycle lost its owner thread");
         require_calls(
             api.calls,
