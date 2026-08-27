@@ -58,7 +58,10 @@ int main(int argc, char** argv) {
                             .justify(justify)
                             .align(align)
                             .gap(gap)
-                            .layout(ryn::LayoutStyle{}.width(ryn::dp(880.0F))),
+                            .layout(
+                                ryn::LayoutStyle{}
+                                    .width(ryn::dp(880.0F))
+                                    .margin_right(ryn::dp(24.0F))),
                         [&] {
                             ryn::Button(
                                 ryn::ButtonProps{}

@@ -22,6 +22,7 @@ foreach(required IN ITEMS
         ".flex_grow(grow)"
         ".flex_shrink(1.0F)"
         ".order(order)"
+        ".margin_right(ryn::dp(24.0F))"
         ".onClick(toggle_layout)"
         "Latin + 中文"
         "content_runs"

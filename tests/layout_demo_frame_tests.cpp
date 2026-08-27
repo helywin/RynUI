@@ -227,7 +227,10 @@ void test_responsive_layout_demo_frame_contract() {
                         .justify(justify)
                         .align(align)
                         .gap(gap)
-                        .layout(ryn::LayoutStyle{}.width(ryn::dp(672.0F))),
+                        .layout(
+                            ryn::LayoutStyle{}
+                                .width(ryn::dp(672.0F))
+                                .margin_right(ryn::dp(24.0F))),
                     [&] {
                         ryn::Button(
                             ryn::ButtonProps{}
@@ -315,6 +318,9 @@ void test_responsive_layout_demo_frame_contract() {
     }
     require(near(lower->y - (upper->y + upper->height), 14.0F),
             "narrow Flex did not apply the cross-axis custom gap");
+    require(narrow_first.x + narrow_first.width <= 236.25F
+                && narrow_second.x + narrow_second.width <= 236.25F,
+            "narrow Flex content exceeded the viewport right inset");
     require(fixture.layout.flex_layout_diagnostics(components.root(space)).line_count >= 1,
             "nested Space did not participate in responsive measurement");
 
