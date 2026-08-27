@@ -35,9 +35,12 @@ foreach(required IN ITEMS
         "content、color、width constraint 与 resize"
         "14px"
         "Ant Design 6.5"
-        "clang++"
-        "not found in the PATH"
-        "任务 7.2 保持未完成")
+        "linux-clang-debug"
+        "Clang 22.1.8"
+        "/usr/bin/clang++"
+        "-std=c++20"
+        "CTest 43/43 通过"
+        "任务 7.2 已完成")
     string(FIND "${report}" "${required}" found)
     if(found EQUAL -1)
         message(FATAL_ERROR "Linux text evidence is missing token: ${required}")

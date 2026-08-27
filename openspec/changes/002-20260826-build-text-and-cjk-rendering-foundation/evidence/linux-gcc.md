@@ -42,22 +42,31 @@ gpu_driver=vulkan shader_format=SPIR-V font_rasterizations=30 font_cache_hits=0 
 - 人工核对：Latin 与中文 glyph 均可见，baseline 连续；`中文` 等字符来自第二字体的 fallback run；12–16px 验收范围内没有 atlas seam、错页采样或 replacement glyph。
 - 窗口运行期间依次触发 content、color、width constraint 与 resize 更新；`--smoke` 运行和窗口验收运行均以 `exit_code=0` 正常退出。
 
-## Clang 阻塞
+## Clang Debug 验收
 
-`linux-clang` preset 已实际执行，但当前 WSL 环境没有安装 `clang++`，所以任务 7.2 保持未完成，不声称 Clang 通过。可复现命令与关键错误如下：
+2026-08-27 在 EndeavourOS Linux 主机使用以下命令完成独立 Clang 验收：
 
 ```text
 cmake --fresh --preset linux-clang
-The CMAKE_CXX_COMPILER: clang++ is not a full path and was not found in the PATH.
+cmake --build --preset linux-clang-debug
+ctest --preset linux-clang-debug
 ```
 
-安装 Clang 并确保 `clang++` 可由 PATH 解析后，重新运行 `cmake --fresh --preset linux-clang`、`cmake --build --preset linux-clang-debug` 与 `ctest --preset linux-clang-debug` 即可解除阻塞。
+- Compiler：Clang 22.1.8，`CMAKE_CXX_COMPILER=/usr/bin/clang++`
+- Configure/Build/Test preset：`linux-clang`、`linux-clang-debug`
+- Generator：`Ninja Multi-Config`
+- Dependency mode：`RYNUI_DEPENDENCY_MODE=BUNDLED`
+- RynUI 自有 C++ target 关闭 `CXX_EXTENSIONS`，实际使用 `-std=c++20 -Wall -Wextra -Wpedantic`，不是 `-std=gnu++20`
+- Debug build 完成 String、Font、Text、Glyph、renderer、测试与示例目标的编译链接；CTest 43/43 通过，其中包括 `rynui.public_api_smoke`、`rynui.string`、`rynui.font_runtime`、`rynui.text_engine`、`rynui.glyph_atlas`、`rynui.glyph_scene`、`rynui.frame_renderer`、`rynui.glyph_gpu_resources` 与 `rynui.text_render_integration`
+
+因此任务 7.2 已完成：公共 String、Font、Text、Glyph 与 renderer 代码已在关闭 GNU C++ 扩展的 Clang/C++20 模式下通过构建和完整测试。
 
 ## 最终验收摘要
 
 - Windows MSVC Debug/Release build 与 CTest：分别 43/43 通过。
 - Linux GCC Debug/Release build 与 CTest：分别 43/43 通过。
+- Linux Clang Debug build 与 CTest：43/43 通过，RynUI 自有 target 使用标准 `-std=c++20`。
 - 隔离的 `SYSTEM` positive/negative contract suite 与 public-header dependency leak check：13/13 通过。
 - Windows D3D12/DXIL 与 Linux Vulkan/SPIR-V 真实窗口：均正常退出并有截图、driver、shader format 与诊断计数证据。
 - `openspec doctor --json`：healthy；`openspec validate --all --strict --no-interactive`：2/2 通过；`git diff --check`：通过。
-- 唯一未完成项是任务 7.2 的 Linux Clang 验收，原因是当前 WSL 缺少 `clang++`；其余 change 验收项均通过。
+- 任务 7.1–7.6 均已完成；Clang 验收不替代 Windows D3D12 或 Linux Vulkan 真实窗口证据。
