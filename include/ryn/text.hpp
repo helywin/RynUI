@@ -5,6 +5,7 @@
 #include <ryn/string.hpp>
 
 #include <cstddef>
+#include <optional>
 #include <utility>
 
 namespace ryn {
@@ -46,7 +47,7 @@ private:
     friend struct detail::TextPropsAccess;
 
     Prop<String> content_{String{}};
-    Prop<TextTone> tone_{TextTone::Primary};
+    std::optional<Prop<TextTone>> tone_;
     LayoutStyle layout_;
 };
 

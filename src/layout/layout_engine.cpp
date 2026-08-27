@@ -29,6 +29,26 @@ float subtract_extent(float value, float extent) noexcept {
     return std::isfinite(value) ? std::max(0.0F, value - extent) : value;
 }
 
+float non_negative_finite(float value, const char* message) {
+    if (!std::isfinite(value) || value < 0.0F) {
+        throw std::invalid_argument(message);
+    }
+    return value;
+}
+
+std::size_t horizontal_item_count(
+    const runtime::Node& node,
+    const HorizontalContentLayout& layout) noexcept {
+    return node.children.size() + (layout.loading ? 1U : 0U);
+}
+
+float horizontal_gap_extent(
+    const runtime::Node& node,
+    const HorizontalContentLayout& layout) noexcept {
+    const auto count = horizontal_item_count(node, layout);
+    return count > 1 ? static_cast<float>(count - 1) * layout.gap : 0.0F;
+}
+
 void apply_axis_style(
     float& minimum,
     float& maximum,
@@ -168,13 +188,32 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
                     || std::isnan(model.preferred_size.height)) {
                 throw std::invalid_argument("Leaf size must be non-negative");
             }
-        } else {
+        } else if constexpr (
+            std::is_same_v<Model, BoxLayout>
+            || std::is_same_v<Model, FlexLayout>) {
             validate_padding(model.padding);
             if constexpr (std::is_same_v<Model, FlexLayout>) {
                 if (model.gap < 0.0F || std::isnan(model.gap)) {
                     throw std::invalid_argument("Flex gap must be non-negative");
                 }
             }
+        }
+        if constexpr (std::is_same_v<Model, HorizontalContentLayout>) {
+            static_cast<void>(non_negative_finite(
+                model.control_height,
+                "Horizontal content control height must be finite and non-negative"));
+            static_cast<void>(non_negative_finite(
+                model.padding_inline,
+                "Horizontal content padding must be finite and non-negative"));
+            static_cast<void>(non_negative_finite(
+                model.border_width,
+                "Horizontal content border must be finite and non-negative"));
+            static_cast<void>(non_negative_finite(
+                model.gap,
+                "Horizontal content gap must be finite and non-negative"));
+            static_cast<void>(non_negative_finite(
+                model.loading_indicator_size,
+                "Horizontal loading indicator must be finite and non-negative"));
         }
     }, layout);
 
@@ -185,7 +224,11 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
     if (layouts_.size() <= id.index) {
         layouts_.resize(static_cast<std::size_t>(id.index) + 1);
     }
-    layouts_[id.index] = LayoutSlot{id.generation, std::move(layout)};
+    layouts_[id.index] = LayoutSlot{
+        id.generation,
+        std::move(layout),
+        std::nullopt,
+    };
 }
 
 void LayoutEngine::set_intrinsic_measure(
@@ -260,6 +303,23 @@ runtime::Size LayoutEngine::layout(
 
 std::uint64_t LayoutEngine::generation() const noexcept {
     return generation_;
+}
+
+const HorizontalContentGeometry& LayoutEngine::horizontal_content_geometry(
+    runtime::NodeId id) const {
+    static_cast<void>(nodes_->require(id));
+    if (id.index >= layouts_.size()) {
+        throw std::logic_error("Node has no horizontal content layout");
+    }
+    const auto& slot = layouts_[id.index];
+    if (slot.generation != id.generation
+            || !std::holds_alternative<HorizontalContentLayout>(slot.model)
+            || !slot.horizontal_content_geometry.has_value()
+            || nodes_->require(id).place_generation != generation_) {
+        throw std::logic_error(
+            "Horizontal content geometry requires current placement");
+    }
+    return *slot.horizontal_content_geometry;
 }
 
 const LayoutModel& LayoutEngine::require_layout(runtime::NodeId id) const {
@@ -355,7 +415,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 content_constraint.max_height,
                 natural.height);
             measured = content_constraint.constrain(natural);
-        } else {
+        } else if constexpr (std::is_same_v<Model, FlexLayout>) {
             const auto child_constraints = content_constraints(
                 content_constraint,
                 current.padding);
@@ -397,6 +457,41 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 content_constraint.max_height,
                 natural.height);
             measured = content_constraint.constrain(natural);
+        } else {
+            const float frame_inline = 2.0F
+                * (current.padding_inline + current.border_width);
+            const float indicator_inline = current.loading
+                ? current.loading_indicator_size
+                : 0.0F;
+            const float gaps = horizontal_gap_extent(node, current);
+            float remaining_width = subtract_extent(
+                content_constraint.max_width,
+                frame_inline + indicator_inline + gaps);
+            const float child_max_height = std::max(
+                0.0F,
+                current.control_height - 2.0F * current.border_width);
+            float children_width = 0.0F;
+            float children_height = 0.0F;
+            for (const auto child : node.children) {
+                const auto child_size = measure_node(child, {
+                    0.0F,
+                    remaining_width,
+                    0.0F,
+                    child_max_height,
+                });
+                children_width += child_size.width;
+                children_height = std::max(children_height, child_size.height);
+                remaining_width = subtract_extent(
+                    remaining_width,
+                    child_size.width);
+            }
+            const runtime::Size natural{
+                frame_inline + indicator_inline + gaps + children_width,
+                std::max(
+                    current.control_height,
+                    children_height + 2.0F * current.border_width),
+            };
+            measured = content_constraint.constrain(natural);
         }
     }, model);
 
@@ -434,7 +529,7 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds) {
                     std::min(child_size.height, content.height),
                 });
             }
-        } else {
+        } else if constexpr (std::is_same_v<Model, FlexLayout>) {
             const auto content = content_bounds(node.bounds, current.padding);
             float cursor = current.direction == FlexDirection::horizontal
                 ? content.x
@@ -470,6 +565,65 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds) {
                     cursor = std::min(end, cursor + current.gap);
                 }
             }
+        } else {
+            const runtime::Rect content{
+                node.bounds.x + current.padding_inline + current.border_width,
+                node.bounds.y + current.border_width,
+                std::max(
+                    0.0F,
+                    node.bounds.width
+                        - 2.0F * (current.padding_inline + current.border_width)),
+                std::max(
+                    0.0F,
+                    node.bounds.height - 2.0F * current.border_width),
+            };
+            float occupied = current.loading
+                ? current.loading_indicator_size
+                : 0.0F;
+            occupied += horizontal_gap_extent(node, current);
+            for (const auto child : node.children) {
+                occupied += nodes_->require(child).layout_size.width;
+            }
+            float cursor = content.x
+                + std::max(0.0F, (content.width - occupied) * 0.5F);
+
+            HorizontalContentGeometry geometry{content, std::nullopt};
+            if (current.loading) {
+                const float size = std::min(
+                    current.loading_indicator_size,
+                    std::min(content.width, content.height));
+                geometry.loading_indicator_bounds = runtime::Rect{
+                    cursor,
+                    content.y + std::max(0.0F, (content.height - size) * 0.5F),
+                    size,
+                    size,
+                };
+                cursor += size;
+                if (!node.children.empty()) {
+                    cursor = std::min(content.x + content.width, cursor + current.gap);
+                }
+            }
+
+            const float end = content.x + content.width;
+            for (std::size_t index = 0; index < node.children.size(); ++index) {
+                const auto child = node.children[index];
+                const auto child_size = nodes_->require(child).layout_size;
+                const float width = std::min(
+                    child_size.width,
+                    std::max(0.0F, end - cursor));
+                const float height = std::min(child_size.height, content.height);
+                place_node(child, {
+                    cursor,
+                    content.y + std::max(0.0F, (content.height - height) * 0.5F),
+                    width,
+                    height,
+                });
+                cursor += width;
+                if (index + 1 < node.children.size()) {
+                    cursor = std::min(end, cursor + current.gap);
+                }
+            }
+            layouts_[id.index].horizontal_content_geometry = geometry;
         }
     }, require_layout(id));
 }

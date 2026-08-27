@@ -39,11 +39,11 @@
 
 ## 6. Button token、content context 与内部布局
 
-- [ ] 6.1 扩展 immutable Default Theme snapshot，集中锁定 Ant Design 6.5.0 Button 的 24/32/40 control height、padding、radius、Default/Primary default/hover/active、disabled、focus-visible 与 loading token；通过 source-reference/token contract test 验证字段和值
-- [ ] 6.2 为 Component build stack 增加内部 semantic foreground context，并使未显式 tone 的 Text 订阅 context、显式 tone 保持原语义；通过 Button 外默认值、嵌套 context、reactive foreground、异常恢复和 parent/child dispose tests 证明只更新 Glyph Material
-- [ ] 6.3 扩展内部 horizontal content layout 的 cross-axis/main-axis center 与 token padding/control height，保持 public LayoutStyle 只作用 root external style；通过多 child、空 content、Small/Middle/Large、fixed/min/max width、margin、CJK intrinsic 和 constrained content tests 验证测量放置
-- [ ] 6.4 为静态 loading indicator 接入局部 content Measure/Layout 和 geometry，证明出现/消失不重挂 content、不重塑未变化 Text、不改变兄弟 identity，并在无 animation task 时恢复 idle
-- [ ] 6.5 运行 Theme、Text context、Layout、Glyph material 与 component lifecycle 自动测试和 `git diff --check`；以英文 `feat: add button visual foundations` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 6.1 扩展 immutable Default Theme snapshot，集中锁定 Ant Design 6.5.0 Button 的 24/32/40 control height、padding、radius、Default/Primary default/hover/active、disabled、focus-visible 与 loading token；通过 source-reference/token contract test 验证字段和值
+- [x] 6.2 为 Component build stack 增加内部 semantic foreground context，并使未显式 tone 的 Text 订阅 context、显式 tone 保持原语义；通过 Button 外默认值、嵌套 context、reactive foreground、异常恢复和 parent/child dispose tests 证明只更新 Glyph Material
+- [x] 6.3 扩展内部 horizontal content layout 的 cross-axis/main-axis center 与 token padding/control height，保持 public LayoutStyle 只作用 root external style；通过多 child、空 content、Small/Middle/Large、fixed/min/max width、margin、CJK intrinsic 和 constrained content tests 验证测量放置
+- [x] 6.4 为静态 loading indicator 接入局部 content Measure/Layout 和 geometry，证明出现/消失不重挂 content、不重塑未变化 Text、不改变兄弟 identity，并在无 animation task 时恢复 idle
+- [x] 6.5 运行 Theme、Text context、Layout、Glyph material 与 component lifecycle 自动测试和 `git diff --check`；以英文 `feat: add button visual foundations` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 7. 公开 ButtonProps 与 ryn::Button
 

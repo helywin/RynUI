@@ -17,7 +17,7 @@ struct TextPropsAccess final {
         return props.content_;
     }
 
-    [[nodiscard]] static const Prop<TextTone>& tone(
+    [[nodiscard]] static const std::optional<Prop<TextTone>>& tone(
         const TextProps& props) noexcept {
         return props.tone_;
     }
@@ -207,7 +207,13 @@ void mount_text_component(const TextProps& props) {
     host.layout_->set_layout(node, layout::LeafLayout{});
 
     const auto initial_content = read_prop(TextPropsAccess::content(props));
-    const auto initial_tone = read_prop(TextPropsAccess::tone(props));
+    const auto& explicit_tone = TextPropsAccess::tone(props);
+    const auto& semantic_foreground = build.semantic_foreground();
+    const auto initial_color = explicit_tone.has_value()
+        ? tone_color(*host.theme_, read_prop(*explicit_tone))
+        : semantic_foreground.has_value()
+            ? read_prop(*semantic_foreground)
+            : host.theme_->text.primary;
     const auto scene = host.text_scene_->create(
         node,
         initial_content,
@@ -229,7 +235,7 @@ void mount_text_component(const TextProps& props) {
 
     static_cast<void>(host.text_scene_->set_color(
         scene,
-        tone_color(*host.theme_, initial_tone)));
+        initial_color));
     host.layout_->set_intrinsic_measure(
         node,
         host.text_scene_->revisions(scene).content,
@@ -264,19 +270,28 @@ void mount_text_component(const TextProps& props) {
                     | runtime::DirtyFlags::Layout
                     | runtime::DirtyFlags::Geometry);
         }));
-    static_cast<void>(connect_prop(
-        scope,
-        TextPropsAccess::tone(props),
-        [
-            text_scene = host.text_scene_,
-            dirty = host.dirty_,
-            theme = host.theme_,
-            scene,
-            node](TextTone tone) {
-            if (text_scene->set_color(scene, tone_color(*theme, tone))) {
-                dirty->invalidate(node, runtime::DirtyFlags::Material);
-            }
-        }));
+    const auto apply_color = [
+        text_scene = host.text_scene_,
+        dirty = host.dirty_,
+        scene,
+        node](std::array<float, 4> color) {
+        if (text_scene->set_color(scene, color)) {
+            dirty->invalidate(node, runtime::DirtyFlags::Material);
+        }
+    };
+    if (explicit_tone.has_value()) {
+        static_cast<void>(connect_prop(
+            scope,
+            *explicit_tone,
+            [apply_color, theme = host.theme_](TextTone tone) {
+                apply_color(tone_color(*theme, tone));
+            }));
+    } else if (semantic_foreground.has_value()) {
+        static_cast<void>(connect_prop(
+            scope,
+            *semantic_foreground,
+            apply_color));
+    }
     runtime::connect_layout_style(
         scope,
         TextPropsAccess::layout(props),

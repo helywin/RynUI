@@ -90,7 +90,7 @@ void ComponentHost::mount(const Content& content) {
 
     mounting_ = true;
     ++mount_runs_;
-    ComponentBuildContext context(*this, std::nullopt);
+    ComponentBuildContext context(*this, std::nullopt, std::nullopt);
     try {
         ActiveBuildContextGuard guard(context);
         detail::SlotContentAccess::function(content)();
@@ -340,14 +340,18 @@ void ComponentHost::add_resource_cleanup(
 
 void ComponentHost::mount_slot(
     ComponentId parent,
-    const std::function<void()>& content) {
+    const std::function<void()>& content,
+    std::optional<Prop<SemanticForeground>> semantic_foreground) {
     ensure_owner_thread();
     static_cast<void>(require_record(parent));
     if (!mounting_ || active_build_context == nullptr) {
         throw std::logic_error("Typed slots can only run during Host mount");
     }
 
-    ComponentBuildContext context(*this, parent);
+    ComponentBuildContext context(
+        *this,
+        parent,
+        std::move(semantic_foreground));
     ActiveBuildContextGuard guard(context);
     content();
 }
@@ -574,8 +578,11 @@ void ComponentHost::advance_generation(FragmentSlot& slot) noexcept {
 
 ComponentBuildContext::ComponentBuildContext(
     ComponentHost& host,
-    std::optional<ComponentId> parent) noexcept
-    : host_(&host), parent_(parent) {}
+    std::optional<ComponentId> parent,
+    std::optional<Prop<SemanticForeground>> semantic_foreground) noexcept
+    : host_(&host),
+      parent_(parent),
+      semantic_foreground_(std::move(semantic_foreground)) {}
 
 void ComponentBuildContext::on_resource_cleanup(
     ComponentId id,
@@ -595,6 +602,11 @@ Scope& ComponentBuildContext::scope(ComponentId id) {
 
 NodeId ComponentBuildContext::root(ComponentId id) const {
     return host_->root(id);
+}
+
+const std::optional<Prop<SemanticForeground>>&
+ComponentBuildContext::semantic_foreground() const noexcept {
+    return semantic_foreground_;
 }
 
 ComponentBuildContext& require_component_build_context() {

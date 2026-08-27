@@ -26,6 +26,15 @@ bool near(float left, float right) {
     return std::abs(left - right) < 0.0001F;
 }
 
+bool clean(const ryn::runtime::DirtyQueues& dirty) {
+    return dirty.layout_roots().empty()
+        && dirty.placement_roots().empty()
+        && dirty.material_nodes().empty()
+        && dirty.transform_nodes().empty()
+        && dirty.geometry_nodes().empty()
+        && dirty.hit_test_nodes().empty();
+}
+
 struct Fixture final {
     Fixture()
         : layout(nodes),
@@ -71,6 +80,74 @@ struct Fixture final {
     std::vector<ryn::font::FontIdentity> chain;
     std::unique_ptr<ryn::detail::TextComponentHost> host;
 };
+
+struct ForegroundProviderState final {};
+struct HorizontalProviderState final {};
+struct ForegroundContentSlot final {};
+using ForegroundContent = ryn::SlotContent<ForegroundContentSlot>;
+
+ryn::runtime::ComponentId mount_foreground_provider(
+    ryn::Prop<ryn::runtime::SemanticForeground> foreground,
+    const ForegroundContent& content) {
+    auto& build = ryn::runtime::require_component_build_context();
+    const auto component = build.mount_component<ForegroundProviderState>();
+    build.mount_slot_with_semantic_foreground(
+        component,
+        content,
+        std::move(foreground));
+    return component;
+}
+
+ryn::runtime::SemanticForeground mounted_color(
+    const Fixture& fixture,
+    std::size_t index) {
+    const auto scene = fixture.host->mounted_texts()[index].scene;
+    const auto range = fixture.scene.primitive(scene).instances;
+    require(range.count != 0, "Text context test produced no glyph instances");
+    return fixture.scene.glyph_scene().instances().at(range.first).color;
+}
+
+ryn::runtime::ComponentId mount_horizontal_provider(
+    ryn::layout::LayoutEngine& layout,
+    ryn::layout::HorizontalContentLayout model,
+    const ForegroundContent& content) {
+    auto& build = ryn::runtime::require_component_build_context();
+    const auto component = build.mount_component<HorizontalProviderState>();
+    layout.set_layout(build.root(component), model);
+    build.mount_slot(component, content);
+    return component;
+}
+
+bool synchronize_horizontal_texts(
+    Fixture& fixture,
+    ryn::runtime::ComponentId container) {
+    constexpr ryn::runtime::Size viewport{640.0F, 360.0F};
+    static_cast<void>(fixture.layout.layout(
+        fixture.host->components().root(container),
+        {
+            0.0F,
+            std::numeric_limits<float>::infinity(),
+            0.0F,
+            viewport.height,
+        },
+        {12.0F, 16.0F}));
+    for (const auto mounted : fixture.host->mounted_texts()) {
+        const auto& node = fixture.nodes.require(
+            fixture.scene.node(mounted.scene));
+        if (!fixture.scene.synchronize(mounted.scene, {
+                {node.bounds.x, node.bounds.y},
+                viewport,
+                {0.0F, 0.0F, viewport.width, viewport.height},
+                node.translation,
+                {},
+                1.0F,
+            })) {
+            return false;
+        }
+    }
+    fixture.dirty.clear();
+    return true;
+}
 
 void test_mount_owner_thread_and_dispose_lifecycle() {
     bool outside_host_diagnosed = false;
@@ -306,6 +383,217 @@ void test_shaped_measurement_wrap_resize_and_translation() {
             "Latin Text did not wrap at shaped legal boundaries");
 }
 
+void test_semantic_foreground_context_is_nested_reactive_and_scoped() {
+    Fixture fixture;
+    const ryn::runtime::SemanticForeground outer_initial{
+        0.10F, 0.20F, 0.30F, 1.0F};
+    const ryn::runtime::SemanticForeground outer_next{
+        0.70F, 0.20F, 0.10F, 1.0F};
+    const ryn::runtime::SemanticForeground inner_initial{
+        0.25F, 0.75F, 0.40F, 1.0F};
+    const ryn::runtime::SemanticForeground inner_next{
+        0.80F, 0.60F, 0.10F, 1.0F};
+    ryn::Signal<ryn::runtime::SemanticForeground> outer{outer_initial};
+    ryn::Signal<ryn::runtime::SemanticForeground> inner{inner_initial};
+    ryn::runtime::ComponentId provider;
+
+    fixture.host->mount(ryn::Content{[&] {
+        provider = mount_foreground_provider(
+            ryn::Prop<ryn::runtime::SemanticForeground>{outer},
+            ForegroundContent{[&] {
+                ryn::Text(u8"outer inherited");
+                static_cast<void>(mount_foreground_provider(
+                    ryn::Prop<ryn::runtime::SemanticForeground>{inner},
+                    ForegroundContent{[] {
+                        ryn::Text(u8"inner inherited");
+                        ryn::Text(ryn::TextProps{}
+                            .content(u8"explicit secondary")
+                            .tone(ryn::TextTone::Secondary));
+                    }}));
+                ryn::Text(u8"outer restored");
+            }});
+        ryn::Text(u8"outside default");
+    }});
+    require(fixture.layout_texts(),
+            "semantic foreground Texts did not layout/synchronize");
+    require(fixture.host->mounted_texts().size() == 5
+                && mounted_color(fixture, 0) == outer_initial
+                && mounted_color(fixture, 1) == inner_initial
+                && mounted_color(fixture, 2) == fixture.host->theme().text.secondary
+                && mounted_color(fixture, 3) == outer_initial
+                && mounted_color(fixture, 4) == fixture.host->theme().text.primary,
+            "nested semantic foreground resolution or explicit tone precedence failed");
+
+    std::array<std::uint64_t, 5> shape_counts{};
+    std::array<std::uint64_t, 5> measure_counts{};
+    for (std::size_t index = 0; index < fixture.host->mounted_texts().size(); ++index) {
+        const auto scene = fixture.host->mounted_texts()[index].scene;
+        const auto counters = fixture.scene.text_state(scene).counters();
+        shape_counts[index] = counters.shape_count;
+        measure_counts[index] = counters.measure_count;
+    }
+    fixture.dirty.clear();
+    fixture.scene.glyph_scene().instances().clear_dirty_ranges();
+    static_cast<void>(fixture.frames.consume_request());
+
+    outer.set(outer_next);
+    const auto outer_first_node = fixture.scene.node(
+        fixture.host->mounted_texts()[0].scene);
+    const auto outer_second_node = fixture.scene.node(
+        fixture.host->mounted_texts()[3].scene);
+    require(fixture.dirty.material_nodes()
+                    == std::vector<ryn::runtime::NodeId>{
+                        outer_first_node,
+                        outer_second_node}
+                && fixture.dirty.layout_roots().empty(),
+            "semantic foreground update escaped the inherited Glyph Material nodes");
+    require(fixture.layout_texts(),
+            "reactive semantic foreground did not synchronize");
+    require(mounted_color(fixture, 0) == outer_next
+                && mounted_color(fixture, 1) == inner_initial
+                && mounted_color(fixture, 2) == fixture.host->theme().text.secondary
+                && mounted_color(fixture, 3) == outer_next
+                && mounted_color(fixture, 4) == fixture.host->theme().text.primary,
+            "reactive semantic foreground updated an explicit or unrelated Text");
+    for (std::size_t index = 0; index < fixture.host->mounted_texts().size(); ++index) {
+        const auto scene = fixture.host->mounted_texts()[index].scene;
+        const auto counters = fixture.scene.text_state(scene).counters();
+        require(counters.shape_count == shape_counts[index]
+                    && counters.measure_count == measure_counts[index],
+                "semantic foreground update reshaped or remeasured Text");
+    }
+
+    const auto inner_component = fixture.host->mounted_texts()[1].component;
+    require(fixture.host->destroy(inner_component),
+            "semantic foreground child could not be destroyed");
+    fixture.dirty.clear();
+    static_cast<void>(fixture.frames.consume_request());
+    inner.set(inner_next);
+    require(clean(fixture.dirty) && !fixture.frames.pending(),
+            "destroyed semantic foreground child retained its subscription");
+
+    require(fixture.host->destroy(provider),
+            "semantic foreground provider subtree could not be destroyed");
+    fixture.dirty.clear();
+    static_cast<void>(fixture.frames.consume_request());
+    outer.set(outer_initial);
+    require(clean(fixture.dirty) && !fixture.frames.pending()
+                && fixture.host->mounted_texts().size() == 1,
+            "disposed semantic foreground parent retained child subscriptions");
+}
+
+void test_semantic_foreground_context_restores_after_exception() {
+    Fixture throwing;
+    bool observed = false;
+    try {
+        throwing.host->mount(ryn::Content{[] {
+            static_cast<void>(mount_foreground_provider(
+                ryn::Prop<ryn::runtime::SemanticForeground>{
+                    ryn::runtime::SemanticForeground{1.0F, 0.0F, 0.0F, 1.0F}},
+                ForegroundContent{[] {
+                    ryn::Text(u8"partial");
+                    throw std::runtime_error("foreground slot failure");
+                }}));
+        }});
+    } catch (const std::runtime_error&) {
+        observed = true;
+    }
+    require(observed
+                && throwing.host->components().component_count() == 0
+                && throwing.scene.size() == 0,
+            "throwing semantic foreground slot leaked partial component state");
+
+    Fixture recovered;
+    recovered.host->mount(ryn::Content{[] { ryn::Text(u8"recovered"); }});
+    require(recovered.layout_texts()
+                && mounted_color(recovered, 0) == recovered.host->theme().text.primary,
+            "semantic foreground build stack was not restored after exception");
+}
+
+void test_static_loading_layout_keeps_cjk_text_and_idle_state() {
+    Fixture fixture;
+    const auto& token = fixture.host->theme().button;
+    const ryn::layout::HorizontalContentLayout idle{
+        token.middle.control_height,
+        token.middle.padding_inline,
+        token.border_width,
+        token.content_gap,
+        false,
+        token.loading_indicator_size,
+    };
+    auto loading = idle;
+    loading.loading = true;
+    ryn::runtime::ComponentId container;
+    fixture.host->mount(ryn::Content{[&] {
+        container = mount_horizontal_provider(
+            fixture.layout,
+            idle,
+            ForegroundContent{[] {
+                ryn::Text(u8"确定");
+                ryn::Text(u8"Stable sibling");
+            }});
+    }});
+    require(synchronize_horizontal_texts(fixture, container),
+            "CJK horizontal content did not synchronize");
+    const auto first = fixture.host->mounted_texts()[0];
+    const auto sibling = fixture.host->mounted_texts()[1];
+    const auto first_root = fixture.host->components().root(first.component);
+    const auto sibling_root = fixture.host->components().root(sibling.component);
+    const auto first_counters = fixture.scene.text_state(first.scene).counters();
+    const auto sibling_counters = fixture.scene.text_state(sibling.scene).counters();
+    const auto idle_first_bounds = fixture.nodes.require(first_root).bounds;
+    static_cast<void>(fixture.frames.consume_request());
+    fixture.dirty.clear();
+
+    const auto container_root = fixture.host->components().root(container);
+    fixture.layout.set_layout(container_root, loading);
+    fixture.dirty.invalidate(
+        container_root,
+        ryn::runtime::DirtyFlags::Measure
+            | ryn::runtime::DirtyFlags::Layout
+            | ryn::runtime::DirtyFlags::Geometry);
+    require(fixture.frames.consume_request(),
+            "loading layout update did not request its one required frame");
+    require(synchronize_horizontal_texts(fixture, container),
+            "static loading CJK content did not synchronize");
+    const auto loading_geometry = fixture.layout.horizontal_content_geometry(
+        container_root);
+    require(loading_geometry.loading_indicator_bounds.has_value()
+                && loading_geometry.loading_indicator_bounds->width
+                    == token.loading_indicator_size
+                && fixture.host->components().mount_runs() == 1
+                && fixture.host->components().root(first.component) == first_root
+                && fixture.host->components().root(sibling.component) == sibling_root
+                && fixture.nodes.require(first_root).bounds.x
+                    > idle_first_bounds.x,
+            "static loading geometry remounted content or missed local placement");
+    require(fixture.scene.text_state(first.scene).counters().shape_count
+                    == first_counters.shape_count
+                && fixture.scene.text_state(first.scene).counters().measure_count
+                    == first_counters.measure_count
+                && fixture.scene.text_state(sibling.scene).counters().shape_count
+                    == sibling_counters.shape_count
+                && fixture.scene.text_state(sibling.scene).counters().measure_count
+                    == sibling_counters.measure_count
+                && !fixture.frames.pending(),
+            "static loading reshaped unchanged Text or left an animation frame pending");
+
+    fixture.layout.set_layout(container_root, idle);
+    fixture.dirty.invalidate(
+        container_root,
+        ryn::runtime::DirtyFlags::Measure
+            | ryn::runtime::DirtyFlags::Layout
+            | ryn::runtime::DirtyFlags::Geometry);
+    require(fixture.frames.consume_request()
+                && synchronize_horizontal_texts(fixture, container)
+                && !fixture.layout.horizontal_content_geometry(container_root)
+                    .loading_indicator_bounds.has_value()
+                && fixture.host->components().root(first.component) == first_root
+                && fixture.host->components().root(sibling.component) == sibling_root
+                && !fixture.frames.pending(),
+            "static loading removal changed content identity or idle state");
+}
+
 } // namespace
 
 int main() {
@@ -313,6 +601,9 @@ int main() {
         test_mount_owner_thread_and_dispose_lifecycle();
         test_reactive_content_tone_and_margin_are_minimal();
         test_shaped_measurement_wrap_resize_and_translation();
+        test_semantic_foreground_context_is_nested_reactive_and_scoped();
+        test_semantic_foreground_context_restores_after_exception();
+        test_static_loading_layout_keeps_cjk_text_and_idle_state();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

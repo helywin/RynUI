@@ -3,8 +3,10 @@
 #include "runtime/node_store.hpp"
 
 #include <ryn/component.hpp>
+#include <ryn/prop.hpp>
 #include <ryn/reactive.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -31,6 +33,8 @@ struct SlotContentAccess final {
 } // namespace ryn::detail
 
 namespace ryn::runtime {
+
+using SemanticForeground = std::array<float, 4>;
 
 struct ComponentId final {
     static constexpr std::uint32_t invalid_index =
@@ -131,7 +135,10 @@ private:
     [[nodiscard]] SceneFragmentId register_scene_fragment(
         ComponentId component,
         SceneFragmentPlacement placement);
-    void mount_slot(ComponentId parent, const std::function<void()>& content);
+    void mount_slot(
+        ComponentId parent,
+        const std::function<void()>& content,
+        std::optional<Prop<SemanticForeground>> semantic_foreground);
     void ensure_owner_thread() const;
     [[nodiscard]] Record* find_record(ComponentId id) noexcept;
     [[nodiscard]] const Record* find_record(ComponentId id) const noexcept;
@@ -184,7 +191,21 @@ public:
 
     template <typename SlotTag>
     void mount_slot(ComponentId parent, const SlotContent<SlotTag>& content) {
-        host_->mount_slot(parent, detail::SlotContentAccess::function(content));
+        host_->mount_slot(
+            parent,
+            detail::SlotContentAccess::function(content),
+            semantic_foreground_);
+    }
+
+    template <typename SlotTag>
+    void mount_slot_with_semantic_foreground(
+        ComponentId parent,
+        const SlotContent<SlotTag>& content,
+        Prop<SemanticForeground> foreground) {
+        host_->mount_slot(
+            parent,
+            detail::SlotContentAccess::function(content),
+            std::move(foreground));
     }
 
     void on_resource_cleanup(ComponentId id, std::function<void()> cleanup);
@@ -193,6 +214,8 @@ public:
         SceneFragmentPlacement placement);
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] NodeId root(ComponentId id) const;
+    [[nodiscard]] const std::optional<Prop<SemanticForeground>>&
+    semantic_foreground() const noexcept;
 
     template <typename State>
     [[nodiscard]] State& state(ComponentId id) {
@@ -208,10 +231,12 @@ private:
 
     ComponentBuildContext(
         ComponentHost& host,
-        std::optional<ComponentId> parent) noexcept;
+        std::optional<ComponentId> parent,
+        std::optional<Prop<SemanticForeground>> semantic_foreground) noexcept;
 
     ComponentHost* host_;
     std::optional<ComponentId> parent_;
+    std::optional<Prop<SemanticForeground>> semantic_foreground_;
 };
 
 [[nodiscard]] ComponentBuildContext& require_component_build_context();

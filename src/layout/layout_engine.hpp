@@ -54,7 +54,30 @@ struct FlexLayout {
     bool fill_height{false};
 };
 
-using LayoutModel = std::variant<LeafLayout, BoxLayout, FlexLayout>;
+struct HorizontalContentLayout final {
+    float control_height{32.0F};
+    float padding_inline{15.0F};
+    float border_width{1.0F};
+    float gap{8.0F};
+    bool loading{false};
+    float loading_indicator_size{14.0F};
+
+    friend constexpr bool operator==(
+        HorizontalContentLayout,
+        HorizontalContentLayout) = default;
+};
+
+struct HorizontalContentGeometry final {
+    runtime::Rect content_bounds;
+    std::optional<runtime::Rect> loading_indicator_bounds;
+
+    friend constexpr bool operator==(
+        HorizontalContentGeometry,
+        HorizontalContentGeometry) = default;
+};
+
+using LayoutModel =
+    std::variant<LeafLayout, BoxLayout, FlexLayout, HorizontalContentLayout>;
 
 class LayoutEngine final {
 public:
@@ -77,11 +100,14 @@ public:
         runtime::Point origin = {});
 
     [[nodiscard]] std::uint64_t generation() const noexcept;
+    [[nodiscard]] const HorizontalContentGeometry& horizontal_content_geometry(
+        runtime::NodeId id) const;
 
 private:
     struct LayoutSlot {
         std::uint32_t generation{0};
         LayoutModel model{LeafLayout{}};
+        std::optional<HorizontalContentGeometry> horizontal_content_geometry;
     };
 
     struct IntrinsicCache final {

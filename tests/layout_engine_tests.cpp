@@ -1,9 +1,12 @@
 #include "layout/layout_engine.hpp"
 
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -264,6 +267,154 @@ void test_recursive_intrinsic_measure_fails_fast_and_recovers() {
             "live intrinsic adapter could not be removed");
 }
 
+void test_horizontal_content_centers_children_with_token_metrics() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto first = nodes.create_child(root);
+    const auto second = nodes.create_child(root);
+    ryn::layout::LayoutEngine layout(nodes);
+    layout.set_layout(root, ryn::layout::HorizontalContentLayout{
+        32.0F,
+        15.0F,
+        1.0F,
+        8.0F,
+        false,
+        14.0F,
+    });
+    layout.set_layout(first, ryn::layout::LeafLayout{{20.0F, 10.0F}});
+    layout.set_layout(second, ryn::layout::LeafLayout{{30.0F, 14.0F}});
+    nodes.require(root).external_layout.width = 120.0F;
+    nodes.require(root).external_layout.margin = {10.0F, 5.0F, 6.0F, 7.0F};
+
+    const auto outer = layout.layout(
+        root,
+        {0.0F, 200.0F, 0.0F, 100.0F},
+        {3.0F, 4.0F});
+    require(outer == ryn::runtime::Size{136.0F, 44.0F}
+                && nodes.require(root).bounds
+                    == ryn::runtime::Rect{13.0F, 9.0F, 120.0F, 32.0F},
+            "horizontal content root ignored fixed width or external margin");
+    require(nodes.require(first).bounds
+                    == ryn::runtime::Rect{44.0F, 20.0F, 20.0F, 10.0F}
+                && nodes.require(second).bounds
+                    == ryn::runtime::Rect{72.0F, 18.0F, 30.0F, 14.0F},
+            "horizontal content did not center the child group on both axes");
+    require(layout.horizontal_content_geometry(root)
+                    == ryn::layout::HorizontalContentGeometry{
+                        {29.0F, 10.0F, 88.0F, 30.0F},
+                        std::nullopt,
+                    },
+            "horizontal content retained the wrong local geometry");
+}
+
+void test_horizontal_content_sizes_empty_and_constrained_content() {
+    const std::array models{
+        ryn::layout::HorizontalContentLayout{24.0F, 7.0F, 1.0F, 8.0F, false, 14.0F},
+        ryn::layout::HorizontalContentLayout{32.0F, 15.0F, 1.0F, 8.0F, false, 14.0F},
+        ryn::layout::HorizontalContentLayout{40.0F, 15.0F, 1.0F, 8.0F, false, 14.0F},
+    };
+    const std::array expected{
+        ryn::runtime::Size{16.0F, 24.0F},
+        ryn::runtime::Size{32.0F, 32.0F},
+        ryn::runtime::Size{32.0F, 40.0F},
+    };
+    for (std::size_t index = 0; index < models.size(); ++index) {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, models[index]);
+        require(layout.layout(root, {0.0F, 200.0F, 0.0F, 100.0F})
+                    == expected[index],
+                "empty horizontal content lost its size token contract");
+    }
+
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto cjk = nodes.create_child(root);
+    ryn::layout::LayoutEngine layout(nodes);
+    layout.set_layout(root, models[1]);
+    layout.set_layout(cjk, ryn::layout::LeafLayout{});
+    int intrinsic_calls = 0;
+    float received_max = 0.0F;
+    layout.set_intrinsic_measure(cjk, 1, [&](ryn::layout::Constraints constraints) {
+        ++intrinsic_calls;
+        received_max = constraints.max_width;
+        return ryn::runtime::Size{80.0F, 22.0F};
+    });
+    nodes.require(root).external_layout.min_width = 54.0F;
+    nodes.require(root).external_layout.max_width = 60.0F;
+    require(layout.layout(root, {0.0F, 200.0F, 0.0F, 100.0F})
+                    == ryn::runtime::Size{60.0F, 32.0F}
+                && intrinsic_calls == 1
+                && received_max == 28.0F
+                && nodes.require(cjk).bounds.width == 28.0F,
+            "constrained CJK intrinsic content exceeded token padding or max width");
+}
+
+void test_static_loading_geometry_preserves_child_identity_and_cache() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto child = nodes.create_child(root);
+    const auto unrelated = nodes.create_root();
+    ryn::layout::LayoutEngine layout(nodes);
+    const ryn::layout::HorizontalContentLayout idle{
+        32.0F,
+        15.0F,
+        1.0F,
+        8.0F,
+        false,
+        14.0F,
+    };
+    auto loading = idle;
+    loading.loading = true;
+    layout.set_layout(root, idle);
+    layout.set_layout(child, ryn::layout::LeafLayout{});
+    layout.set_layout(unrelated, ryn::layout::LeafLayout{{12.0F, 8.0F}});
+    int intrinsic_calls = 0;
+    layout.set_intrinsic_measure(child, 7, [&](ryn::layout::Constraints) {
+        ++intrinsic_calls;
+        return ryn::runtime::Size{42.0F, 22.0F};
+    });
+
+    const auto idle_size = layout.layout(
+        root,
+        {0.0F, std::numeric_limits<float>::infinity(), 0.0F, 100.0F});
+    const auto child_identity = child;
+    const auto unrelated_measure_count = nodes.require(unrelated).measure_count;
+    require(idle_size == ryn::runtime::Size{74.0F, 32.0F}
+                && intrinsic_calls == 1
+                && !layout.horizontal_content_geometry(root)
+                    .loading_indicator_bounds.has_value(),
+            "idle horizontal content measurement was incorrect");
+
+    layout.set_layout(root, loading);
+    const auto loading_size = layout.layout(
+        root,
+        {0.0F, std::numeric_limits<float>::infinity(), 0.0F, 100.0F});
+    const auto indicator = layout.horizontal_content_geometry(root)
+        .loading_indicator_bounds;
+    require(loading_size == ryn::runtime::Size{96.0F, 32.0F}
+                && indicator.has_value()
+                && indicator->width == 14.0F
+                && indicator->height == 14.0F
+                && child == child_identity
+                && nodes.find(child_identity) != nullptr
+                && intrinsic_calls == 1
+                && nodes.require(unrelated).measure_count == unrelated_measure_count,
+            "static loading indicator remounted, remeasured, or touched a sibling");
+
+    layout.set_layout(root, idle);
+    require(layout.layout(
+                    root,
+                    {0.0F, std::numeric_limits<float>::infinity(), 0.0F, 100.0F})
+                    == idle_size
+                && child == child_identity
+                && intrinsic_calls == 1
+                && !layout.horizontal_content_geometry(root)
+                    .loading_indicator_bounds.has_value(),
+            "static loading removal changed child identity or intrinsic cache");
+}
+
 } // namespace
 
 int main() {
@@ -277,6 +428,9 @@ int main() {
         test_external_style_clamps_fixed_and_intrinsic_sizes();
         test_intrinsic_measure_cache_revision_and_generation();
         test_recursive_intrinsic_measure_fails_fast_and_recovers();
+        test_horizontal_content_centers_children_with_token_metrics();
+        test_horizontal_content_sizes_empty_and_constrained_content();
+        test_static_loading_geometry_preserves_child_identity_and_cache();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
