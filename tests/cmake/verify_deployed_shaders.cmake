@@ -4,7 +4,8 @@ foreach(required IN ITEMS
         GENERATED_SHADER_DIRECTORY
         MINIMAL_SHADER_DIRECTORY
         TEXT_SHADER_DIRECTORY
-        BUTTON_SHADER_DIRECTORY)
+        BUTTON_SHADER_DIRECTORY
+        LAYOUT_SHADER_DIRECTORY)
     if(NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
         message(FATAL_ERROR "${required} is required")
     endif()
@@ -39,6 +40,7 @@ foreach(shader_file IN ITEMS
     assert_shader_matches("${shader_file}" "${MINIMAL_SHADER_DIRECTORY}")
     assert_shader_matches("${shader_file}" "${TEXT_SHADER_DIRECTORY}")
     assert_shader_matches("${shader_file}" "${BUTTON_SHADER_DIRECTORY}")
+    assert_shader_matches("${shader_file}" "${LAYOUT_SHADER_DIRECTORY}")
 endforeach()
 
 foreach(shader_file IN ITEMS
@@ -48,4 +50,5 @@ foreach(shader_file IN ITEMS
         glyph.fragment.spv)
     assert_shader_matches("${shader_file}" "${TEXT_SHADER_DIRECTORY}")
     assert_shader_matches("${shader_file}" "${BUTTON_SHADER_DIRECTORY}")
+    assert_shader_matches("${shader_file}" "${LAYOUT_SHADER_DIRECTORY}")
 endforeach()

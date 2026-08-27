@@ -33,10 +33,10 @@
 
 ## 5. 平台无关示例与 headless 验收
 
-- [ ] 5.1 新增公开 Flex/Space DSL 示例，以嵌套容器组织 Text/Button，并通过 Button 响应切换 direction、wrap、justify、align、gap、grow 与 order；source contract 必须证明示例不直接构造 ComponentHost、Node、LayoutEngine 或 SDL event
-- [ ] 5.2 增加多 viewport headless frame tests，覆盖宽/窄 line break、双轴 gap、grow/shrink、align/order、pointer/keyboard 激活后布局更新、identity/dirty 计数和 idle；锁定 content closure 只执行一次且 scene topology 不因普通 Props 变化重建
-- [ ] 5.3 增加平台独立 layout evidence schema，要求 preset、compiler、window system/display scale、viewport、line/layout/scene/submit 计数和宽/窄截图路径；Linux 与 Windows 使用独立文件且交叉平台 identity 必须被合同拒绝
-- [ ] 5.4 运行 Flex/Space example source contract、headless frame integration、evidence schema、public dependency、未跟踪依赖与 `git diff --check`；以英文 `feat: add responsive layout demo` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 5.1 新增公开 Flex/Space DSL 示例，以嵌套容器组织 Text/Button，并通过 Button 响应切换 direction、wrap、justify、align、gap、grow 与 order；source contract 必须证明示例不直接构造 ComponentHost、Node、LayoutEngine 或 SDL event
+- [x] 5.2 增加多 viewport headless frame tests，覆盖宽/窄 line break、双轴 gap、grow/shrink、align/order、pointer/keyboard 激活后布局更新、identity/dirty 计数和 idle；锁定 content closure 只执行一次且 scene topology 不因普通 Props 变化重建
+- [x] 5.3 增加平台独立 layout evidence schema，要求 preset、compiler、window system/display scale、viewport、line/layout/scene/submit 计数和宽/窄截图路径；Linux 与 Windows 使用独立文件且交叉平台 identity 必须被合同拒绝
+- [x] 5.4 运行 Flex/Space example source contract、headless frame integration、evidence schema、public dependency、未跟踪依赖与 `git diff --check`；以英文 `feat: add responsive layout demo` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 6. Linux 验收清单
 

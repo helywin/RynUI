@@ -264,6 +264,49 @@ target_compile_definitions(
 )
 add_test(NAME rynui.button_demo_frame COMMAND rynui_button_demo_frame_tests)
 
+add_executable(rynui_layout_demo_frame_tests layout_demo_frame_tests.cpp)
+rynui_configure_cpp_target(rynui_layout_demo_frame_tests)
+target_link_libraries(
+    rynui_layout_demo_frame_tests
+    PRIVATE rynui_components
+)
+target_compile_definitions(
+    rynui_layout_demo_frame_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.layout_demo_frame COMMAND rynui_layout_demo_frame_tests)
+
+add_test(
+    NAME rynui.layout_example_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DEXAMPLE_SOURCE=${PROJECT_SOURCE_DIR}/examples/layout/main.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_layout_example_contract.cmake"
+)
+
+set(layout_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/005-20260827-build-flex-and-space-layout-foundation/evidence"
+)
+add_test(
+    NAME rynui.layout_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${layout_evidence_directory}/linux-layout-evidence.md"
+        "-DWINDOWS_EVIDENCE=${layout_evidence_directory}/windows-layout-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_layout_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.layout_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${layout_evidence_directory}/linux-layout-evidence.md"
+        "-DWINDOWS_EVIDENCE=${layout_evidence_directory}/linux-layout-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_layout_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.layout_evidence_cross_platform_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+
 add_test(
     NAME rynui.button_example_contract
     COMMAND ${CMAKE_COMMAND}
@@ -566,6 +609,7 @@ add_test(
         "-DMINIMAL_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_minimal>/shaders"
         "-DTEXT_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_text_demo>/shaders"
         "-DBUTTON_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_button_demo>/shaders"
+        "-DLAYOUT_SHADER_DIRECTORY=$<TARGET_FILE_DIR:rynui_layout_demo>/shaders"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_deployed_shaders.cmake"
 )
 
