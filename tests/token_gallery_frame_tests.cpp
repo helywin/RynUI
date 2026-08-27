@@ -257,6 +257,45 @@ void require_shadow_order(
     }
 }
 
+void test_acceptance_scale_viewports_use_physical_pixels() {
+    const auto one = rynui::example::token_gallery_logical_viewport(1280, 900, 1.0F);
+    const auto one_and_half =
+        rynui::example::token_gallery_logical_viewport(1280, 900, 1.5F);
+    const auto two = rynui::example::token_gallery_logical_viewport(1280, 900, 2.0F);
+    require(near(one.width, 1280.0F) && near(one.height, 900.0F)
+                && near(one_and_half.width, 853.3333F, 0.01F)
+                && near(one_and_half.height, 600.0F)
+                && near(two.width, 640.0F) && near(two.height, 450.0F),
+            "Token Gallery acceptance scales did not derive logical extents from pixels");
+    try {
+        static_cast<void>(
+            rynui::example::token_gallery_logical_viewport(1280, 900, 0.0F));
+        throw std::runtime_error("Token Gallery accepted an invalid render scale");
+    } catch (const std::invalid_argument&) {
+    }
+}
+
+void test_small_acceptance_viewport_survives_theme_transitions() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(640.0F);
+    Fixture fixture;
+    fixture.host->mount(definition.content);
+    RecordingGpuApi gpu;
+    RecordingDrawApi draw;
+    IdleEvents events;
+    HeadlessSubmitter submitter(
+        *fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
+    submitter.set_viewport({640.0F, 450.0F});
+    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, 5);
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "Token Gallery 200% acceptance viewport did not submit its initial frame");
+    for (std::size_t step = 0; step < 5; ++step) {
+        definition.smoke_step(step);
+        require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+                "Token Gallery 200% acceptance viewport lost a theme or state frame");
+    }
+}
+
 ryn::input::PointerInputEvent pointer_event(
     ryn::input::PointerAction action,
     ryn::runtime::Point point,
@@ -429,6 +468,8 @@ void test_token_gallery_frame_contract() {
 
 int main() {
     try {
+        test_acceptance_scale_viewports_use_physical_pixels();
+        test_small_acceptance_viewport_survives_theme_transitions();
         test_token_gallery_frame_contract();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

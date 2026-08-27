@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -301,6 +302,21 @@ void add_theme_and_state_cells(const std::shared_ptr<GalleryState>& state) {
 
 } // namespace
 
+TokenGalleryViewport token_gallery_logical_viewport(
+    int pixel_width,
+    int pixel_height,
+    float render_scale) {
+    if (pixel_width <= 0 || pixel_height <= 0
+            || !std::isfinite(render_scale) || render_scale <= 0.0F) {
+        throw std::invalid_argument(
+            "Token Gallery pixel extent and render scale must be positive");
+    }
+    return {
+        static_cast<float>(pixel_width) / render_scale,
+        static_cast<float>(pixel_height) / render_scale,
+    };
+}
+
 TokenGalleryDefinition make_token_gallery_definition() {
     auto state = std::make_shared<GalleryState>();
     auto set_theme = [state](ryn::ThemeConfig config, bool brand) {
@@ -369,7 +385,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
         },
         [state](float viewport_width) {
             const float content_width = std::max(256.0F, viewport_width - 48.0F);
-            const float next_cell_width = content_width < 720.0F ? 118.0F : 126.0F;
+            const float next_cell_width = content_width < 720.0F
+                ? std::max(150.0F, (content_width - 16.0F) / 3.0F)
+                : 150.0F;
             if (state->gallery_width.get() != ryn::dp(content_width)) {
                 state->gallery_width.set(ryn::dp(content_width));
                 ++state->telemetry.viewport_updates;

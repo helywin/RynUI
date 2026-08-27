@@ -23,6 +23,11 @@ struct TokenGalleryTelemetry final {
     std::string snapshot_diagnostic;
 };
 
+struct TokenGalleryViewport final {
+    float width{};
+    float height{};
+};
+
 struct TokenGalleryDefinition final {
     ryn::Content content;
     std::function<void(std::size_t)> smoke_step;
@@ -32,6 +37,11 @@ struct TokenGalleryDefinition final {
 };
 
 [[nodiscard]] TokenGalleryDefinition make_token_gallery_definition();
+
+[[nodiscard]] TokenGalleryViewport token_gallery_logical_viewport(
+    int pixel_width,
+    int pixel_height,
+    float render_scale);
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition);
 

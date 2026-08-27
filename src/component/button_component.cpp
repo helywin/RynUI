@@ -296,6 +296,13 @@ float normalized_radius(runtime::Rect bounds, float radius) noexcept {
         : 0.0F;
 }
 
+float logical_radius(runtime::Rect bounds, float radius) noexcept {
+    return std::clamp(
+        radius,
+        0.0F,
+        0.5F * std::min(bounds.width, bounds.height));
+}
+
 graphics::QuadInstance make_quad(
     runtime::Rect bounds,
     runtime::Size viewport,
@@ -872,7 +879,7 @@ void ButtonComponentHost::synchronize_geometry(
     state.visuals = next;
     static_cast<void>(button_scene_.update(state.scene, state.visuals));
     auto effects = state.effects;
-    effects.shape = {node.bounds, size.border_radius};
+    effects.shape = {node.bounds, logical_radius(node.bounds, size.border_radius)};
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = std::move(effects);
