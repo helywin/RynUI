@@ -195,6 +195,31 @@ target_include_directories(rynui_frame_scheduler_tests PRIVATE "${PROJECT_SOURCE
 target_link_libraries(rynui_frame_scheduler_tests PRIVATE rynui_runtime)
 add_test(NAME rynui.frame_scheduler COMMAND rynui_frame_scheduler_tests)
 
+add_executable(rynui_platform_input_tests platform_input_tests.cpp)
+rynui_configure_cpp_target(rynui_platform_input_tests)
+target_link_libraries(rynui_platform_input_tests PRIVATE rynui_input)
+add_test(NAME rynui.platform_input COMMAND rynui_platform_input_tests)
+
+add_executable(rynui_sdl_event_adapter_tests sdl_event_adapter_tests.cpp)
+rynui_configure_cpp_target(rynui_sdl_event_adapter_tests)
+target_link_libraries(
+    rynui_sdl_event_adapter_tests
+    PRIVATE rynui_platform_sdl SDL3::SDL3
+)
+add_test(NAME rynui.sdl_event_adapter COMMAND rynui_sdl_event_adapter_tests)
+
+add_executable(rynui_platform_event_pump_tests platform_event_pump_tests.cpp)
+rynui_configure_cpp_target(rynui_platform_event_pump_tests)
+target_link_libraries(rynui_platform_event_pump_tests PRIVATE rynui_platform_sdl)
+add_test(NAME rynui.platform_event_pump COMMAND rynui_platform_event_pump_tests)
+
+add_test(
+    NAME rynui.input_dependency_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_dependency_contract.cmake"
+)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

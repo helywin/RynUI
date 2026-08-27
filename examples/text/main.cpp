@@ -58,7 +58,7 @@ public:
     [[nodiscard]] bool quit_requested() const noexcept { return quit_requested_; }
 
 private:
-    bool consume(ryn::detail::PlatformEvents events) noexcept {
+    bool consume(const ryn::detail::PlatformEvents& events) noexcept {
         quit_requested_ = quit_requested_ || events.quit_requested;
         return events.frame_requested;
     }

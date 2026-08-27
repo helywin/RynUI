@@ -1,9 +1,9 @@
 ## 1. 平台无关输入值与 SDL adapter
 
-- [ ] 1.1 定义 RynUI 自有 pointer、keyboard、window focus/cancel tagged values 与可复用 input batch，保留事件顺序和 logical coordinates；通过 value/queue tests 覆盖 mouse identity、touch identity、key repeat、modifier、batch capacity reuse 与非法值
-- [ ] 1.2 将 SDL mouse/finger/key/window event 映射封装在 platform adapter 内，完成 touch logical coordinate 转换与兼容 mouse 去重；通过 fake SDL-shaped source tests 覆盖 down/move/up/cancel、focus lost/gained、quit/resize 和现有 frame-request 回归
-- [ ] 1.3 接入 owner-thread event pump 与诊断计数，通过错误线程、稳定容量 allocation counter、连续 move 边界和 public forbidden-include tests 证明输入不泄漏 SDL3 且 steady-state batch 不分配
-- [ ] 1.4 运行 platform input、platform lifecycle、frame scheduler 与 public dependency 自动测试和 `git diff --check`；以英文 `feat: normalize platform input events` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 1.1 定义 RynUI 自有 pointer、keyboard、window focus/cancel tagged values 与可复用 input batch，保留事件顺序和 logical coordinates；通过 value/queue tests 覆盖 mouse identity、touch identity、key repeat、modifier、batch capacity reuse 与非法值
+- [x] 1.2 将 SDL mouse/finger/key/window event 映射封装在 platform adapter 内，完成 touch logical coordinate 转换与兼容 mouse 去重；通过 fake SDL-shaped source tests 覆盖 down/move/up/cancel、focus lost/gained、quit/resize 和现有 frame-request 回归
+- [x] 1.3 接入 owner-thread event pump 与诊断计数，通过错误线程、稳定容量 allocation counter、连续 move 边界和 public forbidden-include tests 证明输入不泄漏 SDL3 且 steady-state batch 不分配
+- [x] 1.4 运行 platform input、platform lifecycle、frame scheduler 与 public dependency 自动测试和 `git diff --check`；以英文 `feat: normalize platform input events` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 2. Interaction registry 与 HitTest
 

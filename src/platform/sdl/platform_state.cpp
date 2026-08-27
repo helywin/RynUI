@@ -1,7 +1,9 @@
 #include "platform/sdl/platform_state.hpp"
+#include "platform/sdl/sdl_event_adapter.hpp"
 
 #include <SDL3/SDL.h>
 
+#include <stdexcept>
 #include <utility>
 
 namespace ryn::detail {
@@ -68,45 +70,45 @@ public:
         return SDL_GetWindowDisplayScale(static_cast<SDL_Window*>(window));
     }
 
-    [[nodiscard]] bool poll_quit_requested() noexcept override {
-        return poll_events().quit_requested;
-    }
-
-    [[nodiscard]] PlatformEvents poll_events() noexcept override {
-        PlatformEvents result;
+    void poll_events(
+        PlatformWindowHandle window,
+        PlatformEvents& result) override {
+        auto metrics = window_metrics(window);
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
-            merge_event(result, event);
+            SdlEventAdapter::merge(result, event, metrics);
         }
-        return result;
     }
 
     void delay(std::uint32_t milliseconds) noexcept override {
         SDL_Delay(milliseconds);
     }
 
-    [[nodiscard]] PlatformEvents wait_events(
-        std::uint32_t timeout_milliseconds) noexcept override {
-        PlatformEvents result;
+    void wait_events(
+        PlatformWindowHandle window,
+        std::uint32_t timeout_milliseconds,
+        PlatformEvents& result) override {
+        auto metrics = window_metrics(window);
         SDL_Event event{};
         if (SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout_milliseconds))) {
-            merge_event(result, event);
+            SdlEventAdapter::merge(result, event, metrics);
             SDL_Event queued{};
             while (SDL_PollEvent(&queued)) {
-                merge_event(result, queued);
+                SdlEventAdapter::merge(result, queued, metrics);
             }
         }
-        return result;
     }
 
 private:
-    static void merge_event(PlatformEvents& result, const SDL_Event& event) noexcept {
-        if (event.type == SDL_EVENT_QUIT
-                || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-            result.quit_requested = true;
-            return;
+    static SdlWindowMetrics window_metrics(PlatformWindowHandle window) noexcept {
+        SdlWindowMetrics metrics;
+        if (window != nullptr) {
+            static_cast<void>(SDL_GetWindowSize(
+                static_cast<SDL_Window*>(window),
+                &metrics.width,
+                &metrics.height));
         }
-        result.frame_requested = true;
+        return metrics;
     }
 };
 
@@ -130,8 +132,10 @@ PlatformApi& real_platform_api() {
 
 } // namespace
 
-PlatformState::PlatformState(PlatformApi& api) noexcept
-    : api_(&api), owner_thread_(std::this_thread::get_id()) {}
+PlatformState::PlatformState(PlatformApi& api)
+    : api_(&api), owner_thread_(std::this_thread::get_id()) {
+    events_.input.reserve(64);
+}
 
 PlatformState::~PlatformState() {
     if (window_claimed_) {
@@ -203,20 +207,55 @@ bool PlatformState::is_owner_thread() const noexcept {
     return owner_thread_ == std::this_thread::get_id();
 }
 
-bool PlatformState::poll_quit_requested() noexcept {
-    return api_->poll_quit_requested();
+bool PlatformState::poll_quit_requested() {
+    return poll_events().quit_requested;
 }
 
-PlatformEvents PlatformState::poll_events() noexcept {
-    return api_->poll_events();
+const PlatformEvents& PlatformState::poll_events() {
+    require_owner_thread();
+    events_.clear();
+    api_->poll_events(window_, events_);
+    ++event_diagnostics_.poll_calls;
+    record_event_pump();
+    return events_;
 }
 
-PlatformEvents PlatformState::wait_events(std::uint32_t timeout_milliseconds) noexcept {
-    return api_->wait_events(timeout_milliseconds);
+const PlatformEvents& PlatformState::wait_events(std::uint32_t timeout_milliseconds) {
+    require_owner_thread();
+    events_.clear();
+    api_->wait_events(window_, timeout_milliseconds, events_);
+    ++event_diagnostics_.wait_calls;
+    record_event_pump();
+    return events_;
+}
+
+PlatformEventDiagnostics PlatformState::event_diagnostics() const {
+    require_owner_thread();
+    return event_diagnostics_;
 }
 
 void PlatformState::delay(std::uint32_t milliseconds) noexcept {
     api_->delay(milliseconds);
+}
+
+void PlatformState::require_owner_thread() const {
+    if (!is_owner_thread()) {
+        throw std::logic_error("Platform event pump must run on its owner thread");
+    }
+}
+
+void PlatformState::record_event_pump() {
+    event_diagnostics_.normalized_input_events +=
+        events_.input.size() + events_.input.coalesced_move_count();
+    event_diagnostics_.coalesced_pointer_moves += events_.input.coalesced_move_count();
+    event_diagnostics_.suppressed_compatibility_mouse_events +=
+        events_.suppressed_compatibility_mouse_events;
+    if (events_.frame_requested) {
+        ++event_diagnostics_.frame_requested_pumps;
+    }
+    if (events_.quit_requested) {
+        ++event_diagnostics_.quit_requested_pumps;
+    }
 }
 
 } // namespace ryn::detail

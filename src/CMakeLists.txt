@@ -38,6 +38,12 @@ target_compile_definitions(rynui_reactive PRIVATE
     RYNUI_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
 
+add_library(rynui_input STATIC
+    input/platform_input.cpp
+)
+rynui_configure_cpp_target(rynui_input)
+target_include_directories(rynui_input PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+
 add_library(rynui_runtime STATIC
     runtime/component_host.cpp
     runtime/component_mount.cpp
@@ -98,11 +104,12 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_platform_sdl STATIC
+    platform/sdl/sdl_event_adapter.cpp
     platform/sdl/platform_state.cpp
 )
 rynui_configure_cpp_target(rynui_platform_sdl)
-target_include_directories(rynui_platform_sdl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3)
+target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3 rynui_input)
 
 add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
@@ -112,7 +119,6 @@ add_library(rynui_renderer_sdl STATIC
     renderer/sdl/text_render_controller.cpp
 )
 rynui_configure_cpp_target(rynui_renderer_sdl)
-target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(rynui_renderer_sdl PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -145,6 +151,7 @@ rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
 rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
+rynui_assert_direct_dependencies(rynui_input)
 rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)
@@ -161,7 +168,7 @@ rynui_assert_direct_dependencies(
     rynui_runtime
     rynui_text_scene
 )
-rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3)
+rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
 rynui_assert_direct_dependencies(
     rynui_renderer_sdl
     SDL3::SDL3

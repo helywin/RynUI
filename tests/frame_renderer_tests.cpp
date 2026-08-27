@@ -30,7 +30,6 @@ public:
         PlatformWindowHandle) const noexcept override {
         return 1.0F;
     }
-    [[nodiscard]] bool poll_quit_requested() noexcept override { return false; }
     void delay(std::uint32_t) noexcept override {}
 
 private:

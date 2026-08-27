@@ -1,5 +1,7 @@
 #pragma once
 
+#include "input/platform_input.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -33,6 +35,29 @@ struct PlatformConfig {
 struct PlatformEvents {
     bool quit_requested{false};
     bool frame_requested{false};
+    std::uint64_t suppressed_compatibility_mouse_events{0};
+    input::PlatformInputBatch input;
+
+    void clear() noexcept {
+        quit_requested = false;
+        frame_requested = false;
+        suppressed_compatibility_mouse_events = 0;
+        input.clear();
+    }
+};
+
+struct PlatformEventDiagnostics {
+    std::uint64_t poll_calls{0};
+    std::uint64_t wait_calls{0};
+    std::uint64_t normalized_input_events{0};
+    std::uint64_t coalesced_pointer_moves{0};
+    std::uint64_t suppressed_compatibility_mouse_events{0};
+    std::uint64_t frame_requested_pumps{0};
+    std::uint64_t quit_requested_pumps{0};
+
+    friend bool operator==(
+        const PlatformEventDiagnostics&,
+        const PlatformEventDiagnostics&) = default;
 };
 
 class PlatformApi {
@@ -59,15 +84,17 @@ public:
         PlatformGpuDeviceHandle device) const noexcept = 0;
     [[nodiscard]] virtual float display_scale(
         PlatformWindowHandle window) const noexcept = 0;
-    [[nodiscard]] virtual bool poll_quit_requested() noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
-    [[nodiscard]] virtual PlatformEvents poll_events() noexcept {
-        return {poll_quit_requested(), false};
+    virtual void poll_events(
+        PlatformWindowHandle,
+        PlatformEvents&) {
     }
-    [[nodiscard]] virtual PlatformEvents wait_events(
-        std::uint32_t timeout_milliseconds) noexcept {
+    virtual void wait_events(
+        PlatformWindowHandle window,
+        std::uint32_t timeout_milliseconds,
+        PlatformEvents& result) {
         delay(timeout_milliseconds);
-        return poll_events();
+        poll_events(window, result);
     }
 };
 
@@ -91,13 +118,17 @@ public:
     [[nodiscard]] const char* gpu_driver() const noexcept;
     [[nodiscard]] float display_scale() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
-    [[nodiscard]] bool poll_quit_requested() noexcept;
-    [[nodiscard]] PlatformEvents poll_events() noexcept;
-    [[nodiscard]] PlatformEvents wait_events(std::uint32_t timeout_milliseconds) noexcept;
+    [[nodiscard]] bool poll_quit_requested();
+    [[nodiscard]] const PlatformEvents& poll_events();
+    [[nodiscard]] const PlatformEvents& wait_events(std::uint32_t timeout_milliseconds);
+    [[nodiscard]] PlatformEventDiagnostics event_diagnostics() const;
     void delay(std::uint32_t milliseconds) noexcept;
 
 private:
-    explicit PlatformState(PlatformApi& api) noexcept;
+    explicit PlatformState(PlatformApi& api);
+
+    void require_owner_thread() const;
+    void record_event_pump();
 
     PlatformApi* api_;
     PlatformWindowHandle window_{nullptr};
@@ -105,6 +136,8 @@ private:
     bool sdl_initialized_{false};
     bool window_claimed_{false};
     std::thread::id owner_thread_;
+    PlatformEvents events_;
+    PlatformEventDiagnostics event_diagnostics_;
 };
 
 struct PlatformCreateResult {
