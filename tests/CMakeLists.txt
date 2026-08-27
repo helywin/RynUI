@@ -198,6 +198,51 @@ target_compile_definitions(
 )
 add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
 
+add_executable(rynui_button_demo_frame_tests button_demo_frame_tests.cpp)
+rynui_configure_cpp_target(rynui_button_demo_frame_tests)
+target_link_libraries(
+    rynui_button_demo_frame_tests
+    PRIVATE
+        rynui_components
+        rynui_renderer_sdl
+)
+target_compile_definitions(
+    rynui_button_demo_frame_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.button_demo_frame COMMAND rynui_button_demo_frame_tests)
+
+add_test(
+    NAME rynui.button_example_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DEXAMPLE_SOURCE=${PROJECT_SOURCE_DIR}/examples/button/main.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_example_contract.cmake"
+)
+
+set(button_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/004-20260827-build-button-interaction-foundation/evidence"
+)
+add_test(
+    NAME rynui.button_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${button_evidence_directory}/linux-button-evidence.md"
+        "-DWINDOWS_EVIDENCE=${button_evidence_directory}/windows-button-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.button_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${button_evidence_directory}/linux-button-evidence.md"
+        "-DWINDOWS_EVIDENCE=${button_evidence_directory}/linux-button-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.button_evidence_cross_platform_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+
 add_executable(rynui_layout_engine_tests layout_engine_tests.cpp)
 rynui_configure_cpp_target(rynui_layout_engine_tests)
 target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

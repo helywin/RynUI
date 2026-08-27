@@ -56,10 +56,10 @@
 
 ## 8. 平台无关示例与 headless 验收
 
-- [ ] 8.1 新增公开 Button DSL 示例，由内部 application host 挂载 Default/Primary、Small/Middle/Large、disabled/loading 和共享 CJK/Latin Text content；通过 source contract 验证示例不直接构造 interaction、focus、Button scene、Text state 或 SDL event
-- [ ] 8.2 为示例增加可观测 click counter 与 reactive type/size/disabled/loading 更新，打印 input/HitTest/route/capture/focus/click/layout/scene/upload/draw/submit/idle 计数；通过 controlled input/clock tests 覆盖 pointer、Tab、Enter、Space、drag-out、focus loss 和 loading 防重复
-- [ ] 8.3 增加平台独立 evidence schema/contract，要求 display scale、driver、shader format、退出码、截图路径和全套计数，同时为各平台保留独立 evidence 文件且不允许相互代替
-- [ ] 8.4 运行 Button example source contract、headless interaction/frame integration、evidence schema、dependency leak 与 `git diff --check`；以英文 `feat: add interactive button demo` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 8.1 新增公开 Button DSL 示例，由内部 application host 挂载 Default/Primary、Small/Middle/Large、disabled/loading 和共享 CJK/Latin Text content；通过 source contract 验证示例不直接构造 interaction、focus、Button scene、Text state 或 SDL event
+- [x] 8.2 为示例增加可观测 click counter 与 reactive type/size/disabled/loading 更新，打印 input/HitTest/route/capture/focus/click/layout/scene/upload/draw/submit/idle 计数；通过 controlled input/clock tests 覆盖 pointer、Tab、Enter、Space、drag-out、focus loss 和 loading 防重复
+- [x] 8.3 增加平台独立 evidence schema/contract，要求 display scale、driver、shader format、退出码、截图路径和全套计数，同时为各平台保留独立 evidence 文件且不允许相互代替
+- [x] 8.4 运行 Button example source contract、headless interaction/frame integration、evidence schema、dependency leak 与 `git diff --check`；以英文 `feat: add interactive button demo` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 9. Linux 验收清单
 
