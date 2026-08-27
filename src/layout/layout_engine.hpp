@@ -149,8 +149,16 @@ public:
 private:
     struct FlexItem final {
         runtime::NodeId id;
+        std::size_t declaration_ordinal{0};
         float main_size{0.0F};
         float cross_size{0.0F};
+        float base_main_size{0.0F};
+        float min_main_size{0.0F};
+        float max_main_size{0.0F};
+        float grow{0.0F};
+        float shrink{1.0F};
+        runtime::FlexItemAlign align_self{runtime::FlexItemAlign::automatic};
+        bool frozen{false};
     };
 
     struct FlexLine final {
@@ -189,7 +197,10 @@ private:
 
     [[nodiscard]] const LayoutModel& require_layout(runtime::NodeId id) const;
     [[nodiscard]] IntrinsicSlot* find_intrinsic(runtime::NodeId id) noexcept;
-    [[nodiscard]] runtime::Size measure_node(runtime::NodeId id, Constraints constraints);
+    [[nodiscard]] runtime::Size
+    measure_node(runtime::NodeId id, Constraints constraints,
+                 std::optional<float> forced_outer_width = std::nullopt,
+                 std::optional<float> forced_outer_height = std::nullopt);
     void place_node(
         runtime::NodeId id,
         runtime::Rect bounds,

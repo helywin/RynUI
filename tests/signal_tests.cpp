@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 
@@ -42,11 +43,34 @@ void test_precise_dependency_notification() {
     require(executions == 2, "inactive observer received a notification");
 }
 
+void test_owner_thread_rejects_reads_and_writes_before_mutation() {
+    ryn::Signal<int> signal{7};
+    bool read_rejected = false;
+    bool write_rejected = false;
+    std::thread worker([&] {
+        try {
+            static_cast<void>(signal.get());
+        } catch (const std::logic_error&) {
+            read_rejected = true;
+        }
+        try {
+            signal.set(9);
+        } catch (const std::logic_error&) {
+            write_rejected = true;
+        }
+    });
+    worker.join();
+
+    require(read_rejected && write_rejected, "non-owner Signal access did not fail fast");
+    require(signal.get() == 7, "rejected non-owner Signal write changed the value");
+}
+
 } // namespace
 
 int main() {
     try {
         test_precise_dependency_notification();
+        test_owner_thread_rejects_reads_and_writes_before_mutation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

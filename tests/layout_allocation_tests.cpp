@@ -137,6 +137,8 @@ int main() {
                 18.0F + static_cast<float>(index % 4),
                 10.0F + static_cast<float>(index % 3),
             }});
+            nodes.require(child).external_layout.flex_grow = 1.0F + static_cast<float>(index % 3);
+            nodes.require(child).external_layout.order = static_cast<int>(index % 5) - 2;
         }
 
         const auto constraints = ryn::layout::Constraints::fixed(180.0F, 120.0F);

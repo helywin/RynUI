@@ -118,6 +118,8 @@ void test_paint_order_eligibility_and_half_open_boundaries() {
     }});
     commit(nodes, components.root(first_component), {10.0F, 10.0F, 30.0F, 30.0F});
     commit(nodes, components.root(second_component), {10.0F, 10.0F, 30.0F, 30.0F});
+    nodes.require(components.root(first_component)).external_layout.order = 10;
+    nodes.require(components.root(second_component)).external_layout.order = -10;
 
     ryn::input::InteractionRegistry registry(components, nodes);
     const auto first = register_interaction(
@@ -216,9 +218,8 @@ void test_wrapped_flex_commits_hit_test_bounds() {
             components.root(component),
             ryn::layout::LeafLayout{{20.0F, 10.0F}});
     }
-    static_cast<void>(layout.layout(
-        parent_node,
-        ryn::layout::Constraints::fixed(50.0F, 40.0F)));
+    nodes.require(components.root(child_components[2])).external_layout.order = -1;
+    static_cast<void>(layout.layout(parent_node, ryn::layout::Constraints::fixed(50.0F, 40.0F)));
 
     ryn::input::InteractionRegistry registry(components, nodes);
     std::array<ryn::input::HitTestPaintEntry, 3> entries;
@@ -233,11 +234,15 @@ void test_wrapped_flex_commits_hit_test_bounds() {
     ryn::input::HitTestSnapshot snapshot(registry, nodes);
     snapshot.rebuild(entries, {0.0F, 0.0F, 50.0F, 40.0F});
 
-    require(nodes.require(components.root(child_components[2])).bounds
-                    == ryn::runtime::Rect{0.0F, 17.0F, 20.0F, 10.0F}
-                && snapshot.hit_test({5.0F, 18.0F}) == interactions[2]
-                && !snapshot.hit_test({25.0F, 18.0F}).has_value(),
-            "wrapped Flex bounds were not synchronized to HitTest");
+    require(nodes.require(components.root(child_components[2])).bounds ==
+                    ryn::runtime::Rect{0.0F, 0.0F, 20.0F, 10.0F} &&
+                nodes.require(components.root(child_components[1])).bounds ==
+                    ryn::runtime::Rect{0.0F, 17.0F, 20.0F, 10.0F} &&
+                snapshot.hit_test({5.0F, 1.0F}) == interactions[2] &&
+                snapshot.hit_test({30.0F, 1.0F}) == interactions[0] &&
+                snapshot.hit_test({5.0F, 18.0F}) == interactions[1] &&
+                !snapshot.hit_test({25.0F, 18.0F}).has_value(),
+            "Flex layout order changed paint identity or stale HitTest bounds");
 }
 
 void test_stale_snapshot_entries_and_invalid_traversals_are_safe() {

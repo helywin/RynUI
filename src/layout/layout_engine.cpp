@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -71,9 +72,10 @@ void apply_axis_style(
     }
 }
 
-Constraints external_content_constraints(
-    Constraints outer,
-    const runtime::ExternalLayoutStyle& style) noexcept {
+Constraints external_content_constraints(Constraints outer,
+                                         const runtime::ExternalLayoutStyle& style,
+                                         std::optional<float> forced_outer_width,
+                                         std::optional<float> forced_outer_height) noexcept {
     const float horizontal = horizontal_margin(style.margin);
     const float vertical = vertical_margin(style.margin);
     Constraints content{
@@ -94,6 +96,16 @@ Constraints external_content_constraints(
         style.height,
         style.min_height,
         style.max_height);
+    if (forced_outer_width.has_value()) {
+        const float fixed = subtract_extent(*forced_outer_width, horizontal);
+        content.min_width = fixed;
+        content.max_width = fixed;
+    }
+    if (forced_outer_height.has_value()) {
+        const float fixed = subtract_extent(*forced_outer_height, vertical);
+        content.min_height = fixed;
+        content.max_height = fixed;
+    }
     return content;
 }
 
@@ -463,12 +475,13 @@ LayoutEngine::IntrinsicSlot* LayoutEngine::find_intrinsic(
     return &slot;
 }
 
-runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constraints) {
+runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constraints,
+                                         std::optional<float> forced_outer_width,
+                                         std::optional<float> forced_outer_height) {
     constraints.validate();
     auto& node = nodes_->require(id);
     const auto content_constraint = external_content_constraints(
-        constraints,
-        node.external_layout);
+        constraints, node.external_layout, forced_outer_width, forced_outer_height);
     content_constraint.validate();
     const auto& model = require_layout(id);
     if (std::holds_alternative<HorizontalContentLayout>(model)) {
@@ -548,6 +561,58 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     == FlexDirection::horizontal
                 ? child_constraints.max_width
                 : child_constraints.max_height;
+
+            for (std::size_t ordinal = 0; ordinal < node.children.size(); ++ordinal) {
+                const auto child = node.children[ordinal];
+                const auto& style = nodes_->require(child).external_layout;
+                const float margin_main = current.direction == FlexDirection::horizontal
+                                              ? horizontal_margin(style.margin)
+                                              : vertical_margin(style.margin);
+                const auto style_minimum = current.direction == FlexDirection::horizontal
+                                               ? style.min_width
+                                               : style.min_height;
+                const auto style_maximum = current.direction == FlexDirection::horizontal
+                                               ? style.max_width
+                                               : style.max_height;
+                const float minimum_main = style_minimum.value_or(0.0F) + margin_main;
+                const float maximum_main = style_maximum.has_value()
+                                               ? *style_maximum + margin_main
+                                               : std::numeric_limits<float>::infinity();
+                std::optional<float> basis_main;
+                if (style.flex_basis.has_value()) {
+                    basis_main =
+                        std::clamp(*style.flex_basis + margin_main, minimum_main, maximum_main);
+                }
+                const auto child_size =
+                    current.direction == FlexDirection::horizontal
+                        ? measure_node(child, child_constraints, basis_main, std::nullopt)
+                        : measure_node(child, child_constraints, std::nullopt, basis_main);
+                const float child_main = main_extent(child_size, current.direction);
+                const float child_cross = cross_extent(child_size, current.direction);
+                scratch.items.push_back({
+                    child,
+                    ordinal,
+                    child_main,
+                    child_cross,
+                    child_main,
+                    minimum_main,
+                    maximum_main,
+                    style.flex_grow,
+                    style.flex_shrink,
+                    style.align_self,
+                    false,
+                });
+            }
+
+            std::sort(scratch.items.begin(), scratch.items.end(),
+                      [&](const FlexItem& left, const FlexItem& right) {
+                          const auto left_order = nodes_->require(left.id).external_layout.order;
+                          const auto right_order = nodes_->require(right.id).external_layout.order;
+                          return left_order < right_order ||
+                                 (left_order == right_order &&
+                                  left.declaration_ordinal < right.declaration_ordinal);
+                      });
+
             FlexLine line;
             auto finish_line = [&] {
                 if (line.item_count == 0) {
@@ -557,65 +622,154 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 line = FlexLine{scratch.items.size(), 0, 0.0F, 0.0F};
             };
 
-            for (const auto child : node.children) {
-                const auto child_size = measure_node(child, child_constraints);
-                const float child_main = main_extent(
-                    child_size,
-                    current.direction);
-                const float child_cross = cross_extent(
-                    child_size,
-                    current.direction);
-                const float candidate_main = line.main_size
-                    + (line.item_count == 0 ? 0.0F : current.main_gap)
-                    + child_main;
+            for (std::size_t index = 0; index < scratch.items.size(); ++index) {
+                auto& item = scratch.items[index];
+                if (line.item_count == 0) {
+                    line.first_item = index;
+                }
+                const float candidate_main = line.main_size +
+                                             (line.item_count == 0 ? 0.0F : current.main_gap) +
+                                             item.main_size;
                 if (current.wrap == FlexWrap::wrap
                         && std::isfinite(available_main)
                         && line.item_count > 0
                         && candidate_main > available_main) {
                     finish_line();
+                    line.first_item = index;
                 }
-                scratch.items.push_back({child, child_main, child_cross});
                 if (line.item_count > 0) {
                     line.main_size += current.main_gap;
                 }
-                line.main_size += child_main;
-                line.cross_size = std::max(line.cross_size, child_cross);
+                line.main_size += item.main_size;
+                line.cross_size = std::max(line.cross_size, item.cross_size);
                 ++line.item_count;
             }
             finish_line();
 
-            float natural_main = 0.0F;
-            float natural_cross = 0.0F;
-            for (std::size_t index = 0; index < scratch.lines.size(); ++index) {
-                const auto& measured_line = scratch.lines[index];
-                natural_main = std::max(natural_main, measured_line.main_size);
-                if (index > 0) {
-                    natural_cross += current.cross_gap;
+            auto natural_size = [&] {
+                float natural_main = 0.0F;
+                float natural_cross = 0.0F;
+                for (std::size_t index = 0; index < scratch.lines.size(); ++index) {
+                    const auto& measured_line = scratch.lines[index];
+                    natural_main = std::max(natural_main, measured_line.main_size);
+                    if (index > 0) {
+                        natural_cross += current.cross_gap;
+                    }
+                    natural_cross += measured_line.cross_size;
                 }
-                natural_cross += measured_line.cross_size;
-            }
 
-            runtime::Size natural;
-            if (current.direction == FlexDirection::horizontal) {
-                natural = {
-                    natural_main + horizontal_padding(current.padding),
-                    natural_cross + vertical_padding(current.padding),
-                };
-            } else {
-                natural = {
-                    natural_cross + horizontal_padding(current.padding),
-                    natural_main + vertical_padding(current.padding),
-                };
+                runtime::Size natural;
+                if (current.direction == FlexDirection::horizontal) {
+                    natural = {
+                        natural_main + horizontal_padding(current.padding),
+                        natural_cross + vertical_padding(current.padding),
+                    };
+                } else {
+                    natural = {
+                        natural_cross + horizontal_padding(current.padding),
+                        natural_main + vertical_padding(current.padding),
+                    };
+                }
+                natural.width =
+                    filled_size(current.fill_width, content_constraint.max_width, natural.width);
+                natural.height =
+                    filled_size(current.fill_height, content_constraint.max_height, natural.height);
+                return content_constraint.constrain(natural);
+            };
+
+            measured = natural_size();
+            const float final_available_main =
+                current.direction == FlexDirection::horizontal
+                    ? subtract_extent(measured.width, horizontal_padding(current.padding))
+                    : subtract_extent(measured.height, vertical_padding(current.padding));
+            constexpr float distribution_epsilon = 0.0001F;
+            for (auto& measured_line : scratch.lines) {
+                const float gap_extent =
+                    measured_line.item_count > 1
+                        ? static_cast<float>(measured_line.item_count - 1) * current.main_gap
+                        : 0.0F;
+                const float free_space = final_available_main - measured_line.main_size;
+                const bool growing = free_space > distribution_epsilon;
+                float remaining = std::abs(free_space);
+                for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                    scratch.items[measured_line.first_item + index].frozen = false;
+                }
+
+                while (remaining > distribution_epsilon) {
+                    float total_weight = 0.0F;
+                    std::size_t last_adjustable = scratch.items.size();
+                    for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                        auto& item = scratch.items[measured_line.first_item + index];
+                        const float capacity = growing ? item.max_main_size - item.main_size
+                                                       : item.main_size - item.min_main_size;
+                        const float weight =
+                            growing ? item.grow : item.shrink * item.base_main_size;
+                        if (!item.frozen && capacity > distribution_epsilon && weight > 0.0F) {
+                            total_weight += weight;
+                            last_adjustable = measured_line.first_item + index;
+                        } else {
+                            item.frozen = true;
+                        }
+                    }
+                    if (last_adjustable == scratch.items.size() || total_weight <= 0.0F) {
+                        break;
+                    }
+
+                    float distributed = 0.0F;
+                    bool clamped = false;
+                    for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                        auto& item = scratch.items[measured_line.first_item + index];
+                        if (item.frozen) {
+                            continue;
+                        }
+                        const float weight =
+                            growing ? item.grow : item.shrink * item.base_main_size;
+                        const float requested = remaining * weight / total_weight;
+                        const float capacity = growing ? item.max_main_size - item.main_size
+                                                       : item.main_size - item.min_main_size;
+                        const float delta = std::min(requested, capacity);
+                        item.main_size += growing ? delta : -delta;
+                        distributed += delta;
+                        if (delta + distribution_epsilon < requested) {
+                            item.frozen = true;
+                            clamped = true;
+                        }
+                    }
+                    if (!clamped) {
+                        const float residual = remaining - distributed;
+                        if (residual > 0.0F) {
+                            auto& item = scratch.items[last_adjustable];
+                            const float capacity = growing ? item.max_main_size - item.main_size
+                                                           : item.main_size - item.min_main_size;
+                            const float delta = std::min(residual, capacity);
+                            item.main_size += growing ? delta : -delta;
+                            distributed += delta;
+                        }
+                    }
+                    if (distributed <= distribution_epsilon) {
+                        break;
+                    }
+                    remaining = std::max(0.0F, remaining - distributed);
+                }
+
+                measured_line.main_size = gap_extent;
+                measured_line.cross_size = 0.0F;
+                for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                    auto& item = scratch.items[measured_line.first_item + index];
+                    if (std::abs(item.main_size - item.base_main_size) > distribution_epsilon) {
+                        const auto final_size = current.direction == FlexDirection::horizontal
+                                                    ? measure_node(item.id, child_constraints,
+                                                                   item.main_size, std::nullopt)
+                                                    : measure_node(item.id, child_constraints,
+                                                                   std::nullopt, item.main_size);
+                        item.main_size = main_extent(final_size, current.direction);
+                        item.cross_size = cross_extent(final_size, current.direction);
+                    }
+                    measured_line.main_size += item.main_size;
+                    measured_line.cross_size = std::max(measured_line.cross_size, item.cross_size);
+                }
             }
-            natural.width = filled_size(
-                current.fill_width,
-                content_constraint.max_width,
-                natural.width);
-            natural.height = filled_size(
-                current.fill_height,
-                content_constraint.max_height,
-                natural.height);
-            measured = content_constraint.constrain(natural);
+            measured = natural_size();
             scratch.measure_generation = generation_;
         } else {
             const float frame_inline = 2.0F
@@ -707,7 +861,6 @@ void LayoutEngine::place_node(
             const float available_cross = cross_extent(content, current.direction);
             const float main_start = main_origin(content, current.direction);
             const float cross_start = cross_origin(content, current.direction);
-            const float main_end = main_start + available_main;
             const float cross_end = cross_start + available_cross;
             float line_cross_cursor = cross_start;
 
@@ -767,15 +920,28 @@ void LayoutEngine::place_node(
                     const auto& item = scratch.items[
                         line.first_item + line_item];
                     const auto& child_style = nodes_->require(item.id).external_layout;
-                    const bool explicit_cross = current.direction
-                            == FlexDirection::horizontal
-                        ? child_style.height.has_value()
-                        : child_style.width.has_value();
-                    const bool stretch = current.align == FlexAlign::stretch
-                        && !explicit_cross;
-                    const float child_main = std::min(
-                        item.main_size,
-                        std::max(0.0F, main_end - item_cursor));
+                    FlexAlign item_align = current.align;
+                    switch (item.align_self) {
+                    case runtime::FlexItemAlign::automatic:
+                        break;
+                    case runtime::FlexItemAlign::start:
+                        item_align = FlexAlign::start;
+                        break;
+                    case runtime::FlexItemAlign::center:
+                        item_align = FlexAlign::center;
+                        break;
+                    case runtime::FlexItemAlign::end:
+                        item_align = FlexAlign::end;
+                        break;
+                    case runtime::FlexItemAlign::stretch:
+                        item_align = FlexAlign::stretch;
+                        break;
+                    }
+                    const bool explicit_cross = current.direction == FlexDirection::horizontal
+                                                    ? child_style.height.has_value()
+                                                    : child_style.width.has_value();
+                    const bool stretch = item_align == FlexAlign::stretch && !explicit_cross;
+                    const float child_main = item.main_size;
                     const float child_cross = stretch
                         ? line_cross
                         : std::min(item.cross_size, line_cross);
@@ -783,9 +949,9 @@ void LayoutEngine::place_node(
                         0.0F,
                         line_cross - child_cross);
                     float leading_cross = 0.0F;
-                    if (current.align == FlexAlign::center) {
+                    if (item_align == FlexAlign::center) {
                         leading_cross = free_cross * 0.5F;
-                    } else if (current.align == FlexAlign::end) {
+                    } else if (item_align == FlexAlign::end) {
                         leading_cross = free_cross;
                     }
 
@@ -814,9 +980,7 @@ void LayoutEngine::place_node(
                     }
                     item_cursor += child_main;
                     if (line_item + 1 < line.item_count) {
-                        item_cursor = std::min(
-                            main_end,
-                            item_cursor + between_items);
+                        item_cursor += between_items;
                     }
                 }
 

@@ -8,11 +8,11 @@
 
 ## 2. Flex child LayoutStyle 与自由空间分配
 
-- [ ] 2.1 扩展公开 `LayoutStyle` 与内部 `ExternalLayoutStyle`，增加 reactive grow、shrink、basis、align-self、order，保持字段只表达外部布局；通过 public API、adapter、非法负数/NaN/无穷值和非 Flex parent regression tests 验证边界
-- [ ] 2.2 实现 hypothetical main size、正自由空间 grow、负自由空间 `shrink * basis`、min/max freeze 与确定余数分配；通过 1:2 权重、零权重、多轮 clamp、固定 basis、Text 最终宽度重测和极窄约束 tests 验证结果
-- [ ] 2.3 实现 `(order, declaration ordinal)` 稳定 layout order 与 align-self override，通过响应式 order、相同 order、destroy/reuse、paint/HitTest/focus order 保持声明顺序 tests 验证不扩大为 Structure dirty
-- [ ] 2.4 接入 flex child Prop 的局部 Measure/Layout/Geometry/HitTest dirty 与 sibling isolation 诊断，通过普通更新不重挂 child、不重建 scene topology、错误线程 fail-fast 和销毁后 Signal write tests 验证 retained 生命周期
-- [ ] 2.5 运行 LayoutStyle、Flex allocation、Component lifecycle、Pointer/Focus 与 benchmark 自动测试和 `git diff --check`；以英文 `feat: add flex item layout properties` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 2.1 扩展公开 `LayoutStyle` 与内部 `ExternalLayoutStyle`，增加 reactive grow、shrink、basis、align-self、order，保持字段只表达外部布局；通过 public API、adapter、非法负数/NaN/无穷值和非 Flex parent regression tests 验证边界
+- [x] 2.2 实现 hypothetical main size、正自由空间 grow、负自由空间 `shrink * basis`、min/max freeze 与确定余数分配；通过 1:2 权重、零权重、多轮 clamp、固定 basis、Text 最终宽度重测和极窄约束 tests 验证结果
+- [x] 2.3 实现 `(order, declaration ordinal)` 稳定 layout order 与 align-self override，通过响应式 order、相同 order、destroy/reuse、paint/HitTest/focus order 保持声明顺序 tests 验证不扩大为 Structure dirty
+- [x] 2.4 接入 flex child Prop 的局部 Measure/Layout/Geometry/HitTest dirty 与 sibling isolation 诊断，通过普通更新不重挂 child、不重建 scene topology、错误线程 fail-fast 和销毁后 Signal write tests 验证 retained 生命周期
+- [x] 2.5 运行 LayoutStyle、Flex allocation、Component lifecycle、Pointer/Focus 与 benchmark 自动测试和 `git diff --check`；以英文 `feat: add flex item layout properties` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 3. 共享 gap value、Theme token 与公开 Flex
 

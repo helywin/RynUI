@@ -475,20 +475,274 @@ void test_flex_children_do_not_exceed_constraints() {
             "layout pass counters are incorrect");
 }
 
+void test_flex_grow_shrink_freeze_and_remainder_are_deterministic() {
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(first, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        nodes.require(first).external_layout.flex_grow = 1.0F;
+        nodes.require(second).external_layout.flex_grow = 2.0F;
+
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        require(near(nodes.require(first).bounds.width, 36.666668F) &&
+                    near(nodes.require(second).bounds.width, 63.333332F) &&
+                    near(nodes.require(second).bounds.x, 36.666668F),
+                "Flex grow did not distribute positive space with 1:2 weights");
+        const auto stable_first = nodes.require(first).bounds;
+        const auto stable_second = nodes.require(second).bounds;
+        for (int iteration = 0; iteration < 32; ++iteration) {
+            static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        }
+        require(nodes.require(first).bounds == stable_first &&
+                    nodes.require(second).bounds == stable_second,
+                "Flex fractional grow remainder changed across layouts");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout(ryn::layout::FlexDirection::horizontal, 0.0F,
+                                            ryn::layout::FlexWrap::no_wrap,
+                                            ryn::layout::FlexJustify::center));
+        layout.set_layout(first, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        nodes.require(first).external_layout.flex_grow = 0.0F;
+        nodes.require(second).external_layout.flex_grow = 0.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        require(nodes.require(first).bounds == ryn::runtime::Rect{40.0F, 0.0F, 10.0F, 10.0F} &&
+                    nodes.require(second).bounds == ryn::runtime::Rect{50.0F, 0.0F, 10.0F, 10.0F},
+                "zero Flex grow consumed justify free space");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(first, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        nodes.require(first).external_layout.flex_basis = 60.0F;
+        nodes.require(second).external_layout.flex_basis = 40.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(80.0F, 20.0F)));
+        require(near(nodes.require(first).bounds.width, 48.0F) &&
+                    near(nodes.require(second).bounds.width, 32.0F),
+                "Flex shrink did not weight negative space by shrink times basis");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const std::array children{
+            nodes.create_child(root),
+            nodes.create_child(root),
+            nodes.create_child(root),
+        };
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        for (const auto child : children) {
+            layout.set_layout(child, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+            nodes.require(child).external_layout.flex_grow = 1.0F;
+        }
+        nodes.require(children[0]).external_layout.max_width = 15.0F;
+        nodes.require(children[1]).external_layout.max_width = 25.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        require(near(nodes.require(children[0]).bounds.width, 15.0F) &&
+                    near(nodes.require(children[1]).bounds.width, 25.0F) &&
+                    near(nodes.require(children[2]).bounds.width, 60.0F),
+                "Flex grow did not freeze and redistribute across multiple clamps");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(first, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        nodes.require(first).external_layout.flex_basis = 40.0F;
+        nodes.require(second).external_layout.flex_basis = 40.0F;
+        nodes.require(first).external_layout.min_width = 35.0F;
+        nodes.require(second).external_layout.min_width = 10.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(50.0F, 20.0F)));
+        require(near(nodes.require(first).bounds.width, 35.0F) &&
+                    near(nodes.require(second).bounds.width, 15.0F),
+                "Flex shrink did not freeze at min size and redistribute deficit");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(first, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        nodes.require(first).external_layout.flex_basis = 40.0F;
+        nodes.require(second).external_layout.flex_basis = 40.0F;
+        nodes.require(first).external_layout.min_width = 20.0F;
+        nodes.require(second).external_layout.min_width = 20.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(30.0F, 20.0F)));
+        require(nodes.require(first).bounds.width == 20.0F &&
+                    nodes.require(second).bounds.width == 20.0F &&
+                    nodes.require(second).bounds.x == 20.0F,
+                "impossible Flex deficit clipped a child below its minimum");
+    }
+}
+
+void test_flex_basis_intrinsic_remeasure_and_narrow_constraints() {
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto child = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(child, ryn::layout::LeafLayout{{5.0F, 10.0F}});
+        nodes.require(child).external_layout.width = 80.0F;
+        nodes.require(child).external_layout.flex_basis = 20.0F;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        require(nodes.require(child).bounds.width == 20.0F,
+                "Flex basis did not override fixed or intrinsic main size");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto text = nodes.create_child(root);
+        const auto fixed = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(text, ryn::layout::LeafLayout{});
+        layout.set_layout(fixed, ryn::layout::LeafLayout{{30.0F, 10.0F}});
+        nodes.require(text).external_layout.flex_basis = 30.0F;
+        nodes.require(text).external_layout.flex_grow = 1.0F;
+        nodes.require(fixed).external_layout.flex_basis = 30.0F;
+        std::vector<float> measured_widths;
+        layout.set_intrinsic_measure(text, 1, [&](ryn::layout::Constraints constraints) {
+            measured_widths.push_back(constraints.max_width);
+            return ryn::runtime::Size{
+                constraints.max_width,
+                constraints.max_width < 60.0F ? 20.0F : 10.0F,
+            };
+        });
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 30.0F)));
+        require(measured_widths == std::vector<float>({30.0F, 70.0F}) &&
+                    nodes.require(text).bounds.width == 70.0F &&
+                    nodes.require(text).bounds.height == 10.0F,
+                "Flex did not remeasure Text-like intrinsic content at final width");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(first, ryn::layout::LeafLayout{{20.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{20.0F, 10.0F}});
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(1.0F, 10.0F)));
+        const auto first_bounds = nodes.require(first).bounds;
+        const auto second_bounds = nodes.require(second).bounds;
+        require(std::isfinite(first_bounds.width) && std::isfinite(second_bounds.width) &&
+                    first_bounds.width >= 0.0F && second_bounds.width >= 0.0F &&
+                    second_bounds.x + second_bounds.width <= 1.0F,
+                "extremely narrow Flex constraints produced invalid bounds");
+    }
+}
+
+void test_flex_order_align_self_and_non_flex_parent_boundaries() {
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        const auto third = nodes.create_child(root);
+        const auto declaration_order = nodes.require(root).children;
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        for (const auto child : declaration_order) {
+            layout.set_layout(child, ryn::layout::LeafLayout{{20.0F, 10.0F}});
+        }
+        nodes.require(second).external_layout.order = -1;
+        nodes.require(first).external_layout.align_self = ryn::runtime::FlexItemAlign::end;
+        nodes.require(third).external_layout.align_self = ryn::runtime::FlexItemAlign::center;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 40.0F)));
+        require(nodes.require(second).bounds.x == 0.0F && nodes.require(first).bounds.x == 20.0F &&
+                    nodes.require(third).bounds.x == 40.0F &&
+                    nodes.require(first).bounds.y == 30.0F &&
+                    nodes.require(third).bounds.y == 15.0F &&
+                    nodes.require(root).children == declaration_order,
+                "Flex order or align-self changed declaration topology or placement");
+
+        nodes.require(first).external_layout.order = 0;
+        nodes.require(second).external_layout.order = 0;
+        nodes.require(third).external_layout.order = 0;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 40.0F)));
+        require(nodes.require(first).bounds.x == 0.0F && nodes.require(second).bounds.x == 20.0F &&
+                    nodes.require(third).bounds.x == 40.0F,
+                "same-order Flex children lost stable declaration order");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto stale = nodes.create_child(root);
+        const auto survivor = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout());
+        layout.set_layout(stale, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        layout.set_layout(survivor, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        require(nodes.destroy(stale), "Flex order stale child destroy failed");
+        const auto replacement = nodes.create_child(root);
+        require(replacement.index == stale.index && replacement.generation != stale.generation,
+                "Flex order test did not reuse a Node slot");
+        layout.set_layout(replacement, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(40.0F, 20.0F)));
+        require(nodes.require(survivor).bounds.x == 0.0F &&
+                    nodes.require(replacement).bounds.x == 10.0F,
+                "destroy/reuse aliased stale Flex declaration order");
+    }
+
+    {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto child = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, ryn::layout::BoxLayout{});
+        layout.set_layout(child, ryn::layout::LeafLayout{{25.0F, 10.0F}});
+        auto& style = nodes.require(child).external_layout;
+        style.flex_grow = 10.0F;
+        style.flex_shrink = 0.0F;
+        style.flex_basis = 80.0F;
+        style.align_self = ryn::runtime::FlexItemAlign::end;
+        style.order = -10;
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(100.0F, 40.0F)));
+        require(nodes.require(child).bounds == ryn::runtime::Rect{0.0F, 0.0F, 25.0F, 10.0F},
+                "Flex child properties affected a non-Flex parent");
+    }
+}
+
 void test_external_style_constrains_and_places_without_wrapper() {
     ryn::runtime::NodeStore nodes;
     const auto root = nodes.create_root();
     ryn::layout::LayoutEngine layout(nodes);
     layout.set_layout(root, ryn::layout::LeafLayout{{80.0F, 20.0F}});
-    nodes.require(root).external_layout = {
-        40.0F,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        {5.0F, 3.0F, 7.0F, 4.0F},
-    };
+    auto& style = nodes.require(root).external_layout;
+    style.width = 40.0F;
+    style.margin = {5.0F, 3.0F, 7.0F, 4.0F};
 
     const auto size = layout.layout(
         root,
@@ -767,6 +1021,9 @@ int main() {
         test_flex_align_modes_and_stretch_constraints();
         test_flex_dual_axis_gaps_and_nested_logical_bounds();
         test_flex_children_do_not_exceed_constraints();
+        test_flex_grow_shrink_freeze_and_remainder_are_deterministic();
+        test_flex_basis_intrinsic_remeasure_and_narrow_constraints();
+        test_flex_order_align_self_and_non_flex_parent_boundaries();
         test_external_style_constrains_and_places_without_wrapper();
         test_external_style_clamps_fixed_and_intrinsic_sizes();
         test_intrinsic_measure_cache_revision_and_generation();

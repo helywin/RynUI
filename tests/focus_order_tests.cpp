@@ -41,6 +41,9 @@ void test_focus_order_wraps_and_tracks_dynamic_eligibility() {
             component = mount_leaf();
         }
     }});
+    nodes.require(components.root(component_ids[0])).external_layout.order = 2;
+    nodes.require(components.root(component_ids[1])).external_layout.order = -1;
+    nodes.require(components.root(component_ids[2])).external_layout.order = 0;
 
     ryn::input::InteractionRegistry registry(components, nodes);
     std::array<ryn::input::InteractionId, 3> interactions;

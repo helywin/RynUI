@@ -66,6 +66,7 @@ public:
     explicit DirtyQueues(NodeStore& nodes, FrameRequestState* frames = nullptr) noexcept;
 
     void invalidate(NodeId id, DirtyFlags flags);
+    void invalidate_subtree(NodeId root, DirtyFlags flags);
     void clear() noexcept;
 
     [[nodiscard]] const std::vector<NodeId>& layout_roots() const noexcept;

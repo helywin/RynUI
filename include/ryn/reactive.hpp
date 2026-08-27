@@ -5,6 +5,8 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -15,14 +17,17 @@ template <typename T, typename Equal>
 class SignalCell final : public ReactiveSource {
 public:
     SignalCell(T initial_value, Equal equal)
-        : value_(std::move(initial_value)), equal_(std::move(equal)) {}
+        : value_(std::move(initial_value)), equal_(std::move(equal)),
+          owner_thread_(std::this_thread::get_id()) {}
 
     [[nodiscard]] const T& get() {
+        ensure_owner_thread();
         record_dependency(*this);
         return value_;
     }
 
     bool set(T value) {
+        ensure_owner_thread();
         if (equal_(value_, value)) {
             return false;
         }
@@ -32,8 +37,15 @@ public:
     }
 
 private:
+    void ensure_owner_thread() const {
+        if (std::this_thread::get_id() != owner_thread_) {
+            throw std::logic_error("Signal can only be used on its owner thread");
+        }
+    }
+
     T value_;
     [[no_unique_address]] Equal equal_;
+    std::thread::id owner_thread_;
 };
 
 template <typename T, typename Equal>

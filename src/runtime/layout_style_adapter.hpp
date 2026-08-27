@@ -59,6 +59,30 @@ struct LayoutStyleAccess final {
         const LayoutStyle& style) noexcept {
         return style.margin_bottom_;
     }
+
+    [[nodiscard]] static const std::optional<Prop<float>>&
+    flex_grow(const LayoutStyle& style) noexcept {
+        return style.flex_grow_;
+    }
+
+    [[nodiscard]] static const std::optional<Prop<float>>&
+    flex_shrink(const LayoutStyle& style) noexcept {
+        return style.flex_shrink_;
+    }
+
+    [[nodiscard]] static const std::optional<Prop<LogicalLength>>&
+    flex_basis(const LayoutStyle& style) noexcept {
+        return style.flex_basis_;
+    }
+
+    [[nodiscard]] static const std::optional<Prop<FlexAlignSelf>>&
+    align_self(const LayoutStyle& style) noexcept {
+        return style.align_self_;
+    }
+
+    [[nodiscard]] static const std::optional<Prop<int>>& order(const LayoutStyle& style) noexcept {
+        return style.order_;
+    }
 };
 
 } // namespace ryn::detail

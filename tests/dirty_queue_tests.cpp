@@ -93,12 +93,31 @@ void test_size_update_queues_layout_root_and_geometry() {
             "size update did not rerun Measure and Place");
 }
 
+void test_explicit_subtree_invalidation_does_not_bubble_to_page_root() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto flex = nodes.create_child(root);
+    const auto child = nodes.create_child(flex);
+    const auto sibling = nodes.create_child(root);
+    ryn::runtime::DirtyQueues dirty(nodes);
+
+    dirty.invalidate_subtree(flex, ryn::runtime::DirtyFlags::Measure |
+                                       ryn::runtime::DirtyFlags::Layout |
+                                       ryn::runtime::DirtyFlags::Geometry);
+    require(dirty.layout_roots() == std::vector<ryn::runtime::NodeId>({flex}) &&
+                dirty.geometry_nodes() == std::vector<ryn::runtime::NodeId>({flex}) &&
+                dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({flex}) &&
+                nodes.find(child) != nullptr && nodes.find(sibling) != nullptr,
+            "explicit subtree invalidation bubbled or changed sibling topology");
+}
+
 } // namespace
 
 int main() {
     try {
         test_material_and_transform_updates_skip_layout();
         test_size_update_queues_layout_root_and_geometry();
+        test_explicit_subtree_invalidation_does_not_bubble_to_page_root();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

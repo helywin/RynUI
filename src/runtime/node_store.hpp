@@ -34,6 +34,14 @@ struct EdgeInsets final {
     friend constexpr bool operator==(EdgeInsets, EdgeInsets) = default;
 };
 
+enum class FlexItemAlign {
+    automatic,
+    start,
+    center,
+    end,
+    stretch,
+};
+
 struct ExternalLayoutStyle final {
     std::optional<float> width;
     std::optional<float> height;
@@ -42,6 +50,11 @@ struct ExternalLayoutStyle final {
     std::optional<float> min_height;
     std::optional<float> max_height;
     EdgeInsets margin;
+    float flex_grow{0.0F};
+    float flex_shrink{1.0F};
+    std::optional<float> flex_basis;
+    FlexItemAlign align_self{FlexItemAlign::automatic};
+    int order{0};
 
     friend bool operator==(
         const ExternalLayoutStyle&,

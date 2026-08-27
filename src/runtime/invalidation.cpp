@@ -50,6 +50,32 @@ void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
     }
 }
 
+void DirtyQueues::invalidate_subtree(NodeId root, DirtyFlags flags) {
+    static_cast<void>(nodes_->require(root));
+    if (flags != DirtyFlags::None && frames_ != nullptr) {
+        frames_->request_frame();
+    }
+    if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
+        enqueue_unique(layout_roots_, root);
+    }
+    if (has_any(flags, DirtyFlags::Placement)) {
+        enqueue_unique(placement_roots_, root);
+    }
+    if (has_any(flags, DirtyFlags::Material)) {
+        enqueue_unique(material_nodes_, root);
+    }
+    if (has_any(flags, DirtyFlags::Transform)) {
+        enqueue_unique(transform_nodes_, root);
+    }
+    if (has_any(flags, DirtyFlags::Geometry)) {
+        enqueue_unique(geometry_nodes_, root);
+    }
+    if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure |
+                           DirtyFlags::Layout | DirtyFlags::Placement)) {
+        enqueue_unique(hit_test_nodes_, root);
+    }
+}
+
 void DirtyQueues::clear() noexcept {
     layout_roots_.clear();
     placement_roots_.clear();

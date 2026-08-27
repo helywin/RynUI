@@ -44,6 +44,14 @@ private:
 
 inline constexpr LogicalLength auto_length{};
 
+enum class FlexAlignSelf {
+    automatic,
+    start,
+    center,
+    end,
+    stretch,
+};
+
 class LayoutStyle final {
 public:
     LayoutStyle& width(Prop<LogicalLength> value) {
@@ -96,6 +104,31 @@ public:
         return *this;
     }
 
+    LayoutStyle& flex_grow(Prop<float> value) {
+        flex_grow_ = std::move(value);
+        return *this;
+    }
+
+    LayoutStyle& flex_shrink(Prop<float> value) {
+        flex_shrink_ = std::move(value);
+        return *this;
+    }
+
+    LayoutStyle& flex_basis(Prop<LogicalLength> value) {
+        flex_basis_ = std::move(value);
+        return *this;
+    }
+
+    LayoutStyle& align_self(Prop<FlexAlignSelf> value) {
+        align_self_ = std::move(value);
+        return *this;
+    }
+
+    LayoutStyle& order(Prop<int> value) {
+        order_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend struct detail::LayoutStyleAccess;
 
@@ -109,6 +142,11 @@ private:
     std::optional<Prop<LogicalLength>> margin_top_;
     std::optional<Prop<LogicalLength>> margin_right_;
     std::optional<Prop<LogicalLength>> margin_bottom_;
+    std::optional<Prop<float>> flex_grow_;
+    std::optional<Prop<float>> flex_shrink_;
+    std::optional<Prop<LogicalLength>> flex_basis_;
+    std::optional<Prop<FlexAlignSelf>> align_self_;
+    std::optional<Prop<int>> order_;
 };
 
 } // namespace ryn
