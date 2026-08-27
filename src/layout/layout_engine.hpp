@@ -3,6 +3,7 @@
 #include "runtime/geometry.hpp"
 #include "runtime/node_store.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -29,6 +30,8 @@ struct Padding {
     float top{0.0F};
     float right{0.0F};
     float bottom{0.0F};
+
+    friend constexpr bool operator==(Padding, Padding) = default;
 };
 
 struct LeafLayout {
@@ -46,12 +49,50 @@ enum class FlexDirection {
     vertical,
 };
 
+enum class FlexWrap {
+    no_wrap,
+    wrap,
+};
+
+enum class FlexJustify {
+    start,
+    center,
+    end,
+    space_between,
+    space_around,
+    space_evenly,
+};
+
+enum class FlexAlign {
+    start,
+    center,
+    end,
+    stretch,
+};
+
 struct FlexLayout {
     FlexDirection direction{FlexDirection::horizontal};
-    float gap{0.0F};
+    float main_gap{0.0F};
     Padding padding;
     bool fill_width{false};
     bool fill_height{false};
+    FlexWrap wrap{FlexWrap::no_wrap};
+    FlexJustify justify{FlexJustify::start};
+    FlexAlign align{FlexAlign::start};
+    float cross_gap{0.0F};
+
+    friend constexpr bool operator==(FlexLayout, FlexLayout) = default;
+};
+
+struct FlexLayoutDiagnostics final {
+    std::size_t item_count{0};
+    std::size_t line_count{0};
+    std::size_t item_capacity{0};
+    std::size_t line_capacity{0};
+
+    friend constexpr bool operator==(
+        FlexLayoutDiagnostics,
+        FlexLayoutDiagnostics) = default;
 };
 
 struct HorizontalContentLayout final {
@@ -102,12 +143,34 @@ public:
     [[nodiscard]] std::uint64_t generation() const noexcept;
     [[nodiscard]] const HorizontalContentGeometry& horizontal_content_geometry(
         runtime::NodeId id) const;
+    [[nodiscard]] FlexLayoutDiagnostics flex_layout_diagnostics(
+        runtime::NodeId id) const;
 
 private:
+    struct FlexItem final {
+        runtime::NodeId id;
+        float main_size{0.0F};
+        float cross_size{0.0F};
+    };
+
+    struct FlexLine final {
+        std::size_t first_item{0};
+        std::size_t item_count{0};
+        float main_size{0.0F};
+        float cross_size{0.0F};
+    };
+
+    struct FlexScratch final {
+        std::uint64_t measure_generation{0};
+        std::vector<FlexItem> items;
+        std::vector<FlexLine> lines;
+    };
+
     struct LayoutSlot {
         std::uint32_t generation{0};
         LayoutModel model{LeafLayout{}};
         std::optional<HorizontalContentGeometry> horizontal_content_geometry;
+        FlexScratch flex_scratch;
     };
 
     struct IntrinsicCache final {
@@ -127,7 +190,11 @@ private:
     [[nodiscard]] const LayoutModel& require_layout(runtime::NodeId id) const;
     [[nodiscard]] IntrinsicSlot* find_intrinsic(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure_node(runtime::NodeId id, Constraints constraints);
-    void place_node(runtime::NodeId id, runtime::Rect bounds);
+    void place_node(
+        runtime::NodeId id,
+        runtime::Rect bounds,
+        bool stretch_width = false,
+        bool stretch_height = false);
 
     runtime::NodeStore* nodes_;
     std::vector<LayoutSlot> layouts_;

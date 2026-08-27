@@ -106,25 +106,122 @@ runtime::Size outer_size(
     };
 }
 
+float stretched_extent(
+    float available,
+    const std::optional<float>& minimum,
+    const std::optional<float>& maximum) noexcept {
+    float result = available;
+    if (maximum.has_value()) {
+        result = std::min(result, *maximum);
+    }
+    if (minimum.has_value()) {
+        result = std::min(available, std::max(result, *minimum));
+    }
+    return result;
+}
+
 runtime::Rect inset_margin(
     runtime::Rect outer,
-    const runtime::EdgeInsets& margin,
-    runtime::Size measured) noexcept {
+    const runtime::ExternalLayoutStyle& style,
+    runtime::Size measured,
+    bool stretch_width,
+    bool stretch_height) noexcept {
+    const auto& margin = style.margin;
+    const float available_width = subtract_extent(
+        outer.width,
+        horizontal_margin(margin));
+    const float available_height = subtract_extent(
+        outer.height,
+        vertical_margin(margin));
     return {
         outer.x + margin.left,
         outer.y + margin.top,
-        std::min(measured.width, subtract_extent(outer.width, horizontal_margin(margin))),
-        std::min(measured.height, subtract_extent(outer.height, vertical_margin(margin))),
+        stretch_width
+            ? stretched_extent(available_width, style.min_width, style.max_width)
+            : std::min(measured.width, available_width),
+        stretch_height
+            ? stretched_extent(available_height, style.min_height, style.max_height)
+            : std::min(measured.height, available_height),
     };
 }
 
 void validate_padding(const Padding& padding) {
     if (padding.left < 0.0F || padding.top < 0.0F
             || padding.right < 0.0F || padding.bottom < 0.0F
-            || std::isnan(padding.left) || std::isnan(padding.top)
-            || std::isnan(padding.right) || std::isnan(padding.bottom)) {
-        throw std::invalid_argument("Layout padding must be non-negative");
+            || !std::isfinite(padding.left) || !std::isfinite(padding.top)
+            || !std::isfinite(padding.right) || !std::isfinite(padding.bottom)) {
+        throw std::invalid_argument(
+            "Layout padding must be finite and non-negative");
     }
+}
+
+void validate_flex_layout(const FlexLayout& layout) {
+    validate_padding(layout.padding);
+    static_cast<void>(non_negative_finite(
+        layout.main_gap,
+        "Flex main gap must be finite and non-negative"));
+    static_cast<void>(non_negative_finite(
+        layout.cross_gap,
+        "Flex cross gap must be finite and non-negative"));
+
+    switch (layout.direction) {
+    case FlexDirection::horizontal:
+    case FlexDirection::vertical:
+        break;
+    default:
+        throw std::invalid_argument("Flex direction is invalid");
+    }
+    switch (layout.wrap) {
+    case FlexWrap::no_wrap:
+    case FlexWrap::wrap:
+        break;
+    default:
+        throw std::invalid_argument("Flex wrap is invalid");
+    }
+    switch (layout.justify) {
+    case FlexJustify::start:
+    case FlexJustify::center:
+    case FlexJustify::end:
+    case FlexJustify::space_between:
+    case FlexJustify::space_around:
+    case FlexJustify::space_evenly:
+        break;
+    default:
+        throw std::invalid_argument("Flex justify is invalid");
+    }
+    switch (layout.align) {
+    case FlexAlign::start:
+    case FlexAlign::center:
+    case FlexAlign::end:
+    case FlexAlign::stretch:
+        break;
+    default:
+        throw std::invalid_argument("Flex align is invalid");
+    }
+}
+
+float main_extent(runtime::Size size, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? size.width : size.height;
+}
+
+float cross_extent(runtime::Size size, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? size.height : size.width;
+}
+
+float main_extent(runtime::Rect bounds, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? bounds.width : bounds.height;
+}
+
+float cross_extent(runtime::Rect bounds, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? bounds.height : bounds.width;
+}
+
+float main_origin(runtime::Rect bounds, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? bounds.x : bounds.y;
+}
+
+float cross_origin(runtime::Rect bounds, FlexDirection direction) noexcept {
+    return direction == FlexDirection::horizontal ? bounds.y : bounds.x;
 }
 
 float filled_size(bool fill, float maximum, float natural) noexcept {
@@ -191,11 +288,10 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
         } else if constexpr (
             std::is_same_v<Model, BoxLayout>
             || std::is_same_v<Model, FlexLayout>) {
-            validate_padding(model.padding);
             if constexpr (std::is_same_v<Model, FlexLayout>) {
-                if (model.gap < 0.0F || std::isnan(model.gap)) {
-                    throw std::invalid_argument("Flex gap must be non-negative");
-                }
+                validate_flex_layout(model);
+            } else {
+                validate_padding(model.padding);
             }
         }
         if constexpr (std::is_same_v<Model, HorizontalContentLayout>) {
@@ -228,6 +324,7 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
         id.generation,
         std::move(layout),
         std::nullopt,
+        {},
     };
 }
 
@@ -319,6 +416,27 @@ const HorizontalContentGeometry& LayoutEngine::horizontal_content_geometry(
             "Horizontal content geometry requires current placement");
     }
     return *slot.horizontal_content_geometry;
+}
+
+FlexLayoutDiagnostics LayoutEngine::flex_layout_diagnostics(
+    runtime::NodeId id) const {
+    static_cast<void>(nodes_->require(id));
+    if (id.index >= layouts_.size()) {
+        throw std::logic_error("Node has no Flex layout");
+    }
+    const auto& slot = layouts_[id.index];
+    if (slot.generation != id.generation
+            || !std::holds_alternative<FlexLayout>(slot.model)
+            || slot.flex_scratch.measure_generation != generation_) {
+        throw std::logic_error(
+            "Flex diagnostics require current measurement");
+    }
+    return {
+        slot.flex_scratch.items.size(),
+        slot.flex_scratch.lines.size(),
+        slot.flex_scratch.items.capacity(),
+        slot.flex_scratch.lines.capacity(),
+    };
 }
 
 const LayoutModel& LayoutEngine::require_layout(runtime::NodeId id) const {
@@ -421,33 +539,72 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
             const auto child_constraints = content_constraints(
                 content_constraint,
                 current.padding);
-            float main_size = 0.0F;
-            float cross_size = 0.0F;
-            bool first = true;
+            auto& scratch = layouts_[id.index].flex_scratch;
+            scratch.measure_generation = 0;
+            scratch.items.clear();
+            scratch.lines.clear();
+
+            const float available_main = current.direction
+                    == FlexDirection::horizontal
+                ? child_constraints.max_width
+                : child_constraints.max_height;
+            FlexLine line;
+            auto finish_line = [&] {
+                if (line.item_count == 0) {
+                    return;
+                }
+                scratch.lines.push_back(line);
+                line = FlexLine{scratch.items.size(), 0, 0.0F, 0.0F};
+            };
+
             for (const auto child : node.children) {
                 const auto child_size = measure_node(child, child_constraints);
-                if (!first) {
-                    main_size += current.gap;
+                const float child_main = main_extent(
+                    child_size,
+                    current.direction);
+                const float child_cross = cross_extent(
+                    child_size,
+                    current.direction);
+                const float candidate_main = line.main_size
+                    + (line.item_count == 0 ? 0.0F : current.main_gap)
+                    + child_main;
+                if (current.wrap == FlexWrap::wrap
+                        && std::isfinite(available_main)
+                        && line.item_count > 0
+                        && candidate_main > available_main) {
+                    finish_line();
                 }
-                first = false;
-                if (current.direction == FlexDirection::horizontal) {
-                    main_size += child_size.width;
-                    cross_size = std::max(cross_size, child_size.height);
-                } else {
-                    main_size += child_size.height;
-                    cross_size = std::max(cross_size, child_size.width);
+                scratch.items.push_back({child, child_main, child_cross});
+                if (line.item_count > 0) {
+                    line.main_size += current.main_gap;
                 }
+                line.main_size += child_main;
+                line.cross_size = std::max(line.cross_size, child_cross);
+                ++line.item_count;
             }
+            finish_line();
+
+            float natural_main = 0.0F;
+            float natural_cross = 0.0F;
+            for (std::size_t index = 0; index < scratch.lines.size(); ++index) {
+                const auto& measured_line = scratch.lines[index];
+                natural_main = std::max(natural_main, measured_line.main_size);
+                if (index > 0) {
+                    natural_cross += current.cross_gap;
+                }
+                natural_cross += measured_line.cross_size;
+            }
+
             runtime::Size natural;
             if (current.direction == FlexDirection::horizontal) {
                 natural = {
-                    main_size + horizontal_padding(current.padding),
-                    cross_size + vertical_padding(current.padding),
+                    natural_main + horizontal_padding(current.padding),
+                    natural_cross + vertical_padding(current.padding),
                 };
             } else {
                 natural = {
-                    cross_size + horizontal_padding(current.padding),
-                    main_size + vertical_padding(current.padding),
+                    natural_cross + horizontal_padding(current.padding),
+                    natural_main + vertical_padding(current.padding),
                 };
             }
             natural.width = filled_size(
@@ -459,6 +616,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 content_constraint.max_height,
                 natural.height);
             measured = content_constraint.constrain(natural);
+            scratch.measure_generation = generation_;
         } else {
             const float frame_inline = 2.0F
                 * (current.padding_inline + current.border_width);
@@ -504,15 +662,21 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
     return node.layout_size;
 }
 
-void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds) {
+void LayoutEngine::place_node(
+    runtime::NodeId id,
+    runtime::Rect bounds,
+    bool stretch_width,
+    bool stretch_height) {
     auto& node = nodes_->require(id);
     if (node.measure_generation != generation_) {
         throw std::logic_error("Layout child was not measured in the current generation");
     }
     node.bounds = inset_margin(
         bounds,
-        node.external_layout.margin,
-        node.measured_size);
+        node.external_layout,
+        node.measured_size,
+        stretch_width,
+        stretch_height);
     ++node.place_count;
     node.place_generation = generation_;
 
@@ -533,38 +697,134 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds) {
             }
         } else if constexpr (std::is_same_v<Model, FlexLayout>) {
             const auto content = content_bounds(node.bounds, current.padding);
-            float cursor = current.direction == FlexDirection::horizontal
-                ? content.x
-                : content.y;
-            const float end = current.direction == FlexDirection::horizontal
-                ? content.x + content.width
-                : content.y + content.height;
+            const auto& scratch = layouts_[id.index].flex_scratch;
+            if (scratch.measure_generation != generation_) {
+                throw std::logic_error(
+                    "Flex placement requires current line measurement");
+            }
 
-            for (std::size_t index = 0; index < node.children.size(); ++index) {
-                const auto child = node.children[index];
-                const auto child_size = nodes_->require(child).layout_size;
-                const float remaining = std::max(0.0F, end - cursor);
-                if (current.direction == FlexDirection::horizontal) {
-                    const float width = std::min(child_size.width, remaining);
-                    place_node(child, {
-                        cursor,
-                        content.y,
-                        width,
-                        std::min(child_size.height, content.height),
-                    });
-                    cursor += width;
-                } else {
-                    const float height = std::min(child_size.height, remaining);
-                    place_node(child, {
-                        content.x,
-                        cursor,
-                        std::min(child_size.width, content.width),
-                        height,
-                    });
-                    cursor += height;
+            const float available_main = main_extent(content, current.direction);
+            const float available_cross = cross_extent(content, current.direction);
+            const float main_start = main_origin(content, current.direction);
+            const float cross_start = cross_origin(content, current.direction);
+            const float main_end = main_start + available_main;
+            const float cross_end = cross_start + available_cross;
+            float line_cross_cursor = cross_start;
+
+            for (std::size_t line_index = 0;
+                    line_index < scratch.lines.size();
+                    ++line_index) {
+                const auto& line = scratch.lines[line_index];
+                const float remaining_cross = std::max(
+                    0.0F,
+                    cross_end - line_cross_cursor);
+                const float line_cross = scratch.lines.size() == 1
+                    ? remaining_cross
+                    : std::min(line.cross_size, remaining_cross);
+                const float free_main = std::max(
+                    0.0F,
+                    available_main - line.main_size);
+                float leading_main = 0.0F;
+                float between_items = current.main_gap;
+
+                switch (current.justify) {
+                case FlexJustify::start:
+                    break;
+                case FlexJustify::center:
+                    leading_main = free_main * 0.5F;
+                    break;
+                case FlexJustify::end:
+                    leading_main = free_main;
+                    break;
+                case FlexJustify::space_between:
+                    if (line.item_count > 1) {
+                        between_items += free_main
+                            / static_cast<float>(line.item_count - 1);
+                    }
+                    break;
+                case FlexJustify::space_around:
+                    if (line.item_count > 0) {
+                        const float distributed = free_main
+                            / static_cast<float>(line.item_count);
+                        leading_main = distributed * 0.5F;
+                        between_items += distributed;
+                    }
+                    break;
+                case FlexJustify::space_evenly:
+                    if (line.item_count > 0) {
+                        const float distributed = free_main
+                            / static_cast<float>(line.item_count + 1);
+                        leading_main = distributed;
+                        between_items += distributed;
+                    }
+                    break;
                 }
-                if (index + 1 < node.children.size()) {
-                    cursor = std::min(end, cursor + current.gap);
+
+                float item_cursor = main_start + leading_main;
+                for (std::size_t line_item = 0;
+                        line_item < line.item_count;
+                        ++line_item) {
+                    const auto& item = scratch.items[
+                        line.first_item + line_item];
+                    const auto& child_style = nodes_->require(item.id).external_layout;
+                    const bool explicit_cross = current.direction
+                            == FlexDirection::horizontal
+                        ? child_style.height.has_value()
+                        : child_style.width.has_value();
+                    const bool stretch = current.align == FlexAlign::stretch
+                        && !explicit_cross;
+                    const float child_main = std::min(
+                        item.main_size,
+                        std::max(0.0F, main_end - item_cursor));
+                    const float child_cross = stretch
+                        ? line_cross
+                        : std::min(item.cross_size, line_cross);
+                    const float free_cross = std::max(
+                        0.0F,
+                        line_cross - child_cross);
+                    float leading_cross = 0.0F;
+                    if (current.align == FlexAlign::center) {
+                        leading_cross = free_cross * 0.5F;
+                    } else if (current.align == FlexAlign::end) {
+                        leading_cross = free_cross;
+                    }
+
+                    if (current.direction == FlexDirection::horizontal) {
+                        place_node(
+                            item.id,
+                            {
+                                item_cursor,
+                                line_cross_cursor + leading_cross,
+                                child_main,
+                                child_cross,
+                            },
+                            false,
+                            stretch);
+                    } else {
+                        place_node(
+                            item.id,
+                            {
+                                line_cross_cursor + leading_cross,
+                                item_cursor,
+                                child_cross,
+                                child_main,
+                            },
+                            stretch,
+                            false);
+                    }
+                    item_cursor += child_main;
+                    if (line_item + 1 < line.item_count) {
+                        item_cursor = std::min(
+                            main_end,
+                            item_cursor + between_items);
+                    }
+                }
+
+                line_cross_cursor += line_cross;
+                if (line_index + 1 < scratch.lines.size()) {
+                    line_cross_cursor = std::min(
+                        cross_end,
+                        line_cross_cursor + current.cross_gap);
                 }
             }
         } else {

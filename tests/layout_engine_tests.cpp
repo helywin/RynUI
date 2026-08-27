@@ -16,6 +16,27 @@ void require(bool condition, const char* message) {
     }
 }
 
+bool near(float left, float right, float epsilon = 0.001F) {
+    return std::abs(left - right) <= epsilon;
+}
+
+ryn::layout::FlexLayout flex_layout(
+    ryn::layout::FlexDirection direction = ryn::layout::FlexDirection::horizontal,
+    float main_gap = 0.0F,
+    ryn::layout::FlexWrap wrap = ryn::layout::FlexWrap::no_wrap,
+    ryn::layout::FlexJustify justify = ryn::layout::FlexJustify::start,
+    ryn::layout::FlexAlign align = ryn::layout::FlexAlign::start,
+    float cross_gap = 0.0F) {
+    ryn::layout::FlexLayout result;
+    result.direction = direction;
+    result.main_gap = main_gap;
+    result.wrap = wrap;
+    result.justify = justify;
+    result.align = align;
+    result.cross_gap = cross_gap;
+    return result;
+}
+
 void test_invalid_constraints_are_diagnosed_before_measure() {
     ryn::runtime::NodeStore nodes;
     const auto root = nodes.create_root();
@@ -89,10 +110,9 @@ void test_horizontal_and_vertical_flex_are_deterministic() {
     const auto bottom = nodes.create_child(vertical);
     ryn::layout::LayoutEngine layout(nodes);
 
-    layout.set_layout(horizontal, ryn::layout::FlexLayout{
+    layout.set_layout(horizontal, flex_layout(
         ryn::layout::FlexDirection::horizontal,
-        10.0F,
-    });
+        10.0F));
     layout.set_layout(first, ryn::layout::LeafLayout{{30.0F, 20.0F}});
     layout.set_layout(second, ryn::layout::LeafLayout{{40.0F, 25.0F}});
     static_cast<void>(layout.layout(horizontal, ryn::layout::Constraints::fixed(100.0F, 40.0F)));
@@ -102,10 +122,9 @@ void test_horizontal_and_vertical_flex_are_deterministic() {
     require(nodes.require(second).bounds == ryn::runtime::Rect{40.0F, 0.0F, 40.0F, 25.0F},
             "horizontal Flex second child bounds are incorrect");
 
-    layout.set_layout(vertical, ryn::layout::FlexLayout{
+    layout.set_layout(vertical, flex_layout(
         ryn::layout::FlexDirection::vertical,
-        5.0F,
-    });
+        5.0F));
     layout.set_layout(top, ryn::layout::LeafLayout{{20.0F, 10.0F}});
     layout.set_layout(bottom, ryn::layout::LeafLayout{{25.0F, 15.0F}});
     static_cast<void>(layout.layout(vertical, ryn::layout::Constraints::fixed(40.0F, 50.0F)));
@@ -116,16 +135,335 @@ void test_horizontal_and_vertical_flex_are_deterministic() {
             "vertical Flex second child bounds are incorrect");
 }
 
+void test_flex_model_validation_equality_and_empty_layout() {
+    const ryn::layout::FlexLayout defaults;
+    require(defaults == ryn::layout::FlexLayout{},
+            "equal Flex layout values compared unequal");
+    auto changed = defaults;
+    changed.cross_gap = 4.0F;
+    require(changed != defaults,
+            "different Flex layout values compared equal");
+
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    ryn::layout::LayoutEngine layout(nodes);
+    auto expect_invalid = [&](ryn::layout::FlexLayout value) {
+        bool diagnosed = false;
+        try {
+            layout.set_layout(root, value);
+        } catch (const std::invalid_argument&) {
+            diagnosed = true;
+        }
+        require(diagnosed, "invalid Flex layout value was accepted");
+    };
+
+    auto invalid = defaults;
+    invalid.main_gap = -1.0F;
+    expect_invalid(invalid);
+    invalid = defaults;
+    invalid.cross_gap = std::numeric_limits<float>::infinity();
+    expect_invalid(invalid);
+    invalid = defaults;
+    invalid.padding.left = std::numeric_limits<float>::infinity();
+    expect_invalid(invalid);
+    invalid = defaults;
+    invalid.wrap = static_cast<ryn::layout::FlexWrap>(99);
+    expect_invalid(invalid);
+    invalid = defaults;
+    invalid.justify = static_cast<ryn::layout::FlexJustify>(99);
+    expect_invalid(invalid);
+    invalid = defaults;
+    invalid.align = static_cast<ryn::layout::FlexAlign>(99);
+    expect_invalid(invalid);
+
+    auto empty = defaults;
+    empty.padding = {2.0F, 3.0F, 5.0F, 7.0F};
+    layout.set_layout(root, empty);
+    require(layout.layout(root, {
+                    0.0F,
+                    std::numeric_limits<float>::infinity(),
+                    0.0F,
+                    std::numeric_limits<float>::infinity(),
+                }) == ryn::runtime::Size{7.0F, 10.0F}
+                && layout.flex_layout_diagnostics(root).line_count == 0,
+            "empty Flex did not resolve to padding-only logical size");
+}
+
+void test_flex_wrap_is_greedy_and_reuses_line_scratch() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto first = nodes.create_child(root);
+    const auto second = nodes.create_child(root);
+    const auto third = nodes.create_child(root);
+    ryn::layout::LayoutEngine layout(nodes);
+    layout.set_layout(root, flex_layout(
+        ryn::layout::FlexDirection::horizontal,
+        10.0F,
+        ryn::layout::FlexWrap::wrap,
+        ryn::layout::FlexJustify::start,
+        ryn::layout::FlexAlign::start,
+        5.0F));
+    layout.set_layout(first, ryn::layout::LeafLayout{{40.0F, 10.0F}});
+    layout.set_layout(second, ryn::layout::LeafLayout{{40.0F, 20.0F}});
+    layout.set_layout(third, ryn::layout::LeafLayout{{40.0F, 15.0F}});
+
+    static_cast<void>(layout.layout(
+        root,
+        ryn::layout::Constraints::fixed(100.0F, 60.0F)));
+    const auto initial = layout.flex_layout_diagnostics(root);
+    require(initial.item_count == 3 && initial.line_count == 2,
+            "greedy Flex wrap formed the wrong lines");
+    require(nodes.require(first).bounds == ryn::runtime::Rect{0.0F, 0.0F, 40.0F, 10.0F}
+                && nodes.require(second).bounds
+                    == ryn::runtime::Rect{50.0F, 0.0F, 40.0F, 20.0F}
+                && nodes.require(third).bounds
+                    == ryn::runtime::Rect{0.0F, 25.0F, 40.0F, 15.0F},
+            "wrapped Flex bounds or cross gap are incorrect");
+
+    for (int iteration = 0; iteration < 64; ++iteration) {
+        static_cast<void>(layout.layout(
+            root,
+            ryn::layout::Constraints::fixed(100.0F, 60.0F)));
+    }
+    const auto stable = layout.flex_layout_diagnostics(root);
+    require(stable.item_capacity == initial.item_capacity
+                && stable.line_capacity == initial.line_capacity,
+            "stable Flex child count reallocated item or line scratch");
+
+    const auto unconstrained = layout.layout(root, {
+        0.0F,
+        std::numeric_limits<float>::infinity(),
+        0.0F,
+        std::numeric_limits<float>::infinity(),
+    });
+    require(unconstrained == ryn::runtime::Size{140.0F, 20.0F}
+                && layout.flex_layout_diagnostics(root).line_count == 1,
+            "infinite Flex main constraint incorrectly wrapped children");
+
+    ryn::runtime::NodeStore oversized_nodes;
+    const auto oversized_root = oversized_nodes.create_root();
+    const auto oversized = oversized_nodes.create_child(oversized_root);
+    const auto follower = oversized_nodes.create_child(oversized_root);
+    ryn::layout::LayoutEngine oversized_layout(oversized_nodes);
+    oversized_layout.set_layout(oversized_root, flex_layout(
+        ryn::layout::FlexDirection::horizontal,
+        8.0F,
+        ryn::layout::FlexWrap::wrap));
+    oversized_layout.set_layout(oversized, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+    oversized_layout.set_layout(follower, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+    oversized_nodes.require(oversized).external_layout.margin = {
+        60.0F, 0.0F, 60.0F, 0.0F};
+    static_cast<void>(oversized_layout.layout(
+        oversized_root,
+        ryn::layout::Constraints::fixed(100.0F, 30.0F)));
+    require(oversized_layout.flex_layout_diagnostics(oversized_root).line_count == 2
+                && oversized_nodes.require(follower).bounds.y == 10.0F,
+            "single oversized Flex child did not occupy a deterministic line");
+}
+
+void test_flex_justify_modes_and_fractional_stability() {
+    struct JustifyCase final {
+        ryn::layout::FlexJustify justify;
+        std::array<float, 3> x;
+    };
+    const std::array cases{
+        JustifyCase{ryn::layout::FlexJustify::start, {0.0F, 20.0F, 40.0F}},
+        JustifyCase{ryn::layout::FlexJustify::center, {25.0F, 45.0F, 65.0F}},
+        JustifyCase{ryn::layout::FlexJustify::end, {50.0F, 70.0F, 90.0F}},
+        JustifyCase{ryn::layout::FlexJustify::space_between, {0.0F, 45.0F, 90.0F}},
+        JustifyCase{ryn::layout::FlexJustify::space_around,
+            {8.333333F, 45.0F, 81.666664F}},
+        JustifyCase{ryn::layout::FlexJustify::space_evenly,
+            {12.5F, 45.0F, 77.5F}},
+    };
+
+    for (const auto& test : cases) {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const std::array children{
+            nodes.create_child(root),
+            nodes.create_child(root),
+            nodes.create_child(root),
+        };
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout(
+            ryn::layout::FlexDirection::horizontal,
+            10.0F,
+            ryn::layout::FlexWrap::no_wrap,
+            test.justify));
+        for (const auto child : children) {
+            layout.set_layout(child, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        }
+        static_cast<void>(layout.layout(
+            root,
+            ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        for (std::size_t index = 0; index < children.size(); ++index) {
+            require(near(nodes.require(children[index]).bounds.x, test.x[index]),
+                    "Flex justify produced the wrong logical x coordinate");
+        }
+
+        const auto first_run = nodes.require(children[0]).bounds;
+        for (int iteration = 0; iteration < 32; ++iteration) {
+            static_cast<void>(layout.layout(
+                root,
+                ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        }
+        require(nodes.require(children[0]).bounds == first_run,
+                "fractional Flex justify bounds changed across repeated layouts");
+    }
+
+    for (const auto justify : {
+            ryn::layout::FlexJustify::space_between,
+            ryn::layout::FlexJustify::space_around,
+            ryn::layout::FlexJustify::space_evenly}) {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto child = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout(
+            ryn::layout::FlexDirection::horizontal,
+            0.0F,
+            ryn::layout::FlexWrap::no_wrap,
+            justify));
+        layout.set_layout(child, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        static_cast<void>(layout.layout(
+            root,
+            ryn::layout::Constraints::fixed(100.0F, 20.0F)));
+        const float expected = justify == ryn::layout::FlexJustify::space_between
+            ? 0.0F
+            : 45.0F;
+        require(near(nodes.require(child).bounds.x, expected),
+                "single-item distributed justify is incorrect");
+    }
+}
+
+void test_flex_align_modes_and_stretch_constraints() {
+    struct AlignCase final {
+        ryn::layout::FlexAlign align;
+        float first_y;
+        float first_height;
+        float second_y;
+    };
+    const std::array cases{
+        AlignCase{ryn::layout::FlexAlign::start, 0.0F, 10.0F, 0.0F},
+        AlignCase{ryn::layout::FlexAlign::center, 15.0F, 10.0F, 10.0F},
+        AlignCase{ryn::layout::FlexAlign::end, 30.0F, 10.0F, 20.0F},
+        AlignCase{ryn::layout::FlexAlign::stretch, 0.0F, 25.0F, 0.0F},
+    };
+
+    for (const auto& test : cases) {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout(
+            ryn::layout::FlexDirection::horizontal,
+            5.0F,
+            ryn::layout::FlexWrap::no_wrap,
+            ryn::layout::FlexJustify::start,
+            test.align));
+        layout.set_layout(first, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{10.0F, 20.0F}});
+        nodes.require(first).external_layout.max_height = 25.0F;
+        nodes.require(second).external_layout.height = 20.0F;
+        static_cast<void>(layout.layout(
+            root,
+            ryn::layout::Constraints::fixed(100.0F, 40.0F)));
+        require(near(nodes.require(first).bounds.y, test.first_y)
+                    && near(nodes.require(first).bounds.height, test.first_height)
+                    && near(nodes.require(second).bounds.y, test.second_y)
+                    && near(nodes.require(second).bounds.height, 20.0F),
+                "Flex cross-axis align or constrained stretch is incorrect");
+    }
+
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto first = nodes.create_child(root);
+    const auto second = nodes.create_child(root);
+    ryn::layout::LayoutEngine layout(nodes);
+    layout.set_layout(root, flex_layout(
+        ryn::layout::FlexDirection::vertical,
+        5.0F,
+        ryn::layout::FlexWrap::no_wrap,
+        ryn::layout::FlexJustify::start,
+        ryn::layout::FlexAlign::center));
+    layout.set_layout(first, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+    layout.set_layout(second, ryn::layout::LeafLayout{{20.0F, 10.0F}});
+    static_cast<void>(layout.layout(
+        root,
+        ryn::layout::Constraints::fixed(40.0F, 50.0F)));
+    require(nodes.require(first).bounds.x == 15.0F
+                && nodes.require(second).bounds.x == 10.0F,
+            "vertical Flex did not center children on its cross axis");
+}
+
+void test_flex_dual_axis_gaps_and_nested_logical_bounds() {
+    for (const float gap : {8.0F, 16.0F, 24.0F, 13.5F}) {
+        ryn::runtime::NodeStore nodes;
+        const auto root = nodes.create_root();
+        const auto first = nodes.create_child(root);
+        const auto second = nodes.create_child(root);
+        ryn::layout::LayoutEngine layout(nodes);
+        layout.set_layout(root, flex_layout(
+            ryn::layout::FlexDirection::horizontal,
+            2.0F,
+            ryn::layout::FlexWrap::wrap,
+            ryn::layout::FlexJustify::start,
+            ryn::layout::FlexAlign::start,
+            gap));
+        layout.set_layout(first, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        layout.set_layout(second, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+        static_cast<void>(layout.layout(
+            root,
+            ryn::layout::Constraints::fixed(15.0F, 60.0F)));
+        require(nodes.require(first).bounds.x == 0.0F
+                    && nodes.require(first).bounds.y == 0.0F
+                    && nodes.require(second).bounds.x == 0.0F
+                    && near(nodes.require(second).bounds.y, 10.0F + gap),
+                "Flex cross gap added an edge gap or used the wrong value");
+    }
+
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto nested = nodes.create_child(root);
+    const auto sibling = nodes.create_child(root);
+    const auto top = nodes.create_child(nested);
+    const auto bottom = nodes.create_child(nested);
+    ryn::layout::LayoutEngine layout(nodes);
+    layout.set_layout(root, flex_layout(
+        ryn::layout::FlexDirection::horizontal,
+        8.0F));
+    layout.set_layout(nested, flex_layout(
+        ryn::layout::FlexDirection::vertical,
+        8.0F));
+    layout.set_layout(sibling, ryn::layout::LeafLayout{{40.0F, 10.0F}});
+    layout.set_layout(top, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+    layout.set_layout(bottom, ryn::layout::LeafLayout{{10.0F, 10.0F}});
+    static_cast<void>(layout.layout(
+        root,
+        ryn::layout::Constraints::fixed(60.0F, 40.0F),
+        {3.0F, 4.0F}));
+    require(nodes.require(nested).bounds
+                    == ryn::runtime::Rect{3.0F, 4.0F, 10.0F, 28.0F}
+                && nodes.require(top).bounds
+                    == ryn::runtime::Rect{3.0F, 4.0F, 10.0F, 10.0F}
+                && nodes.require(bottom).bounds
+                    == ryn::runtime::Rect{3.0F, 22.0F, 10.0F, 10.0F}
+                && nodes.require(sibling).bounds
+                    == ryn::runtime::Rect{21.0F, 4.0F, 40.0F, 10.0F},
+            "nested Flex logical bounds or clipping are incorrect");
+}
+
 void test_flex_children_do_not_exceed_constraints() {
     ryn::runtime::NodeStore nodes;
     const auto root = nodes.create_root();
     const auto first = nodes.create_child(root);
     const auto second = nodes.create_child(root);
     ryn::layout::LayoutEngine layout(nodes);
-    layout.set_layout(root, ryn::layout::FlexLayout{
+    layout.set_layout(root, flex_layout(
         ryn::layout::FlexDirection::horizontal,
-        10.0F,
-    });
+        10.0F));
     layout.set_layout(first, ryn::layout::LeafLayout{{80.0F, 20.0F}});
     layout.set_layout(second, ryn::layout::LeafLayout{{80.0F, 20.0F}});
 
@@ -423,6 +761,11 @@ int main() {
         test_box_measure_and_place_with_padding();
         test_box_fill_uses_bounded_maximum();
         test_horizontal_and_vertical_flex_are_deterministic();
+        test_flex_model_validation_equality_and_empty_layout();
+        test_flex_wrap_is_greedy_and_reuses_line_scratch();
+        test_flex_justify_modes_and_fractional_stability();
+        test_flex_align_modes_and_stretch_constraints();
+        test_flex_dual_axis_gaps_and_nested_logical_bounds();
         test_flex_children_do_not_exceed_constraints();
         test_external_style_constrains_and_places_without_wrapper();
         test_external_style_clamps_fixed_and_intrinsic_sizes();

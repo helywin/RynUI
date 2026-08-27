@@ -191,6 +191,55 @@ void test_margin_committed_bounds_and_missing_layout() {
             "unplaced Node was marked as committed");
 }
 
+void test_wrapped_flex_commits_hit_test_bounds() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost components(nodes);
+    ryn::runtime::ComponentId parent_component;
+    std::array<ryn::runtime::ComponentId, 3> child_components;
+    components.mount(ryn::Content{[&] {
+        parent_component = mount_parent(Children{[&] {
+            for (auto& child : child_components) {
+                child = mount_leaf();
+            }
+        }});
+    }});
+
+    const auto parent_node = components.root(parent_component);
+    ryn::layout::LayoutEngine layout(nodes);
+    ryn::layout::FlexLayout flex;
+    flex.main_gap = 5.0F;
+    flex.cross_gap = 7.0F;
+    flex.wrap = ryn::layout::FlexWrap::wrap;
+    layout.set_layout(parent_node, flex);
+    for (const auto component : child_components) {
+        layout.set_layout(
+            components.root(component),
+            ryn::layout::LeafLayout{{20.0F, 10.0F}});
+    }
+    static_cast<void>(layout.layout(
+        parent_node,
+        ryn::layout::Constraints::fixed(50.0F, 40.0F)));
+
+    ryn::input::InteractionRegistry registry(components, nodes);
+    std::array<ryn::input::HitTestPaintEntry, 3> entries;
+    std::array<ryn::input::InteractionId, 3> interactions;
+    for (std::size_t index = 0; index < child_components.size(); ++index) {
+        interactions[index] = register_interaction(
+            registry,
+            components,
+            child_components[index]);
+        entries[index] = {interactions[index], std::nullopt};
+    }
+    ryn::input::HitTestSnapshot snapshot(registry, nodes);
+    snapshot.rebuild(entries, {0.0F, 0.0F, 50.0F, 40.0F});
+
+    require(nodes.require(components.root(child_components[2])).bounds
+                    == ryn::runtime::Rect{0.0F, 17.0F, 20.0F, 10.0F}
+                && snapshot.hit_test({5.0F, 18.0F}) == interactions[2]
+                && !snapshot.hit_test({25.0F, 18.0F}).has_value(),
+            "wrapped Flex bounds were not synchronized to HitTest");
+}
+
 void test_stale_snapshot_entries_and_invalid_traversals_are_safe() {
     ryn::runtime::NodeStore nodes;
     ryn::runtime::ComponentHost components(nodes);
@@ -268,6 +317,7 @@ int main() {
         test_nested_translation_clip_and_visual_child_delegation();
         test_paint_order_eligibility_and_half_open_boundaries();
         test_margin_committed_bounds_and_missing_layout();
+        test_wrapped_flex_commits_hit_test_bounds();
         test_stale_snapshot_entries_and_invalid_traversals_are_safe();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

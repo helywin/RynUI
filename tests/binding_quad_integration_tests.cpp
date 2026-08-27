@@ -60,10 +60,9 @@ void test_bindings_update_only_the_target_quad_range() {
     const auto first = nodes.create_child(root);
     const auto second = nodes.create_child(root);
     ryn::layout::LayoutEngine layout(nodes);
-    layout.set_layout(root, ryn::layout::FlexLayout{
-        ryn::layout::FlexDirection::horizontal,
-        10.0F,
-    });
+    ryn::layout::FlexLayout flex;
+    flex.main_gap = 10.0F;
+    layout.set_layout(root, flex);
     layout.set_layout(first, ryn::layout::LeafLayout{{100.0F, 80.0F}});
     layout.set_layout(second, ryn::layout::LeafLayout{{100.0F, 80.0F}});
     static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(

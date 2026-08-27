@@ -1,10 +1,10 @@
 ## 1. Flex line、wrap、gap 与对齐算法
 
-- [ ] 1.1 扩展内部 Flex layout value，增加 wrap、justify、align、main/cross gap 与严格非负有限校验；通过 model equality、非法值、空容器和现有 horizontal/vertical regression tests 验证默认行为兼容
-- [ ] 1.2 实现按有限主轴约束的 greedy line formation 与可复用 item/line scratch；通过单行、多行、单个超限 child、无限约束、margin 和稳定 child count allocation tests 验证 line break 确定且稳态不分配
-- [ ] 1.3 实现 start/center/end/space-between/space-around/space-evenly justify 与 start/center/end/stretch align；通过单/多 item、正/零自由空间、显式 cross size、min/max 和 fractional constraints 重复运行 tests 验证 bounds 稳定
-- [ ] 1.4 接通双轴 gap、wrapped line cross placement 与 logical coordinate 诊断，通过 8/16/24/custom gap、窄宽 viewport、嵌套 Flex 和 HitTest bounds tests 证明首尾无额外 gap 且 geometry 同步
-- [ ] 1.5 运行 LayoutEngine、Node、Text intrinsic、Button content、HitTest 与 allocation 自动测试和 `git diff --check`；以英文 `feat: add wrapped flex layout` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 1.1 扩展内部 Flex layout value，增加 wrap、justify、align、main/cross gap 与严格非负有限校验；通过 model equality、非法值、空容器和现有 horizontal/vertical regression tests 验证默认行为兼容
+- [x] 1.2 实现按有限主轴约束的 greedy line formation 与可复用 item/line scratch；通过单行、多行、单个超限 child、无限约束、margin 和稳定 child count allocation tests 验证 line break 确定且稳态不分配
+- [x] 1.3 实现 start/center/end/space-between/space-around/space-evenly justify 与 start/center/end/stretch align；通过单/多 item、正/零自由空间、显式 cross size、min/max 和 fractional constraints 重复运行 tests 验证 bounds 稳定
+- [x] 1.4 接通双轴 gap、wrapped line cross placement 与 logical coordinate 诊断，通过 8/16/24/custom gap、窄宽 viewport、嵌套 Flex 和 HitTest bounds tests 证明首尾无额外 gap 且 geometry 同步
+- [x] 1.5 运行 LayoutEngine、Node、Text intrinsic、Button content、HitTest 与 allocation 自动测试和 `git diff --check`；以英文 `feat: add wrapped flex layout` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 2. Flex child LayoutStyle 与自由空间分配
 

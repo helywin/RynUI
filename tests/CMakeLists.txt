@@ -249,6 +249,15 @@ target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_D
 target_link_libraries(rynui_layout_engine_tests PRIVATE rynui_layout)
 add_test(NAME rynui.layout_engine COMMAND rynui_layout_engine_tests)
 
+add_executable(rynui_layout_allocation_tests layout_allocation_tests.cpp)
+rynui_configure_cpp_target(rynui_layout_allocation_tests)
+target_include_directories(
+    rynui_layout_allocation_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(rynui_layout_allocation_tests PRIVATE rynui_layout)
+add_test(NAME rynui.layout_allocation COMMAND rynui_layout_allocation_tests)
+
 add_executable(rynui_layout_style_tests layout_style_tests.cpp)
 rynui_configure_cpp_target(rynui_layout_style_tests)
 target_include_directories(rynui_layout_style_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
