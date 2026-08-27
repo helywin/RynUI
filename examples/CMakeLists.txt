@@ -22,7 +22,7 @@ endforeach()
 
 add_executable(rynui_text_demo text/main.cpp)
 rynui_configure_cpp_target(rynui_text_demo)
-target_link_libraries(rynui_text_demo PRIVATE rynui_renderer_sdl)
+target_link_libraries(rynui_text_demo PRIVATE rynui_components rynui_renderer_sdl)
 rynui_assert_no_link_dependency_matching(rynui_text_demo "[Ss]hader[Cc]ross")
 add_dependencies(rynui_text_demo rynui_shaders)
 add_custom_command(TARGET rynui_text_demo POST_BUILD

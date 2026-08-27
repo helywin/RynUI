@@ -574,12 +574,12 @@ bool TextState::set_line_height(float line_height) {
     return true;
 }
 
-bool TextState::set_width_constraint(float max_width) {
+bool TextState::set_width_constraint(float max_width, bool request_frame) {
     if (layout_.max_width == max_width) {
         return false;
     }
     layout_.max_width = max_width;
-    invalidate_layout();
+    invalidate_layout(request_frame);
     return true;
 }
 
@@ -663,9 +663,11 @@ void TextState::invalidate_shape() {
     request_frame();
 }
 
-void TextState::invalidate_layout() {
+void TextState::invalidate_layout(bool request_frame) {
     layout_dirty_ = true;
-    request_frame();
+    if (request_frame) {
+        this->request_frame();
+    }
 }
 
 void TextState::request_frame() {

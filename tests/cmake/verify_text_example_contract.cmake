@@ -1,18 +1,25 @@
 file(READ "${EXAMPLE_SOURCE}" example_source)
 
 foreach(required IN ITEMS
-        "ryn::String content = u8\""
-        "Latin body text"
-        "中文回退字体"
-        "pixel_size,"
-        "font_rasterizations="
-        "replacement_count="
-        "fallback_runs="
+        "application.mount(ryn::Content"
+        "ryn::Text("
+        "ryn::TextTone::Primary"
+        "ryn::TextTone::Secondary"
+        "ryn::TextTone::Disabled"
+        "Latin"
+        "中文"
+        "content.set("
+        "tone.set("
+        "width.set("
+        "margin.set("
+        "resize_window("
+        "mount_runs="
+        "prop_updates="
         "shape_count="
-        "atlas_pages="
+        "measure_count="
+        "layout_count="
         "atlas_uploads="
         "instance_rebuilds="
-        "buffer_uploads="
         "glyph_draws="
         "submits="
         "idle_waits="
@@ -23,7 +30,14 @@ foreach(required IN ITEMS
     endif()
 endforeach()
 
-string(FIND "${example_source}" "{1.0F, 1.0F, 1.0F, 0.65F}" semantic_color)
-if(semantic_color EQUAL -1)
-    message(FATAL_ERROR "Text example does not use Ant Design secondary semantic color")
-endif()
+foreach(forbidden IN ITEMS
+        "TextRenderController"
+        "TextState "
+        "GlyphAtlas "
+        "GlyphScene ")
+    string(FIND "${example_source}" "${forbidden}" found)
+    if(NOT found EQUAL -1)
+        message(FATAL_ERROR
+            "Text example directly constructs forbidden engine type: ${forbidden}")
+    endif()
+endforeach()

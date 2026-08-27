@@ -202,7 +202,7 @@ public:
     bool set_font_chain(std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(std::uint32_t pixel_size);
     bool set_line_height(float line_height);
-    bool set_width_constraint(float max_width);
+    bool set_width_constraint(float max_width, bool request_frame = true);
     bool set_color(std::array<float, 4> color);
     bool set_opacity(float opacity);
 
@@ -215,7 +215,7 @@ public:
 
 private:
     void invalidate_shape();
-    void invalidate_layout();
+    void invalidate_layout(bool request_frame = true);
     void request_frame();
 
     TextEngine* engine_;

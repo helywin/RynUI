@@ -1,13 +1,16 @@
+#include "component/text_component.hpp"
 #include "font/font_runtime.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
-#include "renderer/sdl/text_render_controller.hpp"
 #include "runtime/frame_scheduler.hpp"
+#include "runtime/invalidation.hpp"
 #include "text/text_engine.hpp"
+#include "text/text_scene_service.hpp"
 
-#include <ryn/string.hpp>
+#include <ryn/rynui.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -16,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -64,31 +68,37 @@ private:
     bool quit_requested_{};
 };
 
-class TextSceneSubmitter final : public ryn::runtime::FrameSubmitter {
+class TextComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    TextSceneSubmitter(
-        ryn::detail::TextRenderController& controller,
+    TextComponentSubmitter(
+        ryn::detail::TextComponentHost& host,
+        ryn::detail::TextSceneService& scene,
         ryn::detail::GlyphGpuResources& resources,
         ryn::detail::SdlSceneRenderer& renderer,
-        ryn::graphics::GlyphPlacement& placement) noexcept
-        : controller_(&controller),
+        ryn::runtime::Size& viewport) noexcept
+        : host_(&host),
+          scene_(&scene),
           resources_(&resources),
           renderer_(&renderer),
-          placement_(&placement) {}
+          viewport_(&viewport) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame() override {
         try {
-            if (!controller_->synchronize(*placement_)) {
-                last_error_ = "Text or Glyph Scene synchronization failed";
+            const ryn::runtime::Rect clip{
+                48.0F,
+                48.0F,
+                std::max(0.0F, viewport_->width - 96.0F),
+                std::max(0.0F, viewport_->height - 96.0F),
+            };
+            if (!host_->layout_and_synchronize(
+                    *viewport_, clip, {64.0F, 72.0F}, 12.0F)) {
+                last_error_ = "Text component layout or scene synchronization failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             resources_->synchronize(
-                controller_->atlas(),
-                controller_->glyph_scene().instances());
-            renderer_->attach_scene(
-                nullptr,
-                *resources_,
-                controller_->ordered_scene());
+                scene_->atlas(),
+                scene_->glyph_scene().instances());
+            renderer_->attach_scene(nullptr, *resources_, scene_->ordered_scene());
             const auto result = renderer_->submit_frame();
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -100,13 +110,16 @@ public:
         }
     }
 
-    [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] const std::string& last_error() const noexcept {
+        return last_error_;
+    }
 
 private:
-    ryn::detail::TextRenderController* controller_;
+    ryn::detail::TextComponentHost* host_;
+    ryn::detail::TextSceneService* scene_;
     ryn::detail::GlyphGpuResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
-    ryn::graphics::GlyphPlacement* placement_;
+    ryn::runtime::Size* viewport_;
     std::string last_error_;
 };
 
@@ -116,13 +129,13 @@ int main(int argc, char** argv) {
     try {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
         const auto executable = executable_directory(argv[0]);
-        constexpr ryn::runtime::Size initial_viewport{960.0F, 540.0F};
+        ryn::runtime::Size viewport{960.0F, 540.0F};
         constexpr std::uint32_t pixel_size = 14;
 
         ryn::detail::PlatformConfig platform_config;
-        platform_config.title = "RynUI Latin and CJK Text";
-        platform_config.width = static_cast<int>(initial_viewport.width);
-        platform_config.height = static_cast<int>(initial_viewport.height);
+        platform_config.title = "RynUI Public Text Components";
+        platform_config.width = static_cast<int>(viewport.width);
+        platform_config.height = static_cast<int>(viewport.height);
 #if !defined(NDEBUG)
         platform_config.gpu_debug = true;
 #endif
@@ -148,57 +161,86 @@ int main(int argc, char** argv) {
             return 3;
         }
 
-        ryn::String content = u8"RynUI text foundation\nLatin body text and 中文回退字体";
-        ryn::text::TextEngine text_engine(*fonts);
+        ryn::runtime::NodeStore nodes;
+        ryn::layout::LayoutEngine layout(nodes);
         ryn::runtime::FrameRequestState frame_requests;
-        ryn::detail::TextRenderController controller(
-            *fonts,
-            text_engine,
-            frame_requests,
-            std::move(content),
-            {latin.font, cjk.font},
-            pixel_size,
-            {20.0F, 720.0F});
-        // Ant Design 6.5 dark-mode secondary text: white at 65% semantic alpha.
-        static_cast<void>(controller.set_color({1.0F, 1.0F, 1.0F, 0.65F}));
+        ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
+        ryn::text::TextEngine text_engine(*fonts);
+        ryn::detail::TextSceneService scene(
+            *fonts, text_engine, frame_requests);
+        ryn::detail::TextComponentHost application(
+            nodes,
+            layout,
+            dirty,
+            scene,
+            std::vector<ryn::font::FontIdentity>{latin.font, cjk.font});
+
+        ryn::Signal<ryn::String> content{
+            ryn::String{u8"RynUI Device Monitor / Latin + 设备监控"}};
+        ryn::Signal<ryn::TextTone> tone{ryn::TextTone::Secondary};
+        ryn::Signal<ryn::LogicalLength> width{ryn::dp(520.0F)};
+        ryn::Signal<ryn::LogicalLength> margin{ryn::dp(8.0F)};
+        application.mount(ryn::Content{[&] {
+            ryn::Text(
+                ryn::TextProps{}
+                    .content(content)
+                    .layout(
+                        ryn::LayoutStyle{}
+                            .max_width(width)
+                            .margin_bottom(margin)));
+            ryn::Text(
+                ryn::TextProps{}
+                    .content(u8"Secondary: shared RynUI 中文 glyph cache")
+                    .tone(tone)
+                    .layout(ryn::LayoutStyle{}.max_width(ryn::dp(620.0F))));
+            ryn::Text(
+                ryn::TextProps{}
+                    .content(u8"Disabled: 设备离线 / unavailable")
+                    .tone(ryn::TextTone::Disabled));
+            ryn::Text(
+                ryn::TextProps{}
+                    .content(u8"Shared glyph proof: RynUI 中文")
+                    .tone(ryn::TextTone::Secondary));
+        }});
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources resources(renderer);
-        ryn::graphics::GlyphPlacement placement{
-            {64.0F, 72.0F},
-            initial_viewport,
-            {48.0F, 48.0F, 864.0F, 444.0F},
-            {0.0F, 0.0F},
-            {},
-            1.0F,
-        };
-        TextSceneSubmitter submitter(controller, resources, renderer, placement);
+        TextComponentSubmitter submitter(
+            application, scene, resources, renderer, viewport);
         PlatformFrameEvents events(platform);
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, 10);
 
+        std::uint64_t prop_updates = 0;
+        std::uint64_t resize_updates = 0;
         int update_stage = 0;
         while (!events.quit_requested()) {
             const auto elapsed = events.now_milliseconds();
             if (update_stage == 0 && elapsed >= 300) {
-                static_cast<void>(controller.set_content(
-                    ryn::String{u8"RynUI text foundation\nContent update: Latin + 中文字形缓存"}));
+                content.set(ryn::String{
+                    u8"RynUI live update / 内容更新：温度正常"});
+                ++prop_updates;
                 ++update_stage;
             } else if (update_stage == 1 && elapsed >= 600) {
-                static_cast<void>(controller.set_color({0.36F, 0.72F, 1.0F, 0.65F}));
+                tone.set(ryn::TextTone::Primary);
+                ++prop_updates;
                 ++update_stage;
             } else if (update_stage == 2 && elapsed >= 900) {
-                static_cast<void>(controller.set_width_constraint(340.0F));
+                width.set(ryn::dp(340.0F));
+                ++prop_updates;
                 ++update_stage;
             } else if (update_stage == 3 && elapsed >= 1'200) {
+                margin.set(ryn::dp(24.0F));
+                ++prop_updates;
+                ++update_stage;
+            } else if (update_stage == 4 && elapsed >= 1'500) {
                 if (!renderer.resize_window(840, 500)) {
                     std::cerr << "resize_error=" << renderer.last_error() << '\n';
                     return 4;
                 }
-                placement.viewport_pixels = {840.0F, 500.0F};
-                placement.clip_pixels = {48.0F, 48.0F, 744.0F, 404.0F};
-                static_cast<void>(controller.set_width_constraint(420.0F));
-                static_cast<void>(controller.set_color({1.0F, 1.0F, 1.0F, 0.65F}));
+                viewport = {840.0F, 500.0F};
+                frame_requests.request_frame();
+                ++resize_updates;
                 ++update_stage;
             }
 
@@ -207,14 +249,33 @@ int main(int argc, char** argv) {
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            if (smoke_mode && update_stage == 4 && elapsed >= 1'800
+            if (smoke_mode && update_stage == 5 && elapsed >= 2'100
                     && loop.counters().idle_waits >= 20) {
                 break;
             }
         }
 
-        const auto& shaped = controller.text_state().shaped();
-        const auto& text_counters = controller.text_state().counters();
+        std::uint64_t shape_count = 0;
+        std::uint64_t measure_count = 0;
+        std::uint64_t layout_count = 0;
+        std::uint64_t instance_rebuilds = 0;
+        std::uint64_t material_updates = 0;
+        std::uint64_t geometry_updates = 0;
+        std::uint64_t replacement_count = 0;
+        std::uint64_t fallback_runs = 0;
+        for (const auto mounted : application.mounted_texts()) {
+            const auto& state = scene.text_state(mounted.scene);
+            const auto& record = scene.record_counters(mounted.scene);
+            shape_count += state.counters().shape_count;
+            measure_count += state.counters().measure_count;
+            replacement_count += state.shaped().replacement_count;
+            fallback_runs += state.shaped().runs.size();
+            instance_rebuilds += record.instance_rebuilds;
+            material_updates += record.material_updates;
+            geometry_updates += record.geometry_updates;
+            layout_count += nodes.require(scene.node(mounted.scene)).place_count;
+        }
+
         const auto& font_counters = fonts->counters();
         const auto& resource_counters = resources.counters();
         const auto& renderer_counters = renderer.counters();
@@ -222,25 +283,34 @@ int main(int argc, char** argv) {
         std::cout
             << "gpu_driver=" << platform.gpu_driver()
             << " shader_format=" << renderer.shader_format()
+            << " mount_runs=" << application.components().mount_runs()
+            << " prop_updates=" << prop_updates
+            << " resize_updates=" << resize_updates
             << " font_rasterizations=" << font_counters.rasterizations
             << " font_cache_hits=" << font_counters.cache_hits
-            << " replacement_count=" << shaped.replacement_count
-            << " fallback_runs=" << shaped.runs.size()
-            << " shape_count=" << text_counters.shape_count
-            << " measure_count=" << text_counters.measure_count
-            << " atlas_pages=" << controller.atlas().page_count()
-            << " atlas_entries=" << controller.atlas().entry_count()
+            << " replacement_count=" << replacement_count
+            << " fallback_runs=" << fallback_runs
+            << " shape_count=" << shape_count
+            << " measure_count=" << measure_count
+            << " layout_count=" << layout_count
+            << " atlas_pages=" << scene.atlas().page_count()
+            << " atlas_entries=" << scene.atlas().entry_count()
             << " atlas_uploads=" << resource_counters.texture_uploads
             << " atlas_uploaded_bytes=" << resource_counters.texture_uploaded_bytes
-            << " instance_count=" << controller.glyph_scene().instances().size()
-            << " instance_rebuilds=" << controller.counters().instance_rebuilds
-            << " material_updates=" << controller.counters().material_updates
+            << " instance_count=" << scene.glyph_scene().instances().size()
+            << " instance_rebuilds=" << instance_rebuilds
+            << " material_updates=" << material_updates
+            << " geometry_updates=" << geometry_updates
             << " buffer_uploads=" << resource_counters.buffer_uploads
             << " glyph_draws=" << renderer_counters.glyph_draws
             << " submits=" << renderer_counters.frame_submissions
             << " idle_waits=" << loop_counters.idle_waits
             << " exit_code=0\n";
-        return renderer_counters.frame_submissions >= 5 ? 0 : 6;
+        return renderer_counters.frame_submissions >= 6
+                && prop_updates == 4
+                && resize_updates == 1
+            ? 0
+            : 6;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';
         return 7;

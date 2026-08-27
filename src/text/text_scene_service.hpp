@@ -84,6 +84,9 @@ public:
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);
+    [[nodiscard]] bool synchronize_measurement(
+        TextSceneId id,
+        float width_constraint);
     [[nodiscard]] bool synchronize(
         TextSceneId id,
         graphics::GlyphPlacement placement);

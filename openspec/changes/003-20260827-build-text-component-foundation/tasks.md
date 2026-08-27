@@ -40,8 +40,8 @@
 
 ## 6. Windows 真实窗口组件验收
 
-- [ ] 6.1 将 Latin/CJK 文本示例迁移为公开 `ryn::Text` content DSL，由内部 application host 启动 primary、secondary、disabled 和多个共享 glyph 的 Text；通过 source/contract test 验证示例不直接构造 TextState、GlyphAtlas、GlyphScene 或 TextRenderController
-- [ ] 6.2 为示例增加可控 content、tone、width、margin 与 resize 更新及 mount、Prop update、shape、measure、layout、atlas、instance、draw、submit、idle 计数，通过 headless event/clock tests 验证每种更新的最小失效关系和稳定后停止 submit
+- [x] 6.1 将 Latin/CJK 文本示例迁移为公开 `ryn::Text` content DSL，由内部 application host 启动 primary、secondary、disabled 和多个共享 glyph 的 Text；通过 source/contract test 验证示例不直接构造 TextState、GlyphAtlas、GlyphScene 或 TextRenderController
+- [x] 6.2 为示例增加可控 content、tone、width、margin 与 resize 更新及 mount、Prop update、shape、measure、layout、atlas、instance、draw、submit、idle 计数，通过 headless event/clock tests 验证每种更新的最小失效关系和稳定后停止 submit
 - [ ] 6.3 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest；在 D3D12/DXIL 真实窗口运行示例并正常关闭，保存 display scale、截图、driver、shader format、退出码和全部计数证据，人工核对 14px Latin/CJK、三种 tone、换行、margin 与共享 glyph
 - [ ] 6.4 运行 Windows evidence contract、public dependency leak 和 `git diff --check`；以英文 `test: validate Windows text components` 提交本阶段相关文件，不把 headless/build 结果描述为其他平台真实窗口通过
 

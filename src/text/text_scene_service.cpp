@@ -285,6 +285,18 @@ bool TextSceneService::synchronize_measurement(TextSceneId id) {
     return record.state->synchronize();
 }
 
+bool TextSceneService::synchronize_measurement(
+    TextSceneId id,
+    float width_constraint) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.state->set_width_constraint(width_constraint, false)) {
+        ++record.revisions.layout;
+        record.placement_rebuild_pending = true;
+    }
+    return synchronize_measurement(id);
+}
+
 bool TextSceneService::synchronize(
     TextSceneId id,
     graphics::GlyphPlacement placement) {

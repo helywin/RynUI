@@ -487,7 +487,7 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame() {
     }
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
-    target.clear_color = SDL_FColor{0.055F, 0.067F, 0.086F, 1.0F};
+    target.clear_color = SDL_FColor{1.0F, 1.0F, 1.0F, 1.0F};
     target.load_op = SDL_GPU_LOADOP_CLEAR;
     target.store_op = SDL_GPU_STOREOP_STORE;
     auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);

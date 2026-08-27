@@ -234,10 +234,8 @@ void mount_text_component(const TextProps& props) {
         node,
         host.text_scene_->revisions(scene).content,
         [text_scene = host.text_scene_, scene](layout::Constraints constraints) {
-            static_cast<void>(text_scene->set_width_constraint(
-                scene,
-                constraints.max_width));
-            if (!text_scene->synchronize_measurement(scene)) {
+            if (!text_scene->synchronize_measurement(
+                    scene, constraints.max_width)) {
                 throw std::runtime_error("Text intrinsic measurement failed");
             }
             const auto& measurement = text_scene->text_state(scene).measurement();
