@@ -106,6 +106,7 @@ void TextComponentHost::mount(const Content& content) {
     const auto mounted_before = mounted_texts_.size();
     try {
         components_.mount(content);
+        layout_snapshot_valid_ = false;
     } catch (...) {
         mounted_texts_.resize(mounted_before);
         throw;
@@ -119,19 +120,22 @@ bool TextComponentHost::destroy(runtime::ComponentId id) {
     std::erase_if(mounted_texts_, [this](const auto& text) {
         return !components_.contains(text.component);
     });
+    layout_snapshot_valid_ = false;
     return true;
 }
 
 void TextComponentHost::dispose() noexcept {
     components_.dispose();
     mounted_texts_.clear();
+    layout_snapshot_valid_ = false;
 }
 
 bool TextComponentHost::layout_and_synchronize(
     runtime::Size viewport,
     runtime::Rect clip,
     runtime::Point origin,
-    float gap) {
+    float gap,
+    bool clear_dirty) {
     if (!valid_viewport(viewport)
             || !std::isfinite(origin.x)
             || !std::isfinite(origin.y)
@@ -141,19 +145,41 @@ bool TextComponentHost::layout_and_synchronize(
             "Text component viewport, origin, and gap must be finite and valid");
     }
 
-    float cursor_y = origin.y;
-    for (const auto mounted : mounted_texts_) {
+    const bool configuration_changed = !layout_snapshot_valid_
+        || viewport != layout_viewport_
+        || origin != layout_origin_
+        || gap != layout_gap_;
+    const bool needs_layout = configuration_changed
+        || !dirty_->layout_roots().empty()
+        || !dirty_->placement_roots().empty();
+    layout_performed_last_sync_ = needs_layout;
+    if (needs_layout) {
+        float cursor_y = origin.y;
+        for (const auto component : components_.root_components()) {
+            if (!components_.contains(component)) {
+                continue;
+            }
+            const auto node = components_.root(component);
+            const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
+            const auto remaining_height = std::max(0.0F, viewport.height - cursor_y);
+            const auto outer = layout_->layout(
+                node,
+                {0.0F, remaining_width, 0.0F, remaining_height},
+                {origin.x, cursor_y});
+            cursor_y += outer.height + gap;
+        }
+        layout_viewport_ = viewport;
+        layout_origin_ = origin;
+        layout_gap_ = gap;
+        layout_snapshot_valid_ = true;
+    }
+
+    for (const auto& mounted : mounted_texts_) {
         if (!components_.contains(mounted.component)
                 || !text_scene_->contains(mounted.scene)) {
             continue;
         }
         const auto node = components_.root(mounted.component);
-        const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
-        const auto remaining_height = std::max(0.0F, viewport.height - cursor_y);
-        const auto outer = layout_->layout(
-            node,
-            {0.0F, remaining_width, 0.0F, remaining_height},
-            {origin.x, cursor_y});
         const auto& retained = nodes_->require(node);
         if (!text_scene_->synchronize(mounted.scene, {
                 {retained.bounds.x, retained.bounds.y},
@@ -165,10 +191,60 @@ bool TextComponentHost::layout_and_synchronize(
             })) {
             return false;
         }
-        cursor_y += outer.height + gap;
     }
-    dirty_->clear();
+    if (clear_dirty) {
+        dirty_->clear();
+    }
     return true;
+}
+
+void TextComponentHost::attach_component_scene(
+    component::ComponentSceneComposer& composer) noexcept {
+    composer_ = &composer;
+}
+
+bool TextComponentHost::synchronize_scene_fragments(
+    const std::function<std::optional<input::InteractionId>(
+        runtime::ComponentId)>& interaction_for) {
+    if (composer_ == nullptr) {
+        return false;
+    }
+    bool changed = false;
+    for (auto& mounted : mounted_texts_) {
+        if (!mounted.fragment.has_value()
+                || !components_.contains(mounted.component)
+                || !text_scene_->contains(mounted.scene)) {
+            continue;
+        }
+        std::vector<graphics::SceneDrawCommand> commands;
+        const auto& primitive = text_scene_->primitive(mounted.scene);
+        commands.reserve(primitive.draw_ranges.size());
+        for (const auto& range : primitive.draw_ranges) {
+            commands.push_back({
+                graphics::SceneDrawKind::glyph,
+                range.instances.first,
+                range.instances.count,
+                range.atlas_page,
+            });
+        }
+        const auto interaction = interaction_for(mounted.component);
+        if (commands == mounted.fragment_commands
+                && interaction == mounted.interaction) {
+            continue;
+        }
+        composer_->set_fragment(
+            *mounted.fragment,
+            commands,
+            interaction);
+        mounted.fragment_commands = std::move(commands);
+        mounted.interaction = interaction;
+        changed = true;
+    }
+    return changed;
+}
+
+bool TextComponentHost::layout_performed_last_sync() const noexcept {
+    return layout_performed_last_sync_;
 }
 
 runtime::ComponentHost& TextComponentHost::components() noexcept {
@@ -190,8 +266,9 @@ const DefaultThemeSnapshot& TextComponentHost::theme() const noexcept {
 
 void TextComponentHost::record_mounted_text(
     runtime::ComponentId component,
-    TextSceneId scene) {
-    mounted_texts_.push_back({component, scene});
+    TextSceneId scene,
+    std::optional<runtime::SceneFragmentId> fragment) {
+    mounted_texts_.push_back({component, scene, fragment, std::nullopt, {}});
 }
 
 void mount_text_component(const TextProps& props) {
@@ -223,13 +300,24 @@ void mount_text_component(const TextProps& props) {
             host.theme_->body.line_height,
             std::numeric_limits<float>::infinity(),
         });
+    const auto fragment = host.composer_ == nullptr
+        ? std::optional<runtime::SceneFragmentId>{}
+        : std::optional<runtime::SceneFragmentId>{
+            build.register_scene_fragment(
+                component,
+                runtime::SceneFragmentPlacement::before_children)};
     build.state<TextComponentState>(component).scene = scene;
     build.on_resource_cleanup(component, [
         layout = host.layout_,
+        composer = host.composer_,
         text_scene = host.text_scene_,
         node,
-        scene] {
+        scene,
+        fragment] {
         static_cast<void>(layout->remove_intrinsic_measure(node));
+        if (composer != nullptr && fragment.has_value()) {
+            static_cast<void>(composer->remove_fragment(*fragment));
+        }
         static_cast<void>(text_scene->destroy(scene));
     });
 
@@ -303,7 +391,7 @@ void mount_text_component(const TextProps& props) {
         runtime::DirtyFlags::Measure
             | runtime::DirtyFlags::Layout
             | runtime::DirtyFlags::Geometry);
-    host.record_mounted_text(component, scene);
+    host.record_mounted_text(component, scene, fragment);
 }
 
 } // namespace ryn::detail

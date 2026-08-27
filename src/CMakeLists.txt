@@ -100,6 +100,7 @@ target_link_libraries(rynui_text_scene PRIVATE
 )
 
 add_library(rynui_components STATIC
+    component/button_component.cpp
     component/button_scene_service.cpp
     component/component_scene.cpp
     component/default_theme.cpp

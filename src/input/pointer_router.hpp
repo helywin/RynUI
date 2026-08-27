@@ -103,6 +103,7 @@ public:
     void dispatch(const PointerInputEvent& event);
     void cancel_all();
     void cancel_interaction(InteractionId interaction);
+    void cancel_pointer_interaction(InteractionId interaction);
 
     [[nodiscard]] std::optional<PointerStateSnapshot> state(
         PointerIdentity pointer) const;
@@ -155,6 +156,9 @@ private:
     void prune_invalid_state(PointerState& state);
     void clear_primary_state(PointerState& state, bool count_cancel);
     void abort_pointer(PointerState& state) noexcept;
+    void cancel_interaction_internal(
+        InteractionId interaction,
+        bool cancel_focus);
     void request_frame() noexcept;
     [[nodiscard]] bool request_capture(
         const PointerDispatchContext& context);

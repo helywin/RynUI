@@ -87,10 +87,12 @@ struct ForegroundContentSlot final {};
 using ForegroundContent = ryn::SlotContent<ForegroundContentSlot>;
 
 ryn::runtime::ComponentId mount_foreground_provider(
+    ryn::layout::LayoutEngine& layout,
     ryn::Prop<ryn::runtime::SemanticForeground> foreground,
     const ForegroundContent& content) {
     auto& build = ryn::runtime::require_component_build_context();
     const auto component = build.mount_component<ForegroundProviderState>();
+    layout.set_layout(build.root(component), ryn::layout::BoxLayout{});
     build.mount_slot_with_semantic_foreground(
         component,
         content,
@@ -131,7 +133,7 @@ bool synchronize_horizontal_texts(
             viewport.height,
         },
         {12.0F, 16.0F}));
-    for (const auto mounted : fixture.host->mounted_texts()) {
+    for (const auto& mounted : fixture.host->mounted_texts()) {
         const auto& node = fixture.nodes.require(
             fixture.scene.node(mounted.scene));
         if (!fixture.scene.synchronize(mounted.scene, {
@@ -399,10 +401,12 @@ void test_semantic_foreground_context_is_nested_reactive_and_scoped() {
 
     fixture.host->mount(ryn::Content{[&] {
         provider = mount_foreground_provider(
+            fixture.layout,
             ryn::Prop<ryn::runtime::SemanticForeground>{outer},
             ForegroundContent{[&] {
                 ryn::Text(u8"outer inherited");
                 static_cast<void>(mount_foreground_provider(
+                    fixture.layout,
                     ryn::Prop<ryn::runtime::SemanticForeground>{inner},
                     ForegroundContent{[] {
                         ryn::Text(u8"inner inherited");
@@ -486,8 +490,9 @@ void test_semantic_foreground_context_restores_after_exception() {
     Fixture throwing;
     bool observed = false;
     try {
-        throwing.host->mount(ryn::Content{[] {
+        throwing.host->mount(ryn::Content{[&] {
             static_cast<void>(mount_foreground_provider(
+                throwing.layout,
                 ryn::Prop<ryn::runtime::SemanticForeground>{
                     ryn::runtime::SemanticForeground{1.0F, 0.0F, 0.0F, 1.0F}},
                 ForegroundContent{[] {

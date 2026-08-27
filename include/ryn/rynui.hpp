@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ryn/button.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>

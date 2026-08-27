@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
         std::uint64_t geometry_updates = 0;
         std::uint64_t replacement_count = 0;
         std::uint64_t fallback_runs = 0;
-        for (const auto mounted : application.mounted_texts()) {
+        for (const auto& mounted : application.mounted_texts()) {
             const auto& state = scene.text_state(mounted.scene);
             const auto& record = scene.record_counters(mounted.scene);
             shape_count += state.counters().shape_count;

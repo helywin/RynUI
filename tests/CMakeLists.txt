@@ -26,6 +26,29 @@ rynui_configure_cpp_target(rynui_text_public_api_tests)
 target_link_libraries(rynui_text_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.text_public_api COMMAND rynui_text_public_api_tests)
 
+add_executable(rynui_button_public_api_tests button_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_button_public_api_tests)
+target_link_libraries(rynui_button_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.button_public_api COMMAND rynui_button_public_api_tests)
+
+add_executable(
+    rynui_button_header_isolation_tests
+    button_header_isolation_tests.cpp
+)
+rynui_configure_cpp_target(rynui_button_header_isolation_tests)
+target_link_libraries(rynui_button_header_isolation_tests PRIVATE RynUI::RynUI)
+add_test(
+    NAME rynui.button_header_isolation
+    COMMAND rynui_button_header_isolation_tests
+)
+
+add_test(
+    NAME rynui.button_dependency_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_dependency_contract.cmake"
+)
+
 add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)
@@ -163,6 +186,17 @@ add_executable(rynui_button_scene_service_tests button_scene_service_tests.cpp)
 rynui_configure_cpp_target(rynui_button_scene_service_tests)
 target_link_libraries(rynui_button_scene_service_tests PRIVATE rynui_components)
 add_test(NAME rynui.button_scene_service COMMAND rynui_button_scene_service_tests)
+
+add_executable(rynui_button_component_tests button_component_tests.cpp)
+rynui_configure_cpp_target(rynui_button_component_tests)
+target_link_libraries(rynui_button_component_tests PRIVATE rynui_components)
+target_compile_definitions(
+    rynui_button_component_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
 
 add_executable(rynui_layout_engine_tests layout_engine_tests.cpp)
 rynui_configure_cpp_target(rynui_layout_engine_tests)
@@ -457,6 +491,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_text_public_contract.cmake"
+)
+
+add_test(
+    NAME rynui.button_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/button-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_public_contract.cmake"
 )
 
 if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")

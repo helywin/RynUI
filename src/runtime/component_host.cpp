@@ -197,6 +197,10 @@ const std::vector<ComponentId>& ComponentHost::children(ComponentId id) const {
     return require_record(id).children;
 }
 
+std::span<const ComponentId> ComponentHost::root_components() const noexcept {
+    return root_components_;
+}
+
 std::size_t ComponentHost::declaration_order(ComponentId id) const {
     return require_record(id).declaration_order;
 }

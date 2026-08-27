@@ -102,6 +102,7 @@ public:
     [[nodiscard]] NodeId root(ComponentId id) const;
     [[nodiscard]] std::optional<ComponentId> parent(ComponentId id) const;
     [[nodiscard]] const std::vector<ComponentId>& children(ComponentId id) const;
+    [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
     bool remove_scene_fragment(SceneFragmentId id);

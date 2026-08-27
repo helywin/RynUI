@@ -224,10 +224,20 @@ void PointerRouter::cancel_all() {
 }
 
 void PointerRouter::cancel_interaction(InteractionId interaction) {
+    cancel_interaction_internal(interaction, true);
+}
+
+void PointerRouter::cancel_pointer_interaction(InteractionId interaction) {
+    cancel_interaction_internal(interaction, false);
+}
+
+void PointerRouter::cancel_interaction_internal(
+    InteractionId interaction,
+    bool cancel_focus) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
     }
-    if (focus_ != nullptr) {
+    if (cancel_focus && focus_ != nullptr) {
         focus_->cancel_interaction(interaction);
     }
     const bool invoke_handlers = !dispatching_;

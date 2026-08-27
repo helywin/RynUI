@@ -294,7 +294,7 @@ void test_public_text_demo_updates_stay_minimal_and_idle() {
     std::uint64_t shape_before_margin = 0;
     std::uint64_t measure_before_margin = 0;
     std::uint64_t geometry_before_margin = 0;
-    for (const auto mounted : fixture.host->mounted_texts()) {
+    for (const auto& mounted : fixture.host->mounted_texts()) {
         shape_before_margin +=
             fixture.scene.text_state(mounted.scene).counters().shape_count;
         measure_before_margin +=
@@ -308,7 +308,7 @@ void test_public_text_demo_updates_stay_minimal_and_idle() {
     std::uint64_t shape_after_margin = 0;
     std::uint64_t measure_after_margin = 0;
     std::uint64_t geometry_after_margin = 0;
-    for (const auto mounted : fixture.host->mounted_texts()) {
+    for (const auto& mounted : fixture.host->mounted_texts()) {
         shape_after_margin +=
             fixture.scene.text_state(mounted.scene).counters().shape_count;
         measure_after_margin +=
@@ -330,7 +330,7 @@ void test_public_text_demo_updates_stay_minimal_and_idle() {
                 && loop.counters().event_wakes == 1,
             "resize event did not wake and submit through the controlled clock");
     std::uint64_t shapes_after_resize = 0;
-    for (const auto mounted : fixture.host->mounted_texts()) {
+    for (const auto& mounted : fixture.host->mounted_texts()) {
         shapes_after_resize +=
             fixture.scene.text_state(mounted.scene).counters().shape_count;
     }

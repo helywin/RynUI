@@ -314,8 +314,7 @@ const HorizontalContentGeometry& LayoutEngine::horizontal_content_geometry(
     const auto& slot = layouts_[id.index];
     if (slot.generation != id.generation
             || !std::holds_alternative<HorizontalContentLayout>(slot.model)
-            || !slot.horizontal_content_geometry.has_value()
-            || nodes_->require(id).place_generation != generation_) {
+            || !slot.horizontal_content_geometry.has_value()) {
         throw std::logic_error(
             "Horizontal content geometry requires current placement");
     }
@@ -354,6 +353,9 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
         node.external_layout);
     content_constraint.validate();
     const auto& model = require_layout(id);
+    if (std::holds_alternative<HorizontalContentLayout>(model)) {
+        layouts_[id.index].horizontal_content_geometry.reset();
+    }
     runtime::Size measured{};
 
     std::visit([&](const auto& current) {

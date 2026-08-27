@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.25)
+project(RynUIButtonPublicContract LANGUAGES CXX)
+
+if(NOT DEFINED RYNUI_ROOT OR NOT DEFINED BUTTON_CONTRACT_CASE)
+    message(FATAL_ERROR "RYNUI_ROOT and BUTTON_CONTRACT_CASE are required")
+endif()
+
+if(BUTTON_CONTRACT_CASE STREQUAL "narrow-callback")
+    set(contract_source button_narrow_callback.cpp)
+elseif(BUTTON_CONTRACT_CASE STREQUAL "foreign-slot")
+    set(contract_source button_foreign_slot.cpp)
+elseif(BUTTON_CONTRACT_CASE STREQUAL "visual-entry")
+    set(contract_source button_visual_entry.cpp)
+else()
+    message(FATAL_ERROR "Unknown BUTTON_CONTRACT_CASE=${BUTTON_CONTRACT_CASE}")
+endif()
+
+add_library(button_public_compile_fail STATIC "${contract_source}")
+target_compile_features(button_public_compile_fail PRIVATE cxx_std_20)
+set_target_properties(button_public_compile_fail PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(button_public_compile_fail PRIVATE "${RYNUI_ROOT}/include")
