@@ -53,7 +53,10 @@ enum class NodeProperty {
         return DirtyFlags::Transform | DirtyFlags::HitTest;
     case NodeProperty::size:
     case NodeProperty::padding:
-        return DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry;
+        return DirtyFlags::Measure
+            | DirtyFlags::Layout
+            | DirtyFlags::Geometry
+            | DirtyFlags::HitTest;
     }
     return DirtyFlags::None;
 }
@@ -70,6 +73,7 @@ public:
     [[nodiscard]] const std::vector<NodeId>& material_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& transform_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& geometry_nodes() const noexcept;
+    [[nodiscard]] const std::vector<NodeId>& hit_test_nodes() const noexcept;
 
 private:
     [[nodiscard]] NodeId layout_root_for(NodeId id) const;
@@ -82,6 +86,7 @@ private:
     std::vector<NodeId> material_nodes_;
     std::vector<NodeId> transform_nodes_;
     std::vector<NodeId> geometry_nodes_;
+    std::vector<NodeId> hit_test_nodes_;
 };
 
 class NodePropertyWriter final {

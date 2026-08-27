@@ -36,6 +36,7 @@ void test_material_and_transform_updates_skip_layout() {
     require(dirty.layout_roots().empty(), "Material update queued Layout");
     require(dirty.geometry_nodes().empty(), "Material update queued Geometry");
     require(dirty.transform_nodes().empty(), "Material update queued Transform");
+    require(dirty.hit_test_nodes().empty(), "Material update queued HitTest");
 
     dirty.clear();
     require(properties.set_translation(child, {5.0F, 7.0F}),
@@ -43,6 +44,8 @@ void test_material_and_transform_updates_skip_layout() {
     require(dirty.transform_nodes() == std::vector<ryn::runtime::NodeId>({child}),
             "translation did not queue the target Transform");
     require(dirty.layout_roots().empty(), "Transform update queued Layout");
+    require(dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({child}),
+            "translation did not queue the target HitTest record");
     require(ryn::runtime::has_any(
                 ryn::runtime::dirty_flags_for(ryn::runtime::NodeProperty::translation),
                 ryn::runtime::DirtyFlags::HitTest),
@@ -77,6 +80,8 @@ void test_size_update_queues_layout_root_and_geometry() {
             "size update did not queue target Geometry exactly once");
     require(dirty.material_nodes().empty(), "size update queued Material");
     require(dirty.transform_nodes().empty(), "size update queued Transform");
+    require(dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({root}),
+            "size update did not queue the affected HitTest subtree root");
 
     for (const auto layout_root : dirty.layout_roots()) {
         static_cast<void>(layout.layout(layout_root, {0.0F, 100.0F, 0.0F, 100.0F}));

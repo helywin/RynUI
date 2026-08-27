@@ -220,6 +220,29 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_dependency_contract.cmake"
 )
 
+add_executable(rynui_interaction_registry_tests interaction_registry_tests.cpp)
+rynui_configure_cpp_target(rynui_interaction_registry_tests)
+target_link_libraries(rynui_interaction_registry_tests PRIVATE rynui_interaction)
+add_test(NAME rynui.interaction_registry COMMAND rynui_interaction_registry_tests)
+
+add_executable(rynui_hit_test_tests hit_test_tests.cpp)
+rynui_configure_cpp_target(rynui_hit_test_tests)
+target_link_libraries(rynui_hit_test_tests PRIVATE rynui_interaction rynui_layout)
+add_test(NAME rynui.hit_test COMMAND rynui_hit_test_tests)
+
+add_executable(rynui_hit_test_refresh_tests hit_test_refresh_tests.cpp)
+rynui_configure_cpp_target(rynui_hit_test_refresh_tests)
+target_link_libraries(
+    rynui_hit_test_refresh_tests
+    PRIVATE rynui_interaction rynui_runtime
+)
+add_test(NAME rynui.hit_test_refresh COMMAND rynui_hit_test_refresh_tests)
+
+add_executable(rynui_hit_test_benchmark hit_test_benchmark.cpp)
+rynui_configure_cpp_target(rynui_hit_test_benchmark)
+target_link_libraries(rynui_hit_test_benchmark PRIVATE rynui_interaction)
+add_test(NAME rynui.hit_test_benchmark COMMAND rynui_hit_test_benchmark)
+
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

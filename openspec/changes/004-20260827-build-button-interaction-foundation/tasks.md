@@ -7,11 +7,11 @@
 
 ## 2. Interaction registry 与 HitTest
 
-- [ ] 2.1 实现 slot+generation 的 interaction identity 与 owner-thread registry，记录 ComponentId/NodeId、交互 parent、eligible/focusable、handler 和 cleanup；通过 create/find/remove/reuse、错误线程和 Node/Component stale identity tests 验证生命周期
-- [ ] 2.2 建立由 committed bounds、translation、window/effective clip 与 component paint traversal 同步的 HitTest snapshot；通过嵌套、margin、translation、clip、纯视觉 child 委托和无当前 layout tests 验证 logical geometry
-- [ ] 2.3 实现按 paint order 反向选择最深 eligible target，通过重叠 sibling、祖先/后代、disabled、边界点与 slot reuse tests 证明 target 与绘制顺序一致
-- [ ] 2.4 将 bounds/translation/clip/资格/顺序接入 `DirtyFlags::HitTest` 最小同步，增加 HitTest/refresh/stale-skip 计数与 1k records benchmark；证明 Material/Text-only 更新不刷新无关记录且稳定 query 不分配
-- [ ] 2.5 运行 interaction registry、Node、Layout、Dirty 与 benchmark contract 自动测试和 `git diff --check`；以英文 `feat: add retained hit testing` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 2.1 实现 slot+generation 的 interaction identity 与 owner-thread registry，记录 ComponentId/NodeId、交互 parent、eligible/focusable、handler 和 cleanup；通过 create/find/remove/reuse、错误线程和 Node/Component stale identity tests 验证生命周期
+- [x] 2.2 建立由 committed bounds、translation、window/effective clip 与 component paint traversal 同步的 HitTest snapshot；通过嵌套、margin、translation、clip、纯视觉 child 委托和无当前 layout tests 验证 logical geometry
+- [x] 2.3 实现按 paint order 反向选择最深 eligible target，通过重叠 sibling、祖先/后代、disabled、边界点与 slot reuse tests 证明 target 与绘制顺序一致
+- [x] 2.4 将 bounds/translation/clip/资格/顺序接入 `DirtyFlags::HitTest` 最小同步，增加 HitTest/refresh/stale-skip 计数与 1k records benchmark；证明 Material/Text-only 更新不刷新无关记录且稳定 query 不分配
+- [x] 2.5 运行 interaction registry、Node、Layout、Dirty 与 benchmark contract 自动测试和 `git diff --check`；以英文 `feat: add retained hit testing` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 3. Pointer 路由、hover 与 capture
 
