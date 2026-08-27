@@ -146,5 +146,23 @@ function(rynui_verify_public_api public_include_directory)
                 endif()
             endforeach()
         endif()
+
+        if(public_header MATCHES "/layout_style\\.hpp$")
+            foreach(forbidden_layout_style_symbol IN ITEMS
+                    Color
+                    Font
+                    Padding
+                    Background
+                    Modifier
+                    PrimitiveStyle
+                    NodeId
+                    SDL)
+                if(header_contents MATCHES "${forbidden_layout_style_symbol}")
+                    message(FATAL_ERROR
+                        "Public LayoutStyle header ${public_header} exposes forbidden "
+                        "symbol ${forbidden_layout_style_symbol}.")
+                endif()
+            endforeach()
+        endif()
     endforeach()
 endfunction()

@@ -25,6 +25,29 @@ struct NodeId {
     friend constexpr bool operator==(NodeId, NodeId) = default;
 };
 
+struct EdgeInsets final {
+    float left{0.0F};
+    float top{0.0F};
+    float right{0.0F};
+    float bottom{0.0F};
+
+    friend constexpr bool operator==(EdgeInsets, EdgeInsets) = default;
+};
+
+struct ExternalLayoutStyle final {
+    std::optional<float> width;
+    std::optional<float> height;
+    std::optional<float> min_width;
+    std::optional<float> max_width;
+    std::optional<float> min_height;
+    std::optional<float> max_height;
+    EdgeInsets margin;
+
+    friend bool operator==(
+        const ExternalLayoutStyle&,
+        const ExternalLayoutStyle&) = default;
+};
+
 struct Node {
     NodeId id;
     std::optional<NodeId> parent;
@@ -34,7 +57,9 @@ struct Node {
     Point translation;
     Size requested_size;
     Size measured_size;
+    Size layout_size;
     Rect bounds;
+    ExternalLayoutStyle external_layout;
     std::uint64_t measure_count{0};
     std::uint64_t place_count{0};
     std::uint64_t measure_generation{0};

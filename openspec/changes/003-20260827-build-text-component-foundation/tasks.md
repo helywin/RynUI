@@ -15,10 +15,10 @@
 
 ## 3. LayoutStyle 与 intrinsic measurement
 
-- [ ] 3.1 在公开 header 中实现 strong logical length/auto 值、四边 margin 与 `LayoutStyle` typed builder，首批字段覆盖 width、height、min/max width、min/max height；通过 API/compile tests 验证字段可接收对应 `Prop<T>` 且不存在颜色、字体、padding、background 或通用 Modifier 入口
-- [ ] 3.2 在 retained Node/layout metadata 中实现无 wrapper 的外部 constraint 与 margin 编译、原子校验和 Dirty 分类，通过负数、NaN、min>max、固定尺寸、min/max clamp、margin 与 Node count 测试证明非法更新不改状态且不创建额外 Node
-- [ ] 3.3 为 Layout Engine 增加以 Node generation 为 key 的平台无关 intrinsic measure adapter 注册/注销与 revision cache，通过自定义 leaf tests 验证 constraint 传递、相同 revision 复用、递归测量 fail-fast 和 stale Node 不调用旧 adapter
-- [ ] 3.4 把 reactive LayoutStyle 更新接入最小失效：有效 content constraint 变化触发 Measure/Layout，纯 margin 变化只更新 place/geometry；通过计数测试证明不重新挂载组件、不改 Text Material，content width 未变时不重复 measure
+- [x] 3.1 在公开 header 中实现 strong logical length/auto 值、四边 margin 与 `LayoutStyle` typed builder，首批字段覆盖 width、height、min/max width、min/max height；通过 API/compile tests 验证字段可接收对应 `Prop<T>` 且不存在颜色、字体、padding、background 或通用 Modifier 入口
+- [x] 3.2 在 retained Node/layout metadata 中实现无 wrapper 的外部 constraint 与 margin 编译、原子校验和 Dirty 分类，通过负数、NaN、min>max、固定尺寸、min/max clamp、margin 与 Node count 测试证明非法更新不改状态且不创建额外 Node
+- [x] 3.3 为 Layout Engine 增加以 Node generation 为 key 的平台无关 intrinsic measure adapter 注册/注销与 revision cache，通过自定义 leaf tests 验证 constraint 传递、相同 revision 复用、递归测量 fail-fast 和 stale Node 不调用旧 adapter
+- [x] 3.4 把 reactive LayoutStyle 更新接入最小失效：有效 content constraint 变化触发 Measure/Layout，纯 margin 变化只更新 place/geometry；通过计数测试证明不重新挂载组件、不改 Text Material，content width 未变时不重复 measure
 - [ ] 3.5 运行 layout/component/public API 全部测试、Windows MSVC Debug 与 Linux GCC/Clang Debug build/CTest、`git diff --check`；以英文 `feat: add public layout style` 提交本阶段相关文件
 
 ## 4. 多 Text 共享 scene service

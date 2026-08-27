@@ -19,6 +19,9 @@ void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
         enqueue_unique(layout_roots_, layout_root_for(id));
     }
+    if (has_any(flags, DirtyFlags::Placement)) {
+        enqueue_unique(placement_roots_, layout_root_for(id));
+    }
     if (has_any(flags, DirtyFlags::Material)) {
         enqueue_unique(material_nodes_, id);
     }
@@ -32,6 +35,7 @@ void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
 
 void DirtyQueues::clear() noexcept {
     layout_roots_.clear();
+    placement_roots_.clear();
     material_nodes_.clear();
     transform_nodes_.clear();
     geometry_nodes_.clear();
@@ -39,6 +43,10 @@ void DirtyQueues::clear() noexcept {
 
 const std::vector<NodeId>& DirtyQueues::layout_roots() const noexcept {
     return layout_roots_;
+}
+
+const std::vector<NodeId>& DirtyQueues::placement_roots() const noexcept {
+    return placement_roots_;
 }
 
 const std::vector<NodeId>& DirtyQueues::material_nodes() const noexcept {

@@ -4,6 +4,8 @@
 #include "runtime/node_store.hpp"
 
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -18,6 +20,8 @@ struct Constraints {
     static Constraints fixed(float width, float height);
     void validate() const;
     [[nodiscard]] runtime::Size constrain(runtime::Size size) const;
+
+    friend constexpr bool operator==(Constraints, Constraints) = default;
 };
 
 struct Padding {
@@ -54,9 +58,17 @@ using LayoutModel = std::variant<LeafLayout, BoxLayout, FlexLayout>;
 
 class LayoutEngine final {
 public:
+    using IntrinsicMeasure = std::function<runtime::Size(Constraints)>;
+
     explicit LayoutEngine(runtime::NodeStore& nodes) noexcept;
 
     void set_layout(runtime::NodeId id, LayoutModel layout);
+    void set_intrinsic_measure(
+        runtime::NodeId id,
+        std::uint64_t revision,
+        IntrinsicMeasure measure);
+    bool set_intrinsic_revision(runtime::NodeId id, std::uint64_t revision);
+    bool remove_intrinsic_measure(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure(runtime::NodeId root, Constraints constraints);
     void place(runtime::NodeId root, runtime::Point origin = {});
     [[nodiscard]] runtime::Size layout(
@@ -72,12 +84,28 @@ private:
         LayoutModel model{LeafLayout{}};
     };
 
+    struct IntrinsicCache final {
+        std::uint64_t revision{0};
+        Constraints constraints;
+        runtime::Size result;
+    };
+
+    struct IntrinsicSlot final {
+        std::uint32_t generation{0};
+        std::uint64_t revision{0};
+        IntrinsicMeasure measure;
+        std::optional<IntrinsicCache> cache;
+        bool measuring{false};
+    };
+
     [[nodiscard]] const LayoutModel& require_layout(runtime::NodeId id) const;
+    [[nodiscard]] IntrinsicSlot* find_intrinsic(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure_node(runtime::NodeId id, Constraints constraints);
     void place_node(runtime::NodeId id, runtime::Rect bounds);
 
     runtime::NodeStore* nodes_;
     std::vector<LayoutSlot> layouts_;
+    std::vector<IntrinsicSlot> intrinsics_;
     std::uint64_t generation_{0};
 };
 

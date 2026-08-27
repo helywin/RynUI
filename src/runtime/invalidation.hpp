@@ -19,6 +19,7 @@ enum class DirtyFlags : std::uint32_t {
     Material = 1U << 4U,
     Transform = 1U << 5U,
     HitTest = 1U << 6U,
+    Placement = 1U << 7U,
 };
 
 constexpr DirtyFlags operator|(DirtyFlags left, DirtyFlags right) noexcept {
@@ -65,6 +66,7 @@ public:
     void clear() noexcept;
 
     [[nodiscard]] const std::vector<NodeId>& layout_roots() const noexcept;
+    [[nodiscard]] const std::vector<NodeId>& placement_roots() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& material_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& transform_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& geometry_nodes() const noexcept;
@@ -76,6 +78,7 @@ private:
     NodeStore* nodes_;
     FrameRequestState* frames_;
     std::vector<NodeId> layout_roots_;
+    std::vector<NodeId> placement_roots_;
     std::vector<NodeId> material_nodes_;
     std::vector<NodeId> transform_nodes_;
     std::vector<NodeId> geometry_nodes_;

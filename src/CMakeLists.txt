@@ -43,6 +43,7 @@ add_library(rynui_runtime STATIC
     runtime/component_mount.cpp
     runtime/frame_scheduler.cpp
     runtime/invalidation.cpp
+    runtime/layout_style_adapter.cpp
     runtime/node_store.cpp
     runtime/runtime.cpp
 )

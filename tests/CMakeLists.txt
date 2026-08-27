@@ -16,6 +16,11 @@ rynui_configure_cpp_target(rynui_component_public_api_tests)
 target_link_libraries(rynui_component_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.component_public_api COMMAND rynui_component_public_api_tests)
 
+add_executable(rynui_layout_style_public_api_tests layout_style_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_layout_style_public_api_tests)
+target_link_libraries(rynui_layout_style_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.layout_style_public_api COMMAND rynui_layout_style_public_api_tests)
+
 add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)
@@ -126,6 +131,15 @@ rynui_configure_cpp_target(rynui_layout_engine_tests)
 target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(rynui_layout_engine_tests PRIVATE rynui_layout)
 add_test(NAME rynui.layout_engine COMMAND rynui_layout_engine_tests)
+
+add_executable(rynui_layout_style_tests layout_style_tests.cpp)
+rynui_configure_cpp_target(rynui_layout_style_tests)
+target_include_directories(rynui_layout_style_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_layout_style_tests
+    PRIVATE rynui_layout rynui_runtime rynui_reactive
+)
+add_test(NAME rynui.layout_style COMMAND rynui_layout_style_tests)
 
 add_executable(rynui_dirty_queue_tests dirty_queue_tests.cpp)
 rynui_configure_cpp_target(rynui_dirty_queue_tests)
