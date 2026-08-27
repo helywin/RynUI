@@ -66,9 +66,18 @@ struct FontMetrics {
     float ascent{};
     float descent{};
     float line_gap{};
-    std::uint32_t pixel_size{};
+    std::uint32_t logical_pixel_size{};
+    std::uint32_t raster_pixel_size{};
+    float raster_scale{1.0F};
 
     friend bool operator==(const FontMetrics&, const FontMetrics&) = default;
+};
+
+struct FontRasterConfig {
+    std::uint32_t logical_pixel_size{};
+    float display_scale{1.0F};
+
+    friend bool operator==(FontRasterConfig, FontRasterConfig) = default;
 };
 
 struct FontLoadResult {
@@ -126,6 +135,7 @@ struct GlyphBitmap {
     int bearing_y{};
     float advance_x{};
     GlyphBounds visible_bounds{};
+    float raster_scale{1.0F};
 };
 
 struct GlyphRasterResult {
@@ -231,10 +241,22 @@ public:
         std::uint32_t pixel_size,
         FontFailurePoint failure_point = FontFailurePoint::none);
 
+    [[nodiscard]] FontLoadResult load_font_file(
+        const std::filesystem::path& path,
+        long face_index,
+        FontRasterConfig raster,
+        FontFailurePoint failure_point = FontFailurePoint::none);
+
     [[nodiscard]] FontLoadResult load_font_bytes(
         std::span<const std::byte> bytes,
         long face_index,
         std::uint32_t pixel_size,
+        FontFailurePoint failure_point = FontFailurePoint::none);
+
+    [[nodiscard]] FontLoadResult load_font_bytes(
+        std::span<const std::byte> bytes,
+        long face_index,
+        FontRasterConfig raster,
         FontFailurePoint failure_point = FontFailurePoint::none);
 
     [[nodiscard]] FontMetricsResult metrics(FontIdentity font) const;

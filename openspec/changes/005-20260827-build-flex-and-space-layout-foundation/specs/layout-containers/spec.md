@@ -106,15 +106,46 @@ Flex/Space Props 和 flex child `LayoutStyle` 的普通响应式更新 SHALL 在
 - **THEN** 所有相关订阅和 child 资源已释放，更新不访问 stale identity 且不请求新帧
 
 ### Requirement: 平台边界保持 DPI 下的逻辑 UI 尺寸
-SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。
+SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。字体 coverage MUST 按载入时 display scale 使用独立 raster pixel size，raster face 与 shaping face MUST 相互独立，shaping/measure 与 scene quad MUST 继续使用 logical coordinate，Glyph Atlas key MUST 区分实际 raster size；linear sampling 的 glyph quad MUST 包含透明 guard pixel，不得在 coverage 边界直接截断。
 
 #### Scenario: Windows 150% 缩放保持设计尺寸
 - **WHEN** Windows display scale 为 1.5、window coordinate 与 drawable pixel size 都是 960×720
-- **THEN** RynUI 使用 640×480 logical viewport 渲染，14 logical pixel 字体与 32 logical pixel Button 按系统期望显示为正常物理尺寸，Pointer 命中与视觉 bounds 一致
+- **THEN** RynUI 使用 640×480 logical viewport 渲染，14 logical pixel 字体使用 21px glyph raster 且仍按 14 logical pixel 参与测量与场景放置，32 logical pixel Button 按系统期望显示为正常物理尺寸，Pointer 命中与视觉 bounds 一致
+
+#### Scenario: 高密度字形不放大逻辑排版
+- **WHEN** 同一字体以 14 logical pixel 分别在 display scale 为 1.0 与 1.5 的环境中载入
+- **THEN** 1.5 实例的实际 glyph coverage 使用更高 raster resolution，HarfBuzz advance、Text measure 与 Glyph Scene logical quad 不乘以 1.5，GPU 不再放大 1.0 density atlas 来满足目标显示尺寸
+
+#### Scenario: Glyph 采样保留透明边缘
+- **WHEN** 高密度 glyph coverage 的首列、末列或顶部像素包含非零值并使用 linear sampler
+- **THEN** atlas UV 与 scene quad 在 coverage 四周包含透明 guard pixel，滤波在 quad 内过渡到零，字母边缘不呈现被矩形边界切掉的视觉缺口
 
 #### Scenario: Drawable 或 display scale 变化刷新 viewport
 - **WHEN** SDL 报告 window pixel size 或 display scale 变化
 - **THEN** 平台边界重新查询窗口 metrics，发出新的 logical resize，目标布局重新计算但 Theme token 和公开 `LogicalLength` 数值不被改写
+
+#### Scenario: 字体 density 在载入时显式绑定
+- **WHEN** 示例在目标 display scale 下创建 Font Runtime 资源
+- **THEN** 每个 font identity 记录 logical pixel size、实际 raster pixel size 与 effective raster scale；启动后跨输出的字体重新栅格化不在本 change 的完成声明中
+
+### Requirement: 示例默认字体服从平台且保留显式配置
+公开示例的默认 UI font chain SHALL 在 Windows 通过 DirectWrite system font collection 选择系统 UI 字体，在 Linux 通过 Fontconfig generic `sans-serif` 与语言匹配选择桌面默认字体；系统字体路径 MUST 由平台服务解析，不得硬编码或随 RynUI 分发。系统 SHALL 保留 typed custom font file 与 face index 配置边界，并按 custom、system、locked fallback 的优先级补足 glyph coverage，不得向公开 Component API 泄漏 DirectWrite 或 Fontconfig 类型。
+
+#### Scenario: Windows 使用系统 UI 字体
+- **WHEN** Windows 示例未配置 custom font 且系统提供标准 UI 字体
+- **THEN** Latin 首选 Segoe UI 系列、简体中文首选 Microsoft YaHei UI，telemetry 记录 `font_source=system` 和实际 family chain
+
+#### Scenario: Linux 使用桌面配置的默认字体
+- **WHEN** Linux 示例未配置 custom font
+- **THEN** Fontconfig 分别对 `sans-serif:lang=en` 与 `sans-serif:lang=zh-cn` 返回本机配置的 file、face index 与 family，示例使用该 chain 且不假定具体发行版字体名称
+
+#### Scenario: 显式字体优先且保留系统回退
+- **WHEN** 应用配置一个可载入但只覆盖部分文本的 custom font
+- **THEN** 该 face 位于 chain 最前，缺失 glyph 才由平台系统字体或 locked fallback 补足，custom family 与最终 chain 都进入 telemetry
+
+#### Scenario: 无效显式字体不被静默忽略
+- **WHEN** custom font 文件不可读、face index 无效或 FreeType 无法载入
+- **THEN** font chain 创建失败并返回包含目标路径的诊断，不改用系统字体伪装配置成功
 
 ### Requirement: 平台验收证据相互独立
 系统 MUST 为 Linux 与 Windows 保存独立 Flex/Space 构建、CTest、真实窗口和截图清单；Linux 结果不得标记 Windows 项通过，Windows 结果也不得回退或替代 Linux 项。

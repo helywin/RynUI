@@ -33,6 +33,24 @@ namespace {
     return static_cast<float>(value) / 64.0F;
 }
 
+[[nodiscard]] std::optional<std::uint32_t> resolve_raster_pixel_size(
+    FontRasterConfig raster) noexcept {
+    if (raster.logical_pixel_size == 0
+            || !std::isfinite(raster.display_scale)
+            || raster.display_scale <= 0.0F
+            || raster.logical_pixel_size
+                > static_cast<std::uint32_t>(std::numeric_limits<int>::max() / 64)) {
+        return std::nullopt;
+    }
+    const double scaled = static_cast<double>(raster.logical_pixel_size)
+        * static_cast<double>(raster.display_scale);
+    if (!std::isfinite(scaled)
+            || scaled > static_cast<double>(std::numeric_limits<std::uint32_t>::max())) {
+        return std::nullopt;
+    }
+    return std::max(1U, static_cast<std::uint32_t>(std::ceil(scaled)));
+}
+
 struct GlyphCacheKey {
     FontIdentity font{};
     std::uint32_t glyph_id{};
@@ -66,6 +84,7 @@ struct FontRuntime::Impl {
         FontRecord(FontRecord&& other) noexcept
             : bytes(std::move(other.bytes)),
               face(std::exchange(other.face, nullptr)),
+              shaping_face(std::exchange(other.shaping_face, nullptr)),
               harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)),
               metrics(other.metrics),
               owns_bytes(std::exchange(other.owns_bytes, false)),
@@ -82,6 +101,11 @@ struct FontRuntime::Impl {
                 hb_font_destroy(harfbuzz_font);
                 harfbuzz_font = nullptr;
             }
+            if (shaping_face != nullptr) {
+                FT_Done_Face(shaping_face);
+                shaping_face = nullptr;
+                ++counters->faces_released;
+            }
             if (face != nullptr) {
                 FT_Done_Face(face);
                 face = nullptr;
@@ -96,6 +120,7 @@ struct FontRuntime::Impl {
 
         std::vector<std::byte> bytes;
         FT_Face face{};
+        FT_Face shaping_face{};
         hb_font_t* harfbuzz_font{};
         FontMetrics metrics{};
         bool owns_bytes{};
@@ -211,6 +236,18 @@ FontLoadResult FontRuntime::load_font_file(
     long face_index,
     std::uint32_t pixel_size,
     FontFailurePoint failure_point) {
+    return load_font_file(
+        path,
+        face_index,
+        FontRasterConfig{pixel_size, 1.0F},
+        failure_point);
+}
+
+FontLoadResult FontRuntime::load_font_file(
+    const std::filesystem::path& path,
+    long face_index,
+    FontRasterConfig raster,
+    FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::resource_read)};
     }
@@ -223,13 +260,13 @@ FontLoadResult FontRuntime::load_font_file(
                 "Font Runtime has been shut down."),
         };
     }
-    if (pixel_size == 0) {
+    if (!resolve_raster_pixel_size(raster)) {
         return {
             {},
             make_error(
                 FontErrorStage::pixel_size_configuration,
                 FontErrorKind::invalid_pixel_size,
-                "Font pixel size must be positive."),
+                "Font logical pixel size and display scale must be finite and positive."),
         };
     }
 
@@ -267,13 +304,25 @@ FontLoadResult FontRuntime::load_font_file(
                 "Unable to read the explicit font resource."),
         };
     }
-    return load_font_bytes(bytes, face_index, pixel_size, failure_point);
+    return load_font_bytes(bytes, face_index, raster, failure_point);
 }
 
 FontLoadResult FontRuntime::load_font_bytes(
     std::span<const std::byte> bytes,
     long face_index,
     std::uint32_t pixel_size,
+    FontFailurePoint failure_point) {
+    return load_font_bytes(
+        bytes,
+        face_index,
+        FontRasterConfig{pixel_size, 1.0F},
+        failure_point);
+}
+
+FontLoadResult FontRuntime::load_font_bytes(
+    std::span<const std::byte> bytes,
+    long face_index,
+    FontRasterConfig raster,
     FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::face_creation)};
@@ -287,13 +336,14 @@ FontLoadResult FontRuntime::load_font_bytes(
                 "Font Runtime has been shut down."),
         };
     }
-    if (pixel_size == 0) {
+    const auto raster_pixel_size = resolve_raster_pixel_size(raster);
+    if (!raster_pixel_size) {
         return {
             {},
             make_error(
                 FontErrorStage::pixel_size_configuration,
                 FontErrorKind::invalid_pixel_size,
-                "Font pixel size must be positive."),
+                "Font logical pixel size and display scale must be finite and positive."),
         };
     }
 
@@ -359,22 +409,49 @@ FontLoadResult FontRuntime::load_font_bytes(
             FontErrorKind::invalid_pixel_size,
             "Injected pixel-size configuration failure."));
     }
-    if (FT_Set_Pixel_Sizes(record.face, 0, pixel_size) != 0) {
+    if (FT_Set_Pixel_Sizes(record.face, 0, *raster_pixel_size) != 0) {
         return fail(make_error(
             FontErrorStage::pixel_size_configuration,
             FontErrorKind::invalid_pixel_size,
             "FreeType rejected the requested pixel size."));
     }
 
+    const float raster_scale = static_cast<float>(*raster_pixel_size)
+        / static_cast<float>(raster.logical_pixel_size);
     const FT_Size_Metrics& metrics = record.face->size->metrics;
-    record.metrics.ascent = fixed_26_6_to_pixels(metrics.ascender);
-    record.metrics.descent = fixed_26_6_to_pixels(metrics.descender);
+    record.metrics.ascent = fixed_26_6_to_pixels(metrics.ascender) / raster_scale;
+    record.metrics.descent = fixed_26_6_to_pixels(metrics.descender) / raster_scale;
     record.metrics.line_gap = std::max(
         0.0F,
-        fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender));
-    record.metrics.pixel_size = pixel_size;
+        fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender)
+            / raster_scale);
+    record.metrics.logical_pixel_size = raster.logical_pixel_size;
+    record.metrics.raster_pixel_size = *raster_pixel_size;
+    record.metrics.raster_scale = raster_scale;
 
-    record.harfbuzz_font = hb_ft_font_create_referenced(record.face);
+    const FT_Error shaping_face_result = FT_New_Memory_Face(
+        impl_->library,
+        reinterpret_cast<const FT_Byte*>(record.bytes.data()),
+        static_cast<FT_Long>(record.bytes.size()),
+        face_index,
+        &record.shaping_face);
+    if (shaping_face_result != 0) {
+        return fail(make_error(
+            FontErrorStage::shaping,
+            FontErrorKind::shaping_failed,
+            "FreeType could not create an independent shaping face."));
+    }
+    ++impl_->counters->faces_acquired;
+    if (FT_Select_Charmap(record.shaping_face, FT_ENCODING_UNICODE) != 0
+            || FT_Set_Pixel_Sizes(
+                record.shaping_face, 0, raster.logical_pixel_size) != 0) {
+        return fail(make_error(
+            FontErrorStage::shaping,
+            FontErrorKind::shaping_failed,
+            "FreeType could not configure the independent shaping face."));
+    }
+
+    record.harfbuzz_font = hb_ft_font_create_referenced(record.shaping_face);
     if (record.harfbuzz_font == nullptr) {
         return fail(make_error(
             FontErrorStage::shaping,
@@ -382,6 +459,8 @@ FontLoadResult FontRuntime::load_font_bytes(
             "HarfBuzz could not create an immutable font adapter."));
     }
     hb_ft_font_set_load_flags(record.harfbuzz_font, FT_LOAD_DEFAULT);
+    const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size * 64U);
+    hb_font_set_scale(record.harfbuzz_font, harfbuzz_scale, harfbuzz_scale);
 
     std::size_t slot_index = 0;
     for (; slot_index < impl_->fonts.size(); ++slot_index) {
@@ -537,7 +616,7 @@ GlyphRasterResult FontRuntime::rasterize(
         };
     }
 
-    const GlyphCacheKey key{font, glyph_id, record->metrics.pixel_size, mode};
+    const GlyphCacheKey key{font, glyph_id, record->metrics.raster_pixel_size, mode};
     if (const auto existing = impl_->glyph_cache.find(key);
             existing != impl_->glyph_cache.end()) {
         ++impl_->counters->cache_hits;
@@ -596,6 +675,8 @@ GlyphRasterResult FontRuntime::rasterize(
         result.width,
         result.height,
     };
+    result.raster_scale = record->metrics.raster_scale;
+    result.advance_x /= result.raster_scale;
 
     if (bitmap.width != 0 && bitmap.rows != 0) {
         if (bitmap.pitch == std::numeric_limits<int>::min()) {

@@ -23,6 +23,7 @@ rynui_resolve_shadercross_host_tool(
     RYNUI_SHADERCROSS_DEPENDENCY
 )
 rynui_resolve_text_dependencies()
+rynui_resolve_platform_font_service()
 rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE
     RYNUI_VALIDATION_CJK_FONT_FILE

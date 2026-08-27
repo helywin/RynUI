@@ -29,13 +29,17 @@ bool near(float left, float right) {
 }
 
 struct Fixture final {
-    Fixture()
+    explicit Fixture(float display_scale = 1.0F)
         : fonts(create_runtime()),
           text_engine(*fonts) {
         const auto latin_load = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+            RYNUI_VALIDATION_LATIN_FONT,
+            0,
+            ryn::font::FontRasterConfig{14, display_scale});
         const auto cjk_load = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT, 0, 14);
+            RYNUI_VALIDATION_CJK_FONT,
+            0,
+            ryn::font::FontRasterConfig{14, display_scale});
         require(latin_load && cjk_load, "glyph scene fonts failed to load");
         chain = {latin_load.font, cjk_load.font};
     }
@@ -70,7 +74,7 @@ void test_instance_layout_and_text_positioning() {
                 && ryn::graphics::glyph_vertex_count == 6,
             "Glyph instance layout does not match the shader contract");
 
-    Fixture fixture;
+    Fixture fixture{1.5F};
     const String content = u8"A 中";
     const auto shaped = fixture.text_engine.shape(content.view(), fixture.chain);
     const auto measured = fixture.text_engine.measure(
@@ -102,16 +106,30 @@ void test_instance_layout_and_text_positioning() {
         shaped.text.glyphs.front().glyph_id);
     require(first_atlas && !first_atlas.entry->empty,
             "first glyph atlas entry is unavailable");
+    require(first_atlas.entry->key.pixel_size == 21
+                && near(first_atlas.entry->raster_scale, 1.5F),
+            "glyph scene did not retain the high-density atlas scale");
+    const float inverse_raster_scale = 1.0F / first_atlas.entry->raster_scale;
     const float expected_left = placement.origin_pixels.x
         + shaped.text.glyphs.front().offset_x
-        + static_cast<float>(first_atlas.entry->bearing_x);
+        + static_cast<float>(
+            first_atlas.entry->bearing_x
+                - static_cast<int>(ryn::graphics::glyph_atlas_padding))
+            * inverse_raster_scale;
     const float expected_top = placement.origin_pixels.y
         + measured.measurement.lines.front().baseline
         - shaped.text.glyphs.front().offset_y
-        - static_cast<float>(first_atlas.entry->bearing_y);
+        - static_cast<float>(
+            first_atlas.entry->bearing_y
+                + static_cast<int>(ryn::graphics::glyph_atlas_padding))
+            * inverse_raster_scale;
     require(near(first.position_size[0], -1.0F + 2.0F * expected_left / 400.0F)
-                && near(first.position_size[1], 1.0F - 2.0F * expected_top / 200.0F),
-            "Glyph instance did not apply baseline, bearing, and shaping offset");
+                && near(first.position_size[1], 1.0F - 2.0F * expected_top / 200.0F)
+                && near(
+                    first.position_size[2],
+                    2.0F * first_atlas.entry->padded_rect.width
+                        * inverse_raster_scale / 400.0F),
+            "Glyph instance did not apply raster padding, baseline, bearing, and shaping offset");
     require(first.clip_bounds == std::array<float, 4>{-1.0F, 1.0F, 1.0F, -1.0F}
                 && first.color == placement.color
                 && near(first.translation_opacity[0], 0.02F)

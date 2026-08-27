@@ -12,7 +12,10 @@ rynui_deploy_target_shaders(rynui_minimal
 
 add_executable(rynui_text_demo text/main.cpp)
 rynui_configure_cpp_target(rynui_text_demo)
-target_link_libraries(rynui_text_demo PRIVATE rynui_components rynui_renderer_sdl)
+target_link_libraries(
+    rynui_text_demo
+    PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
+)
 rynui_assert_no_link_dependency_matching(rynui_text_demo "[Ss]hader[Cc]ross")
 add_custom_command(TARGET rynui_text_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -39,7 +42,10 @@ add_custom_command(TARGET rynui_text_demo POST_BUILD
 
 add_executable(rynui_button_demo button/main.cpp)
 rynui_configure_cpp_target(rynui_button_demo)
-target_link_libraries(rynui_button_demo PRIVATE rynui_components rynui_renderer_sdl)
+target_link_libraries(
+    rynui_button_demo
+    PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
+)
 rynui_assert_no_link_dependency_matching(rynui_button_demo "[Ss]hader[Cc]ross")
 add_custom_command(TARGET rynui_button_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -70,7 +76,10 @@ add_executable(
     layout/layout_demo_runtime.cpp
 )
 rynui_configure_cpp_target(rynui_layout_demo)
-target_link_libraries(rynui_layout_demo PRIVATE rynui_components rynui_renderer_sdl)
+target_link_libraries(
+    rynui_layout_demo
+    PRIVATE rynui_components rynui_default_fonts rynui_renderer_sdl
+)
 rynui_assert_no_link_dependency_matching(rynui_layout_demo "[Ss]hader[Cc]ross")
 add_custom_command(TARGET rynui_layout_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory

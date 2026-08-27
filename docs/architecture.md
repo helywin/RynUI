@@ -369,6 +369,10 @@ UTF-8
 
 第一阶段使用灰度 coverage atlas，优先保证 12–16px 桌面字号和 CJK 文本的清晰度。文本系统从设计阶段保留 Font fallback、Emoji、IME composition、Cursor、Selection、Clipboard 和 Undo/Redo 所需的数据边界。
 
+字体 API 必须区分 logical pixel size 与 raster pixel size。HarfBuzz shaping、Text measure 和 Glyph Scene 使用 logical units；FreeType coverage 按窗口 display scale 选择 raster size，且 shaping face 与 raster face 必须独立，不能让 logical shaping scale 改写 raster face。Glyph Atlas key 包含实际 raster size，每个 coverage 四周保留至少一个透明物理像素并让采样 quad 包含该 guard，场景以同一 effective raster scale 把 bitmap bearing、padding 与 coverage 尺寸折回 logical quad。不得把 1.0 density glyph atlas 交给 GPU 放大来适配高 DPI，也不得让 quad 边界截断 coverage 的滤波过渡。首批 font identity 在载入时绑定 density；跨输出动态重栅格化必须同时定义资源 identity、atlas 淘汰和 TextState 刷新合同后再开放。
+
+默认 UI font chain 必须服从当前桌面环境：Windows 通过 DirectWrite 的 system font collection 选择 Segoe UI 系列，并以 Microsoft YaHei UI 补足简体中文；Linux 通过 Fontconfig 对 generic `sans-serif` 分别执行 Latin 与 `zh-cn` 匹配，尊重用户和发行版的字体配置。应用显式配置的字体文件按声明顺序位于 chain 最前，系统字体只补足缺失 coverage，最后才使用锁定的 validation font 作为可诊断兜底。系统字体文件不随 RynUI 分发，也不写死路径；Linux Fontconfig 是显式 REQUIRED 的平台服务，不构成 FreeType/HarfBuzz `BUNDLED|SYSTEM` source mode 的隐式 system-first fallback。稳定公开配置最终由 Theme font token 承载；在 Theme API 发布前，内部 font-chain request 保留 typed custom file/face-index 接口，示例不得绕过该边界硬编码平台字体路径。
+
 输入事件通过 HitTest 定位目标 Node，并支持 Capture、Target、Bubble 三阶段传播。Focus、Pointer capture、Keyboard、IME、Cursor、Clipboard 和 DragDrop 由独立管理器维护。
 
 ## 12. 线程与帧调度
@@ -543,5 +547,6 @@ RynUI/
 | 平台/GPU | SDL3 + SDL3 GPU |
 | 普通 UI 渲染 | 自研 Primitive/Batch Renderer |
 | 文本 | FreeType + HarfBuzz + GlyphAtlas |
+| 默认字体 | Windows DirectWrite / Linux Fontconfig；显式自定义字体优先 |
 | Skia | 可选插件，不进入核心 |
 | 第一优先级 | 证明最小响应式 GPU 闭环 |

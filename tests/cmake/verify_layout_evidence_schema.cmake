@@ -36,6 +36,11 @@ set(required_keys
     viewport_wide
     viewport_narrow
     dpi_scale_applied
+    font_logical_pixel_size
+    font_raster_pixel_size
+    font_raster_scale
+    font_source
+    font_families
     gpu_driver
     shader_format
     exit_code

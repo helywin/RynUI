@@ -176,6 +176,29 @@ function(rynui_resolve_text_dependencies)
     target_link_libraries(rynui_harfbuzz_dependency INTERFACE ${harfbuzz_target})
 endfunction()
 
+function(rynui_resolve_platform_font_service)
+    if(TARGET RynUI::PlatformFonts)
+        return()
+    endif()
+
+    add_library(rynui_platform_font_service INTERFACE)
+    add_library(RynUI::PlatformFonts ALIAS rynui_platform_font_service)
+    if(WIN32)
+        target_link_libraries(rynui_platform_font_service INTERFACE dwrite)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Fontconfig is an explicit Linux desktop platform service. It resolves
+        # the user's active desktop font configuration and is not a source-mode
+        # fallback for RynUI's locked FreeType/HarfBuzz dependencies.
+        find_package(Fontconfig 2.13 REQUIRED)
+        if(NOT TARGET Fontconfig::Fontconfig)
+            message(FATAL_ERROR
+                "Linux system font resolution requires Fontconfig::Fontconfig.")
+        endif()
+        target_link_libraries(
+            rynui_platform_font_service INTERFACE Fontconfig::Fontconfig)
+    endif()
+endfunction()
+
 function(rynui_download_locked_file label url sha256 output_path)
     get_filename_component(output_directory "${output_path}" DIRECTORY)
     file(MAKE_DIRECTORY "${output_directory}")

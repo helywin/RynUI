@@ -72,6 +72,13 @@ void test_shelf_allocation_padding_and_stability() {
                     && coverage.width + 2 == padded.width
                     && coverage.height + 2 == padded.height,
                 "glyph atlas entry did not preserve one-pixel padding");
+        require(entry->uv.left == static_cast<float>(padded.x) / 12.0F
+                    && entry->uv.top == static_cast<float>(padded.y) / 12.0F
+                    && entry->uv.right
+                        == static_cast<float>(padded.x + padded.width) / 12.0F
+                    && entry->uv.bottom
+                        == static_cast<float>(padded.y + padded.height) / 12.0F,
+                "glyph sampling UV did not include the transparent guard pixels");
         for (std::uint32_t x = padded.x; x < padded.x + padded.width; ++x) {
             require(page[static_cast<std::size_t>(padded.y) * 12 + x] == 0
                         && page[static_cast<std::size_t>(padded.y + padded.height - 1) * 12 + x] == 0,
@@ -131,7 +138,10 @@ void test_real_font_cache_and_dirty_plan() {
     auto created = FontRuntime::create();
     require(static_cast<bool>(created), "Font Runtime initialization failed");
     auto fonts = std::move(created.runtime);
-    const auto loaded = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+    const auto loaded = fonts->load_font_file(
+        RYNUI_VALIDATION_LATIN_FONT,
+        0,
+        ryn::font::FontRasterConfig{14, 1.5F});
     require(static_cast<bool>(loaded), "atlas validation font failed to load");
     const auto a = fonts->glyph_index(loaded.font, U'A');
     const auto space = fonts->glyph_index(loaded.font, U' ');
@@ -140,6 +150,8 @@ void test_real_font_cache_and_dirty_plan() {
     GlyphAtlas atlas;
     const auto first = atlas.ensure(*fonts, loaded.font, a.glyph.glyph_id);
     require(first && !first.cache_hit && !first.entry->empty
+                && first.entry->key.pixel_size == 21
+                && first.entry->raster_scale == 1.5F
                 && atlas.page_count() == 1 && atlas.dirty_regions().size() == 1,
             "first real glyph did not allocate one dirty atlas region");
     const auto dirty = atlas.dirty_regions().front();

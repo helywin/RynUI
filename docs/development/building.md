@@ -8,7 +8,7 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 - Ninja。
 - 支持 C++20 的工具链。
 - Windows：带有 x64 C++ tools 的 Visual Studio，编译器必须为 MSVC。
-- Linux：GCC 或 Clang。
+- Linux：GCC 或 Clang，以及提供 `Fontconfig::Fontconfig` 的 Fontconfig 2.13 或更高版本开发包。
 - 原生 `BUNDLED` 构建会下载锁定的 shader host tool 输入；`SYSTEM` 或交叉编译需要一份可在构建主机执行的 SDL_shadercross CLI。
 
 `CMakeUserPresets.json` 已被忽略，可用于个人路径和本机 cache variable 覆盖；不要把这些值写入共享的 `CMakePresets.json`。
@@ -62,6 +62,8 @@ cmake --preset windows-msvc `
 configure 会执行 `shadercross --help` 验证 override。交叉编译不会尝试执行 target binary；未提供 host override 时会立即失败。
 
 ## Linux / GCC
+
+Linux 示例通过 Fontconfig 读取当前桌面 `sans-serif` 与 `zh-cn` 默认字体。Fontconfig 是显式 REQUIRED 的平台服务；缺少开发包时 configure 会直接失败，不会把硬编码字体路径或 `fc-match` 子进程当作回退。
 
 ```bash
 cmake --preset linux-gcc

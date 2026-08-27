@@ -92,6 +92,16 @@ gap/justify/align/order 变化不重建 component/scene topology。justify/align
 
 SDL window 使用 `SDL_WINDOW_HIGH_PIXEL_DENSITY`。平台边界同时保存 window coordinate size、drawable pixel size、pixel density 与 display scale；RynUI logical viewport 计算为 `drawable pixels / display scale`，SDL mouse/touch coordinate 计算为 `window coordinate * pixel density / display scale`。这样 LayoutEngine、Theme token 与 `ryn::dp` 继续使用不随显示器改变的 logical value，GPU clip-space 归一化则自然把 logical geometry 映射到实际 swapchain。`SDL_EVENT_WINDOW_RESIZED`、`SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` 与 `SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED` 都重新查询 metrics 并发布 logical resize，避免窗口跨输出后保留旧比例。
 
+### 9. 字体布局尺寸与字形栅格密度分离
+
+`FontRasterConfig` 显式携带 logical pixel size 与启动时窗口的 display scale。FreeType raster face 使用 `ceil(logical_pixel_size * display_scale)` 的实际 raster pixel size 生成灰度 coverage；独立 shaping face 保持 logical size，避免 hb-ft 调整 shaping scale 时把 raster face 退回低密度。`FontMetrics` 同时报告 logical size、实际 raster size 与由整数栅格尺寸得到的 effective raster scale。HarfBuzz 输出固定在 logical 26.6 单位，Text measure 不接收物理 raster pixel；Glyph Atlas key 使用实际 raster size，entry 保存 raster scale，Glyph Scene 把物理 bearing/coverage 除以该 scale 后再生成 logical quad。每个 coverage 周围的一像素透明 padding 同时进入 UV 与 quad，给 linear sampler 留出由 coverage 过渡到零的 guard，避免字母边缘在紧贴 bitmap 边界时呈现裁切感。这样 150% 缩放时 14 logical pixel 字体使用 21px coverage，而文字流、Button 高度和换行仍服从原有 logical layout。
+
+首批在字体载入时绑定当前窗口 display scale；窗口移动到其他输出后，platform viewport 与 input 会立即刷新，但字体重新载入及跨 density atlas 淘汰需要后续 change 定义稳定 font resource identity 和 TextState 刷新合同。本 change 的 Windows 清晰度验收必须在目标 display scale 下重新启动示例，不能把启动后跨输出仍沿用旧 atlas 描述为已支持。
+
+默认 UI font chain 不再把 validation font 当作首选视觉字体。Windows 通过 DirectWrite system collection 按 `Segoe UI Variable Text`、`Segoe UI Variable`、`Segoe UI` 的顺序选择 Latin UI face，并用 `Microsoft YaHei UI` 补足简体中文；Linux 通过 Fontconfig 的 `sans-serif` generic family 分别按 `en` 与 `zh-cn` 匹配 `FC_FILE`、`FC_INDEX` 和 `FC_FAMILY`。Linux 构建以 `find_package(Fontconfig 2.13 REQUIRED)` 显式接入平台服务，不执行命令行 `fc-match`，也不提供静默 system-first 构建回退。
+
+`DefaultFontChainRequest::preferred_fonts` 保留应用配置其他字体文件与 face index 的 typed 边界。加载顺序为 explicit custom、缺失 coverage 对应的 platform system face、locked validation fallback；显式 custom 文件不可读时 fail-fast，不能悄悄忽略用户配置。示例输出 `font_source` 与 `font_families` 便于真实窗口对照；确定性 headless 字体测量仍直接使用锁定 validation font，避免不同桌面配置改变基线。Theme font token 尚未发布，因此该 request 保持内部 integration API，后续公开 Theme change 复用此顺序而不暴露 DirectWrite/Fontconfig 类型。
+
 ## Risks / Trade-offs
 
 - **[flex freeze/redistribute 的浮点误差导致边界抖动]** → 使用稳定排序、有限迭代、epsilon 和确定余数接收者，并用 fractional constraints 重复运行测试锁定结果。
@@ -100,7 +110,11 @@ SDL window 使用 `SDL_WINDOW_HIGH_PIXEL_DENSITY`。平台边界同时保存 win
 - **[order 与 keyboard focus 顺序不同令用户困惑]** → 明确 order 只控制 layout；示例避免把交互流程依赖于视觉重排，未来若需要 visual-order navigation 由 Accessibility/focus policy change 决定。
 - **[Space 不建 wrapper 限制 separator/Compact]** → 将两者明确排除；未来 change 可以引入受控 item layer，不伪装首批已支持。
 - **[Windows 与 Linux 字体度量或像素舍入不同]** → 自动测试锁定 logical bounds，真实窗口证据各自保存；任何平台结果不外推另一平台。
-- **[字体 atlas 在 fractional scale 下被 GPU 采样放大]** → 本阶段先保证 UI 物理尺寸、布局与命中一致；独立 typography/raster-density change 再定义多 density glyph cache 与跨输出重栅格化，不在 Flex/Space change 内改写字体 identity。
+- **[fractional scale 的整数 raster size 引入度量舍入]** → raster size 向上取整并记录 effective scale；HarfBuzz 保持 logical scale，Glyph Scene 使用同一个 effective scale 折回 bearing/coverage，自动测试锁定 logical layout 与高密度 coverage 的分离。
+- **[Glyph quad 紧贴 coverage 令 linear filter 呈现边缘裁切]** → atlas 保留并上传透明 padding，UV 与 quad 一起覆盖 guard pixel；场景按 effective scale 折回 padding，自动测试锁定透明边界和 geometry。
+- **[窗口跨不同 scale 输出后旧字体 atlas 仍在使用]** → 首批明确为 load-time density；真实验收在目标输出启动示例，动态 font resource/atlas 切换由后续 change 定义，不以 viewport 已刷新冒充字体已重栅格化。
+- **[系统字体配置因用户和发行版不同而改变视觉与度量]** → 示例与真实窗口尊重平台默认并记录 family/source，确定性 headless tests 继续使用锁定字体；Windows 与 Linux 证据互不外推。
+- **[显式 custom 字体失效后静默替换造成品牌视觉漂移]** → custom 文件加载失败即返回诊断；只有成功载入但 coverage 不足时才进入系统和 bundled fallback。
 
 ## Migration Plan
 

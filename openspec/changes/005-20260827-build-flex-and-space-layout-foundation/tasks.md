@@ -38,20 +38,21 @@
 - [x] 5.3 增加平台独立 layout evidence schema，要求 preset、compiler、window system/display scale、viewport、line/layout/scene/submit 计数和宽/窄截图路径；Linux 与 Windows 使用独立文件且交叉平台 identity 必须被合同拒绝
 - [x] 5.4 运行 Flex/Space example source contract、headless frame integration、evidence schema、public dependency、未跟踪依赖与 `git diff --check`；以英文 `feat: add responsive layout demo` 提交并推送本阶段相关文件，核对 remote SHA
 - [x] 5.5 修复 SDL high-DPI platform boundary：启用 high-pixel-density window，分离 window/drawable/logical metrics，以 `drawable / display scale` 计算 viewport、以 `pixel density / display scale` 归一 pointer，并覆盖 resize/pixel-size/display-scale change；通过 platform lifecycle、SDL adapter、frame 与示例 smoke tests 后以英文 `fix: honor Windows display scaling` 提交并推送
+- [x] 5.6 分离字体 logical size 与 raster density，并接入平台默认字体 chain：独立 FreeType raster/shaping face 按启动时 display scale 生成高密度 coverage并保持 HarfBuzz logical shaping units，Glyph Atlas/Scene 以 effective raster scale 还原 logical quad且把透明 guard pixel 纳入采样，避免边缘裁切；Windows 通过 DirectWrite、Linux 通过 Fontconfig 使用系统默认 UI 字体，typed custom font file/face-index 优先且保留 system/locked fallback；通过 Font Runtime、default chain、Glyph Atlas、Glyph Scene、frame 与 Windows 示例 smoke 验证 150% 下 14 logical pixel 使用 21px raster、布局尺寸不放大并输出 font source/family，以英文 `fix: use platform default UI fonts` 提交并推送
 
 ## 6. Linux 验收清单
 
-- [ ] 6.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、`-std=c++20`、BUNDLED 依赖和 Vulkan/SPIR-V 锁定来源，保存 Linux 构建结果
+- [ ] 6.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、`-std=c++20`、BUNDLED 依赖、显式 Fontconfig 2.13+ 平台服务和 Vulkan/SPIR-V 锁定来源，保存 Linux 构建结果
 - [ ] 6.2 使用 `linux-clang` preset 完成 Debug configure/build/CTest，核对 Flex/Space/LayoutStyle target 使用标准 C++20 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
 - [ ] 6.3 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口运行公开 layout 示例，完成窗口宽窄调整、跨不同缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 window system、display scale、宽/窄截图、退出码和诊断计数，不以强制 X11 结果代替 Wayland 验收
-- [ ] 6.4 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin 与 Button 命中位置；运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
+- [ ] 6.4 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、Fontconfig 默认 family/source 与 Button 命中位置；运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [ ] 6.5 运行 Linux 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux flex and space layouts` 提交并推送 Linux 清单/evidence/截图，核对 remote SHA，不修改 Windows 清单
 
 ## 7. Windows 验收清单
 
 - [ ] 7.1 使用 `windows-msvc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、MSVC x64、标准 C++20、BUNDLED 依赖和 D3D12/DXIL 锁定来源，保存 Windows 构建结果
 - [ ] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
-- [ ] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
+- [ ] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、DirectWrite 的 Segoe UI/Microsoft YaHei UI family/source 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [ ] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
 
 ## 8. Change 收口

@@ -20,6 +20,12 @@ RynUI 不强制绑定 vcpkg、Conan 或某个 Linux 发行版。CMake 通过 `RY
 
 完整 URL 与机器可读值保存在 `cmake/dependencies/RynUIDependencyLock.cmake`。SDL3 的 license 来自其锁定 release；SDL_shadercross 在锁定时没有正式 release 或 tag，因此使用官方仓库精确 commit，而不是把 `main` 当成版本。DXC binary archive 内含三份上游 license，故 lock 保留其组合说明而不伪装为单一 SPDX expression。FreeType、HarfBuzz 与验收字体的仓库内 license 记录位于 `third_party/licenses/`；字体二进制只下载到 build tree，不进入 Git。
 
+## 平台字体服务
+
+系统 UI 字体发现属于桌面平台集成，不受 `RYNUI_DEPENDENCY_MODE` 切换：Windows 链接 Windows SDK 的 DirectWrite；Linux 显式要求 Fontconfig 2.13+ 并链接 `Fontconfig::Fontconfig`。二者只向内部 `RynUI::PlatformFonts` target 提供系统 font collection/file/index 查询，不替代 FreeType rasterization 或 HarfBuzz shaping，也不向公开组件 API 泄漏平台类型。
+
+Linux Fontconfig 必须来自目标系统或 sysroot，因为其职责正是读取该环境的字体配置。configure 缺少 Fontconfig 时直接失败，不会切换到下载版、执行 `fc-match`，也不会把系统字体路径写死。Windows/Linux 系统字体文件均不随 RynUI 分发；锁定的 Noto 字体仍只用于确定性测试和系统 coverage 不足时的最终兜底。
+
 ## BUNDLED 模式
 
 ```text

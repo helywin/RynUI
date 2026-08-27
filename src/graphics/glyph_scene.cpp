@@ -103,16 +103,23 @@ void validate_placement(const GlyphPlacement& placement) {
             }
             const GlyphAtlasEntry& entry = *atlas_result.entry;
             if (!entry.empty) {
+                const float inverse_raster_scale = 1.0F / entry.raster_scale;
                 const float left_pixels = placement.origin_pixels.x
-                    + pen_x + glyph.offset_x + static_cast<float>(entry.bearing_x);
+                    + pen_x + glyph.offset_x
+                    + static_cast<float>(entry.bearing_x - static_cast<int>(glyph_atlas_padding))
+                        * inverse_raster_scale;
                 const float top_pixels = placement.origin_pixels.y
-                    + line.baseline - glyph.offset_y - static_cast<float>(entry.bearing_y);
+                    + line.baseline - glyph.offset_y
+                    - static_cast<float>(entry.bearing_y + static_cast<int>(glyph_atlas_padding))
+                        * inverse_raster_scale;
                 pending.instances.push_back({
                     {
                         -1.0F + 2.0F * left_pixels / placement.viewport_pixels.width,
                         1.0F - 2.0F * top_pixels / placement.viewport_pixels.height,
-                        2.0F * entry.coverage_rect.width / placement.viewport_pixels.width,
-                        -2.0F * entry.coverage_rect.height / placement.viewport_pixels.height,
+                        2.0F * entry.padded_rect.width * inverse_raster_scale
+                            / placement.viewport_pixels.width,
+                        -2.0F * entry.padded_rect.height * inverse_raster_scale
+                            / placement.viewport_pixels.height,
                     },
                     {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
                     clip,

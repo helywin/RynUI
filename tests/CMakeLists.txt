@@ -119,6 +119,17 @@ target_compile_definitions(
 )
 add_test(NAME rynui.font_runtime COMMAND rynui_font_runtime_tests)
 
+add_executable(rynui_default_font_chain_tests default_font_chain_tests.cpp)
+rynui_configure_cpp_target(rynui_default_font_chain_tests)
+target_link_libraries(rynui_default_font_chain_tests PRIVATE rynui_default_fonts)
+target_compile_definitions(
+    rynui_default_font_chain_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.default_font_chain COMMAND rynui_default_font_chain_tests)
+
 add_executable(rynui_text_engine_tests text_engine_tests.cpp)
 rynui_configure_cpp_target(rynui_text_engine_tests)
 target_link_libraries(rynui_text_engine_tests PRIVATE rynui_text)

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -155,6 +156,10 @@ void test_load_errors_and_metrics() {
     const auto zero_size = runtime->load_font_bytes(bytes, 0, 0);
     require_failed_stage(zero_size, FontErrorStage::pixel_size_configuration,
                          "zero pixel size succeeded");
+    const auto invalid_scale = runtime->load_font_bytes(
+        bytes, 0, ryn::font::FontRasterConfig{14, 0.0F});
+    require_failed_stage(invalid_scale, FontErrorStage::pixel_size_configuration,
+                         "zero display scale succeeded");
 
     const auto no_charmap = runtime->load_font_bytes(
         bytes, 0, 14, FontFailurePoint::charmap_selection);
@@ -166,12 +171,15 @@ void test_load_errors_and_metrics() {
     const auto first = runtime->load_font_bytes(bytes, 0, 14);
     const auto second = runtime->load_font_bytes(bytes, 0, 14);
     const auto larger = runtime->load_font_bytes(bytes, 0, 28);
-    require(first && second && larger, "valid metric font load failed");
+    const auto high_density = runtime->load_font_bytes(
+        bytes, 0, ryn::font::FontRasterConfig{14, 1.5F});
+    require(first && second && larger && high_density, "valid metric font load failed");
 
     const auto first_metrics = runtime->metrics(first.font);
     const auto second_metrics = runtime->metrics(second.font);
     const auto larger_metrics = runtime->metrics(larger.font);
-    require(first_metrics && second_metrics && larger_metrics,
+    const auto high_density_metrics = runtime->metrics(high_density.font);
+    require(first_metrics && second_metrics && larger_metrics && high_density_metrics,
             "font metrics query failed");
     require(first_metrics.metrics == second_metrics.metrics,
             "same font and size produced unstable metrics");
@@ -180,6 +188,39 @@ void test_load_errors_and_metrics() {
             "font metrics use an unexpected coordinate convention");
     require(larger_metrics.metrics.ascent > first_metrics.metrics.ascent,
             "pixel-size conversion did not scale ascent");
+    require(high_density_metrics.metrics.logical_pixel_size == 14
+                && high_density_metrics.metrics.raster_pixel_size == 21
+                && std::abs(high_density_metrics.metrics.raster_scale - 1.5F) < 0.00001F,
+            "high-density font did not separate logical and raster sizes");
+
+    const auto logical_shape = runtime->shape_utf8_segment(first.font, "RynUI", 0, 5);
+    const auto high_density_shape = runtime->shape_utf8_segment(
+        high_density.font, "RynUI", 0, 5);
+    require(logical_shape && high_density_shape
+                && logical_shape.glyphs.size() == high_density_shape.glyphs.size(),
+            "high-density shaping failed");
+    float logical_advance = 0.0F;
+    float high_density_advance = 0.0F;
+    for (std::size_t index = 0; index < logical_shape.glyphs.size(); ++index) {
+        logical_advance += logical_shape.glyphs[index].advance_x;
+        high_density_advance += high_density_shape.glyphs[index].advance_x;
+    }
+    require(std::abs(logical_advance - high_density_advance) < 1.0F,
+            "high-density shaping leaked raster pixels into logical layout");
+
+    const auto logical_a = runtime->glyph_index(first.font, U'A');
+    const auto high_density_a = runtime->glyph_index(high_density.font, U'A');
+    const auto logical_bitmap = runtime->rasterize(first.font, logical_a.glyph.glyph_id);
+    const auto high_density_bitmap = runtime->rasterize(
+        high_density.font, high_density_a.glyph.glyph_id);
+    require(logical_a && high_density_a && logical_bitmap && high_density_bitmap,
+            "high-density glyph rasterization failed");
+    require(high_density_bitmap.glyph->width > logical_bitmap.glyph->width,
+            "high-density glyph coverage width did not increase");
+    require(high_density_bitmap.glyph->height > logical_bitmap.glyph->height,
+            "high-density glyph coverage height did not increase");
+    require(std::abs(high_density_bitmap.glyph->raster_scale - 1.5F) < 0.00001F,
+            "high-density glyph coverage lost its raster scale");
 }
 
 void test_fallback_and_missing_glyph_diagnostics() {

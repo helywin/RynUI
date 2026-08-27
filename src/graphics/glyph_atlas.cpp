@@ -1,6 +1,7 @@
 #include "graphics/glyph_atlas.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -25,6 +26,9 @@ struct ShelfPlacement {
 };
 
 [[nodiscard]] bool valid_bitmap(const font::GlyphBitmap& glyph) noexcept {
+    if (!std::isfinite(glyph.raster_scale) || glyph.raster_scale <= 0.0F) {
+        return false;
+    }
     if (glyph.width == 0 || glyph.height == 0) {
         return glyph.width == 0 && glyph.height == 0 && glyph.coverage.empty();
     }
@@ -91,7 +95,7 @@ GlyphAtlasResult GlyphAtlas::ensure(
     const GlyphAtlasKey key{
         font_identity,
         glyph_id,
-        metrics.metrics.pixel_size,
+        metrics.metrics.raster_pixel_size,
         mode,
     };
     if (const GlyphAtlasEntry* existing = find(key)) {
@@ -170,6 +174,7 @@ GlyphAtlasResult GlyphAtlas::allocate(
             glyph.bearing_x,
             glyph.bearing_y,
             glyph.advance_x,
+            glyph.raster_scale,
             true,
         });
         return {&entries_.back(), false, {}};
@@ -260,14 +265,17 @@ GlyphAtlasResult GlyphAtlas::allocate(
         placement->rectangle,
         coverage_rect,
         {
-            static_cast<float>(coverage_rect.x) / config_.page_width,
-            static_cast<float>(coverage_rect.y) / config_.page_height,
-            static_cast<float>(coverage_rect.x + coverage_rect.width) / config_.page_width,
-            static_cast<float>(coverage_rect.y + coverage_rect.height) / config_.page_height,
+            static_cast<float>(placement->rectangle.x) / config_.page_width,
+            static_cast<float>(placement->rectangle.y) / config_.page_height,
+            static_cast<float>(placement->rectangle.x + placement->rectangle.width)
+                / config_.page_width,
+            static_cast<float>(placement->rectangle.y + placement->rectangle.height)
+                / config_.page_height,
         },
         glyph.bearing_x,
         glyph.bearing_y,
         glyph.advance_x,
+        glyph.raster_scale,
         false,
     });
     dirty_regions_.push_back({

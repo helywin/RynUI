@@ -5,6 +5,7 @@
 #include "component/space_component.hpp"
 #include "font/font_runtime.hpp"
 #include "graphics/quad_primitive.hpp"
+#include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
@@ -250,12 +251,23 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             return 2;
         }
         auto fonts = std::move(font_result.runtime);
-        const auto latin = fonts->load_font_file(
-            executable / "fonts/latin.ttf", 0, pixel_size);
-        const auto cjk = fonts->load_font_file(
-            executable / "fonts/cjk.otf", 0, pixel_size);
-        if (!latin || !cjk) {
-            std::cerr << "font_error=locked validation fonts could not be loaded\n";
+        const ryn::font::FontRasterConfig font_raster{
+            pixel_size,
+            initial_window_metrics.display_scale,
+        };
+        ryn::detail::DefaultFontChainRequest font_request;
+        font_request.raster = font_raster;
+        font_request.fallback_latin = executable / "fonts/latin.ttf";
+        font_request.fallback_cjk = executable / "fonts/cjk.otf";
+        const auto font_chain =
+            ryn::detail::load_default_ui_font_chain(*fonts, font_request);
+        if (!font_chain) {
+            std::cerr << "font_error=" << font_chain.diagnostic << '\n';
+            return 3;
+        }
+        const auto font_metrics = fonts->metrics(font_chain.faces.front().identity);
+        if (!font_metrics) {
+            std::cerr << "font_error=font metrics could not be queried\n";
             return 3;
         }
 
@@ -270,7 +282,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             layout,
             dirty,
             text_scene,
-            std::vector<ryn::font::FontIdentity>{latin.font, cjk.font},
+            font_chain.identities(),
             frame_requests);
         application.mount(definition.content);
 
@@ -326,6 +338,11 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             << " pixel_size=" << window_metrics.pixel_width << 'x'
             << window_metrics.pixel_height
             << " viewport=" << viewport.width << 'x' << viewport.height
+            << " font_logical_pixel_size=" << font_metrics.metrics.logical_pixel_size
+            << " font_raster_pixel_size=" << font_metrics.metrics.raster_pixel_size
+            << " font_raster_scale=" << font_metrics.metrics.raster_scale
+            << " font_source=" << font_chain.telemetry_source()
+            << " font_families=" << font_chain.telemetry_families()
             << " line_count=" << layout_diagnostics.line_count
             << " content_runs=" << telemetry.content_runs
             << " component_count=" << application.components().component_count()

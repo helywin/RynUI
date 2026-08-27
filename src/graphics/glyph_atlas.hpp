@@ -67,6 +67,7 @@ struct GlyphAtlasEntry {
     int bearing_x{};
     int bearing_y{};
     float advance_x{};
+    float raster_scale{1.0F};
     bool empty{};
 
     friend bool operator==(const GlyphAtlasEntry&, const GlyphAtlasEntry&) = default;
