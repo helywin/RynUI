@@ -92,7 +92,7 @@ function(validate_evidence report_path expected_platform other_platform)
     endif()
     if(require_pass)
         string(FIND "${report}" "status=passed" passed_found)
-        string(FIND "${report}" "=pending" pending_found)
+        string(FIND "${report}" "pending" pending_found)
         if(passed_found EQUAL -1 OR NOT pending_found EQUAL -1)
             message(FATAL_ERROR
                 "${expected_platform} Token Gallery evidence is not complete")
@@ -111,6 +111,55 @@ function(validate_evidence report_path expected_platform other_platform)
         if("${successful_exit}" STREQUAL "")
             message(FATAL_ERROR
                 "${expected_platform} Token Gallery has no successful exit")
+        endif()
+
+        get_filename_component(report_directory "${report_path}" DIRECTORY)
+        get_filename_component(change_directory "${report_directory}" DIRECTORY)
+        foreach(kind IN ITEMS primary secondary tertiary)
+            file(STRINGS
+                "${report_path}"
+                screenshot_line
+                REGEX "^screenshot_${kind}_path=")
+            string(REGEX REPLACE "^[^=]+=" "" screenshot_path "${screenshot_line}")
+            if(NOT screenshot_path STREQUAL "not-required")
+                if(IS_ABSOLUTE "${screenshot_path}")
+                    set(screenshot_file "${screenshot_path}")
+                else()
+                    set(screenshot_file "${change_directory}/${screenshot_path}")
+                endif()
+                if(NOT EXISTS "${screenshot_file}")
+                    message(FATAL_ERROR
+                        "${expected_platform} Token Gallery screenshot is missing: ${screenshot_file}")
+                endif()
+                file(SIZE "${screenshot_file}" screenshot_size)
+                if(screenshot_size LESS 4096)
+                    message(FATAL_ERROR
+                        "${expected_platform} Token Gallery screenshot is too small: ${screenshot_file}")
+                endif()
+            endif()
+        endforeach()
+
+        file(STRINGS "${report_path}" shader_line REGEX "^shader_hash=")
+        string(REGEX REPLACE "^[^=]+=" "" shader_hash "${shader_line}")
+        string(LENGTH "${shader_hash}" shader_hash_length)
+        if(NOT shader_hash MATCHES "^[0-9A-Fa-f]+$" OR NOT shader_hash_length EQUAL 64)
+            message(FATAL_ERROR
+                "${expected_platform} Token Gallery shader hash is not SHA256")
+        endif()
+
+        if(expected_platform STREQUAL "windows")
+            file(STRINGS
+                "${report_path}"
+                windows_scales
+                REGEX "^display_scale=1\\.0,1\\.5,2\\.0$")
+            file(STRINGS
+                "${report_path}"
+                scale_source
+                REGEX "^scale_source=acceptance-render-override$")
+            if("${windows_scales}" STREQUAL "" OR "${scale_source}" STREQUAL "")
+                message(FATAL_ERROR
+                    "Windows Token Gallery evidence does not identify all render scales and their source")
+            endif()
         endif()
     endif()
 endfunction()

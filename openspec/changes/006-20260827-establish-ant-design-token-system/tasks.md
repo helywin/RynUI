@@ -69,10 +69,10 @@
 
 ## 9. Windows MSVC、D3D12 与 DXIL 验收
 
-- [ ] 9.1 使用 `windows-msvc` preset clean configure 并完成 Debug/Release build，运行 Windows/D3D12/DXIL 专属 shader reflection、artifact deployment、renderer startup/teardown 与 DPI integration tests；核对 Ninja Multi-Config、MSVC x64 和锁定 shader source，不重复要求已在第 8 节完成的平台通用测试
-- [ ] 9.2 在 Windows/MSVC/D3D12/DXIL 真实窗口以 100%、150% 与 200% display scale 运行 Token Gallery，实际切换 Default/Dark/Compact、brand Seed、hover/active/focus-visible/disabled/loading 并正常退出；保存各缩放截图、GPU/driver、DXIL hash、退出码和诊断计数
-- [ ] 9.3 人工核对三档 elevation、多层/方向/inset shadow 没有硬边、异常加深或裁切，并确认 Button 是 1 logical px 透明 gap 加 3 logical px hollow ring、字体/圆角边缘清晰且左右留白一致；运行 Windows evidence passed contract
-- [ ] 9.4 运行 Windows 专属 integration CTest、shader/lock/license、evidence、未跟踪依赖与 `git diff --check`；以英文 `test: validate Windows theme rendering` 提交并推送 Windows evidence/截图，核对 remote SHA，不修改 Linux 清单
+- [x] 9.1 使用 `windows-msvc` preset clean configure 并完成 Debug/Release build，运行 Windows/D3D12/DXIL 专属 shader reflection、artifact deployment、renderer startup/teardown 与 DPI integration tests；核对 Ninja Multi-Config、MSVC x64 和锁定 shader source，不重复要求已在第 8 节完成的平台通用测试
+- [x] 9.2 在 Windows/MSVC/D3D12/DXIL 真实窗口以 100%、150% 与 200% display scale 运行 Token Gallery，实际切换 Default/Dark/Compact、brand Seed、hover/active/focus-visible/disabled/loading 并正常退出；保存各缩放截图、GPU/driver、DXIL hash、退出码和诊断计数
+- [x] 9.3 人工核对三档 elevation、多层/方向/inset shadow 没有硬边、异常加深或裁切，并确认 Button 是 1 logical px 透明 gap 加 3 logical px hollow ring、字体/圆角边缘清晰且左右留白一致；运行 Windows evidence passed contract
+- [x] 9.4 运行 Windows 专属 integration CTest、shader/lock/license、evidence、未跟踪依赖与 `git diff --check`；以英文 `test: validate Windows theme rendering` 提交并推送 Windows evidence/截图，核对 remote SHA，不修改 Linux 清单
 
 ## 10. Linux Vulkan 与 SPIR-V 验收
 

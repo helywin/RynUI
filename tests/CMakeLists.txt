@@ -410,6 +410,16 @@ add_test(
         "-DWINDOWS_EVIDENCE=${token_gallery_evidence_directory}/windows-token-gallery-evidence.md"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_evidence_schema.cmake"
 )
+if(WIN32)
+    add_test(
+        NAME rynui.token_gallery_windows_evidence
+        COMMAND ${CMAKE_COMMAND}
+            "-DLINUX_EVIDENCE=${token_gallery_evidence_directory}/linux-token-gallery-evidence.md"
+            "-DWINDOWS_EVIDENCE=${token_gallery_evidence_directory}/windows-token-gallery-evidence.md"
+            -DREQUIRE_PASSED_PLATFORM=windows
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_evidence_schema.cmake"
+    )
+endif()
 add_test(
     NAME rynui.token_gallery_evidence_cross_platform_rejected
     COMMAND ${CMAKE_COMMAND}
