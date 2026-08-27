@@ -210,6 +210,13 @@ void validate_flex_layout(const FlexLayout& layout) {
     default:
         throw std::invalid_argument("Flex align is invalid");
     }
+    switch (layout.item_policy) {
+    case FlexItemPolicy::flex:
+    case FlexItemPolicy::sequential:
+        break;
+    default:
+        throw std::invalid_argument("Flex item policy is invalid");
+    }
 }
 
 float main_extent(runtime::Size size, FlexDirection direction) noexcept {
@@ -596,7 +603,8 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                                                ? *style_maximum + margin_main
                                                : std::numeric_limits<float>::infinity();
                 std::optional<float> basis_main;
-                if (style.flex_basis.has_value()) {
+                if (current.item_policy == FlexItemPolicy::flex
+                        && style.flex_basis.has_value()) {
                     basis_main =
                         std::clamp(*style.flex_basis + margin_main, minimum_main, maximum_main);
                 }
@@ -614,21 +622,25 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     child_main,
                     minimum_main,
                     maximum_main,
-                    style.flex_grow,
-                    style.flex_shrink,
-                    style.align_self,
+                    current.item_policy == FlexItemPolicy::flex ? style.flex_grow : 0.0F,
+                    current.item_policy == FlexItemPolicy::flex ? style.flex_shrink : 0.0F,
+                    current.item_policy == FlexItemPolicy::flex
+                        ? style.align_self
+                        : runtime::FlexItemAlign::automatic,
                     false,
                 });
             }
 
-            std::sort(scratch.items.begin(), scratch.items.end(),
-                      [&](const FlexItem& left, const FlexItem& right) {
-                          const auto left_order = nodes_->require(left.id).external_layout.order;
-                          const auto right_order = nodes_->require(right.id).external_layout.order;
-                          return left_order < right_order ||
-                                 (left_order == right_order &&
-                                  left.declaration_ordinal < right.declaration_ordinal);
-                      });
+            if (current.item_policy == FlexItemPolicy::flex) {
+                std::sort(scratch.items.begin(), scratch.items.end(),
+                          [&](const FlexItem& left, const FlexItem& right) {
+                              const auto left_order = nodes_->require(left.id).external_layout.order;
+                              const auto right_order = nodes_->require(right.id).external_layout.order;
+                              return left_order < right_order ||
+                                     (left_order == right_order &&
+                                      left.declaration_ordinal < right.declaration_ordinal);
+                          });
+            }
 
             FlexLine line;
             auto finish_line = [&] {

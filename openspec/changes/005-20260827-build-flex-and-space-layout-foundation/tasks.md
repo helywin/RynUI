@@ -25,11 +25,11 @@
 
 ## 4. 公开 Space 容器
 
-- [ ] 4.1 实现拥有 vertical/wrap/align/size/`LayoutStyle` reactive `Prop<T>` 的 `SpaceProps`、专用 typed content 与 `ryn::Space`；默认解析为 horizontal/no-wrap/Small，通过 public API/compile-fail tests 拒绝 baseline、separator、Compact、foreign slot 与任意样式字段
-- [ ] 4.2 实现 Space mount adapter 和受限 Flex policy，不增加 wrapper Node、不使 grow/shrink/basis/order 生效；通过 horizontal/vertical、三种 preset/custom 双轴 gap、nested/empty content、direct child identity 与非 Flex item regression tests 验证
-- [ ] 4.3 实现 Space wrap 与 start/center/end align，通过宽窄 viewport 往返、CJK/Latin Text、不同尺寸 Button、margin 和 sibling composition tests 证明等距排列且 child 不销毁/重挂
-- [ ] 4.4 接入 Space 响应更新、局部 dirty、cleanup 与诊断，通过 size/orientation/wrap transition、错误更新原子性、Scope dispose、steady-state allocation 和 idle frame tests 验证 retained 行为
-- [ ] 4.5 从 `rynui.hpp` 导出 Space API，运行 Space public/component、Layout、Text/Button composition、HitTest/Focus、dependency leak 与 `git diff --check`；以英文 `feat: add public space component` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 4.1 实现拥有 vertical/wrap/align/size/`LayoutStyle` reactive `Prop<T>` 的 `SpaceProps`、专用 typed content 与 `ryn::Space`；默认解析为 horizontal/no-wrap/Small，通过 public API/compile-fail tests 拒绝 baseline、separator、Compact、foreign slot 与任意样式字段
+- [x] 4.2 实现 Space mount adapter 和受限 Flex policy，不增加 wrapper Node、不使 grow/shrink/basis/order 生效；通过 horizontal/vertical、三种 preset/custom 双轴 gap、nested/empty content、direct child identity 与非 Flex item regression tests 验证
+- [x] 4.3 实现 Space wrap 与 start/center/end align，通过宽窄 viewport 往返、CJK/Latin Text、不同尺寸 Button、margin 和 sibling composition tests 证明等距排列且 child 不销毁/重挂
+- [x] 4.4 接入 Space 响应更新、局部 dirty、cleanup 与诊断，通过 size/orientation/wrap transition、错误更新原子性、Scope dispose、steady-state allocation 和 idle frame tests 验证 retained 行为
+- [x] 4.5 从 `rynui.hpp` 导出 Space API，运行 Space public/component、Layout、Text/Button composition、HitTest/Focus、dependency leak 与 `git diff --check`；以英文 `feat: add public space component` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 5. 平台无关示例与 headless 验收
 

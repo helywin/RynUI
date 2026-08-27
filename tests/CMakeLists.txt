@@ -36,10 +36,20 @@ rynui_configure_cpp_target(rynui_flex_public_api_tests)
 target_link_libraries(rynui_flex_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.flex_public_api COMMAND rynui_flex_public_api_tests)
 
+add_executable(rynui_space_public_api_tests space_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_space_public_api_tests)
+target_link_libraries(rynui_space_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.space_public_api COMMAND rynui_space_public_api_tests)
+
 add_executable(rynui_flex_header_isolation_tests flex_header_isolation_tests.cpp)
 rynui_configure_cpp_target(rynui_flex_header_isolation_tests)
 target_link_libraries(rynui_flex_header_isolation_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.flex_header_isolation COMMAND rynui_flex_header_isolation_tests)
+
+add_executable(rynui_space_header_isolation_tests space_header_isolation_tests.cpp)
+rynui_configure_cpp_target(rynui_space_header_isolation_tests)
+target_link_libraries(rynui_space_header_isolation_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.space_header_isolation COMMAND rynui_space_header_isolation_tests)
 
 add_executable(
     rynui_button_header_isolation_tests
@@ -64,6 +74,13 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_flex_dependency_contract.cmake"
+)
+
+add_test(
+    NAME rynui.space_dependency_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_space_dependency_contract.cmake"
 )
 
 add_executable(rynui_string_tests string_tests.cpp)
@@ -219,6 +236,17 @@ add_executable(rynui_flex_component_tests flex_component_tests.cpp)
 rynui_configure_cpp_target(rynui_flex_component_tests)
 target_link_libraries(rynui_flex_component_tests PRIVATE rynui_components)
 add_test(NAME rynui.flex_component COMMAND rynui_flex_component_tests)
+
+add_executable(rynui_space_component_tests space_component_tests.cpp)
+rynui_configure_cpp_target(rynui_space_component_tests)
+target_link_libraries(rynui_space_component_tests PRIVATE rynui_components)
+target_compile_definitions(
+    rynui_space_component_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.space_component COMMAND rynui_space_component_tests)
 
 add_executable(rynui_button_demo_frame_tests button_demo_frame_tests.cpp)
 rynui_configure_cpp_target(rynui_button_demo_frame_tests)
@@ -606,6 +634,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_flex_public_contract.cmake"
+)
+
+add_test(
+    NAME rynui.space_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/space-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_space_public_contract.cmake"
 )
 
 if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")

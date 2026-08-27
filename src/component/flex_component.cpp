@@ -1,5 +1,6 @@
 #include "component/flex_component.hpp"
 
+#include "component/layout_container_values.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -7,20 +8,6 @@
 #include <utility>
 
 namespace ryn::detail {
-
-struct LayoutGapAccess final {
-    [[nodiscard]] static const std::optional<SpaceSize>& preset(const LayoutGap& gap) noexcept {
-        return gap.preset_;
-    }
-
-    [[nodiscard]] static float main(const LayoutGap& gap) noexcept {
-        return gap.main_;
-    }
-
-    [[nodiscard]] static float cross(const LayoutGap& gap) noexcept {
-        return gap.cross_;
-    }
-};
 
 struct FlexPropsAccess final {
     [[nodiscard]] static const Prop<bool>& vertical(const FlexProps& props) noexcept {
@@ -90,26 +77,6 @@ namespace {
     throw std::invalid_argument("Flex align value is invalid");
 }
 
-struct ResolvedGap final {
-    float main{0.0F};
-    float cross{0.0F};
-};
-
-[[nodiscard]] ResolvedGap resolve_gap(const LayoutGap& gap, const DefaultThemeSnapshot& theme) {
-    if (!LayoutGapAccess::preset(gap).has_value()) {
-        return {LayoutGapAccess::main(gap), LayoutGapAccess::cross(gap)};
-    }
-    switch (*LayoutGapAccess::preset(gap)) {
-    case SpaceSize::Small:
-        return {theme.layout_spacing.small, theme.layout_spacing.small};
-    case SpaceSize::Middle:
-        return {theme.layout_spacing.middle, theme.layout_spacing.middle};
-    case SpaceSize::Large:
-        return {theme.layout_spacing.large, theme.layout_spacing.large};
-    }
-    throw std::invalid_argument("LayoutGap preset is invalid");
-}
-
 void apply_measure_model(FlexComponentState& state, layout::FlexLayout candidate,
                          layout::LayoutEngine& layout, runtime::DirtyQueues& dirty) {
     if (candidate == state.model) {
@@ -139,7 +106,7 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
     auto& services = require_layout_component_services();
     auto& build = runtime::require_component_build_context();
 
-    const auto gap = resolve_gap(read_prop(FlexPropsAccess::gap(props)), services.theme);
+    const auto gap = resolve_layout_gap(read_prop(FlexPropsAccess::gap(props)), services.theme);
     layout::FlexLayout initial{
         .direction = flex_direction(read_prop(FlexPropsAccess::vertical(props))),
         .main_gap = gap.main,
@@ -194,7 +161,7 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
                                    }));
     static_cast<void>(connect_prop(scope, FlexPropsAccess::gap(props),
                                    [&state, layout, dirty, theme](const LayoutGap& value) {
-                                       const auto resolved = resolve_gap(value, *theme);
+                                       const auto resolved = resolve_layout_gap(value, *theme);
                                        auto candidate = state.model;
                                        candidate.main_gap = resolved.main;
                                        candidate.cross_gap = resolved.cross;

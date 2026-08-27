@@ -70,6 +70,11 @@ enum class FlexAlign {
     stretch,
 };
 
+enum class FlexItemPolicy {
+    flex,
+    sequential,
+};
+
 struct FlexLayout {
     FlexDirection direction{FlexDirection::horizontal};
     float main_gap{0.0F};
@@ -80,6 +85,7 @@ struct FlexLayout {
     FlexJustify justify{FlexJustify::start};
     FlexAlign align{FlexAlign::start};
     float cross_gap{0.0F};
+    FlexItemPolicy item_policy{FlexItemPolicy::flex};
 
     friend constexpr bool operator==(FlexLayout, FlexLayout) = default;
 };
