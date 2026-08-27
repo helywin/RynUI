@@ -230,8 +230,8 @@ void draw_ordered_scene(const graphics::OrderedScene& scene, SceneDrawApi& api) 
                 command.instance_count);
             break;
         case graphics::SceneDrawKind::rounded_effect:
-            throw std::logic_error(
-                "Rounded effect draw commands require the rounded-effect renderer");
+            api.draw_rounded_effect(command.first_instance, command.instance_count);
+            break;
         }
     }
 }

@@ -52,3 +52,13 @@ foreach(shader_file IN ITEMS
     assert_shader_matches("${shader_file}" "${BUTTON_SHADER_DIRECTORY}")
     assert_shader_matches("${shader_file}" "${LAYOUT_SHADER_DIRECTORY}")
 endforeach()
+
+foreach(shader_file IN ITEMS
+        rounded_effect.vertex.dxil
+        rounded_effect.vertex.spv
+        rounded_effect.fragment.dxil
+        rounded_effect.fragment.spv)
+    assert_shader_matches("${shader_file}" "${TEXT_SHADER_DIRECTORY}")
+    assert_shader_matches("${shader_file}" "${BUTTON_SHADER_DIRECTORY}")
+    assert_shader_matches("${shader_file}" "${LAYOUT_SHADER_DIRECTORY}")
+endforeach()

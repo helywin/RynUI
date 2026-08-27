@@ -4,7 +4,7 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
     set(shader_output_directory "${CMAKE_BINARY_DIR}/generated/shaders")
 
     set(shader_outputs)
-    foreach(shader_name IN ITEMS quad glyph)
+    foreach(shader_name IN ITEMS quad glyph rounded_effect)
         set(shader_source "${PROJECT_SOURCE_DIR}/shaders/${shader_name}.hlsl")
         foreach(shader_stage IN ITEMS vertex fragment)
             if(shader_stage STREQUAL "vertex")
@@ -46,30 +46,32 @@ function(rynui_add_shader_targets shadercross_command shadercross_dependency)
         endforeach()
     endforeach()
 
-    foreach(shader_stage IN ITEMS vertex fragment)
-        if(shader_stage STREQUAL "vertex")
-            set(entry_point VSMain)
-        else()
-            set(entry_point PSMain)
-        endif()
-        set(glyph_reflection
-            "${shader_output_directory}/glyph.${shader_stage}.json")
-        add_custom_command(
-            OUTPUT "${glyph_reflection}"
-            COMMAND "${shadercross_command}"
-                "${shader_output_directory}/glyph.${shader_stage}.spv"
-                -s SPIRV
-                -d JSON
-                -t "${shader_stage}"
-                -e "${entry_point}"
-                -o "${glyph_reflection}"
-            DEPENDS
-                "${shader_output_directory}/glyph.${shader_stage}.spv"
-                ${shadercross_dependency}
-            COMMENT "Reflecting glyph ${shader_stage} shader resources"
-            VERBATIM
-        )
-        list(APPEND shader_outputs "${glyph_reflection}")
+    foreach(shader_name IN ITEMS glyph rounded_effect)
+        foreach(shader_stage IN ITEMS vertex fragment)
+            if(shader_stage STREQUAL "vertex")
+                set(entry_point VSMain)
+            else()
+                set(entry_point PSMain)
+            endif()
+            set(shader_reflection
+                "${shader_output_directory}/${shader_name}.${shader_stage}.json")
+            add_custom_command(
+                OUTPUT "${shader_reflection}"
+                COMMAND "${shadercross_command}"
+                    "${shader_output_directory}/${shader_name}.${shader_stage}.spv"
+                    -s SPIRV
+                    -d JSON
+                    -t "${shader_stage}"
+                    -e "${entry_point}"
+                    -o "${shader_reflection}"
+                DEPENDS
+                    "${shader_output_directory}/${shader_name}.${shader_stage}.spv"
+                    ${shadercross_dependency}
+                COMMENT "Reflecting ${shader_name} ${shader_stage} shader resources"
+                VERBATIM
+            )
+            list(APPEND shader_outputs "${shader_reflection}")
+        endforeach()
     endforeach()
 
     add_custom_target(rynui_shaders ALL DEPENDS ${shader_outputs})

@@ -110,6 +110,7 @@ add_library(rynui_graphics STATIC
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
     graphics/rounded_effect.cpp
+    graphics/rounded_effect_gpu.cpp
 )
 rynui_configure_cpp_target(rynui_graphics)
 target_include_directories(rynui_graphics PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -164,6 +165,7 @@ add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
     renderer/sdl/glyph_gpu_resources.cpp
     renderer/sdl/quad_renderer.cpp
+    renderer/sdl/rounded_effect_gpu_resources.cpp
     renderer/sdl/scene_renderer.cpp
     renderer/sdl/text_render_controller.cpp
 )

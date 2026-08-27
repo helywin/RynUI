@@ -495,6 +495,21 @@ add_rynui_rounded_effect_test(store rounded_effect_store_tests.cpp)
 add_rynui_rounded_effect_test(scene rounded_effect_scene_tests.cpp)
 add_rynui_rounded_effect_test(
     allocation_benchmark rounded_effect_allocation_benchmark.cpp)
+add_rynui_rounded_effect_test(gpu rounded_effect_gpu_tests.cpp)
+
+add_executable(
+    rynui_rounded_effect_gpu_resources_tests
+    rounded_effect_gpu_resources_tests.cpp
+)
+rynui_configure_cpp_target(rynui_rounded_effect_gpu_resources_tests)
+target_link_libraries(
+    rynui_rounded_effect_gpu_resources_tests
+    PRIVATE rynui_renderer_sdl
+)
+add_test(
+    NAME rynui.rounded_effect_gpu_resources
+    COMMAND rynui_rounded_effect_gpu_resources_tests
+)
 
 add_executable(rynui_binding_quad_integration_tests binding_quad_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_binding_quad_integration_tests)
@@ -728,6 +743,15 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/quad.hlsl"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_quad_shader_contract.cmake"
+)
+
+add_test(
+    NAME rynui.rounded_effect_shader_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/rounded_effect.hlsl"
+        "-DSHADER_LOCK=${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml"
+        "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_rounded_effect_shader_contract.cmake"
 )
 
 add_test(

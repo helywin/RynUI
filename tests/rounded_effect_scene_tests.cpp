@@ -120,12 +120,38 @@ void test_clip_empty_destroy_reuse_and_button_like_outline() {
             "stale primitive drew a reused rounded-effect identity");
 }
 
+void test_contiguous_outer_layers_batch_without_crossing_fill() {
+    ryn::graphics::RoundedEffectScene scene;
+    const auto primitive = scene.append_shadow_list(
+        {{10.0F, 10.0F, 80.0F, 32.0F}, 6.0F},
+        {shadow(ryn::ShadowKind::outer, 10),
+         shadow(ryn::ShadowKind::outer, 20)});
+    require(scene.store().compact({0.0F, 0.0F, 120.0F, 80.0F}),
+            "batched rounded-effect fixture did not compact");
+    std::vector<ryn::graphics::SceneDrawCommand> commands;
+    scene.compose_surface(primitive, {
+        ryn::graphics::SceneDrawKind::quad,
+        4,
+        1,
+        ryn::graphics::invalid_glyph_atlas_page,
+    }, commands);
+    require(commands.size() == 2
+                && commands.front() == ryn::graphics::SceneDrawCommand{
+                    ryn::graphics::SceneDrawKind::rounded_effect,
+                    0,
+                    2,
+                    ryn::graphics::invalid_glyph_atlas_page}
+                && commands.back().kind == ryn::graphics::SceneDrawKind::quad,
+            "contiguous outer layers did not batch or crossed their surface fill");
+}
+
 } // namespace
 
 int main() {
     try {
         test_shadow_list_order_and_cross_surface_composition();
         test_clip_empty_destroy_reuse_and_button_like_outline();
+        test_contiguous_outer_layers_batch_without_crossing_fill();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

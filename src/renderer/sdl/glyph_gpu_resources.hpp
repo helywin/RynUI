@@ -99,6 +99,9 @@ public:
         std::uint32_t atlas_page,
         std::uint32_t first,
         std::uint32_t count) = 0;
+    virtual void draw_rounded_effect(
+        std::uint32_t first,
+        std::uint32_t count) = 0;
 };
 
 void draw_ordered_scene(const graphics::OrderedScene& scene, SceneDrawApi& api);

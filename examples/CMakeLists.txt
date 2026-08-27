@@ -30,6 +30,10 @@ rynui_deploy_target_shaders(rynui_text_demo
     glyph.vertex.spv
     glyph.fragment.dxil
     glyph.fragment.spv
+    rounded_effect.vertex.dxil
+    rounded_effect.vertex.spv
+    rounded_effect.fragment.dxil
+    rounded_effect.fragment.spv
 )
 add_custom_command(TARGET rynui_text_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -60,6 +64,10 @@ rynui_deploy_target_shaders(rynui_button_demo
     glyph.vertex.spv
     glyph.fragment.dxil
     glyph.fragment.spv
+    rounded_effect.vertex.dxil
+    rounded_effect.vertex.spv
+    rounded_effect.fragment.dxil
+    rounded_effect.fragment.spv
 )
 add_custom_command(TARGET rynui_button_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -94,6 +102,10 @@ rynui_deploy_target_shaders(rynui_layout_demo
     glyph.vertex.spv
     glyph.fragment.dxil
     glyph.fragment.spv
+    rounded_effect.vertex.dxil
+    rounded_effect.vertex.spv
+    rounded_effect.fragment.dxil
+    rounded_effect.fragment.spv
 )
 add_custom_command(TARGET rynui_layout_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

@@ -1,0 +1,15 @@
+schema_version: 1
+source: shaders/rounded_effect.hlsl
+sha256: b511e7298ee39d55d58c63e67b1bdf01e47557c01e72eb7e89929d0b53be5a6b
+hash_normalization: lf
+instance_size_bytes: 112
+entry_points:
+  vertex: VSMain
+  fragment: PSMain
+artifacts:
+  - rounded_effect.vertex.dxil
+  - rounded_effect.fragment.dxil
+  - rounded_effect.vertex.spv
+  - rounded_effect.fragment.spv
+  - rounded_effect.vertex.json
+  - rounded_effect.fragment.json

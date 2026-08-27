@@ -74,9 +74,14 @@ public:
         glyph_instances += count;
     }
 
+    void draw_rounded_effect(std::uint32_t, std::uint32_t) override {
+        ++effect_draws;
+    }
+
     std::uint64_t quad_draws{};
     std::uint64_t glyph_draws{};
     std::uint64_t glyph_instances{};
+    std::uint64_t effect_draws{};
 };
 
 class ControlledEvents final : public ryn::runtime::FrameEventSource {

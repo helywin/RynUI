@@ -264,6 +264,17 @@ public:
         calls.push_back({ryn::graphics::SceneDrawKind::glyph, first, count, page});
     }
 
+    void draw_rounded_effect(
+        std::uint32_t first,
+        std::uint32_t count) override {
+        calls.push_back({
+            ryn::graphics::SceneDrawKind::rounded_effect,
+            first,
+            count,
+            ryn::graphics::invalid_glyph_atlas_page,
+        });
+    }
+
     std::vector<ryn::graphics::SceneDrawCommand> calls;
 };
 
@@ -273,11 +284,28 @@ void test_recording_backend_preserves_order_and_page_switches() {
     scene.append_glyph({0, {0, 2}});
     scene.append_glyph({1, {2, 1}});
     scene.append_quad(4, 1);
+    scene.append_command({
+        ryn::graphics::SceneDrawKind::rounded_effect,
+        8,
+        2,
+        ryn::graphics::invalid_glyph_atlas_page,
+    });
     scene.append_glyph({0, {3, 1}});
     RecordingDrawApi api;
     ryn::detail::draw_ordered_scene(scene, api);
     require(std::ranges::equal(api.calls, scene.commands()),
             "recording renderer changed Scene command order or atlas page binding");
+}
+
+void test_zero_effect_scene_does_not_dispatch_effect_pipeline() {
+    ryn::graphics::OrderedScene scene;
+    scene.append_quad(0, 1);
+    scene.append_glyph({0, {0, 1}});
+    RecordingDrawApi api;
+    ryn::detail::draw_ordered_scene(scene, api);
+    require(std::ranges::none_of(api.calls, [](const auto& command) {
+        return command.kind == ryn::graphics::SceneDrawKind::rounded_effect;
+    }), "zero-effect Scene dispatched the rounded-effect pipeline");
 }
 
 } // namespace
@@ -287,6 +315,7 @@ int main() {
         test_aligned_dirty_texture_and_sparse_buffer_uploads();
         test_failure_paths_keep_dirty_state_and_release_resources();
         test_recording_backend_preserves_order_and_page_switches();
+        test_zero_effect_scene_does_not_dispatch_effect_pipeline();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

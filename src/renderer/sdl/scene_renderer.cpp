@@ -183,7 +183,27 @@ SdlSceneRenderer::SdlSceneRenderer(
         };
         glyph_pipeline_ = build_pipeline(
             "glyph", sizeof(graphics::GlyphInstance), glyph_attributes, 1);
+        const std::array effect_attributes{
+            SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
+            SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
+            SDL_GPUVertexAttribute{2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},
+            SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
+            SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
+            SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
+            SDL_GPUVertexAttribute{6, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 96},
+        };
+        effect_pipeline_ = build_pipeline(
+            "rounded_effect",
+            sizeof(graphics::RoundedEffectGpuInstance),
+            effect_attributes,
+            0);
     } catch (...) {
+        if (glyph_pipeline_ != nullptr) {
+            SDL_ReleaseGPUGraphicsPipeline(
+                device,
+                static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+            glyph_pipeline_ = nullptr;
+        }
         SDL_ReleaseGPUGraphicsPipeline(
             device,
             static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
@@ -194,6 +214,10 @@ SdlSceneRenderer::SdlSceneRenderer(
 
 SdlSceneRenderer::~SdlSceneRenderer() {
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    if (effect_pipeline_ != nullptr) {
+        SDL_ReleaseGPUGraphicsPipeline(
+            device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+    }
     if (glyph_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(
             device, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
@@ -207,9 +231,11 @@ SdlSceneRenderer::~SdlSceneRenderer() {
 void SdlSceneRenderer::attach_scene(
     graphics::QuadGpuBufferHandle quad_buffer,
     GlyphGpuResources& glyph_resources,
-    const graphics::OrderedScene& scene) {
+    const graphics::OrderedScene& scene,
+    RoundedEffectGpuResources* effect_resources) {
     quad_buffer_ = quad_buffer;
     glyph_resources_ = &glyph_resources;
+    effect_resources_ = effect_resources;
     scene_ = &scene;
 }
 
@@ -405,6 +431,41 @@ const char* SdlSceneRenderer::glyph_gpu_error() const noexcept {
     return last_error();
 }
 
+RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
+    std::size_t size) {
+    if (size == 0 || size > std::numeric_limits<Uint32>::max()) {
+        last_error_ = "Rounded effect vertex buffer size is invalid";
+        return nullptr;
+    }
+    const SDL_GPUBufferCreateInfo info{
+        SDL_GPU_BUFFERUSAGE_VERTEX,
+        static_cast<Uint32>(size),
+        0,
+    };
+    auto* buffer = SDL_CreateGPUBuffer(
+        static_cast<SDL_GPUDevice*>(platform_->gpu_device()), &info);
+    if (buffer == nullptr) {
+        last_error_ = sdl_error("Failed to create rounded-effect vertex buffer");
+    }
+    return buffer;
+}
+
+bool SdlSceneRenderer::upload_effect_buffer(
+    RoundedEffectGpuBufferHandle buffer,
+    std::size_t offset,
+    std::span<const std::byte> bytes) {
+    return upload_buffer(buffer, offset, bytes, "Rounded effect");
+}
+
+void SdlSceneRenderer::release_effect_buffer(
+    RoundedEffectGpuBufferHandle buffer) noexcept {
+    release_glyph_buffer(buffer);
+}
+
+const char* SdlSceneRenderer::effect_gpu_error() const noexcept {
+    return last_error();
+}
+
 void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
     if (active_render_pass_ == nullptr || quad_buffer_ == nullptr) {
         throw std::logic_error("Quad draw resources are not attached");
@@ -445,6 +506,33 @@ void SdlSceneRenderer::draw_glyph(
     SDL_DrawGPUPrimitives(pass, graphics::glyph_vertex_count, count, 0, 0);
     ++counters_.atlas_page_bindings;
     ++counters_.glyph_draws;
+}
+
+void SdlSceneRenderer::draw_rounded_effect(
+    std::uint32_t first,
+    std::uint32_t count) {
+    const auto end = static_cast<std::uint64_t>(first) + count;
+    if (active_render_pass_ == nullptr || effect_resources_ == nullptr
+            || effect_resources_->buffer() == nullptr
+            || end > effect_resources_->instance_count()) {
+        throw std::logic_error("Rounded effect draw resources are not attached");
+    }
+    const auto byte_offset = static_cast<std::uint64_t>(first)
+        * sizeof(graphics::RoundedEffectGpuInstance);
+    if (byte_offset > std::numeric_limits<Uint32>::max()) {
+        throw std::length_error("Rounded effect draw offset exceeds uint32_t");
+    }
+    auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
+    SDL_BindGPUGraphicsPipeline(
+        pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+    const SDL_GPUBufferBinding binding{
+        static_cast<SDL_GPUBuffer*>(effect_resources_->buffer()),
+        static_cast<Uint32>(byte_offset),
+    };
+    SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+    SDL_DrawGPUPrimitives(pass, graphics::rounded_effect_vertex_count, count, 0, 0);
+    ++counters_.effect_draws;
+    counters_.effect_instances += count;
 }
 
 runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame() {

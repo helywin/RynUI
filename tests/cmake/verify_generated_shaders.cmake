@@ -12,7 +12,11 @@ foreach(shader_name IN ITEMS
         glyph.vertex.dxil
         glyph.fragment.dxil
         glyph.vertex.spv
-        glyph.fragment.spv)
+        glyph.fragment.spv
+        rounded_effect.vertex.dxil
+        rounded_effect.fragment.dxil
+        rounded_effect.vertex.spv
+        rounded_effect.fragment.spv)
     set(shader_path "${SHADER_DIRECTORY}/${shader_name}")
     if(NOT EXISTS "${shader_path}")
         message(FATAL_ERROR "Generated shader is missing: ${shader_path}")

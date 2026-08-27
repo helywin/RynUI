@@ -43,11 +43,11 @@
 
 ## 6. 共享 HLSL 与 GPU effect pipeline
 
-- [ ] 6.1 新增锁定的 `rounded_effect.hlsl` 与 reflection/instance-layout contract，从同一源生成 DXIL 和 SPIR-V artifact；通过 shader source hash、reflection、artifact freshness 与 deployment tests 验证格式没有手工分叉
-- [ ] 6.2 实现 multi-layer outer/inset shadow 与 hollow outline shader，锁定 straight-color 输入、alpha coverage 和 pipeline blend 约定；通过 CPU reference 对照、透明/半透明背景、重叠 layer 与 alpha edge fixtures 验证不会异常加深
-- [ ] 6.3 增加独立 effect GPU buffer、pipeline、batching、clip/cull、partial upload 和 draw submission，普通无 effect frame 不绑定该 pipeline；通过 fake backend、buffer growth/failure、dirty range、zero-effect 与 renderer cleanup tests 验证资源收口
-- [ ] 6.4 将 logical-to-device conversion 应用于 geometry、blur、spread、offset、outline 与 antialias，保持不同 display scale 下 logical 外观一致；通过 100%/150%/200% simulated metrics 和 pixel-bound contract tests 验证非整数 DPI 不吞边或错误增厚
-- [ ] 6.5 在一个受支持平台运行 shader-independent SDF/reference、reflection、Scene/GPU contract 与 benchmark tests 并记录实际平台/preset，再运行 `git diff --check`；以英文 `feat: render rounded shadows and outlines` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 6.1 新增锁定的 `rounded_effect.hlsl` 与 reflection/instance-layout contract，从同一源生成 DXIL 和 SPIR-V artifact；通过 shader source hash、reflection、artifact freshness 与 deployment tests 验证格式没有手工分叉
+- [x] 6.2 实现 multi-layer outer/inset shadow 与 hollow outline shader，锁定 straight-color 输入、alpha coverage 和 pipeline blend 约定；通过 CPU reference 对照、透明/半透明背景、重叠 layer 与 alpha edge fixtures 验证不会异常加深
+- [x] 6.3 增加独立 effect GPU buffer、pipeline、batching、clip/cull、partial upload 和 draw submission，普通无 effect frame 不绑定该 pipeline；通过 fake backend、buffer growth/failure、dirty range、zero-effect 与 renderer cleanup tests 验证资源收口
+- [x] 6.4 将 logical-to-device conversion 应用于 geometry、blur、spread、offset、outline 与 antialias，保持不同 display scale 下 logical 外观一致；通过 100%/150%/200% simulated metrics 和 pixel-bound contract tests 验证非整数 DPI 不吞边或错误增厚
+- [x] 6.5 在一个受支持平台运行 shader-independent SDF/reference、reflection、Scene/GPU contract 与 benchmark tests 并记录实际平台/preset，再运行 `git diff --check`；以英文 `feat: render rounded shadows and outlines` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 7. 现有组件迁移与 Button 焦点修正
 
