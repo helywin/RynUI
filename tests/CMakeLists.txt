@@ -361,6 +361,73 @@ target_compile_definitions(
 )
 add_test(NAME rynui.layout_demo_frame COMMAND rynui_layout_demo_frame_tests)
 
+add_executable(
+    rynui_token_gallery_frame_tests
+    token_gallery_frame_tests.cpp
+    "${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
+)
+rynui_configure_cpp_target(rynui_token_gallery_frame_tests)
+target_include_directories(
+    rynui_token_gallery_frame_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/examples/token_gallery"
+)
+target_link_libraries(
+    rynui_token_gallery_frame_tests
+    PRIVATE rynui_components rynui_renderer_sdl
+)
+target_compile_definitions(
+    rynui_token_gallery_frame_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.token_gallery_frame COMMAND rynui_token_gallery_frame_tests)
+
+add_executable(rynui_token_gallery_benchmark token_gallery_benchmark.cpp)
+rynui_configure_cpp_target(rynui_token_gallery_benchmark)
+target_include_directories(
+    rynui_token_gallery_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_token_gallery_benchmark PRIVATE rynui_graphics rynui_theme)
+add_test(NAME rynui.token_gallery_benchmark COMMAND rynui_token_gallery_benchmark)
+
+add_test(
+    NAME rynui.token_gallery_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DDEFINITION_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
+        "-DRUNTIME_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_runtime.cpp"
+        "-DEXAMPLES_CMAKE=${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_contract.cmake"
+)
+
+set(token_gallery_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/006-20260827-establish-ant-design-token-system/evidence"
+)
+add_test(
+    NAME rynui.token_gallery_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${token_gallery_evidence_directory}/linux-token-gallery-evidence.md"
+        "-DWINDOWS_EVIDENCE=${token_gallery_evidence_directory}/windows-token-gallery-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.token_gallery_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DLINUX_EVIDENCE=${token_gallery_evidence_directory}/linux-token-gallery-evidence.md"
+        "-DWINDOWS_EVIDENCE=${token_gallery_evidence_directory}/linux-token-gallery-evidence.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.token_gallery_evidence_cross_platform_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+add_test(
+    NAME rynui.token_gallery_generic_evidence
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${token_gallery_evidence_directory}/platform-generic-token-gallery.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_generic_evidence.cmake"
+)
+
 add_test(
     NAME rynui.layout_example_contract
     COMMAND ${CMAKE_COMMAND}

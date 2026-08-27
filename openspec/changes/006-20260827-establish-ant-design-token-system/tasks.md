@@ -60,12 +60,12 @@
 
 ## 8. Token Gallery 与平台通用验收
 
-- [ ] 8.1 新增公开 Token Gallery DSL 示例，以稳定 test id 展示 semantic/preset colors、text hierarchy、font scale、spacing/control height、radius/border、Default/Dark/Compact 与 nested override；通过 source contract 证明示例只使用公开 API
-- [ ] 8.2 在 Gallery 展示三档 elevation、Button default/primary/danger shadow、Drawer 四向 shadow、Popover/Card、Tabs inset overflow，以及 focus-visible/hover/active/disabled/loading；通过 catalog identity coverage test 证明阴影和交互状态没有漏项
-- [ ] 8.3 实现宽/窄 viewport、主题/algorithm/brand Seed 切换与可观测 counters；通过 headless frame test 验证布局可完整访问、Theme content 不重跑、局部 dirty/upload 生效且 idle 不持续 submit
-- [ ] 8.4 增加 effect geometry、layer order、focus gap/ring、Theme update counter、snapshot 与 benchmark 的平台通用 acceptance contract；只选择一个受支持平台运行并在 evidence 中记录 OS、compiler、preset、catalog hash 与退出码，不要求另一平台重复
-- [ ] 8.5 定义 Windows 与 Linux 独立 GPU evidence schema，要求 display scale、window system、GPU/driver、shader format/hash、截图、effect/layer/upload/draw/submit counters 和退出码，并通过交叉平台 identity rejection test 验证证据不可相互代替
-- [ ] 8.6 在选定平台运行本 change 的完整平台通用 unit/headless/contract/benchmark tests、OpenSpec strict validate 与 `git diff --check`；以英文 `feat: add design token gallery` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 8.1 新增公开 Token Gallery DSL 示例，以稳定 test id 展示 semantic/preset colors、text hierarchy、font scale、spacing/control height、radius/border、Default/Dark/Compact 与 nested override；通过 source contract 证明示例只使用公开 API
+- [x] 8.2 在 Gallery 展示三档 elevation、Button default/primary/danger shadow、Drawer 四向 shadow、Popover/Card、Tabs inset overflow，以及 focus-visible/hover/active/disabled/loading；通过 catalog identity coverage test 证明阴影和交互状态没有漏项
+- [x] 8.3 实现宽/窄 viewport、主题/algorithm/brand Seed 切换与可观测 counters；通过 headless frame test 验证布局可完整访问、Theme content 不重跑、局部 dirty/upload 生效且 idle 不持续 submit
+- [x] 8.4 增加 effect geometry、layer order、focus gap/ring、Theme update counter、snapshot 与 benchmark 的平台通用 acceptance contract；只选择一个受支持平台运行并在 evidence 中记录 OS、compiler、preset、catalog hash 与退出码，不要求另一平台重复
+- [x] 8.5 定义 Windows 与 Linux 独立 GPU evidence schema，要求 display scale、window system、GPU/driver、shader format/hash、截图、effect/layer/upload/draw/submit counters 和退出码，并通过交叉平台 identity rejection test 验证证据不可相互代替
+- [x] 8.6 在选定平台运行本 change 的完整平台通用 unit/headless/contract/benchmark tests、OpenSpec strict validate 与 `git diff --check`；以英文 `feat: add design token gallery` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 9. Windows MSVC、D3D12 与 DXIL 验收
 
