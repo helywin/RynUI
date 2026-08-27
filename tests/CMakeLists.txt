@@ -16,6 +16,22 @@ target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
 
 add_test(NAME rynui.public_api_smoke COMMAND rynui_public_api_smoke)
 
+add_executable(rynui_design_token_tests design_token_tests.cpp)
+rynui_configure_cpp_target(rynui_design_token_tests)
+target_link_libraries(rynui_design_token_tests PRIVATE rynui_theme)
+add_test(NAME rynui.design_token COMMAND rynui_design_token_tests)
+
+add_executable(
+    rynui_design_token_header_isolation_tests
+    design_token_header_isolation_tests.cpp
+)
+rynui_configure_cpp_target(rynui_design_token_header_isolation_tests)
+target_link_libraries(rynui_design_token_header_isolation_tests PRIVATE rynui_theme)
+add_test(
+    NAME rynui.design_token_header_isolation
+    COMMAND rynui_design_token_header_isolation_tests
+)
+
 add_executable(rynui_prop_public_api_tests prop_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_prop_public_api_tests)
 target_link_libraries(rynui_prop_public_api_tests PRIVATE RynUI::RynUI)
@@ -666,6 +682,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_prop_reference_contract.cmake"
+)
+
+add_test(
+    NAME rynui.design_token_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/design-token-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_design_token_public_contract.cmake"
 )
 
 add_test(

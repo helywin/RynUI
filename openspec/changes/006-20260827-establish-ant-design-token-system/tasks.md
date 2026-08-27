@@ -8,11 +8,11 @@
 
 ## 2. Typed Token 基础值与生成边界
 
-- [ ] 2.1 在 `ryn` 命名空间定义 `Color`、logical length/offset、`Duration`、`CubicBezier`、`BorderToken`、`ShadowLayer` 与 `ShadowList` 等强类型值，拒绝 CSS shorthand、任意 string key、NaN/Infinity 和非法范围；通过 public value、equality、construction 与 compile-fail tests 验证 API 边界
-- [ ] 2.2 从 catalog 生成稳定 Token identity、value-kind metadata、component owner、support status 与 invalidation domain，保持 unsupported/web-only 条目可查询但不进入 runtime struct；通过生成文件 golden、增删字段和重复映射 tests 验证生成结果确定且无手写漂移
-- [ ] 2.3 将 Ant Design 多层 shadow 解析为有序 `ShadowList`，完整表达 outer/inset、x/y offset、blur、正负 spread、颜色和 alpha，并锁定 `boxShadow`、`boxShadowSecondary`、`boxShadowTertiary`、Button、Drawer、Popover/Card 与 Tabs overflow shadow；通过 normalized-value golden 和 layer-order tests 验证数值、方向与透明度未丢失
-- [ ] 2.4 为 Default Seed 锁定 primary/success/warning/error/info color、14px font、1px line、6px radius、4px size unit、32px control height、z-index、opacity 与 motion 基值；通过 source-reference contract test 逐字段核对 Ant Design 6.5.0，而不是依赖运行时网络查询
-- [ ] 2.5 运行 typed value、generated metadata、shadow normalization、public header isolation 与 `git diff --check`；以英文 `feat: add typed design token values` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 2.1 在 `ryn` 命名空间定义 `Color`、logical length/offset、`Duration`、`CubicBezier`、`BorderToken`、`ShadowLayer` 与 `ShadowList` 等强类型值，拒绝 CSS shorthand、任意 string key、NaN/Infinity 和非法范围；通过 public value、equality、construction 与 compile-fail tests 验证 API 边界
+- [x] 2.2 从 catalog 生成稳定 Token identity、value-kind metadata、component owner、support status 与 invalidation domain，保持 unsupported/web-only 条目可查询但不进入 runtime struct；通过生成文件 golden、增删字段和重复映射 tests 验证生成结果确定且无手写漂移
+- [x] 2.3 将 Ant Design 多层 shadow 解析为有序 `ShadowList`，完整表达 outer/inset、x/y offset、blur、正负 spread、颜色和 alpha，并锁定 `boxShadow`、`boxShadowSecondary`、`boxShadowTertiary`、Button、Drawer、Popover/Card 与 Tabs overflow shadow；通过 normalized-value golden 和 layer-order tests 验证数值、方向与透明度未丢失
+- [x] 2.4 为 Default Seed 锁定 primary/success/warning/error/info color、14px font、1px line、6px radius、4px size unit、32px control height、z-index、opacity 与 motion 基值；通过 source-reference contract test 逐字段核对 Ant Design 6.5.0，而不是依赖运行时网络查询
+- [x] 2.5 运行 typed value、generated metadata、shadow normalization、public header isolation 与 `git diff --check`；以英文 `feat: add typed design token values` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 3. Seed、Map、Alias 与 Component Algorithm
 

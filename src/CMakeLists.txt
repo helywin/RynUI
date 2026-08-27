@@ -1,6 +1,17 @@
 add_library(rynui_string STATIC
     text/string.cpp
 )
+
+add_library(rynui_theme STATIC
+    theme/design_token.cpp
+)
+rynui_configure_cpp_target(rynui_theme)
+target_include_directories(rynui_theme PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+target_include_directories(rynui_theme PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
 rynui_configure_cpp_target(rynui_string)
 target_include_directories(rynui_string PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
@@ -175,9 +186,11 @@ target_link_libraries(
         rynui_graphics
         rynui_reactive
         rynui_string
+        rynui_theme
 )
 
 rynui_assert_direct_dependencies(rynui_string)
+rynui_assert_direct_dependencies(rynui_theme)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
 rynui_assert_direct_dependencies(
     rynui_default_fonts RynUI::PlatformFonts rynui_font)
@@ -219,4 +232,5 @@ rynui_assert_direct_dependencies(
     rynui_graphics
     rynui_reactive
     rynui_string
+    rynui_theme
 )

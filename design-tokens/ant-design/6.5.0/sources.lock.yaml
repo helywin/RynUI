@@ -8,6 +8,11 @@
     "path": "../../../docs/design-tokens.md",
     "sha256": "e1019ed82f6a02f492572437376652b54e9ac92333e5c29b095891f0210b7794"
   },
+  "generated_metadata": {
+    "entries": 1194,
+    "path": "../../../src/theme/generated_token_metadata.inc",
+    "sha256": "ab2c23965ab2783b8c5863466dd64921cc79f891108a80285c1e5e85073cf478"
+  },
   "schema": {
     "path": "../catalog.schema.json",
     "sha256": "c232bc9e427b65890be2f58fef10662d2acbb07fee9dc294349528b15ed418ef"
