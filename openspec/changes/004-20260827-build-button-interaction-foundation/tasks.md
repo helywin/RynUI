@@ -31,11 +31,11 @@
 
 ## 5. Component paint traversal 与 Button scene 数据
 
-- [ ] 5.1 为 ComponentHost 增加 generation-checked `before-children`/`after-children` scene fragment 注册和深度优先 paint traversal，通过 nested/sibling/destroy/reuse tests 证明 Quad/Glyph command 与声明顺序稳定
-- [ ] 5.2 将同一 paint traversal 的 interaction order 接入 HitTest snapshot，通过重叠 Button-like fragment、Text child 和结构销毁 tests 证明最上层视觉与命中 target 始终一致
-- [ ] 5.3 扩展 Quad instance store 的 append/replace/compact、Material/Geometry dirty ranges 和固定 Button visual range，覆盖 focus ring、border、background 与静态 loading indicator；通过 sparse update、range remap、opacity-hidden layer 和字节边界 tests 验证不扩大更新
-- [ ] 5.4 实现 generation-checked Button scene service 与 ordered fragment，接通可复用 GPU buffer 的局部 upload/draw count；通过多个 Button 创建/销毁/复用、Quad/Glyph 交错、buffer capacity 和 renderer failure tests 验证资源收口
-- [ ] 5.5 运行 Component traversal、OrderedScene、Quad store/Button scene 与 renderer 自动测试和 `git diff --check`；以英文 `feat: add component scene composition` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 5.1 为 ComponentHost 增加 generation-checked `before-children`/`after-children` scene fragment 注册和深度优先 paint traversal，通过 nested/sibling/destroy/reuse tests 证明 Quad/Glyph command 与声明顺序稳定
+- [x] 5.2 将同一 paint traversal 的 interaction order 接入 HitTest snapshot，通过重叠 Button-like fragment、Text child 和结构销毁 tests 证明最上层视觉与命中 target 始终一致
+- [x] 5.3 扩展 Quad instance store 的 append/replace/compact、Material/Geometry dirty ranges 和固定 Button visual range，覆盖 focus ring、border、background 与静态 loading indicator；通过 sparse update、range remap、opacity-hidden layer 和字节边界 tests 验证不扩大更新
+- [x] 5.4 实现 generation-checked Button scene service 与 ordered fragment，接通可复用 GPU buffer 的局部 upload/draw count；通过多个 Button 创建/销毁/复用、Quad/Glyph 交错、buffer capacity 和 renderer failure tests 验证资源收口
+- [x] 5.5 运行 Component traversal、OrderedScene、Quad store/Button scene 与 renderer 自动测试和 `git diff --check`；以英文 `feat: add component scene composition` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 6. Button token、content context 与内部布局
 

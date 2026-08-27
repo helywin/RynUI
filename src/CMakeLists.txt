@@ -100,6 +100,8 @@ target_link_libraries(rynui_text_scene PRIVATE
 )
 
 add_library(rynui_components STATIC
+    component/button_scene_service.cpp
+    component/component_scene.cpp
     component/default_theme.cpp
     component/text_component.cpp
 )
@@ -109,6 +111,8 @@ target_include_directories(rynui_components PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(rynui_components PRIVATE
+    rynui_graphics
+    rynui_interaction
     rynui_layout
     rynui_reactive
     rynui_runtime
@@ -176,6 +180,8 @@ rynui_assert_direct_dependencies(
 )
 rynui_assert_direct_dependencies(
     rynui_components
+    rynui_graphics
+    rynui_interaction
     rynui_layout
     rynui_reactive
     rynui_runtime

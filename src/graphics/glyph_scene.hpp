@@ -168,9 +168,11 @@ struct SceneDrawCommand {
 
 class OrderedScene final {
 public:
+    void reserve(std::size_t command_capacity);
     void append_quad(std::uint32_t first_instance, std::uint32_t instance_count);
     void append_glyph(GlyphDrawRange range);
     void append_glyph(const GlyphPrimitive& primitive);
+    void append_command(SceneDrawCommand command);
 
     [[nodiscard]] std::span<const SceneDrawCommand> commands() const noexcept;
     void clear() noexcept;

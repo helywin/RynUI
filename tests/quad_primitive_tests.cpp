@@ -113,12 +113,107 @@ void test_initial_upload_preserves_instance_bytes() {
     require(api.release_calls == 1, "Quad GPU buffer was not released exactly once");
 }
 
+ryn::graphics::QuadInstance instance(float value) {
+    return {
+        {value, value + 0.1F, 0.2F, -0.2F},
+        {value, 0.3F, 0.4F, 1.0F},
+        1.0F,
+        0.1F,
+        {0.0F, 0.0F},
+    };
+}
+
+void test_sparse_dirty_ranges_and_compaction() {
+    ryn::graphics::QuadInstanceStore store;
+    const std::array initial{
+        instance(0.0F),
+        instance(0.1F),
+        instance(0.2F),
+        instance(0.3F),
+        instance(0.4F),
+    };
+    require(store.append(initial) == ryn::graphics::QuadInstanceRange{0, 5},
+            "Quad append returned the wrong range");
+    store.clear_dirty_ranges();
+
+    const std::array first_materials{
+        ryn::graphics::QuadMaterial{{0.9F, 0.1F, 0.2F, 1.0F}, 0.7F},
+        ryn::graphics::QuadMaterial{{0.8F, 0.2F, 0.3F, 1.0F}, 0.6F},
+    };
+    static_cast<void>(store.update_material({1, 2}, first_materials));
+    const std::array last_material{
+        ryn::graphics::QuadMaterial{{0.7F, 0.3F, 0.4F, 1.0F}, 0.5F},
+    };
+    static_cast<void>(store.update_material({4, 1}, last_material));
+    require(store.material_dirty_ranges().size() == 2
+                && store.material_dirty_ranges()[0]
+                    == ryn::graphics::QuadInstanceRange{1, 2}
+                && store.material_dirty_ranges()[1]
+                    == ryn::graphics::QuadInstanceRange{4, 1},
+            "sparse Quad Material updates expanded their dirty ranges");
+
+    std::array<ryn::graphics::QuadGeometry, 3> geometry;
+    for (std::size_t index = 0; index < geometry.size(); ++index) {
+        geometry[index] = {
+            {0.2F + static_cast<float>(index), 0.3F, 0.4F, -0.5F},
+            0.2F,
+            {0.01F, -0.01F},
+        };
+    }
+    static_cast<void>(store.update_geometry({2, 3}, geometry));
+    require(store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front()
+                    == ryn::graphics::QuadInstanceRange{2, 3},
+            "Quad Geometry update did not retain its exact dirty range");
+    require(store.bytes({1, 2}).size()
+                == 2 * sizeof(ryn::graphics::QuadInstance),
+            "Quad dirty byte range has the wrong size");
+
+    store.clear_dirty_ranges();
+    const std::array replacement{instance(0.75F)};
+    require(store.replace({1, 2}, replacement)
+                == ryn::graphics::QuadInstanceRange{1, 1}
+                && store.size() == 4,
+            "Quad replace did not compact the instance store");
+    require(store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front()
+                    == ryn::graphics::QuadInstanceRange{1, 3},
+            "Quad compaction did not dirty the shifted suffix only");
+}
+
+void test_gpu_buffer_growth_and_sparse_synchronization() {
+    ryn::graphics::QuadInstanceStore store;
+    const std::array initial{instance(0.0F), instance(0.1F)};
+    static_cast<void>(store.append(initial));
+    RecordingUploadApi api;
+    ryn::graphics::QuadGpuBuffer gpu(api, store);
+
+    const std::array appended{instance(0.2F)};
+    static_cast<void>(store.append(appended));
+    gpu.synchronize(store);
+    require(gpu.capacity() == 4
+                && gpu.counters().buffer_reallocations == 1
+                && api.create_calls == 2,
+            "Quad GPU buffer did not grow with reusable capacity");
+
+    const std::array material{
+        ryn::graphics::QuadMaterial{{0.2F, 0.8F, 0.4F, 1.0F}, 0.5F},
+    };
+    static_cast<void>(store.update_material({1, 1}, material));
+    gpu.synchronize(store);
+    require(api.upload_offsets.back() == sizeof(ryn::graphics::QuadInstance)
+                && gpu.counters().range_uploads == 2,
+            "Quad GPU synchronization expanded a sparse Material upload");
+}
+
 } // namespace
 
 int main() {
     try {
         test_instance_layout_matches_shader_contract();
         test_initial_upload_preserves_instance_bytes();
+        test_sparse_dirty_ranges_and_compaction();
+        test_gpu_buffer_growth_and_sparse_synchronization();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

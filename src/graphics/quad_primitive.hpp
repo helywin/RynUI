@@ -57,9 +57,35 @@ struct QuadPrimitive {
     std::uint32_t instance_index{0};
 };
 
+struct QuadInstanceRange final {
+    std::uint32_t first{0};
+    std::uint32_t count{0};
+
+    friend constexpr bool operator==(QuadInstanceRange, QuadInstanceRange) = default;
+};
+
+struct QuadMaterial final {
+    std::array<float, 4> color{1.0F, 1.0F, 1.0F, 1.0F};
+    float opacity{1.0F};
+
+    friend constexpr bool operator==(const QuadMaterial&, const QuadMaterial&) = default;
+};
+
+struct QuadGeometry final {
+    std::array<float, 4> clip_rect{};
+    float corner_radius{0.0F};
+    std::array<float, 2> translation{};
+
+    friend constexpr bool operator==(const QuadGeometry&, const QuadGeometry&) = default;
+};
+
 class QuadInstanceStore final {
 public:
     [[nodiscard]] QuadPrimitive add(runtime::NodeId node, QuadInstance instance);
+    [[nodiscard]] QuadInstanceRange append(std::span<const QuadInstance> instances);
+    [[nodiscard]] QuadInstanceRange replace(
+        QuadInstanceRange range,
+        std::span<const QuadInstance> instances);
     [[nodiscard]] const QuadInstance& at(std::uint32_t index) const;
     [[nodiscard]] QuadInstance& at(std::uint32_t index);
     [[nodiscard]] std::span<const QuadInstance> instances() const noexcept;
@@ -67,9 +93,28 @@ public:
     [[nodiscard]] std::span<const std::byte> bytes(
         std::uint32_t first,
         std::uint32_t count) const;
+    [[nodiscard]] std::span<const std::byte> bytes(QuadInstanceRange range) const;
+    [[nodiscard]] std::size_t update_material(
+        QuadInstanceRange range,
+        std::span<const QuadMaterial> materials);
+    [[nodiscard]] std::size_t update_geometry(
+        QuadInstanceRange range,
+        std::span<const QuadGeometry> geometry);
+    [[nodiscard]] std::span<const QuadInstanceRange>
+        material_dirty_ranges() const noexcept;
+    [[nodiscard]] std::span<const QuadInstanceRange>
+        geometry_dirty_ranges() const noexcept;
+    void clear_dirty_ranges() noexcept;
 
 private:
+    static void mark_dirty(
+        std::vector<QuadInstanceRange>& ranges,
+        QuadInstanceRange range);
+    void require_range(QuadInstanceRange range) const;
+
     std::vector<QuadInstance> instances_;
+    std::vector<QuadInstanceRange> material_dirty_ranges_;
+    std::vector<QuadInstanceRange> geometry_dirty_ranges_;
 };
 
 using QuadGpuBufferHandle = void*;
@@ -89,13 +134,14 @@ public:
 
 struct QuadUploadCounters {
     std::uint64_t initial_uploads{0};
+    std::uint64_t buffer_reallocations{0};
     std::uint64_t range_uploads{0};
     std::uint64_t uploaded_bytes{0};
 };
 
 class QuadGpuBuffer final {
 public:
-    QuadGpuBuffer(QuadUploadApi& api, const QuadInstanceStore& store);
+    QuadGpuBuffer(QuadUploadApi& api, QuadInstanceStore& store);
     QuadGpuBuffer(const QuadGpuBuffer&) = delete;
     QuadGpuBuffer& operator=(const QuadGpuBuffer&) = delete;
     QuadGpuBuffer(QuadGpuBuffer&&) = delete;
@@ -106,6 +152,7 @@ public:
         const QuadInstanceStore& store,
         std::uint32_t first,
         std::uint32_t count);
+    void synchronize(QuadInstanceStore& store);
 
     [[nodiscard]] QuadGpuBufferHandle handle() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;
@@ -116,6 +163,7 @@ private:
     QuadGpuBufferHandle handle_{nullptr};
     std::uint32_t capacity_{0};
     QuadUploadCounters counters_;
+    std::vector<QuadInstanceRange> dirty_scratch_;
 };
 
 } // namespace ryn::graphics

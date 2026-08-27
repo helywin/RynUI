@@ -131,6 +131,39 @@ target_include_directories(rynui_component_mount_tests PRIVATE "${PROJECT_SOURCE
 target_link_libraries(rynui_component_mount_tests PRIVATE rynui_runtime rynui_reactive)
 add_test(NAME rynui.component_mount COMMAND rynui_component_mount_tests)
 
+add_executable(
+    rynui_component_scene_traversal_tests
+    component_scene_traversal_tests.cpp
+)
+rynui_configure_cpp_target(rynui_component_scene_traversal_tests)
+target_include_directories(
+    rynui_component_scene_traversal_tests
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/include"
+        "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(rynui_component_scene_traversal_tests PRIVATE rynui_runtime)
+add_test(
+    NAME rynui.component_scene_traversal
+    COMMAND rynui_component_scene_traversal_tests
+)
+
+add_executable(
+    rynui_component_scene_composer_tests
+    component_scene_composer_tests.cpp
+)
+rynui_configure_cpp_target(rynui_component_scene_composer_tests)
+target_link_libraries(rynui_component_scene_composer_tests PRIVATE rynui_components)
+add_test(
+    NAME rynui.component_scene_composer
+    COMMAND rynui_component_scene_composer_tests
+)
+
+add_executable(rynui_button_scene_service_tests button_scene_service_tests.cpp)
+rynui_configure_cpp_target(rynui_button_scene_service_tests)
+target_link_libraries(rynui_button_scene_service_tests PRIVATE rynui_components)
+add_test(NAME rynui.button_scene_service COMMAND rynui_button_scene_service_tests)
+
 add_executable(rynui_layout_engine_tests layout_engine_tests.cpp)
 rynui_configure_cpp_target(rynui_layout_engine_tests)
 target_include_directories(rynui_layout_engine_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

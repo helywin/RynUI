@@ -419,6 +419,10 @@ const GlyphInstanceStore& GlyphScene::instances() const noexcept {
     return instances_;
 }
 
+void OrderedScene::reserve(std::size_t command_capacity) {
+    commands_.reserve(command_capacity);
+}
+
 void OrderedScene::append_quad(
     std::uint32_t first_instance,
     std::uint32_t instance_count) {
@@ -443,6 +447,10 @@ void OrderedScene::append_glyph(const GlyphPrimitive& primitive) {
     for (const GlyphDrawRange range : primitive.draw_ranges) {
         append_glyph(range);
     }
+}
+
+void OrderedScene::append_command(SceneDrawCommand command) {
+    append(command);
 }
 
 std::span<const SceneDrawCommand> OrderedScene::commands() const noexcept {
