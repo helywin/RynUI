@@ -439,6 +439,17 @@ add_test(
 )
 
 add_test(
+    NAME rynui.theme_architecture_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DARCHITECTURE_FILE=${PROJECT_SOURCE_DIR}/docs/architecture.md"
+        "-DREADME_FILE=${PROJECT_SOURCE_DIR}/README.md"
+        "-DAGENTS_FILE=${PROJECT_SOURCE_DIR}/AGENTS.md"
+        "-DTOKEN_DOC_FILE=${PROJECT_SOURCE_DIR}/docs/design-tokens.md"
+        "-DOPENSPEC_CONFIG_FILE=${PROJECT_SOURCE_DIR}/openspec/config.yaml"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_theme_architecture_contract.cmake"
+)
+
+add_test(
     NAME rynui.layout_example_contract
     COMMAND ${CMAKE_COMMAND}
         "-DEXAMPLE_SOURCE=${PROJECT_SOURCE_DIR}/examples/layout/main.cpp"

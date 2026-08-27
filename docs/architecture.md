@@ -319,9 +319,21 @@ Seed Token
 - Component Token 只覆盖具体组件，不允许复制一套脱离全局语义的颜色与间距常量。
 - 初始主题算法提供 Default、Dark 与 Compact；组件可以受控覆盖 Token，但默认继承全局算法。
 
-Token 本身是响应式上下文。主题切换只使读取相关 Token 的属性失效；纯颜色主题变化不得无条件触发全树 Layout。
+Ant Design 参考输入固定到 tag、commit、逐文件 SHA256 与 license，完整字段清单、支持分类和 source location 由生成器维护在 [Ant Design 6.5.0 Design Token 规范](design-tokens.md) 与 `design-tokens/ant-design/6.5.0/catalog.yaml`。架构文档只保存消费规则，不复制 1194 个 Token 条目；Runtime 不解析 CSS shorthand，也不接受任意 string key。
 
-### 9.5 验收方式
+公开 Token 值使用 `Color`、`LogicalLength`、`Duration`、`CubicBezier`、`BorderToken`、`ShadowList` 等强类型。Theme algorithm 按声明顺序从 immutable Seed 派生 Map 与 Alias，再应用 typed global/component override，结果收口为可序列化、带稳定 identity 的 immutable `ThemeSnapshot`。Nested Theme 默认继承父 scope，`inherit=false` 从 Default 基线重新解析；component algorithm 默认关闭，只有显式开启时才重新派生目标组件。
+
+Token 读取会在 reactive scope 记录 identity subscription。Theme 更新比较新旧 snapshot，并按 Paint/Material、Geometry、Text、Measure/Layout、HitTest 与 Animation domain 精确失效；等值更新不请求帧，纯颜色变化不触发测量，任何 Theme 更新都不得重跑无关 Component 或重建稳定 scene topology。`LayoutStyle` 仍只控制外部布局，不能绕过 Theme/Component Token 改写稳定组件视觉。
+
+### 9.5 Shadow、圆角效果与焦点
+
+- `ShadowList` 是有序 typed layer 列表，逐层保留 outer/inset、x/y offset、blur、正负 spread、color 与 alpha；Button、Drawer、Popover/Card、Tabs overflow 等映射不得压扁为单个模糊值。
+- Shadow 与 focus outline 使用独立 retained `RoundedEffect` child 和 GPU instance store，不扩大普通 `QuadPrimitive`。Outer layer 在所属 surface fill 前绘制，inset layer 在 fill 后绘制，并与组件 Scene paint order、ancestor clip 和 stable identity 一起维护。
+- CPU reference 与共享 `rounded_effect.hlsl` 使用同一 rounded-rect SDF 约定；outer shadow 采用 `sigma = blur / 2` coverage，effect bounds 包含 spread、offset、`3*sigma` 与 antialias guard。DXIL 和 SPIR-V 必须从同一锁定 source 生成，不能手工分叉。
+- Button focus-visible 固定为 1 logical px 透明 gap 后的 3 logical px hollow ring；它是独立 outline effect，不是连续 4px 蓝色边框，也不能被 shadow/state layer 覆盖。
+- Geometry、blur、spread、offset、outline 与 antialias 均从 logical unit 转为 device unit；布局视口、字体 raster 与 effect resource 必须使用同一 render scale，避免 DPI 变化造成裁切、发虚或边缘异常增厚。
+
+### 9.6 验收方式
 
 每个基础组件在进入稳定 API 前必须提供：
 
@@ -337,7 +349,8 @@ Token 本身是响应式上下文。主题切换只使读取相关 Token 的属�
 
 普通 UI 首先映射为少量 Primitive：
 
-- `QuadPrimitive`：矩形、圆角、边框、渐变、简单阴影。
+- `QuadPrimitive`：矩形、圆角、边框和渐变，不承载多层 shadow 或 focus outline。
+- `RoundedEffectPrimitive`：多层 outer/inset shadow 与 hollow outline。
 - `GlyphPrimitive` / `GlyphRun`：文本。
 - `ImagePrimitive`：图片和纹理图标。
 - `ClipPrimitive`：矩形或圆角裁剪。
@@ -543,7 +556,11 @@ RynUI/
 | Compose 借鉴范围 | Slot composition、Constraints、phased invalidation；不使用通用 `Modifier` 作为组件 API |
 | 公开布局 | Ant Design `Flex` / `Space` / `Grid` / `Layout` 语义 |
 | 基础组件与样式 | Ant Design 6.5.0 初始设计基线 |
-| 主题 | Seed / Map / Alias / Component Token + Default / Dark / Compact |
+| Token 来源 | 固定 Ant Design tag/commit/hash/license；生成完整 catalog 与中文规范 |
+| 主题 | Immutable Seed / Map / Alias / Component Token `ThemeSnapshot` + Default / Dark / Compact |
+| Theme 更新 | 按 Token identity 与 invalidation domain 局部失效，不重跑无关 Component |
+| Shadow | 有序 typed `ShadowList` + retained `RoundedEffect` + 共享 HLSL |
+| Button 焦点 | 1 logical px 透明 gap + 3 logical px hollow ring |
 | 平台/GPU | SDL3 + SDL3 GPU |
 | 普通 UI 渲染 | 自研 Primitive/Batch Renderer |
 | 文本 | FreeType + HarfBuzz + GlyphAtlas |

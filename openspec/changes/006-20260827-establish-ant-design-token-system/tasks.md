@@ -83,5 +83,5 @@
 
 ## 11. Change 收口
 
-- [ ] 11.1 更新 `docs/architecture.md` 的长期 Theme/Token/Shadow 决策与文档入口，不复制完整 catalog 或 README 产品介绍；通过 documentation link、forbidden duplication 与 `git diff --check` 验证 AGENTS、README、architecture、generated token docs 和 OpenSpec 职责清晰
+- [x] 11.1 更新 `docs/architecture.md` 的长期 Theme/Token/Shadow 决策与文档入口，不复制完整 catalog 或 README 产品介绍；通过 documentation link、forbidden duplication 与 `git diff --check` 验证 AGENTS、README、architecture、generated token docs 和 OpenSpec 职责清晰
 - [ ] 11.2 在准备 archive 时运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`，确认 catalog coverage 为 exact、平台通用验收已有且只有一份有效记录、Windows 与 Linux 专属 GPU 清单分别完成、所有 commit 已推送且 worktree clean；本项不替代任一平台专属验收
