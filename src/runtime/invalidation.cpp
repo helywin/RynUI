@@ -31,6 +31,12 @@ void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
     if (has_any(flags, DirtyFlags::Geometry)) {
         enqueue_unique(geometry_nodes_, id);
     }
+    if (has_any(flags, DirtyFlags::Text)) {
+        enqueue_unique(text_nodes_, id);
+    }
+    if (has_any(flags, DirtyFlags::Animation)) {
+        enqueue_unique(animation_nodes_, id);
+    }
     if (has_any(
             flags,
             DirtyFlags::HitTest
@@ -70,6 +76,12 @@ void DirtyQueues::invalidate_subtree(NodeId root, DirtyFlags flags) {
     if (has_any(flags, DirtyFlags::Geometry)) {
         enqueue_unique(geometry_nodes_, root);
     }
+    if (has_any(flags, DirtyFlags::Text)) {
+        enqueue_unique(text_nodes_, root);
+    }
+    if (has_any(flags, DirtyFlags::Animation)) {
+        enqueue_unique(animation_nodes_, root);
+    }
     if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure |
                            DirtyFlags::Layout | DirtyFlags::Placement)) {
         enqueue_unique(hit_test_nodes_, root);
@@ -83,6 +95,8 @@ void DirtyQueues::clear() noexcept {
     transform_nodes_.clear();
     geometry_nodes_.clear();
     hit_test_nodes_.clear();
+    text_nodes_.clear();
+    animation_nodes_.clear();
 }
 
 const std::vector<NodeId>& DirtyQueues::layout_roots() const noexcept {
@@ -107,6 +121,14 @@ const std::vector<NodeId>& DirtyQueues::geometry_nodes() const noexcept {
 
 const std::vector<NodeId>& DirtyQueues::hit_test_nodes() const noexcept {
     return hit_test_nodes_;
+}
+
+const std::vector<NodeId>& DirtyQueues::text_nodes() const noexcept {
+    return text_nodes_;
+}
+
+const std::vector<NodeId>& DirtyQueues::animation_nodes() const noexcept {
+    return animation_nodes_;
 }
 
 NodeId DirtyQueues::layout_root_for(NodeId id) const {

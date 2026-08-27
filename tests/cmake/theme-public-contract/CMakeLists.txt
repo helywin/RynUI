@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.25)
+project(rynui_theme_public_contract LANGUAGES CXX)
+
+add_executable(theme_public_contract main.cpp)
+target_compile_features(theme_public_contract PRIVATE cxx_std_20)
+target_include_directories(theme_public_contract PRIVATE "${RYNUI_ROOT}/include")
+if(MSVC)
+    target_compile_options(theme_public_contract PRIVATE /permissive- /Zc:__cplusplus /utf-8)
+else()
+    target_compile_options(theme_public_contract PRIVATE -Wall -Wextra -Wpedantic)
+endif()

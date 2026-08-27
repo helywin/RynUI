@@ -31,6 +31,35 @@ target_compile_definitions(
 )
 add_test(NAME rynui.theme_algorithm COMMAND rynui_theme_algorithm_tests)
 
+add_executable(rynui_theme_public_api_tests theme_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_theme_public_api_tests)
+target_link_libraries(rynui_theme_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.theme_public_api COMMAND rynui_theme_public_api_tests)
+
+add_executable(rynui_theme_runtime_tests theme_runtime_tests.cpp)
+rynui_configure_cpp_target(rynui_theme_runtime_tests)
+target_include_directories(
+    rynui_theme_runtime_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_theme_runtime_tests PRIVATE rynui_runtime rynui_theme)
+add_test(NAME rynui.theme_runtime COMMAND rynui_theme_runtime_tests)
+
+add_executable(rynui_theme_scope_component_tests theme_scope_component_tests.cpp)
+rynui_configure_cpp_target(rynui_theme_scope_component_tests)
+target_include_directories(
+    rynui_theme_scope_component_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_theme_scope_component_tests PRIVATE rynui_components)
+add_test(NAME rynui.theme_scope_component COMMAND rynui_theme_scope_component_tests)
+
+add_executable(rynui_theme_allocation_benchmark theme_allocation_benchmark.cpp)
+rynui_configure_cpp_target(rynui_theme_allocation_benchmark)
+target_include_directories(
+    rynui_theme_allocation_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    rynui_theme_allocation_benchmark PRIVATE rynui_runtime rynui_theme)
+add_test(NAME rynui.theme_allocation COMMAND rynui_theme_allocation_benchmark)
+
 add_executable(
     rynui_design_token_header_isolation_tests
     design_token_header_isolation_tests.cpp
@@ -703,6 +732,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_design_token_public_contract.cmake"
+)
+
+add_test(
+    NAME rynui.theme_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/theme-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_theme_public_contract.cmake"
 )
 
 add_test(

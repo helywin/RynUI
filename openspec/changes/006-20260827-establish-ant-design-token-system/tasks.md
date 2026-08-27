@@ -25,12 +25,12 @@
 
 ## 4. Theme scope、继承与细粒度失效
 
-- [ ] 4.1 定义公开 `ThemeConfig`、`ThemeProps`、typed content slot 与 `ryn::Theme`，使用 reactive `Prop<ThemeConfig>` 且不暴露 runtime、SDL3、GPU、CSS variable 或通用 style map；通过 public consumer、header isolation 与 compile-fail tests 验证边界
-- [ ] 4.2 在 Host 注入 Default snapshot，并实现 nested Theme 的默认继承与 `inherit=false` 重置；通过无 Theme、单层/多层 scope、sibling isolation、异常 slot、destroy/reuse 和跨线程失败 tests 验证生命周期
-- [ ] 4.3 让 typed Token accessor 在 reactive scope 记录 identity subscription，Theme 更新对 immutable snapshot 做逐字段 diff；通过订阅/未订阅组件、等值切换、nested override 和 stale identity tests 证明普通更新不重跑无关 Component
-- [ ] 4.4 按 catalog invalidation domain 将变化映射到 Paint/Material、Geometry、Text、Measure/Layout、HitTest 与 Animation，禁止 Theme update 触发 Structure rebuild；通过每类代表 Token、混合变化、错误更新回滚和 dirty counter tests 验证最小失效
-- [ ] 4.5 增加 Theme generation、changed identity、subscriber、dirty phase、snapshot reuse 与 allocation 诊断；通过 steady-state update benchmark 证明等值更新不请求帧、局部颜色更新不测量且稳定订阅不分配
-- [ ] 4.6 运行 Theme public/runtime、Component lifecycle、Dirty、frame scheduler、allocation 与 `git diff --check`；以英文 `feat: add reactive theme scopes` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 4.1 定义公开 `ThemeConfig`、`ThemeProps`、typed content slot 与 `ryn::Theme`，使用 reactive `Prop<ThemeConfig>` 且不暴露 runtime、SDL3、GPU、CSS variable 或通用 style map；通过 public consumer、header isolation 与 compile-fail tests 验证边界
+- [x] 4.2 在 Host 注入 Default snapshot，并实现 nested Theme 的默认继承与 `inherit=false` 重置；通过无 Theme、单层/多层 scope、sibling isolation、异常 slot、destroy/reuse 和跨线程失败 tests 验证生命周期
+- [x] 4.3 让 typed Token accessor 在 reactive scope 记录 identity subscription，Theme 更新对 immutable snapshot 做逐字段 diff；通过订阅/未订阅组件、等值切换、nested override 和 stale identity tests 证明普通更新不重跑无关 Component
+- [x] 4.4 按 catalog invalidation domain 将变化映射到 Paint/Material、Geometry、Text、Measure/Layout、HitTest 与 Animation，禁止 Theme update 触发 Structure rebuild；通过每类代表 Token、混合变化、错误更新回滚和 dirty counter tests 验证最小失效
+- [x] 4.5 增加 Theme generation、changed identity、subscriber、dirty phase、snapshot reuse 与 allocation 诊断；通过 steady-state update benchmark 证明等值更新不请求帧、局部颜色更新不测量且稳定订阅不分配
+- [x] 4.6 运行 Theme public/runtime、Component lifecycle、Dirty、frame scheduler、allocation 与 `git diff --check`；以英文 `feat: add reactive theme scopes` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 5. RoundedEffect 模型、Scene 与 CPU reference
 

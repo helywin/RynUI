@@ -1,15 +1,23 @@
 #pragma once
 
 #include <ryn/design_token.hpp>
+#include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
+#include <ryn/prop.hpp>
 
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ryn {
+namespace detail {
+
+struct ThemePropsAccess;
+
+} // namespace detail
 
 enum class ThemeAlgorithm : std::uint8_t {
     Default,
@@ -259,5 +267,23 @@ private:
 [[nodiscard]] ThemeSnapshot resolve_theme(
     const ThemeConfig& config = {},
     const ThemeSnapshot* parent = nullptr);
+
+class ThemeProps final {
+public:
+    ThemeProps& config(Prop<ThemeConfig> value) {
+        config_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend struct detail::ThemePropsAccess;
+
+    Prop<ThemeConfig> config_{ThemeConfig{}};
+};
+
+struct ThemeContentSlot final {};
+using ThemeContent = SlotContent<ThemeContentSlot>;
+
+void Theme(ThemeProps props, ThemeContent content);
 
 } // namespace ryn

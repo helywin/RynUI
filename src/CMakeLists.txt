@@ -4,6 +4,7 @@ add_library(rynui_string STATIC
 
 add_library(rynui_theme STATIC
     theme/design_token.cpp
+    theme/theme_runtime.cpp
     theme/theme_snapshot.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
@@ -77,7 +78,10 @@ add_library(rynui_runtime STATIC
 )
 rynui_configure_cpp_target(rynui_runtime)
 target_include_directories(rynui_runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(rynui_runtime PRIVATE rynui_reactive)
+target_link_libraries(rynui_runtime
+    PUBLIC rynui_theme
+    PRIVATE rynui_reactive
+)
 
 add_library(rynui_interaction STATIC
     input/focus_manager.cpp
@@ -130,6 +134,7 @@ add_library(rynui_components STATIC
     component/layout_component_context.cpp
     component/space_component.cpp
     component/text_component.cpp
+    component/theme_component.cpp
 )
 rynui_configure_cpp_target(rynui_components)
 target_include_directories(rynui_components PUBLIC
@@ -143,6 +148,7 @@ target_link_libraries(rynui_components PRIVATE
     rynui_reactive
     rynui_runtime
     rynui_text_scene
+    rynui_theme
 )
 
 add_library(rynui_platform_sdl STATIC
@@ -198,7 +204,7 @@ rynui_assert_direct_dependencies(
 rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input)
-rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
+rynui_assert_direct_dependencies(rynui_runtime rynui_reactive rynui_theme)
 rynui_assert_direct_dependencies(rynui_interaction rynui_input rynui_runtime)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)
@@ -216,6 +222,7 @@ rynui_assert_direct_dependencies(
     rynui_reactive
     rynui_runtime
     rynui_text_scene
+    rynui_theme
 )
 rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
 rynui_assert_direct_dependencies(

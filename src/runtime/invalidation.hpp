@@ -2,6 +2,7 @@
 
 #include "runtime/geometry.hpp"
 #include "runtime/node_store.hpp"
+#include "theme/theme_runtime_types.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -20,6 +21,8 @@ enum class DirtyFlags : std::uint32_t {
     Transform = 1U << 5U,
     HitTest = 1U << 6U,
     Placement = 1U << 7U,
+    Text = 1U << 8U,
+    Animation = 1U << 9U,
 };
 
 constexpr DirtyFlags operator|(DirtyFlags left, DirtyFlags right) noexcept {
@@ -61,6 +64,34 @@ enum class NodeProperty {
     return DirtyFlags::None;
 }
 
+[[nodiscard]] constexpr DirtyFlags dirty_flags_for_theme(
+    theme_runtime::DirtyPhase phase) noexcept {
+    DirtyFlags flags = DirtyFlags::None;
+    if (theme_runtime::has_any(
+            phase,
+            theme_runtime::DirtyPhase::paint_material)) {
+        flags = flags | DirtyFlags::Material;
+    }
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::geometry)) {
+        flags = flags | DirtyFlags::Geometry;
+    }
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::text)) {
+        flags = flags | DirtyFlags::Text;
+    }
+    if (theme_runtime::has_any(
+            phase,
+            theme_runtime::DirtyPhase::measure_layout)) {
+        flags = flags | DirtyFlags::Measure | DirtyFlags::Layout;
+    }
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::hit_test)) {
+        flags = flags | DirtyFlags::HitTest;
+    }
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::animation)) {
+        flags = flags | DirtyFlags::Animation;
+    }
+    return flags;
+}
+
 class DirtyQueues final {
 public:
     explicit DirtyQueues(NodeStore& nodes, FrameRequestState* frames = nullptr) noexcept;
@@ -75,6 +106,8 @@ public:
     [[nodiscard]] const std::vector<NodeId>& transform_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& geometry_nodes() const noexcept;
     [[nodiscard]] const std::vector<NodeId>& hit_test_nodes() const noexcept;
+    [[nodiscard]] const std::vector<NodeId>& text_nodes() const noexcept;
+    [[nodiscard]] const std::vector<NodeId>& animation_nodes() const noexcept;
 
 private:
     [[nodiscard]] NodeId layout_root_for(NodeId id) const;
@@ -88,6 +121,8 @@ private:
     std::vector<NodeId> transform_nodes_;
     std::vector<NodeId> geometry_nodes_;
     std::vector<NodeId> hit_test_nodes_;
+    std::vector<NodeId> text_nodes_;
+    std::vector<NodeId> animation_nodes_;
 };
 
 class NodePropertyWriter final {

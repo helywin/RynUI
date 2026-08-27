@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/node_store.hpp"
+#include "theme/theme_runtime.hpp"
 
 #include <ryn/component.hpp>
 #include <ryn/prop.hpp>
@@ -83,7 +84,7 @@ class ComponentBuildContext;
 
 class ComponentHost final {
 public:
-    explicit ComponentHost(NodeStore& nodes) noexcept;
+    explicit ComponentHost(NodeStore& nodes);
     ComponentHost(const ComponentHost&) = delete;
     ComponentHost& operator=(const ComponentHost&) = delete;
     ComponentHost(ComponentHost&&) = delete;
@@ -105,6 +106,8 @@ public:
     [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
+    [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(
+        ComponentId id) const;
     bool remove_scene_fragment(SceneFragmentId id);
     [[nodiscard]] bool contains(SceneFragmentId id) const noexcept;
     [[nodiscard]] std::span<const SceneFragmentPaintEntry> paint_traversal();
@@ -139,7 +142,13 @@ private:
     void mount_slot(
         ComponentId parent,
         const std::function<void()>& content,
-        std::optional<Prop<SemanticForeground>> semantic_foreground);
+        std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
+    void mount_transparent_slot(
+        std::optional<ComponentId> parent,
+        const std::function<void()>& content,
+        std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
     void ensure_owner_thread() const;
     [[nodiscard]] Record* find_record(ComponentId id) noexcept;
     [[nodiscard]] const Record* find_record(ComponentId id) const noexcept;
@@ -163,6 +172,8 @@ private:
 
     NodeStore* nodes_;
     std::thread::id owner_thread_;
+    Scope host_scope_;
+    std::shared_ptr<theme_runtime::ThemeScope> default_theme_scope_;
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::vector<ComponentId> root_components_;
@@ -195,7 +206,8 @@ public:
         host_->mount_slot(
             parent,
             detail::SlotContentAccess::function(content),
-            semantic_foreground_);
+            semantic_foreground_,
+            theme_scope_);
     }
 
     template <typename SlotTag>
@@ -206,7 +218,19 @@ public:
         host_->mount_slot(
             parent,
             detail::SlotContentAccess::function(content),
-            std::move(foreground));
+            std::move(foreground),
+            theme_scope_);
+    }
+
+    template <typename SlotTag>
+    void mount_slot_with_theme_scope(
+        const SlotContent<SlotTag>& content,
+        std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
+        host_->mount_transparent_slot(
+            parent_,
+            detail::SlotContentAccess::function(content),
+            semantic_foreground_,
+            std::move(theme_scope));
     }
 
     void on_resource_cleanup(ComponentId id, std::function<void()> cleanup);
@@ -214,6 +238,9 @@ public:
         ComponentId id,
         SceneFragmentPlacement placement);
     [[nodiscard]] Scope& scope(ComponentId id);
+    [[nodiscard]] Scope& lifetime_scope();
+    [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>&
+    theme_scope() const noexcept;
     [[nodiscard]] NodeId root(ComponentId id) const;
     [[nodiscard]] const std::optional<Prop<SemanticForeground>>&
     semantic_foreground() const noexcept;
@@ -233,11 +260,13 @@ private:
     ComponentBuildContext(
         ComponentHost& host,
         std::optional<ComponentId> parent,
-        std::optional<Prop<SemanticForeground>> semantic_foreground) noexcept;
+        std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept;
 
     ComponentHost* host_;
     std::optional<ComponentId> parent_;
     std::optional<Prop<SemanticForeground>> semantic_foreground_;
+    std::shared_ptr<theme_runtime::ThemeScope> theme_scope_;
 };
 
 [[nodiscard]] ComponentBuildContext& require_component_build_context();
