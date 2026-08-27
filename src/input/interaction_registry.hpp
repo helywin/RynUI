@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 #include <thread>
@@ -54,7 +55,7 @@ struct InteractionRecord final {
     std::optional<InteractionId> parent;
     bool eligible{true};
     bool focusable{false};
-    InteractionHandlers handlers;
+    std::shared_ptr<const InteractionHandlers> handlers;
     std::size_t declaration_order{0};
 };
 

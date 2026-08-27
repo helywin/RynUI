@@ -15,11 +15,11 @@
 
 ## 3. Pointer 路由、hover 与 capture
 
-- [ ] 3.1 实现预留 route scratch 上的 Capture、Target、Bubble 派发与 stop propagation，通过完整顺序、各阶段停止、空 route、嵌套 target 和同一 handler 不重复执行 tests 验证传播合同
-- [ ] 3.2 实现 per-pointer position/buttons/hover path/capture/press origin，实际 HitTest 决定 hover、capture target 接收 move/up/cancel；通过 enter/leave、拖出、拖回、不同 pointer identity 和非主按键 tests 验证隔离
-- [ ] 3.3 在每个 handler 前重检 interaction/Component/Node generation，并在 up、cancel、窗口失焦、disable、destroy、Scope dispose 与 callback exception 前后统一释放 capture；通过 self-destroy、ancestor destroy、slot reuse 和 reentrant dispatch fail-fast tests 验证无 stale access
-- [ ] 3.4 接通 pointer route/capture/cancel/stale-skip 诊断与 frame request，使用 controlled clock/allocation tests 证明 Material 状态变化只请求必要帧、稳态 move 不分配且 idle 不持续 submit
-- [ ] 3.5 运行 Pointer、HitTest、Component lifecycle 与 frame scheduler 自动测试和 `git diff --check`；以英文 `feat: add pointer event routing` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 3.1 实现预留 route scratch 上的 Capture、Target、Bubble 派发与 stop propagation，通过完整顺序、各阶段停止、空 route、嵌套 target 和同一 handler 不重复执行 tests 验证传播合同
+- [x] 3.2 实现 per-pointer position/buttons/hover path/capture/press origin，实际 HitTest 决定 hover、capture target 接收 move/up/cancel；通过 enter/leave、拖出、拖回、不同 pointer identity 和非主按键 tests 验证隔离
+- [x] 3.3 在每个 handler 前重检 interaction/Component/Node generation，并在 up、cancel、窗口失焦、disable、destroy、Scope dispose 与 callback exception 前后统一释放 capture；通过 self-destroy、ancestor destroy、slot reuse 和 reentrant dispatch fail-fast tests 验证无 stale access
+- [x] 3.4 接通 pointer route/capture/cancel/stale-skip 诊断与 frame request，使用 controlled clock/allocation tests 证明 Material 状态变化只请求必要帧、稳态 move 不分配且 idle 不持续 submit
+- [x] 3.5 运行 Pointer、HitTest、Component lifecycle 与 frame scheduler 自动测试和 `git diff --check`；以英文 `feat: add pointer event routing` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 4. Focus manager 与键盘激活
 

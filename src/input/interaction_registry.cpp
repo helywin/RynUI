@@ -73,7 +73,8 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
             registration.parent,
             registration.eligible,
             registration.focusable,
-            std::move(registration.handlers),
+            std::make_shared<const InteractionHandlers>(
+                std::move(registration.handlers)),
             next_declaration_order_,
         });
         declaration_order_.push_back(id);
@@ -127,7 +128,8 @@ bool InteractionRegistry::set_handlers(
     InteractionId id,
     InteractionHandlers handlers) {
     auto& record = require(id);
-    record.handlers = std::move(handlers);
+    record.handlers = std::make_shared<const InteractionHandlers>(
+        std::move(handlers));
     return true;
 }
 

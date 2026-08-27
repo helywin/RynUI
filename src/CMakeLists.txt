@@ -59,13 +59,14 @@ target_link_libraries(rynui_runtime PRIVATE rynui_reactive)
 
 add_library(rynui_interaction STATIC
     input/interaction_registry.cpp
+    input/pointer_router.cpp
 )
 rynui_configure_cpp_target(rynui_interaction)
 target_include_directories(rynui_interaction PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-target_link_libraries(rynui_interaction PRIVATE rynui_runtime)
+target_link_libraries(rynui_interaction PRIVATE rynui_input rynui_runtime)
 
 add_library(rynui_layout STATIC
     layout/layout_engine.cpp
@@ -163,7 +164,7 @@ rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input)
 rynui_assert_direct_dependencies(rynui_runtime rynui_reactive)
-rynui_assert_direct_dependencies(rynui_interaction rynui_runtime)
+rynui_assert_direct_dependencies(rynui_interaction rynui_input rynui_runtime)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)
 rynui_assert_direct_dependencies(

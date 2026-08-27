@@ -63,7 +63,8 @@ bool is_valid(const PointerInputEvent& event) noexcept {
         return false;
     }
     if (event.action == PointerAction::down || event.action == PointerAction::up) {
-        return event.button == PointerButton::primary;
+        return event.button == PointerButton::primary
+            || event.button == PointerButton::secondary;
     }
     return event.button == PointerButton::none;
 }

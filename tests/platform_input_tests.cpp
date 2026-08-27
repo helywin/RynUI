@@ -51,6 +51,14 @@ void test_pointer_identity_and_logical_values() {
     };
     require(ryn::input::is_valid(mouse_down), "valid mouse down was rejected");
     require(ryn::input::is_valid(touch_move), "valid touch move was rejected");
+    require(ryn::input::is_valid(PointerInputEvent{
+                mouse,
+                PointerAction::down,
+                PointerButton::secondary,
+                0.0F,
+                0.0F,
+            }),
+            "valid secondary pointer value was rejected");
     require(mouse_down.x == 123.5F && mouse_down.y == 45.25F,
             "logical pointer coordinates changed");
 }

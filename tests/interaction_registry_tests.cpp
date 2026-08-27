@@ -75,7 +75,8 @@ void test_create_find_remove_and_slot_reuse() {
     require(parent_record->component == parent_component
                 && parent_record->node == components.root(parent_component)
                 && parent_record->focusable
-                && static_cast<bool>(parent_record->handlers.target),
+                && parent_record->handlers != nullptr
+                && static_cast<bool>(parent_record->handlers->target),
             "interaction registration fields differ");
     require(child_record->parent == parent,
             "nested interaction parent was not preserved");

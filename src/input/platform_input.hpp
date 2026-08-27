@@ -43,6 +43,7 @@ enum class PointerAction : std::uint8_t {
 enum class PointerButton : std::uint8_t {
     none,
     primary,
+    secondary,
 };
 
 struct PointerInputEvent {
