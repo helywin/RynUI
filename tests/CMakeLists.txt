@@ -509,6 +509,13 @@ add_test(
 )
 
 add_test(
+    NAME rynui.quad_shader_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DSHADER_SOURCE=${PROJECT_SOURCE_DIR}/shaders/quad.hlsl"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_quad_shader_contract.cmake"
+)
+
+add_test(
     NAME rynui.dependency_lock
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"

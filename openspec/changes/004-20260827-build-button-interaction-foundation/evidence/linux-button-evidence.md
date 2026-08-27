@@ -1,7 +1,7 @@
 schema_version=1
 change=004-20260827-build-button-interaction-foundation
 platform=linux
-status=passed
+status=pending
 preset_debug=linux-gcc-debug
 preset_release=linux-gcc-release
 build_system=Ninja Multi-Config
@@ -36,5 +36,5 @@ quad_draws=4865
 glyph_draws=5560
 frame_submissions=695
 idle_waits=25572
-visual_review=passed; Default/Primary, Small/Middle/Large, CJK/Latin, focus-visible, disabled/loading and click counter
+visual_review=pending; rounded corners rejected because normalized UV SDF produced chamfered non-square buttons
 interaction_review=passed; mouse hover/press/drag-out and keyboard Tab/Shift+Tab/Enter/Space

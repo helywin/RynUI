@@ -35,12 +35,22 @@ VertexOutput VSMain(
 
 float4 PSMain(VertexOutput input) : SV_Target0
 {
-    float radius = saturate(input.cornerRadius);
-    float2 roundedBox = abs(input.uv - 0.5) - (0.5 - radius);
+    float2 uvDerivative = max(
+        fwidth(input.uv),
+        float2(0.0001, 0.0001));
+    float2 pixelExtent = 1.0 / uvDerivative;
+    float radiusPixels = saturate(input.cornerRadius)
+        * min(pixelExtent.x, pixelExtent.y);
+    float2 centeredPixels = (input.uv - 0.5) * pixelExtent;
+    float2 roundedBox = abs(centeredPixels)
+        - (0.5 * pixelExtent - float2(radiusPixels, radiusPixels));
     float distance = length(max(roundedBox, 0.0))
         + min(max(roundedBox.x, roundedBox.y), 0.0)
-        - radius;
+        - radiusPixels;
     float antialiasWidth = max(fwidth(distance), 0.0001);
-    float coverage = 1.0 - smoothstep(0.0, antialiasWidth, distance);
+    float coverage = 1.0 - smoothstep(
+        -antialiasWidth,
+        antialiasWidth,
+        distance);
     return float4(input.color.rgb, input.color.a * input.opacity * coverage);
 }
