@@ -332,12 +332,29 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
     if (layouts_.size() <= id.index) {
         layouts_.resize(static_cast<std::size_t>(id.index) + 1);
     }
-    layouts_[id.index] = LayoutSlot{
+    auto& slot = layouts_[id.index];
+    const bool preserve_flex_scratch = slot.generation == id.generation
+        && std::holds_alternative<FlexLayout>(slot.model)
+        && std::holds_alternative<FlexLayout>(layout);
+    auto scratch = preserve_flex_scratch ? std::move(slot.flex_scratch) : FlexScratch{};
+    slot = LayoutSlot{
         id.generation,
         std::move(layout),
         std::nullopt,
-        {},
+        std::move(scratch),
     };
+}
+
+bool LayoutEngine::remove_layout(runtime::NodeId id) noexcept {
+    if (!id.valid() || id.index >= layouts_.size()) {
+        return false;
+    }
+    auto& slot = layouts_[id.index];
+    if (slot.generation != id.generation) {
+        return false;
+    }
+    slot = {};
+    return true;
 }
 
 void LayoutEngine::set_intrinsic_measure(

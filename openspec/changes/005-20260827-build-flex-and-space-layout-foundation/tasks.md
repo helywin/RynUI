@@ -16,12 +16,12 @@
 
 ## 3. 共享 gap value、Theme token 与公开 Flex
 
-- [ ] 3.1 增加 `SpaceSize`、`LayoutGap`、`FlexJustify`、`FlexAlign` 等公开 typed value，并锁定 Default Theme 的 Small/Middle/Large gap 为 8/16/24 logical pixels；通过 source-reference、equality、custom 双轴值、invalid construction 和 token contract tests 验证
-- [ ] 3.2 实现拥有 vertical/wrap/justify/align/gap/`LayoutStyle` reactive `Prop<T>` 的 `FlexProps`、专用 typed content 与 `ryn::Flex` 声明入口；通过 public API/compile-fail tests 拒绝字符串、内部 enum、foreign slot 与通用视觉字段
-- [ ] 3.3 实现 Flex mount adapter：创建无视觉 root、连接 LayoutStyle/Props、执行一次 content、保留 direct child 与逆序 cleanup；通过异构/nested/empty content、异常 slot、无 active Host、错误线程、destroy/reuse 和销毁后更新 tests 验证生命周期
-- [ ] 3.4 将 Props 更新映射到最小 layout phase，证明 justify/align 可复用 measurement，gap/direction/wrap 只重测目标子树，普通更新不重跑 content、不改变 scene/interaction identity 且 idle 后停止 submit
-- [ ] 3.5 从 `rynui.hpp` 导出 Flex API，通过只依赖 public target 的 consumer 编译/链接和 header isolation/leak checks 证明不出现 Node、LayoutEngine、SDL3、GPU 或 Theme 内部类型
-- [ ] 3.6 运行 Theme、Flex public/component、Layout、Text/Button composition、Dirty 与 public dependency 自动测试和 `git diff --check`；以英文 `feat: add public flex component` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 3.1 增加 `SpaceSize`、`LayoutGap`、`FlexJustify`、`FlexAlign` 等公开 typed value，并锁定 Default Theme 的 Small/Middle/Large gap 为 8/16/24 logical pixels；通过 source-reference、equality、custom 双轴值、invalid construction 和 token contract tests 验证
+- [x] 3.2 实现拥有 vertical/wrap/justify/align/gap/`LayoutStyle` reactive `Prop<T>` 的 `FlexProps`、专用 typed content 与 `ryn::Flex` 声明入口；通过 public API/compile-fail tests 拒绝字符串、内部 enum、foreign slot 与通用视觉字段
+- [x] 3.3 实现 Flex mount adapter：创建无视觉 root、连接 LayoutStyle/Props、执行一次 content、保留 direct child 与逆序 cleanup；通过异构/nested/empty content、异常 slot、无 active Host、错误线程、destroy/reuse 和销毁后更新 tests 验证生命周期
+- [x] 3.4 将 Props 更新映射到最小 layout phase，证明 justify/align 可复用 measurement，gap/direction/wrap 只重测目标子树，普通更新不重跑 content、不改变 scene/interaction identity 且 idle 后停止 submit
+- [x] 3.5 从 `rynui.hpp` 导出 Flex API，通过只依赖 public target 的 consumer 编译/链接和 header isolation/leak checks 证明不出现 Node、LayoutEngine、SDL3、GPU 或 Theme 内部类型
+- [x] 3.6 运行 Theme、Flex public/component、Layout、Text/Button composition、Dirty 与 public dependency 自动测试和 `git diff --check`；以英文 `feat: add public flex component` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 4. 公开 Space 容器
 

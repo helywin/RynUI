@@ -69,18 +69,33 @@ struct DefaultButtonToken final {
     float loading_opacity{0.65F};
 };
 
+struct DefaultLayoutSpacingToken final {
+    float small{8.0F};
+    float middle{16.0F};
+    float large{24.0F};
+
+    friend constexpr bool operator==(
+        DefaultLayoutSpacingToken,
+        DefaultLayoutSpacingToken) = default;
+};
+
 struct DefaultThemeSourceReference final {
     std::string_view version;
     std::string_view seed_token;
     std::string_view button_size_style;
     std::string_view button_component_token;
     std::string_view button_variant_style;
+    std::string_view flex_interface;
+    std::string_view flex_style;
+    std::string_view space_component;
+    std::string_view space_style;
 };
 
 struct DefaultThemeSnapshot final {
     DefaultTextTypographyToken body;
     DefaultTextAliasToken text;
     DefaultButtonToken button;
+    DefaultLayoutSpacingToken layout_spacing;
     DefaultThemeSourceReference source;
 };
 

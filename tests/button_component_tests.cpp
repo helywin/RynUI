@@ -647,6 +647,60 @@ void test_click_callback_can_destroy_parent_scope() {
             "parent Scope destroy retained Button subtree resources");
 }
 
+void test_flex_composes_text_button_and_nested_flex() {
+    Fixture fixture;
+    ryn::Signal<ryn::FlexJustify> justify{ryn::FlexJustify::Start};
+    int content_runs = 0;
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Flex(
+            ryn::FlexProps{}
+                .justify(justify)
+                .align(ryn::FlexAlign::Center)
+                .gap(ryn::SpaceSize::Small),
+            [&] {
+                ++content_runs;
+                ryn::Text(u8"Label");
+                ryn::Button(
+                    ryn::ButtonProps{}.type(ryn::ButtonType::Primary),
+                    [] { ryn::Text(u8"Action"); });
+                ryn::Flex(
+                    ryn::FlexProps{}.vertical(true).gap(ryn::dp(2.0F)),
+                    [] { ryn::Text(u8"Nested"); });
+            });
+    }});
+    require(fixture.synchronize(), "Flex Text/Button composition did not synchronize");
+
+    const auto flex = fixture.host->components().root_components().front();
+    const auto flex_node = fixture.host->components().root(flex);
+    const auto children = fixture.host->components().children(flex);
+    const auto paint = fixture.host->components().paint_traversal();
+    const auto scene_rebuilds = fixture.host->scene_composer().diagnostics().rebuilds;
+    require(content_runs == 1
+                && fixture.host->components().component_count() == 6
+                && children.size() == 3
+                && fixture.nodes.require(flex_node).children.size() == 3
+                && fixture.host->mounted_buttons().size() == 1
+                && fixture.host->text().mounted_texts().size() == 3
+                && paint.size() == 4
+                && paint[0].placement
+                    == ryn::runtime::SceneFragmentPlacement::before_children,
+            "Flex did not compose Text, Button, and nested Flex as direct retained children");
+    require(fixture.host->hit_test().hit_test(fixture.center(0))
+                    == fixture.host->mounted_buttons()[0].interaction,
+            "Button inside Flex lost its interaction geometry");
+
+    clear_observation_state(fixture);
+    justify.set(ryn::FlexJustify::End);
+    require(fixture.dirty.layout_roots().empty()
+                && fixture.dirty.placement_roots() == std::vector{flex_node},
+            "Flex composition justify update did not stay placement-only");
+    require(fixture.synchronize(), "reactive Flex composition did not synchronize");
+    require(content_runs == 1
+                && fixture.host->components().children(flex) == children
+                && fixture.host->scene_composer().diagnostics().rebuilds == scene_rebuilds,
+            "Flex update reran content or rebuilt Text/Button scene topology");
+}
+
 } // namespace
 
 int main() {
@@ -655,6 +709,7 @@ int main() {
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_pointer_keyboard_click_path_and_callback_mutation();
         test_click_callback_can_destroy_parent_scope();
+        test_flex_composes_text_button_and_nested_flex();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

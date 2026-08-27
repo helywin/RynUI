@@ -104,6 +104,8 @@ add_library(rynui_components STATIC
     component/button_scene_service.cpp
     component/component_scene.cpp
     component/default_theme.cpp
+    component/flex_component.cpp
+    component/layout_component_context.cpp
     component/text_component.cpp
 )
 rynui_configure_cpp_target(rynui_components)

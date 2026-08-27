@@ -100,6 +100,10 @@ int main() {
                     && button.loading_indicator_size == 14.0F
                     && button.loading_opacity == 0.65F,
                 "Button disabled, focus-visible, or loading tokens drifted");
+        require(theme.layout_spacing.small == 8.0F
+                    && theme.layout_spacing.middle == 16.0F
+                    && theme.layout_spacing.large == 24.0F,
+                "Default Theme layout spacing drifted from Ant Design 6.5.0");
         require(theme.source.version == "6.5.0"
                     && theme.source.seed_token.ends_with("/6.5.0/components/theme/themes/seed.ts")
                     && theme.source.button_size_style.ends_with(
@@ -107,8 +111,16 @@ int main() {
                     && theme.source.button_component_token.ends_with(
                         "/6.5.0/components/button/style/token.ts")
                     && theme.source.button_variant_style.ends_with(
-                        "/6.5.0/components/button/style/variant.ts"),
-                "Default Theme Button source references are not version-pinned");
+                        "/6.5.0/components/button/style/variant.ts")
+                    && theme.source.flex_interface.ends_with(
+                        "/6.5.0/components/flex/interface.ts")
+                    && theme.source.flex_style.ends_with(
+                        "/6.5.0/components/flex/style/index.ts")
+                    && theme.source.space_component.ends_with(
+                        "/6.5.0/components/space/index.tsx")
+                    && theme.source.space_style.ends_with(
+                        "/6.5.0/components/space/style/index.tsx"),
+                "Default Theme component source references are not version-pinned");
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

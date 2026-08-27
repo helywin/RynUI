@@ -127,6 +127,7 @@ public:
     explicit LayoutEngine(runtime::NodeStore& nodes) noexcept;
 
     void set_layout(runtime::NodeId id, LayoutModel layout);
+    bool remove_layout(runtime::NodeId id) noexcept;
     void set_intrinsic_measure(
         runtime::NodeId id,
         std::uint64_t revision,

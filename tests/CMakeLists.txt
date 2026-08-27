@@ -31,6 +31,16 @@ rynui_configure_cpp_target(rynui_button_public_api_tests)
 target_link_libraries(rynui_button_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.button_public_api COMMAND rynui_button_public_api_tests)
 
+add_executable(rynui_flex_public_api_tests flex_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_flex_public_api_tests)
+target_link_libraries(rynui_flex_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.flex_public_api COMMAND rynui_flex_public_api_tests)
+
+add_executable(rynui_flex_header_isolation_tests flex_header_isolation_tests.cpp)
+rynui_configure_cpp_target(rynui_flex_header_isolation_tests)
+target_link_libraries(rynui_flex_header_isolation_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.flex_header_isolation COMMAND rynui_flex_header_isolation_tests)
+
 add_executable(
     rynui_button_header_isolation_tests
     button_header_isolation_tests.cpp
@@ -47,6 +57,13 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_dependency_contract.cmake"
+)
+
+add_test(
+    NAME rynui.flex_dependency_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_flex_dependency_contract.cmake"
 )
 
 add_executable(rynui_string_tests string_tests.cpp)
@@ -197,6 +214,11 @@ target_compile_definitions(
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
 )
 add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
+
+add_executable(rynui_flex_component_tests flex_component_tests.cpp)
+rynui_configure_cpp_target(rynui_flex_component_tests)
+target_link_libraries(rynui_flex_component_tests PRIVATE rynui_components)
+add_test(NAME rynui.flex_component COMMAND rynui_flex_component_tests)
 
 add_executable(rynui_button_demo_frame_tests button_demo_frame_tests.cpp)
 rynui_configure_cpp_target(rynui_button_demo_frame_tests)
@@ -573,6 +595,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_button_public_contract.cmake"
+)
+
+add_test(
+    NAME rynui.flex_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/flex-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_flex_public_contract.cmake"
 )
 
 if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")

@@ -48,12 +48,17 @@ constexpr DefaultThemeSnapshot snapshot{
         .disabled = {disabled_background, default_border, disabled_text},
         .focus_visible = focus_visible,
     },
+    .layout_spacing = {},
     .source = {
         .version = "6.5.0",
         .seed_token = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/theme/themes/seed.ts",
         .button_size_style = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/button/style/index.ts",
         .button_component_token = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/button/style/token.ts",
         .button_variant_style = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/button/style/variant.ts",
+        .flex_interface = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/flex/interface.ts",
+        .flex_style = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/flex/style/index.ts",
+        .space_component = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/space/index.tsx",
+        .space_style = "https://raw.githubusercontent.com/ant-design/ant-design/6.5.0/components/space/style/index.tsx",
     },
 };
 

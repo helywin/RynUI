@@ -1,5 +1,6 @@
 #include "component/text_component.hpp"
 
+#include "component/layout_component_context.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -103,6 +104,8 @@ TextComponentHost::~TextComponentHost() {
 
 void TextComponentHost::mount(const Content& content) {
     ActiveTextHostGuard guard(*this);
+    LayoutComponentServices services{*nodes_, *layout_, *dirty_, *theme_};
+    ActiveLayoutComponentServices layout_services_guard(services);
     const auto mounted_before = mounted_texts_.size();
     try {
         components_.mount(content);
