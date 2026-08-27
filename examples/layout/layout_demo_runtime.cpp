@@ -312,6 +312,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             << " viewport=" << viewport.width << 'x' << viewport.height
             << " line_count=" << layout_diagnostics.line_count
             << " content_runs=" << telemetry.content_runs
+            << " component_count=" << application.components().component_count()
             << " prop_updates=" << telemetry.prop_updates
             << " activations=" << telemetry.activations
             << " layout_passes=" << layout_diagnostics.layout_passes
