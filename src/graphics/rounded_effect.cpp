@@ -95,9 +95,10 @@ void validate_rect(runtime::Rect rect, const char* message) {
 }
 
 [[nodiscard]] bool drawable(const RoundedEffectInstance& instance) noexcept {
-    return instance.material.visible
-        && instance.material.opacity > 0.0F
-        && instance.material.color.alpha() > 0.0F;
+    // Opacity and color alpha are material state and may animate every frame.
+    // Keep those instances packed so fades do not rebuild scene topology;
+    // `visible` is the explicit structural culling switch.
+    return instance.material.visible;
 }
 
 void append_command(
@@ -479,6 +480,19 @@ bool RoundedEffectStore::update_geometry(
     }
     slot.instance->geometry = std::move(geometry);
     ++diagnostics_.geometry_updates;
+    if (!compact_dirty_ && compact_clip_.has_value()) {
+        const bool was_packed = slot.packed_index.has_value();
+        const bool remains_drawable = drawable(*slot.instance)
+            && !empty(intersect_effect_bounds(
+                rounded_effect_bounds(*slot.instance), *compact_clip_));
+        if (was_packed == remains_drawable) {
+            if (was_packed) {
+                packed_instances_[*slot.packed_index].geometry = slot.instance->geometry;
+                mark_dirty(geometry_dirty_ranges_, {*slot.packed_index, 1});
+            }
+            return true;
+        }
+    }
     compact_dirty_ = true;
     return true;
 }

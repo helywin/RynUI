@@ -131,15 +131,18 @@ private:
 class LayoutComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
     LayoutComponentSubmitter(
+        ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
         ryn::detail::TextSceneService& text_scene,
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
         ryn::runtime::Size& viewport) noexcept
-        : application_(&application),
+        : platform_(&platform),
+          application_(&application),
           text_scene_(&text_scene),
           glyph_resources_(&glyph_resources),
           renderer_(&renderer),
+          effect_resources_(renderer),
           viewport_(&viewport) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame() override {
@@ -163,10 +166,19 @@ public:
             }
             glyph_resources_->synchronize(
                 text_scene_->atlas(), text_scene_->glyph_scene().instances());
+            const auto metrics = platform_->window_metrics();
+            effect_resources_.synchronize(
+                application_->rounded_effects(),
+                {
+                    static_cast<std::uint32_t>(metrics.pixel_width),
+                    static_cast<std::uint32_t>(metrics.pixel_height),
+                    metrics.display_scale,
+                });
             renderer_->attach_scene(
                 quad_buffer_->handle(),
                 *glyph_resources_,
-                application_->scene_composer().ordered_scene());
+                application_->scene_composer().ordered_scene(),
+                &effect_resources_);
             const auto result = renderer_->submit_frame();
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -181,10 +193,12 @@ public:
     [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
 
 private:
+    ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::TextSceneService* text_scene_;
     ryn::detail::GlyphGpuResources* glyph_resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
+    ryn::detail::RoundedEffectGpuResources effect_resources_;
     ryn::runtime::Size* viewport_;
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
     std::string last_error_;
@@ -270,6 +284,10 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             std::cerr << "font_error=font metrics could not be queried\n";
             return 3;
         }
+        auto font_resolver = ryn::detail::make_default_ui_font_resolver(
+            *fonts,
+            font_chain,
+            initial_window_metrics.display_scale);
 
         ryn::runtime::NodeStore nodes;
         ryn::layout::LayoutEngine layout(nodes);
@@ -282,14 +300,14 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             layout,
             dirty,
             text_scene,
-            font_chain.identities(),
+            std::move(font_resolver),
             frame_requests);
         application.mount(definition.content);
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
         LayoutComponentSubmitter submitter(
-            application, text_scene, glyph_resources, renderer, viewport);
+            platform, application, text_scene, glyph_resources, renderer, viewport);
         LayoutPlatformEvents events(platform, application, frame_requests, viewport);
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, 10);

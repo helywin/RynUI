@@ -41,7 +41,7 @@ template <typename State> ryn::runtime::ComponentId Leaf(ryn::runtime::Size size
 struct Fixture final {
     Fixture()
         : layout(nodes), dirty(nodes, &frames), components(nodes),
-          services{nodes, layout, dirty, ryn::detail::default_theme_snapshot()} {}
+          services{nodes, layout, dirty} {}
 
     template <typename Function> void mount(Function&& function) {
         ryn::detail::ActiveLayoutComponentServices guard(services);
@@ -283,12 +283,61 @@ void test_reactive_phases_identity_and_cleanup() {
     require(stale_layout_removed, "destroyed Flex layout leaked into a reused NodeId");
 }
 
+void test_theme_preset_gap_updates_only_subscribed_flex() {
+    Fixture fixture;
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    int content_runs = 0;
+    fixture.mount([&] {
+        ryn::Theme(
+            ryn::ThemeProps{}.config(config),
+            ryn::ThemeContent{[&] {
+                ryn::Flex(ryn::FlexProps{}.gap(ryn::SpaceSize::Small), [&] {
+                    ++content_runs;
+                    static_cast<void>(Leaf<FirstLeafState>({10.0F, 10.0F}));
+                });
+                ryn::Flex(ryn::FlexProps{}.gap(ryn::dp(7.0F)), [&] {
+                    ++content_runs;
+                    static_cast<void>(Leaf<SecondLeafState>({10.0F, 10.0F}));
+                });
+            }});
+    });
+    const auto roots = fixture.components.root_components();
+    require(roots.size() == 2, "themed Flex fixture lost transparent Theme roots");
+    const auto preset = roots[0];
+    const auto custom = roots[1];
+    const auto preset_node = fixture.components.root(preset);
+    const auto custom_node = fixture.components.root(custom);
+    fixture.clear();
+
+    auto resized = ryn::ThemeConfig{};
+    resized.seed.size_unit = ryn::dp(5.0F);
+    require(config.set(resized)
+                && fixture.dirty.layout_roots()
+                    == std::vector<ryn::runtime::NodeId>{preset_node}
+                && fixture.components.state<ryn::detail::FlexComponentState>(preset)
+                    ->model.main_gap == 10.0F
+                && fixture.components.state<ryn::detail::FlexComponentState>(custom)
+                    ->model.main_gap == 7.0F
+                && fixture.nodes.require(custom_node).measure_count == 0,
+            "Flex preset Theme gap changed custom gap or invalidated the wrong subtree");
+    require(content_runs == 2 && fixture.components.component_count() == 4,
+            "Flex Theme gap update reran content or rebuilt component identity");
+
+    fixture.clear();
+    resized.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+    require(config.set(resized)
+                && fixture.dirty.layout_roots().empty()
+                && !fixture.frames.pending(),
+            "unrelated Theme color notified Flex gap subscribers");
+}
+
 } // namespace
 
 int main() {
     try {
         test_mount_topology_and_lifecycle();
         test_reactive_phases_identity_and_cleanup();
+        test_theme_preset_gap_updates_only_subscribed_flex();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

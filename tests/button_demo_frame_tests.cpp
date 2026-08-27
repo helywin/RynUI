@@ -1,5 +1,6 @@
 #include "component/button_component.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
+#include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
 
@@ -33,7 +34,8 @@ ryn::String click_label(std::uint64_t clicks) {
 }
 
 class RecordingGpuApi final : public ryn::graphics::QuadUploadApi,
-                              public ryn::detail::GlyphGpuApi {
+                              public ryn::detail::GlyphGpuApi,
+                              public ryn::detail::RoundedEffectGpuApi {
 public:
     void* create_vertex_buffer(std::size_t) override {
         return handle(next_++);
@@ -84,6 +86,22 @@ public:
     void release_glyph_sampler(void*) noexcept override {}
     const char* glyph_gpu_error() const noexcept override { return ""; }
 
+    void* create_effect_buffer(std::size_t) override {
+        return handle(next_++);
+    }
+
+    bool upload_effect_buffer(
+        void*,
+        std::size_t,
+        std::span<const std::byte> bytes) override {
+        ++effect_buffer_uploads;
+        effect_uploaded_bytes += bytes.size();
+        return true;
+    }
+
+    void release_effect_buffer(void*) noexcept override {}
+    const char* effect_gpu_error() const noexcept override { return ""; }
+
     static void* handle(std::uintptr_t value) {
         return reinterpret_cast<void*>(value);
     }
@@ -94,6 +112,8 @@ public:
     std::uint64_t glyph_texture_uploads{};
     std::uint64_t glyph_buffer_uploads{};
     std::uint64_t glyph_uploaded_bytes{};
+    std::uint64_t effect_buffer_uploads{};
+    std::uint64_t effect_uploaded_bytes{};
 };
 
 class RecordingDrawApi final : public ryn::detail::SceneDrawApi {
@@ -249,6 +269,7 @@ public:
           text_scene_(&text_scene),
           gpu_(&gpu),
           glyph_resources_(gpu),
+          effect_resources_(gpu),
           draw_(&draw) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame() override {
@@ -268,6 +289,9 @@ public:
         glyph_resources_.synchronize(
             text_scene_->atlas(),
             text_scene_->glyph_scene().instances());
+        effect_resources_.synchronize(
+            host_->rounded_effects(),
+            {640, 360, 1.0F});
         ryn::detail::draw_ordered_scene(
             host_->scene_composer().ordered_scene(), *draw_);
         return ryn::runtime::FrameSubmissionResult::submitted;
@@ -284,6 +308,7 @@ private:
     ryn::detail::TextSceneService* text_scene_;
     RecordingGpuApi* gpu_;
     ryn::detail::GlyphGpuResources glyph_resources_;
+    ryn::detail::RoundedEffectGpuResources effect_resources_;
     RecordingDrawApi* draw_;
     ryn::runtime::Size viewport_{640.0F, 360.0F};
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
@@ -367,6 +392,7 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 && gpu.quad_uploads == 1
                 && gpu.glyph_texture_uploads > 0
                 && gpu.glyph_buffer_uploads == 1
+                && gpu.effect_buffer_uploads == 1
                 && fixture.host->scene_composer().diagnostics().rebuilds == 1,
             "initial Button frame missed retained upload/draw work");
 
@@ -534,8 +560,10 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 && fixture.host->scene_composer().diagnostics().rebuilds == 1
                 && quad_counters.range_uploads > 0
                 && gpu.glyph_buffer_uploads > 1
+                && gpu.effect_buffer_uploads > 1
                 && draw.quad_draws > 1
-                && draw.glyph_draws > 1,
+                && draw.glyph_draws > 1
+                && draw.effect_draws > 1,
             "Button demo diagnostics missed input/scene/upload/draw/idle evidence");
 }
 

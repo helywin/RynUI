@@ -344,6 +344,8 @@ void test_responsive_layout_demo_frame_contract() {
     submitter.set_viewport({720.0F, 480.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "wide layout restoration did not submit");
+    const auto rebuilds_before_prop_updates =
+        fixture.host->scene_composer().diagnostics().rebuilds;
     const auto pointer_bounds = fixture.nodes.require(first.node).bounds;
     const ryn::runtime::Point pointer_inside{
         pointer_bounds.x + pointer_bounds.width * 0.5F,
@@ -407,7 +409,8 @@ void test_responsive_layout_demo_frame_contract() {
                        components.root_components().end()) == roots_before
                 && components.children(root) == root_children_before
                 && components.children(responsive) == responsive_children_before
-                && fixture.host->scene_composer().diagnostics().rebuilds == 1,
+                && fixture.host->scene_composer().diagnostics().rebuilds
+                    == rebuilds_before_prop_updates,
             "ordinary layout Props reran content or rebuilt retained topology");
 
     const auto submissions = loop.counters().submissions;

@@ -51,12 +51,12 @@
 
 ## 7. 现有组件迁移与 Button 焦点修正
 
-- [ ] 7.1 将 Text 的 font family/size/weight/line-height/color、Button 的尺寸/颜色/边框/圆角/阴影/focus、Flex/Space 的 gap 从 `DefaultThemeSnapshot` 常量迁移到 resolved Theme accessor；通过默认 snapshot compatibility test 证明未覆盖时现有 logical layout 不变
-- [ ] 7.2 为 Text、Button、Flex 与 Space 建立精确 Token subscription，分别验证颜色只更新 material、字体更新重塑/测量、Button effect 更新 geometry/paint、gap 更新目标 layout，且 content slot 和 scene identity 不重建
-- [ ] 7.3 将 Button focus-visible 改为 1 logical px 透明 offset 后的 3 logical px hollow ring，保留 Ant Design `lineWidthFocus` 数值；通过 CPU/GPU geometry、中心/边界 sample、150% DPI 与 focus modality tests 证明不再绘制连续 4px 蓝带
-- [ ] 7.4 接入 Button default/primary/danger 及 hover/active/disabled/loading shadow token，确保 disabled/loading/state precedence 与 shadow/focus 可同时表达；通过完整状态矩阵、nested Theme override 和 reactive transition tests 验证视觉层不互相覆盖
-- [ ] 7.5 删除重复组件视觉常量并保留最小 migration adapter，使用 forbidden-pattern/source contract 防止新稳定组件绕过 Theme/Component Token；通过 public example、header leak 和旧 adapter 零新增引用 tests 验证迁移边界
-- [ ] 7.6 运行 Text/Button/Flex/Space、Theme invalidation、focus/interaction、layout、scene、renderer 与 `git diff --check`；以英文 `feat: migrate components to theme tokens` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 7.1 将 Text 的 font family/size/weight/line-height/color、Button 的尺寸/颜色/边框/圆角/阴影/focus、Flex/Space 的 gap 从 `DefaultThemeSnapshot` 常量迁移到 resolved Theme accessor；通过默认 snapshot compatibility test 证明未覆盖时现有 logical layout 不变
+- [x] 7.2 为 Text、Button、Flex 与 Space 建立精确 Token subscription，分别验证颜色只更新 material、字体更新重塑/测量、Button effect 更新 geometry/paint、gap 更新目标 layout，且 content slot 和 scene identity 不重建
+- [x] 7.3 将 Button focus-visible 改为 1 logical px 透明 offset 后的 3 logical px hollow ring，保留 Ant Design `lineWidthFocus` 数值；通过 CPU/GPU geometry、中心/边界 sample、150% DPI 与 focus modality tests 证明不再绘制连续 4px 蓝带
+- [x] 7.4 接入 Button default/primary/danger 及 hover/active/disabled/loading shadow token，确保 disabled/loading/state precedence 与 shadow/focus 可同时表达；通过完整状态矩阵、nested Theme override 和 reactive transition tests 验证视觉层不互相覆盖
+- [x] 7.5 删除重复组件视觉常量并保留最小 migration adapter，使用 forbidden-pattern/source contract 防止新稳定组件绕过 Theme/Component Token；通过 public example、header leak 和旧 adapter 零新增引用 tests 验证迁移边界
+- [x] 7.6 运行 Text/Button/Flex/Space、Theme invalidation、focus/interaction、layout、scene、renderer 与 `git diff --check`；以英文 `feat: migrate components to theme tokens` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 8. Token Gallery 与平台通用验收
 

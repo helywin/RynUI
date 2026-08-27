@@ -64,7 +64,7 @@ struct LayoutFixture final {
         : layout(nodes),
           dirty(nodes, &frames),
           components(nodes),
-          services{nodes, layout, dirty, ryn::detail::default_theme_snapshot()} {}
+          services{nodes, layout, dirty} {}
 
     template <typename Function>
     void mount(Function&& function) {
@@ -565,6 +565,52 @@ void test_text_button_hit_test_and_focus_composition() {
             "wide-narrow-wide Space composition changed retained identities");
 }
 
+void test_theme_preset_size_updates_only_subscribed_space() {
+    LayoutFixture fixture;
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    int content_runs = 0;
+    fixture.mount([&] {
+        ryn::Theme(
+            ryn::ThemeProps{}.config(config),
+            ryn::ThemeContent{[&] {
+                ryn::Space(ryn::SpaceProps{}.size(ryn::SpaceSize::Small), [&] {
+                    ++content_runs;
+                    static_cast<void>(Leaf<FirstLeafState>({10.0F, 10.0F}));
+                });
+                ryn::Space(ryn::SpaceProps{}.size(ryn::dp(7.0F)), [&] {
+                    ++content_runs;
+                    static_cast<void>(Leaf<SecondLeafState>({10.0F, 10.0F}));
+                });
+            }});
+    });
+    const auto roots = fixture.components.root_components();
+    require(roots.size() == 2, "themed Space fixture lost transparent Theme roots");
+    const auto preset = roots[0];
+    const auto custom = roots[1];
+    const auto preset_node = fixture.components.root(preset);
+    fixture.clear();
+
+    auto resized = ryn::ThemeConfig{};
+    resized.seed.size_unit = ryn::dp(5.0F);
+    require(config.set(resized)
+                && fixture.dirty.layout_roots()
+                    == std::vector<ryn::runtime::NodeId>{preset_node}
+                && fixture.components.state<ryn::detail::SpaceComponentState>(preset)
+                    ->model.main_gap == 10.0F
+                && fixture.components.state<ryn::detail::SpaceComponentState>(custom)
+                    ->model.main_gap == 7.0F
+                && content_runs == 2
+                && fixture.components.component_count() == 4,
+            "Space Theme preset update changed custom size, content, or identity");
+
+    fixture.clear();
+    resized.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+    require(config.set(resized)
+                && fixture.dirty.layout_roots().empty()
+                && !fixture.frames.pending(),
+            "unrelated Theme color notified Space size subscribers");
+}
+
 } // namespace
 
 int main() {
@@ -573,6 +619,7 @@ int main() {
         test_wrap_alignment_margin_and_identity();
         test_reactive_phases_cleanup_and_steady_state();
         test_text_button_hit_test_and_focus_composition();
+        test_theme_preset_size_updates_only_subscribed_space();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

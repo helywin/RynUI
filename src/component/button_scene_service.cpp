@@ -24,7 +24,8 @@ ButtonSceneId ButtonSceneService::create(
     runtime::NodeId node,
     runtime::SceneFragmentId fragment,
     std::optional<input::InteractionId> interaction,
-    const ButtonVisualData& visuals) {
+    const ButtonVisualData& visuals,
+    const ButtonEffectData& effects) {
     ensure_owner_thread();
     if (!components_->contains(component)
             || components_->root(component) != node
@@ -47,11 +48,19 @@ ButtonSceneId ButtonSceneService::create(
             fragment,
             interaction,
             range,
+            effects,
+            {},
+            {},
+            {},
         });
+        create_effects(*slot.record);
         bind_fragment(*slot.record);
     } catch (...) {
         if (range.count != 0) {
             static_cast<void>(instances_.replace(range, {}));
+        }
+        if (slot.record.has_value()) {
+            remove_effects(*slot.record);
         }
         slot.record.reset();
         try {
@@ -75,6 +84,7 @@ bool ButtonSceneService::destroy(ButtonSceneId id) {
     const auto removed = record->range;
     static_cast<void>(composer_->remove_fragment(record->fragment));
     static_cast<void>(instances_.replace(removed, {}));
+    remove_effects(*record);
 
     for (auto& candidate_slot : slots_) {
         if (!candidate_slot.record.has_value()
@@ -123,6 +133,87 @@ std::size_t ButtonSceneService::update(
     return material_updates + geometry_updates;
 }
 
+std::size_t ButtonSceneService::update_effects(
+    ButtonSceneId id,
+    const ButtonEffectData& effects) {
+    ensure_owner_thread();
+    auto& record = require(id);
+    if (record.effects == effects) {
+        return 0;
+    }
+
+    bool topology_changed = record.shadow_ids.size() != effects.shadows.size();
+    if (!topology_changed) {
+        for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
+            const auto expected = effects.shadows[index].kind == ShadowKind::outer
+                ? graphics::RoundedEffectKind::outer_shadow
+                : graphics::RoundedEffectKind::inset_shadow;
+            if (effect_scene_.store().at(record.shadow_ids[index]).geometry.kind
+                    != expected) {
+                topology_changed = true;
+                break;
+            }
+        }
+    }
+    if (topology_changed) {
+        remove_effects(record);
+        record.effects = effects;
+        create_effects(record);
+        ++diagnostics_.effect_topology_updates;
+        return effects.shadows.size() + 1;
+    }
+
+    std::size_t updates = 0;
+    for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
+        auto candidate = graphics::make_shadow_effect(
+            effects.shape,
+            effects.shadows[index],
+            effects.translation,
+            effects.ancestor_clip);
+        candidate.material.opacity = effects.shadow_opacity;
+        const auto effect = record.shadow_ids[index];
+        if (effect_scene_.store().update_geometry(effect, candidate.geometry)) {
+            ++diagnostics_.effect_geometry_updates;
+            ++updates;
+        }
+        if (effect_scene_.store().update_material(effect, candidate.material)) {
+            ++diagnostics_.effect_material_updates;
+            ++updates;
+        }
+    }
+    auto focus = graphics::make_outline_effect(
+        effects.shape,
+        effects.focus_width,
+        effects.focus_offset,
+        effects.focus_color,
+        effects.focus_opacity,
+        effects.translation,
+        effects.ancestor_clip);
+    if (effect_scene_.store().update_geometry(record.focus_id, focus.geometry)) {
+        ++diagnostics_.effect_geometry_updates;
+        ++updates;
+    }
+    if (effect_scene_.store().update_material(record.focus_id, focus.material)) {
+        ++diagnostics_.effect_material_updates;
+        ++updates;
+    }
+    record.effects = effects;
+    return updates;
+}
+
+bool ButtonSceneService::compact_effects(runtime::Rect window_clip) {
+    ensure_owner_thread();
+    if (!effect_scene_.store().compact(window_clip)) {
+        return false;
+    }
+    for (const auto& slot : slots_) {
+        if (slot.record.has_value()) {
+            bind_fragment(*slot.record);
+        }
+    }
+    return true;
+}
+
 void ButtonSceneService::synchronize_gpu(
     graphics::QuadGpuBuffer& gpu_buffer) {
     ensure_owner_thread();
@@ -135,6 +226,19 @@ graphics::QuadInstanceRange ButtonSceneService::visual_range(
     return require(id).range;
 }
 
+const graphics::RoundedEffectInstance& ButtonSceneService::focus_effect(
+    ButtonSceneId id) const {
+    ensure_owner_thread();
+    const auto& record = require(id);
+    return effect_scene_.store().at(record.focus_id);
+}
+
+std::span<const graphics::RoundedEffectId> ButtonSceneService::shadow_effects(
+    ButtonSceneId id) const {
+    ensure_owner_thread();
+    return require(id).shadow_ids;
+}
+
 graphics::QuadInstanceStore& ButtonSceneService::instances() noexcept {
     return instances_;
 }
@@ -142,6 +246,14 @@ graphics::QuadInstanceStore& ButtonSceneService::instances() noexcept {
 const graphics::QuadInstanceStore&
 ButtonSceneService::instances() const noexcept {
     return instances_;
+}
+
+graphics::RoundedEffectStore& ButtonSceneService::effects() noexcept {
+    return effect_scene_.store();
+}
+
+const graphics::RoundedEffectStore& ButtonSceneService::effects() const noexcept {
+    return effect_scene_.store();
 }
 
 std::size_t ButtonSceneService::size() const noexcept {
@@ -217,16 +329,67 @@ std::uint32_t ButtonSceneService::acquire_slot() {
 }
 
 void ButtonSceneService::bind_fragment(const Record& record) {
-    const graphics::SceneDrawCommand command{
+    const graphics::SceneDrawCommand fill{
         graphics::SceneDrawKind::quad,
         record.range.first,
         record.range.count,
         graphics::invalid_glyph_atlas_page,
     };
+    std::vector<graphics::SceneDrawCommand> commands;
+    commands.reserve(record.shadow_ids.size() + 2);
+    effect_scene_.compose_surface(record.effect_primitive, fill, commands);
     composer_->set_fragment(
         record.fragment,
-        std::span<const graphics::SceneDrawCommand>{&command, 1},
+        commands,
         record.interaction);
+}
+
+void ButtonSceneService::create_effects(Record& record) {
+    record.shadow_ids.clear();
+    record.effect_primitive = {};
+    record.shadow_ids.reserve(record.effects.shadows.size());
+    record.effect_primitive.before_fill.reserve(record.effects.shadows.size() + 1);
+    record.effect_primitive.after_fill.reserve(record.effects.shadows.size());
+    try {
+        for (const auto& layer : record.effects.shadows.layers()) {
+            auto instance = graphics::make_shadow_effect(
+                record.effects.shape,
+                layer,
+                record.effects.translation,
+                record.effects.ancestor_clip);
+            instance.material.opacity = record.effects.shadow_opacity;
+            const auto id = effect_scene_.store().add(std::move(instance));
+            record.shadow_ids.push_back(id);
+            if (layer.kind == ShadowKind::outer) {
+                record.effect_primitive.before_fill.push_back(id);
+            } else {
+                record.effect_primitive.after_fill.push_back(id);
+            }
+        }
+        auto outline = graphics::make_outline_effect(
+            record.effects.shape,
+            record.effects.focus_width,
+            record.effects.focus_offset,
+            record.effects.focus_color,
+            record.effects.focus_opacity,
+            record.effects.translation,
+            record.effects.ancestor_clip);
+        record.focus_id = effect_scene_.store().add(std::move(outline));
+        record.effect_primitive.before_fill.push_back(record.focus_id);
+    } catch (...) {
+        remove_effects(record);
+        throw;
+    }
+}
+
+void ButtonSceneService::remove_effects(Record& record) noexcept {
+    try {
+        static_cast<void>(effect_scene_.remove(record.effect_primitive));
+    } catch (...) {
+    }
+    record.shadow_ids.clear();
+    record.focus_id = {};
+    record.effect_primitive = {};
 }
 
 void ButtonSceneService::ensure_owner_thread() const {

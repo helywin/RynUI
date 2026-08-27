@@ -8,6 +8,7 @@
 #include <exception>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <thread>
@@ -48,18 +49,37 @@ struct Fixture final {
             RYNUI_VALIDATION_CJK_FONT, 0, 14);
         require(latin && cjk, "Text component fonts failed to load");
         chain = {latin.font, cjk.font};
+        chains.emplace(14, chain);
         host = std::make_unique<ryn::detail::TextComponentHost>(
             nodes,
             layout,
             dirty,
             scene,
-            chain);
+            [this](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+                return resolve_fonts(pixel_size);
+            });
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
         auto created = ryn::font::FontRuntime::create();
         require(static_cast<bool>(created), "Font Runtime initialization failed");
         return std::move(created.runtime);
+    }
+
+    std::vector<ryn::font::FontIdentity> resolve_fonts(std::uint32_t pixel_size) {
+        if (const auto found = chains.find(pixel_size); found != chains.end()) {
+            return found->second;
+        }
+        const auto latin = fonts->load_font_file(
+            RYNUI_VALIDATION_LATIN_FONT, 0, pixel_size);
+        const auto cjk = fonts->load_font_file(
+            RYNUI_VALIDATION_CJK_FONT, 0, pixel_size);
+        if (!latin || !cjk) {
+            return {};
+        }
+        auto resolved = std::vector<ryn::font::FontIdentity>{latin.font, cjk.font};
+        chains.emplace(pixel_size, resolved);
+        return resolved;
     }
 
     bool layout_texts(float width = 640.0F, float height = 360.0F) {
@@ -78,6 +98,7 @@ struct Fixture final {
     ryn::text::TextEngine engine;
     ryn::detail::TextSceneService scene;
     std::vector<ryn::font::FontIdentity> chain;
+    std::map<std::uint32_t, std::vector<ryn::font::FontIdentity>> chains;
     std::unique_ptr<ryn::detail::TextComponentHost> host;
 };
 
@@ -188,7 +209,7 @@ void test_mount_owner_thread_and_dispose_lifecycle() {
     require(disabled_range.count != 0
                 && fixture.scene.glyph_scene().instances()
                     .at(disabled_range.first).color
-                    == fixture.host->theme().text.disabled,
+                    == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.25F},
             "disabled Text did not use the Default Theme disabled alias");
 
     static_cast<void>(fixture.frames.consume_request());
@@ -262,7 +283,7 @@ void test_reactive_content_tone_and_margin_are_minimal() {
     require(fixture.layout_texts(), "tone update did not synchronize");
     const auto range = fixture.scene.primitive(target.scene).instances;
     require(fixture.scene.glyph_scene().instances().at(range.first).color
-                    == fixture.host->theme().text.secondary
+                    == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.65F}
                 && fixture.scene.text_state(target.scene).counters().shape_count
                     == target_initial.shape_count
                 && fixture.scene.text_state(target.scene).counters().measure_count
@@ -423,9 +444,9 @@ void test_semantic_foreground_context_is_nested_reactive_and_scoped() {
     require(fixture.host->mounted_texts().size() == 5
                 && mounted_color(fixture, 0) == outer_initial
                 && mounted_color(fixture, 1) == inner_initial
-                && mounted_color(fixture, 2) == fixture.host->theme().text.secondary
+                && mounted_color(fixture, 2) == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.65F}
                 && mounted_color(fixture, 3) == outer_initial
-                && mounted_color(fixture, 4) == fixture.host->theme().text.primary,
+                && mounted_color(fixture, 4) == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.88F},
             "nested semantic foreground resolution or explicit tone precedence failed");
 
     std::array<std::uint64_t, 5> shape_counts{};
@@ -455,9 +476,9 @@ void test_semantic_foreground_context_is_nested_reactive_and_scoped() {
             "reactive semantic foreground did not synchronize");
     require(mounted_color(fixture, 0) == outer_next
                 && mounted_color(fixture, 1) == inner_initial
-                && mounted_color(fixture, 2) == fixture.host->theme().text.secondary
+                && mounted_color(fixture, 2) == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.65F}
                 && mounted_color(fixture, 3) == outer_next
-                && mounted_color(fixture, 4) == fixture.host->theme().text.primary,
+                && mounted_color(fixture, 4) == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.88F},
             "reactive semantic foreground updated an explicit or unrelated Text");
     for (std::size_t index = 0; index < fixture.host->mounted_texts().size(); ++index) {
         const auto scene = fixture.host->mounted_texts()[index].scene;
@@ -511,18 +532,102 @@ void test_semantic_foreground_context_restores_after_exception() {
     Fixture recovered;
     recovered.host->mount(ryn::Content{[] { ryn::Text(u8"recovered"); }});
     require(recovered.layout_texts()
-                && mounted_color(recovered, 0) == recovered.host->theme().text.primary,
+                && mounted_color(recovered, 0) == std::array<float, 4>{0.0F, 0.0F, 0.0F, 0.88F},
             "semantic foreground build stack was not restored after exception");
+}
+
+void test_theme_tokens_update_text_material_and_typography_precisely() {
+    Fixture fixture;
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    int content_runs = 0;
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(
+            ryn::ThemeProps{}.config(config),
+            ryn::ThemeContent{[&] {
+                ++content_runs;
+                ryn::Text(u8"Themed 中文");
+            }});
+        ryn::Text(u8"Stable sibling");
+    }});
+    require(fixture.layout_texts(), "themed Text fixture did not synchronize");
+    const auto target = fixture.host->mounted_texts()[0];
+    const auto sibling = fixture.host->mounted_texts()[1];
+    const auto target_node = fixture.scene.node(target.scene);
+    const auto target_before = fixture.scene.text_state(target.scene).counters();
+    const auto target_width_before =
+        fixture.scene.text_state(target.scene).measurement().width;
+    const auto sibling_before = fixture.scene.text_state(sibling.scene).counters();
+    const auto component_count = fixture.host->components().component_count();
+    fixture.dirty.clear();
+    fixture.scene.glyph_scene().instances().clear_dirty_ranges();
+    static_cast<void>(fixture.frames.consume_request());
+
+    auto color_config = ryn::ThemeConfig{};
+    const auto themed_color = ryn::Color::rgba8(114, 46, 209);
+    color_config.text.tokens.color = themed_color;
+    require(config.set(color_config)
+                && fixture.dirty.material_nodes()
+                    == std::vector<ryn::runtime::NodeId>{target_node}
+                && fixture.dirty.layout_roots().empty(),
+            "Text color Theme token escaped target Material invalidation");
+    require(fixture.layout_texts(), "Text color Theme update did not synchronize");
+    require(mounted_color(fixture, 0)
+                    == ryn::runtime::SemanticForeground{
+                        themed_color.red(),
+                        themed_color.green(),
+                        themed_color.blue(),
+                        themed_color.alpha()}
+                && fixture.scene.text_state(target.scene).counters().shape_count
+                    == target_before.shape_count
+                && fixture.scene.text_state(target.scene).counters().measure_count
+                    == target_before.measure_count
+                && fixture.scene.text_state(sibling.scene).counters().shape_count
+                    == sibling_before.shape_count,
+            "Text color Theme update reshaped, remeasured, or changed its sibling");
+
+    fixture.dirty.clear();
+    static_cast<void>(fixture.frames.consume_request());
+    auto typography_config = color_config;
+    typography_config.text.tokens.font_size = ryn::dp(18.0F);
+    typography_config.text.tokens.line_height = ryn::dp(26.0F);
+    typography_config.text.tokens.font_weight = 500;
+    require(config.set(typography_config)
+                && fixture.dirty.layout_roots()
+                    == std::vector<ryn::runtime::NodeId>{target_node},
+            "Text typography Theme token missed target Measure invalidation");
+    require(fixture.layout_texts(),
+            "Text typography Theme update did not synchronize");
+    require(content_runs == 1
+                && fixture.host->components().component_count() == component_count
+                && fixture.host->mounted_texts()[0].component == target.component
+                && fixture.host->mounted_texts()[1].component == sibling.component
+                && fixture.scene.text_state(target.scene).counters().shape_count
+                    == target_before.shape_count + 1
+                && fixture.scene.text_state(target.scene).counters().measure_count
+                    == target_before.measure_count + 1
+                && fixture.scene.text_state(sibling.scene).counters().shape_count
+                    == sibling_before.shape_count
+                && fixture.scene.text_state(target.scene).measurement().width
+                    > target_width_before
+                && near(fixture.nodes.require(target_node).measured_size.height, 26.0F),
+            "Text typography Theme update rebuilt content, identity, or sibling state");
+
+    fixture.dirty.clear();
+    static_cast<void>(fixture.frames.consume_request());
+    require(!config.set(typography_config)
+                && clean(fixture.dirty)
+                && !fixture.frames.pending(),
+            "equal Text Theme update requested an idle frame");
 }
 
 void test_static_loading_layout_keeps_cjk_text_and_idle_state() {
     Fixture fixture;
-    const auto& token = fixture.host->theme().button;
+    const auto& token = ryn::resolve_theme().button();
     const ryn::layout::HorizontalContentLayout idle{
-        token.middle.control_height,
-        token.middle.padding_inline,
+        token.control_height,
+        token.padding_inline,
         token.border_width,
-        token.content_gap,
+        token.icon_gap,
         false,
         token.loading_indicator_size,
     };
@@ -608,6 +713,7 @@ int main() {
         test_shaped_measurement_wrap_resize_and_translation();
         test_semantic_foreground_context_is_nested_reactive_and_scoped();
         test_semantic_foreground_context_restores_after_exception();
+        test_theme_tokens_update_text_material_and_typography_precisely();
         test_static_loading_layout_keeps_cjk_text_and_idle_state();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

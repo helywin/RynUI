@@ -1,6 +1,6 @@
 #pragma once
 
-#include "component/default_theme.hpp"
+#include "theme/theme_runtime.hpp"
 
 #include <ryn/flex.hpp>
 
@@ -29,17 +29,17 @@ struct ResolvedLayoutGap final {
 
 [[nodiscard]] inline ResolvedLayoutGap resolve_layout_gap(
     const LayoutGap& gap,
-    const DefaultThemeSnapshot& theme) {
+    theme_runtime::ThemeScope& theme) {
     if (!LayoutGapAccess::preset(gap).has_value()) {
         return {LayoutGapAccess::main(gap), LayoutGapAccess::cross(gap)};
     }
     switch (*LayoutGapAccess::preset(gap)) {
     case SpaceSize::Small:
-        return {theme.layout_spacing.small, theme.layout_spacing.small};
+        return {theme.layout_gap_small(), theme.layout_gap_small()};
     case SpaceSize::Middle:
-        return {theme.layout_spacing.middle, theme.layout_spacing.middle};
+        return {theme.layout_gap_middle(), theme.layout_gap_middle()};
     case SpaceSize::Large:
-        return {theme.layout_spacing.large, theme.layout_spacing.large};
+        return {theme.layout_gap_large(), theme.layout_gap_large()};
     }
     throw std::invalid_argument("LayoutGap preset is invalid");
 }

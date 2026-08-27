@@ -45,8 +45,14 @@ public:
         runtime::DirtyQueues& dirty,
         TextSceneService& text_scene,
         std::vector<font::FontIdentity> default_font_chain,
-        runtime::FrameRequestState& frame_requests,
-        const DefaultThemeSnapshot& theme = default_theme_snapshot());
+        runtime::FrameRequestState& frame_requests);
+    ButtonComponentHost(
+        runtime::NodeStore& nodes,
+        layout::LayoutEngine& layout,
+        runtime::DirtyQueues& dirty,
+        TextSceneService& text_scene,
+        ThemeFontResolver font_resolver,
+        runtime::FrameRequestState& frame_requests);
     ButtonComponentHost(const ButtonComponentHost&) = delete;
     ButtonComponentHost& operator=(const ButtonComponentHost&) = delete;
     ~ButtonComponentHost();
@@ -71,6 +77,7 @@ public:
     [[nodiscard]] input::PointerRouter& pointer() noexcept;
     [[nodiscard]] component::ComponentSceneComposer& scene_composer() noexcept;
     [[nodiscard]] component::ButtonSceneService& button_scene() noexcept;
+    [[nodiscard]] graphics::RoundedEffectStore& rounded_effects() noexcept;
     [[nodiscard]] std::span<const MountedButtonComponent>
         mounted_buttons() const noexcept;
     [[nodiscard]] ButtonComponentSnapshot snapshot(
@@ -102,6 +109,9 @@ private:
         runtime::ComponentId component) const noexcept;
     void activate(runtime::ComponentId component);
     void update_visuals(ButtonComponentState& state);
+    void update_typography(ButtonComponentState& state);
+    void update_layout(ButtonComponentState& state);
+    void subscribe_theme(ButtonComponentState& state);
     void synchronize_geometry(
         ButtonComponentState& state,
         runtime::Size viewport);
@@ -109,7 +119,6 @@ private:
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
-    const DefaultThemeSnapshot* theme_;
     TextComponentHost text_;
     input::InteractionRegistry interactions_;
     input::HitTestSnapshot hit_test_;

@@ -77,6 +77,12 @@ public:
     bool destroy(TextSceneId id);
 
     bool set_content(TextSceneId id, String content);
+    bool set_font_chain(
+        TextSceneId id,
+        std::vector<font::FontIdentity> fallback_chain);
+    bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
+    bool set_line_height(TextSceneId id, float line_height);
+    void request_reshape(TextSceneId id);
     bool set_width_constraint(TextSceneId id, float width);
     bool set_color(TextSceneId id, std::array<float, 4> color);
     bool set_opacity(TextSceneId id, float opacity);

@@ -85,13 +85,37 @@ void apply_placement_model(
         runtime::DirtyFlags::Placement | runtime::DirtyFlags::Geometry);
 }
 
+void subscribe_theme_gap(
+    SpaceComponentState& state,
+    const std::shared_ptr<theme_runtime::ThemeScope>& theme,
+    layout::LayoutEngine& layout,
+    runtime::DirtyQueues& dirty) {
+    state.theme_subscription.reset();
+    if (!LayoutGapAccess::preset(state.gap).has_value()) {
+        return;
+    }
+    state.theme_subscription = theme->capture(
+        [&state, theme, &layout, &dirty](theme_runtime::DirtyPhase) {
+            const auto resolved = resolve_layout_gap(state.gap, *theme);
+            auto candidate = state.model;
+            candidate.main_gap = resolved.main;
+            candidate.cross_gap = resolved.cross;
+            apply_measure_model(state, candidate, layout, dirty);
+        },
+        [&state, theme] {
+            static_cast<void>(resolve_layout_gap(state.gap, *theme));
+        });
+}
+
 } // namespace
 
 void mount_space_component(const SpaceProps& props, const SpaceContent& content) {
     auto& services = require_layout_component_services();
     auto& build = runtime::require_component_build_context();
 
-    const auto gap = resolve_layout_gap(read_prop(SpacePropsAccess::size(props)), services.theme);
+    const auto theme = build.theme_scope();
+    const auto initial_gap = read_prop(SpacePropsAccess::size(props));
+    const auto gap = resolve_layout_gap(initial_gap, *theme);
     layout::FlexLayout initial{
         .direction = space_direction(read_prop(SpacePropsAccess::vertical(props))),
         .main_gap = gap.main,
@@ -110,6 +134,7 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
     state.component = component;
     state.node = build.root(component);
     state.model = initial;
+    state.gap = initial_gap;
     services.layout.set_layout(state.node, initial);
     build.on_resource_cleanup(component, [layout = &services.layout, node = state.node] {
         static_cast<void>(layout->remove_layout(node));
@@ -124,7 +149,7 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
     auto& scope = build.scope(component);
     auto* layout = &services.layout;
     auto* dirty = &services.dirty;
-    const auto* theme = &services.theme;
+    subscribe_theme_gap(state, theme, *layout, *dirty);
     static_cast<void>(connect_prop(
         scope,
         SpacePropsAccess::vertical(props),
@@ -153,11 +178,13 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
         scope,
         SpacePropsAccess::size(props),
         [&state, layout, dirty, theme](const LayoutGap& value) {
+            state.gap = value;
             const auto resolved = resolve_layout_gap(value, *theme);
             auto candidate = state.model;
             candidate.main_gap = resolved.main;
             candidate.cross_gap = resolved.cross;
             apply_measure_model(state, candidate, *layout, *dirty);
+            subscribe_theme_gap(state, theme, *layout, *dirty);
         }));
 
     build.mount_slot(component, content);

@@ -260,7 +260,10 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         .primary_background = map.color_primary,
         .primary_hover_background = map.color_primary_hover,
         .primary_active_background = map.color_primary_active,
+        .danger_color = Color::rgba8(255, 255, 255),
         .danger_background = map.color_error,
+        .danger_hover_background = mix(map.color_error, Color::rgba8(255, 255, 255), 0.18F),
+        .danger_active_background = mix(map.color_error, Color::rgba8(0, 0, 0), 0.15F),
         .disabled_color = alias.color_text_disabled,
         .disabled_background = alias.color_background_container_disabled,
         .disabled_border_color = alias.color_border,
@@ -280,6 +283,8 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         .border_radius = map.border_radius,
         .border_radius_large = map.border_radius_large,
         .icon_gap = map.size_xs,
+        .loading_indicator_size = map.font_size,
+        .loading_opacity = 0.65F,
         .default_shadow = shadows.button_default,
         .primary_shadow = shadows.button_primary,
         .danger_shadow = shadows.button_danger,
@@ -532,7 +537,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
         button.default_color, button.default_background, button.default_border_color,
         button.default_hover_color, button.default_active_color, button.primary_color,
         button.primary_background, button.primary_hover_background,
-        button.primary_active_background, button.danger_background,
+        button.primary_active_background, button.danger_color, button.danger_background,
+        button.danger_hover_background, button.danger_active_background,
         button.disabled_color, button.disabled_background, button.disabled_border_color,
     };
     for (const Color color : button_colors) hash_color(hash, color);
@@ -543,7 +549,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
         button.content_font_size_large, button.content_line_height_small,
         button.content_line_height, button.content_line_height_large,
         button.border_radius_small, button.border_radius, button.border_radius_large,
-        button.border_width, button.icon_gap,
+        button.border_width, button.icon_gap, button.loading_indicator_size,
+        button.loading_opacity,
     };
     for (const float value : button_values) hash_float(hash, value);
     hash_shadow(hash, button.default_shadow);

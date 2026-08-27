@@ -69,6 +69,24 @@ public:
     [[nodiscard]] std::uint32_t text_font_weight() const;
     [[nodiscard]] float text_font_size() const;
     [[nodiscard]] float text_line_height() const;
+    [[nodiscard]] Color text_secondary_color() const;
+    [[nodiscard]] Color text_disabled_color() const;
+
+    [[nodiscard]] const ButtonThemeToken& button_colors() const;
+    [[nodiscard]] const ButtonThemeToken& button_control_heights() const;
+    [[nodiscard]] const ButtonThemeToken& button_padding_inline() const;
+    [[nodiscard]] const ButtonThemeToken& button_typography() const;
+    [[nodiscard]] const ButtonThemeToken& button_border_radius() const;
+    [[nodiscard]] float button_border_width() const;
+    [[nodiscard]] float button_icon_gap() const;
+    [[nodiscard]] const ButtonThemeToken& button_shadows() const;
+    [[nodiscard]] Color focus_outline_color() const;
+    [[nodiscard]] float focus_outline_width() const;
+    [[nodiscard]] float focus_outline_offset() const;
+
+    [[nodiscard]] float layout_gap_small() const;
+    [[nodiscard]] float layout_gap_middle() const;
+    [[nodiscard]] float layout_gap_large() const;
 
 private:
     struct Subscriber;

@@ -55,10 +55,11 @@ void test_sparse_material_updates_and_geometry_compaction() {
     auto geometry = store.at(ids[1]).geometry;
     geometry.translation = {4.0F, 5.0F};
     require(store.update_geometry(ids[1], geometry)
-                && store.compact({0.0F, 0.0F, 100.0F, 100.0F})
+                && !store.compact({0.0F, 0.0F, 100.0F, 100.0F})
                 && store.geometry_dirty_ranges().size() == 1
-                && store.geometry_dirty_ranges().front().count == 3,
-            "geometry update did not rebuild the packed effect range");
+                && store.geometry_dirty_ranges().front()
+                    == ryn::graphics::RoundedEffectInstanceRange{1, 1},
+            "visible geometry update rebuilt rather than patching its packed range");
     require(store.bytes({0, 3}).size()
                 == sizeof(ryn::graphics::RoundedEffectInstance) * 3,
             "rounded-effect byte view does not match the independent instance store");
@@ -121,6 +122,24 @@ void test_capacity_reuse_and_idle_compaction() {
             "rounded-effect capacity was not reused after removal");
 }
 
+void test_transparent_material_retains_packed_topology() {
+    ryn::graphics::RoundedEffectStore store;
+    const auto id = store.add(effect(10.0F, ryn::Color::rgba8(0, 0, 0, 80)));
+    const ryn::runtime::Rect clip{0.0F, 0.0F, 100.0F, 100.0F};
+    require(store.compact(clip), "transparent topology fixture did not compact");
+    store.clear_dirty_ranges();
+
+    auto material = store.at(id).material;
+    material.opacity = 0.0F;
+    require(store.update_material(id, material)
+                && !store.compact(clip)
+                && store.packed_index(id) == std::uint32_t{0}
+                && store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front()
+                    == ryn::graphics::RoundedEffectInstanceRange{0, 1},
+            "transparent material update rebuilt packed topology");
+}
+
 } // namespace
 
 int main() {
@@ -128,6 +147,7 @@ int main() {
         test_sparse_material_updates_and_geometry_compaction();
         test_culling_atomic_validation_and_identity_reuse();
         test_capacity_reuse_and_idle_compaction();
+        test_transparent_material_retains_packed_topology();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

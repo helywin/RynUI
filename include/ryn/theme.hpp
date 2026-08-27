@@ -180,7 +180,10 @@ struct ButtonThemeToken final {
     Color primary_background;
     Color primary_hover_background;
     Color primary_active_background;
+    Color danger_color;
     Color danger_background;
+    Color danger_hover_background;
+    Color danger_active_background;
     Color disabled_color;
     Color disabled_background;
     Color disabled_border_color;
@@ -201,6 +204,8 @@ struct ButtonThemeToken final {
     float border_radius_large{};
     float border_width{1.0F};
     float icon_gap{8.0F};
+    float loading_indicator_size{14.0F};
+    float loading_opacity{0.65F};
     ShadowList default_shadow;
     ShadowList primary_shadow;
     ShadowList danger_shadow;

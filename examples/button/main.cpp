@@ -144,15 +144,18 @@ private:
 class ButtonComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
     ButtonComponentSubmitter(
+        ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
         ryn::detail::TextSceneService& text_scene,
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
         ryn::runtime::Size& viewport) noexcept
-        : application_(&application),
+        : platform_(&platform),
+          application_(&application),
           text_scene_(&text_scene),
           glyph_resources_(&glyph_resources),
           renderer_(&renderer),
+          effect_resources_(renderer),
           viewport_(&viewport) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame() override {
@@ -177,10 +180,19 @@ public:
             glyph_resources_->synchronize(
                 text_scene_->atlas(),
                 text_scene_->glyph_scene().instances());
+            const auto metrics = platform_->window_metrics();
+            effect_resources_.synchronize(
+                application_->rounded_effects(),
+                {
+                    static_cast<std::uint32_t>(metrics.pixel_width),
+                    static_cast<std::uint32_t>(metrics.pixel_height),
+                    metrics.display_scale,
+                });
             renderer_->attach_scene(
                 quad_buffer_->handle(),
                 *glyph_resources_,
-                application_->scene_composer().ordered_scene());
+                application_->scene_composer().ordered_scene(),
+                &effect_resources_);
             const auto result = renderer_->submit_frame();
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -204,11 +216,18 @@ public:
         return quad_buffer_->counters();
     }
 
+    [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters&
+    effect_upload_counters() const noexcept {
+        return effect_resources_.counters();
+    }
+
 private:
+    ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::TextSceneService* text_scene_;
     ryn::detail::GlyphGpuResources* glyph_resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
+    ryn::detail::RoundedEffectGpuResources effect_resources_;
     ryn::runtime::Size* viewport_;
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
     std::string last_error_;
@@ -272,6 +291,10 @@ int main(int argc, char** argv) {
             std::cerr << "font_error=font metrics could not be queried\n";
             return 3;
         }
+        auto font_resolver = ryn::detail::make_default_ui_font_resolver(
+            *fonts,
+            font_chain,
+            initial_window_metrics.display_scale);
 
         ryn::runtime::NodeStore nodes;
         ryn::layout::LayoutEngine layout(nodes);
@@ -285,7 +308,7 @@ int main(int argc, char** argv) {
             layout,
             dirty,
             text_scene,
-            font_chain.identities(),
+            std::move(font_resolver),
             frame_requests);
 
         ryn::Signal<ryn::ButtonType> reactive_type{ryn::ButtonType::Default};
@@ -316,6 +339,12 @@ int main(int argc, char** argv) {
                     .size(ryn::ControlSize::Middle)
                     .onClick(record_click),
                 [] { ryn::Text(u8"Primary / 主要按钮"); });
+            ryn::Button(
+                ryn::ButtonProps{}
+                    .type(ryn::ButtonType::Danger)
+                    .size(ryn::ControlSize::Middle)
+                    .onClick(record_click),
+                [] { ryn::Text(u8"Danger / 危险按钮"); });
             ryn::Button(
                 ryn::ButtonProps{}
                     .size(ryn::ControlSize::Small)
@@ -360,7 +389,7 @@ int main(int argc, char** argv) {
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
         ButtonComponentSubmitter submitter(
-            application, text_scene, glyph_resources, renderer, viewport);
+            platform, application, text_scene, glyph_resources, renderer, viewport);
         ButtonPlatformEvents events(
             platform, application, frame_requests, viewport);
         ryn::runtime::OnDemandFrameLoop loop(
@@ -424,6 +453,7 @@ int main(int argc, char** argv) {
         const auto& button_diagnostics = application.button_scene().diagnostics();
         const auto& quad_uploads = submitter.quad_upload_counters();
         const auto& glyph_uploads = glyph_resources.counters();
+        const auto& effect_uploads = submitter.effect_upload_counters();
         const auto& renderer_counters = renderer.counters();
         const auto& loop_counters = loop.counters();
         const auto window_metrics = platform.window_metrics();
@@ -462,8 +492,11 @@ int main(int argc, char** argv) {
             << " glyph_uploaded_bytes="
             << glyph_uploads.texture_uploaded_bytes
                 + glyph_uploads.buffer_uploaded_bytes
+            << " effect_uploads=" << effect_uploads.buffer_uploads
+            << " effect_uploaded_bytes=" << effect_uploads.uploaded_bytes
             << " quad_draws=" << renderer_counters.quad_draws
             << " glyph_draws=" << renderer_counters.glyph_draws
+            << " effect_draws=" << renderer_counters.effect_draws
             << " submits=" << renderer_counters.frame_submissions
             << " idle_waits=" << loop_counters.idle_waits
             << " exit_code=0\n";

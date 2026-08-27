@@ -29,7 +29,7 @@ ryn::component::ButtonVisualData visuals(float offset) {
         result[index] = {
             {offset, 0.8F, 0.4F, -0.2F},
             {0.1F * static_cast<float>(index + 1), 0.3F, 0.7F, 1.0F},
-            index == 0 || index == 3 ? 0.0F : 1.0F,
+            index == 2 ? 0.0F : 1.0F,
             0.1F,
             {0.0F, 0.0F},
         };
@@ -154,11 +154,11 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
         fixture.interaction_ids[1],
         visuals(0.1F));
     require(fixture.buttons.visual_range(first)
-                    == ryn::graphics::QuadInstanceRange{0, 4}
+                    == ryn::graphics::QuadInstanceRange{0, 3}
                 && fixture.buttons.visual_range(second)
-                    == ryn::graphics::QuadInstanceRange{4, 4}
-                && fixture.buttons.instances().at(0).opacity == 0.0F
-                && fixture.buttons.instances().at(3).opacity == 0.0F,
+                    == ryn::graphics::QuadInstanceRange{3, 3}
+                && fixture.buttons.instances().at(2).opacity == 0.0F
+                && fixture.buttons.instances().at(5).opacity == 0.0F,
             "Button fixed visual ranges or hidden layers differ");
 
     std::atomic<bool> wrong_thread_rejected{false};
@@ -179,7 +179,7 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
                     == ryn::graphics::SceneDrawCommand{
                         ryn::graphics::SceneDrawKind::quad,
                         0,
-                        8,
+                        6,
                         ryn::graphics::invalid_glyph_atlas_page,
                     }
                 && fixture.hit_test.hit_test({20.0F, 20.0F})
@@ -192,7 +192,7 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
     require(fixture.buttons.update(second, changed) == 1
                 && fixture.buttons.instances().material_dirty_ranges().size() == 1
                 && fixture.buttons.instances().material_dirty_ranges().front()
-                    == ryn::graphics::QuadInstanceRange{6, 1}
+                    == ryn::graphics::QuadInstanceRange{5, 1}
                 && fixture.buttons.instances().geometry_dirty_ranges().empty(),
             "Button Material update expanded beyond one visual layer");
 
@@ -204,8 +204,8 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
         visuals(0.2F));
     require(fixture.buttons.destroy(second)
                 && fixture.buttons.visual_range(third)
-                    == ryn::graphics::QuadInstanceRange{4, 4}
-                && fixture.buttons.instances().size() == 8,
+                    == ryn::graphics::QuadInstanceRange{3, 3}
+                && fixture.buttons.instances().size() == 6,
             "middle Button destroy did not compact/remap the surviving range");
     fixture.composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
     require(fixture.hit_test.hit_test({20.0F, 20.0F})
@@ -256,7 +256,7 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
             fixture.interaction_ids[2],
             visuals(0.2F)));
         fixture.buttons.synchronize_gpu(gpu);
-        require(gpu.capacity() == 16 && api.creates == 2,
+        require(gpu.capacity() == 12 && api.creates == 2,
                 "Button Quad GPU buffer did not retain growth capacity");
 
         auto changed = visuals(0.1F);
@@ -264,12 +264,12 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
         static_cast<void>(fixture.buttons.update(second, changed));
         fixture.buttons.synchronize_gpu(gpu);
         require(api.upload_offsets.back()
-                    == 6 * sizeof(ryn::graphics::QuadInstance)
+                    == 5 * sizeof(ryn::graphics::QuadInstance)
                 && api.upload_sizes.back()
                     == sizeof(ryn::graphics::QuadInstance),
             "Button Material change did not use a one-instance GPU upload");
 
-        changed[3].opacity = 1.0F;
+        changed[1].opacity = 0.5F;
         static_cast<void>(fixture.buttons.update(second, changed));
         api.fail_next = true;
         bool failed = false;

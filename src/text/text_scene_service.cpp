@@ -130,6 +130,51 @@ bool TextSceneService::set_content(TextSceneId id, String content) {
     return true;
 }
 
+bool TextSceneService::set_font_chain(
+    TextSceneId id,
+    std::vector<font::FontIdentity> fallback_chain) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!record.state->set_font_chain(std::move(fallback_chain))) {
+        return false;
+    }
+    ++record.revisions.content;
+    record.content_dirty = true;
+    return true;
+}
+
+bool TextSceneService::set_pixel_size(
+    TextSceneId id,
+    std::uint32_t pixel_size) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!record.state->set_pixel_size(pixel_size)) {
+        return false;
+    }
+    ++record.revisions.content;
+    record.content_dirty = true;
+    return true;
+}
+
+bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!record.state->set_line_height(line_height)) {
+        return false;
+    }
+    ++record.revisions.layout;
+    record.placement_rebuild_pending = true;
+    return true;
+}
+
+void TextSceneService::request_reshape(TextSceneId id) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    record.state->request_reshape();
+    ++record.revisions.content;
+    record.content_dirty = true;
+}
+
 bool TextSceneService::set_width_constraint(TextSceneId id, float width) {
     ensure_owner_thread();
     auto& record = require_record(id);

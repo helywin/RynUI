@@ -574,6 +574,10 @@ bool TextState::set_line_height(float line_height) {
     return true;
 }
 
+void TextState::request_reshape() {
+    invalidate_shape();
+}
+
 bool TextState::set_width_constraint(float max_width, bool request_frame) {
     if (layout_.max_width == max_width) {
         return false;

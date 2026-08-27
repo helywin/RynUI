@@ -23,6 +23,7 @@ enum class ControlSize {
 enum class ButtonType {
     Default,
     Primary,
+    Danger,
 };
 
 class ButtonProps final {

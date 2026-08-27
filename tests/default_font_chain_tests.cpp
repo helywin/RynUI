@@ -43,6 +43,23 @@ void test_default_ui_font_chain() {
             "default UI font chain does not cover Latin text");
     require(static_cast<bool>(fonts->find_glyph(identities, U'中', std::nullopt)),
             "default UI font chain does not cover Simplified Chinese text");
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.5F);
+    const auto initial_resolved = resolver(
+        ryn::SystemFontFamily::ui_sans, 400, 14);
+    const auto large_resolved = resolver(
+        ryn::SystemFontFamily::ui_sans, 400, 16);
+    require(initial_resolved == identities
+                && !large_resolved.empty()
+                && resolver(ryn::SystemFontFamily::ui_sans, 400, 16)
+                    == large_resolved,
+            "default Theme font resolver did not reuse initial and cached size chains");
+    for (const auto identity : large_resolved) {
+        const auto metrics = fonts->metrics(identity);
+        require(metrics
+                    && metrics.metrics.logical_pixel_size == 16
+                    && metrics.metrics.raster_pixel_size == 24,
+                "default Theme font resolver lost logical-to-device raster sizing");
+    }
 
 #if defined(_WIN32)
     require(chain.uses_system_fonts,

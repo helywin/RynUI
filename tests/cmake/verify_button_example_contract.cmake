@@ -13,6 +13,7 @@ foreach(required IN ITEMS
         "ryn::Button("
         "ryn::ButtonType::Default"
         "ryn::ButtonType::Primary"
+        "ryn::ButtonType::Danger"
         "ryn::ControlSize::Small"
         "ryn::ControlSize::Middle"
         "ryn::ControlSize::Large"
@@ -37,8 +38,10 @@ foreach(required IN ITEMS
         "scene_rebuilds="
         "quad_uploads="
         "glyph_uploads="
+        "effect_uploads="
         "quad_draws="
         "glyph_draws="
+        "effect_draws="
         "submits="
         "idle_waits="
         "exit_code=0")

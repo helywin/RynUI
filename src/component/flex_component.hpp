@@ -11,6 +11,8 @@ struct FlexComponentState final {
     runtime::ComponentId component;
     runtime::NodeId node;
     layout::FlexLayout model;
+    LayoutGap gap;
+    theme_runtime::Subscription theme_subscription;
 };
 
 void mount_flex_component(const FlexProps& props, const FlexContent& content);

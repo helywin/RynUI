@@ -11,6 +11,8 @@ struct SpaceComponentState final {
     runtime::ComponentId component;
     runtime::NodeId node;
     layout::FlexLayout model;
+    LayoutGap gap;
+    theme_runtime::Subscription theme_subscription;
 };
 
 void mount_space_component(const SpaceProps& props, const SpaceContent& content);

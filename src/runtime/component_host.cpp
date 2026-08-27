@@ -99,6 +99,7 @@ void ComponentHost::mount(const Content& content) {
         *this,
         std::nullopt,
         std::nullopt,
+        std::nullopt,
         default_theme_scope_);
     try {
         ActiveBuildContextGuard guard(context);
@@ -363,6 +364,7 @@ void ComponentHost::mount_slot(
     ComponentId parent,
     const std::function<void()>& content,
     std::optional<Prop<SemanticForeground>> semantic_foreground,
+    std::optional<Prop<SemanticTypography>> semantic_typography,
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
     ensure_owner_thread();
     static_cast<void>(require_record(parent));
@@ -374,6 +376,7 @@ void ComponentHost::mount_slot(
         *this,
         parent,
         std::move(semantic_foreground),
+        std::move(semantic_typography),
         std::move(theme_scope));
     ActiveBuildContextGuard guard(context);
     content();
@@ -383,6 +386,7 @@ void ComponentHost::mount_transparent_slot(
     std::optional<ComponentId> parent,
     const std::function<void()>& content,
     std::optional<Prop<SemanticForeground>> semantic_foreground,
+    std::optional<Prop<SemanticTypography>> semantic_typography,
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
     ensure_owner_thread();
     if (!mounting_ || active_build_context == nullptr) {
@@ -399,6 +403,7 @@ void ComponentHost::mount_transparent_slot(
         *this,
         parent,
         std::move(semantic_foreground),
+        std::move(semantic_typography),
         std::move(theme_scope));
     ActiveBuildContextGuard guard(context);
     content();
@@ -628,10 +633,12 @@ ComponentBuildContext::ComponentBuildContext(
     ComponentHost& host,
     std::optional<ComponentId> parent,
     std::optional<Prop<SemanticForeground>> semantic_foreground,
+    std::optional<Prop<SemanticTypography>> semantic_typography,
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept
     : host_(&host),
       parent_(parent),
       semantic_foreground_(std::move(semantic_foreground)),
+      semantic_typography_(std::move(semantic_typography)),
       theme_scope_(std::move(theme_scope)) {}
 
 void ComponentBuildContext::on_resource_cleanup(
@@ -666,6 +673,11 @@ NodeId ComponentBuildContext::root(ComponentId id) const {
 const std::optional<Prop<SemanticForeground>>&
 ComponentBuildContext::semantic_foreground() const noexcept {
     return semantic_foreground_;
+}
+
+const std::optional<Prop<SemanticTypography>>&
+ComponentBuildContext::semantic_typography() const noexcept {
+    return semantic_typography_;
 }
 
 ComponentBuildContext& require_component_build_context() {

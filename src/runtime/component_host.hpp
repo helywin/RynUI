@@ -37,6 +37,17 @@ namespace ryn::runtime {
 
 using SemanticForeground = std::array<float, 4>;
 
+struct SemanticTypography final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    std::uint32_t font_weight{400};
+    float font_size{14.0F};
+    float line_height{22.0F};
+
+    friend constexpr bool operator==(
+        SemanticTypography,
+        SemanticTypography) = default;
+};
+
 struct ComponentId final {
     static constexpr std::uint32_t invalid_index =
         std::numeric_limits<std::uint32_t>::max();
@@ -143,11 +154,13 @@ private:
         ComponentId parent,
         const std::function<void()>& content,
         std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::optional<Prop<SemanticTypography>> semantic_typography,
         std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
     void mount_transparent_slot(
         std::optional<ComponentId> parent,
         const std::function<void()>& content,
         std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::optional<Prop<SemanticTypography>> semantic_typography,
         std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
     void ensure_owner_thread() const;
     [[nodiscard]] Record* find_record(ComponentId id) noexcept;
@@ -207,6 +220,7 @@ public:
             parent,
             detail::SlotContentAccess::function(content),
             semantic_foreground_,
+            semantic_typography_,
             theme_scope_);
     }
 
@@ -219,6 +233,21 @@ public:
             parent,
             detail::SlotContentAccess::function(content),
             std::move(foreground),
+            semantic_typography_,
+            theme_scope_);
+    }
+
+    template <typename SlotTag>
+    void mount_slot_with_semantic_text_style(
+        ComponentId parent,
+        const SlotContent<SlotTag>& content,
+        Prop<SemanticForeground> foreground,
+        Prop<SemanticTypography> typography) {
+        host_->mount_slot(
+            parent,
+            detail::SlotContentAccess::function(content),
+            std::move(foreground),
+            std::move(typography),
             theme_scope_);
     }
 
@@ -230,6 +259,7 @@ public:
             parent_,
             detail::SlotContentAccess::function(content),
             semantic_foreground_,
+            semantic_typography_,
             std::move(theme_scope));
     }
 
@@ -244,6 +274,8 @@ public:
     [[nodiscard]] NodeId root(ComponentId id) const;
     [[nodiscard]] const std::optional<Prop<SemanticForeground>>&
     semantic_foreground() const noexcept;
+    [[nodiscard]] const std::optional<Prop<SemanticTypography>>&
+    semantic_typography() const noexcept;
 
     template <typename State>
     [[nodiscard]] State& state(ComponentId id) {
@@ -261,11 +293,13 @@ private:
         ComponentHost& host,
         std::optional<ComponentId> parent,
         std::optional<Prop<SemanticForeground>> semantic_foreground,
+        std::optional<Prop<SemanticTypography>> semantic_typography,
         std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept;
 
     ComponentHost* host_;
     std::optional<ComponentId> parent_;
     std::optional<Prop<SemanticForeground>> semantic_foreground_;
+    std::optional<Prop<SemanticTypography>> semantic_typography_;
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope_;
 };
 

@@ -33,6 +33,12 @@ namespace {
 
 struct TextComponentState final {
     TextSceneId scene;
+    TextTone tone{TextTone::Primary};
+    bool explicit_tone{};
+    bool semantic_foreground{};
+    bool semantic_typography{};
+    runtime::SemanticTypography resolved_typography;
+    theme_runtime::Subscription theme_subscription;
 };
 
 thread_local TextComponentHost* active_text_host = nullptr;
@@ -55,18 +61,43 @@ private:
     TextComponentHost* previous_;
 };
 
-[[nodiscard]] const std::array<float, 4>& tone_color(
-    const DefaultThemeSnapshot& theme,
+[[nodiscard]] std::array<float, 4> channels(Color color) noexcept {
+    return {color.red(), color.green(), color.blue(), color.alpha()};
+}
+
+[[nodiscard]] Color tone_color(
+    const ThemeSnapshot& theme,
     TextTone tone) noexcept {
     switch (tone) {
     case TextTone::Primary:
-        return theme.text.primary;
+        return theme.text().color;
     case TextTone::Secondary:
-        return theme.text.secondary;
+        return theme.alias().color_text_secondary;
     case TextTone::Disabled:
-        return theme.text.disabled;
+        return theme.alias().color_text_disabled;
     }
-    return theme.text.primary;
+    return theme.text().color;
+}
+
+void capture_tone_color(
+    const std::shared_ptr<theme_runtime::ThemeScope>& theme,
+    TextTone tone) {
+    switch (tone) {
+    case TextTone::Primary:
+        static_cast<void>(theme->text_color());
+        return;
+    case TextTone::Secondary:
+        static_cast<void>(theme->text_secondary_color());
+        return;
+    case TextTone::Disabled:
+        static_cast<void>(theme->text_disabled_color());
+        return;
+    }
+}
+
+[[nodiscard]] std::uint64_t intrinsic_revision(
+    TextSceneRevisions revisions) noexcept {
+    return revisions.content + revisions.layout;
 }
 
 [[nodiscard]] bool valid_viewport(runtime::Size viewport) noexcept {
@@ -83,18 +114,36 @@ TextComponentHost::TextComponentHost(
     layout::LayoutEngine& layout,
     runtime::DirtyQueues& dirty,
     TextSceneService& text_scene,
-    std::vector<font::FontIdentity> default_font_chain,
-    const DefaultThemeSnapshot& theme)
+    std::vector<font::FontIdentity> default_font_chain)
+    : TextComponentHost(
+          nodes,
+          layout,
+          dirty,
+          text_scene,
+          [chain = std::move(default_font_chain)](
+              SystemFontFamily,
+              std::uint32_t,
+              std::uint32_t) { return chain; }) {}
+
+TextComponentHost::TextComponentHost(
+    runtime::NodeStore& nodes,
+    layout::LayoutEngine& layout,
+    runtime::DirtyQueues& dirty,
+    TextSceneService& text_scene,
+    ThemeFontResolver font_resolver)
     : nodes_(&nodes),
       layout_(&layout),
       dirty_(&dirty),
       text_scene_(&text_scene),
-      default_font_chain_(std::move(default_font_chain)),
-      theme_(&theme),
+      font_resolver_(std::move(font_resolver)),
       components_(nodes) {
-    if (default_font_chain_.empty()) {
+    if (!font_resolver_) {
         throw std::invalid_argument(
-            "TextComponentHost requires a resolved Default Theme font chain");
+            "TextComponentHost requires a Theme font resolver");
+    }
+    if (font_resolver_(SystemFontFamily::ui_sans, 400, 14).empty()) {
+        throw std::invalid_argument(
+            "TextComponentHost Theme font resolver returned an empty default chain");
     }
 }
 
@@ -104,7 +153,7 @@ TextComponentHost::~TextComponentHost() {
 
 void TextComponentHost::mount(const Content& content) {
     ActiveTextHostGuard guard(*this);
-    LayoutComponentServices services{*nodes_, *layout_, *dirty_, *theme_};
+    LayoutComponentServices services{*nodes_, *layout_, *dirty_};
     ActiveLayoutComponentServices layout_services_guard(services);
     const auto mounted_before = mounted_texts_.size();
     try {
@@ -263,15 +312,114 @@ TextComponentHost::mounted_texts() const noexcept {
     return mounted_texts_;
 }
 
-const DefaultThemeSnapshot& TextComponentHost::theme() const noexcept {
-    return *theme_;
-}
-
 void TextComponentHost::record_mounted_text(
     runtime::ComponentId component,
     TextSceneId scene,
     std::optional<runtime::SceneFragmentId> fragment) {
     mounted_texts_.push_back({component, scene, fragment, std::nullopt, {}});
+}
+
+bool TextComponentHost::apply_typography(
+    runtime::ComponentId component,
+    runtime::SemanticTypography typography) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (state == nullptr || !text_scene_->contains(state->scene)
+            || state->resolved_typography == typography) {
+        return false;
+    }
+    auto chain = font_resolver_(
+        typography.font_family,
+        typography.font_weight,
+        static_cast<std::uint32_t>(std::lround(typography.font_size)));
+    if (chain.empty()) {
+        throw std::runtime_error("Theme font resolver returned an empty chain");
+    }
+    const bool font_selection_changed =
+        state->resolved_typography.font_family != typography.font_family
+        || state->resolved_typography.font_weight != typography.font_weight;
+    const bool chain_changed = text_scene_->set_font_chain(
+        state->scene, std::move(chain));
+    if (font_selection_changed && !chain_changed) {
+        text_scene_->request_reshape(state->scene);
+    }
+    bool changed = chain_changed || font_selection_changed;
+    changed = text_scene_->set_pixel_size(
+        state->scene,
+        static_cast<std::uint32_t>(std::lround(typography.font_size))) || changed;
+    changed = text_scene_->set_line_height(state->scene, typography.line_height)
+        || changed;
+    state->resolved_typography = typography;
+    if (changed) {
+        const auto node = components_.root(component);
+        static_cast<void>(layout_->set_intrinsic_revision(
+            node,
+            intrinsic_revision(text_scene_->revisions(state->scene))));
+        dirty_->invalidate(
+            node,
+            runtime::DirtyFlags::Measure
+                | runtime::DirtyFlags::Layout
+                | runtime::DirtyFlags::Geometry);
+    }
+    return changed;
+}
+
+void TextComponentHost::apply_theme(runtime::ComponentId component) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (state == nullptr || !text_scene_->contains(state->scene)) {
+        return;
+    }
+    const auto node = components_.root(component);
+    const auto& theme = components_.theme_scope(component)->snapshot();
+    bool typography_changed = false;
+    if (!state->semantic_typography) {
+        const auto& text = theme.text();
+        typography_changed = apply_typography(component, {
+            text.font_family,
+            text.font_weight,
+            text.font_size,
+            text.line_height,
+        });
+    }
+    if (!state->semantic_foreground) {
+        const auto color = state->explicit_tone
+            ? tone_color(theme, state->tone)
+            : theme.text().color;
+        if (text_scene_->set_color(state->scene, channels(color))) {
+            dirty_->invalidate(node, runtime::DirtyFlags::Material);
+        }
+    }
+    static_cast<void>(typography_changed);
+}
+
+void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (state == nullptr) {
+        return;
+    }
+    state->theme_subscription.reset();
+    const auto theme = components_.theme_scope(component);
+    if (state->semantic_foreground && state->semantic_typography) {
+        return;
+    }
+    state->theme_subscription = theme->capture(
+        [this, component](theme_runtime::DirtyPhase) {
+            apply_theme(component);
+        },
+        [theme, state] {
+            if (!state->semantic_typography) {
+                static_cast<void>(theme->text_font_family());
+                static_cast<void>(theme->text_font_weight());
+                static_cast<void>(theme->text_font_size());
+                static_cast<void>(theme->text_line_height());
+            }
+            if (!state->semantic_foreground) {
+                if (state->explicit_tone) {
+                    capture_tone_color(theme, state->tone);
+                } else {
+                    static_cast<void>(theme->text_color());
+                }
+            }
+        });
 }
 
 void mount_text_component(const TextProps& props) {
@@ -289,18 +437,36 @@ void mount_text_component(const TextProps& props) {
     const auto initial_content = read_prop(TextPropsAccess::content(props));
     const auto& explicit_tone = TextPropsAccess::tone(props);
     const auto& semantic_foreground = build.semantic_foreground();
+    const auto& semantic_typography = build.semantic_typography();
+    const auto theme_scope = build.theme_scope();
+    const auto& snapshot = theme_scope->snapshot();
+    const auto initial_typography = semantic_typography.has_value()
+        ? read_prop(*semantic_typography)
+        : runtime::SemanticTypography{
+            snapshot.text().font_family,
+            snapshot.text().font_weight,
+            snapshot.text().font_size,
+            snapshot.text().line_height,
+        };
     const auto initial_color = explicit_tone.has_value()
-        ? tone_color(*host.theme_, read_prop(*explicit_tone))
+        ? channels(tone_color(snapshot, read_prop(*explicit_tone)))
         : semantic_foreground.has_value()
             ? read_prop(*semantic_foreground)
-            : host.theme_->text.primary;
+            : channels(snapshot.text().color);
+    auto initial_font_chain = host.font_resolver_(
+        initial_typography.font_family,
+        initial_typography.font_weight,
+        static_cast<std::uint32_t>(std::lround(initial_typography.font_size)));
+    if (initial_font_chain.empty()) {
+        throw std::runtime_error("Theme font resolver returned an empty chain");
+    }
     const auto scene = host.text_scene_->create(
         node,
         initial_content,
-        host.default_font_chain_,
-        host.theme_->body.logical_pixel_size,
+        std::move(initial_font_chain),
+        static_cast<std::uint32_t>(std::lround(initial_typography.font_size)),
         {
-            host.theme_->body.line_height,
+            initial_typography.line_height,
             std::numeric_limits<float>::infinity(),
         });
     const auto fragment = host.composer_ == nullptr
@@ -310,6 +476,14 @@ void mount_text_component(const TextProps& props) {
                 component,
                 runtime::SceneFragmentPlacement::before_children)};
     build.state<TextComponentState>(component).scene = scene;
+    auto& state = build.state<TextComponentState>(component);
+    state.tone = explicit_tone.has_value()
+        ? read_prop(*explicit_tone) : TextTone::Primary;
+    state.explicit_tone = explicit_tone.has_value();
+    state.semantic_foreground = !explicit_tone.has_value()
+        && semantic_foreground.has_value();
+    state.semantic_typography = semantic_typography.has_value();
+    state.resolved_typography = initial_typography;
     build.on_resource_cleanup(component, [
         layout = host.layout_,
         composer = host.composer_,
@@ -329,7 +503,7 @@ void mount_text_component(const TextProps& props) {
         initial_color));
     host.layout_->set_intrinsic_measure(
         node,
-        host.text_scene_->revisions(scene).content,
+        intrinsic_revision(host.text_scene_->revisions(scene)),
         [text_scene = host.text_scene_, scene](layout::Constraints constraints) {
             if (!text_scene->synchronize_measurement(
                     scene, constraints.max_width)) {
@@ -354,7 +528,7 @@ void mount_text_component(const TextProps& props) {
             }
             static_cast<void>(layout->set_intrinsic_revision(
                 node,
-                text_scene->revisions(scene).content));
+                intrinsic_revision(text_scene->revisions(scene))));
             dirty->invalidate(
                 node,
                 runtime::DirtyFlags::Measure
@@ -374,8 +548,14 @@ void mount_text_component(const TextProps& props) {
         static_cast<void>(connect_prop(
             scope,
             *explicit_tone,
-            [apply_color, theme = host.theme_](TextTone tone) {
-                apply_color(tone_color(*theme, tone));
+            [&host, component, apply_color, theme = theme_scope](TextTone tone) {
+                auto* state = host.components_.state<TextComponentState>(component);
+                if (state == nullptr) {
+                    return;
+                }
+                state->tone = tone;
+                apply_color(channels(tone_color(theme->snapshot(), tone)));
+                host.subscribe_theme(component);
             }));
     } else if (semantic_foreground.has_value()) {
         static_cast<void>(connect_prop(
@@ -383,6 +563,15 @@ void mount_text_component(const TextProps& props) {
             *semantic_foreground,
             apply_color));
     }
+    if (semantic_typography.has_value()) {
+        static_cast<void>(connect_prop(
+            scope,
+            *semantic_typography,
+            [&host, component](runtime::SemanticTypography typography) {
+                static_cast<void>(host.apply_typography(component, typography));
+            }));
+    }
+    host.subscribe_theme(component);
     runtime::connect_layout_style(
         scope,
         TextPropsAccess::layout(props),

@@ -160,7 +160,10 @@ std::size_t collect_changed(
         || before_button.primary_background != after_button.primary_background
         || before_button.primary_hover_background != after_button.primary_hover_background
         || before_button.primary_active_background != after_button.primary_active_background
+        || before_button.danger_color != after_button.danger_color
         || before_button.danger_background != after_button.danger_background
+        || before_button.danger_hover_background != after_button.danger_hover_background
+        || before_button.danger_active_background != after_button.danger_active_background
         || before_button.disabled_color != after_button.disabled_color
         || before_button.disabled_background != after_button.disabled_background
         || before_button.disabled_border_color != after_button.disabled_border_color;
@@ -182,11 +185,13 @@ std::size_t collect_changed(
         std::array{before_button.content_font_size_small, before_button.content_font_size,
             before_button.content_font_size_large,
             before_button.content_line_height_small, before_button.content_line_height,
-            before_button.content_line_height_large},
+            before_button.content_line_height_large, before_button.loading_indicator_size,
+            before_button.loading_opacity},
         std::array{after_button.content_font_size_small, after_button.content_font_size,
             after_button.content_font_size_large,
             after_button.content_line_height_small, after_button.content_line_height,
-            after_button.content_line_height_large},
+            after_button.content_line_height_large, after_button.loading_indicator_size,
+            after_button.loading_opacity},
         TokenIdentity::button_typography, changed, count);
     append_if_changed(
         std::array{before_button.border_radius_small, before_button.border_radius,
@@ -439,6 +444,102 @@ float ThemeScope::text_line_height() const {
     ensure_owner_thread();
     record(TokenIdentity::text_line_height);
     return snapshot_->text().line_height;
+}
+
+Color ThemeScope::text_secondary_color() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alias_color_text_secondary);
+    return snapshot_->alias().color_text_secondary;
+}
+
+Color ThemeScope::text_disabled_color() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alias_color_text_disabled);
+    return snapshot_->alias().color_text_disabled;
+}
+
+const ButtonThemeToken& ThemeScope::button_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_colors);
+    return snapshot_->button();
+}
+
+const ButtonThemeToken& ThemeScope::button_control_heights() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_control_heights);
+    return snapshot_->button();
+}
+
+const ButtonThemeToken& ThemeScope::button_padding_inline() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_padding_inline);
+    return snapshot_->button();
+}
+
+const ButtonThemeToken& ThemeScope::button_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_typography);
+    return snapshot_->button();
+}
+
+const ButtonThemeToken& ThemeScope::button_border_radius() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_border_radius);
+    return snapshot_->button();
+}
+
+float ThemeScope::button_border_width() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_border_width);
+    return snapshot_->button().border_width;
+}
+
+float ThemeScope::button_icon_gap() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_icon_gap);
+    return snapshot_->button().icon_gap;
+}
+
+const ButtonThemeToken& ThemeScope::button_shadows() const {
+    ensure_owner_thread();
+    record(TokenIdentity::button_shadows);
+    return snapshot_->button();
+}
+
+Color ThemeScope::focus_outline_color() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alias_color_focus_outline);
+    return snapshot_->alias().color_focus_outline;
+}
+
+float ThemeScope::focus_outline_width() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alias_line_width_focus);
+    return snapshot_->alias().line_width_focus;
+}
+
+float ThemeScope::focus_outline_offset() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alias_focus_outline_offset);
+    return snapshot_->alias().focus_outline_offset;
+}
+
+float ThemeScope::layout_gap_small() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_size_xs);
+    return snapshot_->map().size_xs;
+}
+
+float ThemeScope::layout_gap_middle() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_size);
+    return snapshot_->map().size;
+}
+
+float ThemeScope::layout_gap_large() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_size_large);
+    return snapshot_->map().size_large;
 }
 
 void ThemeScope::ensure_owner_thread() const {

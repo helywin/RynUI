@@ -4,9 +4,12 @@
 #include <array>
 #include <cctype>
 #include <cstdint>
+#include <cmath>
 #include <memory>
+#include <map>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -365,6 +368,7 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     result.faces.push_back({
         loaded.font,
         descriptor.path,
+        descriptor.face_index,
         descriptor.family_name,
         descriptor.custom_font,
         descriptor.system_font,
@@ -488,6 +492,52 @@ DefaultFontChainResult load_default_ui_font_chain(
         }
     }
     return result;
+}
+
+DefaultUiFontResolver make_default_ui_font_resolver(
+    font::FontRuntime& fonts,
+    const DefaultFontChainResult& initial_chain,
+    float display_scale) {
+    if (!initial_chain || !std::isfinite(display_scale) || display_scale <= 0.0F) {
+        throw std::invalid_argument(
+            "Default UI font resolver requires a loaded chain and positive display scale");
+    }
+    struct ResolverState final {
+        font::FontRuntime* fonts{};
+        std::vector<LoadedDefaultFontFace> faces;
+        float display_scale{1.0F};
+        std::map<std::uint32_t, std::vector<font::FontIdentity>> cache;
+    };
+    auto state = std::make_shared<ResolverState>();
+    state->fonts = &fonts;
+    state->faces = initial_chain.faces;
+    state->display_scale = display_scale;
+    const auto initial_metrics = fonts.metrics(initial_chain.faces.front().identity);
+    if (initial_metrics) {
+        state->cache.emplace(
+            initial_metrics.metrics.logical_pixel_size,
+            initial_chain.identities());
+    }
+    return [state](SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+        if (const auto found = state->cache.find(pixel_size);
+                found != state->cache.end()) {
+            return found->second;
+        }
+        std::vector<font::FontIdentity> identities;
+        identities.reserve(state->faces.size());
+        for (const auto& face : state->faces) {
+            const auto loaded = state->fonts->load_font_file(
+                face.source_path,
+                face.face_index,
+                font::FontRasterConfig{pixel_size, state->display_scale});
+            if (!loaded) {
+                return std::vector<font::FontIdentity>{};
+            }
+            identities.push_back(loaded.font);
+        }
+        state->cache.emplace(pixel_size, identities);
+        return identities;
+    };
 }
 
 } // namespace ryn::detail

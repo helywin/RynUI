@@ -2,7 +2,10 @@
 
 #include "font/font_runtime.hpp"
 
+#include <ryn/theme.hpp>
+
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -24,10 +27,16 @@ struct DefaultFontChainRequest {
 struct LoadedDefaultFontFace {
     font::FontIdentity identity{};
     std::filesystem::path source_path;
+    long face_index{};
     std::string family_name;
     bool custom_font{};
     bool system_font{};
 };
+
+using DefaultUiFontResolver = std::function<std::vector<font::FontIdentity>(
+    SystemFontFamily,
+    std::uint32_t,
+    std::uint32_t)>;
 
 struct DefaultFontChainResult {
     std::vector<LoadedDefaultFontFace> faces;
@@ -48,5 +57,10 @@ struct DefaultFontChainResult {
 [[nodiscard]] DefaultFontChainResult load_default_ui_font_chain(
     font::FontRuntime& fonts,
     const DefaultFontChainRequest& request);
+
+[[nodiscard]] DefaultUiFontResolver make_default_ui_font_resolver(
+    font::FontRuntime& fonts,
+    const DefaultFontChainResult& initial_chain,
+    float display_scale);
 
 } // namespace ryn::detail

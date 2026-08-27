@@ -1,6 +1,5 @@
 #pragma once
 
-#include "component/default_theme.hpp"
 #include "layout/layout_engine.hpp"
 #include "runtime/invalidation.hpp"
 #include "runtime/node_store.hpp"
@@ -11,7 +10,6 @@ struct LayoutComponentServices final {
     runtime::NodeStore& nodes;
     layout::LayoutEngine& layout;
     runtime::DirtyQueues& dirty;
-    const DefaultThemeSnapshot& theme;
 };
 
 class ActiveLayoutComponentServices final {

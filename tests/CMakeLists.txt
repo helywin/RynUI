@@ -135,6 +135,13 @@ add_test(
 )
 
 add_test(
+    NAME rynui.component_theme_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_component_theme_contract.cmake"
+)
+
+add_test(
     NAME rynui.flex_dependency_contract
     COMMAND ${CMAKE_COMMAND}
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"

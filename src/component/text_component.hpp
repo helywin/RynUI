@@ -1,6 +1,5 @@
 #pragma once
 
-#include "component/default_theme.hpp"
 #include "component/component_scene.hpp"
 #include "input/interaction_registry.hpp"
 #include "layout/layout_engine.hpp"
@@ -11,11 +10,17 @@
 #include <ryn/text.hpp>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <vector>
 
 namespace ryn::detail {
+
+using ThemeFontResolver = std::function<std::vector<font::FontIdentity>(
+    SystemFontFamily,
+    std::uint32_t,
+    std::uint32_t)>;
 
 struct MountedTextComponent final {
     runtime::ComponentId component;
@@ -32,8 +37,13 @@ public:
         layout::LayoutEngine& layout,
         runtime::DirtyQueues& dirty,
         TextSceneService& text_scene,
-        std::vector<font::FontIdentity> default_font_chain,
-        const DefaultThemeSnapshot& theme = default_theme_snapshot());
+        std::vector<font::FontIdentity> default_font_chain);
+    TextComponentHost(
+        runtime::NodeStore& nodes,
+        layout::LayoutEngine& layout,
+        runtime::DirtyQueues& dirty,
+        TextSceneService& text_scene,
+        ThemeFontResolver font_resolver);
     TextComponentHost(const TextComponentHost&) = delete;
     TextComponentHost& operator=(const TextComponentHost&) = delete;
     ~TextComponentHost();
@@ -57,7 +67,6 @@ public:
     [[nodiscard]] runtime::ComponentHost& components() noexcept;
     [[nodiscard]] const runtime::ComponentHost& components() const noexcept;
     [[nodiscard]] std::span<const MountedTextComponent> mounted_texts() const noexcept;
-    [[nodiscard]] const DefaultThemeSnapshot& theme() const noexcept;
 
 private:
     friend void mount_text_component(const TextProps& props);
@@ -66,13 +75,17 @@ private:
         runtime::ComponentId component,
         TextSceneId scene,
         std::optional<runtime::SceneFragmentId> fragment);
+    bool apply_typography(
+        runtime::ComponentId component,
+        runtime::SemanticTypography typography);
+    void apply_theme(runtime::ComponentId component);
+    void subscribe_theme(runtime::ComponentId component);
 
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
     TextSceneService* text_scene_;
-    std::vector<font::FontIdentity> default_font_chain_;
-    const DefaultThemeSnapshot* theme_;
+    ThemeFontResolver font_resolver_;
     component::ComponentSceneComposer* composer_{nullptr};
     runtime::ComponentHost components_;
     std::vector<MountedTextComponent> mounted_texts_;
