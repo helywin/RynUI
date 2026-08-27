@@ -116,6 +116,8 @@ tone 更新只写 Material range；content 更新重新 shape/measure 目标 Tex
 
 真实窗口示例使用公开 `ryn::Text` content 声明 primary、secondary、disabled 的 Latin/CJK 文本，由内部 host/platform glue 启动。Windows 使用 `windows-msvc` Debug/Release、D3D12/DXIL；Linux 使用 `linux-gcc` Debug/Release 与 `linux-clang` Debug，真实窗口为 GCC/Vulkan/SPIR-V。保存截图、driver、exit code、mount/Prop/shape/measure/layout/atlas/instance/draw/submit/idle 计数。Clang build 继续使用关闭 extensions 的标准 C++20 模式。
 
+`tasks.md` 将 Windows 与 Linux 的 build、CTest、真实窗口和 evidence contract 拆为独立章节与 checkbox，使每台开发电脑只推进当前平台清单。平台无关的实现和 headless contract 单独验收；最终跨平台收口只汇总两个平台已经完成的结果，不替代任一平台证据，也不因另一平台尚未执行而回退已完成项。
+
 源代码 build、CTest 和 headless contract 不能替代 Windows/Linux 真实窗口视觉验收；同样，公开 DSL 编译通过不代表 public Application API 已交付。
 
 ## Risks / Trade-offs
