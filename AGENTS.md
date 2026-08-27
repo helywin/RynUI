@@ -60,7 +60,8 @@ git diff --check
 
 ## 分平台验收清单
 
-- OpenSpec `tasks.md` 必须把 Windows 与 Linux 的 build、CTest、真实窗口、GPU/driver/shader、截图和 evidence contract 分成独立二级标题与独立 checkbox；不得在同一个验收 checkbox 中同时要求 Windows 和 Linux 完成。
-- 平台无关的实现、headless test、contract test 和文档校验必须单独列项，不得归入任一平台的真实窗口验收。
+- 平台无关的实现、unit/headless test、contract test、benchmark 和文档校验只需在任一受支持平台完成一次；`tasks.md` 必须把它们列为平台通用任务并记录实际使用的平台与 preset，不得要求 Windows 与 Linux 重复验收同一逻辑合同。
+- 只有依赖 OS、toolchain/ABI、window system、GPU/driver/shader、system font、input/DPI 或 packaging 的行为才建立分平台验收。此类 `tasks.md` 必须把 Windows 与 Linux 分成独立二级标题与独立 checkbox，不得在同一个 checkbox 中同时要求两个平台完成。
+- 完整 CTest 若只验证平台通用逻辑，只需在一个平台运行；包含平台分支或平台集成的测试必须在受影响的平台分别运行，且不得用平台通用测试结果代替真实窗口、GPU 或系统服务证据。
 - 每个平台的 checkbox 只有在对应操作系统的实际机器上完成后才能勾选。切换开发电脑时，已经完成的平台项保持完成，另一平台缺少证据不得使其回退，也不得由其代替。
-- Windows 与 Linux 的验收证据和验收提交必须可以各自独立完成。最终跨平台收口项只能汇总两个平台已经完成的结果，不得替代或合并平台清单。
+- 存在分平台验收时，Windows 与 Linux 的证据和验收提交必须可以各自独立完成；最终收口只汇总本 change 明确要求的平台结果，不重复执行已经通过的平台通用验收。

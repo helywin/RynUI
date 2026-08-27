@@ -30,6 +30,9 @@ rules:
   tasks:
     - 按可独立验证的增量拆分任务
     - 每个阶段包含对应测试或真实运行验收
+    - 平台无关的实现、unit/headless test、contract test、benchmark 和文档校验只需在任一受支持平台验收一次，并记录实际平台与 preset
+    - 只有依赖 OS、toolchain/ABI、window system、GPU/driver/shader、system font、input/DPI 或 packaging 的行为才拆分 Windows 与 Linux 独立验收项
+    - 平台通用 CTest 不得在多个平台重复要求；含平台分支或平台集成的测试仍须在受影响的平台分别运行
 
 operations:
   apply:
