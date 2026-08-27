@@ -1,10 +1,10 @@
 ## 1. 锁定上游来源与完整 Token catalog
 
-- [ ] 1.1 定义 `design-tokens/ant-design/6.5.0/sources.lock.yaml` 与 catalog schema，记录 Ant Design `6.5.0` tag、commit `740ad964dc2397f33e40944367b0536a7314cc32`、license、受检 source path 和逐文件 SHA256；通过 schema test、hash verification 与篡改 fixture 验证普通离线构建可拒绝来源漂移
-- [ ] 1.2 实现只读取显式本地 Ant Design source directory 的 `tools/update_ant_design_tokens.py`，提取 Seed、Map、Alias、Component Token interface 与 default/derivation source；通过 pinned source fixture 验证工具不访问网络且同一输入生成 byte-identical 结果
-- [ ] 1.3 展开 preset palette、template key、deprecated/internal、CSS-only 与尚未实现组件字段，为每个条目写入稳定 identity、layer、category、value kind、source location、support classification、RynUI mapping 与 invalidation domain；通过 exact-set coverage test 证明 upstream 字段没有 missing/unclassified 项
-- [ ] 1.4 生成并提交 `catalog.yaml` 与中文 `docs/design-tokens.md`，完整覆盖颜色、字体、尺寸、间距、圆角、边框、阴影、层级、透明度、动效、断点与全部 Component Token；通过 catalog-to-doc coverage、稳定排序和重复 identity tests 验证文档与机器清单一致
-- [ ] 1.5 运行 catalog/schema/hash/doc generation tests、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `docs: lock Ant Design token catalog` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 1.1 定义 `design-tokens/ant-design/6.5.0/sources.lock.yaml` 与 catalog schema，记录 Ant Design `6.5.0` tag、commit `740ad964dc2397f33e40944367b0536a7314cc32`、license、受检 source path 和逐文件 SHA256；通过 schema test、hash verification 与篡改 fixture 验证普通离线构建可拒绝来源漂移
+- [x] 1.2 实现只读取显式本地 Ant Design source directory 的 `tools/update_ant_design_tokens.py`，提取 Seed、Map、Alias、Component Token interface 与 default/derivation source；通过 pinned source fixture 验证工具不访问网络且同一输入生成 byte-identical 结果
+- [x] 1.3 展开 preset palette、template key、deprecated/internal、CSS-only 与尚未实现组件字段，为每个条目写入稳定 identity、layer、category、value kind、source location、support classification、RynUI mapping 与 invalidation domain；通过 exact-set coverage test 证明 upstream 字段没有 missing/unclassified 项
+- [x] 1.4 生成并提交 `catalog.yaml` 与中文 `docs/design-tokens.md`，完整覆盖颜色、字体、尺寸、间距、圆角、边框、阴影、层级、透明度、动效、断点与全部 Component Token；通过 catalog-to-doc coverage、稳定排序和重复 identity tests 验证文档与机器清单一致
+- [x] 1.5 运行 catalog/schema/hash/doc generation tests、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `docs: lock Ant Design token catalog` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 2. Typed Token 基础值与生成边界
 

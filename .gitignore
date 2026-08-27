@@ -3,3 +3,5 @@
 /CMakeUserPresets.json
 /.vs/
 *.user
+__pycache__/
+*.py[cod]

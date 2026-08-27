@@ -1,4 +1,14 @@
 find_package(Git REQUIRED)
+find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+
+add_test(
+    NAME rynui.design_token_catalog
+    COMMAND "${Python3_EXECUTABLE}"
+        "${PROJECT_SOURCE_DIR}/tools/update_ant_design_tokens.py"
+        --repo-root "${PROJECT_SOURCE_DIR}"
+        --verify-repository
+        --self-test
+)
 
 add_executable(rynui_public_api_smoke public_api_smoke.cpp)
 rynui_configure_cpp_target(rynui_public_api_smoke)

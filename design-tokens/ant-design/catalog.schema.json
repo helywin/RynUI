@@ -1,0 +1,71 @@
+{
+  "$id": "rynui://design-tokens/ant-design/catalog.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "component_owners": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "coverage": {
+      "required": [
+        "entries",
+        "missing",
+        "duplicates",
+        "unclassified",
+        "by_layer",
+        "by_support"
+      ],
+      "type": "object"
+    },
+    "empty_components": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "entries": {
+      "items": {
+        "required": [
+          "identity",
+          "upstream_name",
+          "layer",
+          "category",
+          "value_kind",
+          "upstream_type",
+          "source",
+          "support",
+          "ryn_mapping",
+          "invalidation_domain",
+          "deprecated",
+          "internal"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "upstream": {
+      "required": [
+        "name",
+        "version",
+        "commit"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "upstream",
+    "coverage",
+    "component_owners",
+    "entries"
+  ],
+  "title": "RynUI Ant Design token catalog",
+  "type": "object"
+}
