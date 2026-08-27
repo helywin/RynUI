@@ -1,9 +1,9 @@
 ## 1. Reactive Prop 值边界
 
-- [ ] 1.1 在公开 header 中实现拥有静态 `T` 或 type-erased `Binding<T>` reader 的 `Prop<T>`，支持静态值、任意 `Signal<T, Equal>` 与临时 `Binding<T>`，通过 compile/run tests 覆盖 custom equality、临时 Props/Binding 生命周期和禁止裸引用借用
-- [ ] 1.2 实现内部 `connect_prop`：静态值只应用一次、响应值进入 binding phase、相等结果不下发，并通过 Observer/Dirty/frame request 计数测试证明三种来源共享一个字段更新路径且重复相同值不扩大失效
-- [ ] 1.3 把 Prop API 接入 `rynui.hpp`，扩展 public-header isolation/forbidden include 与 compile-fail contract，证明 consumer 只需 C++20/RynUI public target，且 Prop 不暴露 Observer、Node、Layout、FreeType、HarfBuzz 或 SDL3 类型
-- [ ] 1.4 运行 Prop/Reactive 全部测试、`linux-gcc` 与 `linux-clang` Debug build/CTest、`git diff --check`；以英文 `feat: add reactive prop values` 提交本阶段相关文件
+- [x] 1.1 在公开 header 中实现拥有静态 `T` 或 type-erased `Binding<T>` reader 的 `Prop<T>`，支持静态值、任意 `Signal<T, Equal>` 与临时 `Binding<T>`，通过 compile/run tests 覆盖 custom equality、临时 Props/Binding 生命周期和禁止裸引用借用
+- [x] 1.2 实现内部 `connect_prop`：静态值只应用一次、响应值进入 binding phase、相等结果不下发，并通过 Observer/Dirty/frame request 计数测试证明三种来源共享一个字段更新路径且重复相同值不扩大失效
+- [x] 1.3 把 Prop API 接入 `rynui.hpp`，扩展 public-header isolation/forbidden include 与 compile-fail contract，证明 consumer 只需 C++20/RynUI public target，且 Prop 不暴露 Observer、Node、Layout、FreeType、HarfBuzz 或 SDL3 类型
+- [x] 1.4 运行 Prop/Reactive 全部测试、`linux-gcc` 与 `linux-clang` Debug build/CTest、`git diff --check`；以英文 `feat: add reactive prop values` 提交本阶段相关文件
 
 ## 2. Component Host、identity 与 typed composition
 

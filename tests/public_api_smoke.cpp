@@ -6,6 +6,8 @@ int main() {
     const auto current = ryn::version();
     constexpr ryn::Version expected{0, 1, 0};
     ryn::String title = u8"RynUI 设备监控";
+    ryn::Signal<int> count{1};
+    ryn::Prop<int> count_prop{count};
 
     if(current != expected) {
         std::cerr << "Unexpected RynUI version: " << current.major << '.'
@@ -16,6 +18,8 @@ int main() {
         std::cerr << "Unexpected RynUI String state\n";
         return 1;
     }
+
+    static_cast<void>(count_prop);
 
     return 0;
 }

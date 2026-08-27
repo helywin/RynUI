@@ -102,7 +102,7 @@ target_compile_features(rynui INTERFACE cxx_std_20)
 target_include_directories(rynui INTERFACE
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
-target_link_libraries(rynui INTERFACE rynui_graphics rynui_string)
+target_link_libraries(rynui INTERFACE rynui_graphics rynui_reactive rynui_string)
 
 rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
@@ -120,4 +120,4 @@ rynui_assert_direct_dependencies(
     rynui_runtime
     rynui_text
 )
-rynui_assert_direct_dependencies(rynui rynui_graphics rynui_string)
+rynui_assert_direct_dependencies(rynui rynui_graphics rynui_reactive rynui_string)

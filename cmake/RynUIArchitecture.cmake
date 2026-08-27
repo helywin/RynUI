@@ -98,12 +98,36 @@ function(rynui_verify_public_api public_include_directory)
                 "freetype/"
                 "hb\\.h"
                 "hb-ft\\.h"
-                "SDL3/")
+                "SDL3/"
+                "src/"
+                "font/"
+                "graphics/"
+                "layout/"
+                "platform/"
+                "renderer/"
+                "runtime/")
             if(header_contents MATCHES "#[ \t]*include[ \t]*[<\"][^>\"]*${forbidden_include}")
                 message(FATAL_ERROR
                     "Public header ${public_header} exposes forbidden third-party "
                     "include matching ${forbidden_include}.")
             endif()
         endforeach()
+
+        if(public_header MATCHES "/prop\\.hpp$")
+            foreach(forbidden_prop_symbol IN ITEMS
+                    Observer
+                    ReactiveSource
+                    NodeId
+                    Layout
+                    FreeType
+                    HarfBuzz
+                    SDL)
+                if(header_contents MATCHES "${forbidden_prop_symbol}")
+                    message(FATAL_ERROR
+                        "Public Prop header ${public_header} exposes forbidden "
+                        "symbol ${forbidden_prop_symbol}.")
+                endif()
+            endforeach()
+        endif()
     endforeach()
 endfunction()

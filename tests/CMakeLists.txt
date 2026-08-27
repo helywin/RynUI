@@ -6,6 +6,11 @@ target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
 
 add_test(NAME rynui.public_api_smoke COMMAND rynui_public_api_smoke)
 
+add_executable(rynui_prop_public_api_tests prop_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_prop_public_api_tests)
+target_link_libraries(rynui_prop_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.prop_public_api COMMAND rynui_prop_public_api_tests)
+
 add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)
@@ -87,6 +92,12 @@ add_executable(rynui_scope_effect_tests scope_effect_tests.cpp)
 rynui_configure_cpp_target(rynui_scope_effect_tests)
 target_link_libraries(rynui_scope_effect_tests PRIVATE rynui_reactive)
 add_test(NAME rynui.scope_effect COMMAND rynui_scope_effect_tests)
+
+add_executable(rynui_prop_tests prop_tests.cpp)
+rynui_configure_cpp_target(rynui_prop_tests)
+target_include_directories(rynui_prop_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_prop_tests PRIVATE rynui_reactive)
+add_test(NAME rynui.prop COMMAND rynui_prop_tests)
 
 add_executable(rynui_reactive_allocation_benchmark reactive_allocation_benchmark.cpp)
 rynui_configure_cpp_target(rynui_reactive_allocation_benchmark)
@@ -231,6 +242,17 @@ add_test(
         "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
         "-DTEST_GIT_EXECUTABLE=${GIT_EXECUTABLE}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
+)
+
+add_test(
+    NAME rynui.prop_reference_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/prop-reference"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_prop_reference_contract.cmake"
 )
 
 if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
