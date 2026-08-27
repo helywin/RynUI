@@ -4,6 +4,7 @@ add_library(rynui_string STATIC
 
 add_library(rynui_theme STATIC
     theme/design_token.cpp
+    theme/theme_snapshot.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC

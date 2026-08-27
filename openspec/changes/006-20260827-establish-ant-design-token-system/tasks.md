@@ -16,12 +16,12 @@
 
 ## 3. Seed、Map、Alias 与 Component Algorithm
 
-- [ ] 3.1 实现 immutable Seed input、palette/neutral alpha compositing、font/size/control/radius/motion Map derivation 与 Alias projection，明确颜色空间和舍入顺序；通过锁定 Default golden 的逐字段 parity test 验证结果
-- [ ] 3.2 实现 `ThemeAlgorithm::Dark` 与 `ThemeAlgorithm::Compact`，允许按声明顺序与 Default 组合；通过 Default、Dark、Compact、Dark+Compact 和 Compact+Dark golden 验证确定性及顺序语义
-- [ ] 3.3 实现 typed Seed/Alias override 与 Component Token override，锁定 `inherit` 和 override precedence；通过 brand Seed、semantic color、font/spacing、Button token 与非法类型 fixtures 验证只覆盖目标字段
-- [ ] 3.4 实现默认关闭的 component algorithm，显式开启时只在目标 component scope 重新派生；通过多个 component owner、nested override、未开启回归和 upstream golden 验证不会隐式改变其他组件
-- [ ] 3.5 增加 source lock version、algorithm chain、resolved values、identity 与 impact metadata 的 `ThemeSnapshot` 序列化/诊断视图；通过相同输入 byte-identical、不同输入 diff 和错误输入原子失败 tests 验证 snapshot 可复现
-- [ ] 3.6 在任一受支持平台运行 Algorithm/golden/override 全套平台通用 tests 并记录实际 OS、compiler 与 preset，再运行 `git diff --check`；以英文 `feat: derive Ant Design theme snapshots` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 3.1 实现 immutable Seed input、palette/neutral alpha compositing、font/size/control/radius/motion Map derivation 与 Alias projection，明确颜色空间和舍入顺序；通过锁定 Default golden 的逐字段 parity test 验证结果
+- [x] 3.2 实现 `ThemeAlgorithm::Dark` 与 `ThemeAlgorithm::Compact`，允许按声明顺序与 Default 组合；通过 Default、Dark、Compact、Dark+Compact 和 Compact+Dark golden 验证确定性及顺序语义
+- [x] 3.3 实现 typed Seed/Alias override 与 Component Token override，锁定 `inherit` 和 override precedence；通过 brand Seed、semantic color、font/spacing、Button token 与非法类型 fixtures 验证只覆盖目标字段
+- [x] 3.4 实现默认关闭的 component algorithm，显式开启时只在目标 component scope 重新派生；通过多个 component owner、nested override、未开启回归和 upstream golden 验证不会隐式改变其他组件
+- [x] 3.5 增加 source lock version、algorithm chain、resolved values、identity 与 impact metadata 的 `ThemeSnapshot` 序列化/诊断视图；通过相同输入 byte-identical、不同输入 diff 和错误输入原子失败 tests 验证 snapshot 可复现
+- [x] 3.6 在任一受支持平台运行 Algorithm/golden/override 全套平台通用 tests 并记录实际 OS、compiler 与 preset，再运行 `git diff --check`；以英文 `feat: derive Ant Design theme snapshots` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 4. Theme scope、继承与细粒度失效
 

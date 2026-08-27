@@ -21,6 +21,16 @@ rynui_configure_cpp_target(rynui_design_token_tests)
 target_link_libraries(rynui_design_token_tests PRIVATE rynui_theme)
 add_test(NAME rynui.design_token COMMAND rynui_design_token_tests)
 
+add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
+rynui_configure_cpp_target(rynui_theme_algorithm_tests)
+target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)
+target_compile_definitions(
+    rynui_theme_algorithm_tests
+    PRIVATE
+        "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.5.0/golden\""
+)
+add_test(NAME rynui.theme_algorithm COMMAND rynui_theme_algorithm_tests)
+
 add_executable(
     rynui_design_token_header_isolation_tests
     design_token_header_isolation_tests.cpp

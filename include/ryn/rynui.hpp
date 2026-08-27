@@ -10,4 +10,5 @@
 #include <ryn/space.hpp>
 #include <ryn/string.hpp>
 #include <ryn/text.hpp>
+#include <ryn/theme.hpp>
 #include <ryn/version.hpp>
