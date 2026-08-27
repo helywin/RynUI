@@ -66,8 +66,8 @@
 - [x] 9.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、标准 C++20、BUNDLED 依赖和 Vulkan/SPIR-V shader 仍来自锁定来源，保存 Linux 构建结果
 - [x] 9.2 使用 `linux-clang` preset 完成 Debug configure/build/CTest，核对 RynUI 自有 input/interaction/focus/Button/scene target 使用 `-std=c++20` 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
 - [x] 9.3 在 Linux/GCC/Vulkan/SPIR-V 真实窗口运行公开 Button DSL 示例，以 mouse 和 keyboard 实际触发 hover、pressed、drag-out、Tab、Enter、Space、disabled/loading 与正常退出；保存 display scale、截图、driver、shader format、退出码和全套诊断计数
-- [ ] 9.4 人工核对 Default/Primary、Small/Middle/Large、CJK/Latin、focus-visible、disabled/loading 层级和 click counter；运行 Linux evidence contract、public dependency、shader/lock/license 与未跟踪依赖检查，不把其他平台结果写入 Linux 证据
-- [ ] 9.5 运行 Linux 完整 CTest 与 `git diff --check`；以英文 `test: validate Linux button interactions` 提交并推送本平台验收文件，核对 remote SHA
+- [x] 9.4 人工核对 Default/Primary、Small/Middle/Large、CJK/Latin、focus-visible、disabled/loading 层级和 click counter；运行 Linux evidence contract、public dependency、shader/lock/license 与未跟踪依赖检查，不把其他平台结果写入 Linux 证据
+- [x] 9.5 运行 Linux 完整 CTest 与 `git diff --check`；以英文 `test: validate Linux button interactions` 提交并推送本平台验收文件，核对 remote SHA
 
 ## 10. Windows 验收清单
 
