@@ -93,13 +93,6 @@ float margin_length(LogicalLength value) {
     return value.value();
 }
 
-LogicalLength read_prop(const Prop<LogicalLength>& prop) {
-    if (const auto* value = detail::PropAccess::static_value(prop)) {
-        return *value;
-    }
-    return detail::PropAccess::binding(prop)->get();
-}
-
 void set_field(
     ExternalLayoutStyle& style,
     LayoutStyleField field,
@@ -221,7 +214,7 @@ void connect_layout_style(
     for (const auto& field : fields) {
         const auto& prop = field.member(style);
         if (prop.has_value()) {
-            set_field(initial, field.field, read_prop(*prop));
+            set_field(initial, field.field, detail::read_prop(*prop));
         }
     }
 

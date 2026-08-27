@@ -81,6 +81,22 @@ target_link_libraries(rynui_text_scene PRIVATE
     rynui_text
 )
 
+add_library(rynui_components STATIC
+    component/default_theme.cpp
+    component/text_component.cpp
+)
+rynui_configure_cpp_target(rynui_components)
+target_include_directories(rynui_components PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(rynui_components PRIVATE
+    rynui_layout
+    rynui_reactive
+    rynui_runtime
+    rynui_text_scene
+)
+
 add_library(rynui_platform_sdl STATIC
     platform/sdl/platform_state.cpp
 )
@@ -116,7 +132,14 @@ target_compile_features(rynui INTERFACE cxx_std_20)
 target_include_directories(rynui INTERFACE
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
-target_link_libraries(rynui INTERFACE rynui_graphics rynui_reactive rynui_string)
+target_link_libraries(
+    rynui
+    INTERFACE
+        rynui_components
+        rynui_graphics
+        rynui_reactive
+        rynui_string
+)
 
 rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
@@ -131,6 +154,13 @@ rynui_assert_direct_dependencies(
     rynui_runtime
     rynui_text
 )
+rynui_assert_direct_dependencies(
+    rynui_components
+    rynui_layout
+    rynui_reactive
+    rynui_runtime
+    rynui_text_scene
+)
 rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3)
 rynui_assert_direct_dependencies(
     rynui_renderer_sdl
@@ -141,4 +171,10 @@ rynui_assert_direct_dependencies(
     rynui_text
     rynui_text_scene
 )
-rynui_assert_direct_dependencies(rynui rynui_graphics rynui_reactive rynui_string)
+rynui_assert_direct_dependencies(
+    rynui
+    rynui_components
+    rynui_graphics
+    rynui_reactive
+    rynui_string
+)

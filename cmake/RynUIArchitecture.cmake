@@ -164,5 +164,25 @@ function(rynui_verify_public_api public_include_directory)
                 endif()
             endforeach()
         endif()
+
+        if(public_header MATCHES "/text\\.hpp$")
+            foreach(forbidden_text_symbol IN ITEMS
+                    ComponentHost
+                    NodeId
+                    Font
+                    HarfBuzz
+                    FreeType
+                    Scene
+                    GPU
+                    SDL
+                    PrimitiveStyle
+                    Color)
+                if(header_contents MATCHES "${forbidden_text_symbol}")
+                    message(FATAL_ERROR
+                        "Public Text header ${public_header} exposes forbidden "
+                        "symbol ${forbidden_text_symbol}.")
+                endif()
+            endforeach()
+        endif()
     endforeach()
 endfunction()

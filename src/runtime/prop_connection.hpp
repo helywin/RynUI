@@ -21,6 +21,14 @@ struct PropAccess final {
     }
 };
 
+template <typename T>
+[[nodiscard]] T read_prop(const Prop<T>& prop) {
+    if (const auto* value = PropAccess::static_value(prop)) {
+        return *value;
+    }
+    return PropAccess::binding(prop)->get();
+}
+
 template <typename T, typename Apply, typename Equal = std::equal_to<T>>
 BindingHandle connect_prop(
     Scope& scope,

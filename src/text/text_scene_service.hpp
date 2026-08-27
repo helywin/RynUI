@@ -42,6 +42,7 @@ struct TextSceneRevisions final {
 };
 
 struct TextSceneRecordCounters final {
+    std::uint64_t measurement_synchronizations{};
     std::uint64_t synchronizations{};
     std::uint64_t instance_rebuilds{};
     std::uint64_t material_updates{};
@@ -82,6 +83,7 @@ public:
     bool set_placement(TextSceneId id, graphics::GlyphPlacement placement);
 
     [[nodiscard]] bool synchronize(TextSceneId id);
+    [[nodiscard]] bool synchronize_measurement(TextSceneId id);
     [[nodiscard]] bool synchronize(
         TextSceneId id,
         graphics::GlyphPlacement placement);

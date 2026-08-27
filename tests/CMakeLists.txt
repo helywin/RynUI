@@ -21,6 +21,11 @@ rynui_configure_cpp_target(rynui_layout_style_public_api_tests)
 target_link_libraries(rynui_layout_style_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.layout_style_public_api COMMAND rynui_layout_style_public_api_tests)
 
+add_executable(rynui_text_public_api_tests text_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_text_public_api_tests)
+target_link_libraries(rynui_text_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.text_public_api COMMAND rynui_text_public_api_tests)
+
 add_executable(rynui_string_tests string_tests.cpp)
 rynui_configure_cpp_target(rynui_string_tests)
 target_link_libraries(rynui_string_tests PRIVATE rynui_string)
@@ -228,6 +233,22 @@ target_compile_definitions(
 )
 add_test(NAME rynui.text_scene_service COMMAND rynui_text_scene_service_tests)
 
+add_executable(rynui_default_theme_tests default_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_default_theme_tests)
+target_link_libraries(rynui_default_theme_tests PRIVATE rynui_components)
+add_test(NAME rynui.default_theme COMMAND rynui_default_theme_tests)
+
+add_executable(rynui_text_component_tests text_component_tests.cpp)
+rynui_configure_cpp_target(rynui_text_component_tests)
+target_link_libraries(rynui_text_component_tests PRIVATE rynui_components)
+target_compile_definitions(
+    rynui_text_component_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.text_component COMMAND rynui_text_component_tests)
+
 add_test(
     NAME rynui.text_example_contract
     COMMAND ${CMAKE_COMMAND}
@@ -283,6 +304,17 @@ add_test(
         "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DTEST_CONFIGURATION=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_prop_reference_contract.cmake"
+)
+
+add_test(
+    NAME rynui.text_public_compile_fail
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/text-public"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+        "-DTEST_CONFIGURATION=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_text_public_contract.cmake"
 )
 
 if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")

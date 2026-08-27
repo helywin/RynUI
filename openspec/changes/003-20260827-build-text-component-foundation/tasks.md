@@ -31,11 +31,11 @@
 
 ## 5. 公开 TextProps 与 ryn::Text
 
-- [ ] 5.1 建立内部 immutable Default Theme snapshot，锁定 Ant Design 6.5.0 常规 14 logical-pixel 正文、line height 与 primary/secondary/disabled alias color，通过 token contract test 验证字段和值，且公开 API 不提供 Theme override、任意颜色/字号/字体或 PrimitiveStyle
-- [ ] 5.2 在公开 header 中实现 `TextTone`、拥有 `Prop<String>`/`Prop<TextTone>`/`LayoutStyle` 的 typed `TextProps` builder 与 `ryn::Text`，提供复用同一 Props 路径的 `String`/`u8` literal convenience overload；通过 API、CJK literal、Signal/Binding 与 compile-fail tests 证明不保存 `StringView` 或 narrow literal
-- [ ] 5.3 实现 Text mount adapter：创建 component record/Node、连接 content/tone/layout Prop、注册 intrinsic measure，并把 Host Theme 与 Text scene service 接到既有 shaping/Glyph pipeline；通过首次挂载、兄弟 Text、错误线程和 dispose tests 验证 owner-thread 与生命周期
-- [ ] 5.4 接通 shaped measurement、Node bounds、clip/translation 与 Glyph instance placement，通过自然宽度、有限宽 CJK/Latin 换行、margin、resize 和 translation tests 证明按 glyph metrics 测量、cluster 完整且移动不 shaping
-- [ ] 5.5 扩展 `rynui.hpp`、public target 和 header isolation/leak checks；通过只包含公开头的 consumer 编译证明 component/Text API 不出现内部 Host、NodeId、layout model、Font/HarfBuzz/FreeType/Scene/GPU/SDL3 类型
+- [x] 5.1 建立内部 immutable Default Theme snapshot，锁定 Ant Design 6.5.0 常规 14 logical-pixel 正文、line height 与 primary/secondary/disabled alias color，通过 token contract test 验证字段和值，且公开 API 不提供 Theme override、任意颜色/字号/字体或 PrimitiveStyle
+- [x] 5.2 在公开 header 中实现 `TextTone`、拥有 `Prop<String>`/`Prop<TextTone>`/`LayoutStyle` 的 typed `TextProps` builder 与 `ryn::Text`，提供复用同一 Props 路径的 `String`/`u8` literal convenience overload；通过 API、CJK literal、Signal/Binding 与 compile-fail tests 证明不保存 `StringView` 或 narrow literal
+- [x] 5.3 实现 Text mount adapter：创建 component record/Node、连接 content/tone/layout Prop、注册 intrinsic measure，并把 Host Theme 与 Text scene service 接到既有 shaping/Glyph pipeline；通过首次挂载、兄弟 Text、错误线程和 dispose tests 验证 owner-thread 与生命周期
+- [x] 5.4 接通 shaped measurement、Node bounds、clip/translation 与 Glyph instance placement，通过自然宽度、有限宽 CJK/Latin 换行、margin、resize 和 translation tests 证明按 glyph metrics 测量、cluster 完整且移动不 shaping
+- [x] 5.5 扩展 `rynui.hpp`、public target 和 header isolation/leak checks；通过只包含公开头的 consumer 编译证明 component/Text API 不出现内部 Host、NodeId、layout model、Font/HarfBuzz/FreeType/Scene/GPU/SDL3 类型
 - [ ] 5.6 运行 Text component、Prop、Layout、多 Text 与 public API 全部测试、MSVC/GCC/Clang Debug build/CTest、`git diff --check`；以英文 `feat: add public text component` 提交本阶段相关文件
 
 ## 6. Windows 真实窗口组件验收

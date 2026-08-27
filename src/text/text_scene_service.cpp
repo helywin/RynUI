@@ -211,8 +211,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
         throw std::logic_error("Text scene record must have placement before synchronization");
     }
     ++record.counters.synchronizations;
-    record.last_error = {};
-    if (!record.state->synchronize()) {
+    if (!synchronize_measurement(id)) {
         return false;
     }
 
@@ -276,6 +275,14 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
     record.placement = placement;
     return true;
+}
+
+bool TextSceneService::synchronize_measurement(TextSceneId id) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    ++record.counters.measurement_synchronizations;
+    record.last_error = {};
+    return record.state->synchronize();
 }
 
 bool TextSceneService::synchronize(
