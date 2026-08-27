@@ -23,11 +23,11 @@
 
 ## 4. Focus manager 与键盘激活
 
-- [ ] 4.1 实现单 Window generation-checked focus identity 与按 eligible 声明顺序生成的 focus order，通过 `Tab`/`Shift+Tab`、首尾循环、空列表、disabled 跳过、loading 保留和动态资格 tests 验证遍历
-- [ ] 4.2 实现 keyboard/pointer modality、focused/focus-visible 与 window active 状态，通过 pointer focus、Tab focus、window lost/gained、focused target disable/destroy 和 slot reuse tests 验证 ring 资格与恢复
-- [ ] 4.3 实现 `Enter` 非 repeat key-down 单次激活以及 `Space` down pressed/up click，通过 repeat、mismatched key、失焦、disable/loading、destroy、callback mutation 和 keyboard/pointer 去重 tests 验证 click gate
-- [ ] 4.4 连接 Focus manager 与 Pointer router 的资格、cancel 和诊断路径，通过 owner-thread、嵌套 route、Scope dispose、steady-state allocation 和 idle frame tests 验证共享 lifecycle
-- [ ] 4.5 运行 Focus、Keyboard、Pointer、Component lifecycle 与 frame scheduler 自动测试和 `git diff --check`；以英文 `feat: add focus and keyboard activation` 提交并推送本阶段相关文件，核对 remote SHA
+- [x] 4.1 实现单 Window generation-checked focus identity 与按 eligible 声明顺序生成的 focus order，通过 `Tab`/`Shift+Tab`、首尾循环、空列表、disabled 跳过、loading 保留和动态资格 tests 验证遍历
+- [x] 4.2 实现 keyboard/pointer modality、focused/focus-visible 与 window active 状态，通过 pointer focus、Tab focus、window lost/gained、focused target disable/destroy 和 slot reuse tests 验证 ring 资格与恢复
+- [x] 4.3 实现 `Enter` 非 repeat key-down 单次激活以及 `Space` down pressed/up click，通过 repeat、mismatched key、失焦、disable/loading、destroy、callback mutation 和 keyboard/pointer 去重 tests 验证 click gate
+- [x] 4.4 连接 Focus manager 与 Pointer router 的资格、cancel 和诊断路径，通过 owner-thread、嵌套 route、Scope dispose、steady-state allocation 和 idle frame tests 验证共享 lifecycle
+- [x] 4.5 运行 Focus、Keyboard、Pointer、Component lifecycle 与 frame scheduler 自动测试和 `git diff --check`；以英文 `feat: add focus and keyboard activation` 提交并推送本阶段相关文件，核对 remote SHA
 
 ## 5. Component paint traversal 与 Button scene 数据
 

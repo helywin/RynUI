@@ -75,6 +75,7 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
             registration.focusable,
             std::make_shared<const InteractionHandlers>(
                 std::move(registration.handlers)),
+            {},
             next_declaration_order_,
         });
         declaration_order_.push_back(id);
@@ -129,6 +130,15 @@ bool InteractionRegistry::set_handlers(
     InteractionHandlers handlers) {
     auto& record = require(id);
     record.handlers = std::make_shared<const InteractionHandlers>(
+        std::move(handlers));
+    return true;
+}
+
+bool InteractionRegistry::set_focus_handlers(
+    InteractionId id,
+    FocusHandlers handlers) {
+    auto& record = require(id);
+    record.focus_handlers = std::make_shared<const FocusHandlers>(
         std::move(handlers));
     return true;
 }

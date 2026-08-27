@@ -11,6 +11,8 @@
 
 namespace ryn::input {
 
+class FocusManager;
+
 enum class PointerEventKind : std::uint8_t {
     move,
     down,
@@ -94,7 +96,8 @@ public:
     PointerRouter(
         InteractionRegistry& registry,
         HitTestSnapshot& hit_test,
-        runtime::FrameRequestState* frames = nullptr) noexcept;
+        runtime::FrameRequestState* frames = nullptr,
+        FocusManager* focus = nullptr) noexcept;
 
     void reserve(std::size_t pointer_capacity, std::size_t route_capacity);
     void dispatch(const PointerInputEvent& event);
@@ -162,6 +165,7 @@ private:
     InteractionRegistry* registry_;
     HitTestSnapshot* hit_test_;
     runtime::FrameRequestState* frames_;
+    FocusManager* focus_;
     std::vector<PointerState> states_;
     std::vector<InteractionId> route_scratch_;
     std::vector<InteractionId> next_hover_scratch_;

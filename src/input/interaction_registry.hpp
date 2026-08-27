@@ -39,6 +39,24 @@ struct InteractionHandlers final {
     PointerEventHandler bubble;
 };
 
+struct FocusPresentation final {
+    bool focused{false};
+    bool focus_visible{false};
+    bool keyboard_pressed{false};
+
+    friend bool operator==(FocusPresentation, FocusPresentation) = default;
+};
+
+using FocusStateHandler = std::function<void(FocusPresentation)>;
+using ActivationGate = std::function<bool()>;
+using ActivationHandler = std::function<void()>;
+
+struct FocusHandlers final {
+    FocusStateHandler state_changed;
+    ActivationGate activation_allowed;
+    ActivationHandler activate;
+};
+
 struct InteractionRegistration final {
     runtime::ComponentId component;
     runtime::NodeId node;
@@ -56,6 +74,7 @@ struct InteractionRecord final {
     bool eligible{true};
     bool focusable{false};
     std::shared_ptr<const InteractionHandlers> handlers;
+    std::shared_ptr<const FocusHandlers> focus_handlers;
     std::size_t declaration_order{0};
 };
 
@@ -71,6 +90,7 @@ public:
     bool set_eligible(InteractionId id, bool eligible);
     bool set_focusable(InteractionId id, bool focusable);
     bool set_handlers(InteractionId id, InteractionHandlers handlers);
+    bool set_focus_handlers(InteractionId id, FocusHandlers handlers);
 
     [[nodiscard]] InteractionRecord* find(InteractionId id);
     [[nodiscard]] const InteractionRecord* find(InteractionId id) const;

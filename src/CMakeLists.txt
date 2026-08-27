@@ -58,6 +58,7 @@ target_include_directories(rynui_runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_runtime PRIVATE rynui_reactive)
 
 add_library(rynui_interaction STATIC
+    input/focus_manager.cpp
     input/interaction_registry.cpp
     input/pointer_router.cpp
 )

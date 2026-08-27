@@ -1,5 +1,7 @@
 #include "input/pointer_router.hpp"
 
+#include "input/focus_manager.hpp"
+
 #include <algorithm>
 #include <stdexcept>
 
@@ -67,8 +69,9 @@ bool PointerDispatchContext::release_pointer_capture() {
 PointerRouter::PointerRouter(
     InteractionRegistry& registry,
     HitTestSnapshot& hit_test,
-    runtime::FrameRequestState* frames) noexcept
-    : registry_(&registry), hit_test_(&hit_test), frames_(frames) {}
+    runtime::FrameRequestState* frames,
+    FocusManager* focus) noexcept
+    : registry_(&registry), hit_test_(&hit_test), frames_(frames), focus_(focus) {}
 
 void PointerRouter::reserve(
     std::size_t pointer_capacity,
@@ -120,6 +123,9 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
 
         if (event.action == PointerAction::down
                 && event.button == PointerButton::primary) {
+            if (focus_ != nullptr) {
+                static_cast<void>(focus_->focus_from_pointer(actual_target));
+            }
             if (pointer->primary_down || pointer->capture.has_value()
                     || pointer->press_origin.has_value()) {
                 clear_primary_state(*pointer, true);
@@ -220,6 +226,9 @@ void PointerRouter::cancel_all() {
 void PointerRouter::cancel_interaction(InteractionId interaction) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
+    }
+    if (focus_ != nullptr) {
+        focus_->cancel_interaction(interaction);
     }
     const bool invoke_handlers = !dispatching_;
     if (invoke_handlers) {
