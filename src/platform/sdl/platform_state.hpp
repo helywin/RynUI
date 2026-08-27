@@ -57,6 +57,8 @@ public:
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
     [[nodiscard]] virtual const char* gpu_driver(
         PlatformGpuDeviceHandle device) const noexcept = 0;
+    [[nodiscard]] virtual float display_scale(
+        PlatformWindowHandle window) const noexcept = 0;
     [[nodiscard]] virtual bool poll_quit_requested() noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
     [[nodiscard]] virtual PlatformEvents poll_events() noexcept {
@@ -87,6 +89,7 @@ public:
     [[nodiscard]] PlatformWindowHandle window() const noexcept;
     [[nodiscard]] PlatformGpuDeviceHandle gpu_device() const noexcept;
     [[nodiscard]] const char* gpu_driver() const noexcept;
+    [[nodiscard]] float display_scale() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] bool poll_quit_requested() noexcept;
     [[nodiscard]] PlatformEvents poll_events() noexcept;

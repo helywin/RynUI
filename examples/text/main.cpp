@@ -283,6 +283,7 @@ int main(int argc, char** argv) {
         std::cout
             << "gpu_driver=" << platform.gpu_driver()
             << " shader_format=" << renderer.shader_format()
+            << " display_scale=" << platform.display_scale()
             << " mount_runs=" << application.components().mount_runs()
             << " prop_updates=" << prop_updates
             << " resize_updates=" << resize_updates

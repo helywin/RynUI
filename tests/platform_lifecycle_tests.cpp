@@ -71,6 +71,11 @@ public:
         return "fake-gpu";
     }
 
+    [[nodiscard]] float display_scale(
+        PlatformWindowHandle) const noexcept override {
+        return 1.25F;
+    }
+
     [[nodiscard]] bool poll_quit_requested() noexcept override {
         return false;
     }
@@ -130,6 +135,7 @@ void test_success_cleanup() {
         require(result.state->window() != nullptr, "window handle is missing");
         require(result.state->gpu_device() != nullptr, "GPU handle is missing");
         require(std::string(result.state->gpu_driver()) == "fake-gpu", "GPU driver differs");
+        require(result.state->display_scale() == 1.25F, "display scale differs");
         require(result.state->is_owner_thread(), "lifecycle lost its owner thread");
         require_calls(
             api.calls,

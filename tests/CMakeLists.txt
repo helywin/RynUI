@@ -283,8 +283,8 @@ add_test(
 add_test(
     NAME rynui.linux_text_evidence
     COMMAND ${CMAKE_COMMAND}
-        "-DEVIDENCE_REPORT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/linux-gcc.md"
-        "-DEVIDENCE_SCREENSHOT=${PROJECT_SOURCE_DIR}/openspec/changes/002-20260826-build-text-and-cjk-rendering-foundation/evidence/linux-gcc-debug.png"
+        "-DEVIDENCE_REPORT=${PROJECT_SOURCE_DIR}/openspec/changes/003-20260827-build-text-component-foundation/evidence/linux-gcc.md"
+        "-DEVIDENCE_SCREENSHOT=${PROJECT_SOURCE_DIR}/openspec/changes/003-20260827-build-text-component-foundation/evidence/linux-gcc-debug.png"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_linux_text_evidence.cmake"
 )
 

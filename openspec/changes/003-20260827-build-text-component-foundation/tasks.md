@@ -47,9 +47,9 @@
 
 ## 7. Linux 验收与 change 收口
 
-- [ ] 7.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、标准 C++20、BUNDLED FreeType/HarfBuzz/字体和 SPIR-V shader 仍来自锁定来源
-- [ ] 7.2 使用 `linux-clang` preset完成 Debug configure/build/CTest，核对 RynUI 自有 Prop/component/Layout/Text/renderer target 使用 `-std=c++20` 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
-- [ ] 7.3 在 Linux/GCC/Vulkan/SPIR-V 真实窗口运行与 Windows 相同的公开 Text DSL 示例，触发 content、tone、width、margin 与 resize 更新并正常退出；保存 display scale、截图、driver、退出码和计数证据，核对三种 tone、局部更新、共享 atlas、稳定 draw order 与 idle
-- [ ] 7.4 运行 `BUNDLED|SYSTEM` dependency contract、public-header isolation/leak、shader/lock/license 与未跟踪字体检查，证明 003 不新增第三方 library、运行时字体扫描、submodule 或 system-first fallback
+- [x] 7.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、标准 C++20、BUNDLED FreeType/HarfBuzz/字体和 SPIR-V shader 仍来自锁定来源
+- [x] 7.2 使用 `linux-clang` preset完成 Debug configure/build/CTest，核对 RynUI 自有 Prop/component/Layout/Text/renderer target 使用 `-std=c++20` 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
+- [x] 7.3 在 Linux/GCC/Vulkan/SPIR-V 真实窗口运行与 Windows 相同的公开 Text DSL 示例，触发 content、tone、width、margin 与 resize 更新并正常退出；保存 display scale、截图、driver、退出码和计数证据，核对三种 tone、局部更新、共享 atlas、稳定 draw order 与 idle
+- [x] 7.4 运行 `BUNDLED|SYSTEM` dependency contract、public-header isolation/leak、shader/lock/license 与未跟踪字体检查，证明 003 不新增第三方 library、运行时字体扫描、submodule 或 system-first fallback
 - [ ] 7.5 运行 Windows/Linux 对应全量 CTest 和 evidence checks、`openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；只在任务 1–7 的自动测试和真实窗口证据均满足后勾选并记录最终验收摘要
 - [ ] 7.6 确认 worktree 只包含本 change 相关文件，README、AGENTS、architecture 与 OpenSpec 职责未混写；以英文 `test: validate cross-platform text components` 提交最终验收阶段，不主动 push 或 archive

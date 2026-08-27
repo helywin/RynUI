@@ -63,6 +63,11 @@ public:
         return SDL_GetGPUDeviceDriver(static_cast<SDL_GPUDevice*>(device));
     }
 
+    [[nodiscard]] float display_scale(
+        PlatformWindowHandle window) const noexcept override {
+        return SDL_GetWindowDisplayScale(static_cast<SDL_Window*>(window));
+    }
+
     [[nodiscard]] bool poll_quit_requested() noexcept override {
         return poll_events().quit_requested;
     }
@@ -188,6 +193,10 @@ PlatformGpuDeviceHandle PlatformState::gpu_device() const noexcept {
 
 const char* PlatformState::gpu_driver() const noexcept {
     return api_->gpu_driver(gpu_device_);
+}
+
+float PlatformState::display_scale() const noexcept {
+    return api_->display_scale(window_);
 }
 
 bool PlatformState::is_owner_thread() const noexcept {

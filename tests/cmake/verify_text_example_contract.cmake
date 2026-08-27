@@ -14,6 +14,7 @@ foreach(required IN ITEMS
         "margin.set("
         "resize_window("
         "mount_runs="
+        "display_scale="
         "prop_updates="
         "shape_count="
         "measure_count="

@@ -26,6 +26,10 @@ public:
     [[nodiscard]] const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override {
         return "fake-gpu";
     }
+    [[nodiscard]] float display_scale(
+        PlatformWindowHandle) const noexcept override {
+        return 1.0F;
+    }
     [[nodiscard]] bool poll_quit_requested() noexcept override { return false; }
     void delay(std::uint32_t) noexcept override {}
 
