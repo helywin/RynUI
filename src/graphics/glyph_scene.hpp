@@ -68,6 +68,9 @@ struct GlyphDrawRange {
 class GlyphInstanceStore final {
 public:
     [[nodiscard]] GlyphInstanceRange append(std::span<const GlyphInstance> instances);
+    [[nodiscard]] GlyphInstanceRange replace(
+        GlyphInstanceRange range,
+        std::span<const GlyphInstance> instances);
     [[nodiscard]] const GlyphInstance& at(std::uint32_t index) const;
     [[nodiscard]] GlyphInstance& at(std::uint32_t index);
     [[nodiscard]] std::span<const GlyphInstance> instances() const noexcept;
@@ -130,6 +133,16 @@ public:
         GlyphAtlas& atlas,
         const text::ShapedText& shaped,
         const text::TextMeasurement& measurement,
+        GlyphPlacement placement);
+    [[nodiscard]] GlyphSceneResult replace_text(
+        GlyphInstanceRange range,
+        font::FontRuntime& fonts,
+        GlyphAtlas& atlas,
+        const text::ShapedText& shaped,
+        const text::TextMeasurement& measurement,
+        GlyphPlacement placement);
+    [[nodiscard]] std::size_t update_geometry(
+        GlyphInstanceRange range,
         GlyphPlacement placement);
 
     [[nodiscard]] GlyphInstanceStore& instances() noexcept;

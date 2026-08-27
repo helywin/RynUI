@@ -23,10 +23,10 @@
 
 ## 4. 多 Text 共享 scene service
 
-- [ ] 4.1 将单 `TextRenderController` 泛化为 Host 级 Text scene service 与 per-Text generation-checked record，保留独立 content/tone/layout revision、TextState、measurement cache、Node 和 Scene range；通过两个及以上 Text 的 create/sync/order tests 验证声明顺序稳定
-- [ ] 4.2 实现多个 Text 共享 Font Runtime、GlyphAtlas、GlyphScene 与 renderer upload plan，通过重复 glyph tests 证明第二个 Text 命中现有 raster/atlas entry，不重复 texture upload
-- [ ] 4.3 实现 Text range 删除、局部 compact/remap 与 generation 校验，通过销毁首个/中间/末尾 Text、slot 复用和后续更新测试证明 surviving Text identity、atlas UV、draw order 与 dirty range 正确
-- [ ] 4.4 分离 content、tone、constraint 与 placement dirty path：content 执行目标 shape/measure/atlas/instance，tone 只更新目标 Material，constraint 只重新 measure/layout，placement 只更新 geometry；通过逐 Text 诊断计数和不相邻 dirty range tests 证明不扩大为全量 upload
+- [x] 4.1 将单 `TextRenderController` 泛化为 Host 级 Text scene service 与 per-Text generation-checked record，保留独立 content/tone/layout revision、TextState、measurement cache、Node 和 Scene range；通过两个及以上 Text 的 create/sync/order tests 验证声明顺序稳定
+- [x] 4.2 实现多个 Text 共享 Font Runtime、GlyphAtlas、GlyphScene 与 renderer upload plan，通过重复 glyph tests 证明第二个 Text 命中现有 raster/atlas entry，不重复 texture upload
+- [x] 4.3 实现 Text range 删除、局部 compact/remap 与 generation 校验，通过销毁首个/中间/末尾 Text、slot 复用和后续更新测试证明 surviving Text identity、atlas UV、draw order 与 dirty range 正确
+- [x] 4.4 分离 content、tone、constraint 与 placement dirty path：content 执行目标 shape/measure/atlas/instance，tone 只更新目标 Material，constraint 只重新 measure/layout，placement 只更新 geometry；通过逐 Text 诊断计数和不相邻 dirty range tests 证明不扩大为全量 upload
 - [ ] 4.5 运行 Font/Text/Glyph/renderer 与多 Text 集成测试、MSVC/GCC/Clang Debug build/CTest、`git diff --check`；以英文 `feat: support multiple text components` 提交本阶段相关文件
 
 ## 5. 公开 TextProps 与 ryn::Text

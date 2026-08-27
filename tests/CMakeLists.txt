@@ -217,6 +217,17 @@ target_compile_definitions(
 )
 add_test(NAME rynui.text_render_integration COMMAND rynui_text_render_integration_tests)
 
+add_executable(rynui_text_scene_service_tests text_scene_service_tests.cpp)
+rynui_configure_cpp_target(rynui_text_scene_service_tests)
+target_link_libraries(rynui_text_scene_service_tests PRIVATE rynui_renderer_sdl)
+target_compile_definitions(
+    rynui_text_scene_service_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.text_scene_service COMMAND rynui_text_scene_service_tests)
+
 add_test(
     NAME rynui.text_example_contract
     COMMAND ${CMAKE_COMMAND}

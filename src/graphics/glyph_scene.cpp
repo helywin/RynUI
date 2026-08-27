@@ -10,6 +10,16 @@
 namespace ryn::graphics {
 namespace {
 
+struct PendingGlyphText final {
+    std::vector<GlyphInstance> instances;
+    std::vector<GlyphDrawRange> draw_ranges;
+    GlyphAtlasError error{};
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return !error;
+    }
+};
+
 void validate_finite(std::span<const float> values, const char* message) {
     if (!std::ranges::all_of(values, [](float value) { return std::isfinite(value); })) {
         throw std::invalid_argument(message);
@@ -62,6 +72,99 @@ void validate_placement(const GlyphPlacement& placement) {
     };
 }
 
+[[nodiscard]] PendingGlyphText build_text(
+    font::FontRuntime& fonts,
+    GlyphAtlas& atlas,
+    const text::ShapedText& shaped,
+    const text::TextMeasurement& measurement,
+    const GlyphPlacement& placement) {
+    validate_placement(placement);
+    const auto clip = clip_bounds(placement.clip_pixels, placement.viewport_pixels);
+    const auto translation = normalized_translation(
+        placement.translation_pixels,
+        placement.viewport_pixels);
+
+    PendingGlyphText pending;
+    for (const text::TextLine& line : measurement.lines) {
+        const std::uint64_t line_end =
+            static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
+        if (line_end > shaped.glyphs.size()) {
+            throw std::invalid_argument("TextMeasurement references glyphs outside ShapedText");
+        }
+        float pen_x = 0.0F;
+        for (std::size_t glyph_index = line.glyph_begin;
+                glyph_index < line_end; ++glyph_index) {
+            const text::ShapedGlyph& glyph = shaped.glyphs[glyph_index];
+            const GlyphAtlasResult atlas_result = atlas.ensure(
+                fonts, glyph.font, glyph.glyph_id);
+            if (!atlas_result) {
+                pending.error = atlas_result.error;
+                return pending;
+            }
+            const GlyphAtlasEntry& entry = *atlas_result.entry;
+            if (!entry.empty) {
+                const float left_pixels = placement.origin_pixels.x
+                    + pen_x + glyph.offset_x + static_cast<float>(entry.bearing_x);
+                const float top_pixels = placement.origin_pixels.y
+                    + line.baseline - glyph.offset_y - static_cast<float>(entry.bearing_y);
+                pending.instances.push_back({
+                    {
+                        -1.0F + 2.0F * left_pixels / placement.viewport_pixels.width,
+                        1.0F - 2.0F * top_pixels / placement.viewport_pixels.height,
+                        2.0F * entry.coverage_rect.width / placement.viewport_pixels.width,
+                        -2.0F * entry.coverage_rect.height / placement.viewport_pixels.height,
+                    },
+                    {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
+                    clip,
+                    placement.color,
+                    {translation[0], translation[1], placement.opacity, 0.0F},
+                });
+                const std::uint32_t local_index =
+                    static_cast<std::uint32_t>(pending.instances.size() - 1);
+                if (!pending.draw_ranges.empty()
+                        && pending.draw_ranges.back().atlas_page == entry.page
+                        && pending.draw_ranges.back().instances.first
+                                + pending.draw_ranges.back().instances.count == local_index) {
+                    ++pending.draw_ranges.back().instances.count;
+                } else {
+                    pending.draw_ranges.push_back({entry.page, {local_index, 1}});
+                }
+            }
+            pen_x += std::abs(glyph.advance_x);
+        }
+    }
+    return pending;
+}
+
+void offset_draw_ranges(
+    std::vector<GlyphDrawRange>& ranges,
+    std::uint32_t first) noexcept {
+    for (GlyphDrawRange& range : ranges) {
+        range.instances.first += first;
+    }
+}
+
+void discard_shifted_dirty_ranges(
+    std::vector<GlyphInstanceRange>& ranges,
+    std::uint32_t first) {
+    std::vector<GlyphInstanceRange> retained;
+    retained.reserve(ranges.size());
+    for (auto range : ranges) {
+        if (range.first >= first) {
+            continue;
+        }
+        const std::uint64_t end =
+            static_cast<std::uint64_t>(range.first) + range.count;
+        if (end > first) {
+            range.count = first - range.first;
+        }
+        if (range.count != 0) {
+            retained.push_back(range);
+        }
+    }
+    ranges = std::move(retained);
+}
+
 } // namespace
 
 GlyphInstanceRange GlyphInstanceStore::append(
@@ -75,6 +178,49 @@ GlyphInstanceRange GlyphInstanceStore::append(
     };
     instances_.insert(instances_.end(), instances.begin(), instances.end());
     return range;
+}
+
+GlyphInstanceRange GlyphInstanceStore::replace(
+    GlyphInstanceRange range,
+    std::span<const GlyphInstance> instances) {
+    require_range(range);
+    const std::uint64_t replacement_size =
+        static_cast<std::uint64_t>(instances_.size()) - range.count + instances.size();
+    if (replacement_size > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::length_error("GlyphInstanceStore exhausted instance indices");
+    }
+    if (range.count == 0 && instances.empty()) {
+        return {range.first, 0};
+    }
+
+    std::vector<GlyphInstance> replacement;
+    replacement.reserve(static_cast<std::size_t>(replacement_size));
+    replacement.insert(
+        replacement.end(),
+        instances_.begin(),
+        instances_.begin() + range.first);
+    replacement.insert(replacement.end(), instances.begin(), instances.end());
+    replacement.insert(
+        replacement.end(),
+        instances_.begin() + range.first + range.count,
+        instances_.end());
+    instances_.swap(replacement);
+
+    if (range.count == instances.size()) {
+        mark_dirty(
+            geometry_dirty_ranges_,
+            {range.first, static_cast<std::uint32_t>(instances.size())});
+    } else {
+        discard_shifted_dirty_ranges(material_dirty_ranges_, range.first);
+        discard_shifted_dirty_ranges(geometry_dirty_ranges_, range.first);
+        mark_dirty(
+            geometry_dirty_ranges_,
+            {
+                range.first,
+                static_cast<std::uint32_t>(instances_.size() - range.first),
+            });
+    }
+    return {range.first, static_cast<std::uint32_t>(instances.size())};
 }
 
 const GlyphInstance& GlyphInstanceStore::at(std::uint32_t index) const {
@@ -228,66 +374,41 @@ GlyphSceneResult GlyphScene::append_text(
     const text::ShapedText& shaped,
     const text::TextMeasurement& measurement,
     GlyphPlacement placement) {
+    auto pending = build_text(fonts, atlas, shaped, measurement, placement);
+    if (!pending) {
+        return {{}, std::move(pending.error)};
+    }
+    const GlyphInstanceRange inserted = instances_.append(pending.instances);
+    offset_draw_ranges(pending.draw_ranges, inserted.first);
+    return {{inserted, std::move(pending.draw_ranges)}, {}};
+}
+
+GlyphSceneResult GlyphScene::replace_text(
+    GlyphInstanceRange range,
+    font::FontRuntime& fonts,
+    GlyphAtlas& atlas,
+    const text::ShapedText& shaped,
+    const text::TextMeasurement& measurement,
+    GlyphPlacement placement) {
+    auto pending = build_text(fonts, atlas, shaped, measurement, placement);
+    if (!pending) {
+        return {{}, std::move(pending.error)};
+    }
+    const GlyphInstanceRange replaced = instances_.replace(range, pending.instances);
+    offset_draw_ranges(pending.draw_ranges, replaced.first);
+    return {{replaced, std::move(pending.draw_ranges)}, {}};
+}
+
+std::size_t GlyphScene::update_geometry(
+    GlyphInstanceRange range,
+    GlyphPlacement placement) {
     validate_placement(placement);
-    const auto clip = clip_bounds(placement.clip_pixels, placement.viewport_pixels);
-    const auto translation = normalized_translation(
-        placement.translation_pixels, placement.viewport_pixels);
-
-    std::vector<GlyphInstance> pending_instances;
-    std::vector<GlyphDrawRange> pending_ranges;
-    for (const text::TextLine& line : measurement.lines) {
-        const std::uint64_t line_end =
-            static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
-        if (line_end > shaped.glyphs.size()) {
-            throw std::invalid_argument("TextMeasurement references glyphs outside ShapedText");
-        }
-        float pen_x = 0.0F;
-        for (std::size_t glyph_index = line.glyph_begin;
-                glyph_index < line_end; ++glyph_index) {
-            const text::ShapedGlyph& glyph = shaped.glyphs[glyph_index];
-            const GlyphAtlasResult atlas_result = atlas.ensure(
-                fonts, glyph.font, glyph.glyph_id);
-            if (!atlas_result) {
-                return {{}, atlas_result.error};
-            }
-            const GlyphAtlasEntry& entry = *atlas_result.entry;
-            if (!entry.empty) {
-                const float left_pixels = placement.origin_pixels.x
-                    + pen_x + glyph.offset_x + static_cast<float>(entry.bearing_x);
-                const float top_pixels = placement.origin_pixels.y
-                    + line.baseline - glyph.offset_y - static_cast<float>(entry.bearing_y);
-                pending_instances.push_back({
-                    {
-                        -1.0F + 2.0F * left_pixels / placement.viewport_pixels.width,
-                        1.0F - 2.0F * top_pixels / placement.viewport_pixels.height,
-                        2.0F * entry.coverage_rect.width / placement.viewport_pixels.width,
-                        -2.0F * entry.coverage_rect.height / placement.viewport_pixels.height,
-                    },
-                    {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
-                    clip,
-                    placement.color,
-                    {translation[0], translation[1], placement.opacity, 0.0F},
-                });
-                const std::uint32_t local_index =
-                    static_cast<std::uint32_t>(pending_instances.size() - 1);
-                if (!pending_ranges.empty()
-                        && pending_ranges.back().atlas_page == entry.page
-                        && pending_ranges.back().instances.first
-                                + pending_ranges.back().instances.count == local_index) {
-                    ++pending_ranges.back().instances.count;
-                } else {
-                    pending_ranges.push_back({entry.page, {local_index, 1}});
-                }
-            }
-            pen_x += std::abs(glyph.advance_x);
-        }
-    }
-
-    const GlyphInstanceRange inserted = instances_.append(pending_instances);
-    for (GlyphDrawRange& range : pending_ranges) {
-        range.instances.first += inserted.first;
-    }
-    return {{inserted, std::move(pending_ranges)}, {}};
+    return instances_.update_geometry(
+        range,
+        clip_bounds(placement.clip_pixels, placement.viewport_pixels),
+        normalized_translation(
+            placement.translation_pixels,
+            placement.viewport_pixels));
 }
 
 GlyphInstanceStore& GlyphScene::instances() noexcept {

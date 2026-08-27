@@ -1,20 +1,14 @@
 #pragma once
 
-#include "graphics/glyph_scene.hpp"
-#include "runtime/frame_scheduler.hpp"
-#include "text/text_engine.hpp"
+#include "text/text_scene_service.hpp"
 
 #include <array>
 #include <cstdint>
-#include <optional>
 #include <vector>
 
 namespace ryn::detail {
 
-struct TextRenderControllerCounters {
-    std::uint64_t instance_rebuilds{};
-    std::uint64_t material_updates{};
-};
+using TextRenderControllerCounters = TextSceneRecordCounters;
 
 class TextRenderController final {
 public:
@@ -43,18 +37,8 @@ public:
     [[nodiscard]] const TextRenderControllerCounters& counters() const noexcept;
 
 private:
-    font::FontRuntime* fonts_;
-    runtime::FrameRequestState* frame_requests_;
-    text::TextState text_state_;
-    graphics::GlyphAtlas atlas_;
-    graphics::GlyphScene glyph_scene_;
-    graphics::OrderedScene ordered_scene_;
-    graphics::GlyphPrimitive primitive_;
-    std::optional<graphics::GlyphPlacement> placement_;
-    graphics::GlyphAtlasError last_error_{};
-    TextRenderControllerCounters counters_;
-    bool rebuild_dirty_{true};
-    bool material_dirty_{};
+    TextSceneService service_;
+    TextSceneId record_;
 };
 
 } // namespace ryn::detail

@@ -3,18 +3,6 @@
 #include <utility>
 
 namespace ryn::detail {
-namespace {
-
-[[nodiscard]] bool same_geometry(
-    const graphics::GlyphPlacement& left,
-    const graphics::GlyphPlacement& right) noexcept {
-    return left.origin_pixels == right.origin_pixels
-        && left.viewport_pixels == right.viewport_pixels
-        && left.clip_pixels == right.clip_pixels
-        && left.translation_pixels == right.translation_pixels;
-}
-
-} // namespace
 
 TextRenderController::TextRenderController(
     font::FontRuntime& fonts,
@@ -24,125 +12,64 @@ TextRenderController::TextRenderController(
     std::vector<font::FontIdentity> fallback_chain,
     std::uint32_t pixel_size,
     text::TextLayoutConfig layout)
-    : fonts_(&fonts),
-      frame_requests_(&frame_requests),
-      text_state_(
-          engine,
+    : service_(fonts, engine, frame_requests),
+      record_(service_.create(
+          runtime::NodeId{0, 1},
           std::move(content),
           std::move(fallback_chain),
           pixel_size,
-          layout,
-          [&frame_requests] { frame_requests.request_frame(); }) {
-    frame_requests_->request_frame();
-}
+          layout)) {}
 
 bool TextRenderController::set_content(String content) {
-    if (!text_state_.set_content(std::move(content))) {
-        return false;
-    }
-    rebuild_dirty_ = true;
-    return true;
+    return service_.set_content(record_, std::move(content));
 }
 
 bool TextRenderController::set_width_constraint(float width) {
-    if (!text_state_.set_width_constraint(width)) {
-        return false;
-    }
-    rebuild_dirty_ = true;
-    return true;
+    return service_.set_width_constraint(record_, width);
 }
 
 bool TextRenderController::set_color(std::array<float, 4> color) {
-    if (!text_state_.set_color(color)) {
-        return false;
-    }
-    material_dirty_ = true;
-    return true;
+    return service_.set_color(record_, color);
 }
 
 bool TextRenderController::set_opacity(float opacity) {
-    if (!text_state_.set_opacity(opacity)) {
-        return false;
-    }
-    material_dirty_ = true;
-    return true;
+    return service_.set_opacity(record_, opacity);
 }
 
 bool TextRenderController::synchronize(graphics::GlyphPlacement placement) {
-    last_error_ = {};
-    if (!text_state_.synchronize()) {
-        return false;
-    }
-    placement.color = text_state_.material().color;
-    placement.opacity = text_state_.material().opacity;
-    if (!placement_ || !same_geometry(*placement_, placement)) {
-        rebuild_dirty_ = true;
-    }
-    if (rebuild_dirty_) {
-        auto result = glyph_scene_.append_text(
-            *fonts_,
-            atlas_,
-            text_state_.shaped(),
-            text_state_.measurement(),
-            placement);
-        if (!result) {
-            last_error_ = std::move(result.error);
-            return false;
-        }
-        primitive_ = std::move(result.primitive);
-        ordered_scene_.clear();
-        ordered_scene_.append_glyph(primitive_);
-        placement_ = placement;
-        rebuild_dirty_ = false;
-        material_dirty_ = false;
-        ++counters_.instance_rebuilds;
-        return true;
-    }
-    if (material_dirty_) {
-        const std::size_t updated = glyph_scene_.instances().update_material(
-            primitive_.instances,
-            text_state_.material().color,
-            text_state_.material().opacity);
-        if (updated != 0) {
-            ++counters_.material_updates;
-        }
-        placement_->color = text_state_.material().color;
-        placement_->opacity = text_state_.material().opacity;
-        material_dirty_ = false;
-    }
-    return true;
+    return service_.synchronize(record_, std::move(placement));
 }
 
 text::TextState& TextRenderController::text_state() noexcept {
-    return text_state_;
+    return service_.text_state(record_);
 }
 
 const text::TextState& TextRenderController::text_state() const noexcept {
-    return text_state_;
+    return service_.text_state(record_);
 }
 
 graphics::GlyphAtlas& TextRenderController::atlas() noexcept {
-    return atlas_;
+    return service_.atlas();
 }
 
 graphics::GlyphScene& TextRenderController::glyph_scene() noexcept {
-    return glyph_scene_;
+    return service_.glyph_scene();
 }
 
 const graphics::OrderedScene& TextRenderController::ordered_scene() const noexcept {
-    return ordered_scene_;
+    return service_.ordered_scene();
 }
 
 const graphics::GlyphPrimitive& TextRenderController::primitive() const noexcept {
-    return primitive_;
+    return service_.primitive(record_);
 }
 
 const graphics::GlyphAtlasError& TextRenderController::last_error() const noexcept {
-    return last_error_;
+    return service_.last_error(record_);
 }
 
 const TextRenderControllerCounters& TextRenderController::counters() const noexcept {
-    return counters_;
+    return service_.record_counters(record_);
 }
 
 } // namespace ryn::detail
