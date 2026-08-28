@@ -672,7 +672,8 @@ void test_theme_tokens_update_text_material_and_typography_precisely() {
 
 void test_static_loading_layout_keeps_cjk_text_and_idle_state() {
     Fixture fixture;
-    const auto& token = ryn::resolve_theme().button();
+    const auto theme = ryn::resolve_theme();
+    const auto& token = theme.button();
     const ryn::layout::HorizontalContentLayout idle{
         token.control_height,
         token.padding_inline,

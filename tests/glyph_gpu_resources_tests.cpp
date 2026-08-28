@@ -157,7 +157,13 @@ ryn::font::GlyphBitmap bitmap(
 }
 
 ryn::graphics::GlyphAtlasKey key(std::uint32_t glyph) {
-    return {{0, 1}, glyph, 14, ryn::font::GlyphRasterMode::grayscale};
+    return {
+        {0, 1},
+        glyph,
+        14,
+        ryn::font::GlyphRasterPhase::zero,
+        ryn::font::GlyphRasterMode::grayscale,
+    };
 }
 
 ryn::graphics::GlyphInstance instance(float marker) {
