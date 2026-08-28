@@ -44,8 +44,8 @@
 
 ## 6. Linux 验收清单
 
-- [ ] 6.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、`-std=c++20`、BUNDLED 依赖、显式 Fontconfig 2.13+ 平台服务和 Vulkan/SPIR-V 锁定来源，保存 Linux 构建结果
-- [ ] 6.2 使用 `linux-clang` preset 完成 Debug configure/build/CTest，核对 Flex/Space/LayoutStyle target 使用标准 C++20 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
+- [x] 6.1 使用 `linux-gcc` preset clean configure，完成 Debug/Release build 与完整 CTest，核对 Ninja Multi-Config、`-std=c++20`、BUNDLED 依赖、显式 Fontconfig 2.13+ 平台服务和 Vulkan/SPIR-V 锁定来源，保存 Linux 构建结果
+- [x] 6.2 使用 `linux-clang` preset 完成 Debug configure/build/CTest，核对 Flex/Space/LayoutStyle target 使用标准 C++20 而非 GNU extensions；环境缺 Clang 时保持未完成并记录可复现阻塞
 - [ ] 6.3 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口运行公开 layout 示例，完成窗口宽窄调整、跨不同缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 window system、display scale、宽/窄截图、退出码和诊断计数，不以强制 X11 结果代替 Wayland 验收
 - [ ] 6.4 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、Fontconfig 默认 family/source 与 Button 命中位置；运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [ ] 6.5 运行 Linux 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux flex and space layouts` 提交并推送 Linux 清单/evidence/截图，核对 remote SHA，不修改 Windows 清单
