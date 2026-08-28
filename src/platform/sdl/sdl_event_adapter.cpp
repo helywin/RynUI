@@ -138,6 +138,9 @@ void SdlEventAdapter::merge(
     }
 
     result.frame_requested = true;
+    if (event.type == SDL_EVENT_WINDOW_EXPOSED) {
+        result.redraw_requested = true;
+    }
 
     if (is_compatibility_mouse(event)) {
         ++result.suppressed_compatibility_mouse_events;

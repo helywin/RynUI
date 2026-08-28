@@ -75,12 +75,14 @@ private:
 struct PlatformEvents {
     bool quit_requested{false};
     bool frame_requested{false};
+    bool redraw_requested{false};
     std::uint64_t suppressed_compatibility_mouse_events{0};
     input::PlatformInputBatch input;
 
     void clear() noexcept {
         quit_requested = false;
         frame_requested = false;
+        redraw_requested = false;
         suppressed_compatibility_mouse_events = 0;
         input.clear();
     }

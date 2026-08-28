@@ -267,6 +267,28 @@ void test_quit_and_frame_summary_regression() {
             "unsupported mouse button entered normalized input");
 }
 
+void test_expose_redraw_survives_a_mixed_input_batch() {
+    PlatformEvents result;
+    result.input.reserve(4);
+    SdlWindowMetrics metrics{640, 480};
+
+    SdlEventAdapter::merge(result, mouse_motion(1, 12.0F, 24.0F), metrics);
+    SDL_Event exposed{};
+    exposed.type = SDL_EVENT_WINDOW_EXPOSED;
+    SdlEventAdapter::merge(result, exposed, metrics);
+
+    require(result.input.size() == 1,
+            "mixed expose batch lost its pointer input");
+    require(result.frame_requested,
+            "mixed expose batch lost its generic frame request");
+    require(result.redraw_requested,
+            "mixed expose batch lost its mandatory redraw request");
+
+    result.clear();
+    require(!result.redraw_requested,
+            "event-batch clear retained a stale redraw request");
+}
+
 } // namespace
 
 int main() {
@@ -276,6 +298,7 @@ int main() {
         test_keyboard_focus_resize_and_cancel_order();
         test_display_scale_maps_pixels_and_pointer_to_logical_coordinates();
         test_quit_and_frame_summary_regression();
+        test_expose_redraw_survives_a_mixed_input_batch();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -86,6 +86,7 @@ private:
             return true;
         }
         return frame_requests_->pending()
+            || events.redraw_requested
             || (events.frame_requested && events.input.empty());
     }
 
