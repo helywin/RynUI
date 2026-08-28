@@ -1,0 +1,98 @@
+From: Jiang Wenqiang <jiang770882022@hotmail.com>
+Subject: Pace libdecor resize configures on surface frames
+
+Keep at most the newest interactive-resize configuration alive. Commit that
+configuration from the compositor surface-frame callback, release replaced or
+destroyed configurations, and request exposure without relying on focus events.
+
+--- a/src/video/wayland/SDL_waylandwindow.h
++++ b/src/video/wayland/SDL_waylandwindow.h
+@@ -48,0 +49,7 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++            struct libdecor_configuration *pending_resize_configuration;
++            Uint64 resize_configure_received;
++            Uint64 resize_configure_replaced;
++            Uint64 resize_configure_acked;
++            Uint64 resize_frame_callbacks;
++#endif
+--- a/src/video/wayland/SDL_waylandwindow.c
++++ b/src/video/wayland/SDL_waylandwindow.c
+@@ -483,0 +484,18 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++static void ReleasePendingLibdecorConfiguration(SDL_WindowData *wind)
++{
++    if (wind->shell_surface.libdecor.pending_resize_configuration) {
++        libdecor_configuration_unref(wind->shell_surface.libdecor.pending_resize_configuration);
++        wind->shell_surface.libdecor.pending_resize_configuration = NULL;
++    }
++}
++
++static void CommitLibdecorConfiguration(SDL_WindowData *wind, struct libdecor_configuration *configuration)
++{
++    ConfigureWindowGeometry(wind->sdlwindow);
++    struct libdecor_state *state = libdecor_state_new(wind->current.logical_width, wind->current.logical_height);
++    libdecor_frame_commit(wind->shell_surface.libdecor.frame, state, configuration);
++    libdecor_state_free(state);
++}
++#endif
++
+@@ -693,0 +712,14 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++    } else if (wind->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_LIBDECOR) {
++        struct libdecor_configuration *configuration = wind->shell_surface.libdecor.pending_resize_configuration;
++        wind->shell_surface.libdecor.pending_resize_configuration = NULL;
++        ++wind->shell_surface.libdecor.resize_frame_callbacks;
++        if (configuration) {
++            CommitLibdecorConfiguration(wind, configuration);
++            libdecor_configuration_unref(configuration);
++            ++wind->shell_surface.libdecor.resize_configure_acked;
++            if (!wind->suspended && wind->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_SHOWN) {
++                SDL_SendWindowEvent(wind->sdlwindow, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
++            }
++        }
++#endif
+@@ -1427,0 +1460 @@
++#ifndef SDL_LIBDECOR_HAS_RESIZING_STATE
+@@ -1428,0 +1462 @@
++#endif
+@@ -1454,0 +1489,22 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++    if (wind->resizing) {
++        struct libdecor_configuration *retained = libdecor_configuration_ref(configuration);
++        if (retained) {
++            const bool request_exposure = wind->shell_surface.libdecor.pending_resize_configuration == NULL;
++            ++wind->shell_surface.libdecor.resize_configure_received;
++            if (wind->shell_surface.libdecor.pending_resize_configuration) {
++                ++wind->shell_surface.libdecor.resize_configure_replaced;
++                libdecor_configuration_unref(wind->shell_surface.libdecor.pending_resize_configuration);
++            }
++            wind->shell_surface.libdecor.pending_resize_configuration = retained;
++            if (request_exposure) {
++                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
++            }
++        } else {
++            CommitLibdecorConfiguration(wind, configuration);
++        }
++    } else {
++        ReleasePendingLibdecorConfiguration(wind);
++        CommitLibdecorConfiguration(wind, configuration);
++    }
++#else
+@@ -1472,0 +1529 @@
++#endif
+@@ -2262,0 +2320,9 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++        SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO,
++                     "libdecor resize pacing: received=%llu replaced=%llu acked=%llu frame=%llu",
++                     (unsigned long long)wind->shell_surface.libdecor.resize_configure_received,
++                     (unsigned long long)wind->shell_surface.libdecor.resize_configure_replaced,
++                     (unsigned long long)wind->shell_surface.libdecor.resize_configure_acked,
++                     (unsigned long long)wind->shell_surface.libdecor.resize_frame_callbacks);
++        ReleasePendingLibdecorConfiguration(wind);
++#endif
+@@ -3316,0 +3383,5 @@
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++        if (wind->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_LIBDECOR) {
++            ReleasePendingLibdecorConfiguration(wind);
++        }
++#endif

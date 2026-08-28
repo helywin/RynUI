@@ -35,6 +35,20 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_bundled_libdecor_build_contract.cmake"
 )
 
+add_test(
+    NAME rynui.sdl3_pacing_patch_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-pacing-patch"
+        "-DTEST_BUILD_DIR=${CMAKE_BINARY_DIR}"
+        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_pacing_patch_contract.cmake"
+)
+
+add_executable(rynui_wayland_resize_pacing_tests wayland_resize_pacing_tests.cpp)
+rynui_configure_cpp_target(rynui_wayland_resize_pacing_tests)
+add_test(NAME rynui.wayland_resize_pacing COMMAND rynui_wayland_resize_pacing_tests)
+
 foreach(libdecor_contract_case IN ITEMS
         positive system non-linux missing-meson missing-package)
     add_test(

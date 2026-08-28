@@ -169,13 +169,23 @@ function(rynui_resolve_sdl3)
             set(SDL_RYNUI_LIBDECOR_VERSION "${RYNUI_LIBDECOR_VERSION}")
             set(sdl3_libdecor_patch
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/sdl3/0001-use-bundled-libdecor-resize-state.patch")
+            set(sdl3_libdecor_pacing_patch
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/sdl3/0002-pace-libdecor-resize-configures.patch")
             set(sdl3_patch_command
                 "${CMAKE_COMMAND}"
                 "-DSOURCE_DIR=<SOURCE_DIR>"
                 "-DPATCH_1=${sdl3_libdecor_patch}"
+                "-DPATCH_2=${sdl3_libdecor_pacing_patch}"
                 "-DEXPECTED_PATCH_SHA256_1=${RYNUI_SDL3_LIBDECOR_PATCH_SHA256}"
+                "-DEXPECTED_PATCH_SHA256_2=${RYNUI_SDL3_LIBDECOR_PACING_PATCH_SHA256}"
                 "-DEXPECTED_VERSION_FILE=CMakeLists.txt"
                 "-DEXPECTED_VERSION_PATTERN=VERSION \"3[.]4[.]14\""
+                "-DEXPECTED_SOURCE_FILE_1=cmake/sdlchecks.cmake"
+                "-DEXPECTED_SOURCE_SHA256_1=${RYNUI_SDL3_SDLCHECKS_SHA256}"
+                "-DEXPECTED_SOURCE_FILE_2=src/video/wayland/SDL_waylandwindow.c"
+                "-DEXPECTED_SOURCE_SHA256_2=${RYNUI_SDL3_WAYLAND_WINDOW_SOURCE_SHA256}"
+                "-DEXPECTED_SOURCE_FILE_3=src/video/wayland/SDL_waylandwindow.h"
+                "-DEXPECTED_SOURCE_SHA256_3=${RYNUI_SDL3_WAYLAND_WINDOW_HEADER_SHA256}"
                 "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
                 "-DALLOW_ALREADY_APPLIED=ON"
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake")

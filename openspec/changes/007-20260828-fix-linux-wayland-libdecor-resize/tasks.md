@@ -14,10 +14,10 @@
 
 ## 3. 修复 configure/ack/frame 前进状态机
 
-- [ ] 3.1 在 patched libdecor 中实现 configuration retain/release 引用所有权并覆盖 callback 返回、额外 client 引用、最终释放及异常销毁测试，证明 serial/state/size 内容不变且无 double-free
-- [ ] 3.2 在 SDL libdecor window data 中保存至多一个 pending interactive-resize configuration：收到新 configure 时替换旧引用、首次 pending 请求 exposure、frame callback 确认最新 serial，resize-clear 即时提交，隐藏/销毁/断开统一释放
-- [ ] 3.3 添加可注入状态机测试，覆盖 configure burst 合并、serial 单调 ack、同 serial 不重复、exposure→present→callback→ack、resize 结束、focus lost/gained 不参与前进、窗口中途销毁和 outstanding reference 恒定容量
-- [ ] 3.4 运行 `rynui_minimal` Wayland smoke 并记录 received/replaced/acked/frame 诊断，证明拖动期间持续更新而无需失焦，随后运行受影响 CTest 与 `git diff --check`；以英文 `fix: pace libdecor resize commits` 提交本阶段
+- [x] 3.1 在 patched libdecor 中实现 configuration retain/release 引用所有权并覆盖 callback 返回、额外 client 引用、最终释放及异常销毁测试，证明 serial/state/size 内容不变且无 double-free
+- [x] 3.2 在 SDL libdecor window data 中保存至多一个 pending interactive-resize configuration：收到新 configure 时替换旧引用、首次 pending 请求 exposure、frame callback 确认最新 serial，resize-clear 即时提交，隐藏/销毁/断开统一释放
+- [x] 3.3 添加可注入状态机测试，覆盖 configure burst 合并、serial 单调 ack、同 serial 不重复、exposure→present→callback→ack、resize 结束、focus lost/gained 不参与前进、窗口中途销毁和 outstanding reference 恒定容量
+- [x] 3.4 运行 `rynui_minimal` Wayland smoke 并记录 received/replaced/acked/frame 诊断，证明拖动期间持续更新而无需失焦，随后运行受影响 CTest 与 `git diff --check`；以英文 `fix: pace libdecor resize commits` 提交本阶段
 
 ## 4. Linux 构建与自动回归
 
