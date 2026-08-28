@@ -71,13 +71,19 @@ public:
         ryn::detail::ButtonComponentHost& application,
         ryn::runtime::FrameRequestState& frame_requests,
         ryn::runtime::Size& viewport,
-        float render_scale,
+        float& render_scale,
+        bool fixed_render_scale,
+        ryn::font::FontRuntime& fonts,
+        const ryn::detail::DefaultFontChainResult& font_chain,
         const std::function<void(float)>& set_viewport_width) noexcept
         : platform_(&platform),
           application_(&application),
           frame_requests_(&frame_requests),
           viewport_(&viewport),
-          render_scale_(render_scale),
+          render_scale_(&render_scale),
+          fixed_render_scale_(fixed_render_scale),
+          fonts_(&fonts),
+          font_chain_(&font_chain),
           set_viewport_width_(&set_viewport_width),
           started_(std::chrono::steady_clock::now()) {}
 
@@ -112,7 +118,13 @@ private:
     }
 
     void dispatch(const ryn::input::PointerInputEvent& event) {
-        application_->pointer().dispatch(event);
+        auto mapped = event;
+        const float host_scale = platform_->display_scale();
+        mapped.x = token_gallery_pointer_to_render_logical(
+            event.x, host_scale, *render_scale_);
+        mapped.y = token_gallery_pointer_to_render_logical(
+            event.y, host_scale, *render_scale_);
+        application_->pointer().dispatch(mapped);
     }
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -130,10 +142,20 @@ private:
         case ryn::input::WindowInputAction::resized:
             if (event.width > 0 && event.height > 0) {
                 const auto metrics = platform_->window_metrics();
+                const float next_render_scale = fixed_render_scale_
+                    ? *render_scale_
+                    : metrics.display_scale;
+                if (std::abs(next_render_scale - *render_scale_) > 0.0001F) {
+                    auto resolver = ryn::detail::make_default_ui_font_resolver(
+                        *fonts_, *font_chain_, next_render_scale);
+                    static_cast<void>(
+                        application_->text().set_font_resolver(std::move(resolver)));
+                    *render_scale_ = next_render_scale;
+                }
                 const auto logical = token_gallery_logical_viewport(
                     metrics.pixel_width,
                     metrics.pixel_height,
-                    render_scale_);
+                    *render_scale_);
                 *viewport_ = {logical.width, logical.height};
                 (*set_viewport_width_)(viewport_->width);
                 frame_requests_->request_frame();
@@ -148,7 +170,10 @@ private:
     ryn::detail::ButtonComponentHost* application_;
     ryn::runtime::FrameRequestState* frame_requests_;
     ryn::runtime::Size* viewport_;
-    float render_scale_;
+    float* render_scale_;
+    bool fixed_render_scale_{};
+    ryn::font::FontRuntime* fonts_;
+    const ryn::detail::DefaultFontChainResult* font_chain_;
     const std::function<void(float)>* set_viewport_width_;
     std::chrono::steady_clock::time_point started_;
     bool quit_requested_{};
@@ -164,7 +189,7 @@ public:
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
         ryn::runtime::Size& viewport,
-        float render_scale) noexcept
+        float& render_scale) noexcept
         : platform_(&platform),
           application_(&application),
           text_scene_(&text_scene),
@@ -172,7 +197,7 @@ public:
           renderer_(&renderer),
           effect_resources_(renderer),
           viewport_(&viewport),
-          render_scale_(render_scale) {}
+          render_scale_(&render_scale) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame() override {
         try {
@@ -201,7 +226,7 @@ public:
                 {
                     static_cast<std::uint32_t>(metrics.pixel_width),
                     static_cast<std::uint32_t>(metrics.pixel_height),
-                    render_scale_,
+                    *render_scale_,
                 });
             renderer_->attach_scene(
                 quad_buffer_->handle(),
@@ -239,7 +264,7 @@ private:
     ryn::detail::SdlSceneRenderer* renderer_;
     ryn::detail::RoundedEffectGpuResources effect_resources_;
     ryn::runtime::Size* viewport_;
-    float render_scale_;
+    float* render_scale_;
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
     std::string last_error_;
 };
@@ -268,7 +293,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         }
         auto& platform = *platform_result.state;
         const auto initial_metrics = platform.window_metrics();
-        const float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
+        float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
         const auto logical_viewport = token_gallery_logical_viewport(
             initial_metrics.pixel_width,
             initial_metrics.pixel_height,
@@ -324,6 +349,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             frame_requests,
             viewport,
             render_scale,
+            acceptance_scale.has_value(),
+            *fonts,
+            font_chain,
             definition.set_viewport_width);
         ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, 10);
 

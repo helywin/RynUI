@@ -312,6 +312,45 @@ TextComponentHost::mounted_texts() const noexcept {
     return mounted_texts_;
 }
 
+bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
+    if (!font_resolver
+            || font_resolver(SystemFontFamily::ui_sans, 400, 14).empty()) {
+        throw std::invalid_argument(
+            "Theme font resolver must provide a default UI font chain");
+    }
+
+    font_resolver_ = std::move(font_resolver);
+    bool changed = false;
+    for (const auto& mounted : mounted_texts_) {
+        auto* state = components_.state<TextComponentState>(mounted.component);
+        if (state == nullptr || !text_scene_->contains(state->scene)) {
+            continue;
+        }
+        const auto& typography = state->resolved_typography;
+        auto chain = font_resolver_(
+            typography.font_family,
+            typography.font_weight,
+            static_cast<std::uint32_t>(std::lround(typography.font_size)));
+        if (chain.empty()) {
+            throw std::runtime_error("Theme font resolver returned an empty chain");
+        }
+        if (!text_scene_->set_font_chain(state->scene, std::move(chain))) {
+            continue;
+        }
+        const auto node = components_.root(mounted.component);
+        static_cast<void>(layout_->set_intrinsic_revision(
+            node,
+            intrinsic_revision(text_scene_->revisions(state->scene))));
+        dirty_->invalidate(
+            node,
+            runtime::DirtyFlags::Measure
+                | runtime::DirtyFlags::Layout
+                | runtime::DirtyFlags::Geometry);
+        changed = true;
+    }
+    return changed;
+}
+
 void TextComponentHost::record_mounted_text(
     runtime::ComponentId component,
     TextSceneId scene,

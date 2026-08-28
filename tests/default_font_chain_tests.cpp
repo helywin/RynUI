@@ -1,5 +1,6 @@
 #include "platform/default_font_chain.hpp"
 
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -59,6 +60,20 @@ void test_default_ui_font_chain() {
                     && metrics.metrics.logical_pixel_size == 16
                     && metrics.metrics.raster_pixel_size == 24,
                 "default Theme font resolver lost logical-to-device raster sizing");
+    }
+    auto moved_resolver = ryn::detail::make_default_ui_font_resolver(
+        *fonts, chain, 2.0F);
+    const auto moved_resolved = moved_resolver(
+        ryn::SystemFontFamily::ui_sans, 400, 14);
+    require(!moved_resolved.empty() && moved_resolved != identities,
+            "display-scale refresh reused the startup font identity");
+    for (const auto identity : moved_resolved) {
+        const auto metrics = fonts->metrics(identity);
+        require(metrics
+                    && metrics.metrics.logical_pixel_size == 14
+                    && metrics.metrics.raster_pixel_size == 28
+                    && std::abs(metrics.metrics.display_scale - 2.0F) < 0.0001F,
+                "display-scale refresh retained startup raster density");
     }
 
 #if defined(_WIN32)

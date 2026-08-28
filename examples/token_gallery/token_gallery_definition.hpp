@@ -43,6 +43,11 @@ struct TokenGalleryDefinition final {
     int pixel_height,
     float render_scale);
 
+[[nodiscard]] float token_gallery_pointer_to_render_logical(
+    float host_logical_coordinate,
+    float host_display_scale,
+    float render_scale);
+
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition);
 
 } // namespace rynui::example

@@ -317,6 +317,19 @@ TokenGalleryViewport token_gallery_logical_viewport(
     };
 }
 
+float token_gallery_pointer_to_render_logical(
+    float host_logical_coordinate,
+    float host_display_scale,
+    float render_scale) {
+    if (!std::isfinite(host_logical_coordinate)
+            || !std::isfinite(host_display_scale) || host_display_scale <= 0.0F
+            || !std::isfinite(render_scale) || render_scale <= 0.0F) {
+        throw std::invalid_argument(
+            "Token Gallery pointer coordinate and display scales must be finite and positive");
+    }
+    return host_logical_coordinate * host_display_scale / render_scale;
+}
+
 TokenGalleryDefinition make_token_gallery_definition() {
     auto state = std::make_shared<GalleryState>();
     auto set_theme = [state](ryn::ThemeConfig config, bool brand) {

@@ -3,6 +3,7 @@
 
 #include <ryn/rynui.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <exception>
@@ -249,6 +250,46 @@ void test_mount_owner_thread_and_dispose_lifecycle() {
                 && wrong_thread.host->components().component_count() == 0
                 && wrong_thread.scene.size() == 0,
             "wrong-thread Text mount changed Host state");
+}
+
+void test_font_resolver_refresh_keeps_scene_identity_and_updates_density() {
+    Fixture fixture;
+    fixture.host->mount(ryn::Content{[] { ryn::Text(u8"Scale 字体"); }});
+    require(fixture.layout_texts(),
+            "display-scale Text did not complete its initial synchronization");
+    const auto mounted = fixture.host->mounted_texts().front();
+    const auto original_root = fixture.host->components().root(mounted.component);
+    static_cast<void>(fixture.frames.consume_request());
+    fixture.dirty.clear();
+
+    const bool changed = fixture.host->set_font_resolver(
+        [&fixture](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+            const auto latin = fixture.fonts->load_font_file(
+                RYNUI_VALIDATION_LATIN_FONT,
+                0,
+                ryn::font::FontRasterConfig{pixel_size, 2.0F});
+            const auto cjk = fixture.fonts->load_font_file(
+                RYNUI_VALIDATION_CJK_FONT,
+                0,
+                ryn::font::FontRasterConfig{pixel_size, 2.0F});
+            if (!latin || !cjk) {
+                return std::vector<ryn::font::FontIdentity>{};
+            }
+            return std::vector<ryn::font::FontIdentity>{latin.font, cjk.font};
+        });
+    require(changed && fixture.frames.pending()
+                && fixture.host->mounted_texts().front().component == mounted.component
+                && fixture.host->mounted_texts().front().scene == mounted.scene
+                && fixture.host->components().root(mounted.component) == original_root,
+            "font resolver refresh remounted Text or missed required invalidation");
+    require(fixture.layout_texts(),
+            "display-scale font resolver refresh did not synchronize");
+    const auto& entries = fixture.scene.atlas().entries();
+    require(!entries.empty()
+                && std::ranges::any_of(entries, [](const auto& entry) {
+                    return near(entry.display_scale, 2.0F);
+                }),
+            "active Text scene did not rebuild glyph coverage at the new scale");
 }
 
 void test_reactive_content_tone_and_margin_are_minimal() {
@@ -718,6 +759,7 @@ void test_static_loading_layout_keeps_cjk_text_and_idle_state() {
 int main() {
     try {
         test_mount_owner_thread_and_dispose_lifecycle();
+        test_font_resolver_refresh_keeps_scene_identity_and_updates_density();
         test_reactive_content_tone_and_margin_are_minimal();
         test_shaped_measurement_wrap_resize_and_translation();
         test_semantic_foreground_context_is_nested_reactive_and_scoped();

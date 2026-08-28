@@ -59,6 +59,7 @@ public:
         float gap = 0.0F,
         bool clear_dirty = true);
     void attach_component_scene(component::ComponentSceneComposer& composer) noexcept;
+    bool set_font_resolver(ThemeFontResolver font_resolver);
     [[nodiscard]] bool synchronize_scene_fragments(
         const std::function<std::optional<input::InteractionId>(
             runtime::ComponentId)>& interaction_for);

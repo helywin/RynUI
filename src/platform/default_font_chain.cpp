@@ -513,7 +513,9 @@ DefaultUiFontResolver make_default_ui_font_resolver(
     state->faces = initial_chain.faces;
     state->display_scale = display_scale;
     const auto initial_metrics = fonts.metrics(initial_chain.faces.front().identity);
-    if (initial_metrics) {
+    if (initial_metrics
+            && std::abs(initial_metrics.metrics.display_scale - display_scale)
+                < 0.0001F) {
         state->cache.emplace(
             initial_metrics.metrics.logical_pixel_size,
             initial_chain.identities());

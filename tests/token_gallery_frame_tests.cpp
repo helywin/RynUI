@@ -273,6 +273,17 @@ void test_acceptance_scale_viewports_use_physical_pixels() {
         throw std::runtime_error("Token Gallery accepted an invalid render scale");
     } catch (const std::invalid_argument&) {
     }
+
+    require(near(rynui::example::token_gallery_pointer_to_render_logical(
+                     300.0F, 1.0F, 1.5F),
+                200.0F)
+                && near(rynui::example::token_gallery_pointer_to_render_logical(
+                            300.0F, 1.5F, 1.5F),
+                    300.0F)
+                && near(rynui::example::token_gallery_pointer_to_render_logical(
+                            300.0F, 2.0F, 1.0F),
+                    600.0F),
+            "Token Gallery host/render scale mapping drifted from the visual viewport");
 }
 
 void test_small_acceptance_viewport_survives_theme_transitions() {
