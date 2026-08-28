@@ -1,0 +1,27 @@
+From: ManoloFLTK <manolo.gouy@laposte.net>
+Subject: Give libdecor clients access to resizing state
+Upstream-Commit: 8dc6b627ae1d5d4e286d01a6bed4c7b0e7af847d
+
+Backport the upstream XDG_TOPLEVEL_STATE_RESIZING state bit to the locked
+0.2.5 release without changing its advertised version.
+
+diff --git a/src/libdecor.c b/src/libdecor.c
+--- a/src/libdecor.c
++++ b/src/libdecor.c
+@@ -397,3 +397,6 @@ parse_states(struct wl_array *states)
+-		case XDG_TOPLEVEL_STATE_TILED_BOTTOM:
+-			pending_state |= LIBDECOR_WINDOW_STATE_TILED_BOTTOM;
+-			break;
++		case XDG_TOPLEVEL_STATE_TILED_BOTTOM:
++			pending_state |= LIBDECOR_WINDOW_STATE_TILED_BOTTOM;
++			break;
++		case XDG_TOPLEVEL_STATE_RESIZING:
++			pending_state |= LIBDECOR_WINDOW_STATE_RESIZING;
++			break;
+diff --git a/src/libdecor.h b/src/libdecor.h
+--- a/src/libdecor.h
++++ b/src/libdecor.h
+@@ -84 +84,2 @@ enum libdecor_window_state {
+-	LIBDECOR_WINDOW_STATE_SUSPENDED = 1 << 7,
++	LIBDECOR_WINDOW_STATE_SUSPENDED = 1 << 7,
++	LIBDECOR_WINDOW_STATE_RESIZING = 1 << 8,

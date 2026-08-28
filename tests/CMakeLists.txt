@@ -1,5 +1,36 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+find_program(RYNUI_TEST_PATCH_EXECUTABLE patch REQUIRED)
+
+add_test(
+    NAME rynui.libdecor_patch_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/libdecor-patches"
+        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_patch_contract.cmake"
+)
+
+add_test(
+    NAME rynui.libdecor_dependency_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_dependency_contract.cmake"
+)
+
+foreach(libdecor_contract_case IN ITEMS
+        positive system non-linux missing-meson missing-package)
+    add_test(
+        NAME "rynui.libdecor_resolver_contract.${libdecor_contract_case}"
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/libdecor-resolver-${libdecor_contract_case}"
+            "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DTEST_C_COMPILER=${CMAKE_C_COMPILER}"
+            "-DTEST_CASE=${libdecor_contract_case}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_resolver_contract.cmake"
+    )
+endforeach()
 
 add_test(
     NAME rynui.design_token_catalog

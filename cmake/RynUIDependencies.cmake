@@ -22,10 +22,133 @@ function(rynui_verify_dependency_mode)
     endif()
 endfunction()
 
+function(rynui_resolve_bundled_libdecor)
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"
+            OR NOT RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
+        return()
+    endif()
+
+    if(TARGET RynUI::LibDecor)
+        return()
+    endif()
+
+    include(FetchContent)
+    include(ExternalProject)
+    find_package(PkgConfig REQUIRED)
+    find_program(RYNUI_MESON_EXECUTABLE meson REQUIRED)
+    find_program(RYNUI_NINJA_EXECUTABLE ninja REQUIRED)
+    find_program(RYNUI_WAYLAND_SCANNER_EXECUTABLE wayland-scanner REQUIRED)
+    find_program(RYNUI_PATCH_EXECUTABLE patch REQUIRED)
+
+    foreach(program_variable IN ITEMS
+            RYNUI_MESON_EXECUTABLE
+            RYNUI_NINJA_EXECUTABLE
+            RYNUI_WAYLAND_SCANNER_EXECUTABLE
+            RYNUI_PATCH_EXECUTABLE)
+        if(NOT EXISTS "${${program_variable}}" OR IS_DIRECTORY "${${program_variable}}")
+            message(FATAL_ERROR
+                "Patched bundled libdecor requires a runnable ${program_variable}; "
+                "got '${${program_variable}}'.")
+        endif()
+    endforeach()
+
+    pkg_check_modules(RYNUI_LIBDECOR_WAYLAND_CLIENT REQUIRED wayland-client>=1.18)
+    pkg_check_modules(RYNUI_LIBDECOR_WAYLAND_PROTOCOLS REQUIRED wayland-protocols>=1.15)
+    pkg_check_modules(RYNUI_LIBDECOR_CAIRO REQUIRED cairo)
+    pkg_check_modules(RYNUI_LIBDECOR_PANGOCAIRO REQUIRED pangocairo)
+    pkg_check_modules(RYNUI_LIBDECOR_WAYLAND_CURSOR REQUIRED wayland-cursor)
+
+    set(libdecor_resizing_patch
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/libdecor/0001-expose-resizing-state.patch")
+    set(libdecor_configuration_patch
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/libdecor/0002-retain-configuration.patch")
+
+    message(STATUS
+        "Resolving patched libdecor ${RYNUI_LIBDECOR_VERSION} from the locked archive. "
+        "For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_LIBDECOR to prepared source.")
+
+    FetchContent_Declare(
+        rynui_libdecor
+        URL "${RYNUI_LIBDECOR_SOURCE_URL}"
+        URL_HASH "SHA256=${RYNUI_LIBDECOR_SOURCE_SHA256}"
+        DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+        SOURCE_SUBDIR "__rynui_no_cmake_project__"
+        PATCH_COMMAND
+            "${CMAKE_COMMAND}"
+            "-DSOURCE_DIR=<SOURCE_DIR>"
+            "-DPATCH_1=${libdecor_resizing_patch}"
+            "-DPATCH_2=${libdecor_configuration_patch}"
+            "-DEXPECTED_PATCH_SHA256_1=${RYNUI_LIBDECOR_RESIZING_PATCH_SHA256}"
+            "-DEXPECTED_PATCH_SHA256_2=${RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256}"
+            "-DEXPECTED_VERSION_FILE=meson.build"
+            "-DEXPECTED_VERSION_PATTERN=version: '0[.]2[.]5'"
+            "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
+            "-DALLOW_ALREADY_APPLIED=ON"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake"
+    )
+    FetchContent_MakeAvailable(rynui_libdecor)
+
+    set(libdecor_stage "${CMAKE_BINARY_DIR}/_deps/rynui-libdecor-stage")
+    set(libdecor_build "${CMAKE_BINARY_DIR}/_deps/rynui-libdecor-build")
+    set(libdecor_library "${libdecor_stage}/lib/libdecor-0.so")
+    set(libdecor_plugin
+        "${libdecor_stage}/lib/libdecor/plugins-1/libdecor-cairo.so")
+    file(MAKE_DIRECTORY
+        "${libdecor_stage}/include/libdecor-0"
+        "${libdecor_stage}/lib/libdecor/plugins-1")
+
+    ExternalProject_Add(
+        rynui_libdecor_external
+        SOURCE_DIR "${rynui_libdecor_SOURCE_DIR}"
+        BINARY_DIR "${libdecor_build}"
+        DOWNLOAD_COMMAND ""
+        UPDATE_COMMAND ""
+        PATCH_COMMAND ""
+        CONFIGURE_COMMAND
+            "${RYNUI_MESON_EXECUTABLE}" setup
+            "${libdecor_build}" "${rynui_libdecor_SOURCE_DIR}"
+            --prefix "${libdecor_stage}"
+            --libdir lib
+            --buildtype debugoptimized
+            --default-library shared
+            -Ddemo=false
+            -Ddbus=disabled
+            -Dgtk=disabled
+        BUILD_COMMAND
+            "${RYNUI_MESON_EXECUTABLE}" compile -C "${libdecor_build}"
+        INSTALL_COMMAND
+            "${RYNUI_MESON_EXECUTABLE}" install -C "${libdecor_build}"
+        BUILD_BYPRODUCTS
+            "${libdecor_library}"
+            "${libdecor_plugin}"
+        USES_TERMINAL_CONFIGURE TRUE
+        USES_TERMINAL_BUILD TRUE
+        USES_TERMINAL_INSTALL TRUE
+    )
+
+    add_library(rynui_libdecor SHARED IMPORTED GLOBAL)
+    set_target_properties(rynui_libdecor PROPERTIES
+        IMPORTED_LOCATION "${libdecor_library}"
+        INTERFACE_INCLUDE_DIRECTORIES "${libdecor_stage}/include/libdecor-0"
+    )
+    add_dependencies(rynui_libdecor rynui_libdecor_external)
+    add_library(RynUI::LibDecor ALIAS rynui_libdecor)
+
+    set(RYNUI_LIBDECOR_STAGE_PREFIX "${libdecor_stage}" CACHE INTERNAL
+        "Build-local patched libdecor staging prefix")
+    set(RYNUI_LIBDECOR_PLUGIN_DIR
+        "${libdecor_stage}/lib/libdecor/plugins-1" CACHE INTERNAL
+        "Build-local patched libdecor plugin directory")
+    set(RYNUI_LIBDECOR_BUILD_RPATH
+        "${libdecor_stage}/lib" CACHE INTERNAL
+        "Build RPATH for the build-local patched libdecor")
+endfunction()
+
 function(rynui_resolve_sdl3)
     rynui_verify_dependency_mode()
 
     if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
+        rynui_resolve_bundled_libdecor()
         include(FetchContent)
 
         # The bundled mode owns this SDL build and keeps it minimal. These

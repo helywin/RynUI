@@ -1,0 +1,69 @@
+From: RynUI maintainers <noreply@rynui.local>
+Subject: Allow clients to retain configuration objects
+
+SDL needs to acknowledge only the latest interactive-resize configure on a
+frame callback. Give the opaque configuration object reference-counted
+ownership so it remains valid after the configure callback returns.
+
+diff --git a/src/libdecor.c b/src/libdecor.c
+--- a/src/libdecor.c
++++ b/src/libdecor.c
+@@ -85,2 +85,4 @@ struct libdecor_configuration {
+-struct libdecor_configuration {
+-	uint32_t serial;
++struct libdecor_configuration {
++	int ref_count;
++
++	uint32_t serial;
+@@ -237 +239,3 @@ libdecor_configuration_new(void)
+-	configuration = zalloc(sizeof *configuration);
++	configuration = zalloc(sizeof *configuration);
++	if (configuration)
++		configuration->ref_count = 1;
+@@ -242,5 +246,20 @@ libdecor_configuration_new(void)
+-static void
+-libdecor_configuration_free(struct libdecor_configuration *configuration)
+-{
+-	free(configuration);
+-}
++LIBDECOR_EXPORT struct libdecor_configuration *
++libdecor_configuration_ref(struct libdecor_configuration *configuration)
++{
++	if (!configuration || configuration->ref_count <= 0)
++		return NULL;
++
++	configuration->ref_count++;
++	return configuration;
++}
++
++LIBDECOR_EXPORT void
++libdecor_configuration_unref(struct libdecor_configuration *configuration)
++{
++	if (!configuration || configuration->ref_count <= 0)
++		return;
++
++	configuration->ref_count--;
++	if (configuration->ref_count == 0)
++		free(configuration);
++}
+@@ -374 +393 @@ xdg_surface_configure(void *user_data,
+-	libdecor_configuration_free(configuration);
++	libdecor_configuration_unref(configuration);
+diff --git a/src/libdecor.h b/src/libdecor.h
+--- a/src/libdecor.h
++++ b/src/libdecor.h
+@@ -513 +513,13 @@ libdecor_state_free(struct libdecor_state *state);
+-libdecor_state_free(struct libdecor_state *state);
++libdecor_state_free(struct libdecor_state *state);
++
++/**
++ * Retain a configuration beyond the configure callback lifetime.
++ */
++struct libdecor_configuration *
++libdecor_configuration_ref(struct libdecor_configuration *configuration);
++
++/**
++ * Release a retained configuration.
++ */
++void
++libdecor_configuration_unref(struct libdecor_configuration *configuration);

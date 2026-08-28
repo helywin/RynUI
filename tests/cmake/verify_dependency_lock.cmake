@@ -12,6 +12,13 @@ set(required_variables
     RYNUI_SDL3_SOURCE_URL
     RYNUI_SDL3_SOURCE_SHA256
     RYNUI_SDL3_LICENSE
+    RYNUI_LIBDECOR_VERSION
+    RYNUI_LIBDECOR_SOURCE_URL
+    RYNUI_LIBDECOR_SOURCE_SHA256
+    RYNUI_LIBDECOR_LICENSE
+    RYNUI_LIBDECOR_RESIZING_COMMIT
+    RYNUI_LIBDECOR_RESIZING_PATCH_SHA256
+    RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256
     RYNUI_SDL_SHADERCROSS_COMMIT
     RYNUI_SDL_SHADERCROSS_SOURCE_URL
     RYNUI_SDL_SHADERCROSS_SOURCE_SHA256
@@ -56,6 +63,9 @@ endforeach()
 
 foreach(hash_variable IN ITEMS
         RYNUI_SDL3_SOURCE_SHA256
+        RYNUI_LIBDECOR_SOURCE_SHA256
+        RYNUI_LIBDECOR_RESIZING_PATCH_SHA256
+        RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256
         RYNUI_SDL_SHADERCROSS_SOURCE_SHA256
         RYNUI_SPIRV_CROSS_SOURCE_SHA256
         RYNUI_DXC_WINDOWS_X64_SHA256
@@ -74,6 +84,29 @@ if(NOT RYNUI_SDL3_SOURCE_URL MATCHES "3[.]4[.]14"
         OR RYNUI_SDL3_SOURCE_URL MATCHES "latest|refs/heads")
     message(FATAL_ERROR "SDL3 source URL is not tied to the locked release.")
 endif()
+
+if(NOT RYNUI_LIBDECOR_SOURCE_URL MATCHES "/0[.]2[.]5/"
+        OR RYNUI_LIBDECOR_SOURCE_URL MATCHES "latest|refs/heads|/main/")
+    message(FATAL_ERROR "libdecor source URL is not tied to the locked release.")
+endif()
+if(NOT RYNUI_LIBDECOR_RESIZING_COMMIT STREQUAL
+        "8dc6b627ae1d5d4e286d01a6bed4c7b0e7af847d")
+    message(FATAL_ERROR "libdecor resizing patch is not tied to the audited upstream commit.")
+endif()
+foreach(patch_name IN ITEMS RESIZING CONFIGURATION)
+    if(patch_name STREQUAL "RESIZING")
+        set(patch_path
+            "${RYNUI_SOURCE_DIR}/cmake/patches/libdecor/0001-expose-resizing-state.patch")
+    else()
+        set(patch_path
+            "${RYNUI_SOURCE_DIR}/cmake/patches/libdecor/0002-retain-configuration.patch")
+    endif()
+    file(SHA256 "${patch_path}" actual_patch_sha256)
+    if(NOT actual_patch_sha256 STREQUAL
+            "${RYNUI_LIBDECOR_${patch_name}_PATCH_SHA256}")
+        message(FATAL_ERROR "Locked libdecor ${patch_name} patch SHA256 is stale.")
+    endif()
+endforeach()
 
 if(NOT RYNUI_SPIRV_CROSS_SOURCE_URL MATCHES "${RYNUI_SPIRV_CROSS_COMMIT}"
         OR RYNUI_SPIRV_CROSS_SOURCE_URL MATCHES "latest|refs/heads")
@@ -110,6 +143,7 @@ foreach(font_prefix IN ITEMS RYNUI_NOTO_SANS RYNUI_NOTO_SANS_CJK_SC)
 endforeach()
 
 set(license_records
+    "${RYNUI_SOURCE_DIR}/third_party/licenses/libdecor-0.2.5.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/FreeType-2.14.3.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/HarfBuzz-14.3.1.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/Noto-validation-fonts.txt"

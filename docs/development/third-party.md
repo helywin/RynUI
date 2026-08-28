@@ -10,6 +10,7 @@ RynUI 不强制绑定 vcpkg、Conan 或某个 Linux 发行版。CMake 通过 `RY
 | 依赖 | 上游版本 | Source | SHA256 | License | 作用域 |
 |---|---|---|---|---|---|
 | SDL3 | `3.4.14` / `147a8ee32dbf9ac02f3794964490687b6bbda1bc` | `SDL3-3.4.14.tar.gz` | `30d4aa2b3037718142b32dffd4e72f917ebb6cc5227150e7bb9c45efb2153aeb` | Zlib | 平台与 GPU 后端 |
+| libdecor | `0.2.5` + audited patches | `libdecor-0.2.5.tar.gz` | `39c109a9a7eae943ba34d18a282c447d5729f9c486c8bc05ea305e4acd341522` | MIT | 仅 Linux `BUNDLED` 的 Wayland client-side decoration |
 | SDL_shadercross | `e55cf5e31ced6f3d1be5cc6d0c50e99384f9f4ba` | commit archive | `342bb6a8e734745eb5951f25c87fa7aad62f46b3736def8681d9fa7ad046887f` | Zlib | 仅构建期 host tool |
 | SPIRV-Cross | `1a6169566c73d3da552748fc372fe2bbb856e46e` | commit archive | `0f295b214b164e42a1d21537c8da7b44569806c16220dda9798558edfaacd11e` | Apache-2.0 OR MIT | SDL_shadercross 静态构建依赖 |
 | DirectXShaderCompiler | `1.8.2502` | Windows/Linux x64 官方 binary archive | Windows: `70b1913a1bfce4a3e1a5311d16246f4ecdf3a3e613abec8aa529e57668426f85`; Linux: `e0580d90dbf6053a783ddd8d5153285f0606e5deaad17a7a6452f03acdf88c71` | NCSA + MIT + Microsoft Software License Terms | SDL_shadercross host tool 的 HLSL compiler |
@@ -18,7 +19,7 @@ RynUI 不强制绑定 vcpkg、Conan 或某个 Linux 发行版。CMake 通过 `RY
 | Noto Sans | `2.008` / `ffebf8c1ee449e544955a7e813c54f9b73848eac` | 锁定 upstream font file | `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5` | OFL-1.1 | Latin fallback 验收 fixture |
 | Noto Sans CJK SC | `2.004` / `523d033d6cb47f4a80c58a35753646f5c3608a78` | 锁定 upstream font file | `2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b` | OFL-1.1 | 简体中文 fallback 验收 fixture |
 
-完整 URL 与机器可读值保存在 `cmake/dependencies/RynUIDependencyLock.cmake`。SDL3 的 license 来自其锁定 release；SDL_shadercross 在锁定时没有正式 release 或 tag，因此使用官方仓库精确 commit，而不是把 `main` 当成版本。DXC binary archive 内含三份上游 license，故 lock 保留其组合说明而不伪装为单一 SPDX expression。FreeType、HarfBuzz 与验收字体的仓库内 license 记录位于 `third_party/licenses/`；字体二进制只下载到 build tree，不进入 Git。
+完整 URL 与机器可读值保存在 `cmake/dependencies/RynUIDependencyLock.cmake`。SDL3 的 license 来自其锁定 release；Linux bundled libdecor 固定 0.2.5 release，并依次应用仓库内独立 `.patch` 文件，不伪造 0.3 版本。SDL_shadercross 在锁定时没有正式 release 或 tag，因此使用官方仓库精确 commit，而不是把 `main` 当成版本。DXC binary archive 内含三份上游 license，故 lock 保留其组合说明而不伪装为单一 SPDX expression。libdecor、FreeType、HarfBuzz 与验收字体的仓库内 license 记录位于 `third_party/licenses/`；字体二进制只下载到 build tree，不进入 Git。
 
 ## 平台字体服务
 
@@ -32,6 +33,7 @@ Linux Fontconfig 必须来自目标系统或 sysroot，因为其职责正是读�
 RYNUI_DEPENDENCY_MODE=BUNDLED
   -> FetchContent locked URL
   -> SHA256 validation
+  -> Linux only: patched libdecor core + cairo plugin in a private build prefix
   -> SDL3::SDL3
   -> RynUI::FreeType
   -> RynUI::HarfBuzz
@@ -52,6 +54,8 @@ cmake --preset windows-msvc `
   -DFETCHCONTENT_SOURCE_DIR_RYNUI_FREETYPE=D:/deps/freetype `
   -DFETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ=D:/deps/harfbuzz
 ```
+
+Linux 离线构建还可以设置 `FETCHCONTENT_SOURCE_DIR_RYNUI_LIBDECOR`。该目录必须是未打补丁的 0.2.5 源码；CMake 按锁定顺序应用 `cmake/patches/libdecor/` 中的文件，再由 Meson/Ninja 构建到 build tree 私有 staging prefix。不会修改 `/usr` 中的 libdecor 或 plugin。
 
 本地源码必须与 lock 记录的版本相符；source override 由开发者负责准备，CMake 不会下载或更新该目录。
 

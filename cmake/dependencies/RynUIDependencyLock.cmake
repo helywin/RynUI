@@ -8,6 +8,19 @@ set(RYNUI_SDL3_SOURCE_SHA256
     "30d4aa2b3037718142b32dffd4e72f917ebb6cc5227150e7bb9c45efb2153aeb")
 set(RYNUI_SDL3_LICENSE "Zlib")
 
+set(RYNUI_LIBDECOR_VERSION "0.2.5")
+set(RYNUI_LIBDECOR_SOURCE_URL
+    "https://gitlab.freedesktop.org/libdecor/libdecor/-/archive/0.2.5/libdecor-0.2.5.tar.gz")
+set(RYNUI_LIBDECOR_SOURCE_SHA256
+    "39c109a9a7eae943ba34d18a282c447d5729f9c486c8bc05ea305e4acd341522")
+set(RYNUI_LIBDECOR_LICENSE "MIT")
+set(RYNUI_LIBDECOR_RESIZING_COMMIT
+    "8dc6b627ae1d5d4e286d01a6bed4c7b0e7af847d")
+set(RYNUI_LIBDECOR_RESIZING_PATCH_SHA256
+    "f4f1702b24ad3469ae934bc5e2233c21275d4882cf7374f6dd003f26001601f9")
+set(RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256
+    "9725e3c5e795c00a5e6e7613e9c229f0d863ad6ce557f7fc64bce52ae5a3b2c5")
+
 # SDL_shadercross had no release or tag when this snapshot was locked, so the
 # archive is tied to an exact upstream commit rather than a moving branch.
 set(RYNUI_SDL_SHADERCROSS_COMMIT "e55cf5e31ced6f3d1be5cc6d0c50e99384f9f4ba")

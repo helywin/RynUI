@@ -1,9 +1,9 @@
 ## 1. 锁定 patched libdecor 输入
 
-- [ ] 1.1 在集中 dependency lock 与 license 清单中固定 libdecor 0.2.5 release URL、SHA256、MIT license、上游 resize-state commit identity 和两份 patch hash；运行 lock/license schema tests，证明不存在 moving branch、submodule 或未校验输入
-- [ ] 1.2 添加上游 `XDG_TOPLEVEL_STATE_RESIZING` 四行 patch 及最小 configuration retain/release patch；用隔离源码 fixture 验证两份 patch 按序成功、重复或错误版本 fail-fast，且没有修改 libdecor version
-- [ ] 1.3 以 CMake `ExternalProject` 编排 build-local Meson libdecor core/cairo plugin，显式检查 Wayland、wayland-scanner、cairo/pangocairo 和 Meson/Ninja 平台服务；通过缺工具/缺 package configure-fail fixtures 与 target-order contract 验证诊断和依赖顺序
-- [ ] 1.4 建立内部 canonical libdecor target、staging include/lib/plugin path 与 build RPATH，验证 Linux `BUNDLED` 不加载系统 libdecor、Linux `SYSTEM` 不回退下载、非 Linux分支不创建 libdecor target；运行 dependency tests 和 `git diff --check` 后以英文 `build: add patched bundled libdecor` 提交本阶段
+- [x] 1.1 在集中 dependency lock 与 license 清单中固定 libdecor 0.2.5 release URL、SHA256、MIT license、上游 resize-state commit identity 和两份 patch hash；运行 lock/license schema tests，证明不存在 moving branch、submodule 或未校验输入
+- [x] 1.2 添加上游 `XDG_TOPLEVEL_STATE_RESIZING` 四行 patch 及最小 configuration retain/release patch；用隔离源码 fixture 验证两份 patch 按序成功、重复或错误版本 fail-fast，且没有修改 libdecor version
+- [x] 1.3 以 CMake `ExternalProject` 编排 build-local Meson libdecor core/cairo plugin，显式检查 Wayland、wayland-scanner、cairo/pangocairo 和 Meson/Ninja 平台服务；通过缺工具/缺 package configure-fail fixtures 与 target-order contract 验证诊断和依赖顺序
+- [x] 1.4 建立内部 canonical libdecor target、staging include/lib/plugin path 与 build RPATH，验证 bundled libdecor resolver 不查询系统 libdecor、Linux `SYSTEM` 不回退下载、非 Linux分支不创建 libdecor target；运行 dependency tests 和 `git diff --check` 后以英文 `build: add patched bundled libdecor` 提交本阶段
 
 ## 2. 在 SDL 配置前应用 feature patch
 
