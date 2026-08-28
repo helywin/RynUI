@@ -13,27 +13,28 @@
 
 | ID | 状态 | 问题 | 影响范围 | 临时方案 |
 |---|---|---|---|---|
-| `LINUX-WAYLAND-RESIZE-001` | `blocked` | GNOME 原生 Wayland 窗口 resize 严重延迟 | 6.3、6.4、6.5 | 显式 XWayland 可用，但不得代替 Wayland 验收 |
+| `LINUX-WAYLAND-RESIZE-001` | `closed` | GNOME 原生 Wayland 窗口 resize 严重延迟 | 已解除 resize 阻塞 | patched bundled libdecor/SDL |
 | `LINUX-FONT-RASTER-002` | `pending` | Linux Fontconfig raster policy 与原生 Wayland 前后截图尚未完成 | 6.6 | 无；必须保留真实平台证据 |
 | `WINDOWS-DWRITE-RASTER-003` | `pending` | Windows 字形 coverage 尚未完成实际 DirectWrite grayscale raster path 与多 scale 复验 | 7.5 | 当前 FreeType 路径不能冒充 DirectWrite 验收 |
 | `CHANGE-CLOSEOUT-004` | `blocked` | Change 尚不能最终收口 | 8.1 | 等待所有独立平台任务完成 |
 
 ## LINUX-WAYLAND-RESIZE-001
 
-- 状态：`blocked`
+- 状态：`closed`（2026-08-28）
 - 严重程度：高；直接影响窗口交互和原生 Wayland 验收。
 - 现象：混合刷新率、分数缩放的 GNOME 50 环境中，窗口 resize 离散或带明显动画式延迟；左侧 240 Hz 输出更严重。
 - 已排除：RynUI layout 耗时、事件队列堆积、Debug 优化差异、单一 Vulkan present mode、Flex/Space scene 复杂度。
 - 已确认对照：同一 Release 二进制强制 X11/XWayland 后，用户确认 resize 正常。
-- 当前约束：task 6.3 明确要求原生 Wayland；proposal 明确不新增第三方依赖。
-- 详细复现、A/B、上游链接和关闭条件：[linux-wayland-resize.md](issues/linux-wayland-resize.md)
+- 解决方案：change `007-20260828-fix-linux-wayland-libdecor-resize` 锁定 patched build-local libdecor 0.2.5，并在 SDL3 中按 frame callback 合并确认最新 configure；另保留与 pointer input 同批到达的 expose redraw。
+- 验收：原生 Wayland 上 240 Hz/scale 1.333、60 Hz/scale 1.0 和双向跨输出的 minimal、layout、Token Gallery 均由用户确认通过；协议计数全部闭合且正常退出。
+- 详细复现、修复、计数和关闭证据：[linux-wayland-resize.md](issues/linux-wayland-resize.md)、[Linux native Wayland evidence](../openspec/changes/007-20260828-fix-linux-wayland-libdecor-resize/evidence/linux-native-wayland-validation.md)
 
 ## LINUX-FONT-RASTER-002
 
 - 状态：`pending`
 - 影响任务：6.6。
 - 未完成内容：读取 Fontconfig matched pattern 的 antialias、hinting、hintstyle、rgba、lcdfilter、embedded bitmap，并保存原生 Wayland 修复前后相位截图与 12/14/16 px CJK/Latin 人工核对结果。
-- 与 resize 问题的关系：字体代码和 headless tests 可独立推进，但 task 6.6 的最终证据必须来自原生 Wayland，不能以 XWayland 或 Windows 截图代替。
+- 与 resize 问题的关系：原生 Wayland resize 阻塞已解除，但 task 6.6 的字体相位截图和 12/14/16 px 人工核对仍需独立完成。
 - 关闭条件：实现通过相关单元/集成测试，并在原生 Linux Wayland 完成规定截图、telemetry 与人工核对。
 
 ## WINDOWS-DWRITE-RASTER-003
@@ -48,7 +49,7 @@
 
 - 状态：`blocked`
 - 影响任务：8.1。
-- 阻塞项：`LINUX-WAYLAND-RESIZE-001`、`LINUX-FONT-RASTER-002`、`WINDOWS-DWRITE-RASTER-003`。
+- 阻塞项：`LINUX-FONT-RASTER-002`、`WINDOWS-DWRITE-RASTER-003`。
 - 当前禁止动作：不得 archive change，不得把 pending evidence 改为 passed，不得用 XWayland/Linux/静态审查替代缺失平台证据。
 - 关闭条件：上述问题关闭后，运行 OpenSpec doctor、strict validate、完整差异检查，并确认工作区与平台清单一致。
 

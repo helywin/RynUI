@@ -28,11 +28,11 @@
 
 ## 5. Linux 原生 Wayland 真实窗口验收
 
-- [ ] 5.1 记录本机 `XDG_SESSION_TYPE`、SDL video driver、GNOME/Mutter、GPU/driver、两个输出的 mode/refresh/scale、实际 loaded libdecor/plugin path 和 patch identity，确认后续测试未设置 `SDL_VIDEO_DRIVER=x11`
-- [ ] 5.2 在 240 Hz、display scale 1.333 输出快速连续调整 `rynui_minimal` 与公开 layout/token 示例，保存拖动期间连续帧证据、configure/replace/ack/frame 计数和退出码；人工确认不等待失焦、pointer 命中与 logical viewport 对应
-- [ ] 5.3 在 60 Hz、display scale 1.0 输出重复相同操作并保存证据；人工确认拖动期间持续跟随且松开后没有继续追赶旧尺寸的明显动画队列
-- [ ] 5.4 把窗口从两个输出之间双向移动后立即 resize，验证 drawable、logical viewport、display scale、字体 raster 和 pointer 坐标使用当前输出指标，并正常关闭窗口
-- [ ] 5.5 更新 `docs/issues/linux-wayland-resize.md` 和受影响 change evidence，只在 5.2–5.4 全部通过后将问题标记解决；运行 evidence contracts、OpenSpec strict validation 与 `git diff --check` 后以英文 `test: validate native Wayland resize` 提交 Linux 验收阶段
+- [x] 5.1 记录本机 `XDG_SESSION_TYPE`、SDL video driver、GNOME/Mutter、GPU/driver、两个输出的 mode/refresh/scale、实际 loaded libdecor/plugin path 和 patch identity，确认后续测试未设置 `SDL_VIDEO_DRIVER=x11`
+- [x] 5.2 在 240 Hz、display scale 1.333 输出快速连续调整 `rynui_minimal` 与公开 layout/token 示例，保存拖动期间连续帧证据、configure/replace/ack/frame 计数和退出码；人工确认不等待失焦、pointer 命中与 logical viewport 对应
+- [x] 5.3 在 60 Hz、display scale 1.0 输出重复相同操作并保存证据；人工确认拖动期间持续跟随且松开后没有继续追赶旧尺寸的明显动画队列
+- [x] 5.4 把窗口从两个输出之间双向移动后立即 resize，验证 drawable、logical viewport、display scale、字体 raster 和 pointer 坐标使用当前输出指标，并正常关闭窗口
+- [x] 5.5 更新 `docs/issues/linux-wayland-resize.md` 和受影响 change evidence，只在 5.2–5.4 全部通过后将问题标记解决；运行 evidence contracts、OpenSpec strict validation 与 `git diff --check` 后以英文 `test: validate native Wayland resize` 提交 Linux 验收阶段
 
 ## 6. Windows 依赖隔离验收
 
