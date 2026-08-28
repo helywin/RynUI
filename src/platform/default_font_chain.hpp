@@ -29,6 +29,7 @@ struct LoadedDefaultFontFace {
     std::filesystem::path source_path;
     long face_index{};
     std::string family_name;
+    font::FontRasterPolicy raster_policy{};
     bool custom_font{};
     bool system_font{};
 };
@@ -52,6 +53,7 @@ struct DefaultFontChainResult {
     [[nodiscard]] std::vector<font::FontIdentity> identities() const;
     [[nodiscard]] std::string telemetry_source() const;
     [[nodiscard]] std::string telemetry_families() const;
+    [[nodiscard]] std::string telemetry_rendering() const;
 };
 
 [[nodiscard]] DefaultFontChainResult load_default_ui_font_chain(

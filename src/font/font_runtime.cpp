@@ -51,6 +51,81 @@ namespace {
     return std::max(1U, static_cast<std::uint32_t>(std::ceil(scaled)));
 }
 
+[[nodiscard]] FT_Int32 raster_load_flags(FontRasterPolicy policy) noexcept {
+    FT_Int32 flags = FT_LOAD_DEFAULT;
+    if (!policy.embedded_bitmap) {
+        flags |= FT_LOAD_NO_BITMAP;
+    }
+    if (!policy.antialias) {
+        flags |= FT_LOAD_TARGET_MONO | FT_LOAD_MONOCHROME;
+        return flags;
+    }
+    if (!policy.hinting || policy.hint_style == FontHintStyle::none) {
+        return flags | FT_LOAD_NO_HINTING;
+    }
+    switch (policy.hint_style) {
+    case FontHintStyle::slight:
+        return flags | FT_LOAD_TARGET_LIGHT;
+    case FontHintStyle::medium:
+    case FontHintStyle::full:
+        return flags | FT_LOAD_TARGET_NORMAL;
+    case FontHintStyle::default_hint:
+    case FontHintStyle::none:
+        return flags;
+    }
+    return flags;
+}
+
+[[nodiscard]] FT_Render_Mode raster_render_mode(FontRasterPolicy policy) noexcept {
+    return policy.antialias ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO;
+}
+
+[[nodiscard]] CoverageNormalizationResult normalize_mono_coverage(
+    std::span<const std::uint8_t> source,
+    std::uint32_t width,
+    std::uint32_t height,
+    int pitch) {
+    if (width == 0 || height == 0) {
+        return {};
+    }
+    if (pitch == 0 || pitch == std::numeric_limits<int>::min()) {
+        return {
+            {},
+            make_error(
+                FontErrorStage::rasterization,
+                FontErrorKind::unsupported_bitmap,
+                "Monochrome glyph bitmap pitch is invalid."),
+        };
+    }
+    const std::size_t packed_width = (static_cast<std::size_t>(width) + 7U) / 8U;
+    const std::size_t absolute_pitch = static_cast<std::size_t>(std::abs(pitch));
+    if (absolute_pitch < packed_width
+            || height > std::numeric_limits<std::size_t>::max() / absolute_pitch
+            || source.size() < absolute_pitch * height
+            || height > std::numeric_limits<std::size_t>::max() / width) {
+        return {
+            {},
+            make_error(
+                FontErrorStage::rasterization,
+                FontErrorKind::unsupported_bitmap,
+                "Monochrome glyph bitmap storage does not match its dimensions."),
+        };
+    }
+    CoverageNormalizationResult result;
+    result.coverage.resize(static_cast<std::size_t>(width) * height);
+    for (std::uint32_t row = 0; row < height; ++row) {
+        const std::uint32_t source_row = pitch > 0 ? row : height - 1 - row;
+        const auto* packed = source.data()
+            + static_cast<std::size_t>(source_row) * absolute_pitch;
+        for (std::uint32_t column = 0; column < width; ++column) {
+            const auto mask = static_cast<std::uint8_t>(0x80U >> (column & 7U));
+            result.coverage[static_cast<std::size_t>(row) * width + column] =
+                (packed[column / 8U] & mask) != 0 ? 255U : 0U;
+        }
+    }
+    return result;
+}
+
 struct GlyphCacheKey {
     FontIdentity font{};
     std::uint32_t glyph_id{};
@@ -89,6 +164,7 @@ struct FontRuntime::Impl {
               shaping_face(std::exchange(other.shaping_face, nullptr)),
               harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)),
               metrics(other.metrics),
+              raster_policy(other.raster_policy),
               owns_bytes(std::exchange(other.owns_bytes, false)),
               counters(std::move(other.counters)) {}
 
@@ -125,6 +201,7 @@ struct FontRuntime::Impl {
         FT_Face shaping_face{};
         hb_font_t* harfbuzz_font{};
         FontMetrics metrics{};
+        FontRasterPolicy raster_policy{};
         bool owns_bytes{};
         std::shared_ptr<FontRuntimeCounters> counters;
     };
@@ -431,6 +508,7 @@ FontLoadResult FontRuntime::load_font_bytes(
     record.metrics.raster_pixel_size = *raster_pixel_size;
     record.metrics.display_scale = raster.display_scale;
     record.metrics.raster_scale = raster_scale;
+    record.raster_policy = raster.policy;
 
     const FT_Error shaping_face_result = FT_New_Memory_Face(
         impl_->library,
@@ -674,8 +752,10 @@ GlyphRasterResult FontRuntime::rasterize(
     };
     FT_Set_Transform(record->face, nullptr, &raster_translation);
     const bool raster_failed = mode != GlyphRasterMode::grayscale
-        || FT_Load_Glyph(record->face, glyph_id, FT_LOAD_DEFAULT) != 0
-        || FT_Render_Glyph(record->face->glyph, FT_RENDER_MODE_NORMAL) != 0;
+        || FT_Load_Glyph(
+            record->face, glyph_id, raster_load_flags(record->raster_policy)) != 0
+        || FT_Render_Glyph(
+            record->face->glyph, raster_render_mode(record->raster_policy)) != 0;
     FT_Set_Transform(record->face, nullptr, nullptr);
     if (raster_failed) {
         return {
@@ -692,6 +772,7 @@ GlyphRasterResult FontRuntime::rasterize(
     const FT_GlyphSlot slot = record->face->glyph;
     const FT_Bitmap& bitmap = slot->bitmap;
     if (bitmap.pixel_mode != FT_PIXEL_MODE_GRAY
+            && bitmap.pixel_mode != FT_PIXEL_MODE_MONO
             && bitmap.width != 0 && bitmap.rows != 0) {
         return {
             nullptr,
@@ -699,7 +780,7 @@ GlyphRasterResult FontRuntime::rasterize(
             make_error(
                 FontErrorStage::rasterization,
                 FontErrorKind::unsupported_bitmap,
-                "FreeType returned a non-grayscale glyph bitmap.",
+                "FreeType returned a glyph bitmap incompatible with the R8 atlas.",
                 font),
         };
     }
@@ -735,11 +816,10 @@ GlyphRasterResult FontRuntime::rasterize(
         }
         const std::size_t source_size = static_cast<std::size_t>(std::abs(bitmap.pitch))
             * bitmap.rows;
-        const auto normalized = normalize_gray_coverage(
-            std::span<const std::uint8_t>{bitmap.buffer, source_size},
-            bitmap.width,
-            bitmap.rows,
-            bitmap.pitch);
+        const auto source = std::span<const std::uint8_t>{bitmap.buffer, source_size};
+        const auto normalized = bitmap.pixel_mode == FT_PIXEL_MODE_MONO
+            ? normalize_mono_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch)
+            : normalize_gray_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch);
         if (!normalized) {
             return {nullptr, false, normalized.error};
         }

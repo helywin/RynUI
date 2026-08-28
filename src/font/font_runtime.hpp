@@ -74,9 +74,46 @@ struct FontMetrics {
     friend bool operator==(const FontMetrics&, const FontMetrics&) = default;
 };
 
+enum class FontHintStyle : std::uint8_t {
+    default_hint,
+    none,
+    slight,
+    medium,
+    full,
+};
+
+enum class FontSubpixelOrder : std::uint8_t {
+    unknown,
+    none,
+    rgb,
+    bgr,
+    vertical_rgb,
+    vertical_bgr,
+};
+
+enum class FontLcdFilter : std::uint8_t {
+    unknown,
+    none,
+    default_filter,
+    light,
+    legacy,
+};
+
+struct FontRasterPolicy {
+    bool antialias{true};
+    bool hinting{true};
+    FontHintStyle hint_style{FontHintStyle::default_hint};
+    FontSubpixelOrder subpixel_order{FontSubpixelOrder::unknown};
+    FontLcdFilter lcd_filter{FontLcdFilter::unknown};
+    bool embedded_bitmap{true};
+
+    friend bool operator==(FontRasterPolicy, FontRasterPolicy) = default;
+};
+
 struct FontRasterConfig {
     std::uint32_t logical_pixel_size{};
     float display_scale{1.0F};
+    FontRasterPolicy policy{};
 
     friend bool operator==(FontRasterConfig, FontRasterConfig) = default;
 };

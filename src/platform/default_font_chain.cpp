@@ -35,6 +35,7 @@ struct FontDescriptor {
     char32_t coverage_probe{};
     bool custom_font{};
     bool system_font{};
+    std::optional<font::FontRasterPolicy> raster_policy;
 };
 
 #if defined(_WIN32)
@@ -199,6 +200,7 @@ private:
         U'\0',
         false,
         true,
+        {},
     };
 }
 
@@ -254,6 +256,79 @@ struct FcPatternDeleter {
 using UniqueFcConfig = std::unique_ptr<FcConfig, FcConfigDeleter>;
 using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
 
+[[nodiscard]] font::FontHintStyle font_hint_style(int value) noexcept {
+    switch (value) {
+    case FC_HINT_NONE:
+        return font::FontHintStyle::none;
+    case FC_HINT_SLIGHT:
+        return font::FontHintStyle::slight;
+    case FC_HINT_MEDIUM:
+        return font::FontHintStyle::medium;
+    case FC_HINT_FULL:
+        return font::FontHintStyle::full;
+    default:
+        return font::FontHintStyle::default_hint;
+    }
+}
+
+[[nodiscard]] font::FontSubpixelOrder font_subpixel_order(int value) noexcept {
+    switch (value) {
+    case FC_RGBA_NONE:
+        return font::FontSubpixelOrder::none;
+    case FC_RGBA_RGB:
+        return font::FontSubpixelOrder::rgb;
+    case FC_RGBA_BGR:
+        return font::FontSubpixelOrder::bgr;
+    case FC_RGBA_VRGB:
+        return font::FontSubpixelOrder::vertical_rgb;
+    case FC_RGBA_VBGR:
+        return font::FontSubpixelOrder::vertical_bgr;
+    default:
+        return font::FontSubpixelOrder::unknown;
+    }
+}
+
+[[nodiscard]] font::FontLcdFilter font_lcd_filter(int value) noexcept {
+    switch (value) {
+    case FC_LCD_NONE:
+        return font::FontLcdFilter::none;
+    case FC_LCD_DEFAULT:
+        return font::FontLcdFilter::default_filter;
+    case FC_LCD_LIGHT:
+        return font::FontLcdFilter::light;
+    case FC_LCD_LEGACY:
+        return font::FontLcdFilter::legacy;
+    default:
+        return font::FontLcdFilter::unknown;
+    }
+}
+
+[[nodiscard]] font::FontRasterPolicy fontconfig_raster_policy(FcPattern& pattern) {
+    font::FontRasterPolicy policy;
+    FcBool boolean = FcTrue;
+    int integer = 0;
+    if (FcPatternGetBool(&pattern, FC_ANTIALIAS, 0, &boolean) == FcResultMatch) {
+        policy.antialias = boolean == FcTrue;
+    }
+    if (FcPatternGetBool(&pattern, FC_HINTING, 0, &boolean) == FcResultMatch) {
+        policy.hinting = boolean == FcTrue;
+    }
+    if (FcPatternGetInteger(&pattern, FC_HINT_STYLE, 0, &integer) == FcResultMatch) {
+        policy.hint_style = font_hint_style(integer);
+    }
+    if (FcPatternGetInteger(&pattern, FC_RGBA, 0, &integer) == FcResultMatch) {
+        policy.subpixel_order = font_subpixel_order(integer);
+    }
+    if (FcPatternGetInteger(&pattern, FC_LCD_FILTER, 0, &integer) == FcResultMatch) {
+        policy.lcd_filter = font_lcd_filter(integer);
+    }
+    if (FcPatternGetBool(&pattern, FC_EMBEDDED_BITMAP, 0, &boolean)
+            == FcResultMatch) {
+        policy.embedded_bitmap = boolean == FcTrue;
+    }
+    return policy;
+}
+
 [[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_default(
     FcConfig& config,
     const char* language,
@@ -295,6 +370,7 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
         coverage_probe,
         false,
         true,
+        fontconfig_raster_policy(*match),
     };
 }
 
@@ -358,6 +434,9 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     const FontDescriptor& descriptor,
     font::FontRasterConfig raster,
     DefaultFontChainResult& result) {
+    if (descriptor.raster_policy.has_value()) {
+        raster.policy = *descriptor.raster_policy;
+    }
     const auto loaded = fonts.load_font_file(
         descriptor.path,
         descriptor.face_index,
@@ -370,6 +449,7 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
         descriptor.path,
         descriptor.face_index,
         descriptor.family_name,
+        raster.policy,
         descriptor.custom_font,
         descriptor.system_font,
     });
@@ -378,6 +458,56 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     result.uses_bundled_fallbacks = result.uses_bundled_fallbacks
         || (!descriptor.custom_font && !descriptor.system_font);
     return true;
+}
+
+[[nodiscard]] std::string_view hint_style_name(font::FontHintStyle value) noexcept {
+    switch (value) {
+    case font::FontHintStyle::default_hint:
+        return "default";
+    case font::FontHintStyle::none:
+        return "none";
+    case font::FontHintStyle::slight:
+        return "slight";
+    case font::FontHintStyle::medium:
+        return "medium";
+    case font::FontHintStyle::full:
+        return "full";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view subpixel_name(font::FontSubpixelOrder value) noexcept {
+    switch (value) {
+    case font::FontSubpixelOrder::unknown:
+        return "unknown";
+    case font::FontSubpixelOrder::none:
+        return "none";
+    case font::FontSubpixelOrder::rgb:
+        return "rgb";
+    case font::FontSubpixelOrder::bgr:
+        return "bgr";
+    case font::FontSubpixelOrder::vertical_rgb:
+        return "vrgb";
+    case font::FontSubpixelOrder::vertical_bgr:
+        return "vbgr";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view lcd_filter_name(font::FontLcdFilter value) noexcept {
+    switch (value) {
+    case font::FontLcdFilter::unknown:
+        return "unknown";
+    case font::FontLcdFilter::none:
+        return "none";
+    case font::FontLcdFilter::default_filter:
+        return "default";
+    case font::FontLcdFilter::light:
+        return "light";
+    case font::FontLcdFilter::legacy:
+        return "legacy";
+    }
+    return "unknown";
 }
 
 } // namespace
@@ -424,6 +554,25 @@ std::string DefaultFontChainResult::telemetry_families() const {
     return result;
 }
 
+std::string DefaultFontChainResult::telemetry_rendering() const {
+    std::string result;
+    for (const auto& face : faces) {
+        if (!result.empty()) {
+            result.push_back(';');
+        }
+        const auto& policy = face.raster_policy;
+        result.append(policy.antialias ? "aa=gray" : "aa=mono");
+        result.append(",hint=");
+        result.append(policy.hinting ? hint_style_name(policy.hint_style) : "none");
+        result.append(",rgba=");
+        result.append(subpixel_name(policy.subpixel_order));
+        result.append(",lcd=");
+        result.append(lcd_filter_name(policy.lcd_filter));
+        result.append(policy.embedded_bitmap ? ",bitmap=on" : ",bitmap=off");
+    }
+    return result;
+}
+
 DefaultFontChainResult load_default_ui_font_chain(
     font::FontRuntime& fonts,
     const DefaultFontChainRequest& request) {
@@ -437,6 +586,7 @@ DefaultFontChainResult load_default_ui_font_chain(
             U'\0',
             true,
             false,
+            {},
         });
     }
     for (const auto& descriptor : descriptors) {
@@ -469,6 +619,7 @@ DefaultFontChainResult load_default_ui_font_chain(
             U'A',
             false,
             false,
+            {},
         };
         if (!load_descriptor(fonts, fallback, request.raster, result)) {
             release_loaded(fonts, result);
@@ -484,6 +635,7 @@ DefaultFontChainResult load_default_ui_font_chain(
             U'中',
             false,
             false,
+            {},
         };
         if (!load_descriptor(fonts, fallback, request.raster, result)) {
             release_loaded(fonts, result);
@@ -531,7 +683,10 @@ DefaultUiFontResolver make_default_ui_font_resolver(
             const auto loaded = state->fonts->load_font_file(
                 face.source_path,
                 face.face_index,
-                font::FontRasterConfig{pixel_size, state->display_scale});
+                font::FontRasterConfig{
+                    pixel_size,
+                    state->display_scale,
+                    face.raster_policy});
             if (!loaded) {
                 return std::vector<font::FontIdentity>{};
             }

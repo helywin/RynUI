@@ -425,6 +425,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " viewport=" << viewport.width << 'x' << viewport.height
             << " font_source=" << font_chain.telemetry_source()
             << " font_families=" << font_chain.telemetry_families()
+            << " font_rendering=" << font_chain.telemetry_rendering()
             << " stable_test_ids=" << definition.stable_test_ids.size()
             << " snapshot_identity=" << telemetry.snapshot_identity
             << " snapshot=" << telemetry.snapshot_diagnostic

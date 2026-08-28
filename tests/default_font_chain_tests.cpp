@@ -28,6 +28,10 @@ void test_default_ui_font_chain() {
     require(static_cast<bool>(chain), "default UI font chain did not load");
     require(!chain.faces.empty() && !chain.telemetry_families().empty(),
             "default UI font chain lost face diagnostics");
+    require(chain.telemetry_rendering().find("aa=") != std::string::npos
+                && chain.telemetry_rendering().find("hint=") != std::string::npos
+                && chain.telemetry_rendering().find("bitmap=") != std::string::npos,
+            "default UI font chain lost raster policy telemetry");
     require(!chain.telemetry_source().empty(),
             "default UI font chain lost source diagnostics");
     for (const auto& face : chain.faces) {

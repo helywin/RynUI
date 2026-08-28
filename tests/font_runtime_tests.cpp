@@ -224,6 +224,22 @@ void test_load_errors_and_metrics() {
             "high-density glyph coverage lost its raster scale");
     require(std::abs(high_density_bitmap.glyph->display_scale - 1.5F) < 0.00001F,
             "high-density glyph coverage lost its display scale");
+
+    ryn::font::FontRasterConfig monochrome_config{14, 1.0F};
+    monochrome_config.policy.antialias = false;
+    monochrome_config.policy.hinting = false;
+    monochrome_config.policy.hint_style = ryn::font::FontHintStyle::none;
+    monochrome_config.policy.embedded_bitmap = false;
+    const auto monochrome = runtime->load_font_bytes(bytes, 0, monochrome_config);
+    const auto monochrome_a = runtime->glyph_index(monochrome.font, U'A');
+    const auto monochrome_bitmap = runtime->rasterize(
+        monochrome.font, monochrome_a.glyph.glyph_id);
+    require(monochrome && monochrome_a && monochrome_bitmap
+                && !monochrome_bitmap.glyph->coverage.empty()
+                && std::ranges::all_of(
+                    monochrome_bitmap.glyph->coverage,
+                    [](std::uint8_t value) { return value == 0 || value == 255; }),
+            "monochrome Fontconfig policy was not normalized for the R8 atlas");
 }
 
 void test_fallback_and_missing_glyph_diagnostics() {
