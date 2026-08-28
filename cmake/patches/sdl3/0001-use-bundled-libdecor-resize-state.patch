@@ -1,0 +1,112 @@
+From: Jiang Wenqiang <jiang770882022@hotmail.com>
+Subject: Use the parent-provided patched libdecor resize state
+
+Allow a parent build to provide an explicit libdecor target. This bypasses
+pkg-config and dynamic system-library discovery while retaining SDL's normal
+path for all other consumers. Expose only the backported resizing state;
+libdecor 0.3 bounds and wm-capability APIs remain behind their version gate.
+
+diff --git a/cmake/sdlchecks.cmake b/cmake/sdlchecks.cmake
+--- a/cmake/sdlchecks.cmake
++++ b/cmake/sdlchecks.cmake
+@@ -722,37 +722,53 @@ macro(CheckWayland)
+-      if(SDL_WAYLAND_LIBDECOR)
+-        set(LibDecor_PKG_CONFIG_SPEC libdecor-0)
+-        pkg_check_modules(PC_LIBDECOR IMPORTED_TARGET ${LibDecor_PKG_CONFIG_SPEC})
+-        if(PC_LIBDECOR_FOUND)
+-
+-          # Libdecor doesn't provide internal version defines, so generate them here.
+-          if (PC_LIBDECOR_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+-            set(SDL_LIBDECOR_VERSION_MAJOR ${CMAKE_MATCH_1})
+-            set(SDL_LIBDECOR_VERSION_MINOR ${CMAKE_MATCH_2})
+-            set(SDL_LIBDECOR_VERSION_PATCH ${CMAKE_MATCH_3})
+-          else()
+-            message(WARNING "Failed to parse libdecor version; defaulting to lowest supported (0.1.0)")
+-            set(SDL_LIBDECOR_VERSION_MAJOR 0)
+-            set(SDL_LIBDECOR_VERSION_MINOR 1)
+-            set(SDL_LIBDECOR_VERSION_PATCH 0)
+-          endif()
+-
+-          if(PC_LIBDECOR_VERSION VERSION_GREATER_EQUAL "0.2.0")
+-            set(LibDecor_PKG_CONFIG_SPEC "libdecor-0>=0.2.0")
+-          endif()
+-          set(HAVE_WAYLAND_LIBDECOR TRUE)
+-          set(HAVE_LIBDECOR_H 1)
+-          if(SDL_WAYLAND_LIBDECOR_SHARED AND NOT HAVE_SDL_LOADSO)
+-            message(WARNING "You must have SDL_LoadObject() support for dynamic libdecor loading")
+-          endif()
+-          FindLibraryAndSONAME(decor-0 LIBDIRS ${PC_LIBDECOR_LIBRARY_DIRS})
+-          if(SDL_WAYLAND_LIBDECOR_SHARED AND DECOR_0_LIB AND HAVE_SDL_LOADSO)
+-            set(HAVE_WAYLAND_LIBDECOR_SHARED TRUE)
+-            set(SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC_LIBDECOR "\"${DECOR_0_LIB_SONAME}\"")
+-            sdl_link_dependency(libdecor INCLUDES $<TARGET_PROPERTY:PkgConfig::PC_LIBDECOR,INTERFACE_INCLUDE_DIRECTORIES>)
+-          else()
+-            sdl_link_dependency(libdecor LIBS PkgConfig::PC_LIBDECOR PKG_CONFIG_PREFIX PC_LIBDECOR PKG_CONFIG_SPECS ${LibDecor_PKG_CONFIG_SPEC})
+-          endif()
+-        else()
+-          message(WARNING "Unable to find the libdecor development library (required for window decorations on GNOME and Weston)")
+-        endif()
+-      endif()
++      if(SDL_WAYLAND_LIBDECOR)
++        if(SDL_RYNUI_LIBDECOR_TARGET)
++          if(NOT TARGET ${SDL_RYNUI_LIBDECOR_TARGET})
++            message(FATAL_ERROR "SDL_RYNUI_LIBDECOR_TARGET does not name an existing target")
++          endif()
++          if(NOT SDL_RYNUI_LIBDECOR_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
++            message(FATAL_ERROR "SDL_RYNUI_LIBDECOR_VERSION must be an exact semantic version")
++          endif()
++          set(SDL_LIBDECOR_VERSION_MAJOR ${CMAKE_MATCH_1})
++          set(SDL_LIBDECOR_VERSION_MINOR ${CMAKE_MATCH_2})
++          set(SDL_LIBDECOR_VERSION_PATCH ${CMAKE_MATCH_3})
++          set(HAVE_WAYLAND_LIBDECOR TRUE)
++          set(HAVE_LIBDECOR_H 1)
++          sdl_compile_definitions(PRIVATE SDL_LIBDECOR_HAS_RESIZING_STATE=1)
++          sdl_link_dependency(libdecor LIBS ${SDL_RYNUI_LIBDECOR_TARGET})
++        else()
++          set(LibDecor_PKG_CONFIG_SPEC libdecor-0)
++          pkg_check_modules(PC_LIBDECOR IMPORTED_TARGET ${LibDecor_PKG_CONFIG_SPEC})
++          if(PC_LIBDECOR_FOUND)
++
++            # Libdecor doesn't provide internal version defines, so generate them here.
++            if (PC_LIBDECOR_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
++              set(SDL_LIBDECOR_VERSION_MAJOR ${CMAKE_MATCH_1})
++              set(SDL_LIBDECOR_VERSION_MINOR ${CMAKE_MATCH_2})
++              set(SDL_LIBDECOR_VERSION_PATCH ${CMAKE_MATCH_3})
++            else()
++              message(WARNING "Failed to parse libdecor version; defaulting to lowest supported (0.1.0)")
++              set(SDL_LIBDECOR_VERSION_MAJOR 0)
++              set(SDL_LIBDECOR_VERSION_MINOR 1)
++              set(SDL_LIBDECOR_VERSION_PATCH 0)
++            endif()
++
++            if(PC_LIBDECOR_VERSION VERSION_GREATER_EQUAL "0.2.0")
++              set(LibDecor_PKG_CONFIG_SPEC "libdecor-0>=0.2.0")
++            endif()
++            set(HAVE_WAYLAND_LIBDECOR TRUE)
++            set(HAVE_LIBDECOR_H 1)
++            if(SDL_WAYLAND_LIBDECOR_SHARED AND NOT HAVE_SDL_LOADSO)
++              message(WARNING "You must have SDL_LoadObject() support for dynamic libdecor loading")
++            endif()
++            FindLibraryAndSONAME(decor-0 LIBDIRS ${PC_LIBDECOR_LIBRARY_DIRS})
++            if(SDL_WAYLAND_LIBDECOR_SHARED AND DECOR_0_LIB AND HAVE_SDL_LOADSO)
++              set(HAVE_WAYLAND_LIBDECOR_SHARED TRUE)
++              set(SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC_LIBDECOR "\"${DECOR_0_LIB_SONAME}\"")
++              sdl_link_dependency(libdecor INCLUDES $<TARGET_PROPERTY:PkgConfig::PC_LIBDECOR,INTERFACE_INCLUDE_DIRECTORIES>)
++            else()
++              sdl_link_dependency(libdecor LIBS PkgConfig::PC_LIBDECOR PKG_CONFIG_PREFIX PC_LIBDECOR PKG_CONFIG_SPECS ${LibDecor_PKG_CONFIG_SPEC})
++            endif()
++          else()
++            message(WARNING "Unable to find the libdecor development library (required for window decorations on GNOME and Weston)")
++          endif()
++        endif()
++      endif()
+diff --git a/src/video/wayland/SDL_waylandwindow.c b/src/video/wayland/SDL_waylandwindow.c
+--- a/src/video/wayland/SDL_waylandwindow.c
++++ b/src/video/wayland/SDL_waylandwindow.c
+@@ -1232,2 +1232,4 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
+-#if SDL_LIBDECOR_CHECK_VERSION(0, 3, 0)
+-        resizing = (window_state & LIBDECOR_WINDOW_STATE_RESIZING) != 0;
++#ifdef SDL_LIBDECOR_HAS_RESIZING_STATE
++        resizing = (window_state & LIBDECOR_WINDOW_STATE_RESIZING) != 0;
++#endif
++#if SDL_LIBDECOR_CHECK_VERSION(0, 3, 0)

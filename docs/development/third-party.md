@@ -55,7 +55,7 @@ cmake --preset windows-msvc `
   -DFETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ=D:/deps/harfbuzz
 ```
 
-Linux 离线构建还可以设置 `FETCHCONTENT_SOURCE_DIR_RYNUI_LIBDECOR`。该目录必须是未打补丁的 0.2.5 源码；CMake 按锁定顺序应用 `cmake/patches/libdecor/` 中的文件，再由 Meson/Ninja 构建到 build tree 私有 staging prefix。不会修改 `/usr` 中的 libdecor 或 plugin。
+Linux 离线构建还可以设置 `FETCHCONTENT_SOURCE_DIR_RYNUI_LIBDECOR`。该目录必须是未打补丁的 0.2.5 源码；CMake 按锁定顺序应用 `cmake/patches/libdecor/` 中的文件，再由 Meson/Ninja 构建到 build tree 私有 staging prefix。SDL 3.4.14 同样在配置前应用仓库内独立 patch；Linux bundled 模式直接链接 Wayland 平台服务与 staging libdecor，避免 SDL 的动态 Wayland 符号查找跳过直接链接的 libdecor。不会修改 `/usr` 中的 libdecor 或 plugin。
 
 本地源码必须与 lock 记录的版本相符；source override 由开发者负责准备，CMake 不会下载或更新该目录。
 

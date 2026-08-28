@@ -18,6 +18,23 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_dependency_contract.cmake"
 )
 
+add_test(
+    NAME rynui.sdl3_libdecor_patch_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-libdecor-patch"
+        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_libdecor_patch_contract.cmake"
+)
+
+add_test(
+    NAME rynui.sdl3_bundled_libdecor_build_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        "-DTEST_CONFIG=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_bundled_libdecor_build_contract.cmake"
+)
+
 foreach(libdecor_contract_case IN ITEMS
         positive system non-linux missing-meson missing-package)
     add_test(

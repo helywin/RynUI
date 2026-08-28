@@ -12,6 +12,7 @@ set(required_variables
     RYNUI_SDL3_SOURCE_URL
     RYNUI_SDL3_SOURCE_SHA256
     RYNUI_SDL3_LICENSE
+    RYNUI_SDL3_LIBDECOR_PATCH_SHA256
     RYNUI_LIBDECOR_VERSION
     RYNUI_LIBDECOR_SOURCE_URL
     RYNUI_LIBDECOR_SOURCE_SHA256
@@ -63,6 +64,7 @@ endforeach()
 
 foreach(hash_variable IN ITEMS
         RYNUI_SDL3_SOURCE_SHA256
+        RYNUI_SDL3_LIBDECOR_PATCH_SHA256
         RYNUI_LIBDECOR_SOURCE_SHA256
         RYNUI_LIBDECOR_RESIZING_PATCH_SHA256
         RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256
@@ -83,6 +85,12 @@ endforeach()
 if(NOT RYNUI_SDL3_SOURCE_URL MATCHES "3[.]4[.]14"
         OR RYNUI_SDL3_SOURCE_URL MATCHES "latest|refs/heads")
     message(FATAL_ERROR "SDL3 source URL is not tied to the locked release.")
+endif()
+file(SHA256
+    "${RYNUI_SOURCE_DIR}/cmake/patches/sdl3/0001-use-bundled-libdecor-resize-state.patch"
+    actual_sdl3_patch_sha256)
+if(NOT actual_sdl3_patch_sha256 STREQUAL RYNUI_SDL3_LIBDECOR_PATCH_SHA256)
+    message(FATAL_ERROR "Locked SDL3 libdecor patch SHA256 is stale.")
 endif()
 
 if(NOT RYNUI_LIBDECOR_SOURCE_URL MATCHES "/0[.]2[.]5/"

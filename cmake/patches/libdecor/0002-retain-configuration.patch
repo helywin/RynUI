@@ -1,4 +1,4 @@
-From: RynUI maintainers <noreply@rynui.local>
+From: Jiang Wenqiang <jiang770882022@hotmail.com>
 Subject: Allow clients to retain configuration objects
 
 SDL needs to acknowledge only the latest interactive-resize configure on a

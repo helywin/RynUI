@@ -7,10 +7,10 @@
 
 ## 2. 在 SDL 配置前应用 feature patch
 
-- [ ] 2.1 为锁定的 SDL3 3.4.14 添加严格 patch step，使 patch 在 `FetchContent_MakeAvailable(SDL3)` 配置前完成；通过 pristine archive fixture 验证正常应用、错误上下文失败且 source override 仍使用同一 patch
-- [ ] 2.2 扩展 SDL bundled Wayland CMake 检测以消费 build-local libdecor target/header并定义私有 resize-state feature，关闭对任意系统 libdecor 的动态探测；通过 generated build graph 和 link/runtime-path contract 验证只连接 staged library
-- [ ] 2.3 修改 `decoration_frame_configure()`，仅对 `LIBDECOR_WINDOW_STATE_RESIZING` 读取去掉 `SDL_LIBDECOR_CHECK_VERSION(0, 3, 0)` 限制；用 source contract 证明 resize bit 在 bundled feature 下启用、其他 bounds/wm-capabilities 0.3 gates 未变化且没有伪造版本号
-- [ ] 2.4 使用 `linux-gcc` fresh configure 构建 patched SDL/libdecor 最小目标，核对编译 header、ELF dependency、loaded library 与 plugin 均来自 staging prefix；运行 SDL patch/dependency tests 和 `git diff --check` 后以英文 `fix: propagate libdecor resize state` 提交本阶段
+- [x] 2.1 为锁定的 SDL3 3.4.14 添加严格 patch step，使 patch 在 `FetchContent_MakeAvailable(SDL3)` 配置前完成；通过 pristine archive fixture 验证正常应用、错误上下文失败且 source override 仍使用同一 patch
+- [x] 2.2 扩展 SDL bundled Wayland CMake 检测以消费 build-local libdecor target/header并定义私有 resize-state feature，关闭对任意系统 libdecor 的动态探测；通过 generated build graph 和 link/runtime-path contract 验证只连接 staged library
+- [x] 2.3 修改 `decoration_frame_configure()`，仅对 `LIBDECOR_WINDOW_STATE_RESIZING` 读取去掉 `SDL_LIBDECOR_CHECK_VERSION(0, 3, 0)` 限制；用 source contract 证明 resize bit 在 bundled feature 下启用、其他 bounds/wm-capabilities 0.3 gates 未变化且没有伪造版本号
+- [x] 2.4 使用 `linux-gcc` fresh configure 构建 patched SDL/libdecor 最小目标，核对编译 header、ELF dependency、loaded library 与 plugin 均来自 staging prefix；运行 SDL patch/dependency tests 和 `git diff --check` 后以英文 `fix: propagate libdecor resize state` 提交本阶段
 
 ## 3. 修复 configure/ack/frame 前进状态机
 

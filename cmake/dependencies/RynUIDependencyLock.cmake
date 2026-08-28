@@ -7,6 +7,8 @@ set(RYNUI_SDL3_SOURCE_URL
 set(RYNUI_SDL3_SOURCE_SHA256
     "30d4aa2b3037718142b32dffd4e72f917ebb6cc5227150e7bb9c45efb2153aeb")
 set(RYNUI_SDL3_LICENSE "Zlib")
+set(RYNUI_SDL3_LIBDECOR_PATCH_SHA256
+    "c3971c84d9056b53f0ccf388a0a22381963ebc9ab838a7fadfd85afeb559c04f")
 
 set(RYNUI_LIBDECOR_VERSION "0.2.5")
 set(RYNUI_LIBDECOR_SOURCE_URL
@@ -19,7 +21,7 @@ set(RYNUI_LIBDECOR_RESIZING_COMMIT
 set(RYNUI_LIBDECOR_RESIZING_PATCH_SHA256
     "f4f1702b24ad3469ae934bc5e2233c21275d4882cf7374f6dd003f26001601f9")
 set(RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256
-    "9725e3c5e795c00a5e6e7613e9c229f0d863ad6ce557f7fc64bce52ae5a3b2c5")
+    "dffd9c9a4ec5542c9e3a99570613b56459094b18d11322ff31b3b2f388729bce")
 
 # SDL_shadercross had no release or tag when this snapshot was locked, so the
 # archive is tied to an exact upstream commit rather than a moving branch.

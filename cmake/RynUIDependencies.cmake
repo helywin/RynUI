@@ -121,6 +121,7 @@ function(rynui_resolve_bundled_libdecor)
         BUILD_BYPRODUCTS
             "${libdecor_library}"
             "${libdecor_plugin}"
+        BUILD_ALWAYS TRUE
         USES_TERMINAL_CONFIGURE TRUE
         USES_TERMINAL_BUILD TRUE
         USES_TERMINAL_INSTALL TRUE
@@ -159,6 +160,28 @@ function(rynui_resolve_sdl3)
         set(SDL_TESTS OFF CACHE BOOL "Build SDL3 tests" FORCE)
         set(SDL_INSTALL OFF CACHE BOOL "Install SDL3" FORCE)
         set(SDL_UNINSTALL OFF CACHE BOOL "Add the SDL3 uninstall target" FORCE)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            set(SDL_WAYLAND_SHARED OFF CACHE BOOL
+                "Link Wayland services directly with build-local libdecor" FORCE)
+            set(SDL_WAYLAND_LIBDECOR_SHARED OFF CACHE BOOL
+                "Link the build-local patched libdecor directly" FORCE)
+            set(SDL_RYNUI_LIBDECOR_TARGET rynui_libdecor)
+            set(SDL_RYNUI_LIBDECOR_VERSION "${RYNUI_LIBDECOR_VERSION}")
+            set(sdl3_libdecor_patch
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/sdl3/0001-use-bundled-libdecor-resize-state.patch")
+            set(sdl3_patch_command
+                "${CMAKE_COMMAND}"
+                "-DSOURCE_DIR=<SOURCE_DIR>"
+                "-DPATCH_1=${sdl3_libdecor_patch}"
+                "-DEXPECTED_PATCH_SHA256_1=${RYNUI_SDL3_LIBDECOR_PATCH_SHA256}"
+                "-DEXPECTED_VERSION_FILE=CMakeLists.txt"
+                "-DEXPECTED_VERSION_PATTERN=VERSION \"3[.]4[.]14\""
+                "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
+                "-DALLOW_ALREADY_APPLIED=ON"
+                -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake")
+        else()
+            set(sdl3_patch_command "${CMAKE_COMMAND}" -E true)
+        endif()
 
         message(STATUS
             "Resolving SDL3 ${RYNUI_SDL3_VERSION} from the locked archive. "
@@ -169,8 +192,12 @@ function(rynui_resolve_sdl3)
             URL "${RYNUI_SDL3_SOURCE_URL}"
             URL_HASH "SHA256=${RYNUI_SDL3_SOURCE_SHA256}"
             DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+            PATCH_COMMAND ${sdl3_patch_command}
         )
         FetchContent_MakeAvailable(SDL3)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET SDL3-static)
+            add_dependencies(SDL3-static rynui_libdecor_external)
+        endif()
     else()
         find_package(SDL3 ${RYNUI_SDL3_VERSION} CONFIG REQUIRED COMPONENTS SDL3)
     endif()
