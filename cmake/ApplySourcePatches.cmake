@@ -76,7 +76,7 @@ foreach(patch_file IN LISTS PATCHES)
 
     if(ALLOW_ALREADY_APPLIED)
         execute_process(
-            COMMAND "${PATCH_EXECUTABLE}" --dry-run --batch --reverse -p1
+            COMMAND "${PATCH_EXECUTABLE}" --dry-run --batch --force --reverse -p1
                 -i "${patch_file}"
             WORKING_DIRECTORY "${SOURCE_DIR}"
             RESULT_VARIABLE reverse_check_result
@@ -89,7 +89,7 @@ foreach(patch_file IN LISTS PATCHES)
     endif()
 
     execute_process(
-        COMMAND "${PATCH_EXECUTABLE}" --dry-run --batch --forward -p1
+        COMMAND "${PATCH_EXECUTABLE}" --dry-run --batch --force --forward -p1
             -i "${patch_file}"
         WORKING_DIRECTORY "${SOURCE_DIR}"
         RESULT_VARIABLE check_result
@@ -103,7 +103,7 @@ foreach(patch_file IN LISTS PATCHES)
     endif()
 
     execute_process(
-        COMMAND "${PATCH_EXECUTABLE}" --batch --forward -p1
+        COMMAND "${PATCH_EXECUTABLE}" --batch --force --forward -p1
             -i "${patch_file}"
         WORKING_DIRECTORY "${SOURCE_DIR}"
         RESULT_VARIABLE apply_result

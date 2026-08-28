@@ -18,6 +18,7 @@ foreach(pattern IN ITEMS
         "add_library\\(RynUI::LibDecor ALIAS rynui_libdecor\\)"
         "lib/libdecor/plugins-1"
         "RYNUI_LIBDECOR_BUILD_RPATH"
+        "libdecor_preconfigure_patch_result"
         "BUILD_BYPRODUCTS")
     if(NOT dependency_source MATCHES "${pattern}")
         message(FATAL_ERROR "Bundled libdecor dependency contract is missing: ${pattern}")

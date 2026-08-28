@@ -62,6 +62,16 @@ function(rynui_resolve_bundled_libdecor)
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/libdecor/0001-expose-resizing-state.patch")
     set(libdecor_configuration_patch
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/libdecor/0002-retain-configuration.patch")
+    set(libdecor_patch_arguments
+        "-DPATCH_1=${libdecor_resizing_patch}"
+        "-DPATCH_2=${libdecor_configuration_patch}"
+        "-DEXPECTED_PATCH_SHA256_1=${RYNUI_LIBDECOR_RESIZING_PATCH_SHA256}"
+        "-DEXPECTED_PATCH_SHA256_2=${RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256}"
+        "-DEXPECTED_VERSION_FILE=meson.build"
+        "-DEXPECTED_VERSION_PATTERN=version: '0[.]2[.]5'"
+        "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
+        "-DALLOW_ALREADY_APPLIED=ON"
+        -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake")
 
     message(STATUS
         "Resolving patched libdecor ${RYNUI_LIBDECOR_VERSION} from the locked archive. "
@@ -76,17 +86,23 @@ function(rynui_resolve_bundled_libdecor)
         PATCH_COMMAND
             "${CMAKE_COMMAND}"
             "-DSOURCE_DIR=<SOURCE_DIR>"
-            "-DPATCH_1=${libdecor_resizing_patch}"
-            "-DPATCH_2=${libdecor_configuration_patch}"
-            "-DEXPECTED_PATCH_SHA256_1=${RYNUI_LIBDECOR_RESIZING_PATCH_SHA256}"
-            "-DEXPECTED_PATCH_SHA256_2=${RYNUI_LIBDECOR_CONFIGURATION_PATCH_SHA256}"
-            "-DEXPECTED_VERSION_FILE=meson.build"
-            "-DEXPECTED_VERSION_PATTERN=version: '0[.]2[.]5'"
-            "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
-            "-DALLOW_ALREADY_APPLIED=ON"
-            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake"
+            ${libdecor_patch_arguments}
     )
     FetchContent_MakeAvailable(rynui_libdecor)
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}"
+            "-DSOURCE_DIR=${rynui_libdecor_SOURCE_DIR}"
+            ${libdecor_patch_arguments}
+        RESULT_VARIABLE libdecor_preconfigure_patch_result
+        OUTPUT_VARIABLE libdecor_preconfigure_patch_output
+        ERROR_VARIABLE libdecor_preconfigure_patch_error
+    )
+    if(NOT libdecor_preconfigure_patch_result EQUAL 0)
+        message(FATAL_ERROR
+            "libdecor pre-configure patch validation failed:\n"
+            "${libdecor_preconfigure_patch_output}"
+            "${libdecor_preconfigure_patch_error}")
+    endif()
 
     set(libdecor_stage "${CMAKE_BINARY_DIR}/_deps/rynui-libdecor-stage")
     set(libdecor_build "${CMAKE_BINARY_DIR}/_deps/rynui-libdecor-build")
@@ -171,9 +187,7 @@ function(rynui_resolve_sdl3)
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/sdl3/0001-use-bundled-libdecor-resize-state.patch")
             set(sdl3_libdecor_pacing_patch
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/patches/sdl3/0002-pace-libdecor-resize-configures.patch")
-            set(sdl3_patch_command
-                "${CMAKE_COMMAND}"
-                "-DSOURCE_DIR=<SOURCE_DIR>"
+            set(sdl3_patch_arguments
                 "-DPATCH_1=${sdl3_libdecor_patch}"
                 "-DPATCH_2=${sdl3_libdecor_pacing_patch}"
                 "-DEXPECTED_PATCH_SHA256_1=${RYNUI_SDL3_LIBDECOR_PATCH_SHA256}"
@@ -189,6 +203,10 @@ function(rynui_resolve_sdl3)
                 "-DPATCH_EXECUTABLE=${RYNUI_PATCH_EXECUTABLE}"
                 "-DALLOW_ALREADY_APPLIED=ON"
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ApplySourcePatches.cmake")
+            set(sdl3_patch_command
+                "${CMAKE_COMMAND}"
+                "-DSOURCE_DIR=<SOURCE_DIR>"
+                ${sdl3_patch_arguments})
         else()
             set(sdl3_patch_command "${CMAKE_COMMAND}" -E true)
         endif()
@@ -197,14 +215,46 @@ function(rynui_resolve_sdl3)
             "Resolving SDL3 ${RYNUI_SDL3_VERSION} from the locked archive. "
             "For offline builds, set FETCHCONTENT_SOURCE_DIR_SDL3 to prepared source.")
 
-        FetchContent_Declare(
-            SDL3
-            URL "${RYNUI_SDL3_SOURCE_URL}"
-            URL_HASH "SHA256=${RYNUI_SDL3_SOURCE_SHA256}"
-            DOWNLOAD_EXTRACT_TIMESTAMP FALSE
-            PATCH_COMMAND ${sdl3_patch_command}
-        )
-        FetchContent_MakeAvailable(SDL3)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            # Populate first, revalidate/apply the standalone patches on every
+            # configure, and only then let SDL evaluate its CMakeLists. This is
+            # required because `cmake --fresh` intentionally preserves the
+            # FetchContent subbuild stamps and an older patch step may otherwise
+            # be skipped in an existing build tree.
+            FetchContent_Declare(
+                SDL3
+                URL "${RYNUI_SDL3_SOURCE_URL}"
+                URL_HASH "SHA256=${RYNUI_SDL3_SOURCE_SHA256}"
+                DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+                PATCH_COMMAND ${sdl3_patch_command}
+                SOURCE_SUBDIR __rynui_defer_sdl_configure
+            )
+            FetchContent_MakeAvailable(SDL3)
+            execute_process(
+                COMMAND "${CMAKE_COMMAND}"
+                    "-DSOURCE_DIR=${sdl3_SOURCE_DIR}"
+                    ${sdl3_patch_arguments}
+                RESULT_VARIABLE sdl3_preconfigure_patch_result
+                OUTPUT_VARIABLE sdl3_preconfigure_patch_output
+                ERROR_VARIABLE sdl3_preconfigure_patch_error
+            )
+            if(NOT sdl3_preconfigure_patch_result EQUAL 0)
+                message(FATAL_ERROR
+                    "SDL3 pre-configure patch validation failed:\n"
+                    "${sdl3_preconfigure_patch_output}"
+                    "${sdl3_preconfigure_patch_error}")
+            endif()
+            add_subdirectory("${sdl3_SOURCE_DIR}" "${sdl3_BINARY_DIR}")
+        else()
+            FetchContent_Declare(
+                SDL3
+                URL "${RYNUI_SDL3_SOURCE_URL}"
+                URL_HASH "SHA256=${RYNUI_SDL3_SOURCE_SHA256}"
+                DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+                PATCH_COMMAND ${sdl3_patch_command}
+            )
+            FetchContent_MakeAvailable(SDL3)
+        endif()
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET SDL3-static)
             add_dependencies(SDL3-static rynui_libdecor_external)
         endif()

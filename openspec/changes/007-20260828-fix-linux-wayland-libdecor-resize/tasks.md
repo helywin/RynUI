@@ -21,10 +21,10 @@
 
 ## 4. Linux 构建与自动回归
 
-- [ ] 4.1 使用 `cmake --fresh --preset linux-gcc` 完成 Debug/Release build 与受影响 CTest，核对 Ninja Multi-Config、标准 C++20、patched libdecor/SDL 来源、RPATH/plugin、public dependency isolation 与正常退出；保存实际 preset 和测试计数
-- [ ] 4.2 使用 `cmake --fresh --preset linux-clang` 完成 Debug build 与受影响 CTest，核对 ExternalProject 生成物可由 Clang consumer 链接且 SDL/libdecor C ABI 无 toolchain 泄漏；不重复运行平台通用完整 CTest
-- [ ] 4.3 运行隔离的 `BUNDLED|SYSTEM` positive/negative contracts、patch source contract、license、未跟踪依赖和 public-header leak checks，证明 SYSTEM 不回退且公开 API 不出现 SDL/libdecor 类型
-- [ ] 4.4 汇总自动验证结果并更新 build evidence，运行 `openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate patched Wayland dependencies` 提交本阶段
+- [x] 4.1 使用 `cmake --fresh --preset linux-gcc` 完成 Debug/Release build 与受影响 CTest，核对 Ninja Multi-Config、标准 C++20、patched libdecor/SDL 来源、RPATH/plugin、public dependency isolation 与正常退出；保存实际 preset 和测试计数
+- [x] 4.2 使用 `cmake --fresh --preset linux-clang` 完成 Debug build 与受影响 CTest，核对 ExternalProject 生成物可由 Clang consumer 链接且 SDL/libdecor C ABI 无 toolchain 泄漏；不重复运行平台通用完整 CTest
+- [x] 4.3 运行隔离的 `BUNDLED|SYSTEM` positive/negative contracts、patch source contract、license、未跟踪依赖和 public-header leak checks，证明 SYSTEM 不回退且公开 API 不出现 SDL/libdecor 类型
+- [x] 4.4 汇总自动验证结果并更新 build evidence，运行 `openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate patched Wayland dependencies` 提交本阶段
 
 ## 5. Linux 原生 Wayland 真实窗口验收
 

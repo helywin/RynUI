@@ -22,6 +22,19 @@ file(ARCHIVE_EXTRACT INPUT "${sdl_archive}"
 set(source_dir "${TEST_BINARY_DIR}/source/SDL3-3.4.14")
 
 include("${TEST_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
+file(READ "${TEST_SOURCE_DIR}/cmake/RynUIDependencies.cmake"
+    dependency_source)
+foreach(pattern IN ITEMS
+        "SOURCE_SUBDIR __rynui_defer_sdl_configure"
+        "sdl3_preconfigure_patch_result"
+        "add_subdirectory"
+        "sdl3_SOURCE_DIR"
+        "sdl3_BINARY_DIR")
+    if(NOT dependency_source MATCHES "${pattern}")
+        message(FATAL_ERROR
+            "SDL3 must be patched before every source configure: ${pattern}")
+    endif()
+endforeach()
 set(patch_1
     "${TEST_SOURCE_DIR}/cmake/patches/sdl3/0001-use-bundled-libdecor-resize-state.patch")
 set(patch_2
@@ -69,6 +82,31 @@ file(READ "${patch_2}" pacing_patch_text)
 if(pacing_patch_text MATCHES
         "focus_count|focus_changed|keyboard_focus|pointer_focus")
     message(FATAL_ERROR "Focus events must not advance resize pacing.")
+endif()
+
+set(idempotent_command ${apply_command})
+list(LENGTH idempotent_command idempotent_command_length)
+math(EXPR idempotent_option_index "${idempotent_command_length} - 2")
+list(INSERT idempotent_command ${idempotent_option_index}
+    "-DALLOW_ALREADY_APPLIED=ON")
+execute_process(
+    COMMAND ${idempotent_command}
+    RESULT_VARIABLE idempotent_result
+    OUTPUT_VARIABLE idempotent_output
+    ERROR_VARIABLE idempotent_error)
+if(NOT idempotent_result EQUAL 0)
+    message(FATAL_ERROR
+        "Already-applied SDL3 patches must validate without mutation:\n"
+        "${idempotent_output}${idempotent_error}")
+endif()
+file(READ "${source_dir}/cmake/sdlchecks.cmake" idempotent_checks)
+file(READ "${source_dir}/src/video/wayland/SDL_waylandwindow.c"
+    idempotent_window_source)
+if(NOT idempotent_checks MATCHES "SDL_LIBDECOR_HAS_RESIZING_STATE=1"
+        OR NOT idempotent_window_source MATCHES
+            "pending_resize_configuration")
+    message(FATAL_ERROR
+        "Idempotent validation must not reverse already-applied SDL3 patches.")
 endif()
 
 execute_process(
