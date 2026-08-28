@@ -375,6 +375,9 @@ void test_shaped_measurement_wrap_resize_and_translation() {
                 && shape_after_resize == initial_shape,
             "viewport resize did not remeasure without reshaping");
 
+    const auto glyph_before_translation = fixture.scene.glyph_scene().instances()
+        .at(fixture.scene.primitive(mounted.scene).instances.first);
+
     ryn::runtime::NodePropertyWriter writer(fixture.nodes, fixture.dirty);
     require(writer.set_translation(node, {9.0F, 6.0F}),
             "Text translation update was ignored");
@@ -388,8 +391,14 @@ void test_shaped_measurement_wrap_resize_and_translation() {
     require(translated.counters().shape_count == shape_after_resize
                 && translated.counters().measure_count == measure_after_resize
                 && fixture.scene.atlas().dirty_regions().empty()
-                && near(glyph.translation_opacity[0], 2.0F * 9.0F / 120.0F)
-                && near(glyph.translation_opacity[1], -2.0F * 6.0F / 240.0F),
+                && near(glyph.translation_opacity[0], 0.0F)
+                && near(glyph.translation_opacity[1], 0.0F)
+                && near(
+                    glyph.position_size[0] - glyph_before_translation.position_size[0],
+                    2.0F * 9.0F / 120.0F)
+                && near(
+                    glyph.position_size[1] - glyph_before_translation.position_size[1],
+                    -2.0F * 6.0F / 240.0F),
             "translation reshaped/remeasured Text or missed Glyph geometry");
 
     Fixture latin;

@@ -39,6 +39,8 @@
 - [x] 5.4 运行 Flex/Space example source contract、headless frame integration、evidence schema、public dependency、未跟踪依赖与 `git diff --check`；以英文 `feat: add responsive layout demo` 提交并推送本阶段相关文件，核对 remote SHA
 - [x] 5.5 修复 SDL high-DPI platform boundary：启用 high-pixel-density window，分离 window/drawable/logical metrics，以 `drawable / display scale` 计算 viewport、以 `pixel density / display scale` 归一 pointer，并覆盖 resize/pixel-size/display-scale change；通过 platform lifecycle、SDL adapter、frame 与示例 smoke tests 后以英文 `fix: honor Windows display scaling` 提交并推送
 - [x] 5.6 分离字体 logical size 与 raster density，并接入平台默认字体 chain：独立 FreeType raster/shaping face 按启动时 display scale 生成高密度 coverage并保持 HarfBuzz logical shaping units，Glyph Atlas/Scene 以 effective raster scale 还原 logical quad且把透明 guard pixel 纳入采样，避免边缘裁切；Windows 通过 DirectWrite、Linux 通过 Fontconfig 使用系统默认 UI 字体，typed custom font file/face-index 优先且保留 system/locked fallback；通过 Font Runtime、default chain、Glyph Atlas、Glyph Scene、frame 与 Windows 示例 smoke 验证 150% 下 14 logical pixel 使用 21px raster、布局尺寸不放大并输出 font source/family，以英文 `fix: use platform default UI fonts` 提交并推送
+- [x] 5.7 修复跨平台小字号物理像素相位：增加四档水平 raster phase 与整数 Y baseline，扩展 Font Runtime/Glyph Atlas cache key，令 scene quad 使用匹配 raster origin 的物理像素对齐且 translation 相位变化重建 geometry；增加 12/14/16px、1.0/1.25/1.5/2.0 scale、0/0.25/0.5/0.75 X phase、linear sampler 1:1 与 logical measure 不变的自动测试，以英文 `fix: align glyphs to physical pixels` 提交，不修改或冒充平台真实窗口 evidence
+- [ ] 5.8 修复 Token Gallery 启动后冻结 display scale 的回归：窗口跨输出时同帧刷新 render scale、physical-derived logical viewport、Theme font resolver、活动 Text scene font chain 与 GPU projection；固定 acceptance scale 按 host/render 比例重新映射 mouse/touch，增加 resolver density、Text scene 刷新与 scale/pointer 自动测试，以英文 `fix: refresh token gallery display scale` 独立提交
 
 ## 6. Linux 验收清单
 
@@ -47,6 +49,7 @@
 - [ ] 6.3 在原生 Linux Wayland/GCC/Vulkan/SPIR-V 真实窗口运行公开 layout 示例，完成窗口宽窄调整、跨不同缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 window system、display scale、宽/窄截图、退出码和诊断计数，不以强制 X11 结果代替 Wayland 验收
 - [ ] 6.4 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、Fontconfig 默认 family/source 与 Button 命中位置；运行 Linux evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [ ] 6.5 运行 Linux 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Linux flex and space layouts` 提交并推送 Linux 清单/evidence/截图，核对 remote SHA，不修改 Windows 清单
+- [ ] 6.6 读取 Fontconfig matched pattern 的 antialias/hinting/hintstyle/rgba/lcdfilter/embedded bitmap 并映射到透明 grayscale atlas 兼容的 FreeType policy；在原生 Linux Wayland 分别保存修复前后相位对照与 Token Gallery 截图，人工核对 12/14/16px CJK/Latin 后以英文 `fix: honor Linux font rendering settings` 提交，不修改 Windows 清单
 
 ## 7. Windows 验收清单
 
@@ -54,6 +57,7 @@
 - [x] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口运行公开 layout 示例，完成窗口宽窄调整、不同系统缩放输出、Button 切换 direction/wrap/justify/align/gap/grow/order 与正常退出；保存 display scale、宽/窄截图、退出码和诊断计数
 - [x] 7.3 人工核对 Flex/Space 的 horizontal/vertical、wrap、Small/Middle/Large/custom gap、对齐、grow/shrink、order、CJK/Latin、DirectWrite 的 Segoe UI/Microsoft YaHei UI family/source 与 Button 命中位置；运行 Windows evidence passed contract、public dependency、shader/lock/license 与未跟踪依赖检查
 - [x] 7.4 运行 Windows 完整 CTest、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows flex and space layouts` 提交并推送 Windows 清单/evidence/截图，核对 remote SHA，不修改 Linux 清单
+- [ ] 7.5 将 Windows system/custom face 的实际 glyph raster 接入 DirectWrite grayscale bitmap path，使用目标 monitor rendering parameters 与推荐 rendering/grid-fit mode并保持 HarfBuzz logical shaping；在 Windows/MSVC/D3D12 重新完成 100%/125%/150%/200% Token Gallery CJK/Latin 对照、CTest 与 evidence，以英文 `fix: rasterize Windows text with DirectWrite` 提交，不修改 Linux 清单
 
 ## 8. Change 收口
 

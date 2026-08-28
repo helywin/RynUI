@@ -10,6 +10,8 @@
 - 扩展 `LayoutStyle` 的 flex child 字段，首批覆盖 grow、shrink、basis、align-self 与 order；这些字段只影响组件在父 Flex/Space 中的外部布局，不改变稳定组件视觉。
 - 将 Ant Design 6.5.0 的 gap preset 锁定为 Default Theme snapshot 中的 8/16/24 logical pixels，并通过 token contract、布局矩阵、响应式最小失效、公共 API 和真实窗口示例验证。
 - 分离 Linux 与 Windows 构建、CTest、真实窗口截图和 evidence 清单；任一平台的结果不得替代另一平台。
+- 修正小字号文本的物理像素相位与平台栅格策略：共用 Glyph Atlas 必须避免把零相位 coverage 二次线性移采样到任意物理小数位置；Windows 使用 DirectWrite 实际栅格路径，Linux 使用遵循 Fontconfig hint/antialias 配置的 FreeType 路径，并分别保存真实窗口清晰度证据。
+- 修复 Token Gallery 跨不同 display scale 输出时冻结启动比例的回归：运行时 scale、viewport、字体 raster chain、GPU projection 与 pointer mapping 必须在同一事件帧切换；显式 acceptance scale 保持固定并单独换算输入坐标。
 - 非目标：Grid/Row/Col/Layout、Scroll/Clip、`If`/`For`、RTL、baseline、align-content、reverse 方向、`Space::separator`、`Space::Compact`、公开 Theme override、任意 CSS 字符串或通用 `Modifier`。
 
 ## Capabilities
@@ -26,6 +28,6 @@
 
 - 新增 `include/ryn/` 下的 Flex/Space 公开 API 并从 `rynui.hpp` 导出；扩展 `src/layout/`、`src/component/`、Default Theme snapshot、示例和测试。
 - 复用现有 ComponentHost、Node/Scope identity、typed content、`Prop<T>`、Dirty queue 与 paint traversal；普通 gap/alignment 更新不得重新执行 content slot或重挂 children。
-- 不新增第三方依赖；继续使用锁定的 SDL3、FreeType、HarfBuzz 与 shader toolchain，公开 header 不得泄漏内部 Node/Layout/SDL/GPU 类型。
+- 不新增第三方依赖；继续使用锁定的 SDL3、FreeType、HarfBuzz 与 shader toolchain，Windows 复用系统 DirectWrite，Linux 复用既有 Fontconfig，公开 header 不得泄漏内部 Node/Layout/SDL/GPU 类型。
 - 主要风险是有限约束下 flex grow/shrink 的确定分配、wrap line break 与 child intrinsic measurement 相互影响、Space item identity 扩大场景/HitTest 顺序、order 与声明/focus order 分歧，以及响应式字段更新错误扩大为 Structure dirty。
 - 可验证结果是同一个公开 Flex/Space DSL 在不同窗口宽度下稳定重排，布局矩阵与最小失效由自动测试证明，并在 Linux 与 Windows 的独立清单中分别保存真实窗口证据；规划完成不代表功能已实现。

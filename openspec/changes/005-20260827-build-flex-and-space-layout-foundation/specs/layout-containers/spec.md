@@ -106,7 +106,7 @@ Flex/Space Props 和 flex child `LayoutStyle` 的普通响应式更新 SHALL 在
 - **THEN** 所有相关订阅和 child 资源已释放，更新不访问 stale identity 且不请求新帧
 
 ### Requirement: 平台边界保持 DPI 下的逻辑 UI 尺寸
-SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。字体 coverage MUST 按载入时 display scale 使用独立 raster pixel size，raster face 与 shaping face MUST 相互独立，shaping/measure 与 scene quad MUST 继续使用 logical coordinate，Glyph Atlas key MUST 区分实际 raster size；linear sampling 的 glyph quad MUST 包含透明 guard pixel，不得在 coverage 边界直接截断。
+SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 window coordinate、drawable pixel 与 RynUI logical coordinate 分开；layout token 和 `LogicalLength` MUST 保持 logical value，内容 viewport MUST 由 drawable pixel size 除以 display scale 得到，pointer coordinate MUST 按 pixel density 与 display scale 映射到相同 logical coordinate。字体 coverage MUST 按载入时 display scale 使用独立 raster pixel size，raster face 与 shaping face MUST 相互独立，shaping/measure 与 scene quad MUST 继续使用 logical coordinate，Glyph Atlas key MUST 区分实际 raster size与量化后的物理像素相位；glyph bitmap quad MUST 对齐其栅格化使用的物理像素原点，1:1 显示时不得因任意 logical 小数位置再次线性移采样。linear sampling 的 glyph quad MUST 包含透明 guard pixel，不得在 coverage 边界直接截断。
 
 #### Scenario: Windows 150% 缩放保持设计尺寸
 - **WHEN** Windows display scale 为 1.5、window coordinate 与 drawable pixel size 都是 960×720
@@ -120,13 +120,25 @@ SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 win
 - **WHEN** 高密度 glyph coverage 的首列、末列或顶部像素包含非零值并使用 linear sampler
 - **THEN** atlas UV 与 scene quad 在 coverage 四周包含透明 guard pixel，滤波在 quad 内过渡到零，字母边缘不呈现被矩形边界切掉的视觉缺口
 
+#### Scenario: 同一 glyph 在不同布局位置保持稳定清晰度
+- **WHEN** 同一字号 glyph 的 logical 起点分别映射到整数、四分之一、二分之一与四分之三物理像素相位
+- **THEN** raster cache 区分量化后的水平相位，coverage 在对应物理相位生成且 bitmap quad 落到匹配的物理像素原点；不同 Button 居中位置不得把同一份零相位 bitmap 交给 linear sampler 二次平移
+
+#### Scenario: 小字号 baseline 对齐物理像素
+- **WHEN** 12、14 或 16 logical pixel 文本的布局 baseline 映射到非整数物理 Y 坐标
+- **THEN** glyph raster 与 scene 使用同一个取整后的物理 baseline，水平笔画不得因垂直半像素移采样而整体变灰，logical measure 与 Button bounds 保持不变
+
 #### Scenario: Drawable 或 display scale 变化刷新 viewport
 - **WHEN** SDL 报告 window pixel size 或 display scale 变化
-- **THEN** 平台边界重新查询窗口 metrics，发出新的 logical resize，目标布局重新计算但 Theme token 和公开 `LogicalLength` 数值不被改写
+- **THEN** 平台边界重新查询窗口 metrics，发出新的 logical resize；应用在同一事件帧刷新 runtime render scale、logical viewport、字体 raster chain、GPU projection 与 pointer mapping，目标布局重新计算但 Theme token 和公开 `LogicalLength` 数值不被改写
 
-#### Scenario: 字体 density 在载入时显式绑定
-- **WHEN** 示例在目标 display scale 下创建 Font Runtime 资源
-- **THEN** 每个 font identity 记录 logical pixel size、实际 raster pixel size 与 effective raster scale；启动后跨输出的字体重新栅格化不在本 change 的完成声明中
+#### Scenario: 字体 density 随目标输出重新绑定
+- **WHEN** 示例从 display scale 1.0 的输出移动到 display scale 1.5 或 2.0 的输出
+- **THEN** 每个活动 Text scene 切换到记录新 logical pixel size、实际 raster pixel size 与 effective raster scale 的 font identity，旧 atlas coverage 不继续按新 scale 放大；Button 视觉 bounds 与 Pointer 命中保持一致
+
+#### Scenario: 固定 acceptance scale 保持坐标一致
+- **WHEN** Token Gallery 使用与 host display scale 不同的显式 acceptance scale
+- **THEN** viewport、字体和 GPU 使用固定 acceptance scale，SDL 已归一的 Pointer coordinate 按 `host display scale / acceptance scale` 再映射，鼠标位于 Button 外部时不得保留或错误进入 hover
 
 ### Requirement: 示例默认字体服从平台且保留显式配置
 公开示例的默认 UI font chain SHALL 在 Windows 通过 DirectWrite system font collection 选择系统 UI 字体，在 Linux 通过 Fontconfig generic `sans-serif` 与语言匹配选择桌面默认字体；系统字体路径 MUST 由平台服务解析，不得硬编码或随 RynUI 分发。系统 SHALL 保留 typed custom font file 与 face index 配置边界，并按 custom、system、locked fallback 的优先级补足 glyph coverage，不得向公开 Component API 泄漏 DirectWrite 或 Fontconfig 类型。
@@ -138,6 +150,14 @@ SDL platform/renderer 边界 SHALL 启用 high-pixel-density window，并把 win
 #### Scenario: Linux 使用桌面配置的默认字体
 - **WHEN** Linux 示例未配置 custom font
 - **THEN** Fontconfig 分别对 `sans-serif:lang=en` 与 `sans-serif:lang=zh-cn` 返回本机配置的 file、face index 与 family，示例使用该 chain 且不假定具体发行版字体名称
+
+#### Scenario: Windows 使用 DirectWrite 实际栅格策略
+- **WHEN** Windows 示例在目标 display scale 渲染系统 UI 字体到可透明合成的 glyph 中间资源
+- **THEN** 系统通过 DirectWrite 的 font face、monitor rendering parameters 与推荐 rendering/grid-fit mode生成 grayscale coverage，不得只用 DirectWrite 找到字体文件后仍统一宣称为 DirectWrite 渲染；ClearType coverage 不得预烘进单通道透明 atlas
+
+#### Scenario: Linux 遵循 Fontconfig 栅格偏好
+- **WHEN** Linux Fontconfig match 返回 antialias、hinting、hintstyle、rgba、lcdfilter 或 embedded bitmap 配置
+- **THEN** FreeType raster backend 使用与透明 grayscale atlas 兼容的 hint/antialias 策略并记录实际选择；未知显示子像素排列时不得强制 LCD coverage
 
 #### Scenario: 显式字体优先且保留系统回退
 - **WHEN** 应用配置一个可载入但只覆盖部分文本的 custom font

@@ -96,11 +96,17 @@ SDL window 使用 `SDL_WINDOW_HIGH_PIXEL_DENSITY`。平台边界同时保存 win
 
 `FontRasterConfig` 显式携带 logical pixel size 与启动时窗口的 display scale。FreeType raster face 使用 `ceil(logical_pixel_size * display_scale)` 的实际 raster pixel size 生成灰度 coverage；独立 shaping face 保持 logical size，避免 hb-ft 调整 shaping scale 时把 raster face 退回低密度。`FontMetrics` 同时报告 logical size、实际 raster size 与由整数栅格尺寸得到的 effective raster scale。HarfBuzz 输出固定在 logical 26.6 单位，Text measure 不接收物理 raster pixel；Glyph Atlas key 使用实际 raster size，entry 保存 raster scale，Glyph Scene 把物理 bearing/coverage 除以该 scale 后再生成 logical quad。每个 coverage 周围的一像素透明 padding 同时进入 UV 与 quad，给 linear sampler 留出由 coverage 过渡到零的 guard，避免字母边缘在紧贴 bitmap 边界时呈现裁切感。这样 150% 缩放时 14 logical pixel 字体使用 21px coverage，而文字流、Button 高度和换行仍服从原有 logical layout。
 
-首批在字体载入时绑定当前窗口 display scale；窗口移动到其他输出后，platform viewport 与 input 会立即刷新，但字体重新载入及跨 density atlas 淘汰需要后续 change 定义稳定 font resource identity 和 TextState 刷新合同。本 change 的 Windows 清晰度验收必须在目标 display scale 下重新启动示例，不能把启动后跨输出仍沿用旧 atlas 描述为已支持。
+字体 identity 在载入时绑定 display scale，但 Token Gallery 不再冻结启动比例。应用保存可变 runtime render scale；收到 SDL logical resize 后，非 acceptance 模式读取最新 window display scale，在同一事件帧更新 logical viewport 和 GPU projection，并用保留的 face descriptor 创建新 scale 的 Theme font resolver。`TextComponentHost` 以稳定 Text scene identity 刷新所有活动 scene 的 font chain，触发必要的 reshape、Measure/Layout 与 Glyph Scene 重建；旧 identity/atlas entry 可留在 cache 中复用，但不得继续作为新输出的活动 coverage。显式 `--acceptance-scale` 是固定测试覆盖，不随 host scale 改变；SDL adapter 先得到 host logical pointer，示例再乘 `host display scale / render scale` 映射到 acceptance logical viewport。
 
 默认 UI font chain 不再把 validation font 当作首选视觉字体。Windows 通过 DirectWrite system collection 按 `Segoe UI Variable Text`、`Segoe UI Variable`、`Segoe UI` 的顺序选择 Latin UI face，并用 `Microsoft YaHei UI` 补足简体中文；Linux 通过 Fontconfig 的 `sans-serif` generic family 分别按 `en` 与 `zh-cn` 匹配 `FC_FILE`、`FC_INDEX` 和 `FC_FAMILY`。Linux 构建以 `find_package(Fontconfig 2.13 REQUIRED)` 显式接入平台服务，不执行命令行 `fc-match`，也不提供静默 system-first 构建回退。
 
 `DefaultFontChainRequest::preferred_fonts` 保留应用配置其他字体文件与 face index 的 typed 边界。加载顺序为 explicit custom、缺失 coverage 对应的 platform system face、locked validation fallback；显式 custom 文件不可读时 fail-fast，不能悄悄忽略用户配置。示例输出 `font_source` 与 `font_families` 便于真实窗口对照；确定性 headless 字体测量仍直接使用锁定 validation font，避免不同桌面配置改变基线。Theme font token 尚未发布，因此该 request 保持内部 integration API，后续公开 Theme change 复用此顺序而不暴露 DirectWrite/Fontconfig 类型。
+
+### 10. 小字号 coverage 必须绑定物理像素相位与平台栅格策略
+
+同一份按 glyph origin 零相位生成的灰度 bitmap 若以 GPU linear sampler 放到任意物理小数位置，会再次过滤已经抗锯齿的 coverage；Button 内容居中产生的不同 X 相位会因此表现为部分文字清晰、部分文字发虚。Glyph Scene 在构建实例前把 baseline origin 映射到物理像素：Y 对齐整数像素，X 量化为四分之一像素。FreeType raster face 通过 glyph transform 在 coverage 中编码 X 相位，Atlas key 同时保存相位；scene quad 使用取整后的物理 bitmap origin 与 font identity 记录的 display scale 折回 logical coordinate，使一个 atlas texel 在目标 scale 下对应一个物理像素。translation 若改变物理相位必须重建 glyph geometry，不能继续作为任意浮点 shader translation 复用旧 coverage。HarfBuzz advance、line break、Button bounds 与 HitTest 继续保持 logical coordinate，不因视觉对齐改写测量。
+
+平台 rasterizer 保持内部策略边界。Windows 为系统或显式 file face 建立匹配的 DirectWrite font face，使用目标 monitor rendering parameters、实际 DPI/transform 和推荐 rendering/grid-fit mode；透明中间资源使用 grayscale coverage，ClearType 只允许直接合成到已知不透明最终背景，不写入 R8 atlas。Linux 从 Fontconfig matched pattern 保留 `FC_ANTIALIAS`、`FC_HINTING`、`FC_HINT_STYLE`、`FC_RGBA`、`FC_LCD_FILTER` 与 `FC_EMBEDDED_BITMAP`，映射到 FreeType load/render policy；透明 atlas 默认 grayscale，在未知面板子像素排列、窗口可能旋转或远程显示时不强制 LCD。两条平台路径都输出 raster backend、antialias、hint/grid-fit、display scale 与 phase telemetry，真实窗口分别验收，不能以另一平台结果代替。
 
 ## Risks / Trade-offs
 
@@ -112,9 +118,11 @@ SDL window 使用 `SDL_WINDOW_HIGH_PIXEL_DENSITY`。平台边界同时保存 win
 - **[Windows 与 Linux 字体度量或像素舍入不同]** → 自动测试锁定 logical bounds，真实窗口证据各自保存；任何平台结果不外推另一平台。
 - **[fractional scale 的整数 raster size 引入度量舍入]** → raster size 向上取整并记录 effective scale；HarfBuzz 保持 logical scale，Glyph Scene 使用同一个 effective scale 折回 bearing/coverage，自动测试锁定 logical layout 与高密度 coverage 的分离。
 - **[Glyph quad 紧贴 coverage 令 linear filter 呈现边缘裁切]** → atlas 保留并上传透明 padding，UV 与 quad 一起覆盖 guard pixel；场景按 effective scale 折回 padding，自动测试锁定透明边界和 geometry。
-- **[窗口跨不同 scale 输出后旧字体 atlas 仍在使用]** → 首批明确为 load-time density；真实验收在目标输出启动示例，动态 font resource/atlas 切换由后续 change 定义，不以 viewport 已刷新冒充字体已重栅格化。
+- **[窗口跨不同 scale 输出后旧字体 atlas 仍在使用]** → scale change 同帧重建 Theme font resolver 并刷新全部活动 Text scene 的 font chain；自动测试锁定新 identity 的 raster scale，真实窗口同时核对视觉尺寸与 Pointer 命中。
 - **[系统字体配置因用户和发行版不同而改变视觉与度量]** → 示例与真实窗口尊重平台默认并记录 family/source，确定性 headless tests 继续使用锁定字体；Windows 与 Linux 证据互不外推。
 - **[显式 custom 字体失效后静默替换造成品牌视觉漂移]** → custom 文件加载失败即返回诊断；只有成功载入但 coverage 不足时才进入系统和 bundled fallback。
+- **[phase variant 增加 glyph cache/atlas 占用]** → 水平相位固定量化为四档、Y 只使用整数 baseline，cache key 显式记录相位并以重复 glyph tests 验证同相位命中；不创建不可控的连续浮点 key。
+- **[ClearType 写入透明 atlas 后在不同背景产生彩边]** → Windows 透明中间资源固定使用 DirectWrite grayscale；只有未来直接写最终不透明 target 的独立 renderer 才可启用 ClearType，不把三通道 coverage 降成单通道。
 
 ## Migration Plan
 

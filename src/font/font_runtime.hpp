@@ -68,6 +68,7 @@ struct FontMetrics {
     float line_gap{};
     std::uint32_t logical_pixel_size{};
     std::uint32_t raster_pixel_size{};
+    float display_scale{1.0F};
     float raster_scale{1.0F};
 
     friend bool operator==(const FontMetrics&, const FontMetrics&) = default;
@@ -119,6 +120,18 @@ enum class GlyphRasterMode : std::uint8_t {
     grayscale,
 };
 
+enum class GlyphRasterPhase : std::uint8_t {
+    zero,
+    quarter,
+    half,
+    three_quarters,
+};
+
+[[nodiscard]] constexpr float glyph_raster_phase_offset(
+    GlyphRasterPhase phase) noexcept {
+    return static_cast<float>(phase) * 0.25F;
+}
+
 struct GlyphBounds {
     int left{};
     int top{};
@@ -135,6 +148,7 @@ struct GlyphBitmap {
     int bearing_y{};
     float advance_x{};
     GlyphBounds visible_bounds{};
+    float display_scale{1.0F};
     float raster_scale{1.0F};
 };
 
@@ -273,6 +287,13 @@ public:
     [[nodiscard]] GlyphRasterResult rasterize(
         FontIdentity font,
         std::uint32_t glyph_id,
+        GlyphRasterMode mode = GlyphRasterMode::grayscale,
+        FontFailurePoint failure_point = FontFailurePoint::none);
+
+    [[nodiscard]] GlyphRasterResult rasterize(
+        FontIdentity font,
+        std::uint32_t glyph_id,
+        GlyphRasterPhase phase,
         GlyphRasterMode mode = GlyphRasterMode::grayscale,
         FontFailurePoint failure_point = FontFailurePoint::none);
 

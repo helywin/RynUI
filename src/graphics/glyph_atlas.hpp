@@ -35,6 +35,7 @@ struct GlyphAtlasKey {
     font::FontIdentity font{};
     std::uint32_t glyph_id{};
     std::uint32_t pixel_size{};
+    font::GlyphRasterPhase phase{font::GlyphRasterPhase::zero};
     font::GlyphRasterMode mode{font::GlyphRasterMode::grayscale};
 
     friend bool operator==(GlyphAtlasKey, GlyphAtlasKey) = default;
@@ -67,6 +68,7 @@ struct GlyphAtlasEntry {
     int bearing_x{};
     int bearing_y{};
     float advance_x{};
+    float display_scale{1.0F};
     float raster_scale{1.0F};
     bool empty{};
 
@@ -127,6 +129,13 @@ public:
         font::FontRuntime& fonts,
         font::FontIdentity font,
         std::uint32_t glyph_id,
+        font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
+
+    [[nodiscard]] GlyphAtlasResult ensure(
+        font::FontRuntime& fonts,
+        font::FontIdentity font,
+        std::uint32_t glyph_id,
+        font::GlyphRasterPhase phase,
         font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
 
     [[nodiscard]] GlyphAtlasResult insert(

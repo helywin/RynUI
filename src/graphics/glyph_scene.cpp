@@ -20,6 +20,25 @@ struct PendingGlyphText final {
     }
 };
 
+struct QuantizedPhysicalOrigin final {
+    float integer_position{};
+    font::GlyphRasterPhase phase{font::GlyphRasterPhase::zero};
+};
+
+[[nodiscard]] QuantizedPhysicalOrigin quantize_physical_x(float value) noexcept {
+    const float position = std::round(value * 4.0F) * 0.25F;
+    const float integer_position = std::floor(position);
+    auto phase_index = static_cast<std::uint8_t>(
+        std::lround((position - integer_position) * 4.0F));
+    if (phase_index == 4) {
+        phase_index = 0;
+    }
+    return {
+        phase_index == 0 ? position : integer_position,
+        static_cast<font::GlyphRasterPhase>(phase_index),
+    };
+}
+
 void validate_finite(std::span<const float> values, const char* message) {
     if (!std::ranges::all_of(values, [](float value) { return std::isfinite(value); })) {
         throw std::invalid_argument(message);
@@ -63,15 +82,6 @@ void validate_placement(const GlyphPlacement& placement) {
     };
 }
 
-[[nodiscard]] std::array<float, 2> normalized_translation(
-    runtime::Point pixels,
-    runtime::Size viewport) noexcept {
-    return {
-        2.0F * pixels.x / viewport.width,
-        -2.0F * pixels.y / viewport.height,
-    };
-}
-
 [[nodiscard]] PendingGlyphText build_text(
     font::FontRuntime& fonts,
     GlyphAtlas& atlas,
@@ -80,9 +90,6 @@ void validate_placement(const GlyphPlacement& placement) {
     const GlyphPlacement& placement) {
     validate_placement(placement);
     const auto clip = clip_bounds(placement.clip_pixels, placement.viewport_pixels);
-    const auto translation = normalized_translation(
-        placement.translation_pixels,
-        placement.viewport_pixels);
 
     PendingGlyphText pending;
     for (const text::TextLine& line : measurement.lines) {
@@ -95,36 +102,54 @@ void validate_placement(const GlyphPlacement& placement) {
         for (std::size_t glyph_index = line.glyph_begin;
                 glyph_index < line_end; ++glyph_index) {
             const text::ShapedGlyph& glyph = shaped.glyphs[glyph_index];
+            const auto metrics = fonts.metrics(glyph.font);
+            if (!metrics) {
+                pending.error = {
+                    GlyphAtlasErrorKind::font_failure,
+                    0,
+                    0,
+                    static_cast<std::uint32_t>(atlas.page_count()),
+                    metrics.error,
+                };
+                return pending;
+            }
+            const float display_scale = metrics.metrics.display_scale;
+            const float baseline_x = placement.origin_pixels.x
+                + pen_x + glyph.offset_x + placement.translation_pixels.x;
+            const float baseline_y = placement.origin_pixels.y
+                + line.baseline - glyph.offset_y + placement.translation_pixels.y;
+            const auto physical_x = quantize_physical_x(baseline_x * display_scale);
+            const float physical_y = std::round(baseline_y * display_scale);
             const GlyphAtlasResult atlas_result = atlas.ensure(
-                fonts, glyph.font, glyph.glyph_id);
+                fonts, glyph.font, glyph.glyph_id, physical_x.phase);
             if (!atlas_result) {
                 pending.error = atlas_result.error;
                 return pending;
             }
             const GlyphAtlasEntry& entry = *atlas_result.entry;
             if (!entry.empty) {
-                const float inverse_raster_scale = 1.0F / entry.raster_scale;
-                const float left_pixels = placement.origin_pixels.x
-                    + pen_x + glyph.offset_x
-                    + static_cast<float>(entry.bearing_x - static_cast<int>(glyph_atlas_padding))
-                        * inverse_raster_scale;
-                const float top_pixels = placement.origin_pixels.y
-                    + line.baseline - glyph.offset_y
-                    - static_cast<float>(entry.bearing_y + static_cast<int>(glyph_atlas_padding))
-                        * inverse_raster_scale;
+                const float inverse_display_scale = 1.0F / entry.display_scale;
+                const float left_pixels = (
+                    physical_x.integer_position + static_cast<float>(
+                        entry.bearing_x - static_cast<int>(glyph_atlas_padding)))
+                    * inverse_display_scale;
+                const float top_pixels = (
+                    physical_y - static_cast<float>(
+                        entry.bearing_y + static_cast<int>(glyph_atlas_padding)))
+                    * inverse_display_scale;
                 pending.instances.push_back({
                     {
                         -1.0F + 2.0F * left_pixels / placement.viewport_pixels.width,
                         1.0F - 2.0F * top_pixels / placement.viewport_pixels.height,
-                        2.0F * entry.padded_rect.width * inverse_raster_scale
+                        2.0F * entry.padded_rect.width * inverse_display_scale
                             / placement.viewport_pixels.width,
-                        -2.0F * entry.padded_rect.height * inverse_raster_scale
+                        -2.0F * entry.padded_rect.height * inverse_display_scale
                             / placement.viewport_pixels.height,
                     },
                     {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
                     clip,
                     placement.color,
-                    {translation[0], translation[1], placement.opacity, 0.0F},
+                    {0.0F, 0.0F, placement.opacity, 0.0F},
                 });
                 const std::uint32_t local_index =
                     static_cast<std::uint32_t>(pending.instances.size() - 1);
@@ -413,9 +438,7 @@ std::size_t GlyphScene::update_geometry(
     return instances_.update_geometry(
         range,
         clip_bounds(placement.clip_pixels, placement.viewport_pixels),
-        normalized_translation(
-            placement.translation_pixels,
-            placement.viewport_pixels));
+        {0.0F, 0.0F});
 }
 
 GlyphInstanceStore& GlyphScene::instances() noexcept {

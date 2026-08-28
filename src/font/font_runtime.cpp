@@ -55,6 +55,7 @@ struct GlyphCacheKey {
     FontIdentity font{};
     std::uint32_t glyph_id{};
     std::uint32_t pixel_size{};
+    GlyphRasterPhase phase{GlyphRasterPhase::zero};
     GlyphRasterMode mode{GlyphRasterMode::grayscale};
 
     friend bool operator==(const GlyphCacheKey&, const GlyphCacheKey&) = default;
@@ -66,6 +67,7 @@ struct GlyphCacheKeyHash {
         value = value * 16777619U ^ key.font.generation;
         value = value * 16777619U ^ key.glyph_id;
         value = value * 16777619U ^ key.pixel_size;
+        value = value * 16777619U ^ static_cast<std::size_t>(key.phase);
         value = value * 16777619U ^ static_cast<std::size_t>(key.mode);
         return value;
     }
@@ -427,6 +429,7 @@ FontLoadResult FontRuntime::load_font_bytes(
             / raster_scale);
     record.metrics.logical_pixel_size = raster.logical_pixel_size;
     record.metrics.raster_pixel_size = *raster_pixel_size;
+    record.metrics.display_scale = raster.display_scale;
     record.metrics.raster_scale = raster_scale;
 
     const FT_Error shaping_face_result = FT_New_Memory_Face(
@@ -600,6 +603,20 @@ GlyphRasterResult FontRuntime::rasterize(
     std::uint32_t glyph_id,
     GlyphRasterMode mode,
     FontFailurePoint failure_point) {
+    return rasterize(
+        font,
+        glyph_id,
+        GlyphRasterPhase::zero,
+        mode,
+        failure_point);
+}
+
+GlyphRasterResult FontRuntime::rasterize(
+    FontIdentity font,
+    std::uint32_t glyph_id,
+    GlyphRasterPhase phase,
+    GlyphRasterMode mode,
+    FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {nullptr, false, impl_->owner_error(FontErrorStage::rasterization)};
     }
@@ -616,7 +633,25 @@ GlyphRasterResult FontRuntime::rasterize(
         };
     }
 
-    const GlyphCacheKey key{font, glyph_id, record->metrics.raster_pixel_size, mode};
+    const auto phase_index = static_cast<std::uint8_t>(phase);
+    if (phase_index > static_cast<std::uint8_t>(GlyphRasterPhase::three_quarters)) {
+        return {
+            nullptr,
+            false,
+            make_error(
+                FontErrorStage::rasterization,
+                FontErrorKind::rasterization_failed,
+                "Glyph raster phase is invalid.",
+                font),
+        };
+    }
+    const GlyphCacheKey key{
+        font,
+        glyph_id,
+        record->metrics.raster_pixel_size,
+        phase,
+        mode,
+    };
     if (const auto existing = impl_->glyph_cache.find(key);
             existing != impl_->glyph_cache.end()) {
         ++impl_->counters->cache_hits;
@@ -633,9 +668,16 @@ GlyphRasterResult FontRuntime::rasterize(
                 font),
         };
     }
-    if (mode != GlyphRasterMode::grayscale
-            || FT_Load_Glyph(record->face, glyph_id, FT_LOAD_DEFAULT) != 0
-            || FT_Render_Glyph(record->face->glyph, FT_RENDER_MODE_NORMAL) != 0) {
+    FT_Vector raster_translation{
+        static_cast<FT_Pos>(phase_index) * 16,
+        0,
+    };
+    FT_Set_Transform(record->face, nullptr, &raster_translation);
+    const bool raster_failed = mode != GlyphRasterMode::grayscale
+        || FT_Load_Glyph(record->face, glyph_id, FT_LOAD_DEFAULT) != 0
+        || FT_Render_Glyph(record->face->glyph, FT_RENDER_MODE_NORMAL) != 0;
+    FT_Set_Transform(record->face, nullptr, nullptr);
+    if (raster_failed) {
         return {
             nullptr,
             false,
@@ -675,6 +717,7 @@ GlyphRasterResult FontRuntime::rasterize(
         result.width,
         result.height,
     };
+    result.display_scale = record->metrics.display_scale;
     result.raster_scale = record->metrics.raster_scale;
     result.advance_x /= result.raster_scale;
 

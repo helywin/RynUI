@@ -11,14 +11,14 @@ namespace {
     const graphics::GlyphPlacement& left,
     const graphics::GlyphPlacement& right) noexcept {
     return left.origin_pixels == right.origin_pixels
-        && left.viewport_pixels == right.viewport_pixels;
+        && left.viewport_pixels == right.viewport_pixels
+        && left.translation_pixels == right.translation_pixels;
 }
 
 [[nodiscard]] bool same_patchable_geometry(
     const graphics::GlyphPlacement& left,
     const graphics::GlyphPlacement& right) noexcept {
-    return left.clip_pixels == right.clip_pixels
-        && left.translation_pixels == right.translation_pixels;
+    return left.clip_pixels == right.clip_pixels;
 }
 
 } // namespace

@@ -44,6 +44,7 @@ GlyphAtlasKey key(std::uint32_t glyph_id) {
         FontIdentity{0, 1},
         glyph_id,
         14,
+        ryn::font::GlyphRasterPhase::zero,
         GlyphRasterMode::grayscale,
     };
 }
@@ -166,6 +167,19 @@ void test_real_font_cache_and_dirty_plan() {
                 && fonts->counters().rasterizations == 1,
             "repeated real glyph bypassed the stable atlas/font cache");
 
+    const auto half_phase = atlas.ensure(
+        *fonts,
+        loaded.font,
+        a.glyph.glyph_id,
+        ryn::font::GlyphRasterPhase::half);
+    require(half_phase && !half_phase.cache_hit
+                && half_phase.entry != first.entry
+                && half_phase.entry->key.phase == ryn::font::GlyphRasterPhase::half
+                && atlas.entry_count() == 2
+                && fonts->counters().rasterizations == 2,
+            "glyph atlas did not distinguish physical raster phase");
+
+    atlas.clear_dirty_regions();
     const auto blank = atlas.ensure(*fonts, loaded.font, space.glyph.glyph_id);
     require(blank && blank.entry->empty && atlas.dirty_regions().empty(),
             "space glyph produced texture dirty state");

@@ -26,7 +26,8 @@ struct ShelfPlacement {
 };
 
 [[nodiscard]] bool valid_bitmap(const font::GlyphBitmap& glyph) noexcept {
-    if (!std::isfinite(glyph.raster_scale) || glyph.raster_scale <= 0.0F) {
+    if (!std::isfinite(glyph.display_scale) || glyph.display_scale <= 0.0F
+            || !std::isfinite(glyph.raster_scale) || glyph.raster_scale <= 0.0F) {
         return false;
     }
     if (glyph.width == 0 || glyph.height == 0) {
@@ -86,6 +87,20 @@ GlyphAtlasResult GlyphAtlas::ensure(
     font::FontIdentity font_identity,
     std::uint32_t glyph_id,
     font::GlyphRasterMode mode) {
+    return ensure(
+        fonts,
+        font_identity,
+        glyph_id,
+        font::GlyphRasterPhase::zero,
+        mode);
+}
+
+GlyphAtlasResult GlyphAtlas::ensure(
+    font::FontRuntime& fonts,
+    font::FontIdentity font_identity,
+    std::uint32_t glyph_id,
+    font::GlyphRasterPhase phase,
+    font::GlyphRasterMode mode) {
     const auto metrics = fonts.metrics(font_identity);
     if (!metrics) {
         return {nullptr, false, {
@@ -96,13 +111,14 @@ GlyphAtlasResult GlyphAtlas::ensure(
         font_identity,
         glyph_id,
         metrics.metrics.raster_pixel_size,
+        phase,
         mode,
     };
     if (const GlyphAtlasEntry* existing = find(key)) {
         return {existing, true, {}};
     }
 
-    const auto rasterized = fonts.rasterize(font_identity, glyph_id, mode);
+    const auto rasterized = fonts.rasterize(font_identity, glyph_id, phase, mode);
     if (!rasterized) {
         return {nullptr, false, {
             GlyphAtlasErrorKind::font_failure, 0, 0,
@@ -174,6 +190,7 @@ GlyphAtlasResult GlyphAtlas::allocate(
             glyph.bearing_x,
             glyph.bearing_y,
             glyph.advance_x,
+            glyph.display_scale,
             glyph.raster_scale,
             true,
         });
@@ -275,6 +292,7 @@ GlyphAtlasResult GlyphAtlas::allocate(
         glyph.bearing_x,
         glyph.bearing_y,
         glyph.advance_x,
+        glyph.display_scale,
         glyph.raster_scale,
         false,
     });

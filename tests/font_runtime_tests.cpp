@@ -190,6 +190,7 @@ void test_load_errors_and_metrics() {
             "pixel-size conversion did not scale ascent");
     require(high_density_metrics.metrics.logical_pixel_size == 14
                 && high_density_metrics.metrics.raster_pixel_size == 21
+                && std::abs(high_density_metrics.metrics.display_scale - 1.5F) < 0.00001F
                 && std::abs(high_density_metrics.metrics.raster_scale - 1.5F) < 0.00001F,
             "high-density font did not separate logical and raster sizes");
 
@@ -221,6 +222,8 @@ void test_load_errors_and_metrics() {
             "high-density glyph coverage height did not increase");
     require(std::abs(high_density_bitmap.glyph->raster_scale - 1.5F) < 0.00001F,
             "high-density glyph coverage lost its raster scale");
+    require(std::abs(high_density_bitmap.glyph->display_scale - 1.5F) < 0.00001F,
+            "high-density glyph coverage lost its display scale");
 }
 
 void test_fallback_and_missing_glyph_diagnostics() {
@@ -295,10 +298,43 @@ void test_rasterization_pitch_and_cache() {
                 && runtime->glyph_cache_size() == 1,
             "glyph cache counters are incorrect");
 
+    const auto quarter = runtime->rasterize(
+        font.font,
+        a.glyph.glyph_id,
+        ryn::font::GlyphRasterPhase::quarter);
+    const auto half = runtime->rasterize(
+        font.font,
+        a.glyph.glyph_id,
+        ryn::font::GlyphRasterPhase::half);
+    const auto three_quarters = runtime->rasterize(
+        font.font,
+        a.glyph.glyph_id,
+        ryn::font::GlyphRasterPhase::three_quarters);
+    const auto repeated_half = runtime->rasterize(
+        font.font,
+        a.glyph.glyph_id,
+        ryn::font::GlyphRasterPhase::half);
+    require(quarter && half && three_quarters && repeated_half
+                && !quarter.cache_hit && !half.cache_hit && !three_quarters.cache_hit
+                && repeated_half.cache_hit && repeated_half.glyph == half.glyph,
+            "quarter-pixel glyph phases did not use bounded cache variants");
+    require(runtime->glyph_cache_size() == 4
+                && runtime->counters().rasterizations == 4
+                && runtime->counters().cache_hits == 2,
+            "phase-aware glyph cache counters are incorrect");
+    const bool quarter_differs = quarter.glyph->bearing_x != first.glyph->bearing_x
+        || quarter.glyph->width != first.glyph->width
+        || quarter.glyph->coverage != first.glyph->coverage;
+    const bool half_differs = half.glyph->bearing_x != first.glyph->bearing_x
+        || half.glyph->width != first.glyph->width
+        || half.glyph->coverage != first.glyph->coverage;
+    require(quarter_differs || half_differs,
+            "physical glyph phase did not alter raster coverage");
+
     const auto injected = runtime->rasterize(
         font.font, b.glyph.glyph_id, ryn::font::GlyphRasterMode::grayscale,
         FontFailurePoint::rasterization);
-    require(!injected && runtime->glyph_cache_size() == 1,
+    require(!injected && runtime->glyph_cache_size() == 4,
             "failed rasterization mutated the glyph cache");
 
     const auto blank = runtime->rasterize(font.font, space.glyph.glyph_id);
