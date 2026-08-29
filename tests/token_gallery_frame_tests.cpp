@@ -304,10 +304,14 @@ void require_shadow_order(
 
 void test_acceptance_scale_viewports_use_physical_pixels() {
     const auto one = rynui::example::token_gallery_logical_viewport(1280, 900, 1.0F);
+    const auto one_and_quarter =
+        rynui::example::token_gallery_logical_viewport(1280, 900, 1.25F);
     const auto one_and_half =
         rynui::example::token_gallery_logical_viewport(1280, 900, 1.5F);
     const auto two = rynui::example::token_gallery_logical_viewport(1280, 900, 2.0F);
     require(near(one.width, 1280.0F) && near(one.height, 900.0F)
+                && near(one_and_quarter.width, 1024.0F)
+                && near(one_and_quarter.height, 720.0F)
                 && near(one_and_half.width, 853.3333F, 0.01F)
                 && near(one_and_half.height, 600.0F)
                 && near(two.width, 640.0F) && near(two.height, 450.0F),
@@ -329,6 +333,20 @@ void test_acceptance_scale_viewports_use_physical_pixels() {
                             300.0F, 2.0F, 1.0F),
                     600.0F),
             "Token Gallery host/render scale mapping drifted from the visual viewport");
+}
+
+void test_motion_acceptance_control_updates_theme_without_content_rerun() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_motion_enabled(false);
+    auto disabled = definition.telemetry();
+    definition.set_motion_enabled(true);
+    const auto restored = definition.telemetry();
+    require(disabled.motion_updates == 1
+                && disabled.theme_updates == 1
+                && restored.motion_updates == 2
+                && restored.theme_updates == 2
+                && restored.content_runs == 0,
+            "Token Gallery motion acceptance control reran or skipped Theme state");
 }
 
 void test_small_acceptance_viewport_survives_theme_transitions() {
@@ -563,6 +581,7 @@ void test_token_gallery_frame_contract() {
 int main() {
     try {
         test_acceptance_scale_viewports_use_physical_pixels();
+        test_motion_acceptance_control_updates_theme_without_content_rerun();
         test_small_acceptance_viewport_survives_theme_transitions();
         test_token_gallery_frame_contract();
     } catch (const std::exception& error) {

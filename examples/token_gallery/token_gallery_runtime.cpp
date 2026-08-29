@@ -49,6 +49,9 @@ std::optional<float> acceptance_scale_argument(int argc, char** argv) {
         if (value == "1" || value == "1.0") {
             return 1.0F;
         }
+        if (value == "1.25") {
+            return 1.25F;
+        }
         if (value == "1.5") {
             return 1.5F;
         }
@@ -56,7 +59,7 @@ std::optional<float> acceptance_scale_argument(int argc, char** argv) {
             return 2.0F;
         }
         throw std::invalid_argument(
-            "--acceptance-scale must be 1.0, 1.5, or 2.0");
+            "--acceptance-scale must be 1.0, 1.25, 1.5, or 2.0");
     }
     return std::nullopt;
 }
@@ -278,7 +281,10 @@ private:
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
     try {
-        const bool smoke_mode = has_argument(argc, argv, "--smoke");
+        const bool animation_acceptance =
+            has_argument(argc, argv, "--animation-acceptance");
+        const bool smoke_mode = has_argument(argc, argv, "--smoke")
+            || animation_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
@@ -367,9 +373,24 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            if (smoke_mode && smoke_stage < 5
+            const std::size_t smoke_stage_count = animation_acceptance ? 9 : 5;
+            if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                definition.smoke_step(smoke_stage++);
+                if (!animation_acceptance || smoke_stage >= 4) {
+                    definition.smoke_step(
+                        animation_acceptance ? smoke_stage - 4 : smoke_stage);
+                } else if (smoke_stage == 0) {
+                    definition.set_motion_enabled(false);
+                } else if (smoke_stage == 1) {
+                    definition.set_motion_enabled(true);
+                } else if (smoke_stage == 2) {
+                    application.set_motion_preference(
+                        ryn::animation::MotionPreference::reduced);
+                } else {
+                    application.set_motion_preference(
+                        ryn::animation::MotionPreference::normal);
+                }
+                ++smoke_stage;
             }
             const auto step = loop.step();
             if (!events.last_error().empty()) {
@@ -380,7 +401,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            if (smoke_mode && smoke_stage == 5 && elapsed >= 1'700
+            const auto completion_time = animation_acceptance ? 2'700U : 1'700U;
+            if (smoke_mode && smoke_stage == smoke_stage_count
+                    && elapsed >= completion_time
                     && loop.counters().idle_waits >= 20) {
                 break;
             }
@@ -442,6 +465,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " theme_content_runs=" << telemetry.theme_content_runs
             << " theme_updates=" << telemetry.theme_updates
             << " brand_updates=" << telemetry.brand_updates
+            << " motion_updates=" << telemetry.motion_updates
             << " viewport_updates=" << telemetry.viewport_updates
             << " state_updates=" << telemetry.state_updates
             << " activations=" << telemetry.activations
@@ -467,12 +491,19 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " effect_draws=" << render.effect_draws
             << " submits=" << render.frame_submissions
             << " idle_waits=" << frames.idle_waits
+            << " animation_frames=" << frames.animation_frames
+            << " idle_after_animation=" << frames.idle_after_animation
+            << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " exit_code=0\n";
 
+        const auto expected_stages = animation_acceptance ? 9U : 5U;
+        const auto expected_theme_updates = animation_acceptance ? 6U : 4U;
+        const auto expected_motion_updates = animation_acceptance ? 2U : 0U;
         return smoke_mode
-                && (smoke_stage != 5 || telemetry.content_runs != 1
-                    || telemetry.theme_updates != 4 || telemetry.brand_updates != 1
-                    || telemetry.state_updates != 2)
+                && (smoke_stage != expected_stages || telemetry.content_runs != 1
+                    || telemetry.theme_updates != expected_theme_updates
+                    || telemetry.motion_updates != expected_motion_updates
+                    || telemetry.brand_updates != 1 || telemetry.state_updates != 2)
             ? 6
             : 0;
     } catch (const std::exception& error) {

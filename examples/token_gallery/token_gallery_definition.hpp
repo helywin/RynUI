@@ -16,6 +16,7 @@ struct TokenGalleryTelemetry final {
     std::uint64_t theme_content_runs{};
     std::uint64_t theme_updates{};
     std::uint64_t brand_updates{};
+    std::uint64_t motion_updates{};
     std::uint64_t viewport_updates{};
     std::uint64_t state_updates{};
     std::uint64_t activations{};
@@ -32,6 +33,7 @@ struct TokenGalleryDefinition final {
     ryn::Content content;
     std::function<void(std::size_t)> smoke_step;
     std::function<void(float)> set_viewport_width;
+    std::function<void(bool)> set_motion_enabled;
     std::function<TokenGalleryTelemetry()> telemetry;
     std::vector<std::string_view> stable_test_ids;
 };

@@ -410,6 +410,15 @@ TokenGalleryDefinition make_token_gallery_definition() {
                 ++state->telemetry.viewport_updates;
             }
         },
+        [state, set_theme](bool enabled) {
+            auto config = state->theme.get();
+            if (config.seed.motion.value_or(true) == enabled) {
+                return;
+            }
+            config.seed.motion = enabled;
+            set_theme(std::move(config), false);
+            ++state->telemetry.motion_updates;
+        },
         [state] {
             auto result = state->telemetry;
             const auto snapshot = ryn::resolve_theme(state->theme.get());
