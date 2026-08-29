@@ -2,6 +2,7 @@
 #include "component/flex_component.hpp"
 #include "component/space_component.hpp"
 #include "runtime/frame_scheduler.hpp"
+#include "runtime/animation_frame_deadline.hpp"
 #include "runtime/invalidation.hpp"
 
 #include <ryn/rynui.hpp>
@@ -23,6 +24,28 @@ void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+std::size_t drain_animation_frames(
+    ryn::detail::ButtonComponentHost& host,
+    ryn::runtime::OnDemandFrameLoop& loop,
+    const char* message) {
+    const auto submissions = loop.counters().submissions;
+    bool reached_idle = false;
+    for (std::size_t step = 0; step < 256; ++step) {
+        const auto result = loop.step();
+        require(
+            result == ryn::runtime::FrameLoopStep::submitted
+                || result == ryn::runtime::FrameLoopStep::idle,
+            message);
+        if (host.animations().size() == 0
+            && result == ryn::runtime::FrameLoopStep::idle) {
+            reached_idle = true;
+            break;
+        }
+    }
+    require(reached_idle, message);
+    return static_cast<std::size_t>(loop.counters().submissions - submissions);
 }
 
 bool near(float actual, float expected, float tolerance = 0.25F) {
@@ -96,6 +119,7 @@ private:
             return false;
         }
         try {
+            host_->set_animation_time(now());
             std::visit([this](const auto& event) { dispatch(event); }, events_[next_++]);
             ++dispatched_;
             return frames_->pending();
@@ -139,7 +163,8 @@ public:
     }
 
     ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime) override {
+        ryn::animation::AnimationTime frame_time) override {
+        static_cast<void>(host_->tick_animations(frame_time));
         return host_->layout_and_synchronize(
                    viewport_,
                    {0.0F, 0.0F, viewport_.width, viewport_.height},
@@ -287,7 +312,10 @@ void test_responsive_layout_demo_frame_contract() {
 
     ControlledEvents events(*fixture.host, fixture.frames);
     LayoutSubmitter submitter(*fixture.host, fixture.frames);
-    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, 5);
+    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
+        fixture.host->animations());
+    ryn::runtime::OnDemandFrameLoop loop(
+        fixture.frames, events, submitter, animation_deadlines, 5);
 
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "initial wide layout frame was not submitted");
@@ -416,6 +444,15 @@ void test_responsive_layout_demo_frame_contract() {
                 && fixture.host->scene_composer().diagnostics().rebuilds
                     == rebuilds_before_prop_updates,
             "ordinary layout Props reran content or rebuilt retained topology");
+
+    require(
+        drain_animation_frames(
+            *fixture.host,
+            loop,
+            "responsive layout animations did not settle through frame deadlines") > 0,
+        "responsive layout did not submit animation frames");
+    require(loop.counters().animation_frames > 0,
+            "responsive layout did not attribute deadline submissions to animation frames");
 
     const auto submissions = loop.counters().submissions;
     for (int index = 0; index < 40; ++index) {

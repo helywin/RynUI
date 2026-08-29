@@ -1,6 +1,7 @@
 #include "component/button_component.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
+#include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
 
@@ -24,6 +25,28 @@ void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+std::size_t drain_animation_frames(
+    ryn::detail::ButtonComponentHost& host,
+    ryn::runtime::OnDemandFrameLoop& loop,
+    const char* message) {
+    const auto submissions = loop.counters().submissions;
+    bool reached_idle = false;
+    for (std::size_t step = 0; step < 256; ++step) {
+        const auto result = loop.step();
+        require(
+            result == ryn::runtime::FrameLoopStep::submitted
+                || result == ryn::runtime::FrameLoopStep::idle,
+            message);
+        if (host.animations().size() == 0
+            && result == ryn::runtime::FrameLoopStep::idle) {
+            reached_idle = true;
+            break;
+        }
+    }
+    require(reached_idle, message);
+    return static_cast<std::size_t>(loop.counters().submissions - submissions);
 }
 
 ryn::String click_label(std::uint64_t clicks) {
@@ -219,6 +242,7 @@ private:
         }
         const auto& event = events_[next_++];
         try {
+            host_->set_animation_time(now());
             std::visit([this](const auto& value) {
                 dispatch(value);
             }, event);
@@ -276,7 +300,8 @@ public:
           draw_(&draw) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime) override {
+        ryn::animation::AnimationTime frame_time) override {
+        static_cast<void>(host_->tick_animations(frame_time));
         if (!host_->layout_and_synchronize(
                 viewport_,
                 {0.0F, 0.0F, viewport_.width, viewport_.height},
@@ -379,8 +404,10 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     ControlledInputEvents events(*fixture.host, fixture.frames);
     HeadlessButtonSubmitter submitter(
         *fixture.host, fixture.text_scene, gpu, draw);
+    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
+        fixture.host->animations());
     ryn::runtime::OnDemandFrameLoop loop(
-        fixture.frames, events, submitter, 5);
+        fixture.frames, events, submitter, animation_deadlines, 5);
 
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "initial Button demo frame was not submitted");
@@ -542,6 +569,15 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     loading.set(false);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "loading completion did not submit a frame");
+
+    require(
+        drain_animation_frames(
+            *fixture.host,
+            loop,
+            "Button demo animations did not settle through frame deadlines") > 0,
+        "Button demo did not submit animation frames");
+    require(loop.counters().animation_frames > 0,
+            "Button demo did not attribute deadline submissions to animation frames");
 
     const auto submissions = loop.counters().submissions;
     for (int index = 0; index < 60; ++index) {

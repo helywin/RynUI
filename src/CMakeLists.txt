@@ -176,6 +176,7 @@ target_link_libraries(rynui_components PRIVATE
     rynui_graphics
     rynui_interaction
     rynui_layout
+    rynui_motion
     rynui_reactive
     rynui_runtime
     rynui_text_scene
@@ -255,6 +256,7 @@ rynui_assert_direct_dependencies(
     rynui_graphics
     rynui_interaction
     rynui_layout
+    rynui_motion
     rynui_reactive
     rynui_runtime
     rynui_text_scene

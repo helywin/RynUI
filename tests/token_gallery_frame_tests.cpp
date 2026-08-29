@@ -2,6 +2,7 @@
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
+#include "runtime/animation_frame_deadline.hpp"
 #include "runtime/invalidation.hpp"
 #include "token_gallery_definition.hpp"
 
@@ -26,6 +27,28 @@ void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+
+std::size_t drain_animation_frames(
+    ryn::detail::ButtonComponentHost& host,
+    ryn::runtime::OnDemandFrameLoop& loop,
+    const char* message) {
+    const auto submissions = loop.counters().submissions;
+    bool reached_idle = false;
+    for (std::size_t step = 0; step < 256; ++step) {
+        const auto result = loop.step();
+        require(
+            result == ryn::runtime::FrameLoopStep::submitted
+                || result == ryn::runtime::FrameLoopStep::idle,
+            message);
+        if (host.animations().size() == 0
+            && result == ryn::runtime::FrameLoopStep::idle) {
+            reached_idle = true;
+            break;
+        }
+    }
+    require(reached_idle, message);
+    return static_cast<std::size_t>(loop.counters().submissions - submissions);
 }
 
 bool near(float actual, float expected, float tolerance = 0.001F) {
@@ -187,7 +210,8 @@ public:
     }
 
     ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime) override {
+        ryn::animation::AnimationTime frame_time) override {
+        static_cast<void>(host_->tick_animations(frame_time));
         if (!host_->layout_and_synchronize(
                 viewport_,
                 {0.0F, 0.0F, viewport_.width, viewport_.height},
@@ -301,13 +325,20 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
     HeadlessSubmitter submitter(
         *fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
     submitter.set_viewport({640.0F, 450.0F});
-    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, 5);
+    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
+        fixture.host->animations());
+    ryn::runtime::OnDemandFrameLoop loop(
+        fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery 200% acceptance viewport did not submit its initial frame");
     for (std::size_t step = 0; step < 5; ++step) {
         definition.smoke_step(step);
         require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
                 "Token Gallery 200% acceptance viewport lost a theme or state frame");
+        static_cast<void>(drain_animation_frames(
+            *fixture.host,
+            loop,
+            "Token Gallery 200% acceptance animations did not settle"));
     }
 }
 
@@ -345,7 +376,10 @@ void test_token_gallery_frame_contract() {
     IdleEvents events;
     HeadlessSubmitter submitter(
         *fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
-    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, 5);
+    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
+        fixture.host->animations());
+    ryn::runtime::OnDemandFrameLoop loop(
+        fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 900.0F});
@@ -405,20 +439,42 @@ void test_token_gallery_frame_contract() {
     definition.smoke_step(0);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Dark Theme did not submit a Token Gallery frame");
+    require(
+        drain_animation_frames(
+            *fixture.host,
+            loop,
+            "Dark Theme animations did not settle through frame deadlines") > 0,
+        "Dark Theme did not submit animation frames");
     require(gpu.effect_uploads > effect_uploads && gpu.quad_uploads > quad_uploads,
             "Theme update did not produce local retained uploads");
     definition.smoke_step(1);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Compact Theme did not submit a Token Gallery frame");
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "Compact Theme animations did not settle through frame deadlines"));
     definition.smoke_step(2);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Brand Seed did not submit a Token Gallery frame");
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "Brand Seed animations did not settle through frame deadlines"));
     definition.smoke_step(3);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "disabled/loading update did not submit a Token Gallery frame");
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "disabled/loading animations did not settle through frame deadlines"));
     definition.smoke_step(4);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Default Theme restoration did not submit a Token Gallery frame");
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "Default Theme animations did not settle through frame deadlines"));
 
     fixture.host->focus().dispatch({
         ryn::input::Key::tab,
@@ -457,6 +513,11 @@ void test_token_gallery_frame_contract() {
         ryn::input::PointerButton::primary));
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Gallery active release did not submit");
+
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "Token Gallery interaction animations did not settle through frame deadlines"));
 
     const auto final = definition.telemetry();
     require(final.content_runs == initial.content_runs

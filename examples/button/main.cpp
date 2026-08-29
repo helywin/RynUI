@@ -5,6 +5,7 @@
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
+#include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
 #include "text/text_engine.hpp"
@@ -86,6 +87,7 @@ public:
 
 private:
     bool consume(const ryn::detail::PlatformEvents& events) noexcept {
+        application_->set_animation_time(now());
         quit_requested_ = quit_requested_ || events.quit_requested;
         try {
             for (const auto& event : events.input.events()) {
@@ -162,6 +164,7 @@ public:
     ryn::runtime::FrameSubmissionResult submit_frame(
         ryn::animation::AnimationTime frame_time) override {
         try {
+            static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
                 32.0F,
                 24.0F,
@@ -394,11 +397,14 @@ int main(int argc, char** argv) {
             platform, application, text_scene, glyph_resources, renderer, viewport);
         ButtonPlatformEvents events(
             platform, application, frame_requests, viewport);
+        ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
+            application.animations());
         ryn::runtime::OnDemandFrameLoop loop(
-            frame_requests, events, submitter, 10);
+            frame_requests, events, submitter, animation_deadlines, 10);
 
         int smoke_stage = 0;
         while (!events.quit_requested()) {
+            application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
             if (smoke_mode && smoke_stage == 0 && elapsed >= 250) {
                 reactive_type.set(ryn::ButtonType::Primary);

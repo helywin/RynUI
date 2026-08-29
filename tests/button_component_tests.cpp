@@ -79,6 +79,11 @@ struct Fixture final {
             10.0F);
     }
 
+    std::size_t tick(std::int64_t microseconds) {
+        return host->tick_animations(
+            ryn::animation::AnimationTime::microseconds(microseconds));
+    }
+
     ryn::runtime::Rect bounds(std::size_t index) const {
         return nodes.require(host->mounted_buttons()[index].node).bounds;
     }
@@ -188,6 +193,8 @@ void test_mount_scene_composition_and_lifecycle() {
                 && fixture.host->text().mounted_texts().size() == 2
                 && fixture.host->interactions().size() == 2
                 && fixture.host->button_scene().size() == 2
+                && fixture.host->animations().diagnostics().scopes == 2
+                && fixture.host->animations().diagnostics().targets == 8
                 && fixture.nodes.size() == 4,
             "Button mount did not create stable component resources");
     const auto first = fixture.host->mounted_buttons()[0];
@@ -234,6 +241,10 @@ void test_mount_scene_composition_and_lifecycle() {
                 && fixture.host->button_scene().size() == 1
                 && fixture.host->text().mounted_texts().size() == 1,
             "Button destroy leaked its content, interaction, or scene range");
+    require(fixture.host->animations().diagnostics().scopes == 1
+                && fixture.host->animations().diagnostics().targets == 4
+                && fixture.host->animations().size() == 0,
+            "Button destroy leaked animation scope or target resources");
     static_cast<void>(fixture.frames.consume_request());
     first_type.set(ryn::ButtonType::Primary);
     first_size.set(ryn::ControlSize::Large);
@@ -262,6 +273,8 @@ void test_mount_scene_composition_and_lifecycle() {
                 && throwing.host->interactions().size() == 0
                 && throwing.host->button_scene().size() == 0
                 && throwing.text_scene.size() == 0
+                && throwing.host->animations().diagnostics().scopes == 0
+                && throwing.host->animations().diagnostics().targets == 0
                 && throwing.host->mounted_buttons().empty(),
             "throwing Button content leaked partial resources");
 
@@ -285,6 +298,8 @@ void test_mount_scene_composition_and_lifecycle() {
 
 void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     Fixture fixture;
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
     ryn::Signal<ryn::ButtonType> type{ryn::ButtonType::Default};
     ryn::Signal<ryn::ControlSize> size{ryn::ControlSize::Middle};
     ryn::Signal<bool> disabled{false};
@@ -498,6 +513,110 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
             "disabled state did not win over Danger interaction and shadow");
 }
 
+void test_animated_presentation_retarget_and_motion_policy() {
+    Fixture fixture;
+    ryn::Signal<bool> loading{false};
+    ryn::ThemeConfig theme;
+    ryn::Signal<ryn::ThemeConfig> theme_config{theme};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(
+            ryn::ThemeProps{}.config(theme_config),
+            ryn::ThemeContent{[&] {
+                ryn::Button(
+                    ryn::ButtonProps{}.loading(loading),
+                    [] { ryn::Text(u8"Animated Button"); });
+            }});
+    }});
+    require(fixture.synchronize(), "animated Button fixture did not synchronize");
+    const auto mounted = fixture.host->mounted_buttons().front();
+    const auto initial = fixture.host->snapshot(mounted.component);
+    const auto measure_count = fixture.nodes.require(mounted.node).measure_count;
+    const auto scene = mounted.scene;
+    clear_observation_state(fixture);
+
+    fixture.host->set_animation_time(
+        ryn::animation::AnimationTime::microseconds(0));
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(0)));
+    const auto hover_started = fixture.host->snapshot(mounted.component);
+    require(hover_started.hovered
+                && hover_started.presentation_border == initial.presentation_border
+                && fixture.host->animations().size() == 2
+                && fixture.dirty.layout_roots().empty(),
+            "hover did not separate synchronous state from animated presentation");
+
+    static_cast<void>(fixture.tick(100'000));
+    const auto hover_mid = fixture.host->snapshot(mounted.component);
+    const auto hover_target = ryn::resolve_theme().button().default_hover_color;
+    require(hover_mid.presentation_border != initial.presentation_border
+                && hover_mid.presentation_border != hover_target
+                && fixture.dirty.material_nodes().size() == 2
+                && fixture.dirty.animation_nodes().size() == 1
+                && fixture.dirty.layout_roots().empty()
+                && fixture.dirty.hit_test_nodes().empty(),
+            "hover midpoint did not produce local Material/Animation invalidation");
+    const auto before_retarget = hover_mid.presentation_border;
+    const auto retargeted_before = fixture.host->animations().diagnostics().retargeted;
+
+    fixture.host->set_animation_time(
+        ryn::animation::AnimationTime::microseconds(100'000));
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::down,
+        fixture.center(0),
+        ryn::input::PointerButton::primary));
+    const auto active_started = fixture.host->snapshot(mounted.component);
+    require(active_started.pointer_pressed
+                && active_started.presentation_border == before_retarget
+                && fixture.host->animations().diagnostics().retargeted
+                    > retargeted_before,
+            "active retarget jumped instead of sampling the current presentation");
+    static_cast<void>(fixture.tick(200'000));
+    const auto active_mid = fixture.host->snapshot(mounted.component);
+    require(active_mid.presentation_border != before_retarget
+                && active_mid.presentation_border
+                    != ryn::resolve_theme().button().default_active_color,
+            "active retarget did not interpolate from the hover midpoint");
+
+    auto dark = theme;
+    dark.algorithms = {ryn::ThemeAlgorithm::Dark};
+    fixture.host->set_animation_time(
+        ryn::animation::AnimationTime::microseconds(200'000));
+    require(theme_config.set(dark), "animated Theme switch was ignored");
+    const auto theme_started = fixture.host->snapshot(mounted.component);
+    require(theme_started.presentation_border == active_mid.presentation_border,
+            "Theme switch jumped instead of retargeting current presentation");
+    static_cast<void>(fixture.tick(300'000));
+    require(fixture.host->snapshot(mounted.component).presentation_border
+                != theme_started.presentation_border,
+            "Theme switch did not animate the retained presentation");
+    fixture.host->set_animation_time(
+        ryn::animation::AnimationTime::microseconds(300'000));
+    require(theme_config.set(theme), "default Theme restoration was ignored");
+
+    fixture.host->focus().dispatch(key(
+        ryn::input::Key::tab,
+        ryn::input::KeyAction::down));
+    require(fixture.host->button_scene().focus_effect(scene).material.opacity == 1.0F,
+            "focus-visible outline was incorrectly animated");
+
+    loading.set(true);
+    const auto loading_started = fixture.host->snapshot(mounted.component);
+    require(loading_started.loading
+                && !fixture.host->snapshot(mounted.component).pointer_pressed,
+            "loading state did not synchronously settle interaction eligibility");
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
+    const auto reduced = fixture.host->snapshot(mounted.component);
+    require(fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value()
+                && reduced.presentation_loading_mix == 1.0F
+                && reduced.presentation_background
+                    == ryn::resolve_theme().button().default_background
+                && fixture.nodes.require(mounted.node).measure_count == measure_count
+                && fixture.host->mounted_buttons().front().scene == scene,
+            "reduced motion did not snap to final retained Button presentation");
+}
+
 void test_pointer_keyboard_click_path_and_callback_mutation() {
     Fixture fixture;
     ryn::Signal<bool> loading{false};
@@ -704,6 +823,8 @@ void test_pointer_keyboard_click_path_and_callback_mutation() {
 
 void test_nested_theme_override_updates_button_without_remounting() {
     Fixture fixture;
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
     ryn::ThemeConfig initial;
     const auto initial_color = ryn::Color::rgba8(114, 46, 209);
     initial.button.tokens.danger_background = initial_color;
@@ -886,6 +1007,7 @@ int main() {
     try {
         test_mount_scene_composition_and_lifecycle();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
+        test_animated_presentation_retarget_and_motion_policy();
         test_pointer_keyboard_click_path_and_callback_mutation();
         test_nested_theme_override_updates_button_without_remounting();
         test_click_callback_can_destroy_parent_scope();

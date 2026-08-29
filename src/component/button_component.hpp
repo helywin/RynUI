@@ -1,5 +1,6 @@
 #pragma once
 
+#include "animation/motion_policy.hpp"
 #include "component/button_scene_service.hpp"
 #include "component/default_theme.hpp"
 #include "component/text_component.hpp"
@@ -11,6 +12,7 @@
 
 #include <ryn/button.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <vector>
@@ -35,9 +37,26 @@ struct ButtonComponentSnapshot final {
     bool hovered{false};
     bool pointer_pressed{false};
     input::FocusPresentation focus;
+    Color presentation_background;
+    Color presentation_border;
+    Color presentation_foreground;
+    float presentation_loading_mix{0.0F};
 };
 
-class ButtonComponentHost final {
+enum class ButtonAnimationChannel : std::uint8_t {
+    background,
+    border,
+    foreground,
+    loading_mix,
+};
+
+struct ButtonAnimationBinding final {
+    animation::AnimationTargetId target;
+    runtime::ComponentId component;
+    ButtonAnimationChannel channel{ButtonAnimationChannel::background};
+};
+
+class ButtonComponentHost final : private animation::AnimationTargetSink {
 public:
     ButtonComponentHost(
         runtime::NodeStore& nodes,
@@ -61,6 +80,9 @@ public:
     bool destroy(runtime::ComponentId id);
     void dispose() noexcept;
     void set_window_active(bool active);
+    void set_animation_time(animation::AnimationTime time) noexcept;
+    void set_motion_preference(animation::MotionPreference preference);
+    [[nodiscard]] std::size_t tick_animations(animation::AnimationTime frame_time);
     [[nodiscard]] bool layout_and_synchronize(
         runtime::Size viewport,
         runtime::Rect clip,
@@ -78,6 +100,8 @@ public:
     [[nodiscard]] component::ComponentSceneComposer& scene_composer() noexcept;
     [[nodiscard]] component::ButtonSceneService& button_scene() noexcept;
     [[nodiscard]] graphics::RoundedEffectStore& rounded_effects() noexcept;
+    [[nodiscard]] animation::AnimationRuntime& animations() noexcept;
+    [[nodiscard]] const animation::AnimationRuntime& animations() const noexcept;
     [[nodiscard]] std::span<const MountedButtonComponent>
         mounted_buttons() const noexcept;
     [[nodiscard]] ButtonComponentSnapshot snapshot(
@@ -109,6 +133,24 @@ private:
         runtime::ComponentId component) const noexcept;
     void activate(runtime::ComponentId component);
     void update_visuals(ButtonComponentState& state);
+    void apply_presentation(
+        ButtonComponentState& state,
+        bool animation_update = false);
+    void register_animation_targets(ButtonComponentState& state);
+    void unregister_animation_targets(ButtonComponentState& state) noexcept;
+    void retarget_channel(
+        ButtonComponentState& state,
+        ButtonAnimationChannel channel,
+        const animation::AnimationValue& target,
+        const animation::AnimationSpec& spec);
+    void apply(
+        animation::AnimationId animation,
+        animation::AnimationTargetId target,
+        const animation::AnimationValue& value,
+        animation::AnimationDirtyDomain dirty_domain) override;
+    void completed(
+        animation::AnimationId animation,
+        animation::AnimationTargetId target) override;
     void update_typography(ButtonComponentState& state);
     void update_layout(ButtonComponentState& state);
     void subscribe_theme(ButtonComponentState& state);
@@ -126,6 +168,11 @@ private:
     component::ButtonSceneService button_scene_;
     input::FocusManager focus_;
     input::PointerRouter pointer_;
+    animation::AnimationRuntime animations_;
+    animation::AnimationTime animation_time_;
+    animation::MotionPreference motion_preference_{
+        animation::MotionPreference::normal};
+    std::vector<ButtonAnimationBinding> animation_bindings_;
     std::vector<MountedButtonComponent> mounted_buttons_;
     bool scene_structure_dirty_{true};
 };

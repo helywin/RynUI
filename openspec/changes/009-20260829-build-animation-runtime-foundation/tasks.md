@@ -31,11 +31,11 @@
 
 ## 5. Button 状态视觉动画
 
-- [ ] 5.1 将 `ButtonComponentState` 拆分为同步 semantic/interaction state 与 retained presentation state，为 background、border、foreground 和 loading opacity 注册 generation-checked target；通过 mount/destroy/reuse、Theme update 和 current-state snapshot tests 验证
-- [ ] 5.2 将 hover、active、loading 与 disabled presentation 接到 `motionDurationMid` + `motionEaseInOut`，每 channel 原地 retarget；通过快速 enter/down/up/leave、Theme switch、disabled/loading priority、exact final color/opacity 和无数值跳变 tests 验证
-- [ ] 5.3 保持 focus-visible outline `0s` 并让 click eligibility、pressed、keyboard state 与 pointer capture 同步收口；通过 pointer focus 无 ring、keyboard focus instant ring、animation 中 disable/loading、capture cancel 和 click suppression tests 验证
-- [ ] 5.4 证明每 tick 只更新 Button 目标 Material/Animation range，不改变 Component/Node/Interaction/fragment identity，不产生 Structure/Measure/Layout/HitTest 或 sibling upload；扩展 CPU/GPU reference 与 diagnostics tests
-- [ ] 5.5 运行 Button component/scene/input/focus/Theme、GPU range、public API、frame integration 和 `git diff --check`；以英文 `feat: animate button state visuals` 提交并推送本阶段，核对 remote SHA
+- [x] 5.1 将 `ButtonComponentState` 拆分为同步 semantic/interaction state 与 retained presentation state，为 background、border、foreground 和 loading opacity 注册 generation-checked target；通过 mount/destroy/reuse、Theme update 和 current-state snapshot tests 验证
+- [x] 5.2 将 hover、active、loading 与 disabled presentation 接到 `motionDurationMid` + `motionEaseInOut`，每 channel 原地 retarget；通过快速 enter/down/up/leave、Theme switch、disabled/loading priority、exact final color/opacity 和无数值跳变 tests 验证
+- [x] 5.3 保持 focus-visible outline `0s` 并让 click eligibility、pressed、keyboard state 与 pointer capture 同步收口；通过 pointer focus 无 ring、keyboard focus instant ring、animation 中 disable/loading、capture cancel 和 click suppression tests 验证
+- [x] 5.4 证明每 tick 只更新 Button 目标 Material/Animation range，不改变 Component/Node/Interaction/fragment identity，不产生 Structure/Measure/Layout/HitTest 或 sibling upload；扩展 CPU/GPU reference 与 diagnostics tests
+- [x] 5.5 运行 Button component/scene/input/focus/Theme、GPU range、public API、frame integration 和 `git diff --check`；以英文 `feat: animate button state visuals` 提交并推送本阶段，核对 remote SHA
 
 ## 6. retained Button loading spinner
 

@@ -68,16 +68,29 @@ struct ButtonComponentState final {
     std::function<void()> on_click;
     component::ButtonVisualData visuals;
     component::ButtonEffectData effects;
+    Color presentation_background;
+    Color presentation_border;
+    Color presentation_foreground;
+    float presentation_loading_mix{0.0F};
+    animation::AnimationScopeId animation_scope;
+    std::array<animation::AnimationTargetId, 4> animation_targets;
+    std::array<animation::AnimationId, 4> animations;
     layout::HorizontalContentLayout layout_model;
     theme_runtime::Subscription color_subscription;
     theme_runtime::Subscription effect_subscription;
     theme_runtime::Subscription layout_subscription;
     theme_runtime::Subscription typography_subscription;
+    theme_runtime::Subscription motion_subscription;
 };
 
 namespace {
 
 thread_local ButtonComponentHost* active_button_host = nullptr;
+
+constexpr std::size_t animation_channel_index(
+    ButtonAnimationChannel channel) noexcept {
+    return static_cast<std::size_t>(channel);
+}
 
 class ActiveButtonHostGuard final {
 public:
@@ -365,6 +378,8 @@ ButtonComponentHost::ButtonComponentHost(
       focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
     text_.attach_component_scene(scene_composer_);
+    animations_.reserve(256, 64, 256);
+    animation_bindings_.reserve(256);
 }
 
 ButtonComponentHost::~ButtonComponentHost() {
@@ -403,6 +418,7 @@ void ButtonComponentHost::dispose() noexcept {
     } catch (...) {
     }
     text_.dispose();
+    animation_bindings_.clear();
     mounted_buttons_.clear();
     scene_structure_dirty_ = true;
 }
@@ -412,6 +428,30 @@ void ButtonComponentHost::set_window_active(bool active) {
         pointer_.cancel_all();
     }
     focus_.set_window_active(active);
+}
+
+void ButtonComponentHost::set_animation_time(
+    animation::AnimationTime time) noexcept {
+    animation_time_ = time;
+}
+
+void ButtonComponentHost::set_motion_preference(
+    animation::MotionPreference preference) {
+    if (motion_preference_ == preference) {
+        return;
+    }
+    motion_preference_ = preference;
+    for (const auto& mounted : mounted_buttons_) {
+        if (auto* state = find_state(mounted.component)) {
+            update_visuals(*state);
+        }
+    }
+}
+
+std::size_t ButtonComponentHost::tick_animations(
+    animation::AnimationTime frame_time) {
+    animation_time_ = frame_time;
+    return animations_.tick(frame_time);
 }
 
 bool ButtonComponentHost::layout_and_synchronize(
@@ -501,6 +541,14 @@ graphics::RoundedEffectStore& ButtonComponentHost::rounded_effects() noexcept {
     return button_scene_.effects();
 }
 
+animation::AnimationRuntime& ButtonComponentHost::animations() noexcept {
+    return animations_;
+}
+
+const animation::AnimationRuntime& ButtonComponentHost::animations() const noexcept {
+    return animations_;
+}
+
 std::span<const MountedButtonComponent>
 ButtonComponentHost::mounted_buttons() const noexcept {
     return mounted_buttons_;
@@ -520,6 +568,10 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(
         state->hovered,
         state->pointer_pressed,
         state->focus,
+        state->presentation_background,
+        state->presentation_border,
+        state->presentation_foreground,
+        state->presentation_loading_mix,
     };
 }
 
@@ -706,22 +758,68 @@ void ButtonComponentHost::activate(runtime::ComponentId component) {
 void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
+    const auto& visual = visual_token(button, state);
+    const auto policy = animation::resolve_motion_policy(
+        theme, motion_preference_);
+    const auto spec = policy.transition(
+        animation::MotionDurationToken::mid,
+        animation::MotionEasingToken::ease_in_out);
+
+    if (!state.animation_scope.valid()) {
+        state.presentation_background = visual.background;
+        state.presentation_border = visual.border;
+        state.presentation_foreground = visual.foreground;
+        state.presentation_loading_mix = state.loading ? 1.0F : 0.0F;
+    } else {
+        retarget_channel(
+            state,
+            ButtonAnimationChannel::background,
+            visual.background,
+            spec);
+        retarget_channel(
+            state,
+            ButtonAnimationChannel::border,
+            visual.border,
+            spec);
+        retarget_channel(
+            state,
+            ButtonAnimationChannel::foreground,
+            visual.foreground,
+            spec);
+        retarget_channel(
+            state,
+            ButtonAnimationChannel::loading_mix,
+            state.loading ? 1.0F : 0.0F,
+            spec);
+    }
+    apply_presentation(state);
+}
+
+void ButtonComponentHost::apply_presentation(
+    ButtonComponentState& state,
+    bool animation_update) {
+    const auto& theme = components().theme_scope(state.component)->snapshot();
+    const auto& button = theme.button();
     const auto& alias = theme.alias();
     const auto& visual = visual_token(button, state);
+    const float loading_mix = std::clamp(
+        state.presentation_loading_mix, 0.0F, 1.0F);
+    const float layer_opacity = 1.0F
+        + (button.loading_opacity - 1.0F) * loading_mix;
+    const float indicator_opacity = button.loading_opacity * loading_mix;
     auto next = state.visuals;
-    const float layer_opacity = state.loading ? button.loading_opacity : 1.0F;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color =
-        channels(visual.border);
+        channels(state.presentation_border);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity =
         layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].color =
-        channels(visual.background);
+        channels(state.presentation_background);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity =
         layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::loading_indicator)].color =
-        channels(visual.foreground);
+        channels(state.presentation_foreground);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::loading_indicator)].opacity =
-        state.loading ? button.loading_opacity : 0.0F;
+        indicator_opacity;
 
     bool changed_material = false;
     bool changed_geometry = false;
@@ -749,7 +847,11 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
         }
     }
     if (changed_material) {
-        dirty_->invalidate(state.node, runtime::DirtyFlags::Material);
+        auto flags = runtime::DirtyFlags::Material;
+        if (animation_update) {
+            flags = flags | runtime::DirtyFlags::Animation;
+        }
+        dirty_->invalidate(state.node, flags);
     }
     if (changed_geometry) {
         dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry);
@@ -759,7 +861,186 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
             state.node,
             runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material);
     }
-    static_cast<void>(state.foreground.set(content_foreground(button, state)));
+    auto foreground = channels(state.presentation_foreground);
+    foreground[3] *= layer_opacity;
+    static_cast<void>(state.foreground.set(foreground));
+}
+
+void ButtonComponentHost::register_animation_targets(
+    ButtonComponentState& state) {
+    state.animation_scope = animations_.create_scope();
+    try {
+        constexpr auto dirty = animation::AnimationDirtyDomain::material
+            | animation::AnimationDirtyDomain::animation;
+        state.animation_targets[animation_channel_index(
+            ButtonAnimationChannel::background)] = animations_.register_target(
+                state.animation_scope,
+                *this,
+                animation::AnimationValueKind::color,
+                dirty);
+        state.animation_targets[animation_channel_index(
+            ButtonAnimationChannel::border)] = animations_.register_target(
+                state.animation_scope,
+                *this,
+                animation::AnimationValueKind::color,
+                dirty);
+        state.animation_targets[animation_channel_index(
+            ButtonAnimationChannel::foreground)] = animations_.register_target(
+                state.animation_scope,
+                *this,
+                animation::AnimationValueKind::color,
+                dirty);
+        state.animation_targets[animation_channel_index(
+            ButtonAnimationChannel::loading_mix)] = animations_.register_target(
+                state.animation_scope,
+                *this,
+                animation::AnimationValueKind::scalar,
+                dirty);
+        for (const auto channel : {
+                ButtonAnimationChannel::background,
+                ButtonAnimationChannel::border,
+                ButtonAnimationChannel::foreground,
+                ButtonAnimationChannel::loading_mix}) {
+            animation_bindings_.push_back({
+                state.animation_targets[animation_channel_index(channel)],
+                state.component,
+                channel,
+            });
+        }
+    } catch (...) {
+        static_cast<void>(animations_.dispose_scope(state.animation_scope));
+        state.animation_scope = {};
+        std::erase_if(animation_bindings_, [this](const auto& binding) {
+            return !animations_.contains(binding.target);
+        });
+        throw;
+    }
+}
+
+void ButtonComponentHost::unregister_animation_targets(
+    ButtonComponentState& state) noexcept {
+    if (!state.animation_scope.valid()) {
+        return;
+    }
+    try {
+        static_cast<void>(animations_.dispose_scope(state.animation_scope));
+        std::erase_if(animation_bindings_, [&state](const auto& binding) {
+            return std::find(
+                state.animation_targets.begin(),
+                state.animation_targets.end(),
+                binding.target) != state.animation_targets.end();
+        });
+    } catch (...) {
+    }
+    state.animation_scope = {};
+    state.animation_targets = {};
+    state.animations = {};
+}
+
+void ButtonComponentHost::retarget_channel(
+    ButtonComponentState& state,
+    ButtonAnimationChannel channel,
+    const animation::AnimationValue& target,
+    const animation::AnimationSpec& spec) {
+    const auto index = animation_channel_index(channel);
+    animation::AnimationValue current;
+    switch (channel) {
+    case ButtonAnimationChannel::background:
+        current = state.presentation_background;
+        break;
+    case ButtonAnimationChannel::border:
+        current = state.presentation_border;
+        break;
+    case ButtonAnimationChannel::foreground:
+        current = state.presentation_foreground;
+        break;
+    case ButtonAnimationChannel::loading_mix:
+        current = state.presentation_loading_mix;
+        break;
+    }
+
+    auto& active = state.animations[index];
+    if (current == target) {
+        if (animations_.contains(active)) {
+            static_cast<void>(animations_.retarget(
+                active,
+                target,
+                {{}, {}, spec.easing},
+                animation_time_));
+        }
+        return;
+    }
+    if (animations_.contains(active)) {
+        static_cast<void>(animations_.retarget(
+            active, target, spec, animation_time_));
+    } else {
+        active = animations_.play(
+            state.animation_targets[index],
+            std::move(current),
+            target,
+            spec,
+            animation_time_);
+    }
+}
+
+void ButtonComponentHost::apply(
+    animation::AnimationId,
+    animation::AnimationTargetId target,
+    const animation::AnimationValue& value,
+    animation::AnimationDirtyDomain dirty_domain) {
+    if (!animation::has_any(
+            dirty_domain,
+            animation::AnimationDirtyDomain::material)
+            || !animation::has_any(
+                dirty_domain,
+                animation::AnimationDirtyDomain::animation)) {
+        throw std::logic_error(
+            "Button animation target lost Material/Animation dirty domains");
+    }
+    const auto binding = std::find_if(
+        animation_bindings_.begin(),
+        animation_bindings_.end(),
+        [target](const auto& candidate) { return candidate.target == target; });
+    if (binding == animation_bindings_.end()) {
+        throw std::out_of_range("Button animation target binding is stale");
+    }
+    auto* state = find_state(binding->component);
+    if (state == nullptr) {
+        throw std::out_of_range("Button animation component is stale");
+    }
+    switch (binding->channel) {
+    case ButtonAnimationChannel::background:
+        state->presentation_background = std::get<Color>(value);
+        break;
+    case ButtonAnimationChannel::border:
+        state->presentation_border = std::get<Color>(value);
+        break;
+    case ButtonAnimationChannel::foreground:
+        state->presentation_foreground = std::get<Color>(value);
+        break;
+    case ButtonAnimationChannel::loading_mix:
+        state->presentation_loading_mix = std::get<float>(value);
+        break;
+    }
+    apply_presentation(*state, true);
+}
+
+void ButtonComponentHost::completed(
+    animation::AnimationId animation,
+    animation::AnimationTargetId target) {
+    const auto binding = std::find_if(
+        animation_bindings_.begin(),
+        animation_bindings_.end(),
+        [target](const auto& candidate) { return candidate.target == target; });
+    if (binding == animation_bindings_.end()) {
+        return;
+    }
+    if (auto* state = find_state(binding->component)) {
+        auto& active = state->animations[animation_channel_index(binding->channel)];
+        if (active == animation) {
+            active = {};
+        }
+    }
 }
 
 void ButtonComponentHost::update_typography(ButtonComponentState& state) {
@@ -832,6 +1113,17 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
             static_cast<void>(theme->button_typography());
             static_cast<void>(theme->text_font_family());
             static_cast<void>(theme->text_font_weight());
+        });
+    state.motion_subscription = theme->capture(
+        [this, component = state.component](theme_runtime::DirtyPhase) {
+            if (auto* current = find_state(component)) {
+                update_visuals(*current);
+            }
+        },
+        [theme] {
+            static_cast<void>(theme->motion_unit());
+            static_cast<void>(theme->motion_base());
+            static_cast<void>(theme->motion_enabled());
         });
 }
 
@@ -991,6 +1283,14 @@ void mount_button_component(
         interaction = state.interaction] {
         pointer->cancel_interaction(interaction);
         static_cast<void>(interactions->remove(interaction));
+    });
+    host.register_animation_targets(state);
+    build.on_resource_cleanup(component, [
+        buttons = &host,
+        component] {
+        if (auto* current = buttons->find_state(component)) {
+            buttons->unregister_animation_targets(*current);
+        }
     });
 
     auto& scope = build.scope(component);
