@@ -17,6 +17,7 @@ target_include_directories(rynui_theme PRIVATE
 
 add_library(rynui_animation STATIC
     animation/easing.cpp
+    animation/runtime.cpp
     animation/time.cpp
     animation/value.cpp
 )

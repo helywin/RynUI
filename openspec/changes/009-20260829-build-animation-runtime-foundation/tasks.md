@@ -7,11 +7,11 @@
 
 ## 2. generation-safe AnimationRuntime 生命周期
 
-- [ ] 2.1 实现 `AnimationId`、`AnimationScopeId`、`AnimationTargetId` 的 slot + generation registry、free list、owner-thread guard、reserve 与 stale rejection；通过 invalid id、destroy/reuse、Scope cleanup、wrong-thread 和 capacity reuse tests 验证
-- [ ] 2.2 实现 target sink、allowed `AnimationDirtyDomain` 与 typed create/play record，拒绝 Structure、Measure/Layout 和 type mismatch；通过 target unregister、owner dispose、Material/Transform/Geometry mapping 和 stale sink tests 验证
-- [ ] 2.3 实现 delay、duration、zero-duration、tick、cancel、finish、原地 retarget 与 interruption，callback 后重新解析 identity；通过 callback self/sibling destroy、create during tick、once-only completion、cancel current value、finish endpoint 和 no-jump retarget tests 验证
-- [ ] 2.4 增加 lifecycle diagnostics 与预留 tick snapshot benchmark，证明预热后 steady-state tick/cancel/finish/retarget 无 heap allocation、capacity 不随帧增长且 counters 守恒
-- [ ] 2.5 运行 AnimationRuntime lifecycle、target、dirty、allocation、owner-thread 和 `git diff --check`；以英文 `feat: add animation runtime lifecycle` 提交并推送本阶段，核对 remote SHA
+- [x] 2.1 实现 `AnimationId`、`AnimationScopeId`、`AnimationTargetId` 的 slot + generation registry、free list、owner-thread guard、reserve 与 stale rejection；通过 invalid id、destroy/reuse、Scope cleanup、wrong-thread 和 capacity reuse tests 验证
+- [x] 2.2 实现 target sink、allowed `AnimationDirtyDomain` 与 typed create/play record，拒绝 Structure、Measure/Layout 和 type mismatch；通过 target unregister、owner dispose、Material/Transform/Geometry mapping 和 stale sink tests 验证
+- [x] 2.3 实现 delay、duration、zero-duration、tick、cancel、finish、原地 retarget 与 interruption，callback 后重新解析 identity；通过 callback self/sibling destroy、create during tick、once-only completion、cancel current value、finish endpoint 和 no-jump retarget tests 验证
+- [x] 2.4 增加 lifecycle diagnostics 与预留 tick snapshot benchmark，证明预热后 steady-state tick/cancel/finish/retarget 无 heap allocation、capacity 不随帧增长且 counters 守恒
+- [x] 2.5 运行 AnimationRuntime lifecycle、target、dirty、allocation、owner-thread 和 `git diff --check`；以英文 `feat: add animation runtime lifecycle` 提交并推送本阶段，核对 remote SHA
 
 ## 3. 按需 frame deadline 调度
 

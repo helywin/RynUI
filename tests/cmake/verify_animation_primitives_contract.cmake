@@ -9,6 +9,7 @@ set(time_header "${RYNUI_SOURCE_DIR}/src/animation/time.hpp")
 set(value_header "${RYNUI_SOURCE_DIR}/src/animation/value.hpp")
 set(easing_header "${RYNUI_SOURCE_DIR}/src/animation/easing.hpp")
 set(easing_source "${RYNUI_SOURCE_DIR}/src/animation/easing.cpp")
+set(runtime_header "${RYNUI_SOURCE_DIR}/src/animation/runtime.hpp")
 set(source_lock
     "${RYNUI_SOURCE_DIR}/design-tokens/ant-design/6.5.0/sources.lock.yaml")
 
@@ -18,6 +19,7 @@ foreach(required IN ITEMS
         "${value_header}"
         "${easing_header}"
         "${easing_source}"
+        "${runtime_header}"
         "${source_lock}")
     if(NOT EXISTS "${required}")
         message(FATAL_ERROR "Animation primitive contract input is missing: ${required}")
@@ -28,6 +30,7 @@ file(READ "${public_aggregate}" public_source)
 foreach(forbidden IN ITEMS
         "animation/"
         "AnimationClock"
+        "AnimationRuntime"
         "AnimationValue"
         "AntEasingPreset")
     string(FIND "${public_source}" "${forbidden}" found)
@@ -37,7 +40,11 @@ foreach(forbidden IN ITEMS
     endif()
 endforeach()
 
-foreach(header IN ITEMS "${time_header}" "${value_header}" "${easing_header}")
+foreach(header IN ITEMS
+        "${time_header}"
+        "${value_header}"
+        "${easing_header}"
+        "${runtime_header}")
     file(READ "${header}" header_source)
     foreach(forbidden IN ITEMS
             "SDL"

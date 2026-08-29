@@ -124,6 +124,23 @@ rynui_configure_cpp_target(rynui_animation_easing_tests)
 target_link_libraries(rynui_animation_easing_tests PRIVATE rynui_animation)
 add_test(NAME rynui.animation_easing COMMAND rynui_animation_easing_tests)
 
+add_executable(rynui_animation_runtime_tests animation_runtime_tests.cpp)
+rynui_configure_cpp_target(rynui_animation_runtime_tests)
+target_link_libraries(rynui_animation_runtime_tests PRIVATE rynui_animation)
+add_test(NAME rynui.animation_runtime COMMAND rynui_animation_runtime_tests)
+
+add_executable(
+    rynui_animation_runtime_allocation_benchmark
+    animation_runtime_allocation_benchmark.cpp
+)
+rynui_configure_cpp_target(rynui_animation_runtime_allocation_benchmark)
+target_link_libraries(
+    rynui_animation_runtime_allocation_benchmark PRIVATE rynui_animation)
+add_test(
+    NAME rynui.animation_runtime_allocation
+    COMMAND rynui_animation_runtime_allocation_benchmark
+)
+
 add_test(
     NAME rynui.animation_primitives_contract
     COMMAND ${CMAKE_COMMAND}
