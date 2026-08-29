@@ -3,7 +3,7 @@
 > 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。
 
 - 上游：Ant Design `6.5.0` / `740ad964dc2397f33e40944367b0536a7314cc32`
-- Catalog SHA256：`b7e1e43a9400c42a7e545a0afa1b0a3117e1a352e2970c27870ac58e9181cd25`
+- Catalog SHA256：`d654745d9b46dc6f17a8faa8f979ad830da770b8bf74a95f468a9e5b31f7a1ef`
 - Token 总数：`1194`；missing/duplicate/unclassified 均为 `0`。
 
 ## 使用规则
@@ -27,8 +27,8 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | --- | ---: |
 | `component-not-yet-implemented` | 566 |
 | `deprecated` | 172 |
-| `metadata` | 323 |
-| `runtime` | 92 |
+| `metadata` | 315 |
+| `runtime` | 100 |
 | `web-only` | 41 |
 
 ## Token 索引
@@ -1207,14 +1207,14 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.seed.magenta` | `misc` | `string` | `metadata` | `components/theme/interface/presetColors.ts:1` |
 | `ant.seed.motion` | `motion` | `boolean` | `runtime` | `components/theme/interface/seeds.ts:283` |
 | `ant.seed.motionBase` | `motion` | `duration` | `runtime` | `components/theme/interface/seeds.ts:215` |
-| `ant.seed.motionEaseInBack` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:245` |
-| `ant.seed.motionEaseInOut` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:233` |
-| `ant.seed.motionEaseInOutCirc` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:227` |
-| `ant.seed.motionEaseInQuint` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:251` |
-| `ant.seed.motionEaseOut` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:263` |
-| `ant.seed.motionEaseOutBack` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:239` |
-| `ant.seed.motionEaseOutCirc` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:221` |
-| `ant.seed.motionEaseOutQuint` | `motion` | `cubic-bezier` | `metadata` | `components/theme/interface/seeds.ts:257` |
+| `ant.seed.motionEaseInBack` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:245` |
+| `ant.seed.motionEaseInOut` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:233` |
+| `ant.seed.motionEaseInOutCirc` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:227` |
+| `ant.seed.motionEaseInQuint` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:251` |
+| `ant.seed.motionEaseOut` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:263` |
+| `ant.seed.motionEaseOutBack` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:239` |
+| `ant.seed.motionEaseOutCirc` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:221` |
+| `ant.seed.motionEaseOutQuint` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:257` |
 | `ant.seed.motionUnit` | `motion` | `duration` | `runtime` | `components/theme/interface/seeds.ts:207` |
 | `ant.seed.opacityImage` | `opacity` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:195` |
 | `ant.seed.orange` | `misc` | `string` | `metadata` | `components/theme/interface/presetColors.ts:1` |

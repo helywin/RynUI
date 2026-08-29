@@ -542,6 +542,24 @@ float ThemeScope::layout_gap_large() const {
     return snapshot_->map().size_large;
 }
 
+Duration ThemeScope::motion_unit() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_motion_unit);
+    return snapshot_->map().motion_unit;
+}
+
+Duration ThemeScope::motion_base() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_motion_base);
+    return snapshot_->map().motion_base;
+}
+
+bool ThemeScope::motion_enabled() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_motion_enabled);
+    return snapshot_->map().motion;
+}
+
 void ThemeScope::ensure_owner_thread() const {
     if (std::this_thread::get_id() != owner_thread_) {
         throw std::logic_error("ThemeScope can only be used on its owner thread");

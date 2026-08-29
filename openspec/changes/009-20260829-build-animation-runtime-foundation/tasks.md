@@ -23,11 +23,11 @@
 
 ## 4. Ant Design MotionPolicy 与 Theme 接入
 
-- [ ] 4.1 增加 internal `MotionTokenSet`，从 Theme `motionBase + motionUnit × 1/2/3` 派生 fast/mid/slow 并集中保存八组 typed easing；通过默认 `0.1s/0.2s/0.3s`、override、algorithm/nested Theme 和 Ant Design 6.5.0 source contract tests 验证
-- [ ] 4.2 增加可注入 effective `MotionPolicy`，组合 Theme `motion` 与 `normal|reduced` preference；通过 motion disabled/reduced duration 归零、runtime policy toggle、final state、无 active record 和无 spinner deadline tests 验证
-- [ ] 4.3 将 motion Token identity 映射到 Animation dirty phase并更新 Token diagnostics/generated reference；通过 Theme notification isolation 证明 motion 更新不触发 Measure/Layout、Text shaping 或无关 component subscriber
-- [ ] 4.4 增加 public dependency/API contract，证明 Runtime、target、clock 和 MotionPolicy 不从 `rynui.hpp` 导出、不新增通用 Modifier 或字符串 easing；运行 Theme/Token/runtime tests 与 `git diff --check`
-- [ ] 4.5 以英文 `feat: add theme motion policy` 提交并推送本阶段，核对 remote SHA
+- [x] 4.1 增加 internal `MotionTokenSet`，从 Theme `motionBase + motionUnit × 1/2/3` 派生 fast/mid/slow 并集中保存八组 typed easing；通过默认 `0.1s/0.2s/0.3s`、override、algorithm/nested Theme 和 Ant Design 6.5.0 source contract tests 验证
+- [x] 4.2 增加可注入 effective `MotionPolicy`，组合 Theme `motion` 与 `normal|reduced` preference；通过 motion disabled/reduced duration 归零、runtime policy toggle、final state、无 active record 和无 spinner deadline tests 验证
+- [x] 4.3 将 motion Token identity 映射到 Animation dirty phase并更新 Token diagnostics/generated reference；通过 Theme notification isolation 证明 motion 更新不触发 Measure/Layout、Text shaping 或无关 component subscriber
+- [x] 4.4 增加 public dependency/API contract，证明 Runtime、target、clock 和 MotionPolicy 不从 `rynui.hpp` 导出、不新增通用 Modifier 或字符串 easing；运行 Theme/Token/runtime tests 与 `git diff --check`
+- [x] 4.5 以英文 `feat: add theme motion policy` 提交并推送本阶段，核对 remote SHA
 
 ## 5. Button 状态视觉动画
 

@@ -161,6 +161,58 @@ void test_dirty_domains_and_queue_bridge() {
         "mixed Theme phases did not reach the exact dirty queues");
 }
 
+void test_motion_subscription_is_animation_only() {
+    using Phase = ryn::theme_runtime::DirtyPhase;
+    using Identity = ryn::theme_runtime::TokenIdentity;
+    const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+    int motion_notifications = 0;
+    int typography_notifications = 0;
+    Phase motion_phase{Phase::none};
+    auto motion_subscription = scope->capture(
+        [&](Phase phase) {
+            ++motion_notifications;
+            motion_phase = phase;
+        },
+        [&] {
+            static_cast<void>(scope->motion_unit());
+            static_cast<void>(scope->motion_base());
+            static_cast<void>(scope->motion_enabled());
+        });
+    auto typography_subscription = scope->capture(
+        [&](Phase) { ++typography_notifications; },
+        [&] { static_cast<void>(scope->text_font_size()); });
+
+    ryn::ThemeConfig changed;
+    changed.seed.motion_unit = ryn::Duration::milliseconds(150.0F);
+    require(scope->update(changed), "motion Token update was suppressed");
+    require(scope->motion_unit() == ryn::Duration::milliseconds(150.0F)
+                && scope->motion_base() == ryn::Duration{}
+                && scope->motion_enabled(),
+            "typed motion accessors did not expose the resolved Theme values");
+    require(motion_notifications == 1 && typography_notifications == 0
+                && motion_phase == Phase::animation,
+            "motion Token update notified unrelated Theme subscribers");
+    require(scope->changed_identities().size() == 1
+                && scope->changed_identities().front() == Identity::map_motion_unit,
+            "motion Token diagnostics did not retain the exact changed identity");
+
+    ryn::runtime::NodeStore nodes;
+    const auto node = nodes.create_root();
+    ryn::runtime::FrameRequestState frames;
+    ryn::runtime::DirtyQueues dirty(nodes, &frames);
+    const auto flags = ryn::runtime::dirty_flags_for_theme(motion_phase);
+    dirty.invalidate(node, flags);
+    require(dirty.animation_nodes().size() == 1
+                && dirty.material_nodes().empty()
+                && dirty.geometry_nodes().empty()
+                && dirty.text_nodes().empty()
+                && dirty.layout_roots().empty()
+                && dirty.hit_test_nodes().empty(),
+            "motion Theme update expanded beyond Animation dirty state");
+    static_cast<void>(motion_subscription);
+    static_cast<void>(typography_subscription);
+}
+
 void test_error_rollback_and_cross_thread_failure() {
     const auto scope = ryn::theme_runtime::ThemeScope::create_default();
     const auto identity = scope->snapshot().identity();
@@ -198,6 +250,7 @@ int main() {
         test_typed_identity_subscription_and_snapshot_diff();
         test_nested_override_masks_parent_subscription();
         test_dirty_domains_and_queue_bridge();
+        test_motion_subscription_is_animation_only();
         test_error_rollback_and_cross_thread_failure();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

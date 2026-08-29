@@ -98,6 +98,20 @@ target_link_libraries(rynui_runtime
     PRIVATE rynui_animation rynui_reactive
 )
 
+add_library(rynui_motion STATIC
+    animation/motion_policy.cpp
+)
+rynui_configure_cpp_target(rynui_motion)
+target_include_directories(rynui_motion PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(rynui_motion PRIVATE
+    rynui_animation
+    rynui_runtime
+    rynui_theme
+)
+
 add_library(rynui_interaction STATIC
     input/focus_manager.cpp
     input/interaction_registry.cpp
@@ -225,6 +239,8 @@ rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input)
 rynui_assert_direct_dependencies(
     rynui_runtime rynui_animation rynui_reactive rynui_theme)
+rynui_assert_direct_dependencies(
+    rynui_motion rynui_animation rynui_runtime rynui_theme)
 rynui_assert_direct_dependencies(rynui_interaction rynui_input rynui_runtime)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)

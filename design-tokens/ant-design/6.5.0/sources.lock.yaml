@@ -2,16 +2,16 @@
   "catalog": {
     "entries": 1194,
     "path": "catalog.yaml",
-    "sha256": "b7e1e43a9400c42a7e545a0afa1b0a3117e1a352e2970c27870ac58e9181cd25"
+    "sha256": "d654745d9b46dc6f17a8faa8f979ad830da770b8bf74a95f468a9e5b31f7a1ef"
   },
   "document": {
     "path": "../../../docs/design-tokens.md",
-    "sha256": "e1019ed82f6a02f492572437376652b54e9ac92333e5c29b095891f0210b7794"
+    "sha256": "1c7826dd8c7d284e02ca0c91a7fd1f641a43c82c7d54410f3115e0894f595371"
   },
   "generated_metadata": {
     "entries": 1194,
     "path": "../../../src/theme/generated_token_metadata.inc",
-    "sha256": "ab2c23965ab2783b8c5863466dd64921cc79f891108a80285c1e5e85073cf478"
+    "sha256": "6896d050f0bd0756231f340ded6f0fb3f5072ab79dd20396d8d01cc485be1404"
   },
   "schema": {
     "path": "../catalog.schema.json",

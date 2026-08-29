@@ -166,6 +166,7 @@ public:
         AnimationSpec spec,
         AnimationTime start_time);
     [[nodiscard]] std::size_t tick(AnimationTime sample_time);
+    [[nodiscard]] std::size_t finish_all();
 
     void set_nominal_frame_period(AnimationDuration period);
     [[nodiscard]] AnimationDuration nominal_frame_period() const noexcept;

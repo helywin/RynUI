@@ -323,6 +323,20 @@ std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
     return updates;
 }
 
+std::size_t AnimationRuntime::finish_all() {
+    ensure_owner_thread();
+    std::size_t finished = 0;
+    while (!active_.empty()) {
+        tick_snapshot_.assign(active_.begin(), active_.end());
+        for (const auto id : tick_snapshot_) {
+            if (find(id) != nullptr && finish(id)) {
+                ++finished;
+            }
+        }
+    }
+    return finished;
+}
+
 void AnimationRuntime::set_nominal_frame_period(AnimationDuration period) {
     ensure_owner_thread();
     if (period == AnimationDuration{}) {

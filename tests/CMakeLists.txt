@@ -134,6 +134,11 @@ rynui_configure_cpp_target(rynui_animation_deadline_tests)
 target_link_libraries(rynui_animation_deadline_tests PRIVATE rynui_animation)
 add_test(NAME rynui.animation_deadline COMMAND rynui_animation_deadline_tests)
 
+add_executable(rynui_motion_policy_tests motion_policy_tests.cpp)
+rynui_configure_cpp_target(rynui_motion_policy_tests)
+target_link_libraries(rynui_motion_policy_tests PRIVATE rynui_motion)
+add_test(NAME rynui.motion_policy COMMAND rynui_motion_policy_tests)
+
 add_executable(
     rynui_animation_runtime_allocation_benchmark
     animation_runtime_allocation_benchmark.cpp

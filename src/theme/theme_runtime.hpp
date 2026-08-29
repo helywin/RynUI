@@ -87,6 +87,9 @@ public:
     [[nodiscard]] float layout_gap_small() const;
     [[nodiscard]] float layout_gap_middle() const;
     [[nodiscard]] float layout_gap_large() const;
+    [[nodiscard]] Duration motion_unit() const;
+    [[nodiscard]] Duration motion_base() const;
+    [[nodiscard]] bool motion_enabled() const;
 
 private:
     struct Subscriber;

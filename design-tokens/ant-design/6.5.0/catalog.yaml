@@ -80,8 +80,8 @@
     "by_support": {
       "component-not-yet-implemented": 566,
       "deprecated": 172,
-      "metadata": 323,
-      "runtime": 92,
+      "metadata": 315,
+      "runtime": 100,
       "web-only": 41
     },
     "component_owners": 69,
@@ -24728,12 +24728,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseInBack",
       "source": {
         "line": 245,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.71, -0.46, 0.88, 0.6)",
       "upstream_name": "motionEaseInBack",
       "upstream_type": "string",
@@ -24749,12 +24749,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseInOut",
       "source": {
         "line": 233,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.645, 0.045, 0.355, 1)",
       "upstream_name": "motionEaseInOut",
       "upstream_type": "string",
@@ -24770,12 +24770,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseInOutCirc",
       "source": {
         "line": 227,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.78, 0.14, 0.15, 0.86)",
       "upstream_name": "motionEaseInOutCirc",
       "upstream_type": "string",
@@ -24791,12 +24791,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseInQuint",
       "source": {
         "line": 251,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.755, 0.05, 0.855, 0.06)",
       "upstream_name": "motionEaseInQuint",
       "upstream_type": "string",
@@ -24812,12 +24812,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseOut",
       "source": {
         "line": 263,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.215, 0.61, 0.355, 1)",
       "upstream_name": "motionEaseOut",
       "upstream_type": "string",
@@ -24833,12 +24833,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseOutBack",
       "source": {
         "line": 239,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.12, 0.4, 0.29, 1.46)",
       "upstream_name": "motionEaseOutBack",
       "upstream_type": "string",
@@ -24854,12 +24854,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseOutCirc",
       "source": {
         "line": 221,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.08, 0.82, 0.17, 1)",
       "upstream_name": "motionEaseOutCirc",
       "upstream_type": "string",
@@ -24875,12 +24875,12 @@
       "internal": false,
       "invalidation_domain": "animation",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.motionEaseOutQuint",
       "source": {
         "line": 257,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": "cubic-bezier(0.23, 1, 0.32, 1)",
       "upstream_name": "motionEaseOutQuint",
       "upstream_type": "string",

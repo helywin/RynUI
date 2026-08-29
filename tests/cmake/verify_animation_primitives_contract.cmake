@@ -10,6 +10,8 @@ set(value_header "${RYNUI_SOURCE_DIR}/src/animation/value.hpp")
 set(easing_header "${RYNUI_SOURCE_DIR}/src/animation/easing.hpp")
 set(easing_source "${RYNUI_SOURCE_DIR}/src/animation/easing.cpp")
 set(runtime_header "${RYNUI_SOURCE_DIR}/src/animation/runtime.hpp")
+set(motion_policy_header
+    "${RYNUI_SOURCE_DIR}/src/animation/motion_policy.hpp")
 set(deadline_header
     "${RYNUI_SOURCE_DIR}/src/runtime/animation_frame_deadline.hpp")
 set(submitter_header
@@ -24,6 +26,7 @@ foreach(required IN ITEMS
         "${easing_header}"
         "${easing_source}"
         "${runtime_header}"
+        "${motion_policy_header}"
         "${deadline_header}"
         "${submitter_header}"
         "${source_lock}")
@@ -39,6 +42,9 @@ foreach(forbidden IN ITEMS
         "AnimationRuntime"
         "AnimationValue"
         "AntEasingPreset"
+        "MotionPolicy"
+        "MotionTokenSet"
+        "MotionPreference"
         "FrameDeadlineSource"
         "AnimationFrameSubmitter")
     string(FIND "${public_source}" "${forbidden}" found)
@@ -53,6 +59,7 @@ foreach(header IN ITEMS
         "${value_header}"
         "${easing_header}"
         "${runtime_header}"
+        "${motion_policy_header}"
         "${deadline_header}"
         "${submitter_header}")
     file(READ "${header}" header_source)
