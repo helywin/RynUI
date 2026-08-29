@@ -90,7 +90,8 @@ public:
     void draw_rounded_effect(
         std::uint32_t first,
         std::uint32_t count) override;
-    runtime::FrameSubmissionResult submit_frame() override;
+    runtime::FrameSubmissionResult submit_frame(
+        animation::AnimationTime frame_time) override;
 
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;

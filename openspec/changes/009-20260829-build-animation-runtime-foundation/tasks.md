@@ -15,11 +15,11 @@
 
 ## 3. 按需 frame deadline 调度
 
-- [ ] 3.1 为 `OnDemandFrameLoop` 增加可选 `FrameDeadlineSource` 和统一高精度 monotonic timestamp，在没有 deadline 时保持现有 one-shot request 行为；通过 no-source compatibility、event-only、timeout rounding 和 idle tests 验证
-- [ ] 3.2 将 AnimationRuntime 最早 deadline 接入 frame loop，按 nominal display cadence 合并 input/resize/animation wake并跳过 missed cadence；通过 60/120/144 Hz、event+deadline coalescing、long stall、no catch-up queue 和 multiple-animation earliest-deadline tests 验证
-- [ ] 3.3 将同一 frame timestamp 接入 animation tick、invalidation、scene/GPU 与 submit pipeline，deferred submit 保留 dirty state且不得在同 timestamp 重复推进或 completion；通过 deferred/retry/failure、exact endpoint、range persistence 和 last-animation idle tests 验证
-- [ ] 3.4 扩展 frame diagnostics 记录 deadline wake、coalesced wake、animation frame、missed cadence 与 idle-after-animation，并以 controlled-clock frame journey 证明动画结束后不再 poll/submit
-- [ ] 3.5 运行 frame scheduler、frame renderer、application/runtime integration、idle benchmark 与 `git diff --check`；以英文 `feat: schedule animation frame deadlines` 提交并推送本阶段，核对 remote SHA
+- [x] 3.1 为 `OnDemandFrameLoop` 增加可选 `FrameDeadlineSource` 和统一高精度 monotonic timestamp，在没有 deadline 时保持现有 one-shot request 行为；通过 no-source compatibility、event-only、timeout rounding 和 idle tests 验证
+- [x] 3.2 将 AnimationRuntime 最早 deadline 接入 frame loop，按 nominal display cadence 合并 input/resize/animation wake并跳过 missed cadence；通过 60/120/144 Hz、event+deadline coalescing、long stall、no catch-up queue 和 multiple-animation earliest-deadline tests 验证
+- [x] 3.3 将同一 frame timestamp 接入 animation tick、invalidation、scene/GPU 与 submit pipeline，deferred submit 保留 dirty state且不得在同 timestamp 重复推进或 completion；通过 deferred/retry/failure、exact endpoint、range persistence 和 last-animation idle tests 验证
+- [x] 3.4 扩展 frame diagnostics 记录 deadline wake、coalesced wake、animation frame、missed cadence 与 idle-after-animation，并以 controlled-clock frame journey 证明动画结束后不再 poll/submit
+- [x] 3.5 运行 frame scheduler、frame renderer、application/runtime integration、idle benchmark 与 `git diff --check`；以英文 `feat: schedule animation frame deadlines` 提交并推送本阶段，核对 remote SHA
 
 ## 4. Ant Design MotionPolicy 与 Theme 接入
 

@@ -124,6 +124,7 @@ struct AnimationRuntimeDiagnostics final {
     std::uint64_t stale_operations{0};
     std::uint64_t non_monotonic_timestamps{0};
     std::uint64_t ticks{0};
+    std::uint64_t missed_cadences{0};
     std::uint64_t applied_values{0};
     std::uint64_t callback_mutations{0};
     std::uint64_t capacity_growths{0};
@@ -165,6 +166,10 @@ public:
         AnimationSpec spec,
         AnimationTime start_time);
     [[nodiscard]] std::size_t tick(AnimationTime sample_time);
+
+    void set_nominal_frame_period(AnimationDuration period);
+    [[nodiscard]] AnimationDuration nominal_frame_period() const noexcept;
+    [[nodiscard]] std::optional<AnimationTime> next_deadline() const;
 
     [[nodiscard]] bool contains(AnimationId animation) const;
     [[nodiscard]] bool contains(AnimationScopeId scope) const;
@@ -256,6 +261,8 @@ private:
     std::vector<AnimationId> active_;
     std::vector<AnimationId> tick_snapshot_;
     AnimationRuntimeDiagnostics diagnostics_;
+    AnimationDuration nominal_frame_period_{
+        AnimationDuration::microseconds(16'667)};
 };
 
 } // namespace ryn::animation

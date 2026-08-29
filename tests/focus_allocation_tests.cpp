@@ -124,19 +124,23 @@ void require(bool condition, const char* message) {
 
 class IdleEvents final : public ryn::runtime::FrameEventSource {
 public:
-    std::uint64_t now_milliseconds() const noexcept override { return now; }
+    ryn::animation::AnimationTime now() const noexcept override {
+        return ryn::animation::AnimationTime::microseconds(
+            static_cast<std::int64_t>(now_milliseconds_) * 1000);
+    }
     bool poll_frame_event() noexcept override { return false; }
     bool wait_for_frame_event(std::uint32_t timeout) noexcept override {
-        now += timeout;
+        now_milliseconds_ += timeout;
         return false;
     }
 
-    std::uint64_t now{0};
+    std::uint64_t now_milliseconds_{0};
 };
 
 class CountingSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    ryn::runtime::FrameSubmissionResult submit_frame() override {
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime) override {
         ++submissions;
         return ryn::runtime::FrameSubmissionResult::submitted;
     }

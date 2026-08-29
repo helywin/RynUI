@@ -535,7 +535,8 @@ void SdlSceneRenderer::draw_rounded_effect(
     counters_.effect_instances += count;
 }
 
-runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame() {
+runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
+    animation::AnimationTime) {
     if (!platform_->is_owner_thread()) {
         last_error_ = "GPU frame work must run on the Window owner thread";
         return runtime::FrameSubmissionResult::failed;

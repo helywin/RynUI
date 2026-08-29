@@ -262,7 +262,8 @@ const char* SdlQuadRenderer::last_error() const noexcept {
     return last_error_.c_str();
 }
 
-runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame() {
+runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
+    animation::AnimationTime) {
     if (!platform_->is_owner_thread()) {
         last_error_ = "GPU frame work must run on the Window owner thread";
         return runtime::FrameSubmissionResult::failed;

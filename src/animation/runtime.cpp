@@ -272,6 +272,7 @@ bool AnimationRuntime::retarget(
 std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
     ensure_owner_thread();
     ++diagnostics_.ticks;
+    const auto previous_time = time_cursor_.last();
     const auto observation = time_cursor_.observe(sample_time);
     if (observation.clamped) {
         ++diagnostics_.non_monotonic_timestamps;
@@ -279,6 +280,14 @@ std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
     }
     if (!observation.advanced) {
         return 0;
+    }
+    if (!active_.empty() && previous_time.has_value()) {
+        const auto elapsed = observation.effective - *previous_time;
+        const auto period = nominal_frame_period_.count_microseconds();
+        if (elapsed.count_microseconds() > period) {
+            diagnostics_.missed_cadences += static_cast<std::uint64_t>(
+                elapsed.count_microseconds() / period - 1);
+        }
     }
 
     tick_snapshot_.assign(active_.begin(), active_.end());
@@ -312,6 +321,55 @@ std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
             diagnostics_.applied_values - applied_before);
     }
     return updates;
+}
+
+void AnimationRuntime::set_nominal_frame_period(AnimationDuration period) {
+    ensure_owner_thread();
+    if (period == AnimationDuration{}) {
+        throw std::invalid_argument(
+            "nominal animation frame period must be positive");
+    }
+    nominal_frame_period_ = period;
+}
+
+AnimationDuration AnimationRuntime::nominal_frame_period() const noexcept {
+    return nominal_frame_period_;
+}
+
+std::optional<AnimationTime> AnimationRuntime::next_deadline() const {
+    ensure_owner_thread();
+    std::optional<AnimationTime> earliest;
+    const auto observed = time_cursor_.last();
+    const auto period_value = nominal_frame_period_.count_microseconds();
+    for (const auto id : active_) {
+        const auto* record = find(id);
+        if (record == nullptr) {
+            continue;
+        }
+        const auto active_start = record->start_time + record->spec.delay;
+        const auto active_end = active_start + record->spec.duration;
+        const auto reference = observed.value_or(record->start_time);
+        AnimationTime candidate;
+        if (reference < active_start) {
+            candidate = active_start;
+        } else if (reference >= active_end) {
+            candidate = reference;
+        } else {
+            const auto elapsed = reference - active_start;
+            const auto step = elapsed.count_microseconds() / period_value + 1;
+            const auto duration_value = record->spec.duration.count_microseconds();
+            candidate = step > duration_value / period_value
+                ? active_end
+                : active_start + AnimationDuration::microseconds(step * period_value);
+            if (candidate > active_end) {
+                candidate = active_end;
+            }
+        }
+        if (!earliest.has_value() || candidate < *earliest) {
+            earliest = candidate;
+        }
+    }
+    return earliest;
 }
 
 bool AnimationRuntime::contains(AnimationId animation) const {

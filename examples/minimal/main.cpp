@@ -50,9 +50,9 @@ public:
     explicit PlatformFrameEvents(ryn::detail::PlatformState& platform) noexcept
         : platform_(&platform), started_(std::chrono::steady_clock::now()) {}
 
-    std::uint64_t now_milliseconds() const noexcept override {
-        return static_cast<std::uint64_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
+    ryn::animation::AnimationTime now() const noexcept override {
+        return ryn::animation::AnimationTime::microseconds(
+            std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - started_).count());
     }
 
@@ -95,7 +95,8 @@ public:
           renderer_(&renderer),
           viewport_(viewport) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame() override {
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime frame_time) override {
         for (const auto root : dirty_->layout_roots()) {
             static_cast<void>(layout_->layout(
                 root,
@@ -103,7 +104,7 @@ public:
         }
         static_cast<void>(scene_->sync_dirty(*dirty_, *gpu_buffer_, viewport_));
         dirty_->clear();
-        return renderer_->submit_frame();
+        return renderer_->submit_frame(frame_time);
     }
 
 private:

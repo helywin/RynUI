@@ -188,7 +188,10 @@ public:
         ryn::runtime::FrameRequestState& frames) noexcept
         : host_(&host), frames_(&frames) {}
 
-    std::uint64_t now_milliseconds() const noexcept override { return now_; }
+    ryn::animation::AnimationTime now() const noexcept override {
+        return ryn::animation::AnimationTime::microseconds(
+            static_cast<std::int64_t>(now_) * 1000);
+    }
 
     bool poll_frame_event() noexcept override {
         return dispatch_next();
@@ -272,7 +275,8 @@ public:
           effect_resources_(gpu),
           draw_(&draw) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame() override {
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime) override {
         if (!host_->layout_and_synchronize(
                 viewport_,
                 {0.0F, 0.0F, viewport_.width, viewport_.height},

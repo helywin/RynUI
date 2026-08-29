@@ -44,7 +44,8 @@ public:
         std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;
 
-    runtime::FrameSubmissionResult submit_frame() override;
+    runtime::FrameSubmissionResult submit_frame(
+        animation::AnimationTime frame_time) override;
 
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const QuadRendererCounters& counters() const noexcept;

@@ -95,7 +95,7 @@ rynui_configure_cpp_target(rynui_runtime)
 target_include_directories(rynui_runtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_runtime
     PUBLIC rynui_theme
-    PRIVATE rynui_reactive
+    PRIVATE rynui_animation rynui_reactive
 )
 
 add_library(rynui_interaction STATIC
@@ -223,7 +223,8 @@ rynui_assert_direct_dependencies(
 rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input)
-rynui_assert_direct_dependencies(rynui_runtime rynui_reactive rynui_theme)
+rynui_assert_direct_dependencies(
+    rynui_runtime rynui_animation rynui_reactive rynui_theme)
 rynui_assert_direct_dependencies(rynui_interaction rynui_input rynui_runtime)
 rynui_assert_direct_dependencies(rynui_layout rynui_runtime)
 rynui_assert_direct_dependencies(rynui_graphics rynui_font rynui_layout rynui_text)

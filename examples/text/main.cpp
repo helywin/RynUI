@@ -42,9 +42,9 @@ public:
     explicit PlatformFrameEvents(ryn::detail::PlatformState& platform) noexcept
         : platform_(&platform), started_(std::chrono::steady_clock::now()) {}
 
-    std::uint64_t now_milliseconds() const noexcept override {
-        return static_cast<std::uint64_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(
+    ryn::animation::AnimationTime now() const noexcept override {
+        return ryn::animation::AnimationTime::microseconds(
+            std::chrono::duration_cast<std::chrono::microseconds>(
                 std::chrono::steady_clock::now() - started_).count());
     }
 
@@ -83,7 +83,8 @@ public:
           renderer_(&renderer),
           viewport_(&viewport) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame() override {
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime frame_time) override {
         try {
             const ryn::runtime::Rect clip{
                 48.0F,
@@ -100,7 +101,7 @@ public:
                 scene_->atlas(),
                 scene_->glyph_scene().instances());
             renderer_->attach_scene(nullptr, *resources_, scene_->ordered_scene());
-            const auto result = renderer_->submit_frame();
+            const auto result = renderer_->submit_frame(frame_time);
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
             }

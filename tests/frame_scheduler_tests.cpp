@@ -1,9 +1,13 @@
 #include "runtime/frame_scheduler.hpp"
+#include "runtime/animation_frame_deadline.hpp"
+#include "runtime/animation_frame_submitter.hpp"
 #include "runtime/invalidation.hpp"
 
 #include <deque>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -15,8 +19,8 @@ void require(bool condition, const char* message) {
 
 class ControlledEvents final : public ryn::runtime::FrameEventSource {
 public:
-    std::uint64_t now_milliseconds() const noexcept override {
-        return now;
+    ryn::animation::AnimationTime now() const noexcept override {
+        return current;
     }
 
     bool poll_frame_event() noexcept override {
@@ -30,22 +34,28 @@ public:
     bool wait_for_frame_event(std::uint32_t timeout_milliseconds) noexcept override {
         if (wake_on_wait) {
             wake_on_wait = false;
-            ++now;
+            current = current
+                + ryn::animation::AnimationDuration::microseconds(1000);
             return true;
         }
-        now += timeout_milliseconds;
+        current = current + ryn::animation::AnimationDuration::microseconds(
+            static_cast<std::int64_t>(timeout_milliseconds) * 1000);
+        last_timeout = timeout_milliseconds;
         return false;
     }
 
-    std::uint64_t now{0};
+    ryn::animation::AnimationTime current;
+    std::uint32_t last_timeout{0};
     bool poll_event{false};
     bool wake_on_wait{false};
 };
 
 class ControlledSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    ryn::runtime::FrameSubmissionResult submit_frame() override {
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime frame_time) override {
         ++calls;
+        timestamps.push_back(frame_time);
         if (results.empty()) {
             return ryn::runtime::FrameSubmissionResult::submitted;
         }
@@ -55,7 +65,65 @@ public:
     }
 
     std::deque<ryn::runtime::FrameSubmissionResult> results;
+    std::vector<ryn::animation::AnimationTime> timestamps;
     int calls{0};
+};
+
+class ControlledDeadline final : public ryn::runtime::FrameDeadlineSource {
+public:
+    [[nodiscard]] std::optional<ryn::animation::AnimationTime>
+    next_deadline() const override {
+        return deadline;
+    }
+
+    std::optional<ryn::animation::AnimationTime> deadline;
+};
+
+class RecordingAnimationSink final : public ryn::animation::AnimationTargetSink {
+public:
+    void apply(
+        ryn::animation::AnimationId,
+        ryn::animation::AnimationTargetId,
+        const ryn::animation::AnimationValue& value,
+        ryn::animation::AnimationDirtyDomain) override {
+        values.push_back(std::get<float>(value));
+        dirty = true;
+    }
+
+    void completed(
+        ryn::animation::AnimationId,
+        ryn::animation::AnimationTargetId) override {
+        ++completions;
+    }
+
+    std::vector<float> values;
+    int completions{0};
+    bool dirty{false};
+};
+
+class DeferredDownstream final : public ryn::runtime::FrameSubmitter {
+public:
+    explicit DeferredDownstream(RecordingAnimationSink& sink) noexcept
+        : sink_(&sink) {}
+
+    ryn::runtime::FrameSubmissionResult submit_frame(
+        ryn::animation::AnimationTime frame_time) override {
+        timestamps.push_back(frame_time);
+        if (!results.empty()) {
+            const auto result = results.front();
+            results.pop_front();
+            if (result == ryn::runtime::FrameSubmissionResult::submitted) {
+                sink_->dirty = false;
+            }
+            return result;
+        }
+        sink_->dirty = false;
+        return ryn::runtime::FrameSubmissionResult::submitted;
+    }
+
+    RecordingAnimationSink* sink_;
+    std::deque<ryn::runtime::FrameSubmissionResult> results;
+    std::vector<ryn::animation::AnimationTime> timestamps;
 };
 
 void test_requests_coalesce_and_idle_does_not_submit() {
@@ -79,8 +147,94 @@ void test_requests_coalesce_and_idle_does_not_submit() {
                 "stable frame loop left the idle state");
     }
     require(submitter.calls == 1, "idle loop submitted at refresh rate");
-    require(events.now == 120U * 16U, "controlled clock did not advance through idle waits");
+    require(events.now_milliseconds() == 120U * 16U,
+            "controlled clock did not advance through idle waits");
     require(loop.counters().idle_waits == 120, "idle wait counter is incorrect");
+}
+
+void test_deadline_wait_rounding_and_event_coalescing() {
+    using namespace ryn::animation;
+    ryn::runtime::FrameRequestState requests;
+    ControlledEvents events;
+    ControlledSubmitter submitter;
+    ControlledDeadline deadlines;
+    deadlines.deadline = AnimationTime::microseconds(500);
+    ryn::runtime::OnDemandFrameLoop loop(
+        requests, events, submitter, deadlines, 16);
+
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "sub-millisecond deadline did not wake a frame");
+    require(events.last_timeout == 1
+                && submitter.timestamps.back() == AnimationTime::microseconds(1000),
+            "deadline wait was not rounded up to a bounded millisecond wait");
+    require(loop.counters().deadline_wakes == 1
+                && loop.counters().animation_frames == 1,
+            "deadline wake diagnostics are incorrect");
+
+    events.poll_event = true;
+    deadlines.deadline = events.now();
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "coincident input and deadline did not submit");
+    require(loop.counters().coalesced_deadline_wakes == 1
+                && submitter.calls == 2,
+            "coincident input and deadline were not coalesced");
+}
+
+void test_animation_pipeline_deferred_retry_and_idle_recovery() {
+    using namespace ryn::animation;
+    AnimationRuntime animations;
+    animations.reserve(2, 1, 1);
+    animations.set_nominal_frame_period(AnimationDuration::microseconds(1000));
+    RecordingAnimationSink sink;
+    const auto scope = animations.create_scope();
+    const auto target = animations.register_target(
+        scope, sink, AnimationValueKind::scalar,
+        AnimationDirtyDomain::material | AnimationDirtyDomain::animation);
+    static_cast<void>(animations.play(
+        target,
+        0.0F,
+        1.0F,
+        {{}, AnimationDuration::microseconds(3000), Easing::linear()},
+        {}));
+
+    ryn::runtime::FrameRequestState requests;
+    ControlledEvents events;
+    DeferredDownstream downstream(sink);
+    downstream.results.push_back(
+        ryn::runtime::FrameSubmissionResult::deferred);
+    downstream.results.push_back(
+        ryn::runtime::FrameSubmissionResult::submitted);
+    ryn::runtime::AnimationFrameSubmitter submitter(animations, downstream);
+    ryn::runtime::AnimationFrameDeadlineSource deadlines(animations);
+    ryn::runtime::OnDemandFrameLoop loop(
+        requests, events, submitter, deadlines, 10);
+
+    require(loop.step() == ryn::runtime::FrameLoopStep::deferred
+                && sink.dirty && sink.values.size() == 2,
+            "deferred animation frame lost dirty state or sampled incorrectly");
+    events.poll_event = true;
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted
+                && !sink.dirty && sink.values.size() == 2,
+            "same-timestamp retry advanced animation or failed to clear dirty state");
+    require(downstream.timestamps[0] == downstream.timestamps[1],
+            "same-timestamp deferred retry did not preserve frame time");
+
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "second animation deadline did not submit");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "final animation deadline did not submit");
+    require(sink.values.back() == 1.0F && sink.completions == 1
+                && animations.size() == 0,
+            "animation pipeline did not reach its exact final state");
+    const auto calls_after_completion = downstream.timestamps.size();
+    for (int idle = 0; idle < 10; ++idle) {
+        require(loop.step() == ryn::runtime::FrameLoopStep::idle,
+                "completed animation did not restore frame-loop idle");
+    }
+    require(downstream.timestamps.size() == calls_after_completion
+                && loop.counters().idle_after_animation == 1
+                && submitter.counters().animation_updates == 3,
+            "idle recovery or animation pipeline diagnostics are incorrect");
 }
 
 void test_event_wakes_idle_and_deferred_frame_does_not_spin() {
@@ -135,6 +289,8 @@ int main() {
     try {
         test_requests_coalesce_and_idle_does_not_submit();
         test_event_wakes_idle_and_deferred_frame_does_not_spin();
+        test_deadline_wait_rounding_and_event_coalescing();
+        test_animation_pipeline_deferred_retry_and_idle_recovery();
         test_dirty_update_requests_a_frame();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
