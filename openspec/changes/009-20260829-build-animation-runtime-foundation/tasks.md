@@ -1,9 +1,9 @@
 ## 1. 确定时间、typed value 与 easing
 
-- [ ] 1.1 在 `src/animation/` 增加 `AnimationTime`、`AnimationDuration`、production steady clock 与 controlled test clock，使用整数 microseconds 和绝对时间计算；通过同 timestamp、倒退 timestamp、large value、overflow boundary、exact start/end 和 deterministic replay tests 验证
-- [ ] 1.2 增加 closed `AnimationValue` 与 `float`/`Color`/`Point`/`Size`/`Rect`/`LogicalOffset` typed interpolation，校验 type match 与 finite input；通过 endpoint、component-wise geometry、sRGB Color saturation、mismatched type 和 invalid value tests 验证
-- [ ] 1.3 实现 linear 与 hybrid Newton/bisection cubic-bezier solver，锁定 Ant Design 6.5.0 八组 easing preset；通过 x-domain validation、y overshoot、flat derivative、endpoint、reference samples 和 source contract tests 验证
-- [ ] 1.4 将 animation sources/tests 接入 CMake target，使用一个受支持正式 preset 运行本组 unit/source/public forbidden-include tests 和 `git diff --check`；以英文 `feat: add animation timing primitives` 提交并推送本阶段，核对 remote SHA
+- [x] 1.1 在 `src/animation/` 增加 `AnimationTime`、`AnimationDuration`、production steady clock 与 controlled test clock，使用整数 microseconds 和绝对时间计算；通过同 timestamp、倒退 timestamp、large value、overflow boundary、exact start/end 和 deterministic replay tests 验证
+- [x] 1.2 增加 closed `AnimationValue` 与 `float`/`Color`/`Point`/`Size`/`Rect`/`LogicalOffset` typed interpolation，校验 type match 与 finite input；通过 endpoint、component-wise geometry、sRGB Color saturation、mismatched type 和 invalid value tests 验证
+- [x] 1.3 实现 linear 与 hybrid Newton/bisection cubic-bezier solver，锁定 Ant Design 6.5.0 八组 easing preset；通过 x-domain validation、y overshoot、flat derivative、endpoint、reference samples 和 source contract tests 验证
+- [x] 1.4 将 animation sources/tests 接入 CMake target，使用一个受支持正式 preset 运行本组 unit/source/public forbidden-include tests 和 `git diff --check`；以英文 `feat: add animation timing primitives` 提交并推送本阶段，核对 remote SHA
 
 ## 2. generation-safe AnimationRuntime 生命周期
 

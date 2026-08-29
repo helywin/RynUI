@@ -14,6 +14,18 @@ target_include_directories(rynui_theme PUBLIC
 target_include_directories(rynui_theme PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
+add_library(rynui_animation STATIC
+    animation/easing.cpp
+    animation/time.cpp
+    animation/value.cpp
+)
+rynui_configure_cpp_target(rynui_animation)
+target_include_directories(rynui_animation PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 rynui_configure_cpp_target(rynui_string)
 target_include_directories(rynui_string PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
@@ -203,6 +215,7 @@ target_link_libraries(
 
 rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_theme)
+rynui_assert_direct_dependencies(rynui_animation)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
 rynui_assert_direct_dependencies(
     rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)

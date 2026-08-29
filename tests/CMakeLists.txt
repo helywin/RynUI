@@ -109,6 +109,28 @@ rynui_configure_cpp_target(rynui_design_token_tests)
 target_link_libraries(rynui_design_token_tests PRIVATE rynui_theme)
 add_test(NAME rynui.design_token COMMAND rynui_design_token_tests)
 
+add_executable(rynui_animation_time_tests animation_time_tests.cpp)
+rynui_configure_cpp_target(rynui_animation_time_tests)
+target_link_libraries(rynui_animation_time_tests PRIVATE rynui_animation)
+add_test(NAME rynui.animation_time COMMAND rynui_animation_time_tests)
+
+add_executable(rynui_animation_value_tests animation_value_tests.cpp)
+rynui_configure_cpp_target(rynui_animation_value_tests)
+target_link_libraries(rynui_animation_value_tests PRIVATE rynui_animation)
+add_test(NAME rynui.animation_value COMMAND rynui_animation_value_tests)
+
+add_executable(rynui_animation_easing_tests animation_easing_tests.cpp)
+rynui_configure_cpp_target(rynui_animation_easing_tests)
+target_link_libraries(rynui_animation_easing_tests PRIVATE rynui_animation)
+add_test(NAME rynui.animation_easing COMMAND rynui_animation_easing_tests)
+
+add_test(
+    NAME rynui.animation_primitives_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_primitives_contract.cmake"
+)
+
 add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_algorithm_tests)
 target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)
