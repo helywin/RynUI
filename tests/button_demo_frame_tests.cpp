@@ -70,12 +70,18 @@ public:
         void*,
         std::size_t,
         std::span<const std::byte> bytes) override {
+        if (fail_next_quad_upload) {
+            fail_next_quad_upload = false;
+            ++failed_quad_uploads;
+            error = "injected deferred Quad upload";
+            return false;
+        }
         ++quad_uploads;
         quad_uploaded_bytes += bytes.size();
         return true;
     }
 
-    const char* last_error() const noexcept override { return ""; }
+    const char* last_error() const noexcept override { return error.c_str(); }
 
     void* create_glyph_sampler() override { return handle(next_++); }
 
@@ -137,6 +143,9 @@ public:
     std::uint64_t glyph_uploaded_bytes{};
     std::uint64_t effect_buffer_uploads{};
     std::uint64_t effect_uploaded_bytes{};
+    std::uint64_t failed_quad_uploads{};
+    bool fail_next_quad_upload{false};
+    std::string error;
 };
 
 class RecordingDrawApi final : public ryn::detail::SceneDrawApi {
@@ -313,7 +322,11 @@ public:
             quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
                 *gpu_, host_->button_scene().instances());
         } else {
-            host_->button_scene().synchronize_gpu(*quad_buffer_);
+            try {
+                host_->button_scene().synchronize_gpu(*quad_buffer_);
+            } catch (const std::runtime_error&) {
+                return ryn::runtime::FrameSubmissionResult::deferred;
+            }
         }
         glyph_resources_.synchronize(
             text_scene_->atlas(),
@@ -380,23 +393,29 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     ryn::Signal<bool> disabled{false};
     ryn::Signal<bool> loading{false};
     ryn::Signal<ryn::String> observed_clicks{click_label(0)};
+    ryn::ThemeConfig initial_theme;
+    ryn::Signal<ryn::ThemeConfig> theme_config{initial_theme};
     std::uint64_t clicks = 0;
     fixture.host->mount(ryn::Content{[&] {
-        ryn::Button(
-            ryn::ButtonProps{}
-                .type(type)
-                .size(size)
-                .disabled(disabled)
-                .loading(loading)
-                .onClick([&] {
-                    ++clicks;
-                    observed_clicks.set(click_label(clicks));
-                }),
-            [] { ryn::Text(u8"Submit / 提交"); });
-        ryn::Text(
-            ryn::TextProps{}
-                .content(observed_clicks)
-                .tone(ryn::TextTone::Secondary));
+        ryn::Theme(
+            ryn::ThemeProps{}.config(theme_config),
+            ryn::ThemeContent{[&] {
+                ryn::Button(
+                    ryn::ButtonProps{}
+                        .type(type)
+                        .size(size)
+                        .disabled(disabled)
+                        .loading(loading)
+                        .onClick([&] {
+                            ++clicks;
+                            observed_clicks.set(click_label(clicks));
+                        }),
+                    [] { ryn::Text(u8"Submit / 提交"); });
+                ryn::Text(
+                    ryn::TextProps{}
+                        .content(observed_clicks)
+                        .tone(ryn::TextTone::Secondary));
+            }});
     }});
 
     RecordingGpuApi gpu;
@@ -579,6 +598,50 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     require(loop.counters().animation_frames > 0,
             "Button demo did not attribute deadline submissions to animation frames");
 
+    auto dark_theme = initial_theme;
+    dark_theme.algorithms = {ryn::ThemeAlgorithm::Dark};
+    fixture.host->set_animation_time(events.now());
+    require(theme_config.set(dark_theme)
+                && loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "Dark Theme did not start the controlled Button journey");
+    gpu.fail_next_quad_upload = true;
+    bool observed_deferred = false;
+    for (std::size_t step = 0; step < 64 && !observed_deferred; ++step) {
+        const auto result = loop.step();
+        require(result == ryn::runtime::FrameLoopStep::idle
+                    || result == ryn::runtime::FrameLoopStep::submitted
+                    || result == ryn::runtime::FrameLoopStep::deferred,
+                "controlled Button journey failed before deferred upload");
+        observed_deferred = result == ryn::runtime::FrameLoopStep::deferred;
+    }
+    require(observed_deferred
+                && gpu.failed_quad_uploads == 1
+                && !fixture.host->button_scene().instances()
+                    .material_dirty_ranges().empty()
+                && loop.step() == ryn::runtime::FrameLoopStep::submitted,
+            "deferred Button GPU upload did not retain and retry its exact range");
+
+    auto motion_disabled = dark_theme;
+    motion_disabled.seed.motion = false;
+    fixture.host->set_animation_time(events.now());
+    require(theme_config.set(motion_disabled)
+                && loop.step() == ryn::runtime::FrameLoopStep::submitted
+                && fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value(),
+            "Theme motion=false did not synchronously finish the Button journey");
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
+    fixture.host->set_animation_time(events.now());
+    require(theme_config.set(initial_theme)
+                && loop.step() == ryn::runtime::FrameLoopStep::submitted
+                && fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value(),
+            "reduced policy retained animation work during Theme restoration");
+    static_cast<void>(drain_animation_frames(
+        *fixture.host,
+        loop,
+        "controlled Button journey did not return to idle"));
+
     const auto submissions = loop.counters().submissions;
     for (int index = 0; index < 60; ++index) {
         require(loop.step() == ryn::runtime::FrameLoopStep::idle,
@@ -598,6 +661,7 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 && pointer_diagnostics.captures_released == 2
                 && focus_diagnostics.focus_changes > 0
                 && fixture.host->scene_composer().diagnostics().rebuilds == 1
+                && loop.counters().deferred_submissions == 1
                 && quad_counters.range_uploads > 0
                 && gpu.glyph_buffer_uploads > 1
                 && gpu.effect_buffer_uploads > 1
@@ -605,6 +669,25 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 && draw.glyph_draws > 1
                 && draw.effect_draws > 1,
             "Button demo diagnostics missed input/scene/upload/draw/idle evidence");
+    require(fixture.host->destroy(target.component)
+                && fixture.host->animations().size() == 0
+                && fixture.host->animations().diagnostics().scopes == 0
+                && fixture.host->animations().diagnostics().targets == 0
+                && fixture.host->button_scene().size() == 0,
+            "controlled Button journey owner destroy leaked retained animation state");
+    const auto& animation = fixture.host->animations().diagnostics();
+    std::cout << "frame_submissions=" << loop.counters().submissions
+              << " animation_frames=" << loop.counters().animation_frames
+              << " deferred_submissions=" << loop.counters().deferred_submissions
+              << " idle_waits=" << loop.counters().idle_waits
+              << " idle_after_animation=" << loop.counters().idle_after_animation
+              << " animation_created=" << animation.created
+              << " animation_completed=" << animation.completed
+              << " animation_canceled=" << animation.canceled
+              << " animation_retargeted=" << animation.retargeted
+              << " animation_active=" << animation.active
+              << " quad_range_uploads=" << quad_counters.range_uploads
+              << " exit_code=0\n";
 }
 
 } // namespace

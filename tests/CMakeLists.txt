@@ -158,6 +158,82 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_primitives_contract.cmake"
 )
 
+set(animation_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/009-20260829-build-animation-runtime-foundation/evidence"
+)
+add_test(
+    NAME rynui.animation_generic_evidence
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${animation_evidence_directory}/platform-generic-animation-runtime.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.animation_windows_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${animation_evidence_directory}/windows-animation-runtime.md"
+        -DEXPECTED_SCOPE=windows
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.animation_linux_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${animation_evidence_directory}/linux-animation-runtime.md"
+        -DEXPECTED_SCOPE=linux
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+add_test(
+    NAME rynui.animation_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${animation_evidence_directory}/windows-animation-runtime.md"
+        -DEXPECTED_SCOPE=linux
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.animation_evidence_cross_platform_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+add_test(
+    NAME rynui.animation_evidence_planning_only_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/animation-evidence-planning-only.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.animation_evidence_planning_only_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+add_test(
+    NAME rynui.animation_evidence_completion_idle_required
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/animation-evidence-missing-completion.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_evidence_schema.cmake"
+)
+set_tests_properties(
+    rynui.animation_evidence_completion_idle_required
+    PROPERTIES WILL_FAIL TRUE
+)
+add_test(
+    NAME rynui.animation_architecture_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DARCHITECTURE_FILE=${PROJECT_SOURCE_DIR}/docs/architecture.md"
+        "-DREADME_FILE=${PROJECT_SOURCE_DIR}/README.md"
+        "-DAGENTS_FILE=${PROJECT_SOURCE_DIR}/AGENTS.md"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_animation_architecture_contract.cmake"
+)
+add_test(
+    NAME rynui.python_cache_clean
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_python_cache_clean.cmake"
+)
+
 add_executable(rynui_theme_algorithm_tests theme_algorithm_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_algorithm_tests)
 target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)

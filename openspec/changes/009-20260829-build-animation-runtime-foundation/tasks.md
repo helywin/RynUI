@@ -46,11 +46,11 @@
 
 ## 7. 平台通用集成与架构基线
 
-- [ ] 7.1 增加完整 headless journey，覆盖 controlled clock、60/120/144 Hz、hover/active/loading/focus、rapid retarget、Theme motion toggle、reduced policy、GPU deferred retry、owner destroy、最后一帧与恢复 idle；验证逐帧 presentation、identity、dirty range 和 diagnostics
-- [ ] 7.2 增加 animation evidence schema，要求 clock/cadence、Theme source/token、lifecycle counters、allocation、Button state、target/upload range、frame submit/idle、preset/compiler/platform/driver/shader/font 与真实窗口 evidence path；拒绝 planning-only、跨平台 identity 和缺失 completion/idle 证据
-- [ ] 7.3 更新 `docs/architecture.md` 与必要的 generated Token reference，明确基础 Runtime、复杂动画后续边界、Button 首批消费和 reduced policy seam；README 仅在项目状态或文档入口确有变化时更新，AGENTS 工作流不得混入 README
-- [ ] 7.4 在一个受支持平台记录实际 OS/compiler/preset，运行全部平台通用 animation/runtime/Button unit、headless、contract、benchmark、public dependency、lock/license 和 Python cache 检查；确认 tracked/untracked 均无 `__pycache__`、`.pyc`、`.pyo`
-- [ ] 7.5 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate animation runtime contracts` 提交并推送平台通用 evidence，不要求另一平台重复本组合同，核对 remote SHA
+- [x] 7.1 增加完整 headless journey，覆盖 controlled clock、60/120/144 Hz、hover/active/loading/focus、rapid retarget、Theme motion toggle、reduced policy、GPU deferred retry、owner destroy、最后一帧与恢复 idle；验证逐帧 presentation、identity、dirty range 和 diagnostics
+- [x] 7.2 增加 animation evidence schema，要求 clock/cadence、Theme source/token、lifecycle counters、allocation、Button state、target/upload range、frame submit/idle、preset/compiler/platform/driver/shader/font 与真实窗口 evidence path；拒绝 planning-only、跨平台 identity 和缺失 completion/idle 证据
+- [x] 7.3 更新 `docs/architecture.md` 与必要的 generated Token reference，明确基础 Runtime、复杂动画后续边界、Button 首批消费和 reduced policy seam；README 仅在项目状态或文档入口确有变化时更新，AGENTS 工作流不得混入 README
+- [x] 7.4 在一个受支持平台记录实际 OS/compiler/preset，运行全部平台通用 animation/runtime/Button unit、headless、contract、benchmark、public dependency、lock/license 和 Python cache 检查；确认 tracked/untracked 均无 `__pycache__`、`.pyc`、`.pyo`
+- [x] 7.5 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate animation runtime contracts` 提交并推送平台通用 evidence，不要求另一平台重复本组合同，核对 remote SHA
 
 ## 8. Windows 专属验收
 

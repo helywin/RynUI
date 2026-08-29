@@ -333,7 +333,19 @@ Token 读取会在 reactive scope 记录 identity subscription。Theme 更新比
 - Button focus-visible 固定为 1 logical px 透明 gap 后的 3 logical px hollow ring；它是独立 outline effect，不是连续 4px 蓝色边框，也不能被 shadow/state layer 覆盖。
 - Geometry、blur、spread、offset、outline 与 antialias 均从 logical unit 转为 device unit；布局视口、字体 raster 与 effect resource 必须使用同一 render scale，避免 DPI 变化造成裁切、发虚或边缘异常增厚。
 
-### 9.6 验收方式
+### 9.6 Motion 与基础动画 Runtime
+
+基础动画由 internal `AnimationRuntime` 统一管理，不从 `rynui.hpp` 导出稳定 consumer DSL。Runtime 使用整数 microseconds、production steady clock 与 controlled test clock；动画、target 和 owner scope 都使用 slot + generation identity，并受 UI owner thread 约束。closed typed value 首批支持 `float`、`Color` 和 logical geometry，easing 使用 validated typed cubic-bezier，不接受 CSS transition string。
+
+`OnDemandFrameLoop` 通过可选 deadline source 获取最早 animation deadline，把 input、resize 与 animation wake 合并到同一 frame timestamp。没有活动动画时继续使用 blocking one-shot 行为，不以固定 16ms timer 轮询；deferred GPU submit 保留 dirty range，并在同一 timestamp 重试时不得重复推进动画。
+
+Theme snapshot 解析 `motionBase`、`motionUnit`、fast/mid/slow duration 和八组 typed easing。effective `MotionPolicy` 组合 Theme `motion` 与可注入的 `normal|reduced` preference；motion disabled 或 reduced 时，非必要 duration/delay 归零并同步提交最终可访问状态。平台系统偏好 source 是后续 adapter 边界，不得把某个桌面私有设置写进跨平台 Runtime。
+
+Button 是首个 consumer：hover、active、loading color/opacity 使用 `motionDurationMid` 与 `motionEaseInOut` 原地 retarget，focus-visible outline 保持 `0s`。loading indicator 始终保留固定八段 rounded-quad topology；normal motion 只更新 linear phase 派生的 Material opacity，disabled/reduced motion 使用固定静态分布。动画 tick 只能进入已声明的 Material、Transform、Geometry 或 Animation dirty domain，不得默认触发 Structure、Measure、Layout、HitTest、component remount 或无关 sibling upload。
+
+当前基础 Runtime 不包含 spring/physics、keyframe timeline、layout transition、shared element、path morph、gesture-driven animation、wave/ripple 或公开自定义动画 DSL。此类复杂动画必须通过后续 OpenSpec change 设计，不得以扩展 Button 私有接口的方式形成事实公共 ABI。
+
+### 9.7 验收方式
 
 每个基础组件在进入稳定 API 前必须提供：
 
