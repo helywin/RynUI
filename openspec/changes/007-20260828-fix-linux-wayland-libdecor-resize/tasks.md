@@ -41,5 +41,5 @@
 
 ## 7. 变更收口
 
-- [ ] 7.1 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、完整平台通用 CTest（若 4.1 已完成同一提交状态则复用其结果）和 `git diff --check`，确认所有 lock、license、patch、源文件与证据均已跟踪且工作树不含临时诊断修改
-- [ ] 7.2 汇总 Linux 与 Windows 独立证据、commit IDs、剩余限制和上游迁移条件；只有本 change 所有 checkbox 都有对应验证后才报告实施完成，不主动 push 或 archive
+- [x] 7.1 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、完整平台通用 CTest（若 4.1 已完成同一提交状态则复用其结果）和 `git diff --check`，确认所有 lock、license、patch、源文件与证据均已跟踪且工作树不含临时诊断修改
+- [x] 7.2 汇总 Linux 与 Windows 独立证据、commit IDs、剩余限制和上游迁移条件；只有本 change 所有 checkbox 都有对应验证后才报告实施完成，不主动 push 或 archive
