@@ -51,6 +51,23 @@ std::size_t drain_animation_frames(
     return static_cast<std::size_t>(loop.counters().submissions - submissions);
 }
 
+void advance_animation_frame(
+    ryn::runtime::OnDemandFrameLoop& loop,
+    const char* message) {
+    const auto animation_frames = loop.counters().animation_frames;
+    for (std::size_t step = 0; step < 64; ++step) {
+        const auto result = loop.step();
+        require(
+            result == ryn::runtime::FrameLoopStep::submitted
+                || result == ryn::runtime::FrameLoopStep::idle,
+            message);
+        if (loop.counters().animation_frames > animation_frames) {
+            return;
+        }
+    }
+    require(false, message);
+}
+
 bool near(float actual, float expected, float tolerance = 0.001F) {
     return std::fabs(actual - expected) <= tolerance;
 }
@@ -335,10 +352,16 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
         definition.smoke_step(step);
         require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
                 "Token Gallery 200% acceptance viewport lost a theme or state frame");
-        static_cast<void>(drain_animation_frames(
-            *fixture.host,
-            loop,
-            "Token Gallery 200% acceptance animations did not settle"));
+        if (step < 3) {
+            advance_animation_frame(
+                loop,
+                "Token Gallery 200% acceptance animation frame did not advance");
+        } else {
+            static_cast<void>(drain_animation_frames(
+                *fixture.host,
+                loop,
+                "Token Gallery 200% acceptance animations did not settle"));
+        }
     }
 }
 
@@ -439,28 +462,23 @@ void test_token_gallery_frame_contract() {
     definition.smoke_step(0);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Dark Theme did not submit a Token Gallery frame");
-    require(
-        drain_animation_frames(
-            *fixture.host,
-            loop,
-            "Dark Theme animations did not settle through frame deadlines") > 0,
-        "Dark Theme did not submit animation frames");
+    advance_animation_frame(
+        loop,
+        "Dark Theme did not submit an animation deadline frame");
     require(gpu.effect_uploads > effect_uploads && gpu.quad_uploads > quad_uploads,
             "Theme update did not produce local retained uploads");
     definition.smoke_step(1);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Compact Theme did not submit a Token Gallery frame");
-    static_cast<void>(drain_animation_frames(
-        *fixture.host,
+    advance_animation_frame(
         loop,
-        "Compact Theme animations did not settle through frame deadlines"));
+        "Compact Theme did not submit an animation deadline frame");
     definition.smoke_step(2);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Brand Seed did not submit a Token Gallery frame");
-    static_cast<void>(drain_animation_frames(
-        *fixture.host,
+    advance_animation_frame(
         loop,
-        "Brand Seed animations did not settle through frame deadlines"));
+        "Brand Seed did not submit an animation deadline frame");
     definition.smoke_step(3);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "disabled/loading update did not submit a Token Gallery frame");

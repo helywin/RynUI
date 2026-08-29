@@ -452,6 +452,11 @@ target_compile_definitions(
 )
 add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
 
+add_executable(rynui_button_spinner_benchmark button_spinner_benchmark.cpp)
+rynui_configure_cpp_target(rynui_button_spinner_benchmark)
+target_link_libraries(rynui_button_spinner_benchmark PRIVATE rynui_components)
+add_test(NAME rynui.button_spinner_benchmark COMMAND rynui_button_spinner_benchmark)
+
 add_executable(rynui_flex_component_tests flex_component_tests.cpp)
 rynui_configure_cpp_target(rynui_flex_component_tests)
 target_link_libraries(rynui_flex_component_tests PRIVATE rynui_components)

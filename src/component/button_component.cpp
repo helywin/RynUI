@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <numbers>
 #include <stdexcept>
 #include <utility>
 
@@ -72,9 +73,11 @@ struct ButtonComponentState final {
     Color presentation_border;
     Color presentation_foreground;
     float presentation_loading_mix{0.0F};
+    float spinner_phase{0.0F};
     animation::AnimationScopeId animation_scope;
-    std::array<animation::AnimationTargetId, 4> animation_targets;
-    std::array<animation::AnimationId, 4> animations;
+    std::array<animation::AnimationTargetId, button_animation_channel_count>
+        animation_targets;
+    std::array<animation::AnimationId, button_animation_channel_count> animations;
     layout::HorizontalContentLayout layout_model;
     theme_runtime::Subscription color_subscription;
     theme_runtime::Subscription effect_subscription;
@@ -90,6 +93,48 @@ thread_local ButtonComponentHost* active_button_host = nullptr;
 constexpr std::size_t animation_channel_index(
     ButtonAnimationChannel channel) noexcept {
     return static_cast<std::size_t>(channel);
+}
+
+constexpr animation::AnimationDuration spinner_period =
+    animation::AnimationDuration::microseconds(800'000);
+
+float normalized_spinner_phase(float phase) noexcept {
+    const float wrapped = phase - std::floor(phase);
+    return wrapped < 0.0F ? wrapped + 1.0F : wrapped;
+}
+
+float spinner_segment_strength(float phase, std::size_t segment) noexcept {
+    const float angle = 2.0F * std::numbers::pi_v<float>
+        * (static_cast<float>(segment)
+               / static_cast<float>(component::button_loading_segment_count)
+            - normalized_spinner_phase(phase));
+    const float wave = 0.5F + 0.5F * std::cos(angle);
+    return 0.18F + 0.82F * wave * wave;
+}
+
+runtime::Rect spinner_segment_bounds(
+    runtime::Rect indicator,
+    std::size_t segment) noexcept {
+    const float size = std::min(indicator.width, indicator.height);
+    if (size <= 0.0F) {
+        return {};
+    }
+    const float extent = size * 0.22F;
+    const float orbit = 0.5F * (size - extent);
+    const float angle = -0.5F * std::numbers::pi_v<float>
+        + 2.0F * std::numbers::pi_v<float>
+            * static_cast<float>(segment)
+            / static_cast<float>(component::button_loading_segment_count);
+    const float center_x = indicator.x + 0.5F * indicator.width
+        + std::cos(angle) * orbit;
+    const float center_y = indicator.y + 0.5F * indicator.height
+        + std::sin(angle) * orbit;
+    return {
+        center_x - 0.5F * extent,
+        center_y - 0.5F * extent,
+        extent,
+        extent,
+    };
 }
 
 class ActiveButtonHostGuard final {
@@ -572,6 +617,9 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(
         state->presentation_border,
         state->presentation_foreground,
         state->presentation_loading_mix,
+        state->spinner_phase,
+        animations_.contains(state->animations[animation_channel_index(
+            ButtonAnimationChannel::spinner_phase)]),
     };
 }
 
@@ -791,6 +839,7 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
             ButtonAnimationChannel::loading_mix,
             state.loading ? 1.0F : 0.0F,
             spec);
+        update_spinner(state, policy);
     }
     apply_presentation(state);
 }
@@ -806,7 +855,6 @@ void ButtonComponentHost::apply_presentation(
         state.presentation_loading_mix, 0.0F, 1.0F);
     const float layer_opacity = 1.0F
         + (button.loading_opacity - 1.0F) * loading_mix;
-    const float indicator_opacity = button.loading_opacity * loading_mix;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color =
         channels(state.presentation_border);
@@ -816,10 +864,14 @@ void ButtonComponentHost::apply_presentation(
         channels(state.presentation_background);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity =
         layer_opacity;
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::loading_indicator)].color =
-        channels(state.presentation_foreground);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::loading_indicator)].opacity =
-        indicator_opacity;
+    for (std::size_t segment = 0;
+         segment < component::button_loading_segment_count;
+         ++segment) {
+        auto& indicator = next[component::button_loading_segment_index(segment)];
+        indicator.color = channels(state.presentation_foreground);
+        indicator.opacity = button.loading_opacity * loading_mix
+            * spinner_segment_strength(state.spinner_phase, segment);
+    }
 
     bool changed_material = false;
     bool changed_geometry = false;
@@ -896,11 +948,18 @@ void ButtonComponentHost::register_animation_targets(
                 *this,
                 animation::AnimationValueKind::scalar,
                 dirty);
+        state.animation_targets[animation_channel_index(
+            ButtonAnimationChannel::spinner_phase)] = animations_.register_target(
+                state.animation_scope,
+                *this,
+                animation::AnimationValueKind::scalar,
+                dirty);
         for (const auto channel : {
                 ButtonAnimationChannel::background,
                 ButtonAnimationChannel::border,
                 ButtonAnimationChannel::foreground,
-                ButtonAnimationChannel::loading_mix}) {
+                ButtonAnimationChannel::loading_mix,
+                ButtonAnimationChannel::spinner_phase}) {
             animation_bindings_.push_back({
                 state.animation_targets[animation_channel_index(channel)],
                 state.component,
@@ -957,6 +1016,9 @@ void ButtonComponentHost::retarget_channel(
     case ButtonAnimationChannel::loading_mix:
         current = state.presentation_loading_mix;
         break;
+    case ButtonAnimationChannel::spinner_phase:
+        current = state.spinner_phase;
+        break;
     }
 
     auto& active = state.animations[index];
@@ -981,6 +1043,44 @@ void ButtonComponentHost::retarget_channel(
             spec,
             animation_time_);
     }
+}
+
+void ButtonComponentHost::update_spinner(
+    ButtonComponentState& state,
+    const animation::MotionPolicy& policy) {
+    if (state.loading && policy.enabled()) {
+        start_spinner(state);
+        return;
+    }
+    stop_spinner(state);
+}
+
+void ButtonComponentHost::start_spinner(ButtonComponentState& state) {
+    const auto index = animation_channel_index(
+        ButtonAnimationChannel::spinner_phase);
+    auto& active = state.animations[index];
+    if (animations_.contains(active)) {
+        return;
+    }
+    const float phase = normalized_spinner_phase(state.spinner_phase);
+    state.spinner_phase = phase;
+    active = animations_.play(
+        state.animation_targets[index],
+        phase,
+        phase + 1.0F,
+        {{}, spinner_period, animation::Easing::linear()},
+        animation_time_);
+}
+
+void ButtonComponentHost::stop_spinner(ButtonComponentState& state) {
+    const auto index = animation_channel_index(
+        ButtonAnimationChannel::spinner_phase);
+    auto& active = state.animations[index];
+    if (animations_.contains(active)) {
+        static_cast<void>(animations_.cancel(active, animation_time_));
+    }
+    active = {};
+    state.spinner_phase = 0.0F;
 }
 
 void ButtonComponentHost::apply(
@@ -1021,6 +1121,9 @@ void ButtonComponentHost::apply(
     case ButtonAnimationChannel::loading_mix:
         state->presentation_loading_mix = std::get<float>(value);
         break;
+    case ButtonAnimationChannel::spinner_phase:
+        state->spinner_phase = normalized_spinner_phase(std::get<float>(value));
+        break;
     }
     apply_presentation(*state, true);
 }
@@ -1039,6 +1142,16 @@ void ButtonComponentHost::completed(
         auto& active = state->animations[animation_channel_index(binding->channel)];
         if (active == animation) {
             active = {};
+            if (binding->channel == ButtonAnimationChannel::spinner_phase) {
+                const auto& theme = components()
+                    .theme_scope(state->component)
+                    ->snapshot();
+                const auto policy = animation::resolve_motion_policy(
+                    theme, motion_preference_);
+                if (state->loading && policy.enabled()) {
+                    start_spinner(*state);
+                }
+            }
         }
     }
 }
@@ -1160,14 +1273,19 @@ void ButtonComponentHost::synchronize_geometry(
             node.translation);
     const auto indicator_bounds = content.loading_indicator_bounds.value_or(
         runtime::Rect{});
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::loading_indicator)] =
-        make_quad(
-            indicator_bounds,
+    for (std::size_t segment = 0;
+         segment < component::button_loading_segment_count;
+         ++segment) {
+        const auto index = component::button_loading_segment_index(segment);
+        const auto bounds = spinner_segment_bounds(indicator_bounds, segment);
+        next[index] = make_quad(
+            bounds,
             viewport,
-            next[2].color,
-            next[2].opacity,
-            button.loading_indicator_size * 0.5F,
+            next[index].color,
+            next[index].opacity,
+            0.5F * std::min(bounds.width, bounds.height),
             node.translation);
+    }
     state.visuals = next;
     static_cast<void>(button_scene_.update(state.scene, state.visuals));
     auto effects = state.effects;
@@ -1285,6 +1403,7 @@ void mount_button_component(
         static_cast<void>(interactions->remove(interaction));
     });
     host.register_animation_targets(state);
+    host.update_visuals(state);
     build.on_resource_cleanup(component, [
         buttons = &host,
         component] {

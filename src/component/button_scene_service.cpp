@@ -15,8 +15,16 @@ ButtonSceneService::ButtonSceneService(
 
 void ButtonSceneService::reserve(std::size_t button_capacity) {
     ensure_owner_thread();
+    if (button_capacity
+            > std::numeric_limits<std::uint32_t>::max()
+                / button_visual_layer_count) {
+        throw std::length_error("Button scene capacity exceeds uint32_t");
+    }
     slots_.reserve(button_capacity);
     free_slots_.reserve(button_capacity);
+    instances_.reserve(
+        button_capacity * button_visual_layer_count,
+        button_capacity);
 }
 
 ButtonSceneId ButtonSceneService::create(

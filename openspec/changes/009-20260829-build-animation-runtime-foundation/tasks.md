@@ -39,10 +39,10 @@
 
 ## 6. retained Button loading spinner
 
-- [ ] 6.1 将 static loading layer 改为固定八段 retained rounded-quad topology，非 loading 时隐藏但不增删 fragment layer；通过 geometry、DPI scale、clip、scene order、mount/destroy/reuse 和 topology stability tests 验证
-- [ ] 6.2 实现 linear spinner phase，仅在 loading 可见且 motion enabled 时更新八段 Material opacity；通过 phase wrap、cadence-independent endpoint、multiple Button、visibility、owner dispose 和 exact dirty-range tests 验证
-- [ ] 6.3 为 motion disabled/reduced 提供可识别静态 indicator，并在运行时 policy/loading 切换后移除 deadline；通过 no continuous tick/submit、idle recovery、final loading semantics 和 Theme toggle tests 验证
-- [ ] 6.4 运行 loading spinner、Button layout/scene/GPU、frame idle、capacity benchmark 与 `git diff --check`；以英文 `feat: add retained button spinner` 提交并推送本阶段，核对 remote SHA
+- [x] 6.1 将 static loading layer 改为固定八段 retained rounded-quad topology，非 loading 时隐藏但不增删 fragment layer；通过 geometry、DPI scale、clip、scene order、mount/destroy/reuse 和 topology stability tests 验证
+- [x] 6.2 实现 linear spinner phase，仅在 loading 可见且 motion enabled 时更新八段 Material opacity；通过 phase wrap、cadence-independent endpoint、multiple Button、visibility、owner dispose 和 exact dirty-range tests 验证
+- [x] 6.3 为 motion disabled/reduced 提供可识别静态 indicator，并在运行时 policy/loading 切换后移除 deadline；通过 no continuous tick/submit、idle recovery、final loading semantics 和 Theme toggle tests 验证
+- [x] 6.4 运行 loading spinner、Button layout/scene/GPU、frame idle、capacity benchmark 与 `git diff --check`；以英文 `feat: add retained button spinner` 提交并推送本阶段，核对 remote SHA
 
 ## 7. 平台通用集成与架构基线
 

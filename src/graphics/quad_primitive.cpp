@@ -7,6 +7,18 @@
 #include <stdexcept>
 
 namespace ryn::graphics {
+
+void QuadInstanceStore::reserve(
+    std::size_t instance_capacity,
+    std::size_t dirty_range_capacity) {
+    if (instance_capacity > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::length_error("Quad instance capacity exceeds uint32_t");
+    }
+    instances_.reserve(instance_capacity);
+    material_dirty_ranges_.reserve(dirty_range_capacity);
+    geometry_dirty_ranges_.reserve(dirty_range_capacity);
+}
+
 namespace {
 
 std::runtime_error upload_error(QuadUploadApi& api, const char* fallback) {
@@ -119,6 +131,10 @@ std::span<const QuadInstance> QuadInstanceStore::instances() const noexcept {
 
 std::size_t QuadInstanceStore::size() const noexcept {
     return instances_.size();
+}
+
+std::size_t QuadInstanceStore::capacity() const noexcept {
+    return instances_.capacity();
 }
 
 std::span<const std::byte> QuadInstanceStore::bytes(
@@ -251,14 +267,13 @@ void QuadInstanceStore::mark_dirty(
     }
     ranges.push_back(range);
     std::ranges::sort(ranges, {}, &QuadInstanceRange::first);
-    std::vector<QuadInstanceRange> merged;
-    merged.reserve(ranges.size());
+    std::size_t merged_size = 0;
     for (const auto candidate : ranges) {
-        if (merged.empty()) {
-            merged.push_back(candidate);
+        if (merged_size == 0) {
+            ranges[merged_size++] = candidate;
             continue;
         }
-        auto& prior = merged.back();
+        auto& prior = ranges[merged_size - 1];
         const std::uint64_t prior_end =
             static_cast<std::uint64_t>(prior.first) + prior.count;
         const std::uint64_t candidate_end =
@@ -267,10 +282,10 @@ void QuadInstanceStore::mark_dirty(
             prior.count = static_cast<std::uint32_t>(
                 std::max(prior_end, candidate_end) - prior.first);
         } else {
-            merged.push_back(candidate);
+            ranges[merged_size++] = candidate;
         }
     }
-    ranges = std::move(merged);
+    ranges.resize(merged_size);
 }
 
 void QuadInstanceStore::require_range(QuadInstanceRange range) const {

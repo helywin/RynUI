@@ -4,6 +4,7 @@
 #include <ryn/rynui.hpp>
 
 #include <array>
+#include <cmath>
 #include <exception>
 #include <iostream>
 #include <limits>
@@ -22,6 +23,10 @@ void require(bool condition, const char* message) {
 
 std::array<float, 4> channels(ryn::Color color) {
     return {color.red(), color.green(), color.blue(), color.alpha()};
+}
+
+bool near(float actual, float expected, float tolerance = 0.001F) {
+    return std::fabs(actual - expected) <= tolerance;
 }
 
 struct Fixture final {
@@ -103,6 +108,16 @@ struct Fixture final {
             host->mounted_buttons()[button].scene);
         return host->button_scene().instances().at(
             range.first + static_cast<std::uint32_t>(visual));
+    }
+
+    const ryn::graphics::QuadInstance& loading_segment(
+        std::size_t button,
+        std::size_t segment) const {
+        const auto range = host->button_scene().visual_range(
+            host->mounted_buttons()[button].scene);
+        return host->button_scene().instances().at(
+            range.first + static_cast<std::uint32_t>(
+                ryn::component::button_loading_segment_index(segment)));
     }
 
     std::array<float, 4> text_color(std::size_t index) const {
@@ -194,7 +209,7 @@ void test_mount_scene_composition_and_lifecycle() {
                 && fixture.host->interactions().size() == 2
                 && fixture.host->button_scene().size() == 2
                 && fixture.host->animations().diagnostics().scopes == 2
-                && fixture.host->animations().diagnostics().targets == 8
+                && fixture.host->animations().diagnostics().targets == 10
                 && fixture.nodes.size() == 4,
             "Button mount did not create stable component resources");
     const auto first = fixture.host->mounted_buttons()[0];
@@ -242,7 +257,7 @@ void test_mount_scene_composition_and_lifecycle() {
                 && fixture.host->text().mounted_texts().size() == 1,
             "Button destroy leaked its content, interaction, or scene range");
     require(fixture.host->animations().diagnostics().scopes == 1
-                && fixture.host->animations().diagnostics().targets == 4
+                && fixture.host->animations().diagnostics().targets == 5
                 && fixture.host->animations().size() == 0,
             "Button destroy leaked animation scope or target resources");
     static_cast<void>(fixture.frames.consume_request());
@@ -615,6 +630,136 @@ void test_animated_presentation_retarget_and_motion_policy() {
                 && fixture.nodes.require(mounted.node).measure_count == measure_count
                 && fixture.host->mounted_buttons().front().scene == scene,
             "reduced motion did not snap to final retained Button presentation");
+}
+
+void test_retained_loading_spinner_phase_and_policy_lifecycle() {
+    Fixture fixture;
+    ryn::ThemeConfig theme;
+    ryn::Signal<ryn::ThemeConfig> theme_config{theme};
+    ryn::Signal<bool> loading{true};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(
+            ryn::ThemeProps{}.config(theme_config),
+            ryn::ThemeContent{[&] {
+                ryn::Button(
+                    ryn::ButtonProps{}.loading(loading),
+                    [] { ryn::Text(u8"First spinner"); });
+                ryn::Button(
+                    ryn::ButtonProps{}.loading(loading),
+                    [] { ryn::Text(u8"Second spinner"); });
+            }});
+    }});
+    require(fixture.synchronize(), "loading spinner fixture did not synchronize");
+    const auto first = fixture.host->mounted_buttons()[0];
+    const auto second = fixture.host->mounted_buttons()[1];
+    const auto first_range = fixture.host->button_scene().visual_range(first.scene);
+    const auto second_range = fixture.host->button_scene().visual_range(second.scene);
+    const auto instance_count = fixture.host->button_scene().instances().size();
+    const auto scene_rebuilds = fixture.host->scene_composer().diagnostics().rebuilds;
+    require(first_range.count == ryn::component::button_visual_layer_count
+                && second_range.count == ryn::component::button_visual_layer_count
+                && instance_count == 2 * ryn::component::button_visual_layer_count
+                && fixture.host->animations().size() == 2
+                && fixture.host->snapshot(first.component).spinner_running
+                && fixture.host->snapshot(second.component).spinner_running,
+            "loading Buttons did not retain eight segments and one phase each");
+    for (std::size_t segment = 0;
+         segment < ryn::component::button_loading_segment_count;
+         ++segment) {
+        const auto& visual = fixture.loading_segment(0, segment);
+        require(visual.clip_rect[2] > 0.0F
+                    && visual.clip_rect[3] < 0.0F
+                    && visual.corner_radius == 0.5F
+                    && visual.opacity > 0.0F,
+                "loading spinner segment geometry or visibility is invalid");
+    }
+    const auto& scale_reference = fixture.loading_segment(0, 0);
+    require(near(
+                std::fabs(scale_reference.clip_rect[2]) * 0.5F * 960.0F,
+                14.0F * 0.22F * 1.5F,
+                0.01F),
+            "loading spinner segment did not scale from logical to 150 percent pixels");
+
+    clear_observation_state(fixture);
+    static_cast<void>(fixture.tick(50'000));
+    const auto first_tick = fixture.host->snapshot(first.component);
+    const auto second_tick = fixture.host->snapshot(second.component);
+    const auto& material_ranges =
+        fixture.host->button_scene().instances().material_dirty_ranges();
+    require(near(first_tick.spinner_phase, 0.0625F)
+                && near(second_tick.spinner_phase, 0.0625F)
+                && material_ranges.size() == 2
+                && material_ranges[0] == ryn::graphics::QuadInstanceRange{
+                    first_range.first + 2,
+                    ryn::component::button_loading_segment_count}
+                && material_ranges[1] == ryn::graphics::QuadInstanceRange{
+                    second_range.first + 2,
+                    ryn::component::button_loading_segment_count}
+                && fixture.dirty.material_nodes().size() == 2
+                && fixture.dirty.animation_nodes().size() == 2
+                && fixture.dirty.layout_roots().empty()
+                && fixture.dirty.hit_test_nodes().empty(),
+            "spinner phase escaped its exact Material/Animation ranges");
+
+    clear_observation_state(fixture);
+    static_cast<void>(fixture.tick(800'000));
+    require(near(fixture.host->snapshot(first.component).spinner_phase, 0.0F)
+                && fixture.host->snapshot(first.component).spinner_running
+                && fixture.host->animations().size() == 2,
+            "spinner phase did not wrap and continue independent of skipped cadence");
+
+    require(fixture.host->destroy(first.component)
+                && fixture.host->animations().size() == 1
+                && fixture.host->animations().diagnostics().scopes == 1
+                && fixture.host->animations().diagnostics().targets == 5
+                && fixture.host->mounted_buttons().front().component == second.component
+                && fixture.host->mounted_buttons().front().scene == second.scene,
+            "spinner owner destroy leaked its phase or changed sibling identity");
+
+    auto motion_disabled = theme;
+    motion_disabled.seed.motion = false;
+    require(theme_config.set(motion_disabled)
+                && fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value(),
+            "Theme motion=false retained a spinner deadline");
+    const auto static_spinner = fixture.host->snapshot(second.component);
+    require(!static_spinner.spinner_running
+                && near(static_spinner.spinner_phase, 0.0F)
+                && fixture.loading_segment(0, 0).opacity
+                    > fixture.loading_segment(0, 4).opacity,
+            "Theme motion=false did not retain a recognizable static indicator");
+
+    require(theme_config.set(theme)
+                && fixture.host->snapshot(second.component).spinner_running
+                && fixture.host->animations().size() == 1,
+            "Theme motion restoration did not restart the retained spinner");
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
+    require(!fixture.host->snapshot(second.component).spinner_running
+                && fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value(),
+            "reduced motion retained a spinner deadline");
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::normal);
+    require(fixture.host->snapshot(second.component).spinner_running,
+            "normal motion did not restart the spinner");
+
+    loading.set(false);
+    require(!fixture.host->snapshot(second.component).spinner_running,
+            "loading=false retained continuous spinner phase");
+    static_cast<void>(fixture.tick(1'000'000));
+    require(fixture.host->animations().size() == 0
+                && !fixture.host->animations().next_deadline().has_value()
+                && near(
+                    fixture.host->snapshot(second.component)
+                        .presentation_loading_mix,
+                    0.0F)
+                && fixture.host->mounted_buttons().front().scene == second.scene
+                && fixture.host->scene_composer().diagnostics().rebuilds
+                    == scene_rebuilds
+                && fixture.host->button_scene().instances().size()
+                    == instance_count - ryn::component::button_visual_layer_count,
+            "loading completion did not recover idle with retained sibling topology");
 }
 
 void test_pointer_keyboard_click_path_and_callback_mutation() {
@@ -1008,6 +1153,7 @@ int main() {
         test_mount_scene_composition_and_lifecycle();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_animated_presentation_retarget_and_motion_policy();
+        test_retained_loading_spinner_phase_and_policy_lifecycle();
         test_pointer_keyboard_click_path_and_callback_mutation();
         test_nested_theme_override_updates_button_without_remounting();
         test_click_callback_can_destroy_parent_scope();

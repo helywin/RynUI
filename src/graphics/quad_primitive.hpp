@@ -81,6 +81,9 @@ struct QuadGeometry final {
 
 class QuadInstanceStore final {
 public:
+    void reserve(
+        std::size_t instance_capacity,
+        std::size_t dirty_range_capacity = 0);
     [[nodiscard]] QuadPrimitive add(runtime::NodeId node, QuadInstance instance);
     [[nodiscard]] QuadInstanceRange append(std::span<const QuadInstance> instances);
     [[nodiscard]] QuadInstanceRange replace(
@@ -90,6 +93,7 @@ public:
     [[nodiscard]] QuadInstance& at(std::uint32_t index);
     [[nodiscard]] std::span<const QuadInstance> instances() const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
+    [[nodiscard]] std::size_t capacity() const noexcept;
     [[nodiscard]] std::span<const std::byte> bytes(
         std::uint32_t first,
         std::uint32_t count) const;

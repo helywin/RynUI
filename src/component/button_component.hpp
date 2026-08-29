@@ -41,6 +41,8 @@ struct ButtonComponentSnapshot final {
     Color presentation_border;
     Color presentation_foreground;
     float presentation_loading_mix{0.0F};
+    float spinner_phase{0.0F};
+    bool spinner_running{false};
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
@@ -48,7 +50,11 @@ enum class ButtonAnimationChannel : std::uint8_t {
     border,
     foreground,
     loading_mix,
+    spinner_phase,
 };
+
+inline constexpr std::size_t button_animation_channel_count =
+    static_cast<std::size_t>(ButtonAnimationChannel::spinner_phase) + 1;
 
 struct ButtonAnimationBinding final {
     animation::AnimationTargetId target;
@@ -143,6 +149,11 @@ private:
         ButtonAnimationChannel channel,
         const animation::AnimationValue& target,
         const animation::AnimationSpec& spec);
+    void update_spinner(
+        ButtonComponentState& state,
+        const animation::MotionPolicy& policy);
+    void start_spinner(ButtonComponentState& state);
+    void stop_spinner(ButtonComponentState& state);
     void apply(
         animation::AnimationId animation,
         animation::AnimationTargetId target,
