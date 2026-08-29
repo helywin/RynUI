@@ -36,8 +36,8 @@
 
 ## 6. Windows 依赖隔离验收
 
-- [ ] 6.1 在实际 Windows/MSVC 环境使用 `cmake --fresh --preset windows-msvc` 完成 Debug build 与依赖隔离测试，证明 configure/build graph 不下载、不构建也不链接 libdecor；记录 preset、MSVC x64、退出码和测试计数
-- [ ] 6.2 运行 Windows dependency evidence contract、public-header isolation 与 `git diff --check`，更新独立 Windows evidence并以英文 `test: validate Windows dependency isolation` 提交；不得用 Linux静态合同代替本 checkbox
+- [x] 6.1 在实际 Windows/MSVC 环境使用 `cmake --fresh --preset windows-msvc` 完成 Debug build 与依赖隔离测试，证明 configure/build graph 不下载、不构建也不链接 libdecor；记录 preset、MSVC x64、退出码和测试计数
+- [x] 6.2 运行 Windows dependency evidence contract、public-header isolation 与 `git diff --check`，更新独立 Windows evidence并以英文 `test: validate Windows dependency isolation` 提交；不得用 Linux静态合同代替本 checkbox
 
 ## 7. 变更收口
 

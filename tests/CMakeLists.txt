@@ -1,15 +1,5 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
-find_program(RYNUI_TEST_PATCH_EXECUTABLE patch REQUIRED)
-
-add_test(
-    NAME rynui.libdecor_patch_contract
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/libdecor-patches"
-        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_patch_contract.cmake"
-)
 
 add_test(
     NAME rynui.libdecor_dependency_contract
@@ -18,39 +8,56 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_dependency_contract.cmake"
 )
 
-add_test(
-    NAME rynui.sdl3_libdecor_patch_contract
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-libdecor-patch"
-        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_libdecor_patch_contract.cmake"
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_program(RYNUI_TEST_PATCH_EXECUTABLE patch REQUIRED)
 
-add_test(
-    NAME rynui.sdl3_bundled_libdecor_build_contract
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}"
-        "-DTEST_CONFIG=$<CONFIG>"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_bundled_libdecor_build_contract.cmake"
-)
+    add_test(
+        NAME rynui.libdecor_patch_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/libdecor-patches"
+            "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_patch_contract.cmake"
+    )
 
-add_test(
-    NAME rynui.sdl3_pacing_patch_contract
-    COMMAND ${CMAKE_COMMAND}
-        "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-        "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-pacing-patch"
-        "-DTEST_BUILD_DIR=${CMAKE_BINARY_DIR}"
-        "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_pacing_patch_contract.cmake"
-)
+    add_test(
+        NAME rynui.sdl3_libdecor_patch_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-libdecor-patch"
+            "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_libdecor_patch_contract.cmake"
+    )
 
-add_executable(rynui_wayland_resize_pacing_tests wayland_resize_pacing_tests.cpp)
-rynui_configure_cpp_target(rynui_wayland_resize_pacing_tests)
-add_test(NAME rynui.wayland_resize_pacing COMMAND rynui_wayland_resize_pacing_tests)
+    add_test(
+        NAME rynui.sdl3_bundled_libdecor_build_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}"
+            "-DTEST_CONFIG=$<CONFIG>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_bundled_libdecor_build_contract.cmake"
+    )
 
-foreach(libdecor_contract_case IN ITEMS
+    add_test(
+        NAME rynui.sdl3_pacing_patch_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/sdl3-pacing-patch"
+            "-DTEST_BUILD_DIR=${CMAKE_BINARY_DIR}"
+            "-DTEST_PATCH_EXECUTABLE=${RYNUI_TEST_PATCH_EXECUTABLE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_sdl3_pacing_patch_contract.cmake"
+    )
+
+    add_executable(rynui_wayland_resize_pacing_tests wayland_resize_pacing_tests.cpp)
+    rynui_configure_cpp_target(rynui_wayland_resize_pacing_tests)
+    add_test(NAME rynui.wayland_resize_pacing COMMAND rynui_wayland_resize_pacing_tests)
+
+    set(libdecor_contract_cases
         positive system non-linux missing-meson missing-package)
+else()
+    set(libdecor_contract_cases non-linux)
+endif()
+
+foreach(libdecor_contract_case IN LISTS libdecor_contract_cases)
     add_test(
         NAME "rynui.libdecor_resolver_contract.${libdecor_contract_case}"
         COMMAND ${CMAKE_COMMAND}
@@ -62,6 +69,25 @@ foreach(libdecor_contract_case IN ITEMS
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_libdecor_resolver_contract.cmake"
     )
 endforeach()
+
+if(WIN32)
+    if(TARGET RynUI::LibDecor OR TARGET rynui_libdecor_external)
+        message(FATAL_ERROR "Windows configure must not create libdecor targets.")
+    endif()
+    add_test(
+        NAME rynui.windows_libdecor_isolation
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}"
+            "-DTEST_CONFIG=$<CONFIG>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_libdecor_isolation.cmake"
+    )
+    add_test(
+        NAME rynui.windows_libdecor_evidence
+        COMMAND ${CMAKE_COMMAND}
+            "-DEVIDENCE_FILE=${PROJECT_SOURCE_DIR}/openspec/changes/007-20260828-fix-linux-wayland-libdecor-resize/evidence/windows-dependency-isolation.md"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_libdecor_evidence.cmake"
+    )
+endif()
 
 add_test(
     NAME rynui.design_token_catalog
