@@ -2,7 +2,8 @@
 
 status=automated-passed-manual-pending
 change=009-20260829-build-animation-runtime-foundation
-git_sha=7c8a6810a31007e23689fff27a84ca12381971ab
+git_sha=64995bd4d0f907487500fd809b6c8f51a82004cc
+build_evidence_sha=7c8a6810a31007e23689fff27a84ca12381971ab
 os=Microsoft Windows 11 专业工作站版 10.0.26200 x64
 toolchain=MSVC 19.51.36256.0 x64
 generator=Ninja Multi-Config
@@ -27,17 +28,16 @@ screenshot_policy=not-captured-per-user-request
 
 ## 真实窗口自动 journey
 
-命令统一使用 `rynui_token_gallery.exe --animation-acceptance --acceptance-scale=<scale>`。journey 在真实 Win32/D3D12 窗口中依次切换 Theme motion off/on、injected reduced/normal、Dark、Compact、Brand、loading 与 Default，并等待最后一个 animation deadline 后恢复 idle。
+命令统一使用 `rynui_token_gallery.exe --animation-acceptance --acceptance-scale=<scale>`。journey 在真实 Win32/D3D12 窗口中依次切换 Theme motion off/on、injected reduced/normal，向实际 Button routing 注入 pointer enter/down/up/leave 与 Tab/Enter keyboard focus/activation，再执行 Dark、Compact、Brand、loading 与 Default，并等待最后一个 animation deadline 后恢复 idle。
 
 | Config | Scale | Exit | Theme updates | Motion updates | State updates | Scene rebuilds | Submits | Animation frames | Idle waits | Idle after animation |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Debug | 1.0 | 0 | 6 | 2 | 2 | 1 | 315 | 98 | 83 | 2 |
-| Debug | 1.25 | 0 | 6 | 2 | 2 | 1 | 256 | 91 | 83 | 2 |
-| Debug | 1.5 | 0 | 6 | 2 | 2 | 1 | 189 | 78 | 82 | 2 |
-| Debug | 2.0 | 0 | 6 | 2 | 2 | 5 | 220 | 82 | 80 | 2 |
-| Release | 1.5 | 0 | 6 | 2 | 2 | 1 | 349 | 103 | 83 | 2 |
+| Debug | 1.0 | 0 | 6 | 2 | 2 | 1 | 741 | 257 | 87 | 2 |
+| Debug | 1.25 | 0 | 6 | 2 | 2 | 1 | 732 | 249 | 87 | 2 |
+| Debug | 1.5 | 0 | 6 | 2 | 2 | 1 | 732 | 256 | 87 | 2 |
+| Debug | 2.0 | 0 | 6 | 2 | 2 | 5 | 757 | 242 | 85 | 2 |
 
-四档运行均报告 `gpu_driver=direct3d12`、`shader_format=DXIL`、`animation_acceptance=true`、系统字体链和 `exit_code=0`。2.0 的窄 logical viewport 在 Theme/effect 可见性变化时记录 5 次 scene rebuild，其他档位为 1；当前不把该差异描述为 spinner topology 通过或失败，留给人工视觉与后续诊断。
+四档运行均报告 `gpu_driver=direct3d12`、`shader_format=DXIL`、`animation_acceptance=true`、系统字体链和 `exit_code=0`。每档都记录 `automated_input_events=7`、至少 4 个 pointer input、hover enter/leave 各 1、capture start/release 各 1、3 个 keyboard event、1 次 focus traversal、2 次 focus change 与 1 次 keyboard activation。2.0 的窄 logical viewport 在 Theme/effect 可见性变化时记录 5 次 scene rebuild，其他档位为 1；当前不把该差异描述为 spinner topology 通过或失败，留给人工视觉与后续诊断。
 
 ## DXIL identity
 
@@ -50,4 +50,4 @@ screenshot_policy=not-captured-per-user-request
 
 ## 尚未完成
 
-人工 hover/press/release/leave、keyboard focus、过渡连续性、focus ring 与 hover border 区分、spinner 静态/动态可识别性、四档 DPI 裁切/抖动以及等待动画结束后的窗口 idle 观察仍待用户确认；因此 Windows evidence 尚未设为 `status=passed`，OpenSpec 8.2–8.4 保持未勾选。
+人工核对过渡连续性、focus ring 与 hover border 区分、spinner 静态/动态可识别性、四档 DPI 裁切/抖动以及等待动画结束后的窗口 idle 观察仍待用户确认；因此 Windows evidence 尚未设为 `status=passed`，OpenSpec 8.3–8.4 保持未勾选。
