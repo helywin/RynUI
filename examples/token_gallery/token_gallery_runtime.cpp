@@ -389,15 +389,93 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             frame_requests, events, submitter, animation_deadlines, 10);
 
         std::size_t smoke_stage = 0;
+        std::size_t automated_input_events = 0;
+        const auto dispatch_acceptance_input = [&](std::size_t stage) {
+            const auto mounted = application.mounted_buttons();
+            if (mounted.size() <= 7) {
+                throw std::logic_error(
+                    "animation acceptance requires the interactive Gallery cells");
+            }
+            const auto bounds = nodes.require(mounted[7].node).bounds;
+            const ryn::runtime::Point inside{
+                bounds.x + 0.5F * bounds.width,
+                bounds.y + 0.5F * bounds.height,
+            };
+            switch (stage) {
+            case 0:
+                application.pointer().dispatch({
+                    ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::move,
+                    ryn::input::PointerButton::none,
+                    inside.x,
+                    inside.y,
+                });
+                break;
+            case 1:
+                application.pointer().dispatch({
+                    ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::down,
+                    ryn::input::PointerButton::primary,
+                    inside.x,
+                    inside.y,
+                });
+                break;
+            case 2:
+                application.pointer().dispatch({
+                    ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::up,
+                    ryn::input::PointerButton::primary,
+                    inside.x,
+                    inside.y,
+                });
+                break;
+            case 3:
+                application.pointer().dispatch({
+                    ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::move,
+                    ryn::input::PointerButton::none,
+                    -32.0F,
+                    -32.0F,
+                });
+                break;
+            case 4:
+                application.focus().dispatch({
+                    ryn::input::Key::tab,
+                    ryn::input::KeyAction::down,
+                    ryn::input::KeyModifier::none,
+                    false,
+                });
+                break;
+            case 5:
+                application.focus().dispatch({
+                    ryn::input::Key::enter,
+                    ryn::input::KeyAction::down,
+                    ryn::input::KeyModifier::none,
+                    false,
+                });
+                break;
+            case 6:
+                application.focus().dispatch({
+                    ryn::input::Key::enter,
+                    ryn::input::KeyAction::up,
+                    ryn::input::KeyModifier::none,
+                    false,
+                });
+                break;
+            default:
+                throw std::out_of_range("unknown animation acceptance input stage");
+            }
+            ++automated_input_events;
+        };
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            const std::size_t smoke_stage_count = animation_acceptance ? 9 : 5;
+            const std::size_t smoke_stage_count = animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                if (!animation_acceptance || smoke_stage >= 4) {
+                if (!animation_acceptance || smoke_stage >= 11) {
                     definition.smoke_step(
-                        animation_acceptance ? smoke_stage - 4 : smoke_stage);
+                        animation_acceptance ? smoke_stage - 11 : smoke_stage);
                 } else if (smoke_stage == 0) {
                     definition.set_motion_enabled(false);
                 } else if (smoke_stage == 1) {
@@ -405,9 +483,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 } else if (smoke_stage == 2) {
                     application.set_motion_preference(
                         ryn::animation::MotionPreference::reduced);
-                } else {
+                } else if (smoke_stage == 3) {
                     application.set_motion_preference(
                         ryn::animation::MotionPreference::normal);
+                } else {
+                    dispatch_acceptance_input(smoke_stage - 4);
                 }
                 ++smoke_stage;
             }
@@ -420,7 +500,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            const auto completion_time = animation_acceptance ? 2'700U : 1'700U;
+            const auto completion_time = animation_acceptance ? 4'700U : 1'700U;
             if (smoke_mode && smoke_stage == smoke_stage_count
                     && elapsed >= completion_time
                     && loop.counters().idle_waits >= 20) {
@@ -430,6 +510,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         const auto telemetry = definition.telemetry();
         const auto platform_diagnostics = platform.event_diagnostics();
+        const auto pointer_diagnostics = application.pointer().diagnostics();
+        const auto focus_diagnostics = application.focus().diagnostics();
         const auto scene = application.scene_composer().diagnostics();
         const auto button_scene = application.button_scene().diagnostics();
         const auto quad = submitter.quad_uploads();
@@ -489,6 +571,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " state_updates=" << telemetry.state_updates
             << " activations=" << telemetry.activations
             << " input_events=" << platform_diagnostics.normalized_input_events
+            << " pointer_input_events=" << pointer_diagnostics.input_events
+            << " pointer_routes=" << pointer_diagnostics.routes_dispatched
+            << " hover_enters=" << pointer_diagnostics.hover_enters
+            << " hover_leaves=" << pointer_diagnostics.hover_leaves
+            << " captures_started=" << pointer_diagnostics.captures_started
+            << " captures_released=" << pointer_diagnostics.captures_released
+            << " keyboard_events=" << focus_diagnostics.keyboard_events
+            << " focus_traversals=" << focus_diagnostics.traversals
+            << " focus_changes=" << focus_diagnostics.focus_changes
+            << " keyboard_activations=" << focus_diagnostics.activations
             << " component_count=" << application.components().component_count()
             << " layout_passes=" << layout_passes
             << " scene_rebuilds=" << scene.rebuilds
@@ -513,12 +605,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " animation_frames=" << frames.animation_frames
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
+            << " automated_input_events=" << automated_input_events
             << " motion_mode=" << (motion_disabled
                     ? "theme-disabled"
                     : reduced_motion ? "reduced" : "normal")
             << " exit_code=0\n";
 
-        const auto expected_stages = animation_acceptance ? 9U : 5U;
+        const auto expected_stages = animation_acceptance ? 16U : 5U;
         const auto expected_theme_updates = animation_acceptance
             ? 6U
             : motion_disabled ? 5U : 4U;
@@ -529,7 +622,17 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 && (smoke_stage != expected_stages || telemetry.content_runs != 1
                     || telemetry.theme_updates != expected_theme_updates
                     || telemetry.motion_updates != expected_motion_updates
-                    || telemetry.brand_updates != 1 || telemetry.state_updates != 2)
+                    || telemetry.brand_updates != 1 || telemetry.state_updates != 2
+                    || (animation_acceptance
+                        && (automated_input_events != 7
+                            || pointer_diagnostics.input_events < 4
+                            || pointer_diagnostics.hover_enters == 0
+                            || pointer_diagnostics.hover_leaves == 0
+                            || pointer_diagnostics.captures_started != 1
+                            || pointer_diagnostics.captures_released != 1
+                            || focus_diagnostics.keyboard_events != 3
+                            || focus_diagnostics.traversals == 0
+                            || focus_diagnostics.activations != 1)))
             ? 6
             : 0;
     } catch (const std::exception& error) {
