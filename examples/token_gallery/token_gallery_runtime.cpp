@@ -283,6 +283,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     try {
         const bool animation_acceptance =
             has_argument(argc, argv, "--animation-acceptance");
+        const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
+        const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
+        if ((motion_disabled && reduced_motion)
+                || (animation_acceptance && (motion_disabled || reduced_motion))) {
+            throw std::invalid_argument(
+                "--motion-disabled, --reduced-motion, and --animation-acceptance "
+                "are mutually exclusive");
+        }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
             || animation_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
@@ -291,7 +299,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::runtime::Size viewport = requested_window;
 
         ryn::detail::PlatformConfig platform_config;
-        platform_config.title = "RynUI Ant Design Token Gallery";
+        platform_config.title = motion_disabled
+            ? "RynUI Token Gallery [Theme Motion Disabled]"
+            : reduced_motion
+                ? "RynUI Token Gallery [Reduced Motion]"
+                : "RynUI Ant Design Token Gallery";
         platform_config.width = static_cast<int>(requested_window.width);
         platform_config.height = static_cast<int>(requested_window.height);
 #if !defined(NDEBUG)
@@ -303,6 +315,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             return 1;
         }
         auto& platform = *platform_result.state;
+        if (motion_disabled) {
+            definition.set_motion_enabled(false);
+        }
         const auto initial_metrics = platform.window_metrics();
         float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
         const auto logical_viewport = token_gallery_logical_viewport(
@@ -342,6 +357,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
         ryn::detail::ButtonComponentHost application(
             nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests);
+        if (reduced_motion) {
+            application.set_motion_preference(
+                ryn::animation::MotionPreference::reduced);
+        }
         application.mount(definition.content);
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
@@ -494,11 +513,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " animation_frames=" << frames.animation_frames
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
+            << " motion_mode=" << (motion_disabled
+                    ? "theme-disabled"
+                    : reduced_motion ? "reduced" : "normal")
             << " exit_code=0\n";
 
         const auto expected_stages = animation_acceptance ? 9U : 5U;
-        const auto expected_theme_updates = animation_acceptance ? 6U : 4U;
-        const auto expected_motion_updates = animation_acceptance ? 2U : 0U;
+        const auto expected_theme_updates = animation_acceptance
+            ? 6U
+            : motion_disabled ? 5U : 4U;
+        const auto expected_motion_updates = animation_acceptance
+            ? 2U
+            : motion_disabled ? 1U : 0U;
         return smoke_mode
                 && (smoke_stage != expected_stages || telemetry.content_runs != 1
                     || telemetry.theme_updates != expected_theme_updates

@@ -97,6 +97,10 @@ foreach(required IN ITEMS
         "animation_frames="
         "idle_after_animation="
         "--animation-acceptance"
+        "--motion-disabled"
+        "--reduced-motion"
+        "are mutually exclusive"
+        "motion_mode="
         "--acceptance-scale must be 1.0, 1.25, 1.5, or 2.0"
         "exit_code=0")
     string(FIND "${runtime_source}" "${required}" found)
