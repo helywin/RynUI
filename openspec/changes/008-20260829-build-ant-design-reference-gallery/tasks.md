@@ -1,9 +1,9 @@
 ## 1. 版本化 Ant Design Reference Catalog
 
-- [ ] 1.1 增加锁定 Ant Design `6.5.0`/`740ad964dc2397f33e40944367b0536a7314cc32` 的 source manifest，按 General/Layout/Navigation/Data Entry/Data Display/Feedback/Other 保存 4/7/7/18/20/11/5 共 72 项 stable component identity、名称、source path 与 Introduction/Design Values/Resources 来源；通过 schema、count、order、duplicate 和 source-version tests 验证
-- [ ] 1.2 增加离线 catalog generator 与 checked-in C++ metadata/hash，生成器不得访问网络且 `--check` 必须拒绝 stale output；使用 `python -B` 并增加 tracked/untracked `__pycache__`、`.pyc`、`.pyo` contract
-- [ ] 1.3 增加 typed `GallerySupportStatus` overlay，覆盖 `implemented|partial|planned|web-only|deprecated|out-of-scope`、中文摘要、supported/missing scope 与 evidence identifiers；通过全 72 项非空状态、Button/Text/Flex/Space/ConfigProvider 初始 `partial`、implemented evidence gate 和非法枚举 tests 验证
-- [ ] 1.4 在一个受支持平台记录实际 preset，运行 catalog/generator/status/source contract、相关 unit tests 与 `git diff --check`；以英文 `feat: add versioned Ant Design gallery catalog` 提交并推送本阶段，核对 remote SHA
+- [x] 1.1 增加锁定 Ant Design `6.5.0`/`740ad964dc2397f33e40944367b0536a7314cc32` 的 source manifest，按 General/Layout/Navigation/Data Entry/Data Display/Feedback/Other 保存 4/7/7/18/20/11/5 共 72 项 stable component identity、名称、source path 与 Introduction/Design Values/Resources 来源；通过 schema、count、order、duplicate 和 source-version tests 验证
+- [x] 1.2 增加离线 catalog generator 与 checked-in C++ metadata/hash，生成器不得访问网络且 `--check` 必须拒绝 stale output；使用 `python -B` 并增加 tracked/untracked `__pycache__`、`.pyc`、`.pyo` contract
+- [x] 1.3 增加 typed `GallerySupportStatus` overlay，覆盖 `implemented|partial|planned|web-only|deprecated|out-of-scope`、中文摘要、supported/missing scope 与 evidence identifiers；通过全 72 项非空状态、Button/Text/Flex/Space/ConfigProvider 初始 `partial`、implemented evidence gate 和非法枚举 tests 验证
+- [x] 1.4 在一个受支持平台记录实际 preset，运行 catalog/generator/status/source contract、相关 unit tests 与 `git diff --check`；以英文 `feat: add versioned Ant Design gallery catalog` 提交并推送本阶段，核对 remote SHA
 
 ## 2. Button hover、focus 与 solid visual 核对
 

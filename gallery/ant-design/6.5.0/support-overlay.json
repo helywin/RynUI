@@ -1,0 +1,1054 @@
+{
+  "schema_version": 1,
+  "upstream_version": "6.5.0",
+  "upstream_commit": "740ad964dc2397f33e40944367b0536a7314cc32",
+  "entries": [
+    {
+      "identity": "ant.component.button",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed Button、三种核心类型、三档尺寸、禁用/加载和 pointer/keyboard/focus 交互；完整 Ant Web 变体仍未覆盖。",
+      "supported_scope": [
+        "Default/Primary/Danger types",
+        "Small/Middle/Large sizes",
+        "disabled and loading priority",
+        "pointer/keyboard/focus-visible interaction",
+        "Theme component tokens"
+      ],
+      "missing_scope": [
+        "dashed/text/link/ghost and preset color variants",
+        "icon placement public contract",
+        "wave effect",
+        "complete Ant Design Web API"
+      ],
+      "evidence_identifiers": [
+        "openspec:004-20260827-build-button-interaction-foundation",
+        "test:rynui.button_component",
+        "test:rynui.button_scene_service",
+        "test:rynui.keyboard_activation"
+      ]
+    },
+    {
+      "identity": "ant.component.float-button",
+      "status": "planned",
+      "summary": "悬浮按钮（FloatButton）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/float-button/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.icon",
+      "status": "planned",
+      "summary": "图标（Icon）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/icon/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.typography",
+      "status": "partial",
+      "summary": "RynUI 已提供 Theme 驱动的 Text、CJK/Latin 排版与 retained 文本渲染，但尚未覆盖 Ant Design Typography 的完整语义集合。",
+      "supported_scope": [
+        "typed Text props",
+        "CJK/Latin shaping and rendering",
+        "Theme typography tokens",
+        "retained text scene"
+      ],
+      "missing_scope": [
+        "Title/Paragraph/Link public components",
+        "editable/copyable/ellipsis contracts",
+        "complete Ant Design Typography variants"
+      ],
+      "evidence_identifiers": [
+        "openspec:003-20260827-build-text-component-foundation",
+        "test:rynui.text_component",
+        "test:rynui.text_component_frame"
+      ]
+    },
+    {
+      "identity": "ant.component.divider",
+      "status": "planned",
+      "summary": "分割线（Divider）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/divider/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.flex",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed Flex 布局、方向、对齐、换行、gap 与 LayoutStyle 外部约束；尚未覆盖 Ant Design Flex 的全部响应式接口。",
+      "supported_scope": [
+        "horizontal and vertical layout",
+        "align and justify",
+        "wrap",
+        "row/column gap",
+        "LayoutStyle integration"
+      ],
+      "missing_scope": [
+        "complete responsive breakpoint API",
+        "all Ant Design Flex compatibility aliases"
+      ],
+      "evidence_identifiers": [
+        "openspec:005-20260827-build-flex-and-space-layout-foundation",
+        "test:rynui.flex_component",
+        "test:rynui.flex_public_api"
+      ]
+    },
+    {
+      "identity": "ant.component.grid",
+      "status": "planned",
+      "summary": "栅格（Grid）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/grid/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.layout",
+      "status": "planned",
+      "summary": "布局（Layout）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/layout/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.masonry",
+      "status": "planned",
+      "summary": "瀑布流（Masonry）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/masonry/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.space",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed Space 的方向、尺寸、换行与内容组合；尚未覆盖 Compact、split 等完整 Ant Design Space 能力。",
+      "supported_scope": [
+        "horizontal and vertical spacing",
+        "typed size and custom logical gap",
+        "wrap",
+        "typed content composition"
+      ],
+      "missing_scope": [
+        "Space.Compact",
+        "split rendering",
+        "complete Ant Design responsive size API"
+      ],
+      "evidence_identifiers": [
+        "openspec:005-20260827-build-flex-and-space-layout-foundation",
+        "test:rynui.space_component",
+        "test:rynui.space_public_api"
+      ]
+    },
+    {
+      "identity": "ant.component.splitter",
+      "status": "planned",
+      "summary": "分隔面板（Splitter）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/splitter/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.anchor",
+      "status": "planned",
+      "summary": "锚点（Anchor）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/anchor/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.breadcrumb",
+      "status": "planned",
+      "summary": "面包屑（Breadcrumb）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/breadcrumb/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.dropdown",
+      "status": "planned",
+      "summary": "下拉菜单（Dropdown）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/dropdown/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.menu",
+      "status": "planned",
+      "summary": "导航菜单（Menu）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/menu/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.pagination",
+      "status": "planned",
+      "summary": "分页（Pagination）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/pagination/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.steps",
+      "status": "planned",
+      "summary": "步骤条（Steps）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/steps/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tabs",
+      "status": "planned",
+      "summary": "标签页（Tabs）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tabs/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.auto-complete",
+      "status": "planned",
+      "summary": "自动完成（AutoComplete）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/auto-complete/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.cascader",
+      "status": "planned",
+      "summary": "级联选择（Cascader）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/cascader/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.checkbox",
+      "status": "planned",
+      "summary": "多选框（Checkbox）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/checkbox/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.color-picker",
+      "status": "planned",
+      "summary": "颜色选择器（ColorPicker）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/color-picker/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.date-picker",
+      "status": "planned",
+      "summary": "日期选择框（DatePicker）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/date-picker/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.form",
+      "status": "planned",
+      "summary": "表单（Form）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/form/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.input",
+      "status": "planned",
+      "summary": "输入框（Input）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/input/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.input-number",
+      "status": "planned",
+      "summary": "数字输入框（InputNumber）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/input-number/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.mentions",
+      "status": "planned",
+      "summary": "提及（Mentions）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/mentions/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.radio",
+      "status": "planned",
+      "summary": "单选框（Radio）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/radio/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.rate",
+      "status": "planned",
+      "summary": "评分（Rate）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/rate/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.select",
+      "status": "planned",
+      "summary": "选择器（Select）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/select/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.slider",
+      "status": "planned",
+      "summary": "滑动输入条（Slider）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/slider/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.switch",
+      "status": "planned",
+      "summary": "开关（Switch）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/switch/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.time-picker",
+      "status": "planned",
+      "summary": "时间选择框（TimePicker）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/time-picker/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.transfer",
+      "status": "planned",
+      "summary": "穿梭框（Transfer）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/transfer/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tree-select",
+      "status": "planned",
+      "summary": "树选择（TreeSelect）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tree-select/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.upload",
+      "status": "planned",
+      "summary": "上传（Upload）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/upload/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.avatar",
+      "status": "planned",
+      "summary": "头像（Avatar）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/avatar/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.badge",
+      "status": "planned",
+      "summary": "徽标数（Badge）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/badge/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.calendar",
+      "status": "planned",
+      "summary": "日历（Calendar）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/calendar/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.card",
+      "status": "planned",
+      "summary": "卡片（Card）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/card/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.carousel",
+      "status": "planned",
+      "summary": "走马灯（Carousel）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/carousel/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.collapse",
+      "status": "planned",
+      "summary": "折叠面板（Collapse）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/collapse/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.descriptions",
+      "status": "planned",
+      "summary": "描述列表（Descriptions）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/descriptions/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.empty",
+      "status": "planned",
+      "summary": "空状态（Empty）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/empty/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.image",
+      "status": "planned",
+      "summary": "图片（Image）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/image/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.list",
+      "status": "planned",
+      "summary": "列表（List）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/list/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.popover",
+      "status": "planned",
+      "summary": "气泡卡片（Popover）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/popover/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.qr-code",
+      "status": "planned",
+      "summary": "二维码（QRCode）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/qr-code/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.segmented",
+      "status": "planned",
+      "summary": "分段控制器（Segmented）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/segmented/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.statistic",
+      "status": "planned",
+      "summary": "统计数值（Statistic）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/statistic/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.table",
+      "status": "planned",
+      "summary": "表格（Table）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/table/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tag",
+      "status": "planned",
+      "summary": "标签（Tag）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tag/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.timeline",
+      "status": "planned",
+      "summary": "时间轴（Timeline）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/timeline/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tooltip",
+      "status": "planned",
+      "summary": "文字提示（Tooltip）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tooltip/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tour",
+      "status": "planned",
+      "summary": "漫游式引导（Tour）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tour/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.tree",
+      "status": "planned",
+      "summary": "树形控件（Tree）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/tree/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.alert",
+      "status": "planned",
+      "summary": "警告提示（Alert）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/alert/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.drawer",
+      "status": "planned",
+      "summary": "抽屉（Drawer）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/drawer/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.message",
+      "status": "planned",
+      "summary": "全局提示（Message）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/message/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.modal",
+      "status": "planned",
+      "summary": "对话框（Modal）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/modal/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.notification",
+      "status": "planned",
+      "summary": "通知提醒框（Notification）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/notification/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.popconfirm",
+      "status": "planned",
+      "summary": "气泡确认框（Popconfirm）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/popconfirm/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.progress",
+      "status": "planned",
+      "summary": "进度条（Progress）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/progress/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.result",
+      "status": "planned",
+      "summary": "结果（Result）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/result/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.skeleton",
+      "status": "planned",
+      "summary": "骨架屏（Skeleton）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/skeleton/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.spin",
+      "status": "planned",
+      "summary": "加载中（Spin）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/spin/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.watermark",
+      "status": "planned",
+      "summary": "水印（Watermark）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/watermark/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.affix",
+      "status": "planned",
+      "summary": "固钉（Affix）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/affix/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.app",
+      "status": "planned",
+      "summary": "包裹组件（App）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/app/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.border-beam",
+      "status": "planned",
+      "summary": "边框流光（BorderBeam）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/border-beam/index.en-US.md"
+      ]
+    },
+    {
+      "identity": "ant.component.config-provider",
+      "status": "partial",
+      "summary": "RynUI 通过 ThemeConfig、Theme 算法与嵌套 Theme 提供部分全局设计配置，但不等同于 Ant Design Web ConfigProvider。",
+      "supported_scope": [
+        "typed ThemeConfig",
+        "Default/Dark/Compact algorithms",
+        "nested Theme scope",
+        "component token overrides"
+      ],
+      "missing_scope": [
+        "locale and direction provider",
+        "DOM prefix/CSP/renderEmpty contracts",
+        "component-size context",
+        "complete wave and Web configuration API"
+      ],
+      "evidence_identifiers": [
+        "openspec:006-20260827-establish-ant-design-token-system",
+        "test:rynui.theme_runtime",
+        "test:rynui.theme_scope_component"
+      ]
+    },
+    {
+      "identity": "ant.component.util",
+      "status": "planned",
+      "summary": "工具类（Util）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "supported_scope": [
+        "仅保留锁定版本的离线参考元数据"
+      ],
+      "missing_scope": [
+        "对应 RynUI 稳定公开组件与交互合同"
+      ],
+      "evidence_identifiers": [
+        "source:components/_util/index.en-US.md"
+      ]
+    }
+  ]
+}

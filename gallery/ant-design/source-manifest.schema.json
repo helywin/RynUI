@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rynui://gallery/ant-design/source-manifest.schema.json",
+  "title": "RynUI Ant Design reference source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "upstream", "document_sources", "category_order", "categories"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "upstream": {
+      "type": "object",
+      "required": ["name", "version", "tag", "commit", "repository", "license"]
+    },
+    "document_sources": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["identity", "title", "chinese_title", "source_path", "chinese_source_path", "official_url"]
+      }
+    },
+    "category_order": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["identity", "name", "chinese_name", "order", "expected_count", "components"],
+        "properties": {
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["identity", "english_name", "chinese_name", "order", "source_path", "chinese_source_path"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

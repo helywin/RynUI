@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rynui://gallery/ant-design/support-overlay.schema.json",
+  "title": "RynUI Ant Design reference support overlay",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "upstream_version", "upstream_commit", "entries"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "upstream_version": { "type": "string" },
+    "upstream_commit": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "minItems": 72,
+      "maxItems": 72,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identity", "status", "summary", "supported_scope", "missing_scope", "evidence_identifiers"],
+        "properties": {
+          "identity": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": ["implemented", "partial", "planned", "web-only", "deprecated", "out-of-scope"]
+          },
+          "summary": { "type": "string", "minLength": 1 },
+          "supported_scope": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "missing_scope": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "evidence_identifiers": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

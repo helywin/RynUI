@@ -130,6 +130,7 @@ endif()
 
 add_library(
     rynui_token_gallery_definition STATIC
+    token_gallery/ant_design_reference_catalog.cpp
     token_gallery/token_gallery_definition.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery_definition)

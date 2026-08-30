@@ -1,0 +1,696 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "name": "Ant Design",
+    "version": "6.5.0",
+    "tag": "6.5.0",
+    "commit": "740ad964dc2397f33e40944367b0536a7314cc32",
+    "repository": "https://github.com/ant-design/ant-design",
+    "license": "MIT"
+  },
+  "document_sources": [
+    {
+      "identity": "ant.document.introduction",
+      "title": "Introduction",
+      "chinese_title": "介绍",
+      "source_path": "docs/spec/introduce.en-US.md",
+      "chinese_source_path": "docs/spec/introduce.zh-CN.md",
+      "official_url": "https://ant.design/docs/spec/introduce"
+    },
+    {
+      "identity": "ant.document.design-values",
+      "title": "Design Values",
+      "chinese_title": "设计价值观",
+      "source_path": "docs/spec/values.en-US.md",
+      "chinese_source_path": "docs/spec/values.zh-CN.md",
+      "official_url": "https://ant.design/docs/spec/values"
+    },
+    {
+      "identity": "ant.document.resources",
+      "title": "Resources",
+      "chinese_title": "设计资源",
+      "source_path": "docs/resources.en-US.md",
+      "chinese_source_path": "docs/resources.zh-CN.md",
+      "official_url": "https://ant.design/docs/resources"
+    },
+    {
+      "identity": "ant.document.components-overview",
+      "title": "Components Overview",
+      "chinese_title": "组件总览",
+      "source_path": "components/overview/index.en-US.md",
+      "chinese_source_path": "components/overview/index.zh-CN.md",
+      "renderer_source_path": ".dumi/theme/builtins/ComponentOverview/index.tsx",
+      "official_url": "https://ant.design/components/overview/"
+    }
+  ],
+  "category_order": [
+    "General",
+    "Layout",
+    "Navigation",
+    "Data Entry",
+    "Data Display",
+    "Feedback",
+    "Other"
+  ],
+  "categories": [
+    {
+      "identity": "ant.category.general",
+      "name": "General",
+      "chinese_name": "通用",
+      "order": 0,
+      "expected_count": 4,
+      "components": [
+        {
+          "identity": "ant.component.button",
+          "english_name": "Button",
+          "chinese_name": "按钮",
+          "order": 0,
+          "source_path": "components/button/index.en-US.md",
+          "chinese_source_path": "components/button/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.float-button",
+          "english_name": "FloatButton",
+          "chinese_name": "悬浮按钮",
+          "order": 1,
+          "source_path": "components/float-button/index.en-US.md",
+          "chinese_source_path": "components/float-button/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.icon",
+          "english_name": "Icon",
+          "chinese_name": "图标",
+          "order": 2,
+          "source_path": "components/icon/index.en-US.md",
+          "chinese_source_path": "components/icon/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.typography",
+          "english_name": "Typography",
+          "chinese_name": "排版",
+          "order": 3,
+          "source_path": "components/typography/index.en-US.md",
+          "chinese_source_path": "components/typography/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.layout",
+      "name": "Layout",
+      "chinese_name": "布局",
+      "order": 1,
+      "expected_count": 7,
+      "components": [
+        {
+          "identity": "ant.component.divider",
+          "english_name": "Divider",
+          "chinese_name": "分割线",
+          "order": 0,
+          "source_path": "components/divider/index.en-US.md",
+          "chinese_source_path": "components/divider/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.flex",
+          "english_name": "Flex",
+          "chinese_name": "弹性布局",
+          "order": 1,
+          "source_path": "components/flex/index.en-US.md",
+          "chinese_source_path": "components/flex/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.grid",
+          "english_name": "Grid",
+          "chinese_name": "栅格",
+          "order": 2,
+          "source_path": "components/grid/index.en-US.md",
+          "chinese_source_path": "components/grid/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.layout",
+          "english_name": "Layout",
+          "chinese_name": "布局",
+          "order": 3,
+          "source_path": "components/layout/index.en-US.md",
+          "chinese_source_path": "components/layout/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.masonry",
+          "english_name": "Masonry",
+          "chinese_name": "瀑布流",
+          "order": 4,
+          "source_path": "components/masonry/index.en-US.md",
+          "chinese_source_path": "components/masonry/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.space",
+          "english_name": "Space",
+          "chinese_name": "间距",
+          "order": 5,
+          "source_path": "components/space/index.en-US.md",
+          "chinese_source_path": "components/space/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.splitter",
+          "english_name": "Splitter",
+          "chinese_name": "分隔面板",
+          "order": 6,
+          "source_path": "components/splitter/index.en-US.md",
+          "chinese_source_path": "components/splitter/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.navigation",
+      "name": "Navigation",
+      "chinese_name": "导航",
+      "order": 2,
+      "expected_count": 7,
+      "components": [
+        {
+          "identity": "ant.component.anchor",
+          "english_name": "Anchor",
+          "chinese_name": "锚点",
+          "order": 0,
+          "source_path": "components/anchor/index.en-US.md",
+          "chinese_source_path": "components/anchor/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.breadcrumb",
+          "english_name": "Breadcrumb",
+          "chinese_name": "面包屑",
+          "order": 1,
+          "source_path": "components/breadcrumb/index.en-US.md",
+          "chinese_source_path": "components/breadcrumb/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.dropdown",
+          "english_name": "Dropdown",
+          "chinese_name": "下拉菜单",
+          "order": 2,
+          "source_path": "components/dropdown/index.en-US.md",
+          "chinese_source_path": "components/dropdown/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.menu",
+          "english_name": "Menu",
+          "chinese_name": "导航菜单",
+          "order": 3,
+          "source_path": "components/menu/index.en-US.md",
+          "chinese_source_path": "components/menu/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.pagination",
+          "english_name": "Pagination",
+          "chinese_name": "分页",
+          "order": 4,
+          "source_path": "components/pagination/index.en-US.md",
+          "chinese_source_path": "components/pagination/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.steps",
+          "english_name": "Steps",
+          "chinese_name": "步骤条",
+          "order": 5,
+          "source_path": "components/steps/index.en-US.md",
+          "chinese_source_path": "components/steps/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tabs",
+          "english_name": "Tabs",
+          "chinese_name": "标签页",
+          "order": 6,
+          "source_path": "components/tabs/index.en-US.md",
+          "chinese_source_path": "components/tabs/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.data-entry",
+      "name": "Data Entry",
+      "chinese_name": "数据录入",
+      "order": 3,
+      "expected_count": 18,
+      "components": [
+        {
+          "identity": "ant.component.auto-complete",
+          "english_name": "AutoComplete",
+          "chinese_name": "自动完成",
+          "order": 0,
+          "source_path": "components/auto-complete/index.en-US.md",
+          "chinese_source_path": "components/auto-complete/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.cascader",
+          "english_name": "Cascader",
+          "chinese_name": "级联选择",
+          "order": 1,
+          "source_path": "components/cascader/index.en-US.md",
+          "chinese_source_path": "components/cascader/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.checkbox",
+          "english_name": "Checkbox",
+          "chinese_name": "多选框",
+          "order": 2,
+          "source_path": "components/checkbox/index.en-US.md",
+          "chinese_source_path": "components/checkbox/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.color-picker",
+          "english_name": "ColorPicker",
+          "chinese_name": "颜色选择器",
+          "order": 3,
+          "source_path": "components/color-picker/index.en-US.md",
+          "chinese_source_path": "components/color-picker/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.date-picker",
+          "english_name": "DatePicker",
+          "chinese_name": "日期选择框",
+          "order": 4,
+          "source_path": "components/date-picker/index.en-US.md",
+          "chinese_source_path": "components/date-picker/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.form",
+          "english_name": "Form",
+          "chinese_name": "表单",
+          "order": 5,
+          "source_path": "components/form/index.en-US.md",
+          "chinese_source_path": "components/form/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.input",
+          "english_name": "Input",
+          "chinese_name": "输入框",
+          "order": 6,
+          "source_path": "components/input/index.en-US.md",
+          "chinese_source_path": "components/input/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.input-number",
+          "english_name": "InputNumber",
+          "chinese_name": "数字输入框",
+          "order": 7,
+          "source_path": "components/input-number/index.en-US.md",
+          "chinese_source_path": "components/input-number/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.mentions",
+          "english_name": "Mentions",
+          "chinese_name": "提及",
+          "order": 8,
+          "source_path": "components/mentions/index.en-US.md",
+          "chinese_source_path": "components/mentions/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.radio",
+          "english_name": "Radio",
+          "chinese_name": "单选框",
+          "order": 9,
+          "source_path": "components/radio/index.en-US.md",
+          "chinese_source_path": "components/radio/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.rate",
+          "english_name": "Rate",
+          "chinese_name": "评分",
+          "order": 10,
+          "source_path": "components/rate/index.en-US.md",
+          "chinese_source_path": "components/rate/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.select",
+          "english_name": "Select",
+          "chinese_name": "选择器",
+          "order": 11,
+          "source_path": "components/select/index.en-US.md",
+          "chinese_source_path": "components/select/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.slider",
+          "english_name": "Slider",
+          "chinese_name": "滑动输入条",
+          "order": 12,
+          "source_path": "components/slider/index.en-US.md",
+          "chinese_source_path": "components/slider/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.switch",
+          "english_name": "Switch",
+          "chinese_name": "开关",
+          "order": 13,
+          "source_path": "components/switch/index.en-US.md",
+          "chinese_source_path": "components/switch/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.time-picker",
+          "english_name": "TimePicker",
+          "chinese_name": "时间选择框",
+          "order": 14,
+          "source_path": "components/time-picker/index.en-US.md",
+          "chinese_source_path": "components/time-picker/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.transfer",
+          "english_name": "Transfer",
+          "chinese_name": "穿梭框",
+          "order": 15,
+          "source_path": "components/transfer/index.en-US.md",
+          "chinese_source_path": "components/transfer/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tree-select",
+          "english_name": "TreeSelect",
+          "chinese_name": "树选择",
+          "order": 16,
+          "source_path": "components/tree-select/index.en-US.md",
+          "chinese_source_path": "components/tree-select/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.upload",
+          "english_name": "Upload",
+          "chinese_name": "上传",
+          "order": 17,
+          "source_path": "components/upload/index.en-US.md",
+          "chinese_source_path": "components/upload/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.data-display",
+      "name": "Data Display",
+      "chinese_name": "数据展示",
+      "order": 4,
+      "expected_count": 20,
+      "components": [
+        {
+          "identity": "ant.component.avatar",
+          "english_name": "Avatar",
+          "chinese_name": "头像",
+          "order": 0,
+          "source_path": "components/avatar/index.en-US.md",
+          "chinese_source_path": "components/avatar/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.badge",
+          "english_name": "Badge",
+          "chinese_name": "徽标数",
+          "order": 1,
+          "source_path": "components/badge/index.en-US.md",
+          "chinese_source_path": "components/badge/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.calendar",
+          "english_name": "Calendar",
+          "chinese_name": "日历",
+          "order": 2,
+          "source_path": "components/calendar/index.en-US.md",
+          "chinese_source_path": "components/calendar/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.card",
+          "english_name": "Card",
+          "chinese_name": "卡片",
+          "order": 3,
+          "source_path": "components/card/index.en-US.md",
+          "chinese_source_path": "components/card/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.carousel",
+          "english_name": "Carousel",
+          "chinese_name": "走马灯",
+          "order": 4,
+          "source_path": "components/carousel/index.en-US.md",
+          "chinese_source_path": "components/carousel/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.collapse",
+          "english_name": "Collapse",
+          "chinese_name": "折叠面板",
+          "order": 5,
+          "source_path": "components/collapse/index.en-US.md",
+          "chinese_source_path": "components/collapse/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.descriptions",
+          "english_name": "Descriptions",
+          "chinese_name": "描述列表",
+          "order": 6,
+          "source_path": "components/descriptions/index.en-US.md",
+          "chinese_source_path": "components/descriptions/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.empty",
+          "english_name": "Empty",
+          "chinese_name": "空状态",
+          "order": 7,
+          "source_path": "components/empty/index.en-US.md",
+          "chinese_source_path": "components/empty/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.image",
+          "english_name": "Image",
+          "chinese_name": "图片",
+          "order": 8,
+          "source_path": "components/image/index.en-US.md",
+          "chinese_source_path": "components/image/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.list",
+          "english_name": "List",
+          "chinese_name": "列表",
+          "order": 9,
+          "source_path": "components/list/index.en-US.md",
+          "chinese_source_path": "components/list/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.popover",
+          "english_name": "Popover",
+          "chinese_name": "气泡卡片",
+          "order": 10,
+          "source_path": "components/popover/index.en-US.md",
+          "chinese_source_path": "components/popover/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.qr-code",
+          "english_name": "QRCode",
+          "chinese_name": "二维码",
+          "order": 11,
+          "source_path": "components/qr-code/index.en-US.md",
+          "chinese_source_path": "components/qr-code/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.segmented",
+          "english_name": "Segmented",
+          "chinese_name": "分段控制器",
+          "order": 12,
+          "source_path": "components/segmented/index.en-US.md",
+          "chinese_source_path": "components/segmented/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.statistic",
+          "english_name": "Statistic",
+          "chinese_name": "统计数值",
+          "order": 13,
+          "source_path": "components/statistic/index.en-US.md",
+          "chinese_source_path": "components/statistic/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.table",
+          "english_name": "Table",
+          "chinese_name": "表格",
+          "order": 14,
+          "source_path": "components/table/index.en-US.md",
+          "chinese_source_path": "components/table/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tag",
+          "english_name": "Tag",
+          "chinese_name": "标签",
+          "order": 15,
+          "source_path": "components/tag/index.en-US.md",
+          "chinese_source_path": "components/tag/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.timeline",
+          "english_name": "Timeline",
+          "chinese_name": "时间轴",
+          "order": 16,
+          "source_path": "components/timeline/index.en-US.md",
+          "chinese_source_path": "components/timeline/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tooltip",
+          "english_name": "Tooltip",
+          "chinese_name": "文字提示",
+          "order": 17,
+          "source_path": "components/tooltip/index.en-US.md",
+          "chinese_source_path": "components/tooltip/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tour",
+          "english_name": "Tour",
+          "chinese_name": "漫游式引导",
+          "order": 18,
+          "source_path": "components/tour/index.en-US.md",
+          "chinese_source_path": "components/tour/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.tree",
+          "english_name": "Tree",
+          "chinese_name": "树形控件",
+          "order": 19,
+          "source_path": "components/tree/index.en-US.md",
+          "chinese_source_path": "components/tree/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.feedback",
+      "name": "Feedback",
+      "chinese_name": "反馈",
+      "order": 5,
+      "expected_count": 11,
+      "components": [
+        {
+          "identity": "ant.component.alert",
+          "english_name": "Alert",
+          "chinese_name": "警告提示",
+          "order": 0,
+          "source_path": "components/alert/index.en-US.md",
+          "chinese_source_path": "components/alert/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.drawer",
+          "english_name": "Drawer",
+          "chinese_name": "抽屉",
+          "order": 1,
+          "source_path": "components/drawer/index.en-US.md",
+          "chinese_source_path": "components/drawer/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.message",
+          "english_name": "Message",
+          "chinese_name": "全局提示",
+          "order": 2,
+          "source_path": "components/message/index.en-US.md",
+          "chinese_source_path": "components/message/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.modal",
+          "english_name": "Modal",
+          "chinese_name": "对话框",
+          "order": 3,
+          "source_path": "components/modal/index.en-US.md",
+          "chinese_source_path": "components/modal/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.notification",
+          "english_name": "Notification",
+          "chinese_name": "通知提醒框",
+          "order": 4,
+          "source_path": "components/notification/index.en-US.md",
+          "chinese_source_path": "components/notification/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.popconfirm",
+          "english_name": "Popconfirm",
+          "chinese_name": "气泡确认框",
+          "order": 5,
+          "source_path": "components/popconfirm/index.en-US.md",
+          "chinese_source_path": "components/popconfirm/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.progress",
+          "english_name": "Progress",
+          "chinese_name": "进度条",
+          "order": 6,
+          "source_path": "components/progress/index.en-US.md",
+          "chinese_source_path": "components/progress/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.result",
+          "english_name": "Result",
+          "chinese_name": "结果",
+          "order": 7,
+          "source_path": "components/result/index.en-US.md",
+          "chinese_source_path": "components/result/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.skeleton",
+          "english_name": "Skeleton",
+          "chinese_name": "骨架屏",
+          "order": 8,
+          "source_path": "components/skeleton/index.en-US.md",
+          "chinese_source_path": "components/skeleton/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.spin",
+          "english_name": "Spin",
+          "chinese_name": "加载中",
+          "order": 9,
+          "source_path": "components/spin/index.en-US.md",
+          "chinese_source_path": "components/spin/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.watermark",
+          "english_name": "Watermark",
+          "chinese_name": "水印",
+          "order": 10,
+          "source_path": "components/watermark/index.en-US.md",
+          "chinese_source_path": "components/watermark/index.zh-CN.md"
+        }
+      ]
+    },
+    {
+      "identity": "ant.category.other",
+      "name": "Other",
+      "chinese_name": "其他",
+      "order": 6,
+      "expected_count": 5,
+      "components": [
+        {
+          "identity": "ant.component.affix",
+          "english_name": "Affix",
+          "chinese_name": "固钉",
+          "order": 0,
+          "source_path": "components/affix/index.en-US.md",
+          "chinese_source_path": "components/affix/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.app",
+          "english_name": "App",
+          "chinese_name": "包裹组件",
+          "order": 1,
+          "source_path": "components/app/index.en-US.md",
+          "chinese_source_path": "components/app/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.border-beam",
+          "english_name": "BorderBeam",
+          "chinese_name": "边框流光",
+          "order": 2,
+          "source_path": "components/border-beam/index.en-US.md",
+          "chinese_source_path": "components/border-beam/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.config-provider",
+          "english_name": "ConfigProvider",
+          "chinese_name": "全局化配置",
+          "order": 3,
+          "source_path": "components/config-provider/index.en-US.md",
+          "chinese_source_path": "components/config-provider/index.zh-CN.md"
+        },
+        {
+          "identity": "ant.component.util",
+          "english_name": "Util",
+          "chinese_name": "工具类",
+          "order": 4,
+          "source_path": "components/_util/index.en-US.md",
+          "chinese_source_path": "components/_util/index.zh-CN.md"
+        }
+      ]
+    }
+  ]
+}

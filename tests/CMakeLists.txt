@@ -98,6 +98,24 @@ add_test(
         --self-test
 )
 
+add_test(
+    NAME rynui.ant_design_gallery_catalog_generator
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
+        "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/update_ant_design_gallery_catalog.py"
+        --repo-root "${PROJECT_SOURCE_DIR}"
+        --check
+)
+
+add_test(
+    NAME rynui.ant_design_gallery_catalog_contract
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
+        "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/update_ant_design_gallery_catalog.py"
+        --repo-root "${PROJECT_SOURCE_DIR}"
+        --self-test
+)
+
 add_executable(rynui_public_api_smoke public_api_smoke.cpp)
 rynui_configure_cpp_target(rynui_public_api_smoke)
 target_link_libraries(rynui_public_api_smoke PRIVATE RynUI::RynUI)
@@ -600,6 +618,20 @@ target_compile_definitions(
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
 )
 add_test(NAME rynui.token_gallery_frame COMMAND rynui_token_gallery_frame_tests)
+
+add_executable(
+    rynui_ant_design_reference_catalog_tests
+    ant_design_reference_catalog_tests.cpp
+)
+rynui_configure_cpp_target(rynui_ant_design_reference_catalog_tests)
+target_link_libraries(
+    rynui_ant_design_reference_catalog_tests
+    PRIVATE rynui_token_gallery_definition
+)
+add_test(
+    NAME rynui.ant_design_reference_catalog
+    COMMAND rynui_ant_design_reference_catalog_tests
+)
 
 add_executable(rynui_token_gallery_benchmark token_gallery_benchmark.cpp)
 rynui_configure_cpp_target(rynui_token_gallery_benchmark)
