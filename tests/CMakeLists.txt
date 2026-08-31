@@ -805,6 +805,12 @@ if(WIN32)
             "-DEVIDENCE=${PROJECT_SOURCE_DIR}/openspec/changes/008-20260829-build-ant-design-reference-gallery/evidence/windows-reference-gallery-build.md"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_reference_gallery_build_evidence.cmake"
     )
+    add_test(
+        NAME rynui.windows_gallery_acceptance_runner_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DRUNNER=${PROJECT_SOURCE_DIR}/scripts/run-windows-gallery-acceptance.ps1"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_gallery_acceptance_runner.cmake"
+    )
 endif()
 
 set(token_gallery_evidence_directory
