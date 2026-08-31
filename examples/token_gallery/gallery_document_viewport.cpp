@@ -35,6 +35,9 @@ bool GalleryDocumentViewport::set_extents(
     viewport_extent_ = viewport_extent;
     content_extent_ = content_extent;
     offset_ = clamped(offset_);
+    if (changed || offset_ != previous_offset) {
+        ++diagnostics_.extent_updates;
+    }
     return changed || offset_ != previous_offset;
 }
 
@@ -48,6 +51,7 @@ bool GalleryDocumentViewport::scroll_to(float offset) {
         return false;
     }
     offset_ = next;
+    ++diagnostics_.scroll_updates;
     return true;
 }
 
@@ -85,6 +89,7 @@ bool GalleryDocumentViewport::replace_anchors(
     std::copy(next.begin(), next.end(), anchors_.begin());
     std::fill_n(anchor_present_.begin(), section_count, true);
     advance_generation(anchor_generation_);
+    ++diagnostics_.anchor_updates;
     return true;
 }
 
@@ -113,6 +118,7 @@ bool GalleryDocumentViewport::replace_category_anchors(
         anchor_present_[section_count + index] = true;
     }
     advance_generation(anchor_generation_);
+    ++diagnostics_.anchor_updates;
     return true;
 }
 
@@ -147,7 +153,11 @@ bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
             || !anchor_present_[value.index]) {
         return false;
     }
-    return scroll_to(anchors_[value.index]);
+    const bool changed = scroll_to(anchors_[value.index]);
+    if (changed) {
+        ++diagnostics_.navigation_jumps;
+    }
+    return changed;
 }
 
 GalleryDocumentResizeAnchor
@@ -180,8 +190,18 @@ bool GalleryDocumentViewport::apply_subtree_translation(
     if (nodes.find(root) == nullptr) {
         return false;
     }
+    if (translation_applied_ && applied_root_ == root
+            && applied_offset_ == offset_) {
+        return true;
+    }
     ryn::runtime::NodePropertyWriter writer(nodes, dirty);
-    translate_subtree(root, {0.0F, -offset_}, nodes, writer);
+    const auto translated = translate_subtree(
+        root, {0.0F, -offset_}, nodes, writer);
+    applied_root_ = root;
+    applied_offset_ = offset_;
+    translation_applied_ = true;
+    ++diagnostics_.translation_passes;
+    diagnostics_.translated_nodes += translated;
     return true;
 }
 
@@ -195,6 +215,11 @@ GalleryDocumentViewport::snapshot() const noexcept {
         current_section(),
         anchor_generation_,
     };
+}
+
+const GalleryDocumentViewportDiagnostics&
+GalleryDocumentViewport::diagnostics() const noexcept {
+    return diagnostics_;
 }
 
 std::size_t GalleryDocumentViewport::section_index(
@@ -231,16 +256,18 @@ GalleryDocumentViewport::current_section() const noexcept {
     return static_cast<GalleryDocumentSectionKind>(current);
 }
 
-void GalleryDocumentViewport::translate_subtree(
+std::size_t GalleryDocumentViewport::translate_subtree(
     ryn::runtime::NodeId root,
     ryn::runtime::Point translation,
     ryn::runtime::NodeStore& nodes,
     ryn::runtime::NodePropertyWriter& writer) {
-    const auto children = nodes.require(root).children;
+    const auto& children = nodes.require(root).children;
     static_cast<void>(writer.set_translation(root, translation));
+    std::size_t translated = 1;
     for (const auto child : children) {
-        translate_subtree(child, translation, nodes, writer);
+        translated += translate_subtree(child, translation, nodes, writer);
     }
+    return translated;
 }
 
 } // namespace rynui::example

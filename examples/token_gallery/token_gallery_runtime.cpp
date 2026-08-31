@@ -628,6 +628,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto frames = loop.counters();
         const auto metrics = platform.window_metrics();
         const auto document = document_viewport.snapshot();
+        const auto document_diagnostics = document_viewport.diagnostics();
         std::uint64_t outer_layers = 0;
         std::uint64_t inset_layers = 0;
         std::uint64_t focus_layers = 0;
@@ -699,6 +700,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 document.current_section)].identity
             << " document_anchor_generation=" << document.anchor_generation
             << " scroll_events=" << events.scroll_events()
+            << " document_extent_updates="
+            << document_diagnostics.extent_updates
+            << " document_scroll_updates="
+            << document_diagnostics.scroll_updates
+            << " document_anchor_updates="
+            << document_diagnostics.anchor_updates
+            << " document_navigation_jumps="
+            << document_diagnostics.navigation_jumps
+            << " document_translation_passes="
+            << document_diagnostics.translation_passes
+            << " document_translated_nodes="
+            << document_diagnostics.translated_nodes
             << " input_events=" << platform_diagnostics.normalized_input_events
             << " pointer_input_events=" << pointer_diagnostics.input_events
             << " pointer_routes=" << pointer_diagnostics.routes_dispatched

@@ -39,6 +39,15 @@ struct GalleryDocumentViewportSnapshot final {
     std::uint32_t anchor_generation{};
 };
 
+struct GalleryDocumentViewportDiagnostics final {
+    std::uint64_t extent_updates{};
+    std::uint64_t scroll_updates{};
+    std::uint64_t anchor_updates{};
+    std::uint64_t navigation_jumps{};
+    std::uint64_t translation_passes{};
+    std::uint64_t translated_nodes{};
+};
+
 class GalleryDocumentViewport final {
 public:
     GalleryDocumentViewport() = default;
@@ -63,6 +72,8 @@ public:
         ryn::runtime::DirtyQueues& dirty) const;
 
     [[nodiscard]] GalleryDocumentViewportSnapshot snapshot() const noexcept;
+    [[nodiscard]] const GalleryDocumentViewportDiagnostics& diagnostics()
+        const noexcept;
 
 private:
     static constexpr std::size_t section_count = 6;
@@ -74,7 +85,7 @@ private:
     [[nodiscard]] float maximum_offset() const noexcept;
     [[nodiscard]] float clamped(float value) const noexcept;
     [[nodiscard]] GalleryDocumentSectionKind current_section() const noexcept;
-    static void translate_subtree(
+    static std::size_t translate_subtree(
         ryn::runtime::NodeId root,
         ryn::runtime::Point translation,
         ryn::runtime::NodeStore& nodes,
@@ -86,6 +97,10 @@ private:
     std::array<float, anchor_count> anchors_{};
     std::array<bool, anchor_count> anchor_present_{};
     std::uint32_t anchor_generation_{1};
+    mutable std::optional<ryn::runtime::NodeId> applied_root_;
+    mutable float applied_offset_{};
+    mutable bool translation_applied_{};
+    mutable GalleryDocumentViewportDiagnostics diagnostics_;
 };
 
 } // namespace rynui::example

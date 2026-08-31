@@ -15,6 +15,7 @@ file(READ "${VIEWPORT_HEADER}" viewport_header)
 foreach(required IN ITEMS
         "class GalleryDocumentViewport"
         "GalleryDocumentAnchorId"
+        "GalleryDocumentViewportDiagnostics"
         "capture_resize_anchor"
         "restore_resize_anchor"
         "apply_subtree_translation")
@@ -33,6 +34,7 @@ foreach(required IN ITEMS
         "maximum_offset"
         "replace_anchors"
         "anchor_generation_"
+        "translation_passes"
         "NodePropertyWriter"
         "translate_subtree")
     if(NOT viewport_source MATCHES "${required}")

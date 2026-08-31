@@ -727,6 +727,24 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_viewport_contract.cmake"
 )
 
+add_executable(
+    rynui_gallery_document_benchmark
+    gallery_document_benchmark.cpp
+)
+rynui_configure_cpp_target(rynui_gallery_document_benchmark)
+target_include_directories(
+    rynui_gallery_document_benchmark
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(
+    rynui_gallery_document_benchmark
+    PRIVATE rynui_token_gallery_document_viewport rynui_runtime
+)
+add_test(
+    NAME rynui.gallery_document_benchmark
+    COMMAND rynui_gallery_document_benchmark
+)
+
 add_executable(rynui_token_gallery_benchmark token_gallery_benchmark.cpp)
 rynui_configure_cpp_target(rynui_token_gallery_benchmark)
 target_include_directories(
