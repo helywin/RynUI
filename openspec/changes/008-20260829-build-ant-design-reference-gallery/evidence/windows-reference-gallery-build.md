@@ -3,7 +3,7 @@
 scope=windows
 build_result=passed
 manual_visual_result=pending
-source_sha=b9f4c69a05733f342c9fb00c9e3e95c72a119101
+source_sha=245aa87c080522b09962cddd12ffac86f37c9508
 
 configure=fresh
 preset=windows-msvc
@@ -11,10 +11,10 @@ generator=Ninja Multi-Config
 compiler=MSVC 19.51.36256.0
 architecture=x64
 dependency_mode=BUNDLED
-debug_ctest=164/164
-debug_ctest_elapsed_seconds=137.05
-release_ctest=164/164
-release_ctest_elapsed_seconds=136.73
+debug_ctest=166/166
+debug_ctest_elapsed_seconds=132.26
+release_ctest=166/166
+release_ctest_elapsed_seconds=98.61
 
 window_system=win32
 wheel_input=passed
