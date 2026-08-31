@@ -275,6 +275,24 @@ target_link_libraries(
     rynui_theme_runtime_tests PRIVATE rynui_runtime rynui_theme)
 add_test(NAME rynui.theme_runtime COMMAND rynui_theme_runtime_tests)
 
+add_executable(
+    rynui_ant_design_button_source_contract_tests
+    ant_design_button_source_contract_tests.cpp
+)
+rynui_configure_cpp_target(rynui_ant_design_button_source_contract_tests)
+target_include_directories(
+    rynui_ant_design_button_source_contract_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(
+    rynui_ant_design_button_source_contract_tests
+    PRIVATE rynui_theme
+)
+add_test(
+    NAME rynui.ant_design_button_source_contract
+    COMMAND rynui_ant_design_button_source_contract_tests
+)
+
 add_executable(rynui_theme_scope_component_tests theme_scope_component_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_scope_component_tests)
 target_include_directories(

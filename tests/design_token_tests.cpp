@@ -139,11 +139,21 @@ void test_generated_metadata() {
         previous = entry.identity;
     }
     const auto* runtime = ryn::find_ant_design_token("ant.alias.boxShadow");
+    const auto* error_hover = ryn::find_ant_design_token("ant.map.colorErrorHover");
+    const auto* error_active = ryn::find_ant_design_token("ant.map.colorErrorActive");
     const auto* web = ryn::find_ant_design_token("ant.alias.linkDecoration");
     const auto* future = ryn::find_ant_design_token("ant.component.Affix.zIndexPopup");
     require(runtime != nullptr && runtime->support == ryn::TokenSupportStatus::runtime
                 && runtime->value_kind == ryn::TokenValueKind::shadow_list,
             "runtime metadata query failed");
+    require(error_hover != nullptr && error_active != nullptr
+                && error_hover->support == ryn::TokenSupportStatus::runtime
+                && error_active->support == ryn::TokenSupportStatus::runtime
+                && error_hover->invalidation
+                    == ryn::TokenInvalidationDomain::paint_material
+                && error_active->invalidation
+                    == ryn::TokenInvalidationDomain::paint_material,
+            "typed error palette metadata was not promoted to runtime support");
     require(web != nullptr && web->support == ryn::TokenSupportStatus::web_only,
             "web-only catalog metadata is not queryable");
     require(future != nullptr

@@ -29,6 +29,24 @@ bool near(float actual, float expected, float tolerance = 0.001F) {
     return std::fabs(actual - expected) <= tolerance;
 }
 
+ryn::runtime::Rect quad_bounds(
+    const ryn::graphics::QuadInstance& instance,
+    ryn::runtime::Size viewport = {640.0F, 360.0F}) {
+    return {
+        (instance.clip_rect[0] + 1.0F) * viewport.width * 0.5F,
+        (1.0F - instance.clip_rect[1]) * viewport.height * 0.5F,
+        instance.clip_rect[2] * viewport.width * 0.5F,
+        -instance.clip_rect[3] * viewport.height * 0.5F,
+    };
+}
+
+bool near_rect(ryn::runtime::Rect actual, ryn::runtime::Rect expected) {
+    return near(actual.x, expected.x)
+        && near(actual.y, expected.y)
+        && near(actual.width, expected.width)
+        && near(actual.height, expected.height);
+}
+
 struct Fixture final {
     Fixture()
         : layout(nodes),
@@ -501,6 +519,7 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
             "Danger Button normal state did not use its component token");
     fixture.host->pointer().dispatch(pointer_event(
         ryn::input::PointerAction::move, fixture.center(0)));
+    require(fixture.synchronize(), "Default hover did not synchronize");
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color
                     == channels(ryn::resolve_theme().button().danger_hover_background),
             "Danger Button hover state did not use its component token");
@@ -526,6 +545,183 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
                 && fixture.host->rounded_effects().at(danger_shadow.front()).material.opacity
                     == 0.0F,
             "disabled state did not win over Danger interaction and shadow");
+}
+
+void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(
+        ryn::animation::MotionPreference::reduced);
+    fixture.host->mount(ryn::Content{[] {
+        ryn::Button(
+            ryn::ButtonProps{}.type(ryn::ButtonType::Default),
+            [] { ryn::Text(u8"Default"); });
+        ryn::Button(
+            ryn::ButtonProps{}.type(ryn::ButtonType::Primary),
+            [] { ryn::Text(u8"Primary"); });
+        ryn::Button(
+            ryn::ButtonProps{}.type(ryn::ButtonType::Danger),
+            [] { ryn::Text(u8"Danger"); });
+    }});
+    require(fixture.synchronize(), "Button visual matrix did not synchronize");
+
+    const auto default_button = fixture.host->mounted_buttons()[0];
+    const auto primary_button = fixture.host->mounted_buttons()[1];
+    const auto danger_button = fixture.host->mounted_buttons()[2];
+    const auto default_root = fixture.bounds(0);
+    const auto primary_root = fixture.bounds(1);
+    const auto danger_root = fixture.bounds(2);
+    const auto default_background = quad_bounds(fixture.layer(
+        0, ryn::component::ButtonVisualLayer::background));
+    const auto primary_background = quad_bounds(fixture.layer(
+        1, ryn::component::ButtonVisualLayer::background));
+    const auto danger_background = quad_bounds(fixture.layer(
+        2, ryn::component::ButtonVisualLayer::background));
+
+    require(near(default_background.x, default_root.x + 1.0F)
+                && near(default_background.y, default_root.y + 1.0F)
+                && near(default_background.width, default_root.width - 2.0F)
+                && near(default_background.height, default_root.height - 2.0F)
+                && near_rect(primary_background, primary_root)
+                && near_rect(danger_background, danger_root)
+                && fixture.layer(1, ryn::component::ButtonVisualLayer::border)
+                    .color[3] == 0.0F
+                && fixture.layer(2, ryn::component::ButtonVisualLayer::border)
+                    .color[3] == 0.0F,
+            "solid Button fill did not cover the transparent border box");
+    require(fixture.host->hit_test().hit_test(fixture.center(0))
+                    == default_button.interaction
+                && fixture.host->hit_test().hit_test(fixture.center(1))
+                    == primary_button.interaction
+                && fixture.host->hit_test().hit_test(fixture.center(2))
+                    == danger_button.interaction,
+            "solid border-box painting changed Button HitTest geometry");
+
+    for (const float scale : std::array{1.0F, 1.25F, 1.5F, 2.0F}) {
+        const auto& primary_fill = fixture.layer(
+            1, ryn::component::ButtonVisualLayer::background);
+        require(near(primary_background.x * scale, primary_root.x * scale)
+                    && near(primary_background.y * scale, primary_root.y * scale)
+                    && near(primary_background.width * scale, primary_root.width * scale)
+                    && near(primary_background.height * scale, primary_root.height * scale)
+                    && near(
+                        primary_fill.corner_radius
+                            * std::min(primary_root.width, primary_root.height)
+                            * scale,
+                        6.0F * scale),
+                "solid Button border-box geometry drifted at simulated DPI");
+    }
+
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(0)));
+    require(fixture.layer(0, ryn::component::ButtonVisualLayer::border).color
+                    == channels(ryn::resolve_theme().button().default_hover_color),
+            "Default hover missed its existing 1px border");
+    require(fixture.host->button_scene().focus_effect(
+                default_button.scene).material.opacity == 0.0F,
+            "Default hover incorrectly created a focus ring");
+
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(1)));
+    require(fixture.synchronize(), "Primary hover did not synchronize");
+    require(fixture.layer(1, ryn::component::ButtonVisualLayer::background).color
+                    == channels(
+                        ryn::resolve_theme().button().primary_hover_background)
+                && fixture.layer(1, ryn::component::ButtonVisualLayer::border)
+                    .color[3] == 0.0F
+                && fixture.host->button_scene().focus_effect(
+                    primary_button.scene).material.opacity == 0.0F
+                && near_rect(
+                    quad_bounds(fixture.layer(
+                        1, ryn::component::ButtonVisualLayer::background)),
+                    primary_root),
+            "Primary hover introduced a border, focus ring, or transparent edge");
+
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(2)));
+    require(fixture.synchronize(), "Danger hover did not synchronize");
+    require(fixture.layer(2, ryn::component::ButtonVisualLayer::background).color
+                    == channels(
+                        ryn::resolve_theme().button().danger_hover_background)
+                && fixture.layer(2, ryn::component::ButtonVisualLayer::border)
+                    .color[3] == 0.0F
+                && fixture.host->button_scene().focus_effect(
+                    danger_button.scene).material.opacity == 0.0F
+                && near_rect(
+                    quad_bounds(fixture.layer(
+                        2, ryn::component::ButtonVisualLayer::background)),
+                    danger_root),
+            "Danger hover introduced a blue border, focus ring, or transparent edge");
+
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(1)));
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::down,
+        fixture.center(1),
+        ryn::input::PointerButton::primary));
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::up,
+        fixture.center(1),
+        ryn::input::PointerButton::primary));
+    require(fixture.host->focus().state().focused == primary_button.interaction
+                && !fixture.host->snapshot(primary_button.component)
+                    .focus.focus_visible
+                && fixture.host->button_scene().focus_effect(
+                    primary_button.scene).material.opacity == 0.0F,
+            "pointer focus incorrectly enabled the keyboard focus ring");
+
+    fixture.host->focus().dispatch(key(
+        ryn::input::Key::tab,
+        ryn::input::KeyAction::down));
+    const auto& focus = fixture.host->button_scene().focus_effect(
+        danger_button.scene);
+    const auto& shape = focus.geometry.shape.rect;
+    const float mid_y = shape.y + shape.height * 0.5F;
+    require(fixture.host->focus().state().focused == danger_button.interaction
+                && fixture.host->snapshot(danger_button.component)
+                    .focus.focus_visible
+                && focus.material.opacity == 1.0F
+                && focus.material.color
+                    == ryn::resolve_theme().map().color_primary_border
+                && focus.geometry.outline_width == 3.0F
+                && focus.geometry.outline_offset == 1.0F,
+            "keyboard focus did not use the locked hollow focus outline");
+
+    for (const float scale : std::array{1.0F, 1.25F, 1.5F, 2.0F}) {
+        const ryn::graphics::RoundedEffectDeviceMetrics metrics{
+            static_cast<std::uint32_t>(std::lround(640.0F * scale)),
+            static_cast<std::uint32_t>(std::lround(360.0F * scale)),
+            scale,
+        };
+        const auto packed = ryn::graphics::pack_rounded_effect_instance(
+            focus, metrics);
+        require(near(packed.effect_params[1], 3.0F * scale)
+                    && near(packed.effect_params[2], 1.0F * scale)
+                    && ryn::graphics::rounded_effect_coverage(
+                        {shape.x + shape.width + 0.25F, mid_y}, focus) == 0.0F
+                    && ryn::graphics::rounded_effect_coverage(
+                        {shape.x + shape.width + 2.5F, mid_y}, focus) > 0.99F
+                    && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                        {
+                            (shape.x + shape.width + 0.25F) * scale,
+                            mid_y * scale,
+                        },
+                        packed) == 0.0F
+                    && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                        {
+                            (shape.x + shape.width + 2.5F) * scale,
+                            mid_y * scale,
+                        },
+                        packed) > 0.99F,
+                "focus gap/ring CPU and GPU references diverged at simulated DPI");
+    }
+
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(0)));
+    require(fixture.host->button_scene().focus_effect(
+                default_button.scene).material.opacity == 0.0F
+                && fixture.host->button_scene().focus_effect(
+                    danger_button.scene).material.opacity == 1.0F,
+            "pointer hover copied keyboard focus-visible state to another Button");
 }
 
 void test_animated_presentation_retarget_and_motion_policy() {
@@ -1152,6 +1348,7 @@ int main() {
     try {
         test_mount_scene_composition_and_lifecycle();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
+        test_solid_border_box_and_focus_modalities_at_simulated_dpi();
         test_animated_presentation_retarget_and_motion_policy();
         test_retained_loading_spinner_phase_and_policy_lifecycle();
         test_pointer_keyboard_click_path_and_callback_mutation();

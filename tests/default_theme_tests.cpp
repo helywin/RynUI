@@ -49,6 +49,10 @@ int main() {
                     && button.default_border_color == theme.alias().color_border
                     && button.primary_background == theme.map().color_primary
                     && button.danger_background == theme.map().color_error
+                    && button.danger_hover_background
+                        == theme.map().color_error_hover
+                    && button.danger_active_background
+                        == theme.map().color_error_active
                     && button.border_width == 1.0F
                     && button.icon_gap == 8.0F
                     && button.loading_indicator_size == 14.0F
@@ -56,6 +60,8 @@ int main() {
                 "Default resolved Button visual tokens drifted");
         require(theme.alias().line_width_focus == 3.0F
                     && theme.alias().focus_outline_offset == 1.0F
+                    && theme.alias().color_focus_outline
+                        == theme.map().color_primary_border
                     && theme.map().size_xs == 8.0F
                     && theme.map().size == 16.0F
                     && theme.map().size_large == 24.0F,

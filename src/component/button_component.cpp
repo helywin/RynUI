@@ -223,6 +223,11 @@ struct ResolvedButtonVisualState final {
     ShadowList shadow;
 };
 
+[[nodiscard]] bool solid_fills_border_box(
+    const ButtonComponentState& state) noexcept {
+    return !state.disabled && state.type != ButtonType::Default;
+}
+
 ResolvedButtonVisualState visual_token(
     const ButtonThemeToken& button,
     const ButtonComponentState& state) {
@@ -661,7 +666,11 @@ void ButtonComponentHost::apply_type(
     if (state == nullptr || state->type == type) {
         return;
     }
+    const bool previous_border_box = solid_fills_border_box(*state);
     state->type = type;
+    if (previous_border_box != solid_fills_border_box(*state)) {
+        dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
+    }
     update_visuals(*state);
 }
 
@@ -686,6 +695,7 @@ void ButtonComponentHost::apply_disabled(
     if (state == nullptr || state->disabled == disabled) {
         return;
     }
+    const bool previous_border_box = solid_fills_border_box(*state);
     state->disabled = disabled;
     if (disabled) {
         state->hovered = false;
@@ -696,6 +706,9 @@ void ButtonComponentHost::apply_disabled(
         state->interaction,
         !disabled));
     focus_.synchronize();
+    if (previous_border_box != solid_fills_border_box(*state)) {
+        dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
+    }
     update_visuals(*state);
 }
 
@@ -1248,12 +1261,15 @@ void ButtonComponentHost::synchronize_geometry(
     const auto size = size_token(button, state.size);
     const auto& node = nodes_->require(state.node);
     const auto& content = layout_->horizontal_content_geometry(state.node);
-    const runtime::Rect background_bounds{
+    const runtime::Rect inset_background_bounds{
         node.bounds.x + button.border_width,
         node.bounds.y + button.border_width,
         std::max(0.0F, node.bounds.width - 2.0F * button.border_width),
         std::max(0.0F, node.bounds.height - 2.0F * button.border_width),
     };
+    const bool border_box_fill = solid_fills_border_box(state);
+    const auto background_bounds = border_box_fill
+        ? node.bounds : inset_background_bounds;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
         make_quad(
@@ -1269,7 +1285,9 @@ void ButtonComponentHost::synchronize_geometry(
             viewport,
             next[1].color,
             next[1].opacity,
-            std::max(0.0F, size.border_radius - button.border_width),
+            border_box_fill
+                ? size.border_radius
+                : std::max(0.0F, size.border_radius - button.border_width),
             node.translation);
     const auto indicator_bounds = content.loading_indicator_bounds.value_or(
         runtime::Rect{});

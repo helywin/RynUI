@@ -7,10 +7,10 @@
 
 ## 2. Button hover、focus 与 solid visual 核对
 
-- [ ] 2.1 增加 Ant Design 6.5.0 Button source contract，锁定 Default outlined 的 normal/hover/active border/text/background、Primary/Danger solid fill、disabled/loading priority、`lineWidthFocus=3`、`outlineOffset=1` 与 `colorPrimaryBorder`；通过直接数值和 token identity tests 拒绝把 hover border 当成 focus ring
-- [ ] 2.2 修复 Primary/Danger solid Button 的透明 border-box painting，使 fill 覆盖完整 root bounds而不留下 1px 透明边缘；将 Danger hover/active 改为锁定 `colorErrorHover`/`colorErrorActive` palette，通过 1.0/1.25/1.5/2.0 simulated DPI geometry/color tests 验证 HitTest/Layout 不变
-- [ ] 2.3 扩展 Button 完整状态矩阵：Default hover 只更新现有 1px border/text且 focus effect opacity 为零，Primary/Danger hover 无额外蓝边，pointer focus 无 ring，keyboard focus 显示 1px gap + 3px hollow ring，disabled/loading 优先；通过 component/scene/CPU/GPU reference 和最小 dirty range tests 验证
-- [ ] 2.4 运行 Button、Theme、Pointer、Focus、RoundedEffect、renderer 与 Token Gallery headless tests 及 `git diff --check`；以英文 `fix: align button state visuals` 提交并推送本阶段，不修改平台真实窗口 evidence，核对 remote SHA
+- [x] 2.1 增加 Ant Design 6.5.0 Button source contract，锁定 Default outlined 的 normal/hover/active border/text/background、Primary/Danger solid fill、disabled/loading priority、`lineWidthFocus=3`、`outlineOffset=1` 与 `colorPrimaryBorder`；通过直接数值和 token identity tests 拒绝把 hover border 当成 focus ring
+- [x] 2.2 修复 Primary/Danger solid Button 的透明 border-box painting，使 fill 覆盖完整 root bounds而不留下 1px 透明边缘；将 Danger hover/active 改为锁定 `colorErrorHover`/`colorErrorActive` palette，通过 1.0/1.25/1.5/2.0 simulated DPI geometry/color tests 验证 HitTest/Layout 不变
+- [x] 2.3 扩展 Button 完整状态矩阵：Default hover 只更新现有 1px border/text且 focus effect opacity 为零，Primary/Danger hover 无额外蓝边，pointer focus 无 ring，keyboard focus 显示 1px gap + 3px hollow ring，disabled/loading 优先；通过 component/scene/CPU/GPU reference 和最小 dirty range tests 验证
+- [x] 2.4 运行 Button、Theme、Pointer、Focus、RoundedEffect、renderer 与 Token Gallery headless tests 及 `git diff --check`；以英文 `fix: align button state visuals` 提交并推送本阶段，不修改平台真实窗口 evidence，核对 remote SHA
 
 ## 3. 非交互 ReferenceSurface
 

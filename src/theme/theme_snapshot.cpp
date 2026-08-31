@@ -89,6 +89,126 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
         from.alpha() + (to.alpha() - from.alpha()) * amount);
 }
 
+struct HsvColor final {
+    float hue{};
+    float saturation{};
+    float value{};
+};
+
+[[nodiscard]] HsvColor to_hsv(Color color) noexcept {
+    const float maximum = std::max({color.red(), color.green(), color.blue()});
+    const float minimum = std::min({color.red(), color.green(), color.blue()});
+    const float delta = maximum - minimum;
+    float hue = 0.0F;
+    if (delta != 0.0F) {
+        if (maximum == color.red()) {
+            hue = 60.0F * std::fmod(
+                (color.green() - color.blue()) / delta, 6.0F);
+        } else if (maximum == color.green()) {
+            hue = 60.0F * (
+                (color.blue() - color.red()) / delta + 2.0F);
+        } else {
+            hue = 60.0F * (
+                (color.red() - color.green()) / delta + 4.0F);
+        }
+    }
+    if (hue < 0.0F) {
+        hue += 360.0F;
+    }
+    return {
+        hue,
+        maximum == 0.0F ? 0.0F : delta / maximum,
+        maximum,
+    };
+}
+
+[[nodiscard]] Color from_hsv(HsvColor color) {
+    const float chroma = color.value * color.saturation;
+    const float sector = color.hue / 60.0F;
+    const float secondary = chroma
+        * (1.0F - std::fabs(std::fmod(sector, 2.0F) - 1.0F));
+    float red = 0.0F;
+    float green = 0.0F;
+    float blue = 0.0F;
+    if (sector < 1.0F) {
+        red = chroma;
+        green = secondary;
+    } else if (sector < 2.0F) {
+        red = secondary;
+        green = chroma;
+    } else if (sector < 3.0F) {
+        green = chroma;
+        blue = secondary;
+    } else if (sector < 4.0F) {
+        green = secondary;
+        blue = chroma;
+    } else if (sector < 5.0F) {
+        red = secondary;
+        blue = chroma;
+    } else {
+        red = chroma;
+        blue = secondary;
+    }
+    const float match = color.value - chroma;
+    return Color(
+        rounded_channel(red + match),
+        rounded_channel(green + match),
+        rounded_channel(blue + match));
+}
+
+[[nodiscard]] float round_hundredth(float value) noexcept {
+    return std::round(value * 100.0F) / 100.0F;
+}
+
+// @ant-design/colors 8.0.1 generate.ts: palette key 5 is the semantic hover
+// color and key 7 is the semantic active color around the seed at key 6.
+[[nodiscard]] Color palette_variant(
+    Color seed,
+    int step,
+    bool light) {
+    auto hsv = to_hsv(seed);
+    const bool grayscale = hsv.hue == 0.0F && hsv.saturation == 0.0F;
+    const float rounded_hue = std::round(hsv.hue);
+    const bool reverse_hue = rounded_hue >= 60.0F && rounded_hue <= 240.0F;
+    hsv.hue = light == reverse_hue
+        ? rounded_hue - 2.0F * static_cast<float>(step)
+        : rounded_hue + 2.0F * static_cast<float>(step);
+    if (hsv.hue < 0.0F) {
+        hsv.hue += 360.0F;
+    } else if (hsv.hue >= 360.0F) {
+        hsv.hue -= 360.0F;
+    }
+
+    if (!grayscale) {
+        hsv.saturation = light
+            ? hsv.saturation - 0.16F * static_cast<float>(step)
+            : hsv.saturation + (step == 4
+                ? 0.16F : 0.05F * static_cast<float>(step));
+        hsv.saturation = std::min(hsv.saturation, 1.0F);
+        if (light && step == 5 && hsv.saturation > 0.1F) {
+            hsv.saturation = 0.1F;
+        }
+        hsv.saturation = round_hundredth(std::max(hsv.saturation, 0.06F));
+    }
+    hsv.value = round_hundredth(std::clamp(
+        hsv.value + (light ? 0.05F : -0.15F) * static_cast<float>(step),
+        0.0F,
+        1.0F));
+    return from_hsv(hsv);
+}
+
+struct SemanticPalette final {
+    Color hover;
+    Color active;
+};
+
+[[nodiscard]] SemanticPalette semantic_palette(Color seed) {
+    return {
+        palette_variant(seed, 1, true),
+        palette_variant(seed, 1, false),
+    };
+}
+
 [[nodiscard]] constexpr bool is_default_primary(Color color) noexcept {
     return color == Color::rgba8(22, 119, 255);
 }
@@ -105,6 +225,7 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
     const float radius_small = radius >= 5.0F && radius < 7.0F ? 4.0F : radius;
     const float radius_large = radius >= 6.0F && radius < 16.0F ? radius + 2.0F
         : (radius >= 16.0F ? 16.0F : radius);
+    const auto error_palette = semantic_palette(seed.color_error);
     return {
         .color_primary = seed.color_primary,
         .color_primary_hover = default_primary
@@ -116,6 +237,8 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
         .color_success = seed.color_success,
         .color_warning = seed.color_warning,
         .color_error = seed.color_error,
+        .color_error_hover = error_palette.hover,
+        .color_error_active = error_palette.active,
         .color_info = seed.color_info,
         .color_text_base = seed.color_text_base.value_or(black),
         .color_background_base = seed.color_background_base.value_or(white),
@@ -145,6 +268,9 @@ void apply_dark(ThemeMapToken& map) {
     const bool default_primary = is_default_primary(map.color_primary);
     const Color black = Color::rgba8(0, 0, 0);
     const Color white = Color::rgba8(255, 255, 255);
+    const Color dark_surface = Color::rgba8(20, 20, 20);
+    const Color error_seed = map.color_error;
+    const Color error_light_hover = map.color_error_hover;
     map.color_primary = default_primary
         ? Color::rgba8(22, 104, 220) : mix(map.color_primary, black, 0.12F);
     map.color_primary_hover = default_primary
@@ -153,6 +279,9 @@ void apply_dark(ThemeMapToken& map) {
         ? Color::rgba8(21, 84, 173) : mix(map.color_primary, black, 0.2F);
     map.color_primary_border = default_primary
         ? Color::rgba8(21, 50, 91) : mix(map.color_primary, black, 0.55F);
+    map.color_error_hover = mix(dark_surface, error_seed, 0.65F);
+    map.color_error = mix(dark_surface, error_seed, 0.85F);
+    map.color_error_active = mix(dark_surface, error_light_hover, 0.90F);
     map.color_text_base = white;
     map.color_background_base = black;
 }
@@ -262,8 +391,8 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         .primary_active_background = map.color_primary_active,
         .danger_color = Color::rgba8(255, 255, 255),
         .danger_background = map.color_error,
-        .danger_hover_background = mix(map.color_error, Color::rgba8(255, 255, 255), 0.18F),
-        .danger_active_background = mix(map.color_error, Color::rgba8(0, 0, 0), 0.15F),
+        .danger_hover_background = map.color_error_hover,
+        .danger_active_background = map.color_error_active,
         .disabled_color = alias.color_text_disabled,
         .disabled_background = alias.color_background_container_disabled,
         .disabled_border_color = alias.color_border,
@@ -385,6 +514,12 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, map.color_primary_hover);
     stream << ",\"colorPrimaryActive\":";
     append_color(stream, map.color_primary_active);
+    stream << ",\"colorError\":";
+    append_color(stream, map.color_error);
+    stream << ",\"colorErrorHover\":";
+    append_color(stream, map.color_error_hover);
+    stream << ",\"colorErrorActive\":";
+    append_color(stream, map.color_error_active);
     stream << ",\"fontSizeSM\":" << map.font_size_small << ",\"fontSize\":"
            << map.font_size << ",\"fontSizeLG\":" << map.font_size_large
            << ",\"sizeXS\":" << map.size_xs << ",\"sizeSM\":" << map.size_small
@@ -505,7 +640,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     const std::array map_colors{
         map.color_primary, map.color_primary_hover, map.color_primary_active,
         map.color_primary_border, map.color_success, map.color_warning, map.color_error,
-        map.color_info, map.color_text_base, map.color_background_base,
+        map.color_error_hover, map.color_error_active, map.color_info,
+        map.color_text_base, map.color_background_base,
     };
     for (const Color color : map_colors) hash_color(hash, color);
     const std::array map_values{

@@ -80,8 +80,8 @@
     "by_support": {
       "component-not-yet-implemented": 566,
       "deprecated": 172,
-      "metadata": 315,
-      "runtime": 100,
+      "metadata": 313,
+      "runtime": 102,
       "web-only": 41
     },
     "component_owners": 69,
@@ -17063,12 +17063,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "map",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.map.colorErrorActive",
       "source": {
         "line": 564,
         "path": "components/theme/interface/maps/colors.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "colorErrorActive",
       "upstream_type": "string",
@@ -17210,12 +17210,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "map",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.map.colorErrorHover",
       "source": {
         "line": 548,
         "path": "components/theme/interface/maps/colors.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "colorErrorHover",
       "upstream_type": "string",

@@ -123,6 +123,8 @@ struct ThemeMapToken final {
     Color color_success;
     Color color_warning;
     Color color_error;
+    Color color_error_hover;
+    Color color_error_active;
     Color color_info;
     Color color_text_base;
     Color color_background_base;

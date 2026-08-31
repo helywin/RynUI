@@ -28,6 +28,8 @@ enum class TokenIdentity : std::uint8_t {
     map_color_success,
     map_color_warning,
     map_color_error,
+    map_color_error_hover,
+    map_color_error_active,
     map_color_info,
     map_color_text_base,
     map_color_background_base,

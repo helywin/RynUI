@@ -103,6 +103,10 @@ std::size_t collect_changed(
         TokenIdentity::map_color_warning, changed, count);
     append_if_changed(before_map.color_error, after_map.color_error,
         TokenIdentity::map_color_error, changed, count);
+    append_if_changed(before_map.color_error_hover, after_map.color_error_hover,
+        TokenIdentity::map_color_error_hover, changed, count);
+    append_if_changed(before_map.color_error_active, after_map.color_error_active,
+        TokenIdentity::map_color_error_active, changed, count);
     append_if_changed(before_map.color_info, after_map.color_info,
         TokenIdentity::map_color_info, changed, count);
     append_if_changed(before_map.color_text_base, after_map.color_text_base,
@@ -666,7 +670,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "alias.lineWidthFocus", "alias.focusOutlineOffset", "alias.boxShadow",
         "alias.boxShadowSecondary", "alias.boxShadowTertiary", "map.colorPrimary",
         "map.colorPrimaryHover", "map.colorPrimaryActive", "map.colorPrimaryBorder",
-        "map.colorSuccess", "map.colorWarning", "map.colorError", "map.colorInfo",
+        "map.colorSuccess", "map.colorWarning", "map.colorError",
+        "map.colorErrorHover", "map.colorErrorActive", "map.colorInfo",
         "map.colorTextBase", "map.colorBgBase", "map.fontSizeSM",
         "map.fontSize", "map.fontSizeLG", "map.lineHeightSM", "map.lineHeight",
         "map.lineHeightLG", "map.sizeXS", "map.sizeSM", "map.size",
@@ -700,6 +705,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_color_success:
     case TokenIdentity::map_color_warning:
     case TokenIdentity::map_color_error:
+    case TokenIdentity::map_color_error_hover:
+    case TokenIdentity::map_color_error_active:
     case TokenIdentity::map_color_info:
     case TokenIdentity::map_color_text_base:
     case TokenIdentity::map_color_background_base:

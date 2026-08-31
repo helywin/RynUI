@@ -3,7 +3,7 @@
 > 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。
 
 - 上游：Ant Design `6.5.0` / `740ad964dc2397f33e40944367b0536a7314cc32`
-- Catalog SHA256：`d654745d9b46dc6f17a8faa8f979ad830da770b8bf74a95f468a9e5b31f7a1ef`
+- Catalog SHA256：`4f1cd61bfa697e88b4c41407d5d3a0141d02560acfa606d89e98d5a2dc7aa642`
 - Token 总数：`1194`；missing/duplicate/unclassified 均为 `0`。
 
 ## 使用规则
@@ -27,8 +27,8 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | --- | ---: |
 | `component-not-yet-implemented` | 566 |
 | `deprecated` | 172 |
-| `metadata` | 315 |
-| `runtime` | 100 |
+| `metadata` | 313 |
+| `runtime` | 102 |
 | `web-only` | 41 |
 
 ## Token 索引
@@ -842,14 +842,14 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.map.colorBorderDisabled` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:73` |
 | `ant.map.colorBorderSecondary` | `color` | `color` | `runtime` | `components/theme/interface/maps/colors.ts:65` |
 | `ant.map.colorError` | `color` | `color` | `runtime` | `components/theme/interface/maps/colors.ts:556` |
-| `ant.map.colorErrorActive` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:564` |
+| `ant.map.colorErrorActive` | `color` | `color` | `runtime` | `components/theme/interface/maps/colors.ts:564` |
 | `ant.map.colorErrorBg` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:500` |
 | `ant.map.colorErrorBgActive` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:524` |
 | `ant.map.colorErrorBgFilledHover` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:516` |
 | `ant.map.colorErrorBgHover` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:508` |
 | `ant.map.colorErrorBorder` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:532` |
 | `ant.map.colorErrorBorderHover` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:540` |
-| `ant.map.colorErrorHover` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:548` |
+| `ant.map.colorErrorHover` | `color` | `color` | `runtime` | `components/theme/interface/maps/colors.ts:548` |
 | `ant.map.colorErrorText` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:580` |
 | `ant.map.colorErrorTextActive` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:588` |
 | `ant.map.colorErrorTextHover` | `color` | `color` | `metadata` | `components/theme/interface/maps/colors.ts:572` |
