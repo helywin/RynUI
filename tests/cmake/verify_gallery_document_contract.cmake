@@ -34,9 +34,9 @@ endforeach()
 
 string(REGEX MATCHALL "ryn::Button\\(" button_calls "${definition_source}")
 list(LENGTH button_calls button_call_count)
-if(NOT button_call_count EQUAL 1)
+if(NOT button_call_count EQUAL 3)
     message(FATAL_ERROR
-        "Gallery catalog must not simulate unsupported components with Button; found ${button_call_count} Button call sites")
+        "Gallery must keep Button call sites limited to navigation, filter, and live helpers; found ${button_call_count}")
 endif()
 
 foreach(forbidden IN ITEMS

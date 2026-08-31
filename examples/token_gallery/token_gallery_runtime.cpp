@@ -83,7 +83,9 @@ public:
         bool fixed_render_scale,
         ryn::font::FontRuntime& fonts,
         const ryn::detail::DefaultFontChainResult& font_chain,
-        const std::function<void(float)>& set_viewport_width) noexcept
+        const std::function<void(float)>& set_viewport_width,
+        const std::function<std::optional<GalleryNavigationTarget>()>&
+            take_navigation_request) noexcept
         : platform_(&platform),
           application_(&application),
           frame_requests_(&frame_requests),
@@ -94,6 +96,7 @@ public:
           fonts_(&fonts),
           font_chain_(&font_chain),
           set_viewport_width_(&set_viewport_width),
+          take_navigation_request_(&take_navigation_request),
           started_(std::chrono::steady_clock::now()) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
@@ -120,6 +123,15 @@ private:
         try {
             for (const auto& event : events.input.events()) {
                 std::visit([this](const auto& value) { dispatch(value); }, event);
+            }
+            if (const auto request = (*take_navigation_request_)()) {
+                const auto anchor = request->kind
+                        == GalleryNavigationTargetKind::section
+                    ? document_viewport_->anchor(request->section)
+                    : document_viewport_->category_anchor(request->category);
+                if (anchor.has_value() && document_viewport_->jump_to(*anchor)) {
+                    frame_requests_->request_frame();
+                }
             }
         } catch (const std::exception& error) {
             last_error_ = error.what();
@@ -199,6 +211,8 @@ private:
     ryn::font::FontRuntime* fonts_;
     const ryn::detail::DefaultFontChainResult* font_chain_;
     const std::function<void(float)>* set_viewport_width_;
+    const std::function<std::optional<GalleryNavigationTarget>()>*
+        take_navigation_request_;
     std::chrono::steady_clock::time_point started_;
     bool quit_requested_{};
     std::uint64_t scroll_events_{};
@@ -266,8 +280,19 @@ public:
             }
             const auto resize_anchor =
                 document_viewport_->capture_resize_anchor();
-            const bool anchors_changed =
+            bool anchors_changed =
                 document_viewport_->replace_anchors(anchors);
+            constexpr std::array<std::size_t, 7> category_surface_indices{
+                52, 56, 63, 70, 88, 108, 119};
+            std::array<float, 7> category_anchors{};
+            for (std::size_t index = 0; index < category_anchors.size(); ++index) {
+                const auto& category = application_->nodes().require(
+                    mounted_surfaces[category_surface_indices[index]].node);
+                category_anchors[index] =
+                    std::max(0.0F, category.bounds.y - root.bounds.y);
+            }
+            anchors_changed = document_viewport_->replace_category_anchors(
+                category_anchors) || anchors_changed;
             static_cast<void>(document_viewport_->set_extents(
                 clip.height, root.bounds.height));
             if (anchors_changed) {
@@ -453,7 +478,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             acceptance_scale.has_value(),
             *fonts,
             font_chain,
-            definition.set_viewport_width);
+            definition.set_viewport_width,
+            definition.take_navigation_request);
         ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
             application.animations());
         ryn::runtime::OnDemandFrameLoop loop(
@@ -463,11 +489,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         std::size_t automated_input_events = 0;
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
-            if (mounted.size() <= 7) {
+            if (mounted.size() <= definition.navigation_control_count + 7) {
                 throw std::logic_error(
                     "animation acceptance requires the interactive Gallery cells");
             }
-            const auto& hover_node = nodes.require(mounted[7].node);
+            const auto& hover_node = nodes.require(
+                mounted[definition.navigation_control_count + 7].node);
             const auto bounds = hover_node.bounds;
             const ryn::runtime::Point inside{
                 bounds.x + hover_node.translation.x + 0.5F * bounds.width,
@@ -656,6 +683,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " reference_surfaces=" << telemetry.reference_surfaces
             << " reference_content_runs=" << telemetry.reference_content_runs
             << " live_samples=" << telemetry.live_samples
+            << " navigation_controls=" << definition.navigation_control_count
+            << " navigation_requests=" << telemetry.navigation_requests
+            << " filter_updates=" << telemetry.filter_updates
             << " reference_interactions=0"
             << " document_content_extent=" << document.content_extent
             << " document_viewport_extent=" << document.viewport_extent

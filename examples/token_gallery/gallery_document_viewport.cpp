@@ -74,14 +74,59 @@ bool GalleryDocumentViewport::replace_anchors(
         }
         next[index] = offsets[index];
     }
-    if (anchor_present_ == std::array<bool, section_count>{true, true, true, true, true, true}
-            && anchors_ == next) {
+    bool unchanged = true;
+    for (std::size_t index = 0; index < section_count; ++index) {
+        unchanged = unchanged
+            && anchor_present_[index] && anchors_[index] == next[index];
+    }
+    if (unchanged) {
         return false;
     }
-    anchors_ = next;
-    anchor_present_.fill(true);
+    std::copy(next.begin(), next.end(), anchors_.begin());
+    std::fill_n(anchor_present_.begin(), section_count, true);
     advance_generation(anchor_generation_);
     return true;
+}
+
+bool GalleryDocumentViewport::replace_category_anchors(
+    std::span<const float> offsets) {
+    if (offsets.size() != category_count) {
+        throw std::invalid_argument(
+            "Gallery document requires one anchor per component category");
+    }
+    bool unchanged = true;
+    for (std::size_t index = 0; index < offsets.size(); ++index) {
+        if (!finite_non_negative(offsets[index])
+                || (index != 0 && offsets[index] < offsets[index - 1])) {
+            throw std::invalid_argument(
+                "Gallery category anchors must be finite and ordered");
+        }
+        const auto target = section_count + index;
+        unchanged = unchanged
+            && anchor_present_[target] && anchors_[target] == offsets[index];
+    }
+    if (unchanged) {
+        return false;
+    }
+    for (std::size_t index = 0; index < offsets.size(); ++index) {
+        anchors_[section_count + index] = offsets[index];
+        anchor_present_[section_count + index] = true;
+    }
+    advance_generation(anchor_generation_);
+    return true;
+}
+
+std::optional<GalleryDocumentAnchorId>
+GalleryDocumentViewport::category_anchor(
+    AntDesignGalleryCategory category) const noexcept {
+    const auto index = section_count + static_cast<std::size_t>(category);
+    if (index >= anchor_count || !anchor_present_[index]) {
+        return std::nullopt;
+    }
+    return GalleryDocumentAnchorId{
+        static_cast<std::uint32_t>(index),
+        anchor_generation_,
+    };
 }
 
 std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
@@ -98,7 +143,7 @@ std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
 
 bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
     if (!value.valid() || value.generation != anchor_generation_
-            || value.index >= section_count
+            || value.index >= anchor_count
             || !anchor_present_[value.index]) {
         return false;
     }

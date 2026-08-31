@@ -50,6 +50,9 @@ public:
     bool replace_anchors(std::span<const float> offsets);
     [[nodiscard]] std::optional<GalleryDocumentAnchorId> anchor(
         GalleryDocumentSectionKind section) const noexcept;
+    bool replace_category_anchors(std::span<const float> offsets);
+    [[nodiscard]] std::optional<GalleryDocumentAnchorId> category_anchor(
+        AntDesignGalleryCategory category) const noexcept;
     bool jump_to(GalleryDocumentAnchorId anchor);
     [[nodiscard]] GalleryDocumentResizeAnchor capture_resize_anchor() const;
     bool restore_resize_anchor(const GalleryDocumentResizeAnchor& anchor);
@@ -63,6 +66,8 @@ public:
 
 private:
     static constexpr std::size_t section_count = 6;
+    static constexpr std::size_t category_count = 7;
+    static constexpr std::size_t anchor_count = section_count + category_count;
 
     [[nodiscard]] static std::size_t section_index(
         GalleryDocumentSectionKind section) noexcept;
@@ -78,8 +83,8 @@ private:
     float viewport_extent_{1.0F};
     float content_extent_{};
     float offset_{};
-    std::array<float, section_count> anchors_{};
-    std::array<bool, section_count> anchor_present_{};
+    std::array<float, anchor_count> anchors_{};
+    std::array<bool, anchor_count> anchor_present_{};
     std::uint32_t anchor_generation_{1};
 };
 

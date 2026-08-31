@@ -79,6 +79,14 @@ void test_anchor_jump_current_section_and_stale_generation() {
             "reflowed Gallery anchors were not installed");
     require(!viewport.jump_to(*overview),
             "stale Gallery anchor generation was accepted");
+    constexpr std::array<float, 7> categories{
+        620.0F, 700.0F, 800.0F, 900.0F, 1200.0F, 1500.0F, 1650.0F};
+    viewport.replace_category_anchors(categories);
+    const auto feedback = viewport.category_anchor(
+        AntDesignGalleryCategory::feedback);
+    require(feedback.has_value() && viewport.jump_to(*feedback)
+                && near(viewport.snapshot().offset, 1500.0F),
+            "Gallery category anchor did not navigate independently");
 }
 
 void test_resize_anchor_restores_intra_section_distance() {

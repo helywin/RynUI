@@ -1,10 +1,13 @@
 #pragma once
 
+#include "gallery_document_model.hpp"
+
 #include <ryn/component.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,6 +28,8 @@ struct TokenGalleryTelemetry final {
     std::uint64_t reference_surfaces{};
     std::uint64_t reference_content_runs{};
     std::uint64_t live_samples{};
+    std::uint64_t navigation_requests{};
+    std::uint64_t filter_updates{};
     std::uint64_t snapshot_identity{};
     std::string snapshot_diagnostic;
 };
@@ -39,8 +44,11 @@ struct TokenGalleryDefinition final {
     std::function<void(std::size_t)> smoke_step;
     std::function<void(float)> set_viewport_width;
     std::function<void(bool)> set_motion_enabled;
+    std::function<std::optional<GalleryNavigationTarget>()>
+        take_navigation_request;
     std::function<TokenGalleryTelemetry()> telemetry;
     std::vector<std::string_view> stable_test_ids;
+    std::size_t navigation_control_count{};
 };
 
 [[nodiscard]] TokenGalleryDefinition make_token_gallery_definition();

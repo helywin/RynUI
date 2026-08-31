@@ -447,7 +447,8 @@ void test_document_viewport_scrolls_long_content_without_remount() {
                     viewport, clip, origin, 0.0F, true),
             "Token Gallery live-sample scroll synchronization failed");
 
-    const auto live_button = fixture.host->mounted_buttons().front();
+    const auto live_button = fixture.host->mounted_buttons()[
+        definition.navigation_control_count];
     const auto& live_node = fixture.nodes.require(live_button.node);
     const ryn::runtime::Point live_point{
         live_node.bounds.x + live_node.translation.x + live_node.bounds.width * 0.5F,
@@ -481,6 +482,112 @@ ryn::input::PointerInputEvent pointer_event(
     };
 }
 
+void test_navigation_and_filter_controls_preserve_catalog_identity() {
+    using namespace rynui::example;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.surfaces->mount(definition.content);
+    constexpr ryn::runtime::Size viewport{1200.0F, 30000.0F};
+    constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 30000.0F};
+    require(fixture.host->layout_and_synchronize(
+                viewport, clip, {24.0F, 20.0F}, 0.0F, true),
+            "Gallery navigation fixture did not layout");
+
+    const auto components = fixture.host->components().component_count();
+    const auto mount_runs = fixture.host->components().mount_runs();
+    const auto live_component = fixture.host->mounted_buttons()[
+        definition.navigation_control_count].component;
+    const auto click = [&](std::size_t index) {
+        const auto button = fixture.host->mounted_buttons()[index];
+        const auto& node = fixture.nodes.require(button.node);
+        const ryn::runtime::Point point{
+            node.bounds.x + node.translation.x + node.bounds.width * 0.5F,
+            node.bounds.y + node.translation.y + node.bounds.height * 0.5F,
+        };
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::move, point));
+        fixture.host->pointer().dispatch(pointer_event(
+            ryn::input::PointerAction::down,
+            point,
+            ryn::input::PointerButton::primary));
+        fixture.host->pointer().dispatch(pointer_event(
+            ryn::input::PointerAction::up,
+            point,
+            ryn::input::PointerButton::primary));
+    };
+
+    constexpr std::size_t first_category_control = 6;
+    click(first_category_control);
+    const auto request = definition.take_navigation_request();
+    require(request.has_value()
+                && request->kind == GalleryNavigationTargetKind::category
+                && request->category == AntDesignGalleryCategory::general,
+            "Gallery category control did not emit its typed navigation target");
+    fixture.host->focus().dispatch({
+        ryn::input::Key::tab,
+        ryn::input::KeyAction::down,
+        ryn::input::KeyModifier::none,
+        false,
+    });
+    fixture.host->focus().dispatch({
+        ryn::input::Key::enter,
+        ryn::input::KeyAction::down,
+        ryn::input::KeyModifier::none,
+        false,
+    });
+    fixture.host->focus().dispatch({
+        ryn::input::Key::enter,
+        ryn::input::KeyAction::up,
+        ryn::input::KeyModifier::none,
+        false,
+    });
+    require(definition.take_navigation_request().has_value(),
+            "Gallery keyboard activation did not emit a navigation target");
+
+    constexpr std::size_t first_filter_control = 13;
+    constexpr std::size_t partial_filter_control = first_filter_control + 2;
+    click(partial_filter_control);
+    require(fixture.host->layout_and_synchronize(
+                viewport, clip, {24.0F, 20.0F}, 0.0F, true),
+            "Gallery partial filter did not synchronize");
+    std::size_t visible = 0;
+    std::size_t hidden = 0;
+    const auto surfaces = fixture.surfaces->mounted_surfaces();
+    for (std::size_t index = 52; index < 124; ++index) {
+        const auto snapshot = fixture.surfaces->snapshot(surfaces[index].component);
+        const auto& node = fixture.nodes.require(surfaces[index].node);
+        if (snapshot.visible) {
+            ++visible;
+            require(node.bounds.width > 0.0F && node.bounds.height > 0.0F,
+                    "visible Gallery filter entry collapsed");
+        } else {
+            ++hidden;
+            require(node.bounds.width == 0.0F && node.bounds.height == 0.0F,
+                    "hidden Gallery filter entry retained layout extent");
+        }
+    }
+    require(visible == 5 && hidden == 67,
+            "Gallery partial filter did not match the support catalog");
+    require(fixture.host->components().component_count() == components
+                && fixture.host->components().mount_runs() == mount_runs
+                && fixture.host->components().contains(live_component)
+                && definition.telemetry().content_runs == 1
+                && definition.telemetry().reference_content_runs == 125
+                && definition.telemetry().navigation_requests == 2
+                && definition.telemetry().filter_updates == 1,
+            "Gallery navigation/filter remounted content or disturbed its live sibling");
+
+    click(first_filter_control);
+    require(fixture.host->layout_and_synchronize(
+                viewport, clip, {24.0F, 20.0F}, 0.0F, true),
+            "Gallery all-status filter did not synchronize");
+    for (std::size_t index = 52; index < 124; ++index) {
+        require(fixture.surfaces->snapshot(surfaces[index].component).visible,
+                "Gallery all-status filter did not restore an entry");
+    }
+}
+
 void test_token_gallery_frame_contract() {
     auto definition = rynui::example::make_token_gallery_definition();
     require(definition.stable_test_ids.size() == 51,
@@ -498,11 +605,13 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content);
-    require(fixture.host->mounted_buttons().size() == 12,
+    require(fixture.host->mounted_buttons().size()
+                == definition.navigation_control_count + 12,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 125,
             "Token Gallery document reference surface count drifted");
-    require(fixture.host->interactions().size() == 12,
+    require(fixture.host->interactions().size()
+                == definition.navigation_control_count + 12,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -517,7 +626,8 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == 12,
+    require(fixture.host->scene_composer().interaction_order().size()
+                == definition.navigation_control_count + 12,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -554,7 +664,8 @@ void test_token_gallery_frame_contract() {
     require_shadow_order(fixture, first_shadow_cell + 15, shadows.tabs_overflow_top);
     require_shadow_order(fixture, first_shadow_cell + 16, shadows.tabs_overflow_bottom);
 
-    const auto focus_target = fixture.host->mounted_buttons()[9];
+    const auto focus_target = fixture.host->mounted_buttons()[
+        definition.navigation_control_count + 9];
     const auto hidden_focus = fixture.host->button_scene().focus_effect(focus_target.scene);
     require(hidden_focus.geometry.kind == ryn::graphics::RoundedEffectKind::outline
                 && near(hidden_focus.geometry.outline_offset, 1.0F)
@@ -627,7 +738,8 @@ void test_token_gallery_frame_contract() {
                 && near(visible_focus.geometry.outline_width, 3.0F),
             "keyboard focus-visible transition lost the hollow outline");
 
-    const auto hover = fixture.host->mounted_buttons()[7];
+    const auto hover = fixture.host->mounted_buttons()[
+        definition.navigation_control_count + 7];
     const auto bounds = fixture.nodes.require(hover.node).bounds;
     const ryn::runtime::Point inside{
         bounds.x + bounds.width * 0.5F,
@@ -684,6 +796,7 @@ int main() {
         test_motion_acceptance_control_updates_theme_without_content_rerun();
         test_small_acceptance_viewport_survives_theme_transitions();
         test_document_viewport_scrolls_long_content_without_remount();
+        test_navigation_and_filter_controls_preserve_catalog_identity();
         test_token_gallery_frame_contract();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

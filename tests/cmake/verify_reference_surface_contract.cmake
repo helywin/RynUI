@@ -18,6 +18,7 @@ foreach(required_text IN ITEMS
         "ReferenceSurfaceContentSlot"
         "Prop<GallerySupportStatus>"
         "Prop<std::optional<ryn::Color>>"
+        "Prop<bool> visible_"
         "ryn::LayoutStyle")
     if(NOT surface_header MATCHES "${required_text}")
         message(FATAL_ERROR
@@ -27,6 +28,7 @@ endforeach()
 foreach(required_text IN ITEMS
         "create_surface"
         "focus_enabled = false"
+        "apply_visible"
         "connect_layout_style"
         "build.mount_slot")
     if(NOT surface_source MATCHES "${required_text}")

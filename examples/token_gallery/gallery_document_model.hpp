@@ -31,6 +31,35 @@ struct GalleryDesignValue final {
     std::string_view summary;
 };
 
+enum class GalleryNavigationTargetKind : std::uint8_t {
+    section,
+    category,
+};
+
+struct GalleryNavigationTarget final {
+    GalleryNavigationTargetKind kind{GalleryNavigationTargetKind::section};
+    GalleryDocumentSectionKind section{GalleryDocumentSectionKind::header_source};
+    AntDesignGalleryCategory category{AntDesignGalleryCategory::general};
+
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_section(
+        GalleryDocumentSectionKind value) noexcept {
+        return {GalleryNavigationTargetKind::section, value, {}};
+    }
+
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_category(
+        AntDesignGalleryCategory value) noexcept {
+        return {
+            GalleryNavigationTargetKind::category,
+            GalleryDocumentSectionKind::component_overview,
+            value,
+        };
+    }
+
+    friend constexpr bool operator==(
+        GalleryNavigationTarget,
+        GalleryNavigationTarget) = default;
+};
+
 enum class GallerySupportFilter : std::uint8_t {
     all,
     implemented,

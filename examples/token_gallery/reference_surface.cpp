@@ -28,6 +28,11 @@ struct ReferenceSurfacePropsAccess final {
         return props.elevated_;
     }
 
+    [[nodiscard]] static const ryn::Prop<bool>& visible(
+        const ReferenceSurfaceProps& props) noexcept {
+        return props.visible_;
+    }
+
     [[nodiscard]] static const ryn::LayoutStyle& layout(
         const ReferenceSurfaceProps& props) noexcept {
         return props.layout_;
@@ -42,6 +47,7 @@ struct ReferenceSurfaceComponentState final {
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};
+    bool visible{true};
     ReferenceSurfaceVisualData visuals;
     ryn::component::ButtonEffectData effects;
     ryn::Signal<ryn::String> status_label{ryn::String{u8"规划中"}};
@@ -183,27 +189,27 @@ void refresh_material(
         ReferenceSurfaceVisualLayer::border)].color =
             channels(theme.alias().color_border_secondary);
     state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::border)].opacity = 1.0F;
+        ReferenceSurfaceVisualLayer::border)].opacity = state.visible ? 1.0F : 0.0F;
     state.visuals[static_cast<std::size_t>(
         ReferenceSurfaceVisualLayer::background)].color =
             channels(theme.alias().color_background_container);
     state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::background)].opacity = 1.0F;
+        ReferenceSurfaceVisualLayer::background)].opacity = state.visible ? 1.0F : 0.0F;
     state.visuals[static_cast<std::size_t>(
         ReferenceSurfaceVisualLayer::swatch)].color =
             channels(state.swatch.value_or(theme.alias().color_background_container));
     state.visuals[static_cast<std::size_t>(
         ReferenceSurfaceVisualLayer::swatch)].opacity =
-            state.swatch.has_value() ? 1.0F : 0.0F;
+            state.visible && state.swatch.has_value() ? 1.0F : 0.0F;
     state.visuals[static_cast<std::size_t>(
         ReferenceSurfaceVisualLayer::status_badge)].color =
             channels(status_color(state.status, theme));
     state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::status_badge)].opacity = 1.0F;
+        ReferenceSurfaceVisualLayer::status_badge)].opacity = state.visible ? 1.0F : 0.0F;
 
-    state.effects.shadows = state.elevated
+    state.effects.shadows = state.elevated && state.visible
         ? theme.alias().box_shadow_tertiary : ryn::ShadowList{};
-    state.effects.shadow_opacity = state.elevated ? 1.0F : 0.0F;
+    state.effects.shadow_opacity = state.elevated && state.visible ? 1.0F : 0.0F;
     state.effects.focus_enabled = false;
     state.effects.focus_opacity = 0.0F;
     if (state.scene.valid()) {
@@ -251,6 +257,18 @@ void apply_elevated(
         return;
     }
     state->elevated = elevated;
+    refresh_material(host, *state);
+}
+
+void apply_visible(
+    ReferenceSurfaceHost& host,
+    ryn::runtime::ComponentId component,
+    bool visible) {
+    auto* state = host.find_state(component);
+    if (state == nullptr || state->visible == visible) {
+        return;
+    }
+    state->visible = visible;
     refresh_material(host, *state);
 }
 
@@ -320,6 +338,7 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
         state->status,
         state->swatch,
         state->elevated,
+        state->visible,
         state->scene,
         application_->button_scene().visual_range(state->scene),
     };
@@ -442,6 +461,8 @@ void ReferenceSurface(
         detail::ReferenceSurfacePropsAccess::swatch(props));
     const bool initial_elevated = ryn::detail::read_prop(
         detail::ReferenceSurfacePropsAccess::elevated(props));
+    const bool initial_visible = ryn::detail::read_prop(
+        detail::ReferenceSurfacePropsAccess::visible(props));
 
     const auto component = build.mount_component<
         detail::ReferenceSurfaceComponentState>();
@@ -451,6 +472,7 @@ void ReferenceSurface(
     state.status = initial_status;
     state.swatch = initial_swatch;
     state.elevated = initial_elevated;
+    state.visible = initial_visible;
     static_cast<void>(state.status_label.set(status_label(initial_status)));
 
     ryn::layout::FlexLayout model;
@@ -518,6 +540,12 @@ void ReferenceSurface(
         detail::ReferenceSurfacePropsAccess::elevated(props),
         [&host, component](bool value) {
             apply_elevated(host, component, value);
+        }));
+    static_cast<void>(ryn::detail::connect_prop(
+        scope,
+        detail::ReferenceSurfacePropsAccess::visible(props),
+        [&host, component](bool value) {
+            apply_visible(host, component, value);
         }));
 
     const ReferenceSurfaceContent children{[&state, &content] {

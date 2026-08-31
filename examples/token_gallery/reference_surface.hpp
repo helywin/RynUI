@@ -53,6 +53,11 @@ public:
         return *this;
     }
 
+    ReferenceSurfaceProps& visible(ryn::Prop<bool> value) {
+        visible_ = std::move(value);
+        return *this;
+    }
+
     ReferenceSurfaceProps& layout(ryn::LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -64,6 +69,7 @@ private:
     ryn::Prop<GallerySupportStatus> status_{GallerySupportStatus::planned};
     ryn::Prop<std::optional<ryn::Color>> swatch_{std::optional<ryn::Color>{}};
     ryn::Prop<bool> elevated_{false};
+    ryn::Prop<bool> visible_{true};
     ryn::LayoutStyle layout_;
 };
 
@@ -85,6 +91,7 @@ struct ReferenceSurfaceSnapshot final {
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};
+    bool visible{true};
     ryn::component::ButtonSceneId scene;
     ryn::graphics::QuadInstanceRange visual_range;
 };

@@ -25,8 +25,12 @@ struct GalleryState final {
     ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
+    ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
+    std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
 };
+
+constexpr std::size_t navigation_control_count = 20;
 
 constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.theme.default",
@@ -158,6 +162,83 @@ void source_section(const std::shared_ptr<GalleryState>& state) {
             });
         ++state->telemetry.reference_surfaces;
     }
+}
+
+void navigation_button(
+    const std::shared_ptr<GalleryState>& state,
+    std::string_view caption,
+    GalleryNavigationTarget target) {
+    const auto text = utf8(caption);
+    ryn::Button(
+        ryn::ButtonProps{}
+            .size(ryn::ControlSize::Small)
+            .onClick([state, target] {
+                state->navigation_request = target;
+                ++state->telemetry.navigation_requests;
+            }),
+        [text] { ryn::Text(text); });
+}
+
+void filter_button(
+    const std::shared_ptr<GalleryState>& state,
+    std::string_view caption,
+    GallerySupportFilter filter) {
+    const auto text = utf8(caption);
+    ryn::Button(
+        ryn::ButtonProps{}
+            .size(ryn::ControlSize::Small)
+            .onClick([state, filter] {
+                if (state->support_filter.set(filter)) {
+                    ++state->telemetry.filter_updates;
+                }
+            }),
+        [text] { ryn::Text(text); });
+}
+
+void navigation_controls(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(utf8("Navigation / 文档导航"));
+    ryn::Space(
+        ryn::SpaceProps{}
+            .wrap(true)
+            .size(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state] {
+            for (const auto& section : gallery_document_sections()) {
+                navigation_button(
+                    state,
+                    section.title,
+                    GalleryNavigationTarget::to_section(section.kind));
+            }
+        });
+    ryn::Text(utf8("Component Categories / 组件分类"));
+    ryn::Space(
+        ryn::SpaceProps{}
+            .wrap(true)
+            .size(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state] {
+            for (const auto& category : ant_design_reference_categories()) {
+                navigation_button(
+                    state,
+                    gallery_category_title(category.category),
+                    GalleryNavigationTarget::to_category(category.category));
+            }
+        });
+    ryn::Text(utf8("Support Filter / 支持状态筛选"));
+    ryn::Space(
+        ryn::SpaceProps{}
+            .wrap(true)
+            .size(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state] {
+            filter_button(state, "All / 全部", GallerySupportFilter::all);
+            filter_button(state, "Implemented / 已实现", GallerySupportFilter::implemented);
+            filter_button(state, "Partial / 部分支持", GallerySupportFilter::partial);
+            filter_button(state, "Planned / 规划中", GallerySupportFilter::planned);
+            filter_button(state, "Web only / 仅 Web", GallerySupportFilter::web_only);
+            filter_button(state, "Deprecated / 已弃用", GallerySupportFilter::deprecated);
+            filter_button(state, "Out of scope / 不在范围", GallerySupportFilter::out_of_scope);
+        });
 }
 
 void design_values(const std::shared_ptr<GalleryState>& state) {
@@ -339,10 +420,24 @@ void component_entry(
     const auto evidence = utf8(
         std::string("证据：") + std::string(entry.evidence_identifiers)
         + " · Source: " + std::string(entry.source_path));
+    const auto filter = state->support_filter;
+    const auto cell_width = state->cell_width;
+    const auto visible = ryn::bind([filter, status = entry.support_status] {
+        return gallery_support_filter_matches(filter.get(), status);
+    });
+    const auto width = ryn::bind([filter, cell_width, status = entry.support_status] {
+        return gallery_support_filter_matches(filter.get(), status)
+            ? cell_width.get() : ryn::dp(0.0F);
+    });
+    const auto height = ryn::bind([filter, status = entry.support_status] {
+        return gallery_support_filter_matches(filter.get(), status)
+            ? ryn::auto_length : ryn::dp(0.0F);
+    });
     ReferenceSurface(
         ReferenceSurfaceProps{}
             .status(entry.support_status)
-            .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+            .visible(visible)
+            .layout(ryn::LayoutStyle{}.width(width).height(height)),
         [state, name, summary, supported, missing, evidence] {
             ++state->telemetry.reference_content_runs;
             ryn::Text(name);
@@ -532,6 +627,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
                             source_section(state);
+                            navigation_controls(state);
                             section_surface(state, gallery_document_sections()[1]);
                             design_values(state);
                             foundation_tokens(state);
@@ -587,6 +683,11 @@ TokenGalleryDefinition make_token_gallery_definition() {
             set_theme(std::move(config), false);
             ++state->telemetry.motion_updates;
         },
+        [state]() -> std::optional<GalleryNavigationTarget> {
+            auto request = state->navigation_request;
+            state->navigation_request.reset();
+            return request;
+        },
         [state] {
             auto result = state->telemetry;
             const auto snapshot = ryn::resolve_theme(state->theme.get());
@@ -595,6 +696,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
             return result;
         },
         {stable_test_ids.begin(), stable_test_ids.end()},
+        navigation_control_count,
     };
     return definition;
 }
