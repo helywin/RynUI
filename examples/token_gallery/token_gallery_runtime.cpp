@@ -278,6 +278,8 @@ public:
                     mounted_surfaces[section_surface_indices[index]].node);
                 anchors[index] = std::max(0.0F, section.bounds.y - root.bounds.y);
             }
+            const bool had_section_anchors = document_viewport_->anchor(
+                GalleryDocumentSectionKind::header_source).has_value();
             const auto resize_anchor =
                 document_viewport_->capture_resize_anchor();
             bool anchors_changed =
@@ -295,7 +297,8 @@ public:
                 category_anchors) || anchors_changed;
             static_cast<void>(document_viewport_->set_extents(
                 clip.height, root.bounds.height));
-            if (anchors_changed) {
+            if (anchors_changed && had_section_anchors
+                    && document_viewport_->snapshot().offset > 0.0F) {
                 static_cast<void>(
                     document_viewport_->restore_resize_anchor(resize_anchor));
             }

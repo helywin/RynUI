@@ -22,7 +22,10 @@ namespace {
 struct GalleryState final {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     ryn::Signal<ryn::LogicalLength> gallery_width{ryn::dp(1120.0F)};
+    ryn::Signal<ryn::LogicalLength> navigation_width{ryn::dp(220.0F)};
+    ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(884.0F)};
     ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
+    ryn::Signal<bool> narrow_layout{false};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
@@ -132,7 +135,7 @@ void section_surface(
         ReferenceSurfaceProps{}
             .status(GallerySupportStatus::partial)
             .elevated(true)
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state, title, summary] {
             ++state->telemetry.reference_content_runs;
             ryn::Text(title);
@@ -152,7 +155,7 @@ void source_section(const std::shared_ptr<GalleryState>& state) {
         ReferenceSurface(
             ReferenceSurfaceProps{}
                 .status(GallerySupportStatus::planned)
-                .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+                .layout(ryn::LayoutStyle{}.width(state->document_width)),
             [state, title, url] {
                 ++state->telemetry.reference_content_runs;
                 ryn::Text(title);
@@ -201,7 +204,7 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
         ryn::SpaceProps{}
             .wrap(true)
             .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
         [state] {
             for (const auto& section : gallery_document_sections()) {
                 navigation_button(
@@ -215,7 +218,7 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
         ryn::SpaceProps{}
             .wrap(true)
             .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
         [state] {
             for (const auto& category : ant_design_reference_categories()) {
                 navigation_button(
@@ -229,7 +232,7 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
         ryn::SpaceProps{}
             .wrap(true)
             .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
         [state] {
             filter_button(state, "All / 全部", GallerySupportFilter::all);
             filter_button(state, "Implemented / 已实现", GallerySupportFilter::implemented);
@@ -247,7 +250,7 @@ void design_values(const std::shared_ptr<GalleryState>& state) {
         ryn::FlexProps{}
             .wrap(true)
             .gap(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             for (const auto& value : gallery_design_values()) {
                 const auto title = utf8(
@@ -400,7 +403,7 @@ void foundation_tokens(const std::shared_ptr<GalleryState>& state) {
         ryn::FlexProps{}
             .wrap(true)
             .gap(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             add_palette_cells(state);
             add_scale_cells(state);
@@ -467,7 +470,7 @@ void component_overview(const std::shared_ptr<GalleryState>& state) {
             ryn::FlexProps{}
                 .wrap(true)
                 .gap(ryn::dp(8.0F), ryn::dp(8.0F))
-                .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+                .layout(ryn::LayoutStyle{}.width(state->document_width)),
             [state, entries, category] {
                 for (const auto& entry : entries) {
                     if (entry.category == category.category
@@ -519,7 +522,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             .wrap(true)
             .align(ryn::SpaceAlign::Center)
             .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             themed_button(
                 state, "gallery.theme.default", "Default",
@@ -622,17 +625,32 @@ TokenGalleryDefinition make_token_gallery_definition() {
                     ++state->telemetry.theme_content_runs;
                     ryn::Flex(
                         ryn::FlexProps{}
-                            .vertical(true)
+                            .vertical(state->narrow_layout)
                             .gap(ryn::dp(16.0F))
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
-                            source_section(state);
-                            navigation_controls(state);
-                            section_surface(state, gallery_document_sections()[1]);
-                            design_values(state);
-                            foundation_tokens(state);
-                            component_overview(state);
-                            add_live_samples(state);
+                            ryn::Flex(
+                                ryn::FlexProps{}
+                                    .vertical(true)
+                                    .gap(ryn::dp(8.0F))
+                                    .layout(ryn::LayoutStyle{}
+                                        .width(state->navigation_width)),
+                                [state] { navigation_controls(state); });
+                            ryn::Flex(
+                                ryn::FlexProps{}
+                                    .vertical(true)
+                                    .gap(ryn::dp(16.0F))
+                                    .layout(ryn::LayoutStyle{}
+                                        .width(state->document_width)),
+                                [state] {
+                                    source_section(state);
+                                    section_surface(
+                                        state, gallery_document_sections()[1]);
+                                    design_values(state);
+                                    foundation_tokens(state);
+                                    component_overview(state);
+                                    add_live_samples(state);
+                                });
                         });
                 }});
         }},
@@ -662,15 +680,32 @@ TokenGalleryDefinition make_token_gallery_definition() {
         },
         [state](float viewport_width) {
             const float content_width = std::max(256.0F, viewport_width - 48.0F);
-            const float next_cell_width = content_width < 720.0F
-                ? std::max(220.0F, (content_width - 8.0F) / 2.0F)
-                : 260.0F;
+            const bool narrow = content_width < 960.0F;
+            const float navigation_width = narrow ? content_width : 220.0F;
+            const float document_width = narrow
+                ? content_width : std::max(256.0F, content_width - 236.0F);
+            const float next_cell_width = document_width < 520.0F
+                ? document_width
+                : document_width < 820.0F
+                    ? (document_width - 8.0F) / 2.0F
+                    : 260.0F;
             if (state->gallery_width.get() != ryn::dp(content_width)) {
                 state->gallery_width.set(ryn::dp(content_width));
                 ++state->telemetry.viewport_updates;
             }
+            if (state->navigation_width.get() != ryn::dp(navigation_width)) {
+                state->navigation_width.set(ryn::dp(navigation_width));
+                ++state->telemetry.viewport_updates;
+            }
+            if (state->document_width.get() != ryn::dp(document_width)) {
+                state->document_width.set(ryn::dp(document_width));
+                ++state->telemetry.viewport_updates;
+            }
             if (state->cell_width.get() != ryn::dp(next_cell_width)) {
                 state->cell_width.set(ryn::dp(next_cell_width));
+                ++state->telemetry.viewport_updates;
+            }
+            if (state->narrow_layout.set(narrow)) {
                 ++state->telemetry.viewport_updates;
             }
         },

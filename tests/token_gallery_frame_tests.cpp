@@ -588,6 +588,81 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     }
 }
 
+void test_responsive_navigation_and_document_reflow_preserves_identity() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.surfaces->mount(definition.content);
+    const auto root_component = fixture.host->components().root_components().front();
+    const auto root = fixture.host->components().root(root_component);
+    const auto components = fixture.host->components().component_count();
+    const auto first_surface = fixture.surfaces->mounted_surfaces().front().component;
+    const auto first_control = fixture.host->mounted_buttons().front().component;
+
+    require(fixture.host->layout_and_synchronize(
+                {1200.0F, 30000.0F},
+                {0.0F, 0.0F, 1200.0F, 30000.0F},
+                {24.0F, 20.0F},
+                0.0F,
+                true),
+            "wide responsive Gallery layout failed");
+    const auto wide_children = fixture.nodes.require(root).children;
+    require(wide_children.size() == 2,
+            "responsive Gallery duplicated navigation or document roots");
+    const auto wide_navigation = fixture.nodes.require(wide_children[0]).bounds;
+    const auto wide_document = fixture.nodes.require(wide_children[1]).bounds;
+    require(wide_navigation.x < wide_document.x
+                && near(wide_navigation.y, wide_document.y)
+                && near(wide_navigation.width, 220.0F)
+                && wide_document.width > 800.0F,
+            "wide Gallery did not produce navigation/document columns");
+
+    definition.set_viewport_width(560.0F);
+    require(fixture.host->layout_and_synchronize(
+                {560.0F, 30000.0F},
+                {0.0F, 0.0F, 560.0F, 30000.0F},
+                {24.0F, 20.0F},
+                0.0F,
+                true),
+            "narrow responsive Gallery layout failed");
+    const auto narrow_children = fixture.nodes.require(root).children;
+    const auto narrow_navigation = fixture.nodes.require(narrow_children[0]).bounds;
+    const auto narrow_document = fixture.nodes.require(narrow_children[1]).bounds;
+    require(near(narrow_navigation.x, narrow_document.x)
+                && narrow_navigation.y < narrow_document.y
+                && near(narrow_navigation.width, 512.0F)
+                && near(narrow_document.width, 512.0F),
+            "narrow Gallery did not stack wrapped navigation above the document");
+    for (std::size_t index = 52; index < 124; ++index) {
+        const auto& node = fixture.nodes.require(
+            fixture.surfaces->mounted_surfaces()[index].node);
+        require(node.bounds.width > 0.0F
+                    && node.bounds.x >= narrow_document.x
+                    && node.bounds.x + node.bounds.width
+                        <= narrow_document.x + narrow_document.width + 0.25F,
+                "narrow Gallery made a catalog entry horizontally unreachable");
+    }
+
+    definition.set_viewport_width(1200.0F);
+    require(fixture.host->layout_and_synchronize(
+                {1200.0F, 30000.0F},
+                {0.0F, 0.0F, 1200.0F, 30000.0F},
+                {24.0F, 20.0F},
+                0.0F,
+                true),
+            "wide Gallery restoration failed");
+    const auto restored_navigation = fixture.nodes.require(
+        fixture.nodes.require(root).children[0]).bounds;
+    const auto restored_document = fixture.nodes.require(
+        fixture.nodes.require(root).children[1]).bounds;
+    require(restored_navigation.x < restored_document.x
+                && fixture.host->components().component_count() == components
+                && fixture.host->components().contains(first_surface)
+                && fixture.host->components().contains(first_control)
+                && definition.telemetry().content_runs == 1,
+            "wide/narrow Gallery reflow rebuilt retained identities");
+}
+
 void test_token_gallery_frame_contract() {
     auto definition = rynui::example::make_token_gallery_definition();
     require(definition.stable_test_ids.size() == 51,
@@ -797,6 +872,7 @@ int main() {
         test_small_acceptance_viewport_survives_theme_transitions();
         test_document_viewport_scrolls_long_content_without_remount();
         test_navigation_and_filter_controls_preserve_catalog_identity();
+        test_responsive_navigation_and_document_reflow_preserves_identity();
         test_token_gallery_frame_contract();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
