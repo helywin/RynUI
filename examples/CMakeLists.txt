@@ -131,6 +131,7 @@ endif()
 add_library(
     rynui_token_gallery_definition STATIC
     token_gallery/ant_design_reference_catalog.cpp
+    token_gallery/gallery_document_model.cpp
     token_gallery/token_gallery_definition.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery_definition)
@@ -166,6 +167,7 @@ target_link_libraries(
     rynui_token_gallery
     PRIVATE
         rynui_token_gallery_definition
+        rynui_token_gallery_reference_surface
         rynui_components
         rynui_default_fonts
         rynui_renderer_sdl

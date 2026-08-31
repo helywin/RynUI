@@ -641,7 +641,6 @@ add_test(NAME rynui.layout_demo_frame COMMAND rynui_layout_demo_frame_tests)
 add_executable(
     rynui_token_gallery_frame_tests
     token_gallery_frame_tests.cpp
-    "${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
 )
 rynui_configure_cpp_target(rynui_token_gallery_frame_tests)
 target_include_directories(
@@ -650,7 +649,11 @@ target_include_directories(
 )
 target_link_libraries(
     rynui_token_gallery_frame_tests
-    PRIVATE rynui_components rynui_renderer_sdl
+    PRIVATE
+        rynui_token_gallery_definition
+        rynui_token_gallery_reference_surface
+        rynui_components
+        rynui_renderer_sdl
 )
 target_compile_definitions(
     rynui_token_gallery_frame_tests
@@ -672,6 +675,28 @@ target_link_libraries(
 add_test(
     NAME rynui.ant_design_reference_catalog
     COMMAND rynui_ant_design_reference_catalog_tests
+)
+
+add_executable(
+    rynui_gallery_document_model_tests
+    gallery_document_model_tests.cpp
+)
+rynui_configure_cpp_target(rynui_gallery_document_model_tests)
+target_link_libraries(
+    rynui_gallery_document_model_tests
+    PRIVATE rynui_token_gallery_definition
+)
+add_test(
+    NAME rynui.gallery_document_model
+    COMMAND rynui_gallery_document_model_tests
+)
+
+add_test(
+    NAME rynui.gallery_document_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DDEFINITION_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
+        "-DMODEL_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_model.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_contract.cmake"
 )
 
 add_executable(rynui_token_gallery_benchmark token_gallery_benchmark.cpp)

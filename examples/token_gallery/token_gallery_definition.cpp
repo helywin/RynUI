@@ -1,13 +1,19 @@
 #include "token_gallery_definition.hpp"
 
+#include "ant_design_reference_catalog.hpp"
+#include "gallery_document_model.hpp"
+#include "reference_surface.hpp"
+
 #include <ryn/rynui.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 
 namespace rynui::example {
@@ -16,7 +22,7 @@ namespace {
 struct GalleryState final {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     ryn::Signal<ryn::LogicalLength> gallery_width{ryn::dp(1120.0F)};
-    ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(126.0F)};
+    ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
     TokenGalleryTelemetry telemetry;
@@ -76,37 +82,307 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "ant.alias.boxShadowTabsOverflowBottom",
 });
 
-ryn::String label(std::string_view test_id, std::string_view caption) {
-    if (test_id.starts_with("ant.") && ryn::find_ant_design_token(test_id) == nullptr) {
-        throw std::logic_error("Token Gallery label identity is not in the locked catalog");
-    }
-    auto parsed = ryn::String::from_utf8(caption);
+ryn::String utf8(std::string_view value) {
+    auto parsed = ryn::String::from_utf8(value);
     if (!parsed) {
-        throw std::logic_error("Token Gallery label is not valid UTF-8");
+        throw std::logic_error("Token Gallery content is not valid UTF-8");
     }
     return std::move(parsed).value();
 }
 
-ryn::ThemeConfig primary_surface(ryn::Color color) {
+ryn::String label(std::string_view test_id, std::string_view caption) {
+    if (test_id.starts_with("ant.")
+            && ryn::find_ant_design_token(test_id) == nullptr) {
+        throw std::logic_error(
+            "Token Gallery label identity is not in the locked catalog");
+    }
+    return utf8(caption);
+}
+
+std::string joined_scope(
+    std::string_view prefix,
+    std::string_view value) {
+    std::string result(prefix);
+    if (value.empty()) {
+        result += "无";
+        return result;
+    }
+    result += value;
+    return result;
+}
+
+ryn::ThemeConfig algorithm_config(ryn::ThemeAlgorithm algorithm) {
     ryn::ThemeConfig config;
-    config.button.tokens.primary_background = color;
-    config.button.tokens.primary_color = ryn::Color::rgba8(255, 255, 255);
-    config.button.tokens.primary_shadow = ryn::ShadowList{};
+    if (algorithm != ryn::ThemeAlgorithm::Default) {
+        config.algorithms.push_back(algorithm);
+    }
     return config;
 }
 
-ryn::ThemeConfig shadow_surface(const ryn::ShadowList& shadow) {
-    ryn::ThemeConfig config;
-    config.button.tokens.default_shadow = shadow;
-    config.button.tokens.primary_shadow = shadow;
-    config.button.tokens.danger_shadow = shadow;
-    return config;
+void section_surface(
+    const std::shared_ptr<GalleryState>& state,
+    const GalleryDocumentSection& section) {
+    const auto title = utf8(section.title);
+    const auto summary = utf8(section.summary);
+    ReferenceSurface(
+        ReferenceSurfaceProps{}
+            .status(GallerySupportStatus::partial)
+            .elevated(true)
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state, title, summary] {
+            ++state->telemetry.reference_content_runs;
+            ryn::Text(title);
+            ryn::Text(ryn::TextProps{}
+                .content(summary)
+                .tone(ryn::TextTone::Secondary));
+        });
+    ++state->telemetry.document_sections;
+    ++state->telemetry.reference_surfaces;
 }
 
-ryn::ThemeConfig radius_surface(float radius) {
+void source_section(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[0]);
+    for (const auto& source : ant_design_reference_sources()) {
+        const auto title = utf8(source.title);
+        const auto url = utf8(source.official_url);
+        ReferenceSurface(
+            ReferenceSurfaceProps{}
+                .status(GallerySupportStatus::planned)
+                .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            [state, title, url] {
+                ++state->telemetry.reference_content_runs;
+                ryn::Text(title);
+                ryn::Text(ryn::TextProps{}
+                    .content(url)
+                    .tone(ryn::TextTone::Secondary));
+            });
+        ++state->telemetry.reference_surfaces;
+    }
+}
+
+void design_values(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[2]);
+    ryn::Flex(
+        ryn::FlexProps{}
+            .wrap(true)
+            .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state] {
+            for (const auto& value : gallery_design_values()) {
+                const auto title = utf8(
+                    std::string(value.english_name) + " / "
+                    + std::string(value.chinese_name));
+                const auto summary = utf8(value.summary);
+                ReferenceSurface(
+                    ReferenceSurfaceProps{}
+                        .status(GallerySupportStatus::planned)
+                        .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                    [state, title, summary] {
+                        ++state->telemetry.reference_content_runs;
+                        ryn::Text(title);
+                        ryn::Text(ryn::TextProps{}
+                            .content(summary)
+                            .tone(ryn::TextTone::Secondary));
+                    });
+                ++state->telemetry.reference_surfaces;
+            }
+        });
+}
+
+void reference_cell(
+    const std::shared_ptr<GalleryState>& state,
+    std::string_view test_id,
+    std::string_view caption,
+    ryn::ThemeConfig config = {},
+    std::optional<ryn::Color> swatch = std::nullopt,
+    bool elevated = false) {
+    const auto title = label(test_id, caption);
+    const auto identity = utf8(test_id);
+    ryn::Theme(
+        ryn::ThemeProps{}.config(std::move(config)),
+        ryn::ThemeContent{[state, title, identity, swatch, elevated] {
+            ++state->telemetry.theme_content_runs;
+            ReferenceSurface(
+                ReferenceSurfaceProps{}
+                    .status(GallerySupportStatus::implemented)
+                    .swatch(swatch)
+                    .elevated(elevated)
+                    .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                [state, title, identity] {
+                    ++state->telemetry.reference_content_runs;
+                    ryn::Text(title);
+                    ryn::Text(ryn::TextProps{}
+                        .content(identity)
+                        .tone(ryn::TextTone::Secondary));
+                });
+            ++state->telemetry.reference_surfaces;
+        }});
+}
+
+void add_palette_cells(const std::shared_ptr<GalleryState>& state) {
+    reference_cell(state, "ant.map.colorPrimary", "Primary / 主色", {},
+                   ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.colorSuccess", "Success / 成功", {},
+                   ryn::Color::rgba8(82, 196, 26));
+    reference_cell(state, "ant.map.colorWarning", "Warning / 警告", {},
+                   ryn::Color::rgba8(250, 173, 20));
+    reference_cell(state, "ant.map.colorError", "Error / 错误", {},
+                   ryn::Color::rgba8(255, 77, 79));
+    reference_cell(state, "ant.map.colorInfo", "Info / 信息", {},
+                   ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.blue6", "Blue 6", {},
+                   ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.green6", "Green 6", {},
+                   ryn::Color::rgba8(82, 196, 26));
+    reference_cell(state, "ant.map.red5", "Red 5", {},
+                   ryn::Color::rgba8(255, 77, 79));
+    reference_cell(state, "ant.map.gold6", "Gold 6", {},
+                   ryn::Color::rgba8(250, 173, 20));
+    reference_cell(state, "ant.map.purple6", "Purple 6", {},
+                   ryn::Color::rgba8(114, 46, 209));
+}
+
+void add_scale_cells(const std::shared_ptr<GalleryState>& state) {
+    const auto text_cell = [&](std::string_view id, std::string_view caption, float size) {
+        ryn::ThemeConfig config;
+        config.text.tokens.font_size = ryn::dp(size);
+        config.text.tokens.line_height = ryn::dp(size + 8.0F);
+        reference_cell(state, id, caption, std::move(config));
+    };
+    text_cell("ant.map.fontSizeSM", "Font 12 / 字号", 12.0F);
+    text_cell("ant.map.fontSize", "Font 14 / 字号", 14.0F);
+    text_cell("ant.map.fontSizeLG", "Font 16 / 字号", 16.0F);
+    reference_cell(state, "ant.map.sizeXS", "Gap 8 / 间距");
+    reference_cell(state, "ant.map.size", "Gap 16 / 间距");
+    reference_cell(state, "ant.map.sizeLG", "Gap 24 / 间距");
+    reference_cell(state, "ant.map.controlHeightSM", "Control 24");
+    reference_cell(state, "ant.seed.controlHeight", "Control 32");
+    reference_cell(state, "ant.map.controlHeightLG", "Control 40");
+    for (const auto [id, caption, radius] : std::array{
+            std::tuple{"ant.map.borderRadiusSM", "Radius 4", 4.0F},
+            std::tuple{"ant.seed.borderRadius", "Radius 6", 6.0F},
+            std::tuple{"ant.map.borderRadiusLG", "Radius 8", 8.0F}}) {
+        ryn::ThemeConfig config;
+        config.seed.border_radius = ryn::dp(radius);
+        reference_cell(state, id, caption, std::move(config));
+    }
+}
+
+void shadow_cell(
+    const std::shared_ptr<GalleryState>& state,
+    std::string_view id,
+    std::string_view caption,
+    const ryn::ShadowList& shadow) {
     ryn::ThemeConfig config;
-    config.button.tokens.border_radius = ryn::dp(radius);
-    return config;
+    config.alias.box_shadow_tertiary = shadow;
+    reference_cell(state, id, caption, std::move(config), std::nullopt, true);
+}
+
+void add_shadow_cells(const std::shared_ptr<GalleryState>& state) {
+    const auto& shadows = ryn::ant_design_default_shadows();
+    shadow_cell(state, "ant.alias.boxShadowTertiary", "Elevation 1",
+                shadows.box_shadow_tertiary);
+    shadow_cell(state, "ant.alias.boxShadowSecondary", "Elevation 2",
+                shadows.box_shadow_secondary);
+    shadow_cell(state, "ant.alias.boxShadow", "Elevation 3", shadows.box_shadow);
+    shadow_cell(state, "ant.component.Button.defaultShadow", "Button Default",
+                shadows.button_default);
+    shadow_cell(state, "ant.component.Button.primaryShadow", "Button Primary",
+                shadows.button_primary);
+    shadow_cell(state, "ant.component.Button.dangerShadow", "Button Danger",
+                shadows.button_danger);
+    shadow_cell(state, "ant.alias.boxShadowDrawerLeft", "Drawer Left",
+                shadows.drawer_left);
+    shadow_cell(state, "ant.alias.boxShadowDrawerRight", "Drawer Right",
+                shadows.drawer_right);
+    shadow_cell(state, "ant.alias.boxShadowDrawerUp", "Drawer Up", shadows.drawer_up);
+    shadow_cell(state, "ant.alias.boxShadowDrawerDown", "Drawer Down",
+                shadows.drawer_down);
+    shadow_cell(state, "ant.alias.boxShadowPopoverArrow", "Popover Arrow",
+                shadows.popover_arrow);
+    shadow_cell(state, "ant.alias.dropShadowPopover", "Popover",
+                shadows.popover_drop);
+    shadow_cell(state, "ant.alias.boxShadowCard", "Card", shadows.card);
+    shadow_cell(state, "ant.alias.boxShadowTabsOverflowLeft", "Tabs Left inset",
+                shadows.tabs_overflow_left);
+    shadow_cell(state, "ant.alias.boxShadowTabsOverflowRight", "Tabs Right inset",
+                shadows.tabs_overflow_right);
+    shadow_cell(state, "ant.alias.boxShadowTabsOverflowTop", "Tabs Top inset",
+                shadows.tabs_overflow_top);
+    shadow_cell(state, "ant.alias.boxShadowTabsOverflowBottom", "Tabs Bottom inset",
+                shadows.tabs_overflow_bottom);
+}
+
+void foundation_tokens(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[3]);
+    ryn::Flex(
+        ryn::FlexProps{}
+            .wrap(true)
+            .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+        [state] {
+            add_palette_cells(state);
+            add_scale_cells(state);
+            add_shadow_cells(state);
+        });
+}
+
+void component_entry(
+    const std::shared_ptr<GalleryState>& state,
+    const AntDesignReferenceEntry& entry) {
+    const auto name = utf8(
+        std::string(entry.english_name) + " / "
+        + std::string(entry.chinese_name));
+    const auto summary = utf8(entry.summary);
+    const auto supported = utf8(joined_scope("支持：", entry.supported_scope));
+    const auto missing = utf8(joined_scope("缺失：", entry.missing_scope));
+    const auto evidence = utf8(
+        std::string("证据：") + std::string(entry.evidence_identifiers)
+        + " · Source: " + std::string(entry.source_path));
+    ReferenceSurface(
+        ReferenceSurfaceProps{}
+            .status(entry.support_status)
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+        [state, name, summary, supported, missing, evidence] {
+            ++state->telemetry.reference_content_runs;
+            ryn::Text(name);
+            ryn::Text(ryn::TextProps{}
+                .content(summary)
+                .tone(ryn::TextTone::Secondary));
+            ryn::Text(ryn::TextProps{}
+                .content(supported)
+                .tone(ryn::TextTone::Secondary));
+            ryn::Text(ryn::TextProps{}
+                .content(missing)
+                .tone(ryn::TextTone::Secondary));
+            ryn::Text(ryn::TextProps{}
+                .content(evidence)
+                .tone(ryn::TextTone::Secondary));
+        });
+    ++state->telemetry.component_entries;
+    ++state->telemetry.reference_surfaces;
+}
+
+void component_overview(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[4]);
+    const auto entries = ant_design_reference_entries();
+    for (const auto& category : ant_design_reference_categories()) {
+        ryn::Text(utf8(gallery_category_title(category.category)));
+        ryn::Flex(
+            ryn::FlexProps{}
+                .wrap(true)
+                .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+                .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
+            [state, entries, category] {
+                for (const auto& entry : entries) {
+                    if (entry.category == category.category
+                            && gallery_support_filter_matches(
+                                GallerySupportFilter::all, entry.support_status)) {
+                        component_entry(state, entry);
+                    }
+                }
+            });
+    }
 }
 
 void themed_button(
@@ -130,174 +406,76 @@ void themed_button(
                 .size(size)
                 .disabled(std::move(disabled))
                 .loading(std::move(loading))
-                .layout(
-                    ryn::LayoutStyle{}
-                        .width(state->cell_width)
-                        .flex_shrink(1.0F));
+                .layout(ryn::LayoutStyle{}
+                    .width(state->cell_width)
+                    .flex_shrink(1.0F));
             if (on_click) {
                 props.onClick(std::move(on_click));
             }
             ryn::Button(std::move(props), [text] { ryn::Text(text); });
+            ++state->telemetry.live_samples;
         }});
 }
 
-void add_palette_cells(const std::shared_ptr<GalleryState>& state) {
-    themed_button(state, "ant.map.colorPrimary", "Primary / 主色",
-                  primary_surface(ryn::Color::rgba8(22, 119, 255)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.colorSuccess", "Success / 成功",
-                  primary_surface(ryn::Color::rgba8(82, 196, 26)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.colorWarning", "Warning / 警告",
-                  primary_surface(ryn::Color::rgba8(250, 173, 20)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.colorError", "Error / 错误",
-                  primary_surface(ryn::Color::rgba8(255, 77, 79)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.colorInfo", "Info / 信息",
-                  primary_surface(ryn::Color::rgba8(22, 119, 255)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.blue6", "Blue 6",
-                  primary_surface(ryn::Color::rgba8(22, 119, 255)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.green6", "Green 6",
-                  primary_surface(ryn::Color::rgba8(82, 196, 26)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.red5", "Red 5",
-                  primary_surface(ryn::Color::rgba8(255, 77, 79)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.gold6", "Gold 6",
-                  primary_surface(ryn::Color::rgba8(250, 173, 20)),
-                  ryn::ButtonType::Primary);
-    themed_button(state, "ant.map.purple6", "Purple 6",
-                  primary_surface(ryn::Color::rgba8(114, 46, 209)),
-                  ryn::ButtonType::Primary);
-}
-
-void add_scale_cells(const std::shared_ptr<GalleryState>& state) {
-    const auto text_cell = [&](std::string_view id, std::string_view caption, float size) {
-        ryn::ThemeConfig config;
-        config.text.tokens.font_size = ryn::dp(size);
-        config.text.tokens.line_height = ryn::dp(size + 8.0F);
-        themed_button(state, id, caption, std::move(config));
-    };
-    text_cell("ant.map.fontSizeSM", "Font 12", 12.0F);
-    text_cell("ant.map.fontSize", "Font 14", 14.0F);
-    text_cell("ant.map.fontSizeLG", "Font 16", 16.0F);
-    themed_button(state, "ant.map.sizeXS", "Gap 8 / 间距",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Small);
-    themed_button(state, "ant.map.size", "Gap 16 / 间距",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Middle);
-    themed_button(state, "ant.map.sizeLG", "Gap 24 / 间距",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Large);
-    themed_button(state, "ant.map.controlHeightSM", "Control 24",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Small);
-    themed_button(state, "ant.seed.controlHeight", "Control 32",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Middle);
-    themed_button(state, "ant.map.controlHeightLG", "Control 40",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Large);
-    themed_button(state, "ant.map.borderRadiusSM", "Radius 4", radius_surface(4.0F));
-    themed_button(state, "ant.seed.borderRadius", "Radius 6", radius_surface(6.0F));
-    themed_button(state, "ant.map.borderRadiusLG", "Radius 8", radius_surface(8.0F));
-}
-
-void add_shadow_cells(const std::shared_ptr<GalleryState>& state) {
-    const auto& shadows = ryn::ant_design_default_shadows();
-    themed_button(state, "ant.alias.boxShadowTertiary", "Elevation 1",
-                  shadow_surface(shadows.box_shadow_tertiary));
-    themed_button(state, "ant.alias.boxShadowSecondary", "Elevation 2",
-                  shadow_surface(shadows.box_shadow_secondary));
-    themed_button(state, "ant.alias.boxShadow", "Elevation 3",
-                  shadow_surface(shadows.box_shadow));
-    themed_button(state, "ant.component.Button.defaultShadow", "Button Default",
-                  shadow_surface(shadows.button_default));
-    themed_button(state, "ant.component.Button.primaryShadow", "Button Primary",
-                  shadow_surface(shadows.button_primary), ryn::ButtonType::Primary);
-    themed_button(state, "ant.component.Button.dangerShadow", "Button Danger",
-                  shadow_surface(shadows.button_danger), ryn::ButtonType::Danger);
-    themed_button(state, "ant.alias.boxShadowDrawerLeft", "Drawer Left",
-                  shadow_surface(shadows.drawer_left));
-    themed_button(state, "ant.alias.boxShadowDrawerRight", "Drawer Right",
-                  shadow_surface(shadows.drawer_right));
-    themed_button(state, "ant.alias.boxShadowDrawerUp", "Drawer Up",
-                  shadow_surface(shadows.drawer_up));
-    themed_button(state, "ant.alias.boxShadowDrawerDown", "Drawer Down",
-                  shadow_surface(shadows.drawer_down));
-    themed_button(state, "ant.alias.boxShadowPopoverArrow", "Popover Arrow",
-                  shadow_surface(shadows.popover_arrow));
-    themed_button(state, "ant.alias.dropShadowPopover", "Popover",
-                  shadow_surface(shadows.popover_drop));
-    themed_button(state, "ant.alias.boxShadowCard", "Card",
-                  shadow_surface(shadows.card));
-    themed_button(state, "ant.alias.boxShadowTabsOverflowLeft", "Tabs Left inset",
-                  shadow_surface(shadows.tabs_overflow_left));
-    themed_button(state, "ant.alias.boxShadowTabsOverflowRight", "Tabs Right inset",
-                  shadow_surface(shadows.tabs_overflow_right));
-    themed_button(state, "ant.alias.boxShadowTabsOverflowTop", "Tabs Top inset",
-                  shadow_surface(shadows.tabs_overflow_top));
-    themed_button(state, "ant.alias.boxShadowTabsOverflowBottom", "Tabs Bottom inset",
-                  shadow_surface(shadows.tabs_overflow_bottom));
-}
-
-ryn::ThemeConfig algorithm_config(ryn::ThemeAlgorithm algorithm) {
-    ryn::ThemeConfig config;
-    if (algorithm != ryn::ThemeAlgorithm::Default) {
-        config.algorithms.push_back(algorithm);
-    }
-    return config;
-}
-
-void add_theme_and_state_cells(const std::shared_ptr<GalleryState>& state) {
-    themed_button(
-        state, "gallery.theme.default", "Default", algorithm_config(ryn::ThemeAlgorithm::Default),
-        ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
+void add_live_samples(const std::shared_ptr<GalleryState>& state) {
+    section_surface(state, gallery_document_sections()[5]);
+    ryn::Space(
+        ryn::SpaceProps{}
+            .wrap(true)
+            .align(ryn::SpaceAlign::Center)
+            .size(ryn::dp(8.0F), ryn::dp(8.0F))
+            .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
         [state] {
-            state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Default));
-            ++state->telemetry.theme_updates;
-            ++state->telemetry.activations;
+            themed_button(
+                state, "gallery.theme.default", "Default",
+                algorithm_config(ryn::ThemeAlgorithm::Default),
+                ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
+                [state] {
+                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Default));
+                    ++state->telemetry.theme_updates;
+                    ++state->telemetry.activations;
+                });
+            themed_button(
+                state, "gallery.theme.dark", "Dark",
+                algorithm_config(ryn::ThemeAlgorithm::Dark),
+                ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
+                [state] {
+                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Dark));
+                    ++state->telemetry.theme_updates;
+                    ++state->telemetry.activations;
+                });
+            themed_button(
+                state, "gallery.theme.compact", "Compact",
+                algorithm_config(ryn::ThemeAlgorithm::Compact),
+                ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
+                [state] {
+                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Compact));
+                    ++state->telemetry.theme_updates;
+                    ++state->telemetry.activations;
+                });
+            auto nested = algorithm_config(ryn::ThemeAlgorithm::Dark);
+            nested.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+            themed_button(
+                state, "gallery.theme.nested-brand", "Dark + Purple Seed",
+                nested, ryn::ButtonType::Primary);
+            themed_button(state, "gallery.state.default", "Default", {});
+            themed_button(state, "gallery.state.primary", "Primary", {},
+                          ryn::ButtonType::Primary);
+            themed_button(state, "gallery.state.danger", "Danger", {},
+                          ryn::ButtonType::Danger);
+            themed_button(state, "gallery.state.hover", "Hover me / 悬停", {});
+            themed_button(state, "gallery.state.active", "Press me / 按下", {});
+            themed_button(
+                state, "gallery.state.focus-visible", "Tab focus / 键盘焦点", {});
+            themed_button(
+                state, "gallery.state.disabled", "Disabled / 禁用", {},
+                ryn::ButtonType::Default, ryn::ControlSize::Middle,
+                state->disabled);
+            themed_button(
+                state, "gallery.state.loading", "Loading / 加载", {},
+                ryn::ButtonType::Primary, ryn::ControlSize::Middle,
+                false, state->loading);
         });
-    themed_button(
-        state, "gallery.theme.dark", "Dark", algorithm_config(ryn::ThemeAlgorithm::Dark),
-        ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
-        [state] {
-            state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Dark));
-            ++state->telemetry.theme_updates;
-            ++state->telemetry.activations;
-        });
-    themed_button(
-        state, "gallery.theme.compact", "Compact", algorithm_config(ryn::ThemeAlgorithm::Compact),
-        ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
-        [state] {
-            state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Compact));
-            ++state->telemetry.theme_updates;
-            ++state->telemetry.activations;
-        });
-    ryn::ThemeConfig nested = algorithm_config(ryn::ThemeAlgorithm::Dark);
-    nested.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
-    themed_button(state, "gallery.theme.nested-brand", "Dark + Purple Seed", nested,
-                  ryn::ButtonType::Primary);
-
-    themed_button(state, "gallery.state.default", "Default", ryn::ThemeConfig{});
-    themed_button(state, "gallery.state.primary", "Primary", ryn::ThemeConfig{},
-                  ryn::ButtonType::Primary);
-    themed_button(state, "gallery.state.danger", "Danger", ryn::ThemeConfig{},
-                  ryn::ButtonType::Danger);
-    themed_button(state, "gallery.state.hover", "Hover me / 悬停", ryn::ThemeConfig{});
-    themed_button(state, "gallery.state.active", "Press me / 按下", ryn::ThemeConfig{});
-    themed_button(state, "gallery.state.focus-visible", "Tab focus / 键盘焦点",
-                  ryn::ThemeConfig{});
-    themed_button(state, "gallery.state.disabled", "Disabled / 禁用",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Default,
-                  ryn::ControlSize::Middle, state->disabled);
-    themed_button(state, "gallery.state.loading", "Loading / 加载",
-                  ryn::ThemeConfig{}, ryn::ButtonType::Primary,
-                  ryn::ControlSize::Middle, false, state->loading);
 }
 
 } // namespace
@@ -350,25 +528,15 @@ TokenGalleryDefinition make_token_gallery_definition() {
                     ryn::Flex(
                         ryn::FlexProps{}
                             .vertical(true)
-                            .gap(ryn::SpaceSize::Small)
+                            .gap(ryn::dp(16.0F))
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
-                            ryn::Text(u8"RynUI Ant Design 6 Token Gallery / 设计令牌验收");
-                            ryn::Text(
-                                ryn::TextProps{}
-                                    .content(u8"Default · Dark · Compact · Brand Seed · Nested Theme")
-                                    .tone(ryn::TextTone::Secondary));
-                            ryn::Flex(
-                                ryn::FlexProps{}
-                                    .wrap(true)
-                                    .gap(ryn::dp(8.0F), ryn::dp(8.0F))
-                                    .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
-                                [state] {
-                                    add_theme_and_state_cells(state);
-                                    add_palette_cells(state);
-                                    add_scale_cells(state);
-                                    add_shadow_cells(state);
-                                });
+                            source_section(state);
+                            section_surface(state, gallery_document_sections()[1]);
+                            design_values(state);
+                            foundation_tokens(state);
+                            component_overview(state);
+                            add_live_samples(state);
                         });
                 }});
         }},
@@ -399,8 +567,8 @@ TokenGalleryDefinition make_token_gallery_definition() {
         [state](float viewport_width) {
             const float content_width = std::max(256.0F, viewport_width - 48.0F);
             const float next_cell_width = content_width < 720.0F
-                ? std::max(150.0F, (content_width - 16.0F) / 3.0F)
-                : 150.0F;
+                ? std::max(220.0F, (content_width - 8.0F) / 2.0F)
+                : 260.0F;
             if (state->gallery_width.get() != ryn::dp(content_width)) {
                 state->gallery_width.set(ryn::dp(content_width));
                 ++state->telemetry.viewport_updates;

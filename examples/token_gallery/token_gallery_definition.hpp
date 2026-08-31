@@ -20,6 +20,11 @@ struct TokenGalleryTelemetry final {
     std::uint64_t viewport_updates{};
     std::uint64_t state_updates{};
     std::uint64_t activations{};
+    std::uint64_t document_sections{};
+    std::uint64_t component_entries{};
+    std::uint64_t reference_surfaces{};
+    std::uint64_t reference_content_runs{};
+    std::uint64_t live_samples{};
     std::uint64_t snapshot_identity{};
     std::string snapshot_diagnostic;
 };

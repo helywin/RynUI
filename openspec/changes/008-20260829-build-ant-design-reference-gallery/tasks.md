@@ -21,11 +21,11 @@
 
 ## 4. 文档式 Gallery 内容与完整组件总览
 
-- [ ] 4.1 建立稳定 document section model，按 Header/Source、Introduction、Design Values、Foundation/Token、Component Overview、Live Samples 顺序挂载；使用自有简体中文摘要与官方 URL，通过 content/source/copyright-boundary contract 证明不复制整页原文、React/CSS source 或远程图片
-- [ ] 4.2 从 catalog 生成七类 72 项 Component Overview，每项显示英文/中文名称、support status、supported/missing scope 与 evidence/source；通过 category heading、entry identity、status filter input 和未实现项无 fake sample tests 验证
-- [ ] 4.3 将现有 color/type/spacing/radius/shadow Token 内容迁移为 ReferenceSurface/swatches，确保自定义 palette 不再由只覆盖 normal background 的 Button 模拟；通过 palette hover、shadow layer、focus order 和 retained identity tests 验证
-- [ ] 4.4 保留独立 Live Samples 区，只用真实 `ryn::Button`/`Text`/`Flex`/`Space`/`Theme` 展示已支持能力，并明确 unsupported scope；通过 source contract、component count 和 interaction ownership tests 证明目录条目与 live controls 不混淆
-- [ ] 4.5 运行 catalog-to-document、content、Theme、Text、Flex/Space、Scene、interaction 和 `git diff --check`；以英文 `feat: build Ant Design reference document` 提交并推送本阶段，核对 remote SHA
+- [x] 4.1 建立稳定 document section model，按 Header/Source、Introduction、Design Values、Foundation/Token、Component Overview、Live Samples 顺序挂载；使用自有简体中文摘要与官方 URL，通过 content/source/copyright-boundary contract 证明不复制整页原文、React/CSS source 或远程图片
+- [x] 4.2 从 catalog 生成七类 72 项 Component Overview，每项显示英文/中文名称、support status、supported/missing scope 与 evidence/source；通过 category heading、entry identity、status filter input 和未实现项无 fake sample tests 验证
+- [x] 4.3 将现有 color/type/spacing/radius/shadow Token 内容迁移为 ReferenceSurface/swatches，确保自定义 palette 不再由只覆盖 normal background 的 Button 模拟；通过 palette hover、shadow layer、focus order 和 retained identity tests 验证
+- [x] 4.4 保留独立 Live Samples 区，只用真实 `ryn::Button`/`Text`/`Flex`/`Space`/`Theme` 展示已支持能力，并明确 unsupported scope；通过 source contract、component count 和 interaction ownership tests 证明目录条目与 live controls 不混淆
+- [x] 4.5 运行 catalog-to-document、content、Theme、Text、Flex/Space、Scene、interaction 和 `git diff --check`；以英文 `feat: build Ant Design reference document` 提交并推送本阶段，核对 remote SHA
 
 ## 5. 长文档 viewport、导航与响应式布局
 

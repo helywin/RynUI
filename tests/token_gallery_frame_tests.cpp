@@ -4,6 +4,7 @@
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/invalidation.hpp"
+#include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
 
 #include <ryn/rynui.hpp>
@@ -171,6 +172,7 @@ struct Fixture final {
             text_scene,
             std::vector<ryn::font::FontIdentity>{latin.font, cjk.font},
             frames);
+        surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(*host);
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
@@ -187,6 +189,7 @@ struct Fixture final {
     ryn::runtime::DirtyQueues dirty;
     ryn::detail::TextSceneService text_scene;
     std::unique_ptr<ryn::detail::ButtonComponentHost> host;
+    std::unique_ptr<rynui::example::ReferenceSurfaceHost> surfaces;
 };
 
 class IdleEvents final : public ryn::runtime::FrameEventSource {
@@ -263,7 +266,7 @@ private:
     ryn::detail::GlyphGpuResources glyphs_;
     ryn::detail::RoundedEffectGpuResources effects_;
     RecordingDrawApi* draw_;
-    ryn::runtime::Size viewport_{1200.0F, 900.0F};
+    ryn::runtime::Size viewport_{1200.0F, 30000.0F};
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quads_;
 };
 
@@ -279,14 +282,24 @@ void require_all_cells_reachable(
         require(bounds.y >= 19.75F && bounds.y + bounds.height <= viewport.height - 19.75F,
                 "Token Gallery cell escaped the vertical viewport");
     }
+    for (const auto& mounted : fixture.surfaces->mounted_surfaces()) {
+        const auto bounds = fixture.nodes.require(mounted.node).bounds;
+        require(bounds.width > 0.0F && bounds.height > 0.0F,
+                "Token Gallery produced an empty reference surface");
+        require(bounds.x >= 23.75F && bounds.x + bounds.width <= viewport.width - 23.75F,
+                "Token Gallery reference surface escaped the horizontal viewport");
+        require(bounds.y >= 19.75F && bounds.y + bounds.height <= viewport.height - 19.75F,
+                "Token Gallery reference surface escaped the vertical viewport");
+    }
 }
 
 void require_shadow_order(
     const Fixture& fixture,
-    std::size_t button_index,
+    std::size_t surface_index,
     const ryn::ShadowList& expected) {
-    const auto mounted = fixture.host->mounted_buttons()[button_index];
-    const auto ids = fixture.host->button_scene().shadow_effects(mounted.scene);
+    const auto mounted = fixture.surfaces->mounted_surfaces()[surface_index];
+    const auto snapshot = fixture.surfaces->snapshot(mounted.component);
+    const auto ids = fixture.host->button_scene().shadow_effects(snapshot.scene);
     require(ids.size() == expected.size(), "Gallery shadow cell lost a typed layer");
     for (std::size_t index = 0; index < expected.size(); ++index) {
         const auto& actual = fixture.host->rounded_effects().at(ids[index]);
@@ -353,7 +366,7 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(640.0F);
     Fixture fixture;
-    fixture.host->mount(definition.content);
+    fixture.surfaces->mount(definition.content);
     RecordingGpuApi gpu;
     RecordingDrawApi draw;
     IdleEvents events;
@@ -408,9 +421,13 @@ void test_token_gallery_frame_contract() {
 
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
-    fixture.host->mount(definition.content);
-    require(fixture.host->mounted_buttons().size() == definition.stable_test_ids.size(),
-            "Token Gallery did not mount one retained cell per stable test id");
+    fixture.surfaces->mount(definition.content);
+    require(fixture.host->mounted_buttons().size() == 12,
+            "Token Gallery live sample count drifted");
+    require(fixture.surfaces->mounted_surfaces().size() == 125,
+            "Token Gallery document reference surface count drifted");
+    require(fixture.host->interactions().size() == 12,
+            "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
     RecordingDrawApi draw;
@@ -423,11 +440,18 @@ void test_token_gallery_frame_contract() {
         fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
-    require_all_cells_reachable(fixture, {1200.0F, 900.0F});
+    require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
+    require(fixture.host->scene_composer().interaction_order().size() == 12,
+            "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1
-                && initial.theme_content_runs == definition.stable_test_ids.size() + 1,
+                && initial.theme_content_runs == definition.stable_test_ids.size() + 1
+                && initial.document_sections == 6
+                && initial.component_entries == 72
+                && initial.reference_surfaces == 125
+                && initial.reference_content_runs == 125
+                && initial.live_samples == 12,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0
@@ -463,13 +487,13 @@ void test_token_gallery_frame_contract() {
             "Token Gallery focus cell does not use a 1px gap and 3px hollow ring");
 
     definition.set_viewport_width(560.0F);
-    submitter.set_viewport({560.0F, 1100.0F});
+    submitter.set_viewport({560.0F, 30000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery narrow frame was not submitted");
-    require_all_cells_reachable(fixture, {560.0F, 1100.0F});
+    require_all_cells_reachable(fixture, {560.0F, 30000.0F});
 
     definition.set_viewport_width(1200.0F);
-    submitter.set_viewport({1200.0F, 900.0F});
+    submitter.set_viewport({1200.0F, 30000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery wide restoration was not submitted");
     const auto component_count = fixture.host->components().component_count();

@@ -1,4 +1,5 @@
 #include "token_gallery_definition.hpp"
+#include "reference_surface.hpp"
 
 #include "component/button_component.hpp"
 #include "font/font_runtime.hpp"
@@ -357,11 +358,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
         ryn::detail::ButtonComponentHost application(
             nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests);
+        ReferenceSurfaceHost reference_surfaces(application);
         if (reduced_motion) {
             application.set_motion_preference(
                 ryn::animation::MotionPreference::reduced);
         }
-        application.mount(definition.content);
+        reference_surfaces.mount(definition.content);
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
@@ -543,6 +545,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         for (const auto& mounted : application.text().mounted_texts()) {
             layout_passes += nodes.require(text_scene.node(mounted.scene)).place_count;
         }
+        for (const auto& mounted : reference_surfaces.mounted_surfaces()) {
+            layout_passes += nodes.require(mounted.node).place_count;
+        }
 
         std::cout
             << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH
@@ -570,6 +575,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " viewport_updates=" << telemetry.viewport_updates
             << " state_updates=" << telemetry.state_updates
             << " activations=" << telemetry.activations
+            << " document_sections=" << telemetry.document_sections
+            << " component_entries=" << telemetry.component_entries
+            << " reference_surfaces=" << telemetry.reference_surfaces
+            << " reference_content_runs=" << telemetry.reference_content_runs
+            << " live_samples=" << telemetry.live_samples
+            << " reference_interactions=0"
             << " input_events=" << platform_diagnostics.normalized_input_events
             << " pointer_input_events=" << pointer_diagnostics.input_events
             << " pointer_routes=" << pointer_diagnostics.routes_dispatched
