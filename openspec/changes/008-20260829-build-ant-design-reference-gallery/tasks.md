@@ -38,10 +38,10 @@
 
 ## 6. 平台通用 Gallery 集成验收
 
-- [ ] 6.1 增加完整 headless Gallery journey，覆盖离线启动、Introduction、七类 72 项、support filter、anchor/wheel、宽窄 reflow、Theme、Button hover/focus、reference surface 非交互和 idle；验证 content/catalog identity 与逐阶段 diagnostics
-- [ ] 6.2 增加 Gallery evidence schema，要求 catalog version/commit/hash、category counts、support counts、source links、viewport/section/reachability、Button state、reference interaction count、scene/upload/draw/submit/idle、preset/compiler/platform/driver/shader/font 与截图路径；拒绝交叉平台 identity 和 planning-only implemented 状态
-- [ ] 6.3 在一个受支持平台使用正式 preset 运行 catalog/generator、全部平台通用 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime 和 Python cache 检查，记录实际 OS/compiler/preset/result
-- [ ] 6.4 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate reference gallery contracts` 提交并推送平台通用 evidence，不要求另一平台重复本组合同，核对 remote SHA
+- [x] 6.1 增加完整 headless Gallery journey，覆盖离线启动、Introduction、七类 72 项、support filter、anchor/wheel、宽窄 reflow、Theme、Button hover/focus、reference surface 非交互和 idle；验证 content/catalog identity 与逐阶段 diagnostics
+- [x] 6.2 增加 Gallery evidence schema，要求 catalog version/commit/hash、category counts、support counts、source links、viewport/section/reachability、Button state、reference interaction count、scene/upload/draw/submit/idle、preset/compiler/platform/driver/shader/font 与截图路径；拒绝交叉平台 identity 和 planning-only implemented 状态
+- [x] 6.3 在一个受支持平台使用正式 preset 运行 catalog/generator、全部平台通用 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime 和 Python cache 检查，记录实际 OS/compiler/preset/result
+- [x] 6.4 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive` 与 `git diff --check`；以英文 `test: validate reference gallery contracts` 提交并推送平台通用 evidence，不要求另一平台重复本组合同，核对 remote SHA
 
 ## 7. Windows 专属验收
 

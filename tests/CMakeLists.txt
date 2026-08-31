@@ -663,6 +663,10 @@ target_compile_definitions(
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
 )
 add_test(NAME rynui.token_gallery_frame COMMAND rynui_token_gallery_frame_tests)
+add_test(
+    NAME rynui.gallery_platform_generic_journey
+    COMMAND rynui_token_gallery_frame_tests
+)
 
 add_executable(
     rynui_ant_design_reference_catalog_tests
@@ -760,6 +764,39 @@ add_test(
         "-DRUNTIME_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_runtime.cpp"
         "-DEXAMPLES_CMAKE=${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_token_gallery_contract.cmake"
+)
+
+set(reference_gallery_evidence
+    "${PROJECT_SOURCE_DIR}/openspec/changes/008-20260829-build-ant-design-reference-gallery/evidence/platform-generic-reference-gallery.md"
+)
+add_test(
+    NAME rynui.reference_gallery_evidence
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${reference_gallery_evidence}"
+        -DEXPECTED_SCOPE=platform-generic
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_reference_gallery_evidence.cmake"
+)
+add_test(
+    NAME rynui.reference_gallery_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/reference-gallery-evidence-cross-platform.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_reference_gallery_evidence.cmake"
+)
+set_tests_properties(
+    rynui.reference_gallery_evidence_cross_platform_rejected
+    PROPERTIES WILL_FAIL TRUE
+)
+add_test(
+    NAME rynui.reference_gallery_evidence_planning_only_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/reference-gallery-evidence-planning-only.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_reference_gallery_evidence.cmake"
+)
+set_tests_properties(
+    rynui.reference_gallery_evidence_planning_only_rejected
+    PROPERTIES WILL_FAIL TRUE
 )
 
 set(token_gallery_evidence_directory
