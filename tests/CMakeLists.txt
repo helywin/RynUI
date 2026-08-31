@@ -798,6 +798,14 @@ set_tests_properties(
     rynui.reference_gallery_evidence_planning_only_rejected
     PROPERTIES WILL_FAIL TRUE
 )
+if(WIN32)
+    add_test(
+        NAME rynui.windows_reference_gallery_build_evidence
+        COMMAND ${CMAKE_COMMAND}
+            "-DEVIDENCE=${PROJECT_SOURCE_DIR}/openspec/changes/008-20260829-build-ant-design-reference-gallery/evidence/windows-reference-gallery-build.md"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_reference_gallery_build_evidence.cmake"
+    )
+endif()
 
 set(token_gallery_evidence_directory
     "${PROJECT_SOURCE_DIR}/openspec/changes/006-20260827-establish-ant-design-token-system/evidence"

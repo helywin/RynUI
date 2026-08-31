@@ -45,7 +45,7 @@
 
 ## 7. Windows 专属验收
 
-- [ ] 7.1 使用 `windows-msvc` preset clean configure，完成受 Windows 分支影响的 Debug/Release build 与 CTest，核对 Ninja Multi-Config、MSVC x64、BUNDLED 依赖、Win32 wheel/input、DirectWrite system font discovery 和 D3D12/DXIL 来源，保存独立 Windows 结果
+- [x] 7.1 使用 `windows-msvc` preset clean configure，完成受 Windows 分支影响的 Debug/Release build 与 CTest，核对 Ninja Multi-Config、MSVC x64、BUNDLED 依赖、Win32 wheel/input、DirectWrite system font discovery 和 D3D12/DXIL 来源，保存独立 Windows 结果
 - [ ] 7.2 在 Windows/MSVC/D3D12/DXIL 真实窗口以系统 display scale 和 1.0/1.25/1.5/2.0 acceptance render scale 浏览 Introduction、Foundation 与七类末尾，操作 category/filter/wheel/keyboard、Default/Primary/Danger hover/active/focus 并正常退出；保存截图、driver、font、scale、退出码与 diagnostics
 - [ ] 7.3 人工核对非交互目录无蓝色 hover/focus、Default 只有既有 1px hover border、solid Button 无透明边缘/蓝色外圈、keyboard focus 为 1px gap + 3px ring、CJK/Latin 可读、72 项全部可到达；运行 Windows evidence passed contract、dependency/shader/lock/license 与 cache 检查
 - [ ] 7.4 运行 Windows 受影响平台测试、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows reference gallery` 提交并推送 Windows evidence，核对 remote SHA，不修改 Linux 清单
