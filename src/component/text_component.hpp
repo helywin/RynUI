@@ -68,6 +68,8 @@ public:
 
     [[nodiscard]] runtime::ComponentHost& components() noexcept;
     [[nodiscard]] const runtime::ComponentHost& components() const noexcept;
+    [[nodiscard]] TextSceneService& scene_service() noexcept;
+    [[nodiscard]] const TextSceneService& scene_service() const noexcept;
     [[nodiscard]] std::span<const MountedTextComponent> mounted_texts() const noexcept;
 
 private:

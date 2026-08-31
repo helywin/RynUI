@@ -312,6 +312,14 @@ const runtime::ComponentHost& TextComponentHost::components() const noexcept {
     return components_;
 }
 
+TextSceneService& TextComponentHost::scene_service() noexcept {
+    return *text_scene_;
+}
+
+const TextSceneService& TextComponentHost::scene_service() const noexcept {
+    return *text_scene_;
+}
+
 std::span<const MountedTextComponent>
 TextComponentHost::mounted_texts() const noexcept {
     return mounted_texts_;

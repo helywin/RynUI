@@ -270,6 +270,27 @@ void apply_visible(
     }
     state->visible = visible;
     refresh_material(host, *state);
+    auto& components = host.application().components();
+    auto& text_host = host.application().text();
+    auto& scenes = text_host.scene_service();
+    for (const auto& mounted : text_host.mounted_texts()) {
+        auto current = std::optional<ryn::runtime::ComponentId>{mounted.component};
+        bool descendant = false;
+        while (current.has_value()) {
+            if (*current == component) {
+                descendant = true;
+                break;
+            }
+            current = components.parent(*current);
+        }
+        if (!descendant) {
+            continue;
+        }
+        if (scenes.set_opacity(mounted.scene, visible ? 1.0F : 0.0F)) {
+            host.application().dirty().invalidate(
+                scenes.node(mounted.scene), ryn::runtime::DirtyFlags::Material);
+        }
+    }
 }
 
 } // namespace
@@ -556,6 +577,10 @@ void ReferenceSurface(
         ryn::detail::SlotContentAccess::function(content)();
     }};
     build.mount_slot(component, children);
+    if (!state.visible) {
+        state.visible = true;
+        apply_visible(host, component, false);
+    }
     host.application().dirty().invalidate_subtree(
         state.node,
         ryn::runtime::DirtyFlags::Measure

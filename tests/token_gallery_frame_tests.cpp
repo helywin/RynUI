@@ -569,6 +569,23 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     }
     require(visible == 5 && hidden == 67,
             "Gallery partial filter did not match the support catalog");
+    const auto hidden_surface = surfaces[53].component;
+    std::size_t hidden_texts = 0;
+    for (const auto& text : fixture.host->text().mounted_texts()) {
+        auto current = std::optional<ryn::runtime::ComponentId>{text.component};
+        while (current.has_value() && *current != hidden_surface) {
+            current = fixture.host->components().parent(*current);
+        }
+        if (current.has_value()) {
+            ++hidden_texts;
+            require(near(
+                        fixture.text_scene.text_state(text.scene).material().opacity,
+                        0.0F),
+                    "hidden Gallery entry retained visible glyph material");
+        }
+    }
+    require(hidden_texts > 0,
+            "Gallery hidden-text contract did not inspect a descendant");
     require(fixture.host->components().component_count() == components
                 && fixture.host->components().mount_runs() == mount_runs
                 && fixture.host->components().contains(live_component)
@@ -585,6 +602,18 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     for (std::size_t index = 52; index < 124; ++index) {
         require(fixture.surfaces->snapshot(surfaces[index].component).visible,
                 "Gallery all-status filter did not restore an entry");
+    }
+    for (const auto& text : fixture.host->text().mounted_texts()) {
+        auto current = std::optional<ryn::runtime::ComponentId>{text.component};
+        while (current.has_value() && *current != hidden_surface) {
+            current = fixture.host->components().parent(*current);
+        }
+        if (current.has_value()) {
+            require(near(
+                        fixture.text_scene.text_state(text.scene).material().opacity,
+                        1.0F),
+                    "Gallery all-status filter did not restore glyph material");
+        }
     }
 }
 
