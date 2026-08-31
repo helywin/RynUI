@@ -19,6 +19,7 @@ using input::PointerAction;
 using input::PointerButton;
 using input::PointerIdentity;
 using input::PointerInputEvent;
+using input::ScrollInputEvent;
 using input::WindowInputAction;
 using input::WindowInputEvent;
 
@@ -111,6 +112,18 @@ int rounded_logical_extent(float value) noexcept {
     return std::max(1, static_cast<int>(std::lround(value)));
 }
 
+std::optional<float> wheel_direction_sign(
+    SDL_MouseWheelDirection direction) noexcept {
+    switch (direction) {
+    case SDL_MOUSEWHEEL_NORMAL:
+        return 1.0F;
+    case SDL_MOUSEWHEEL_FLIPPED:
+        return -1.0F;
+    default:
+        return std::nullopt;
+    }
+}
+
 void append_logical_resize(
     PlatformEvents& result,
     const SdlWindowMetrics& metrics) {
@@ -151,6 +164,18 @@ void SdlEventAdapter::merge(
     }
 
     switch (event.type) {
+    case SDL_EVENT_MOUSE_WHEEL: {
+        const auto direction = wheel_direction_sign(event.wheel.direction);
+        if (direction.has_value()) {
+            append_if_valid(result, ScrollInputEvent{
+                event.wheel.x * *direction,
+                event.wheel.y * *direction,
+                to_logical_coordinate(event.wheel.mouse_x, metrics),
+                to_logical_coordinate(event.wheel.mouse_y, metrics),
+            });
+        }
+        return;
+    }
     case SDL_EVENT_MOUSE_MOTION:
         append_if_valid(result, PointerInputEvent{
             PointerIdentity::mouse(),

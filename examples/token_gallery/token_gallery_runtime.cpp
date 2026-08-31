@@ -134,6 +134,8 @@ private:
         application_->pointer().dispatch(mapped);
     }
 
+    void dispatch(const ryn::input::ScrollInputEvent&) {}
+
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         application_->focus().dispatch(event);
     }

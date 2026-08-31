@@ -133,6 +133,8 @@ private:
         host_->pointer().dispatch(event);
     }
 
+    void dispatch(const ryn::input::ScrollInputEvent&) {}
+
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         host_->focus().dispatch(event);
     }

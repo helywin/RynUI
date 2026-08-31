@@ -96,6 +96,8 @@ private:
         application_->pointer().dispatch(event);
     }
 
+    void dispatch(const ryn::input::ScrollInputEvent&) {}
+
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         application_->focus().dispatch(event);
     }

@@ -19,6 +19,7 @@ using ryn::input::PointerAction;
 using ryn::input::PointerButton;
 using ryn::input::PointerIdentity;
 using ryn::input::PointerInputEvent;
+using ryn::input::ScrollInputEvent;
 using ryn::input::WindowInputAction;
 using ryn::input::WindowInputEvent;
 
@@ -233,6 +234,56 @@ void test_display_scale_maps_pixels_and_pointer_to_logical_coordinates() {
             "display-scale change retained the stale logical viewport");
 }
 
+void test_wheel_precision_direction_and_logical_position() {
+    PlatformEvents result;
+    result.input.reserve(8);
+    SdlWindowMetrics metrics{960, 720, 1920, 1440, 2.0F, 1.5F};
+
+    SDL_Event normal{};
+    normal.type = SDL_EVENT_MOUSE_WHEEL;
+    normal.wheel.x = 0.25F;
+    normal.wheel.y = -1.5F;
+    normal.wheel.direction = SDL_MOUSEWHEEL_NORMAL;
+    normal.wheel.mouse_x = 150.0F;
+    normal.wheel.mouse_y = 75.0F;
+    SdlEventAdapter::merge(result, normal, metrics);
+
+    SDL_Event focus{};
+    focus.type = SDL_EVENT_WINDOW_FOCUS_LOST;
+    SdlEventAdapter::merge(result, focus, metrics);
+
+    SDL_Event flipped{};
+    flipped.type = SDL_EVENT_MOUSE_WHEEL;
+    flipped.wheel.x = 0.5F;
+    flipped.wheel.y = -2.0F;
+    flipped.wheel.direction = SDL_MOUSEWHEEL_FLIPPED;
+    flipped.wheel.mouse_x = 30.0F;
+    flipped.wheel.mouse_y = 60.0F;
+    SdlEventAdapter::merge(result, flipped, metrics);
+
+    require(result.input.size() == 3,
+            "wheel/focus batch lost normalized event order");
+    const auto& first = std::get<ScrollInputEvent>(result.input.events()[0]);
+    const auto& second = std::get<ScrollInputEvent>(result.input.events()[2]);
+    require(near(first.delta_x, 0.25F) && near(first.delta_y, -1.5F)
+                && near(first.x, 200.0F) && near(first.y, 100.0F),
+            "normal precise wheel values or logical pointer position changed");
+    require(near(second.delta_x, -0.5F) && near(second.delta_y, 2.0F)
+                && near(second.x, 40.0F) && near(second.y, 80.0F),
+            "flipped wheel direction was not normalized exactly once");
+
+    PlatformEvents rejected;
+    auto invalid = normal;
+    invalid.wheel.direction = static_cast<SDL_MouseWheelDirection>(99);
+    SdlEventAdapter::merge(rejected, invalid, metrics);
+    auto empty = normal;
+    empty.wheel.x = 0.0F;
+    empty.wheel.y = 0.0F;
+    SdlEventAdapter::merge(rejected, empty, metrics);
+    require(rejected.input.empty(),
+            "invalid or empty wheel input entered the normalized batch");
+}
+
 void test_quit_and_frame_summary_regression() {
     SdlWindowMetrics metrics{640, 480};
 
@@ -250,9 +301,9 @@ void test_quit_and_frame_summary_regression() {
     require(close_result.quit_requested, "window close was not preserved");
 
     PlatformEvents resize_result;
-    SDL_Event wheel{};
-    wheel.type = SDL_EVENT_MOUSE_WHEEL;
-    SdlEventAdapter::merge(resize_result, wheel, metrics);
+    SDL_Event unhandled{};
+    unhandled.type = SDL_EVENT_USER;
+    SdlEventAdapter::merge(resize_result, unhandled, metrics);
     require(resize_result.frame_requested, "unhandled SDL event no longer requests a frame");
     require(resize_result.input.empty(), "unhandled SDL event leaked into normalized input");
 
@@ -297,6 +348,7 @@ int main() {
         test_compatibility_mouse_is_suppressed_without_hiding_real_mouse();
         test_keyboard_focus_resize_and_cancel_order();
         test_display_scale_maps_pixels_and_pointer_to_logical_coordinates();
+        test_wheel_precision_direction_and_logical_position();
         test_quit_and_frame_summary_regression();
         test_expose_redraw_survives_a_mixed_input_batch();
     } catch (const std::exception& error) {

@@ -121,6 +121,7 @@ using ryn::input::PointerAction;
 using ryn::input::PointerButton;
 using ryn::input::PointerIdentity;
 using ryn::input::PointerInputEvent;
+using ryn::input::ScrollInputEvent;
 using ryn::input::WindowInputAction;
 using ryn::input::WindowInputEvent;
 
@@ -173,6 +174,12 @@ public:
             coordinate + 1.0F,
             coordinate + 1.0F,
         }));
+        static_cast<void>(result.input.append(ScrollInputEvent{
+            0.25F,
+            -1.0F,
+            coordinate + 1.0F,
+            coordinate + 1.0F,
+        }));
         static_cast<void>(result.input.append(KeyboardInputEvent{
             Key::space,
             KeyAction::down,
@@ -192,6 +199,12 @@ public:
             WindowInputAction::focus_lost,
             0,
             0,
+        }));
+        static_cast<void>(result.input.append(ScrollInputEvent{
+            0.0F,
+            1.0F,
+            0.0F,
+            0.0F,
         }));
         result.frame_requested = true;
     }
@@ -217,7 +230,8 @@ void test_owner_thread_pump_reuses_storage_without_allocation() {
     auto& state = *created.state;
 
     const auto& warmup = state.poll_events();
-    require(warmup.input.size() == 2, "pump did not preserve key/move boundary");
+    require(warmup.input.size() == 3,
+            "pump did not preserve move/scroll/key boundaries");
     require(warmup.input.coalesced_move_count() == 1,
             "pump did not diagnose consecutive move coalescing");
     const auto stable_capacity = warmup.input.capacity();
@@ -238,7 +252,7 @@ void test_owner_thread_pump_reuses_storage_without_allocation() {
     const auto diagnostics = state.event_diagnostics();
     const auto expected_polls = measured_polls + 2;
     require(diagnostics.poll_calls == expected_polls, "poll diagnostic count differs");
-    require(diagnostics.normalized_input_events == expected_polls * 3,
+    require(diagnostics.normalized_input_events == expected_polls * 4,
             "normalized input diagnostic count differs");
     require(diagnostics.coalesced_pointer_moves == expected_polls,
             "move coalescing diagnostic count differs");
@@ -282,14 +296,16 @@ void test_wait_pump_uses_the_same_batch_and_diagnostics() {
     auto& state = *created.state;
 
     const auto& waited = state.wait_events(5);
-    require(waited.input.size() == 1, "wait pump lost normalized input");
+    require(waited.input.size() == 2, "wait pump lost normalized input");
     require(std::get<WindowInputEvent>(waited.input.events().front()).action
                 == WindowInputAction::focus_lost,
             "wait pump event differs");
     const auto diagnostics = state.event_diagnostics();
     require(diagnostics.wait_calls == 1 && diagnostics.poll_calls == 0,
             "wait diagnostics were counted as poll calls");
-    require(diagnostics.normalized_input_events == 1,
+    require(std::holds_alternative<ScrollInputEvent>(waited.input.events()[1]),
+            "wait pump changed focus/scroll event order");
+    require(diagnostics.normalized_input_events == 2,
             "wait normalized input count differs");
 }
 

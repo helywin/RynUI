@@ -69,6 +69,14 @@ bool is_valid(const PointerInputEvent& event) noexcept {
     return event.button == PointerButton::none;
 }
 
+bool is_valid(const ScrollInputEvent& event) noexcept {
+    return std::isfinite(event.delta_x)
+        && std::isfinite(event.delta_y)
+        && std::isfinite(event.x)
+        && std::isfinite(event.y)
+        && (event.delta_x != 0.0F || event.delta_y != 0.0F);
+}
+
 bool is_valid(const KeyboardInputEvent& event) noexcept {
     const auto modifier_bits = static_cast<std::uint8_t>(event.modifiers);
     return is_key(event.key)

@@ -16,6 +16,7 @@ using ryn::input::PointerButton;
 using ryn::input::PointerDevice;
 using ryn::input::PointerIdentity;
 using ryn::input::PointerInputEvent;
+using ryn::input::ScrollInputEvent;
 using ryn::input::WindowInputAction;
 using ryn::input::WindowInputEvent;
 
@@ -80,6 +81,16 @@ void test_keyboard_repeat_and_modifiers() {
             "unexpected alt modifier was added");
 }
 
+void test_scroll_values_are_precise_and_platform_neutral() {
+    const ScrollInputEvent scroll{0.25F, -1.5F, 123.5F, 45.25F};
+    require(ryn::input::is_valid(scroll), "valid precise scroll was rejected");
+    require(scroll.delta_x == 0.25F && scroll.delta_y == -1.5F
+                && scroll.x == 123.5F && scroll.y == 45.25F,
+            "scroll precision or logical pointer position changed");
+    require(!ryn::input::is_valid(ScrollInputEvent{}),
+            "empty scroll input was accepted");
+}
+
 void test_batch_reuses_capacity_and_respects_move_boundaries() {
     PlatformInputBatch batch;
     batch.reserve(8);
@@ -100,6 +111,8 @@ void test_batch_reuses_capacity_and_respects_move_boundaries() {
     require(batch.append(KeyboardInputEvent{
                 Key::space, KeyAction::down, KeyModifier::none, false}),
             "key boundary was not appended");
+    require(batch.append(ScrollInputEvent{0.0F, -0.5F, 3.0F, 4.0F}),
+            "scroll boundary was not appended");
     require(batch.append(PointerInputEvent{
                 mouse, PointerAction::move, PointerButton::none, 5.0F, 6.0F}),
             "move crossed a key boundary");
@@ -116,7 +129,11 @@ void test_batch_reuses_capacity_and_respects_move_boundaries() {
                 9.0F,
                 10.0F}),
             "different pointer move was not appended");
-    require(batch.size() == 6, "event boundaries did not preserve order");
+    require(batch.size() == 7, "event boundaries did not preserve order");
+    require(std::holds_alternative<KeyboardInputEvent>(batch.events()[1])
+                && std::holds_alternative<ScrollInputEvent>(batch.events()[2])
+                && std::holds_alternative<PointerInputEvent>(batch.events()[3]),
+            "scroll input changed surrounding event order");
 
     batch.clear();
     require(batch.empty(), "batch clear retained events");
@@ -191,6 +208,19 @@ void test_invalid_values_are_rejected_without_mutation() {
     }
     require(rejected_unknown_key, "unknown key tag was accepted");
 
+    bool rejected_scroll = false;
+    try {
+        static_cast<void>(batch.append(ScrollInputEvent{
+            0.0F,
+            std::numeric_limits<float>::quiet_NaN(),
+            0.0F,
+            0.0F,
+        }));
+    } catch (const std::invalid_argument&) {
+        rejected_scroll = true;
+    }
+    require(rejected_scroll, "invalid scroll delta was accepted");
+
     bool rejected_resize = false;
     try {
         static_cast<void>(batch.append(WindowInputEvent{
@@ -209,6 +239,7 @@ int main() {
     try {
         test_pointer_identity_and_logical_values();
         test_keyboard_repeat_and_modifiers();
+        test_scroll_values_are_precise_and_platform_neutral();
         test_batch_reuses_capacity_and_respects_move_boundaries();
         test_invalid_values_are_rejected_without_mutation();
     } catch (const std::exception& error) {

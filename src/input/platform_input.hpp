@@ -56,6 +56,18 @@ struct PointerInputEvent {
     friend bool operator==(const PointerInputEvent&, const PointerInputEvent&) = default;
 };
 
+// Platform-neutral wheel values. Delta units are precise wheel ticks; positive
+// values mean right/away from the user after backend direction normalization.
+// Pointer coordinates use the same logical coordinate space as PointerInputEvent.
+struct ScrollInputEvent {
+    float delta_x{0.0F};
+    float delta_y{0.0F};
+    float x{0.0F};
+    float y{0.0F};
+
+    friend bool operator==(const ScrollInputEvent&, const ScrollInputEvent&) = default;
+};
+
 enum class Key : std::uint8_t {
     invalid,
     tab,
@@ -117,11 +129,13 @@ struct WindowInputEvent {
 
 using PlatformInputEvent = std::variant<
     PointerInputEvent,
+    ScrollInputEvent,
     KeyboardInputEvent,
     WindowInputEvent>;
 
 [[nodiscard]] bool is_valid(const PointerIdentity& identity) noexcept;
 [[nodiscard]] bool is_valid(const PointerInputEvent& event) noexcept;
+[[nodiscard]] bool is_valid(const ScrollInputEvent& event) noexcept;
 [[nodiscard]] bool is_valid(const KeyboardInputEvent& event) noexcept;
 [[nodiscard]] bool is_valid(const WindowInputEvent& event) noexcept;
 [[nodiscard]] bool is_valid(const PlatformInputEvent& event) noexcept;
