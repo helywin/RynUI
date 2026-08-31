@@ -508,13 +508,15 @@ bool ButtonComponentHost::layout_and_synchronize(
     runtime::Size viewport,
     runtime::Rect clip,
     runtime::Point origin,
-    float gap) {
+    float gap,
+    bool unbounded_root_height) {
     if (!text_.layout_and_synchronize(
             viewport,
             clip,
             origin,
             gap,
-            false)) {
+            false,
+            unbounded_root_height)) {
         return false;
     }
     for (const auto& mounted : mounted_buttons_) {

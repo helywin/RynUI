@@ -1,4 +1,5 @@
 #include "token_gallery_definition.hpp"
+#include "gallery_document_viewport.hpp"
 #include "reference_surface.hpp"
 
 #include "component/button_component.hpp"
@@ -15,6 +16,7 @@
 #include "text/text_scene_service.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -75,6 +77,7 @@ public:
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
         ryn::runtime::FrameRequestState& frame_requests,
+        GalleryDocumentViewport& document_viewport,
         ryn::runtime::Size& viewport,
         float& render_scale,
         bool fixed_render_scale,
@@ -84,6 +87,7 @@ public:
         : platform_(&platform),
           application_(&application),
           frame_requests_(&frame_requests),
+          document_viewport_(&document_viewport),
           viewport_(&viewport),
           render_scale_(&render_scale),
           fixed_render_scale_(fixed_render_scale),
@@ -105,6 +109,9 @@ public:
 
     [[nodiscard]] bool quit_requested() const noexcept { return quit_requested_; }
     [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] std::uint64_t scroll_events() const noexcept {
+        return scroll_events_;
+    }
 
 private:
     bool consume(const ryn::detail::PlatformEvents& events) noexcept {
@@ -134,7 +141,14 @@ private:
         application_->pointer().dispatch(mapped);
     }
 
-    void dispatch(const ryn::input::ScrollInputEvent&) {}
+    void dispatch(const ryn::input::ScrollInputEvent& event) {
+        const float ticks = event.delta_y != 0.0F
+            ? -event.delta_y : -event.delta_x;
+        if (document_viewport_->scroll_by(ticks * 48.0F)) {
+            frame_requests_->request_frame();
+        }
+        ++scroll_events_;
+    }
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         application_->focus().dispatch(event);
@@ -178,6 +192,7 @@ private:
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::runtime::FrameRequestState* frame_requests_;
+    GalleryDocumentViewport* document_viewport_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
     bool fixed_render_scale_{};
@@ -186,6 +201,7 @@ private:
     const std::function<void(float)>* set_viewport_width_;
     std::chrono::steady_clock::time_point started_;
     bool quit_requested_{};
+    std::uint64_t scroll_events_{};
     std::string last_error_;
 };
 
@@ -197,6 +213,9 @@ public:
         ryn::detail::TextSceneService& text_scene,
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
+        ReferenceSurfaceHost& reference_surfaces,
+        GalleryDocumentViewport& document_viewport,
+        ryn::runtime::NodeId document_root,
         ryn::runtime::Size& viewport,
         float& render_scale) noexcept
         : platform_(&platform),
@@ -205,6 +224,9 @@ public:
           glyph_resources_(&glyph_resources),
           renderer_(&renderer),
           effect_resources_(renderer),
+          reference_surfaces_(&reference_surfaces),
+          document_viewport_(&document_viewport),
+          document_root_(document_root),
           viewport_(&viewport),
           render_scale_(&render_scale) {}
 
@@ -218,11 +240,42 @@ public:
                 std::max(0.0F, viewport_->width - 32.0F),
                 std::max(0.0F, viewport_->height - 24.0F),
             };
+            if (!document_viewport_->apply_subtree_translation(
+                    document_root_, application_->nodes(), application_->dirty())) {
+                last_error_ = "Token Gallery document root is stale";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
             if (!application_->layout_and_synchronize(
-                    *viewport_, clip, {24.0F, 20.0F}, 0.0F)) {
+                    *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                 last_error_ = "Token Gallery layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
+            const auto mounted_surfaces = reference_surfaces_->mounted_surfaces();
+            constexpr std::array<std::size_t, 6> section_surface_indices{
+                0, 5, 6, 11, 51, 124};
+            if (mounted_surfaces.size() <= section_surface_indices.back()) {
+                last_error_ = "Token Gallery section surface inventory is incomplete";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
+            const auto& root = application_->nodes().require(document_root_);
+            std::array<float, 6> anchors{};
+            for (std::size_t index = 0; index < anchors.size(); ++index) {
+                const auto& section = application_->nodes().require(
+                    mounted_surfaces[section_surface_indices[index]].node);
+                anchors[index] = std::max(0.0F, section.bounds.y - root.bounds.y);
+            }
+            const auto resize_anchor =
+                document_viewport_->capture_resize_anchor();
+            const bool anchors_changed =
+                document_viewport_->replace_anchors(anchors);
+            static_cast<void>(document_viewport_->set_extents(
+                clip.height, root.bounds.height));
+            if (anchors_changed) {
+                static_cast<void>(
+                    document_viewport_->restore_resize_anchor(resize_anchor));
+            }
+            static_cast<void>(document_viewport_->apply_subtree_translation(
+                document_root_, application_->nodes(), application_->dirty()));
             if (quad_buffer_ == nullptr) {
                 quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
                     *renderer_, application_->button_scene().instances());
@@ -274,6 +327,9 @@ private:
     ryn::detail::GlyphGpuResources* glyph_resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
     ryn::detail::RoundedEffectGpuResources effect_resources_;
+    ReferenceSurfaceHost* reference_surfaces_;
+    GalleryDocumentViewport* document_viewport_;
+    ryn::runtime::NodeId document_root_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
@@ -366,6 +422,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 ryn::animation::MotionPreference::reduced);
         }
         reference_surfaces.mount(definition.content);
+        const auto roots = application.components().root_components();
+        if (roots.size() != 1) {
+            throw std::logic_error(
+                "Token Gallery document requires exactly one retained root");
+        }
+        const auto document_root = application.components().root(roots.front());
+        GalleryDocumentViewport document_viewport;
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
@@ -375,12 +438,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             text_scene,
             glyph_resources,
             renderer,
+            reference_surfaces,
+            document_viewport,
+            document_root,
             viewport,
             render_scale);
         GalleryEvents events(
             platform,
             application,
             frame_requests,
+            document_viewport,
             viewport,
             render_scale,
             acceptance_scale.has_value(),
@@ -400,10 +467,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 throw std::logic_error(
                     "animation acceptance requires the interactive Gallery cells");
             }
-            const auto bounds = nodes.require(mounted[7].node).bounds;
+            const auto& hover_node = nodes.require(mounted[7].node);
+            const auto bounds = hover_node.bounds;
             const ryn::runtime::Point inside{
-                bounds.x + 0.5F * bounds.width,
-                bounds.y + 0.5F * bounds.height,
+                bounds.x + hover_node.translation.x + 0.5F * bounds.width,
+                bounds.y + hover_node.translation.y + 0.5F * bounds.height,
             };
             switch (stage) {
             case 0:
@@ -490,6 +558,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 } else if (smoke_stage == 3) {
                     application.set_motion_preference(
                         ryn::animation::MotionPreference::normal);
+                    if (const auto live = document_viewport.anchor(
+                            GalleryDocumentSectionKind::live_samples)) {
+                        static_cast<void>(document_viewport.jump_to(*live));
+                        frame_requests.request_frame();
+                    }
                 } else {
                     dispatch_acceptance_input(smoke_stage - 4);
                 }
@@ -524,6 +597,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto render = renderer.counters();
         const auto frames = loop.counters();
         const auto metrics = platform.window_metrics();
+        const auto document = document_viewport.snapshot();
         std::uint64_t outer_layers = 0;
         std::uint64_t inset_layers = 0;
         std::uint64_t focus_layers = 0;
@@ -583,6 +657,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " reference_content_runs=" << telemetry.reference_content_runs
             << " live_samples=" << telemetry.live_samples
             << " reference_interactions=0"
+            << " document_content_extent=" << document.content_extent
+            << " document_viewport_extent=" << document.viewport_extent
+            << " document_offset=" << document.offset
+            << " document_maximum_offset=" << document.maximum_offset
+            << " document_section="
+            << gallery_document_sections()[static_cast<std::size_t>(
+                document.current_section)].identity
+            << " document_anchor_generation=" << document.anchor_generation
+            << " scroll_events=" << events.scroll_events()
             << " input_events=" << platform_diagnostics.normalized_input_events
             << " pointer_input_events=" << pointer_diagnostics.input_events
             << " pointer_routes=" << pointer_diagnostics.routes_dispatched

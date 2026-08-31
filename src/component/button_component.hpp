@@ -101,7 +101,8 @@ public:
         runtime::Size viewport,
         runtime::Rect clip,
         runtime::Point origin = {},
-        float gap = 0.0F);
+        float gap = 0.0F,
+        bool unbounded_root_height = false);
 
     [[nodiscard]] TextComponentHost& text() noexcept;
     [[nodiscard]] const TextComponentHost& text() const noexcept;

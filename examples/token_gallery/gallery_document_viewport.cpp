@@ -1,0 +1,201 @@
+#include "gallery_document_viewport.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+
+namespace rynui::example {
+namespace {
+
+bool finite_non_negative(float value) noexcept {
+    return std::isfinite(value) && value >= 0.0F;
+}
+
+void advance_generation(std::uint32_t& generation) noexcept {
+    ++generation;
+    if (generation == 0) {
+        generation = 1;
+    }
+}
+
+} // namespace
+
+bool GalleryDocumentViewport::set_extents(
+    float viewport_extent,
+    float content_extent) {
+    if (!std::isfinite(viewport_extent) || viewport_extent <= 0.0F
+            || !finite_non_negative(content_extent)) {
+        throw std::invalid_argument(
+            "Gallery document extents must be finite and valid");
+    }
+    const float previous_offset = offset_;
+    const bool changed = viewport_extent_ != viewport_extent
+        || content_extent_ != content_extent;
+    viewport_extent_ = viewport_extent;
+    content_extent_ = content_extent;
+    offset_ = clamped(offset_);
+    return changed || offset_ != previous_offset;
+}
+
+bool GalleryDocumentViewport::scroll_to(float offset) {
+    if (!std::isfinite(offset)) {
+        throw std::invalid_argument(
+            "Gallery document offset must be finite");
+    }
+    const float next = clamped(offset);
+    if (next == offset_) {
+        return false;
+    }
+    offset_ = next;
+    return true;
+}
+
+bool GalleryDocumentViewport::scroll_by(float delta) {
+    if (!std::isfinite(delta)) {
+        throw std::invalid_argument(
+            "Gallery document scroll delta must be finite");
+    }
+    return scroll_to(offset_ + delta);
+}
+
+bool GalleryDocumentViewport::replace_anchors(
+    std::span<const float> offsets) {
+    if (offsets.size() != section_count) {
+        throw std::invalid_argument(
+            "Gallery document requires one anchor per section");
+    }
+    std::array<float, section_count> next{};
+    for (std::size_t index = 0; index < offsets.size(); ++index) {
+        if (!finite_non_negative(offsets[index])
+                || (index != 0 && offsets[index] < offsets[index - 1])) {
+            throw std::invalid_argument(
+                "Gallery document anchors must be finite and ordered");
+        }
+        next[index] = offsets[index];
+    }
+    if (anchor_present_ == std::array<bool, section_count>{true, true, true, true, true, true}
+            && anchors_ == next) {
+        return false;
+    }
+    anchors_ = next;
+    anchor_present_.fill(true);
+    advance_generation(anchor_generation_);
+    return true;
+}
+
+std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
+    GalleryDocumentSectionKind section) const noexcept {
+    const auto index = section_index(section);
+    if (!anchor_present_[index]) {
+        return std::nullopt;
+    }
+    return GalleryDocumentAnchorId{
+        static_cast<std::uint32_t>(index),
+        anchor_generation_,
+    };
+}
+
+bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
+    if (!value.valid() || value.generation != anchor_generation_
+            || value.index >= section_count
+            || !anchor_present_[value.index]) {
+        return false;
+    }
+    return scroll_to(anchors_[value.index]);
+}
+
+GalleryDocumentResizeAnchor
+GalleryDocumentViewport::capture_resize_anchor() const {
+    const auto section = current_section();
+    const auto index = section_index(section);
+    return {
+        section,
+        anchor_present_[index] ? offset_ - anchors_[index] : offset_,
+    };
+}
+
+bool GalleryDocumentViewport::restore_resize_anchor(
+    const GalleryDocumentResizeAnchor& value) {
+    if (!std::isfinite(value.distance)) {
+        throw std::invalid_argument(
+            "Gallery resize anchor distance must be finite");
+    }
+    const auto index = section_index(value.section);
+    if (!anchor_present_[index]) {
+        return false;
+    }
+    return scroll_to(anchors_[index] + value.distance);
+}
+
+bool GalleryDocumentViewport::apply_subtree_translation(
+    ryn::runtime::NodeId root,
+    ryn::runtime::NodeStore& nodes,
+    ryn::runtime::DirtyQueues& dirty) const {
+    if (nodes.find(root) == nullptr) {
+        return false;
+    }
+    ryn::runtime::NodePropertyWriter writer(nodes, dirty);
+    translate_subtree(root, {0.0F, -offset_}, nodes, writer);
+    return true;
+}
+
+GalleryDocumentViewportSnapshot
+GalleryDocumentViewport::snapshot() const noexcept {
+    return {
+        viewport_extent_,
+        content_extent_,
+        maximum_offset(),
+        offset_,
+        current_section(),
+        anchor_generation_,
+    };
+}
+
+std::size_t GalleryDocumentViewport::section_index(
+    GalleryDocumentSectionKind section) noexcept {
+    return static_cast<std::size_t>(section);
+}
+
+float GalleryDocumentViewport::maximum_offset() const noexcept {
+    return std::max(0.0F, content_extent_ - viewport_extent_);
+}
+
+float GalleryDocumentViewport::clamped(float value) const noexcept {
+    return std::clamp(value, 0.0F, maximum_offset());
+}
+
+GalleryDocumentSectionKind
+GalleryDocumentViewport::current_section() const noexcept {
+    constexpr float bottom_section_tolerance = 32.0F;
+    if (maximum_offset() > 0.0F
+            && offset_ >= std::max(
+                0.0F, maximum_offset() - bottom_section_tolerance)) {
+        for (std::size_t index = section_count; index > 0; --index) {
+            if (anchor_present_[index - 1]) {
+                return static_cast<GalleryDocumentSectionKind>(index - 1);
+            }
+        }
+    }
+    std::size_t current = 0;
+    for (std::size_t index = 0; index < section_count; ++index) {
+        if (anchor_present_[index] && anchors_[index] <= offset_) {
+            current = index;
+        }
+    }
+    return static_cast<GalleryDocumentSectionKind>(current);
+}
+
+void GalleryDocumentViewport::translate_subtree(
+    ryn::runtime::NodeId root,
+    ryn::runtime::Point translation,
+    ryn::runtime::NodeStore& nodes,
+    ryn::runtime::NodePropertyWriter& writer) {
+    const auto children = nodes.require(root).children;
+    static_cast<void>(writer.set_translation(root, translation));
+    for (const auto child : children) {
+        translate_subtree(child, translation, nodes, writer);
+    }
+}
+
+} // namespace rynui::example

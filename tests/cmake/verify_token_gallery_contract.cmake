@@ -92,6 +92,13 @@ foreach(required IN ITEMS
         "reference_content_runs="
         "live_samples="
         "reference_interactions=0"
+        "document_content_extent="
+        "document_viewport_extent="
+        "document_offset="
+        "document_maximum_offset="
+        "document_section="
+        "document_anchor_generation="
+        "scroll_events="
         "theme_updates="
         "brand_updates="
         "motion_updates="
@@ -130,6 +137,7 @@ endforeach()
 file(READ "${EXAMPLES_CMAKE}" examples_cmake)
 foreach(required IN ITEMS
         "add_executable(\n    rynui_token_gallery"
+        "rynui_token_gallery_document_viewport"
         "rounded_effect.vertex.dxil"
         "rounded_effect.vertex.spv"
         "RYNUI_TOKEN_CATALOG_HASH")

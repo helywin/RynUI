@@ -57,7 +57,8 @@ public:
         runtime::Rect clip,
         runtime::Point origin = {},
         float gap = 0.0F,
-        bool clear_dirty = true);
+        bool clear_dirty = true,
+        bool unbounded_root_height = false);
     void attach_component_scene(component::ComponentSceneComposer& composer) noexcept;
     bool set_font_resolver(ThemeFontResolver font_resolver);
     [[nodiscard]] bool synchronize_scene_fragments(
@@ -93,6 +94,7 @@ private:
     runtime::Size layout_viewport_;
     runtime::Point layout_origin_;
     float layout_gap_{0.0F};
+    bool layout_unbounded_root_height_{false};
     bool layout_snapshot_valid_{false};
     bool layout_performed_last_sync_{false};
 };

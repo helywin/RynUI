@@ -187,7 +187,8 @@ bool TextComponentHost::layout_and_synchronize(
     runtime::Rect clip,
     runtime::Point origin,
     float gap,
-    bool clear_dirty) {
+    bool clear_dirty,
+    bool unbounded_root_height) {
     if (!valid_viewport(viewport)
             || !std::isfinite(origin.x)
             || !std::isfinite(origin.y)
@@ -200,7 +201,8 @@ bool TextComponentHost::layout_and_synchronize(
     const bool configuration_changed = !layout_snapshot_valid_
         || viewport != layout_viewport_
         || origin != layout_origin_
-        || gap != layout_gap_;
+        || gap != layout_gap_
+        || unbounded_root_height != layout_unbounded_root_height_;
     const bool needs_layout = configuration_changed
         || !dirty_->layout_roots().empty()
         || !dirty_->placement_roots().empty();
@@ -213,7 +215,9 @@ bool TextComponentHost::layout_and_synchronize(
             }
             const auto node = components_.root(component);
             const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
-            const auto remaining_height = std::max(0.0F, viewport.height - cursor_y);
+            const auto remaining_height = unbounded_root_height
+                ? std::numeric_limits<float>::infinity()
+                : std::max(0.0F, viewport.height - cursor_y);
             const auto outer = layout_->layout(
                 node,
                 {0.0F, remaining_width, 0.0F, remaining_height},
@@ -223,6 +227,7 @@ bool TextComponentHost::layout_and_synchronize(
         layout_viewport_ = viewport;
         layout_origin_ = origin;
         layout_gap_ = gap;
+        layout_unbounded_root_height_ = unbounded_root_height;
         layout_snapshot_valid_ = true;
     }
 

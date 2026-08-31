@@ -4,6 +4,7 @@
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/invalidation.hpp"
+#include "gallery_document_viewport.hpp"
 #include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
 
@@ -396,6 +397,81 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
     }
 }
 
+void test_document_viewport_scrolls_long_content_without_remount() {
+    using rynui::example::GalleryDocumentSectionKind;
+    using rynui::example::GalleryDocumentViewport;
+
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.surfaces->mount(definition.content);
+    const auto roots = fixture.host->components().root_components();
+    require(roots.size() == 1,
+            "Token Gallery document did not preserve one retained root");
+    const auto root = fixture.host->components().root(roots.front());
+    constexpr ryn::runtime::Size viewport{1200.0F, 900.0F};
+    constexpr ryn::runtime::Rect clip{16.0F, 12.0F, 1168.0F, 876.0F};
+    constexpr ryn::runtime::Point origin{24.0F, 20.0F};
+
+    GalleryDocumentViewport document;
+    require(document.apply_subtree_translation(
+                root, fixture.nodes, fixture.dirty)
+                && fixture.host->layout_and_synchronize(
+                    viewport, clip, origin, 0.0F, true),
+            "Token Gallery long document initial layout failed");
+    const auto& root_node = fixture.nodes.require(root);
+    require(root_node.bounds.height > clip.height,
+            "Token Gallery document was truncated to the window height");
+
+    constexpr std::array<std::size_t, 6> section_surface_indices{
+        0, 5, 6, 11, 51, 124};
+    std::array<float, 6> anchors{};
+    const auto surfaces = fixture.surfaces->mounted_surfaces();
+    for (std::size_t index = 0; index < anchors.size(); ++index) {
+        anchors[index] = fixture.nodes.require(
+            surfaces[section_surface_indices[index]].node).bounds.y
+            - root_node.bounds.y;
+    }
+    document.replace_anchors(anchors);
+    document.set_extents(clip.height, root_node.bounds.height);
+    const auto live = document.anchor(GalleryDocumentSectionKind::live_samples);
+    require(live.has_value() && document.jump_to(*live),
+            "Token Gallery live-sample anchor was not reachable");
+
+    const auto mounted_before = fixture.host->components().mount_runs();
+    const auto component_count = fixture.host->components().component_count();
+    const auto content_runs = definition.telemetry().content_runs;
+    require(document.apply_subtree_translation(
+                root, fixture.nodes, fixture.dirty)
+                && fixture.host->layout_and_synchronize(
+                    viewport, clip, origin, 0.0F, true),
+            "Token Gallery live-sample scroll synchronization failed");
+
+    const auto live_button = fixture.host->mounted_buttons().front();
+    const auto& live_node = fixture.nodes.require(live_button.node);
+    const ryn::runtime::Point live_point{
+        live_node.bounds.x + live_node.translation.x + live_node.bounds.width * 0.5F,
+        live_node.bounds.y + live_node.translation.y + live_node.bounds.height * 0.5F,
+    };
+    const auto hit = fixture.host->hit_test().hit_test(live_point);
+    require(hit.has_value() && *hit == live_button.interaction,
+            "Token Gallery scrolled HitTest did not follow subtree translation");
+    require(fixture.host->components().mount_runs() == mounted_before
+                && fixture.host->components().component_count() == component_count
+                && definition.telemetry().content_runs == content_runs,
+            "Token Gallery scroll remounted or reran document content");
+
+    require(document.scroll_to(0.0F)
+                && document.apply_subtree_translation(
+                    root, fixture.nodes, fixture.dirty)
+                && fixture.host->layout_and_synchronize(
+                    viewport, clip, origin, 0.0F, true),
+            "Token Gallery top-anchor restoration failed");
+    const auto top_hit = fixture.host->hit_test().hit_test(live_point);
+    require(!top_hit.has_value() || *top_hit != live_button.interaction,
+            "offscreen Token Gallery control retained stale HitTest geometry");
+}
+
 ryn::input::PointerInputEvent pointer_event(
     ryn::input::PointerAction action,
     ryn::runtime::Point point,
@@ -607,6 +683,7 @@ int main() {
         test_acceptance_scale_viewports_use_physical_pixels();
         test_motion_acceptance_control_updates_theme_without_content_rerun();
         test_small_acceptance_viewport_survives_theme_transitions();
+        test_document_viewport_scrolls_long_content_without_remount();
         test_token_gallery_frame_contract();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

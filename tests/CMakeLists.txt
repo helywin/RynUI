@@ -652,6 +652,7 @@ target_link_libraries(
     PRIVATE
         rynui_token_gallery_definition
         rynui_token_gallery_reference_surface
+        rynui_token_gallery_document_viewport
         rynui_components
         rynui_renderer_sdl
 )
@@ -697,6 +698,33 @@ add_test(
         "-DDEFINITION_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/token_gallery_definition.cpp"
         "-DMODEL_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_model.cpp"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_contract.cmake"
+)
+
+add_executable(
+    rynui_gallery_document_viewport_tests
+    gallery_document_viewport_tests.cpp
+)
+rynui_configure_cpp_target(rynui_gallery_document_viewport_tests)
+target_include_directories(
+    rynui_gallery_document_viewport_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(
+    rynui_gallery_document_viewport_tests
+    PRIVATE rynui_token_gallery_document_viewport rynui_runtime
+)
+add_test(
+    NAME rynui.gallery_document_viewport
+    COMMAND rynui_gallery_document_viewport_tests
+)
+
+add_test(
+    NAME rynui.gallery_document_viewport_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DPUBLIC_UMBRELLA=${PROJECT_SOURCE_DIR}/include/ryn/rynui.hpp"
+        "-DVIEWPORT_HEADER=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_viewport.hpp"
+        "-DVIEWPORT_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_viewport.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_viewport_contract.cmake"
 )
 
 add_executable(rynui_token_gallery_benchmark token_gallery_benchmark.cpp)

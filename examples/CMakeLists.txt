@@ -145,6 +145,22 @@ add_library(
     rynui_token_gallery_reference_surface STATIC
     token_gallery/reference_surface.cpp
 )
+
+add_library(
+    rynui_token_gallery_document_viewport STATIC
+    token_gallery/gallery_document_viewport.cpp
+)
+rynui_configure_cpp_target(rynui_token_gallery_document_viewport)
+target_include_directories(
+    rynui_token_gallery_document_viewport
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(
+    rynui_token_gallery_document_viewport
+    PUBLIC rynui_token_gallery_definition
+    PRIVATE rynui_runtime
+)
 rynui_configure_cpp_target(rynui_token_gallery_reference_surface)
 target_include_directories(
     rynui_token_gallery_reference_surface
@@ -168,6 +184,7 @@ target_link_libraries(
     PRIVATE
         rynui_token_gallery_definition
         rynui_token_gallery_reference_surface
+        rynui_token_gallery_document_viewport
         rynui_components
         rynui_default_fonts
         rynui_renderer_sdl

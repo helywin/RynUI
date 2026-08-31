@@ -30,7 +30,7 @@
 ## 5. 长文档 viewport、导航与响应式布局
 
 - [x] 5.1 扩展平台无关 input value 与 SDL adapter，归一化 vertical/horizontal wheel delta并保持 owner-thread、事件顺序、logical coordinate 和 SDL3 隔离；通过 fake SDL-shaped、batch capacity、window focus 与 public forbidden-include tests 验证
-- [ ] 5.2 实现 internal `GalleryDocumentViewport` 的 content extent、logical offset、clamp、viewport clip、subtree translation 与 section anchors；通过 top/bottom overscroll、empty/short/long document、resize anchor restore、clip/HitTest 同步和 stale generation tests 验证
+- [x] 5.2 实现 internal `GalleryDocumentViewport` 的 content extent、logical offset、clamp、viewport clip、subtree translation 与 section anchors；通过 top/bottom overscroll、empty/short/long document、resize anchor restore、clip/HitTest 同步和 stale generation tests 验证
 - [ ] 5.3 实现 category navigation 与 support status filter controls，anchor jump、wheel scroll 与 current-section 更新只改变必要 translation/material/HitTest；通过 pointer/keyboard navigation、filter combinations、focus order、content closure count 和 sibling isolation tests 验证
 - [ ] 5.4 实现宽窗口 navigation+document 双栏与窄窗口顶部 wrap navigation/低列数 content reflow；通过多 viewport、CJK/Latin readability、72 项 reachability、宽窄往返和 stable identity tests 验证不把内容放到不可达区域
 - [ ] 5.5 增加 72 项 document benchmark 与 frame diagnostics，锁定 steady-state wheel/navigation 路径容量复用、无全树 remount、无无关 shape/upload、idle 后停止 submit
