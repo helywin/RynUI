@@ -140,6 +140,22 @@ target_include_directories(
 )
 target_link_libraries(rynui_token_gallery_definition PUBLIC RynUI::RynUI)
 
+add_library(
+    rynui_token_gallery_reference_surface STATIC
+    token_gallery/reference_surface.cpp
+)
+rynui_configure_cpp_target(rynui_token_gallery_reference_surface)
+target_include_directories(
+    rynui_token_gallery_reference_surface
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src"
+)
+target_link_libraries(
+    rynui_token_gallery_reference_surface
+    PUBLIC rynui_token_gallery_definition
+    PRIVATE rynui_components
+)
+
 add_executable(
     rynui_token_gallery
     token_gallery/main.cpp

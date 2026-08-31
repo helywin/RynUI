@@ -62,6 +62,14 @@ struct ButtonAnimationBinding final {
     ButtonAnimationChannel channel{ButtonAnimationChannel::background};
 };
 
+class AuxiliaryComponentSynchronizer {
+public:
+    virtual ~AuxiliaryComponentSynchronizer() = default;
+    virtual void synchronize_auxiliary_geometry(
+        runtime::Size viewport,
+        runtime::Rect clip) = 0;
+};
+
 class ButtonComponentHost final : private animation::AnimationTargetSink {
 public:
     ButtonComponentHost(
@@ -106,6 +114,11 @@ public:
     [[nodiscard]] component::ComponentSceneComposer& scene_composer() noexcept;
     [[nodiscard]] component::ButtonSceneService& button_scene() noexcept;
     [[nodiscard]] graphics::RoundedEffectStore& rounded_effects() noexcept;
+    [[nodiscard]] runtime::NodeStore& nodes() noexcept;
+    [[nodiscard]] layout::LayoutEngine& layout() noexcept;
+    [[nodiscard]] runtime::DirtyQueues& dirty() noexcept;
+    void attach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary);
+    void detach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary) noexcept;
     [[nodiscard]] animation::AnimationRuntime& animations() noexcept;
     [[nodiscard]] const animation::AnimationRuntime& animations() const noexcept;
     [[nodiscard]] std::span<const MountedButtonComponent>
@@ -185,6 +198,7 @@ private:
         animation::MotionPreference::normal};
     std::vector<ButtonAnimationBinding> animation_bindings_;
     std::vector<MountedButtonComponent> mounted_buttons_;
+    std::vector<AuxiliaryComponentSynchronizer*> auxiliaries_;
     bool scene_structure_dirty_{true};
 };
 

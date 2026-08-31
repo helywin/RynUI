@@ -564,6 +564,29 @@ target_compile_definitions(
 )
 add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
 
+add_executable(rynui_reference_surface_tests reference_surface_tests.cpp)
+rynui_configure_cpp_target(rynui_reference_surface_tests)
+target_link_libraries(
+    rynui_reference_surface_tests
+    PRIVATE rynui_token_gallery_reference_surface rynui_components
+)
+target_compile_definitions(
+    rynui_reference_surface_tests
+    PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+)
+add_test(NAME rynui.reference_surface COMMAND rynui_reference_surface_tests)
+
+add_test(
+    NAME rynui.reference_surface_contract
+    COMMAND ${CMAKE_COMMAND}
+        "-DPUBLIC_UMBRELLA=${PROJECT_SOURCE_DIR}/include/ryn/rynui.hpp"
+        "-DSURFACE_HEADER=${PROJECT_SOURCE_DIR}/examples/token_gallery/reference_surface.hpp"
+        "-DSURFACE_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/reference_surface.cpp"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_reference_surface_contract.cmake"
+)
+
 add_executable(rynui_button_spinner_benchmark button_spinner_benchmark.cpp)
 rynui_configure_cpp_target(rynui_button_spinner_benchmark)
 target_link_libraries(rynui_button_spinner_benchmark PRIVATE rynui_components)

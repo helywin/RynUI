@@ -34,6 +34,27 @@ ButtonSceneId ButtonSceneService::create(
     std::optional<input::InteractionId> interaction,
     const ButtonVisualData& visuals,
     const ButtonEffectData& effects) {
+    return create_record(
+        component, node, fragment, interaction, visuals, effects);
+}
+
+ButtonSceneId ButtonSceneService::create_surface(
+    runtime::ComponentId component,
+    runtime::NodeId node,
+    runtime::SceneFragmentId fragment,
+    std::span<const graphics::QuadInstance> visuals,
+    const ButtonEffectData& effects) {
+    return create_record(
+        component, node, fragment, std::nullopt, visuals, effects);
+}
+
+ButtonSceneId ButtonSceneService::create_record(
+    runtime::ComponentId component,
+    runtime::NodeId node,
+    runtime::SceneFragmentId fragment,
+    std::optional<input::InteractionId> interaction,
+    std::span<const graphics::QuadInstance> visuals,
+    const ButtonEffectData& effects) {
     ensure_owner_thread();
     if (!components_->contains(component)
             || components_->root(component) != node
@@ -120,12 +141,22 @@ bool ButtonSceneService::destroy(ButtonSceneId id) {
 std::size_t ButtonSceneService::update(
     ButtonSceneId id,
     const ButtonVisualData& visuals) {
+    return update_surface(id, visuals);
+}
+
+std::size_t ButtonSceneService::update_surface(
+    ButtonSceneId id,
+    std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     auto& record = require(id);
     validate_visuals(visuals);
+    if (visuals.size() != record.range.count) {
+        throw std::invalid_argument(
+            "retained surface update changed its visual layer count");
+    }
 
-    std::array<graphics::QuadMaterial, button_visual_layer_count> materials;
-    std::array<graphics::QuadGeometry, button_visual_layer_count> geometry;
+    std::array<graphics::QuadMaterial, retained_surface_visual_capacity> materials;
+    std::array<graphics::QuadGeometry, retained_surface_visual_capacity> geometry;
     for (std::size_t index = 0; index < visuals.size(); ++index) {
         materials[index] = {visuals[index].color, visuals[index].opacity};
         geometry[index] = {
@@ -134,8 +165,10 @@ std::size_t ButtonSceneService::update(
             visuals[index].translation,
         };
     }
-    const auto material_updates = instances_.update_material(record.range, materials);
-    const auto geometry_updates = instances_.update_geometry(record.range, geometry);
+    const auto material_updates = instances_.update_material(
+        record.range, std::span{materials}.first(visuals.size()));
+    const auto geometry_updates = instances_.update_geometry(
+        record.range, std::span{geometry}.first(visuals.size()));
     diagnostics_.material_updates += material_updates;
     diagnostics_.geometry_updates += geometry_updates;
     return material_updates + geometry_updates;
@@ -150,7 +183,8 @@ std::size_t ButtonSceneService::update_effects(
         return 0;
     }
 
-    bool topology_changed = record.shadow_ids.size() != effects.shadows.size();
+    bool topology_changed = record.shadow_ids.size() != effects.shadows.size()
+        || record.focus_id.valid() != effects.focus_enabled;
     if (!topology_changed) {
         for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
             const auto expected = effects.shadows[index].kind == ShadowKind::outer
@@ -168,7 +202,7 @@ std::size_t ButtonSceneService::update_effects(
         record.effects = effects;
         create_effects(record);
         ++diagnostics_.effect_topology_updates;
-        return effects.shadows.size() + 1;
+        return effects.shadows.size() + (effects.focus_enabled ? 1U : 0U);
     }
 
     std::size_t updates = 0;
@@ -189,21 +223,23 @@ std::size_t ButtonSceneService::update_effects(
             ++updates;
         }
     }
-    auto focus = graphics::make_outline_effect(
-        effects.shape,
-        effects.focus_width,
-        effects.focus_offset,
-        effects.focus_color,
-        effects.focus_opacity,
-        effects.translation,
-        effects.ancestor_clip);
-    if (effect_scene_.store().update_geometry(record.focus_id, focus.geometry)) {
-        ++diagnostics_.effect_geometry_updates;
-        ++updates;
-    }
-    if (effect_scene_.store().update_material(record.focus_id, focus.material)) {
-        ++diagnostics_.effect_material_updates;
-        ++updates;
+    if (effects.focus_enabled) {
+        auto focus = graphics::make_outline_effect(
+            effects.shape,
+            effects.focus_width,
+            effects.focus_offset,
+            effects.focus_color,
+            effects.focus_opacity,
+            effects.translation,
+            effects.ancestor_clip);
+        if (effect_scene_.store().update_geometry(record.focus_id, focus.geometry)) {
+            ++diagnostics_.effect_geometry_updates;
+            ++updates;
+        }
+        if (effect_scene_.store().update_material(record.focus_id, focus.material)) {
+            ++diagnostics_.effect_material_updates;
+            ++updates;
+        }
     }
     record.effects = effects;
     return updates;
@@ -374,16 +410,18 @@ void ButtonSceneService::create_effects(Record& record) {
                 record.effect_primitive.after_fill.push_back(id);
             }
         }
-        auto outline = graphics::make_outline_effect(
-            record.effects.shape,
-            record.effects.focus_width,
-            record.effects.focus_offset,
-            record.effects.focus_color,
-            record.effects.focus_opacity,
-            record.effects.translation,
-            record.effects.ancestor_clip);
-        record.focus_id = effect_scene_.store().add(std::move(outline));
-        record.effect_primitive.before_fill.push_back(record.focus_id);
+        if (record.effects.focus_enabled) {
+            auto outline = graphics::make_outline_effect(
+                record.effects.shape,
+                record.effects.focus_width,
+                record.effects.focus_offset,
+                record.effects.focus_color,
+                record.effects.focus_opacity,
+                record.effects.translation,
+                record.effects.ancestor_clip);
+            record.focus_id = effect_scene_.store().add(std::move(outline));
+            record.effect_primitive.before_fill.push_back(record.focus_id);
+        }
     } catch (...) {
         remove_effects(record);
         throw;
@@ -408,7 +446,12 @@ void ButtonSceneService::ensure_owner_thread() const {
 }
 
 void ButtonSceneService::validate_visuals(
-    const ButtonVisualData& visuals) {
+    std::span<const graphics::QuadInstance> visuals) {
+    if (visuals.empty()
+            || visuals.size() > retained_surface_visual_capacity) {
+        throw std::invalid_argument(
+            "retained surface visual layer count is invalid");
+    }
     for (const auto& visual : visuals) {
         const bool finite_clip = std::ranges::all_of(
             visual.clip_rect, [](float value) { return std::isfinite(value); });

@@ -40,6 +40,20 @@ ryn::component::ButtonVisualData visuals(float offset) {
     return result;
 }
 
+std::array<ryn::graphics::QuadInstance, 4> surface_visuals(float offset) {
+    std::array<ryn::graphics::QuadInstance, 4> result;
+    for (std::size_t index = 0; index < result.size(); ++index) {
+        result[index] = {
+            {offset, 0.8F, 0.4F, -0.2F},
+            {0.2F, 0.3F * static_cast<float>(index + 1), 0.7F, 1.0F},
+            1.0F,
+            0.1F,
+            {},
+        };
+    }
+    return result;
+}
+
 class RecordingUploadApi final : public ryn::graphics::QuadUploadApi {
 public:
     struct Buffer final {
@@ -313,12 +327,66 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
     static_cast<void>(first);
 }
 
+void test_non_interactive_surface_range_and_generation_reuse() {
+    Fixture fixture;
+    ryn::component::ButtonEffectData effects;
+    effects.focus_enabled = false;
+    const auto first_visuals = surface_visuals(0.0F);
+    const auto first = fixture.buttons.create_surface(
+        fixture.component_ids[0],
+        fixture.components.root(fixture.component_ids[0]),
+        fixture.fragments[0],
+        first_visuals,
+        effects);
+    fixture.composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
+    require(fixture.buttons.visual_range(first)
+                    == ryn::graphics::QuadInstanceRange{0, 4}
+                && fixture.composer.interaction_order().empty()
+                && fixture.buttons.effects().live_count() == 0,
+            "non-interactive surface registered Interaction or invisible focus effects");
+
+    auto changed = first_visuals;
+    changed[2].color = {0.8F, 0.2F, 0.1F, 1.0F};
+    require(fixture.buttons.update_surface(first, changed) == 1,
+            "surface Material update escaped its changed layer");
+    const std::array<ryn::graphics::QuadInstance, 3> wrong_count{};
+    bool wrong_count_rejected = false;
+    try {
+        static_cast<void>(fixture.buttons.update_surface(first, wrong_count));
+    } catch (const std::invalid_argument&) {
+        wrong_count_rejected = true;
+    }
+    require(wrong_count_rejected,
+            "surface update accepted a changed visual layer count");
+
+    require(fixture.buttons.destroy(first),
+            "non-interactive surface destroy failed");
+    const auto replacement_visuals = surface_visuals(0.2F);
+    const auto replacement = fixture.buttons.create_surface(
+        fixture.component_ids[0],
+        fixture.components.root(fixture.component_ids[0]),
+        fixture.fragments[0],
+        replacement_visuals,
+        effects);
+    bool stale_rejected = false;
+    try {
+        static_cast<void>(fixture.buttons.update_surface(first, first_visuals));
+    } catch (const std::out_of_range&) {
+        stale_rejected = true;
+    }
+    require(replacement.index == first.index
+                && replacement.generation != first.generation
+                && stale_rejected,
+            "non-interactive surface slot reuse did not reject its stale generation");
+}
+
 } // namespace
 
 int main() {
     try {
         test_fixed_ranges_compaction_and_shared_hit_order();
         test_gpu_capacity_sparse_upload_and_failure_retention();
+        test_non_interactive_surface_range_and_generation_reuse();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

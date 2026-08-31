@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace ryn::component {
@@ -18,6 +19,7 @@ namespace ryn::component {
 inline constexpr std::size_t button_loading_segment_count = 8;
 inline constexpr std::size_t button_visual_layer_count =
     2 + button_loading_segment_count;
+inline constexpr std::size_t retained_surface_visual_capacity = 16;
 
 enum class ButtonVisualLayer : std::uint8_t {
     border,
@@ -41,6 +43,7 @@ struct ButtonEffectData final {
     float focus_offset{1.0F};
     Color focus_color;
     float focus_opacity{};
+    bool focus_enabled{true};
     runtime::Point translation;
     std::optional<graphics::EffectClip> ancestor_clip;
 
@@ -89,10 +92,19 @@ public:
         std::optional<input::InteractionId> interaction,
         const ButtonVisualData& visuals,
         const ButtonEffectData& effects = ButtonEffectData{});
+    [[nodiscard]] ButtonSceneId create_surface(
+        runtime::ComponentId component,
+        runtime::NodeId node,
+        runtime::SceneFragmentId fragment,
+        std::span<const graphics::QuadInstance> visuals,
+        const ButtonEffectData& effects = ButtonEffectData{});
     bool destroy(ButtonSceneId id);
     [[nodiscard]] std::size_t update(
         ButtonSceneId id,
         const ButtonVisualData& visuals);
+    [[nodiscard]] std::size_t update_surface(
+        ButtonSceneId id,
+        std::span<const graphics::QuadInstance> visuals);
     [[nodiscard]] std::size_t update_effects(
         ButtonSceneId id,
         const ButtonEffectData& effects);
@@ -134,12 +146,20 @@ private:
     [[nodiscard]] const Record* find(ButtonSceneId id) const noexcept;
     [[nodiscard]] Record& require(ButtonSceneId id);
     [[nodiscard]] const Record& require(ButtonSceneId id) const;
+    [[nodiscard]] ButtonSceneId create_record(
+        runtime::ComponentId component,
+        runtime::NodeId node,
+        runtime::SceneFragmentId fragment,
+        std::optional<input::InteractionId> interaction,
+        std::span<const graphics::QuadInstance> visuals,
+        const ButtonEffectData& effects);
     [[nodiscard]] std::uint32_t acquire_slot();
     void bind_fragment(const Record& record);
     void create_effects(Record& record);
     void remove_effects(Record& record) noexcept;
     void ensure_owner_thread() const;
-    static void validate_visuals(const ButtonVisualData& visuals);
+    static void validate_visuals(
+        std::span<const graphics::QuadInstance> visuals);
     static void advance_generation(Slot& slot) noexcept;
 
     runtime::ComponentHost* components_;

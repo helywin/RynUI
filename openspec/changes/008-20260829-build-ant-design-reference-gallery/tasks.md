@@ -14,10 +14,10 @@
 
 ## 3. 非交互 ReferenceSurface
 
-- [ ] 3.1 实现 Gallery internal typed `ReferenceSurfaceProps`/content slot 与 generation-checked component record，支持 Theme 驱动的 background/border/radius/status badge/swatch/`LayoutStyle`，不得从 `rynui.hpp` 导出；通过 header/source contract 证明未新增稳定 public API 或通用 Modifier
-- [ ] 3.2 接入 retained Quad/RoundedEffect/Text scene、intrinsic measure、clip/translation 与 fixed scene fragment，使 reference surface 不注册 InteractionId；通过 nested/empty/CJK/Latin/swatch/shadow、destroy/reuse、Theme update 和 scene order tests 验证
-- [ ] 3.3 增加非交互语义测试：pointer move/down、Tab、Enter/Space 与 window focus 不得让 reference surface hover/pressed/focused/click，不进入 focus order、不产生 route/capture；普通 Theme/material 更新不得 re-run content 或刷新无关 HitTest
-- [ ] 3.4 运行 ReferenceSurface、Component lifecycle、Layout、Scene、HitTest/Focus、dependency leak 与 `git diff --check`；以英文 `feat: add non-interactive gallery surfaces` 提交并推送本阶段，核对 remote SHA
+- [x] 3.1 实现 Gallery internal typed `ReferenceSurfaceProps`/content slot 与 generation-checked component record，支持 Theme 驱动的 background/border/radius/status badge/swatch/`LayoutStyle`，不得从 `rynui.hpp` 导出；通过 header/source contract 证明未新增稳定 public API 或通用 Modifier
+- [x] 3.2 接入 retained Quad/RoundedEffect/Text scene、intrinsic measure、clip/translation 与 fixed scene fragment，使 reference surface 不注册 InteractionId；通过 nested/empty/CJK/Latin/swatch/shadow、destroy/reuse、Theme update 和 scene order tests 验证
+- [x] 3.3 增加非交互语义测试：pointer move/down、Tab、Enter/Space 与 window focus 不得让 reference surface hover/pressed/focused/click，不进入 focus order、不产生 route/capture；普通 Theme/material 更新不得 re-run content 或刷新无关 HitTest
+- [x] 3.4 运行 ReferenceSurface、Component lifecycle、Layout、Scene、HitTest/Focus、dependency leak 与 `git diff --check`；以英文 `feat: add non-interactive gallery surfaces` 提交并推送本阶段，核对 remote SHA
 
 ## 4. 文档式 Gallery 内容与完整组件总览
 

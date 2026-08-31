@@ -522,6 +522,9 @@ bool ButtonComponentHost::layout_and_synchronize(
             synchronize_geometry(*state, viewport);
         }
     }
+    for (auto* auxiliary : auxiliaries_) {
+        auxiliary->synchronize_auxiliary_geometry(viewport, clip);
+    }
     if (button_scene_.compact_effects(
             {0.0F, 0.0F, viewport.width, viewport.height})) {
         scene_structure_dirty_ = true;
@@ -589,6 +592,32 @@ component::ButtonSceneService& ButtonComponentHost::button_scene() noexcept {
 
 graphics::RoundedEffectStore& ButtonComponentHost::rounded_effects() noexcept {
     return button_scene_.effects();
+}
+
+runtime::NodeStore& ButtonComponentHost::nodes() noexcept {
+    return *nodes_;
+}
+
+layout::LayoutEngine& ButtonComponentHost::layout() noexcept {
+    return *layout_;
+}
+
+runtime::DirtyQueues& ButtonComponentHost::dirty() noexcept {
+    return *dirty_;
+}
+
+void ButtonComponentHost::attach_auxiliary(
+    AuxiliaryComponentSynchronizer& auxiliary) {
+    if (std::find(auxiliaries_.begin(), auxiliaries_.end(), &auxiliary)
+            != auxiliaries_.end()) {
+        throw std::logic_error("auxiliary component synchronizer is already attached");
+    }
+    auxiliaries_.push_back(&auxiliary);
+}
+
+void ButtonComponentHost::detach_auxiliary(
+    AuxiliaryComponentSynchronizer& auxiliary) noexcept {
+    std::erase(auxiliaries_, &auxiliary);
 }
 
 animation::AnimationRuntime& ButtonComponentHost::animations() noexcept {
