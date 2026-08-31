@@ -16,7 +16,7 @@ RynUI 是一个面向桌面应用的现代 C++20 响应式 UI 框架。它以 An
 - Pointer routing、hover/active、keyboard focus、focus-visible、disabled/loading 和 Button activation。
 - Retained scene、Quad/Glyph/RoundedEffect、阴影、圆角与离线 DXIL/SPIR-V shader。
 - Windows/MSVC/D3D12 和 Linux/GCC/Clang/Vulkan 构建路径。
-- high-DPI viewport、输入坐标映射、动态 display scale 与平台默认 UI 字体链。
+- high-DPI viewport、pointer/wheel 输入坐标映射、动态 display scale 与平台默认 UI 字体链。
 
 ## 设计边界
 
@@ -62,7 +62,7 @@ Windows DirectWrite grayscale glyph raster path 已完成方案评估，但当�
 - `rynui_text_demo`：Latin/CJK shaping、fallback 与文本更新。
 - `rynui_button_demo`：Button 状态、焦点与输入闭环。
 - `rynui_layout_demo`：公开 Flex/Space DSL 与响应式布局。
-- `rynui_token_gallery`：Ant Design Token、主题、阴影、圆角、焦点和多缩放展示。
+- `rynui_token_gallery`：锁定 Ant Design 6.5.0 的离线参考文档，包含设计介绍、七类 72 项组件总览、Design Token、支持状态筛选、分类导航、真实组件样例与响应式多缩放布局。
 
 ## 文档
 
