@@ -1,9 +1,11 @@
 ## 1. utf8proc 与 Unicode grapheme boundary
 
-- [ ] 1.1 在集中 dependency lock 中固定 utf8proc `2.11.3` 的 release archive、source SHA256、`MIT AND Unicode-3.0` license 与 normalized target；实现显式 `BUNDLED|SYSTEM` resolver，关闭无关 build 目标，并通过缺包、错版本、错 target、离线 source override、license 和 public link-interface contracts 验证不使用 Git submodule 或 system-first fallback
-- [ ] 1.2 实现 internal UTF-8 scalar iterator 与 `TextBoundaryMap`，使用 `utf8proc_iterate`/`utf8proc_grapheme_break_stateful` 保存 byte/scalar/grapheme 映射；通过 invalid UTF-8、ASCII、Latin combining、CJK、emoji modifier/flag/ZWJ、empty、large offset 和 Unicode version tests 验证
-- [ ] 1.3 引入锁定 Unicode 17 `GraphemeBreakTest` validation fixture 或等价 checked-in generator input identity，使用 `python -B` 验证生成/fixture SHA、UAX#29 boundary corpus 和 stale output rejection；运行 tracked/untracked `__pycache__`、`.pyc`、`.pyo` contract
-- [ ] 1.4 在一个受支持平台使用正式 preset 构建并运行 utf8proc resolver、boundary、dependency lock/license/public dependency tests 与 `git diff --check`；以英文 `build: add unicode text boundaries` 提交并推送本阶段，核对 remote SHA
+- [x] 1.1 在集中 dependency lock 中固定 utf8proc `2.11.3` 的 release archive、source SHA256、`MIT AND Unicode-DFS-2015` license 与 normalized target（Unicode 17 测试语料单独记录 `Unicode-3.0`）；实现显式 `BUNDLED|SYSTEM` resolver，关闭无关 build 目标，并通过缺包、错版本、错 target、离线 source override、license 和 public link-interface contracts 验证不使用 Git submodule 或 system-first fallback
+- [x] 1.2 实现 internal UTF-8 scalar iterator 与 `TextBoundaryMap`，使用 `utf8proc_iterate`/`utf8proc_grapheme_break_stateful` 保存 byte/scalar/grapheme 映射；通过 invalid UTF-8、ASCII、Latin combining、CJK、emoji modifier/flag/ZWJ、empty、large offset 和 Unicode version tests 验证
+- [x] 1.3 引入锁定 Unicode 17 `GraphemeBreakTest` validation fixture 或等价 checked-in generator input identity，使用 `python -B` 验证生成/fixture SHA、UAX#29 boundary corpus 和 stale output rejection；运行 tracked/untracked `__pycache__`、`.pyc`、`.pyo` contract
+- [x] 1.4 在一个受支持平台使用正式 preset 构建并运行 utf8proc resolver、boundary、dependency lock/license/public dependency tests 与 `git diff --check`；以英文 `build: add unicode text boundaries` 提交并推送本阶段，核对 remote SHA
+
+第一阶段证据：`evidence/platform-generic-unicode-boundaries.md`（Windows/MSVC，`windows-msvc-debug`；不是 Windows native Input/IME 验收）。
 
 ## 2. 平台无关 TextEditorState 与 selection
 

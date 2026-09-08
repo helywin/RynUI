@@ -7,6 +7,14 @@ endif()
 include("${RYNUI_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
 
 set(required_variables
+    RYNUI_UTF8PROC_VERSION
+    RYNUI_UTF8PROC_SOURCE_URL
+    RYNUI_UTF8PROC_SOURCE_SHA256
+    RYNUI_UTF8PROC_LICENSE
+    RYNUI_UNICODE_VERSION
+    RYNUI_GRAPHEME_TEST_SOURCE_URL
+    RYNUI_GRAPHEME_TEST_SOURCE_SHA256
+    RYNUI_GRAPHEME_TEST_LICENSE
     RYNUI_SDL3_VERSION
     RYNUI_SDL3_COMMIT
     RYNUI_SDL3_SOURCE_URL
@@ -67,6 +75,8 @@ foreach(required_variable IN LISTS required_variables)
 endforeach()
 
 foreach(hash_variable IN ITEMS
+        RYNUI_UTF8PROC_SOURCE_SHA256
+        RYNUI_GRAPHEME_TEST_SOURCE_SHA256
         RYNUI_SDL3_SOURCE_SHA256
         RYNUI_SDL3_LIBDECOR_PATCH_SHA256
         RYNUI_SDL3_LIBDECOR_PACING_PATCH_SHA256
@@ -166,6 +176,7 @@ foreach(font_prefix IN ITEMS RYNUI_NOTO_SANS RYNUI_NOTO_SANS_CJK_SC)
 endforeach()
 
 set(license_records
+    "${RYNUI_SOURCE_DIR}/third_party/licenses/utf8proc-2.11.3.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/libdecor-0.2.5.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/FreeType-2.14.3.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/HarfBuzz-14.3.1.txt"

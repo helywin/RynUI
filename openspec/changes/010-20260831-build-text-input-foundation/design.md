@@ -27,7 +27,7 @@
 
 ### 1. 使用 utf8proc 2.11.3 建立与字体无关的 grapheme boundary map
 
-新增 `cmake/dependencies/RynUIUtf8proc.cmake`，在 `RynUIDependencyLock.cmake` 集中保存 version、source URL、SHA256 与 `MIT AND Unicode-3.0` license。依赖模式只接受显式 `BUNDLED|SYSTEM`：
+新增 `cmake/dependencies/RynUIUtf8proc.cmake`，在 `RynUIDependencyLock.cmake` 集中保存 version、source URL、SHA256 与 `MIT AND Unicode-DFS-2015` license（按 2.11.3 发布包 `LICENSE.md` 的实际条款记录）；独立下载的 Unicode 17 测试语料使用 `Unicode-3.0`，不得混用两者的许可证标识。依赖模式只接受显式 `BUNDLED|SYSTEM`：
 
 - `BUNDLED` 使用 release archive 和 `FetchContent`，关闭 tests/install/shared build，并归一为 internal CMake target。
 - `SYSTEM` 要求可验证的 2.11.3 compatible package/target；缺包、版本不符或 target 不符立即失败。

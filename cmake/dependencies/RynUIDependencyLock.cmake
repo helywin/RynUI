@@ -1,5 +1,18 @@
 include_guard(GLOBAL)
 
+set(RYNUI_UTF8PROC_VERSION "2.11.3")
+set(RYNUI_UTF8PROC_SOURCE_URL
+    "https://github.com/JuliaStrings/utf8proc/releases/download/v2.11.3/utf8proc-2.11.3.tar.gz")
+set(RYNUI_UTF8PROC_SOURCE_SHA256
+    "415189fd2c85cd6ee5ff26af500fa387de9ada1e3e316e93f7338551481d557d")
+set(RYNUI_UTF8PROC_LICENSE "MIT AND Unicode-DFS-2015")
+set(RYNUI_GRAPHEME_TEST_LICENSE "Unicode-3.0")
+set(RYNUI_UNICODE_VERSION "17.0.0")
+set(RYNUI_GRAPHEME_TEST_SOURCE_URL
+    "https://www.unicode.org/Public/17.0.0/ucd/auxiliary/GraphemeBreakTest.txt")
+set(RYNUI_GRAPHEME_TEST_SOURCE_SHA256
+    "e2d134d2c52919bace503ebb6a551c1855fe1a1faec18478c78fff254a1793ec")
+
 set(RYNUI_SDL3_VERSION "3.4.14")
 set(RYNUI_SDL3_COMMIT "147a8ee32dbf9ac02f3794964490687b6bbda1bc")
 set(RYNUI_SDL3_SOURCE_URL

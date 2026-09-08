@@ -6,6 +6,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(RynUIArchitecture)
 include(RynUIDependencies)
+include(cmake/dependencies/RynUIUtf8proc.cmake)
 include(RynUIShaders)
 include(CTest)
 
@@ -23,6 +24,7 @@ rynui_resolve_shadercross_host_tool(
     RYNUI_SHADERCROSS_DEPENDENCY
 )
 rynui_resolve_text_dependencies()
+rynui_resolve_utf8proc()
 rynui_resolve_platform_font_service()
 rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE

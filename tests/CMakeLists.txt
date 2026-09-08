@@ -1,6 +1,56 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+set(grapheme_source "${CMAKE_BINARY_DIR}/_deps/unicode-17/GraphemeBreakTest.txt")
+rynui_download_locked_file("Unicode 17 grapheme test"
+    "${RYNUI_GRAPHEME_TEST_SOURCE_URL}" "${RYNUI_GRAPHEME_TEST_SOURCE_SHA256}"
+    "${grapheme_source}")
+set(grapheme_fixture "${CMAKE_CURRENT_BINARY_DIR}/grapheme-fixture.txt")
+set(grapheme_generator "${PROJECT_SOURCE_DIR}/tools/generate_grapheme_fixture.py")
+set(grapheme_lock "${PROJECT_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
+add_custom_command(OUTPUT "${grapheme_fixture}"
+    COMMAND "${Python3_EXECUTABLE}" -B "${grapheme_generator}"
+        --source "${grapheme_source}" --lock "${grapheme_lock}" --output "${grapheme_fixture}"
+    DEPENDS "${grapheme_source}" "${grapheme_generator}" "${grapheme_lock}"
+    VERBATIM)
+add_custom_target(rynui_grapheme_fixture DEPENDS "${grapheme_fixture}")
+add_executable(rynui_text_boundary_tests text_boundary_tests.cpp)
+rynui_configure_cpp_target(rynui_text_boundary_tests)
+target_link_libraries(rynui_text_boundary_tests PRIVATE rynui_text_boundary)
+add_dependencies(rynui_text_boundary_tests rynui_grapheme_fixture)
+add_test(NAME rynui.text_boundary COMMAND rynui_text_boundary_tests)
+add_test(NAME rynui.unicode_grapheme_corpus
+    COMMAND rynui_text_boundary_tests "${grapheme_fixture}")
+add_test(NAME rynui.unicode_grapheme_fixture
+    COMMAND "${Python3_EXECUTABLE}" -B "${grapheme_generator}"
+        --source "${grapheme_source}" --lock "${grapheme_lock}"
+        --output "${grapheme_fixture}" --check --self-test)
+
+get_target_property(boundary_links rynui_text_boundary INTERFACE_LINK_LIBRARIES)
+if(NOT boundary_links STREQUAL "$<LINK_ONLY:RynUI::Utf8proc>")
+    message(FATAL_ERROR "Unicode dependency must be link-only, not a public compile dependency")
+endif()
+add_test(NAME rynui.unicode_dependency_contract
+    COMMAND ${CMAKE_COMMAND} "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_unicode_dependency_contract.cmake")
+set(utf8proc_cases positive missing-package wrong-version missing-target invalid-mode)
+if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
+    list(APPEND utf8proc_cases bundled-offline bundled-wrong-version)
+    include(FetchContent)
+    FetchContent_GetProperties(rynui_utf8proc SOURCE_DIR utf8proc_test_source)
+endif()
+foreach(utf8proc_case IN LISTS utf8proc_cases)
+    add_test(NAME "rynui.utf8proc_resolver.${utf8proc_case}"
+        COMMAND ${CMAKE_COMMAND}
+            "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+            "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/utf8proc"
+            "-DTEST_CASE=${utf8proc_case}"
+            "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DTEST_C_COMPILER=${CMAKE_C_COMPILER}"
+            "-DTEST_UTF8PROC_SOURCE=${utf8proc_test_source}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_utf8proc_resolver.cmake")
+endforeach()
+
 add_test(
     NAME rynui.libdecor_dependency_contract
     COMMAND ${CMAKE_COMMAND}

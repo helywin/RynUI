@@ -1,0 +1,16 @@
+Package: utf8proc 2.11.3
+License expression: MIT AND Unicode-DFS-2015
+Upstream license file: LICENSE.md in the locked source archive
+Upstream source: https://github.com/JuliaStrings/utf8proc/tree/v2.11.3
+
+The Unicode notice in the release LICENSE.md retains the three conditions
+matching Unicode-DFS-2015. It is not the Unicode-3.0 notice used by the
+separately downloaded validation corpus below.
+
+Unicode 17.0.0 GraphemeBreakTest validation input:
+https://www.unicode.org/Public/17.0.0/ucd/auxiliary/GraphemeBreakTest.txt
+License: Unicode-3.0 (https://www.unicode.org/license.txt)
+
+Distribution must retain the upstream copyright and license notices from the
+locked archive and Unicode data. The generated validation fixture is derived
+from this versioned Unicode input; it is not runtime Unicode data.
