@@ -102,7 +102,9 @@ ClipboardUpdated {owner, mime types diagnostics}
 
 `SdlEventAdapter` 在 dispatch 返回前复制 event string/candidate list，验证 UTF-8 后送入 `TextInputSessionHost`。session host 只保存当前 window 的 `TextInputOwnerId {slot,generation}` 与 command sink；每次 dispatch、clipboard completion、caret update 和 stop 都重新验证 identity/owner thread。
 
-Focus 获得后使用 text type、autocorrect、multiline=false、placeholder/default/max length properties 启动 SDL input；blur、window focus loss、disabled、destroy 先清 composition/capture/deadline，再 stop session。IME 可能吞掉普通 key event，因此 committed character 永远只从 text event进入 editor，key event只负责 navigation/shortcut/submit/cancel。
+Focus 获得后使用 SDL 3.4.14 已支持的 text type、capitalization、autocorrect、multiline=false properties 启动 SDL input；blur、window focus loss、disabled、destroy 先清 composition/capture/deadline，再 stop session。IME 可能吞掉普通 key event，因此 committed character 永远只从 text event进入 editor，key event只负责 navigation/shortcut/submit/cancel。
+
+2026-09-08 核对并经用户批准暂缓：系统输入界面的 placeholder/default text/max length properties 在锁定 3.4.14 与正式版 3.4.16 均不存在，仅开发分支 3.5.0 增加了相关定义。保持 3.4.14，不为此切换开发版或传入无效属性；将系统能力接入记录为任务 3.7，后续必须同时核对正式版本 API 和目标平台实际消费行为。RynUI 自身的 placeholder、defaultValue 和 scalar maxLength 合同不延期、不削减，其他实施阶段不依赖 3.7；该项未修复前仍保持未完成。
 
 `SDL_SetTextInputArea` 的 rectangle/cursor 使用 Node global logical bounds、ancestor translation/clip 与 active render scale 转换到 window coordinate；rectangle 向外取整，cursor 相对 area.x clamp。layout、scroll、viewport、DPI 或 caret 改变会 dirty `InputArea`，同一数值不重复调用平台。
 
