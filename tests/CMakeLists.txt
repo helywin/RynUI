@@ -1,6 +1,15 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_text_editor_tests text_editor_tests.cpp)
+rynui_configure_cpp_target(rynui_text_editor_tests)
+target_link_libraries(rynui_text_editor_tests PRIVATE rynui_text_editor)
+add_test(NAME rynui.text_editor COMMAND rynui_text_editor_tests)
+add_executable(rynui_text_editor_allocation_benchmark text_editor_allocation_benchmark.cpp)
+rynui_configure_cpp_target(rynui_text_editor_allocation_benchmark)
+target_link_libraries(rynui_text_editor_allocation_benchmark PRIVATE rynui_text_editor)
+add_test(NAME rynui.text_editor_allocation COMMAND rynui_text_editor_allocation_benchmark)
+
 set(grapheme_source "${CMAKE_BINARY_DIR}/_deps/unicode-17/GraphemeBreakTest.txt")
 rynui_download_locked_file("Unicode 17 grapheme test"
     "${RYNUI_GRAPHEME_TEST_SOURCE_URL}" "${RYNUI_GRAPHEME_TEST_SOURCE_SHA256}"

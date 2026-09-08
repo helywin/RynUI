@@ -88,6 +88,12 @@ target_include_directories(rynui_text_boundary PUBLIC "${CMAKE_CURRENT_SOURCE_DI
 target_link_libraries(rynui_text_boundary PRIVATE RynUI::Utf8proc)
 rynui_assert_direct_dependencies(rynui_text_boundary RynUI::Utf8proc)
 
+add_library(rynui_text_editor STATIC input/text_editor.cpp)
+rynui_configure_cpp_target(rynui_text_editor)
+target_include_directories(rynui_text_editor PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_text_editor PRIVATE rynui_text_boundary)
+rynui_assert_direct_dependencies(rynui_text_editor rynui_text_boundary)
+
 add_library(rynui_runtime STATIC
     runtime/component_host.cpp
     runtime/component_mount.cpp

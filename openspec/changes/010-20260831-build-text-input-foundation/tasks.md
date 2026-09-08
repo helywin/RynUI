@@ -9,11 +9,13 @@
 
 ## 2. 平台无关 TextEditorState 与 selection
 
-- [ ] 2.1 实现 generation-safe internal `TextEditorState`、owned committed UTF-8 buffer、revision、grapheme-aligned `{anchor,caret}` selection 与 atomic mutation transaction；通过 invalid owner、destroy/reuse、wrong-thread、empty/value replacement 和 failure rollback tests 验证
-- [ ] 2.2 实现 insert/replace、Backspace/Delete、Left/Right、Home/End、Shift extension、Select All、pointer placement 与 collapse selection 规则；通过 ASCII、combining、CJK、emoji、selection direction、boundary clamp、disabled/read-only tests 验证不拆分 grapheme
-- [ ] 2.3 实现 logical word selection、single-line CR/LF removal 与 Unicode scalar `maxLength`，锁定 double-click word、punctuation/whitespace、paste newline、partial IME commit 和 cluster-safe truncation tests
-- [ ] 2.4 增加 editor diagnostics、reserve/capacity seam 与 10,000 次 caret/selection/mutation benchmark；证明 value 不增长时预热后无 heap allocation、identity/capacity 不按操作增长且不产生 Component/Scene side effect
-- [ ] 2.5 运行 editor state、selection、Unicode boundary、owner-thread、allocation/benchmark 与 `git diff --check`；以英文 `feat: add text editor state` 提交并推送本阶段，核对 remote SHA
+- [x] 2.1 实现 generation-safe internal `TextEditorState`、owned committed UTF-8 buffer、revision、grapheme-aligned `{anchor,caret}` selection 与 atomic mutation transaction；通过 invalid owner、destroy/reuse、wrong-thread、empty/value replacement 和 failure rollback tests 验证
+- [x] 2.2 实现 insert/replace、Backspace/Delete、Left/Right、Home/End、Shift extension、Select All、pointer placement 与 collapse selection 规则；通过 ASCII、combining、CJK、emoji、selection direction、boundary clamp、disabled/read-only tests 验证不拆分 grapheme
+- [x] 2.3 实现 logical word selection、single-line CR/LF removal 与 Unicode scalar `maxLength`，锁定 double-click word、punctuation/whitespace、paste newline、partial IME commit 和 cluster-safe truncation tests
+- [x] 2.4 增加 editor diagnostics、reserve/capacity seam 与 10,000 次 caret/selection/mutation benchmark；证明 value 不增长时预热后无 heap allocation、identity/capacity 不按操作增长且不产生 Component/Scene side effect
+- [x] 2.5 运行 editor state、selection、Unicode boundary、owner-thread、allocation/benchmark 与 `git diff --check`；以英文 `feat: add text editor state` 提交并推送本阶段，核对 remote SHA
+
+第二阶段证据：`evidence/platform-generic-text-editor.md`。
 
 ## 3. IME event 与 text input session bridge
 

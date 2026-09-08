@@ -8,6 +8,9 @@
 
 namespace ryn::input {
 
+enum class TextWordClass { word, whitespace, punctuation, symbol };
+[[nodiscard]] TextWordClass text_word_class(char32_t scalar) noexcept;
+
 struct TextScalar {
     char32_t value{};
     std::size_t byte_begin{};
@@ -34,11 +37,13 @@ public:
     // propagates without publishing a partial map.
     [[nodiscard]] bool assign(std::string_view bytes);
     void reserve(std::size_t scalar_capacity);
+    void swap(TextBoundaryMap& other) noexcept;
     [[nodiscard]] std::span<const std::size_t> grapheme_bytes() const noexcept;
     [[nodiscard]] std::span<const std::size_t> scalar_bytes() const noexcept;
     [[nodiscard]] std::size_t size_bytes() const noexcept;
     [[nodiscard]] std::size_t scalar_count() const noexcept;
     [[nodiscard]] std::size_t grapheme_count() const noexcept;
+    [[nodiscard]] std::size_t retained_capacity() const noexcept;
     [[nodiscard]] std::optional<std::size_t> byte_to_scalar(std::size_t byte) const noexcept;
     [[nodiscard]] std::optional<std::size_t> scalar_to_byte(std::size_t scalar) const noexcept;
     [[nodiscard]] bool is_boundary(std::size_t byte) const noexcept;

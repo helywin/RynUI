@@ -7,6 +7,21 @@
 #include <stdexcept>
 
 namespace ryn::input {
+TextWordClass text_word_class(char32_t scalar) noexcept {
+    const auto category = utf8proc_category(static_cast<utf8proc_int32_t>(scalar));
+    if((scalar >= U'\t' && scalar <= U'\r') || scalar == U'\u0085'
+            || category == UTF8PROC_CATEGORY_ZS || category == UTF8PROC_CATEGORY_ZL
+            || category == UTF8PROC_CATEGORY_ZP) {
+        return TextWordClass::whitespace;
+    }
+    if(category >= UTF8PROC_CATEGORY_LU && category <= UTF8PROC_CATEGORY_PC) {
+        return TextWordClass::word;
+    }
+    if(category >= UTF8PROC_CATEGORY_PD && category <= UTF8PROC_CATEGORY_PO) {
+        return TextWordClass::punctuation;
+    }
+    return TextWordClass::symbol;
+}
 namespace {
 constexpr std::size_t empty_boundary = 0;
 std::span<const std::size_t> offsets(const std::vector<std::size_t>& values) noexcept {
@@ -72,6 +87,15 @@ void TextBoundaryMap::reserve(std::size_t scalar_capacity) {
     pending_graphemes_.reserve(size);
 }
 
+void TextBoundaryMap::swap(TextBoundaryMap& other) noexcept {
+    // Member swaps also avoid allocating MSVC Debug iterator proxies, which
+    // generic std::swap(TextBoundaryMap) would create through temporary vectors.
+    scalars_.swap(other.scalars_);
+    graphemes_.swap(other.graphemes_);
+    pending_scalars_.swap(other.pending_scalars_);
+    pending_graphemes_.swap(other.pending_graphemes_);
+}
+
 std::span<const std::size_t> TextBoundaryMap::grapheme_bytes() const noexcept {
     return offsets(graphemes_);
 }
@@ -81,6 +105,10 @@ std::span<const std::size_t> TextBoundaryMap::scalar_bytes() const noexcept {
 std::size_t TextBoundaryMap::size_bytes() const noexcept { return scalar_bytes().back(); }
 std::size_t TextBoundaryMap::scalar_count() const noexcept { return scalar_bytes().size() - 1; }
 std::size_t TextBoundaryMap::grapheme_count() const noexcept { return grapheme_bytes().size() - 1; }
+std::size_t TextBoundaryMap::retained_capacity() const noexcept {
+    return scalars_.capacity() + graphemes_.capacity()
+        + pending_scalars_.capacity() + pending_graphemes_.capacity();
+}
 
 std::optional<std::size_t> TextBoundaryMap::byte_to_scalar(std::size_t byte) const noexcept {
     const auto values = scalar_bytes();
