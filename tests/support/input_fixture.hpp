@@ -10,6 +10,9 @@ using namespace ryn;
 using namespace ryn::input;
 struct Platform final : TextInputPlatform, TextClipboard {
     int starts{}, stops{};
+    int areas{};
+    bool area_failure{};
+    WindowTextInputArea area;
     std::optional<String> clipboard;
     bool clipboard_failure{};
     int reads{}, writes{};
@@ -17,7 +20,9 @@ struct Platform final : TextInputPlatform, TextClipboard {
     bool start(TextInputSessionStamp, const TextInputProperties&) noexcept override { ++starts; return true; }
     bool stop() noexcept override { ++stops; return true; }
     bool cancel() noexcept override { return true; }
-    bool set_area(const WindowTextInputArea&) noexcept override { return true; }
+    bool set_area(const WindowTextInputArea& value) noexcept override {
+        ++areas; if(area_failure) return false; area = value; return true;
+    }
     ClipboardReadResult read_text() override {
         ++reads;
         auto result = clipboard_failure ? ClipboardReadResult{ClipboardError::platform_failure, {}}

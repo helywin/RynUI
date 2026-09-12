@@ -65,7 +65,7 @@
 
 ## 8. 平台通用 Input 集成与 Gallery
 
-- [ ] 8.1 增加完整headless Input journey，覆盖controlled/uncontrolled、Latin/CJK/emoji、composition/candidates/commit/cancel、selection、clipboard、undo/redo、maxLength、slots、Theme/status、caret blink、external reconcile、owner destroy和恢复idle；验证逐阶段value/selection/identity/dirty/scene diagnostics
+- [x] 8.1 增加完整headless Input journey，覆盖controlled/uncontrolled、Latin/CJK/emoji、composition/candidates/commit/cancel、selection、clipboard、undo/redo、maxLength、slots、Theme/status、caret blink、external reconcile、owner destroy和恢复idle；验证逐阶段value/selection/identity/dirty/scene diagnostics
 - [ ] 8.2 在真实 `rynui_token_gallery` 的 Live Samples加入 `ryn::Input` interaction sample与能力/缺失范围说明；只有Input runtime/API/headless evidence可解析后才把72项overlay中的Input从`planned`更新为`partial`，未实现TextArea/password/search不得伪装为支持
 - [ ] 8.3 增加Input evidence schema，要求utf8proc/Unicode identity、API/mode、value/selection/composition/history、clipboard/session/input-area、Token/scene/upload/frame/idle、preset/compiler/platform/window/driver/shader/font/IME/scale与人工确认路径；拒绝planning-only、跨平台identity和缺失commit/idle证据
 - [ ] 8.4 在一个受支持平台用正式preset运行全部平台通用unit/headless/contract/benchmark、public dependency、lock/license、无网络runtime和Python cache检查，记录实际OS/compiler/preset/result，不要求另一平台重复本组合同

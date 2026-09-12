@@ -45,6 +45,9 @@ public:
     void set_window_active(bool);
     // Matches the owning window/font resolver's physical-to-logical scale.
     void set_display_scale(float);
+    // Call after layout/scroll synchronization. The window adapter supplies its
+    // coordinate transform independently of glyph raster/display scale.
+    bool synchronize_input_area(double logical_to_window_scale, int window_width, int window_height);
     [[nodiscard]] std::span<const MountedInputComponent> mounted_inputs() const noexcept { return mounted_; }
     [[nodiscard]] input::TextEditorStore& editors() noexcept { return editors_; }
     [[nodiscard]] input::TextInputSessionHost& sessions() noexcept { return sessions_; }

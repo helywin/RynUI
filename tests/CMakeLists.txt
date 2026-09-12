@@ -714,6 +714,13 @@ target_compile_definitions(rynui_input_caret_blink_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_caret_blink COMMAND rynui_input_caret_blink_tests)
+add_executable(rynui_input_journey_tests input_journey_tests.cpp)
+rynui_configure_cpp_target(rynui_input_journey_tests)
+target_link_libraries(rynui_input_journey_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
+target_compile_definitions(rynui_input_journey_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.input_journey COMMAND rynui_input_journey_tests)
 add_executable(rynui_input_gpu_tests input_gpu_tests.cpp)
 rynui_configure_cpp_target(rynui_input_gpu_tests)
 target_link_libraries(rynui_input_gpu_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)

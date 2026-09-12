@@ -391,6 +391,19 @@ void InputComponentHost::set_display_scale(float scale) {
         }
     }
 }
+bool InputComponentHost::synchronize_input_area(double scale, int width, int height) {
+    if(!std::isfinite(scale) || scale <= 0 || width <= 0 || height <= 0)
+        throw std::invalid_argument("Input window coordinate transform must be positive and finite");
+    const auto session = sessions_.active();
+    if(!session.valid()) return true;
+    for(const auto& mounted : mounted_) if(mounted.editor == session.owner) {
+        const auto geometry = layout_snapshot(mounted.component);
+        const auto bounds = geometry.viewport, clip = geometry.clip;
+        return sessions_.set_input_area({{bounds.x, bounds.y, bounds.width, bounds.height},
+            {clip.x, clip.y, clip.width, clip.height}, 0, 0, geometry.caret_x, scale, width, height});
+    }
+    return false;
+}
 void InputComponentHost::invalidate(runtime::ComponentId component, runtime::DirtyFlags flags) {
     if(auto* current = host_->components().state<InputState>(component)) {
         host_->dirty().invalidate(current->mounted.node, flags);
