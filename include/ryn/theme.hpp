@@ -108,6 +108,20 @@ struct TextThemeConfig final {
 };
 
 struct InputTokenOverride final {
+    std::optional<Color> color;
+    std::optional<Color> placeholder_color;
+    std::optional<Color> background;
+    std::optional<Color> border_color;
+    std::optional<Color> hover_border_color;
+    std::optional<Color> active_border_color;
+    std::optional<Color> hover_background;
+    std::optional<Color> active_background;
+    std::optional<Color> selection_background;
+    std::optional<Color> selection_color;
+    std::optional<Color> caret_color;
+    std::optional<ShadowList> active_shadow;
+    std::optional<ShadowList> error_active_shadow;
+    std::optional<ShadowList> warning_active_shadow;
     std::optional<LogicalLength> input_font_size;
     std::optional<LogicalLength> input_font_size_small;
     std::optional<LogicalLength> input_font_size_large;

@@ -75,6 +75,21 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     }
     next.sizes[1].border_radius = length(overrides.border_radius, next.sizes[1].border_radius);
     next.affix_padding = length(overrides.affix_padding, next.affix_padding);
+    const auto color = [](Color& target, const std::optional<Color>& value) { if(value) target = *value; };
+    color(next.colors.foreground, overrides.color);
+    color(next.colors.placeholder, overrides.placeholder_color);
+    color(next.colors.background, overrides.background);
+    color(next.colors.border, overrides.border_color);
+    color(next.colors.hover_border, overrides.hover_border_color);
+    color(next.colors.active_border, overrides.active_border_color);
+    color(next.colors.hover_background, overrides.hover_background);
+    color(next.colors.active_background, overrides.active_background);
+    color(next.colors.selection_background, overrides.selection_background);
+    color(next.colors.selection_foreground, overrides.selection_color);
+    color(next.colors.caret, overrides.caret_color);
+    if(overrides.active_shadow) next.active_shadow = *overrides.active_shadow;
+    if(overrides.error_active_shadow) next.error_active_shadow = *overrides.error_active_shadow;
+    if(overrides.warning_active_shadow) next.warning_active_shadow = *overrides.warning_active_shadow;
     tokens = next;
 }
 

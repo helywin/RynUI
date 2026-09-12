@@ -13,14 +13,30 @@ struct InputSizeTokens final {
     friend constexpr bool operator==(InputSizeTokens, InputSizeTokens) = default;
 };
 
-// Internal resolved geometry; public customization belongs to ThemeConfig.
-// State colors/shadows are added in the next Token substage.
+struct InputColorTokens final {
+    Color foreground, placeholder, background, border;
+    Color disabled_foreground, disabled_background, disabled_border;
+    Color hover_border, active_border, hover_background, active_background;
+    Color error_border, error_hover_border, warning_border, warning_hover_border;
+    Color selection_background, selection_foreground, caret, error_caret, warning_caret;
+    [[nodiscard]] constexpr auto values() const noexcept {
+        return std::array{foreground, placeholder, background, border, disabled_foreground,
+            disabled_background, disabled_border, hover_border, active_border, hover_background,
+            active_background, error_border, error_hover_border, warning_border, warning_hover_border,
+            selection_background, selection_foreground, caret, error_caret, warning_caret};
+    }
+    friend constexpr bool operator==(const InputColorTokens&, const InputColorTokens&) = default;
+};
+
+// Internal resolved tokens; public customization belongs to ThemeConfig.
 struct InputTokenSet final {
     std::array<InputSizeTokens, 3> sizes;
     float border_width{}, affix_padding{};
     // Keep explicit inherited padding when a nested scope changes typography.
     std::array<bool, 3> padding_block_explicit{};
     bool small_font_explicit{};
+    InputColorTokens colors;
+    ShadowList active_shadow, error_active_shadow, warning_active_shadow;
     [[nodiscard]] const InputSizeTokens& size(ControlSize value) const;
     friend constexpr bool operator==(const InputTokenSet&, const InputTokenSet&) = default;
 };

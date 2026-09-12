@@ -244,6 +244,11 @@ std::size_t collect_changed(
     append_if_changed(false, input_layout, TokenIdentity::input_layout_metrics, changed, count);
     append_if_changed(false, input_typography, TokenIdentity::input_typography, changed, count);
     append_if_changed(false, input_radius, TokenIdentity::input_border_radius, changed, count);
+    append_if_changed(old_input.colors, new_input.colors, TokenIdentity::input_colors, changed, count);
+    const bool input_shadows = old_input.active_shadow != new_input.active_shadow
+        || old_input.error_active_shadow != new_input.error_active_shadow
+        || old_input.warning_active_shadow != new_input.warning_active_shadow;
+    append_if_changed(false, input_shadows, TokenIdentity::input_shadows, changed, count);
     return count;
 }
 
@@ -516,6 +521,14 @@ const detail::InputTokenSet& ThemeScope::input_border_radius() const {
     ensure_owner_thread(); record(TokenIdentity::input_border_radius);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+const detail::InputTokenSet& ThemeScope::input_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::input_colors);
+    return detail::InputTokenAccess::get(*snapshot_);
+}
+const detail::InputTokenSet& ThemeScope::input_shadows() const {
+    ensure_owner_thread(); record(TokenIdentity::input_shadows);
+    return detail::InputTokenAccess::get(*snapshot_);
+}
 
 const ButtonThemeToken& ThemeScope::button_typography() const {
     ensure_owner_thread();
@@ -720,6 +733,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Button.iconGap", "Button.shadows", "Text.color", "Text.fontFamily",
         "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
         "Input.layoutMetrics", "Input.typography", "Input.borderRadius",
+        "Input.colors", "Input.shadows",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -749,6 +763,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_color_text_base:
     case TokenIdentity::map_color_background_base:
     case TokenIdentity::button_colors:
+    case TokenIdentity::input_colors:
     case TokenIdentity::text_color:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -762,6 +777,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_border_radius:
     case TokenIdentity::button_border_width:
     case TokenIdentity::button_shadows:
+    case TokenIdentity::input_shadows:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:

@@ -376,6 +376,66 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     if (override.box_shadow_tertiary) alias.box_shadow_tertiary = *override.box_shadow_tertiary;
 }
 
+[[nodiscard]] detail::InputTokenSet derive_input_theme(
+    const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+    const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    auto input = detail::derive_input_tokens(seed, map);
+    const bool dark = contains_dark(algorithms);
+    const Color surface = Color::rgba8(20, 20, 20);
+    struct Palette { Color active, hover, border_hover, background; };
+    const auto palette = [&](Color base) {
+        // @ant-design/colors 8.0.1: normal keys 6/5/4/1; dark keys remap to
+        // 85% seed / 90% light step 1 / 45% seed / 15% dark step 2.
+        return dark ? Palette{mix(surface, base, 0.85F), mix(surface, palette_variant(base, 1, true), 0.90F),
+            mix(surface, base, 0.45F), mix(surface, palette_variant(base, 2, false), 0.15F)}
+            : Palette{base, palette_variant(base, 1, true), palette_variant(base, 2, true), palette_variant(base, 5, true)};
+    };
+    const auto primary = palette(seed.color_primary);
+    const auto error = palette(seed.color_error);
+    const auto warning = palette(seed.color_warning);
+    const auto outline_color = [&](Color foreground) {
+        if(foreground.alpha() < 1.0F) return foreground;
+        const auto background = alias.color_background_container;
+        const std::array front{foreground.red(), foreground.green(), foreground.blue()};
+        const std::array back{background.red(), background.green(), background.blue()};
+        // Preserve the upstream double loop and Math.round semantics, including
+        // its rounding near a channel boundary. Input colors are 8-bit palette values.
+        for(double alpha = 0.01; alpha <= 1.0; alpha += 0.01) {
+            std::array<int, 3> channels{};
+            bool stable = true;
+            for(std::size_t i = 0; i < channels.size(); ++i) {
+                const auto f = std::round(static_cast<double>(front[i]) * 255.0);
+                const auto b = std::round(static_cast<double>(back[i]) * 255.0);
+                channels[i] = static_cast<int>(std::floor((f - b * (1.0 - alpha)) / alpha + 0.5));
+                stable = stable && channels[i] >= 0 && channels[i] <= 255;
+            }
+            if(stable) return Color(static_cast<float>(channels[0]) / 255.0F,
+                static_cast<float>(channels[1]) / 255.0F, static_cast<float>(channels[2]) / 255.0F,
+                static_cast<float>(std::round(alpha * 100.0) / 100.0));
+        }
+        return foreground;
+    };
+    const auto shadow = [&](Color background) {
+        return ShadowList{{ShadowKind::outer, {}, 0, 2 * seed.line_width, outline_color(background)}};
+    };
+    input.colors = {
+        alias.color_text,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.25F),
+        alias.color_background_container, alias.color_border,
+        alias.color_text_disabled, alias.color_background_container_disabled, alias.color_border,
+        primary.hover, primary.active, alias.color_background_container, alias.color_background_container,
+        error.active, error.border_hover, warning.active, warning.border_hover,
+        // Desktop selection/caret are explicit RynUI tokens, not browser-native
+        // selection CSS. Status caret follows the approved Input contract.
+        Color(primary.active.red(), primary.active.green(), primary.active.blue(), 0.25F),
+        alias.color_text, alias.color_text, error.active, warning.active,
+    };
+    input.active_shadow = shadow(primary.background);
+    input.error_active_shadow = shadow(error.background);
+    input.warning_active_shadow = shadow(warning.background);
+    return input;
+}
+
 [[nodiscard]] ButtonThemeToken derive_button(
     const ThemeMapToken& map,
     const ThemeAliasToken& alias) {
@@ -560,7 +620,15 @@ void append_color(std::ostringstream& stream, Color color) {
             << ",\"lineHeight\":" << size.line_height << ",\"paddingInline\":" << size.padding_inline
             << ",\"paddingBlock\":" << size.padding_block << ",\"borderRadius\":" << size.border_radius << '}';
     }
-    stream << "],\"borderWidth\":" << input.border_width << ",\"affixPadding\":" << input.affix_padding << "}}\n";
+    stream << "],\"borderWidth\":" << input.border_width << ",\"affixPadding\":" << input.affix_padding << ",\"colors\":[";
+    const auto input_colors = input.colors.values();
+    for(std::size_t i = 0; i < input_colors.size(); ++i) {
+        if(i) stream << ',';
+        append_color(stream, input_colors[i]);
+    }
+    stream << "],\"activeShadowLayers\":" << input.active_shadow.size()
+        << ",\"errorActiveShadowLayers\":" << input.error_active_shadow.size()
+        << ",\"warningActiveShadowLayers\":" << input.warning_active_shadow.size() << "}}\n";
     return stream.str();
 }
 
@@ -716,6 +784,9 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_float(hash, input.border_width); hash_float(hash, input.affix_padding);
     for(const bool explicit_padding : input.padding_block_explicit) hash_integer(hash, explicit_padding);
     hash_integer(hash, input.small_font_explicit);
+    for(const auto color : input.colors.values()) hash_color(hash, color);
+    hash_shadow(hash, input.active_shadow); hash_shadow(hash, input.error_active_shadow);
+    hash_shadow(hash, input.warning_active_shadow);
     for (const ThemeAlgorithm algorithm : algorithms) hash_integer(hash, algorithm);
     return hash;
 }
@@ -832,9 +903,10 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     } else if(config.input.algorithm) {
         auto component_seed = seed;
         apply_seed_override(component_seed, config.input.seed);
-        input = detail::derive_input_tokens(component_seed, derive_map(component_seed, algorithms));
+        const auto component_map = derive_map(component_seed, algorithms);
+        input = derive_input_theme(component_seed, component_map, derive_alias(component_map, algorithms), algorithms);
     } else {
-        input = detail::derive_input_tokens(seed, map);
+        input = derive_input_theme(seed, map, alias, algorithms);
     }
     detail::apply_input_override(input, config.input.tokens);
     return ThemeSnapshot(

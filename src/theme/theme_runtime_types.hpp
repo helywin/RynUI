@@ -69,6 +69,8 @@ enum class TokenIdentity : std::uint8_t {
     input_layout_metrics,
     input_typography,
     input_border_radius,
+    input_colors,
+    input_shadows,
     count,
 };
 
