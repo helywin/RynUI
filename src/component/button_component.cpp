@@ -496,6 +496,7 @@ void ButtonComponentHost::set_motion_preference(
             update_visuals(*state);
         }
     }
+    for(auto* auxiliary : auxiliaries_) auxiliary->synchronize_auxiliary_motion();
 }
 
 std::size_t ButtonComponentHost::tick_animations(

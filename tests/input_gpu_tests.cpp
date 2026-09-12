@@ -91,6 +91,7 @@ struct Fixture final : runtime::FrameSubmitter {
         return result;
     }
     explicit Fixture(float scale_value) : scale(scale_value), chain(load_chain(*fonts, scale)) {
+        host.set_motion_preference(animation::MotionPreference::reduced);
         inputs.set_display_scale(scale);
     }
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime) override {

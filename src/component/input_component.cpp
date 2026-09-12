@@ -1,4 +1,5 @@
 #include "component/input_component.hpp"
+#include "component/input_material_transition.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -18,7 +19,8 @@ struct InputContainerPresentation {
     float radius{}, border_width{};
     Color background, border;
     ShadowList shadows;
-    bool shadow_visible{};
+    std::array<Color, input_shadow_layer_capacity> shadow_colors;
+    float shadow_opacity{};
     friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
 };
 struct InputState {
@@ -50,6 +52,7 @@ struct InputState {
     InputLayoutSnapshot geometry;
     std::optional<animation::AnimationTime> caret_deadline;
     InputDisplayState display;
+    std::unique_ptr<InputMaterialTransition> transition;
     text::TextCaretMap carets;
     std::uint64_t measured_value_revision{};
 };
@@ -79,6 +82,18 @@ InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& token
 }
 std::array<float, 4> channels(Color color) {
     return {color.red(), color.green(), color.blue(), color.alpha()};
+}
+InputMaterialValues material_values(const InputState& state, const InputTokenSet& tokens) {
+    const auto visual = resolve_visuals(state, tokens);
+    InputMaterialValues result;
+    result.colors[0] = visual.background; result.colors[1] = visual.border;
+    result.colors[2] = visual.foreground; result.colors[3] = visual.affix; result.colors[4] = visual.caret;
+    result.colors[5] = tokens.colors.placeholder; result.colors[6] = tokens.colors.selection_background;
+    result.colors[7] = tokens.colors.selection_foreground;
+    for(std::size_t i = 0; i < input_shadow_layer_capacity; ++i)
+        result.colors[8 + i] = i < visual.shadow->size() ? (*visual.shadow)[i].color : Color(0, 0, 0, 0);
+    result.shadow_opacity = visual.shadow_visible ? 1.0F : 0.0F;
+    return result;
 }
 runtime::Rect translated_bounds(const runtime::NodeStore& nodes, runtime::NodeId id) {
     auto result = nodes.require(id).bounds;
@@ -143,6 +158,7 @@ struct InputPropsAccess {
         build.on_resource_cleanup(component, [&owner, component] {
             auto& host = *owner.host_;
             if(auto* current = host.components().state<InputState>(component)) {
+                current->transition.reset();
                 const auto mounted = current->mounted;
                 host.focus().cancel_interaction(mounted.interaction);
                 host.pointer().cancel_interaction(mounted.interaction);
@@ -239,6 +255,9 @@ struct InputPropsAccess {
                 Prop<runtime::SemanticTypography>{state.slot_typography});
         }});
         owner.update_theme(component);
+        state.transition = std::make_unique<InputMaterialTransition>(host.animations(),
+            material_values(state, derive_input_tokens(host.components().theme_scope(component)->snapshot())),
+            [&owner, component] { owner.apply_material_transition(component); });
         state.selected_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         state.placeholder_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         owner.update_text(component);
@@ -312,7 +331,8 @@ struct InputPropsAccess {
             [theme] { static_cast<void>(theme->text_font_family()); static_cast<void>(theme->text_font_weight());
                 static_cast<void>(theme->input_layout_metrics()); static_cast<void>(theme->input_typography());
                 static_cast<void>(theme->input_border_radius()); static_cast<void>(theme->input_colors());
-                static_cast<void>(theme->input_shadows()); });
+                static_cast<void>(theme->input_shadows()); static_cast<void>(theme->motion_unit());
+                static_cast<void>(theme->motion_base()); static_cast<void>(theme->motion_enabled()); });
         owner.mounted_.push_back(state.mounted);
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
     }
@@ -357,11 +377,27 @@ void InputComponentHost::invalidate(runtime::ComponentId component, runtime::Dir
     if(auto* current = host_->components().state<InputState>(component)) {
         host_->dirty().invalidate(current->mounted.node, flags);
         if(runtime::has_any(flags, runtime::DirtyFlags::Material)) {
-            const auto color = resolve_visuals(*current,
-                derive_input_tokens(host_->components().theme_scope(component)->snapshot())).affix;
+            const auto& theme = host_->components().theme_scope(component)->snapshot();
+            const auto values = material_values(*current, derive_input_tokens(theme));
+            if(current->transition) {
+                const auto spec = animation::resolve_motion_policy(theme, host_->motion_preference())
+                    .transition(animation::MotionDurationToken::mid, animation::MotionEasingToken::ease_in_out);
+                current->transition->retarget(values, spec, host_->animation_time());
+            }
+            const auto color = current->transition ? current->transition->value().colors[3] : values.colors[3];
             current->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
         }
     }
+}
+void InputComponentHost::apply_material_transition(runtime::ComponentId component) {
+    if(auto* state = host_->components().state<InputState>(component); state && state->transition) {
+        host_->dirty().invalidate(state->mounted.node, runtime::DirtyFlags::Material | runtime::DirtyFlags::Animation);
+        const auto color = state->transition->value().colors[3];
+        state->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
+    }
+}
+void InputComponentHost::synchronize_auxiliary_motion() {
+    for(const auto& mounted : mounted_) invalidate(mounted.component, runtime::DirtyFlags::Material);
 }
 void InputComponentHost::update_theme(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
@@ -528,8 +564,11 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         const auto& tokens = derive_input_tokens(theme);
         const float radius = tokens.size(state->size).border_radius;
         const auto visual = resolve_visuals(*state, tokens);
+        const auto& presentation = state->transition->value();
+        std::array<Color, input_shadow_layer_capacity> shadow_colors;
+        std::copy_n(presentation.colors.begin() + 8, input_shadow_layer_capacity, shadow_colors.begin());
         const InputContainerPresentation next_container{root_bounds, clip, radius, border,
-            visual.background, visual.border, *visual.shadow, visual.shadow_visible};
+            presentation.colors[0], presentation.colors[1], *visual.shadow, shadow_colors, presentation.shadow_opacity};
         if(state->container_presentation != next_container) {
             for(std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
                 const bool outer = layer < input_shadow_layer_capacity;
@@ -541,7 +580,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 graphics::RoundedEffectInstance effect;
                 effect.geometry.shape = {bounds, std::clamp(radius - inset, 0.0F, 0.5F * std::min(bounds.width, bounds.height))};
                 effect.geometry.ancestor_clip = graphics::EffectClip{1, clip};
-                effect.material = {layer == input_background_layer ? visual.background : visual.border,
+                effect.material = {layer == input_background_layer ? presentation.colors[0] : presentation.colors[1],
                     layer == input_border_layer || layer == input_background_layer ? 1.0F : 0.0F, true};
                 if(outer || inner) {
                     const auto slot = outer ? layer : layer - input_inset_shadow_layer;
@@ -550,7 +589,8 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                         const auto& shadow = (*visual.shadow)[source];
                         if((shadow.kind == ShadowKind::outer) == outer) {
                             effect = graphics::make_shadow_effect(effect.geometry.shape, shadow, {}, graphics::EffectClip{1, clip});
-                            effect.material.opacity = visual.shadow_visible ? 1.0F : 0.0F;
+                            effect.material.color = shadow_colors[source];
+                            effect.material.opacity = presentation.shadow_opacity;
                         }
                     }
                 } else if(layer == input_focus_layer) {
@@ -565,8 +605,8 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             }
             state->container_presentation = next_container;
         }
-        const auto foreground = channels(visual.foreground);
-        const auto selection_color = tokens.colors.selection_background;
+        const auto foreground = channels(presentation.colors[2]);
+        const auto selection_color = presentation.colors[6];
         const std::array<graphics::QuadInstance, 1> selection{clipped_quad(
             {state->geometry.selection_start, viewport.y,
                 state->geometry.selection_end - state->geometry.selection_start, viewport.height},
@@ -578,14 +618,14 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             clipped_quad(state->geometry.underline,
                 state->geometry.clip, window, foreground, display.composing ? 1.0F : 0.0F),
             clipped_quad(state->geometry.caret,
-                state->geometry.clip, window, channels(visual.caret),
+                state->geometry.clip, window, channels(presentation.colors[4]),
                 state->focused && !state->disabled && !state->read_only
                     && host_->focus().state().window_active ? 1.0F : 0.0F),
         };
         static_cast<void>(host_->button_scene().update_surface(state->overlay_surface, overlays));
         text_scene.set_color(state->text_scene, foreground);
-        text_scene.set_color(state->selected_scene, channels(tokens.colors.selection_foreground));
-        text_scene.set_color(state->placeholder_scene, channels(tokens.colors.placeholder));
+        text_scene.set_color(state->selected_scene, channels(presentation.colors[7]));
+        text_scene.set_color(state->placeholder_scene, channels(presentation.colors[5]));
         text_scene.set_opacity(state->text_scene, display.placeholder ? 0.0F : 1.0F);
         text_scene.set_opacity(state->selected_scene,
             state->focused && !state->disabled && !display.placeholder

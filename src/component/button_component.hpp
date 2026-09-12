@@ -70,6 +70,7 @@ public:
         runtime::Rect clip) = 0;
     // Run after every owner has finished range compaction.
     virtual bool synchronize_auxiliary_fragments() { return false; }
+    virtual void synchronize_auxiliary_motion() {}
 };
 
 class ButtonComponentHost final : private animation::AnimationTargetSink {
@@ -97,6 +98,8 @@ public:
     void dispose() noexcept;
     void set_window_active(bool active);
     void set_animation_time(animation::AnimationTime time) noexcept;
+    [[nodiscard]] animation::AnimationTime animation_time() const noexcept { return animation_time_; }
+    [[nodiscard]] animation::MotionPreference motion_preference() const noexcept { return motion_preference_; }
     void set_motion_preference(animation::MotionPreference preference);
     [[nodiscard]] std::size_t tick_animations(animation::AnimationTime frame_time);
     [[nodiscard]] bool layout_and_synchronize(

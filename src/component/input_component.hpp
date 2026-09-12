@@ -67,6 +67,8 @@ private:
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
     void update_text(runtime::ComponentId, bool measure_layout = true);
     void update_theme(runtime::ComponentId);
+    void apply_material_transition(runtime::ComponentId);
+    void synchronize_auxiliary_motion() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
     ButtonComponentHost* host_;

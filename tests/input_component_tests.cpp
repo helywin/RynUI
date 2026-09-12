@@ -246,6 +246,54 @@ void reactive_input_tokens() {
         && f.scene.text_state(sibling).counters().shape_count == sibling_shapes && input_runs == 1,
         "Input typography failed targeted reshape or reran content");
 }
+void material_animation() {
+    Fixture f;
+    f.buttons.set_motion_preference(animation::MotionPreference::normal);
+    Signal<InputStatus> status{InputStatus::Default};
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    f.inputs.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+            Input(InputProps{}.defaultValue(u8"animated").status(status));
+        }});
+    }}); f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto scene = f.inputs.text_scene(mounted.component);
+    const auto shapes = f.scene.text_state(scene).counters().shape_count;
+    const auto measures = f.nodes.require(mounted.node).measure_count;
+    const auto rebuilds = f.buttons.scene_composer().diagnostics().rebuilds;
+    const auto border = [&] { return f.buttons.rounded_effects().packed_instances()[detail::input_border_layer].material.color; };
+    const auto initial = border();
+    const auto root = f.nodes.require(mounted.node).bounds;
+    f.buttons.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none, root.x + 5, root.y + 5});
+    f.synchronize();
+    require(border() == initial && f.buttons.animations().next_deadline(), "Input hover skipped normal-motion transition");
+    f.buttons.tick_animations(animation::AnimationTime::microseconds(50000)); f.synchronize();
+    const auto mid = border();
+    require(mid != initial && mid != Color::rgba8(64, 150, 255), "Input hover did not present intermediate color");
+    status.set(InputStatus::Error); f.synchronize();
+    require(border() == mid, "Input rapid status retarget jumped from current color");
+    f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard);
+    f.buttons.tick_animations(animation::AnimationTime::microseconds(250000)); f.synchronize();
+    require(border() == Color::rgba8(255, 77, 79) && !f.buttons.animations().next_deadline()
+        && f.buttons.rounded_effects().packed_instances()[detail::input_shadow_layer_capacity - 1].material.opacity == 1,
+        "Input status/shadow animation did not settle");
+    f.buttons.set_animation_time(animation::AnimationTime::microseconds(300000));
+    status.set(InputStatus::Warning);
+    require(f.buttons.animations().next_deadline().has_value(), "Warning transition was not scheduled");
+    f.buttons.set_motion_preference(animation::MotionPreference::reduced); f.synchronize();
+    require(border() == Color::rgba8(250, 173, 20) && !f.buttons.animations().next_deadline(), "Reduced preference did not snap active Input transition");
+    f.buttons.set_motion_preference(animation::MotionPreference::normal);
+    status.set(InputStatus::Error);
+    ThemeConfig motion_off; motion_off.seed.motion = false; config.set(motion_off); f.synchronize();
+    require(border() == Color::rgba8(255, 77, 79) && !f.buttons.animations().next_deadline(), "Theme motion=false did not finish Input transition");
+    require(f.scene.text_state(scene).counters().shape_count == shapes && f.nodes.require(mounted.node).measure_count == measures
+        && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds, "Input animation changed shape/layout/topology");
+    config.set(ThemeConfig{}); status.set(InputStatus::Warning);
+    require(f.buttons.animations().size() > 0, "Input teardown test had no running animation");
+    f.buttons.destroy(mounted.component);
+    require(f.buttons.animations().size() == 0 && !f.buttons.animations().next_deadline()
+        && f.buttons.animations().diagnostics().targets == 0, "Destroyed Input retained animation targets/deadline");
+}
 void state_materials() {
     for(const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark}) {
         for(const auto status : {InputStatus::Default, InputStatus::Warning, InputStatus::Error}) {
@@ -574,6 +622,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); token_geometry(); reactive_input_tokens(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

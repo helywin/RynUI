@@ -40,6 +40,9 @@ struct Fixture {
         [this](SystemFontFamily, std::uint32_t, std::uint32_t pixels) { return resolve(pixels); }, frames};
     Platform platform;
     detail::InputComponentHost inputs{buttons, platform, platform};
+    // Settled geometry/material fixture; animation tests explicitly select normal
+    // motion and drive the retained clock themselves.
+    Fixture() { buttons.set_motion_preference(animation::MotionPreference::reduced); }
     void synchronize(float width = 320, runtime::Rect clip = {0, 0, 320, 240}) {
         if(!buttons.layout_and_synchronize({width, 240}, clip)) throw std::runtime_error("layout synchronization failed");
     }

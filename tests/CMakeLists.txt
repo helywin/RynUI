@@ -700,6 +700,11 @@ target_compile_definitions(rynui_input_gpu_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_gpu COMMAND rynui_input_gpu_tests)
+
+add_executable(rynui_input_material_transition_tests input_material_transition_tests.cpp)
+rynui_configure_cpp_target(rynui_input_material_transition_tests)
+target_link_libraries(rynui_input_material_transition_tests PRIVATE rynui_components)
+add_test(NAME rynui.input_material_transition COMMAND rynui_input_material_transition_tests)
 add_executable(rynui_input_scene_allocation_benchmark input_scene_allocation_benchmark.cpp)
 rynui_configure_cpp_target(rynui_input_scene_allocation_benchmark)
 target_link_libraries(rynui_input_scene_allocation_benchmark PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
