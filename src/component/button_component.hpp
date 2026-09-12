@@ -71,9 +71,11 @@ public:
     // Run after every owner has finished range compaction.
     virtual bool synchronize_auxiliary_fragments() { return false; }
     virtual void synchronize_auxiliary_motion() {}
+    virtual std::size_t tick_auxiliary(animation::AnimationTime) { return 0; }
+    virtual std::optional<animation::AnimationTime> next_auxiliary_deadline() const { return {}; }
 };
 
-class ButtonComponentHost final : private animation::AnimationTargetSink {
+class ButtonComponentHost final : private animation::AnimationTargetSink, public runtime::FrameDeadlineSource {
 public:
     ButtonComponentHost(
         runtime::NodeStore& nodes,
@@ -102,6 +104,7 @@ public:
     [[nodiscard]] animation::MotionPreference motion_preference() const noexcept { return motion_preference_; }
     void set_motion_preference(animation::MotionPreference preference);
     [[nodiscard]] std::size_t tick_animations(animation::AnimationTime frame_time);
+    [[nodiscard]] std::optional<animation::AnimationTime> next_deadline() const override;
     [[nodiscard]] bool layout_and_synchronize(
         runtime::Size viewport,
         runtime::Rect clip,

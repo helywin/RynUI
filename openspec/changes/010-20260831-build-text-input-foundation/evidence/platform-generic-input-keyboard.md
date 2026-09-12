@@ -18,4 +18,4 @@ Input keyboard/pointer/component、platform input/SDL adapter、Focus order/stat
 
 20,000 次 Shift+Home/End repeat 经实际 FocusManager 和场景同步，预热后 0 C++ heap allocation。测试覆盖 CJK/emoji grapheme、controlled echo、read-only/disabled、clipboard failure、三类同步自销毁、IME 优先级、modifier-shaped fake events、key-up/repeat 不重复 submit、Tab traversal。
 
-前一指针阶段全量 CTest 198/198 已通过（277.44 秒）。本键盘阶段完整回归仍进行中；上述不替代原生 Windows/Linux IME、clipboard、window 或 GPU 验收。
+前一指针阶段全量 CTest 198/198 已通过（277.44 秒）。随后本键盘阶段完整 CTest 199/199 通过（235.99 秒），其中 256 Input 基准通过（115.65 秒）；此回归不包含后续 caret blink 实现。上述不替代原生 Windows/Linux IME、clipboard、window 或 GPU 验收。

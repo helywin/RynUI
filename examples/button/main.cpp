@@ -405,8 +405,7 @@ int main(int argc, char** argv) {
             platform, application, text_scene, glyph_resources, renderer, viewport);
         ButtonPlatformEvents events(
             platform, application, frame_requests, viewport);
-        ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-            application.animations());
+        auto& animation_deadlines = application;
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, animation_deadlines, 10);
 

@@ -489,8 +489,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             font_chain,
             definition.set_viewport_width,
             definition.take_navigation_request);
-        ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-            application.animations());
+        auto& animation_deadlines = application;
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, animation_deadlines, 10);
 

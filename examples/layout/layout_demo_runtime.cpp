@@ -322,8 +322,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         LayoutComponentSubmitter submitter(
             platform, application, text_scene, glyph_resources, renderer, viewport);
         LayoutPlatformEvents events(platform, application, frame_requests, viewport);
-        ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-            application.animations());
+        auto& animation_deadlines = application;
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, animation_deadlines, 10);
 

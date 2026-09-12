@@ -12,8 +12,14 @@ DirtyQueues::DirtyQueues(NodeStore& nodes, FrameRequestState* frames) noexcept
     : nodes_(&nodes), frames_(frames) {}
 
 void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
+    invalidate_impl(id, flags, true);
+}
+void DirtyQueues::invalidate_in_frame(NodeId id, DirtyFlags flags) {
+    invalidate_impl(id, flags, false);
+}
+void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame) {
     static_cast<void>(nodes_->require(id));
-    if (flags != DirtyFlags::None && frames_ != nullptr) {
+    if (request_frame && flags != DirtyFlags::None && frames_ != nullptr) {
         frames_->request_frame();
     }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {

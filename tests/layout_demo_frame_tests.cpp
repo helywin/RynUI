@@ -320,8 +320,7 @@ void test_responsive_layout_demo_frame_contract() {
 
     ControlledEvents events(*fixture.host, fixture.frames);
     LayoutSubmitter submitter(*fixture.host, fixture.frames);
-    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-        fixture.host->animations());
+    auto& animation_deadlines = *fixture.host;
     ryn::runtime::OnDemandFrameLoop loop(
         fixture.frames, events, submitter, animation_deadlines, 5);
 

@@ -502,7 +502,18 @@ void ButtonComponentHost::set_motion_preference(
 std::size_t ButtonComponentHost::tick_animations(
     animation::AnimationTime frame_time) {
     animation_time_ = frame_time;
-    return animations_.tick(frame_time);
+    auto changed = animations_.tick(frame_time);
+    for(auto* auxiliary : auxiliaries_) changed += auxiliary->tick_auxiliary(frame_time);
+    return changed;
+}
+
+std::optional<animation::AnimationTime> ButtonComponentHost::next_deadline() const {
+    auto next = animations_.next_deadline();
+    for(const auto* auxiliary : auxiliaries_) {
+        const auto candidate = auxiliary->next_auxiliary_deadline();
+        if(candidate && (!next || *candidate < *next)) next = candidate;
+    }
+    return next;
 }
 
 bool ButtonComponentHost::layout_and_synchronize(

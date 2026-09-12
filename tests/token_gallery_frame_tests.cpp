@@ -374,8 +374,7 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
     HeadlessSubmitter submitter(
         *fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
     submitter.set_viewport({640.0F, 450.0F});
-    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-        fixture.host->animations());
+    auto& animation_deadlines = *fixture.host;
     ryn::runtime::OnDemandFrameLoop loop(
         fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
@@ -723,8 +722,7 @@ void test_token_gallery_frame_contract() {
     IdleEvents events;
     HeadlessSubmitter submitter(
         *fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
-    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-        fixture.host->animations());
+    auto& animation_deadlines = *fixture.host;
     ryn::runtime::OnDemandFrameLoop loop(
         fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,

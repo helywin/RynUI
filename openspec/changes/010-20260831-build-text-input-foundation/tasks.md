@@ -60,8 +60,8 @@
 - [x] 7.2 实现 default/hover/active/focus-visible/disabled/read-only/warning/error retained materials和`motionDurationMid + motionEaseInOut`过渡；通过Default hover仅既有border、pointer focus无额外ring、keyboard focus、warning/error active shadow与rapid retarget tests验证
 - [x] 7.3 实现pointer click nearest caret、drag selection/capture、double-click word、leave/release/cancel和Input内部scroll hit同步；通过CJK/Latin/emoji、prefix/suffix bounds、outside release、multi-pointer和allocation tests验证
 - [x] 7.4 实现keyboard navigation、Shift selection、primary shortcut A/C/X/V/Z/Y、Backspace/Delete、Enter submit、Escape composition cancel与repeat priority；通过Windows/Linux modifier-shaped fake events、IME吞key、read-only/disabled、callback destroy和focus traversal tests验证
-- [ ] 7.5 实现retained caret blink deadline，input/selection时重置，blur/window focus loss/disabled/destroy时移除，Theme motion disabled或reduced时显示静态caret；通过controlled clock、60/120/144 Hz、no polling、last-caret idle与GPU submit diagnostics验证
-- [ ] 7.6 运行Input Token/state、Pointer/Focus/keyboard、clipboard/history、Animation/frame idle、GPU reference和 `git diff --check`；以英文 `feat: add input interactions and tokens` 提交并推送本阶段，核对 remote SHA
+- [x] 7.5 实现retained caret blink deadline，input/selection时重置，blur/window focus loss/disabled/destroy时移除，Theme motion disabled或reduced时显示静态caret；通过controlled clock、60/120/144 Hz、no polling、last-caret idle与GPU submit diagnostics验证
+- [x] 7.6 运行Input Token/state、Pointer/Focus/keyboard、clipboard/history、Animation/frame idle、GPU reference和 `git diff --check`；以英文 `feat: add input interactions and tokens` 提交并推送本阶段，核对 remote SHA
 
 ## 8. 平台通用 Input 集成与 Gallery
 

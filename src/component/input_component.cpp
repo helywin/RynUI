@@ -1,5 +1,6 @@
 #include "component/input_component.hpp"
 #include "component/input_material_transition.hpp"
+#include "component/input_caret_blink.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -52,7 +53,7 @@ struct InputState {
     Signal<runtime::SemanticForeground> slot_foreground{runtime::SemanticForeground{0, 0, 0, 1}};
     theme_runtime::Subscription theme_subscription;
     InputLayoutSnapshot geometry;
-    std::optional<animation::AnimationTime> caret_deadline;
+    InputCaretBlink caret_blink;
     InputDisplayState display;
     std::unique_ptr<InputMaterialTransition> transition;
     text::TextCaretMap carets;
@@ -209,7 +210,7 @@ struct InputPropsAccess {
                 const bool was_focused = current->focused;
                 current->focused = focus.focused;
                 if(!focus.focused) {
-                    current->caret_deadline.reset();
+                    current->caret_blink.stop();
                     current->selecting_pointer.reset();
                     owner.host_->pointer().cancel_pointer_interaction(current->mounted.interaction);
                     current->hovering_pointers = 0;
@@ -314,7 +315,7 @@ struct InputPropsAccess {
             owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material);
         });
         const auto eligibility = [](auto& owner, auto& current) {
-            if(current.disabled || current.read_only) current.caret_deadline.reset();
+            if(current.disabled || current.read_only) current.caret_blink.stop();
             if(current.disabled && current.focused) {
                 current.focused = false;
                 current.selecting_pointer.reset();
@@ -372,7 +373,7 @@ void InputComponentHost::dispose() noexcept {
 }
 void InputComponentHost::set_window_active(bool active) {
     if(!active) for(const auto& mounted : mounted_) {
-        if(auto* state = host_->components().state<InputState>(mounted.component)) state->caret_deadline.reset();
+        if(auto* state = host_->components().state<InputState>(mounted.component)) state->caret_blink.stop();
     }
     static_cast<void>(sessions_.set_window_active(active));
     host_->set_window_active(active);
@@ -394,6 +395,7 @@ void InputComponentHost::invalidate(runtime::ComponentId component, runtime::Dir
     if(auto* current = host_->components().state<InputState>(component)) {
         host_->dirty().invalidate(current->mounted.node, flags);
         if(runtime::has_any(flags, runtime::DirtyFlags::Material)) {
+            update_caret(component);
             const auto& theme = host_->components().theme_scope(component)->snapshot();
             const auto values = material_values(*current, derive_input_tokens(theme));
             if(current->transition) {
@@ -415,6 +417,24 @@ void InputComponentHost::apply_material_transition(runtime::ComponentId componen
 }
 void InputComponentHost::synchronize_auxiliary_motion() {
     for(const auto& mounted : mounted_) invalidate(mounted.component, runtime::DirtyFlags::Material);
+}
+void InputComponentHost::update_caret(runtime::ComponentId component, bool reset) {
+    auto* state = host_->components().state<InputState>(component);
+    if(!state) return;
+    const bool eligible = state->focused && !state->disabled && !state->read_only && host_->focus().state().window_active;
+    const auto policy = animation::resolve_motion_policy(host_->components().theme_scope(component)->snapshot(), host_->motion_preference());
+    if(state->caret_blink.configure(eligible, policy.enabled() && !policy.reduced(), host_->animation_time(), reset))
+        host_->dirty().invalidate(state->mounted.node, runtime::DirtyFlags::Geometry);
+}
+std::size_t InputComponentHost::tick_auxiliary(animation::AnimationTime now) {
+    std::size_t changed{};
+    for(const auto& mounted : mounted_) {
+        if(auto* state = host_->components().state<InputState>(mounted.component); state && state->caret_blink.tick(now)) {
+            host_->dirty().invalidate_in_frame(mounted.node, runtime::DirtyFlags::Material);
+            ++changed;
+        }
+    }
+    return changed;
 }
 void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input::PointerDispatchContext& context) {
     auto* state = host_->components().state<InputState>(component);
@@ -455,6 +475,7 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
         check(event.click_count == 2 ? editor.select_word(byte) : editor.place(byte));
         if(context.capture_pointer()) state->selecting_pointer = event.pointer;
         state->last_selection_position = {event.x, event.y};
+        update_caret(component, true);
     } else {
         // A release at the last position preserves a double-click word selection.
         if(state->last_selection_position != runtime::Point{event.x, event.y}) check(editor.place(byte, true));
@@ -494,6 +515,7 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
     const bool deletion = plain && (event.key == Key::backspace || event.key == Key::delete_forward);
     if(!shortcut && !navigation && !deletion && event.key != Key::enter && event.key != Key::space) return false;
     if(event.action == input::KeyAction::up) return true;
+    update_caret(component, true);
     if(event.key == Key::space) return true; // Only TextCommitted inserts characters.
     if(event.key == Key::enter) {
         if(plain && !event.repeat) submit(component);
@@ -573,7 +595,10 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
         host_->layout().set_intrinsic_revision(state->viewport, revisions.content + revisions.layout);
         invalidate(component, measure_layout ? text_dirty : runtime::DirtyFlags::Geometry);
     }
-    if(changed.geometry_changed) invalidate(component, runtime::DirtyFlags::Geometry);
+    if(changed.geometry_changed) {
+        invalidate(component, runtime::DirtyFlags::Geometry);
+        update_caret(component, true);
+    }
     if(measure_layout && state->measured_value_revision != editor.revision()) {
         state->measured_value_revision = editor.revision();
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
@@ -609,15 +634,14 @@ bool InputComponentHost::set_caret_deadline(runtime::ComponentId component,
     auto* state = host_->components().state<InputState>(component);
     if(!state || (deadline && (!state->focused || state->disabled || state->read_only
         || !host_->focus().state().window_active))) return false;
-    if(state->caret_deadline == deadline) return false;
-    state->caret_deadline = deadline;
-    return true;
+    return state->caret_blink.override_deadline(deadline);
 }
 std::optional<animation::AnimationTime> InputComponentHost::next_caret_deadline() const {
     std::optional<animation::AnimationTime> next;
     for(const auto& mounted : mounted_) {
         const auto* state = host_->components().state<InputState>(mounted.component);
-        if(state && state->caret_deadline && (!next || *state->caret_deadline < *next)) next = state->caret_deadline;
+        const auto candidate = state ? state->caret_blink.deadline() : std::nullopt;
+        if(candidate && (!next || *candidate < *next)) next = candidate;
     }
     return next;
 }
@@ -744,7 +768,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             clipped_quad(state->geometry.caret,
                 state->geometry.clip, window, channels(presentation.colors[4]),
                 state->focused && !state->disabled && !state->read_only
-                    && host_->focus().state().window_active ? 1.0F : 0.0F),
+                    && host_->focus().state().window_active && state->caret_blink.visible() ? 1.0F : 0.0F),
         };
         static_cast<void>(host_->button_scene().update_surface(state->overlay_surface, overlays));
         text_scene.set_color(state->text_scene, foreground);
@@ -819,6 +843,8 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
 }
 input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& event) {
     auto result = sessions_.dispatch(event);
+    if(result) for(const auto& mounted : mounted_)
+        if(mounted.editor == event.session.owner) update_caret(mounted.component, true);
     if(result.value_changed) notify_change(event.session.owner);
     else if(result) for(const auto& mounted : mounted_)
         if(mounted.editor == event.session.owner) update_text(mounted.component, false);
@@ -826,7 +852,10 @@ input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& e
 }
 input::TextEditResult InputComponentHost::dispatch(const input::CompositionChanged& event) {
     auto result = sessions_.dispatch(event);
-    if(result) for(const auto& mounted : mounted_) if(mounted.editor == event.session.owner) update_text(mounted.component, false);
+    if(result) for(const auto& mounted : mounted_) if(mounted.editor == event.session.owner) {
+        update_caret(mounted.component, true);
+        update_text(mounted.component, false);
+    }
     return result;
 }
 input::TextEditResult InputComponentHost::dispatch(const input::CandidatesChanged& event) { return sessions_.dispatch(event); }

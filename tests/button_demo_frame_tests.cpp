@@ -431,8 +431,7 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     ControlledInputEvents events(*fixture.host, fixture.frames);
     HeadlessButtonSubmitter submitter(
         *fixture.host, fixture.text_scene, gpu, draw);
-    ryn::runtime::AnimationFrameDeadlineSource animation_deadlines(
-        fixture.host->animations());
+    auto& animation_deadlines = *fixture.host;
     ryn::runtime::OnDemandFrameLoop loop(
         fixture.frames, events, submitter, animation_deadlines, 5);
 

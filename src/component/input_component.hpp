@@ -58,7 +58,7 @@ public:
     [[nodiscard]] InputTextLayers text_layers(runtime::ComponentId) const;
     [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
     [[nodiscard]] const text::TextCaretMap& caret_map(runtime::ComponentId) const;
-    // Retained owner-scoped deadline slot. Blink policy/ticking is layered on it.
+    // Internal deadline injection seam for controlled-clock/lifecycle tests.
     bool set_caret_deadline(runtime::ComponentId, std::optional<animation::AnimationTime>);
     [[nodiscard]] std::optional<animation::AnimationTime> next_caret_deadline() const;
 private:
@@ -71,6 +71,9 @@ private:
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
     bool dispatch_keyboard(runtime::ComponentId, const input::KeyboardInputEvent&);
     void synchronize_auxiliary_motion() override;
+    void update_caret(runtime::ComponentId, bool reset = false);
+    std::size_t tick_auxiliary(animation::AnimationTime) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override { return next_caret_deadline(); }
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
     ButtonComponentHost* host_;

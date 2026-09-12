@@ -97,6 +97,9 @@ public:
     explicit DirtyQueues(NodeStore& nodes, FrameRequestState* frames = nullptr) noexcept;
 
     void invalidate(NodeId id, DirtyFlags flags);
+    // For deadline sampling inside an already scheduled frame: preserve dirty
+    // domains without requesting a redundant frame after this one.
+    void invalidate_in_frame(NodeId id, DirtyFlags flags);
     void invalidate_subtree(NodeId root, DirtyFlags flags);
     void clear() noexcept;
 
@@ -110,6 +113,7 @@ public:
     [[nodiscard]] const std::vector<NodeId>& animation_nodes() const noexcept;
 
 private:
+    void invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame);
     [[nodiscard]] NodeId layout_root_for(NodeId id) const;
     static void enqueue_unique(std::vector<NodeId>& queue, NodeId id);
 
