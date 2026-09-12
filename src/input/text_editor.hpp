@@ -2,6 +2,7 @@
 
 #include "input/text_boundary.hpp"
 #include "input/text_input_owner.hpp"
+#include "input/text_input_events.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -51,6 +52,23 @@ struct TextEditorDiagnostics final {
     std::uint64_t truncated{};
 };
 
+class TextEditorObserver {
+public:
+    virtual ~TextEditorObserver() = default;
+    virtual void before_destroy(TextInputOwnerId) noexcept = 0;
+    virtual void eligibility_changed(TextInputOwnerId) noexcept = 0;
+};
+
+struct TextCompositionView {
+    std::string_view text;
+    TextScalarRange selection;
+    TextSelection replacement;
+    std::span<const String> candidates;
+    std::optional<std::size_t> selected_candidate;
+    CandidateOrientation orientation{CandidateOrientation::vertical};
+    bool active{};
+};
+
 // Owned by TextEditorStore. Never retain a reference across destroy; delayed
 // work resolves TextInputOwnerId again through the store before dispatching.
 class TextEditorState final {
@@ -70,6 +88,11 @@ public:
     [[nodiscard]] bool read_only() const;
     void set_eligibility(bool disabled, bool read_only);
     void reserve(std::size_t bytes);
+    [[nodiscard]] TextCompositionView composition() const;
+    [[nodiscard]] TextEditResult update_composition(const CompositionChanged& event);
+    [[nodiscard]] TextEditResult update_candidates(const CandidatesChanged& event);
+    [[nodiscard]] TextEditResult commit_text(std::string_view text);
+    void cancel_composition();
 
     // Authoritative value replacement bypasses edit eligibility, but uses the
     // same normalization/limits/atomic publication as a committed edit.
@@ -106,6 +129,15 @@ private:
     TextSelection selection_;
     TextEditorLimits limits_;
     TextEditorDiagnostics diagnostics_;
+    TextEditorObserver* observer_{};
+    std::string composition_text_;
+    std::string pending_composition_text_;
+    std::vector<String> candidates_;
+    TextScalarRange composition_selection_;
+    TextSelection composition_replacement_;
+    std::optional<std::size_t> selected_candidate_;
+    CandidateOrientation candidate_orientation_{CandidateOrientation::vertical};
+    bool composing_{};
     std::uint64_t revision_{};
     bool disabled_{};
     bool read_only_{};
@@ -113,6 +145,14 @@ private:
 
 class TextEditorStore final {
 public:
+    TextEditorStore() = default;
+    TextEditorStore(const TextEditorStore&) = delete;
+    TextEditorStore& operator=(const TextEditorStore&) = delete;
+    TextEditorStore(TextEditorStore&&) = delete;
+    TextEditorStore& operator=(TextEditorStore&&) = delete;
+    // A store belongs to one window. The observer must detach before the store dies.
+    void attach_observer(TextEditorObserver& observer);
+    void detach_observer(TextEditorObserver& observer);
     void reserve(std::size_t owners);
     [[nodiscard]] TextInputOwnerId create(std::string_view initial = {}, TextEditorLimits limits = {});
     bool destroy(TextInputOwnerId id);
@@ -131,6 +171,7 @@ private:
     std::thread::id owner_thread_{std::this_thread::get_id()};
     std::vector<Slot> slots_;
     std::size_t size_{};
+    TextEditorObserver* observer_{};
 };
 
 } // namespace ryn::input

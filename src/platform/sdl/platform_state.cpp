@@ -11,6 +11,48 @@ namespace {
 
 class SdlPlatformApi final : public PlatformApi {
 public:
+    std::uint64_t ticks_ns() const noexcept override { return SDL_GetTicksNS(); }
+    std::uint32_t window_id(PlatformWindowHandle window) const noexcept override {
+        return SDL_GetWindowID(static_cast<SDL_Window*>(window));
+    }
+    bool start_text_input(PlatformWindowHandle window, const input::TextInputProperties& value) noexcept override {
+        SDL_TextInputType type;
+        switch(value.type) {
+        case input::TextInputType::text: type = SDL_TEXTINPUT_TYPE_TEXT; break;
+        case input::TextInputType::name: type = SDL_TEXTINPUT_TYPE_TEXT_NAME; break;
+        case input::TextInputType::email: type = SDL_TEXTINPUT_TYPE_TEXT_EMAIL; break;
+        case input::TextInputType::username: type = SDL_TEXTINPUT_TYPE_TEXT_USERNAME; break;
+        case input::TextInputType::number: type = SDL_TEXTINPUT_TYPE_NUMBER; break;
+        default: return false;
+        }
+        SDL_Capitalization capitalization;
+        switch(value.capitalization) {
+        case input::TextCapitalization::none: capitalization = SDL_CAPITALIZE_NONE; break;
+        case input::TextCapitalization::sentences: capitalization = SDL_CAPITALIZE_SENTENCES; break;
+        case input::TextCapitalization::words: capitalization = SDL_CAPITALIZE_WORDS; break;
+        case input::TextCapitalization::letters: capitalization = SDL_CAPITALIZE_LETTERS; break;
+        default: return false;
+        }
+        const auto props = SDL_CreateProperties();
+        if(!props) return false;
+        const bool result = SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, type)
+            && SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, capitalization)
+            && SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, value.autocorrect)
+            && SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false)
+            && SDL_StartTextInputWithProperties(static_cast<SDL_Window*>(window), props);
+        SDL_DestroyProperties(props);
+        return result;
+    }
+    bool stop_text_input(PlatformWindowHandle window) noexcept override {
+        return SDL_StopTextInput(static_cast<SDL_Window*>(window));
+    }
+    bool cancel_composition(PlatformWindowHandle window) noexcept override {
+        return SDL_ClearComposition(static_cast<SDL_Window*>(window));
+    }
+    bool set_text_input_area(PlatformWindowHandle window, const input::WindowTextInputArea& value) noexcept override {
+        const SDL_Rect rect{value.x, value.y, value.width, value.height};
+        return SDL_SetTextInputArea(static_cast<SDL_Window*>(window), &rect, value.cursor);
+    }
     bool init_video() override {
         return SDL_Init(SDL_INIT_VIDEO);
     }
@@ -166,6 +208,7 @@ PlatformState::PlatformState(PlatformApi& api)
 }
 
 PlatformState::~PlatformState() {
+    if(text_session_.valid() || text_stop_pending_) static_cast<void>(stop());
     if (window_claimed_) {
         api_->release_window(gpu_device_, window_);
     }
@@ -247,8 +290,12 @@ bool PlatformState::poll_quit_requested() {
 const PlatformEvents& PlatformState::poll_events() {
     require_owner_thread();
     events_.clear();
-    api_->poll_events(window_, events_);
+    events_.text_session = text_session_;
+    events_.text_started_at = text_started_at_;
+    events_.window_id = api_->window_id(window_);
     ++event_diagnostics_.poll_calls;
+    try { api_->poll_events(window_, events_); }
+    catch(...) { record_event_pump(); throw; }
     record_event_pump();
     return events_;
 }
@@ -256,8 +303,12 @@ const PlatformEvents& PlatformState::poll_events() {
 const PlatformEvents& PlatformState::wait_events(std::uint32_t timeout_milliseconds) {
     require_owner_thread();
     events_.clear();
-    api_->wait_events(window_, timeout_milliseconds, events_);
+    events_.text_session = text_session_;
+    events_.text_started_at = text_started_at_;
+    events_.window_id = api_->window_id(window_);
     ++event_diagnostics_.wait_calls;
+    try { api_->wait_events(window_, timeout_milliseconds, events_); }
+    catch(...) { record_event_pump(); throw; }
     record_event_pump();
     return events_;
 }
@@ -271,6 +322,33 @@ void PlatformState::delay(std::uint32_t milliseconds) noexcept {
     api_->delay(milliseconds);
 }
 
+bool PlatformState::start(input::TextInputSessionStamp stamp, const input::TextInputProperties& props) noexcept {
+    if(!is_owner_thread() || !stamp.valid() || text_session_.valid() || text_stop_pending_) return false;
+    const auto started_at = api_->ticks_ns();
+    if(!api_->start_text_input(window_, props)) {
+        text_stop_pending_ = !api_->stop_text_input(window_);
+        return false;
+    }
+    text_session_ = stamp;
+    text_started_at_ = started_at;
+    return true;
+}
+bool PlatformState::stop() noexcept {
+    if(!is_owner_thread()) return false;
+    if(!text_session_.valid() && !text_stop_pending_) return true;
+    text_session_ = {};
+    text_stop_pending_ = !api_->stop_text_input(window_);
+    return !text_stop_pending_;
+}
+bool PlatformState::cancel() noexcept {
+    return is_owner_thread() && api_->cancel_composition(window_);
+}
+bool PlatformState::set_area(const input::WindowTextInputArea& area) noexcept {
+    if(!is_owner_thread() || !text_session_.valid() || area.x < 0 || area.y < 0
+        || area.width < 0 || area.height < 0 || area.cursor < 0 || area.cursor > area.width) return false;
+    return api_->set_text_input_area(window_, area);
+}
+
 void PlatformState::require_owner_thread() const {
     if (!is_owner_thread()) {
         throw std::logic_error("Platform event pump must run on its owner thread");
@@ -278,6 +356,7 @@ void PlatformState::require_owner_thread() const {
 }
 
 void PlatformState::record_event_pump() {
+    event_diagnostics_.rejected_text_events += events_.rejected_text_events;
     event_diagnostics_.normalized_input_events +=
         events_.input.size() + events_.input.coalesced_move_count();
     event_diagnostics_.coalesced_pointer_moves += events_.input.coalesced_move_count();

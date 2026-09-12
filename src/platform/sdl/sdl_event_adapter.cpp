@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace ryn::detail {
@@ -27,6 +29,25 @@ void append_if_valid(PlatformEvents& result, PlatformInputEvent event) {
     if (input::is_valid(event)) {
         static_cast<void>(result.input.append(std::move(event)));
     }
+}
+
+std::string_view bounded_text(const char* text) {
+    if(!text) throw std::invalid_argument("Null text event payload");
+    std::size_t bytes = 0;
+    while(bytes <= input::text_event_max_bytes && text[bytes] != '\0') ++bytes;
+    if(bytes > input::text_event_max_bytes) throw std::length_error("Text event exceeds payload limit");
+    return {text, bytes};
+}
+
+String owned_text(const char* text) {
+    auto parsed = String::from_utf8(bounded_text(text));
+    if(!parsed) throw std::invalid_argument("Text event contains invalid UTF-8");
+    return std::move(parsed).value();
+}
+
+bool text_window_matches(const PlatformEvents& result, Uint32 window, Uint64 timestamp) noexcept {
+    return (result.window_id == 0 || result.window_id == window)
+        && (timestamp == 0 || timestamp >= result.text_started_at);
 }
 
 std::optional<Key> map_key(SDL_Keycode key) noexcept {
@@ -140,7 +161,7 @@ void append_logical_resize(
 
 } // namespace
 
-void SdlEventAdapter::merge(
+static void merge_event(
     PlatformEvents& result,
     const SDL_Event& event,
     SdlWindowMetrics& metrics) {
@@ -164,6 +185,47 @@ void SdlEventAdapter::merge(
     }
 
     switch (event.type) {
+    case SDL_EVENT_TEXT_INPUT: {
+        if(!text_window_matches(result, event.text.windowID, event.text.timestamp)) return;
+        result.input.append(input::TextCommitted{owned_text(event.text.text), result.text_session});
+        return;
+    }
+    case SDL_EVENT_TEXT_EDITING: {
+        if(!text_window_matches(result, event.edit.windowID, event.edit.timestamp)) return;
+        if(event.edit.start < -1 || event.edit.length < -1)
+            throw std::invalid_argument("Invalid composition character range");
+        const auto range = event.edit.start == -1 || event.edit.length == -1
+            ? input::TextScalarRange{0, 0, false}
+            : input::TextScalarRange{static_cast<std::size_t>(event.edit.start),
+                static_cast<std::size_t>(event.edit.length), true};
+        result.input.append(input::CompositionChanged{owned_text(event.edit.text), range, result.text_session});
+        return;
+    }
+    case SDL_EVENT_TEXT_EDITING_CANDIDATES: {
+        if(!text_window_matches(result, event.edit_candidates.windowID, event.edit_candidates.timestamp)) return;
+        const auto& source = event.edit_candidates;
+        if(source.num_candidates < 0 || source.num_candidates > static_cast<Sint32>(input::text_event_max_candidates)
+            || (source.num_candidates != 0 && !source.candidates)
+            || source.selected_candidate < -1 || source.selected_candidate >= source.num_candidates)
+            throw std::invalid_argument("Invalid candidate snapshot");
+        std::size_t bytes = 0;
+        for(Sint32 index = 0; index < source.num_candidates; ++index) {
+            const auto size = bounded_text(source.candidates[index]).size();
+            if(size > input::text_event_max_bytes - bytes)
+                throw std::length_error("Candidate snapshot exceeds payload limit");
+            bytes += size;
+        }
+        input::CandidatesChanged target;
+        target.session = result.text_session;
+        target.orientation = source.horizontal ? input::CandidateOrientation::horizontal
+                                               : input::CandidateOrientation::vertical;
+        if(source.selected_candidate >= 0) target.selected = static_cast<std::size_t>(source.selected_candidate);
+        target.candidates.reserve(static_cast<std::size_t>(source.num_candidates));
+        for(Sint32 index = 0; index < source.num_candidates; ++index)
+            target.candidates.push_back(owned_text(source.candidates[index]));
+        result.input.append(std::move(target));
+        return;
+    }
     case SDL_EVENT_MOUSE_WHEEL: {
         const auto direction = wheel_direction_sign(event.wheel.direction);
         if (direction.has_value()) {
@@ -256,6 +318,15 @@ void SdlEventAdapter::merge(
         return;
     default:
         return;
+    }
+}
+
+void SdlEventAdapter::merge(PlatformEvents& result, const SDL_Event& event, SdlWindowMetrics& metrics) {
+    try { merge_event(result, event, metrics); }
+    catch(...) {
+        if(event.type == SDL_EVENT_TEXT_INPUT || event.type == SDL_EVENT_TEXT_EDITING
+            || event.type == SDL_EVENT_TEXT_EDITING_CANDIDATES) ++result.rejected_text_events;
+        throw;
     }
 }
 

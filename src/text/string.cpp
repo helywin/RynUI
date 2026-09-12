@@ -120,11 +120,9 @@ template <typename Character>
 
 template <typename Character>
 [[nodiscard]] std::u8string copy_utf8(std::basic_string_view<Character> value) {
-    std::u8string copy(value.size(), u8'\0');
-    if (!value.empty()) {
-        std::memcpy(copy.data(), value.data(), value.size());
-    }
-    return copy;
+    // Guaranteed prvalue elision avoids a potentially allocating Debug move
+    // when optional NRVO is disabled by the toolchain configuration.
+    return std::u8string(value.begin(), value.end());
 }
 
 struct RepairStorage final {
@@ -239,7 +237,7 @@ std::u8string String::copy_literal(const char8_t* literal, std::size_t extent) {
             + std::to_string(error.byte_offset) + ": "
             + error_kind_name(error.kind));
     }
-    return std::move(parsed).value().value_;
+    return std::u8string(parsed.value().utf8());
 }
 
 Utf8ParseResult::Utf8ParseResult(String value) : storage_(std::move(value)) {}

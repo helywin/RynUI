@@ -17,6 +17,9 @@ list(APPEND contract_headers
     ${lower_layer_headers}
     "${RYNUI_SOURCE_DIR}/src/input/platform_input.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_input_events.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_input_platform.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_input_session.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_editor.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_input_owner.hpp")
 
 foreach(contract_header IN LISTS contract_headers)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input/platform_input.hpp"
+#include "input/text_input_platform.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -73,22 +74,31 @@ private:
 };
 
 struct PlatformEvents {
+    input::TextInputSessionStamp text_session;
+    std::uint32_t window_id{};
+    std::uint64_t text_started_at{};
     bool quit_requested{false};
     bool frame_requested{false};
     bool redraw_requested{false};
     std::uint64_t suppressed_compatibility_mouse_events{0};
+    std::uint64_t rejected_text_events{0};
     input::PlatformInputBatch input;
 
     void clear() noexcept {
+        text_session = {};
+        window_id = 0;
+        text_started_at = 0;
         quit_requested = false;
         frame_requested = false;
         redraw_requested = false;
         suppressed_compatibility_mouse_events = 0;
+        rejected_text_events = 0;
         input.clear();
     }
 };
 
 struct PlatformEventDiagnostics {
+    std::uint64_t rejected_text_events{0};
     std::uint64_t poll_calls{0};
     std::uint64_t wait_calls{0};
     std::uint64_t normalized_input_events{0};
@@ -105,6 +115,12 @@ struct PlatformEventDiagnostics {
 class PlatformApi {
 public:
     virtual ~PlatformApi() = default;
+    virtual std::uint32_t window_id(PlatformWindowHandle) const noexcept { return 0; }
+    virtual std::uint64_t ticks_ns() const noexcept { return 0; }
+    virtual bool start_text_input(PlatformWindowHandle, const input::TextInputProperties&) noexcept { return false; }
+    virtual bool stop_text_input(PlatformWindowHandle) noexcept { return false; }
+    virtual bool cancel_composition(PlatformWindowHandle) noexcept { return false; }
+    virtual bool set_text_input_area(PlatformWindowHandle, const input::WindowTextInputArea&) noexcept { return false; }
 
     virtual bool init_video() = 0;
     virtual void quit() noexcept = 0;
@@ -143,8 +159,12 @@ public:
 
 struct PlatformCreateResult;
 
-class PlatformState final {
+class PlatformState final : public input::TextInputPlatform {
 public:
+    bool start(input::TextInputSessionStamp, const input::TextInputProperties&) noexcept override;
+    bool stop() noexcept override;
+    bool cancel() noexcept override;
+    bool set_area(const input::WindowTextInputArea&) noexcept override;
     PlatformState(const PlatformState&) = delete;
     PlatformState& operator=(const PlatformState&) = delete;
     PlatformState(PlatformState&&) = delete;
@@ -181,6 +201,9 @@ private:
     bool window_claimed_{false};
     std::thread::id owner_thread_;
     PlatformEvents events_;
+    input::TextInputSessionStamp text_session_;
+    std::uint64_t text_started_at_{};
+    bool text_stop_pending_{};
     PlatformEventDiagnostics event_diagnostics_;
 };
 

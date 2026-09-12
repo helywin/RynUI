@@ -27,6 +27,7 @@ execute_process(
         "-DSDL3_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-sdl3"
         "-DFreetype_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-freetype"
         "-Dharfbuzz_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-harfbuzz"
+        "-Dutf8proc_DIR=${TEST_SOURCE_DIR}/tests/cmake/fake-utf8proc"
         "-DRYNUI_SHADERCROSS_EXECUTABLE=${TEST_SHADERCROSS_EXECUTABLE}"
         "-DRYNUI_SYSTEM_LATIN_FONT_FILE=${TEST_LATIN_FONT}"
         "-DRYNUI_SYSTEM_CJK_FONT_FILE=${TEST_CJK_FONT}"

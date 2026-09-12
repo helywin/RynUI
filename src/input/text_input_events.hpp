@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace ryn::input {
@@ -45,6 +46,30 @@ struct CompositionChanged {
 };
 
 struct CandidatesChanged {
+    // MSVC Debug vector's default/move constructors allocate iterator proxies
+    // despite noexcept. Use its throwing count constructor then swap, allowing
+    // allocation failure to propagate out of event preparation, not terminate.
+    CandidatesChanged() : candidates(std::size_t{0}) {}
+    CandidatesChanged(std::vector<String> values, std::optional<std::size_t> selected_value = {},
+        CandidateOrientation direction = CandidateOrientation::vertical,
+        TextInputSessionStamp stamp = {})
+        : candidates(std::size_t{0}), selected(selected_value), orientation(direction), session(stamp) {
+        candidates.swap(values);
+    }
+    CandidatesChanged(const CandidatesChanged&) = default;
+    CandidatesChanged& operator=(const CandidatesChanged&) = default;
+    CandidatesChanged(CandidatesChanged&& other)
+        : candidates(std::size_t{0}), selected(other.selected), orientation(other.orientation), session(other.session) {
+        candidates.swap(other.candidates);
+        other.selected.reset();
+    }
+    CandidatesChanged& operator=(CandidatesChanged&& other) noexcept {
+        candidates.swap(other.candidates);
+        std::swap(selected, other.selected);
+        std::swap(orientation, other.orientation);
+        std::swap(session, other.session);
+        return *this;
+    }
     std::vector<String> candidates;
     std::optional<std::size_t> selected;
     CandidateOrientation orientation{CandidateOrientation::vertical};

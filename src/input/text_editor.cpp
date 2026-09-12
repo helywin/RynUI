@@ -28,11 +28,18 @@ TextEditorLimits TextEditorState::limits() const { ensure_owner_thread(); return
 bool TextEditorState::disabled() const { ensure_owner_thread(); return disabled_; }
 bool TextEditorState::read_only() const { ensure_owner_thread(); return read_only_; }
 void TextEditorState::set_eligibility(bool disabled, bool read_only) {
-    ensure_owner_thread(); disabled_ = disabled; read_only_ = read_only;
+    ensure_owner_thread();
+    if(disabled_ == disabled && read_only_ == read_only) return;
+    disabled_ = disabled; read_only_ = read_only;
+    if(disabled_ || read_only_) cancel_composition();
+    if(observer_) observer_->eligibility_changed(id_);
 }
 std::size_t TextEditorState::retained_capacity() const {
     ensure_owner_thread();
+    std::size_t candidate_capacity = candidates_.capacity() * sizeof(String);
+    for(const auto& candidate : candidates_) candidate_capacity += candidate.size_bytes();
     return value_.capacity() + pending_value_.capacity() + normalized_.capacity()
+        + composition_text_.capacity() + pending_composition_text_.capacity() + candidate_capacity
         + sizeof(std::size_t) * (boundaries_.retained_capacity()
             + pending_boundaries_.retained_capacity() + inserted_boundaries_.retained_capacity());
 }
@@ -41,6 +48,8 @@ void TextEditorState::reserve(std::size_t bytes) {
     value_.reserve(bytes);
     pending_value_.reserve(bytes);
     normalized_.reserve(bytes);
+    composition_text_.reserve(bytes);
+    pending_composition_text_.reserve(bytes);
     boundaries_.reserve(bytes);
     pending_boundaries_.reserve(bytes);
     inserted_boundaries_.reserve(bytes);
@@ -121,7 +130,9 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
 
 TextEditResult TextEditorState::set_value(std::string_view text) {
     ensure_owner_thread();
-    return replace({0, value_.size()}, text, true);
+    const auto result = replace({0, value_.size()}, text, true);
+    if(result && result.value_changed) cancel_composition();
+    return result;
 }
 TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
     ensure_owner_thread();
@@ -133,24 +144,32 @@ TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
 }
 TextEditResult TextEditorState::replace_selection(std::string_view text) {
     ensure_owner_thread();
-    return replace(selection_, text, false);
+    const auto result = replace(selection_, text, false);
+    if(result) cancel_composition();
+    return result;
 }
 TextEditResult TextEditorState::erase_backward() {
     ensure_owner_thread();
     auto range = selection_;
     if(range.empty()) { range.anchor = boundaries_.previous(range.caret); }
-    return replace(range, {}, false);
+    const auto result = replace(range, {}, false);
+    if(result) cancel_composition();
+    return result;
 }
 TextEditResult TextEditorState::erase_forward() {
     ensure_owner_thread();
     auto range = selection_;
     if(range.empty()) { range.caret = boundaries_.next(range.caret); }
-    return replace(range, {}, false);
+    const auto result = replace(range, {}, false);
+    if(result) cancel_composition();
+    return result;
 }
 TextEditResult TextEditorState::select(TextSelection selection) {
     ensure_owner_thread();
     if(disabled_) { return reject(TextEditError::disabled); }
-    return publish_selection({boundaries_.floor(selection.anchor), boundaries_.floor(selection.caret)});
+    const auto result = publish_selection({boundaries_.floor(selection.anchor), boundaries_.floor(selection.caret)});
+    if(result.selection_changed) cancel_composition();
+    return result;
 }
 TextEditResult TextEditorState::place(std::size_t byte, bool extend) {
     ensure_owner_thread();
@@ -208,12 +227,14 @@ TextInputOwnerId TextEditorStore::create(std::string_view initial, TextEditorLim
     auto state = std::unique_ptr<TextEditorState>(new TextEditorState(id, initial, limits));
     if(index == slots_.size()) { slots_.emplace_back(); }
     slots_[index].state = std::move(state);
+    slots_[index].state->observer_ = observer_;
     ++size_;
     return id;
 }
 bool TextEditorStore::destroy(TextInputOwnerId id) {
     ensure_owner_thread();
     if(find(id) == nullptr) { return false; }
+    if(observer_) observer_->before_destroy(id);
     auto& slot = slots_[id.index];
     slot.state.reset();
     ++slot.generation; // zero permanently retires an exhausted generation.
@@ -234,5 +255,74 @@ TextEditorState& TextEditorStore::require(TextInputOwnerId id) {
 }
 std::size_t TextEditorStore::size() const { ensure_owner_thread(); return size_; }
 std::size_t TextEditorStore::capacity() const { ensure_owner_thread(); return slots_.capacity(); }
+
+void TextEditorStore::attach_observer(TextEditorObserver& observer) {
+    ensure_owner_thread();
+    if(observer_ && observer_ != &observer) throw std::logic_error("Text editor store already has a session host");
+    observer_ = &observer;
+    for(auto& slot : slots_) if(slot.state) slot.state->observer_ = observer_;
+}
+void TextEditorStore::detach_observer(TextEditorObserver& observer) {
+    ensure_owner_thread();
+    if(observer_ != &observer) return;
+    observer_ = nullptr;
+    for(auto& slot : slots_) if(slot.state) slot.state->observer_ = nullptr;
+}
+
+TextCompositionView TextEditorState::composition() const {
+    ensure_owner_thread();
+    return {composition_text_, composition_selection_, composition_replacement_, candidates_,
+        selected_candidate_, candidate_orientation_, composing_};
+}
+void TextEditorState::cancel_composition() {
+    ensure_owner_thread();
+    composition_text_.clear();
+    candidates_.clear();
+    composition_selection_ = {};
+    composition_replacement_ = {};
+    selected_candidate_.reset();
+    candidate_orientation_ = CandidateOrientation::vertical;
+    composing_ = false;
+}
+TextEditResult TextEditorState::update_composition(const CompositionChanged& event) {
+    ensure_owner_thread();
+    if(disabled_) return reject(TextEditError::disabled);
+    if(read_only_) return reject(TextEditError::read_only);
+    if(!is_valid(event)) return reject(TextEditError::invalid_range);
+    if(event.text.empty()) { cancel_composition(); return {}; }
+    try {
+        pending_composition_text_.assign(event.text.bytes());
+        composition_text_.swap(pending_composition_text_);
+        composition_selection_ = event.selection;
+        if(!composing_) composition_replacement_ = selection_;
+        composing_ = true;
+        return {};
+    } catch(const std::bad_alloc&) { return reject(TextEditError::allocation_failure); }
+    catch(const std::length_error&) { return reject(TextEditError::capacity_exceeded); }
+}
+TextEditResult TextEditorState::update_candidates(const CandidatesChanged& event) {
+    ensure_owner_thread();
+    if(disabled_) return reject(TextEditError::disabled);
+    if(read_only_) return reject(TextEditError::read_only);
+    if(!is_valid(event)) return reject(TextEditError::invalid_range);
+    try {
+        auto pending = event.candidates;
+        candidates_.swap(pending);
+        selected_candidate_ = event.selected;
+        candidate_orientation_ = event.orientation;
+        return {};
+    } catch(const std::bad_alloc&) { return reject(TextEditError::allocation_failure); }
+    catch(const std::length_error&) { return reject(TextEditError::capacity_exceeded); }
+}
+TextEditResult TextEditorState::commit_text(std::string_view text) {
+    ensure_owner_thread();
+    // An empty platform commit is a cancellation, not deletion of selected text.
+    if(disabled_) return reject(TextEditError::disabled);
+    if(read_only_) return reject(TextEditError::read_only);
+    if(text.empty()) { cancel_composition(); return {}; }
+    const auto result = replace(composing_ ? composition_replacement_ : selection_, text, false);
+    if(result) cancel_composition();
+    return result;
+}
 
 } // namespace ryn::input
