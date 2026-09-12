@@ -327,6 +327,10 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
             static_cast<void>(non_negative_finite(
                 model.gap,
                 "Horizontal content gap must be finite and non-negative"));
+            if constexpr (std::is_same_v<Model, InputContentLayout>) {
+                static_cast<void>(non_negative_finite(model.padding_block,
+                    "Input block padding must be finite and non-negative"));
+            }
             if constexpr (std::is_same_v<Model, HorizontalContentLayout>) {
                 static_cast<void>(non_negative_finite(
                     model.loading_indicator_size,
@@ -808,7 +812,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
             const float frame = 2.0F * (current.padding_inline + current.border_width);
             const float inner_width = subtract_extent(content_constraint.max_width, frame);
             const float height = std::min(current.control_height, content_constraint.max_height);
-            const float inner_height = subtract_extent(height, 2.0F * current.border_width);
+            const float inner_height = subtract_extent(height, 2.0F * (current.border_width + current.padding_block));
             const float gaps = current.gap * (static_cast<float>(current.prefix) + static_cast<float>(current.suffix));
             auto remaining = subtract_extent(inner_width, gaps);
             const auto prefix = measure_node(node.children[0], {0, current.prefix ? remaining : 0, 0, inner_height});
@@ -1042,7 +1046,7 @@ void LayoutEngine::place_node(
         } else if constexpr (std::is_same_v<Model, InputContentLayout>) {
             if(node.children.size() != 3) throw std::logic_error("Input layout requires three slots");
             const auto inset = std::min(node.bounds.width * 0.5F, current.padding_inline + current.border_width);
-            const auto top = std::min(node.bounds.height * 0.5F, current.border_width);
+            const auto top = std::min(node.bounds.height * 0.5F, current.border_width + current.padding_block);
             const auto height = std::max(0.0F, node.bounds.height - 2.0F * top);
             float cursor = node.bounds.x + inset;
             const auto end = node.bounds.x + node.bounds.width - inset;

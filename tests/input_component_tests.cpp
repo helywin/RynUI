@@ -1,5 +1,6 @@
 #include "component/input_component.hpp"
 #include "support/input_fixture.hpp"
+#include "theme/input_tokens.hpp"
 #include <ryn/rynui.hpp>
 #include <iostream>
 #include <array>
@@ -190,6 +191,31 @@ void layout_matrix() {
     static_cast<void>(limits.layout.layout(root, {0, 60, 0, 100}));
     require(limits.nodes.require(root).bounds.width == 60, "parent constraint did not dominate min width");
     std::cout << "Input layout simulated-scale cases=" << cases << '\n';
+}
+void token_geometry() {
+    for(const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark, ThemeAlgorithm::Compact}) {
+        for(const auto size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
+            Fixture f;
+            ThemeConfig config; config.algorithms = {algorithm};
+            const auto tokens = detail::derive_input_tokens(resolve_theme(config));
+            const auto expected = tokens.size(size);
+            f.inputs.mount(Content{[&] {
+                Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                    Input(InputProps{}.size(size).defaultValue(u8"input"));
+                }});
+            }});
+            f.synchronize();
+            const auto mounted = f.inputs.mounted_inputs().front();
+            const auto root = f.nodes.require(mounted.node).bounds;
+            const auto geometry = f.inputs.layout_snapshot(mounted.component);
+            require(std::abs(root.height - expected.control_height) < 0.001F
+                && std::abs(geometry.viewport.x - root.x - expected.padding_inline - tokens.border_width) < 0.001F,
+                "Input did not consume locked control height/inline padding");
+            require(geometry.viewport.y >= root.y + tokens.border_width + expected.padding_block - 0.001F
+                && geometry.viewport.height <= expected.line_height + 0.001F,
+                "Input block padding/line height does not bound editable viewport");
+        }
+    }
 }
 void reactive_phases() {
     Fixture f;
@@ -420,6 +446,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

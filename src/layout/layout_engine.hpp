@@ -128,6 +128,7 @@ struct HorizontalContentGeometry final {
 struct InputContentLayout final {
     float control_height{32.0F};
     float padding_inline{11.0F};
+    float padding_block{4.0F};
     float border_width{1.0F};
     float gap{4.0F};
     bool prefix{}, suffix{};

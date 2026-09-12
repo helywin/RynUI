@@ -1,6 +1,7 @@
 #include "component/input_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
+#include "theme/input_tokens.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -313,24 +314,22 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
     if(!state) return;
     const auto& theme = host_->components().theme_scope(component)->snapshot();
-    const auto& map = theme.map();
+    const auto tokens = derive_input_tokens(theme);
+    const auto& size_tokens = tokens.size(state->size);
     auto model = state->layout;
-    model.control_height = state->size == ControlSize::Small ? map.control_height_small
-        : state->size == ControlSize::Large ? map.control_height_large : map.control_height;
-    model.border_width = theme.seed().line_width;
-    model.padding_inline = std::max(0.0F,
-        (state->size == ControlSize::Small ? map.size_xs * 0.5F : map.size_small) - model.border_width);
-    model.gap = map.size_xs * 0.5F;
+    model.control_height = size_tokens.control_height;
+    model.border_width = tokens.border_width;
+    model.padding_inline = size_tokens.padding_inline;
+    model.padding_block = size_tokens.padding_block;
+    model.gap = tokens.affix_padding;
     if(!state->text_scene.valid() || model != state->layout) {
         state->layout = model;
         host_->layout().set_layout(state->mounted.node, model);
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
             | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
-    const bool large = state->size == ControlSize::Large;
     runtime::SemanticTypography typography{theme.text().font_family, theme.text().font_weight,
-        large ? theme.text().font_size * map.font_size_large / map.font_size : theme.text().font_size,
-        large ? theme.text().line_height * map.line_height_large / map.line_height : theme.text().line_height};
+        size_tokens.font_size, size_tokens.line_height};
     auto& scene = host_->text().scene_service();
     if(!state->text_scene.valid()) {
         state->text_scene = scene.create(state->viewport, String{}, host_->text().resolve_fonts(typography),

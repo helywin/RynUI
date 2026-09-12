@@ -4,6 +4,7 @@ add_library(rynui_string STATIC
 
 add_library(rynui_theme STATIC
     theme/design_token.cpp
+    theme/input_tokens.cpp
     theme/theme_runtime.cpp
     theme/theme_snapshot.cpp
 )
