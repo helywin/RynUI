@@ -45,7 +45,7 @@
 
 ## 6. TextCaretMap 与 retained Input scene
 
-- [ ] 6.1 扩展 TextEngine 输出 revision-bound `TextCaretMap`，把 utf8proc grapheme boundary 映射到 HarfBuzz glyph cluster x-range；通过 Latin ligature、combining、CJK fallback、emoji ZWJ、missing glyph、empty与重复 x tests 验证 logical caret/nearest hit
+- [x] 6.1 扩展 TextEngine 输出 revision-bound `TextCaretMap`，把 utf8proc grapheme boundary 映射到 HarfBuzz glyph cluster x-range；通过 Latin ligature、combining、CJK fallback、emoji ZWJ、missing glyph、empty与重复 x tests 验证 logical caret/nearest hit
 - [ ] 6.2 实现 committed + composition display buffer、selection/caret映射、placeholder visibility 与 horizontal caret-visible scroll；通过 composition scalar range、selection across composition、Home/End、value shrink、viewport resize和controlled echo tests验证不重复 shape
 - [ ] 6.3 建立固定 retained scene topology：container/border/effects、selection background、base/selected glyph、placeholder、composition underline与caret，接入 ancestor clip/order；通过 layer identity、opacity hide、destroy/reuse、Theme、clip和 CPU scene reference tests验证steady state不增删 layer
 - [ ] 6.4 接入 Quad/RoundedEffect/Glyph GPU range，验证 selection/glyph/effect draw order、DPI pixel alignment、caret/underline thickness、range upload、deferred retry和 shader contract；四档 scale下不得裁切 glyph、caret、shadow或focus effect

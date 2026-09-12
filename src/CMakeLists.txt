@@ -55,12 +55,14 @@ target_link_libraries(
 
 add_library(rynui_text STATIC
     text/text_engine.cpp
+    text/text_caret_map.cpp
 )
 rynui_configure_cpp_target(rynui_text)
 target_include_directories(rynui_text PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(rynui_text PUBLIC rynui_font rynui_string)
+target_link_libraries(rynui_text PRIVATE rynui_text_boundary)
 
 add_library(rynui_reactive STATIC
     reactive/reactive.cpp
@@ -262,7 +264,7 @@ rynui_assert_direct_dependencies(rynui_animation)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
 rynui_assert_direct_dependencies(
     rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)
-rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
+rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string rynui_text_boundary)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input rynui_string)
 rynui_assert_direct_dependencies(

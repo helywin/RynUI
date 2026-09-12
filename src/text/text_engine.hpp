@@ -16,6 +16,8 @@
 
 namespace ryn::text {
 
+class TextCaretMap;
+
 struct Utf8Scalar {
     char32_t value{};
     std::size_t byte_start{};
@@ -157,6 +159,8 @@ struct TextMeasureResult {
 class TextEngine final {
 public:
     explicit TextEngine(font::FontRuntime& fonts) noexcept;
+    [[nodiscard]] bool map_carets(const ShapedText&, StringView source,
+        std::uint64_t revision, float baseline, TextCaretMap& output) const;
 
     [[nodiscard]] TextShapeResult shape(
         StringView text,

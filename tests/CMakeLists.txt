@@ -545,6 +545,13 @@ add_test(
 )
 
 add_executable(rynui_font_runtime_tests font_runtime_tests.cpp)
+add_executable(rynui_text_caret_map_tests text_caret_map_tests.cpp)
+rynui_configure_cpp_target(rynui_text_caret_map_tests)
+target_link_libraries(rynui_text_caret_map_tests PRIVATE rynui_text rynui_text_boundary)
+target_compile_definitions(rynui_text_caret_map_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.text_caret_map COMMAND rynui_text_caret_map_tests)
 rynui_configure_cpp_target(rynui_font_runtime_tests)
 target_link_libraries(rynui_font_runtime_tests PRIVATE rynui_font)
 target_compile_definitions(
