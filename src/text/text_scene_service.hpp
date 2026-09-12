@@ -75,6 +75,9 @@ public:
         std::uint32_t pixel_size,
         text::TextLayoutConfig layout);
     bool destroy(TextSceneId id);
+    // Independent retained draw range/material, shared shaping ownership.
+    // A view keeps the shaped state alive if its source record is destroyed.
+    [[nodiscard]] TextSceneId create_view(TextSceneId source, runtime::NodeId node);
 
     bool set_content(TextSceneId id, String content);
     bool set_font_chain(
@@ -87,6 +90,9 @@ public:
     bool set_color(TextSceneId id, std::array<float, 4> color);
     bool set_opacity(TextSceneId id, float opacity);
     bool set_placement(TextSceneId id, graphics::GlyphPlacement placement);
+    // Post-rasterization scrolling; callers align the offset to physical pixels.
+    // Unlike placement.translation_pixels, this never changes rasterization phase.
+    bool set_scroll_translation(TextSceneId id, runtime::Point pixels);
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);
@@ -135,6 +141,7 @@ private:
         graphics::GlyphPlacement placement,
         bool request_frame);
     void remap_following(TextSceneId id, std::int64_t offset);
+    std::size_t patch_geometry(Record& record, const graphics::GlyphPlacement& placement);
     void rebuild_ordered_scene();
     static void shift_primitive(
         graphics::GlyphPrimitive& primitive,

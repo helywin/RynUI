@@ -311,6 +311,87 @@ void test_dirty_paths_remain_per_text_and_sparse() {
             "per-Text content, tone, constraint, or placement revision was lost");
 }
 
+void test_scroll_translation_preserves_glyphs() {
+    Fixture fixture;
+    const auto source = fixture.create(ryn::String{u8"Scrolling retained text"});
+    const auto view = fixture.service.create_view(source, fixture.nodes.create_root());
+    auto placement = Fixture::placement(10);
+    require(fixture.service.synchronize(source, placement)
+        && fixture.service.synchronize(view, placement), "scroll fixture failed");
+    const auto initial = fixture.service.primitive(view).instances;
+    const auto glyph = fixture.service.glyph_scene().instances().at(initial.first);
+    const auto rebuilds = fixture.service.counters().ordered_scene_rebuilds;
+    const auto rasterizations = fixture.fonts->counters().rasterizations;
+    for (int index = 0; index < 20000; ++index) {
+        fixture.service.glyph_scene().instances().clear_dirty_ranges();
+        const float scroll = static_cast<float>(index % 200);
+        fixture.service.set_scroll_translation(view, {-scroll, 0});
+        require(fixture.service.synchronize(view), "scroll synchronization failed");
+        const auto& instance = fixture.service.glyph_scene().instances().at(initial.first);
+        require(instance.position_size == glyph.position_size && instance.uv_rect == glyph.uv_rect
+            && instance.clip_bounds == glyph.clip_bounds
+            && instance.translation_opacity[0] == -2.0F * scroll / placement.viewport_pixels.width,
+            "scroll changed glyph shape, raster phase, or clip");
+    }
+    require(fixture.service.primitive(view).instances == initial
+        && fixture.service.counters().ordered_scene_rebuilds == rebuilds
+        && fixture.fonts->counters().rasterizations == rasterizations
+        && fixture.service.text_state(source).counters().shape_count == 1,
+        "scroll rebuilt retained text or atlas");
+    placement.clip_pixels.width *= 0.5F;
+    require(fixture.service.synchronize(view, placement), "scroll clip update failed");
+    const auto offset = fixture.service.glyph_scene().instances().at(initial.first).translation_opacity[0];
+    fixture.service.set_content(source, ryn::String{u8"Replacement scrolling content"});
+    require(fixture.service.synchronize(view), "scroll source replacement failed");
+    require(fixture.service.glyph_scene().instances().at(fixture.service.primitive(view).instances.first)
+        .translation_opacity[0] == offset, "content replacement lost scroll translation");
+    bool rejected{};
+    try { fixture.service.set_scroll_translation(view, {std::numeric_limits<float>::infinity(), 0}); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    require(rejected, "nonfinite scroll accepted");
+}
+
+void test_shared_shape_views() {
+    Fixture fixture;
+    const auto source = fixture.create(ryn::String{u8"Shared 中"});
+    const auto selected = fixture.service.create_view(source, fixture.nodes.create_root());
+    const auto placeholder = fixture.service.create_view(source, fixture.nodes.create_root());
+    const std::array<float, 4> red{1, 0, 0, 1}, blue{0, 0, 1, 1};
+    fixture.service.set_color(source, blue);
+    fixture.service.set_color(selected, red);
+    fixture.service.set_opacity(placeholder, 0);
+    for(const auto id : {source, selected, placeholder})
+        require(fixture.service.synchronize(id, Fixture::placement(10)), "shared view synchronization failed");
+    const auto& read = std::as_const(fixture.service);
+    require(&read.text_state(source) == &read.text_state(selected)
+        && read.text_state(source).counters().shape_count == 1, "text views duplicated shaping");
+    const auto& instances = read.glyph_scene().instances();
+    require(instances.at(read.primitive(source).instances.first).color == blue
+        && instances.at(read.primitive(selected).instances.first).color == red
+        && instances.at(read.primitive(placeholder).instances.first).translation_opacity[2] == 0,
+        "text views shared mutable material");
+    const auto source_range = read.primitive(source).instances;
+    fixture.service.set_opacity(selected, 0.5F);
+    require(fixture.service.synchronize(selected), "selected view material failed");
+    require(read.primitive(source).instances == source_range && read.text_state(source).counters().shape_count == 1,
+        "view material reshaped source");
+    bool rejected{};
+    try { fixture.service.set_content(selected, ryn::String{u8"illegal"}); } catch(const std::logic_error&) { rejected = true; }
+    require(rejected, "view changed shared text");
+    fixture.service.set_content(source, ryn::String{u8"Changed longer text 中文"});
+    require(fixture.service.synchronize(selected) && fixture.service.synchronize(source)
+        && fixture.service.synchronize(placeholder), "views did not follow source revision");
+    require(read.text_state(source).counters().shape_count == 2
+        && read.primitive(selected).instances.count == read.primitive(source).instances.count,
+        "view source update duplicated shape or lost glyph range");
+    require(fixture.service.destroy(source) && fixture.service.synchronize(selected), "view lost owned shaping lifetime");
+    const auto replacement = fixture.create(ryn::String{u8"New owner"});
+    require(source.index == replacement.index && source.generation != replacement.generation
+        && read.text_state(selected).content().bytes() != read.text_state(replacement).content().bytes(),
+        "source reuse replaced existing view ownership");
+    require(fixture.service.destroy(selected) && fixture.service.destroy(placeholder), "view cleanup failed");
+}
+
 } // namespace
 
 int main() {
@@ -318,6 +399,8 @@ int main() {
         test_multiple_texts_share_font_atlas_scene_and_upload_plan();
         test_destroy_compacts_ranges_and_rejects_stale_generations();
         test_dirty_paths_remain_per_text_and_sparse();
+        test_shared_shape_views();
+        test_scroll_translation_preserves_glyphs();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -2,6 +2,7 @@
 #include "text/text_caret_map.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <utility>
 
@@ -27,9 +28,13 @@ namespace {
 struct TextSceneService::Record final {
     runtime::NodeId node;
     std::size_t declaration_order{};
-    std::unique_ptr<text::TextState> state;
+    std::shared_ptr<text::TextState> state;
+    bool view{};
+    text::TextMaterial view_material;
+    std::uint64_t observed_text_revision{};
     graphics::GlyphPrimitive primitive;
     std::optional<graphics::GlyphPlacement> placement;
+    runtime::Point scroll_translation{};
     graphics::GlyphAtlasError last_error{};
     TextSceneRevisions revisions;
     TextSceneRecordCounters counters;
@@ -73,7 +78,7 @@ TextSceneId TextSceneService::create(
         auto record = std::make_unique<Record>();
         record->node = node;
         record->declaration_order = next_declaration_order_++;
-        record->state = std::make_unique<text::TextState>(
+        record->state = std::make_shared<text::TextState>(
             *engine_,
             std::move(content),
             std::move(fallback_chain),
@@ -96,6 +101,29 @@ TextSceneId TextSceneService::create(
             free_slots_.push_back(index);
         } catch (...) {
         }
+        throw;
+    }
+}
+
+TextSceneId TextSceneService::create_view(TextSceneId source, runtime::NodeId node) {
+    ensure_owner_thread();
+    if(!node.valid()) throw std::invalid_argument("Text view requires a valid node");
+    const auto& original = require_record(source);
+    auto state = original.state;
+    const auto material = original.view ? original.view_material : original.state->material();
+    const auto index = acquire_slot();
+    const TextSceneId id{index, slots_[index].generation};
+    try {
+        auto record = std::make_unique<Record>();
+        record->node = node; record->declaration_order = next_declaration_order_++;
+        record->state = std::move(state); record->view = true; record->view_material = material;
+        record->primitive.instances = {static_cast<std::uint32_t>(glyph_scene_.instances().size()), 0};
+        slots_[index].record = std::move(record); ordered_ids_.push_back(id);
+        ++live_records_; ++counters_.creates; frame_requests_->request_frame();
+        return id;
+    } catch(...) {
+        slots_[index].record.reset();
+        try { free_slots_.push_back(index); } catch(...) {}
         throw;
     }
 }
@@ -123,6 +151,7 @@ bool TextSceneService::destroy(TextSceneId id) {
 bool TextSceneService::set_content(TextSceneId id, String content) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared content");
     if (!record.state->set_content(std::move(content))) {
         return false;
     }
@@ -136,6 +165,7 @@ bool TextSceneService::set_font_chain(
     std::vector<font::FontIdentity> fallback_chain) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared fonts");
     if (!record.state->set_font_chain(std::move(fallback_chain))) {
         return false;
     }
@@ -149,6 +179,7 @@ bool TextSceneService::set_pixel_size(
     std::uint32_t pixel_size) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared font size");
     if (!record.state->set_pixel_size(pixel_size)) {
         return false;
     }
@@ -160,6 +191,7 @@ bool TextSceneService::set_pixel_size(
 bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared line height");
     if (!record.state->set_line_height(line_height)) {
         return false;
     }
@@ -171,6 +203,7 @@ bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
 void TextSceneService::request_reshape(TextSceneId id) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot reshape shared content");
     record.state->request_reshape();
     ++record.revisions.content;
     record.content_dirty = true;
@@ -179,6 +212,7 @@ void TextSceneService::request_reshape(TextSceneId id) {
 bool TextSceneService::set_width_constraint(TextSceneId id, float width) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared width");
     if (!record.state->set_width_constraint(width)) {
         return false;
     }
@@ -192,9 +226,10 @@ bool TextSceneService::set_color(
     std::array<float, 4> color) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if (!record.state->set_color(color)) {
-        return false;
-    }
+    if(record.view) {
+        if(record.view_material.color == color) return false;
+        record.view_material.color = color; frame_requests_->request_frame();
+    } else if(!record.state->set_color(color)) return false;
     ++record.revisions.tone;
     record.material_dirty = true;
     return true;
@@ -203,9 +238,11 @@ bool TextSceneService::set_color(
 bool TextSceneService::set_opacity(TextSceneId id, float opacity) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if (!record.state->set_opacity(opacity)) {
-        return false;
-    }
+    if(record.view) {
+        if(!std::isfinite(opacity) || opacity < 0 || opacity > 1) throw std::invalid_argument("Text opacity must be within [0, 1]");
+        if(record.view_material.opacity == opacity) return false;
+        record.view_material.opacity = opacity; frame_requests_->request_frame();
+    } else if(!record.state->set_opacity(opacity)) return false;
     ++record.revisions.tone;
     record.material_dirty = true;
     return true;
@@ -215,6 +252,35 @@ bool TextSceneService::set_placement(
     TextSceneId id,
     graphics::GlyphPlacement placement) {
     return update_placement(id, std::move(placement), true);
+}
+
+bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pixels) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)) {
+        throw std::invalid_argument("Text scroll translation must be finite");
+    }
+    if (record.scroll_translation == pixels) return false;
+    record.scroll_translation = pixels;
+    record.patchable_geometry_dirty = true;
+    ++record.revisions.placement;
+    frame_requests_->request_frame();
+    return true;
+}
+
+std::size_t TextSceneService::patch_geometry(
+    Record& record, const graphics::GlyphPlacement& placement) {
+    const auto clip = placement.clip_pixels;
+    const auto viewport = placement.viewport_pixels;
+    return glyph_scene_.instances().update_geometry(record.primitive.instances, {
+        -1.0F + 2.0F * clip.x / viewport.width,
+        1.0F - 2.0F * clip.y / viewport.height,
+        -1.0F + 2.0F * (clip.x + clip.width) / viewport.width,
+        1.0F - 2.0F * (clip.y + clip.height) / viewport.height,
+    }, {
+        2.0F * record.scroll_translation.x / viewport.width,
+        -2.0F * record.scroll_translation.y / viewport.height,
+    });
 }
 
 bool TextSceneService::update_placement(
@@ -262,8 +328,14 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
 
     auto placement = *record.placement;
-    placement.color = record.state->material().color;
-    placement.opacity = record.state->material().opacity;
+    if(record.view && record.observed_text_revision != record.state->revision()) {
+        record.observed_text_revision = record.state->revision();
+        record.content_dirty = true;
+        ++record.revisions.content;
+    }
+    const auto material = record.view ? record.view_material : record.state->material();
+    placement.color = material.color;
+    placement.opacity = material.opacity;
     const auto old_range = record.primitive.instances;
     if (record.content_dirty || record.position_geometry_dirty) {
         const bool text_rebuild = record.content_dirty;
@@ -283,6 +355,9 @@ bool TextSceneService::synchronize(TextSceneId id) {
             - old_range.count;
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
+        if (record.scroll_translation != runtime::Point{}) {
+            static_cast<void>(patch_geometry(record, placement));
+        }
         record.content_dirty = false;
         record.position_geometry_dirty = false;
         record.patchable_geometry_dirty = false;
@@ -303,17 +378,15 @@ bool TextSceneService::synchronize(TextSceneId id) {
     if (record.material_dirty) {
         const auto updated = glyph_scene_.instances().update_material(
             record.primitive.instances,
-            record.state->material().color,
-            record.state->material().opacity);
+            material.color,
+            material.opacity);
         if (updated != 0) {
             ++record.counters.material_updates;
         }
         record.material_dirty = false;
     }
     if (record.patchable_geometry_dirty) {
-        const auto updated = glyph_scene_.update_geometry(
-            record.primitive.instances,
-            placement);
+        const auto updated = patch_geometry(record, placement);
         if (updated != 0) {
             ++record.counters.geometry_updates;
         }
@@ -344,6 +417,7 @@ bool TextSceneService::synchronize_measurement(
     float width_constraint) {
     ensure_owner_thread();
     auto& record = require_record(id);
+    if(record.view) throw std::logic_error("Text views cannot replace shared width");
     if (record.state->set_width_constraint(width_constraint, false)) {
         ++record.revisions.layout;
         record.placement_rebuild_pending = true;
@@ -388,6 +462,7 @@ std::size_t TextSceneService::declaration_order(TextSceneId id) const {
 
 text::TextState& TextSceneService::text_state(TextSceneId id) {
     ensure_owner_thread();
+    if(require_record(id).view) throw std::logic_error("Text views expose only const shared state");
     return *require_record(id).state;
 }
 
