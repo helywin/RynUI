@@ -281,8 +281,18 @@ bool TextComponentHost::synchronize_scene_fragments(
                 || !text_scene_->contains(mounted.scene)) {
             continue;
         }
-        std::vector<graphics::SceneDrawCommand> commands;
         const auto& primitive = text_scene_->primitive(mounted.scene);
+        const auto interaction = interaction_for(mounted.component);
+        bool same = interaction == mounted.interaction
+            && primitive.draw_ranges.size() == mounted.fragment_commands.size();
+        for(std::size_t index = 0; same && index < primitive.draw_ranges.size(); ++index) {
+            const auto& range = primitive.draw_ranges[index];
+            same = mounted.fragment_commands[index] == graphics::SceneDrawCommand{
+                graphics::SceneDrawKind::glyph, range.instances.first,
+                range.instances.count, range.atlas_page};
+        }
+        if(same) continue;
+        std::vector<graphics::SceneDrawCommand> commands;
         commands.reserve(primitive.draw_ranges.size());
         for (const auto& range : primitive.draw_ranges) {
             commands.push_back({
@@ -291,11 +301,6 @@ bool TextComponentHost::synchronize_scene_fragments(
                 range.instances.count,
                 range.atlas_page,
             });
-        }
-        const auto interaction = interaction_for(mounted.component);
-        if (commands == mounted.fragment_commands
-                && interaction == mounted.interaction) {
-            continue;
         }
         composer_->set_fragment(
             *mounted.fragment,

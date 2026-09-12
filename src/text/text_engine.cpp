@@ -611,7 +611,9 @@ bool TextState::set_opacity(float opacity) {
 }
 
 bool TextState::synchronize() {
-    last_error_ = {};
+    // An empty diagnostic contains an MSVC Debug string iterator proxy.
+    // Do not recreate that allocation on every successful retained sync.
+    if(last_error_) last_error_ = {};
     if (shape_dirty_) {
         ++counters_.shape_count;
         TextShapeResult result = engine_->shape(content_.view(), fallback_chain_);

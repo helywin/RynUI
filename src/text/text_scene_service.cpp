@@ -400,7 +400,7 @@ bool TextSceneService::synchronize_measurement(TextSceneId id) {
     ensure_owner_thread();
     auto& record = require_record(id);
     ++record.counters.measurement_synchronizations;
-    record.last_error = {};
+    if(record.last_error) record.last_error = {};
     return record.state->synchronize();
 }
 

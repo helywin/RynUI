@@ -88,6 +88,7 @@ private:
     std::vector<GlyphGpuTextureHandle> textures_;
     GlyphGpuBufferHandle instance_buffer_{nullptr};
     std::uint32_t instance_capacity_{};
+    std::vector<graphics::GlyphInstanceRange> dirty_scratch_;
     GlyphGpuResourceCounters counters_;
 };
 

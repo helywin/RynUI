@@ -372,14 +372,13 @@ void GlyphInstanceStore::mark_dirty(
     }
     ranges.push_back(range);
     std::ranges::sort(ranges, {}, &GlyphInstanceRange::first);
-    std::vector<GlyphInstanceRange> merged;
-    merged.reserve(ranges.size());
+    std::size_t merged_size = 0;
     for (const GlyphInstanceRange candidate : ranges) {
-        if (merged.empty()) {
-            merged.push_back(candidate);
+        if (merged_size == 0) {
+            ranges[merged_size++] = candidate;
             continue;
         }
-        GlyphInstanceRange& prior = merged.back();
+        GlyphInstanceRange& prior = ranges[merged_size - 1];
         const std::uint64_t prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
         const std::uint64_t candidate_end =
             static_cast<std::uint64_t>(candidate.first) + candidate.count;
@@ -387,10 +386,10 @@ void GlyphInstanceStore::mark_dirty(
             prior.count = static_cast<std::uint32_t>(
                 std::max(prior_end, candidate_end) - prior.first);
         } else {
-            merged.push_back(candidate);
+            ranges[merged_size++] = candidate;
         }
     }
-    ranges = std::move(merged);
+    ranges.resize(merged_size);
 }
 
 void GlyphInstanceStore::require_range(GlyphInstanceRange range) const {

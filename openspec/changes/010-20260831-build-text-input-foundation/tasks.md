@@ -49,8 +49,10 @@
 - [x] 6.2 实现 committed + composition display buffer、selection/caret映射、placeholder visibility 与 horizontal caret-visible scroll；通过 composition scalar range、selection across composition、Home/End、value shrink、viewport resize和controlled echo tests验证不重复 shape
 - [x] 6.3 建立固定 retained scene topology：container/border/effects、selection background、base/selected glyph、placeholder、composition underline与caret，接入 ancestor clip/order；通过 layer identity、opacity hide、destroy/reuse、Theme、clip和 CPU scene reference tests验证steady state不增删 layer
 - [x] 6.4 接入 Quad/RoundedEffect/Glyph GPU range，验证 selection/glyph/effect draw order、DPI pixel alignment、caret/underline thickness、range upload、deferred retry和 shader contract；四档 scale下不得裁切 glyph、caret、shadow或focus effect
-- [ ] 6.5 增加 256 Input / 20,000 selection-composition update benchmark和 frame diagnostics，证明固定 scene capacity、无 Structure/Measure/Layout/无关 HitTest、最小 GPU dirty range与预热后 hot path 0 heap allocation
-- [ ] 6.6 运行 TextCaretMap、Input scene、clip/order、renderer/GPU、frame integration、benchmark与 `git diff --check`；以英文 `feat: render editable input text` 提交并推送本阶段，核对 remote SHA
+- [x] 6.5 增加 256 Input / 20,000 selection-composition update benchmark和 frame diagnostics，证明固定 scene capacity、无 Structure/Measure/Layout/无关 HitTest、最小 GPU dirty range与预热后 hot path 0 heap allocation
+- [x] 6.6 运行 TextCaretMap、Input scene、clip/order、renderer/GPU、frame integration、benchmark与 `git diff --check`；以英文 `feat: render editable input text` 提交并推送本阶段，核对 remote SHA
+
+阶段 6 性能与回归证据：`evidence/platform-generic-input-allocation.md`。
 
 ## 7. Ant Design Token、交互与 caret deadline
 

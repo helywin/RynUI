@@ -28,9 +28,9 @@ namespace {
     return static_cast<std::uint32_t>(aligned);
 }
 
-[[nodiscard]] std::vector<graphics::GlyphInstanceRange> dirty_ranges(
-    const graphics::GlyphInstanceStore& instances) {
-    std::vector<graphics::GlyphInstanceRange> ranges;
+void dirty_ranges(const graphics::GlyphInstanceStore& instances,
+    std::vector<graphics::GlyphInstanceRange>& ranges) {
+    ranges.clear();
     ranges.insert(
         ranges.end(),
         instances.material_dirty_ranges().begin(),
@@ -41,16 +41,16 @@ namespace {
         instances.geometry_dirty_ranges().end());
     std::ranges::sort(ranges, {}, &graphics::GlyphInstanceRange::first);
 
-    std::vector<graphics::GlyphInstanceRange> merged;
+    std::size_t merged_size = 0;
     for (const auto range : ranges) {
         if (range.count == 0) {
             continue;
         }
-        if (merged.empty()) {
-            merged.push_back(range);
+        if (merged_size == 0) {
+            ranges[merged_size++] = range;
             continue;
         }
-        auto& previous = merged.back();
+        auto& previous = ranges[merged_size - 1];
         const std::uint64_t previous_end =
             static_cast<std::uint64_t>(previous.first) + previous.count;
         const std::uint64_t range_end =
@@ -59,10 +59,10 @@ namespace {
             previous.count = static_cast<std::uint32_t>(
                 std::max(previous_end, range_end) - previous.first);
         } else {
-            merged.push_back(range);
+            ranges[merged_size++] = range;
         }
     }
-    return merged;
+    ranges.resize(merged_size);
 }
 
 } // namespace
@@ -204,7 +204,8 @@ void GlyphGpuResources::upload_atlas(graphics::GlyphAtlas& atlas) {
 
 void GlyphGpuResources::upload_instance_ranges(
     graphics::GlyphInstanceStore& instances) {
-    for (const auto range : dirty_ranges(instances)) {
+    dirty_ranges(instances, dirty_scratch_);
+    for (const auto range : dirty_scratch_) {
         const auto bytes = instances.bytes(range);
         const std::size_t offset =
             static_cast<std::size_t>(range.first) * sizeof(graphics::GlyphInstance);
