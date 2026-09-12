@@ -10,12 +10,28 @@ using namespace ryn;
 using namespace ryn::input;
 struct Platform final : TextInputPlatform, TextClipboard {
     int starts{}, stops{};
+    std::optional<String> clipboard;
+    bool clipboard_failure{};
+    int reads{}, writes{};
+    std::function<void()> on_clipboard;
     bool start(TextInputSessionStamp, const TextInputProperties&) noexcept override { ++starts; return true; }
     bool stop() noexcept override { ++stops; return true; }
     bool cancel() noexcept override { return true; }
     bool set_area(const WindowTextInputArea&) noexcept override { return true; }
-    ClipboardReadResult read_text() override { return {ClipboardError::no_text, {}}; }
-    ClipboardError write_text(StringView) override { return ClipboardError::none; }
+    ClipboardReadResult read_text() override {
+        ++reads;
+        auto result = clipboard_failure ? ClipboardReadResult{ClipboardError::platform_failure, {}}
+            : clipboard ? ClipboardReadResult{ClipboardError::none, clipboard} : ClipboardReadResult{ClipboardError::no_text, {}};
+        if(on_clipboard) on_clipboard();
+        return result;
+    }
+    ClipboardError write_text(StringView text) override {
+        ++writes;
+        if(clipboard_failure) return ClipboardError::platform_failure;
+        clipboard = String::from_utf8(text.bytes()).value();
+        if(on_clipboard) on_clipboard();
+        return ClipboardError::none;
+    }
     ClipboardAvailability has_text() const noexcept override { return {}; }
 };
 struct Fixture {

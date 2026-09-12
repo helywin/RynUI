@@ -34,7 +34,7 @@ struct Journey {
     }
 };
 void placement() {
-    for(const auto value : {String{u8"office abc"}, String{u8"中文测试"}, String{u8"a é 👩‍👩‍👧‍👦 z"}}) {
+    for(const auto value : {String{}, String{u8"office abc"}, String{u8"中文测试"}, String{u8"a é 👩‍👩‍👧‍👦 z"}}) {
         Journey j; j.mount(value, true);
         const auto& map = j.f.inputs.caret_map(j.input.component);
         for(const auto stop : map.stops()) {

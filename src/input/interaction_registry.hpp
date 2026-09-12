@@ -31,6 +31,7 @@ struct InteractionId final {
 };
 
 class PointerDispatchContext;
+struct KeyboardInputEvent;
 using PointerEventHandler = std::function<void(PointerDispatchContext&)>;
 
 struct InteractionHandlers final {
@@ -55,6 +56,8 @@ struct FocusHandlers final {
     FocusStateHandler state_changed;
     ActivationGate activation_allowed;
     ActivationHandler activate;
+    // Return true to consume the command before traversal/activation.
+    std::function<bool(const KeyboardInputEvent&)> text_edit;
 };
 
 struct InteractionRegistration final {

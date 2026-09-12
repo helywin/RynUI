@@ -79,6 +79,8 @@ enum class Key : std::uint8_t {
     tab,
     enter,
     space,
+    left, right, home, end, backspace, delete_forward, escape,
+    a, c, x, v, z, y,
 };
 
 enum class KeyAction : std::uint8_t {
@@ -114,6 +116,8 @@ struct KeyboardInputEvent {
     KeyAction action{KeyAction::invalid};
     KeyModifier modifiers{KeyModifier::none};
     bool repeat{false};
+    // The platform chooses Control (Windows/Linux) or Command (macOS).
+    KeyModifier primary_modifier{KeyModifier::control};
 
     friend bool operator==(const KeyboardInputEvent&, const KeyboardInputEvent&) = default;
 };

@@ -26,7 +26,7 @@ bool is_key_action(KeyAction action) noexcept {
 }
 
 bool is_key(Key key) noexcept {
-    return key == Key::tab || key == Key::enter || key == Key::space;
+    return key >= Key::tab && key <= Key::y;
 }
 
 bool is_window_action(WindowInputAction action) noexcept {
@@ -82,6 +82,7 @@ bool is_valid(const KeyboardInputEvent& event) noexcept {
     const auto modifier_bits = static_cast<std::uint8_t>(event.modifiers);
     return is_key(event.key)
         && is_key_action(event.action)
+        && (event.primary_modifier == KeyModifier::control || event.primary_modifier == KeyModifier::meta)
         && (modifier_bits & static_cast<std::uint8_t>(~all_modifier_bits)) == 0;
 }
 

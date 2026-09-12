@@ -69,6 +69,7 @@ private:
     void update_theme(runtime::ComponentId);
     void apply_material_transition(runtime::ComponentId);
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
+    bool dispatch_keyboard(runtime::ComponentId, const input::KeyboardInputEvent&);
     void synchronize_auxiliary_motion() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;

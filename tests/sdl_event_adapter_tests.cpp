@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <cmath>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 
@@ -145,6 +146,29 @@ void test_compatibility_mouse_is_suppressed_without_hiding_real_mouse() {
             "real mouse button mapping differs");
 }
 
+void test_editing_key_mapping() {
+    const std::array keys{
+        std::pair{SDLK_LEFT, Key::left}, std::pair{SDLK_RIGHT, Key::right},
+        std::pair{SDLK_HOME, Key::home}, std::pair{SDLK_END, Key::end},
+        std::pair{SDLK_BACKSPACE, Key::backspace}, std::pair{SDLK_DELETE, Key::delete_forward},
+        std::pair{SDLK_ESCAPE, Key::escape}, std::pair{SDLK_A, Key::a}, std::pair{SDLK_C, Key::c},
+        std::pair{SDLK_X, Key::x}, std::pair{SDLK_V, Key::v}, std::pair{SDLK_Z, Key::z}, std::pair{SDLK_Y, Key::y}};
+    for(const auto [code, expected] : keys) for(const auto type : {SDL_EVENT_KEY_DOWN, SDL_EVENT_KEY_UP}) {
+        PlatformEvents result; SdlWindowMetrics metrics{320, 240};
+        SDL_Event key{}; key.type = type; key.key.key = code;
+        key.key.mod = SDL_KMOD_CTRL | SDL_KMOD_SHIFT; key.key.repeat = true;
+        SdlEventAdapter::merge(result, key, metrics);
+        require(result.input.size() == 1, "editing key lost or generated text");
+        const auto& mapped = std::get<KeyboardInputEvent>(result.input.events()[0]);
+        require(mapped.key == expected && mapped.repeat && mapped.modifiers == (KeyModifier::control | KeyModifier::shift)
+            && mapped.action == (type == SDL_EVENT_KEY_DOWN ? KeyAction::down : KeyAction::up), "editing key mapping differs");
+#ifdef SDL_PLATFORM_MACOS
+        require(mapped.primary_modifier == KeyModifier::meta, "Command primary modifier lost");
+#else
+        require(mapped.primary_modifier == KeyModifier::control, "Control primary modifier lost");
+#endif
+    }
+}
 void test_keyboard_focus_resize_and_cancel_order() {
     PlatformEvents result;
     result.input.reserve(8);
@@ -350,6 +374,7 @@ int main() {
         test_touch_sequence_uses_logical_coordinates_and_identity();
         test_compatibility_mouse_is_suppressed_without_hiding_real_mouse();
         test_keyboard_focus_resize_and_cancel_order();
+        test_editing_key_mapping();
         test_display_scale_maps_pixels_and_pointer_to_logical_coordinates();
         test_wheel_precision_direction_and_logical_position();
         test_quit_and_frame_summary_regression();

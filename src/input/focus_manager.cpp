@@ -34,6 +34,26 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
             return;
         }
 
+        if (focused_) {
+            const auto target = *focused_;
+            const auto* record = registry_->find(target);
+            const auto handlers = record ? record->focus_handlers : nullptr;
+            if (handlers && handlers->text_edit) {
+                const bool consumed = handlers->text_edit(event);
+                sanitize_internal();
+                if (consumed) {
+                    if (focused_ == target && modality_ != FocusModality::keyboard) {
+                        modality_ = FocusModality::keyboard;
+                        request_frame();
+                        notify_state(target, presentation_for(target));
+                        sanitize_internal();
+                    }
+                    end_operation();
+                    return;
+                }
+            }
+        }
+
         if (event.key == Key::tab) {
             if (event.action == KeyAction::down) {
                 static_cast<void>(cancel_keyboard_press_internal(true));
@@ -203,6 +223,12 @@ void FocusManager::set_window_active(bool active) {
 }
 
 void FocusManager::synchronize() {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("FocusManager can only be used on its owner thread");
+    }
+    // Reactive eligibility changes inside a command are reconciled by the
+    // outer dispatch's sanitize step; this is not a nested input dispatch.
+    if (dispatching_) return;
     begin_operation();
     try {
         sanitize_internal();

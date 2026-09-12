@@ -79,6 +79,9 @@ void test_keyboard_repeat_and_modifiers() {
             "control modifier was lost");
     require(!ryn::input::has_modifier(repeated_tab.modifiers, KeyModifier::alt),
             "unexpected alt modifier was added");
+    auto invalid_primary = repeated_tab;
+    invalid_primary.primary_modifier = KeyModifier::alt;
+    require(!ryn::input::is_valid(invalid_primary), "invalid shortcut primary modifier accepted");
 }
 
 void test_scroll_values_are_precise_and_platform_neutral() {

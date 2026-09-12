@@ -60,6 +60,19 @@ std::optional<Key> map_key(SDL_Keycode key) noexcept {
         return Key::enter;
     case SDLK_SPACE:
         return Key::space;
+    case SDLK_LEFT: return Key::left;
+    case SDLK_RIGHT: return Key::right;
+    case SDLK_HOME: return Key::home;
+    case SDLK_END: return Key::end;
+    case SDLK_BACKSPACE: return Key::backspace;
+    case SDLK_DELETE: return Key::delete_forward;
+    case SDLK_ESCAPE: return Key::escape;
+    case SDLK_A: return Key::a;
+    case SDLK_C: return Key::c;
+    case SDLK_X: return Key::x;
+    case SDLK_V: return Key::v;
+    case SDLK_Z: return Key::z;
+    case SDLK_Y: return Key::y;
     default:
         return std::nullopt;
     }
@@ -296,6 +309,11 @@ static void merge_event(
                 event.type == SDL_EVENT_KEY_DOWN ? KeyAction::down : KeyAction::up,
                 map_modifiers(event.key.mod),
                 event.key.repeat,
+#ifdef SDL_PLATFORM_MACOS
+                KeyModifier::meta,
+#else
+                KeyModifier::control,
+#endif
             });
         }
         return;

@@ -17,4 +17,4 @@ Input component、Input pointer、SDL adapter、Pointer route/state/lifecycle/al
 
 测试包含 Latin/ligature、CJK、combining、emoji ZWJ、empty boundary 语义、word selection、preedit cancel、read-only/disabled、多 pointer、outside release/cancel、window loss 和 destroy。20,000 次真实 PointerRouter 拖动并同步场景，预热后 0 C++ heap allocation，shaping/measure/composer rebuild 不增长。
 
-这不是 native pointer/IME、真实 GPU、系统 DPI 或 Linux 机器验收；这些清单保持独立。全量 CTest 在此提交时仍运行，不把进行中回归标记为通过。
+这不是 native pointer/IME、真实 GPU、系统 DPI 或 Linux 机器验收；这些清单保持独立。随后该指针阶段的完整 CTest 198/198 通过（277.44 秒），其中 256 Input 基准通过（155.51 秒）。此回归不包含后续键盘实现。

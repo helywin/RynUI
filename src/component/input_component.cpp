@@ -222,6 +222,9 @@ struct InputPropsAccess {
         };
         // Enter submission is routed separately from Button's Space/Enter activation.
         handlers.activation_allowed = [] { return false; };
+        handlers.text_edit = [&owner, component](const input::KeyboardInputEvent& event) {
+            return owner.dispatch_keyboard(component, event);
+        };
         host.interactions().set_focus_handlers(state.mounted.interaction, std::move(handlers));
         state.container_fragment = build.register_scene_fragment(component,
             runtime::SceneFragmentPlacement::before_children);
@@ -312,6 +315,12 @@ struct InputPropsAccess {
         });
         const auto eligibility = [](auto& owner, auto& current) {
             if(current.disabled || current.read_only) current.caret_deadline.reset();
+            if(current.disabled && current.focused) {
+                current.focused = false;
+                current.selecting_pointer.reset();
+                current.hovering_pointers = 0;
+                static_cast<void>(owner.sessions_.blur());
+            }
             owner.editors_.require(current.mounted.editor).set_eligibility(current.disabled, current.read_only);
             owner.host_->interactions().set_eligible(current.mounted.interaction, !current.disabled);
             if(current.disabled) owner.host_->pointer().cancel_interaction(current.mounted.interaction);
@@ -456,6 +465,63 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
         }
     }
     update_text(component, false);
+}
+bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const input::KeyboardInputEvent& event) {
+    using input::Key; using input::KeyModifier;
+    auto* state = host_->components().state<InputState>(component);
+    if(!state || state->disabled || !state->focused) return false;
+    auto& editor = editors_.require(state->mounted.editor);
+    if(editor.composition().active) {
+        if(event.key == Key::escape && event.action == input::KeyAction::down && !event.repeat) {
+            static_cast<void>(sessions_.cancel_composition());
+            update_text(component, false);
+        }
+        // IME owns navigation, deletion, candidate Tab/Enter and shortcuts until
+        // it commits or cancels. Never mutate committed text from these keys.
+        return true;
+    }
+    if(event.key == Key::tab || event.key == Key::escape) return false;
+    const bool shift = input::has_modifier(event.modifiers, KeyModifier::shift);
+    const auto other = event.primary_modifier == KeyModifier::control ? KeyModifier::meta : KeyModifier::control;
+    const bool primary = input::has_modifier(event.modifiers, event.primary_modifier)
+        && !input::has_modifier(event.modifiers, other) && !input::has_modifier(event.modifiers, KeyModifier::alt);
+    const bool plain = !input::has_modifier(event.modifiers, KeyModifier::control)
+        && !input::has_modifier(event.modifiers, KeyModifier::meta) && !input::has_modifier(event.modifiers, KeyModifier::alt);
+    const bool shortcut = primary && (event.key == Key::a || event.key == Key::c || event.key == Key::x
+        || event.key == Key::v || event.key == Key::z || event.key == Key::y);
+    const bool navigation = plain && (event.key == Key::left || event.key == Key::right
+        || event.key == Key::home || event.key == Key::end);
+    const bool deletion = plain && (event.key == Key::backspace || event.key == Key::delete_forward);
+    if(!shortcut && !navigation && !deletion && event.key != Key::enter && event.key != Key::space) return false;
+    if(event.action == input::KeyAction::up) return true;
+    if(event.key == Key::space) return true; // Only TextCommitted inserts characters.
+    if(event.key == Key::enter) {
+        if(plain && !event.repeat) submit(component);
+        return true;
+    }
+    input::TextEditResult result;
+    const auto owner = state->mounted.editor;
+    if(shortcut) {
+        if(event.repeat) return true;
+        if(event.key == Key::a) result = editor.select_all();
+        else if(event.key == Key::c) result = clipboard_.copy(owner).edit;
+        else if(!state->read_only) {
+            if(event.key == Key::x) result = clipboard_.cut(owner).edit;
+            else if(event.key == Key::v) result = clipboard_.paste(owner).edit;
+            else if(event.key == Key::y || (event.key == Key::z && shift)) result = editor.redo();
+            else result = editor.undo();
+        }
+    } else if(navigation) {
+        const auto move = event.key == Key::left ? input::TextCaretMove::left : event.key == Key::right
+            ? input::TextCaretMove::right : event.key == Key::home ? input::TextCaretMove::home : input::TextCaretMove::end;
+        result = editor.move(move, shift);
+    } else if(deletion && !state->read_only) {
+        result = event.key == Key::backspace ? editor.erase_backward() : editor.erase_forward();
+    }
+    // Clipboard and onChange callbacks may synchronously destroy/reuse the owner.
+    if(result.value_changed) notify_change(owner);
+    else if(result) update_text(component, false);
+    return true;
 }
 void InputComponentHost::update_theme(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
