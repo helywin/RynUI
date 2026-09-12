@@ -535,13 +535,16 @@ bool ButtonComponentHost::layout_and_synchronize(
         [](runtime::ComponentId) {
             return std::optional<input::InteractionId>{};
         });
+    for (auto* auxiliary : auxiliaries_) {
+        if (auxiliary->synchronize_auxiliary_fragments()) scene_structure_dirty_ = true;
+    }
     if (scene_structure_dirty_ || text_fragments_changed) {
         scene_composer_.rebuild(clip);
         scene_structure_dirty_ = false;
     } else if (text_.layout_performed_last_sync()) {
-        for (const auto& mounted : mounted_buttons_) {
+        for (const auto interaction : interactions_.declaration_order()) {
             static_cast<void>(hit_test_.refresh_interaction(
-                mounted.interaction));
+                interaction));
         }
     } else if (!dirty_->hit_test_nodes().empty()) {
         static_cast<void>(hit_test_.refresh(dirty_->hit_test_nodes()));

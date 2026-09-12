@@ -21,6 +21,10 @@ struct InputLayoutSnapshot {
     float caret_x{}, selection_start{}, selection_end{}, composition_start{}, composition_end{};
 };
 
+struct InputTextLayers {
+    TextSceneId base, selected, placeholder;
+};
+
 // The containing component host and platform ports must outlive this host.
 class InputComponentHost final : private AuxiliaryComponentSynchronizer {
 public:
@@ -41,6 +45,7 @@ public:
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);
     [[nodiscard]] TextSceneId text_scene(runtime::ComponentId) const;
+    [[nodiscard]] InputTextLayers text_layers(runtime::ComponentId) const;
     [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
     [[nodiscard]] const text::TextCaretMap& caret_map(runtime::ComponentId) const;
     // Retained owner-scoped deadline slot. Blink policy/ticking is layered on it.
@@ -53,6 +58,7 @@ private:
     void update_text(runtime::ComponentId, bool measure_layout = true);
     void update_theme(runtime::ComponentId);
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
+    bool synchronize_auxiliary_fragments() override;
     ButtonComponentHost* host_;
     input::TextEditorStore editors_;
     input::TextInputSessionHost sessions_;

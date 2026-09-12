@@ -21,6 +21,16 @@ struct InputState {
     std::function<void(String)> on_change, on_submit;
     runtime::NodeId viewport;
     TextSceneId text_scene;
+    TextSceneId selected_scene, placeholder_scene;
+    runtime::SceneFragmentId text_fragment;
+    std::vector<graphics::SceneDrawCommand> text_commands, pending_text_commands;
+    runtime::SceneFragmentId container_fragment;
+    component::ButtonSceneId selection_surface, overlay_surface;
+    // Active shadow, border, fill and focus retain independent identities.
+    std::array<graphics::RoundedEffectId, 4> container_effects;
+    std::vector<graphics::SceneDrawCommand> container_commands;
+    std::optional<runtime::Rect> container_clip;
+    runtime::Rect next_container_clip;
     layout::InputContentLayout layout;
     runtime::SemanticTypography typography;
     Signal<runtime::SemanticTypography> slot_typography{runtime::SemanticTypography{}};
@@ -33,6 +43,20 @@ struct InputState {
     std::uint64_t measured_value_revision{};
 };
 struct InputSlotState {};
+runtime::Rect translated_bounds(const runtime::NodeStore& nodes, runtime::NodeId id) {
+    auto result = nodes.require(id).bounds;
+    for(auto current = std::optional{id}; current; current = nodes.require(*current).parent) {
+        result.x += nodes.require(*current).translation.x;
+        result.y += nodes.require(*current).translation.y;
+    }
+    return result;
+}
+graphics::QuadInstance clipped_quad(runtime::Rect bounds, runtime::Rect clip,
+    runtime::Size viewport, std::array<float, 4> color, float opacity) {
+    bounds = graphics::intersect_effect_bounds(bounds, clip);
+    return {{-1 + 2 * bounds.x / viewport.width, 1 - 2 * bounds.y / viewport.height,
+        2 * bounds.width / viewport.width, -2 * bounds.height / viewport.height}, color, opacity};
+}
 void check(input::TextEditResult result) {
     if(!result) throw std::runtime_error("Input editor update failed");
 }
@@ -80,6 +104,13 @@ struct InputPropsAccess {
                 host.pointer().cancel_interaction(mounted.interaction);
                 static_cast<void>(host.interactions().remove(mounted.interaction));
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
+                static_cast<void>(host.button_scene().destroy(current->selection_surface));
+                static_cast<void>(host.button_scene().destroy(current->overlay_surface));
+                for(const auto effect : current->container_effects) static_cast<void>(host.rounded_effects().remove(effect));
+                static_cast<void>(host.scene_composer().remove_fragment(current->container_fragment));
+                static_cast<void>(host.scene_composer().remove_fragment(current->text_fragment));
+                static_cast<void>(host.text().scene_service().destroy(current->selected_scene));
+                static_cast<void>(host.text().scene_service().destroy(current->placeholder_scene));
                 static_cast<void>(host.text().scene_service().destroy(current->text_scene));
                 static_cast<void>(host.layout().remove_intrinsic_measure(current->viewport));
                 static_cast<void>(host.layout().remove_layout(mounted.node));
@@ -113,6 +144,16 @@ struct InputPropsAccess {
         // Enter submission is routed separately from Button's Space/Enter activation.
         handlers.activation_allowed = [] { return false; };
         host.interactions().set_focus_handlers(state.mounted.interaction, std::move(handlers));
+        state.container_fragment = build.register_scene_fragment(component,
+            runtime::SceneFragmentPlacement::before_children);
+        for(auto& effect : state.container_effects) effect = host.rounded_effects().add({});
+        const auto overlay_fragment = build.register_scene_fragment(component,
+            runtime::SceneFragmentPlacement::after_children);
+        component::ButtonEffectData no_effects;
+        no_effects.focus_enabled = false;
+        const std::array<graphics::QuadInstance, 2> empty_overlays{};
+        state.overlay_surface = host.button_scene().create_surface(component, state.mounted.node,
+            overlay_fragment, empty_overlays, no_effects);
         state.layout.prefix = prefix.has_value(); state.layout.suffix = suffix.has_value();
         build.mount_slot(component, Content{[&] {
             auto& slots = runtime::require_component_build_context();
@@ -129,6 +170,13 @@ struct InputPropsAccess {
                 Prop<runtime::SemanticTypography>{state.slot_typography});
             const auto editable = make_slot();
             state.viewport = slots.root(editable);
+            const auto selection_fragment = slots.register_scene_fragment(editable,
+                runtime::SceneFragmentPlacement::before_children);
+            const std::array<graphics::QuadInstance, 1> empty_selection{};
+            state.selection_surface = host.button_scene().create_surface(editable, state.viewport,
+                selection_fragment, empty_selection, no_effects);
+            state.text_fragment = slots.register_scene_fragment(editable,
+                runtime::SceneFragmentPlacement::before_children);
             host.layout().set_layout(state.viewport, layout::LeafLayout{});
             const auto suffix_component = make_slot();
             if(suffix) slots.mount_slot_with_semantic_text_style(suffix_component, *suffix,
@@ -136,6 +184,8 @@ struct InputPropsAccess {
                 Prop<runtime::SemanticTypography>{state.slot_typography});
         }});
         owner.update_theme(component);
+        state.selected_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
+        state.placeholder_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         owner.update_text(component);
         host.layout().set_intrinsic_measure(state.viewport, 1,
             [&owner, component](layout::Constraints) {
@@ -204,7 +254,7 @@ struct InputPropsAccess {
         const auto theme = build.theme_scope();
         state.theme_subscription = theme->capture(
             [&owner, component](theme_runtime::DirtyPhase) { owner.update_theme(component); },
-            [theme] { static_cast<void>(theme->map()); static_cast<void>(theme->text_font_family());
+            [theme] { static_cast<void>(theme->map()); static_cast<void>(theme->alias()); static_cast<void>(theme->text_font_family());
                 static_cast<void>(theme->text_font_weight()); static_cast<void>(theme->text_font_size());
                 static_cast<void>(theme->text_line_height()); static_cast<void>(theme->text_color());
                 static_cast<void>(theme->line_width()); });
@@ -279,6 +329,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     state->slot_typography.set(typography);
     const auto color = theme.text().color;
     state->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
+    invalidate(component, runtime::DirtyFlags::Material);
 }
 void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout) {
     auto* state = host_->components().state<InputState>(component);
@@ -307,6 +358,11 @@ TextSceneId InputComponentHost::text_scene(runtime::ComponentId component) const
     const auto* state = host_->components().state<InputState>(component);
     if(!state) throw std::out_of_range("Input component is stale");
     return state->text_scene;
+}
+InputTextLayers InputComponentHost::text_layers(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if(!state) throw std::out_of_range("Input component is stale");
+    return {state->text_scene, state->selected_scene, state->placeholder_scene};
 }
 InputDisplaySnapshot InputComponentHost::display_snapshot(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
@@ -344,7 +400,7 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
     state->geometry.scroll_offset = next;
     invalidate(component, runtime::DirtyFlags::Geometry);
 }
-void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
     for(const auto& mounted : mounted_) {
         auto* state = host_->components().state<InputState>(mounted.component);
         if(!state) continue;
@@ -379,7 +435,108 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::
         state->geometry.selection_end = x(display.selection.end());
         state->geometry.composition_start = x(display.composition.begin());
         state->geometry.composition_end = x(display.composition.end());
+        const auto& theme = host_->components().theme_scope(mounted.component)->snapshot();
+        const auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
+        state->next_container_clip = clip;
+        const float border = std::min(state->layout.border_width,
+            0.5F * std::min(root_bounds.width, root_bounds.height));
+        const float radius = state->size == ControlSize::Small ? theme.map().border_radius_small
+            : state->size == ControlSize::Large ? theme.map().border_radius_large : theme.map().border_radius;
+        for(std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
+            auto bounds = root_bounds;
+            const float inset = layer == 2 ? border : 0.0F;
+            bounds.x += inset; bounds.y += inset;
+            bounds.width -= 2 * inset; bounds.height -= 2 * inset;
+            graphics::RoundedEffectGeometry geometry;
+            geometry.shape = {bounds, std::clamp(radius - inset, 0.0F, 0.5F * std::min(bounds.width, bounds.height))};
+            geometry.ancestor_clip = graphics::EffectClip{1, clip};
+            if(layer == 0) geometry.spread = 2;
+            if(layer == 3) {
+                geometry.kind = graphics::RoundedEffectKind::outline;
+                geometry.outline_width = std::max(0.001F, theme.alias().line_width_focus);
+                geometry.outline_offset = theme.alias().focus_outline_offset;
+            }
+            static_cast<void>(host_->rounded_effects().update_geometry(state->container_effects[layer], geometry));
+            // Full InputTokenSet/state policy is applied in stage 7. Keep the
+            // active shadow/focus identities packed but hidden until then.
+            static_cast<void>(host_->rounded_effects().update_material(state->container_effects[layer], {
+                layer == 2 ? theme.alias().color_background_container : layer == 1
+                    ? theme.alias().color_border : theme.alias().color_focus_outline,
+                layer == 1 || layer == 2 ? 1.0F : 0.0F, true}));
+        }
+        const auto color = host_->components().theme_scope(mounted.component)->snapshot().text().color;
+        const std::array<float, 4> foreground{color.red(), color.green(), color.blue(), color.alpha()};
+        const auto selection_color = theme.map().color_primary;
+        const std::array<graphics::QuadInstance, 1> selection{clipped_quad(
+            {state->geometry.selection_start, viewport.y,
+                state->geometry.selection_end - state->geometry.selection_start, viewport.height},
+            state->geometry.clip, window,
+            {selection_color.red(), selection_color.green(), selection_color.blue(), selection_color.alpha()},
+            state->focused && !state->disabled && !display.placeholder ? 0.25F : 0.0F)};
+        static_cast<void>(host_->button_scene().update_surface(state->selection_surface, selection));
+        const std::array<graphics::QuadInstance, 2> overlays{
+            clipped_quad({state->geometry.composition_start, viewport.y + viewport.height - 1,
+                state->geometry.composition_end - state->geometry.composition_start, 1},
+                state->geometry.clip, window, foreground, display.composing ? 1.0F : 0.0F),
+            clipped_quad({state->geometry.caret_x, viewport.y, 1, viewport.height},
+                state->geometry.clip, window, foreground,
+                state->focused && !state->disabled && !state->read_only
+                    && host_->focus().state().window_active ? 1.0F : 0.0F),
+        };
+        static_cast<void>(host_->button_scene().update_surface(state->overlay_surface, overlays));
+        text_scene.set_color(state->text_scene, foreground);
+        text_scene.set_color(state->selected_scene, foreground);
+        text_scene.set_color(state->placeholder_scene, foreground);
+        text_scene.set_opacity(state->text_scene, display.placeholder ? 0.0F : 1.0F);
+        text_scene.set_opacity(state->selected_scene,
+            !display.placeholder && display.selection.begin() != display.selection.end() ? 1.0F : 0.0F);
+        text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 0.25F : 0.0F);
+        graphics::GlyphPlacement placement{{viewport.x, viewport.y}, window, state->geometry.clip};
+        for(const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
+            auto layer_placement = placement;
+            if(id == state->selected_scene) {
+                layer_placement.clip_pixels = graphics::intersect_effect_bounds(state->geometry.clip,
+                    {state->geometry.selection_start, viewport.y,
+                        state->geometry.selection_end - state->geometry.selection_start, viewport.height});
+            }
+            text_scene.set_scroll_translation(id, {-state->geometry.scroll_offset, 0});
+            if(!text_scene.synchronize(id, layer_placement)) throw std::runtime_error("Input glyph synchronization failed");
+        }
     }
+}
+bool InputComponentHost::synchronize_auxiliary_fragments() {
+    bool changed{};
+    for(const auto& mounted : mounted_) {
+        auto* state = host_->components().state<InputState>(mounted.component);
+        if(!state) continue;
+        std::array<graphics::SceneDrawCommand, 4> container;
+        std::size_t count{};
+        for(const auto effect : state->container_effects) {
+            if(const auto index = host_->rounded_effects().packed_index(effect))
+                container[count++] = {graphics::SceneDrawKind::rounded_effect, *index, 1};
+        }
+        const auto commands = std::span{container}.first(count);
+        if(!std::ranges::equal(commands, state->container_commands)
+            || state->container_clip != state->next_container_clip) {
+            host_->scene_composer().set_fragment(state->container_fragment, commands,
+                mounted.interaction, state->next_container_clip);
+            state->container_commands.assign(commands.begin(), commands.end());
+            state->container_clip = state->next_container_clip;
+            changed = true;
+        }
+        auto& pending = state->pending_text_commands;
+        pending.clear();
+        for(const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
+            for(const auto& range : host_->text().scene_service().primitive(id).draw_ranges)
+                pending.push_back({graphics::SceneDrawKind::glyph, range.instances.first,
+                    range.instances.count, range.atlas_page});
+        }
+        if(pending == state->text_commands) continue;
+        host_->scene_composer().set_fragment(state->text_fragment, pending);
+        state->text_commands.swap(pending);
+        changed = true;
+    }
+    return changed;
 }
 void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     const auto found = std::find_if(mounted_.begin(), mounted_.end(), [editor_id](const auto& value) { return value.editor == editor_id; });

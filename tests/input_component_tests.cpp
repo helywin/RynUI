@@ -118,6 +118,7 @@ void reuse_and_rollback() {
         Input(InputProps{}.defaultValue(u8"new"));
     }});
     const auto fresh = f.inputs.mounted_inputs().front();
+    f.synchronize();
     require(old.component.index == fresh.component.index && old.component.generation != fresh.component.generation
         && old.editor.index == fresh.editor.index && old.editor.generation != fresh.editor.generation,
         "Input identities not generation safe");
@@ -127,7 +128,9 @@ void reuse_and_rollback() {
     try { failing.inputs.mount(Content{[] { Input(InputProps{}, InputPrefix{[] { throw std::runtime_error("slot failed"); }}); }}); }
     catch(const std::runtime_error&) { rejected = true; }
     require(rejected && failing.inputs.editors().size() == 0 && failing.buttons.interactions().size() == 0
-        && failing.nodes.size() == 0 && failing.scene.size() == 0, "throwing slot leaked resources");
+        && failing.nodes.size() == 0 && failing.scene.size() == 0
+        && failing.buttons.button_scene().size() == 0
+        && failing.buttons.rounded_effects().live_count() == 0, "throwing slot leaked resources");
 }
 void readonly_blur() {
     Fixture f;
@@ -264,6 +267,110 @@ void reactive_phases() {
     config.set(ThemeConfig{}); value.set(String{u8"late"});
     require(f.inputs.editors().size() == 0, "unmounted bindings recreated editor");
 }
+void retained_scene_layers() {
+    Fixture f;
+    Signal<String> value{String{u8"selectable text"}};
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    f.inputs.mount(Content{[&] { Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+        Input(InputProps{}.value(value).placeholder(u8"placeholder").layout(LayoutStyle{}.width(dp(120))));
+    }}); }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto layers = f.inputs.text_layers(mounted.component);
+    require(f.scene.size() == 3 && f.buttons.button_scene().instances().size() == 3
+        && f.buttons.rounded_effects().live_count() == 4, "Input retained topology is incomplete");
+    require(f.buttons.hit_test().hit_test({20, 15}) == mounted.interaction,
+        "Input container was not registered for hit testing");
+    const auto& read = std::as_const(f.scene);
+    require(&read.text_state(layers.base) == &read.text_state(layers.selected)
+        && &read.text_state(layers.base) == &read.text_state(layers.placeholder), "Input duplicated shaping state");
+    const auto commands = f.buttons.scene_composer().ordered_scene().commands();
+    require(commands.size() >= 4 && commands.front().kind == graphics::SceneDrawKind::rounded_effect
+        && commands[1].kind == graphics::SceneDrawKind::quad
+        && commands[2].kind == graphics::SceneDrawKind::glyph
+        && commands.back().kind == graphics::SceneDrawKind::quad
+        && commands.back().instance_count == 2, "Input layer order does not enclose glyphs with selection/caret");
+    require(f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard), "retained Input focus failed");
+    auto& editor = f.inputs.editors().require(mounted.editor);
+    require(bool(editor.select({0, 3})), "selection failed"); f.synchronize();
+    const auto rebuilds = f.buttons.scene_composer().diagnostics().rebuilds;
+    const auto text_rebuilds = f.scene.counters().ordered_scene_rebuilds;
+    const auto shape_count = read.text_state(layers.base).counters().shape_count;
+    for(std::size_t index = 0; index < 100; ++index) {
+        require(bool(editor.select({0, index % 4})), "selection update failed"); f.synchronize();
+    }
+    require(f.inputs.text_layers(mounted.component).selected == layers.selected
+        && f.scene.size() == 3 && f.buttons.button_scene().instances().size() == 3
+        && f.buttons.rounded_effects().live_count() == 4
+        && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds
+        && f.scene.counters().ordered_scene_rebuilds == text_rebuilds
+        && read.text_state(layers.base).counters().shape_count == shape_count,
+        "selection changed retained topology or shaping");
+    ThemeConfig recolor;
+    recolor.alias.color_border = Color::rgba8(255, 0, 0);
+    recolor.alias.color_background_container = Color::rgba8(0, 255, 0);
+    config.set(recolor); f.synchronize();
+    const auto effects = f.buttons.rounded_effects().packed_instances();
+    require(effects[1].material.color == *recolor.alias.color_border
+        && effects[2].material.color == *recolor.alias.color_background_container
+        && effects[0].material.opacity == 0 && effects[3].material.opacity == 0
+        && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds
+        && read.text_state(layers.base).counters().shape_count == shape_count,
+        "Theme recolor rebuilt topology or lost independent effect materials");
+    f.synchronize(320, {20, 0, 40, 32});
+    for(const auto& effect : f.buttons.rounded_effects().packed_instances()) {
+        require(effect.geometry.shape.rect.x < 20 && effect.geometry.ancestor_clip
+            && effect.geometry.ancestor_clip->bounds == runtime::Rect{20, 0, 40, 32},
+            "container clipping changed original rounded geometry");
+    }
+    require(!f.buttons.hit_test().hit_test({10, 15}) && f.buttons.hit_test().hit_test({25, 15}) == mounted.interaction,
+        "Input hit clip does not match supplied ancestor clip");
+    value.set(String{}); f.synchronize();
+    const auto opacity = [&](detail::TextSceneId id) {
+        return f.scene.glyph_scene().instances().at(f.scene.primitive(id).instances.first).translation_opacity[2];
+    };
+    require(opacity(layers.base) == 0 && opacity(layers.selected) == 0 && opacity(layers.placeholder) > 0,
+        "placeholder visibility reused or leaked another layer");
+    require(f.buttons.destroy(mounted.component), "retained Input destruction failed");
+    require(f.scene.size() == 0 && f.buttons.button_scene().instances().size() == 0
+        && f.buttons.rounded_effects().live_count() == 0, "retained Input resources leaked");
+}
+
+void retained_range_remapping() {
+    Fixture f;
+    Signal<String> first{String{u8"A"}};
+    f.inputs.mount(Content{[&] {
+        Input(InputProps{}.value(first));
+        Input(InputProps{}.defaultValue(u8"second"), InputPrefix{[] { Text(u8"prefix"); }});
+        Text(u8"following text");
+    }}); f.synchronize();
+    const auto a = f.inputs.mounted_inputs()[0];
+    const auto b = f.inputs.mounted_inputs()[1];
+    const auto layers = f.inputs.text_layers(b.component);
+    const auto before = f.scene.primitive(layers.base).instances.first;
+    const auto validate = [&] {
+        std::size_t glyphs{};
+        for(const auto command : f.buttons.scene_composer().ordered_scene().commands()) {
+            if(command.kind == graphics::SceneDrawKind::glyph) {
+                require(command.first_instance + command.instance_count <= f.scene.glyph_scene().instances().size(),
+                    "compacted fragment has stale glyph range");
+                glyphs += command.instance_count;
+            } else if(command.kind == graphics::SceneDrawKind::quad) {
+                require(command.first_instance + command.instance_count <= f.buttons.button_scene().instances().size(),
+                    "compacted fragment has stale quad range");
+            } else require(command.first_instance + command.instance_count <= f.buttons.rounded_effects().packed_instances().size(),
+                "compacted fragment has stale effect range");
+        }
+        require(glyphs == f.scene.glyph_scene().instances().size(), "compaction lost or duplicated glyph layers");
+    };
+    first.set(String{u8"A much longer first input 中文"}); f.synchronize(); validate();
+    require(f.scene.primitive(layers.base).instances.first > before, "following Input range did not remap");
+    require(f.buttons.destroy(a.component), "first Input removal failed"); f.synchronize(); validate();
+    require(f.inputs.text_layers(b.component).base == layers.base
+        && f.buttons.hit_test().hit_test({20, 15}) == b.interaction,
+        "remaining Input identity or relocated hit bounds became stale");
+}
+
 void composition_display() {
     Fixture f; Signal<String> value{String{}}; int changes{};
     f.inputs.mount(Content{[&] {
@@ -308,6 +415,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); reactive_phases(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

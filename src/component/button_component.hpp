@@ -68,6 +68,8 @@ public:
     virtual void synchronize_auxiliary_geometry(
         runtime::Size viewport,
         runtime::Rect clip) = 0;
+    // Run after every owner has finished range compaction.
+    virtual bool synchronize_auxiliary_fragments() { return false; }
 };
 
 class ButtonComponentHost final : private animation::AnimationTargetSink {
