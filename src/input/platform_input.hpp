@@ -56,6 +56,9 @@ struct PointerInputEvent {
     float x{0.0F};
     float y{0.0F};
 
+    // Platform-reported click sequence; zero means unspecified (ordinary click).
+    std::uint8_t click_count{};
+
     friend bool operator==(const PointerInputEvent&, const PointerInputEvent&) = default;
 };
 

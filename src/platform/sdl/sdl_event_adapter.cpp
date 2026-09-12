@@ -265,6 +265,7 @@ static void merge_event(
                 PointerButton::primary,
                 to_logical_coordinate(event.button.x, metrics),
                 to_logical_coordinate(event.button.y, metrics),
+                event.button.clicks,
             });
         }
         return;

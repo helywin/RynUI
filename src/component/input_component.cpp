@@ -27,6 +27,8 @@ struct InputState {
     MountedInputComponent mounted;
     bool controlled{}, disabled{}, read_only{}, focused{};
     std::size_t hovering_pointers{};
+    std::optional<input::PointerIdentity> selecting_pointer;
+    runtime::Point last_selection_position;
     ControlSize size{ControlSize::Middle};
     InputStatus status{InputStatus::Default};
     String placeholder;
@@ -197,6 +199,7 @@ struct InputPropsAccess {
                 else if(context.kind() == input::PointerEventKind::leave && current->hovering_pointers) --current->hovering_pointers;
                 if((before == 0) != (current->hovering_pointers == 0))
                     owner.invalidate(component, runtime::DirtyFlags::Material);
+                owner.dispatch_pointer(component, context);
             }
         };
         host.interactions().set_handlers(state.mounted.interaction, std::move(pointer_handlers));
@@ -205,7 +208,12 @@ struct InputPropsAccess {
             if(auto* current = owner.host_->components().state<InputState>(component)) {
                 const bool was_focused = current->focused;
                 current->focused = focus.focused;
-                if(!focus.focused) current->caret_deadline.reset();
+                if(!focus.focused) {
+                    current->caret_deadline.reset();
+                    current->selecting_pointer.reset();
+                    owner.host_->pointer().cancel_pointer_interaction(current->mounted.interaction);
+                    current->hovering_pointers = 0;
+                }
                 if(focus.focused) static_cast<void>(owner.sessions_.focus(current->mounted.editor));
                 else if(was_focused)
                     static_cast<void>(owner.sessions_.blur());
@@ -398,6 +406,56 @@ void InputComponentHost::apply_material_transition(runtime::ComponentId componen
 }
 void InputComponentHost::synchronize_auxiliary_motion() {
     for(const auto& mounted : mounted_) invalidate(mounted.component, runtime::DirtyFlags::Material);
+}
+void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input::PointerDispatchContext& context) {
+    auto* state = host_->components().state<InputState>(component);
+    if(!state) return;
+    const auto& event = context.event();
+    const auto kind = context.kind();
+    const bool owned = state->selecting_pointer == event.pointer;
+    if(kind == input::PointerEventKind::cancel) {
+        if(owned) {
+            state->selecting_pointer.reset();
+            static_cast<void>(context.release_pointer_capture());
+        }
+        return;
+    }
+    const bool down = kind == input::PointerEventKind::down && event.button == input::PointerButton::primary;
+    const bool up = kind == input::PointerEventKind::up && event.button == input::PointerButton::primary;
+    if(!down && !(owned && (kind == input::PointerEventKind::move || up))) return;
+    if(state->disabled || !state->focused || (down && state->selecting_pointer && !owned)) return;
+    const auto viewport = state->geometry.viewport;
+    const auto clip = state->geometry.clip;
+    // Affixes/padding may focus the Input, but are not editable text hit areas.
+    if(down && (event.x < clip.x || event.x > clip.x + clip.width
+        || event.y < clip.y || event.y > clip.y + clip.height || clip.width <= 0 || clip.height <= 0)) return;
+    update_text(component, false);
+    auto& scene = host_->text().scene_service();
+    if(state->carets.revision() != scene.text_state(state->text_scene).revision()
+        && !scene.synchronize_caret_map(state->text_scene, state->carets))
+        throw std::runtime_error("Input pointer caret mapping failed");
+    const auto stop = state->carets.nearest(event.x - viewport.x + state->geometry.scroll_offset,
+        state->carets.revision());
+    if(!stop) return;
+    const auto byte = state->display.display_to_committed(stop->byte);
+    auto& editor = editors_.require(state->mounted.editor);
+    if(down) {
+        if(editor.composition().active) {
+            static_cast<void>(sessions_.cancel_composition());
+        }
+        check(event.click_count == 2 ? editor.select_word(byte) : editor.place(byte));
+        if(context.capture_pointer()) state->selecting_pointer = event.pointer;
+        state->last_selection_position = {event.x, event.y};
+    } else {
+        // A release at the last position preserves a double-click word selection.
+        if(state->last_selection_position != runtime::Point{event.x, event.y}) check(editor.place(byte, true));
+        state->last_selection_position = {event.x, event.y};
+        if(up) {
+            state->selecting_pointer.reset();
+            static_cast<void>(context.release_pointer_capture());
+        }
+    }
+    update_text(component, false);
 }
 void InputComponentHost::update_theme(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);

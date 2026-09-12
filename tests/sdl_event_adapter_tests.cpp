@@ -62,6 +62,7 @@ SDL_Event mouse_button(SDL_EventType type, SDL_MouseID source, Uint8 button) {
     event.type = type;
     event.button.which = source;
     event.button.button = button;
+    event.button.clicks = 2;
     event.button.x = 32.0F;
     event.button.y = 48.0F;
     return event;
@@ -133,6 +134,8 @@ void test_compatibility_mouse_is_suppressed_without_hiding_real_mouse() {
     const auto& move = std::get<PointerInputEvent>(result.input.events()[0]);
     const auto& down = std::get<PointerInputEvent>(result.input.events()[1]);
     const auto& up = std::get<PointerInputEvent>(result.input.events()[2]);
+    require(down.click_count == 2 && up.click_count == 2 && move.click_count == 0,
+            "mouse click sequence was not preserved");
     require(move.pointer == PointerIdentity::mouse()
                 && move.action == PointerAction::move
                 && move.x == 15.0F
