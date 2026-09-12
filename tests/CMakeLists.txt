@@ -445,6 +445,17 @@ target_link_libraries(rynui_text_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.text_public_api COMMAND rynui_text_public_api_tests)
 
 add_executable(rynui_button_public_api_tests button_public_api_tests.cpp)
+add_executable(rynui_input_public_api_tests input_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_input_public_api_tests)
+target_link_libraries(rynui_input_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.input_public_api COMMAND rynui_input_public_api_tests)
+add_test(NAME rynui.input_public_compile_fail COMMAND ${CMAKE_COMMAND}
+    "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+    "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/input-public"
+    "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+    "-DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+    "-DTEST_CONFIGURATION=$<CONFIG>"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_public_contract.cmake")
 rynui_configure_cpp_target(rynui_button_public_api_tests)
 target_link_libraries(rynui_button_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.button_public_api COMMAND rynui_button_public_api_tests)
@@ -658,6 +669,13 @@ target_link_libraries(rynui_button_scene_service_tests PRIVATE rynui_components)
 add_test(NAME rynui.button_scene_service COMMAND rynui_button_scene_service_tests)
 
 add_executable(rynui_button_component_tests button_component_tests.cpp)
+add_executable(rynui_input_component_tests input_component_tests.cpp)
+rynui_configure_cpp_target(rynui_input_component_tests)
+target_link_libraries(rynui_input_component_tests PRIVATE rynui_components rynui_text_input_session)
+target_compile_definitions(rynui_input_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.input_component COMMAND rynui_input_component_tests)
 rynui_configure_cpp_target(rynui_button_component_tests)
 target_link_libraries(rynui_button_component_tests PRIVATE rynui_components)
 target_compile_definitions(

@@ -151,6 +151,14 @@ TextComponentHost::~TextComponentHost() {
     dispose();
 }
 
+std::vector<font::FontIdentity> TextComponentHost::resolve_fonts(
+    const runtime::SemanticTypography& typography) const {
+    auto chain = font_resolver_(typography.font_family, typography.font_weight,
+        static_cast<std::uint32_t>(std::lround(typography.font_size)));
+    if(chain.empty()) throw std::runtime_error("Theme font resolver returned an empty chain");
+    return chain;
+}
+
 void TextComponentHost::mount(const Content& content) {
     ActiveTextHostGuard guard(*this);
     LayoutComponentServices services{*nodes_, *layout_, *dirty_};

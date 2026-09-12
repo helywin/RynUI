@@ -69,6 +69,7 @@ public:
     [[nodiscard]] std::uint32_t text_font_weight() const;
     [[nodiscard]] float text_font_size() const;
     [[nodiscard]] float text_line_height() const;
+    [[nodiscard]] float line_width() const;
     [[nodiscard]] Color text_secondary_color() const;
     [[nodiscard]] Color text_disabled_color() const;
 

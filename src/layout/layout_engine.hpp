@@ -123,8 +123,19 @@ struct HorizontalContentGeometry final {
         HorizontalContentGeometry) = default;
 };
 
-using LayoutModel =
-    std::variant<LeafLayout, BoxLayout, FlexLayout, HorizontalContentLayout>;
+// Exactly three children: prefix wrapper, editable viewport, suffix wrapper.
+// Affixes are measured first; the editable viewport receives remaining width.
+struct InputContentLayout final {
+    float control_height{32.0F};
+    float padding_inline{11.0F};
+    float border_width{1.0F};
+    float gap{4.0F};
+    bool prefix{}, suffix{};
+    friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
+};
+
+using LayoutModel = std::variant<LeafLayout, BoxLayout, FlexLayout,
+    HorizontalContentLayout, InputContentLayout>;
 
 class LayoutEngine final {
 public:

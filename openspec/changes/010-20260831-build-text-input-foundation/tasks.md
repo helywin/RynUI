@@ -37,11 +37,11 @@
 
 ## 5. 公开 Input API、生命周期与布局
 
-- [ ] 5.1 增加 `include/ryn/input.hpp` 的 `InputStatus`、typed `InputProps`、typed prefix/suffix slots、controlled `value`、`defaultValue`、placeholder/status/disabled/readOnly/maxLength、owned `onChange`/`onSubmit` callback 与 `LayoutStyle`；从 `rynui.hpp` 导出并通过 compile-smoke、header isolation、narrow string/renderer/SDL/Modifier compile-fail contracts 验证
-- [ ] 5.2 在 props mount 时拒绝 value/defaultValue 冲突并固定 controlled mode；实现 generation-checked Input component record、editor/session/interaction ownership 与 destroy/reuse cleanup，通过 invalid props、conditional mount、Focus/capture/composition/deadline teardown 和 callback self-destroy tests 验证
-- [ ] 5.3 实现 small/middle/large root、prefix/editable viewport/suffix Constraints layout、intrinsic measure、baseline、clip 与 horizontal scroll slot；通过 empty/placeholder/CJK/Latin/long text、missing/双 slot、窄宽、min/max constraints、四档 simulated DPI tests 验证
-- [ ] 5.4 接入 `Prop<T>` subscription，证明 value/placeholder/font/size/slot只触发必要 Shape/Measure/Layout，disabled/readOnly/status只触发对应 Interaction/Material，普通更新不重跑 slots 或 sibling Component；覆盖 nested Theme、Signal batch 和 unmount tests
-- [ ] 5.5 运行 public API、Component lifecycle、Props、Layout/Constraints、Text shaping、Focus/Pointer、dependency leak 与 `git diff --check`；以英文 `feat: add input component API` 提交并推送本阶段，核对 remote SHA
+- [x] 5.1 增加 `include/ryn/input.hpp` 的 `InputStatus`、typed `InputProps`、typed prefix/suffix slots、controlled `value`、`defaultValue`、placeholder/status/disabled/readOnly/maxLength、owned `onChange`/`onSubmit` callback 与 `LayoutStyle`；从 `rynui.hpp` 导出并通过 compile-smoke、header isolation、narrow string/renderer/SDL/Modifier compile-fail contracts 验证
+- [x] 5.2 在 props mount 时拒绝 value/defaultValue 冲突并固定 controlled mode；实现 generation-checked Input component record、editor/session/interaction ownership 与 destroy/reuse cleanup，通过 invalid props、conditional mount、Focus/capture/composition/deadline teardown 和 callback self-destroy tests 验证
+- [x] 5.3 实现 small/middle/large root、prefix/editable viewport/suffix Constraints layout、intrinsic measure、baseline、clip 与 horizontal scroll slot；通过 empty/placeholder/CJK/Latin/long text、missing/双 slot、窄宽、min/max constraints、四档 simulated DPI tests 验证
+- [x] 5.4 接入 `Prop<T>` subscription，证明 value/placeholder/font/size/slot只触发必要 Shape/Measure/Layout，disabled/readOnly/status只触发对应 Interaction/Material，普通更新不重跑 slots 或 sibling Component；覆盖 nested Theme、Signal batch 和 unmount tests
+- [x] 5.5 运行 public API、Component lifecycle、Props、Layout/Constraints、Text shaping、Focus/Pointer、dependency leak 与 `git diff --check`；以英文 `feat: add input component API` 提交并推送本阶段，核对 remote SHA
 
 ## 6. TextCaretMap 与 retained Input scene
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 
@@ -13,12 +14,6 @@ namespace detail {
 struct ButtonPropsAccess;
 
 } // namespace detail
-
-enum class ControlSize {
-    Small,
-    Middle,
-    Large,
-};
 
 enum class ButtonType {
     Default,

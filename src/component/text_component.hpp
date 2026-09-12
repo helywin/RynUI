@@ -71,6 +71,8 @@ public:
     [[nodiscard]] TextSceneService& scene_service() noexcept;
     [[nodiscard]] const TextSceneService& scene_service() const noexcept;
     [[nodiscard]] std::span<const MountedTextComponent> mounted_texts() const noexcept;
+    [[nodiscard]] std::vector<font::FontIdentity> resolve_fonts(
+        const runtime::SemanticTypography& typography) const;
 
 private:
     friend void mount_text_component(const TextProps& props);

@@ -65,6 +65,7 @@ enum class TokenIdentity : std::uint8_t {
     text_font_weight,
     text_font_size,
     text_line_height,
+    seed_line_width,
     count,
 };
 

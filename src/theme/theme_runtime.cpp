@@ -226,6 +226,8 @@ std::size_t collect_changed(
         TokenIdentity::text_font_size, changed, count);
     append_if_changed(before_text.line_height, after_text.line_height,
         TokenIdentity::text_line_height, changed, count);
+    append_if_changed(before.seed().line_width, after.seed().line_width,
+        TokenIdentity::seed_line_width, changed, count);
     return count;
 }
 
@@ -442,6 +444,12 @@ float ThemeScope::text_font_size() const {
     ensure_owner_thread();
     record(TokenIdentity::text_font_size);
     return snapshot_->text().font_size;
+}
+
+float ThemeScope::line_width() const {
+    ensure_owner_thread();
+    record(TokenIdentity::seed_line_width);
+    return snapshot_->seed().line_width;
 }
 
 float ThemeScope::text_line_height() const {
@@ -681,7 +689,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Button.colors", "Button.controlHeights", "Button.paddingInline",
         "Button.typography", "Button.borderRadius", "Button.borderWidth",
         "Button.iconGap", "Button.shadows", "Text.color", "Text.fontFamily",
-        "Text.fontWeight", "Text.fontSize", "Text.lineHeight",
+        "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -737,6 +745,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::text_line_height:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
+    case TokenIdentity::seed_line_width:
     case TokenIdentity::map_size_small:
     case TokenIdentity::map_size:
     case TokenIdentity::map_size_large:
