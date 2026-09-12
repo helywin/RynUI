@@ -662,12 +662,16 @@ const TextError& TextState::last_error() const noexcept {
 }
 
 void TextState::invalidate_shape() {
+    if(revision_ == std::numeric_limits<std::uint64_t>::max()) throw std::overflow_error("Text revision exhausted");
+    ++revision_;
     shape_dirty_ = true;
     layout_dirty_ = true;
     request_frame();
 }
 
 void TextState::invalidate_layout(bool request_frame) {
+    if(revision_ == std::numeric_limits<std::uint64_t>::max()) throw std::overflow_error("Text revision exhausted");
+    ++revision_;
     layout_dirty_ = true;
     if (request_frame) {
         this->request_frame();

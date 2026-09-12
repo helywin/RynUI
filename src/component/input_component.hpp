@@ -1,6 +1,7 @@
 #pragma once
 
 #include "component/button_component.hpp"
+#include "component/input_display.hpp"
 #include "input/text_input_session.hpp"
 #include "input/text_clipboard_commands.hpp"
 #include <ryn/input.hpp>
@@ -17,6 +18,7 @@ struct MountedInputComponent {
 struct InputLayoutSnapshot {
     runtime::Rect viewport, clip;
     float baseline{}, scroll_offset{}, text_width{};
+    float caret_x{}, selection_start{}, selection_end{}, composition_start{}, composition_end{};
 };
 
 // The containing component host and platform ports must outlive this host.
@@ -39,6 +41,8 @@ public:
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);
     [[nodiscard]] TextSceneId text_scene(runtime::ComponentId) const;
+    [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
+    [[nodiscard]] const text::TextCaretMap& caret_map(runtime::ComponentId) const;
     // Retained owner-scoped deadline slot. Blink policy/ticking is layered on it.
     bool set_caret_deadline(runtime::ComponentId, std::optional<animation::AnimationTime>);
     [[nodiscard]] std::optional<animation::AnimationTime> next_caret_deadline() const;
@@ -46,7 +50,7 @@ private:
     friend struct InputPropsAccess;
     void notify_change(input::TextInputOwnerId);
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
-    void update_text(runtime::ComponentId);
+    void update_text(runtime::ComponentId, bool measure_layout = true);
     void update_theme(runtime::ComponentId);
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     ButtonComponentHost* host_;

@@ -264,9 +264,50 @@ void reactive_phases() {
     config.set(ThemeConfig{}); value.set(String{u8"late"});
     require(f.inputs.editors().size() == 0, "unmounted bindings recreated editor");
 }
+void composition_display() {
+    Fixture f; Signal<String> value{String{}}; int changes{};
+    f.inputs.mount(Content{[&] {
+        Input(InputProps{}.value(value).placeholder(u8"hint").layout(LayoutStyle{}.width(dp(80)))
+            .onChange([&](String next) { ++changes; value.set(std::move(next)); }));
+    }}); f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto scene = f.inputs.text_scene(mounted.component);
+    require(f.inputs.display_snapshot(mounted.component).placeholder, "empty Input did not show placeholder");
+    require(f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard), "composition Input focus failed");
+    const auto stamp = f.inputs.sessions().active();
+    const auto measures = f.nodes.require(mounted.node).measure_count;
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"中文输入很长"}, {6, 0}, stamp})), "Input preedit rejected");
+    require(f.dirty.layout_roots().empty(), "preedit changed external layout"); f.synchronize();
+    const auto display = f.inputs.display_snapshot(mounted.component);
+    auto geometry = f.inputs.layout_snapshot(mounted.component);
+    require(!display.placeholder && display.composing && value.get().empty() && changes == 0, "preedit changed authoritative value");
+    require(geometry.scroll_offset > 0 && geometry.caret_x + 1 <= geometry.viewport.x + geometry.viewport.width + 0.001F,
+        "preedit End caret was clipped");
+    const auto shapes = f.scene.text_state(scene).counters().shape_count;
+    const auto map_revision = f.inputs.caret_map(mounted.component).revision();
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"中文输入很长"}, {0, 1}, stamp})), "composition range update failed");
+    require(f.dirty.layout_roots().empty() && f.dirty.text_nodes().empty(), "composition range invalidated layout/shape"); f.synchronize();
+    require(f.scene.text_state(scene).counters().shape_count == shapes
+        && f.inputs.caret_map(mounted.component).revision() == map_revision
+        && f.nodes.require(mounted.node).measure_count == measures, "composition range reshaped/remeasured Input");
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"中文输入很长"}, stamp})), "composition commit failed"); f.synchronize();
+    require(changes == 1 && value.get() == String{u8"中文输入很长"}
+        && !f.inputs.display_snapshot(mounted.component).composing
+        && f.scene.text_state(scene).counters().shape_count == shapes, "commit/echo needlessly reshaped identical displayed text");
+    auto& editor = f.inputs.editors().require(mounted.editor);
+    require(bool(editor.move(TextCaretMove::home)), "Input Home failed"); f.synchronize();
+    require(f.inputs.layout_snapshot(mounted.component).scroll_offset == 0, "Input Home did not reveal start");
+    require(bool(editor.move(TextCaretMove::end)), "Input End failed"); f.synchronize();
+    require(f.inputs.layout_snapshot(mounted.component).scroll_offset > 0, "Input End did not reveal end");
+    value.set(String{u8"短"}); f.synchronize();
+    require(f.inputs.layout_snapshot(mounted.component).scroll_offset == 0, "controlled shorter value kept offset");
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"new"}, {3, 0}, stamp})), "second composition failed"); f.synchronize();
+    require(bool(f.inputs.dispatch(TextCommitted{String{}, stamp})), "empty commit cancellation failed"); f.synchronize();
+    require(!f.inputs.display_snapshot(mounted.component).composing && value.get() == String{u8"短"}, "empty commit deleted value or left preedit");
+}
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); reactive_phases(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); reactive_phases(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

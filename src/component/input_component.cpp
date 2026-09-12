@@ -28,6 +28,9 @@ struct InputState {
     theme_runtime::Subscription theme_subscription;
     InputLayoutSnapshot geometry;
     std::optional<animation::AnimationTime> caret_deadline;
+    InputDisplayState display;
+    text::TextCaretMap carets;
+    std::uint64_t measured_value_revision{};
 };
 struct InputSlotState {};
 void check(input::TextEditResult result) {
@@ -277,16 +280,22 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     const auto color = theme.text().color;
     state->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
 }
-void InputComponentHost::update_text(runtime::ComponentId component) {
+void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout) {
     auto* state = host_->components().state<InputState>(component);
     if(!state || !state->text_scene.valid()) return;
-    const auto value = editors_.require(state->mounted.editor).value();
-    auto displayed = value.empty() ? state->placeholder : String::from_utf8(value).value();
+    const auto& editor = editors_.require(state->mounted.editor);
+    const auto changed = state->display.update(editor, state->placeholder.view());
     auto& scene = host_->text().scene_service();
-    if(scene.set_content(state->text_scene, std::move(displayed))) {
+    if(changed.text_changed && scene.text_state(state->text_scene).content().bytes() != state->display.snapshot().text) {
+        scene.set_content(state->text_scene, String::from_utf8(state->display.snapshot().text).value());
         const auto revisions = scene.revisions(state->text_scene);
         host_->layout().set_intrinsic_revision(state->viewport, revisions.content + revisions.layout);
-        invalidate(component, text_dirty);
+        invalidate(component, measure_layout ? text_dirty : runtime::DirtyFlags::Geometry);
+    }
+    if(changed.geometry_changed) invalidate(component, runtime::DirtyFlags::Geometry);
+    if(measure_layout && state->measured_value_revision != editor.revision()) {
+        state->measured_value_revision = editor.revision();
+        invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
     }
 }
 InputLayoutSnapshot InputComponentHost::layout_snapshot(runtime::ComponentId component) const {
@@ -298,6 +307,16 @@ TextSceneId InputComponentHost::text_scene(runtime::ComponentId component) const
     const auto* state = host_->components().state<InputState>(component);
     if(!state) throw std::out_of_range("Input component is stale");
     return state->text_scene;
+}
+InputDisplaySnapshot InputComponentHost::display_snapshot(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if(!state) throw std::out_of_range("Input component is stale");
+    return state->display.snapshot();
+}
+const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if(!state) throw std::out_of_range("Input component is stale");
+    return state->carets;
 }
 bool InputComponentHost::set_caret_deadline(runtime::ComponentId component,
     std::optional<animation::AnimationTime> deadline) {
@@ -329,6 +348,11 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::
     for(const auto& mounted : mounted_) {
         auto* state = host_->components().state<InputState>(mounted.component);
         if(!state) continue;
+        update_text(mounted.component, false);
+        auto& text_scene = host_->text().scene_service();
+        if(state->carets.revision() != text_scene.text_state(state->text_scene).revision()
+            && !text_scene.synchronize_caret_map(state->text_scene, state->carets))
+                throw std::runtime_error("Input caret mapping failed");
         const auto& node = host_->nodes().require(state->viewport);
         auto viewport = node.bounds;
         // Include parent translations; bounds themselves are absolute layout coordinates.
@@ -345,8 +369,16 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::
         state->geometry.clip = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
         state->geometry.baseline = viewport.y + measurement.first_baseline;
         state->geometry.text_width = measurement.width;
-        state->geometry.scroll_offset = std::min(state->geometry.scroll_offset,
-            std::max(0.0F, measurement.width - viewport.width));
+        state->geometry.scroll_offset = state->display.scroll_for_caret(state->carets,
+            state->carets.revision(), viewport.width, state->geometry.scroll_offset).value();
+        const auto display = state->display.snapshot();
+        const auto x = [&](std::size_t byte) { return viewport.x + state->carets.at(byte, state->carets.revision()).value().x
+            - state->geometry.scroll_offset; };
+        state->geometry.caret_x = x(display.caret);
+        state->geometry.selection_start = x(display.selection.begin());
+        state->geometry.selection_end = x(display.selection.end());
+        state->geometry.composition_start = x(display.composition.begin());
+        state->geometry.composition_end = x(display.composition.end());
     }
 }
 void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
@@ -367,11 +399,13 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
 input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& event) {
     auto result = sessions_.dispatch(event);
     if(result.value_changed) notify_change(event.session.owner);
+    else if(result) for(const auto& mounted : mounted_)
+        if(mounted.editor == event.session.owner) update_text(mounted.component, false);
     return result;
 }
 input::TextEditResult InputComponentHost::dispatch(const input::CompositionChanged& event) {
     auto result = sessions_.dispatch(event);
-    if(result) for(const auto& mounted : mounted_) if(mounted.editor == event.session.owner) invalidate(mounted.component, text_dirty);
+    if(result) for(const auto& mounted : mounted_) if(mounted.editor == event.session.owner) update_text(mounted.component, false);
     return result;
 }
 input::TextEditResult InputComponentHost::dispatch(const input::CandidatesChanged& event) { return sessions_.dispatch(event); }

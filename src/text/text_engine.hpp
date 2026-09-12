@@ -216,6 +216,8 @@ public:
     [[nodiscard]] const TextMeasurement& measurement() const noexcept;
     [[nodiscard]] const TextMaterial& material() const noexcept;
     [[nodiscard]] const TextStateCounters& counters() const noexcept;
+    [[nodiscard]] StringView content() const noexcept { return content_.view(); }
+    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
     [[nodiscard]] const TextError& last_error() const noexcept;
 
 private:
@@ -233,6 +235,7 @@ private:
     ShapedText shaped_;
     TextMeasurement measurement_;
     TextStateCounters counters_;
+    std::uint64_t revision_{1};
     TextError last_error_;
     bool shape_dirty_{true};
     bool layout_dirty_{true};

@@ -1,4 +1,5 @@
 #include "text/text_scene_service.hpp"
+#include "text/text_caret_map.hpp"
 
 #include <algorithm>
 #include <stdexcept>
@@ -328,6 +329,14 @@ bool TextSceneService::synchronize_measurement(TextSceneId id) {
     ++record.counters.measurement_synchronizations;
     record.last_error = {};
     return record.state->synchronize();
+}
+
+bool TextSceneService::synchronize_caret_map(TextSceneId id, text::TextCaretMap& output) {
+    ensure_owner_thread();
+    auto& state = *require_record(id).state;
+    if(!state.synchronize()) return false;
+    return engine_->map_carets(state.shaped(), state.content(), state.revision(),
+        state.measurement().first_baseline, output);
 }
 
 bool TextSceneService::synchronize_measurement(

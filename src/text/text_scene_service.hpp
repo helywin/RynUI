@@ -90,6 +90,7 @@ public:
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);
+    [[nodiscard]] bool synchronize_caret_map(TextSceneId id, text::TextCaretMap& output);
     [[nodiscard]] bool synchronize_measurement(
         TextSceneId id,
         float width_constraint);
