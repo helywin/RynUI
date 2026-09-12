@@ -57,6 +57,13 @@ graphics::QuadInstance clipped_quad(runtime::Rect bounds, runtime::Rect clip,
     return {{-1 + 2 * bounds.x / viewport.width, 1 - 2 * bounds.y / viewport.height,
         2 * bounds.width / viewport.width, -2 * bounds.height / viewport.height}, color, opacity};
 }
+runtime::Rect pixel_clip(runtime::Rect clip, float scale) {
+    const float left = std::ceil(clip.x * scale) / scale;
+    const float top = std::ceil(clip.y * scale) / scale;
+    const float right = std::floor((clip.x + clip.width) * scale) / scale;
+    const float bottom = std::floor((clip.y + clip.height) * scale) / scale;
+    return {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+}
 void check(input::TextEditResult result) {
     if(!result) throw std::runtime_error("Input editor update failed");
 }
@@ -285,6 +292,19 @@ void InputComponentHost::set_window_active(bool active) {
     static_cast<void>(sessions_.set_window_active(active));
     host_->set_window_active(active);
 }
+void InputComponentHost::set_display_scale(float scale) {
+    if(!std::isfinite(scale) || scale <= 0) throw std::invalid_argument("Input display scale must be positive and finite");
+    if(display_scale_ == scale) return;
+    display_scale_ = scale;
+    for(const auto& mounted : mounted_) {
+        if(auto* state = host_->components().state<InputState>(mounted.component)) {
+            // The window owner updates its font resolver before this call.
+            host_->text().scene_service().set_font_chain(state->text_scene,
+                host_->text().resolve_fonts(state->typography));
+            invalidate(mounted.component, runtime::DirtyFlags::Geometry);
+        }
+    }
+}
 void InputComponentHost::invalidate(runtime::ComponentId component, runtime::DirtyFlags flags) {
     if(auto* current = host_->components().state<InputState>(component))
         host_->dirty().invalidate(current->mounted.node, flags);
@@ -422,11 +442,17 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         const auto left = std::max(viewport.x, clip.x), top = std::max(viewport.y, clip.y);
         const auto& measurement = host_->text().scene_service().text_state(state->text_scene).measurement();
         state->geometry.viewport = viewport;
-        state->geometry.clip = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+        state->geometry.clip = pixel_clip(
+            {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)}, display_scale_);
         state->geometry.baseline = viewport.y + measurement.first_baseline;
         state->geometry.text_width = measurement.width;
-        state->geometry.scroll_offset = state->display.scroll_for_caret(state->carets,
-            state->carets.revision(), viewport.width, state->geometry.scroll_offset).value();
+        const float thickness = std::max(1.0F, std::round(display_scale_)) / display_scale_;
+        const auto caret_clip = pixel_clip(viewport, display_scale_);
+        const float usable_width = std::max(0.0F, caret_clip.x + caret_clip.width - viewport.x);
+        const auto scroll = state->display.scroll_for_caret(state->carets,
+            state->carets.revision(), usable_width, state->geometry.scroll_offset, thickness).value();
+        // Whole physical pixels preserve the cached glyph raster phase.
+        state->geometry.scroll_offset = std::ceil(scroll * display_scale_) / display_scale_;
         const auto display = state->display.snapshot();
         const auto x = [&](std::size_t byte) { return viewport.x + state->carets.at(byte, state->carets.revision()).value().x
             - state->geometry.scroll_offset; };
@@ -435,6 +461,15 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         state->geometry.selection_end = x(display.selection.end());
         state->geometry.composition_start = x(display.composition.begin());
         state->geometry.composition_end = x(display.composition.end());
+        const auto snap = [&](float value) { return std::round(value * display_scale_) / display_scale_; };
+        const auto caret_left = std::clamp(snap(state->geometry.caret_x), caret_clip.x,
+            std::max(caret_clip.x, caret_clip.x + caret_clip.width - thickness));
+        state->geometry.caret = {caret_left, caret_clip.y, std::min(thickness, caret_clip.width), caret_clip.height};
+        const auto underline_left = snap(state->geometry.composition_start);
+        state->geometry.underline = {underline_left,
+            std::max(caret_clip.y, caret_clip.y + caret_clip.height - thickness),
+            std::max(0.0F, snap(state->geometry.composition_end) - underline_left),
+            std::min(thickness, caret_clip.height)};
         const auto& theme = host_->components().theme_scope(mounted.component)->snapshot();
         const auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
         state->next_container_clip = clip;
@@ -475,10 +510,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             state->focused && !state->disabled && !display.placeholder ? 0.25F : 0.0F)};
         static_cast<void>(host_->button_scene().update_surface(state->selection_surface, selection));
         const std::array<graphics::QuadInstance, 2> overlays{
-            clipped_quad({state->geometry.composition_start, viewport.y + viewport.height - 1,
-                state->geometry.composition_end - state->geometry.composition_start, 1},
+            clipped_quad(state->geometry.underline,
                 state->geometry.clip, window, foreground, display.composing ? 1.0F : 0.0F),
-            clipped_quad({state->geometry.caret_x, viewport.y, 1, viewport.height},
+            clipped_quad(state->geometry.caret,
                 state->geometry.clip, window, foreground,
                 state->focused && !state->disabled && !state->read_only
                     && host_->focus().state().window_active ? 1.0F : 0.0F),

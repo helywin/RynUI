@@ -17,6 +17,7 @@ struct MountedInputComponent {
 
 struct InputLayoutSnapshot {
     runtime::Rect viewport, clip;
+    runtime::Rect caret, underline;
     float baseline{}, scroll_offset{}, text_width{};
     float caret_x{}, selection_start{}, selection_end{}, composition_start{}, composition_end{};
 };
@@ -35,6 +36,8 @@ public:
     void mount(const Content&);
     void dispose() noexcept;
     void set_window_active(bool);
+    // Matches the owning window/font resolver's physical-to-logical scale.
+    void set_display_scale(float);
     [[nodiscard]] std::span<const MountedInputComponent> mounted_inputs() const noexcept { return mounted_; }
     [[nodiscard]] input::TextEditorStore& editors() noexcept { return editors_; }
     [[nodiscard]] input::TextInputSessionHost& sessions() noexcept { return sessions_; }
@@ -64,6 +67,7 @@ private:
     input::TextInputSessionHost sessions_;
     input::TextClipboardCommands clipboard_;
     std::vector<MountedInputComponent> mounted_;
+    float display_scale_{1.0F};
 };
 
 } // namespace ryn::detail

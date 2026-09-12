@@ -29,11 +29,12 @@ struct Fixture {
     std::unique_ptr<font::FontRuntime> fonts = std::move(font::FontRuntime::create().runtime);
     text::TextEngine engine{*fonts};
     detail::TextSceneService scene{*fonts, engine, frames};
+    float font_scale{1.0F};
     std::map<std::uint32_t, std::vector<font::FontIdentity>> chains;
     std::vector<font::FontIdentity> resolve(std::uint32_t pixels) {
         if(auto found = chains.find(pixels); found != chains.end()) return found->second;
-        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixels);
-        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixels);
+        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, font::FontRasterConfig{pixels, font_scale});
+        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, font::FontRasterConfig{pixels, font_scale});
         require(bool(latin) && bool(cjk), "Input validation fonts failed to load");
         auto chain = std::vector<font::FontIdentity>{latin.font, cjk.font};
         chains.emplace(pixels, chain); return chain;
@@ -371,6 +372,44 @@ void retained_range_remapping() {
         "remaining Input identity or relocated hit bounds became stale");
 }
 
+void input_pixel_grid() {
+    for(const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        Fixture f; f.font_scale = scale; f.inputs.set_display_scale(scale);
+        f.inputs.mount(Content{[] { Input(InputProps{}.layout(LayoutStyle{}.width(dp(80.3F)))); }});
+        f.synchronize();
+        const auto mounted = f.inputs.mounted_inputs().front();
+        require(f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard), "scaled Input focus failed");
+        require(bool(f.inputs.dispatch(CompositionChanged{String{u8"中文输入测试很长"}, {8, 0}, f.inputs.sessions().active()})),
+            "scaled composition failed"); f.synchronize();
+        const auto geometry = f.inputs.layout_snapshot(mounted.component);
+        const auto on_grid = [scale](float logical) { return std::abs(logical * scale - std::round(logical * scale)) < 0.0001F; };
+        require(on_grid(geometry.scroll_offset) && on_grid(geometry.caret.x) && on_grid(geometry.caret.y)
+            && on_grid(geometry.caret.width) && on_grid(geometry.caret.height)
+            && on_grid(geometry.underline.x) && on_grid(geometry.underline.y)
+            && on_grid(geometry.underline.width) && on_grid(geometry.underline.height), "Input geometry is off physical pixel grid");
+        const auto expected = std::max(1.0F, std::round(scale));
+        require(std::abs(geometry.caret.width * scale - expected) < 0.0001F
+            && std::abs(geometry.underline.height * scale - expected) < 0.0001F
+            && geometry.caret.x >= geometry.clip.x
+            && geometry.caret.x + geometry.caret.width <= geometry.clip.x + geometry.clip.width + 0.0001F,
+            "scaled End caret/underline lost thickness or was clipped");
+        const auto scene = f.inputs.text_scene(mounted.component);
+        const auto& instance = f.scene.glyph_scene().instances().at(f.scene.primitive(scene).instances.first);
+        require(on_grid(instance.translation_opacity[0] * 320 / 2), "glyph scroll changed physical raster phase");
+        require(bool(f.inputs.dispatch(TextCommitted{String{u8"中文输入测试很长"}, f.inputs.sessions().active()})), "scaled commit failed");
+        require(bool(f.inputs.editors().require(mounted.editor).move(TextCaretMove::home)), "scaled Home failed"); f.synchronize();
+        require(f.inputs.layout_snapshot(mounted.component).scroll_offset == 0, "scaled Home retained scroll");
+        const auto& first = f.scene.glyph_scene().instances().at(f.scene.primitive(scene).instances.first);
+        const float guard = graphics::glyph_atlas_padding / scale;
+        const float ink_left = (first.position_size[0] + 1) * 160 + guard;
+        const float ink_top = (1 - first.position_size[1]) * 120 + guard;
+        const float ink_bottom = ink_top - first.position_size[3] * 120 - 2 * guard;
+        const auto visible_clip = f.inputs.layout_snapshot(mounted.component).clip;
+        require(ink_left >= visible_clip.x - 0.001F && ink_top >= visible_clip.y - 0.001F
+            && ink_bottom <= visible_clip.y + visible_clip.height + 0.001F, "scaled visible CJK glyph was clipped");
+    }
+}
+
 void composition_display() {
     Fixture f; Signal<String> value{String{}}; int changes{};
     f.inputs.mount(Content{[&] {
@@ -415,6 +454,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }
