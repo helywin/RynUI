@@ -15,6 +15,8 @@ static_assert(ThemeConfigValue<ryn::Prop<ryn::ThemeConfig>>);
 static_assert(ThemeConfigValue<ryn::Signal<ryn::ThemeConfig>>);
 static_assert(!ThemeConfigValue<const char*>);
 static_assert(!ThemeConfigValue<int>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.padding_inline)&, float>);
+static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.input_font_size)&, const char*>);
 static_assert(!std::constructible_from<ryn::ThemeContent, ryn::Content>);
 static_assert(!std::constructible_from<ryn::Content, ryn::ThemeContent>);
 static_assert(std::is_same_v<decltype(&ryn::Theme),

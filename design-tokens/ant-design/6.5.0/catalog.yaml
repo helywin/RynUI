@@ -78,10 +78,10 @@
       "seed": 46
     },
     "by_support": {
-      "component-not-yet-implemented": 566,
+      "component-not-yet-implemented": 557,
       "deprecated": 172,
       "metadata": 313,
-      "runtime": 102,
+      "runtime": 111,
       "web-only": 41
     },
     "component_owners": 69,
@@ -6563,12 +6563,12 @@
       "internal": false,
       "invalidation_domain": "text-measure-layout",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.inputFontSize",
       "source": {
         "line": 79,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "inputFontSize",
       "upstream_type": "number",
@@ -6584,12 +6584,12 @@
       "internal": false,
       "invalidation_domain": "text-measure-layout",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.inputFontSizeLG",
       "source": {
         "line": 84,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "inputFontSizeLG",
       "upstream_type": "number",
@@ -6605,12 +6605,12 @@
       "internal": false,
       "invalidation_domain": "text-measure-layout",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.inputFontSizeSM",
       "source": {
         "line": 89,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "inputFontSizeSM",
       "upstream_type": "number",
@@ -6626,12 +6626,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingBlock",
       "source": {
         "line": 24,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingBlock",
       "upstream_type": "number",
@@ -6647,12 +6647,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingBlockLG",
       "source": {
         "line": 34,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingBlockLG",
       "upstream_type": "number",
@@ -6668,12 +6668,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingBlockSM",
       "source": {
         "line": 29,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingBlockSM",
       "upstream_type": "number",
@@ -6689,12 +6689,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingInline",
       "source": {
         "line": 9,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingInline",
       "upstream_type": "number",
@@ -6710,12 +6710,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingInlineLG",
       "source": {
         "line": 19,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingInlineLG",
       "upstream_type": "number",
@@ -6731,12 +6731,12 @@
       "internal": false,
       "invalidation_domain": "measure-layout-hittest",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.paddingInlineSM",
       "source": {
         "line": 14,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "paddingInlineSM",
       "upstream_type": "number",

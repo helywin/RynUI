@@ -56,6 +56,11 @@ RUNTIME_BUTTONS = {
     "contentFontSize", "contentFontSizeLG", "contentFontSizeSM", "contentLineHeight",
     "contentLineHeightLG", "contentLineHeightSM", "defaultBgDisabled",
 }
+RUNTIME_INPUTS = {
+    "paddingInline", "paddingInlineSM", "paddingInlineLG",
+    "paddingBlock", "paddingBlockSM", "paddingBlockLG",
+    "inputFontSize", "inputFontSizeSM", "inputFontSizeLG",
+}
 SEED_DEFAULTS = {
     "blue": "#1677FF", "purple": "#722ED1", "cyan": "#13C2C2",
     "green": "#52C41A", "magenta": "#EB2F96", "pink": "#EB2F96",
@@ -447,6 +452,8 @@ def support(field: Field, layer: str, owner: str | None, kind: str) -> str:
         return "deprecated"
     if kind == "web-css-value":
         return "web-only"
+    if layer == "component" and owner == "Input":
+        return "runtime" if field.name in RUNTIME_INPUTS else "component-not-yet-implemented"
     if layer == "component" and owner != "Button":
         return "component-not-yet-implemented"
     if layer == "component":

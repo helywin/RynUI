@@ -265,6 +265,8 @@ struct InputPropsAccess {
             [theme] { static_cast<void>(theme->map()); static_cast<void>(theme->alias()); static_cast<void>(theme->text_font_family());
                 static_cast<void>(theme->text_font_weight()); static_cast<void>(theme->text_font_size());
                 static_cast<void>(theme->text_line_height()); static_cast<void>(theme->text_color());
+                static_cast<void>(theme->input_layout_metrics()); static_cast<void>(theme->input_typography());
+                static_cast<void>(theme->input_border_radius());
                 static_cast<void>(theme->line_width()); });
         owner.mounted_.push_back(state.mounted);
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
@@ -474,8 +476,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         state->next_container_clip = clip;
         const float border = std::min(state->layout.border_width,
             0.5F * std::min(root_bounds.width, root_bounds.height));
-        const float radius = state->size == ControlSize::Small ? theme.map().border_radius_small
-            : state->size == ControlSize::Large ? theme.map().border_radius_large : theme.map().border_radius;
+        const float radius = derive_input_tokens(theme).size(state->size).border_radius;
         for(std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
             auto bounds = root_bounds;
             const float inset = layer == 2 ? border : 0.0F;

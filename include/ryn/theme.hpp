@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <memory>
 #include <span>
 #include <string>
 #include <utility>
@@ -16,6 +17,8 @@ namespace ryn {
 namespace detail {
 
 struct ThemePropsAccess;
+struct InputTokenSet;
+struct InputTokenAccess;
 
 } // namespace detail
 
@@ -104,11 +107,34 @@ struct TextThemeConfig final {
     friend bool operator==(const TextThemeConfig&, const TextThemeConfig&) = default;
 };
 
+struct InputTokenOverride final {
+    std::optional<LogicalLength> input_font_size;
+    std::optional<LogicalLength> input_font_size_small;
+    std::optional<LogicalLength> input_font_size_large;
+    std::optional<LogicalLength> padding_inline;
+    std::optional<LogicalLength> padding_inline_small;
+    std::optional<LogicalLength> padding_inline_large;
+    std::optional<LogicalLength> padding_block;
+    std::optional<LogicalLength> padding_block_small;
+    std::optional<LogicalLength> padding_block_large;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> affix_padding;
+    friend bool operator==(const InputTokenOverride&, const InputTokenOverride&) = default;
+};
+
+struct InputThemeConfig final {
+    InputTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const InputThemeConfig&, const InputThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
     ButtonThemeConfig button;
     TextThemeConfig text;
+    InputThemeConfig input;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -249,6 +275,7 @@ public:
     friend bool operator==(const ThemeSnapshot&, const ThemeSnapshot&);
 
 private:
+    friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(
         const ThemeConfig&,
         const ThemeSnapshot*);
@@ -259,6 +286,7 @@ private:
         ThemeAliasToken alias,
         ButtonThemeToken button,
         TextThemeToken text,
+        std::shared_ptr<const detail::InputTokenSet> input,
         std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
@@ -266,6 +294,7 @@ private:
     ThemeAliasToken alias_;
     ButtonThemeToken button_;
     TextThemeToken text_;
+    std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};
     std::string diagnostic_json_;

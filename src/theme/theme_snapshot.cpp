@@ -1,4 +1,5 @@
 #include <ryn/theme.hpp>
+#include "theme/input_tokens.hpp"
 
 #include <algorithm>
 #include <array>
@@ -491,6 +492,7 @@ void append_color(std::ostringstream& stream, Color color) {
     const ThemeAliasToken& alias,
     const ButtonThemeToken& button,
     const TextThemeToken& text,
+    const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms,
     std::uint64_t identity) {
     std::ostringstream stream;
@@ -550,7 +552,15 @@ void append_color(std::ostringstream& stream, Color color) {
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family)
            << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size
-           << ",\"lineHeight\":" << text.line_height << "}}\n";
+           << ",\"lineHeight\":" << text.line_height << "},\"input\":{\"sizes\":[";
+    for(std::size_t i = 0; i < input.sizes.size(); ++i) {
+        if(i) stream << ',';
+        const auto& size = input.sizes[i];
+        stream << "{\"controlHeight\":" << size.control_height << ",\"fontSize\":" << size.font_size
+            << ",\"lineHeight\":" << size.line_height << ",\"paddingInline\":" << size.padding_inline
+            << ",\"paddingBlock\":" << size.padding_block << ",\"borderRadius\":" << size.border_radius << '}';
+    }
+    stream << "],\"borderWidth\":" << input.border_width << ",\"affixPadding\":" << input.affix_padding << "}}\n";
     return stream.str();
 }
 
@@ -610,6 +620,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     const ThemeAliasToken& alias,
     const ButtonThemeToken& button,
     const TextThemeToken& text,
+    const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
@@ -697,6 +708,14 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_integer(hash, text.font_weight);
     hash_float(hash, text.font_size);
     hash_float(hash, text.line_height);
+    for(const auto& size : input.sizes) {
+        hash_float(hash, size.control_height); hash_float(hash, size.font_size);
+        hash_float(hash, size.line_height); hash_float(hash, size.padding_inline);
+        hash_float(hash, size.padding_block); hash_float(hash, size.border_radius);
+    }
+    hash_float(hash, input.border_width); hash_float(hash, input.affix_padding);
+    for(const bool explicit_padding : input.padding_block_explicit) hash_integer(hash, explicit_padding);
+    hash_integer(hash, input.small_font_explicit);
     for (const ThemeAlgorithm algorithm : algorithms) hash_integer(hash, algorithm);
     return hash;
 }
@@ -709,16 +728,18 @@ ThemeSnapshot::ThemeSnapshot(
     ThemeAliasToken alias,
     ButtonThemeToken button,
     TextThemeToken text,
+    std::shared_ptr<const detail::InputTokenSet> input,
     std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)),
       map_(std::move(map)),
       alias_(std::move(alias)),
       button_(std::move(button)),
       text_(std::move(text)),
+      input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, algorithms_);
+    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, *input_, algorithms_);
     diagnostic_json_ = serialize_snapshot(
-        seed_, map_, alias_, button_, text_, algorithms_, identity_);
+        seed_, map_, alias_, button_, text_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept { return seed_; }
@@ -737,7 +758,8 @@ const std::string& ThemeSnapshot::diagnostic_json() const noexcept { return diag
 bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_
         && left.alias_ == right.alias_ && left.button_ == right.button_
-        && left.text_ == right.text_ && left.algorithms_ == right.algorithms_;
+        && left.text_ == right.text_ && *left.input_ == *right.input_
+        && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -800,9 +822,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         text = derive_text(seed, map, alias);
     }
     apply_text_override(text, config.text.tokens);
+    detail::InputTokenSet input;
+    const bool inherit_parent_input = parent != nullptr && config.inherit
+        && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{}
+        && config.algorithms.empty() && !config.input.algorithm
+        && config.input.seed == SeedTokenOverride{};
+    if(inherit_parent_input) {
+        input = detail::InputTokenAccess::get(*parent);
+    } else if(config.input.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.input.seed);
+        input = detail::derive_input_tokens(component_seed, derive_map(component_seed, algorithms));
+    } else {
+        input = detail::derive_input_tokens(seed, map);
+    }
+    detail::apply_input_override(input, config.input.tokens);
     return ThemeSnapshot(
         std::move(seed), std::move(map), std::move(alias), std::move(button),
         std::move(text),
+        std::make_shared<const detail::InputTokenSet>(std::move(input)),
         std::move(algorithms));
 }
 

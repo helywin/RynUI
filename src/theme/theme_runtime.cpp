@@ -1,4 +1,5 @@
 #include "theme/theme_runtime.hpp"
+#include "theme/input_tokens.hpp"
 
 #include <algorithm>
 #include <array>
@@ -228,6 +229,21 @@ std::size_t collect_changed(
         TokenIdentity::text_line_height, changed, count);
     append_if_changed(before.seed().line_width, after.seed().line_width,
         TokenIdentity::seed_line_width, changed, count);
+    const auto& old_input = detail::InputTokenAccess::get(before);
+    const auto& new_input = detail::InputTokenAccess::get(after);
+    bool input_layout = old_input.border_width != new_input.border_width
+        || old_input.affix_padding != new_input.affix_padding;
+    bool input_typography{}, input_radius{};
+    for(std::size_t i = 0; i < old_input.sizes.size(); ++i) {
+        const auto& old_size = old_input.sizes[i]; const auto& new_size = new_input.sizes[i];
+        input_layout = input_layout || old_size.control_height != new_size.control_height
+            || old_size.padding_inline != new_size.padding_inline || old_size.padding_block != new_size.padding_block;
+        input_typography = input_typography || old_size.font_size != new_size.font_size || old_size.line_height != new_size.line_height;
+        input_radius = input_radius || old_size.border_radius != new_size.border_radius;
+    }
+    append_if_changed(false, input_layout, TokenIdentity::input_layout_metrics, changed, count);
+    append_if_changed(false, input_typography, TokenIdentity::input_typography, changed, count);
+    append_if_changed(false, input_radius, TokenIdentity::input_border_radius, changed, count);
     return count;
 }
 
@@ -488,6 +504,19 @@ const ButtonThemeToken& ThemeScope::button_padding_inline() const {
     return snapshot_->button();
 }
 
+const detail::InputTokenSet& ThemeScope::input_layout_metrics() const {
+    ensure_owner_thread(); record(TokenIdentity::input_layout_metrics);
+    return detail::InputTokenAccess::get(*snapshot_);
+}
+const detail::InputTokenSet& ThemeScope::input_typography() const {
+    ensure_owner_thread(); record(TokenIdentity::input_typography);
+    return detail::InputTokenAccess::get(*snapshot_);
+}
+const detail::InputTokenSet& ThemeScope::input_border_radius() const {
+    ensure_owner_thread(); record(TokenIdentity::input_border_radius);
+    return detail::InputTokenAccess::get(*snapshot_);
+}
+
 const ButtonThemeToken& ThemeScope::button_typography() const {
     ensure_owner_thread();
     record(TokenIdentity::button_typography);
@@ -690,6 +719,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Button.typography", "Button.borderRadius", "Button.borderWidth",
         "Button.iconGap", "Button.shadows", "Text.color", "Text.fontFamily",
         "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
+        "Input.layoutMetrics", "Input.typography", "Input.borderRadius",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -729,6 +759,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::alias_box_shadow_secondary:
     case TokenIdentity::alias_box_shadow_tertiary:
     case TokenIdentity::button_border_radius:
+    case TokenIdentity::input_border_radius:
     case TokenIdentity::button_border_width:
     case TokenIdentity::button_shadows:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
@@ -739,6 +770,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_line_height:
     case TokenIdentity::map_line_height_large:
     case TokenIdentity::button_typography:
+    case TokenIdentity::input_typography:
     case TokenIdentity::text_font_family:
     case TokenIdentity::text_font_weight:
     case TokenIdentity::text_font_size:
@@ -753,6 +785,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_control_height:
     case TokenIdentity::map_control_height_large:
     case TokenIdentity::button_control_heights:
+    case TokenIdentity::input_layout_metrics:
     case TokenIdentity::button_padding_inline:
     case TokenIdentity::button_icon_gap:
         return DirtyPhase::measure_layout | DirtyPhase::geometry

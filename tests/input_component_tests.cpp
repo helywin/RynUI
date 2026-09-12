@@ -217,6 +217,35 @@ void token_geometry() {
         }
     }
 }
+void reactive_input_tokens() {
+    Fixture f;
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    int input_runs{};
+    f.inputs.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+            ++input_runs; Input(InputProps{}.defaultValue(u8"input tokens"));
+        }});
+        Text(u8"unrelated");
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto scene = f.inputs.text_scene(mounted.component);
+    const auto sibling = f.buttons.text().mounted_texts().back().scene;
+    const auto shape_count = f.scene.text_state(scene).counters().shape_count;
+    const auto sibling_shapes = f.scene.text_state(sibling).counters().shape_count;
+    const auto measures = f.nodes.require(mounted.node).measure_count;
+    ThemeConfig next; next.input.tokens.border_radius = dp(12); config.set(next);
+    require(f.dirty.text_nodes().empty() && f.dirty.layout_roots().empty(), "Input radius dirtied text/layout");
+    f.synchronize();
+    require(f.nodes.require(mounted.node).measure_count == measures, "Input radius remeasured root");
+    next.input.tokens.padding_inline = dp(20); config.set(next); f.synchronize();
+    require(f.inputs.layout_snapshot(mounted.component).viewport.x == f.nodes.require(mounted.node).bounds.x + 21
+        && f.scene.text_state(scene).counters().shape_count == shape_count, "Input padding ignored or reshaped text");
+    next.input.tokens.input_font_size = dp(18); config.set(next); f.synchronize();
+    require(f.scene.text_state(scene).counters().shape_count == shape_count + 1
+        && f.scene.text_state(sibling).counters().shape_count == sibling_shapes && input_runs == 1,
+        "Input typography failed targeted reshape or reran content");
+}
 void reactive_phases() {
     Fixture f;
     Signal<String> value{String{u8"value"}}, placeholder{String{u8"hint"}};
@@ -446,6 +475,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); token_geometry(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_input_tokens(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

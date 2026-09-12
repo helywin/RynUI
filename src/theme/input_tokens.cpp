@@ -15,12 +15,13 @@ const InputSizeTokens& InputTokenSet::size(ControlSize value) const {
     throw std::invalid_argument("Invalid Input token size");
 }
 
-InputTokenSet derive_input_tokens(const ThemeSnapshot& theme) {
+const InputTokenSet& InputTokenAccess::get(const ThemeSnapshot& theme) noexcept { return *theme.input_; }
+const InputTokenSet& derive_input_tokens(const ThemeSnapshot& theme) noexcept { return InputTokenAccess::get(theme); }
+
+InputTokenSet derive_input_tokens(const AntDesignDefaultSeed& seed, const ThemeMapToken& map) {
     // Ant Design 6.5.0, components/input/style/token.ts, commit
     // 740ad964dc2397f33e40944367b0536a7314cc32. SM uses the base font,
     // LG uses lineHeightLG; horizontal control padding is 8 / 12, not sizeXS.
-    const auto& map = theme.map();
-    const auto& seed = theme.seed();
     InputTokenSet result;
     result.border_width = seed.line_width;
     result.affix_padding = std::max(0.0F, seed.size_unit * (seed.size_step - 3.0F));
@@ -41,6 +42,40 @@ InputTokenSet derive_input_tokens(const ThemeSnapshot& theme) {
         metrics(map.control_height_large, map.font_size_large, map.line_height_large, 12.0F, map.border_radius_large, true),
     }};
     return result;
+}
+
+void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overrides) {
+    const auto length = [](const std::optional<LogicalLength>& value, float fallback, bool positive = false) {
+        if(!value) return fallback;
+        if(value->is_auto() || !std::isfinite(value->value()) || value->value() < 0
+            || (positive && value->value() == 0)) throw std::invalid_argument("Invalid Input token length");
+        return value->value();
+    };
+    const std::array fonts{overrides.input_font_size_small, overrides.input_font_size, overrides.input_font_size_large};
+    const std::array horizontal{overrides.padding_inline_small, overrides.padding_inline, overrides.padding_inline_large};
+    const std::array vertical{overrides.padding_block_small, overrides.padding_block, overrides.padding_block_large};
+    auto next = tokens;
+    if(overrides.input_font_size_small) next.small_font_explicit = true;
+    const float base_font = length(overrides.input_font_size, next.sizes[1].font_size, true);
+    for(std::size_t i = 0; i < next.sizes.size(); ++i) {
+        auto& size = next.sizes[i];
+        const float font = length(fonts[i], i == 0 && !next.small_font_explicit ? base_font : size.font_size, true);
+        if(font != size.font_size) {
+            size.line_height = font * (size.line_height / size.font_size);
+            if(!std::isfinite(size.line_height)) throw std::invalid_argument("Input line height overflow");
+            size.font_size = font;
+            if(!next.padding_block_explicit[i]) {
+                const float half = (size.control_height - size.line_height) * 5.0F;
+                size.padding_block = std::max(0.0F, (i == 2 ? std::ceil(half) : std::floor(half + 0.5F)) / 10.0F - next.border_width);
+            }
+        }
+        size.padding_inline = length(horizontal[i], size.padding_inline);
+        size.padding_block = length(vertical[i], size.padding_block);
+        if(vertical[i]) next.padding_block_explicit[i] = true;
+    }
+    next.sizes[1].border_radius = length(overrides.border_radius, next.sizes[1].border_radius);
+    next.affix_padding = length(overrides.affix_padding, next.affix_padding);
+    tokens = next;
 }
 
 } // namespace ryn::detail

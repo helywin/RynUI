@@ -14,14 +14,22 @@ struct InputSizeTokens final {
 };
 
 // Internal resolved geometry; public customization belongs to ThemeConfig.
-// State colors/shadows and typed overrides are added in the next Token substage.
+// State colors/shadows are added in the next Token substage.
 struct InputTokenSet final {
     std::array<InputSizeTokens, 3> sizes;
     float border_width{}, affix_padding{};
+    // Keep explicit inherited padding when a nested scope changes typography.
+    std::array<bool, 3> padding_block_explicit{};
+    bool small_font_explicit{};
     [[nodiscard]] const InputSizeTokens& size(ControlSize value) const;
     friend constexpr bool operator==(const InputTokenSet&, const InputTokenSet&) = default;
 };
 
-[[nodiscard]] InputTokenSet derive_input_tokens(const ThemeSnapshot& theme);
+struct InputTokenAccess final {
+    [[nodiscard]] static const InputTokenSet& get(const ThemeSnapshot& theme) noexcept;
+};
+[[nodiscard]] const InputTokenSet& derive_input_tokens(const ThemeSnapshot& theme) noexcept;
+[[nodiscard]] InputTokenSet derive_input_tokens(const AntDesignDefaultSeed& seed, const ThemeMapToken& map);
+void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overrides);
 
 } // namespace ryn::detail

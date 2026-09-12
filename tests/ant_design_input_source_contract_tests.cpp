@@ -1,4 +1,5 @@
 #include "theme/input_tokens.hpp"
+#include "theme/theme_runtime.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -61,8 +62,79 @@ void customized_seed() {
     catch(const std::invalid_argument&) { rejected = true; }
     require(rejected, "Invalid Input token size accepted");
 }
+void overrides_and_identity() {
+    using namespace theme_runtime;
+    ThemeConfig config;
+    config.input.tokens.padding_inline = dp(19);
+    config.input.tokens.input_font_size = dp(18);
+    config.input.tokens.border_radius = dp(9);
+    config.input.tokens.affix_padding = dp(6);
+    const auto parent = resolve_theme(config);
+    const auto& tokens = detail::derive_input_tokens(parent);
+    require(tokens.size(ControlSize::Middle).padding_inline == 19
+        && tokens.size(ControlSize::Small).font_size == 18
+        && tokens.size(ControlSize::Middle).font_size == 18
+        && tokens.size(ControlSize::Large).font_size == 16
+        && tokens.size(ControlSize::Middle).border_radius == 9 && tokens.affix_padding == 6,
+        "Typed Input geometry override not resolved");
+    require(parent.identity() != resolve_theme().identity() && parent != resolve_theme()
+        && parent.diagnostic_json().find("\"input\":") != std::string::npos,
+        "Input override missing from snapshot identity/diagnostics");
+    ThemeConfig nested; nested.input.tokens.padding_inline_small = dp(13);
+    const auto child = resolve_theme(nested, &parent);
+    require(detail::derive_input_tokens(child).size(ControlSize::Middle).padding_inline == 19
+        && detail::derive_input_tokens(child).size(ControlSize::Small).padding_inline == 13,
+        "Nested Input override lost parent fields");
+    config.input.tokens.padding_block = dp(6);
+    config.input.tokens.input_font_size_small = dp(11);
+    const auto explicit_parent = resolve_theme(config);
+    nested = {}; nested.input.tokens.input_font_size = dp(20);
+    const auto inherited = resolve_theme(nested, &explicit_parent);
+    require(detail::derive_input_tokens(inherited).size(ControlSize::Middle).padding_block == 6
+        && detail::derive_input_tokens(inherited).size(ControlSize::Small).font_size == 11,
+        "Nested typography overwrote inherited explicit padding/small font");
+    ThemeConfig algorithm; algorithm.input.algorithm = true;
+    algorithm.input.seed.control_height = dp(48);
+    const auto component_algorithm = resolve_theme(algorithm);
+    require(detail::derive_input_tokens(component_algorithm).size(ControlSize::Middle).control_height == 48
+        && component_algorithm.map().control_height == 32 && component_algorithm.button().control_height == 32,
+        "Input component algorithm leaked into global/Button tokens");
+    algorithm.input.algorithm = false;
+    require(detail::derive_input_tokens(resolve_theme(algorithm)).size(ControlSize::Middle).control_height == 32,
+        "Input algorithm=false consumed component seed");
+    for(const auto invalid : {auto_length, dp(-1), dp(0)}) {
+        ThemeConfig bad; bad.input.tokens.input_font_size = invalid;
+        bool rejected{};
+        try { static_cast<void>(resolve_theme(bad)); } catch(const std::invalid_argument&) { rejected = true; }
+        require(rejected, "Invalid Input font override accepted");
+    }
+    const auto scope = ThemeScope::create_default();
+    int layout{}, typography{}, radius{};
+    auto a = scope->capture([&](DirtyPhase p) {
+        require(has_any(p, DirtyPhase::measure_layout) && has_any(p, DirtyPhase::hit_test), "Input layout phase incorrect"); ++layout;
+    }, [&] { static_cast<void>(scope->input_layout_metrics()); });
+    auto b = scope->capture([&](DirtyPhase p) { require(has_any(p, DirtyPhase::text), "Input font phase incorrect"); ++typography; },
+        [&] { static_cast<void>(scope->input_typography()); });
+    auto c = scope->capture([&](DirtyPhase p) {
+        require(p == (DirtyPhase::geometry | DirtyPhase::paint_material), "Input radius phase incorrect"); ++radius;
+    }, [&] { static_cast<void>(scope->input_border_radius()); });
+    ThemeConfig next; next.input.tokens.padding_inline = dp(20);
+    require(scope->update(next) && layout == 1 && typography == 0 && radius == 0, "Input padding notified unrelated tokens");
+    require(!scope->update(next) && layout == 1, "Same Input override notified again");
+    next.input.tokens.border_radius = dp(12); scope->update(next);
+    require(layout == 1 && typography == 0 && radius == 1, "Input radius invalidated layout/text");
+    next.input.tokens.input_font_size_large = dp(18); scope->update(next);
+    require(layout == 2 && typography == 1 && radius == 1, "Input font failed to update computed padding");
+    const auto identity = scope->snapshot().identity();
+    auto invalid = next; invalid.input.tokens.padding_inline = auto_length;
+    bool rejected{};
+    try { scope->update(invalid); } catch(const std::invalid_argument&) { rejected = true; }
+    require(rejected && scope->snapshot().identity() == identity && layout == 2 && typography == 1,
+        "Invalid Input override partially published a Theme update");
+    require(token_identity_name(TokenIdentity::input_typography) == "Input.typography", "Input identity name drifted");
+}
 }
 int main() {
-    try { defaults(); customized_seed(); }
+    try { defaults(); customized_seed(); overrides_and_identity(); }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }
