@@ -122,6 +122,13 @@ void state_tokens() {
     const auto inherited = resolve_theme({}, &scope->snapshot());
     require(detail::derive_input_tokens(inherited) == detail::derive_input_tokens(scope->snapshot()),
         "Nested Input state overrides were lost");
+    const auto good_identity = scope->snapshot().identity();
+    ShadowLayer malformed; malformed.blur = -1;
+    config.input.tokens.active_shadow = ShadowList{malformed};
+    bool rejected{};
+    try { scope->update(config); } catch(const std::invalid_argument&) { rejected = true; }
+    require(rejected && scope->snapshot().identity() == good_identity && shadow_updates == 1,
+        "Malformed mutable ShadowLayer partially updated Input theme");
 }
 void overrides_and_identity() {
     using namespace theme_runtime;

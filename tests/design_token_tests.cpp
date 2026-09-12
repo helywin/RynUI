@@ -150,8 +150,11 @@ void test_generated_metadata() {
             "Implemented Input geometry token is missing runtime metadata");
     }
     const auto* input_shadow = ryn::find_ant_design_token("ant.component.Input.activeShadow");
-    require(input_shadow && input_shadow->support == ryn::TokenSupportStatus::component_not_yet_implemented,
-        "Unimplemented Input state token was incorrectly promoted");
+    require(input_shadow && input_shadow->support == ryn::TokenSupportStatus::runtime,
+        "Implemented Input active shadow was not promoted");
+    const auto* input_addon = ryn::find_ant_design_token("ant.component.Input.addonBg");
+    require(input_addon && input_addon->support == ryn::TokenSupportStatus::component_not_yet_implemented,
+        "Unimplemented Input addon was incorrectly promoted");
     require(runtime != nullptr && runtime->support == ryn::TokenSupportStatus::runtime
                 && runtime->value_kind == ryn::TokenValueKind::shadow_list,
             "runtime metadata query failed");

@@ -90,6 +90,12 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     if(overrides.active_shadow) next.active_shadow = *overrides.active_shadow;
     if(overrides.error_active_shadow) next.error_active_shadow = *overrides.error_active_shadow;
     if(overrides.warning_active_shadow) next.warning_active_shadow = *overrides.warning_active_shadow;
+    for(const auto* shadows : {&next.active_shadow, &next.error_active_shadow, &next.warning_active_shadow})
+        for(const auto& layer : shadows->layers())
+            if((layer.kind != ShadowKind::outer && layer.kind != ShadowKind::inset)
+                || !std::isfinite(layer.offset.x) || !std::isfinite(layer.offset.y)
+                || !std::isfinite(layer.blur) || layer.blur < 0 || !std::isfinite(layer.spread))
+                throw std::invalid_argument("Invalid Input shadow token");
     tokens = next;
 }
 

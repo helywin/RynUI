@@ -8,6 +8,13 @@
 
 namespace ryn::detail {
 
+inline constexpr std::size_t input_shadow_layer_capacity = ShadowList::capacity;
+inline constexpr std::size_t input_border_layer = input_shadow_layer_capacity;
+inline constexpr std::size_t input_background_layer = input_border_layer + 1;
+inline constexpr std::size_t input_inset_shadow_layer = input_background_layer + 1;
+inline constexpr std::size_t input_focus_layer = input_inset_shadow_layer + input_shadow_layer_capacity;
+inline constexpr std::size_t input_effect_layer_count = input_focus_layer + 1;
+
 struct MountedInputComponent {
     runtime::ComponentId component;
     runtime::NodeId node;

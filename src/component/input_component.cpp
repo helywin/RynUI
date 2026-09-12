@@ -13,9 +13,18 @@ namespace {
 thread_local InputComponentHost* active_input_host{};
 constexpr auto text_dirty = runtime::DirtyFlags::Text | runtime::DirtyFlags::Measure
     | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry;
+struct InputContainerPresentation {
+    runtime::Rect bounds, clip;
+    float radius{}, border_width{};
+    Color background, border;
+    ShadowList shadows;
+    bool shadow_visible{};
+    friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
+};
 struct InputState {
     MountedInputComponent mounted;
     bool controlled{}, disabled{}, read_only{}, focused{};
+    std::size_t hovering_pointers{};
     ControlSize size{ControlSize::Middle};
     InputStatus status{InputStatus::Default};
     String placeholder;
@@ -27,8 +36,9 @@ struct InputState {
     std::vector<graphics::SceneDrawCommand> text_commands, pending_text_commands;
     runtime::SceneFragmentId container_fragment;
     component::ButtonSceneId selection_surface, overlay_surface;
-    // Active shadow, border, fill and focus retain independent identities.
-    std::array<graphics::RoundedEffectId, 4> container_effects;
+    // Both shadow kinds retain all slots; changing a typed list never changes topology.
+    std::array<graphics::RoundedEffectId, input_effect_layer_count> container_effects;
+    std::optional<InputContainerPresentation> container_presentation;
     std::vector<graphics::SceneDrawCommand> container_commands;
     std::optional<runtime::Rect> container_clip;
     runtime::Rect next_container_clip;
@@ -44,6 +54,32 @@ struct InputState {
     std::uint64_t measured_value_revision{};
 };
 struct InputSlotState {};
+struct InputVisuals {
+    Color background, border, foreground, affix, caret;
+    const ShadowList* shadow{};
+    bool shadow_visible{};
+};
+InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& tokens) {
+    const auto& colors = tokens.colors;
+    const bool error = state.status == InputStatus::Error, warning = state.status == InputStatus::Warning;
+    const Color status_color = error ? colors.error_border : warning ? colors.warning_border : colors.border;
+    const Color hover_border = error ? colors.error_hover_border : warning ? colors.warning_hover_border : colors.hover_border;
+    const Color active_border = error || warning ? status_color : colors.active_border;
+    const Color foreground = state.disabled ? colors.disabled_foreground : colors.foreground;
+    return {
+        state.disabled ? colors.disabled_background : state.focused ? colors.active_background
+            : state.hovering_pointers ? colors.hover_background : colors.background,
+        state.disabled ? (error || warning ? status_color : colors.disabled_border)
+            : state.focused ? active_border : state.hovering_pointers ? hover_border : status_color,
+        foreground, state.disabled ? foreground : error || warning ? status_color : foreground,
+        error ? colors.error_caret : warning ? colors.warning_caret : colors.caret,
+        error ? &tokens.error_active_shadow : warning ? &tokens.warning_active_shadow : &tokens.active_shadow,
+        state.focused && !state.disabled,
+    };
+}
+std::array<float, 4> channels(Color color) {
+    return {color.red(), color.green(), color.blue(), color.alpha()};
+}
 runtime::Rect translated_bounds(const runtime::NodeStore& nodes, runtime::NodeId id) {
     auto result = nodes.require(id).bounds;
     for(auto current = std::optional{id}; current; current = nodes.require(*current).parent) {
@@ -137,6 +173,17 @@ struct InputPropsAccess {
         }
         state.mounted.interaction = host.interactions().create(
             {component, state.mounted.node, parent, !disabled, true, {}});
+        input::InteractionHandlers pointer_handlers;
+        pointer_handlers.target = [&owner, component](input::PointerDispatchContext& context) {
+            if(auto* current = owner.host_->components().state<InputState>(component)) {
+                const auto before = current->hovering_pointers;
+                if(context.kind() == input::PointerEventKind::enter) ++current->hovering_pointers;
+                else if(context.kind() == input::PointerEventKind::leave && current->hovering_pointers) --current->hovering_pointers;
+                if((before == 0) != (current->hovering_pointers == 0))
+                    owner.invalidate(component, runtime::DirtyFlags::Material);
+            }
+        };
+        host.interactions().set_handlers(state.mounted.interaction, std::move(pointer_handlers));
         input::FocusHandlers handlers;
         handlers.state_changed = [&owner, component](input::FocusPresentation focus) {
             if(auto* current = owner.host_->components().state<InputState>(component)) {
@@ -262,12 +309,10 @@ struct InputPropsAccess {
         const auto theme = build.theme_scope();
         state.theme_subscription = theme->capture(
             [&owner, component](theme_runtime::DirtyPhase) { owner.update_theme(component); },
-            [theme] { static_cast<void>(theme->map()); static_cast<void>(theme->alias()); static_cast<void>(theme->text_font_family());
-                static_cast<void>(theme->text_font_weight()); static_cast<void>(theme->text_font_size());
-                static_cast<void>(theme->text_line_height()); static_cast<void>(theme->text_color());
+            [theme] { static_cast<void>(theme->text_font_family()); static_cast<void>(theme->text_font_weight());
                 static_cast<void>(theme->input_layout_metrics()); static_cast<void>(theme->input_typography());
-                static_cast<void>(theme->input_border_radius());
-                static_cast<void>(theme->line_width()); });
+                static_cast<void>(theme->input_border_radius()); static_cast<void>(theme->input_colors());
+                static_cast<void>(theme->input_shadows()); });
         owner.mounted_.push_back(state.mounted);
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
     }
@@ -309,8 +354,14 @@ void InputComponentHost::set_display_scale(float scale) {
     }
 }
 void InputComponentHost::invalidate(runtime::ComponentId component, runtime::DirtyFlags flags) {
-    if(auto* current = host_->components().state<InputState>(component))
+    if(auto* current = host_->components().state<InputState>(component)) {
         host_->dirty().invalidate(current->mounted.node, flags);
+        if(runtime::has_any(flags, runtime::DirtyFlags::Material)) {
+            const auto color = resolve_visuals(*current,
+                derive_input_tokens(host_->components().theme_scope(component)->snapshot())).affix;
+            current->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
+        }
+    }
 }
 void InputComponentHost::update_theme(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
@@ -348,8 +399,6 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
         invalidate(component, text_dirty);
     }
     state->slot_typography.set(typography);
-    const auto color = theme.text().color;
-    state->slot_foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
     invalidate(component, runtime::DirtyFlags::Material);
 }
 void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout) {
@@ -476,55 +525,72 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         state->next_container_clip = clip;
         const float border = std::min(state->layout.border_width,
             0.5F * std::min(root_bounds.width, root_bounds.height));
-        const float radius = derive_input_tokens(theme).size(state->size).border_radius;
-        for(std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
-            auto bounds = root_bounds;
-            const float inset = layer == 2 ? border : 0.0F;
-            bounds.x += inset; bounds.y += inset;
-            bounds.width -= 2 * inset; bounds.height -= 2 * inset;
-            graphics::RoundedEffectGeometry geometry;
-            geometry.shape = {bounds, std::clamp(radius - inset, 0.0F, 0.5F * std::min(bounds.width, bounds.height))};
-            geometry.ancestor_clip = graphics::EffectClip{1, clip};
-            if(layer == 0) geometry.spread = 2;
-            if(layer == 3) {
-                geometry.kind = graphics::RoundedEffectKind::outline;
-                geometry.outline_width = std::max(0.001F, theme.alias().line_width_focus);
-                geometry.outline_offset = theme.alias().focus_outline_offset;
+        const auto& tokens = derive_input_tokens(theme);
+        const float radius = tokens.size(state->size).border_radius;
+        const auto visual = resolve_visuals(*state, tokens);
+        const InputContainerPresentation next_container{root_bounds, clip, radius, border,
+            visual.background, visual.border, *visual.shadow, visual.shadow_visible};
+        if(state->container_presentation != next_container) {
+            for(std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
+                const bool outer = layer < input_shadow_layer_capacity;
+                const bool inner = layer >= input_inset_shadow_layer && layer < input_focus_layer;
+                auto bounds = root_bounds;
+                const float inset = layer == input_background_layer || inner ? border : 0.0F;
+                bounds.x += inset; bounds.y += inset;
+                bounds.width -= 2 * inset; bounds.height -= 2 * inset;
+                graphics::RoundedEffectInstance effect;
+                effect.geometry.shape = {bounds, std::clamp(radius - inset, 0.0F, 0.5F * std::min(bounds.width, bounds.height))};
+                effect.geometry.ancestor_clip = graphics::EffectClip{1, clip};
+                effect.material = {layer == input_background_layer ? visual.background : visual.border,
+                    layer == input_border_layer || layer == input_background_layer ? 1.0F : 0.0F, true};
+                if(outer || inner) {
+                    const auto slot = outer ? layer : layer - input_inset_shadow_layer;
+                    const auto source = input_shadow_layer_capacity - 1 - slot;
+                    if(source < visual.shadow->size()) {
+                        const auto& shadow = (*visual.shadow)[source];
+                        if((shadow.kind == ShadowKind::outer) == outer) {
+                            effect = graphics::make_shadow_effect(effect.geometry.shape, shadow, {}, graphics::EffectClip{1, clip});
+                            effect.material.opacity = visual.shadow_visible ? 1.0F : 0.0F;
+                        }
+                    }
+                } else if(layer == input_focus_layer) {
+                    // Outlined Input uses activeShadow for either focus modality;
+                    // outline: 0 in pinned variants.ts. Keep the reserved layer hidden.
+                    effect.geometry.kind = graphics::RoundedEffectKind::outline;
+                    effect.geometry.outline_width = std::max(0.001F, 3 * tokens.border_width);
+                    effect.geometry.outline_offset = 1;
+                }
+                static_cast<void>(host_->rounded_effects().update_geometry(state->container_effects[layer], effect.geometry));
+                static_cast<void>(host_->rounded_effects().update_material(state->container_effects[layer], effect.material));
             }
-            static_cast<void>(host_->rounded_effects().update_geometry(state->container_effects[layer], geometry));
-            // Full InputTokenSet/state policy is applied in stage 7. Keep the
-            // active shadow/focus identities packed but hidden until then.
-            static_cast<void>(host_->rounded_effects().update_material(state->container_effects[layer], {
-                layer == 2 ? theme.alias().color_background_container : layer == 1
-                    ? theme.alias().color_border : theme.alias().color_focus_outline,
-                layer == 1 || layer == 2 ? 1.0F : 0.0F, true}));
+            state->container_presentation = next_container;
         }
-        const auto color = host_->components().theme_scope(mounted.component)->snapshot().text().color;
-        const std::array<float, 4> foreground{color.red(), color.green(), color.blue(), color.alpha()};
-        const auto selection_color = theme.map().color_primary;
+        const auto foreground = channels(visual.foreground);
+        const auto selection_color = tokens.colors.selection_background;
         const std::array<graphics::QuadInstance, 1> selection{clipped_quad(
             {state->geometry.selection_start, viewport.y,
                 state->geometry.selection_end - state->geometry.selection_start, viewport.height},
             state->geometry.clip, window,
             {selection_color.red(), selection_color.green(), selection_color.blue(), selection_color.alpha()},
-            state->focused && !state->disabled && !display.placeholder ? 0.25F : 0.0F)};
+            state->focused && !state->disabled && !display.placeholder ? 1.0F : 0.0F)};
         static_cast<void>(host_->button_scene().update_surface(state->selection_surface, selection));
         const std::array<graphics::QuadInstance, 2> overlays{
             clipped_quad(state->geometry.underline,
                 state->geometry.clip, window, foreground, display.composing ? 1.0F : 0.0F),
             clipped_quad(state->geometry.caret,
-                state->geometry.clip, window, foreground,
+                state->geometry.clip, window, channels(visual.caret),
                 state->focused && !state->disabled && !state->read_only
                     && host_->focus().state().window_active ? 1.0F : 0.0F),
         };
         static_cast<void>(host_->button_scene().update_surface(state->overlay_surface, overlays));
         text_scene.set_color(state->text_scene, foreground);
-        text_scene.set_color(state->selected_scene, foreground);
-        text_scene.set_color(state->placeholder_scene, foreground);
+        text_scene.set_color(state->selected_scene, channels(tokens.colors.selection_foreground));
+        text_scene.set_color(state->placeholder_scene, channels(tokens.colors.placeholder));
         text_scene.set_opacity(state->text_scene, display.placeholder ? 0.0F : 1.0F);
         text_scene.set_opacity(state->selected_scene,
-            !display.placeholder && display.selection.begin() != display.selection.end() ? 1.0F : 0.0F);
-        text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 0.25F : 0.0F);
+            state->focused && !state->disabled && !display.placeholder
+                && display.selection.begin() != display.selection.end() ? 1.0F : 0.0F);
+        text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 1.0F : 0.0F);
         graphics::GlyphPlacement placement{{viewport.x, viewport.y}, window, state->geometry.clip};
         for(const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
             auto layer_placement = placement;
@@ -543,7 +609,7 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
     for(const auto& mounted : mounted_) {
         auto* state = host_->components().state<InputState>(mounted.component);
         if(!state) continue;
-        std::array<graphics::SceneDrawCommand, 4> container;
+        std::array<graphics::SceneDrawCommand, input_effect_layer_count> container;
         std::size_t count{};
         for(const auto effect : state->container_effects) {
             if(const auto index = host_->rounded_effects().packed_index(effect))

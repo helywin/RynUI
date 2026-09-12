@@ -115,12 +115,12 @@ void run(float scale) {
     Events events;
     runtime::OnDemandFrameLoop loop{f.requests, events, f};
     require(loop.step() == runtime::FrameLoopStep::submitted, "initial Input GPU frame failed");
-    require(f.effects.instance_count() == 8 && !f.api.glyph_uploads.empty()
+    require(f.effects.instance_count() == 2 * detail::input_effect_layer_count && !f.api.glyph_uploads.empty()
         && !f.api.quad_uploads.empty() && !f.api.effect_uploads.empty(), "Input layer GPU buffers incomplete");
     require(std::ranges::equal(f.api.draws, f.host.scene_composer().ordered_scene().commands()), "GPU draw order differs from retained scene");
-    const auto shadow = f.effects.instances()[0];
-    const auto focus = f.effects.instances()[3];
-    const auto& shape = f.host.rounded_effects().packed_instances()[0].geometry.shape.rect;
+    const auto shadow = f.effects.instances()[detail::input_shadow_layer_capacity - 1];
+    const auto focus = f.effects.instances()[detail::input_focus_layer];
+    const auto& shape = f.host.rounded_effects().packed_instances()[detail::input_shadow_layer_capacity - 1].geometry.shape.rect;
     require(graphics::rounded_effect_gpu_coverage_reference(
         {(shape.x + shape.width + 1) * scale, (shape.y + shape.height / 2) * scale}, shadow) > 0.9F,
         "scaled active shadow footprint was clipped");

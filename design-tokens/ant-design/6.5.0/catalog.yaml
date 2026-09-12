@@ -78,10 +78,10 @@
       "seed": 46
     },
     "by_support": {
-      "component-not-yet-implemented": 557,
+      "component-not-yet-implemented": 550,
       "deprecated": 172,
       "metadata": 313,
-      "runtime": 111,
+      "runtime": 118,
       "web-only": 41
     },
     "component_owners": 69,
@@ -6416,12 +6416,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.activeBg",
       "source": {
         "line": 74,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "activeBg",
       "upstream_type": "string",
@@ -6437,12 +6437,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.activeBorderColor",
       "source": {
         "line": 49,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "activeBorderColor",
       "upstream_type": "string",
@@ -6458,12 +6458,12 @@
       "internal": false,
       "invalidation_domain": "effect-geometry-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.activeShadow",
       "source": {
         "line": 54,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "activeShadow",
       "upstream_type": "string",
@@ -6500,12 +6500,12 @@
       "internal": false,
       "invalidation_domain": "effect-geometry-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.errorActiveShadow",
       "source": {
         "line": 59,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "errorActiveShadow",
       "upstream_type": "string",
@@ -6521,12 +6521,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.hoverBg",
       "source": {
         "line": 69,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "hoverBg",
       "upstream_type": "string",
@@ -6542,12 +6542,12 @@
       "internal": false,
       "invalidation_domain": "paint-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.hoverBorderColor",
       "source": {
         "line": 44,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "hoverBorderColor",
       "upstream_type": "string",
@@ -6752,12 +6752,12 @@
       "internal": false,
       "invalidation_domain": "effect-geometry-material",
       "layer": "component",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.component.Input.warningActiveShadow",
       "source": {
         "line": 64,
         "path": "components/input/style/token.ts"
       },
-      "support": "component-not-yet-implemented",
+      "support": "runtime",
       "upstream_default": null,
       "upstream_name": "warningActiveShadow",
       "upstream_type": "string",

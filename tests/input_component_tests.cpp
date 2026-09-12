@@ -246,6 +246,104 @@ void reactive_input_tokens() {
         && f.scene.text_state(sibling).counters().shape_count == sibling_shapes && input_runs == 1,
         "Input typography failed targeted reshape or reran content");
 }
+void state_materials() {
+    for(const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark}) {
+        for(const auto status : {InputStatus::Default, InputStatus::Warning, InputStatus::Error}) {
+            Fixture f;
+            Signal<bool> disabled{false}, read_only{false};
+            ThemeConfig config; config.algorithms = {algorithm};
+            const auto theme = resolve_theme(config);
+            const auto& tokens = detail::derive_input_tokens(theme);
+            const auto& colors = tokens.colors;
+            const auto status_color = status == InputStatus::Error ? colors.error_border
+                : status == InputStatus::Warning ? colors.warning_border : colors.border;
+            const auto hover = status == InputStatus::Error ? colors.error_hover_border
+                : status == InputStatus::Warning ? colors.warning_hover_border : colors.hover_border;
+            const auto active = status == InputStatus::Default ? colors.active_border : status_color;
+            const auto& shadow = status == InputStatus::Error ? tokens.error_active_shadow
+                : status == InputStatus::Warning ? tokens.warning_active_shadow : tokens.active_shadow;
+            f.inputs.mount(Content{[&] {
+                Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                    Input(InputProps{}.defaultValue(u8"abc").status(status).disabled(disabled).readOnly(read_only),
+                        InputPrefix{[] { Text(u8"P"); }});
+                }});
+            }}); f.synchronize();
+            const auto mounted = f.inputs.mounted_inputs().front();
+            const auto scene = f.inputs.text_scene(mounted.component);
+            const auto root = f.nodes.require(mounted.node).bounds;
+            const auto shapes = f.scene.text_state(scene).counters().shape_count;
+            const auto measures = f.nodes.require(mounted.node).measure_count;
+            const auto rebuilds = f.buttons.scene_composer().diagnostics().rebuilds;
+            const auto material = [&](std::size_t layer) { return f.buttons.rounded_effects().packed_instances()[layer].material; };
+            require(material(detail::input_border_layer).color == status_color, "Input default/status border ignored");
+            const auto mouse = PointerIdentity::mouse(), touch = PointerIdentity::touch(1, 2);
+            const auto move = [&](PointerIdentity pointer, bool inside) {
+                f.buttons.pointer().dispatch({pointer, PointerAction::move, PointerButton::none,
+                    inside ? root.x + 10 : 500, inside ? root.y + 10 : 500}); f.synchronize();
+            };
+            move(mouse, true);
+            require(material(detail::input_border_layer).color == hover
+                && material(detail::input_shadow_layer_capacity - 1).opacity == 0, "Input hover used an extra ring/shadow");
+            move(touch, true); move(mouse, false);
+            require(material(detail::input_border_layer).color == hover, "One pointer leaving cleared another pointer hover");
+            move(touch, false);
+            require(material(detail::input_border_layer).color == status_color, "Final pointer leave retained hover");
+            for(const auto modality : {FocusModality::pointer, FocusModality::keyboard}) {
+                require(f.buttons.focus().request_focus(mounted.interaction, modality), "Input state focus failed"); f.synchronize();
+                require(material(detail::input_border_layer).color == active
+                    && material(detail::input_shadow_layer_capacity - 1).color == shadow[0].color
+                    && material(detail::input_shadow_layer_capacity - 1).opacity == 1
+                    && material(detail::input_focus_layer).opacity == 0, "Input focus shadow/status or outline suppression failed");
+                read_only.set(true); f.synchronize();
+                require(material(detail::input_border_layer).color == active && f.buttons.focus().state().focused == mounted.interaction
+                    && !f.inputs.sessions().active().valid(), "readOnly lost focus styling or retained input session");
+                read_only.set(false); f.synchronize();
+                f.buttons.focus().clear_focus(); f.synchronize();
+            }
+            disabled.set(true); f.synchronize();
+            require(material(detail::input_background_layer).color == colors.disabled_background
+                && material(detail::input_border_layer).color == (status == InputStatus::Default ? colors.disabled_border : status_color)
+                && material(detail::input_shadow_layer_capacity - 1).opacity == 0, "Disabled Input material/status priority incorrect");
+            const auto& glyph = f.scene.glyph_scene().instances().at(f.scene.primitive(scene).instances.first);
+            require(glyph.color == std::array{colors.disabled_foreground.red(), colors.disabled_foreground.green(),
+                colors.disabled_foreground.blue(), colors.disabled_foreground.alpha()}, "Disabled editable text did not consume token");
+            require(f.scene.text_state(scene).counters().shape_count == shapes
+                && f.nodes.require(mounted.node).measure_count == measures
+                && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds, "Input visual states changed shape/layout/topology");
+        }
+    }
+}
+void mixed_shadow_topology() {
+    Fixture f;
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    f.inputs.mount(Content{[&] { Theme(ThemeProps{}.config(config), ThemeContent{[] { Input(InputProps{}.defaultValue(u8"shadows")); }}); }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    f.buttons.focus().request_focus(mounted.interaction, FocusModality::keyboard); f.synchronize();
+    const auto rebuilds = f.buttons.scene_composer().diagnostics().rebuilds;
+    const auto layer = [](std::uint8_t index) { return ShadowLayer{index % 2 ? ShadowKind::inset : ShadowKind::outer,
+        {}, 0, static_cast<float>(index + 1), Color::rgba8(index, 10, 20)}; };
+    ThemeConfig next; next.input.tokens.active_shadow = ShadowList{layer(0), layer(1), layer(2), layer(3), layer(4), layer(5), layer(6), layer(7)};
+    config.set(next); f.synchronize();
+    const auto effects = f.buttons.rounded_effects().packed_instances();
+    require(effects.size() == detail::input_effect_layer_count && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds,
+        "Eight mixed shadows changed retained topology");
+    for(std::size_t i = 0; i < 8; ++i) {
+        const auto outer = detail::input_shadow_layer_capacity - 1 - i;
+        const auto inner = detail::input_inset_shadow_layer + outer;
+        const auto& visible = effects[i % 2 ? inner : outer];
+        const auto& hidden = effects[i % 2 ? outer : inner];
+        require(visible.material.opacity == 1 && hidden.material.opacity == 0
+            && visible.material.color == layer(static_cast<std::uint8_t>(i)).color
+            && visible.geometry.spread == i + 1, "Mixed shadow kind/order/material mapping incorrect");
+    }
+    next.input.tokens.active_shadow = ShadowList{}; config.set(next); f.synchronize();
+    require(f.buttons.rounded_effects().live_count() == detail::input_effect_layer_count
+        && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds, "Empty shadow override removed retained slots");
+    for(std::size_t i = 0; i < detail::input_effect_layer_count; ++i)
+        if(i != detail::input_border_layer && i != detail::input_background_layer)
+            require(f.buttons.rounded_effects().packed_instances()[i].material.opacity == 0, "Empty shadow left stale visible material");
+}
 void reactive_phases() {
     Fixture f;
     Signal<String> value{String{u8"value"}}, placeholder{String{u8"hint"}};
@@ -300,7 +398,7 @@ void retained_scene_layers() {
     const auto mounted = f.inputs.mounted_inputs().front();
     const auto layers = f.inputs.text_layers(mounted.component);
     require(f.scene.size() == 3 && f.buttons.button_scene().instances().size() == 3
-        && f.buttons.rounded_effects().live_count() == 4, "Input retained topology is incomplete");
+        && f.buttons.rounded_effects().live_count() == detail::input_effect_layer_count, "Input retained topology is incomplete");
     require(f.buttons.hit_test().hit_test({20, 15}) == mounted.interaction,
         "Input container was not registered for hit testing");
     const auto& read = std::as_const(f.scene);
@@ -323,19 +421,20 @@ void retained_scene_layers() {
     }
     require(f.inputs.text_layers(mounted.component).selected == layers.selected
         && f.scene.size() == 3 && f.buttons.button_scene().instances().size() == 3
-        && f.buttons.rounded_effects().live_count() == 4
+        && f.buttons.rounded_effects().live_count() == detail::input_effect_layer_count
         && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds
         && f.scene.counters().ordered_scene_rebuilds == text_rebuilds
         && read.text_state(layers.base).counters().shape_count == shape_count,
         "selection changed retained topology or shaping");
+    require(f.buttons.focus().clear_focus(), "Input blur before default recolor failed"); f.synchronize();
     ThemeConfig recolor;
     recolor.alias.color_border = Color::rgba8(255, 0, 0);
     recolor.alias.color_background_container = Color::rgba8(0, 255, 0);
     config.set(recolor); f.synchronize();
     const auto effects = f.buttons.rounded_effects().packed_instances();
-    require(effects[1].material.color == *recolor.alias.color_border
-        && effects[2].material.color == *recolor.alias.color_background_container
-        && effects[0].material.opacity == 0 && effects[3].material.opacity == 0
+    require(effects[detail::input_border_layer].material.color == *recolor.alias.color_border
+        && effects[detail::input_background_layer].material.color == *recolor.alias.color_background_container
+        && effects[detail::input_shadow_layer_capacity - 1].material.opacity == 0 && effects[detail::input_focus_layer].material.opacity == 0
         && f.buttons.scene_composer().diagnostics().rebuilds == rebuilds
         && read.text_state(layers.base).counters().shape_count == shape_count,
         "Theme recolor rebuilt topology or lost independent effect materials");
@@ -475,6 +574,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); token_geometry(); reactive_input_tokens(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_input_tokens(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

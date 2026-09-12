@@ -60,6 +60,8 @@ RUNTIME_INPUTS = {
     "paddingInline", "paddingInlineSM", "paddingInlineLG",
     "paddingBlock", "paddingBlockSM", "paddingBlockLG",
     "inputFontSize", "inputFontSizeSM", "inputFontSizeLG",
+    "hoverBorderColor", "activeBorderColor", "hoverBg", "activeBg",
+    "activeShadow", "errorActiveShadow", "warningActiveShadow",
 }
 SEED_DEFAULTS = {
     "blue": "#1677FF", "purple": "#722ED1", "cyan": "#13C2C2",

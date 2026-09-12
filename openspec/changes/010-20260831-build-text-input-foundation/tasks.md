@@ -56,7 +56,7 @@
 
 ## 7. Ant Design Token、交互与 caret deadline
 
-- [ ] 7.1 增加锁定 Ant Design 6.5.0 Input source contract与internal `InputTokenSet`，解析 control heights、font/padding、border/radius、hover/active/status/disabled、selection/caret和shadow；通过direct value、Token identity、Default/Dark/Compact/nested override与生成文档stale tests验证
+- [x] 7.1 增加锁定 Ant Design 6.5.0 Input source contract与internal `InputTokenSet`，解析 control heights、font/padding、border/radius、hover/active/status/disabled、selection/caret和shadow；通过direct value、Token identity、Default/Dark/Compact/nested override与生成文档stale tests验证
 - [ ] 7.2 实现 default/hover/active/focus-visible/disabled/read-only/warning/error retained materials和`motionDurationMid + motionEaseInOut`过渡；通过Default hover仅既有border、pointer focus无额外ring、keyboard focus、warning/error active shadow与rapid retarget tests验证
 - [ ] 7.3 实现pointer click nearest caret、drag selection/capture、double-click word、leave/release/cancel和Input内部scroll hit同步；通过CJK/Latin/emoji、prefix/suffix bounds、outside release、multi-pointer和allocation tests验证
 - [ ] 7.4 实现keyboard navigation、Shift selection、primary shortcut A/C/X/V/Z/Y、Backspace/Delete、Enter submit、Escape composition cancel与repeat priority；通过Windows/Linux modifier-shaped fake events、IME吞key、read-only/disabled、callback destroy和focus traversal tests验证

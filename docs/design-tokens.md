@@ -3,7 +3,7 @@
 > 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。
 
 - 上游：Ant Design `6.5.0` / `740ad964dc2397f33e40944367b0536a7314cc32`
-- Catalog SHA256：`acf3bd384e809237bc17db265cd2697be06bb70d9a29a576ee0b778449a38ce6`
+- Catalog SHA256：`f78765ca3364a03b23cc793e42c4205c541167b03c23a46305be4352a380434c`
 - Token 总数：`1194`；missing/duplicate/unclassified 均为 `0`。
 
 ## 使用规则
@@ -25,10 +25,10 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 
 | Support | Count |
 | --- | ---: |
-| `component-not-yet-implemented` | 557 |
+| `component-not-yet-implemented` | 550 |
 | `deprecated` | 172 |
 | `metadata` | 313 |
-| `runtime` | 111 |
+| `runtime` | 118 |
 | `web-only` | 41 |
 
 ## Token 索引
@@ -335,13 +335,13 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.component.Image.previewOperationSize` | `size` | `logical-length` | `component-not-yet-implemented` | `components/image/style/index.ts:20` |
 | `ant.component.Image.progressAnimationDuration` | `motion` | `cubic-bezier` | `component-not-yet-implemented` | `components/image/style/index.ts:40` |
 | `ant.component.Image.zIndexPopup` | `z-index` | `integer` | `component-not-yet-implemented` | `components/image/style/index.ts:15` |
-| `ant.component.Input.activeBg` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:74` |
-| `ant.component.Input.activeBorderColor` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:49` |
-| `ant.component.Input.activeShadow` | `shadow` | `shadow-list` | `component-not-yet-implemented` | `components/input/style/token.ts:54` |
+| `ant.component.Input.activeBg` | `color` | `color` | `runtime` | `components/input/style/token.ts:74` |
+| `ant.component.Input.activeBorderColor` | `color` | `color` | `runtime` | `components/input/style/token.ts:49` |
+| `ant.component.Input.activeShadow` | `shadow` | `shadow-list` | `runtime` | `components/input/style/token.ts:54` |
 | `ant.component.Input.addonBg` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:39` |
-| `ant.component.Input.errorActiveShadow` | `shadow` | `shadow-list` | `component-not-yet-implemented` | `components/input/style/token.ts:59` |
-| `ant.component.Input.hoverBg` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:69` |
-| `ant.component.Input.hoverBorderColor` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:44` |
+| `ant.component.Input.errorActiveShadow` | `shadow` | `shadow-list` | `runtime` | `components/input/style/token.ts:59` |
+| `ant.component.Input.hoverBg` | `color` | `color` | `runtime` | `components/input/style/token.ts:69` |
+| `ant.component.Input.hoverBorderColor` | `color` | `color` | `runtime` | `components/input/style/token.ts:44` |
 | `ant.component.Input.inputFontSize` | `typography` | `logical-length` | `runtime` | `components/input/style/token.ts:79` |
 | `ant.component.Input.inputFontSizeLG` | `typography` | `logical-length` | `runtime` | `components/input/style/token.ts:84` |
 | `ant.component.Input.inputFontSizeSM` | `typography` | `logical-length` | `runtime` | `components/input/style/token.ts:89` |
@@ -351,7 +351,7 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.component.Input.paddingInline` | `spacing` | `logical-length` | `runtime` | `components/input/style/token.ts:9` |
 | `ant.component.Input.paddingInlineLG` | `spacing` | `logical-length` | `runtime` | `components/input/style/token.ts:19` |
 | `ant.component.Input.paddingInlineSM` | `spacing` | `logical-length` | `runtime` | `components/input/style/token.ts:14` |
-| `ant.component.Input.warningActiveShadow` | `shadow` | `shadow-list` | `component-not-yet-implemented` | `components/input/style/token.ts:64` |
+| `ant.component.Input.warningActiveShadow` | `shadow` | `shadow-list` | `runtime` | `components/input/style/token.ts:64` |
 | `ant.component.InputNumber.activeBg` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:74` |
 | `ant.component.InputNumber.activeBorderColor` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:49` |
 | `ant.component.InputNumber.activeShadow` | `shadow` | `shadow-list` | `component-not-yet-implemented` | `components/input/style/token.ts:54` |
