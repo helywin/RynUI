@@ -11,6 +11,10 @@ namespace {
 
 class SdlPlatformApi final : public PlatformApi {
 public:
+    bool has_clipboard_text() const noexcept override { return SDL_HasClipboardText(); }
+    char* clipboard_text() noexcept override { return SDL_GetClipboardText(); }
+    void free_clipboard_text(char* value) noexcept override { SDL_free(value); }
+    bool set_clipboard_text(const char* value) noexcept override { return SDL_SetClipboardText(value); }
     std::uint64_t ticks_ns() const noexcept override { return SDL_GetTicksNS(); }
     std::uint32_t window_id(PlatformWindowHandle window) const noexcept override {
         return SDL_GetWindowID(static_cast<SDL_Window*>(window));
@@ -347,6 +351,43 @@ bool PlatformState::set_area(const input::WindowTextInputArea& area) noexcept {
     if(!is_owner_thread() || !text_session_.valid() || area.x < 0 || area.y < 0
         || area.width < 0 || area.height < 0 || area.cursor < 0 || area.cursor > area.width) return false;
     return api_->set_text_input_area(window_, area);
+}
+
+input::ClipboardReadResult PlatformState::read_text() {
+    using input::ClipboardError;
+    if(!is_owner_thread()) return {ClipboardError::wrong_thread, {}};
+    if(!api_->has_clipboard_text()) return {ClipboardError::no_text, {}};
+    char* text = api_->clipboard_text();
+    if(!text) return {ClipboardError::platform_failure, {}};
+    struct Release {
+        PlatformApi* api;
+        char* text;
+        ~Release() { api->free_clipboard_text(text); }
+    } release{api_, text};
+    std::size_t size = 0;
+    while(size <= input::clipboard_max_bytes && text[size] != '\0') ++size;
+    if(size > input::clipboard_max_bytes) return {ClipboardError::capacity_exceeded, {}};
+    try {
+        auto parsed = String::from_utf8(std::string_view(text, size));
+        if(!parsed) return {ClipboardError::invalid_utf8, {}};
+        return {ClipboardError::none, std::move(parsed).value()};
+    } catch(const std::bad_alloc&) { return {ClipboardError::allocation_failure, {}}; }
+    catch(const std::length_error&) { return {ClipboardError::capacity_exceeded, {}}; }
+}
+input::ClipboardError PlatformState::write_text(StringView text) {
+    using input::ClipboardError;
+    if(!is_owner_thread()) return ClipboardError::wrong_thread;
+    if(text.size_bytes() > input::clipboard_max_bytes) return ClipboardError::capacity_exceeded;
+    if(text.bytes().find('\0') != std::string_view::npos) return ClipboardError::embedded_null;
+    try {
+        const std::string terminated(text.bytes());
+        return api_->set_clipboard_text(terminated.c_str()) ? ClipboardError::none : ClipboardError::platform_failure;
+    } catch(const std::bad_alloc&) { return ClipboardError::allocation_failure; }
+    catch(const std::length_error&) { return ClipboardError::capacity_exceeded; }
+}
+input::ClipboardAvailability PlatformState::has_text() const noexcept {
+    if(!is_owner_thread()) return {input::ClipboardError::wrong_thread, false};
+    return {input::ClipboardError::none, api_->has_clipboard_text()};
 }
 
 void PlatformState::require_owner_thread() const {

@@ -185,6 +185,12 @@ static void merge_event(
     }
 
     switch (event.type) {
+    case SDL_EVENT_CLIPBOARD_UPDATE:
+        if(event.clipboard.num_mime_types < 0 || event.clipboard.num_mime_types > 256)
+            throw std::invalid_argument("Invalid clipboard format count");
+        result.input.append(input::ClipboardChanged{event.clipboard.owner,
+            static_cast<std::uint32_t>(event.clipboard.num_mime_types)});
+        return;
     case SDL_EVENT_TEXT_INPUT: {
         if(!text_window_matches(result, event.text.windowID, event.text.timestamp)) return;
         result.input.append(input::TextCommitted{owned_text(event.text.text), result.text_session});

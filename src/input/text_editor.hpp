@@ -28,6 +28,7 @@ struct TextSelection final {
 enum class TextEditError {
     none, invalid_utf8, invalid_range, disabled, read_only,
     capacity_exceeded, allocation_failure, revision_exhausted,
+    stale_owner, revision_conflict,
 };
 
 struct TextEditResult final {
@@ -99,6 +100,7 @@ public:
     [[nodiscard]] TextEditResult set_value(std::string_view text);
     [[nodiscard]] TextEditResult set_limits(TextEditorLimits limits);
     [[nodiscard]] TextEditResult replace_selection(std::string_view text);
+    [[nodiscard]] TextEditResult replace_range(TextSelection range, std::string_view text);
     [[nodiscard]] TextEditResult erase_backward();
     [[nodiscard]] TextEditResult erase_forward();
     [[nodiscard]] TextEditResult select(TextSelection selection);

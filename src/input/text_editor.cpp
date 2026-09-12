@@ -144,7 +144,11 @@ TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
 }
 TextEditResult TextEditorState::replace_selection(std::string_view text) {
     ensure_owner_thread();
-    const auto result = replace(selection_, text, false);
+    return replace_range(selection_, text);
+}
+TextEditResult TextEditorState::replace_range(TextSelection range, std::string_view text) {
+    ensure_owner_thread();
+    const auto result = replace(range, text, false);
     if(result) cancel_composition();
     return result;
 }

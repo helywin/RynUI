@@ -101,6 +101,11 @@ rynui_configure_cpp_target(rynui_text_input_session)
 target_link_libraries(rynui_text_input_session PUBLIC rynui_text_editor)
 rynui_assert_direct_dependencies(rynui_text_input_session rynui_text_editor)
 
+add_library(rynui_text_clipboard_commands STATIC input/text_clipboard_commands.cpp)
+rynui_configure_cpp_target(rynui_text_clipboard_commands)
+target_link_libraries(rynui_text_clipboard_commands PUBLIC rynui_text_editor)
+rynui_assert_direct_dependencies(rynui_text_clipboard_commands rynui_text_editor)
+
 add_library(rynui_runtime STATIC
     runtime/component_host.cpp
     runtime/component_mount.cpp

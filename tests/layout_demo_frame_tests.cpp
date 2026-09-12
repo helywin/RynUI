@@ -139,6 +139,7 @@ private:
     void dispatch(const ryn::input::TextCommitted&) {}
     void dispatch(const ryn::input::CompositionChanged&) {}
     void dispatch(const ryn::input::CandidatesChanged&) {}
+    void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         host_->focus().dispatch(event);

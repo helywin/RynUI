@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input/text_input_events.hpp"
+#include "input/text_clipboard.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -136,7 +137,8 @@ using PlatformInputEvent = std::variant<
     WindowInputEvent,
     TextCommitted,
     CompositionChanged,
-    CandidatesChanged>;
+    CandidatesChanged,
+    ClipboardChanged>;
 
 [[nodiscard]] bool is_valid(const PointerIdentity& identity) noexcept;
 [[nodiscard]] bool is_valid(const PointerInputEvent& event) noexcept;

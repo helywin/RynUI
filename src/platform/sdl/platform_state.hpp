@@ -117,6 +117,10 @@ public:
     virtual ~PlatformApi() = default;
     virtual std::uint32_t window_id(PlatformWindowHandle) const noexcept { return 0; }
     virtual std::uint64_t ticks_ns() const noexcept { return 0; }
+    virtual bool has_clipboard_text() const noexcept { return false; }
+    virtual char* clipboard_text() noexcept { return nullptr; }
+    virtual void free_clipboard_text(char*) noexcept {}
+    virtual bool set_clipboard_text(const char*) noexcept { return false; }
     virtual bool start_text_input(PlatformWindowHandle, const input::TextInputProperties&) noexcept { return false; }
     virtual bool stop_text_input(PlatformWindowHandle) noexcept { return false; }
     virtual bool cancel_composition(PlatformWindowHandle) noexcept { return false; }
@@ -159,8 +163,11 @@ public:
 
 struct PlatformCreateResult;
 
-class PlatformState final : public input::TextInputPlatform {
+class PlatformState final : public input::TextInputPlatform, public input::TextClipboard {
 public:
+    input::ClipboardReadResult read_text() override;
+    input::ClipboardError write_text(StringView) override;
+    input::ClipboardAvailability has_text() const noexcept override;
     bool start(input::TextInputSessionStamp, const input::TextInputProperties&) noexcept override;
     bool stop() noexcept override;
     bool cancel() noexcept override;

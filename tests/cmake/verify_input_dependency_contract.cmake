@@ -17,6 +17,8 @@ list(APPEND contract_headers
     ${lower_layer_headers}
     "${RYNUI_SOURCE_DIR}/src/input/platform_input.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_input_events.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_clipboard.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_clipboard_commands.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_input_platform.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_input_session.hpp"
     "${RYNUI_SOURCE_DIR}/src/input/text_editor.hpp"
