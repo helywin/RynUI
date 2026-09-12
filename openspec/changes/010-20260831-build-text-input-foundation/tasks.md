@@ -31,9 +31,9 @@
 
 - [x] 4.1 增加 platform-independent UTF-8 clipboard contract 与 SDL3 main-thread bridge，正确复制/释放 platform text 并归一化 clipboard update metadata；通过 empty/error、invalid UTF-8、copy ownership、thread、platform lifetime 和 no-SDL-leak tests 验证
 - [x] 4.2 实现 copy/cut/paste command，使用 command-time selection snapshot、read-only eligibility、CR/LF removal 与单 transaction replace；通过 clipboard mutation race、selection change、large paste、maxLength、platform failure atomicity tests 验证
-- [ ] 4.3 实现 128 transaction/1 MiB 双上限 undo/redo history、merge epoch、oldest eviction 与 branch clearing；通过 contiguous commit、selection/paste/cut/composition/submit break、oversize reject、undo selection restore 和 20,000 次 history benchmark 验证
-- [ ] 4.4 实现 authoritative controlled echo 与 external conflict reconcile，识别相同 emitted value/revision并保留 caret/history，不同 value 取消 composition、clamp selection且不回调循环；通过 delayed echo、duplicate value、external shorter/longer value、undo 后 echo 和 owner reuse tests 验证
-- [ ] 4.5 运行 clipboard、history、reconcile、composition integration、allocation/benchmark 与 `git diff --check`；以英文 `feat: add text editing history` 提交并推送本阶段，核对 remote SHA
+- [x] 4.3 实现 128 transaction/1 MiB 双上限 undo/redo history、merge epoch、oldest eviction 与 branch clearing；通过 contiguous commit、selection/paste/cut/composition/submit break、oversize reject、undo selection restore 和 20,000 次 history benchmark 验证
+- [x] 4.4 实现 authoritative controlled echo 与 external conflict reconcile，识别相同 emitted value/revision并保留 caret/history，不同 value 取消 composition、clamp selection且不回调循环；通过 delayed echo、duplicate value、external shorter/longer value、undo 后 echo 和 owner reuse tests 验证
+- [x] 4.5 运行 clipboard、history、reconcile、composition integration、allocation/benchmark 与 `git diff --check`；以英文 `feat: add text editing history` 提交并推送本阶段，核对 remote SHA
 
 ## 5. 公开 Input API、生命周期与布局
 

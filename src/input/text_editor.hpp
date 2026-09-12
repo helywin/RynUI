@@ -3,6 +3,7 @@
 #include "input/text_boundary.hpp"
 #include "input/text_input_owner.hpp"
 #include "input/text_input_events.hpp"
+#include "input/text_history.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -16,15 +17,6 @@
 
 namespace ryn::input {
 
-struct TextSelection final {
-    std::size_t anchor{};
-    std::size_t caret{};
-    [[nodiscard]] std::size_t begin() const noexcept { return std::min(anchor, caret); }
-    [[nodiscard]] std::size_t end() const noexcept { return std::max(anchor, caret); }
-    [[nodiscard]] bool empty() const noexcept { return anchor == caret; }
-    friend bool operator==(TextSelection, TextSelection) = default;
-};
-
 enum class TextEditError {
     none, invalid_utf8, invalid_range, disabled, read_only,
     capacity_exceeded, allocation_failure, revision_exhausted,
@@ -37,6 +29,16 @@ struct TextEditResult final {
     bool selection_changed{};
     bool truncated{};
     [[nodiscard]] explicit operator bool() const noexcept { return error == TextEditError::none; }
+};
+
+struct TextEditEcho {
+    TextInputOwnerId owner;
+    std::uint64_t revision{};
+    friend bool operator==(const TextEditEcho&, const TextEditEcho&) = default;
+};
+struct TextReconcileResult {
+    TextEditResult edit;
+    bool echoed{}, stale{};
 };
 
 enum class TextCaretMove { left, right, home, end };
@@ -94,6 +96,15 @@ public:
     [[nodiscard]] TextEditResult update_candidates(const CandidatesChanged& event);
     [[nodiscard]] TextEditResult commit_text(std::string_view text);
     void cancel_composition();
+    [[nodiscard]] TextHistorySnapshot history() const;
+    void break_history_merge();
+    [[nodiscard]] TextEditResult undo();
+    [[nodiscard]] TextEditResult redo();
+    // Record before delivering onChange. Only the latest emitted value is kept.
+    [[nodiscard]] TextEditResult note_emitted_value();
+    [[nodiscard]] TextEditEcho edit_echo() const;
+    [[nodiscard]] TextReconcileResult reconcile(std::string_view text,
+        std::optional<TextEditEcho> echo = {});
 
     // Authoritative value replacement bypasses edit eligibility, but uses the
     // same normalization/limits/atomic publication as a committed edit.
@@ -116,7 +127,9 @@ private:
     TextEditorState(TextInputOwnerId id, std::string_view initial, TextEditorLimits limits);
     void ensure_owner_thread() const;
     [[nodiscard]] TextEditResult reject(TextEditError error);
-    [[nodiscard]] TextEditResult replace(TextSelection range, std::string_view text, bool authoritative);
+    [[nodiscard]] TextEditResult replace(TextSelection range, std::string_view text, bool authoritative,
+        bool merge_typing = false, std::optional<TextSelection> history_selection = {});
+    [[nodiscard]] TextEditResult navigate_history(bool redo);
     [[nodiscard]] TextEditResult publish_selection(TextSelection selection);
     [[nodiscard]] TextWordClass word_class_at(std::size_t byte) const noexcept;
 
@@ -131,6 +144,11 @@ private:
     TextSelection selection_;
     TextEditorLimits limits_;
     TextEditorDiagnostics diagnostics_;
+    TextHistory history_;
+    std::string history_navigation_;
+    std::uint64_t merge_epoch_{1};
+    std::string emitted_value_, pending_emitted_value_;
+    std::optional<TextEditEcho> emitted_echo_;
     TextEditorObserver* observer_{};
     std::string composition_text_;
     std::string pending_composition_text_;

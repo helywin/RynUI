@@ -53,6 +53,11 @@ void commands() {
     clipboard.during_write = [&] { ok(editor.select({0, 1})); };
     check(bool(commands.cut(id)) && editor.value() == "az" && clipboard.value == String(u8"你😀"),
         "cut did not use command-time selection snapshot");
+    check(editor.history().undo_count == 1, "cut not one history transaction");
+    ok(editor.undo());
+    check(editor.value() == String(u8"a你😀z").bytes() && editor.selection() == TextSelection{1, 8},
+        "cut undo lost command-time selection");
+    ok(editor.redo());
     clipboard.during_write = {};
     ok(editor.select({1, 1}));
     clipboard.value = String(u8"你\r\n好\n😀");
@@ -63,6 +68,7 @@ void commands() {
     const auto before_paste = editor.revision();
     check(bool(commands.paste(id)) && editor.value() == String(u8"a你好😀z").bytes()
         && editor.revision() == before_paste + 1, "paste snapshot/newline/single transaction");
+    check(editor.history().undo_count == 2, "paste merged with cut");
     clipboard.during_read = {};
     ok(editor.select_all());
     clipboard.value = String{};

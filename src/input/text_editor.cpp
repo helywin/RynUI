@@ -39,6 +39,8 @@ std::size_t TextEditorState::retained_capacity() const {
     std::size_t candidate_capacity = candidates_.capacity() * sizeof(String);
     for(const auto& candidate : candidates_) candidate_capacity += candidate.size_bytes();
     return value_.capacity() + pending_value_.capacity() + normalized_.capacity()
+        + history_.retained_capacity() + history_navigation_.capacity()
+        + emitted_value_.capacity() + pending_emitted_value_.capacity()
         + composition_text_.capacity() + pending_composition_text_.capacity() + candidate_capacity
         + sizeof(std::size_t) * (boundaries_.retained_capacity()
             + pending_boundaries_.retained_capacity() + inserted_boundaries_.retained_capacity());
@@ -53,6 +55,10 @@ void TextEditorState::reserve(std::size_t bytes) {
     boundaries_.reserve(bytes);
     pending_boundaries_.reserve(bytes);
     inserted_boundaries_.reserve(bytes);
+    history_.reserve(bytes);
+    history_navigation_.reserve(bytes);
+    emitted_value_.reserve(bytes);
+    pending_emitted_value_.reserve(bytes);
 }
 TextEditResult TextEditorState::reject(TextEditError error) {
     ++diagnostics_.rejected;
@@ -65,7 +71,8 @@ TextEditResult TextEditorState::publish_selection(TextSelection selection) {
     return {TextEditError::none, false, changed};
 }
 
-TextEditResult TextEditorState::replace(TextSelection range, std::string_view text, bool authoritative) {
+TextEditResult TextEditorState::replace(TextSelection range, std::string_view text, bool authoritative,
+    bool merge_typing, std::optional<TextSelection> history_selection) {
     ensure_owner_thread();
     if(!authoritative && disabled_) { return reject(TextEditError::disabled); }
     if(!authoritative && read_only_) { return reject(TextEditError::read_only); }
@@ -112,11 +119,19 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
                 : pending_boundaries_.ceil(range.begin() + accepted);
             next_selection = {caret, caret};
         }
+        if(changed && !authoritative) {
+            history_.prepare(value_, history_selection.value_or(selection_), pending_value_, next_selection,
+                merge_epoch_, merge_typing && merge_epoch_ != std::numeric_limits<std::uint64_t>::max());
+        }
         // The commit tail cannot allocate or fail.
         value_.swap(pending_value_);
         boundaries_.swap(pending_boundaries_);
         auto result = publish_selection(next_selection);
         if(changed) { ++revision_; ++diagnostics_.mutations; }
+        if(changed && !authoritative) {
+            history_.commit();
+            if(!merge_typing) break_history_merge();
+        }
         if(truncated) { ++diagnostics_.truncated; }
         result.value_changed = changed;
         result.truncated = truncated;
@@ -131,7 +146,13 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
 TextEditResult TextEditorState::set_value(std::string_view text) {
     ensure_owner_thread();
     const auto result = replace({0, value_.size()}, text, true);
-    if(result && result.value_changed) cancel_composition();
+    if(result && result.value_changed) {
+        cancel_composition();
+        history_.clear();
+        break_history_merge();
+        emitted_echo_.reset();
+        emitted_value_.clear();
+    }
     return result;
 }
 TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
@@ -140,6 +161,10 @@ TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
     limits_ = limits;
     const auto result = set_value(value_);
     if(!result) { limits_ = previous; }
+    else if(previous.max_scalars != limits.max_scalars || previous.max_bytes != limits.max_bytes) {
+        history_.clear();
+        break_history_merge();
+    }
     return result;
 }
 TextEditResult TextEditorState::replace_selection(std::string_view text) {
@@ -148,7 +173,7 @@ TextEditResult TextEditorState::replace_selection(std::string_view text) {
 }
 TextEditResult TextEditorState::replace_range(TextSelection range, std::string_view text) {
     ensure_owner_thread();
-    const auto result = replace(range, text, false);
+    const auto result = replace(range, text, false, false, range);
     if(result) cancel_composition();
     return result;
 }
@@ -172,7 +197,7 @@ TextEditResult TextEditorState::select(TextSelection selection) {
     ensure_owner_thread();
     if(disabled_) { return reject(TextEditError::disabled); }
     const auto result = publish_selection({boundaries_.floor(selection.anchor), boundaries_.floor(selection.caret)});
-    if(result.selection_changed) cancel_composition();
+    if(result.selection_changed) { cancel_composition(); break_history_merge(); }
     return result;
 }
 TextEditResult TextEditorState::place(std::size_t byte, bool extend) {
@@ -280,6 +305,7 @@ TextCompositionView TextEditorState::composition() const {
 }
 void TextEditorState::cancel_composition() {
     ensure_owner_thread();
+    if(composing_ || !candidates_.empty()) break_history_merge();
     composition_text_.clear();
     candidates_.clear();
     composition_selection_ = {};
@@ -298,7 +324,7 @@ TextEditResult TextEditorState::update_composition(const CompositionChanged& eve
         pending_composition_text_.assign(event.text.bytes());
         composition_text_.swap(pending_composition_text_);
         composition_selection_ = event.selection;
-        if(!composing_) composition_replacement_ = selection_;
+        if(!composing_) { composition_replacement_ = selection_; break_history_merge(); }
         composing_ = true;
         return {};
     } catch(const std::bad_alloc&) { return reject(TextEditError::allocation_failure); }
@@ -324,9 +350,62 @@ TextEditResult TextEditorState::commit_text(std::string_view text) {
     if(disabled_) return reject(TextEditError::disabled);
     if(read_only_) return reject(TextEditError::read_only);
     if(text.empty()) { cancel_composition(); return {}; }
-    const auto result = replace(composing_ ? composition_replacement_ : selection_, text, false);
+    const auto result = replace(composing_ ? composition_replacement_ : selection_, text, false, !composing_);
     if(result) cancel_composition();
     return result;
+}
+
+TextHistorySnapshot TextEditorState::history() const { ensure_owner_thread(); return history_.snapshot(); }
+void TextEditorState::break_history_merge() {
+    ensure_owner_thread();
+    if(merge_epoch_ != std::numeric_limits<std::uint64_t>::max()) ++merge_epoch_;
+}
+TextEditResult TextEditorState::navigate_history(bool forward) {
+    ensure_owner_thread();
+    if(disabled_) return reject(TextEditError::disabled);
+    if(read_only_) return reject(TextEditError::read_only);
+    try {
+        TextSelection selection;
+        const bool available = forward ? history_.read_redo(history_navigation_, selection)
+                                       : history_.read_undo(history_navigation_, selection);
+        if(!available) return {};
+        auto result = replace({0, value_.size()}, history_navigation_, true);
+        if(!result) return result;
+        const auto restored = publish_selection({boundaries_.floor(selection.anchor), boundaries_.floor(selection.caret)});
+        result.selection_changed = result.selection_changed || restored.selection_changed;
+        if(forward) history_.commit_redo(); else history_.commit_undo();
+        cancel_composition();
+        break_history_merge();
+        return result;
+    } catch(const std::bad_alloc&) { return reject(TextEditError::allocation_failure); }
+    catch(const std::length_error&) { return reject(TextEditError::capacity_exceeded); }
+}
+TextEditResult TextEditorState::undo() { return navigate_history(false); }
+TextEditResult TextEditorState::redo() { return navigate_history(true); }
+
+TextEditEcho TextEditorState::edit_echo() const { ensure_owner_thread(); return {id_, revision_}; }
+TextEditResult TextEditorState::note_emitted_value() {
+    ensure_owner_thread();
+    const auto echo = edit_echo();
+    if(emitted_echo_ == echo && emitted_value_ == value_) return {};
+    try {
+        pending_emitted_value_.assign(value_);
+        emitted_value_.swap(pending_emitted_value_);
+        emitted_echo_ = echo;
+        return {};
+    } catch(const std::bad_alloc&) { return reject(TextEditError::allocation_failure); }
+    catch(const std::length_error&) { return reject(TextEditError::capacity_exceeded); }
+}
+TextReconcileResult TextEditorState::reconcile(std::string_view text, std::optional<TextEditEcho> echo) {
+    ensure_owner_thread();
+    if(echo && echo->owner != id_) return {reject(TextEditError::stale_owner), false, true};
+    if(echo && echo->revision < revision_) return {{}, false, true};
+    if(echo && echo->revision > revision_) return {reject(TextEditError::revision_conflict), false, false};
+    if(emitted_echo_ && (!echo || *echo == *emitted_echo_) && text == emitted_value_ && text == value_)
+        return {{}, true, false};
+    // An untagged differing authoritative value is a new external baseline.
+    // It must not be guessed to be a delayed echo of some older value.
+    return {set_value(text), false, false};
 }
 
 } // namespace ryn::input
