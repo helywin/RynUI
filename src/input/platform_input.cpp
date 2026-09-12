@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <utility>
+#include <type_traits>
 
 namespace ryn::input {
 namespace {
@@ -98,7 +99,12 @@ bool is_valid(const PlatformInputEvent& event) noexcept {
     return std::visit([](const auto& value) { return is_valid(value); }, event);
 }
 
+PlatformInputBatch::PlatformInputBatch(std::size_t max_events,
+    std::size_t max_payload_bytes) noexcept
+    : max_events_(max_events), max_payload_bytes_(max_payload_bytes) {}
+
 void PlatformInputBatch::reserve(std::size_t capacity) {
+    if (capacity > max_events_) throw std::length_error("Input batch reserve exceeds limit");
     events_.reserve(capacity);
 }
 
@@ -111,12 +117,23 @@ bool PlatformInputBatch::append(PlatformInputEvent event) {
         ++coalesced_move_count_;
         return false;
     }
+    const auto bytes = std::visit([](const auto& value) -> std::size_t {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, TextCommitted> || std::is_same_v<T, CompositionChanged>)
+            return value.text.size_bytes();
+        else if constexpr (std::is_same_v<T, CandidatesChanged>) return payload_bytes(value);
+        else return 0;
+    }, event);
+    if (events_.size() >= max_events_ || bytes > max_payload_bytes_ - payload_bytes_)
+        throw std::length_error("Input batch capacity exceeded");
     events_.push_back(std::move(event));
+    payload_bytes_ += bytes;
     return true;
 }
 
 void PlatformInputBatch::clear() noexcept {
     events_.clear();
+    payload_bytes_ = 0;
     coalesced_move_count_ = 0;
 }
 
@@ -130,6 +147,10 @@ std::size_t PlatformInputBatch::size() const noexcept {
 
 std::size_t PlatformInputBatch::capacity() const noexcept {
     return events_.capacity();
+}
+
+std::size_t PlatformInputBatch::payload_size_bytes() const noexcept {
+    return payload_bytes_;
 }
 
 std::uint64_t PlatformInputBatch::coalesced_move_count() const noexcept {

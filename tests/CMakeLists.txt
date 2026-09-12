@@ -1,6 +1,11 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_text_input_event_tests text_input_event_tests.cpp)
+rynui_configure_cpp_target(rynui_text_input_event_tests)
+target_link_libraries(rynui_text_input_event_tests PRIVATE rynui_input)
+add_test(NAME rynui.text_input_events COMMAND rynui_text_input_event_tests)
+
 add_executable(rynui_text_editor_tests text_editor_tests.cpp)
 rynui_configure_cpp_target(rynui_text_editor_tests)
 target_link_libraries(rynui_text_editor_tests PRIVATE rynui_text_editor)

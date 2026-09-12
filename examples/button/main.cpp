@@ -111,6 +111,11 @@ private:
 
     void dispatch(const ryn::input::ScrollInputEvent&) {}
 
+    // These samples have no text input owner yet.
+    void dispatch(const ryn::input::TextCommitted&) {}
+    void dispatch(const ryn::input::CompositionChanged&) {}
+    void dispatch(const ryn::input::CandidatesChanged&) {}
+
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
         application_->focus().dispatch(event);
     }

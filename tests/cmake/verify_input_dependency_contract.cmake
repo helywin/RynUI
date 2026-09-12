@@ -15,7 +15,9 @@ file(GLOB_RECURSE lower_layer_headers
 list(APPEND contract_headers
     ${public_headers}
     ${lower_layer_headers}
-    "${RYNUI_SOURCE_DIR}/src/input/platform_input.hpp")
+    "${RYNUI_SOURCE_DIR}/src/input/platform_input.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_input_events.hpp"
+    "${RYNUI_SOURCE_DIR}/src/input/text_input_owner.hpp")
 
 foreach(contract_header IN LISTS contract_headers)
     file(READ "${contract_header}" header_contents)

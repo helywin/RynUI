@@ -1,5 +1,7 @@
 #pragma once
 
+#include "input/text_input_events.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -131,7 +133,10 @@ using PlatformInputEvent = std::variant<
     PointerInputEvent,
     ScrollInputEvent,
     KeyboardInputEvent,
-    WindowInputEvent>;
+    WindowInputEvent,
+    TextCommitted,
+    CompositionChanged,
+    CandidatesChanged>;
 
 [[nodiscard]] bool is_valid(const PointerIdentity& identity) noexcept;
 [[nodiscard]] bool is_valid(const PointerInputEvent& event) noexcept;
@@ -142,6 +147,8 @@ using PlatformInputEvent = std::variant<
 
 class PlatformInputBatch final {
 public:
+    explicit PlatformInputBatch(std::size_t max_events = 4096,
+        std::size_t max_payload_bytes = 4 * text_event_max_bytes) noexcept;
     void reserve(std::size_t capacity);
 
     // Returns false when a consecutive move for the same pointer replaces the
@@ -152,11 +159,15 @@ public:
     [[nodiscard]] bool empty() const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
     [[nodiscard]] std::size_t capacity() const noexcept;
+    [[nodiscard]] std::size_t payload_size_bytes() const noexcept;
     [[nodiscard]] std::uint64_t coalesced_move_count() const noexcept;
     [[nodiscard]] std::span<const PlatformInputEvent> events() const noexcept;
 
 private:
     std::vector<PlatformInputEvent> events_;
+    std::size_t max_events_;
+    std::size_t max_payload_bytes_;
+    std::size_t payload_bytes_{};
     std::uint64_t coalesced_move_count_{0};
 };
 

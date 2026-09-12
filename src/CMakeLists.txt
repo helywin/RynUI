@@ -78,9 +78,11 @@ target_compile_definitions(rynui_reactive PRIVATE
 
 add_library(rynui_input STATIC
     input/platform_input.cpp
+    input/text_input_events.cpp
 )
 rynui_configure_cpp_target(rynui_input)
 target_include_directories(rynui_input PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_input PUBLIC rynui_string)
 
 add_library(rynui_text_boundary STATIC input/text_boundary.cpp)
 rynui_configure_cpp_target(rynui_text_boundary)
@@ -201,7 +203,7 @@ add_library(rynui_platform_sdl STATIC
 )
 rynui_configure_cpp_target(rynui_platform_sdl)
 target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3 rynui_input)
+target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3 PUBLIC rynui_input)
 
 add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
@@ -249,7 +251,7 @@ rynui_assert_direct_dependencies(
     rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)
 rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string)
 rynui_assert_direct_dependencies(rynui_reactive)
-rynui_assert_direct_dependencies(rynui_input)
+rynui_assert_direct_dependencies(rynui_input rynui_string)
 rynui_assert_direct_dependencies(
     rynui_runtime rynui_animation rynui_reactive rynui_theme)
 rynui_assert_direct_dependencies(

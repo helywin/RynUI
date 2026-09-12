@@ -19,7 +19,7 @@
 
 ## 3. IME event 与 text input session bridge
 
-- [ ] 3.1 增加不含 SDL3 类型的 `TextCommitted`、`CompositionChanged`、`CandidatesChanged` value events 与 batch ordering contract；进入队列前复制 `String`/candidate snapshot，通过 invalid UTF-8、scalar range、empty composition、candidate selection/orientation 和 bounded capacity tests 验证
+- [x] 3.1 增加不含 SDL3 类型的 `TextCommitted`、`CompositionChanged`、`CandidatesChanged` value events 与 batch ordering contract；进入队列前复制 `String`/candidate snapshot，通过 invalid UTF-8、scalar range、empty composition、candidate selection/orientation 和 bounded capacity tests 验证
 - [ ] 3.2 实现每 window 单 owner 的 generation-safe `TextInputSessionHost`，把 Focus、window focus、disabled/read-only、destroy/reuse 与 start/stop/cancel composition 收口；通过 focus transfer、conditional unmount、late event、duplicate start/stop 和 owner-thread tests 验证
 - [ ] 3.3 扩展 SDL3 adapter 归一化 `SDL_EVENT_TEXT_INPUT`、`SDL_EVENT_TEXT_EDITING`、`SDL_EVENT_TEXT_EDITING_CANDIDATES` 与 keyboard repeat，复制 event-lifetime 数据并把 character range 映射为 internal scalar range；通过 fake SDL-shaped structs、batch ordering、capacity、error propagation 与 forbidden-include tests 验证
 - [ ] 3.4 实现 SDL 3.4.14 已支持的 text type/capitalization/autocorrect/multiline=false properties 与 logical caret/input bounds 到 window-coordinate `SDL_SetTextInputArea` 的 scale/translation/clip/rounding adapter；通过 1.0/1.25/1.5/2.0 scale、scroll/reflow、window focus、same-value elision、negative/offscreen clamp tests 验证；系统 placeholder/default/max length 单列为 3.7，不影响 RynUI 自身 Props 合同
