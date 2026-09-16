@@ -1,7 +1,9 @@
 #include "input/text_boundary.hpp"
 
-#if __has_include(<utf8proc.h>)
-#error utf8proc headers must not propagate through the boundary target
+// A system-installed header can be discoverable without leaking through our target.
+// tests/CMakeLists.txt checks the dependency's LINK_ONLY compile-interface isolation.
+#ifdef UTF8PROC_H
+#error utf8proc headers must not be included through the boundary header
 #endif
 #ifdef UTF8PROC_STATIC
 #error utf8proc compile definitions must remain private
