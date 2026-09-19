@@ -740,6 +740,50 @@ target_compile_definitions(rynui_input_scene_allocation_benchmark PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_scene_allocation COMMAND rynui_input_scene_allocation_benchmark)
+
+set(input_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/010-20260831-build-text-input-foundation/evidence")
+add_test(
+    NAME rynui.input_generic_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${input_evidence_directory}/platform-generic-input.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+add_test(
+    NAME rynui.input_windows_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${input_evidence_directory}/windows-input.md"
+        -DEXPECTED_SCOPE=windows
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+add_test(
+    NAME rynui.input_linux_evidence_schema
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${input_evidence_directory}/linux-input.md"
+        -DEXPECTED_SCOPE=linux
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+add_test(
+    NAME rynui.input_evidence_cross_platform_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${input_evidence_directory}/windows-input.md"
+        -DEXPECTED_SCOPE=linux
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+set_tests_properties(rynui.input_evidence_cross_platform_rejected PROPERTIES WILL_FAIL TRUE)
+add_test(
+    NAME rynui.input_evidence_planning_only_rejected
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/input-evidence-planning-only.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+set_tests_properties(rynui.input_evidence_planning_only_rejected PROPERTIES WILL_FAIL TRUE)
+add_test(
+    NAME rynui.input_evidence_commit_idle_required
+    COMMAND ${CMAKE_COMMAND}
+        "-DEVIDENCE=${CMAKE_CURRENT_SOURCE_DIR}/fixtures/input-evidence-missing-commit-idle.md"
+        -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+set_tests_properties(rynui.input_evidence_commit_idle_required PROPERTIES WILL_FAIL TRUE)
 rynui_configure_cpp_target(rynui_button_component_tests)
 target_link_libraries(rynui_button_component_tests PRIVATE rynui_components)
 target_compile_definitions(
