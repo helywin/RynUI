@@ -265,6 +265,41 @@ def validate_overlay(
     return result
 
 
+def validate_input_evidence(repo_root: Path, overlay: dict[str, dict[str, object]]) -> None:
+    entry = overlay["ant.component.input"]
+    if entry["status"] not in {"partial", "implemented"}:
+        return
+    if entry["status"] != "partial":
+        raise ValueError("Input subset must remain partial until missing variants and native acceptance are complete")
+    evidence = set(entry["evidence_identifiers"])
+    change = "010-20260831-build-text-input-foundation"
+    required = {
+        f"openspec:{change}#8.1",
+        "api:include/ryn/input.hpp",
+        "runtime:src/component/input_component.cpp",
+        "test:rynui.input_journey",
+        "test:rynui.input_component",
+        "test:rynui.token_gallery_frame",
+        f"evidence:openspec/changes/{change}/evidence/platform-generic-input-journey.md",
+        f"evidence:openspec/changes/{change}/evidence/platform-generic-input-gallery.md",
+    }
+    if not required.issubset(evidence):
+        raise ValueError("Input partial requires resolvable API/runtime/journey/Gallery evidence")
+    for identity in required:
+        kind, value = identity.split(":", 1)
+        if kind in {"api", "runtime", "evidence"}:
+            path = repo_root / value
+            if not path.is_file() or not path.read_text(encoding="utf-8").strip():
+                raise ValueError(f"Input evidence file is missing or empty: {value}")
+    tasks = (repo_root / f"openspec/changes/{change}/tasks.md").read_text(encoding="utf-8")
+    if not re.search(r"(?m)^- \[x\] 8\.1 ", tasks):
+        raise ValueError("Input partial cannot use an incomplete/planning-only journey")
+    cmake = (repo_root / "tests/CMakeLists.txt").read_text(encoding="utf-8")
+    for name in ("input_journey", "input_component", "token_gallery_frame"):
+        if not re.search(rf"add_test\(\s*NAME\s+rynui\.{name}\s", cmake):
+            raise ValueError(f"Input evidence test is not registered: {name}")
+
+
 def canonical_json(value: object) -> bytes:
     return json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -356,6 +391,7 @@ def build_output(repo_root: Path) -> bytes:
     validate_schema_contracts(source_schema, overlay_schema)
     source_entries = validate_manifest(manifest_value)
     overlay = validate_overlay(overlay_value, source_entries)
+    validate_input_evidence(repo_root, overlay)
     inputs = {
         "manifest": manifest_value,
         "overlay": overlay_value,
@@ -440,6 +476,15 @@ def self_test(repo_root: Path) -> None:
     button = next(item for item in missing_evidence["entries"] if item["identity"] == "ant.component.button")
     button["evidence_identifiers"] = ["planning-only"]
     expect_invalid(lambda: validate_overlay(missing_evidence, source_entries), "support evidence gate")
+    input_overlay = validate_overlay(overlay, source_entries)
+    missing_input_runtime = copy.deepcopy(input_overlay)
+    missing_input_runtime["ant.component.input"]["evidence_identifiers"] = [
+        f"openspec:010-20260831-build-text-input-foundation#8.1", "test:rynui.input_journey"
+    ]
+    expect_invalid(lambda: validate_input_evidence(repo_root, missing_input_runtime), "Input unresolved runtime/API evidence")
+    full_input = copy.deepcopy(input_overlay)
+    full_input["ant.component.input"]["status"] = "implemented"
+    expect_invalid(lambda: validate_input_evidence(repo_root, full_input), "Input subset advertised as complete")
 
 
 def main(argv: Iterable[str] | None = None) -> int:

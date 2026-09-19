@@ -15,6 +15,8 @@
 #include <utility>
 #include <vector>
 
+namespace ryn::detail { class InputComponentHost; }
+
 namespace rynui::example {
 
 namespace detail {
@@ -105,7 +107,7 @@ public:
     ReferenceSurfaceHost& operator=(const ReferenceSurfaceHost&) = delete;
     ~ReferenceSurfaceHost() override;
 
-    void mount(const ryn::Content& content);
+    void mount(const ryn::Content& content, ryn::detail::InputComponentHost* inputs = nullptr);
     bool destroy(ryn::runtime::ComponentId component);
     [[nodiscard]] bool layout_and_synchronize(
         ryn::runtime::Size viewport,

@@ -372,16 +372,29 @@
     },
     {
       "identity": "ant.component.input",
-      "status": "planned",
-      "summary": "输入框（Input）的 Ant Design 6.5.0 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed 单行 Input、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Props and prefix/suffix slots",
+        "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
+        "selection, clipboard, undo/redo and composition event bridge",
+        "Theme/status/disabled/readOnly and retained caret deadline"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "TextArea, Password, Search, OTP and allowClear",
+        "native Windows/Wayland IME and visual acceptance",
+        "system placeholder/default text/max length properties",
+        "complete Ant Design Web API and visual bidi navigation"
       ],
       "evidence_identifiers": [
-        "source:components/input/index.en-US.md"
+        "openspec:010-20260831-build-text-input-foundation#8.1",
+        "api:include/ryn/input.hpp",
+        "runtime:src/component/input_component.cpp",
+        "test:rynui.input_journey",
+        "test:rynui.input_component",
+        "test:rynui.token_gallery_frame",
+        "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-journey.md",
+        "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-gallery.md"
       ]
     },
     {

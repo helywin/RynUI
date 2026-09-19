@@ -28,6 +28,8 @@ struct TokenGalleryTelemetry final {
     std::uint64_t reference_surfaces{};
     std::uint64_t reference_content_runs{};
     std::uint64_t live_samples{};
+    std::uint64_t input_changes{};
+    std::uint64_t input_submits{};
     std::uint64_t navigation_requests{};
     std::uint64_t filter_updates{};
     std::uint64_t snapshot_identity{};

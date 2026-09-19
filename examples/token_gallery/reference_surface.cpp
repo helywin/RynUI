@@ -1,4 +1,5 @@
 #include "reference_surface.hpp"
+#include "component/input_component.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -319,9 +320,10 @@ ReferenceSurfaceHost::~ReferenceSurfaceHost() {
     application_->detach_auxiliary(*this);
 }
 
-void ReferenceSurfaceHost::mount(const ryn::Content& content) {
+void ReferenceSurfaceHost::mount(const ryn::Content& content, ryn::detail::InputComponentHost* inputs) {
     ActiveReferenceSurfaceHost guard(*this);
-    application_->mount(content);
+    if (inputs) inputs->mount(content);
+    else application_->mount(content);
 }
 
 bool ReferenceSurfaceHost::destroy(ryn::runtime::ComponentId component) {

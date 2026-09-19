@@ -28,6 +28,8 @@ struct GalleryState final {
     ryn::Signal<bool> narrow_layout{false};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
+    ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
+    ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
@@ -48,6 +50,8 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.state.focus-visible",
     "gallery.state.disabled",
     "gallery.state.loading",
+    "gallery.input.controlled",
+    "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
     "ant.map.colorSuccess",
     "ant.map.colorWarning",
@@ -574,6 +578,46 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                 ryn::ButtonType::Primary, ryn::ControlSize::Middle,
                 false, state->loading);
         });
+    ryn::Text(u8"Input / 单行输入 · partial");
+    ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
+    ryn::Text(u8"缺失：TextArea、Password、Search、allowClear；系统 IME 与视觉仍待分平台验收");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
+        .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
+            ++state->telemetry.theme_content_runs;
+            ryn::Input(ryn::InputProps{}.value(state->input_value).placeholder(u8"受控：输入中文 / Latin / emoji")
+                .maxLength(32).status(ryn::bind([value = state->input_value] {
+                    return value.get().empty() ? ryn::InputStatus::Default : ryn::InputStatus::Warning;
+                }))
+                .onChange([state](ryn::String next) {
+                    ++state->telemetry.input_changes;
+                    state->input_value.set(std::move(next));
+                })
+                .onSubmit([state](ryn::String next) {
+                    ++state->telemetry.input_submits;
+                    state->input_feedback.set(std::move(next));
+                })
+                .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                ryn::InputPrefix{[] { ryn::Text(u8"前"); }},
+                ryn::InputSuffix{[] { ryn::Text(u8"32"); }});
+            ++state->telemetry.live_samples;
+        }});
+        ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
+            ++state->telemetry.theme_content_runs;
+            ryn::Input(ryn::InputProps{}.defaultValue(u8"非受控 / Input").placeholder(u8"清空后显示 placeholder")
+                .onChange([state](ryn::String next) {
+                    ++state->telemetry.input_changes;
+                    state->input_feedback.set(std::move(next));
+                })
+                .onSubmit([state](ryn::String next) {
+                    ++state->telemetry.input_submits;
+                    state->input_feedback.set(std::move(next));
+                })
+                .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+            ++state->telemetry.live_samples;
+        }});
+    });
+    ryn::Text(ryn::TextProps{}.content(state->input_feedback));
 }
 
 } // namespace

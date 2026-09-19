@@ -7,6 +7,7 @@
 #include "gallery_document_viewport.hpp"
 #include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
+#include "support/input_fixture.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -174,6 +175,7 @@ struct Fixture final {
             std::vector<ryn::font::FontIdentity>{latin.font, cjk.font},
             frames);
         surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(*host);
+        inputs = std::make_unique<ryn::detail::InputComponentHost>(*host, platform, platform);
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
@@ -191,6 +193,8 @@ struct Fixture final {
     ryn::detail::TextSceneService text_scene;
     std::unique_ptr<ryn::detail::ButtonComponentHost> host;
     std::unique_ptr<rynui::example::ReferenceSurfaceHost> surfaces;
+    ryn_test::input_component::Platform platform;
+    std::unique_ptr<ryn::detail::InputComponentHost> inputs;
 };
 
 class IdleEvents final : public ryn::runtime::FrameEventSource {
@@ -367,7 +371,7 @@ void test_small_acceptance_viewport_survives_theme_transitions() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(640.0F);
     Fixture fixture;
-    fixture.surfaces->mount(definition.content);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
     RecordingGpuApi gpu;
     RecordingDrawApi draw;
     IdleEvents events;
@@ -403,7 +407,7 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
-    fixture.surfaces->mount(definition.content);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
     const auto roots = fixture.host->components().root_components();
     require(roots.size() == 1,
             "Token Gallery document did not preserve one retained root");
@@ -486,7 +490,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     auto definition = make_token_gallery_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
-    fixture.surfaces->mount(definition.content);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
     constexpr ryn::runtime::Size viewport{1200.0F, 30000.0F};
     constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 30000.0F};
     require(fixture.host->layout_and_synchronize(
@@ -566,7 +570,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                     "hidden Gallery filter entry retained layout extent");
         }
     }
-    require(visible == 5 && hidden == 67,
+    require(visible == 6 && hidden == 66,
             "Gallery partial filter did not match the support catalog");
     const auto hidden_surface = surfaces[53].component;
     std::size_t hidden_texts = 0;
@@ -620,7 +624,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
-    fixture.surfaces->mount(definition.content);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
     const auto root_component = fixture.host->components().root_components().front();
     const auto root = fixture.host->components().root(root_component);
     const auto components = fixture.host->components().component_count();
@@ -693,7 +697,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
 
 void test_token_gallery_frame_contract() {
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 51,
+    require(definition.stable_test_ids.size() == 53,
             "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
@@ -707,14 +711,14 @@ void test_token_gallery_frame_contract() {
 
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
-    fixture.surfaces->mount(definition.content);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
     require(fixture.host->mounted_buttons().size()
                 == definition.navigation_control_count + 12,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 125,
             "Token Gallery document reference surface count drifted");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 12,
+                == definition.navigation_control_count + 14,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -729,7 +733,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 12,
+                == definition.navigation_control_count + 14,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -739,7 +743,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 72
                 && initial.reference_surfaces == 125
                 && initial.reference_content_runs == 125
-                && initial.live_samples == 12,
+                && initial.live_samples == 14,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0
@@ -890,6 +894,77 @@ void test_token_gallery_frame_contract() {
             "Token Gallery idle acceptance counters drifted");
 }
 
+void test_live_input_samples() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
+    RecordingGpuApi gpu; RecordingDrawApi draw; IdleEvents events;
+    HeadlessSubmitter submitter(*fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
+    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, *fixture.host, 5);
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Input Gallery initial frame failed");
+    for(int i = 0; i < 4; ++i) {
+        const auto step = loop.step();
+        if(step == ryn::runtime::FrameLoopStep::idle) break;
+        require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
+    }
+    require(fixture.inputs->mounted_inputs().size() == 2, "Gallery Input samples absent");
+    const auto controlled = fixture.inputs->mounted_inputs()[0];
+    const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
+    const auto controlled_layers = fixture.inputs->text_layers(controlled.component);
+    const auto uncontrolled_layers = fixture.inputs->text_layers(uncontrolled.component);
+    const auto initial = definition.telemetry();
+    const auto components = fixture.host->components().component_count();
+    const auto text_scenes = fixture.text_scene.size();
+    const auto quads = fixture.host->button_scene().instances().size();
+    const auto effects = fixture.host->rounded_effects().live_count();
+    require(fixture.host->focus().request_focus(controlled.interaction, ryn::input::FocusModality::keyboard), "Gallery Input focus failed");
+    const auto stamp = fixture.inputs->sessions().active();
+    require(bool(fixture.inputs->dispatch(ryn::input::CompositionChanged{ryn::String{u8"ni"}, {2, 0}, stamp})), "Gallery preedit failed");
+    require(definition.telemetry().input_changes == 0, "Gallery preedit emitted change");
+    require(bool(fixture.inputs->dispatch(ryn::input::TextCommitted{ryn::String{u8"你🙂"}, stamp})), "Gallery controlled commit failed");
+    require(fixture.inputs->editors().require(controlled.editor).value() == ryn::String{u8"你🙂"}.bytes()
+        && definition.telemetry().input_changes == 1, "Gallery controlled echo failed");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery Input editing frame failed");
+    require(fixture.inputs->synchronize_input_area(1, 1200, 30000) && fixture.platform.areas > 0, "Gallery Input area failed");
+    fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
+    require(definition.telemetry().input_submits == 1, "Gallery Input submit callback absent");
+    require(fixture.host->focus().request_focus(uncontrolled.interaction, ryn::input::FocusModality::keyboard), "Gallery uncontrolled focus failed");
+    fixture.host->focus().dispatch({ryn::input::Key::a, ryn::input::KeyAction::down, ryn::input::KeyModifier::control});
+    fixture.platform.clipboard = ryn::String{u8"Latin\n中文"};
+    fixture.host->focus().dispatch({ryn::input::Key::v, ryn::input::KeyAction::down, ryn::input::KeyModifier::control});
+    require(fixture.inputs->editors().require(uncontrolled.editor).value() == ryn::String{u8"Latin中文"}.bytes()
+        && definition.telemetry().input_changes == 2, "Gallery uncontrolled paste failed");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery uncontrolled frame failed");
+    fixture.inputs->set_window_active(false);
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery blur frame failed");
+    const auto final = definition.telemetry();
+    require(final.content_runs == initial.content_runs, "Gallery Input reran root content");
+    require(final.theme_content_runs == initial.theme_content_runs, "Gallery Input reran Theme content");
+    require(fixture.host->components().component_count() == components, "Gallery Input changed component topology");
+    require(fixture.inputs->mounted_inputs()[0].component == controlled.component
+        && fixture.inputs->mounted_inputs()[0].editor == controlled.editor
+        && fixture.inputs->mounted_inputs()[1].component == uncontrolled.component
+        && fixture.inputs->mounted_inputs()[1].editor == uncontrolled.editor,
+        "Gallery Input changed owner identity");
+    require(fixture.inputs->text_layers(controlled.component).base == controlled_layers.base
+        && fixture.inputs->text_layers(controlled.component).selected == controlled_layers.selected
+        && fixture.inputs->text_layers(controlled.component).placeholder == controlled_layers.placeholder
+        && fixture.inputs->text_layers(uncontrolled.component).base == uncontrolled_layers.base
+        && fixture.inputs->text_layers(uncontrolled.component).selected == uncontrolled_layers.selected
+        && fixture.inputs->text_layers(uncontrolled.component).placeholder == uncontrolled_layers.placeholder,
+        "Gallery Input changed retained text identity");
+    require(fixture.text_scene.size() == text_scenes
+        && fixture.host->button_scene().instances().size() == quads
+        && fixture.host->rounded_effects().live_count() == effects,
+        "Gallery Input changed retained scene capacity");
+    const auto submissions = loop.counters().submissions;
+    for(int i = 0; i < 4; ++i) require(loop.step() == ryn::runtime::FrameLoopStep::idle, "Gallery Input did not idle");
+    require(loop.counters().submissions == submissions && fixture.platform.starts == fixture.platform.stops,
+        "Gallery Input retained submits/session");
+}
+
 } // namespace
 
 int main() {
@@ -901,6 +976,7 @@ int main() {
         test_navigation_and_filter_controls_preserve_catalog_identity();
         test_responsive_navigation_and_document_reflow_preserves_identity();
         test_token_gallery_frame_contract();
+        test_live_input_samples();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

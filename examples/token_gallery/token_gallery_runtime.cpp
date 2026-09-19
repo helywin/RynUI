@@ -3,6 +3,7 @@
 #include "reference_surface.hpp"
 
 #include "component/button_component.hpp"
+#include "component/input_component.hpp"
 #include "font/font_runtime.hpp"
 #include "graphics/quad_primitive.hpp"
 #include "platform/default_font_chain.hpp"
@@ -76,6 +77,7 @@ public:
     GalleryEvents(
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
+        ryn::detail::InputComponentHost& inputs,
         ryn::runtime::FrameRequestState& frame_requests,
         GalleryDocumentViewport& document_viewport,
         ryn::runtime::Size& viewport,
@@ -88,6 +90,7 @@ public:
             take_navigation_request) noexcept
         : platform_(&platform),
           application_(&application),
+          inputs_(&inputs),
           frame_requests_(&frame_requests),
           document_viewport_(&document_viewport),
           viewport_(&viewport),
@@ -162,10 +165,9 @@ private:
         ++scroll_events_;
     }
 
-    // These samples have no text input owner yet.
-    void dispatch(const ryn::input::TextCommitted&) {}
-    void dispatch(const ryn::input::CompositionChanged&) {}
-    void dispatch(const ryn::input::CandidatesChanged&) {}
+    void dispatch(const ryn::input::TextCommitted& event) { static_cast<void>(inputs_->dispatch(event)); }
+    void dispatch(const ryn::input::CompositionChanged& event) { static_cast<void>(inputs_->dispatch(event)); }
+    void dispatch(const ryn::input::CandidatesChanged& event) { static_cast<void>(inputs_->dispatch(event)); }
     void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -175,10 +177,10 @@ private:
     void dispatch(const ryn::input::WindowInputEvent& event) {
         switch (event.action) {
         case ryn::input::WindowInputAction::focus_gained:
-            application_->set_window_active(true);
+            inputs_->set_window_active(true);
             return;
         case ryn::input::WindowInputAction::focus_lost:
-            application_->set_window_active(false);
+            inputs_->set_window_active(false);
             return;
         case ryn::input::WindowInputAction::resized:
             if (event.width > 0 && event.height > 0) {
@@ -192,6 +194,7 @@ private:
                     static_cast<void>(
                         application_->text().set_font_resolver(std::move(resolver)));
                     *render_scale_ = next_render_scale;
+                    inputs_->set_display_scale(next_render_scale);
                 }
                 const auto logical = token_gallery_logical_viewport(
                     metrics.pixel_width,
@@ -209,6 +212,7 @@ private:
 
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
+    ryn::detail::InputComponentHost* inputs_;
     ryn::runtime::FrameRequestState* frame_requests_;
     GalleryDocumentViewport* document_viewport_;
     ryn::runtime::Size* viewport_;
@@ -230,6 +234,7 @@ public:
     GallerySubmitter(
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
+        ryn::detail::InputComponentHost& inputs,
         ryn::detail::TextSceneService& text_scene,
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
@@ -240,6 +245,7 @@ public:
         float& render_scale) noexcept
         : platform_(&platform),
           application_(&application),
+          inputs_(&inputs),
           text_scene_(&text_scene),
           glyph_resources_(&glyph_resources),
           renderer_(&renderer),
@@ -310,6 +316,19 @@ public:
             }
             static_cast<void>(document_viewport_->apply_subtree_translation(
                 document_root_, application_->nodes(), application_->dirty()));
+            // Extent/anchor reconciliation can change scroll translation. Flush
+            // that geometry before publishing the native candidate-window area.
+            if (!application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+                last_error_ = "Token Gallery final scroll sync failed";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
+            const auto metrics = platform_->window_metrics();
+            if (!inputs_->synchronize_input_area(
+                    double(metrics.coordinate_width) / viewport_->width,
+                    metrics.coordinate_width, metrics.coordinate_height)) {
+                last_error_ = "Token Gallery text input area update failed";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
             if (quad_buffer_ == nullptr) {
                 quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
                     *renderer_, application_->button_scene().instances());
@@ -318,7 +337,6 @@ public:
             }
             glyph_resources_->synchronize(
                 text_scene_->atlas(), text_scene_->glyph_scene().instances());
-            const auto metrics = platform_->window_metrics();
             effect_resources_.synchronize(
                 application_->rounded_effects(),
                 {
@@ -357,6 +375,7 @@ public:
 private:
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
+    ryn::detail::InputComponentHost* inputs_;
     ryn::detail::TextSceneService* text_scene_;
     ryn::detail::GlyphGpuResources* glyph_resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
@@ -451,11 +470,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::ButtonComponentHost application(
             nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests);
         ReferenceSurfaceHost reference_surfaces(application);
+        ryn::detail::InputComponentHost inputs(application, platform, platform);
+        inputs.set_display_scale(render_scale);
         if (reduced_motion) {
             application.set_motion_preference(
                 ryn::animation::MotionPreference::reduced);
         }
-        reference_surfaces.mount(definition.content);
+        reference_surfaces.mount(definition.content, &inputs);
         const auto roots = application.components().root_components();
         if (roots.size() != 1) {
             throw std::logic_error(
@@ -469,6 +490,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         GallerySubmitter submitter(
             platform,
             application,
+            inputs,
             text_scene,
             glyph_resources,
             renderer,
@@ -480,6 +502,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         GalleryEvents events(
             platform,
             application,
+            inputs,
             frame_requests,
             document_viewport,
             viewport,
@@ -692,6 +715,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " reference_surfaces=" << telemetry.reference_surfaces
             << " reference_content_runs=" << telemetry.reference_content_runs
             << " live_samples=" << telemetry.live_samples
+            << " input_changes=" << telemetry.input_changes
+            << " input_submits=" << telemetry.input_submits
             << " navigation_controls=" << definition.navigation_control_count
             << " navigation_requests=" << telemetry.navigation_requests
             << " filter_updates=" << telemetry.filter_updates
