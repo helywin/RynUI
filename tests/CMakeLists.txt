@@ -748,6 +748,7 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         "-DEVIDENCE=${input_evidence_directory}/platform-generic-input.md"
         -DEXPECTED_SCOPE=platform-generic
+        -DREQUIRE_PASSED=ON
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
 add_test(
     NAME rynui.input_windows_evidence_schema
