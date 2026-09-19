@@ -756,6 +756,13 @@ add_test(
         "-DEVIDENCE=${input_evidence_directory}/windows-input.md"
         -DEXPECTED_SCOPE=windows
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
+if(WIN32)
+    add_test(
+        NAME rynui.windows_input_build_evidence
+        COMMAND ${CMAKE_COMMAND}
+            "-DEVIDENCE=${input_evidence_directory}/windows-input-build.md"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_input_build_evidence.cmake")
+endif()
 add_test(
     NAME rynui.input_linux_evidence_schema
     COMMAND ${CMAKE_COMMAND}
