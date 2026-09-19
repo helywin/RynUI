@@ -398,6 +398,14 @@ UTF-8
 
 默认 UI font chain 必须服从当前桌面环境：Windows 通过 DirectWrite 的 system font collection 选择 Segoe UI 系列，并以 Microsoft YaHei UI 补足简体中文；Linux 通过 Fontconfig 对 generic `sans-serif` 分别执行 Latin 与 `zh-cn` 匹配，尊重用户和发行版的字体配置。应用显式配置的字体文件按声明顺序位于 chain 最前，系统字体只补足缺失 coverage，最后才使用锁定的 validation font 作为可诊断兜底。系统字体文件不随 RynUI 分发，也不写死路径；Linux Fontconfig 是显式 REQUIRED 的平台服务，不构成 FreeType/HarfBuzz `BUNDLED|SYSTEM` source mode 的隐式 system-first fallback。稳定公开配置最终由 Theme font token 承载；在 Theme API 发布前，内部 font-chain request 保留 typed custom file/face-index 接口，示例不得绕过该边界硬编码平台字体路径。
 
+单行编辑使用 internal `TextEditorState` 作为唯一事实来源。committed value 始终是有效 UTF-8；锁定的 utf8proc 2.11.3 / Unicode 17 `TextBoundaryMap` 决定 scalar 与 grapheme 边界，HarfBuzz `TextCaretMap` 只负责把合法编辑边界映射到 glyph cluster 的 logical x。selection 保存 grapheme-aligned byte offset，composition/candidates 是不进入 value/history 的临时状态；commit、clipboard 与 undo/redo 以原子 transaction 更新。history 受 128 transaction / 1 MiB 双上限约束，owner、editor 与迟到事件均使用 generation identity 校验。
+
+公开 `ryn::Input` 固定 controlled 或 uncontrolled 模式，同时提供 typed `InputProps`、prefix/suffix slots、placeholder、status、disabled/readOnly、Unicode scalar `maxLength`、`onChange` 与 `onSubmit`。`value` 与 `defaultValue` 冲突在 mount 时拒绝。root、editable viewport、三份 Text scene view、selection/caret Quad 和 19 个 rounded-effect slot 在 generation 生命周期内保持固定 identity；长文本仅在 editable viewport 内水平滚动。普通 selection/caret/material 更新不得 remount 或重跑 slots，caret 只由 deadline 驱动，失焦、disable、read-only 或销毁后必须恢复 blocking idle。
+
+每个窗口由 internal `TextInputSessionHost` 维护最多一个有效 owner。SDL3 adapter 在 event 生命周期内复制 committed/composition/candidate UTF-8 snapshot；Focus、window focus、disabled/read-only 和销毁统一 start/stop/cancel。clipboard 通过平台无关 UTF-8 contract 接入；候选窗 area 只在最终 Layout/scroll 后从 logical viewport、ancestor clip、caret 和独立 window-coordinate scale 计算，同值调用消除，失败保留重试。SDL3、native handle 与平台枚举不得进入 Reactive、Layout、Component 或公开 API。
+
+Input 的 API、Unicode、editing、headless interaction、Token、scene、allocation 和 benchmark 属于平台通用合同，只需在一个受支持正式 preset 验收一次。Win32 与原生 Wayland 的系统 IME、候选窗、clipboard、shortcut modifier、系统字体、真实 display scale、GPU/shader 和人工视觉必须保存为独立平台 evidence；任一平台结果不得替代另一平台。
+
 输入事件通过 HitTest 定位目标 Node，并支持 Capture、Target、Bubble 三阶段传播。Focus、Pointer capture、Keyboard、IME、Cursor、Clipboard 和 DragDrop 由独立管理器维护。
 
 ## 12. 线程与帧调度
@@ -515,7 +523,7 @@ RynUI/
 
 ### Phase 3：桌面能力
 
-- TextInput、IME、Selection、Clipboard、Undo/Redo。
+- 已建立单行 `Input`、IME session/event bridge、Selection、Clipboard、Undo/Redo 与候选窗 area 基础；`TextArea`、Password、Search、视觉 bidi 与各平台原生验收继续按独立 change 推进。
 - VirtualList、VirtualTable、VirtualTree。
 - Ant Design 6 对齐的 Seed/Map/Alias/Component Token、Default/Dark/Compact 主题和基础组件集。
 - Inspector、Dirty reason 和 Frame profiler。

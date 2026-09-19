@@ -10,7 +10,8 @@ RynUI 是一个面向桌面应用的现代 C++20 响应式 UI 框架。它以 An
 
 - `Signal`、`Memo`、`Effect`、`Binding`、`Scope` 与 reactive `Prop<T>`。
 - UTF-8 `ryn::String`/`StringView`，支持直接使用 C++20 `u8"..."` 字面量。
-- typed `Text`、`Button`、`Flex` 与 `Space` 组件，以及 typed content slots。
+- typed `Text`、`Button`、单行 `Input`、`Flex` 与 `Space` 组件，以及 typed content slots。
+- `Input` 支持受控/非受控 value、placeholder、prefix/suffix、Unicode-safe selection、composition event、clipboard、undo/redo、scalar `maxLength`、status 和 caret deadline；系统 IME 与视觉仍按 Windows/Linux 分平台验收。
 - `LayoutStyle` 外部布局约束、Flex wrap/justify/align/gap、grow/shrink/basis/order。
 - Ant Design 6 风格的 Design Token、Default/Dark/Compact/Brand/Nested Theme 与组件状态 token。
 - Pointer routing、hover/active、keyboard focus、focus-visible、disabled/loading 和 Button activation。
@@ -62,7 +63,7 @@ Windows DirectWrite grayscale glyph raster path 已完成方案评估，但当�
 - `rynui_text_demo`：Latin/CJK shaping、fallback 与文本更新。
 - `rynui_button_demo`：Button 状态、焦点与输入闭环。
 - `rynui_layout_demo`：公开 Flex/Space DSL 与响应式布局。
-- `rynui_token_gallery`：锁定 Ant Design 6.5.0 的离线参考文档，包含设计介绍、七类 72 项组件总览、Design Token、支持状态筛选、分类导航、真实组件样例与响应式多缩放布局。
+- `rynui_token_gallery`：锁定 Ant Design 6.5.0 的离线参考文档，包含设计介绍、七类 72 项组件总览、Design Token、支持状态筛选、分类导航、Button 与 Input 真实样例及响应式多缩放布局。
 
 ## 文档
 
