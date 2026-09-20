@@ -1,35 +1,56 @@
 # RynUI
 
-RynUI 是一个面向桌面应用的现代 C++20 响应式 UI 框架。它以 Ant Design 6 的组件语义、Design Token、主题和交互状态作为设计基线，结合 typed component API、声明式 slot composition、细粒度响应、Retained UI Tree、Constraints 布局与专用 GPU 渲染链路。
+简体中文 · [English](README.en.md)
 
-项目使用 `ryn` 命名空间，不引入 React、DOM、CSS-in-JS 或 Virtual DOM。组件在挂载时建立稳定 identity，普通属性更新只推进受影响的响应、布局、场景或 GPU 数据。
+**用现代 C++ 构建响应式桌面界面。**
 
-> 当前状态：核心基础设施与首批公开组件已经可运行，仍处于持续开发阶段，尚不是完整的通用组件库。
+RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Design 6 的组件语义、设计变量（Design Token）、主题和交互状态为设计基线。你可以用类型明确的 C++ 属性和嵌套内容声明界面，让状态变化自动更新相关组件，再通过 GPU 绘制窗口内容。
 
-## 已实现能力
+项目面向桌面工具、工业控制、机器人应用和监控面板等场景。界面由原生 C++ 运行时实现，不依赖浏览器、React、DOM 或 Virtual DOM。
 
-- `Signal`、`Memo`、`Effect`、`Binding`、`Scope` 与 reactive `Prop<T>`。
-- UTF-8 `ryn::String`/`StringView`，支持直接使用 C++20 `u8"..."` 字面量。
-- typed `Text`、`Button`、单行 `Input`、`Flex` 与 `Space` 组件，以及 typed content slots。
-- `Input` 支持受控/非受控 value、placeholder、prefix/suffix、Unicode-safe selection、composition event、clipboard、undo/redo、scalar `maxLength`、status 和 caret deadline；系统 IME 与视觉仍按 Windows/Linux 分平台验收。
-- `LayoutStyle` 外部布局约束、Flex wrap/justify/align/gap、grow/shrink/basis/order。
-- Ant Design 6 风格的 Design Token、Default/Dark/Compact/Brand/Nested Theme 与组件状态 token。
-- Pointer routing、hover/active、keyboard focus、focus-visible、disabled/loading 和 Button activation。
-- Retained scene、Quad/Glyph/RoundedEffect、阴影、圆角与离线 DXIL/SPIR-V shader。
-- Windows/MSVC/D3D12 和 Linux/GCC/Clang/Vulkan 构建路径。
-- high-DPI viewport、pointer/wheel 输入坐标映射、动态 display scale 与平台默认 UI 字体链。
+> 开发中：核心运行时、首批组件和示例已经可运行，适合源码学习、原型验证与参与开发。组件覆盖和平台验收仍在推进，尚不是完整的通用组件库。
 
-## 设计边界
+## 核心特点
 
-- 基础 UI 组件和视觉合同参照 Ant Design 6，但底层是原生 C++ 实现。
-- Compose 只作为 typed slots、Constraints 和 phased invalidation 的机制参考；公开 API 不提供通用 `Modifier`。
-- `LayoutStyle` 只控制组件的外部布局；稳定组件的颜色、字体、圆角、阴影和交互状态由 Theme 与 Component Token 控制。
-- SDL3 类型不会泄漏到公开组件、Reactive 或 Layout API。
-- Skia 不属于核心依赖，仅为未来复杂 Canvas/Path 场景保留可选扩展位置。
+- **声明式 C++ API**：公开 API 使用 `ryn` 命名空间，通过 typed Props、内容插槽和 reactive `Prop<T>` 组合组件。
+- **细粒度响应**：组件挂载后保留节点与依赖关系，普通属性更新只推进受影响的布局或绘制数据，不重新执行无关组件。
+- **统一主题**：颜色、字体、圆角、阴影和交互状态由 Theme 与 Component Token 控制；`LayoutStyle` 负责外部布局。
+- **原生 GPU 绘制**：SDL3 负责窗口、输入和 GPU 接入，专用渲染链路绘制文字、矩形、圆角和阴影，并按需调度帧。
 
-## 构建与运行
+## 当前进展
 
-正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Multi-Config`。默认 `BUNDLED` 模式会下载并校验锁定依赖；Windows 必须使用 MSVC。
+| 领域 | 已有实现 |
+| --- | --- |
+| 响应式状态 | `Signal`、`Memo`、`Effect`、`Binding`、`Scope` 与 `Prop<T>` |
+| 组件与布局 | `Text`、`Button`、单行 `Input`、`Flex`、`Space`；布局支持换行、对齐、间距和伸缩 |
+| 主题与交互 | 默认、暗色、紧凑、品牌色和嵌套主题；鼠标交互、键盘焦点、禁用/加载状态与基础状态动画 |
+| 文本 | UTF-8 `ryn::String`/`StringView`、C++20 `u8"..."` 字面量、中英文排版、字体回退与高 DPI 字形绘制 |
+| 单行编辑 | 受控/非受控值、占位文本、前后缀、Unicode 字素安全选区、剪贴板、撤销/重做、输入法组合事件与光标闪烁 |
+| 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.5.0 的离线组件目录和 Token Gallery |
+
+当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 72 项是**参考目录**，每项单独标注支持范围，并不表示已实现 72 个组件。`Table`、`Tree`、多行文本、密码输入和搜索输入等仍未提供。
+
+单行 `Input` 已接入 Gallery，并完成平台通用测试和 Windows Debug/Release 构建验收；真实系统输入法、候选窗与视觉效果仍需分别完成 Windows 和 Linux 验收。动画和 Gallery 也有待完成的平台验收，具体进度见 [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md)、[动画](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md)和 [Gallery](openspec/changes/008-20260829-build-ant-design-reference-gallery/tasks.md) 清单。
+
+## 构建与体验
+
+建议先运行 `rynui_token_gallery`，浏览设计变量、组件支持状态以及 Button / Input 交互样例。
+
+| 平台 | 工具链 | 当前 GPU 路径 |
+| --- | --- | --- |
+| Windows | MSVC x64 | SDL3 GPU / D3D12 / DXIL |
+| Linux | GCC 或 Clang | SDL3 GPU / Vulkan / SPIR-V |
+
+macOS 属于后续架构目标，当前尚未提供正式构建 preset 或验收结果。
+
+需要 Git、CMake 3.25+、Ninja 和 C++20 工具链；运行示例需要图形桌面和支持相应 GPU 后端的驱动。Windows 需要安装 Visual Studio C++ x64 工具。Linux 需要 Fontconfig 2.13+ 开发包；默认 bundled Wayland 构建还需要 Meson、pkg-config、patch、wayland-scanner，以及 Wayland、wayland-protocols、Cairo、PangoCairo 开发依赖。
+
+```bash
+git clone https://github.com/helywin/RynUI.git
+cd RynUI
+```
+
+所有正式构建使用仓库内的 `CMakePresets.json` 和 `Ninja Multi-Config`。默认 `BUNDLED` 模式会下载并校验锁定依赖，首次配置需要网络。
 
 Windows PowerShell：
 
@@ -47,28 +68,27 @@ ctest --preset linux-gcc-debug
 ./out/build/linux-gcc/examples/Debug/rynui_token_gallery
 ```
 
-Linux 也提供 `linux-clang` presets。完整环境要求、Release 构建、`SYSTEM` 依赖模式和离线构建方式见[开发构建说明](docs/development/building.md)。
-
-## 字体与平台行为
-
-Windows 使用 DirectWrite 发现系统 UI 字体，Linux 使用 Fontconfig 读取桌面默认字体；当前两端都由 HarfBuzz 保持 logical shaping，并由 FreeType 生成透明 grayscale glyph atlas。平台集成层保留内部 typed font request，可指定其他字体文件和 face index，并继续使用系统及锁定字体 fallback。
-
-Windows DirectWrite grayscale glyph raster path 已完成方案评估，但当前暂不切换；现有 FreeType raster path 继续作为正式实现，后续只有在真实窗口的小字号中英文对比证明有明确收益时再推进。
+Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[开发构建说明](docs/development/building.md)；`SYSTEM` 依赖模式、版本锁定与离线准备方式见[第三方依赖说明](docs/development/third-party.md)。
 
 ## 示例
 
-仓库包含以下可运行示例：
+| 可执行文件 | 适合了解什么 |
+| --- | --- |
+| `rynui_token_gallery` | 从这里开始：主题、组件支持范围、目录导航与 Button / Input 交互 |
+| `rynui_minimal` | 响应式状态到 GPU 绘制的最小闭环 |
+| `rynui_text_demo` | 中英文排版、字体回退与文本更新 |
+| `rynui_button_demo` | 按钮状态、鼠标与键盘交互 |
+| `rynui_layout_demo` | Flex / Space 组合与响应式布局 |
 
-- `rynui_minimal`：最小响应式 GPU 闭环。
-- `rynui_text_demo`：Latin/CJK shaping、fallback 与文本更新。
-- `rynui_button_demo`：Button 状态、焦点与输入闭环。
-- `rynui_layout_demo`：公开 Flex/Space DSL 与响应式布局。
-- `rynui_token_gallery`：锁定 Ant Design 6.5.0 的离线参考文档，包含设计介绍、七类 72 项组件总览、Design Token、支持状态筛选、分类导航、Button 与 Input 真实样例及响应式多缩放布局。
+示例源码位于 [`examples/`](examples)，公开头文件位于 [`include/ryn/`](include/ryn)。
 
-## 文档
+## 文档与参与
 
-- [架构基线](docs/architecture.md)
-- [开发构建说明](docs/development/building.md)
-- [第三方依赖与锁定规则](docs/development/third-party.md)
-- [OpenSpec changes](openspec/changes)
-- [Agent 协作规则](AGENTS.md)
+- [开发构建说明](docs/development/building.md)：环境、presets 与构建选项。
+- [架构基线](docs/architecture.md)：设计目标、模块边界和长期技术决策；包含尚未实现的规划。
+- [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
+- [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
+- [OpenSpec changes](openspec/changes)：各项变更的范围、任务和验收证据。
+- [Agent 协作规则](AGENTS.md)：仓库开发与验证约定。
+
+欢迎通过 [GitHub Issues](https://github.com/helywin/RynUI/issues) 反馈问题、讨论使用场景或提出组件需求。报告运行问题时，请附上操作系统、构建 preset、窗口系统、GPU/驱动及复现步骤。详细技术文档目前以简体中文为主。
