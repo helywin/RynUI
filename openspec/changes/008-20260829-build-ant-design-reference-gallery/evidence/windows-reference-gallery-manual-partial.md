@@ -3,8 +3,8 @@
 - 日期：2026-09-22；平台：Windows / Win32 / MSVC x64 / D3D12 / DXIL。
 - 构建：正式 `windows-msvc` preset 的独立 Release 验证目录 `out/build/windows-msvc-scroll-validation`；本次不复用既有 `out/build/windows-msvc` 缓存。字体来源为系统，运行时报告 `Segoe UI Variable Text`、`Microsoft YaHei UI`；host display scale 为 1.5。
 - 实际启动：无 scale 参数（`scale_source=window`，render scale 1.5），以及 `--acceptance-scale=1.0|1.25|1.5|2.0`。五次均显示 `window_system=win32`、`gpu_driver=direct3d12`、`shader_format=DXIL`、`font_source=system`，正常关闭且 `exit_code=0`。
-- 已直接操作并观察：文档顶部、Foundation、General/Other 类别、Live Samples、滚轮、All/Planned 筛选、非交互目录卡片点击；在 2.0 档观察 Default/Primary/Danger hover 与 Tab 键盘 focus ring。非交互目录卡片点击后未出现 Button hover/focus 外圈，Default hover 仅现有边框/文字变蓝，solid hover 改变填充而未见独立蓝色外圈，Tab focus 出现外圈。
-- 未完成：在四档 acceptance scale 重复完整文档浏览、Button 按下态/Pointer focus、所有 72 项逐一人工可读性检查。因此任务 7.2 仍未完成；任务 7.3 亦未通过。
+- 已直接操作并观察：文档顶部、Foundation、七类末尾、Live Samples、滚轮、All/Planned 筛选、非交互目录卡片点击；在多档观察 Default/Primary/Danger pointer 状态与 Tab 键盘 focus ring。非交互目录卡片点击后未出现 Button hover/focus 外圈，Default hover 仅现有边框/文字变蓝，solid hover 改变填充而未见独立蓝色外圈，Tab focus 出现外圈。各次操作范围与截图见下文。
+- 未完成：Button 按下瞬间视觉状态、所有 72 项逐一人工可读性检查与完整 Windows 7.3 合同。因此任务 7.2 仍未完成；任务 7.3 亦未通过。
 
 ## 确认问题
 
@@ -56,7 +56,11 @@
 - 1.0 档从 General 顺序滚动至 Other/Util，并操作 Live Samples 的 Default、Primary、Danger 和 Tab 焦点；[Other 末尾](screenshots/windows-scale-1.0-other-tail-followup.jpg)、[键盘焦点](screenshots/windows-scale-1.0-keyboard-focus-followup.jpg)。窗口正常退出，进程 `exit_code=0`。这证明可到达与交互路径，不代表在 host 1.5× 下按 1.0× 渲染的细小文字已经逐项通过人工可读性检查。
 - 1.25 档点击 General 后，两个白色圆角条覆盖 Button/Icon 卡片文字；滚轮下移后遮挡位置仍跟随变化。[修复前实窗](screenshots/windows-scale-1.25-blank-overlay-general.jpg)。原因是 Gallery 给滚动子树的每个节点都设置相同位移，而 Input 容器和文字 viewport 额外累加所有祖先位移，使文档末尾 Live Samples 的两个 Input 在前面卡片位置绘制。
 - `InputComponentHost` 已改为和其他场景节点相同的单节点位移语义；新增同位移子树回归测试。MSVC Release 构建成功，相关 CTest 23/23 通过。相同 1.25 档 General 点击与滚轮路径中，白条未再出现：[修复后实窗](screenshots/windows-scale-1.25-general-overlay-fixed.jpg)。窗口正常退出，进程 `exit_code=0`。本机原始诊断位于 ignored `out/build/windows-msvc-scroll-validation/manual-input-overlay-fix-1.25.stdout.txt`。
-- 1.25 档其余分类与 1.5/2.0 档的完整回归、72 项逐一可读性及 Button 按下态仍未完成；7.2/7.3/7.4 继续保持未勾选。此局部修复也不构成 240 Hz 滚动性能验收。
+- 该局部修复后的首次复测尚未覆盖 1.25 档其余分类、1.5/2.0 档完整回归、72 项逐一可读性及 Button 按下态；后续 1.25 档续验见下文。7.2/7.3/7.4 继续保持未勾选。此局部修复也不构成 240 Hz 滚动性能验收。
+
+随后在修复后构建的 1.25 档继续实窗顺序浏览，七类末尾 Typography、Splitter、Tabs、Upload、Tree、Watermark、Util 均进入 viewport；[Other/Util 末尾截图](screenshots/windows-scale-1.25-other-tail-followup.jpg)。回到顶部选择 `Planned` 后跳到 General，目录只显示匹配项，[筛选截图](screenshots/windows-scale-1.25-planned-general-followup.jpg)；再恢复 `All` 并跳转 Live Samples，点击 Default、Primary、Danger 后未见 pointer focus 外圈，按 `Tab` 后出现独立的键盘焦点外圈，[键盘焦点截图](screenshots/windows-scale-1.25-live-keyboard-focus-followup.jpg)。本次正常关闭、`exit_code=0`；ignored 诊断 `out/build/windows-msvc-scroll-validation/manual-1.25-category-followup.stdout.txt` 报告 `window_system=win32`、`gpu_driver=direct3d12`、`shader_format=DXIL`、`font_source=system`、`font_families=Segoe_UI_Variable_Text,Microsoft_YaHei_UI`、`host_display_scale=1.5`、`display_scale=1.25`、`scale_source=acceptance`。上述截图只证明所述路径，尚未逐项核对 72 条文字、Button 按下瞬间或完整视觉合同；任务 checkbox 保持不变。
+
+1.5 与 2.0 acceptance 档也在修复后构建中由 General 顺序滚轮浏览至 Other，分别观察七类末尾 Typography、Splitter、Tabs、Upload、Tree、Watermark、Util；保存[1.5 Other/Util](screenshots/windows-scale-1.5-other-tail-followup.jpg)与[2.0 Other/Util](screenshots/windows-scale-2.0-other-tail-followup.jpg)。两档 Live Samples 中点击 Danger 后无 pointer focus 外圈，按 `Tab` 出现独立键盘焦点外圈：[1.5 焦点](screenshots/windows-scale-1.5-live-keyboard-focus-followup.jpg)、[2.0 焦点](screenshots/windows-scale-2.0-live-keyboard-focus-followup.jpg)。2.0 档的两个 Input 在 Live Samples 正确位置可见，[实窗截图](screenshots/windows-scale-2.0-live-input-followup.jpg)，未见先前跨卡片白条。两次进程均正常关闭、`exit_code=0`；ignored `manual-1.5-category-followup.stdout.txt` 与 `manual-2.0-category-followup.stdout.txt` 均报告 Win32/D3D12/DXIL、系统 Segoe UI Variable Text/Microsoft YaHei UI、host display scale 1.5，分别为 acceptance display scale 1.5 和 2.0。2.0 档首次跳 General 时一度只见分类标题，明确选择 `All` 后卡片可见；新进程以默认筛选再次直接跳 General 时卡片正常出现，故该单次现象未复现，暂不归因或宣称新缺陷。
 
 ## 诊断边界
 
