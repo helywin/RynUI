@@ -51,6 +51,13 @@
 
 同一运行中最大化进入宽布局、恢复窄布局，恢复后保持在 Other section；[宽布局截图](screenshots/windows-system-wide-other-live.png)、[恢复窄布局截图](screenshots/windows-system-narrow-restored-other.png)。逐一点击 `Implemented`、`Partial`、`Planned`、`Web only`、`Deprecated`、`Out of scope` 和 `All` 筛选；`Out of scope` 下七类标题仍在、目录条目隐藏且 Live Samples 可达，最后恢复 `All`。本次使用窗口关闭按钮正常退出，但未独立捕获该运行的进程退出码；不能以此前五档运行的 `exit_code=0` 替代。
 
+## 1.0/1.25 档续验与 Input 位移修复
+
+- 1.0 档从 General 顺序滚动至 Other/Util，并操作 Live Samples 的 Default、Primary、Danger 和 Tab 焦点；[Other 末尾](screenshots/windows-scale-1.0-other-tail-followup.jpg)、[键盘焦点](screenshots/windows-scale-1.0-keyboard-focus-followup.jpg)。窗口正常退出，进程 `exit_code=0`。这证明可到达与交互路径，不代表在 host 1.5× 下按 1.0× 渲染的细小文字已经逐项通过人工可读性检查。
+- 1.25 档点击 General 后，两个白色圆角条覆盖 Button/Icon 卡片文字；滚轮下移后遮挡位置仍跟随变化。[修复前实窗](screenshots/windows-scale-1.25-blank-overlay-general.jpg)。原因是 Gallery 给滚动子树的每个节点都设置相同位移，而 Input 容器和文字 viewport 额外累加所有祖先位移，使文档末尾 Live Samples 的两个 Input 在前面卡片位置绘制。
+- `InputComponentHost` 已改为和其他场景节点相同的单节点位移语义；新增同位移子树回归测试。MSVC Release 构建成功，相关 CTest 23/23 通过。相同 1.25 档 General 点击与滚轮路径中，白条未再出现：[修复后实窗](screenshots/windows-scale-1.25-general-overlay-fixed.jpg)。窗口正常退出，进程 `exit_code=0`。本机原始诊断位于 ignored `out/build/windows-msvc-scroll-validation/manual-input-overlay-fix-1.25.stdout.txt`。
+- 1.25 档其余分类与 1.5/2.0 档的完整回归、72 项逐一可读性及 Button 按下态仍未完成；7.2/7.3/7.4 继续保持未勾选。此局部修复也不构成 240 Hz 滚动性能验收。
+
 ## 诊断边界
 
 - 五次退出码均为 0；运行时诊断保存在本机 ignored `out/build/windows-msvc-scroll-validation/manual-scale-*.stdout.txt`。本文件保留可审查的关键信息，不能用这些输出代替屏幕视觉验收。

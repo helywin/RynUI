@@ -578,6 +578,27 @@ void input_pixel_grid() {
     }
 }
 
+void translated_subtree_geometry() {
+    Fixture f;
+    f.inputs.mount(Content{[] { Input(InputProps{}.placeholder(u8"scroll test")); }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto before = f.inputs.layout_snapshot(mounted.component).viewport;
+    runtime::NodePropertyWriter writer(f.nodes, f.dirty);
+    const runtime::Point translation{0.0F, -30.0F};
+    const auto translate = [&](const auto& self, runtime::NodeId id) -> void {
+        const auto children = f.nodes.require(id).children;
+        require(writer.set_translation(id, translation), "Input subtree translation was not set");
+        for(const auto child : children) self(self, child);
+    };
+    translate(translate, mounted.node);
+    f.synchronize();
+    const auto after = f.inputs.layout_snapshot(mounted.component).viewport;
+    require(std::abs(after.x - before.x) < 0.0001F
+        && std::abs(after.y - (before.y + translation.y)) < 0.0001F,
+        "Input viewport accumulated ancestor translations");
+}
+
 void composition_display() {
     Fixture f; Signal<String> value{String{}}; int changes{};
     f.inputs.mount(Content{[&] {
@@ -622,6 +643,6 @@ void composition_display() {
 }
 int main() {
     try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); translated_subtree_geometry(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

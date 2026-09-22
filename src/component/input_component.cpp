@@ -99,11 +99,11 @@ InputMaterialValues material_values(const InputState& state, const InputTokenSet
     return result;
 }
 runtime::Rect translated_bounds(const runtime::NodeStore& nodes, runtime::NodeId id) {
-    auto result = nodes.require(id).bounds;
-    for(auto current = std::optional{id}; current; current = nodes.require(*current).parent) {
-        result.x += nodes.require(*current).translation.x;
-        result.y += nodes.require(*current).translation.y;
-    }
+    const auto& node = nodes.require(id);
+    auto result = node.bounds;
+    // Layout bounds are absolute, and scene translation is stored per node.
+    result.x += node.translation.x;
+    result.y += node.translation.y;
     return result;
 }
 graphics::QuadInstance clipped_quad(runtime::Rect bounds, runtime::Rect clip,
@@ -681,14 +681,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         if(state->carets.revision() != text_scene.text_state(state->text_scene).revision()
             && !text_scene.synchronize_caret_map(state->text_scene, state->carets))
                 throw std::runtime_error("Input caret mapping failed");
-        const auto& node = host_->nodes().require(state->viewport);
-        auto viewport = node.bounds;
-        // Include parent translations; bounds themselves are absolute layout coordinates.
-        for(auto ancestor = std::optional{state->viewport}; ancestor;
-            ancestor = host_->nodes().require(*ancestor).parent) {
-            const auto translation = host_->nodes().require(*ancestor).translation;
-            viewport.x += translation.x; viewport.y += translation.y;
-        }
+        auto viewport = translated_bounds(host_->nodes(), state->viewport);
         const auto right = std::min(viewport.x + viewport.width, clip.x + clip.width);
         const auto bottom = std::min(viewport.y + viewport.height, clip.y + clip.height);
         const auto left = std::max(viewport.x, clip.x), top = std::max(viewport.y, clip.y);
