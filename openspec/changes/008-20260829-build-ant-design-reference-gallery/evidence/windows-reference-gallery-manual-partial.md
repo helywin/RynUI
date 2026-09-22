@@ -4,7 +4,7 @@
 - 构建：正式 `windows-msvc` preset 的独立 Release 验证目录 `out/build/windows-msvc-scroll-validation`；本次不复用既有 `out/build/windows-msvc` 缓存。字体来源为系统，运行时报告 `Segoe UI Variable Text`、`Microsoft YaHei UI`；host display scale 为 1.5。
 - 实际启动：无 scale 参数（`scale_source=window`，render scale 1.5），以及 `--acceptance-scale=1.0|1.25|1.5|2.0`。五次均显示 `window_system=win32`、`gpu_driver=direct3d12`、`shader_format=DXIL`、`font_source=system`，正常关闭且 `exit_code=0`。
 - 已直接操作并观察：文档顶部、Foundation、General/Other 类别、Live Samples、滚轮、All/Planned 筛选、非交互目录卡片点击；在 2.0 档观察 Default/Primary/Danger hover 与 Tab 键盘 focus ring。非交互目录卡片点击后未出现 Button hover/focus 外圈，Default hover 仅现有边框/文字变蓝，solid hover 改变填充而未见独立蓝色外圈，Tab focus 出现外圈。
-- 未完成：逐档浏览 Introduction、Foundation 和七类末尾、逐一操作全部筛选、Button 按下态/Pointer focus、窗口宽窄往返及所有 72 项人工可读性检查。因此任务 7.2 仍未完成；任务 7.3 亦未通过。
+- 未完成：在四档 acceptance scale 重复完整文档浏览、Button 按下态/Pointer focus、所有 72 项逐一人工可读性检查。因此任务 7.2 仍未完成；任务 7.3 亦未通过。
 
 ## 确认问题
 
@@ -34,6 +34,22 @@
 | acceptance scale 2.0，Foundation | [windows-foundation-swatch-fixed-2.0.png](screenshots/windows-foundation-swatch-fixed-2.0.png) |
 
 修复后四档运行时仍报告 `window_system=win32`、`gpu_driver=direct3d12`、`shader_format=DXIL`、`font_source=system`，系统 host display scale 为 1.5，窗口正常关闭；本机原始诊断在 ignored `out/build/windows-msvc-scroll-validation/manual-swatch-*.stdout.txt`。这里只证明 Foundation 色块与标识分离，不代表已逐档检查完整文档、所有筛选及 Button 按下态。
+
+## 系统 scale 1.5 的连续文档浏览（部分）
+
+在修复后的同一真实窗口中，以 pointer wheel 从 General 顺序浏览至 Other，并观察各类末尾和下一类标题；末尾分别为 Typography、Splitter、Tabs、Upload、Tree、Watermark、Util。以下截图证明七类尾项均可进入 viewport，但不等于逐一人工核对 72 项全部文字。观察到的目录卡片无 Button 蓝色 hover/focus 外圈；长文档卡片未见跨卡片溢出。
+
+| 分类 | 末尾截图 |
+|---|---|
+| General | [windows-system-general-tail.png](screenshots/windows-system-general-tail.png) |
+| Layout | [windows-system-layout-tail.png](screenshots/windows-system-layout-tail.png) |
+| Navigation | [windows-system-navigation-tail.png](screenshots/windows-system-navigation-tail.png) |
+| Data Entry | [windows-system-data-entry-tail.png](screenshots/windows-system-data-entry-tail.png) |
+| Data Display | [windows-system-data-display-tail.png](screenshots/windows-system-data-display-tail.png) |
+| Feedback | [windows-system-feedback-tail.png](screenshots/windows-system-feedback-tail.png) |
+| Other | [windows-system-other-tail.png](screenshots/windows-system-other-tail.png) |
+
+同一运行中最大化进入宽布局、恢复窄布局，恢复后保持在 Other section；[宽布局截图](screenshots/windows-system-wide-other-live.png)、[恢复窄布局截图](screenshots/windows-system-narrow-restored-other.png)。逐一点击 `Implemented`、`Partial`、`Planned`、`Web only`、`Deprecated`、`Out of scope` 和 `All` 筛选；`Out of scope` 下七类标题仍在、目录条目隐藏且 Live Samples 可达，最后恢复 `All`。本次使用窗口关闭按钮正常退出，但未独立捕获该运行的进程退出码；不能以此前五档运行的 `exit_code=0` 替代。
 
 ## 诊断边界
 
