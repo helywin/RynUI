@@ -274,11 +274,13 @@ public:
                 last_error_ = "Token Gallery document root is stale";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
+            const auto document_translated = std::chrono::steady_clock::now();
             if (!application_->layout_and_synchronize(
                     *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                 last_error_ = "Token Gallery layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
+            const auto layout_synchronized = std::chrono::steady_clock::now();
             const auto mounted_surfaces = reference_surfaces_->mounted_surfaces();
             constexpr std::array<std::size_t, 6> section_surface_indices{
                 0, 5, 6, 11, 51, 124};
@@ -344,6 +346,9 @@ public:
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
+            auto quad_synchronized = scene_synchronized;
+            auto glyph_synchronized = scene_synchronized;
+            auto effect_synchronized = scene_synchronized;
             try {
                 if (quad_buffer_ == nullptr) {
                     quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
@@ -351,8 +356,10 @@ public:
                 } else {
                     application_->button_scene().synchronize_gpu(*quad_buffer_);
                 }
+                quad_synchronized = std::chrono::steady_clock::now();
                 glyph_resources_->synchronize(
                     text_scene_->atlas(), text_scene_->glyph_scene().instances());
+                glyph_synchronized = std::chrono::steady_clock::now();
                 effect_resources_.synchronize(
                     application_->rounded_effects(),
                     {
@@ -360,6 +367,7 @@ public:
                         static_cast<std::uint32_t>(metrics.pixel_height),
                         *render_scale_,
                     });
+                effect_synchronized = std::chrono::steady_clock::now();
             } catch (...) {
                 if (batch_uploads) {
                     renderer_->cancel_buffer_upload_batch();
@@ -389,8 +397,22 @@ public:
             const auto elapsed = microseconds(frame_started, frame_finished);
             total_scene_sync_microseconds_ +=
                 microseconds(frame_started, scene_synchronized);
+            total_translation_microseconds_ +=
+                microseconds(frame_started, document_translated);
+            total_layout_microseconds_ +=
+                microseconds(document_translated, layout_synchronized);
+            total_anchor_input_microseconds_ +=
+                microseconds(layout_synchronized, scene_synchronized);
             total_resource_sync_microseconds_ +=
                 microseconds(scene_synchronized, resources_synchronized);
+            total_quad_sync_microseconds_ +=
+                microseconds(scene_synchronized, quad_synchronized);
+            total_glyph_sync_microseconds_ +=
+                microseconds(quad_synchronized, glyph_synchronized);
+            total_effect_sync_microseconds_ +=
+                microseconds(glyph_synchronized, effect_synchronized);
+            total_upload_finish_microseconds_ +=
+                microseconds(effect_synchronized, resources_synchronized);
             total_cull_microseconds_ +=
                 microseconds(resources_synchronized, scene_culled);
             total_submit_microseconds_ +=
@@ -435,6 +457,20 @@ public:
             total_submit_microseconds_ / timed_frames_,
         };
     }
+    [[nodiscard]] std::array<std::int64_t, 7> average_detail_microseconds() const noexcept {
+        if (timed_frames_ == 0) {
+            return {};
+        }
+        return {
+            total_translation_microseconds_ / timed_frames_,
+            total_layout_microseconds_ / timed_frames_,
+            total_anchor_input_microseconds_ / timed_frames_,
+            total_quad_sync_microseconds_ / timed_frames_,
+            total_glyph_sync_microseconds_ / timed_frames_,
+            total_effect_sync_microseconds_ / timed_frames_,
+            total_upload_finish_microseconds_ / timed_frames_,
+        };
+    }
     [[nodiscard]] std::int64_t p95_frame_microseconds() const {
         if (sampled_frames_ == 0) {
             return 0;
@@ -449,7 +485,14 @@ public:
     void reset_frame_timings() noexcept {
         total_frame_microseconds_ = 0;
         total_scene_sync_microseconds_ = 0;
+        total_translation_microseconds_ = 0;
+        total_layout_microseconds_ = 0;
+        total_anchor_input_microseconds_ = 0;
         total_resource_sync_microseconds_ = 0;
+        total_quad_sync_microseconds_ = 0;
+        total_glyph_sync_microseconds_ = 0;
+        total_effect_sync_microseconds_ = 0;
+        total_upload_finish_microseconds_ = 0;
         total_cull_microseconds_ = 0;
         total_submit_microseconds_ = 0;
         max_frame_microseconds_ = 0;
@@ -486,7 +529,14 @@ private:
     std::uint64_t reconciliation_syncs_{};
     std::int64_t total_frame_microseconds_{};
     std::int64_t total_scene_sync_microseconds_{};
+    std::int64_t total_translation_microseconds_{};
+    std::int64_t total_layout_microseconds_{};
+    std::int64_t total_anchor_input_microseconds_{};
     std::int64_t total_resource_sync_microseconds_{};
+    std::int64_t total_quad_sync_microseconds_{};
+    std::int64_t total_glyph_sync_microseconds_{};
+    std::int64_t total_effect_sync_microseconds_{};
+    std::int64_t total_upload_finish_microseconds_{};
     std::int64_t total_cull_microseconds_{};
     std::int64_t total_submit_microseconds_{};
     std::int64_t max_frame_microseconds_{};
@@ -918,6 +968,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto effect = submitter.effect_uploads();
         const auto render = renderer.counters();
         const auto phase_times = submitter.average_phase_microseconds();
+        const auto detail_times = submitter.average_detail_microseconds();
         const auto font_counters = fonts->counters();
         const auto frames = loop.counters();
         const auto metrics = platform.window_metrics();
@@ -1059,7 +1110,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " frame_max_us=" << submitter.max_frame_microseconds()
             << " frame_p95_us=" << submitter.p95_frame_microseconds()
             << " frame_scene_sync_us=" << phase_times[0]
+            << " frame_translation_us=" << detail_times[0]
+            << " frame_layout_us=" << detail_times[1]
+            << " frame_anchor_input_us=" << detail_times[2]
             << " frame_resource_sync_us=" << phase_times[1]
+            << " frame_quad_sync_us=" << detail_times[3]
+            << " frame_glyph_sync_us=" << detail_times[4]
+            << " frame_effect_sync_us=" << detail_times[5]
+            << " frame_upload_finish_us=" << detail_times[6]
             << " frame_cull_us=" << phase_times[2]
             << " frame_submit_us=" << phase_times[3]
             << " font_rasterizations=" << font_counters.rasterizations
