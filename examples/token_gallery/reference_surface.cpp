@@ -391,8 +391,8 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
             std::max(0.0F, node.bounds.height - 2.0F * border_width),
         };
         const ryn::runtime::Rect swatch{
-            node.bounds.x + 12.0F,
-            std::max(node.bounds.y + 12.0F, node.bounds.y + node.bounds.height - 28.0F),
+            std::max(node.bounds.x + 12.0F, node.bounds.x + node.bounds.width - 48.0F),
+            node.bounds.y + 8.0F,
             state->swatch.has_value() ? 16.0F : 0.0F,
             state->swatch.has_value() ? 16.0F : 0.0F,
         };

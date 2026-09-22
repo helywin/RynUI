@@ -1,4 +1,4 @@
-# Windows Reference Gallery 人工验收记录（部分，未通过）
+# Windows Reference Gallery 人工验收记录（部分，未完成）
 
 - 日期：2026-09-22；平台：Windows / Win32 / MSVC x64 / D3D12 / DXIL。
 - 构建：正式 `windows-msvc` preset 的独立 Release 验证目录 `out/build/windows-msvc-scroll-validation`；本次不复用既有 `out/build/windows-msvc` 缓存。字体来源为系统，运行时报告 `Segoe UI Variable Text`、`Microsoft YaHei UI`；host display scale 为 1.5。
@@ -8,7 +8,7 @@
 
 ## 确认问题
 
-Foundation 色块压在 `ant.map.colorPrimary`、`ant.map.colorSuccess` 等 Token 标识文字的开头。该问题在系统 scale 1.5 和四档 acceptance render scale 均可见，故不把 Windows 视觉验收标记为 passed。跟踪项为 `GALLERY-FOUNDATION-SWATCH-006`，见 [项目问题总表](../../../../docs/open-issues.md)。
+原始构建中 Foundation 色块压在 `ant.map.colorPrimary`、`ant.map.colorSuccess` 等 Token 标识文字的开头；系统 scale 1.5 和四档 acceptance render scale 均可见。修复后色块移至卡片标题行右侧、状态圆点左侧，五档实窗截图中均未再见遮挡，`rynui.reference_surface` 几何回归测试通过。跟踪项 `GALLERY-FOUNDATION-SWATCH-006` 保持 `pending`，直到完整 Windows 7.3 视觉验收结束；见[项目问题总表](../../../../docs/open-issues.md)。
 
 | 场景 | 截图 |
 |---|---|
@@ -23,8 +23,20 @@ Foundation 色块压在 `ant.map.colorPrimary`、`ant.map.colorSuccess` 等 Toke
 | 2.0，Tab focus | [windows-scale-2.0-keyboard-focus.png](screenshots/windows-scale-2.0-keyboard-focus.png) |
 | 系统 scale，Planned 筛选下的 General | [windows-system-planned-general.png](screenshots/windows-system-planned-general.png) |
 
+## 色块修复后的局部复验
+
+| 场景 | 截图 |
+|---|---|
+| 系统 scale 1.5，Foundation | [windows-foundation-swatch-fixed-system-1.5.png](screenshots/windows-foundation-swatch-fixed-system-1.5.png) |
+| acceptance scale 1.0，Foundation | [windows-foundation-swatch-fixed-1.0.png](screenshots/windows-foundation-swatch-fixed-1.0.png) |
+| acceptance scale 1.25，Foundation | [windows-foundation-swatch-fixed-1.25.png](screenshots/windows-foundation-swatch-fixed-1.25.png) |
+| acceptance scale 1.5，Foundation | [windows-foundation-swatch-fixed-1.5.png](screenshots/windows-foundation-swatch-fixed-1.5.png) |
+| acceptance scale 2.0，Foundation | [windows-foundation-swatch-fixed-2.0.png](screenshots/windows-foundation-swatch-fixed-2.0.png) |
+
+修复后四档运行时仍报告 `window_system=win32`、`gpu_driver=direct3d12`、`shader_format=DXIL`、`font_source=system`，系统 host display scale 为 1.5，窗口正常关闭；本机原始诊断在 ignored `out/build/windows-msvc-scroll-validation/manual-swatch-*.stdout.txt`。这里只证明 Foundation 色块与标识分离，不代表已逐档检查完整文档、所有筛选及 Button 按下态。
+
 ## 诊断边界
 
 - 五次退出码均为 0；运行时诊断保存在本机 ignored `out/build/windows-msvc-scroll-validation/manual-scale-*.stdout.txt`。本文件保留可审查的关键信息，不能用这些输出代替屏幕视觉验收。
 - 普通窗口保持运行时 `idle_after_animation=0`，同时 Live Samples 的 Loading 示例保持动画；这组数据不能单独证明 idle 回归，需在 Loading 停止或 motion-disabled 条件下另测。
-- 当前记录是失败发现与部分操作证据，不是 Windows passed evidence；`tasks.md` 的 7.2/7.3/7.4 保持未勾选，Linux 项目不受影响。
+- 当前记录是问题发现、局部修复与部分操作证据，不是 Windows passed evidence；`tasks.md` 的 7.2/7.3/7.4 保持未勾选，Linux 项目不受影响。

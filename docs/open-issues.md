@@ -18,7 +18,7 @@
 | `WINDOWS-DWRITE-RASTER-003` | `pending` | Windows 字形 coverage 尚未完成实际 DirectWrite grayscale raster path 与多 scale 复验 | 7.5 | 当前 FreeType 路径不能冒充 DirectWrite 验收 |
 | `CHANGE-CLOSEOUT-004` | `blocked` | Change 尚不能最终收口 | 8.1 | 等待所有独立平台任务完成 |
 | `GALLERY-SCROLL-PERF-005` | `open` | 长文档滚动尚未稳定满足 240 Hz 帧预算 | Token Gallery / change 008 | 保留当前可见场景裁剪与 glyph 缓存；后续独立评估可见区域更新方案 |
-| `GALLERY-FOUNDATION-SWATCH-006` | `open` | Foundation 色块遮挡 Token 标识文字 | Token Gallery / change 008 Windows 7.3 | 暂无；对应视觉验收不得标记通过 |
+| `GALLERY-FOUNDATION-SWATCH-006` | `pending` | Foundation 色块遮挡 Token 标识文字 | Token Gallery / change 008 Windows 7.3 | 布局已修复并复测五档，待完整 Windows 视觉验收后关闭 |
 
 ## LINUX-WAYLAND-RESIZE-001
 
@@ -66,9 +66,10 @@
 
 ## GALLERY-FOUNDATION-SWATCH-006
 
-- 状态：`open`（2026-09-22）。
+- 状态：`pending`（2026-09-22）；布局修复已验证，完整 Windows 7.3 验收仍未完成。
 - 现象：Windows/MSVC/D3D12 实窗中，Foundation 色板左下角的彩色色块覆盖 `ant.map.colorPrimary` 等 Token 标识开头的文字；系统 display scale 1.5 与 acceptance render scale 1.0、1.25、1.5、2.0 均可复现。
 - 证据：[Windows Gallery 人工验收记录](../openspec/changes/008-20260829-build-ant-design-reference-gallery/evidence/windows-reference-gallery-manual-partial.md)及其中四档截图。该问题不推翻已通过的平台通用逻辑测试，但阻止 change 008 的 Windows 7.3 视觉验收通过。
+- 修复：色块由卡片左下移至标题行右侧、状态圆点左侧；`rynui.reference_surface` 的几何测试及系统 1.5 与 acceptance 1.0/1.25/1.5/2.0 的真实窗口截图均未再见 Token 标识遮挡。详见上述验收记录。
 - 关闭条件：调整 swatch 与文字的布局间距或层级后，复测系统 scale 和四档 acceptance scale 的色板、CJK/Latin 可读性与截图，并完成对应 Windows 视觉验收。
 
 ## 维护规则

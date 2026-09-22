@@ -198,6 +198,28 @@ void test_typed_mount_retained_scene_and_non_interaction() {
                     .shadow_effects(outer.scene).size() == 3
                 && fixture.application->rounded_effects().live_count() == 3,
             "ReferenceSurface Theme visuals, swatch, badge, or shadow drifted");
+    const auto& outer_bounds = fixture.nodes.require(outer.node).bounds;
+    const auto& swatch_quad = fixture.layer(
+        outer, rynui::example::ReferenceSurfaceVisualLayer::swatch);
+    const auto& badge_quad = fixture.layer(
+        outer, rynui::example::ReferenceSurfaceVisualLayer::status_badge);
+    const float swatch_x = (swatch_quad.clip_rect[0] + 1.0F) * 320.0F;
+    const float swatch_y = (1.0F - swatch_quad.clip_rect[1]) * 180.0F;
+    const float badge_x = (badge_quad.clip_rect[0] + 1.0F) * 320.0F;
+    require(near(swatch_x, outer_bounds.x + outer_bounds.width - 48.0F)
+                && near(swatch_y, outer_bounds.y + 8.0F)
+                && swatch_x + 16.0F < badge_x,
+            "ReferenceSurface swatch did not stay in its separate header slot");
+    for (std::size_t index = 0; index < 2; ++index) {
+        const auto text_node = fixture.text_scene.node(
+            fixture.application->text().mounted_texts()[index].scene);
+        const auto& text_bounds = fixture.nodes.require(text_node).bounds;
+        require(swatch_x + 16.0F <= text_bounds.x
+                    || text_bounds.x + text_bounds.width <= swatch_x
+                    || swatch_y + 16.0F <= text_bounds.y
+                    || text_bounds.y + text_bounds.height <= swatch_y,
+                "ReferenceSurface swatch overlapped its status or content text");
+    }
     require(fixture.application->scene_composer().interaction_order().empty(),
             "ReferenceSurface entered the scene Interaction order");
     const auto commands = fixture.application->scene_composer()
