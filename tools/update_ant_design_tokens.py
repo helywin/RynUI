@@ -27,6 +27,7 @@ PRESET_COLORS = (
 RUNTIME_GLOBALS = {
     "colorPrimary", "colorSuccess", "colorWarning", "colorError", "colorInfo",
     "colorLink", "colorTextBase", "colorBgBase", "fontFamily", "fontFamilyCode",
+    "focusOutline",
     "fontSize", "lineWidth", "lineType", "borderRadius", "sizeUnit", "sizeStep",
     "sizePopupArrow", "controlHeight", "zIndexBase", "zIndexPopupBase",
     "opacityImage", "motionUnit", "motionBase", "motionEaseOutCirc",

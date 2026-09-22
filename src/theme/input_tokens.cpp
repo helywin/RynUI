@@ -19,8 +19,8 @@ const InputTokenSet& InputTokenAccess::get(const ThemeSnapshot& theme) noexcept 
 const InputTokenSet& derive_input_tokens(const ThemeSnapshot& theme) noexcept { return InputTokenAccess::get(theme); }
 
 InputTokenSet derive_input_tokens(const AntDesignDefaultSeed& seed, const ThemeMapToken& map) {
-    // Ant Design 6.5.0, components/input/style/token.ts, commit
-    // 740ad964dc2397f33e40944367b0536a7314cc32. SM uses the base font,
+    // Ant Design 6.6.5, components/input/style/token.ts, commit
+    // 4a39f54842eade4e565ab336ef6097cd7e723cdd. SM uses the base font,
     // LG uses lineHeightLG; horizontal control padding is 8 / 12, not sizeXS.
     InputTokenSet result;
     result.border_width = seed.line_width;

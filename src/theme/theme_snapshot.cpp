@@ -16,9 +16,9 @@
 namespace ryn {
 namespace {
 
-constexpr std::string_view ant_design_version = "6.5.0";
+constexpr std::string_view ant_design_version = "6.6.5";
 constexpr std::string_view ant_design_commit =
-    "740ad964dc2397f33e40944367b0536a7314cc32";
+    "4a39f54842eade4e565ab336ef6097cd7e723cdd";
 
 [[nodiscard]] float fixed_length(
     const std::optional<LogicalLength>& value,
@@ -73,6 +73,7 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
     }
     if (override.motion_unit) seed.motion_unit = *override.motion_unit;
     if (override.motion_base) seed.motion_base = *override.motion_base;
+    if (override.focus_outline) seed.focus_outline = *override.focus_outline;
     if (override.motion) seed.motion = *override.motion;
 }
 
@@ -334,6 +335,7 @@ void apply_compact(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
 }
 
 [[nodiscard]] ThemeAliasToken derive_alias(
+    const AntDesignDefaultSeed& seed,
     const ThemeMapToken& map,
     std::span<const ThemeAlgorithm> algorithms) {
     const bool dark = contains_dark(algorithms);
@@ -355,6 +357,7 @@ void apply_compact(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
         .color_border_secondary = dark ? Color::rgba8(48, 48, 48)
                                        : Color::rgba8(240, 240, 240),
         .color_focus_outline = map.color_primary_border,
+        .line_width_focus = seed.focus_outline ? seed.line_width * 3.0F : 0.0F,
         .box_shadow = shadows.box_shadow,
         .box_shadow_secondary = shadows.box_shadow_secondary,
         .box_shadow_tertiary = shadows.box_shadow_tertiary,
@@ -568,7 +571,8 @@ void append_color(std::ostringstream& stream, Color color) {
     stream << "],\"identity\":\"" << std::hex << std::setw(16) << std::setfill('0')
            << identity << std::dec << std::setfill(' ') << "\",\"seed\":{\"colorPrimary\":";
     append_color(stream, seed.color_primary);
-    stream << ",\"fontSize\":" << seed.font_size << ",\"sizeUnit\":" << seed.size_unit
+    stream << ",\"focusOutline\":" << (seed.focus_outline ? "true" : "false")
+           << ",\"fontSize\":" << seed.font_size << ",\"sizeUnit\":" << seed.size_unit
            << ",\"sizeStep\":" << seed.size_step << ",\"controlHeight\":"
            << seed.control_height << "},\"map\":{\"colorPrimary\":";
     append_color(stream, map.color_primary);
@@ -714,6 +718,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_float(hash, seed.motion_unit.count_milliseconds());
     hash_float(hash, seed.motion_base.count_milliseconds());
     hash_integer(hash, seed.wireframe);
+    hash_integer(hash, seed.focus_outline);
     hash_integer(hash, seed.motion);
 
     const std::array map_colors{
@@ -851,7 +856,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     }
 
     ThemeMapToken map = derive_map(seed, algorithms);
-    ThemeAliasToken alias = derive_alias(map, algorithms);
+    ThemeAliasToken alias = derive_alias(seed, map, algorithms);
     if (parent != nullptr && config.inherit && config.seed == SeedTokenOverride{}
         && config.algorithms.empty()) {
         alias = parent->alias();
@@ -869,7 +874,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         AntDesignDefaultSeed component_seed = seed;
         apply_seed_override(component_seed, config.button.seed);
         const ThemeMapToken component_map = derive_map(component_seed, algorithms);
-        const ThemeAliasToken component_alias = derive_alias(component_map, algorithms);
+        const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
         button = derive_button(component_map, component_alias);
     } else {
         button = derive_button(map, alias);
@@ -887,7 +892,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         AntDesignDefaultSeed component_seed = seed;
         apply_seed_override(component_seed, config.text.seed);
         const ThemeMapToken component_map = derive_map(component_seed, algorithms);
-        const ThemeAliasToken component_alias = derive_alias(component_map, algorithms);
+        const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
         text = derive_text(component_seed, component_map, component_alias);
     } else {
         text = derive_text(seed, map, alias);
@@ -904,7 +909,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         auto component_seed = seed;
         apply_seed_override(component_seed, config.input.seed);
         const auto component_map = derive_map(component_seed, algorithms);
-        input = derive_input_theme(component_seed, component_map, derive_alias(component_map, algorithms), algorithms);
+        input = derive_input_theme(component_seed, component_map, derive_alias(component_seed, component_map, algorithms), algorithms);
     } else {
         input = derive_input_theme(seed, map, alias, algorithms);
     }

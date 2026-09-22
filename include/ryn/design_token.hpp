@@ -262,6 +262,7 @@ struct AntDesignDefaultSeed final {
     Duration motion_unit{Duration::seconds(0.1F)};
     Duration motion_base{};
     bool wireframe{};
+    bool focus_outline{true};
     bool motion{true};
 
     friend constexpr bool operator==(

@@ -3,7 +3,7 @@
 > 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。
 
 - 上游：Ant Design `6.6.5` / `4a39f54842eade4e565ab336ef6097cd7e723cdd`
-- Catalog SHA256：`b7bc500da659b9577b3ed63c336a1b6cac30ac647750b4a830df1b5e6db0d731`
+- Catalog SHA256：`d8ba06e16305f61ffffc1fe0935d337e72b9e2a3775b6cd3e3410b252940e0ed`
 - Token 总数：`1198`；missing/duplicate/unclassified 均为 `0`。
 
 ## 使用规则
@@ -27,8 +27,8 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | --- | ---: |
 | `component-not-yet-implemented` | 552 |
 | `deprecated` | 172 |
-| `metadata` | 314 |
-| `runtime` | 118 |
+| `metadata` | 313 |
+| `runtime` | 119 |
 | `web-only` | 42 |
 
 ## Token 索引
@@ -1198,7 +1198,7 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.seed.colorWarning` | `color` | `color` | `runtime` | `components/theme/interface/seeds.ts:33` |
 | `ant.seed.controlHeight` | `size` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:164` |
 | `ant.seed.cyan` | `misc` | `string` | `metadata` | `components/theme/interface/presetColors.ts:1` |
-| `ant.seed.focusOutline` | `border` | `boolean` | `metadata` | `components/theme/interface/seeds.ts:283` |
+| `ant.seed.focusOutline` | `border` | `boolean` | `runtime` | `components/theme/interface/seeds.ts:283` |
 | `ant.seed.fontFamily` | `typography` | `string` | `runtime` | `components/theme/interface/seeds.ts:83` |
 | `ant.seed.fontFamilyCode` | `typography` | `string` | `runtime` | `components/theme/interface/seeds.ts:91` |
 | `ant.seed.fontSize` | `typography` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:100` |

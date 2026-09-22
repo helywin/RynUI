@@ -1162,7 +1162,7 @@ TokenMetadata{0xa6f32bfed08f0a76ULL, "ant.seed.colorTextBase", TokenValueKind::c
 TokenMetadata{0x681143657575ad60ULL, "ant.seed.colorWarning", TokenValueKind::color, "", TokenSupportStatus::runtime, TokenInvalidationDomain::paint_material},
 TokenMetadata{0x98e0d27781171cb1ULL, "ant.seed.controlHeight", TokenValueKind::logical_length, "", TokenSupportStatus::runtime, TokenInvalidationDomain::measure_layout_hittest},
 TokenMetadata{0x8558b1153c2af806ULL, "ant.seed.cyan", TokenValueKind::string, "", TokenSupportStatus::metadata, TokenInvalidationDomain::metadata},
-TokenMetadata{0x42af498488005103ULL, "ant.seed.focusOutline", TokenValueKind::boolean, "", TokenSupportStatus::metadata, TokenInvalidationDomain::geometry_paint},
+TokenMetadata{0x42af498488005103ULL, "ant.seed.focusOutline", TokenValueKind::boolean, "", TokenSupportStatus::runtime, TokenInvalidationDomain::geometry_paint},
 TokenMetadata{0x4b1dd48c5c42dc9cULL, "ant.seed.fontFamily", TokenValueKind::string, "", TokenSupportStatus::runtime, TokenInvalidationDomain::text_measure_layout},
 TokenMetadata{0xfd221e41f2250899ULL, "ant.seed.fontFamilyCode", TokenValueKind::string, "", TokenSupportStatus::runtime, TokenInvalidationDomain::text_measure_layout},
 TokenMetadata{0x9e2f72fc118ee2adULL, "ant.seed.fontSize", TokenValueKind::logical_length, "", TokenSupportStatus::runtime, TokenInvalidationDomain::text_measure_layout},

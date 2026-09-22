@@ -371,7 +371,7 @@ target_link_libraries(rynui_theme_algorithm_tests PRIVATE rynui_theme)
 target_compile_definitions(
     rynui_theme_algorithm_tests
     PRIVATE
-        "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.5.0/golden\""
+        "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\""
 )
 add_test(NAME rynui.theme_algorithm COMMAND rynui_theme_algorithm_tests)
 

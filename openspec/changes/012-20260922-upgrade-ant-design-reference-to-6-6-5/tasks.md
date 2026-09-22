@@ -14,9 +14,9 @@
 
 ## 3. Theme 与既有组件迁移
 
-- [ ] 3.1 按已确认差异更新 Default/Dark/Compact Theme、typed Token 映射与必要的 Button/Input 视觉或交互实现；未变化项保留现有逻辑，以新旧 source identity、数值/状态矩阵、Theme/renderer 测试验证
-- [ ] 3.2 迁移 Button/Input source contract 与 public compatibility tests，明确任何上游 React Prop 差异是否影响 `ryn` API；以 pointer/keyboard/IME、DPI geometry、scene dirty/upload、idle 与 benchmark 回归验证无静默破坏
-- [ ] 3.3 在一个受支持正式 preset 运行本阶段受影响 CTest 与 `git diff --check`，记录 OS/compiler/preset/result；以英文 `feat: align controls with Ant Design 6.6.5` 提交，不主动 push
+- [x] 3.1 按已确认差异更新 Default/Dark/Compact Theme、typed Token 映射与必要的 Button/Input 视觉或交互实现；未变化项保留现有逻辑，以新旧 source identity、数值/状态矩阵、Theme/renderer 测试验证
+- [x] 3.2 迁移 Button/Input source contract 与 public compatibility tests，明确任何上游 React Prop 差异是否影响 `ryn` API；以 pointer/keyboard/IME、DPI geometry、scene dirty/upload、idle 与 benchmark 回归验证无静默破坏
+- [x] 3.3 在一个受支持正式 preset 运行本阶段受影响 CTest 与 `git diff --check`，记录 OS/compiler/preset/result；以英文 `feat: align controls with Ant Design 6.6.5` 提交，不主动 push
 
 ## 4. Gallery 与当前文档
 

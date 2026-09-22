@@ -32,9 +32,9 @@ void require_invalid(Operation&& operation, const char* message) {
 
 void test_default_parity() {
     const auto snapshot = ryn::resolve_theme();
-    require(snapshot.source_version() == "6.5.0"
+    require(snapshot.source_version() == "6.6.5"
                 && snapshot.source_commit()
-                    == "740ad964dc2397f33e40944367b0536a7314cc32",
+                    == "4a39f54842eade4e565ab336ef6097cd7e723cdd",
             "ThemeSnapshot source identity drifted");
     require(snapshot.algorithms().size() == 1
                 && snapshot.algorithms()[0] == ryn::ThemeAlgorithm::Default,
@@ -73,6 +73,21 @@ void test_default_parity() {
                 && snapshot.text().font_size == 14.0F
                 && snapshot.text().line_height == 22.0F,
             "Default Text component token drifted");
+}
+
+void test_focus_outline_seed() {
+    const auto normal = ryn::resolve_theme();
+    require(normal.seed().focus_outline && normal.alias().line_width_focus == 3.0F,
+            "6.6.5 focusOutline default drifted");
+    ryn::ThemeConfig config;
+    config.seed.focus_outline = false;
+    const auto hidden = ryn::resolve_theme(config);
+    require(!hidden.seed().focus_outline && hidden.alias().line_width_focus == 0.0F
+                && hidden.identity() != normal.identity(),
+            "focusOutline=false did not disable the visible focus outline");
+    const auto inherited = ryn::resolve_theme({}, &hidden);
+    require(!inherited.seed().focus_outline && inherited.alias().line_width_focus == 0.0F,
+            "focusOutline did not inherit through Theme");
 }
 
 void test_algorithm_composition() {
@@ -268,15 +283,43 @@ void dump_goldens() {
     dump("compact-dark", compact_dark);
 }
 
+void write_goldens() {
+    const auto write = [](const char* name, const ryn::ThemeConfig& config) {
+        const std::string path = std::string(RYNUI_THEME_GOLDEN_DIRECTORY) + '/' + name + ".json";
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        if (!output) throw std::runtime_error("unable to write Theme golden");
+        output << ryn::resolve_theme(config).diagnostic_json();
+        if (!output) throw std::runtime_error("unable to finish Theme golden");
+    };
+    write("default", {});
+    ryn::ThemeConfig dark;
+    dark.algorithms = {ryn::ThemeAlgorithm::Dark};
+    write("dark", dark);
+    ryn::ThemeConfig compact;
+    compact.algorithms = {ryn::ThemeAlgorithm::Compact};
+    write("compact", compact);
+    ryn::ThemeConfig dark_compact;
+    dark_compact.algorithms = {ryn::ThemeAlgorithm::Dark, ryn::ThemeAlgorithm::Compact};
+    write("dark-compact", dark_compact);
+    ryn::ThemeConfig compact_dark;
+    compact_dark.algorithms = {ryn::ThemeAlgorithm::Compact, ryn::ThemeAlgorithm::Dark};
+    write("compact-dark", compact_dark);
+}
+
 } // namespace
 
-int main(int argc, char**) {
+int main(int argc, char** argv) {
     try {
+        if (argc > 1 && std::string_view(argv[1]) == "--write-goldens") {
+            write_goldens();
+            return 0;
+        }
         if (argc > 1) {
             dump_goldens();
             return 0;
         }
         test_default_parity();
+        test_focus_outline_seed();
         test_algorithm_composition();
         test_overrides_and_component_algorithm();
         test_inheritance_diagnostics_and_atomic_failure();

@@ -1,0 +1,7 @@
+# 6.6.5 Theme / Button / Input 平台通用回归（Windows 执行）
+
+- 运行环境：Windows 10.0.26200，`windows-msvc`，Ninja Multi-Config，Debug，MSVC x64 19.51.36256。使用 `scripts/build-windows.ps1 -Configuration Debug -SkipTests` 进入 VS Developer Environment 并完成构建；本文件不代替阶段 7 的 Windows 实窗验收。
+- 官方差异：`focusOutline` seed 新增，默认 `true`；`components/theme/util/alias.ts` 在其为 `false` 时将 `lineWidthFocus` 设为 0，其他情况由 `lineWidth * 3` 派生。RynUI 已提供 typed seed override、不可变 Theme identity、继承和按 geometry/paint 域通知；Default/Dark/Compact 均沿用新版来源的相同数值。新版五个 Golden 由 Debug 测试程序显式生成并由 `rynui.theme_algorithm` 核对。
+- Button：6.6.5 的 React delayed-loading hook、SVG 图标基线与 loading-icon 动画不是当前公开 `ryn::ButtonProps` 的功能（当前仅有 bool loading，无图标 slot/延迟配置）；没有给稳定 API 虚构这些 Props。现有 default/primary/danger、状态、pointer/keyboard/focus 与 Theme 契约沿用经来源审查的值；6.6.5 的 `lineType` 变更在默认 solid 值下与现有边框等价，非默认 Web border style 不在现有 Button API 中。
+- Input：React `GroupProps` deprecation 不影响 `ryn::InputProps`；borderless variant 当前未公开，故其 `lineWidthFocus` CSS 变更不改变现有 outlined Input 几何。通用 Theme `focusOutline` 派生已迁移，Input 的 padding/font/color/shadow 默认值仍与经审查的 6.6.5 source 等价。
+- 验证：`design_token_catalog`、`ant_design_current_baseline`、`theme_algorithm`、`theme_runtime`、`default_theme`、Button/Input source contract 通过；Button component/scene/spinner benchmark、Input component/pointer/keyboard/caret/journey/GPU/material/scene allocation，以及 text input/SDL/平台输入相关回归通过。Input scene allocation 基准单项 115.08 秒通过。一次普通 PowerShell 运行中 `theme_public_compile_fail` 子 CMake 因未加载 SDK `rc` 失败；在 VS Developer Environment 单独重跑通过。未声称普通 shell 可执行该编译合同。

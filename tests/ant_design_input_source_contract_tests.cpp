@@ -22,8 +22,8 @@ void size(const detail::InputSizeTokens& actual, float height, float font, float
 }
 void defaults() {
     const auto theme = resolve_theme();
-    require(theme.source_version() == "6.5.0"
-        && theme.source_commit() == "740ad964dc2397f33e40944367b0536a7314cc32", "Input source identity drift");
+    require(theme.source_version() == "6.6.5"
+        && theme.source_commit() == "4a39f54842eade4e565ab336ef6097cd7e723cdd", "Input source identity drift");
     const auto tokens = detail::derive_input_tokens(theme);
     size(tokens.size(ControlSize::Small), 24, 14, 22, 7, 0, 4);
     size(tokens.size(ControlSize::Middle), 32, 14, 22, 11, 4, 6);

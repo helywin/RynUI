@@ -81,8 +81,8 @@
     "by_support": {
       "component-not-yet-implemented": 552,
       "deprecated": 172,
-      "metadata": 314,
-      "runtime": 118,
+      "metadata": 313,
+      "runtime": 119,
       "web-only": 42
     },
     "component_owners": 70,
@@ -24540,12 +24540,12 @@
       "internal": false,
       "invalidation_domain": "geometry-paint",
       "layer": "seed",
-      "ryn_mapping": "catalog-only",
+      "ryn_mapping": "ant.seed.focusOutline",
       "source": {
         "line": 283,
         "path": "components/theme/interface/seeds.ts"
       },
-      "support": "metadata",
+      "support": "runtime",
       "upstream_default": true,
       "upstream_name": "focusOutline",
       "upstream_type": "boolean",

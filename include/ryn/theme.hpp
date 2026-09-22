@@ -45,6 +45,7 @@ struct SeedTokenOverride final {
     std::optional<float> opacity_image;
     std::optional<Duration> motion_unit;
     std::optional<Duration> motion_base;
+    std::optional<bool> focus_outline;
     std::optional<bool> motion;
 
     friend bool operator==(const SeedTokenOverride&, const SeedTokenOverride&) = default;

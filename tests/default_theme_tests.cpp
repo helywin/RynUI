@@ -19,9 +19,9 @@ int main() {
         require(theme == ryn::resolve_theme()
                     && &theme == &ryn::detail::default_theme_snapshot(),
                 "Default Theme adapter is not the immutable resolved snapshot");
-        require(theme.source_version() == "6.5.0"
+        require(theme.source_version() == "6.6.5"
                     && theme.source_commit()
-                        == "740ad964dc2397f33e40944367b0536a7314cc32",
+                        == "4a39f54842eade4e565ab336ef6097cd7e723cdd",
                 "Default Theme source identity drifted");
 
         const auto& text = theme.text();

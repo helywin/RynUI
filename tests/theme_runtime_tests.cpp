@@ -242,6 +242,27 @@ void test_error_rollback_and_cross_thread_failure() {
         "cross-thread ThemeScope access did not fail fast");
 }
 
+void test_focus_outline_seed_invalidation() {
+    const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+    int notifications = 0;
+    ryn::theme_runtime::DirtyPhase phase{};
+    auto subscription = scope->capture(
+        [&](ryn::theme_runtime::DirtyPhase dirty) {
+            ++notifications;
+            phase = dirty;
+        },
+        [&] { static_cast<void>(scope->focus_outline_width()); });
+    ryn::ThemeConfig config;
+    config.seed.focus_outline = false;
+    require(scope->update(config) && scope->focus_outline_width() == 0.0F
+                && notifications == 1
+                && phase == (ryn::theme_runtime::DirtyPhase::geometry
+                             | ryn::theme_runtime::DirtyPhase::paint_material),
+            "focusOutline seed did not invalidate focus outline geometry and paint");
+    require(!scope->update(config) && notifications == 1,
+            "equal focusOutline update caused redundant invalidation");
+}
+
 } // namespace
 
 int main() {
@@ -252,6 +273,7 @@ int main() {
         test_dirty_domains_and_queue_bridge();
         test_motion_subscription_is_animation_only();
         test_error_rollback_and_cross_thread_failure();
+        test_focus_outline_seed_invalidation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

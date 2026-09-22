@@ -29,9 +29,9 @@ void test_locked_source_identity_and_values() {
     const auto& alias = theme.alias();
     const auto& button = theme.button();
 
-    require(theme.source_version() == "6.5.0"
+    require(theme.source_version() == "6.6.5"
                 && theme.source_commit()
-                    == "740ad964dc2397f33e40944367b0536a7314cc32"
+                    == "4a39f54842eade4e565ab336ef6097cd7e723cdd"
                 && source_paths[0] == "components/button/style/token.ts"
                 && source_paths[1] == "components/button/style/variant.ts"
                 && source_paths[2] == "components/style/index.tsx"
