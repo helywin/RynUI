@@ -2,7 +2,7 @@
 
 ## Context
 
-见 [proposal.md](proposal.md) 的动机。当前 `ButtonComponentHost` 同时持有 `TextComponentHost`、`InteractionRegistry`、`HitTestSnapshot`、`ComponentSceneComposer`、`ButtonSceneService`、`FocusManager`、`PointerRouter` 与 `AnimationRuntime`；`InputComponentHost` 引用它并通过 auxiliary 同步。`Input` 的编辑 store、clipboard 与唯一平台 text-input session 仍有独立所有权。Button 的 pointer capture/press/activate 代码与 FocusManager 的键盘语义已通过既有合同，不应在提取时改变。现有 Theme/Token 和 RoundedEffect 服务可供新控件使用；Ant Design 参考固定为 6.5.0，不以在线最新版替换。
+见 [proposal.md](proposal.md) 的动机。当前 `ButtonComponentHost` 同时持有 `TextComponentHost`、`InteractionRegistry`、`HitTestSnapshot`、`ComponentSceneComposer`、`ButtonSceneService`、`FocusManager`、`PointerRouter` 与 `AnimationRuntime`；`InputComponentHost` 引用它并通过 auxiliary 同步。`Input` 的编辑 store、clipboard 与唯一平台 text-input session 仍有独立所有权。Button 的 pointer capture/press/activate 代码与 FocusManager 的键盘语义已通过既有合同，不应在提取时改变。现有 Theme/Token 和 RoundedEffect 服务可供新控件使用；Ant Design 参考固定为 change 012 核实的 6.6.5，不以在线最新版替换。
 
 ## Goals / Non-Goals
 
@@ -35,13 +35,13 @@
 
 ### 3. 选中状态与场景保持控件专属
 
-Switch/Checkbox 各有 typed Props 和 controlled/uncontrolled 模式；mode 在 mount 时固定。受控交互只报告 `onChange(!checked)`，显示以 authoritative Prop 为准；非受控交互在本 generation 内更新本地值。Checkbox indeterminate 只作为独立展示 Prop，不由 toggle 隐式清除。Checkbox label 使用 typed content slot，Text 继承语义前景；Switch 首批不开放任意内部 children。轨道/滑块、方框/勾号、focus effect 使用现有 retained Quad/RoundedEffect/Text 设施，但拥有各自固定 scene topology 和 Token resolver。与 Button 共用 `ControlSize` 只在锁定参考允许的尺寸集合内映射，非法尺寸在 Props 校验时拒绝。
+Switch/Checkbox 各有 typed Props 和 controlled/uncontrolled 模式；mode 在 mount 时固定。受控交互只报告 `onChange(!checked)`，显示以 authoritative Prop 为准；非受控交互在本 generation 内更新本地值。Checkbox indeterminate 只作为独立展示 Prop，不由 toggle 隐式清除；其居中方块边长按 6.6.5 来源的 `fontSizeLG / 2` 派生，不画成横线。Checkbox label 使用 typed content slot，Text 继承语义前景；Switch 首批不开放任意内部 children。轨道/滑块、方框/勾号、focus effect 使用现有 retained Quad/RoundedEffect/Text 设施，但拥有各自固定 scene topology 和 Token resolver。Switch 若复用 `ControlSize`，只接受 Middle/Small 并拒绝 Large；Checkbox 来源无 size Prop，保持单一来源尺寸而不暴露伪造的尺寸 API。
 
 备选是以 Button 包装两种控件，能快速看到画面，却会继承错误的 focus/pressed/disabled 与尺寸语义，并复制 Button 视觉。选择共享底层 scene 与行为机制，而非嵌套 Button。
 
 ### 4. 以真实第二、第三 consumer 驱动小型提取
 
-先锁定 Switch/Checkbox 在 Ant Design 6.5.0 的 source path、状态矩阵、Token identity、几何与尺寸，再补 typed Component Token 和测试。仅当 Button 与新控件出现相同动画 target/retarget/dispose 样板时提取 typed transition helper；不预先设计公开动画 DSL。所有颜色/效果变化明确 dirty domain，禁止用方便的全树 rebuild 替代局部更新。
+先锁定 Switch/Checkbox 在 Ant Design 6.6.5 tag `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 source path、逐文件 SHA256、状态矩阵、Token identity、几何与尺寸，再补 typed Component Token 和测试。关键来源为 `components/switch/index.en-US.md`、`components/switch/style/index.ts`、`components/checkbox/index.en-US.md`、`components/checkbox/style/index.ts`，完整对照见 change 012 的 `evidence/source-diff.json`。仅当 Button 与新控件出现相同动画 target/retarget/dispose 样板时提取 typed transition helper；不预先设计公开动画 DSL。所有颜色/效果变化明确 dirty domain，禁止用方便的全树 rebuild 替代局部更新。
 
 ### 5. 分平台验证边界
 

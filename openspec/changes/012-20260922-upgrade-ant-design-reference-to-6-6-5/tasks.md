@@ -26,7 +26,7 @@
 
 ## 5. 后续组件规划对齐
 
-- [ ] 5.1 使用 OpenSpec update workflow 将在途 011 的 proposal/spec/design/tasks 对齐已核实的 6.6.5 Switch/Checkbox 来源，纠正尺寸和 indeterminate 视觉描述，不实现组件；以跨 change version/source 一致性、OpenSpec strict validate 与 `git diff --check` 验证，单独英文提交且不主动 push
+- [x] 5.1 使用 OpenSpec update workflow 将在途 011 的 proposal/spec/design/tasks 对齐已核实的 6.6.5 Switch/Checkbox 来源，纠正尺寸和 indeterminate 视觉描述，不实现组件；以跨 change version/source 一致性、OpenSpec strict validate 与 `git diff --check` 验证，单独英文提交且不主动 push
 
 ## 6. 平台通用集成验收
 

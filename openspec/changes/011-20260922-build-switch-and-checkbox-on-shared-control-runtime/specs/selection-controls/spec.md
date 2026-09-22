@@ -2,12 +2,12 @@
 
 ## Purpose
 
-提供符合 RynUI typed component 模型和锁定 Ant Design 6.5.0 参考状态的 Switch 与 Checkbox，使应用能通过响应式布尔状态表达即时开关和表单勾选，而不复制 Button 的完整实现。
+提供符合 RynUI typed component 模型和锁定 Ant Design 6.6.5 参考状态的 Switch 与 Checkbox，使应用能通过响应式布尔状态表达即时开关和表单勾选，而不复制 Button 的完整实现。
 
 ## ADDED Requirements
 
 ### Requirement: Switch 与 Checkbox 提供明确的 typed 状态 API
-系统 SHALL 在 `ryn` 命名空间公开 `Switch`、`Checkbox` 及各自 typed Props。两者 SHALL 支持 reactive checked 或非受控 defaultChecked、reactive disabled、`onChange(bool)`、适用的 typed size 与外部 `LayoutStyle`；Checkbox SHALL 提供 typed label content 与 reactive indeterminate，Switch SHALL 提供 loading。checked 与 defaultChecked 同时提供或在同一 generation 内静默切换控制模式 MUST 被拒绝。公开 API MUST 不暴露任意颜色、边框、内部 identity、SDL3 或 renderer 类型。
+系统 SHALL 在 `ryn` 命名空间公开 `Switch`、`Checkbox` 及各自 typed Props。两者 SHALL 支持 reactive checked 或非受控 defaultChecked、reactive disabled、`onChange(bool)` 与外部 `LayoutStyle`；Switch 的 typed size SHALL 仅接受 middle/small，Checkbox SHALL 不提供公开 size Prop。Checkbox SHALL 提供 typed label content 与 reactive indeterminate，Switch SHALL 提供 loading。checked 与 defaultChecked 同时提供或在同一 generation 内静默切换控制模式 MUST 被拒绝。公开 API MUST 不暴露任意颜色、边框、内部 identity、SDL3 或 renderer 类型。
 
 #### Scenario: 受控值与回写
 - **WHEN** Switch 或 Checkbox 的 checked 绑定到 `Signal<bool>`，用户完成一次有效操作且 `onChange` 将新值写回 Signal
@@ -29,7 +29,7 @@ enabled、非 loading 的 Switch SHALL 以主 pointer 完整 click 或聚焦后�
 - **THEN** 不触发 `onChange`，按压状态安全取消，视觉使用对应 disabled/loading 优先级
 
 ### Requirement: 视觉、布局与焦点遵循锁定参考及 Theme
-Switch 的轨道、滑块和 loading 指示，以及 Checkbox 的方框、勾号、indeterminate 横线与 label SHALL 消费 Theme/Component Token；default、checked、hover、pressed、focus-visible 和 disabled 状态 SHALL 与锁定 Ant Design 6.5.0 参考具有可区分的层级。`LayoutStyle` 只控制外部放置；focus-visible 效果与 pointer focus MUST 分离，不能把 Button 的 1px gap + 3px ring 原样套给不同控件。Small/Middle/Large 或控件所允许的尺寸 SHALL 保持 logical geometry、hit bounds 和文本可读性一致。
+Switch 的轨道、滑块和 loading 指示，以及 Checkbox 的方框、勾号、居中 indeterminate 方块与 label SHALL 消费 Theme/Component Token；方块边长来自 `fontSizeLG / 2`，不得画成横线。default、checked、hover、pressed、focus-visible 和 disabled 状态 SHALL 与锁定 Ant Design 6.6.5 参考具有可区分的层级。`LayoutStyle` 只控制外部放置；focus-visible 效果与 pointer focus MUST 分离，不能把 Button 的 1px gap + 3px ring 原样套给不同控件。Switch 的 middle/small 与 Checkbox 的来源固定尺寸 SHALL 保持 logical geometry、hit bounds 和文本可读性一致。
 
 #### Scenario: pointer 与键盘焦点
 - **WHEN** pointer down 后焦点转移到 Switch，随后用户通过 Tab 聚焦 Checkbox
