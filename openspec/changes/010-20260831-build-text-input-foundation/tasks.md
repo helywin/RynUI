@@ -75,7 +75,7 @@
 ## 9. Windows 专属验收
 
 - [x] 9.1 使用`windows-msvc` preset clean configure，完成Windows分支相关Debug/Release build与CTest，核对Ninja Multi-Config、MSVC x64、utf8proc/SDL3 BUNDLED、Win32 text input/clipboard、DirectWrite system font discovery和D3D12/DXIL来源，保存独立Windows build evidence
-- [ ] 9.2 增加无截图Windows Input acceptance runner，在1.0/1.25/1.5/2.0 acceptance scale启动真实窗口并保存stdout diagnostics/exit code；自动覆盖Latin、selection、clipboard、undo/redo、Theme/status与caret idle，runner不得自动勾选人工IME/视觉任务
+- [x] 9.2 增加无截图Windows Input acceptance runner，在1.0/1.25/1.5/2.0 acceptance scale启动真实窗口并保存stdout diagnostics/exit code；自动覆盖Latin、selection、clipboard、undo/redo、Theme/status与caret idle，runner不得自动勾选人工IME/视觉任务
 - [ ] 9.3 由用户在Windows真实窗口直接验证系统中文IME composition/candidate/commit/cancel、候选窗跟随caret、Ctrl shortcuts、pointer drag/double-click、Default/error focus、CJK/Latin/emoji、四档DPI无裁切和等待后无持续submit；记录用户确认、driver/font/scale/diagnostics路径，不要求截图
 - [ ] 9.4 运行Windows evidence passed contract、平台分支tests、dependency/shader/lock/license/cache、OpenSpec strict validate与`git diff --check`；以英文 `test: validate Windows text input` 提交并推送Windows evidence，核对remote SHA，不修改Linux清单
 

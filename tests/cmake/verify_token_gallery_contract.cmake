@@ -130,13 +130,16 @@ foreach(required IN ITEMS
         "animation_frames="
         "idle_after_animation="
         "automated_input_events="
+        "application_->set_window_active(true)"
+        "application_->set_window_active(false)"
         "--animation-acceptance"
+        "--input-acceptance"
         "--motion-disabled"
         "--reduced-motion"
         "are mutually exclusive"
         "motion_mode="
         "--acceptance-scale must be 1.0, 1.25, 1.5, or 2.0"
-        "exit_code=0")
+        "exit_code=")
     string(FIND "${runtime_source}" "${required}" found)
     if(found EQUAL -1)
         message(FATAL_ERROR "Token Gallery runtime telemetry is missing: ${required}")

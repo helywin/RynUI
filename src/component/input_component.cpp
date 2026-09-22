@@ -637,6 +637,11 @@ InputDisplaySnapshot InputComponentHost::display_snapshot(runtime::ComponentId c
     if(!state) throw std::out_of_range("Input component is stale");
     return state->display.snapshot();
 }
+InputStatus InputComponentHost::status(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if(!state) throw std::out_of_range("Input component is stale");
+    return state->status;
+}
 const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
     if(!state) throw std::out_of_range("Input component is stale");

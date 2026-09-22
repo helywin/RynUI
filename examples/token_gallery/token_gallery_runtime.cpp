@@ -177,9 +177,11 @@ private:
     void dispatch(const ryn::input::WindowInputEvent& event) {
         switch (event.action) {
         case ryn::input::WindowInputAction::focus_gained:
+            application_->set_window_active(true);
             inputs_->set_window_active(true);
             return;
         case ryn::input::WindowInputAction::focus_lost:
+            application_->set_window_active(false);
             inputs_->set_window_active(false);
             return;
         case ryn::input::WindowInputAction::resized:
@@ -395,16 +397,20 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     try {
         const bool animation_acceptance =
             has_argument(argc, argv, "--animation-acceptance");
+        const bool input_acceptance =
+            has_argument(argc, argv, "--input-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
         if ((motion_disabled && reduced_motion)
-                || (animation_acceptance && (motion_disabled || reduced_motion))) {
+                || (animation_acceptance && (input_acceptance || motion_disabled || reduced_motion))
+                || (input_acceptance && (motion_disabled || reduced_motion))) {
             throw std::invalid_argument(
-                "--motion-disabled, --reduced-motion, and --animation-acceptance "
+                "--motion-disabled, --reduced-motion, --animation-acceptance, and "
+                "--input-acceptance "
                 "are mutually exclusive");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
-            || animation_acceptance;
+            || animation_acceptance || input_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
@@ -518,6 +524,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         std::size_t smoke_stage = 0;
         std::size_t automated_input_events = 0;
+        bool input_latin = false;
+        bool input_selection = false;
+        bool input_clipboard = false;
+        bool input_undo = false;
+        bool input_redo = false;
+        bool input_theme_status = false;
+        bool input_caret_active = false;
+        bool input_caret_idle = false;
+        std::uint64_t input_initial_theme_identity = 0;
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
             if (mounted.size() <= definition.navigation_control_count + 7) {
@@ -597,13 +612,121 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             ++automated_input_events;
         };
+        const auto dispatch_input_acceptance = [&](std::size_t stage) {
+            const auto mounted = inputs.mounted_inputs();
+            if (mounted.size() != 2) {
+                throw std::logic_error(
+                    "input acceptance requires the controlled and uncontrolled Gallery Inputs");
+            }
+            const auto controlled = mounted.front();
+            auto& editor = inputs.editors().require(controlled.editor);
+            const auto key = [&](ryn::input::Key value,
+                                 ryn::input::KeyModifier modifier = ryn::input::KeyModifier::none) {
+                application.focus().dispatch({
+                    value,
+                    ryn::input::KeyAction::down,
+                    modifier,
+                    false,
+                });
+                ++automated_input_events;
+            };
+            switch (stage) {
+            case 0:
+                input_initial_theme_identity = application.components()
+                    .theme_scope(controlled.component)->snapshot().identity();
+                application.set_motion_preference(
+                    ryn::animation::MotionPreference::reduced);
+                definition.smoke_step(0);
+                if (const auto live = document_viewport.anchor(
+                        GalleryDocumentSectionKind::live_samples)) {
+                    static_cast<void>(document_viewport.jump_to(*live));
+                    frame_requests.request_frame();
+                }
+                break;
+            case 1:
+                application.set_motion_preference(
+                    ryn::animation::MotionPreference::normal);
+                if (!application.focus().request_focus(
+                        controlled.interaction, ryn::input::FocusModality::keyboard)) {
+                    throw std::logic_error("input acceptance could not focus the controlled Input");
+                }
+                input_caret_active = inputs.sessions().active().valid()
+                    && inputs.next_caret_deadline().has_value();
+                break;
+            case 2: {
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{
+                    ryn::String{u8"RynUI"}, inputs.sessions().active()});
+                input_latin = static_cast<bool>(result)
+                    && editor.value() == std::string_view{"RynUI"}
+                    && inputs.status(controlled.component) == ryn::InputStatus::Warning;
+                ++automated_input_events;
+                break;
+            }
+            case 3: {
+                key(ryn::input::Key::a, ryn::input::KeyModifier::control);
+                const auto selection = editor.selection();
+                input_selection = std::min(selection.anchor, selection.caret) == 0
+                    && std::max(selection.anchor, selection.caret)
+                        == editor.value().size();
+                break;
+            }
+            case 4:
+                key(ryn::input::Key::c, ryn::input::KeyModifier::control);
+                break;
+            case 5:
+                key(ryn::input::Key::x, ryn::input::KeyModifier::control);
+                input_clipboard = editor.value().empty();
+                break;
+            case 6:
+                key(ryn::input::Key::v, ryn::input::KeyModifier::control);
+                input_clipboard = input_clipboard
+                    && editor.value() == std::string_view{"RynUI"};
+                editor.break_history_merge();
+                break;
+            case 7:
+                static_cast<void>(inputs.dispatch(ryn::input::TextCommitted{
+                    ryn::String{u8"X"}, inputs.sessions().active()}));
+                ++automated_input_events;
+                break;
+            case 8:
+                key(ryn::input::Key::z, ryn::input::KeyModifier::control);
+                input_undo = editor.value() == std::string_view{"RynUI"};
+                break;
+            case 9:
+                key(ryn::input::Key::y, ryn::input::KeyModifier::control);
+                input_redo = editor.value() == std::string_view{"RynUIX"};
+                break;
+            case 10:
+                input_theme_status = inputs.status(controlled.component)
+                        == ryn::InputStatus::Warning
+                    && application.components().theme_scope(controlled.component)
+                           ->snapshot().identity() != input_initial_theme_identity;
+                break;
+            case 11:
+                key(ryn::input::Key::enter);
+                input_caret_active = input_caret_active
+                    && inputs.next_caret_deadline().has_value();
+                break;
+            case 12:
+                static_cast<void>(application.focus().clear_focus());
+                input_caret_idle = !inputs.sessions().active().valid()
+                    && !inputs.next_caret_deadline().has_value();
+                break;
+            default:
+                throw std::out_of_range("unknown Input acceptance stage");
+            }
+            std::cout << "input_acceptance_stage=" << stage << '\n' << std::flush;
+        };
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            const std::size_t smoke_stage_count = animation_acceptance ? 16 : 5;
+            const std::size_t smoke_stage_count = input_acceptance
+                ? 13 : animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                if (!animation_acceptance || smoke_stage >= 11) {
+                if (input_acceptance) {
+                    dispatch_input_acceptance(smoke_stage);
+                } else if (!animation_acceptance || smoke_stage >= 11) {
                     definition.smoke_step(
                         animation_acceptance ? smoke_stage - 11 : smoke_stage);
                 } else if (smoke_stage == 0) {
@@ -635,10 +758,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            const auto completion_time = animation_acceptance ? 4'700U : 1'700U;
+            const auto completion_time = input_acceptance
+                ? 4'000U : animation_acceptance ? 4'700U : 1'700U;
+            const bool acceptance_complete = input_acceptance
+                ? input_caret_idle && !inputs.next_caret_deadline().has_value()
+                : loop.counters().idle_waits >= 20;
             if (smoke_mode && smoke_stage == smoke_stage_count
-                    && elapsed >= completion_time
-                    && loop.counters().idle_waits >= 20) {
+                    && elapsed >= completion_time && acceptance_complete) {
                 break;
             }
         }
@@ -683,6 +809,38 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         for (const auto& mounted : reference_surfaces.mounted_surfaces()) {
             layout_passes += nodes.require(mounted.node).place_count;
         }
+
+        const auto expected_stages = input_acceptance
+            ? 13U : animation_acceptance ? 16U : 5U;
+        const auto expected_theme_updates = input_acceptance
+            ? 1U : animation_acceptance ? 6U
+            : motion_disabled ? 5U : 4U;
+        const auto expected_motion_updates = input_acceptance
+            ? 0U : animation_acceptance ? 2U
+            : motion_disabled ? 1U : 0U;
+        const bool smoke_failed = smoke_mode
+            && (smoke_stage != expected_stages || telemetry.content_runs != 1
+                || telemetry.theme_updates != expected_theme_updates
+                || telemetry.motion_updates != expected_motion_updates
+                || (!input_acceptance
+                    && (telemetry.brand_updates != 1 || telemetry.state_updates != 2))
+                || (input_acceptance
+                    && (!input_latin || !input_selection || !input_clipboard
+                        || !input_undo || !input_redo || !input_theme_status
+                        || !input_caret_active || !input_caret_idle
+                        || telemetry.input_changes < 6
+                        || telemetry.input_submits != 1
+                        || inputs.next_caret_deadline().has_value()))
+                || (animation_acceptance
+                    && (automated_input_events != 7
+                        || pointer_diagnostics.input_events < 4
+                        || pointer_diagnostics.hover_enters == 0
+                        || pointer_diagnostics.hover_leaves == 0
+                        || pointer_diagnostics.captures_started != 1
+                        || pointer_diagnostics.captures_released != 1
+                        || focus_diagnostics.keyboard_events != 3
+                        || focus_diagnostics.traversals == 0
+                        || focus_diagnostics.activations != 1)));
 
         std::cout
             << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH
@@ -777,36 +935,20 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " animation_frames=" << frames.animation_frames
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
+            << " input_acceptance=" << (input_acceptance ? "true" : "false")
+            << " input_latin=" << (input_latin ? "passed" : "not-run")
+            << " input_selection=" << (input_selection ? "passed" : "not-run")
+            << " input_clipboard=" << (input_clipboard ? "passed" : "not-run")
+            << " input_undo=" << (input_undo ? "passed" : "not-run")
+            << " input_redo=" << (input_redo ? "passed" : "not-run")
+            << " input_theme_status=" << (input_theme_status ? "passed" : "not-run")
+            << " input_caret_idle=" << (input_caret_idle ? "passed" : "not-run")
             << " automated_input_events=" << automated_input_events
             << " motion_mode=" << (motion_disabled
                     ? "theme-disabled"
                     : reduced_motion ? "reduced" : "normal")
-            << " exit_code=0\n";
-
-        const auto expected_stages = animation_acceptance ? 16U : 5U;
-        const auto expected_theme_updates = animation_acceptance
-            ? 6U
-            : motion_disabled ? 5U : 4U;
-        const auto expected_motion_updates = animation_acceptance
-            ? 2U
-            : motion_disabled ? 1U : 0U;
-        return smoke_mode
-                && (smoke_stage != expected_stages || telemetry.content_runs != 1
-                    || telemetry.theme_updates != expected_theme_updates
-                    || telemetry.motion_updates != expected_motion_updates
-                    || telemetry.brand_updates != 1 || telemetry.state_updates != 2
-                    || (animation_acceptance
-                        && (automated_input_events != 7
-                            || pointer_diagnostics.input_events < 4
-                            || pointer_diagnostics.hover_enters == 0
-                            || pointer_diagnostics.hover_leaves == 0
-                            || pointer_diagnostics.captures_started != 1
-                            || pointer_diagnostics.captures_released != 1
-                            || focus_diagnostics.keyboard_events != 3
-                            || focus_diagnostics.traversals == 0
-                            || focus_diagnostics.activations != 1)))
-            ? 6
-            : 0;
+            << " exit_code=" << (smoke_failed ? 6 : 0) << '\n';
+        return smoke_failed ? 6 : 0;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';
         return 7;

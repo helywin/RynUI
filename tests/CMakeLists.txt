@@ -762,6 +762,11 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND}
             "-DEVIDENCE=${input_evidence_directory}/windows-input-build.md"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_input_build_evidence.cmake")
+    add_test(
+        NAME rynui.windows_input_acceptance_runner_contract
+        COMMAND ${CMAKE_COMMAND}
+            "-DRUNNER=${PROJECT_SOURCE_DIR}/scripts/run-windows-input-acceptance.ps1"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_windows_input_acceptance_runner.cmake")
 endif()
 add_test(
     NAME rynui.input_linux_evidence_schema
