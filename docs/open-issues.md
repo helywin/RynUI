@@ -17,6 +17,7 @@
 | `LINUX-FONT-RASTER-002` | `pending` | Linux Fontconfig raster policy 与原生 Wayland 前后截图尚未完成 | 6.6 | 无；必须保留真实平台证据 |
 | `WINDOWS-DWRITE-RASTER-003` | `pending` | Windows 字形 coverage 尚未完成实际 DirectWrite grayscale raster path 与多 scale 复验 | 7.5 | 当前 FreeType 路径不能冒充 DirectWrite 验收 |
 | `CHANGE-CLOSEOUT-004` | `blocked` | Change 尚不能最终收口 | 8.1 | 等待所有独立平台任务完成 |
+| `GALLERY-SCROLL-PERF-005` | `open` | 长文档滚动尚未稳定满足 240 Hz 帧预算 | Token Gallery / change 008 | 保留当前可见场景裁剪与 glyph 缓存；后续独立评估可见区域更新方案 |
 
 ## LINUX-WAYLAND-RESIZE-001
 
@@ -52,6 +53,15 @@
 - 阻塞项：`LINUX-FONT-RASTER-002`、`WINDOWS-DWRITE-RASTER-003`。
 - 当前禁止动作：不得 archive change，不得把 pending evidence 改为 passed，不得用 XWayland/Linux/静态审查替代缺失平台证据。
 - 关闭条件：上述问题关闭后，运行 OpenSpec doctor、strict validate、完整差异检查，并确认工作区与平台清单一致。
+
+## GALLERY-SCROLL-PERF-005
+
+- 状态：`open`（2026-09-22）；不阻塞当前 Gallery 功能与独立平台验收。
+- 现象：用户在 240 Hz 屏幕上报告多行长文档滚动卡顿。Windows/MSVC/D3D12 的 `rynui_token_gallery --scroll-acceptance` 是实窗自动滚动压测，不等于用户手动滚轮或 240 Hz 显示器上的主观验收。
+- 当前证据：提交 `999f186` 已加入屏幕外绘制片段裁剪、文字 scroll geometry patch、glyph 缓存路径与批量上传；滚动期间新增 glyph rasterization 为 0。提交 `7177a78` 增加分段诊断；同机三次 1.5× 压测平均帧耗时 5.36–5.43 ms、P95 6.21–6.25 ms，场景同步约 2.4 ms，仍高于 240 Hz 的约 4.17 ms 帧预算。
+- 已排除的局部尝试：单独跳过屏幕外 ReferenceSurface 几何更新会打散 Quad 上传；HitTest dirty 节点哈希索引在该场景也没有稳定收益。实验改动已撤回。
+- 后续方向：在独立设计评审中评估保留 retained component identity 的可见区域同步、子树滚动变换与 GPU/HitTest 更新边界；现有 change 008 的设计明确暂不引入 virtualization，未经修改设计不得把它当作当前任务实施。
+- 关闭条件：先锁定可重复的真实滚轮与 240 Hz 显示器测量方法，再完成性能方案、自动回归和用户实机体验复核；不能仅凭自动滚动耗时宣称 240 Hz 已达标。
 
 ## 维护规则
 
