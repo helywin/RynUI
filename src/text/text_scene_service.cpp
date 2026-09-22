@@ -35,6 +35,8 @@ struct TextSceneService::Record final {
     graphics::GlyphPrimitive primitive;
     std::optional<graphics::GlyphPlacement> placement;
     runtime::Point scroll_translation{};
+    std::uint64_t scroll_scale_revision{};
+    float scroll_scale{};
     graphics::GlyphAtlasError last_error{};
     TextSceneRevisions revisions;
     TextSceneRecordCounters counters;
@@ -268,6 +270,41 @@ bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pix
     return true;
 }
 
+runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
+    TextSceneId id, runtime::Point pixels) {
+    ensure_owner_thread();
+    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)) {
+        throw std::invalid_argument("Text translation must be finite");
+    }
+    auto& record = require_record(id);
+    if (record.scroll_scale_revision != record.state->revision()) {
+        record.scroll_scale = 0.0F;
+        const auto& shaped = record.state->shaped();
+        const float scale = shaped.default_metrics.display_scale;
+        if (std::isfinite(scale) && scale > 0.0F) {
+            record.scroll_scale = scale;
+            for (const auto& run : shaped.runs) {
+                const auto metrics = fonts_->metrics(run.font);
+                if (!metrics || std::abs(metrics.metrics.display_scale - scale) > 0.0001F) {
+                    record.scroll_scale = 0.0F;
+                    break;
+                }
+            }
+            record.scroll_scale_revision = record.state->revision();
+        }
+    }
+    if (record.scroll_scale <= 0.0F) {
+        static_cast<void>(set_scroll_translation(id, {}));
+        return pixels;
+    }
+    const runtime::Point snapped{
+        std::round(pixels.x * record.scroll_scale) / record.scroll_scale,
+        std::round(pixels.y * record.scroll_scale) / record.scroll_scale,
+    };
+    static_cast<void>(set_scroll_translation(id, snapped));
+    return {pixels.x - snapped.x, pixels.y - snapped.y};
+}
+
 std::size_t TextSceneService::patch_geometry(
     Record& record, const graphics::GlyphPlacement& placement) {
     const auto clip = placement.clip_pixels;
@@ -367,6 +404,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
             ++record.counters.instance_rebuilds;
         } else {
             ++record.counters.geometry_updates;
+            ++record.counters.geometry_rebuilds;
         }
         if (offset != 0 && old_range.count != 0) {
             ++counters_.range_compactions;
@@ -389,6 +427,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
         const auto updated = patch_geometry(record, placement);
         if (updated != 0) {
             ++record.counters.geometry_updates;
+            ++record.counters.geometry_patches;
         }
         record.patchable_geometry_dirty = false;
     }

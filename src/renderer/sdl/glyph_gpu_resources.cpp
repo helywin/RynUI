@@ -99,6 +99,11 @@ void GlyphGpuResources::synchronize(
     }
 }
 
+void GlyphGpuResources::set_sparse_upload_coalescing_limit(
+    std::size_t max_span_bytes) noexcept {
+    max_coalesced_upload_bytes_ = max_span_bytes;
+}
+
 GlyphGpuSamplerHandle GlyphGpuResources::sampler() const noexcept {
     return sampler_;
 }
@@ -205,6 +210,23 @@ void GlyphGpuResources::upload_atlas(graphics::GlyphAtlas& atlas) {
 void GlyphGpuResources::upload_instance_ranges(
     graphics::GlyphInstanceStore& instances) {
     dirty_ranges(instances, dirty_scratch_);
+    if (max_coalesced_upload_bytes_ != 0 && dirty_scratch_.size() > 1) {
+        const auto first = dirty_scratch_.front().first;
+        const auto& last = dirty_scratch_.back();
+        const auto end = static_cast<std::uint64_t>(last.first) + last.count;
+        const auto span_count = end - first;
+        std::uint64_t dirty_count = 0;
+        for (const auto range : dirty_scratch_) {
+            dirty_count += range.count;
+        }
+        if (span_count * sizeof(graphics::GlyphInstance)
+                    <= max_coalesced_upload_bytes_
+                && span_count <= dirty_count * 4) {
+            dirty_scratch_.front().count = static_cast<std::uint32_t>(span_count);
+            dirty_scratch_.resize(1);
+            ++counters_.buffer_upload_coalesces;
+        }
+    }
     for (const auto range : dirty_scratch_) {
         const auto bytes = instances.bytes(range);
         const std::size_t offset =

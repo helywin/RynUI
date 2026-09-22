@@ -256,6 +256,36 @@ void test_failure_paths_keep_dirty_state_and_release_resources() {
     }
 }
 
+void test_bounded_sparse_upload_coalescing() {
+    RecordingGpuApi api;
+    ryn::detail::GlyphGpuResources resources(api);
+    resources.set_sparse_upload_coalescing_limit(
+        16 * sizeof(ryn::graphics::GlyphInstance));
+    ryn::graphics::GlyphAtlas atlas({10, 10, 1});
+    ryn::graphics::GlyphInstanceStore instances;
+    std::array<ryn::graphics::GlyphInstance, 16> initial{};
+    static_cast<void>(instances.append(initial));
+    resources.synchronize(atlas, instances);
+    const std::array<float, 4> clip{0.0F, 1.0F, 1.0F, 0.0F};
+    static_cast<void>(instances.update_geometry({0, 1}, clip, {1.0F, 0.0F}));
+    static_cast<void>(instances.update_geometry({5, 1}, clip, {1.0F, 0.0F}));
+    resources.synchronize(atlas, instances);
+    require(api.buffers.size() == 2 && api.buffers.back().offset == 0
+                && api.buffers.back().bytes.size()
+                    == 6 * sizeof(ryn::graphics::GlyphInstance)
+                && resources.counters().buffer_upload_coalesces == 1,
+            "bounded nearby Glyph ranges were not coalesced");
+    static_cast<void>(instances.update_geometry({0, 1}, clip, {2.0F, 0.0F}));
+    static_cast<void>(instances.update_geometry({15, 1}, clip, {2.0F, 0.0F}));
+    resources.synchronize(atlas, instances);
+    require(api.buffers.size() == 4
+                && api.buffers[2].offset == 0
+                && api.buffers[3].offset
+                    == 15 * sizeof(ryn::graphics::GlyphInstance)
+                && resources.counters().buffer_upload_coalesces == 1,
+            "distant Glyph ranges uploaded unrelated instance storage");
+}
+
 class RecordingDrawApi final : public ryn::detail::SceneDrawApi {
 public:
     void draw_quad(std::uint32_t first, std::uint32_t count) override {
@@ -320,6 +350,7 @@ int main() {
     try {
         test_aligned_dirty_texture_and_sparse_buffer_uploads();
         test_failure_paths_keep_dirty_state_and_release_resources();
+        test_bounded_sparse_upload_coalescing();
         test_recording_backend_preserves_order_and_page_switches();
         test_zero_effect_scene_does_not_dispatch_effect_pipeline();
     } catch (const std::exception& error) {

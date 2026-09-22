@@ -261,6 +261,7 @@ public:
     ryn::runtime::FrameSubmissionResult submit_frame(
         ryn::animation::AnimationTime frame_time) override {
         try {
+            const auto frame_started = std::chrono::steady_clock::now();
             static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
                 16.0F,
@@ -309,6 +310,7 @@ public:
             }
             anchors_changed = document_viewport_->replace_category_anchors(
                 category_anchors) || anchors_changed;
+            const float applied_offset = document_viewport_->snapshot().offset;
             static_cast<void>(document_viewport_->set_extents(
                 clip.height, root.bounds.height));
             if (anchors_changed && had_section_anchors
@@ -316,13 +318,17 @@ public:
                 static_cast<void>(
                     document_viewport_->restore_resize_anchor(resize_anchor));
             }
-            static_cast<void>(document_viewport_->apply_subtree_translation(
-                document_root_, application_->nodes(), application_->dirty()));
-            // Extent/anchor reconciliation can change scroll translation. Flush
-            // that geometry before publishing the native candidate-window area.
-            if (!application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
-                last_error_ = "Token Gallery final scroll sync failed";
-                return ryn::runtime::FrameSubmissionResult::failed;
+            // The first sync already flushed ordinary wheel translation. Only
+            // reconcile geometry again when layout changed the clamped offset.
+            if (document_viewport_->snapshot().offset != applied_offset) {
+                if (!document_viewport_->apply_subtree_translation(
+                        document_root_, application_->nodes(), application_->dirty())
+                        || !application_->layout_and_synchronize(
+                            *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+                    last_error_ = "Token Gallery final scroll sync failed";
+                    return ryn::runtime::FrameSubmissionResult::failed;
+                }
+                ++reconciliation_syncs_;
             }
             const auto metrics = platform_->window_metrics();
             if (!inputs_->synchronize_input_area(
@@ -331,27 +337,70 @@ public:
                 last_error_ = "Token Gallery text input area update failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            if (quad_buffer_ == nullptr) {
-                quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                    *renderer_, application_->button_scene().instances());
-            } else {
-                application_->button_scene().synchronize_gpu(*quad_buffer_);
+            const auto scene_synchronized = std::chrono::steady_clock::now();
+            const bool batch_uploads = quad_buffer_ != nullptr
+                && text_scene_->atlas().dirty_regions().empty();
+            if (batch_uploads && !renderer_->begin_buffer_upload_batch()) {
+                last_error_ = renderer_->last_error();
+                return ryn::runtime::FrameSubmissionResult::failed;
             }
-            glyph_resources_->synchronize(
-                text_scene_->atlas(), text_scene_->glyph_scene().instances());
-            effect_resources_.synchronize(
-                application_->rounded_effects(),
-                {
-                    static_cast<std::uint32_t>(metrics.pixel_width),
-                    static_cast<std::uint32_t>(metrics.pixel_height),
-                    *render_scale_,
-                });
+            try {
+                if (quad_buffer_ == nullptr) {
+                    quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
+                        *renderer_, application_->button_scene().instances());
+                } else {
+                    application_->button_scene().synchronize_gpu(*quad_buffer_);
+                }
+                glyph_resources_->synchronize(
+                    text_scene_->atlas(), text_scene_->glyph_scene().instances());
+                effect_resources_.synchronize(
+                    application_->rounded_effects(),
+                    {
+                        static_cast<std::uint32_t>(metrics.pixel_width),
+                        static_cast<std::uint32_t>(metrics.pixel_height),
+                        *render_scale_,
+                    });
+            } catch (...) {
+                if (batch_uploads) {
+                    renderer_->cancel_buffer_upload_batch();
+                }
+                throw;
+            }
+            if (batch_uploads && !renderer_->finish_buffer_upload_batch()) {
+                last_error_ = renderer_->last_error();
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
+            const auto resources_synchronized = std::chrono::steady_clock::now();
+            last_visible_scene_ = application_->scene_composer().build_visible_scene(
+                application_->nodes(), clip, visible_scene_);
+            const auto scene_culled = std::chrono::steady_clock::now();
             renderer_->attach_scene(
                 quad_buffer_->handle(),
                 *glyph_resources_,
-                application_->scene_composer().ordered_scene(),
+                visible_scene_,
                 &effect_resources_);
             const auto result = renderer_->submit_frame(frame_time);
+            const auto frame_finished = std::chrono::steady_clock::now();
+            const auto microseconds = [](auto start, auto end) {
+                return static_cast<std::int64_t>(
+                    std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+                        .count());
+            };
+            const auto elapsed = microseconds(frame_started, frame_finished);
+            total_scene_sync_microseconds_ +=
+                microseconds(frame_started, scene_synchronized);
+            total_resource_sync_microseconds_ +=
+                microseconds(scene_synchronized, resources_synchronized);
+            total_cull_microseconds_ +=
+                microseconds(resources_synchronized, scene_culled);
+            total_submit_microseconds_ +=
+                microseconds(scene_culled, frame_finished);
+            total_frame_microseconds_ += elapsed;
+            max_frame_microseconds_ = std::max(max_frame_microseconds_, elapsed);
+            if (sampled_frames_ < frame_samples_.size()) {
+                frame_samples_[sampled_frames_++] = elapsed;
+            }
+            ++timed_frames_;
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
             }
@@ -363,6 +412,50 @@ public:
     }
 
     [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] std::uint64_t reconciliation_syncs() const noexcept {
+        return reconciliation_syncs_;
+    }
+    [[nodiscard]] ryn::component::VisibleSceneStats last_visible_scene() const noexcept {
+        return last_visible_scene_;
+    }
+    [[nodiscard]] std::int64_t average_frame_microseconds() const noexcept {
+        return timed_frames_ == 0 ? 0 : total_frame_microseconds_ / timed_frames_;
+    }
+    [[nodiscard]] std::int64_t max_frame_microseconds() const noexcept {
+        return max_frame_microseconds_;
+    }
+    [[nodiscard]] std::array<std::int64_t, 4> average_phase_microseconds() const noexcept {
+        if (timed_frames_ == 0) {
+            return {};
+        }
+        return {
+            total_scene_sync_microseconds_ / timed_frames_,
+            total_resource_sync_microseconds_ / timed_frames_,
+            total_cull_microseconds_ / timed_frames_,
+            total_submit_microseconds_ / timed_frames_,
+        };
+    }
+    [[nodiscard]] std::int64_t p95_frame_microseconds() const {
+        if (sampled_frames_ == 0) {
+            return 0;
+        }
+        auto samples = frame_samples_;
+        const auto rank = (sampled_frames_ * 95 + 99) / 100 - 1;
+        std::nth_element(
+            samples.begin(), samples.begin() + rank,
+            samples.begin() + sampled_frames_);
+        return samples[rank];
+    }
+    void reset_frame_timings() noexcept {
+        total_frame_microseconds_ = 0;
+        total_scene_sync_microseconds_ = 0;
+        total_resource_sync_microseconds_ = 0;
+        total_cull_microseconds_ = 0;
+        total_submit_microseconds_ = 0;
+        max_frame_microseconds_ = 0;
+        timed_frames_ = 0;
+        sampled_frames_ = 0;
+    }
     [[nodiscard]] const ryn::graphics::QuadUploadCounters& quad_uploads() const {
         if (quad_buffer_ == nullptr) {
             throw std::logic_error("Token Gallery Quad buffer was not created");
@@ -388,6 +481,18 @@ private:
     ryn::runtime::Size* viewport_;
     float* render_scale_;
     std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
+    ryn::graphics::OrderedScene visible_scene_;
+    ryn::component::VisibleSceneStats last_visible_scene_;
+    std::uint64_t reconciliation_syncs_{};
+    std::int64_t total_frame_microseconds_{};
+    std::int64_t total_scene_sync_microseconds_{};
+    std::int64_t total_resource_sync_microseconds_{};
+    std::int64_t total_cull_microseconds_{};
+    std::int64_t total_submit_microseconds_{};
+    std::int64_t max_frame_microseconds_{};
+    std::int64_t timed_frames_{};
+    std::array<std::int64_t, 4096> frame_samples_{};
+    std::size_t sampled_frames_{};
     std::string last_error_;
 };
 
@@ -399,14 +504,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--animation-acceptance");
         const bool input_acceptance =
             has_argument(argc, argv, "--input-acceptance");
+        const bool scroll_acceptance =
+            has_argument(argc, argv, "--scroll-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
         if ((motion_disabled && reduced_motion)
                 || (animation_acceptance && (input_acceptance || motion_disabled || reduced_motion))
-                || (input_acceptance && (motion_disabled || reduced_motion))) {
+                || (input_acceptance && (motion_disabled || reduced_motion))
+                || (scroll_acceptance && (animation_acceptance || input_acceptance
+                    || motion_disabled || reduced_motion))) {
             throw std::invalid_argument(
                 "--motion-disabled, --reduced-motion, --animation-acceptance, and "
-                "--input-acceptance "
+                "--input-acceptance, and --scroll-acceptance "
                 "are mutually exclusive");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
@@ -493,6 +602,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
+        glyph_resources.set_sparse_upload_coalescing_limit(512 * 1024);
         GallerySubmitter submitter(
             platform,
             application,
@@ -523,6 +633,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             frame_requests, events, submitter, animation_deadlines, 10);
 
         std::size_t smoke_stage = 0;
+        std::size_t scroll_stage = 0;
+        std::uint64_t scroll_started_milliseconds = 0;
+        std::uint64_t scroll_finished_milliseconds = 0;
+        std::uint64_t rasterizations_before_scroll = 0;
         std::size_t automated_input_events = 0;
         bool input_latin = false;
         bool input_selection = false;
@@ -720,6 +834,22 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
+            if (scroll_acceptance && scroll_stage < 240
+                    && elapsed >= 250 + 4 * scroll_stage) {
+                if (scroll_stage == 0) {
+                    rasterizations_before_scroll = fonts->counters().rasterizations;
+                    submitter.reset_frame_timings();
+                    scroll_started_milliseconds = elapsed;
+                }
+                const bool changed = scroll_stage == 239
+                    ? document_viewport.scroll_to(
+                        document_viewport.snapshot().maximum_offset)
+                    : document_viewport.scroll_by(48.0F);
+                if (changed) {
+                    frame_requests.request_frame();
+                }
+                ++scroll_stage;
+            }
             const std::size_t smoke_stage_count = input_acceptance
                 ? 13 : animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
@@ -750,6 +880,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 ++smoke_stage;
             }
             const auto step = loop.step();
+            if (scroll_acceptance && scroll_stage == 240
+                    && scroll_finished_milliseconds == 0) {
+                scroll_finished_milliseconds = events.now_milliseconds();
+            }
             if (!events.last_error().empty()) {
                 std::cerr << "input_error=" << events.last_error() << '\n';
                 return 4;
@@ -767,6 +901,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && elapsed >= completion_time && acceptance_complete) {
                 break;
             }
+            if (scroll_acceptance && scroll_stage == 240
+                    && elapsed >= 1'800) {
+                break;
+            }
         }
 
         const auto telemetry = definition.telemetry();
@@ -779,6 +917,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto glyph = glyph_resources.counters();
         const auto effect = submitter.effect_uploads();
         const auto render = renderer.counters();
+        const auto phase_times = submitter.average_phase_microseconds();
+        const auto font_counters = fonts->counters();
         const auto frames = loop.counters();
         const auto metrics = platform.window_metrics();
         const auto document = document_viewport.snapshot();
@@ -818,7 +958,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto expected_motion_updates = input_acceptance
             ? 0U : animation_acceptance ? 2U
             : motion_disabled ? 1U : 0U;
-        const bool smoke_failed = smoke_mode
+        const bool scroll_failed = scroll_acceptance
+            && (scroll_stage != 240 || document.maximum_offset <= 0.0F
+                || document.offset != document.maximum_offset
+                || document_diagnostics.translation_passes < 2
+                || submitter.reconciliation_syncs() != 0
+                || submitter.last_visible_scene().fragments_visible
+                    >= submitter.last_visible_scene().fragments_considered
+                || telemetry.content_runs != 1
+                || render.frame_submissions < 2);
+        const bool smoke_failed = scroll_failed || (smoke_mode
             && (smoke_stage != expected_stages || telemetry.content_runs != 1
                 || telemetry.theme_updates != expected_theme_updates
                 || telemetry.motion_updates != expected_motion_updates
@@ -840,7 +989,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         || pointer_diagnostics.captures_released != 1
                         || focus_diagnostics.keyboard_events != 3
                         || focus_diagnostics.traversals == 0
-                        || focus_diagnostics.activations != 1)));
+                        || focus_diagnostics.activations != 1))));
 
         std::cout
             << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH
@@ -900,6 +1049,22 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << document_diagnostics.translation_passes
             << " document_translated_nodes="
             << document_diagnostics.translated_nodes
+            << " document_reconciliation_syncs="
+            << submitter.reconciliation_syncs()
+            << " draw_fragments_considered="
+            << submitter.last_visible_scene().fragments_considered
+            << " draw_fragments_visible="
+            << submitter.last_visible_scene().fragments_visible
+            << " frame_average_us=" << submitter.average_frame_microseconds()
+            << " frame_max_us=" << submitter.max_frame_microseconds()
+            << " frame_p95_us=" << submitter.p95_frame_microseconds()
+            << " frame_scene_sync_us=" << phase_times[0]
+            << " frame_resource_sync_us=" << phase_times[1]
+            << " frame_cull_us=" << phase_times[2]
+            << " frame_submit_us=" << phase_times[3]
+            << " font_rasterizations=" << font_counters.rasterizations
+            << " scroll_rasterizations="
+            << (font_counters.rasterizations - rasterizations_before_scroll)
             << " input_events=" << platform_diagnostics.normalized_input_events
             << " pointer_input_events=" << pointer_diagnostics.input_events
             << " pointer_routes=" << pointer_diagnostics.routes_dispatched
@@ -923,10 +1088,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " quad_uploads=" << quad.initial_uploads + quad.range_uploads
             << " quad_uploaded_bytes=" << quad.uploaded_bytes
             << " glyph_uploads=" << glyph.texture_uploads + glyph.buffer_uploads
+            << " glyph_buffer_uploads=" << glyph.buffer_uploads
+            << " glyph_buffer_coalesces=" << glyph.buffer_upload_coalesces
+            << " glyph_buffer_capacity=" << glyph_resources.instance_capacity()
             << " glyph_uploaded_bytes="
             << glyph.texture_uploaded_bytes + glyph.buffer_uploaded_bytes
             << " effect_uploads=" << effect.buffer_uploads
             << " effect_uploaded_bytes=" << effect.uploaded_bytes
+            << " gpu_upload_submissions=" << render.upload_submissions
             << " quad_draws=" << render.quad_draws
             << " glyph_draws=" << render.glyph_draws
             << " effect_draws=" << render.effect_draws
@@ -936,6 +1105,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " input_acceptance=" << (input_acceptance ? "true" : "false")
+            << " scroll_acceptance=" << (scroll_acceptance ? "true" : "false")
+            << " scroll_acceptance_steps=" << scroll_stage
+            << " scroll_sequence_ms="
+            << (scroll_finished_milliseconds - scroll_started_milliseconds)
             << " input_latin=" << (input_latin ? "passed" : "not-run")
             << " input_selection=" << (input_selection ? "passed" : "not-run")
             << " input_clipboard=" << (input_clipboard ? "passed" : "not-run")

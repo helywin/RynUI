@@ -55,6 +55,7 @@ struct GlyphGpuResourceCounters {
     std::uint64_t buffer_reallocations{};
     std::uint64_t buffer_uploads{};
     std::uint64_t buffer_uploaded_bytes{};
+    std::uint64_t buffer_upload_coalesces{};
 };
 
 class GlyphGpuResources final {
@@ -69,6 +70,7 @@ public:
     void synchronize(
         graphics::GlyphAtlas& atlas,
         graphics::GlyphInstanceStore& instances);
+    void set_sparse_upload_coalescing_limit(std::size_t max_span_bytes) noexcept;
 
     [[nodiscard]] GlyphGpuSamplerHandle sampler() const noexcept;
     [[nodiscard]] GlyphGpuTextureHandle texture(std::uint32_t page) const;
@@ -89,6 +91,7 @@ private:
     GlyphGpuBufferHandle instance_buffer_{nullptr};
     std::uint32_t instance_capacity_{};
     std::vector<graphics::GlyphInstanceRange> dirty_scratch_;
+    std::size_t max_coalesced_upload_bytes_{};
     GlyphGpuResourceCounters counters_;
 };
 

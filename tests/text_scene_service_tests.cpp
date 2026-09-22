@@ -338,6 +338,21 @@ void test_scroll_translation_preserves_glyphs() {
         && fixture.fonts->counters().rasterizations == rasterizations
         && fixture.service.text_state(source).counters().shape_count == 1,
         "scroll rebuilt retained text or atlas");
+    const auto residual = fixture.service.set_phase_preserving_scroll_translation(
+        view, {2.25F, 3.75F});
+    placement.translation_pixels = residual;
+    require(residual == ryn::runtime::Point{0.25F, -0.25F}
+        && fixture.service.synchronize(view, placement),
+        "fractional scroll phase was not preserved");
+    const auto phased_rasterizations = fixture.fonts->counters().rasterizations;
+    const auto phased_rebuilds = fixture.service.record_counters(view).geometry_rebuilds;
+    const auto same_phase = fixture.service.set_phase_preserving_scroll_translation(
+        view, {3.25F, 4.75F});
+    require(same_phase == residual && fixture.service.synchronize(view, placement),
+        "same-phase fractional scroll did not synchronize");
+    require(fixture.service.record_counters(view).geometry_rebuilds == phased_rebuilds
+        && fixture.fonts->counters().rasterizations == phased_rasterizations,
+        "same-phase scroll rebuilt geometry or rasterized glyphs");
     placement.clip_pixels.width *= 0.5F;
     require(fixture.service.synchronize(view, placement), "scroll clip update failed");
     const auto offset = fixture.service.glyph_scene().instances().at(initial.first).translation_opacity[0];

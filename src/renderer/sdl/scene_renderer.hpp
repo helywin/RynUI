@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace ryn::detail {
 
@@ -95,6 +96,9 @@ public:
 
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
+    bool begin_buffer_upload_batch();
+    bool finish_buffer_upload_batch();
+    void cancel_buffer_upload_batch() noexcept;
 
 private:
     bool upload_buffer(
@@ -112,6 +116,10 @@ private:
     RoundedEffectGpuResources* effect_resources_{nullptr};
     const graphics::OrderedScene* scene_{nullptr};
     void* active_render_pass_{nullptr};
+    bool upload_batch_active_{false};
+    void* upload_command_{nullptr};
+    void* upload_pass_{nullptr};
+    std::vector<void*> upload_transfers_;
     std::string shader_format_;
     std::string last_error_;
     SceneRendererCounters counters_;

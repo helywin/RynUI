@@ -47,6 +47,8 @@ struct TextSceneRecordCounters final {
     std::uint64_t instance_rebuilds{};
     std::uint64_t material_updates{};
     std::uint64_t geometry_updates{};
+    std::uint64_t geometry_rebuilds{};
+    std::uint64_t geometry_patches{};
 };
 
 struct TextSceneServiceCounters final {
@@ -93,6 +95,10 @@ public:
     // Post-rasterization scrolling; callers align the offset to physical pixels.
     // Unlike placement.translation_pixels, this never changes rasterization phase.
     bool set_scroll_translation(TextSceneId id, runtime::Point pixels);
+    // Splits a requested translation into an aligned scroll patch and the
+    // residual that must retain normal raster-phase placement semantics.
+    [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(
+        TextSceneId id, runtime::Point pixels);
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);

@@ -20,6 +20,11 @@ struct ComponentSceneDiagnostics final {
     std::uint64_t stale_bindings_skipped{0};
 };
 
+struct VisibleSceneStats final {
+    std::uint64_t fragments_considered{};
+    std::uint64_t fragments_visible{};
+};
+
 class ComponentSceneComposer final {
 public:
     ComponentSceneComposer(
@@ -38,6 +43,10 @@ public:
         std::optional<runtime::Rect> interaction_clip = std::nullopt);
     bool remove_fragment(runtime::SceneFragmentId fragment);
     void rebuild(runtime::Rect window_clip);
+    [[nodiscard]] VisibleSceneStats build_visible_scene(
+        const runtime::NodeStore& nodes,
+        runtime::Rect window_clip,
+        graphics::OrderedScene& destination) const;
 
     [[nodiscard]] const graphics::OrderedScene& ordered_scene() const noexcept;
     [[nodiscard]] std::span<const input::HitTestPaintEntry>

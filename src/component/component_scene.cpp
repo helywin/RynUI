@@ -114,6 +114,46 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip) {
     ++diagnostics_.rebuilds;
 }
 
+VisibleSceneStats ComponentSceneComposer::build_visible_scene(
+    const runtime::NodeStore& nodes,
+    runtime::Rect window_clip,
+    graphics::OrderedScene& destination) const {
+    ensure_owner_thread();
+    constexpr float visual_overflow = 32.0F;
+    const float clip_left = window_clip.x - visual_overflow;
+    const float clip_top = window_clip.y - visual_overflow;
+    const float clip_right = window_clip.x + window_clip.width + visual_overflow;
+    const float clip_bottom = window_clip.y + window_clip.height + visual_overflow;
+    destination.clear();
+    destination.reserve(ordered_scene_.commands().size());
+    VisibleSceneStats stats;
+    for (const auto& entry : components_->paint_traversal()) {
+        const auto* binding = find_binding(entry.fragment);
+        if (binding == nullptr || !components_->contains(entry.fragment)) {
+            continue;
+        }
+        ++stats.fragments_considered;
+        const auto& node = nodes.require(components_->root(entry.component));
+        const float left = node.bounds.x + node.translation.x;
+        const float top = node.bounds.y + node.translation.y;
+        const bool offscreen = node.bounds.width <= 0.0F
+                || node.bounds.height <= 0.0F
+                || left >= clip_right || left + node.bounds.width <= clip_left
+                || top >= clip_bottom || top + node.bounds.height <= clip_top;
+        if (!offscreen) {
+            ++stats.fragments_visible;
+        }
+        for (const auto command : binding->commands) {
+            // EffectStore has already culled using actual blur/spread bounds;
+            // those can extend well beyond the owner's layout rectangle.
+            if (!offscreen || command.kind == graphics::SceneDrawKind::rounded_effect) {
+                destination.append_command(command);
+            }
+        }
+    }
+    return stats;
+}
+
 const graphics::OrderedScene&
 ComponentSceneComposer::ordered_scene() const noexcept {
     return ordered_scene_;

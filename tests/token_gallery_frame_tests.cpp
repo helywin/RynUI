@@ -425,6 +425,17 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto& root_node = fixture.nodes.require(root);
     require(root_node.bounds.height > clip.height,
             "Token Gallery document was truncated to the window height");
+    ryn::graphics::OrderedScene visible_scene;
+    const auto source_commands = fixture.host->scene_composer()
+        .ordered_scene().commands().size();
+    const auto top_visibility = fixture.host->scene_composer()
+        .build_visible_scene(fixture.nodes, clip, visible_scene);
+    require(top_visibility.fragments_visible > 0
+                && top_visibility.fragments_visible
+                    < top_visibility.fragments_considered
+                && !visible_scene.commands().empty()
+                && visible_scene.commands().size() < source_commands,
+            "Gallery initial viewport still drew offscreen document fragments");
 
     constexpr std::array<std::size_t, 6> section_surface_indices{
         0, 5, 6, 11, 51, 124};
@@ -444,11 +455,44 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto mounted_before = fixture.host->components().mount_runs();
     const auto component_count = fixture.host->components().component_count();
     const auto content_runs = definition.telemetry().content_runs;
+    std::uint64_t text_rebuilds_before_scroll = 0;
+    std::uint64_t text_geometry_before_scroll = 0;
+    std::uint64_t text_geometry_rebuilds_before_scroll = 0;
+    for (const auto& text : fixture.host->text().mounted_texts()) {
+        const auto& counters = fixture.text_scene.record_counters(text.scene);
+        text_rebuilds_before_scroll += counters.instance_rebuilds;
+        text_geometry_before_scroll += counters.geometry_updates;
+        text_geometry_rebuilds_before_scroll += counters.geometry_rebuilds;
+    }
     require(document.apply_subtree_translation(
                 root, fixture.nodes, fixture.dirty)
                 && fixture.host->layout_and_synchronize(
                     viewport, clip, origin, 0.0F, true),
             "Token Gallery live-sample scroll synchronization failed");
+    const auto bottom_visibility = fixture.host->scene_composer()
+        .build_visible_scene(fixture.nodes, clip, visible_scene);
+    require(bottom_visibility.fragments_visible > 0
+                && bottom_visibility.fragments_visible
+                    < bottom_visibility.fragments_considered
+                && !visible_scene.commands().empty(),
+            "Gallery scroll failed to cull offscreen fragments");
+    std::uint64_t text_rebuilds_after_scroll = 0;
+    std::uint64_t text_geometry_after_scroll = 0;
+    std::uint64_t text_geometry_rebuilds_after_scroll = 0;
+    std::uint64_t text_geometry_patches_after_scroll = 0;
+    for (const auto& text : fixture.host->text().mounted_texts()) {
+        const auto& counters = fixture.text_scene.record_counters(text.scene);
+        text_rebuilds_after_scroll += counters.instance_rebuilds;
+        text_geometry_after_scroll += counters.geometry_updates;
+        text_geometry_rebuilds_after_scroll += counters.geometry_rebuilds;
+        text_geometry_patches_after_scroll += counters.geometry_patches;
+    }
+    require(text_rebuilds_after_scroll == text_rebuilds_before_scroll
+                && text_geometry_after_scroll > text_geometry_before_scroll
+                && text_geometry_rebuilds_after_scroll
+                    == text_geometry_rebuilds_before_scroll
+                && text_geometry_patches_after_scroll > 0,
+            "Gallery scroll rebuilt glyph instances instead of patching translation");
 
     const auto live_button = fixture.host->mounted_buttons()[
         definition.navigation_control_count];

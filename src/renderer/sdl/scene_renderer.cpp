@@ -213,6 +213,7 @@ SdlSceneRenderer::SdlSceneRenderer(
 }
 
 SdlSceneRenderer::~SdlSceneRenderer() {
+    cancel_buffer_upload_batch();
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
     if (effect_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(
@@ -614,6 +615,61 @@ const SceneRendererCounters& SdlSceneRenderer::counters() const noexcept {
     return counters_;
 }
 
+bool SdlSceneRenderer::begin_buffer_upload_batch() {
+    if (!platform_->is_owner_thread() || upload_batch_active_) {
+        last_error_ = "Buffer upload batch violates owner or state contract";
+        return false;
+    }
+    upload_batch_active_ = true;
+    return true;
+}
+
+bool SdlSceneRenderer::finish_buffer_upload_batch() {
+    if (!platform_->is_owner_thread() || !upload_batch_active_) {
+        last_error_ = "Buffer upload batch finish violates owner or state contract";
+        return false;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    if (upload_pass_ != nullptr) {
+        SDL_EndGPUCopyPass(static_cast<SDL_GPUCopyPass*>(upload_pass_));
+        upload_pass_ = nullptr;
+    }
+    bool submitted = true;
+    if (upload_command_ != nullptr) {
+        submitted = SDL_SubmitGPUCommandBuffer(
+            static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+        if (submitted) {
+            ++counters_.upload_submissions;
+        } else {
+            last_error_ = sdl_error("Failed to submit buffer upload batch");
+        }
+        upload_command_ = nullptr;
+    }
+    for (void* transfer : upload_transfers_) {
+        SDL_ReleaseGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(transfer));
+    }
+    upload_transfers_.clear();
+    upload_batch_active_ = false;
+    return submitted;
+}
+
+void SdlSceneRenderer::cancel_buffer_upload_batch() noexcept {
+    if (upload_pass_ != nullptr) {
+        SDL_EndGPUCopyPass(static_cast<SDL_GPUCopyPass*>(upload_pass_));
+        upload_pass_ = nullptr;
+    }
+    if (upload_command_ != nullptr) {
+        SDL_CancelGPUCommandBuffer(static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+        upload_command_ = nullptr;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    for (void* transfer : upload_transfers_) {
+        SDL_ReleaseGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(transfer));
+    }
+    upload_transfers_.clear();
+    upload_batch_active_ = false;
+}
+
 bool SdlSceneRenderer::upload_buffer(
     void* buffer,
     std::size_t offset,
@@ -644,6 +700,40 @@ bool SdlSceneRenderer::upload_buffer(
     }
     std::memcpy(mapped, bytes.data(), bytes.size());
     SDL_UnmapGPUTransferBuffer(device, transfer);
+    if (upload_batch_active_) {
+        if (upload_command_ == nullptr) {
+            upload_command_ = SDL_AcquireGPUCommandBuffer(device);
+            if (upload_command_ == nullptr) {
+                last_error_ = sdl_error("Failed to acquire buffer upload batch command buffer");
+                SDL_ReleaseGPUTransferBuffer(device, transfer);
+                return false;
+            }
+            upload_pass_ = SDL_BeginGPUCopyPass(
+                static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+            if (upload_pass_ == nullptr) {
+                last_error_ = sdl_error("Failed to begin buffer upload batch copy pass");
+                SDL_ReleaseGPUTransferBuffer(device, transfer);
+                cancel_buffer_upload_batch();
+                return false;
+            }
+        }
+        try {
+            upload_transfers_.push_back(transfer);
+        } catch (...) {
+            SDL_ReleaseGPUTransferBuffer(device, transfer);
+            throw;
+        }
+        const SDL_GPUTransferBufferLocation source{transfer, 0};
+        const SDL_GPUBufferRegion destination{
+            static_cast<SDL_GPUBuffer*>(buffer),
+            static_cast<Uint32>(offset),
+            static_cast<Uint32>(bytes.size()),
+        };
+        SDL_UploadToGPUBuffer(
+            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        counters_.uploaded_bytes += bytes.size();
+        return true;
+    }
     auto* command = SDL_AcquireGPUCommandBuffer(device);
     if (command == nullptr) {
         last_error_ = sdl_error("Failed to acquire buffer upload command buffer");

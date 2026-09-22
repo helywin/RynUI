@@ -246,11 +246,25 @@ bool TextComponentHost::layout_and_synchronize(
         }
         const auto node = components_.root(mounted.component);
         const auto& retained = nodes_->require(node);
+        constexpr float visual_overflow = 32.0F;
+        const float left = retained.bounds.x + retained.translation.x;
+        const float top = retained.bounds.y + retained.translation.y;
+        if (!needs_layout
+                && (retained.bounds.width <= 0.0F
+                    || retained.bounds.height <= 0.0F
+                    || left >= clip.x + clip.width + visual_overflow
+                    || left + retained.bounds.width <= clip.x - visual_overflow
+                    || top >= clip.y + clip.height + visual_overflow
+                    || top + retained.bounds.height <= clip.y - visual_overflow)) {
+            continue;
+        }
+        const auto phase_residual = text_scene_->set_phase_preserving_scroll_translation(
+            mounted.scene, retained.translation);
         if (!text_scene_->synchronize(mounted.scene, {
                 {retained.bounds.x, retained.bounds.y},
                 viewport,
                 clip,
-                retained.translation,
+                phase_residual,
                 {},
                 1.0F,
             })) {
