@@ -36,7 +36,7 @@
 
 ## 7. Windows 专属验收
 
-- [ ] 7.1 用 `windows-msvc` 正式 preset 完成受影响 Debug/Release build 与平台 CTest，核对 Ninja Multi-Config、MSVC x64、Win32/D3D12/DXIL 与系统字体，保存独立 Windows 构建证据
+- [x] 7.1 用 `windows-msvc` 正式 preset 完成受影响 Debug/Release build 与平台 CTest，核对 Ninja Multi-Config、MSVC x64、Win32/D3D12/DXIL 与系统字体，保存独立 Windows 构建证据
 - [ ] 7.2 在 Windows 真实窗口按差异账本核对 Button/Input/Gallery 的受影响状态，以及系统 display scale 和 1.0/1.25/1.5/2.0 acceptance scale 的视觉与操作；保存截图、driver、font、scale、exit code 和 diagnostics，旧版截图不得替代新版
 - [ ] 7.3 运行 Windows 6.6.5 passed evidence contract、受影响平台测试、shader/lock/license/cache、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows Ant Design 6.6.5` 提交，不修改 Linux 清单且不主动 push
 
