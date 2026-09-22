@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-UPSTREAM_VERSION = "6.5.0"
-UPSTREAM_COMMIT = "740ad964dc2397f33e40944367b0536a7314cc32"
+UPSTREAM_VERSION = "6.6.5"
+UPSTREAM_COMMIT = "4a39f54842eade4e565ab336ef6097cd7e723cdd"
 EXPECTED_CATEGORY_ORDER = (
     "General",
     "Layout",
@@ -24,7 +24,7 @@ EXPECTED_CATEGORY_ORDER = (
     "Feedback",
     "Other",
 )
-EXPECTED_CATEGORY_COUNTS = (4, 7, 7, 18, 20, 11, 5)
+EXPECTED_CATEGORY_COUNTS = (4, 7, 7, 18, 21, 11, 5)
 EXPECTED_DOCUMENT_SOURCES = {
     "ant.document.introduction": "docs/spec/introduce.en-US.md",
     "ant.document.design-values": "docs/spec/values.en-US.md",
@@ -126,7 +126,7 @@ def validate_manifest(manifest_value: object) -> list[dict[str, object]]:
         raise ValueError("source manifest schema version must be 1")
     upstream = require_mapping(manifest["upstream"], "source manifest upstream")
     if upstream.get("version") != UPSTREAM_VERSION or upstream.get("tag") != UPSTREAM_VERSION:
-        raise ValueError("source manifest is not locked to Ant Design 6.5.0")
+        raise ValueError(f"source manifest is not locked to Ant Design {UPSTREAM_VERSION}")
     if upstream.get("commit") != UPSTREAM_COMMIT:
         raise ValueError("source manifest commit differs from the approved snapshot")
     if upstream.get("repository") != "https://github.com/ant-design/ant-design":
@@ -194,7 +194,7 @@ def validate_manifest(manifest_value: object) -> list[dict[str, object]]:
             if not re.fullmatch(r"ant\.component\.[a-z0-9-]+", identity):
                 raise ValueError(f"invalid stable component identity: {identity}")
             if not source_path.startswith("components/") or not source_path.endswith("/index.en-US.md"):
-                raise ValueError(f"invalid Ant Design 6.5.0 component source path: {source_path}")
+                raise ValueError(f"invalid Ant Design {UPSTREAM_VERSION} component source path: {source_path}")
             if chinese_source_path != source_path.removesuffix("index.en-US.md") + "index.zh-CN.md":
                 raise ValueError(f"Chinese source path differs from English source path: {identity}")
             if entry["order"] != entry_index:
@@ -204,8 +204,8 @@ def validate_manifest(manifest_value: object) -> list[dict[str, object]]:
             identities.add(identity)
             english_names.add(english_name)
             flattened.append({**entry, "category": expected_name})
-    if len(flattened) != 72:
-        raise ValueError("Gallery source manifest must contain exactly 72 components")
+    if len(flattened) != 73:
+        raise ValueError("Gallery source manifest must contain exactly 73 components")
     return flattened
 
 
@@ -224,8 +224,8 @@ def validate_overlay(
     if overlay["upstream_version"] != UPSTREAM_VERSION or overlay["upstream_commit"] != UPSTREAM_COMMIT:
         raise ValueError("support overlay does not match the locked Ant Design snapshot")
     overlay_entries = require_list(overlay["entries"], "support overlay entries")
-    if len(overlay_entries) != 72:
-        raise ValueError("support overlay must contain exactly 72 entries")
+    if len(overlay_entries) != 73:
+        raise ValueError("support overlay must contain exactly 73 entries")
 
     source_identities = [str(entry["identity"]) for entry in source_entries]
     result: dict[str, dict[str, object]] = {}
@@ -348,7 +348,7 @@ def render_metadata(
             f"{cpp_string(category['chinese_name'])}, {category['order']}, {category['expected_count']}"
             "},"
         )
-    lines.extend(("}};", "constexpr std::array<AntDesignReferenceEntry, 72> kAntDesignReferenceEntries{{"))
+    lines.extend(("}};", "constexpr std::array<AntDesignReferenceEntry, 73> kAntDesignReferenceEntries{{"))
     for entry in source_entries:
         status = overlay[str(entry["identity"])]
         lines.append(

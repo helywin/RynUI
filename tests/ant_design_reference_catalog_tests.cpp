@@ -26,10 +26,10 @@ constexpr std::size_t category_index(AntDesignGalleryCategory category) {
 
 void test_snapshot_identity() {
     using namespace rynui::example;
-    require(ant_design_reference_version() == "6.5.0",
+    require(ant_design_reference_version() == "6.6.5",
             "Gallery catalog version drifted");
     require(ant_design_reference_commit()
-                == "740ad964dc2397f33e40944367b0536a7314cc32",
+                == "4a39f54842eade4e565ab336ef6097cd7e723cdd",
             "Gallery catalog commit drifted");
     const auto hash = ant_design_reference_catalog_hash();
     require(hash.size() == 64
@@ -61,13 +61,13 @@ void test_document_sources() {
 
 void test_categories_and_entries() {
     using namespace rynui::example;
-    constexpr std::array<std::size_t, 7> expected_counts{4, 7, 7, 18, 20, 11, 5};
+    constexpr std::array<std::size_t, 7> expected_counts{4, 7, 7, 18, 21, 11, 5};
     constexpr std::array<std::string_view, 7> expected_names{
         "General", "Layout", "Navigation", "Data Entry",
         "Data Display", "Feedback", "Other"};
     const auto categories = ant_design_reference_categories();
     const auto entries = ant_design_reference_entries();
-    require(categories.size() == 7 && entries.size() == 72,
+    require(categories.size() == 7 && entries.size() == 73,
             "Gallery category or component count drifted");
     std::array<std::size_t, 7> actual_counts{};
     std::unordered_set<std::string_view> identities;
@@ -97,6 +97,12 @@ void test_categories_and_entries() {
             "Gallery per-category component counts drifted");
     require(find_ant_design_reference_entry("ant.component.not-real") == nullptr,
             "unknown Gallery component lookup did not fail closed");
+    const auto* list = find_ant_design_reference_entry("ant.component.list");
+    const auto* listy = find_ant_design_reference_entry("ant.component.listy");
+    require(list != nullptr && list->support_status == GallerySupportStatus::deprecated
+                && listy != nullptr && listy->category == AntDesignGalleryCategory::data_display
+                && listy->support_status == GallerySupportStatus::planned,
+            "6.6.5 List/Listy reference status drifted");
 }
 
 void require_partial(std::string_view identity) {

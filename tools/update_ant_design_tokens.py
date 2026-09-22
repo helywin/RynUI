@@ -16,10 +16,10 @@ from typing import Iterable
 
 
 UPSTREAM_NAME = "Ant Design"
-UPSTREAM_VERSION = "6.5.0"
-UPSTREAM_TAG = "6.5.0"
-UPSTREAM_COMMIT = "740ad964dc2397f33e40944367b0536a7314cc32"
-EXPECTED_SOURCE_SET_SHA256 = "08bc2917bb7fe1b809756f1eabf1b9841a1478373437037ebe52b7a6a9431ef6"
+UPSTREAM_VERSION = "6.6.5"
+UPSTREAM_TAG = "6.6.5"
+UPSTREAM_COMMIT = "4a39f54842eade4e565ab336ef6097cd7e723cdd"
+EXPECTED_SOURCE_SET_SHA256 = "cf9f304e57d439c3344fc7462fcd01f61f4bfc39cc337006d26312fa8001a2b3"
 PRESET_COLORS = (
     "blue", "purple", "cyan", "green", "magenta", "pink", "red",
     "orange", "yellow", "volcano", "geekblue", "lime", "gold",
@@ -83,7 +83,7 @@ SEED_DEFAULTS = {
     "motionEaseOutQuint": "cubic-bezier(0.23, 1, 0.32, 1)",
     "borderRadius": 6, "sizeUnit": 4, "sizeStep": 4, "sizePopupArrow": 16,
     "controlHeight": 32, "zIndexBase": 0, "zIndexPopupBase": 1000,
-    "opacityImage": 1, "wireframe": False, "motion": True,
+    "opacityImage": 1, "wireframe": False, "focusOutline": True, "motion": True,
 }
 CATALOG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -570,7 +570,7 @@ def render_document(catalog: dict[str, object], catalog_hash: str) -> str:
     coverage = catalog["coverage"]
     entries = catalog["entries"]
     lines = [
-        "# RynUI Ant Design 6.5.0 Design Token 规范", "",
+        f"# RynUI Ant Design {UPSTREAM_VERSION} Design Token 规范", "",
         "> 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。", "",
         f"- 上游：Ant Design `{UPSTREAM_VERSION}` / `{UPSTREAM_COMMIT}`",
         f"- Catalog SHA256：`{catalog_hash}`",
@@ -689,7 +689,7 @@ def build_outputs(source_root: Path) -> tuple[bytes, bytes, bytes, bytes, bytes]
 
 
 def output_paths(repo_root: Path) -> tuple[Path, Path, Path, Path, Path]:
-    token_root = repo_root / "design-tokens/ant-design/6.5.0"
+    token_root = repo_root / f"design-tokens/ant-design/{UPSTREAM_VERSION}"
     return (
         token_root / "sources.lock.yaml",
         token_root / "catalog.yaml",

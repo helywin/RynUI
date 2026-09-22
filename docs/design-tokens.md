@@ -1,10 +1,10 @@
-# RynUI Ant Design 6.5.0 Design Token 规范
+# RynUI Ant Design 6.6.5 Design Token 规范
 
 > 此文件由 `tools/update_ant_design_tokens.py` 生成。请勿手工修改。
 
-- 上游：Ant Design `6.5.0` / `740ad964dc2397f33e40944367b0536a7314cc32`
-- Catalog SHA256：`f78765ca3364a03b23cc793e42c4205c541167b03c23a46305be4352a380434c`
-- Token 总数：`1194`；missing/duplicate/unclassified 均为 `0`。
+- 上游：Ant Design `6.6.5` / `4a39f54842eade4e565ab336ef6097cd7e723cdd`
+- Catalog SHA256：`b7bc500da659b9577b3ed63c336a1b6cac30ac647750b4a830df1b5e6db0d731`
+- Token 总数：`1198`；missing/duplicate/unclassified 均为 `0`。
 
 ## 使用规则
 
@@ -17,19 +17,19 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | Layer | Count |
 | --- | ---: |
 | `alias` | 93 |
-| `component` | 676 |
+| `component` | 679 |
 | `map` | 379 |
-| `seed` | 46 |
+| `seed` | 47 |
 
 ## 分类摘要
 
 | Support | Count |
 | --- | ---: |
-| `component-not-yet-implemented` | 550 |
+| `component-not-yet-implemented` | 552 |
 | `deprecated` | 172 |
-| `metadata` | 313 |
+| `metadata` | 314 |
 | `runtime` | 118 |
-| `web-only` | 41 |
+| `web-only` | 42 |
 
 ## Token 索引
 
@@ -129,9 +129,10 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.alias.screenXXXL` | `breakpoint` | `logical-length` | `metadata` | `components/theme/interface/alias.ts:609` |
 | `ant.alias.screenXXXLMin` | `breakpoint` | `logical-length` | `metadata` | `components/theme/interface/alias.ts:616` |
 | `ant.component.Affix.zIndexPopup` | `z-index` | `integer` | `component-not-yet-implemented` | `components/affix/style/index.ts:11` |
-| `ant.component.Alert.defaultPadding` | `spacing` | `web-css-value` | `web-only` | `components/alert/style/index.ts:15` |
-| `ant.component.Alert.withDescriptionIconSize` | `size` | `logical-length` | `component-not-yet-implemented` | `components/alert/style/index.ts:25` |
-| `ant.component.Alert.withDescriptionPadding` | `spacing` | `web-css-value` | `web-only` | `components/alert/style/index.ts:20` |
+| `ant.component.Alert.borderRadius` | `radius` | `web-css-value` | `web-only` | `components/alert/style/index.ts:16` |
+| `ant.component.Alert.defaultPadding` | `spacing` | `web-css-value` | `web-only` | `components/alert/style/index.ts:21` |
+| `ant.component.Alert.withDescriptionIconSize` | `size` | `logical-length` | `component-not-yet-implemented` | `components/alert/style/index.ts:31` |
+| `ant.component.Alert.withDescriptionPadding` | `spacing` | `web-css-value` | `web-only` | `components/alert/style/index.ts:26` |
 | `ant.component.Anchor.linkPaddingBlock` | `spacing` | `logical-length` | `component-not-yet-implemented` | `components/anchor/style/index.ts:13` |
 | `ant.component.Anchor.linkPaddingInlineStart` | `spacing` | `logical-length` | `component-not-yet-implemented` | `components/anchor/style/index.ts:18` |
 | `ant.component.Avatar.containerSize` | `size` | `logical-length` | `component-not-yet-implemented` | `components/avatar/style/index.ts:14` |
@@ -410,6 +411,8 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.component.List.itemPaddingSM` | `spacing` | `string` | `component-not-yet-implemented` | `components/list/style/index.ts:24` |
 | `ant.component.List.metaMarginBottom` | `spacing` | `web-css-value` | `web-only` | `components/list/style/index.ts:49` |
 | `ant.component.List.titleMarginBottom` | `spacing` | `web-css-value` | `web-only` | `components/list/style/index.ts:59` |
+| `ant.component.Listy.itemPaddingBlock` | `spacing` | `logical-length` | `component-not-yet-implemented` | `components/listy/style/index.ts:15` |
+| `ant.component.Listy.itemPaddingInline` | `spacing` | `logical-length` | `component-not-yet-implemented` | `components/listy/style/index.ts:22` |
 | `ant.component.Mentions.activeBg` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:74` |
 | `ant.component.Mentions.activeBorderColor` | `color` | `color` | `component-not-yet-implemented` | `components/input/style/token.ts:49` |
 | `ant.component.Mentions.activeShadow` | `shadow` | `shadow-list` | `component-not-yet-implemented` | `components/input/style/token.ts:54` |
@@ -1195,6 +1198,7 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.seed.colorWarning` | `color` | `color` | `runtime` | `components/theme/interface/seeds.ts:33` |
 | `ant.seed.controlHeight` | `size` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:164` |
 | `ant.seed.cyan` | `misc` | `string` | `metadata` | `components/theme/interface/presetColors.ts:1` |
+| `ant.seed.focusOutline` | `border` | `boolean` | `metadata` | `components/theme/interface/seeds.ts:283` |
 | `ant.seed.fontFamily` | `typography` | `string` | `runtime` | `components/theme/interface/seeds.ts:83` |
 | `ant.seed.fontFamilyCode` | `typography` | `string` | `runtime` | `components/theme/interface/seeds.ts:91` |
 | `ant.seed.fontSize` | `typography` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:100` |
@@ -1205,7 +1209,7 @@ Upstream value、normalized typed value 与 RynUI desktop adaptation 必须分�
 | `ant.seed.lineType` | `border` | `string` | `runtime` | `components/theme/interface/seeds.ts:118` |
 | `ant.seed.lineWidth` | `border` | `logical-length` | `runtime` | `components/theme/interface/seeds.ts:110` |
 | `ant.seed.magenta` | `misc` | `string` | `metadata` | `components/theme/interface/presetColors.ts:1` |
-| `ant.seed.motion` | `motion` | `boolean` | `runtime` | `components/theme/interface/seeds.ts:283` |
+| `ant.seed.motion` | `motion` | `boolean` | `runtime` | `components/theme/interface/seeds.ts:292` |
 | `ant.seed.motionBase` | `motion` | `duration` | `runtime` | `components/theme/interface/seeds.ts:215` |
 | `ant.seed.motionEaseInBack` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:245` |
 | `ant.seed.motionEaseInOut` | `motion` | `cubic-bezier` | `runtime` | `components/theme/interface/seeds.ts:233` |

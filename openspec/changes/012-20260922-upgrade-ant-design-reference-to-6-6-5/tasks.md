@@ -8,9 +8,9 @@
 
 ## 2. 离线参考数据与生成器
 
-- [ ] 2.1 并列建立 `gallery/ant-design/6.6.5/` manifest 与 support overlay，按新来源重算分类、identity、source path、条目数和状态；以 schema/order/duplicate/source-version/hash 测试验证，保留旧目录不改写
-- [ ] 2.2 并列建立 `design-tokens/ant-design/6.6.5/` catalog、source lock 与 golden，按差异账本更新生成器和 checked-in metadata；以 schema、count、Token identity、source SHA、`python -B ... --check` 及无 cache contract 验证
-- [ ] 2.3 增加当前生效 Gallery/Token/生成物跨版本一致性 gate，混用 6.5.0/6.6.5 必须失败；在一个受支持正式 preset 运行生成器与相关 CTest、`git diff --check`，以英文 `feat: update Ant Design offline reference data` 提交，不主动 push
+- [x] 2.1 并列建立 `gallery/ant-design/6.6.5/` manifest 与 support overlay，按新来源重算分类、identity、source path、条目数和状态；以 schema/order/duplicate/source-version/hash 测试验证，保留旧目录不改写
+- [x] 2.2 并列建立 `design-tokens/ant-design/6.6.5/` catalog、source lock 与 golden，按差异账本更新生成器和 checked-in metadata；以 schema、count、Token identity、source SHA、`python -B ... --check` 及无 cache contract 验证
+- [x] 2.3 增加当前生效 Gallery/Token/生成物跨版本一致性 gate，混用 6.5.0/6.6.5 必须失败；在一个受支持正式 preset 运行生成器与相关 CTest、`git diff --check`，以英文 `feat: update Ant Design offline reference data` 提交，不主动 push
 
 ## 3. Theme 与既有组件迁移
 
