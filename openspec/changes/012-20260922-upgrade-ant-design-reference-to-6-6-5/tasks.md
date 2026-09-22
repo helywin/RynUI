@@ -2,9 +2,9 @@
 
 ## 1. 官方来源与差异账本
 
-- [ ] 1.1 核实 Ant Design 6.6.5 正式 tag、完整 commit、MIT license 和所需文件 SHA256；保存离线来源清单，并以 tag/commit/hash/duplicate/missing-source contract 验证，不以浮动 `latest` 作为构建输入
-- [ ] 1.2 对照 6.5.0 与 6.6.5 的目录、分类、Token identity/default/derivation、Button/Input API 与状态视觉，记录新增/移除/改变/等价及来源；以差异账本覆盖率和人工 source review 验证，不预设旧 72/1194 计数仍成立
-- [ ] 1.3 在一个受支持平台记录实际 OS/compiler/preset，运行来源与差异 contract、`git diff --check`；以英文 `test: audit Ant Design 6.6.5 sources` 提交本阶段，不主动 push
+- [x] 1.1 核实 Ant Design 6.6.5 正式 tag、完整 commit、MIT license 和所需文件 SHA256；保存离线来源清单，并以 tag/commit/hash/duplicate/missing-source contract 验证，不以浮动 `latest` 作为构建输入
+- [x] 1.2 对照 6.5.0 与 6.6.5 的目录、分类、Token identity/default/derivation、Button/Input API 与状态视觉，记录新增/移除/改变/等价及来源；以差异账本覆盖率和人工 source review 验证，不预设旧 72/1194 计数仍成立
+- [x] 1.3 在一个受支持平台记录实际 OS/compiler/preset，运行来源与差异 contract、`git diff --check`；以英文 `test: audit Ant Design 6.6.5 sources` 提交本阶段，不主动 push
 
 ## 2. 离线参考数据与生成器
 
