@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rynui://ant-design/6.6.5/passed-evidence.schema.json",
+  "title": "RynUI Ant Design 6.6.5 platform acceptance evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "release", "inventory", "regressions", "environment"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "passed"},
+    "release": {
+      "type": "object",
+      "required": ["version", "tag", "commit", "license", "source_set_sha256", "source_diff_sha256"],
+      "properties": {
+        "version": {"const": "6.6.5"},
+        "tag": {"const": "6.6.5"},
+        "commit": {"const": "4a39f54842eade4e565ab336ef6097cd7e723cdd"},
+        "license": {"const": "MIT"},
+        "source_set_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_diff_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "required": ["categories", "components", "tokens", "gallery_sha256", "token_catalog_sha256"],
+      "properties": {
+        "categories": {"const": 7},
+        "components": {"const": 73},
+        "tokens": {"const": 1198},
+        "gallery_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "token_catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "regressions": {
+      "type": "object",
+      "required": ["button", "input", "theme", "gallery", "generators", "benchmark", "dependencies"],
+      "properties": {
+        "button": {"const": "passed"},
+        "input": {"const": "passed"},
+        "theme": {"const": "passed"},
+        "gallery": {"const": "passed"},
+        "generators": {"const": "passed"},
+        "benchmark": {"const": "passed"},
+        "dependencies": {"const": "passed"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["platform", "preset", "compiler", "window_system", "gpu_driver", "shader_backend", "system_font", "display_scale", "screenshots", "diagnostics", "exit_code"],
+      "properties": {
+        "platform": {"enum": ["windows", "linux"]},
+        "preset": {"type": "string", "minLength": 1},
+        "compiler": {"type": "string", "minLength": 1},
+        "window_system": {"type": "string", "minLength": 1},
+        "gpu_driver": {"type": "string", "minLength": 1},
+        "shader_backend": {"type": "string", "minLength": 1},
+        "system_font": {"type": "string", "minLength": 1},
+        "display_scale": {"type": "number", "exclusiveMinimum": 0},
+        "screenshots": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "diagnostics": {"type": "string", "minLength": 1},
+        "exit_code": {"const": 0}
+      }
+    }
+  }
+}

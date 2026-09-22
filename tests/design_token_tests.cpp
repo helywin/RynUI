@@ -126,7 +126,7 @@ void test_shadow_normalization() {
 
 void test_generated_metadata() {
     const auto entries = ryn::ant_design_token_metadata();
-    require(entries.size() == 1194, "generated metadata does not cover the catalog");
+    require(entries.size() == 1198, "generated metadata does not cover the catalog");
     std::unordered_set<std::uint64_t> stable_ids;
     std::string_view previous;
     for (const auto& entry : entries) {
@@ -143,6 +143,8 @@ void test_generated_metadata() {
     const auto* error_active = ryn::find_ant_design_token("ant.map.colorErrorActive");
     const auto* web = ryn::find_ant_design_token("ant.alias.linkDecoration");
     const auto* future = ryn::find_ant_design_token("ant.component.Affix.zIndexPopup");
+    const auto* focus_outline = ryn::find_ant_design_token("ant.seed.focusOutline");
+    const auto* listy = ryn::find_ant_design_token("ant.component.Listy.itemPaddingBlock");
     for(const auto name : {"paddingInline", "paddingInlineSM", "paddingInlineLG", "paddingBlock",
         "paddingBlockSM", "paddingBlockLG", "inputFontSize", "inputFontSizeSM", "inputFontSizeLG"}) {
         const auto* input = ryn::find_ant_design_token(std::string("ant.component.Input.") + name);
@@ -173,6 +175,14 @@ void test_generated_metadata() {
                     == ryn::TokenSupportStatus::component_not_yet_implemented
                 && future->component_owner == "Affix",
             "unsupported component metadata is not queryable");
+    require(focus_outline != nullptr
+                && focus_outline->support == ryn::TokenSupportStatus::runtime
+                && focus_outline->value_kind == ryn::TokenValueKind::boolean,
+            "6.6.5 focusOutline seed is missing typed runtime metadata");
+    require(listy != nullptr
+                && listy->support == ryn::TokenSupportStatus::component_not_yet_implemented
+                && listy->component_owner == "Listy",
+            "6.6.5 Listy token was incorrectly presented as implemented");
     require(ryn::find_ant_design_token("ant.alias.doesNotExist") == nullptr,
             "unknown token metadata query did not fail closed");
 }

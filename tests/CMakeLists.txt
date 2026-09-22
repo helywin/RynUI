@@ -212,6 +212,15 @@ add_test(
 )
 
 add_test(
+    NAME rynui.ant_design_665_evidence_contract
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
+        "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/verify_ant_design_665_evidence.py"
+        --repo-root "${PROJECT_SOURCE_DIR}"
+        --self-test
+)
+
+add_test(
     NAME rynui.ant_design_gallery_catalog_generator
     COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
         "${Python3_EXECUTABLE}" -B

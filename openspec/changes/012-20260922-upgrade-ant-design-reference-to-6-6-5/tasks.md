@@ -30,9 +30,9 @@
 
 ## 6. 平台通用集成验收
 
-- [ ] 6.1 增加 6.6.5 passed evidence schema，要求完整 release/source identity、目录/Token counts/hash、差异账本、组件/Gallery 回归、preset/compiler/platform/driver/shader/font 与截图路径，并拒绝旧版或 planning-only 结果；以正反 fixture 测试验证
-- [ ] 6.2 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime、生成器和 Python cache 检查，记录实际平台与结果；不要求另一平台重复平台通用合同
-- [ ] 6.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；以英文 `test: validate Ant Design 6.6.5 baseline` 提交平台通用 evidence，不主动 push
+- [x] 6.1 增加 6.6.5 passed evidence schema，要求完整 release/source identity、目录/Token counts/hash、差异账本、组件/Gallery 回归、preset/compiler/platform/driver/shader/font 与截图路径，并拒绝旧版或 planning-only 结果；以正反 fixture 测试验证
+- [x] 6.2 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime、生成器和 Python cache 检查，记录实际平台与结果；不要求另一平台重复平台通用合同
+- [x] 6.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；以英文 `test: validate Ant Design 6.6.5 baseline` 提交平台通用 evidence，不主动 push
 
 ## 7. Windows 专属验收
 

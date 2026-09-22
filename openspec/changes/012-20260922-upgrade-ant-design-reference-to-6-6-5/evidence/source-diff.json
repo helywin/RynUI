@@ -11989,7 +11989,7 @@
       "source_650": null,
       "source_665": "components/theme/interface/seeds.ts",
       "default_650": null,
-      "default_665": null
+      "default_665": true
     },
     {
       "identity": "ant.seed.fontFamily",
