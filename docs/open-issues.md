@@ -18,6 +18,7 @@
 | `WINDOWS-DWRITE-RASTER-003` | `pending` | Windows 字形 coverage 尚未完成实际 DirectWrite grayscale raster path 与多 scale 复验 | 7.5 | 当前 FreeType 路径不能冒充 DirectWrite 验收 |
 | `CHANGE-CLOSEOUT-004` | `blocked` | Change 尚不能最终收口 | 8.1 | 等待所有独立平台任务完成 |
 | `GALLERY-SCROLL-PERF-005` | `open` | 长文档滚动尚未稳定满足 240 Hz 帧预算 | Token Gallery / change 008 | 保留当前可见场景裁剪与 glyph 缓存；后续独立评估可见区域更新方案 |
+| `GALLERY-FOUNDATION-SWATCH-006` | `open` | Foundation 色块遮挡 Token 标识文字 | Token Gallery / change 008 Windows 7.3 | 暂无；对应视觉验收不得标记通过 |
 
 ## LINUX-WAYLAND-RESIZE-001
 
@@ -62,6 +63,13 @@
 - 已排除的局部尝试：单独跳过屏幕外 ReferenceSurface 几何更新会打散 Quad 上传；HitTest dirty 节点哈希索引在该场景也没有稳定收益。实验改动已撤回。
 - 后续方向：在独立设计评审中评估保留 retained component identity 的可见区域同步、子树滚动变换与 GPU/HitTest 更新边界；现有 change 008 的设计明确暂不引入 virtualization，未经修改设计不得把它当作当前任务实施。
 - 关闭条件：先锁定可重复的真实滚轮与 240 Hz 显示器测量方法，再完成性能方案、自动回归和用户实机体验复核；不能仅凭自动滚动耗时宣称 240 Hz 已达标。
+
+## GALLERY-FOUNDATION-SWATCH-006
+
+- 状态：`open`（2026-09-22）。
+- 现象：Windows/MSVC/D3D12 实窗中，Foundation 色板左下角的彩色色块覆盖 `ant.map.colorPrimary` 等 Token 标识开头的文字；系统 display scale 1.5 与 acceptance render scale 1.0、1.25、1.5、2.0 均可复现。
+- 证据：[Windows Gallery 人工验收记录](../openspec/changes/008-20260829-build-ant-design-reference-gallery/evidence/windows-reference-gallery-manual-partial.md)及其中四档截图。该问题不推翻已通过的平台通用逻辑测试，但阻止 change 008 的 Windows 7.3 视觉验收通过。
+- 关闭条件：调整 swatch 与文字的布局间距或层级后，复测系统 scale 和四档 acceptance scale 的色板、CJK/Latin 可读性与截图，并完成对应 Windows 视觉验收。
 
 ## 维护规则
 
