@@ -267,7 +267,7 @@ Layout Engine 内部先实现 `BoxLayout` 和可切换 horizontal/vertical 的 `
 
 ## 9. Ant Design 组件、布局与样式基线
 
-RynUI 的原生 Design System 以 Ant Design 6 为初始基线，本文整理时对应参考版本为 `6.5.0`。后续升级参考版本必须通过独立 OpenSpec change 评估视觉、交互和兼容性影响，不能静默跟随上游变化。
+RynUI 的原生 Design System 以 Ant Design 6 为初始基线，当前参考版本为 `6.6.5`（升级审计见 change 012）。后续升级参考版本必须通过独立 OpenSpec change 评估视觉、交互和兼容性影响，不能静默跟随上游变化。
 
 ### 9.1 公开组件模型
 
@@ -319,7 +319,7 @@ Seed Token
 - Component Token 只覆盖具体组件，不允许复制一套脱离全局语义的颜色与间距常量。
 - 初始主题算法提供 Default、Dark 与 Compact；组件可以受控覆盖 Token，但默认继承全局算法。
 
-Ant Design 参考输入固定到 tag、commit、逐文件 SHA256 与 license，完整字段清单、支持分类和 source location 由生成器维护在 [Ant Design 6.5.0 Design Token 规范](design-tokens.md) 与 `design-tokens/ant-design/6.5.0/catalog.yaml`。架构文档只保存消费规则，不复制 1194 个 Token 条目；Runtime 不解析 CSS shorthand，也不接受任意 string key。
+Ant Design 参考输入固定到 tag、commit、逐文件 SHA256 与 license，完整字段清单、支持分类和 source location 由生成器维护在 [Ant Design 6.6.5 Design Token 规范](design-tokens.md) 与 `design-tokens/ant-design/6.6.5/catalog.yaml`。架构文档只保存消费规则，不复制 1198 个 Token 条目；Runtime 不解析 CSS shorthand，也不接受任意 string key。`6.5.0` 目录保留为历史快照，不是当前生成入口。
 
 公开 Token 值使用 `Color`、`LogicalLength`、`Duration`、`CubicBezier`、`BorderToken`、`ShadowList` 等强类型。Theme algorithm 按声明顺序从 immutable Seed 派生 Map 与 Alias，再应用 typed global/component override，结果收口为可序列化、带稳定 identity 的 immutable `ThemeSnapshot`。Nested Theme 默认继承父 scope，`inherit=false` 从 Default 基线重新解析；component algorithm 默认关闭，只有显式开启时才重新派生目标组件。
 
@@ -575,7 +575,7 @@ RynUI/
 | 公开组件 API | Typed Props + typed slots + reactive `Prop<T>` |
 | Compose 借鉴范围 | Slot composition、Constraints、phased invalidation；不使用通用 `Modifier` 作为组件 API |
 | 公开布局 | Ant Design `Flex` / `Space` / `Grid` / `Layout` 语义 |
-| 基础组件与样式 | Ant Design 6.5.0 初始设计基线 |
+| 基础组件与样式 | Ant Design 6.6.5 当前设计参考；6.5.0 为历史快照 |
 | Token 来源 | 固定 Ant Design tag/commit/hash/license；生成完整 catalog 与中文规范 |
 | 主题 | Immutable Seed / Map / Alias / Component Token `ThemeSnapshot` + Default / Dark / Compact |
 | Theme 更新 | 按 Token identity 与 invalidation domain 局部失效，不重跑无关 Component |

@@ -109,7 +109,7 @@ void test_steady_wheel_and_navigation_paths_reuse_capacity() {
     ryn::runtime::NodeStore nodes;
     ryn::runtime::DirtyQueues dirty(nodes, &frames);
     const auto root = nodes.create_root();
-    for (std::size_t index = 0; index < 72; ++index) {
+    for (std::size_t index = 0; index < 73; ++index) {
         static_cast<void>(nodes.create_child(root));
     }
 
@@ -132,8 +132,8 @@ void test_steady_wheel_and_navigation_paths_reuse_capacity() {
     for (std::size_t index = 0; index < wheel_iterations; ++index) {
         static_cast<void>(document.scroll_by(1.0F));
         static_cast<void>(document.apply_subtree_translation(root, nodes, dirty));
-        require(dirty.transform_nodes().size() == 73
-                    && dirty.hit_test_nodes().size() == 73
+        require(dirty.transform_nodes().size() == 74
+                    && dirty.hit_test_nodes().size() == 74
                     && dirty.layout_roots().empty()
                     && dirty.material_nodes().empty()
                     && dirty.text_nodes().empty()
@@ -166,7 +166,7 @@ void test_steady_wheel_and_navigation_paths_reuse_capacity() {
                 && document.diagnostics().translation_passes
                     == wheel_iterations + navigation_iterations + 1
                 && document.diagnostics().translated_nodes
-                    == (wheel_iterations + navigation_iterations + 1) * 73,
+                    == (wheel_iterations + navigation_iterations + 1) * 74,
             "Gallery document diagnostics lost steady-state work identity");
 }
 

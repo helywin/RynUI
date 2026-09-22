@@ -10,7 +10,7 @@ constexpr std::array sections{
         GalleryDocumentSectionKind::header_source,
         "gallery.document.header-source",
         "RynUI Ant Design Reference",
-        "RynUI 的离线实现参考，锁定 Ant Design 6.5.0 与对应源码提交。",
+        "RynUI 的离线实现参考，锁定 Ant Design 6.6.5 与对应源码提交。",
     },
     GalleryDocumentSection{
         GalleryDocumentSectionKind::introduction,
@@ -34,7 +34,7 @@ constexpr std::array sections{
         GalleryDocumentSectionKind::component_overview,
         "gallery.document.component-overview",
         "Component Overview / 组件总览",
-        "七类 72 项完整列出，并区分已支持子集、缺失范围与可定位证据。",
+        "七类 73 项完整列出，并区分已支持子集、缺失范围与可定位证据。",
     },
     GalleryDocumentSection{
         GalleryDocumentSectionKind::live_samples,

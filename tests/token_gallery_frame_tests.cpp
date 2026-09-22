@@ -438,7 +438,7 @@ void test_document_viewport_scrolls_long_content_without_remount() {
             "Gallery initial viewport still drew offscreen document fragments");
 
     constexpr std::array<std::size_t, 6> section_surface_indices{
-        0, 5, 6, 11, 51, 124};
+        0, 5, 6, 11, 51, 125};
     std::array<float, 6> anchors{};
     const auto surfaces = fixture.surfaces->mounted_surfaces();
     for (std::size_t index = 0; index < anchors.size(); ++index) {
@@ -601,7 +601,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     std::size_t visible = 0;
     std::size_t hidden = 0;
     const auto surfaces = fixture.surfaces->mounted_surfaces();
-    for (std::size_t index = 52; index < 124; ++index) {
+    for (std::size_t index = 52; index < 125; ++index) {
         const auto snapshot = fixture.surfaces->snapshot(surfaces[index].component);
         const auto& node = fixture.nodes.require(surfaces[index].node);
         if (snapshot.visible) {
@@ -614,7 +614,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                     "hidden Gallery filter entry retained layout extent");
         }
     }
-    require(visible == 6 && hidden == 66,
+    require(visible == 6 && hidden == 67,
             "Gallery partial filter did not match the support catalog");
     const auto hidden_surface = surfaces[53].component;
     std::size_t hidden_texts = 0;
@@ -637,7 +637,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                 && fixture.host->components().mount_runs() == mount_runs
                 && fixture.host->components().contains(live_component)
                 && definition.telemetry().content_runs == 1
-                && definition.telemetry().reference_content_runs == 125
+                && definition.telemetry().reference_content_runs == 126
                 && definition.telemetry().navigation_requests == 2
                 && definition.telemetry().filter_updates == 1,
             "Gallery navigation/filter remounted content or disturbed its live sibling");
@@ -646,7 +646,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     require(fixture.host->layout_and_synchronize(
                 viewport, clip, {24.0F, 20.0F}, 0.0F, true),
             "Gallery all-status filter did not synchronize");
-    for (std::size_t index = 52; index < 124; ++index) {
+    for (std::size_t index = 52; index < 125; ++index) {
         require(fixture.surfaces->snapshot(surfaces[index].component).visible,
                 "Gallery all-status filter did not restore an entry");
     }
@@ -709,7 +709,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 && near(narrow_navigation.width, 512.0F)
                 && near(narrow_document.width, 512.0F),
             "narrow Gallery did not stack wrapped navigation above the document");
-    for (std::size_t index = 52; index < 124; ++index) {
+    for (std::size_t index = 52; index < 125; ++index) {
         const auto& node = fixture.nodes.require(
             fixture.surfaces->mounted_surfaces()[index].node);
         require(node.bounds.width > 0.0F
@@ -759,7 +759,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.host->mounted_buttons().size()
                 == definition.navigation_control_count + 12,
             "Token Gallery live sample count drifted");
-    require(fixture.surfaces->mounted_surfaces().size() == 125,
+    require(fixture.surfaces->mounted_surfaces().size() == 126,
             "Token Gallery document reference surface count drifted");
     require(fixture.host->interactions().size()
                 == definition.navigation_control_count + 14,
@@ -784,9 +784,9 @@ void test_token_gallery_frame_contract() {
     require(initial.content_runs == 1
                 && initial.theme_content_runs == definition.stable_test_ids.size() + 1
                 && initial.document_sections == 6
-                && initial.component_entries == 72
-                && initial.reference_surfaces == 125
-                && initial.reference_content_runs == 125
+                && initial.component_entries == 73
+                && initial.reference_surfaces == 126
+                && initial.reference_content_runs == 126
                 && initial.live_samples == 14,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1

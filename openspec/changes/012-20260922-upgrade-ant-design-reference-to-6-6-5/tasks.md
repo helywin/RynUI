@@ -20,9 +20,9 @@
 
 ## 4. Gallery 与当前文档
 
-- [ ] 4.1 迁移 Gallery 生成 metadata、目录内容、Foundation/Token 与支持状态，按新来源重算 hash/count/reachability；以 Introduction、七类或新版实际分类、filter、anchor/wheel、72 项变更检测和无 fake sample 的 headless contract 验证
-- [ ] 4.2 更新 README、README.en、`docs/architecture.md` 和生成 Token 文档的当前基线说明，保留旧 change proposal/spec/tasks/evidence 的历史版本与验收状态；以当前文档/version gate、旧证据未改写检查和 `git diff --check` 验证
-- [ ] 4.3 在一个受支持正式 preset 运行 Gallery/Theme/Token/文档合同、`python -B` 生成器 `--check`；以英文 `feat: update Ant Design reference gallery` 提交，不主动 push
+- [x] 4.1 迁移 Gallery 生成 metadata、目录内容、Foundation/Token 与支持状态，按新来源重算 hash/count/reachability；以 Introduction、七类或新版实际分类、filter、anchor/wheel、72 项变更检测和无 fake sample 的 headless contract 验证
+- [x] 4.2 更新 README、README.en、`docs/architecture.md` 和生成 Token 文档的当前基线说明，保留旧 change proposal/spec/tasks/evidence 的历史版本与验收状态；以当前文档/version gate、旧证据未改写检查和 `git diff --check` 验证
+- [x] 4.3 在一个受支持正式 preset 运行 Gallery/Theme/Token/文档合同、`python -B` 生成器 `--check`；以英文 `feat: update Ant Design reference gallery` 提交，不主动 push
 
 ## 5. 后续组件规划对齐
 

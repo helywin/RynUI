@@ -16,6 +16,20 @@ def require_same_identity(*pairs: tuple[str, str]) -> None:
         raise ValueError(f"mixed Ant Design current versions: {pairs}")
 
 
+def require_current_docs(repo: Path) -> None:
+    markers = {
+        "README.md": ("Ant Design 6.6.5", "七类 73 项"),
+        "README.en.md": ("Ant Design 6.6.5", "73 entries"),
+        "docs/architecture.md": ("当前参考版本为 `6.6.5`", "1198 个 Token"),
+        "docs/design-tokens.md": ("Ant Design 6.6.5 Design Token 规范", "Token 总数：`1198`"),
+        "examples/token_gallery/gallery_document_model.cpp": ("Ant Design 6.6.5", "七类 73 项"),
+    }
+    for path, expected in markers.items():
+        content = (repo / path).read_text(encoding="utf-8")
+        if any(marker not in content for marker in expected):
+            raise ValueError(f"current Ant Design documentation drifted: {path}")
+
+
 def check(repo: Path) -> None:
     tokens.verify_repository(repo)
     gallery.check_output(repo)
@@ -39,6 +53,7 @@ def check(repo: Path) -> None:
         raise ValueError("current Token count differs from the reviewed source")
     if sum(category["expected_count"] for category in manifest["categories"]) != 73:
         raise ValueError("current Gallery count differs from the reviewed source")
+    require_current_docs(repo)
 
 
 def self_test() -> None:

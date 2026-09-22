@@ -26,9 +26,9 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 主题与交互 | 默认、暗色、紧凑、品牌色和嵌套主题；鼠标交互、键盘焦点、禁用/加载状态与基础状态动画 |
 | 文本 | UTF-8 `ryn::String`/`StringView`、C++20 `u8"..."` 字面量、中英文排版、字体回退与高 DPI 字形绘制 |
 | 单行编辑 | 受控/非受控值、占位文本、前后缀、Unicode 字素安全选区、剪贴板、撤销/重做、输入法组合事件与光标闪烁 |
-| 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.5.0 的离线组件目录和 Token Gallery |
+| 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
 
-当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 72 项是**参考目录**，每项单独标注支持范围，并不表示已实现 72 个组件。`Table`、`Tree`、多行文本、密码输入和搜索输入等仍未提供。
+当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Table`、`Tree`、多行文本、密码输入和搜索输入等仍未提供。
 
 单行 `Input` 已接入 Gallery，并完成平台通用测试和 Windows Debug/Release 构建验收；真实系统输入法、候选窗与视觉效果仍需分别完成 Windows 和 Linux 验收。动画和 Gallery 也有待完成的平台验收，具体进度见 [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md)、[动画](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md)和 [Gallery](openspec/changes/008-20260829-build-ant-design-reference-gallery/tasks.md) 清单。
 

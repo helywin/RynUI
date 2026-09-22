@@ -26,9 +26,9 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Themes and interaction | Default, dark, compact, brand, and nested themes; pointer interaction, keyboard focus, disabled/loading states, and basic state animations |
 | Text | UTF-8 `ryn::String`/`StringView`, C++20 `u8"..."` literals, Latin/CJK shaping, font fallback, and high-DPI glyph rendering |
 | Single-line editing | Controlled/uncontrolled values, placeholders, prefix/suffix slots, grapheme-safe selection, clipboard, undo/redo, IME composition events, and caret blinking |
-| Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.5.0 |
+| Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 
-The current components cover a subset of Ant Design. The Gallery's 72 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 72 implemented components. `Table`, `Tree`, multiline text, password inputs, and search inputs are not available yet.
+The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, multiline text, password inputs, and search inputs are not available yet.
 
 Single-line `Input` is integrated into the Gallery and has passed platform-independent tests and Windows Debug/Release build validation. Real system IME behavior, candidate window placement, and visual results still require separate Windows and Linux validation. Animation and Gallery platform checks also remain open. See the [Input](openspec/changes/010-20260831-build-text-input-foundation/tasks.md), [animation](openspec/changes/009-20260829-build-animation-runtime-foundation/tasks.md), and [Gallery](openspec/changes/008-20260829-build-ant-design-reference-gallery/tasks.md) checklists for the detailed status.
 
