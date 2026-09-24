@@ -57,6 +57,8 @@ public:
 
     void attach(WindowComponentParticipant& participant);
     void detach(WindowComponentParticipant& participant) noexcept;
+    void attach_input_host(WindowComponentParticipant& participant);
+    void detach_input_host(WindowComponentParticipant& participant) noexcept;
     void mount(const Content& content);
     bool destroy(runtime::ComponentId id);
     void dispose() noexcept;
@@ -108,6 +110,7 @@ private:
     animation::AnimationTime animation_time_;
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
     std::vector<WindowComponentParticipant*> participants_;
+    WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
     std::unique_ptr<WindowTextEditServices> text_edit_;
 };

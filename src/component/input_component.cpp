@@ -361,8 +361,8 @@ InputComponentHost::InputComponentHost(WindowComponentServices& host, input::Tex
     input::TextClipboard& clipboard)
     : host_(&host), edit_services_(&host.bind_text_edit(platform, clipboard)),
       editors_(edit_services_->editors()), sessions_(edit_services_->sessions()),
-      clipboard_(edit_services_->clipboard()) { host_->attach(*this); }
-InputComponentHost::~InputComponentHost() { dispose(); host_->detach(*this); }
+      clipboard_(edit_services_->clipboard()) { host_->attach_input_host(*this); }
+InputComponentHost::~InputComponentHost() { dispose(); host_->detach_input_host(*this); }
 void InputComponentHost::mount(const Content& content) {
     host_->mount(content);
 }

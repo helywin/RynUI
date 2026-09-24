@@ -425,6 +425,19 @@ void WindowComponentServices::attach(WindowComponentParticipant& participant) {
     participants_.push_back(&participant);
 }
 
+void WindowComponentServices::attach_input_host(WindowComponentParticipant& participant) {
+    if (input_host_ != nullptr) {
+        throw std::logic_error("window already has an Input component host");
+    }
+    attach(participant);
+    input_host_ = &participant;
+}
+
+void WindowComponentServices::detach_input_host(WindowComponentParticipant& participant) noexcept {
+    if (input_host_ == &participant) input_host_ = nullptr;
+    detach(participant);
+}
+
 WindowTextEditServices& WindowComponentServices::bind_text_edit(
     input::TextInputPlatform& platform, input::TextClipboard& clipboard) {
     if (!text_edit_) {

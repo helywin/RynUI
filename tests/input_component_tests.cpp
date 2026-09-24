@@ -43,6 +43,11 @@ void input_without_button_host() {
     catch (const std::logic_error&) { rejected_foreign_port = true; }
     require(rejected_foreign_port && services.text_edit() == edit,
             "Window accepted a second text-input platform session");
+    bool rejected_duplicate_host = false;
+    try { detail::InputComponentHost duplicate(services, platform, platform); }
+    catch (const std::logic_error&) { rejected_duplicate_host = true; }
+    require(rejected_duplicate_host && services.text_edit() == edit,
+            "Window accepted a second Input host with ambiguous mount ownership");
     inputs.mount(Content{[] { Input(InputProps{}.defaultValue(u8"独立输入")); }});
     require(inputs.mounted_inputs().size() == 1
                 && services.layout_and_synchronize({320, 240}, {0, 0, 320, 240}),
