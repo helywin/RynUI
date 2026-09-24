@@ -3,6 +3,7 @@
 #include "gallery_document_model.hpp"
 
 #include <ryn/component.hpp>
+#include <ryn/design_token.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -52,6 +53,7 @@ struct TokenGalleryDefinition final {
     std::function<TokenGalleryTelemetry()> telemetry;
     std::vector<std::string_view> stable_test_ids;
     std::size_t navigation_control_count{};
+    std::function<ryn::Color()> background_color;
 };
 
 [[nodiscard]] TokenGalleryDefinition make_token_gallery_definition();

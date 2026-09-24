@@ -21,6 +21,7 @@ namespace {
 
 struct GalleryState final {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
+    ryn::Color background_color{ryn::Color::rgba8(255, 255, 255)};
     ryn::Signal<ryn::LogicalLength> gallery_width{ryn::dp(1120.0F)};
     ryn::Signal<ryn::LogicalLength> navigation_width{ryn::dp(220.0F)};
     ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(884.0F)};
@@ -747,6 +748,8 @@ float token_gallery_pointer_to_render_logical(
 TokenGalleryDefinition make_token_gallery_definition() {
     auto state = std::make_shared<GalleryState>();
     auto set_theme = [state](ryn::ThemeConfig config, bool brand) {
+        state->background_color = ryn::resolve_theme(config)
+            .alias().color_background_container;
         state->theme.set(std::move(config));
         ++state->telemetry.theme_updates;
         if (brand) {
@@ -870,6 +873,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
         },
         {stable_test_ids.begin(), stable_test_ids.end()},
         navigation_control_count,
+        [state] { return state->background_color; },
     };
     return definition;
 }

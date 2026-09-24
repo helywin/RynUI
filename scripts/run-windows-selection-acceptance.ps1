@@ -3,7 +3,10 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string] $Configuration = 'Release',
 
-    [double[]] $Scales = @(1.0, 1.25, 1.5, 2.0)
+    [double[]] $Scales = @(1.0, 1.25, 1.5, 2.0),
+
+    [ValidateSet('Default', 'Dark', 'Compact')]
+    [string] $Theme = 'Default'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,6 +21,9 @@ if (-not (Test-Path -LiteralPath $galleryExecutable)) {
     throw "Token Gallery executable was not found: $galleryExecutable"
 }
 $outputDirectory = Join-Path $repositoryRoot 'out\acceptance\windows-selection'
+if ($Theme -ne 'Default') {
+    $outputDirectory = Join-Path $outputDirectory $Theme.ToLowerInvariant()
+}
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 
 foreach ($scale in $Scales) {
@@ -30,8 +36,12 @@ foreach ($scale in $Scales) {
     $stderrPath = Join-Path $outputDirectory "scale-$scaleText-stderr.txt"
     $screenshotPath = Join-Path $outputDirectory "scale-$scaleText.png"
 
+    $arguments = @('--selection-acceptance', "--acceptance-scale=$scaleText")
+    if ($Theme -ne 'Default') {
+        $arguments += "--selection-theme=$($Theme.ToLowerInvariant())"
+    }
     $process = Start-Process -FilePath $galleryExecutable `
-        -ArgumentList @('--selection-acceptance', "--acceptance-scale=$scaleText") `
+        -ArgumentList $arguments `
         -WorkingDirectory $repositoryRoot `
         -RedirectStandardOutput $diagnosticsPath `
         -RedirectStandardError $stderrPath `
@@ -50,7 +60,7 @@ foreach ($scale in $Scales) {
             throw "Selection Gallery exited before the screenshot at scale $scaleText."
         }
         if ((Get-Date) -ge $deadline) {
-            throw "Selection Gallery did not reach stage 3 at scale $scaleText."
+            throw "Selection Gallery did not reach stage 4 at scale $scaleText."
         }
         & (Join-Path $PSScriptRoot 'capture-window.ps1') `
             -Title 'RynUI Ant Design Token Gallery' -OutputPath $screenshotPath `
@@ -67,7 +77,8 @@ foreach ($scale in $Scales) {
                 'selection_keyboard=true', 'selection_pointer=true',
                 'selection_blocked=true',
                 'gpu_driver=direct3d12', 'shader_format=DXIL',
-                'window_system=win32', 'live_samples=31', 'exit_code=0')) {
+                'window_system=win32', 'live_samples=31',
+                "selection_theme=$($Theme.ToLowerInvariant())", 'exit_code=0')) {
             if (-not $diagnostics.Contains($expected)) {
                 throw "Selection Gallery diagnostics lack $expected at scale $scaleText."
             }

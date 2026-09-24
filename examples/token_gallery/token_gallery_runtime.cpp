@@ -241,6 +241,7 @@ public:
         ryn::detail::TextSceneService& text_scene,
         ryn::detail::GlyphGpuResources& glyph_resources,
         ryn::detail::SdlSceneRenderer& renderer,
+        const std::function<ryn::Color()>& background_color,
         ReferenceSurfaceHost& reference_surfaces,
         GalleryDocumentViewport& document_viewport,
         ryn::runtime::NodeId document_root,
@@ -252,6 +253,7 @@ public:
           text_scene_(&text_scene),
           glyph_resources_(&glyph_resources),
           renderer_(&renderer),
+          background_color_(&background_color),
           effect_resources_(renderer),
           reference_surfaces_(&reference_surfaces),
           document_viewport_(&document_viewport),
@@ -388,6 +390,7 @@ public:
                 *glyph_resources_,
                 visible_scene_,
                 &effect_resources_);
+            renderer_->set_clear_color((*background_color_)());
             const auto result = renderer_->submit_frame(frame_time);
             const auto frame_finished = std::chrono::steady_clock::now();
             const auto microseconds = [](auto start, auto end) {
@@ -518,6 +521,7 @@ private:
     ryn::detail::TextSceneService* text_scene_;
     ryn::detail::GlyphGpuResources* glyph_resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
+    const std::function<ryn::Color()>* background_color_;
     ryn::detail::RoundedEffectGpuResources effect_resources_;
     ReferenceSurfaceHost* reference_surfaces_;
     GalleryDocumentViewport* document_viewport_;
@@ -557,6 +561,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--input-acceptance");
         const bool selection_acceptance =
             has_argument(argc, argv, "--selection-acceptance");
+        const bool selection_dark = has_argument(argc, argv, "--selection-theme=dark");
+        const bool selection_compact = has_argument(argc, argv, "--selection-theme=compact");
         const bool search_acceptance =
             has_argument(argc, argv, "--search-acceptance");
         const bool scroll_acceptance =
@@ -576,6 +582,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 "--input-acceptance, --selection-acceptance, --search-acceptance, "
                 "and --scroll-acceptance "
                 "are mutually exclusive");
+        }
+        if ((selection_dark && selection_compact)
+            || ((selection_dark || selection_compact) && !selection_acceptance)) {
+            throw std::invalid_argument(
+                "selection theme requires one selection acceptance mode");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
             || animation_acceptance || input_acceptance || selection_acceptance
@@ -605,6 +616,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         if (motion_disabled) {
             definition.set_motion_enabled(false);
         }
+        if (selection_dark) definition.smoke_step(0);
+        if (selection_compact) definition.smoke_step(1);
         const auto initial_metrics = platform.window_metrics();
         float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
         const auto logical_viewport = token_gallery_logical_viewport(
@@ -672,6 +685,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             text_scene,
             glyph_resources,
             renderer,
+            definition.background_color,
             reference_surfaces,
             document_viewport,
             document_root,
@@ -1235,7 +1249,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             : animation_acceptance ? 16U : 5U;
         const auto expected_theme_updates = search_acceptance
             ? 0U : selection_acceptance
-            ? 0U : input_acceptance
+            ? (selection_dark || selection_compact ? 1U : 0U) : input_acceptance
             ? 1U : animation_acceptance ? 6U
             : motion_disabled ? 5U : 4U;
         const auto expected_motion_updates = search_acceptance
@@ -1408,6 +1422,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " input_acceptance=" << (input_acceptance ? "true" : "false")
             << " selection_acceptance=" << (selection_acceptance ? "true" : "false")
+            << " selection_theme=" << (selection_dark ? "dark"
+                : selection_compact ? "compact" : "default")
             << " search_acceptance=" << (search_acceptance ? "true" : "false")
             << " search_keyboard=" << (search_keyboard ? "true" : "false")
             << " search_pointer=" << (search_pointer ? "true" : "false")

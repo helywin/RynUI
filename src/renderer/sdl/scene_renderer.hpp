@@ -7,6 +7,8 @@
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
 
+#include <ryn/design_token.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -49,6 +51,7 @@ public:
         const graphics::OrderedScene& scene,
         RoundedEffectGpuResources* effect_resources = nullptr);
     bool resize_window(int width, int height);
+    void set_clear_color(Color value) noexcept { clear_color_ = value; }
 
     graphics::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
     void release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept override;
@@ -122,6 +125,7 @@ private:
     std::vector<void*> upload_transfers_;
     std::string shader_format_;
     std::string last_error_;
+    Color clear_color_{Color::rgba8(255, 255, 255)};
     SceneRendererCounters counters_;
 };
 

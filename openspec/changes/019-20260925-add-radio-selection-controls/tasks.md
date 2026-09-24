@@ -13,8 +13,8 @@
 
 ## 3. Windows 专属验收
 
-- [ ] 3.1 将 Radio/Group 混排到 Gallery，在真实 Win32 窗口检查 1.0/1.25/1.5/2.0 acceptance scale、pointer/Space/Tab、禁用、标签、主题和退出；记录 D3D12/DXIL、系统字体、截图与诊断
-- [ ] 3.2 运行正式 `windows-msvc-release` 受影响 build/CTest、OpenSpec doctor/strict validate 与 `git diff --check`，保存 Windows 独立证据并英文提交，不主动 push
+- [x] 3.1 将 Radio/Group 混排到 Gallery，在真实 Win32 窗口检查 1.0/1.25/1.5/2.0 acceptance scale、pointer/Space/Tab、禁用、标签、主题和退出；记录 D3D12/DXIL、系统字体、截图与诊断
+- [x] 3.2 运行正式 `windows-msvc-release` 受影响 build/CTest、OpenSpec doctor/strict validate 与 `git diff --check`，保存 Windows 独立证据并英文提交，不主动 push
 
 ## 4. Linux 专属验收
 

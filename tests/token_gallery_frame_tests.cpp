@@ -743,6 +743,15 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
 }
 
 void test_token_gallery_frame_contract() {
+    auto palette = rynui::example::make_token_gallery_definition();
+    require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
+        "Token Gallery default clear color is not white");
+    palette.smoke_step(0);
+    require(palette.background_color() == ryn::Color::rgba8(20, 20, 20),
+        "Token Gallery dark clear color did not follow Theme");
+    palette.smoke_step(1);
+    require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
+        "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
     require(definition.stable_test_ids.size() == 53,
             "Token Gallery stable test-id inventory is incomplete");
