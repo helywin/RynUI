@@ -8,11 +8,12 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <utility>
 
 namespace ryn {
-namespace detail { struct InputPropsAccess; }
+namespace detail { struct InputPropsAccess; struct PasswordPropsAccess; }
 
 enum class InputStatus { Default, Warning, Error };
 
@@ -34,6 +35,7 @@ public:
     InputProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
 private:
     friend struct detail::InputPropsAccess;
+    friend struct detail::PasswordPropsAccess;
     std::optional<Prop<String>> value_;
     std::optional<String> default_value_;
     Prop<String> placeholder_{String{}};
@@ -43,6 +45,8 @@ private:
     std::optional<Prop<std::size_t>> max_length_;
     std::function<void(String)> on_change_, on_submit_;
     LayoutStyle layout_;
+    std::optional<Prop<bool>> password_visible_;
+    std::shared_ptr<void> password_lifetime_;
 };
 
 struct InputPrefixSlot final {};

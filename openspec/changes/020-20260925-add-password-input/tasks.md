@@ -6,10 +6,10 @@
 
 ## 2. 展示投影与 Password 核心
 
-- [ ] 2.1 为 Input 展示层实现每字素一个遮罩符号、composition/selection/caret 双向映射与异常安全；以 UTF-8、复杂字素、预编辑、滚动和非密码回归验证
-- [ ] 2.2 增加 Password typed Props、可见性受控/默认模式、Input 复用、焦点保持切换策略与隐藏剪贴板门禁；以 headless 指针、键盘、回写、禁用和生命周期测试验证
-- [ ] 2.3 增加平台密码输入类型及 SDL 映射，验证组合输入期间切换不会取消当前输入；以会话端口测试验证
-- [ ] 2.4 正式 `windows-msvc-debug` 构建并运行受影响 CTest、`git diff --check`，记录平台通用结果并英文提交实现阶段
+- [x] 2.1 为 Input 展示层实现每字素一个遮罩符号、composition/selection/caret 双向映射与异常安全；以 UTF-8、复杂字素、预编辑、滚动和非密码回归验证
+- [x] 2.2 增加 Password typed Props、可见性受控/默认模式、Input 复用、焦点保持切换策略与隐藏剪贴板门禁；以 headless 指针、键盘、回写、禁用和生命周期测试验证
+- [x] 2.3 增加平台密码输入类型及 SDL 映射，验证组合输入期间切换不会取消当前输入；以会话端口测试验证
+- [x] 2.4 正式 `windows-msvc-debug` 构建并运行受影响 CTest、`git diff --check`，记录平台通用结果并英文提交实现阶段
 
 ## 3. Windows 专属验收
 

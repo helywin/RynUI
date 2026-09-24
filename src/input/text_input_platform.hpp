@@ -4,7 +4,7 @@
 
 namespace ryn::input {
 
-enum class TextInputType : std::uint8_t { text, name, email, username, number };
+enum class TextInputType : std::uint8_t { text, name, email, username, number, password_hidden, password_visible };
 enum class TextCapitalization : std::uint8_t { none, sentences, words, letters };
 struct TextInputProperties {
     TextInputType type{TextInputType::text};

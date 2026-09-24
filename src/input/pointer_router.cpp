@@ -123,7 +123,8 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
 
         if (event.action == PointerAction::down
                 && event.button == PointerButton::primary) {
-            if (focus_ != nullptr) {
+            if (focus_ != nullptr && (!actual_target ||
+                    registry_->require(*actual_target).focus_on_pointer)) {
                 static_cast<void>(focus_->focus_from_pointer(actual_target));
             }
             if (pointer->primary_down || pointer->capture.has_value()

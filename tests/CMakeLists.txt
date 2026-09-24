@@ -828,6 +828,13 @@ target_compile_definitions(rynui_input_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_component COMMAND rynui_input_component_tests)
+add_executable(rynui_password_component_tests password_component_tests.cpp)
+rynui_configure_cpp_target(rynui_password_component_tests)
+target_link_libraries(rynui_password_component_tests PRIVATE rynui_components rynui_text_input_session)
+target_compile_definitions(rynui_password_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.password_component COMMAND rynui_password_component_tests)
 add_executable(rynui_input_pointer_tests input_pointer_tests.cpp)
 rynui_configure_cpp_target(rynui_input_pointer_tests)
 target_link_libraries(rynui_input_pointer_tests PRIVATE rynui_components rynui_text_input_session)

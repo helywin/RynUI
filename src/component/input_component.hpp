@@ -65,6 +65,7 @@ public:
     [[nodiscard]] std::optional<animation::AnimationTime> next_caret_deadline() const;
 private:
     friend struct InputPropsAccess;
+    friend struct PasswordPropsAccess;
     void notify_change(input::TextInputOwnerId);
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
     void update_text(runtime::ComponentId, bool measure_layout = true);

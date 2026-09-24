@@ -77,6 +77,7 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
                 std::move(registration.handlers)),
             {},
             next_declaration_order_,
+            registration.focus_on_pointer,
         });
         declaration_order_.push_back(id);
     } catch (...) {

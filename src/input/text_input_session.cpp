@@ -11,7 +11,7 @@ bool valid_rect(TextInputRect rect) noexcept {
         && rect.width >= 0 && rect.height >= 0;
 }
 bool valid_properties(const TextInputProperties& properties) noexcept {
-    return properties.type <= TextInputType::number
+    return properties.type <= TextInputType::password_visible
         && properties.capitalization <= TextCapitalization::letters;
 }
 }

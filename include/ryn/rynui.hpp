@@ -7,6 +7,7 @@
 #include <ryn/flex.hpp>
 #include <ryn/input.hpp>
 #include <ryn/layout_style.hpp>
+#include <ryn/password.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/radio.hpp>
 #include <ryn/reactive.hpp>

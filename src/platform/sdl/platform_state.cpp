@@ -27,6 +27,8 @@ public:
         case input::TextInputType::email: type = SDL_TEXTINPUT_TYPE_TEXT_EMAIL; break;
         case input::TextInputType::username: type = SDL_TEXTINPUT_TYPE_TEXT_USERNAME; break;
         case input::TextInputType::number: type = SDL_TEXTINPUT_TYPE_NUMBER; break;
+        case input::TextInputType::password_hidden: type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN; break;
+        case input::TextInputType::password_visible: type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_VISIBLE; break;
         default: return false;
         }
         SDL_Capitalization capitalization;

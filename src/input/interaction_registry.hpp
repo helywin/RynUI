@@ -67,6 +67,7 @@ struct InteractionRegistration final {
     bool eligible{true};
     bool focusable{false};
     InteractionHandlers handlers;
+    bool focus_on_pointer{true};
 };
 
 struct InteractionRecord final {
@@ -79,6 +80,7 @@ struct InteractionRecord final {
     std::shared_ptr<const InteractionHandlers> handlers;
     std::shared_ptr<const FocusHandlers> focus_handlers;
     std::size_t declaration_order{0};
+    bool focus_on_pointer{true};
 };
 
 class InteractionRegistry final {

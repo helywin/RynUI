@@ -4,6 +4,9 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
+#include "input/pressable_behavior.hpp"
+#include <ryn/password.hpp>
+#include <ryn/text.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +31,8 @@ struct InputContainerPresentation {
 struct InputState {
     MountedInputComponent mounted;
     bool controlled{}, disabled{}, read_only{}, focused{};
+    bool password{}, visible{}, session_visible{};
+    std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
     runtime::Point last_selection_position;
@@ -61,11 +66,28 @@ struct InputState {
     std::uint64_t measured_value_revision{};
 };
 struct InputSlotState {};
+struct PasswordToggleState {
+    runtime::ComponentId component;
+    runtime::NodeId node;
+    input::InteractionId interaction;
+    runtime::SceneFragmentId fragment;
+    input::PressableBehavior press;
+    std::function<void()> activate;
+};
 struct InputVisuals {
     Color background, border, foreground, affix, caret;
     const ShadowList* shadow{};
     bool shadow_visible{};
 };
+input::TextInputProperties input_properties(const InputState& state) noexcept {
+    input::TextInputProperties result;
+    if(state.password) {
+        result.type = state.visible ? input::TextInputType::password_visible
+            : input::TextInputType::password_hidden;
+        result.autocorrect = false;
+    }
+    return result;
+}
 InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& tokens) {
     const auto& colors = tokens.colors;
     const bool error = state.status == InputStatus::Error, warning = state.status == InputStatus::Warning;
@@ -157,6 +179,9 @@ struct InputPropsAccess {
         state.controlled = props.value_.has_value();
         state.size = size; state.status = status;
         state.disabled = disabled; state.read_only = read_only;
+        state.password = props.password_visible_.has_value();
+        state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
+        state.password_lifetime = props.password_lifetime_;
         state.on_change = props.on_change_; state.on_submit = props.on_submit_;
         // Install cleanup before subsequent resource acquisition can fail.
         build.on_resource_cleanup(component, [&owner, component] {
@@ -216,7 +241,10 @@ struct InputPropsAccess {
                     owner.host_->pointer().cancel_pointer_interaction(current->mounted.interaction);
                     current->hovering_pointers = 0;
                 }
-                if(focus.focused) static_cast<void>(owner.sessions_.focus(current->mounted.editor));
+                if(focus.focused) {
+                    current->session_visible = current->visible;
+                    static_cast<void>(owner.sessions_.focus(current->mounted.editor, input_properties(*current)));
+                }
                 else if(was_focused)
                     static_cast<void>(owner.sessions_.blur());
                 owner.invalidate(component, runtime::DirtyFlags::Material);
@@ -297,6 +325,11 @@ struct InputPropsAccess {
             check(result.edit);
             if(result.edit.value_changed) owner.update_text(current.mounted.component);
         });
+        if(props.password_visible_) connect(*props.password_visible_, [](auto& owner, auto& current, bool value) {
+            if(current.visible == value) return;
+            current.visible = value;
+            owner.update_text(current.mounted.component);
+        });
         connect(props.placeholder_, [](auto& owner, auto& current, String value) {
             if(current.placeholder == value) return;
             current.placeholder = std::move(value);
@@ -354,6 +387,134 @@ struct InputPropsAccess {
                 static_cast<void>(theme->motion_base()); static_cast<void>(theme->motion_enabled()); });
         owner.mounted_.push_back(state.mounted);
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+    }
+};
+
+struct PasswordPropsAccess final {
+    struct VisibilityBridge {
+        explicit VisibilityBridge(bool initial) : visible(initial) {}
+        Signal<bool> visible;
+        Scope scope;
+    };
+
+    static void toggle(InputComponentHost& owner, Prop<bool> disabled,
+        const std::shared_ptr<VisibilityBridge>& bridge, bool controlled,
+        std::function<void(bool)> on_visible_change) {
+        auto& host = *owner.host_;
+        auto& build = runtime::require_component_build_context();
+        const auto component = build.mount_component<PasswordToggleState>();
+        auto& state = build.state<PasswordToggleState>(component);
+        state.component = component;
+        state.node = build.root(component);
+        state.activate = [disabled, bridge, controlled, callback = std::move(on_visible_change)] {
+            if(read_prop(disabled)) return;
+            const bool next = !bridge->visible.get();
+            if(!controlled) bridge->visible.set(next);
+            if(callback) callback(next);
+        };
+        build.on_resource_cleanup(component, [&host, component] {
+            if(auto* current = host.components().state<PasswordToggleState>(component)) {
+                host.pointer().cancel_interaction(current->interaction);
+                host.focus().cancel_interaction(current->interaction);
+                static_cast<void>(host.interactions().remove(current->interaction));
+                static_cast<void>(host.scene_composer().remove_fragment(current->fragment));
+                static_cast<void>(host.layout().remove_layout(current->node));
+            }
+        });
+        layout::BoxLayout box;
+        box.padding.left = box.padding.right = 4.0F;
+        host.layout().set_layout(state.node, box);
+        std::optional<input::InteractionId> parent;
+        for(auto ancestor = host.components().parent(component); ancestor && !parent;
+            ancestor = host.components().parent(*ancestor)) {
+            for(const auto interaction : host.interactions().declaration_order()) {
+                if(const auto* record = host.interactions().find(interaction);
+                    record && record->component == *ancestor) { parent = interaction; break; }
+            }
+        }
+        state.interaction = host.interactions().create({component, state.node, parent,
+            !read_prop(disabled), true, {}, false});
+        state.fragment = build.register_scene_fragment(component,
+            runtime::SceneFragmentPlacement::before_children);
+        host.scene_composer().set_fragment(state.fragment, {}, state.interaction);
+        host.mark_scene_structure_dirty();
+        input::InteractionHandlers pointer;
+        pointer.target = [&host, component](input::PointerDispatchContext& context) {
+            auto* current = host.components().state<PasswordToggleState>(component);
+            if(!current) return;
+            const auto result = current->press.dispatch(context, current->interaction,
+                host.interactions().require(current->interaction).eligible);
+            if(result.activate) {
+                auto callback = current->activate;
+                callback();
+            }
+        };
+        static_cast<void>(host.interactions().set_handlers(state.interaction, std::move(pointer)));
+        input::FocusHandlers focus;
+        focus.activation_allowed = [&host, component] {
+            if(const auto* current = host.components().state<PasswordToggleState>(component))
+                return host.interactions().require(current->interaction).eligible;
+            return false;
+        };
+        focus.activate = [&host, component] {
+            if(auto* current = host.components().state<PasswordToggleState>(component)) {
+                auto callback = current->activate;
+                callback();
+            }
+        };
+        static_cast<void>(host.interactions().set_focus_handlers(state.interaction, std::move(focus)));
+        static_cast<void>(connect_prop(build.scope(component), disabled,
+            [&host, component](bool value) {
+                if(auto* current = host.components().state<PasswordToggleState>(component)) {
+                    if(value) {
+                        static_cast<void>(current->press.reset());
+                        host.pointer().cancel_interaction(current->interaction);
+                    }
+                    static_cast<void>(host.interactions().set_eligible(current->interaction, !value));
+                    host.focus().synchronize();
+                }
+            }));
+        build.mount_slot(component, Content{[bridge] {
+            Text(TextProps{}.content(bind([bridge] {
+                return bridge->visible.get() ? String{u8"隐藏"} : String{u8"显示"};
+            })));
+        }});
+    }
+
+    static void mount(PasswordProps props) {
+        if(!active_input_host) throw std::logic_error("Password requires an active InputComponentHost");
+        if(props.value_ && props.default_value_)
+            throw std::invalid_argument("Password value and defaultValue are mutually exclusive");
+        if(props.visible_ && props.default_visible_)
+            throw std::invalid_argument("Password visible and defaultVisible are mutually exclusive");
+        validate(read_prop(props.size_)); validate(read_prop(props.status_));
+        const bool controlled = props.visible_.has_value();
+        auto bridge = std::make_shared<VisibilityBridge>(controlled
+            ? read_prop(*props.visible_) : props.default_visible_.value_or(false));
+        if(controlled) {
+            const std::weak_ptr<VisibilityBridge> weak = bridge;
+            static_cast<void>(connect_prop(bridge->scope, *props.visible_, [weak](bool value) {
+                if(const auto current = weak.lock()) current->visible.set(value);
+            }));
+        }
+        InputProps input;
+        if(props.value_) input.value(*props.value_);
+        else if(props.default_value_) input.defaultValue(*props.default_value_);
+        input.placeholder(props.placeholder_).size(props.size_).status(props.status_)
+            .disabled(props.disabled_).readOnly(props.read_only_)
+            .onChange(std::move(props.on_change_)).onSubmit(std::move(props.on_submit_))
+            .layout(std::move(props.layout_));
+        if(props.max_length_) input.maxLength(*props.max_length_);
+        input.password_visible_ = bridge->visible;
+        input.password_lifetime_ = bridge;
+        std::optional<InputSuffix> suffix;
+        if(props.visibility_toggle_) {
+            suffix = InputSuffix{[bridge, controlled, disabled = props.disabled_,
+                callback = std::move(props.on_visible_change_)] {
+                PasswordPropsAccess::toggle(*active_input_host, disabled, bridge, controlled, callback);
+            }};
+        }
+        Input(std::move(input), {}, std::move(suffix));
     }
 };
 
@@ -550,9 +711,13 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
     if(shortcut) {
         if(event.repeat) return true;
         if(event.key == Key::a) result = editor.select_all();
-        else if(event.key == Key::c) result = clipboard_.copy(owner).edit;
+        else if(event.key == Key::c) {
+            if(!state->password || state->visible) result = clipboard_.copy(owner).edit;
+        }
         else if(!state->read_only) {
-            if(event.key == Key::x) result = clipboard_.cut(owner).edit;
+            if(event.key == Key::x) {
+                if(!state->password || state->visible) result = clipboard_.cut(owner).edit;
+            }
             else if(event.key == Key::v) result = clipboard_.paste(owner).edit;
             else if(event.key == Key::y || (event.key == Key::z && shift)) result = editor.redo();
             else result = editor.undo();
@@ -611,7 +776,7 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     auto* state = host_->components().state<InputState>(component);
     if(!state || !state->text_scene.valid()) return;
     const auto& editor = editors_.require(state->mounted.editor);
-    const auto changed = state->display.update(editor, state->placeholder.view());
+    const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible);
     auto& scene = host_->text().scene_service();
     if(changed.text_changed && scene.text_state(state->text_scene).content().bytes() != state->display.snapshot().text) {
         scene.set_content(state->text_scene, String::from_utf8(state->display.snapshot().text).value());
@@ -626,6 +791,11 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     if(measure_layout && state->measured_value_revision != editor.revision()) {
         state->measured_value_revision = editor.revision();
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
+    }
+    if(state->password && state->focused && state->session_visible != state->visible
+        && !editor.composition().active) {
+        state->session_visible = state->visible;
+        static_cast<void>(sessions_.focus(state->mounted.editor, input_properties(*state)));
     }
 }
 InputLayoutSnapshot InputComponentHost::layout_snapshot(runtime::ComponentId component) const {
@@ -896,5 +1066,8 @@ namespace ryn {
 void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
     if(!detail::active_input_host) throw std::logic_error("Input requires an active InputComponentHost");
     detail::InputPropsAccess::mount(*detail::active_input_host, props, prefix, suffix);
+}
+void Password(PasswordProps props) {
+    detail::PasswordPropsAccess::mount(std::move(props));
 }
 }

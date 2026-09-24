@@ -69,6 +69,46 @@ void scrolling() {
     require(display.scroll_for_caret(map, map.revision(), 30, 71).value() == 0, "shorter value kept stale offset");
     require(display.scroll_for_caret(map, map.revision(), 0, 71).value() == 0, "zero viewport has unstable scroll");
 }
+void masking() {
+    TextEditorStore editors;
+    const auto id = editors.create(String{u8"A\u0301中🙂"}.bytes());
+    auto& editor = editors.require(id);
+    detail::InputDisplayState display;
+    const String hint{u8"密码"};
+    auto changed = display.update(editor, hint.view(), true);
+    require(changed.text_changed && display.snapshot().text == String{u8"•••"}.bytes()
+        && display.committed_to_display(3) == 3 && display.committed_to_display(6) == 6
+        && display.display_to_committed(3) == 3 && display.display_to_committed(6) == 6,
+        "password grapheme mask mapping incorrect");
+    require(bool(editor.select({3, 6})), "password selection failed");
+    static_cast<void>(display.update(editor, hint.view(), true));
+    require(display.snapshot().selection == TextSelection{3, 6}, "password selection projection incorrect");
+    require(bool(editor.update_composition({String{u8"n\u0303"}, {1, 0}, {id, 1}})), "password preedit failed");
+    static_cast<void>(display.update(editor, hint.view(), true));
+    require(display.snapshot().text == String{u8"•••"}.bytes()
+        && display.snapshot().composition == TextSelection{3, 6}
+        && display.snapshot().caret == 6
+        && display.display_to_committed(4) == 3
+        && display.display_to_committed(4, true) == 6,
+        "password preedit projection incorrect");
+    const auto masked_revision = display.revision();
+    changed = display.update(editor, hint.view(), false);
+    require(changed.text_changed && display.revision() > masked_revision
+        && display.snapshot().text.find("\xE2\x80\xA2") == std::string_view::npos,
+        "password reveal failed");
+    changed = display.update(editor, hint.view(), true);
+    require(changed.text_changed && display.snapshot().text == String{u8"•••"}.bytes(), "password re-mask failed");
+    editor.cancel_composition();
+    require(bool(editor.set_value("abc")), "password replacement failed");
+    changed = display.update(editor, hint.view(), true);
+    require(!changed.text_changed && display.display_to_committed(6) == 2,
+        "unchanged mask did not update original byte boundaries");
+    auto map = make_map(display);
+    require(bool(editor.move(TextCaretMove::end)), "password End failed");
+    static_cast<void>(display.update(editor, hint.view(), true));
+    require(display.scroll_for_caret(map, map.revision(), 10, 0).value() > 0,
+        "password caret scrolling failed");
+}
 void allocation_paths() {
     TextEditorStore editors; const auto id = editors.create("prefix"); auto& editor = editors.require(id);
     const String hint; const std::string large(1024, 'x');
@@ -85,6 +125,23 @@ void allocation_paths() {
             "allocation failure published partial display");
     }
     require(failures > 0, "display fault injection missed allocations");
+    std::size_t mask_failures{};
+    for(std::size_t fail = 0; fail < 64; ++fail) {
+        require(bool(editor.set_value("prefix")), "mask fault initial value failed");
+        detail::InputDisplayState masked;
+        static_cast<void>(masked.update(editor, hint.view(), true));
+        const auto revision = masked.revision();
+        require(bool(editor.set_value(large)), "mask fault larger value failed");
+        probe::begin(fail); bool threw{};
+        try { static_cast<void>(masked.update(editor, hint.view(), true)); } catch(const std::bad_alloc&) { threw = true; }
+        static_cast<void>(probe::end());
+        if(!threw) break;
+        ++mask_failures;
+        require(masked.snapshot().text == String{u8"••••••"}.bytes()
+            && masked.revision() == revision && masked.display_to_committed(3) == 1,
+            "allocation failure published partial password mask");
+    }
+    require(mask_failures > 0, "mask fault injection missed allocations");
     require(bool(editor.set_value("")), "benchmark value failed"); editor.reserve(128);
     detail::InputDisplayState display; display.reserve(128);
     const std::array events{CompositionChanged{String{u8"ni"}, {0, 0}, {id, 1}},
@@ -102,6 +159,6 @@ void allocation_paths() {
 }
 }
 int main() {
-    try { mapping(); scrolling(); allocation_paths(); std::cout << "Composition display and caret scrolling passed\n"; }
+    try { mapping(); scrolling(); masking(); allocation_paths(); std::cout << "Composition display and caret scrolling passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }
