@@ -2,8 +2,8 @@
 
 ## 1. Helper 合同与阶段提交
 
-- [ ] 1.1 以固定通道 typed target group 和共享有限过渡 retarget helper 定义内部 API；测试 color/scalar、注册异常回滚、同目标收敛、反向 retarget、dispose 后无 deadline 和稳态零分配
-- [ ] 1.2 在 `windows-msvc` Debug 正式 preset 跑 helper 与 AnimationRuntime/Material 相关定向 CTest、`git diff --check`；英文提交本阶段，不主动 push
+- [x] 1.1 以固定通道 typed target group 和共享有限过渡 retarget helper 定义内部 API；测试 color/scalar、注册异常回滚、同目标收敛、反向 retarget、dispose 后无 deadline 和稳态零分配
+- [x] 1.2 在 `windows-msvc` Debug 正式 preset 跑 helper 与 AnimationRuntime/Material 相关定向 CTest、`git diff --check`；英文提交本阶段，不主动 push
 
 ## 2. Button/Input 迁移
 

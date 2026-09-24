@@ -268,6 +268,14 @@ add_executable(rynui_animation_runtime_tests animation_runtime_tests.cpp)
 rynui_configure_cpp_target(rynui_animation_runtime_tests)
 target_link_libraries(rynui_animation_runtime_tests PRIVATE rynui_animation)
 add_test(NAME rynui.animation_runtime COMMAND rynui_animation_runtime_tests)
+add_executable(rynui_material_transition_channels_tests
+    material_transition_channels_tests.cpp)
+rynui_configure_cpp_target(rynui_material_transition_channels_tests)
+target_include_directories(rynui_material_transition_channels_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_material_transition_channels_tests PRIVATE rynui_animation)
+add_test(NAME rynui.material_transition_channels
+    COMMAND rynui_material_transition_channels_tests)
 
 add_executable(rynui_animation_deadline_tests animation_deadline_tests.cpp)
 rynui_configure_cpp_target(rynui_animation_deadline_tests)
