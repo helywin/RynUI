@@ -29,6 +29,7 @@ struct GalleryState final {
     ryn::Signal<bool> narrow_layout{false};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
+    ryn::Signal<bool> clear_disabled{false};
     ryn::Signal<bool> switch_checked{false};
     ryn::Signal<bool> checkbox_checked{false};
     ryn::Signal<std::optional<ryn::String>> radio_selected{
@@ -587,7 +588,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         });
     ryn::Text(u8"Input / 单行输入 · partial");
     ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
-    ryn::Text(u8"缺失：TextArea、allowClear；Search 与 Password 的组合能力见下方");
+    ryn::Text(u8"支持：allowClear 清空操作；TextArea 与更多组合能力仍待实现");
     ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
         .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
         ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
@@ -612,6 +613,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
             ++state->telemetry.theme_content_runs;
             ryn::Input(ryn::InputProps{}.defaultValue(u8"非受控 / Input").placeholder(u8"清空后显示 placeholder")
+                .allowClear(true).disabled(state->clear_disabled)
                 .onChange([state](ryn::String next) {
                     ++state->telemetry.input_changes;
                     state->input_feedback.set(std::move(next));
@@ -870,6 +872,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
             set_theme(std::move(config), false);
             ++state->telemetry.motion_updates;
         },
+        [state](bool disabled) { state->clear_disabled.set(disabled); },
         [state]() -> std::optional<GalleryNavigationTarget> {
             auto request = state->navigation_request;
             state->navigation_request.reset();

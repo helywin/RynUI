@@ -567,6 +567,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--search-acceptance");
         const bool password_acceptance =
             has_argument(argc, argv, "--password-acceptance");
+        const bool clear_acceptance =
+            has_argument(argc, argv, "--input-clear-acceptance");
         const bool scroll_acceptance =
             has_argument(argc, argv, "--scroll-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
@@ -576,24 +578,26 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             + static_cast<int>(selection_acceptance)
             + static_cast<int>(search_acceptance)
             + static_cast<int>(password_acceptance)
+            + static_cast<int>(clear_acceptance)
             + static_cast<int>(scroll_acceptance)
             + static_cast<int>(motion_disabled)
             + static_cast<int>(reduced_motion);
         if (acceptance_modes > 1) {
             throw std::invalid_argument(
                 "--motion-disabled, --reduced-motion, --animation-acceptance, and "
-                "--input-acceptance, --selection-acceptance, --search-acceptance, --password-acceptance, "
+                "--input-acceptance, --selection-acceptance, --search-acceptance, --password-acceptance, --input-clear-acceptance, "
                 "and --scroll-acceptance "
                 "are mutually exclusive");
         }
         if ((selection_dark && selection_compact)
-            || ((selection_dark || selection_compact) && !selection_acceptance && !password_acceptance)) {
+            || ((selection_dark || selection_compact) && !selection_acceptance
+                && !password_acceptance && !clear_acceptance)) {
             throw std::invalid_argument(
                 "selection theme requires one selection acceptance mode");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
             || animation_acceptance || input_acceptance || selection_acceptance
-            || search_acceptance || password_acceptance;
+            || search_acceptance || password_acceptance || clear_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
@@ -739,6 +743,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         bool password_pointer = false;
         bool password_keyboard = false;
         bool password_disabled = false;
+        bool clear_scroll = false;
+        bool clear_pointer = false;
+        bool clear_keyboard = false;
+        bool clear_disabled = false;
         std::uint64_t input_initial_theme_identity = 0;
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
@@ -1125,6 +1133,94 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             std::cout << "search_acceptance_stage=" << stage << '\n' << std::flush;
         };
+        const auto dispatch_clear_acceptance = [&](std::size_t stage) {
+            const auto mounted = inputs.mounted_inputs();
+            if(mounted.size() != 9) throw std::logic_error("Input clear acceptance requires Gallery Input cells");
+            const auto& field = mounted[1];
+            const auto action = [&] {
+                for(const auto id : application.interactions().declaration_order()) {
+                    const auto* record = application.interactions().find(id);
+                    if(record && record->parent == field.interaction && id != field.interaction)
+                        return id;
+                }
+                throw std::logic_error("Input clear action absent");
+            }();
+            const auto click = [&] {
+                const auto& node = nodes.require(application.interactions().require(action).node);
+                const float x = node.bounds.x + node.translation.x + node.bounds.width / 2.0F;
+                const float y = node.bounds.y + node.translation.y + node.bounds.height / 2.0F;
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary, x, y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary, x, y});
+                automated_input_events += 2;
+            };
+            switch(stage) {
+            case 0: {
+                const auto& node = nodes.require(field.node);
+                clear_scroll = document_viewport.scroll_to(
+                    node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
+                frame_requests.request_frame();
+                break;
+            }
+            case 1: {
+                if(!application.focus().request_focus(field.interaction,
+                    ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("Input clear acceptance could not focus field");
+                const auto stamp = inputs.sessions().active();
+                click();
+                clear_pointer = inputs.editors().require(field.editor).value().empty()
+                    && application.focus().state().focused == field.interaction
+                    && inputs.sessions().active() == stamp
+                    && !application.interactions().require(action).eligible;
+                break;
+            }
+            case 2: {
+                const auto stamp = inputs.sessions().active();
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{
+                    ryn::String{u8"重写"}, stamp});
+                ++automated_input_events;
+                if(!application.focus().request_focus(action, ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("Input clear acceptance could not focus action");
+                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::down,
+                    ryn::input::KeyModifier::none, false});
+                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::up,
+                    ryn::input::KeyModifier::none, false});
+                automated_input_events += 2;
+                clear_keyboard = static_cast<bool>(result)
+                    && inputs.editors().require(field.editor).value().empty()
+                    && !application.interactions().require(action).eligible;
+                break;
+            }
+            case 3: {
+                if(!application.focus().request_focus(field.interaction,
+                    ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("Input clear acceptance could not restore field focus");
+                const auto stamp = inputs.sessions().active();
+                if(!inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"禁用"}, stamp}))
+                    throw std::logic_error("Input clear acceptance could not seed disabled field");
+                ++automated_input_events;
+                definition.set_clear_disabled(true);
+                break;
+            }
+            case 4: {
+                const auto before = std::string{inputs.editors().require(field.editor).value()};
+                click();
+                clear_disabled = !application.interactions().require(action).eligible
+                    && inputs.editors().require(field.editor).value() == before;
+                break;
+            }
+            case 5:
+                definition.set_clear_disabled(false);
+                if(!application.focus().request_focus(field.interaction,
+                    ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("Input clear acceptance could not refocus field");
+                break;
+            default:
+                throw std::out_of_range("unknown Input clear acceptance stage");
+            }
+            std::cout << "input_clear_acceptance_stage=" << stage << '\n' << std::flush;
+        };
         const auto dispatch_password_acceptance = [&](std::size_t stage) {
             const auto mounted = inputs.mounted_inputs();
             if(mounted.size() != 9) throw std::logic_error("Password acceptance requires Gallery Password cells");
@@ -1232,12 +1328,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 }
                 ++scroll_stage;
             }
-            const std::size_t smoke_stage_count = search_acceptance || password_acceptance
+            const std::size_t smoke_stage_count = search_acceptance || password_acceptance || clear_acceptance
                 ? 6 : selection_acceptance ? 5 : input_acceptance ? 13
                 : animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                if (password_acceptance) {
+                if (clear_acceptance) {
+                    dispatch_clear_acceptance(smoke_stage);
+                } else if (password_acceptance) {
                     dispatch_password_acceptance(smoke_stage);
                 } else if (search_acceptance) {
                     dispatch_search_acceptance(smoke_stage);
@@ -1281,10 +1379,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            const auto completion_time = search_acceptance || password_acceptance
+            const auto completion_time = search_acceptance || password_acceptance || clear_acceptance
                 ? 4'000U : selection_acceptance ? 5'000U : input_acceptance ? 4'000U
                 : animation_acceptance ? 4'700U : 1'700U;
-            const bool acceptance_complete = search_acceptance || selection_acceptance || password_acceptance
+            const bool acceptance_complete = search_acceptance || selection_acceptance
+                || password_acceptance || clear_acceptance
                 ? true : input_acceptance
                 ? input_caret_idle && !inputs.next_caret_deadline().has_value()
                 : loop.counters().idle_waits >= 20;
@@ -1342,15 +1441,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             layout_passes += nodes.require(mounted.node).place_count;
         }
 
-        const auto expected_stages = search_acceptance || password_acceptance
+        const auto expected_stages = search_acceptance || password_acceptance || clear_acceptance
             ? 6U : selection_acceptance ? 5U : input_acceptance ? 13U
             : animation_acceptance ? 16U : 5U;
         const auto expected_theme_updates = search_acceptance
-            ? 0U : password_acceptance || selection_acceptance
+            ? 0U : password_acceptance || selection_acceptance || clear_acceptance
             ? (selection_dark || selection_compact ? 1U : 0U) : input_acceptance
             ? 1U : animation_acceptance ? 6U
             : motion_disabled ? 5U : 4U;
-        const auto expected_motion_updates = search_acceptance || password_acceptance
+        const auto expected_motion_updates = search_acceptance || password_acceptance || clear_acceptance
             ? 0U : selection_acceptance
             ? 0U : input_acceptance
             ? 0U : animation_acceptance ? 2U
@@ -1368,7 +1467,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             && (smoke_stage != expected_stages || telemetry.content_runs != 1
                 || telemetry.theme_updates != expected_theme_updates
                 || telemetry.motion_updates != expected_motion_updates
-                || (!input_acceptance && !selection_acceptance && !search_acceptance && !password_acceptance
+                || (!input_acceptance && !selection_acceptance && !search_acceptance
+                    && !password_acceptance && !clear_acceptance
                     && (telemetry.brand_updates != 1 || telemetry.state_updates != 2))
                 || (search_acceptance
                     && (!search_scroll || !search_text || !search_keyboard
@@ -1383,6 +1483,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && (!password_scroll || !password_hidden || !password_pointer
                         || !password_keyboard || !password_disabled
                         || telemetry.live_samples != 33))
+                || (clear_acceptance
+                    && (!clear_scroll || !clear_pointer || !clear_keyboard || !clear_disabled
+                        || telemetry.input_changes < 3 || telemetry.live_samples != 33))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status
@@ -1538,6 +1641,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " password_keyboard=" << (password_keyboard ? "true" : "false")
             << " password_disabled=" << (password_disabled ? "true" : "false")
             << " password_scroll=" << (password_scroll ? "true" : "false")
+            << " input_clear_acceptance=" << (clear_acceptance ? "true" : "false")
+            << " input_clear_scroll=" << (clear_scroll ? "true" : "false")
+            << " input_clear_pointer=" << (clear_pointer ? "true" : "false")
+            << " input_clear_keyboard=" << (clear_keyboard ? "true" : "false")
+            << " input_clear_disabled=" << (clear_disabled ? "true" : "false")
             << " selection_keyboard=" << (selection_keyboard ? "true" : "false")
             << " selection_pointer=" << (selection_pointer ? "true" : "false")
             << " selection_blocked=" << (selection_blocked ? "true" : "false")

@@ -381,16 +381,18 @@
     {
       "identity": "ant.component.input",
       "status": "partial",
-      "summary": "RynUI 已提供 typed 单行 Input 与首批 Search 组合、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
+      "summary": "RynUI 已提供 typed 单行 Input、Search 与 Password 组合、allowClear、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
       "supported_scope": [
         "typed Props and prefix/suffix slots",
         "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
         "selection, clipboard, undo/redo and composition event bridge",
         "Theme/status/disabled/readOnly and retained caret deadline",
-        "Search Input/Button composition with Enter/button submission and loading gate"
+        "Search Input/Button composition with Enter/button submission and loading gate",
+        "Password grapheme mask and visibility action",
+        "Input allowClear action with editor/session reuse"
       ],
       "missing_scope": [
-        "TextArea, Password, OTP and allowClear; Search icon and compact visual parity",
+        "TextArea and OTP; Search icon and compact visual parity",
         "native Windows/Wayland IME and visual acceptance",
         "system placeholder/default text/max length properties",
         "complete Ant Design Web API and visual bidi navigation"
@@ -401,6 +403,10 @@
         "runtime:src/component/input_component.cpp",
         "test:rynui.input_journey",
         "test:rynui.input_component",
+        "test:rynui.password_component",
+        "test:rynui.input_clear_component",
+        "openspec:020-20260925-add-password-input#3.2",
+        "openspec:022-20260925-add-input-clear-action#2.2",
         "test:rynui.token_gallery_frame",
         "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-journey.md",
         "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-gallery.md",

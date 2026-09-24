@@ -48,6 +48,7 @@ struct TokenGalleryDefinition final {
     std::function<void(std::size_t)> smoke_step;
     std::function<void(float)> set_viewport_width;
     std::function<void(bool)> set_motion_enabled;
+    std::function<void(bool)> set_clear_disabled;
     std::function<std::optional<GalleryNavigationTarget>()>
         take_navigation_request;
     std::function<TokenGalleryTelemetry()> telemetry;

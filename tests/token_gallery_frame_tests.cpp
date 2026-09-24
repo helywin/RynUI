@@ -776,7 +776,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 40,
+                == definition.navigation_control_count + 41,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -791,7 +791,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 40,
+                == definition.navigation_control_count + 41,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
