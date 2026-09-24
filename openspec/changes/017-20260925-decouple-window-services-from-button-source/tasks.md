@@ -2,8 +2,8 @@
 
 ## 1. 窗口服务翻译单元
 
-- [ ] 1.1 将全部 `WindowComponentServices::` 定义迁到独立 `window_component_services.cpp` 并加入 `rynui_components`；用源码搜索确认 Button 源文件不再定义窗口服务方法、无重复符号
-- [ ] 1.2 在正式 `windows-msvc-debug` Ninja Multi-Config/MSVC x64 构建，并运行窗口服务生命周期、Button/Input/Search/Selection/Gallery、scene 与 idle 定向 CTest、`git diff --check`；以英文提交源码阶段，不主动 push
+- [x] 1.1 将全部 `WindowComponentServices::` 定义迁到独立 `window_component_services.cpp` 并加入 `rynui_components`；用源码搜索确认 Button 源文件不再定义窗口服务方法、无重复符号
+- [x] 1.2 在正式 `windows-msvc-debug` Ninja Multi-Config/MSVC x64 构建，并运行窗口服务生命周期、Button/Input/Search/Selection/Gallery、scene 与 idle 定向 CTest、`git diff --check`；以英文提交源码阶段，不主动 push
 
 ## 2. 通用与 Windows 集成证据
 

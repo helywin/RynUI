@@ -185,6 +185,7 @@ target_link_libraries(rynui_text_scene PRIVATE
 
 add_library(rynui_components STATIC
     component/button_component.cpp
+    component/window_component_services.cpp
     component/input_component.cpp
     component/input_material_transition.cpp
     component/input_display.cpp
