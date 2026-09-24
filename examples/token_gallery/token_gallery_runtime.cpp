@@ -557,24 +557,29 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--input-acceptance");
         const bool selection_acceptance =
             has_argument(argc, argv, "--selection-acceptance");
+        const bool search_acceptance =
+            has_argument(argc, argv, "--search-acceptance");
         const bool scroll_acceptance =
             has_argument(argc, argv, "--scroll-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
-        if ((motion_disabled && reduced_motion)
-                || (animation_acceptance && (input_acceptance || selection_acceptance
-                    || motion_disabled || reduced_motion))
-                || (input_acceptance && (selection_acceptance || motion_disabled || reduced_motion))
-                || (selection_acceptance && (motion_disabled || reduced_motion))
-                || (scroll_acceptance && (animation_acceptance || input_acceptance
-                    || selection_acceptance || motion_disabled || reduced_motion))) {
+        const int acceptance_modes = static_cast<int>(animation_acceptance)
+            + static_cast<int>(input_acceptance)
+            + static_cast<int>(selection_acceptance)
+            + static_cast<int>(search_acceptance)
+            + static_cast<int>(scroll_acceptance)
+            + static_cast<int>(motion_disabled)
+            + static_cast<int>(reduced_motion);
+        if (acceptance_modes > 1) {
             throw std::invalid_argument(
                 "--motion-disabled, --reduced-motion, --animation-acceptance, and "
-                "--input-acceptance, --selection-acceptance, and --scroll-acceptance "
+                "--input-acceptance, --selection-acceptance, --search-acceptance, "
+                "and --scroll-acceptance "
                 "are mutually exclusive");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
-            || animation_acceptance || input_acceptance || selection_acceptance;
+            || animation_acceptance || input_acceptance || selection_acceptance
+            || search_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
@@ -707,6 +712,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         bool selection_pointer = false;
         bool selection_blocked = false;
         bool selection_scroll = false;
+        bool search_keyboard = false;
+        bool search_pointer = false;
+        bool search_blocked = false;
+        bool search_text = false;
+        bool search_scroll = false;
         std::uint64_t input_initial_theme_identity = 0;
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
@@ -789,7 +799,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         };
         const auto dispatch_input_acceptance = [&](std::size_t stage) {
             const auto mounted = inputs.mounted_inputs();
-            if (mounted.size() != 2) {
+            if (mounted.size() < 2) {
                 throw std::logic_error(
                     "input acceptance requires the controlled and uncontrolled Gallery Inputs");
             }
@@ -987,6 +997,87 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             std::cout << "selection_acceptance_stage=" << stage << '\n' << std::flush;
         };
+        const auto dispatch_search_acceptance = [&](std::size_t stage) {
+            const auto mounted_inputs = inputs.mounted_inputs();
+            const auto mounted_buttons = application.mounted_buttons();
+            if (mounted_inputs.size() != 7 || mounted_buttons.size() < 5)
+                throw std::logic_error("search acceptance requires five Gallery Search cells");
+            const auto& field = mounted_inputs[2];
+            const auto& first_button = mounted_buttons[mounted_buttons.size() - 5];
+            const auto& large_button = mounted_buttons[mounted_buttons.size() - 4];
+            const auto& loading_button = mounted_buttons[mounted_buttons.size() - 2];
+            const auto& disabled_button = mounted_buttons[mounted_buttons.size() - 1];
+            const auto key = [&](ryn::input::Key value, ryn::input::KeyAction action) {
+                application.focus().dispatch({value, action,
+                    ryn::input::KeyModifier::none, false});
+                ++automated_input_events;
+            };
+            const auto click = [&](const ryn::detail::MountedButtonComponent& item) {
+                const auto& node = nodes.require(item.node);
+                const ryn::runtime::Point center{
+                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                automated_input_events += 2;
+            };
+            switch (stage) {
+            case 0: {
+                const auto& node = nodes.require(field.node);
+                search_scroll = document_viewport.scroll_to(
+                    node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
+                frame_requests.request_frame();
+                break;
+            }
+            case 1: {
+                if (!application.focus().request_focus(field.interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("search acceptance could not focus Search Input");
+                const auto stamp = inputs.sessions().active();
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{
+                    ryn::String{u8"RynUI 中文"}, stamp});
+                ++automated_input_events;
+                search_text = static_cast<bool>(result)
+                    && inputs.editors().require(field.editor).value()
+                        == ryn::String{u8"RynUI 中文"}.bytes()
+                    && definition.telemetry().search_submits == 0;
+                break;
+            }
+            case 2:
+                key(ryn::input::Key::enter, ryn::input::KeyAction::down);
+                key(ryn::input::Key::enter, ryn::input::KeyAction::up);
+                search_keyboard = definition.telemetry().search_submits == 1;
+                key(ryn::input::Key::tab, ryn::input::KeyAction::down);
+                search_keyboard = search_keyboard
+                    && application.focus().state().focused == first_button.interaction;
+                key(ryn::input::Key::space, ryn::input::KeyAction::down);
+                key(ryn::input::Key::space, ryn::input::KeyAction::up);
+                search_keyboard = search_keyboard
+                    && definition.telemetry().search_submits == 2;
+                break;
+            case 3:
+                click(large_button);
+                search_pointer = definition.telemetry().search_submits == 3;
+                break;
+            case 4:
+                click(loading_button);
+                click(disabled_button);
+                search_blocked = definition.telemetry().search_submits == 3;
+                break;
+            case 5:
+                if (!application.focus().request_focus(field.interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("search acceptance could not restore Search focus");
+                break;
+            default:
+                throw std::out_of_range("unknown Search acceptance stage");
+            }
+            std::cout << "search_acceptance_stage=" << stage << '\n' << std::flush;
+        };
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
@@ -1006,11 +1097,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 }
                 ++scroll_stage;
             }
-            const std::size_t smoke_stage_count = selection_acceptance
-                ? 5 : input_acceptance ? 13 : animation_acceptance ? 16 : 5;
+            const std::size_t smoke_stage_count = search_acceptance
+                ? 6 : selection_acceptance ? 5 : input_acceptance ? 13
+                : animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                if (selection_acceptance) {
+                if (search_acceptance) {
+                    dispatch_search_acceptance(smoke_stage);
+                } else if (selection_acceptance) {
                     dispatch_selection_acceptance(smoke_stage);
                 } else if (input_acceptance) {
                     dispatch_input_acceptance(smoke_stage);
@@ -1050,10 +1144,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            const auto completion_time = selection_acceptance
-                ? 5'000U : input_acceptance ? 4'000U
+            const auto completion_time = search_acceptance
+                ? 4'000U : selection_acceptance ? 5'000U : input_acceptance ? 4'000U
                 : animation_acceptance ? 4'700U : 1'700U;
-            const bool acceptance_complete = selection_acceptance
+            const bool acceptance_complete = search_acceptance || selection_acceptance
                 ? true : input_acceptance
                 ? input_caret_idle && !inputs.next_caret_deadline().has_value()
                 : loop.counters().idle_waits >= 20;
@@ -1111,13 +1205,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             layout_passes += nodes.require(mounted.node).place_count;
         }
 
-        const auto expected_stages = selection_acceptance
-            ? 5U : input_acceptance ? 13U : animation_acceptance ? 16U : 5U;
-        const auto expected_theme_updates = selection_acceptance
+        const auto expected_stages = search_acceptance
+            ? 6U : selection_acceptance ? 5U : input_acceptance ? 13U
+            : animation_acceptance ? 16U : 5U;
+        const auto expected_theme_updates = search_acceptance
+            ? 0U : selection_acceptance
             ? 0U : input_acceptance
             ? 1U : animation_acceptance ? 6U
             : motion_disabled ? 5U : 4U;
-        const auto expected_motion_updates = selection_acceptance
+        const auto expected_motion_updates = search_acceptance
+            ? 0U : selection_acceptance
             ? 0U : input_acceptance
             ? 0U : animation_acceptance ? 2U
             : motion_disabled ? 1U : 0U;
@@ -1134,12 +1231,17 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             && (smoke_stage != expected_stages || telemetry.content_runs != 1
                 || telemetry.theme_updates != expected_theme_updates
                 || telemetry.motion_updates != expected_motion_updates
-                || (!input_acceptance && !selection_acceptance
+                || (!input_acceptance && !selection_acceptance && !search_acceptance
                     && (telemetry.brand_updates != 1 || telemetry.state_updates != 2))
+                || (search_acceptance
+                    && (!search_scroll || !search_text || !search_keyboard
+                        || !search_pointer || !search_blocked
+                        || telemetry.search_submits != 3
+                        || telemetry.live_samples != 27))
                 || (selection_acceptance
                     && (!selection_scroll || !selection_keyboard || !selection_pointer
                         || !selection_blocked || automated_input_events != 20
-                        || telemetry.live_samples != 26))
+                        || telemetry.live_samples != 27))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status
@@ -1281,6 +1383,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " input_acceptance=" << (input_acceptance ? "true" : "false")
             << " selection_acceptance=" << (selection_acceptance ? "true" : "false")
+            << " search_acceptance=" << (search_acceptance ? "true" : "false")
+            << " search_keyboard=" << (search_keyboard ? "true" : "false")
+            << " search_pointer=" << (search_pointer ? "true" : "false")
+            << " search_blocked=" << (search_blocked ? "true" : "false")
+            << " search_text=" << (search_text ? "true" : "false")
+            << " search_scroll=" << (search_scroll ? "true" : "false")
             << " selection_keyboard=" << (selection_keyboard ? "true" : "false")
             << " selection_pointer=" << (selection_pointer ? "true" : "false")
             << " selection_blocked=" << (selection_blocked ? "true" : "false")

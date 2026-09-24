@@ -635,11 +635,16 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             }).layout(ryn::LayoutStyle{}.width(state->cell_width)));
         ++state->telemetry.live_samples;
         ryn::Search(ryn::SearchProps{}.defaultValue(u8"RynUI")
+            .size(ryn::ControlSize::Large)
             .enterButton(true).onSearch([state](ryn::String next, ryn::SearchSource) {
                 ++state->telemetry.search_submits;
                 state->search_feedback.set(std::move(next));
             }).layout(ryn::LayoutStyle{}.width(state->cell_width)),
             ryn::SearchButtonContent{[] { ryn::Text(u8"查询"); }});
+        ++state->telemetry.live_samples;
+        ryn::Search(ryn::SearchProps{}.defaultValue(u8"Small / 小号")
+            .size(ryn::ControlSize::Small)
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
         ++state->telemetry.live_samples;
         ryn::Search(ryn::SearchProps{}.defaultValue(u8"loading")
             .enterButton(true).loading(state->loading)

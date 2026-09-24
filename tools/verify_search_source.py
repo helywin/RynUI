@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -39,11 +38,12 @@ def verify() -> None:
                     f"Search source differs from change 012: {path}")
         local = SOURCE_ROOT / path
         if local.is_file():
-            require(hashlib.sha256(local.read_bytes()).hexdigest() == record["sha256"],
+            content = local.read_bytes()
+            require(hashlib.sha256(content).hexdigest() == record["sha256"],
                     f"local Search source differs: {path}")
-            blob = subprocess.check_output(
-                ["git", "-C", str(SOURCE_ROOT), "rev-parse", f"{commit}:{path}"],
-                text=True, stderr=subprocess.PIPE).strip()
+            blob = hashlib.sha1(
+                b"blob " + str(len(content)).encode("ascii") + b"\0" + content
+            ).hexdigest()
             require(blob == record["git_blob"], f"Search blob differs: {path}")
 
     require(set(contract["sources"]) == {
@@ -74,7 +74,7 @@ def verify() -> None:
 if __name__ == "__main__":
     try:
         verify()
-    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError) as error:
         print(f"Search source contract failed: {error}", file=sys.stderr)
         raise SystemExit(1)
     print("Search source contract passed")
