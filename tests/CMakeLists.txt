@@ -421,6 +421,11 @@ target_include_directories(rynui_ant_design_input_source_contract_tests PRIVATE 
 target_link_libraries(rynui_ant_design_input_source_contract_tests PRIVATE rynui_theme)
 add_test(NAME rynui.ant_design_input_source_contract COMMAND rynui_ant_design_input_source_contract_tests)
 
+add_test(NAME rynui.selection_controls_source_contract
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
+        "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_source.py")
+
 add_executable(rynui_theme_scope_component_tests theme_scope_component_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_scope_component_tests)
 target_include_directories(
@@ -473,6 +478,11 @@ add_executable(rynui_input_public_api_tests input_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_input_public_api_tests)
 target_link_libraries(rynui_input_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.input_public_api COMMAND rynui_input_public_api_tests)
+
+add_executable(rynui_selection_controls_public_api_tests selection_controls_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_selection_controls_public_api_tests)
+target_link_libraries(rynui_selection_controls_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.selection_controls_public_api COMMAND rynui_selection_controls_public_api_tests)
 add_test(NAME rynui.input_public_compile_fail COMMAND ${CMAKE_COMMAND}
     "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
     "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/input-public"

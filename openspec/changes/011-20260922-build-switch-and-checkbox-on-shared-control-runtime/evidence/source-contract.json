@@ -1,0 +1,23 @@
+{
+  "upstream_version": "6.6.5",
+  "upstream_commit": "4a39f54842eade4e565ab336ef6097cd7e723cdd",
+  "sources": {
+    "components/switch/index.en-US.md": "63050e22c79d679d413220191aa36fdc507dff99ab2fe9867f7144f291bc98ef",
+    "components/switch/style/index.ts": "ce0ef07e05672007bdea2fae4aac58e20297fe27c84531729a8b0ebf4a43214b",
+    "components/checkbox/index.en-US.md": "5e21f71cfdf939eafbbd0e78eae0ea61fbeaf294be3bd35555dfa27d1c5c4fb8",
+    "components/checkbox/style/index.ts": "3af2acd08ff6c59d1801ef88d69ec0caf58aa63771d536b7cdbe85af81172abe"
+  },
+  "switch": {
+    "props": ["checked", "defaultChecked", "disabled", "loading", "size", "onChange"],
+    "sizes": ["medium", "small"],
+    "states": ["unchecked", "checked", "hover", "pressed", "focus-visible", "disabled", "loading"],
+    "component_tokens": ["handleBg", "handleShadow", "handleSize", "handleSizeSM", "innerMaxMargin", "innerMaxMarginSM", "innerMinMargin", "innerMinMarginSM", "trackHeight", "trackHeightSM", "trackMinWidth", "trackMinWidthSM", "trackPadding"]
+  },
+  "checkbox": {
+    "props": ["checked", "defaultChecked", "disabled", "indeterminate", "onChange"],
+    "states": ["unchecked", "checked", "hover", "pressed", "focus-visible", "disabled", "indeterminate"],
+    "component_tokens": [],
+    "size_source": "controlInteractiveSize",
+    "indeterminate_indicator_source": "fontSizeLG / 2"
+  }
+}

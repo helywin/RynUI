@@ -2,9 +2,9 @@
 
 ## 1. 锁定参考与公开合同
 
-- [ ] 1.1 从仓库锁定的 Ant Design 6.6.5 source manifest 与 change 012 `evidence/source-diff.json` 核实 Switch/Checkbox 的 Props、状态、尺寸、Token 与四份关键 doc/style 文件 SHA256，写入最小 source contract；以版本、commit、source SHA、状态矩阵和非法尺寸测试验证，不访问网络
-- [ ] 1.2 确定 `SwitchProps`、`CheckboxProps` 的 controlled/defaultChecked、disabled/loading/indeterminate、onChange、typed label slot 与 LayoutStyle 边界；Switch 仅接受 Middle/Small，Checkbox 无 size Prop；以 public-only C++20 编译及非法 Props/视觉入口编译测试验证
-- [ ] 1.3 在一个受支持平台记录实际 OS/compiler/preset，运行本阶段 contract、`git diff --check`；以英文 `test: lock selection control contracts` 提交本阶段，不主动 push
+- [x] 1.1 从仓库锁定的 Ant Design 6.6.5 source manifest 与 change 012 `evidence/source-diff.json` 核实 Switch/Checkbox 的 Props、状态、尺寸、Token 与四份关键 doc/style 文件 SHA256，写入最小 source contract；以版本、commit、source SHA、状态矩阵和非法尺寸测试验证，不访问网络
+- [x] 1.2 确定 `SwitchProps`、`CheckboxProps` 的 controlled/defaultChecked、disabled/loading/indeterminate、onChange、typed label slot 与 LayoutStyle 边界；Switch 仅接受 Middle/Small，Checkbox 无 size Prop；以 public-only C++20 编译及非法 Props/视觉入口编译测试验证
+- [x] 1.3 在一个受支持平台记录实际 OS/compiler/preset，运行本阶段 contract、`git diff --check`；以英文 `test: lock selection control contracts` 提交本阶段，不主动 push
 
 ## 2. Switch
 

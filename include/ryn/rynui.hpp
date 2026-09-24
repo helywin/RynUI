@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/button.hpp>
+#include <ryn/checkbox.hpp>
 #include <ryn/component.hpp>
 #include <ryn/design_token.hpp>
 #include <ryn/flex.hpp>
@@ -10,6 +11,7 @@
 #include <ryn/reactive.hpp>
 #include <ryn/space.hpp>
 #include <ryn/string.hpp>
+#include <ryn/switch.hpp>
 #include <ryn/text.hpp>
 #include <ryn/theme.hpp>
 #include <ryn/version.hpp>
