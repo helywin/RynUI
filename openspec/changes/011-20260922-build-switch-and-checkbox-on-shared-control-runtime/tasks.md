@@ -21,8 +21,8 @@
 ## 4. 平台通用集成
 
 - [x] 4.1 增加 Button/Input/Switch/Checkbox 同窗 headless journey，覆盖 Tab 顺序、pointer/keyboard 语义、Theme、controlled/uncontrolled 回写、destroy/reuse、scene ownership 和 idle；以完整 journey 与 diagnostics 验证无 sibling remount/shape/upload
-- [ ] 4.2 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime 与 Python cache 检查，记录实际 OS/compiler/preset/result；不要求另一平台重复通用合同
-- [ ] 4.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；以英文 `test: validate shared selection controls` 提交平台通用 evidence，不主动 push
+- [x] 4.2 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime 与 Python cache 检查，记录实际 OS/compiler/preset/result；不要求另一平台重复通用合同
+- [x] 4.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；以英文 `test: validate shared selection controls` 提交平台通用 evidence，不主动 push
 
 ## 5. Windows 专属验收
 

@@ -500,6 +500,14 @@ target_compile_definitions(rynui_selection_idle_benchmark PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.selection_idle_benchmark COMMAND rynui_selection_idle_benchmark)
+set(selection_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/011-20260922-build-switch-and-checkbox-on-shared-control-runtime/evidence")
+add_test(
+    NAME rynui.selection_generic_evidence
+    COMMAND "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_evidence.py"
+        --scope platform-generic
+        --evidence "${selection_evidence_directory}/platform-generic-selection.md")
 add_test(NAME rynui.input_public_compile_fail COMMAND ${CMAKE_COMMAND}
     "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
     "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/input-public"
