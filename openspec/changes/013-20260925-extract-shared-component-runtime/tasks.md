@@ -18,7 +18,7 @@
 
 ## 4. 集成验收
 
-- [ ] 4.1 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public header、依赖锁与缓存检查，记录实际平台、编译器、preset 和结果；不在第二平台重复平台通用合同。
-- [ ] 4.2 用 Windows MSVC x64 正式 preset 完成受影响 Debug/Release build 和平台集成 CTest，核对真实窗口的 Win32/D3D12/DXIL、输入、字体、退出码与已有 Button/Input 行为，单独保存 Windows 证据。
+- [x] 4.1 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public header、依赖锁与缓存检查，记录实际平台、编译器、preset 和结果；不在第二平台重复平台通用合同。
+- [x] 4.2 用 Windows MSVC x64 正式 preset 完成受影响 Debug/Release build 和平台集成 CTest，核对真实窗口的 Win32/D3D12/DXIL、输入、字体、退出码与已有 Button/Input 行为，单独保存 Windows 证据。
 - [ ] 4.3 在 Linux 原生 Wayland 机器运行受影响 GCC/Clang 构建、平台测试及 Vulkan/SPIR-V、Fontconfig、输入实窗检查，单独保存 Linux 证据；不得以 Windows 或 XWayland 结果代替。
-- [ ] 4.4 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`，核对 011 的共享阶段与 013 证据关系并更新其计划避免重复实现；以英文提交收口文档，不自动 archive 或 push。
+- [x] 4.4 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`，核对 011 的共享阶段与 013 证据关系并更新其计划避免重复实现；以英文提交收口文档，不自动 archive 或 push。
