@@ -106,9 +106,9 @@ struct SelectionState final {
     runtime::NodeId spacer;
     input::InteractionId interaction;
     runtime::SceneFragmentId fragment;
-    component::ButtonSceneId surface;
+    component::RetainedSurfaceId surface;
     std::vector<graphics::QuadInstance> visuals;
-    component::ButtonEffectData effects;
+    component::RetainedSurfaceEffects effects;
     bool checkbox{};
     bool controlled{};
     bool checked{};

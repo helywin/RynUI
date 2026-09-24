@@ -7,9 +7,9 @@
 
 ## 2. Consumer 迁移
 
-- [ ] 2.1 WindowComponentServices 只持有通用 service；Button 的 typed array 走通用 span API，Button spinner/focus 外观仍专属
-- [ ] 2.2 Input、Selection、Gallery reference surface 改用通用类型与服务 accessor；验证同窗唯一 store、mount/destroy、scene 顺序及颜色变化最小失效
-- [ ] 2.3 正式 Windows MSVC Debug build 与受影响 Button/Input/Search/Selection/Gallery CTest、idle benchmark、`git diff --check`；英文提交 consumer 阶段，不主动 push
+- [x] 2.1 WindowComponentServices 只持有通用 service；Button 的 typed array 走通用 span API，Button spinner/focus 外观仍专属
+- [x] 2.2 Input、Selection、Gallery reference surface 改用通用类型与服务 accessor；验证同窗唯一 store、mount/destroy、scene 顺序及颜色变化最小失效
+- [x] 2.3 正式 Windows MSVC Debug build 与受影响 Button/Input/Search/Selection/Gallery CTest、idle benchmark、`git diff --check`；英文提交 consumer 阶段，不主动 push
 
 ## 3. 集成证据
 

@@ -44,13 +44,13 @@ struct ReferenceSurfaceComponentState final {
     ryn::runtime::ComponentId component;
     ryn::runtime::NodeId node;
     ryn::runtime::SceneFragmentId fragment;
-    ryn::component::ButtonSceneId scene;
+    ryn::component::RetainedSurfaceId scene;
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};
     bool visible{true};
     ReferenceSurfaceVisualData visuals;
-    ryn::component::ButtonEffectData effects;
+    ryn::component::RetainedSurfaceEffects effects;
     ryn::Signal<ryn::String> status_label{ryn::String{u8"规划中"}};
     ryn::theme_runtime::Subscription theme_subscription;
 };
@@ -214,9 +214,9 @@ void refresh_material(
     state.effects.focus_enabled = false;
     state.effects.focus_opacity = 0.0F;
     if (state.scene.valid()) {
-        static_cast<void>(host.application().button_scene().update_surface(
+        static_cast<void>(host.application().services().surfaces().update_surface(
             state.scene, state.visuals));
-        static_cast<void>(host.application().button_scene().update_effects(
+        static_cast<void>(host.application().services().surfaces().update_effects(
             state.scene, state.effects));
         host.application().dirty().invalidate(
             state.node, ryn::runtime::DirtyFlags::Material);
@@ -363,7 +363,7 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
         state->elevated,
         state->visible,
         state->scene,
-        application_->button_scene().visual_range(state->scene),
+        application_->services().surfaces().visual_range(state->scene),
     };
 }
 
@@ -444,9 +444,9 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
                 | state->component.generation,
             clip,
         };
-        static_cast<void>(application_->button_scene().update_surface(
+        static_cast<void>(application_->services().surfaces().update_surface(
             state->scene, state->visuals));
-        static_cast<void>(application_->button_scene().update_effects(
+        static_cast<void>(application_->services().surfaces().update_effects(
             state->scene, state->effects));
     }
 }
@@ -521,14 +521,14 @@ void ReferenceSurface(
         component,
         ryn::runtime::SceneFragmentPlacement::before_children);
     refresh_material(host, state);
-    state.scene = host.application().button_scene().create_surface(
+    state.scene = host.application().services().surfaces().create_surface(
         component,
         state.node,
         state.fragment,
         state.visuals,
         state.effects);
     build.on_resource_cleanup(component, [
-        scenes = &host.application().button_scene(),
+        scenes = &host.application().services().surfaces(),
         scene = state.scene] {
         static_cast<void>(scenes->destroy(scene));
     });

@@ -41,7 +41,7 @@ struct InputState {
     runtime::SceneFragmentId text_fragment;
     std::vector<graphics::SceneDrawCommand> text_commands, pending_text_commands;
     runtime::SceneFragmentId container_fragment;
-    component::ButtonSceneId selection_surface, overlay_surface;
+    component::RetainedSurfaceId selection_surface, overlay_surface;
     // Both shadow kinds retain all slots; changing a typed list never changes topology.
     std::array<graphics::RoundedEffectId, input_effect_layer_count> container_effects;
     std::optional<InputContainerPresentation> container_presentation;
@@ -168,8 +168,8 @@ struct InputPropsAccess {
                 host.pointer().cancel_interaction(mounted.interaction);
                 static_cast<void>(host.interactions().remove(mounted.interaction));
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
-                static_cast<void>(host.button_scene().destroy(current->selection_surface));
-                static_cast<void>(host.button_scene().destroy(current->overlay_surface));
+                static_cast<void>(host.surfaces().destroy(current->selection_surface));
+                static_cast<void>(host.surfaces().destroy(current->overlay_surface));
                 for(const auto effect : current->container_effects) static_cast<void>(host.rounded_effects().remove(effect));
                 static_cast<void>(host.scene_composer().remove_fragment(current->container_fragment));
                 static_cast<void>(host.scene_composer().remove_fragment(current->text_fragment));
@@ -233,10 +233,10 @@ struct InputPropsAccess {
         for(auto& effect : state.container_effects) effect = host.rounded_effects().add({});
         const auto overlay_fragment = build.register_scene_fragment(component,
             runtime::SceneFragmentPlacement::after_children);
-        component::ButtonEffectData no_effects;
+        component::RetainedSurfaceEffects no_effects;
         no_effects.focus_enabled = false;
         const std::array<graphics::QuadInstance, 2> empty_overlays{};
-        state.overlay_surface = host.button_scene().create_surface(component, state.mounted.node,
+        state.overlay_surface = host.surfaces().create_surface(component, state.mounted.node,
             overlay_fragment, empty_overlays, no_effects);
         state.layout.prefix = prefix.has_value(); state.layout.suffix = suffix.has_value();
         build.mount_slot(component, Content{[&] {
@@ -257,7 +257,7 @@ struct InputPropsAccess {
             const auto selection_fragment = slots.register_scene_fragment(editable,
                 runtime::SceneFragmentPlacement::before_children);
             const std::array<graphics::QuadInstance, 1> empty_selection{};
-            state.selection_surface = host.button_scene().create_surface(editable, state.viewport,
+            state.selection_surface = host.surfaces().create_surface(editable, state.viewport,
                 selection_fragment, empty_selection, no_effects);
             state.text_fragment = slots.register_scene_fragment(editable,
                 runtime::SceneFragmentPlacement::before_children);
@@ -783,7 +783,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             state->geometry.clip, window,
             {selection_color.red(), selection_color.green(), selection_color.blue(), selection_color.alpha()},
             state->focused && !state->disabled && !display.placeholder ? 1.0F : 0.0F)};
-        static_cast<void>(host_->button_scene().update_surface(state->selection_surface, selection));
+        static_cast<void>(host_->surfaces().update_surface(state->selection_surface, selection));
         const std::array<graphics::QuadInstance, 2> overlays{
             clipped_quad(state->geometry.underline,
                 state->geometry.clip, window, foreground, display.composing ? 1.0F : 0.0F),
@@ -792,7 +792,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 state->focused && !state->disabled && !state->read_only
                     && host_->focus().state().window_active && state->caret_blink.visible() ? 1.0F : 0.0F),
         };
-        static_cast<void>(host_->button_scene().update_surface(state->overlay_surface, overlays));
+        static_cast<void>(host_->surfaces().update_surface(state->overlay_surface, overlays));
         text_scene.set_color(state->text_scene, foreground);
         text_scene.set_color(state->selected_scene, channels(presentation.colors[7]));
         text_scene.set_color(state->placeholder_scene, channels(presentation.colors[5]));

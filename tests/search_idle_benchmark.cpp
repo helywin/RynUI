@@ -27,7 +27,6 @@ int main() {
             throw std::runtime_error("idle Search window scheduled a frame");
         const auto mounts = fixture.services.components().mount_runs();
         const auto rebuilds = fixture.services.scene_composer().diagnostics().rebuilds;
-        const auto button_updates = fixture.services.button_scene().diagnostics().material_updates;
         const auto surface_updates = fixture.services.surfaces().diagnostics().material_updates;
         constexpr std::size_t iterations = 10'000;
         const auto started = std::chrono::steady_clock::now();
@@ -43,7 +42,6 @@ int main() {
             std::chrono::steady_clock::now() - started);
         if (fixture.services.components().mount_runs() != mounts
             || fixture.services.scene_composer().diagnostics().rebuilds != rebuilds
-            || fixture.services.button_scene().diagnostics().material_updates != button_updates
             || fixture.services.surfaces().diagnostics().material_updates != surface_updates) {
             throw std::runtime_error("idle Search window updated retained content");
         }

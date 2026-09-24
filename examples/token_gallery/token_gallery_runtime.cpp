@@ -353,9 +353,9 @@ public:
             try {
                 if (quad_buffer_ == nullptr) {
                     quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                        *renderer_, application_->button_scene().instances());
+                        *renderer_, application_->services().surfaces().instances());
                 } else {
-                    application_->button_scene().synchronize_gpu(*quad_buffer_);
+                    application_->services().surfaces().synchronize_gpu(*quad_buffer_);
                 }
                 quad_synchronized = std::chrono::steady_clock::now();
                 glyph_resources_->synchronize(
@@ -1166,7 +1166,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto pointer_diagnostics = application.pointer().diagnostics();
         const auto focus_diagnostics = application.focus().diagnostics();
         const auto scene = application.scene_composer().diagnostics();
-        const auto button_scene = application.button_scene().diagnostics();
+        const auto retained_surfaces = application.services().surfaces().diagnostics();
         const auto quad = submitter.quad_uploads();
         const auto glyph = glyph_resources.counters();
         const auto effect = submitter.effect_uploads();
@@ -1360,8 +1360,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " outer_layers=" << outer_layers
             << " inset_layers=" << inset_layers
             << " focus_layers=" << focus_layers
-            << " button_material_updates=" << button_scene.material_updates
-            << " button_geometry_updates=" << button_scene.geometry_updates
+            << " button_material_updates=" << retained_surfaces.material_updates
+            << " button_geometry_updates=" << retained_surfaces.geometry_updates
             << " quad_uploads=" << quad.initial_uploads + quad.range_uploads
             << " quad_uploaded_bytes=" << quad.uploaded_bytes
             << " glyph_uploads=" << glyph.texture_uploads + glyph.buffer_uploads

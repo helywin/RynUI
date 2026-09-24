@@ -2,7 +2,7 @@
 
 #include "animation/runtime.hpp"
 #include "animation/motion_policy.hpp"
-#include "component/button_scene_service.hpp"
+#include "component/retained_surface_service.hpp"
 #include "component/text_component.hpp"
 #include "component/window_text_edit_services.hpp"
 #include "input/focus_manager.hpp"
@@ -84,7 +84,6 @@ public:
     [[nodiscard]] input::HitTestSnapshot& hit_test() noexcept { return hit_test_; }
     [[nodiscard]] component::ComponentSceneComposer& scene_composer() noexcept { return scene_composer_; }
     [[nodiscard]] component::RetainedSurfaceService& surfaces() noexcept { return surfaces_; }
-    [[nodiscard]] component::RetainedSurfaceService& button_scene() noexcept { return surfaces_; }
     [[nodiscard]] graphics::RoundedEffectStore& rounded_effects() noexcept { return surfaces_.effects(); }
     [[nodiscard]] input::FocusManager& focus() noexcept { return focus_; }
     [[nodiscard]] input::PointerRouter& pointer() noexcept { return pointer_; }

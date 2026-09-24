@@ -392,6 +392,9 @@ void mixed_window_journey() {
         && f.inputs.mounted_inputs().size() == 1
         && selection.mounted().size() == 2 && label_runs == 1,
         "four controls did not share one window mount");
+    require(&f.buttons.button_scene() == &f.services.surfaces()
+        && f.services.surfaces().size() == 5,
+        "Button, Input, Switch and Checkbox did not share one retained surface store");
     const auto button = f.buttons.mounted_buttons().front();
     const auto input = f.inputs.mounted_inputs().front();
     const auto sw = selection.mounted()[0];

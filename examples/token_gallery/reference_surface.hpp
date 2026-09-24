@@ -85,7 +85,7 @@ using ReferenceSurfaceVisualData = std::array<
 struct MountedReferenceSurface final {
     ryn::runtime::ComponentId component;
     ryn::runtime::NodeId node;
-    ryn::component::ButtonSceneId scene;
+    ryn::component::RetainedSurfaceId scene;
     ryn::runtime::SceneFragmentId fragment;
 };
 
@@ -94,7 +94,7 @@ struct ReferenceSurfaceSnapshot final {
     std::optional<ryn::Color> swatch;
     bool elevated{};
     bool visible{true};
-    ryn::component::ButtonSceneId scene;
+    ryn::component::RetainedSurfaceId scene;
     ryn::graphics::QuadInstanceRange visual_range;
 };
 

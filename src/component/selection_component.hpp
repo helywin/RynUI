@@ -14,7 +14,7 @@ struct MountedSelectionComponent final {
     runtime::ComponentId component;
     runtime::NodeId node;
     input::InteractionId interaction;
-    component::ButtonSceneId surface;
+    component::RetainedSurfaceId surface;
     bool checkbox{};
 };
 
