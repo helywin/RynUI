@@ -30,6 +30,8 @@ struct GalleryState final {
     ryn::Signal<bool> loading{true};
     ryn::Signal<bool> switch_checked{false};
     ryn::Signal<bool> checkbox_checked{false};
+    ryn::Signal<std::optional<ryn::String>> radio_selected{
+        std::optional<ryn::String>{ryn::String{u8"a"}}};
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<ryn::String> search_value{ryn::String{}};
@@ -691,6 +693,22 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             ryn::Checkbox(ryn::CheckboxProps{}.disabled(true),
                 ryn::CheckboxLabel{[] { ryn::Text(u8"禁用 / Disabled"); }});
             ++state->telemetry.live_samples;
+        });
+    ryn::Text(u8"Radio / 单选框 · 单独使用、互斥分组、disabled");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center)
+        .size(ryn::dp(12.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            ryn::Radio(ryn::RadioProps{}.defaultChecked(true),
+                ryn::RadioLabel{[] { ryn::Text(u8"单独已选 / Standalone"); }});
+            ++state->telemetry.live_samples;
+            ryn::RadioGroup(ryn::RadioGroupProps{}.options({
+                {ryn::String{u8"a"}, ryn::String{u8"甲 / Alpha"}},
+                {ryn::String{u8"b"}, ryn::String{u8"乙 / Beta"}},
+                {ryn::String{u8"c"}, ryn::String{u8"禁用 / Disabled"}, true},
+            }).value(state->radio_selected).onChange([state](const ryn::String& value) {
+                state->radio_selected.set(std::optional<ryn::String>{value});
+            }));
+            state->telemetry.live_samples += 3;
         });
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
         ryn::FlexContent{[] {}});

@@ -764,10 +764,10 @@ void test_token_gallery_frame_contract() {
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 126,
             "Token Gallery document reference surface count drifted");
-    require(fixture.selections->mounted().size() == 8,
+    require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 32,
+                == definition.navigation_control_count + 36,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -782,7 +782,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 32,
+                == definition.navigation_control_count + 36,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -792,7 +792,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126
                 && initial.reference_content_runs == 126
-                && initial.live_samples == 27,
+                && initial.live_samples == 31,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0

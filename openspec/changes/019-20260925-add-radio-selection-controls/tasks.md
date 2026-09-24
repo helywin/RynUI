@@ -6,10 +6,10 @@
 
 ## 2. Radio 与 Group 核心
 
-- [ ] 2.1 增加 `RadioProps`、`RadioGroupProps`、typed label slot 与公开聚合头，受控/默认模式互斥及重复 option 校验；以 public-only 编译和非法 Props 测试验证
-- [ ] 2.2 扩展 Selection 宿主的 Radio 状态、按压/Space/禁用/受控回写、Group 单值互斥及回调自毁；以 headless 指针、键盘、回写、销毁与 sibling tests 验证
-- [ ] 2.3 增加 Radio 的圆环/圆点、label、Group 布局与主题 Token 映射，保留 scene 身份及最小 dirty 范围；以几何、主题、CJK/Latin、scale 与 idle tests 验证
-- [ ] 2.4 在正式 `windows-msvc-debug` 构建并运行受影响 CTest、`git diff --check`，记录平台通用结果并英文提交实现阶段
+- [x] 2.1 增加 `RadioProps`、`RadioGroupProps`、typed label slot 与公开聚合头，受控/默认模式互斥及重复 option 校验；以 public-only 编译和非法 Props 测试验证
+- [x] 2.2 扩展 Selection 宿主的 Radio 状态、按压/Space/禁用/受控回写、Group 单值互斥及回调自毁；以 headless 指针、键盘、回写、销毁与 sibling tests 验证
+- [x] 2.3 增加 Radio 的圆环/圆点、label、Group 布局与主题 Token 映射，保留 scene 身份及最小 dirty 范围；以几何、主题、CJK/Latin、scale 与 idle tests 验证
+- [x] 2.4 在正式 `windows-msvc-debug` 构建并运行受影响 CTest、`git diff --check`，记录平台通用结果并英文提交实现阶段
 
 ## 3. Windows 专属验收
 

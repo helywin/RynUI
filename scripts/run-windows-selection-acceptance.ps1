@@ -67,7 +67,7 @@ foreach ($scale in $Scales) {
                 'selection_keyboard=true', 'selection_pointer=true',
                 'selection_blocked=true',
                 'gpu_driver=direct3d12', 'shader_format=DXIL',
-                'window_system=win32', 'live_samples=27', 'exit_code=0')) {
+                'window_system=win32', 'live_samples=31', 'exit_code=0')) {
             if (-not $diagnostics.Contains($expected)) {
                 throw "Selection Gallery diagnostics lack $expected at scale $scaleText."
             }

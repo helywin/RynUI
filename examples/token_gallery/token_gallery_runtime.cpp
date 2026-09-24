@@ -904,8 +904,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         };
         const auto dispatch_selection_acceptance = [&](std::size_t stage) {
             const auto mounted = selections.mounted();
-            if (mounted.size() != 8)
-                throw std::logic_error("selection acceptance requires eight Gallery controls");
+            if (mounted.size() != 12)
+                throw std::logic_error("selection acceptance requires twelve Gallery controls");
             const auto key = [&](ryn::input::Key value, ryn::input::KeyAction action) {
                 application.focus().dispatch({value, action,
                     ryn::input::KeyModifier::none, false});
@@ -990,6 +990,31 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
                 selection_blocked = selection_blocked
                     && !selections.snapshot(mounted[3].component).checked;
+                if (!application.focus().request_focus(mounted[9].interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("selection acceptance could not focus RadioGroup");
+                key(ryn::input::Key::tab, ryn::input::KeyAction::down);
+                selection_keyboard = selection_keyboard
+                    && application.focus().state().focused == mounted[10].interaction;
+                key(ryn::input::Key::enter, ryn::input::KeyAction::down);
+                key(ryn::input::Key::enter, ryn::input::KeyAction::up);
+                selection_keyboard = selection_keyboard
+                    && selections.snapshot(mounted[9].component).checked
+                    && !selections.snapshot(mounted[10].component).checked;
+                key(ryn::input::Key::space, ryn::input::KeyAction::down);
+                key(ryn::input::Key::space, ryn::input::KeyAction::up);
+                selection_keyboard = selection_keyboard
+                    && !selections.snapshot(mounted[9].component).checked
+                    && selections.snapshot(mounted[10].component).checked;
+                click(mounted[9]);
+                selection_pointer = selection_pointer
+                    && selections.snapshot(mounted[9].component).checked
+                    && !selections.snapshot(mounted[10].component).checked;
+                click(mounted[11]);
+                click(mounted[8]);
+                selection_blocked = selection_blocked
+                    && !selections.snapshot(mounted[11].component).checked
+                    && selections.snapshot(mounted[8].component).checked;
                 break;
             }
             default:
@@ -1237,11 +1262,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && (!search_scroll || !search_text || !search_keyboard
                         || !search_pointer || !search_blocked
                         || telemetry.search_submits != 3
-                        || telemetry.live_samples != 27))
+                        || telemetry.live_samples != 31))
                 || (selection_acceptance
                     && (!selection_scroll || !selection_keyboard || !selection_pointer
-                        || !selection_blocked || automated_input_events != 20
-                        || telemetry.live_samples != 27))
+                        || !selection_blocked || automated_input_events != 31
+                        || telemetry.live_samples != 31))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status

@@ -65,7 +65,7 @@ foreach ($scale in $Scales) {
         foreach ($expected in @('search_acceptance=true',
                 'search_keyboard=true', 'search_pointer=true',
                 'search_blocked=true', 'search_text=true', 'search_scroll=true',
-                'search_submits=3', 'live_samples=27',
+                'search_submits=3', 'live_samples=31',
                 'gpu_driver=direct3d12', 'shader_format=DXIL',
                 'window_system=win32', 'exit_code=0')) {
             if (-not $diagnostics.Contains($expected)) {

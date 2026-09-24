@@ -8,6 +8,7 @@
 #include <ryn/input.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
+#include <ryn/radio.hpp>
 #include <ryn/reactive.hpp>
 #include <ryn/search.hpp>
 #include <ryn/space.hpp>
