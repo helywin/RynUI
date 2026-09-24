@@ -1,3 +1,4 @@
+#include "component/button_component.hpp"
 #include "component/input_component.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
@@ -76,7 +77,7 @@ struct Fixture final : runtime::FrameSubmitter {
     detail::ButtonComponentHost host{nodes, layout, dirty, scene,
         [this](SystemFontFamily, std::uint32_t, std::uint32_t) { return chain; }, requests};
     Platform platform;
-    detail::InputComponentHost inputs{host, platform, platform};
+    detail::InputComponentHost inputs{host.services(), platform, platform};
     Gpu api;
     std::unique_ptr<graphics::QuadGpuBuffer> quads;
     detail::GlyphGpuResources glyphs{api};

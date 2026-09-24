@@ -632,10 +632,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
         ryn::text::TextEngine text_engine(*fonts);
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
-        ryn::detail::ButtonComponentHost application(
+        ryn::detail::WindowComponentServices services(
             nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests);
+        ryn::detail::ButtonComponentHost application(services);
         ReferenceSurfaceHost reference_surfaces(application);
-        ryn::detail::InputComponentHost inputs(application, platform, platform);
+        ryn::detail::InputComponentHost inputs(services, platform, platform);
         inputs.set_display_scale(render_scale);
         if (reduced_motion) {
             application.set_motion_preference(

@@ -175,7 +175,7 @@ struct Fixture final {
             std::vector<ryn::font::FontIdentity>{latin.font, cjk.font},
             frames);
         surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(*host);
-        inputs = std::make_unique<ryn::detail::InputComponentHost>(*host, platform, platform);
+        inputs = std::make_unique<ryn::detail::InputComponentHost>(host->services(), platform, platform);
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {

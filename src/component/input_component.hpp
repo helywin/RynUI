@@ -1,6 +1,6 @@
 #pragma once
 
-#include "component/button_component.hpp"
+#include "component/window_component_services.hpp"
 #include "component/input_display.hpp"
 #include "input/text_input_session.hpp"
 #include "input/text_clipboard_commands.hpp"
@@ -36,7 +36,7 @@ struct InputTextLayers {
 // The containing component host and platform ports must outlive this host.
 class InputComponentHost final : private AuxiliaryComponentSynchronizer {
 public:
-    InputComponentHost(ButtonComponentHost&, input::TextInputPlatform&, input::TextClipboard&);
+    InputComponentHost(WindowComponentServices&, input::TextInputPlatform&, input::TextClipboard&);
     ~InputComponentHost();
     InputComponentHost(const InputComponentHost&) = delete;
     InputComponentHost& operator=(const InputComponentHost&) = delete;
@@ -74,13 +74,17 @@ private:
     void apply_material_transition(runtime::ComponentId);
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
     bool dispatch_keyboard(runtime::ComponentId, const input::KeyboardInputEvent&);
+    void* begin_mount() noexcept override;
+    void end_mount(void* previous) noexcept override;
+    void on_destroy() noexcept override;
+    void on_dispose() noexcept override;
     void synchronize_auxiliary_motion() override;
     void update_caret(runtime::ComponentId, bool reset = false);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override { return next_caret_deadline(); }
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
-    ButtonComponentHost* host_;
+    WindowComponentServices* host_;
     input::TextEditorStore editors_;
     input::TextInputSessionHost sessions_;
     input::TextClipboardCommands clipboard_;

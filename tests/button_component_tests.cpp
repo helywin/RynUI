@@ -12,6 +12,7 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 
 namespace {
 
@@ -156,6 +157,34 @@ struct Fixture final {
     std::map<std::uint32_t, std::vector<ryn::font::FontIdentity>> chains;
     std::unique_ptr<ryn::detail::ButtonComponentHost> host;
 };
+
+void test_window_services_have_single_external_owner() {
+    static_assert(!std::is_copy_constructible_v<ryn::detail::WindowComponentServices>);
+    Fixture fixture;
+    fixture.host.reset();
+    auto services = std::make_unique<ryn::detail::WindowComponentServices>(
+        fixture.nodes, fixture.layout, fixture.dirty, fixture.text_scene,
+        [&fixture](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixels) {
+            return fixture.resolve_fonts(pixels);
+        }, fixture.frames);
+    {
+        ryn::detail::ButtonComponentHost host(*services);
+        require(&host.services() == services.get(), "Button host did not borrow window services");
+        require(&host.text() == &services->text()
+                    && &host.components() == &services->components()
+                    && &host.interactions() == &services->interactions()
+                    && &host.pointer() == &services->pointer()
+                    && &host.animations() == &services->animations(),
+                "Button host created a second window service");
+        host.mount(ryn::Content{[] {
+            ryn::Button(ryn::ButtonProps{}, [] { ryn::Text(u8"Shared"); });
+        }});
+        require(host.layout_and_synchronize({640, 360}, {0, 0, 640, 360}),
+                "Externally owned window services did not synchronize");
+    }
+    require(&services->components() == &services->text().components(),
+            "Window services lost their retained owner after Button host destruction");
+}
 
 ryn::input::PointerInputEvent pointer_event(
     ryn::input::PointerAction action,
@@ -1346,6 +1375,7 @@ void test_flex_composes_text_button_and_nested_flex() {
 
 int main() {
     try {
+        test_window_services_have_single_external_owner();
         test_mount_scene_composition_and_lifecycle();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_solid_border_box_and_focus_modalities_at_simulated_dpi();

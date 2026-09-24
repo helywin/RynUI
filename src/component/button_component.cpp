@@ -137,24 +137,6 @@ runtime::Rect spinner_segment_bounds(
     };
 }
 
-class ActiveButtonHostGuard final {
-public:
-    explicit ActiveButtonHostGuard(ButtonComponentHost& host) noexcept
-        : previous_(active_button_host) {
-        active_button_host = &host;
-    }
-
-    ActiveButtonHostGuard(const ActiveButtonHostGuard&) = delete;
-    ActiveButtonHostGuard& operator=(const ActiveButtonHostGuard&) = delete;
-
-    ~ActiveButtonHostGuard() {
-        active_button_host = previous_;
-    }
-
-private:
-    ButtonComponentHost* previous_;
-};
-
 void validate(ButtonType type) {
     switch (type) {
     case ButtonType::Default:
@@ -387,14 +369,14 @@ graphics::QuadInstance make_quad(
 
 } // namespace
 
-ButtonComponentHost::ButtonComponentHost(
+WindowComponentServices::WindowComponentServices(
     runtime::NodeStore& nodes,
     layout::LayoutEngine& layout,
     runtime::DirtyQueues& dirty,
     TextSceneService& text_scene,
     std::vector<font::FontIdentity> default_font_chain,
     runtime::FrameRequestState& frame_requests)
-    : ButtonComponentHost(
+    : WindowComponentServices(
           nodes,
           layout,
           dirty,
@@ -405,7 +387,7 @@ ButtonComponentHost::ButtonComponentHost(
               std::uint32_t) { return chain; },
           frame_requests) {}
 
-ButtonComponentHost::ButtonComponentHost(
+WindowComponentServices::WindowComponentServices(
     runtime::NodeStore& nodes,
     layout::LayoutEngine& layout,
     runtime::DirtyQueues& dirty,
@@ -424,96 +406,246 @@ ButtonComponentHost::ButtonComponentHost(
       interactions_(text_.components(), nodes),
       hit_test_(interactions_, nodes),
       scene_composer_(text_.components(), interactions_, hit_test_),
-      button_scene_(text_.components(), nodes, scene_composer_),
+      surfaces_(text_.components(), nodes, scene_composer_),
       focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
     text_.attach_component_scene(scene_composer_);
     animations_.reserve(256, 64, 256);
-    animation_bindings_.reserve(256);
 }
 
-ButtonComponentHost::~ButtonComponentHost() {
-    dispose();
+void WindowComponentServices::attach(WindowComponentParticipant& participant) {
+    if (std::find(participants_.begin(), participants_.end(), &participant)
+            != participants_.end()) {
+        throw std::logic_error("window component participant is already attached");
+    }
+    participants_.push_back(&participant);
 }
 
-void ButtonComponentHost::mount(const Content& content) {
-    const auto mounted_before = mounted_buttons_.size();
-    ActiveButtonHostGuard guard(*this);
+void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
+    std::erase(participants_, &participant);
+}
+
+void WindowComponentServices::mount(const Content& content) {
+    std::vector<std::pair<WindowComponentParticipant*, void*>> active;
+    active.reserve(participants_.size());
     try {
+        for (auto* participant : participants_) {
+            active.emplace_back(participant, participant->begin_mount());
+        }
         text_.mount(content);
         scene_structure_dirty_ = true;
     } catch (...) {
-        mounted_buttons_.resize(mounted_before);
+        for (auto* participant : participants_) participant->on_destroy();
+        for (auto it = active.rbegin(); it != active.rend(); ++it) {
+            it->first->end_mount(it->second);
+        }
         throw;
+    }
+    for (auto it = active.rbegin(); it != active.rend(); ++it) {
+        it->first->end_mount(it->second);
     }
 }
 
-bool ButtonComponentHost::destroy(runtime::ComponentId id) {
-    if (!text_.destroy(id)) {
-        return false;
-    }
-    std::erase_if(mounted_buttons_, [this](const auto& mounted) {
-        return !components().contains(mounted.component);
-    });
+bool WindowComponentServices::destroy(runtime::ComponentId id) {
+    if (!text_.destroy(id)) return false;
+    for (auto* participant : participants_) participant->on_destroy();
     scene_structure_dirty_ = true;
     return true;
 }
 
-void ButtonComponentHost::dispose() noexcept {
-    if (!components().active()) {
-        return;
-    }
-    try {
-        pointer_.cancel_all();
-    } catch (...) {
-    }
+void WindowComponentServices::dispose() noexcept {
+    if (!components().active()) return;
+    try { pointer_.cancel_all(); } catch (...) {}
     text_.dispose();
-    animation_bindings_.clear();
-    mounted_buttons_.clear();
+    for (auto* participant : participants_) participant->on_dispose();
     scene_structure_dirty_ = true;
 }
 
-void ButtonComponentHost::set_window_active(bool active) {
-    if (!active) {
-        pointer_.cancel_all();
-    }
+void WindowComponentServices::set_window_active(bool active) {
+    if (!active) pointer_.cancel_all();
     focus_.set_window_active(active);
+}
+
+void WindowComponentServices::set_motion_preference(animation::MotionPreference preference) {
+    if (motion_preference_ == preference) return;
+    motion_preference_ = preference;
+    for (auto* participant : participants_) participant->synchronize_auxiliary_motion();
+}
+
+std::size_t WindowComponentServices::tick_animations(animation::AnimationTime frame_time) {
+    animation_time_ = frame_time;
+    auto changed = animations_.tick(frame_time);
+    for (auto* participant : participants_) changed += participant->tick_auxiliary(frame_time);
+    return changed;
+}
+
+std::optional<animation::AnimationTime> WindowComponentServices::next_frame_deadline() const {
+    auto next = animations_.next_deadline();
+    for (const auto* participant : participants_) {
+        const auto candidate = participant->next_auxiliary_deadline();
+        if (candidate && (!next || *candidate < *next)) next = candidate;
+    }
+    return next;
+}
+
+bool WindowComponentServices::layout_and_synchronize(
+    runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
+    float gap, bool unbounded_root_height) {
+    if (!text_.layout_and_synchronize(
+            viewport, clip, origin, gap, false, unbounded_root_height)) return false;
+    for (auto* participant : participants_) {
+        participant->synchronize_auxiliary_geometry(viewport, clip);
+    }
+    if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height})) {
+        scene_structure_dirty_ = true;
+    }
+    const bool text_fragments_changed = text_.synchronize_scene_fragments(
+        [](runtime::ComponentId) { return std::optional<input::InteractionId>{}; });
+    for (auto* participant : participants_) {
+        if (participant->synchronize_auxiliary_fragments()) scene_structure_dirty_ = true;
+    }
+    if (scene_structure_dirty_ || text_fragments_changed) {
+        scene_composer_.rebuild(clip);
+        scene_structure_dirty_ = false;
+    } else if (text_.layout_performed_last_sync()) {
+        for (const auto interaction : interactions_.declaration_order()) {
+            static_cast<void>(hit_test_.refresh_interaction(interaction));
+        }
+    } else if (!dirty_->hit_test_nodes().empty()) {
+        static_cast<void>(hit_test_.refresh(dirty_->hit_test_nodes()));
+    }
+    focus_.synchronize();
+    dirty_->clear();
+    return true;
+}
+
+ButtonComponentHost::ButtonComponentHost(
+    runtime::NodeStore& nodes,
+    layout::LayoutEngine& layout,
+    runtime::DirtyQueues& dirty,
+    TextSceneService& text_scene,
+    std::vector<font::FontIdentity> default_font_chain,
+    runtime::FrameRequestState& frame_requests)
+    : ButtonComponentHost(std::make_unique<WindowComponentServices>(
+          nodes, layout, dirty, text_scene, std::move(default_font_chain), frame_requests)) {}
+
+ButtonComponentHost::ButtonComponentHost(
+    runtime::NodeStore& nodes,
+    layout::LayoutEngine& layout,
+    runtime::DirtyQueues& dirty,
+    TextSceneService& text_scene,
+    ThemeFontResolver font_resolver,
+    runtime::FrameRequestState& frame_requests)
+    : ButtonComponentHost(std::make_unique<WindowComponentServices>(
+          nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests)) {}
+
+ButtonComponentHost::ButtonComponentHost(
+    std::unique_ptr<WindowComponentServices> services)
+    : owned_services_(std::move(services)),
+      services_(owned_services_.get()),
+      nodes_(&services_->nodes()),
+      layout_(&services_->layout()),
+      dirty_(&services_->dirty()),
+      text_(services_->text()),
+      interactions_(services_->interactions()),
+      hit_test_(services_->hit_test()),
+      scene_composer_(services_->scene_composer()),
+      button_scene_(services_->surfaces()),
+      focus_(services_->focus()),
+      pointer_(services_->pointer()),
+      animations_(services_->animations()),
+      animation_time_(services_->animation_time_),
+      motion_preference_(services_->motion_preference_),
+      scene_structure_dirty_(services_->scene_structure_dirty_) {
+    animation_bindings_.reserve(256);
+    services_->attach(*this);
+}
+
+ButtonComponentHost::ButtonComponentHost(WindowComponentServices& services)
+    : services_(&services),
+      nodes_(&services.nodes()),
+      layout_(&services.layout()),
+      dirty_(&services.dirty()),
+      text_(services.text()),
+      interactions_(services.interactions()),
+      hit_test_(services.hit_test()),
+      scene_composer_(services.scene_composer()),
+      button_scene_(services.surfaces()),
+      focus_(services.focus()),
+      pointer_(services.pointer()),
+      animations_(services.animations()),
+      animation_time_(services.animation_time_),
+      motion_preference_(services.motion_preference_),
+      scene_structure_dirty_(services.scene_structure_dirty_) {
+    animation_bindings_.reserve(256);
+    services_->attach(*this);
+}
+
+ButtonComponentHost::~ButtonComponentHost() {
+    dispose();
+    services_->detach(*this);
+}
+
+void ButtonComponentHost::mount(const Content& content) {
+    services_->mount(content);
+}
+
+bool ButtonComponentHost::destroy(runtime::ComponentId id) {
+    return services_->destroy(id);
+}
+
+void ButtonComponentHost::dispose() noexcept {
+    services_->dispose();
+}
+
+void* ButtonComponentHost::begin_mount() noexcept {
+    return std::exchange(active_button_host, this);
+}
+
+void ButtonComponentHost::end_mount(void* previous) noexcept {
+    active_button_host = static_cast<ButtonComponentHost*>(previous);
+}
+
+void ButtonComponentHost::on_destroy() noexcept {
+    std::erase_if(mounted_buttons_, [this](const auto& mounted) {
+        return !components().contains(mounted.component);
+    });
+}
+
+void ButtonComponentHost::on_dispose() noexcept {
+    animation_bindings_.clear();
+    mounted_buttons_.clear();
+}
+
+void ButtonComponentHost::set_window_active(bool active) {
+    services_->set_window_active(active);
 }
 
 void ButtonComponentHost::set_animation_time(
     animation::AnimationTime time) noexcept {
-    animation_time_ = time;
+    services_->set_animation_time(time);
 }
 
 void ButtonComponentHost::set_motion_preference(
     animation::MotionPreference preference) {
-    if (motion_preference_ == preference) {
-        return;
-    }
-    motion_preference_ = preference;
+    services_->set_motion_preference(preference);
+}
+
+void ButtonComponentHost::synchronize_auxiliary_motion() {
     for (const auto& mounted : mounted_buttons_) {
         if (auto* state = find_state(mounted.component)) {
             update_visuals(*state);
         }
     }
-    for(auto* auxiliary : auxiliaries_) auxiliary->synchronize_auxiliary_motion();
 }
 
 std::size_t ButtonComponentHost::tick_animations(
     animation::AnimationTime frame_time) {
-    animation_time_ = frame_time;
-    auto changed = animations_.tick(frame_time);
-    for(auto* auxiliary : auxiliaries_) changed += auxiliary->tick_auxiliary(frame_time);
-    return changed;
+    return services_->tick_animations(frame_time);
 }
 
 std::optional<animation::AnimationTime> ButtonComponentHost::next_deadline() const {
-    auto next = animations_.next_deadline();
-    for(const auto* auxiliary : auxiliaries_) {
-        const auto candidate = auxiliary->next_auxiliary_deadline();
-        if(candidate && (!next || *candidate < *next)) next = candidate;
-    }
-    return next;
+    return services_->next_frame_deadline();
 }
 
 bool ButtonComponentHost::layout_and_synchronize(
@@ -522,48 +654,17 @@ bool ButtonComponentHost::layout_and_synchronize(
     runtime::Point origin,
     float gap,
     bool unbounded_root_height) {
-    if (!text_.layout_and_synchronize(
-            viewport,
-            clip,
-            origin,
-            gap,
-            false,
-            unbounded_root_height)) {
-        return false;
-    }
+    return services_->layout_and_synchronize(
+        viewport, clip, origin, gap, unbounded_root_height);
+}
+
+void ButtonComponentHost::synchronize_auxiliary_geometry(
+    runtime::Size viewport, runtime::Rect) {
     for (const auto& mounted : mounted_buttons_) {
         if (auto* state = find_state(mounted.component)) {
             synchronize_geometry(*state, viewport);
         }
     }
-    for (auto* auxiliary : auxiliaries_) {
-        auxiliary->synchronize_auxiliary_geometry(viewport, clip);
-    }
-    if (button_scene_.compact_effects(
-            {0.0F, 0.0F, viewport.width, viewport.height})) {
-        scene_structure_dirty_ = true;
-    }
-    const bool text_fragments_changed = text_.synchronize_scene_fragments(
-        [](runtime::ComponentId) {
-            return std::optional<input::InteractionId>{};
-        });
-    for (auto* auxiliary : auxiliaries_) {
-        if (auxiliary->synchronize_auxiliary_fragments()) scene_structure_dirty_ = true;
-    }
-    if (scene_structure_dirty_ || text_fragments_changed) {
-        scene_composer_.rebuild(clip);
-        scene_structure_dirty_ = false;
-    } else if (text_.layout_performed_last_sync()) {
-        for (const auto interaction : interactions_.declaration_order()) {
-            static_cast<void>(hit_test_.refresh_interaction(
-                interaction));
-        }
-    } else if (!dirty_->hit_test_nodes().empty()) {
-        static_cast<void>(hit_test_.refresh(dirty_->hit_test_nodes()));
-    }
-    focus_.synchronize();
-    dirty_->clear();
-    return true;
 }
 
 TextComponentHost& ButtonComponentHost::text() noexcept {
@@ -625,16 +726,12 @@ runtime::DirtyQueues& ButtonComponentHost::dirty() noexcept {
 
 void ButtonComponentHost::attach_auxiliary(
     AuxiliaryComponentSynchronizer& auxiliary) {
-    if (std::find(auxiliaries_.begin(), auxiliaries_.end(), &auxiliary)
-            != auxiliaries_.end()) {
-        throw std::logic_error("auxiliary component synchronizer is already attached");
-    }
-    auxiliaries_.push_back(&auxiliary);
+    services_->attach(auxiliary);
 }
 
 void ButtonComponentHost::detach_auxiliary(
     AuxiliaryComponentSynchronizer& auxiliary) noexcept {
-    std::erase(auxiliaries_, &auxiliary);
+    services_->detach(auxiliary);
 }
 
 animation::AnimationRuntime& ButtonComponentHost::animations() noexcept {

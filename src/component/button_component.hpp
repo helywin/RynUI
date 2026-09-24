@@ -1,7 +1,7 @@
 #pragma once
 
 #include "animation/motion_policy.hpp"
-#include "component/button_scene_service.hpp"
+#include "component/window_component_services.hpp"
 #include "component/default_theme.hpp"
 #include "component/text_component.hpp"
 #include "input/focus_manager.hpp"
@@ -13,6 +13,7 @@
 #include <ryn/button.hpp>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <span>
 #include <vector>
@@ -62,20 +63,8 @@ struct ButtonAnimationBinding final {
     ButtonAnimationChannel channel{ButtonAnimationChannel::background};
 };
 
-class AuxiliaryComponentSynchronizer {
-public:
-    virtual ~AuxiliaryComponentSynchronizer() = default;
-    virtual void synchronize_auxiliary_geometry(
-        runtime::Size viewport,
-        runtime::Rect clip) = 0;
-    // Run after every owner has finished range compaction.
-    virtual bool synchronize_auxiliary_fragments() { return false; }
-    virtual void synchronize_auxiliary_motion() {}
-    virtual std::size_t tick_auxiliary(animation::AnimationTime) { return 0; }
-    virtual std::optional<animation::AnimationTime> next_auxiliary_deadline() const { return {}; }
-};
-
-class ButtonComponentHost final : private animation::AnimationTargetSink, public runtime::FrameDeadlineSource {
+class ButtonComponentHost final : private animation::AnimationTargetSink,
+    public runtime::FrameDeadlineSource, private WindowComponentParticipant {
 public:
     ButtonComponentHost(
         runtime::NodeStore& nodes,
@@ -91,6 +80,7 @@ public:
         TextSceneService& text_scene,
         ThemeFontResolver font_resolver,
         runtime::FrameRequestState& frame_requests);
+    explicit ButtonComponentHost(WindowComponentServices& services);
     ButtonComponentHost(const ButtonComponentHost&) = delete;
     ButtonComponentHost& operator=(const ButtonComponentHost&) = delete;
     ~ButtonComponentHost();
@@ -100,8 +90,8 @@ public:
     void dispose() noexcept;
     void set_window_active(bool active);
     void set_animation_time(animation::AnimationTime time) noexcept;
-    [[nodiscard]] animation::AnimationTime animation_time() const noexcept { return animation_time_; }
-    [[nodiscard]] animation::MotionPreference motion_preference() const noexcept { return motion_preference_; }
+    [[nodiscard]] animation::AnimationTime animation_time() const noexcept { return services_->animation_time(); }
+    [[nodiscard]] animation::MotionPreference motion_preference() const noexcept { return services_->motion_preference(); }
     void set_motion_preference(animation::MotionPreference preference);
     [[nodiscard]] std::size_t tick_animations(animation::AnimationTime frame_time);
     [[nodiscard]] std::optional<animation::AnimationTime> next_deadline() const override;
@@ -126,6 +116,7 @@ public:
     [[nodiscard]] runtime::NodeStore& nodes() noexcept;
     [[nodiscard]] layout::LayoutEngine& layout() noexcept;
     [[nodiscard]] runtime::DirtyQueues& dirty() noexcept;
+    [[nodiscard]] WindowComponentServices& services() noexcept { return *services_; }
     void attach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary);
     void detach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary) noexcept;
     [[nodiscard]] animation::AnimationRuntime& animations() noexcept;
@@ -136,6 +127,7 @@ public:
         runtime::ComponentId component) const;
 
 private:
+    explicit ButtonComponentHost(std::unique_ptr<WindowComponentServices> services);
     friend void mount_button_component(
         const ButtonProps& props,
         const ButtonContent& content);
@@ -190,25 +182,31 @@ private:
     void synchronize_geometry(
         ButtonComponentState& state,
         runtime::Size viewport);
+    void* begin_mount() noexcept override;
+    void end_mount(void* previous) noexcept override;
+    void on_destroy() noexcept override;
+    void on_dispose() noexcept override;
+    void synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) override;
+    void synchronize_auxiliary_motion() override;
 
+    std::unique_ptr<WindowComponentServices> owned_services_;
+    WindowComponentServices* services_;
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
-    TextComponentHost text_;
-    input::InteractionRegistry interactions_;
-    input::HitTestSnapshot hit_test_;
-    component::ComponentSceneComposer scene_composer_;
-    component::ButtonSceneService button_scene_;
-    input::FocusManager focus_;
-    input::PointerRouter pointer_;
-    animation::AnimationRuntime animations_;
-    animation::AnimationTime animation_time_;
-    animation::MotionPreference motion_preference_{
-        animation::MotionPreference::normal};
+    TextComponentHost& text_;
+    input::InteractionRegistry& interactions_;
+    input::HitTestSnapshot& hit_test_;
+    component::ComponentSceneComposer& scene_composer_;
+    component::ButtonSceneService& button_scene_;
+    input::FocusManager& focus_;
+    input::PointerRouter& pointer_;
+    animation::AnimationRuntime& animations_;
+    animation::AnimationTime& animation_time_;
+    animation::MotionPreference& motion_preference_;
     std::vector<ButtonAnimationBinding> animation_bindings_;
     std::vector<MountedButtonComponent> mounted_buttons_;
-    std::vector<AuxiliaryComponentSynchronizer*> auxiliaries_;
-    bool scene_structure_dirty_{true};
+    bool& scene_structure_dirty_;
 };
 
 void mount_button_component(

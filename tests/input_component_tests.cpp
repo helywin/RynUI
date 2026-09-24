@@ -14,6 +14,37 @@ using namespace ryn;
 using namespace ryn::input;
 void require(bool value, const char* message) { if(!value) throw std::runtime_error(message); }
 using Fixture = ryn_test::input_component::Fixture;
+void input_without_button_host() {
+    runtime::NodeStore nodes;
+    runtime::FrameRequestState frames;
+    runtime::DirtyQueues dirty(nodes, &frames);
+    layout::LayoutEngine layout(nodes);
+    auto fonts = font::FontRuntime::create().runtime;
+    require(static_cast<bool>(fonts), "Input-only font runtime failed");
+    text::TextEngine engine(*fonts);
+    detail::TextSceneService scene(*fonts, engine, frames);
+    detail::WindowComponentServices services(nodes, layout, dirty, scene,
+        [&fonts](SystemFontFamily, std::uint32_t, std::uint32_t pixels) {
+            const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixels);
+            const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixels);
+            if (!latin || !cjk) throw std::runtime_error("Input-only fonts failed");
+            return std::vector<font::FontIdentity>{latin.font, cjk.font};
+        }, frames);
+    ryn_test::input_component::Platform platform;
+    detail::InputComponentHost inputs(services, platform, platform);
+    inputs.mount(Content{[] { Input(InputProps{}.defaultValue(u8"独立输入")); }});
+    require(inputs.mounted_inputs().size() == 1
+                && services.layout_and_synchronize({320, 240}, {0, 0, 320, 240}),
+            "Input-only window did not mount and synchronize");
+    const auto mounted = inputs.mounted_inputs().front();
+    require(services.focus().request_focus(mounted.interaction, FocusModality::keyboard)
+                && inputs.sessions().active().valid(),
+            "Input-only window did not own one editing session");
+    require(services.destroy(mounted.component)
+                && inputs.mounted_inputs().empty()
+                && inputs.editors().size() == 0,
+            "Input-only window retained state after destroy");
+}
 void lifecycle() {
     Fixture f;
     Signal<String> value{String{u8"a"}};
@@ -642,7 +673,7 @@ void composition_display() {
 }
 }
 int main() {
-    try { lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
+    try { input_without_button_host(); lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
         layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); translated_subtree_geometry(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

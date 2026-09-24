@@ -9,6 +9,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace ryn::detail {
 namespace {
@@ -356,15 +357,23 @@ struct InputPropsAccess {
     }
 };
 
-InputComponentHost::InputComponentHost(ButtonComponentHost& host, input::TextInputPlatform& platform,
+InputComponentHost::InputComponentHost(WindowComponentServices& host, input::TextInputPlatform& platform,
     input::TextClipboard& clipboard)
-    : host_(&host), sessions_(editors_, platform), clipboard_(editors_, clipboard) { host_->attach_auxiliary(*this); }
-InputComponentHost::~InputComponentHost() { dispose(); host_->detach_auxiliary(*this); }
+    : host_(&host), sessions_(editors_, platform), clipboard_(editors_, clipboard) { host_->attach(*this); }
+InputComponentHost::~InputComponentHost() { dispose(); host_->detach(*this); }
 void InputComponentHost::mount(const Content& content) {
-    struct Restore { InputComponentHost* previous; ~Restore() { active_input_host = previous; } } restore{active_input_host};
-    active_input_host = this;
     host_->mount(content);
 }
+void* InputComponentHost::begin_mount() noexcept { return std::exchange(active_input_host, this); }
+void InputComponentHost::end_mount(void* previous) noexcept {
+    active_input_host = static_cast<InputComponentHost*>(previous);
+}
+void InputComponentHost::on_destroy() noexcept {
+    std::erase_if(mounted_, [this](const auto& mounted) {
+        return !host_->components().contains(mounted.component);
+    });
+}
+void InputComponentHost::on_dispose() noexcept { mounted_.clear(); }
 void InputComponentHost::dispose() noexcept {
     while(!mounted_.empty()) {
         const auto id = mounted_.back().component;

@@ -1,4 +1,5 @@
 #pragma once
+#include "component/button_component.hpp"
 #include "component/input_component.hpp"
 #include <ryn/rynui.hpp>
 #include <map>
@@ -57,10 +58,11 @@ struct Fixture {
         auto chain = std::vector<font::FontIdentity>{latin.font, cjk.font};
         chains.emplace(pixels, chain); return chain;
     }
-    detail::ButtonComponentHost buttons{nodes, layout, dirty, scene,
+    detail::WindowComponentServices services{nodes, layout, dirty, scene,
         [this](SystemFontFamily, std::uint32_t, std::uint32_t pixels) { return resolve(pixels); }, frames};
+    detail::ButtonComponentHost buttons{services};
     Platform platform;
-    detail::InputComponentHost inputs{buttons, platform, platform};
+    detail::InputComponentHost inputs{services, platform, platform};
     // Settled geometry/material fixture; animation tests explicitly select normal
     // motion and drive the retained clock themselves.
     Fixture() { buttons.set_motion_preference(animation::MotionPreference::reduced); }

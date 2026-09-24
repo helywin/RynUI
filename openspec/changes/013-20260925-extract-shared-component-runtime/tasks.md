@@ -2,9 +2,9 @@
 
 ## 1. 窗口级服务所有权
 
-- [ ] 1.1 新增内部 `WindowComponentServices`，迁入 Text、interaction、hit-test、scene、surface、focus、pointer、animation 所有权；用构造/析构与唯一 owner 测试核对服务实例和依赖顺序。
-- [ ] 1.2 让 Button/Input 作为对等消费者使用共同挂载、销毁及帧同步入口；用混合声明顺序、identity、同步阶段、回调自毁和现有 Button/Input headless 测试验证无宿主间依赖。
-- [ ] 1.3 以 `windows-msvc` Debug 正式 preset 运行受影响 CTest、scene dirty/upload 和 idle benchmark，记录本机平台/编译器/preset；运行 `git diff --check`，以英文提交窗口服务阶段。
+- [x] 1.1 新增内部 `WindowComponentServices`，迁入 Text、interaction、hit-test、scene、surface、focus、pointer、animation 所有权；用构造/析构与唯一 owner 测试核对服务实例和依赖顺序。
+- [x] 1.2 让 Button/Input 作为对等消费者使用共同挂载、销毁及帧同步入口；用混合声明顺序、identity、同步阶段、回调自毁和现有 Button/Input headless 测试验证无宿主间依赖。
+- [x] 1.3 以 `windows-msvc` Debug 正式 preset 运行受影响 CTest、scene dirty/upload 和 idle benchmark，记录本机平台/编译器/preset；运行 `git diff --check`，以英文提交窗口服务阶段。
 
 ## 2. 窗口文本编辑设施
 
