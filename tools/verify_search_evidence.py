@@ -68,10 +68,12 @@ def validate(path: Path, scope: str) -> None:
         return
 
     for name, value in {
-        "status": "partial", "preset": "windows-msvc-debug",
+        "status": "partial", "preset": "windows-msvc-debug,windows-msvc-release",
         "window_system": "win32", "gpu_driver": "direct3d12",
         "shader_format": "DXIL", "font_source": "system",
         "host_display_scale": "1.5", "acceptance_scales": "1,1.25,1.5,2",
+        "ctest_debug": "226/226", "ctest_release": "226/226",
+        "release_acceptance_scales": "1,1.25,1.5,2",
         "manual_visual_review": "passed", "native_ime": "pending",
     }.items():
         require(fields.get(name) == value, f"Windows automated evidence: expected {name}={value}")
@@ -101,6 +103,23 @@ def validate(path: Path, scope: str) -> None:
             "search_submits=3", "live_samples=27", "exit_code=0",
         ):
             require(marker in diagnostics, f"Windows scale {scale} lacks {marker}")
+        release_log = path.parent / "diagnostics" / f"windows-release-scale-{scale}.txt"
+        require(release_log.is_file(), f"missing Release diagnostics at scale {scale}")
+        release_diagnostics = release_log.read_text(encoding="utf-8")
+        for stage in range(6):
+            require(f"search_acceptance_stage={stage}" in release_diagnostics,
+                    f"Release scale {scale} missed stage {stage}")
+        require(re.search(rf"(?:^|\s)display_scale={re.escape(scale)}(?:\s|$)",
+                          release_diagnostics) is not None,
+                f"Release scale {scale} has wrong display scale")
+        for marker in (
+            "search_acceptance=true", "search_keyboard=true",
+            "search_pointer=true", "search_blocked=true",
+            "search_text=true", "search_scroll=true", "search_submits=3",
+            "gpu_driver=direct3d12", "shader_format=DXIL", "exit_code=0",
+        ):
+            require(marker in release_diagnostics,
+                    f"Release scale {scale} lacks {marker}")
 
 
 def main() -> int:

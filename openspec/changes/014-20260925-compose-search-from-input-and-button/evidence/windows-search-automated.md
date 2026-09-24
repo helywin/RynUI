@@ -7,7 +7,7 @@ status=partial
 execution_platform=windows
 os=Microsoft Windows 11 10.0.26200 x64
 compiler=MSVC 19.51.36256.0 x64
-preset=windows-msvc-debug
+preset=windows-msvc-debug,windows-msvc-release
 build_system=Ninja Multi-Config
 cpp_standard=C++20
 source_version=6.6.5
@@ -19,6 +19,9 @@ shader_format=DXIL
 font_source=system
 host_display_scale=1.5
 acceptance_scales=1,1.25,1.5,2
+ctest_debug=226/226
+ctest_release=226/226
+release_acceptance_scales=1,1.25,1.5,2
 manual_visual_review=passed
 native_ime=pending
 source_contract_exit_code=0
@@ -31,8 +34,8 @@ screenshot_2_sha256=f3b583ab9fd5fe674fbf674cf22b21588c090bcba5dd72317f46cae3547b
 git_diff_check_exit_code=0
 exit_code=0
 
-`scripts/run-windows-search-acceptance.ps1 -Configuration Debug` 在真实 Win32 窗口覆盖四档模拟 scale，保存同名 PNG 与诊断日志。实际宿主显示缩放为 1.5；每档诊断均包含阶段 0–5、`search_keyboard=true`、`search_pointer=true`、`search_blocked=true`、`search_text=true`、`search_scroll=true`、三次提交和退出码 0。GPU 后端为 D3D12，shader 为 DXIL，系统字体链为 `Segoe UI Variable Text`、`Microsoft YaHei UI`。日志只证明后端，没有标识物理或虚拟 GPU 型号。
+正式 `windows-msvc` preset 的 Debug 与 Release 构建、完整 CTest 各 226/226 通过（Debug 219.24 秒，Release 91.69 秒）。`scripts/run-windows-search-acceptance.ps1` 在两个配置的真实 Win32 窗口各覆盖四档模拟 scale。Debug 的 PNG 和诊断日志保存在 `screenshots/`，Release 诊断保存在 `diagnostics/`。实际宿主显示缩放为 1.5；每档诊断均包含阶段 0–5、`search_keyboard=true`、`search_pointer=true`、`search_blocked=true`、`search_text=true`、`search_scroll=true`、三次提交和退出码 0。GPU 后端为 D3D12，shader 为 DXIL，系统字体链为 `Segoe UI Variable Text`、`Microsoft YaHei UI`。日志只证明后端，没有标识物理或虚拟 GPU 型号。
 
 人工核对四张 client 区截图：Small/Middle/Large 的高度、Input 与 Button 相邻布局、中文和 Latin 文本、focus、loading/disabled、搜索结果文字在视口内清晰且没有相互裁剪或覆盖。按钮指针激活与 Enter/Space/Tab 的焦点流程由窗口运行时诊断确认；旧 Input 与 Selection 脚本各在 1.0 档回归通过。
 
-自动流程向现有文本会话注入已提交的中文事件，不能证明 Windows 原生 IME 候选窗、composition 与真实输入法交互。Release 构建/CTest、原生 IME 和最终 Windows passed evidence 仍待验；因此本报告明确为 `partial`，不勾选 tasks.md 的 5.1–5.3。
+自动流程向现有文本会话注入已提交的中文事件，不能证明 Windows 原生 IME 候选窗、composition 与真实输入法交互。原生 IME 和最终 Windows passed evidence 仍待验；因此本报告明确为 `partial`，只勾选 tasks.md 的 5.1。

@@ -25,7 +25,7 @@
 
 ## 5. Windows 专属验收
 
-- [ ] 5.1 使用 `windows-msvc` Ninja Multi-Config/MSVC x64 完成受影响 Debug/Release build 与 CTest；记录 Win32、D3D12/DXIL、系统字体、实际 display scale 与运行结果
+- [x] 5.1 使用 `windows-msvc` Ninja Multi-Config/MSVC x64 完成受影响 Debug/Release build 与 CTest；记录 Win32、D3D12/DXIL、系统字体、实际 display scale 与运行结果
 - [ ] 5.2 在真实 Windows 窗口操作 Search 的 Enter、Button、loading/disabled、三档尺寸、CJK/Latin、Tab/focus 与 IME，至少覆盖 1.0/1.25/1.5/2.0 模拟 scale 并人工核对布局/clip；保存截图、driver/font/scale、diagnostics 与 exit code
 - [ ] 5.3 运行 Windows passed evidence contract、shader/lock/license/cache、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows Search composition` 提交独立 evidence，不主动 push
 
