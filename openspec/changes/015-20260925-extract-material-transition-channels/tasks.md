@@ -13,9 +13,9 @@
 
 ## 3. 集成验证与证据
 
-- [ ] 3.1 在一个正式 preset 运行完整 CTest、public dependency、shader、lock/license、Python cache 与 idle benchmark，记录 OS/compiler/preset/结果；不在第二平台重复通用合同
-- [ ] 3.2 使用 Windows MSVC x64 Debug/Release 验证构建和受影响平台集成测试，复用已有 Button/Input/Search 实窗诊断，记录真实 Win32、D3D12/DXIL、字体和退出码；不将 014 原生 IME 待验改成通过
-- [ ] 3.3 运行 OpenSpec doctor/strict validate、`git diff --check`，核对纯内部重构和 013/014 证据边界；英文提交 evidence，不主动 push 或 archive
+- [x] 3.1 在一个正式 preset 运行完整 CTest、public dependency、shader、lock/license、Python cache 与 idle benchmark，记录 OS/compiler/preset/结果；不在第二平台重复通用合同
+- [x] 3.2 使用 Windows MSVC x64 Debug/Release 验证构建和受影响平台集成测试，复用已有 Button/Input/Search 实窗诊断，记录真实 Win32、D3D12/DXIL、字体和退出码；不将 014 原生 IME 待验改成通过
+- [x] 3.3 运行 OpenSpec doctor/strict validate、`git diff --check`，核对纯内部重构和 013/014 证据边界；英文提交 evidence，不主动 push 或 archive
 
 ## 4. Linux 待验边界
 
