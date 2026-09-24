@@ -1,0 +1,41 @@
+{
+  "upstream_version": "6.6.5",
+  "upstream_commit": "4a39f54842eade4e565ab336ef6097cd7e723cdd",
+  "sources": {
+    "components/input/Search.tsx": {
+      "sha256": "4e1a6334692efa297929c3a757e6c9cf9d38d870faf9c8e0f6086d0c7863791d",
+      "git_blob": "274f6deddad030fb34063cf3066d70849d1582df"
+    },
+    "components/input/style/search.ts": {
+      "sha256": "54806e345ed34f65a66cecc1e1bfe47b43142e76cb5a2a74e65586980386f3ef",
+      "git_blob": "adfb81483bbc735d72e1a029c846453be4f57210"
+    },
+    "components/input/index.en-US.md": {
+      "sha256": "fc91fd6cb640b917d12d1f0c93e456edb0f259607f10158f30e61ee9ea343b13",
+      "git_blob": "11629db82e59cbfc956b16361354a32fdad32535"
+    },
+    "components/input/demo/search-input.tsx": {
+      "sha256": "8405bd869d68bd7924387615f3ca75b586856dcc2d6a44eb588f873f0b623939",
+      "git_blob": "9641ced26ae02d47121a976eae62ccff83bd4236"
+    },
+    "components/input/demo/search-input-loading.tsx": {
+      "sha256": "9fe776260c6fba51f2836a27734da3043c7ba2d1ebbc8711274a509ac2b49836",
+      "git_blob": "6a8cbae0d61e0afc40df4ca28b534f45b70fbd7b"
+    }
+  },
+  "supported": [
+    "value", "defaultValue", "placeholder", "size", "status", "disabled", "readOnly",
+    "maxLength", "loading", "enterButton", "onChange", "onSearch", "typedButtonContent"
+  ],
+  "not_supported": [
+    "allowClear", "searchIcon", "addonAfter", "customEnterButtonReactNode", "variant",
+    "semanticClassNames", "semanticStyles"
+  ],
+  "behavior": {
+    "submit_source": "input",
+    "enter_during_composition": "blocked",
+    "enter_during_loading": "blocked",
+    "button_during_loading": "blocked",
+    "button_while_composing": "last-committed-value"
+  }
+}

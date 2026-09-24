@@ -2,15 +2,15 @@
 
 ## 1. 来源与公开合同
 
-- [ ] 1.1 锁定本地 Ant Design 6.6.5 `Search.tsx`、`style/search.ts`、英文文档与两个 demo 的 commit/SHA256，列出首批支持和未支持的 Props、Enter/按钮/composition/loading 语义；以离线 source contract 测试验证
-- [ ] 1.2 定义 `ryn::SearchProps`、`SearchSource`、可选 typed `SearchButtonContent` 与 `LayoutStyle` 边界；以 public-only C++20 编译和非法 value/defaultValue、非法尺寸测试验证
-- [ ] 1.3 在正式 Windows MSVC Debug preset 验证阶段 1、运行 `git diff --check`；以英文 `test: lock Search composition contracts` 提交，不主动 push
+- [x] 1.1 锁定本地 Ant Design 6.6.5 `Search.tsx`、`style/search.ts`、英文文档与两个 demo 的 commit/SHA256，列出首批支持和未支持的 Props、Enter/按钮/composition/loading 语义；以离线 source contract 测试验证
+- [x] 1.2 定义 `ryn::SearchProps`、`SearchSource`、可选 typed `SearchButtonContent` 与 `LayoutStyle` 边界；以 public-only C++20 编译和非法 value/defaultValue、非法尺寸测试验证
+- [x] 1.3 在正式 Windows MSVC Debug preset 验证阶段 1、运行 `git diff --check`；公开函数与行为测试需要同一实现目标，合并到阶段 2 的英文提交，不主动 push
 
 ## 2. Search 组合与提交
 
-- [ ] 2.1 以现有 Input、Button、Flex 实现 Search 的内部 value bridge，验证受控 Signal 回写、无回写、程序化更新、非受控连续编辑及子树销毁后无悬挂订阅
-- [ ] 2.2 实现 Enter/按钮单次 onSearch、`SearchSource::Input`、loading/disabled/readOnly/composition 门禁及 typed 按钮内容；以 repeat、pointer cancel、多 Search、回调自毁和同窗 Input/Selection 回归验证
-- [ ] 2.3 在正式 Windows MSVC Debug preset 运行 Search、Button/Input、Switch/Checkbox 定向测试及 `git diff --check`；以英文 `feat: compose Search from existing controls` 提交，不主动 push
+- [x] 2.1 以现有 Input、Button、Flex 实现 Search 的内部 value bridge，验证受控 Signal 回写、无回写、程序化更新、非受控连续编辑及子树销毁后无悬挂订阅
+- [x] 2.2 实现 Enter/按钮单次 onSearch、`SearchSource::Input`、loading/disabled/readOnly/composition 门禁及 typed 按钮内容；以 repeat、pointer cancel、多 Search、回调自毁和同窗 Input/Selection 回归验证
+- [x] 2.3 在正式 Windows MSVC Debug preset 运行 Search、Button/Input、Switch/Checkbox 定向测试及 `git diff --check`；以英文 `feat: compose Search from existing controls` 提交，不主动 push
 
 ## 3. 布局、Theme 与 Gallery
 

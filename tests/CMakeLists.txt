@@ -425,6 +425,9 @@ add_test(NAME rynui.selection_controls_source_contract
     COMMAND ${CMAKE_COMMAND} -E env PYTHONDONTWRITEBYTECODE=1
         "${Python3_EXECUTABLE}" -B
         "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_source.py")
+add_test(NAME rynui.search_source_contract
+    COMMAND "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/verify_search_source.py")
 
 add_executable(rynui_theme_scope_component_tests theme_scope_component_tests.cpp)
 rynui_configure_cpp_target(rynui_theme_scope_component_tests)
@@ -478,6 +481,20 @@ add_executable(rynui_input_public_api_tests input_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_input_public_api_tests)
 target_link_libraries(rynui_input_public_api_tests PRIVATE RynUI::RynUI)
 add_test(NAME rynui.input_public_api COMMAND rynui_input_public_api_tests)
+
+add_executable(rynui_search_public_api_tests search_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_search_public_api_tests)
+target_link_libraries(rynui_search_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.search_public_api COMMAND rynui_search_public_api_tests)
+
+add_executable(rynui_search_component_tests search_component_tests.cpp)
+rynui_configure_cpp_target(rynui_search_component_tests)
+target_include_directories(rynui_search_component_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_search_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_search_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.search_component COMMAND rynui_search_component_tests)
 
 add_executable(rynui_selection_controls_public_api_tests selection_controls_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_selection_controls_public_api_tests)
