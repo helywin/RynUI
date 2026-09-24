@@ -503,6 +503,27 @@ target_compile_definitions(rynui_search_idle_benchmark PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.search_idle_benchmark COMMAND rynui_search_idle_benchmark)
+set(search_evidence_directory
+    "${PROJECT_SOURCE_DIR}/openspec/changes/014-20260925-compose-search-from-input-and-button/evidence")
+add_test(NAME rynui.search_generic_evidence
+    COMMAND "${Python3_EXECUTABLE}" -B
+        "${PROJECT_SOURCE_DIR}/tools/verify_search_evidence.py"
+        --scope platform-generic
+        --evidence "${search_evidence_directory}/platform-generic-search.md")
+if(WIN32)
+    add_test(NAME rynui.search_windows_automated_evidence
+        COMMAND "${Python3_EXECUTABLE}" -B
+            "${PROJECT_SOURCE_DIR}/tools/verify_search_evidence.py"
+            --scope windows-automated
+            --evidence "${search_evidence_directory}/windows-search-automated.md")
+    add_test(NAME rynui.search_evidence_cross_scope_rejected
+        COMMAND "${Python3_EXECUTABLE}" -B
+            "${PROJECT_SOURCE_DIR}/tools/verify_search_evidence.py"
+            --scope platform-generic
+            --evidence "${search_evidence_directory}/windows-search-automated.md")
+    set_tests_properties(rynui.search_evidence_cross_scope_rejected
+        PROPERTIES WILL_FAIL TRUE)
+endif()
 
 add_executable(rynui_selection_controls_public_api_tests selection_controls_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_selection_controls_public_api_tests)

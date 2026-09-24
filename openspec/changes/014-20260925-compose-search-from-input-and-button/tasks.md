@@ -20,8 +20,8 @@
 
 ## 4. 平台通用验证
 
-- [ ] 4.1 在一个受支持正式 preset 运行完整 CTest、public dependency、来源、lock/license、shader、Python cache 与空闲 benchmark，记录 OS/compiler/preset/结果；不要求另一平台重复平台通用合同
-- [ ] 4.2 验证平台通用 passed evidence、OpenSpec doctor/strict validate 和 `git diff --check`；以英文 `test: validate Search composition contracts` 提交独立 evidence，不主动 push
+- [x] 4.1 在一个受支持正式 preset 运行完整 CTest、public dependency、来源、lock/license、shader、Python cache 与空闲 benchmark，记录 OS/compiler/preset/结果；不要求另一平台重复平台通用合同
+- [x] 4.2 验证平台通用 passed evidence、OpenSpec doctor/strict validate 和 `git diff --check`；以英文 `test: validate Search composition contracts` 提交独立 evidence，不主动 push
 
 ## 5. Windows 专属验收
 
