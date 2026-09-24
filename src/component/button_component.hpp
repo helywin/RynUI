@@ -204,11 +204,8 @@ private:
     input::FocusManager& focus_;
     input::PointerRouter& pointer_;
     animation::AnimationRuntime& animations_;
-    animation::AnimationTime& animation_time_;
-    animation::MotionPreference& motion_preference_;
     std::vector<ButtonAnimationBinding> animation_bindings_;
     std::vector<MountedButtonComponent> mounted_buttons_;
-    bool& scene_structure_dirty_;
 };
 
 void mount_button_component(

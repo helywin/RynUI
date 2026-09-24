@@ -405,10 +405,7 @@ ButtonComponentHost::ButtonComponentHost(
       button_scene_(services_->surfaces()),
       focus_(services_->focus()),
       pointer_(services_->pointer()),
-      animations_(services_->animations()),
-      animation_time_(services_->animation_time_),
-      motion_preference_(services_->motion_preference_),
-      scene_structure_dirty_(services_->scene_structure_dirty_) {
+      animations_(services_->animations()) {
     animation_bindings_.reserve(256);
     services_->attach(*this);
 }
@@ -425,10 +422,7 @@ ButtonComponentHost::ButtonComponentHost(WindowComponentServices& services)
       button_scene_(services.surfaces()),
       focus_(services.focus()),
       pointer_(services.pointer()),
-      animations_(services.animations()),
-      animation_time_(services.animation_time_),
-      motion_preference_(services.motion_preference_),
-      scene_structure_dirty_(services.scene_structure_dirty_) {
+      animations_(services.animations()) {
     animation_bindings_.reserve(256);
     services_->attach(*this);
 }
@@ -626,7 +620,7 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(
 void ButtonComponentHost::record_mounted_button(
     MountedButtonComponent mounted) {
     mounted_buttons_.push_back(std::move(mounted));
-    scene_structure_dirty_ = true;
+    services_->mark_scene_structure_dirty();
 }
 
 ButtonComponentState* ButtonComponentHost::find_state(
@@ -796,7 +790,7 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
     const auto& button = theme.button();
     const auto& visual = visual_token(button, state);
     const auto policy = animation::resolve_motion_policy(
-        theme, motion_preference_);
+        theme, services_->motion_preference());
     const auto spec = policy.transition(
         animation::MotionDurationToken::mid,
         animation::MotionEasingToken::ease_in_out);
@@ -993,7 +987,7 @@ void ButtonComponentHost::retarget_channel(
     auto& active = state.animations[index];
     animation::retarget_material_channel(animations_, active,
         state.animation_targets[index], std::move(current), target,
-        spec, animation_time_);
+        spec, services_->animation_time());
 }
 
 void ButtonComponentHost::update_spinner(
@@ -1020,7 +1014,7 @@ void ButtonComponentHost::start_spinner(ButtonComponentState& state) {
         phase,
         phase + 1.0F,
         {{}, spinner_period, animation::Easing::linear()},
-        animation_time_);
+        services_->animation_time());
 }
 
 void ButtonComponentHost::stop_spinner(ButtonComponentState& state) {
@@ -1028,7 +1022,7 @@ void ButtonComponentHost::stop_spinner(ButtonComponentState& state) {
         ButtonAnimationChannel::spinner_phase);
     auto& active = state.animations[index];
     if (animations_.contains(active)) {
-        static_cast<void>(animations_.cancel(active, animation_time_));
+        static_cast<void>(animations_.cancel(active, services_->animation_time()));
     }
     active = {};
     state.spinner_phase = 0.0F;
@@ -1098,7 +1092,7 @@ void ButtonComponentHost::completed(
                     .theme_scope(state->component)
                     ->snapshot();
                 const auto policy = animation::resolve_motion_policy(
-                    theme, motion_preference_);
+                    theme, services_->motion_preference());
                 if (state->loading && policy.enabled()) {
                     start_spinner(*state);
                 }

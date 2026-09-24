@@ -15,8 +15,6 @@
 
 namespace ryn::detail {
 
-class ButtonComponentHost;
-
 class WindowComponentParticipant {
 public:
     virtual ~WindowComponentParticipant() = default;
@@ -94,7 +92,6 @@ public:
     [[nodiscard]] runtime::DirtyQueues& dirty() noexcept { return *dirty_; }
 
 private:
-    friend class ButtonComponentHost;
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;

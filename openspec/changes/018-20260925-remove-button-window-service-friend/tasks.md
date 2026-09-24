@@ -2,8 +2,8 @@
 
 ## 1. Button 访问边界
 
-- [ ] 1.1 用 `WindowComponentServices` 现有 accessor/dirty 方法替换 Button 的三个私有引用并删除 `friend`；用源码搜索确认无旧字段、无私有字段直接访问
-- [ ] 1.2 在正式 `windows-msvc-debug` Ninja Multi-Config/MSVC x64 构建，运行 Button 动画/scene、Input/Search/Selection 混合窗口、Gallery frame 与 idle 定向 CTest、`git diff --check`；英文提交源码阶段，不主动 push
+- [x] 1.1 用 `WindowComponentServices` 现有 accessor/dirty 方法替换 Button 的三个私有引用并删除 `friend`；用源码搜索确认无旧字段、无私有字段直接访问
+- [x] 1.2 在正式 `windows-msvc-debug` Ninja Multi-Config/MSVC x64 构建，运行 Button 动画/scene、Input/Search/Selection 混合窗口、Gallery frame 与 idle 定向 CTest、`git diff --check`；英文提交源码阶段，不主动 push
 
 ## 2. 集成验证与证据
 
