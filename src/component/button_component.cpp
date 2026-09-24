@@ -1,5 +1,6 @@
 #include "component/button_component.hpp"
 
+#include "animation/material_transition_channels.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -74,7 +75,8 @@ struct ButtonComponentState final {
     Color presentation_foreground;
     float presentation_loading_mix{0.0F};
     float spinner_phase{0.0F};
-    animation::AnimationScopeId animation_scope;
+    std::unique_ptr<animation::MaterialTransitionTargets<button_animation_channel_count>>
+        material_targets;
     std::array<animation::AnimationTargetId, button_animation_channel_count>
         animation_targets;
     std::array<animation::AnimationId, button_animation_channel_count> animations;
@@ -976,7 +978,7 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
         animation::MotionDurationToken::mid,
         animation::MotionEasingToken::ease_in_out);
 
-    if (!state.animation_scope.valid()) {
+    if (!state.material_targets) {
         state.presentation_background = visual.background;
         state.presentation_border = visual.border;
         state.presentation_foreground = visual.foreground;
@@ -1083,40 +1085,21 @@ void ButtonComponentHost::apply_presentation(
 
 void ButtonComponentHost::register_animation_targets(
     ButtonComponentState& state) {
-    state.animation_scope = animations_.create_scope();
+    constexpr auto dirty = animation::AnimationDirtyDomain::material
+        | animation::AnimationDirtyDomain::animation;
+    constexpr std::array kinds{
+        animation::AnimationValueKind::color,
+        animation::AnimationValueKind::color,
+        animation::AnimationValueKind::color,
+        animation::AnimationValueKind::scalar,
+        animation::AnimationValueKind::scalar,
+    };
+    auto targets = std::make_unique<animation::MaterialTransitionTargets<
+        button_animation_channel_count>>(
+            animations_, static_cast<animation::AnimationTargetSink&>(*this),
+            kinds, dirty);
     try {
-        constexpr auto dirty = animation::AnimationDirtyDomain::material
-            | animation::AnimationDirtyDomain::animation;
-        state.animation_targets[animation_channel_index(
-            ButtonAnimationChannel::background)] = animations_.register_target(
-                state.animation_scope,
-                *this,
-                animation::AnimationValueKind::color,
-                dirty);
-        state.animation_targets[animation_channel_index(
-            ButtonAnimationChannel::border)] = animations_.register_target(
-                state.animation_scope,
-                *this,
-                animation::AnimationValueKind::color,
-                dirty);
-        state.animation_targets[animation_channel_index(
-            ButtonAnimationChannel::foreground)] = animations_.register_target(
-                state.animation_scope,
-                *this,
-                animation::AnimationValueKind::color,
-                dirty);
-        state.animation_targets[animation_channel_index(
-            ButtonAnimationChannel::loading_mix)] = animations_.register_target(
-                state.animation_scope,
-                *this,
-                animation::AnimationValueKind::scalar,
-                dirty);
-        state.animation_targets[animation_channel_index(
-            ButtonAnimationChannel::spinner_phase)] = animations_.register_target(
-                state.animation_scope,
-                *this,
-                animation::AnimationValueKind::scalar,
-                dirty);
+        state.animation_targets = targets->targets();
         for (const auto channel : {
                 ButtonAnimationChannel::background,
                 ButtonAnimationChannel::border,
@@ -1129,23 +1112,24 @@ void ButtonComponentHost::register_animation_targets(
                 channel,
             });
         }
+        state.material_targets = std::move(targets);
     } catch (...) {
-        static_cast<void>(animations_.dispose_scope(state.animation_scope));
-        state.animation_scope = {};
+        targets.reset();
         std::erase_if(animation_bindings_, [this](const auto& binding) {
             return !animations_.contains(binding.target);
         });
+        state.animation_targets = {};
         throw;
     }
 }
 
 void ButtonComponentHost::unregister_animation_targets(
     ButtonComponentState& state) noexcept {
-    if (!state.animation_scope.valid()) {
+    if (!state.material_targets) {
         return;
     }
     try {
-        static_cast<void>(animations_.dispose_scope(state.animation_scope));
+        state.material_targets.reset();
         std::erase_if(animation_bindings_, [&state](const auto& binding) {
             return std::find(
                 state.animation_targets.begin(),
@@ -1154,7 +1138,6 @@ void ButtonComponentHost::unregister_animation_targets(
         });
     } catch (...) {
     }
-    state.animation_scope = {};
     state.animation_targets = {};
     state.animations = {};
 }
@@ -1185,27 +1168,9 @@ void ButtonComponentHost::retarget_channel(
     }
 
     auto& active = state.animations[index];
-    if (current == target) {
-        if (animations_.contains(active)) {
-            static_cast<void>(animations_.retarget(
-                active,
-                target,
-                {{}, {}, spec.easing},
-                animation_time_));
-        }
-        return;
-    }
-    if (animations_.contains(active)) {
-        static_cast<void>(animations_.retarget(
-            active, target, spec, animation_time_));
-    } else {
-        active = animations_.play(
-            state.animation_targets[index],
-            std::move(current),
-            target,
-            spec,
-            animation_time_);
-    }
+    animation::retarget_material_channel(animations_, active,
+        state.animation_targets[index], std::move(current), target,
+        spec, animation_time_);
 }
 
 void ButtonComponentHost::update_spinner(

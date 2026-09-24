@@ -1,6 +1,6 @@
 #pragma once
 
-#include "animation/runtime.hpp"
+#include "animation/material_transition_channels.hpp"
 
 #include <array>
 #include <functional>
@@ -30,8 +30,7 @@ private:
     void apply(animation::AnimationId, animation::AnimationTargetId, const animation::AnimationValue&,
         animation::AnimationDirtyDomain) override;
     animation::AnimationRuntime* runtime_;
-    animation::AnimationScopeId scope_;
-    std::array<animation::AnimationTargetId, input_material_color_count + 1> targets_;
+    animation::MaterialTransitionTargets<input_material_color_count + 1> targets_;
     std::array<animation::AnimationId, input_material_color_count + 1> animations_;
     InputMaterialValues current_, destination_;
     std::optional<animation::AnimationSpec> spec_;

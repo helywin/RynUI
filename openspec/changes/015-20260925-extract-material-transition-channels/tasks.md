@@ -7,9 +7,9 @@
 
 ## 2. Button/Input 迁移
 
-- [ ] 2.1 InputMaterialTransition 改用 helper，保持颜色/shadow opacity、same-spec skip、dirty 回调和销毁语义；运行 Input 动画、编辑、scene 与 allocation 回归
-- [ ] 2.2 Button 的 target 注册/释放及有限材质过渡改用 helper，spinner 循环、Button Token、focus/hover/press 保持组件专属；运行 Button pointer/keyboard、场景、spinner、reduced motion、同窗 Search/Selection 回归
-- [ ] 2.3 正式 Windows MSVC Debug build 与受影响 CTest、`git diff --check`；英文提交 consumer 迁移，不主动 push
+- [x] 2.1 InputMaterialTransition 改用 helper，保持颜色/shadow opacity、same-spec skip、dirty 回调和销毁语义；运行 Input 动画、编辑、scene 与 allocation 回归
+- [x] 2.2 Button 的 target 注册/释放及有限材质过渡改用 helper，spinner 循环、Button Token、focus/hover/press 保持组件专属；运行 Button pointer/keyboard、场景、spinner、reduced motion、同窗 Search/Selection 回归
+- [x] 2.3 正式 Windows MSVC Debug build 与受影响 CTest、`git diff --check`；英文提交 consumer 迁移，不主动 push
 
 ## 3. 集成验证与证据
 
