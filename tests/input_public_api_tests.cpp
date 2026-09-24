@@ -17,7 +17,7 @@ int main() {
     ryn::Signal<bool> disabled{false};
     auto declare = [&] {
         ryn::Input(ryn::InputProps{}.value(value).placeholder(u8"请输入").size(size)
-            .status(status).disabled(disabled).readOnly(false).maxLength(limit)
+            .status(status).disabled(disabled).readOnly(false).allowClear(true).maxLength(limit)
             .onChange([](ryn::String) {}).onSubmit([](ryn::String) {})
             .layout(ryn::LayoutStyle{}.width(ryn::dp(160))),
             ryn::InputPrefix{[] {}}, ryn::InputSuffix{[] {}});

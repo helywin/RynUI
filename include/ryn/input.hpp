@@ -29,6 +29,7 @@ public:
     InputProps& status(Prop<InputStatus> value) { status_ = std::move(value); return *this; }
     InputProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
     InputProps& readOnly(Prop<bool> value) { read_only_ = std::move(value); return *this; }
+    InputProps& allowClear(Prop<bool> value) { allow_clear_ = std::move(value); return *this; }
     InputProps& maxLength(Prop<std::size_t> value) { max_length_ = std::move(value); return *this; }
     InputProps& onChange(std::function<void(String)> callback) { on_change_ = std::move(callback); return *this; }
     InputProps& onSubmit(std::function<void(String)> callback) { on_submit_ = std::move(callback); return *this; }
@@ -42,6 +43,7 @@ private:
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<bool> disabled_{false}, read_only_{false};
+    std::optional<Prop<bool>> allow_clear_;
     std::optional<Prop<std::size_t>> max_length_;
     std::function<void(String)> on_change_, on_submit_;
     LayoutStyle layout_;

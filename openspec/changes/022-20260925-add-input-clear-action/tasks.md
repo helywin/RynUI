@@ -6,8 +6,8 @@
 
 ## 2. 平台通用实现与测试
 
-- [ ] 2.1 为 `InputProps` 添加 reactive `allowClear`，扩展 `InputAffixAction` 的响应式折叠并组合自定义 suffix；用正式 Windows MSVC Debug preset 构建验证
-- [ ] 2.2 清空复用 editor/session/`onChange`，补充受控、组合输入、禁用/只读、焦点、键盘、布局和销毁回归；运行定向 CTest 与 `git diff --check`，英文提交实现和通用证据
+- [x] 2.1 为 `InputProps` 添加 reactive `allowClear`，扩展 `InputAffixAction` 的响应式折叠并组合自定义 suffix；用正式 Windows MSVC Debug preset 构建验证
+- [x] 2.2 清空复用 editor/session/`onChange`，补充受控、组合输入、禁用/只读、焦点、键盘、布局和销毁回归；运行定向 CTest 与 `git diff --check`，英文提交实现和通用证据
 
 ## 3. Windows 专属验收
 

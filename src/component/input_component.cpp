@@ -31,6 +31,8 @@ struct InputState {
     MountedInputComponent mounted;
     bool controlled{}, disabled{}, read_only{}, focused{};
     bool password{}, visible{}, session_visible{};
+    bool allow_clear{}, custom_suffix{};
+    Signal<bool> clear_visible{false};
     std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
@@ -172,6 +174,9 @@ struct InputPropsAccess {
         state.disabled = disabled; state.read_only = read_only;
         state.password = props.password_visible_.has_value();
         state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
+        state.allow_clear = props.allow_clear_ && read_prop(*props.allow_clear_);
+        state.custom_suffix = suffix.has_value();
+        state.clear_visible.set(state.allow_clear && !initial.empty() && !disabled && !read_only);
         state.password_lifetime = props.password_lifetime_;
         state.on_change = props.on_change_; state.on_submit = props.on_submit_;
         // Install cleanup before subsequent resource acquisition can fail.
@@ -257,7 +262,17 @@ struct InputPropsAccess {
         const std::array<graphics::QuadInstance, 2> empty_overlays{};
         state.overlay_surface = host.surfaces().create_surface(component, state.mounted.node,
             overlay_fragment, empty_overlays, no_effects);
-        state.layout.prefix = prefix.has_value(); state.layout.suffix = suffix.has_value();
+        std::optional<InputSuffix> composed_suffix = suffix;
+        if(props.allow_clear_) {
+            const auto clear_visible = state.clear_visible;
+            composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix] {
+                mount_input_affix_action(*owner.host_, String{u8"×"}, false,
+                    [&owner, component] { owner.clear(component); }, clear_visible);
+                if(suffix) SlotContentAccess::function(*suffix)();
+            }};
+        }
+        state.layout.prefix = prefix.has_value();
+        state.layout.suffix = suffix.has_value() || state.clear_visible.get();
         build.mount_slot(component, Content{[&] {
             auto& slots = runtime::require_component_build_context();
             const auto make_slot = [&] {
@@ -282,7 +297,7 @@ struct InputPropsAccess {
                 runtime::SceneFragmentPlacement::before_children);
             host.layout().set_layout(state.viewport, layout::LeafLayout{});
             const auto suffix_component = make_slot();
-            if(suffix) slots.mount_slot_with_semantic_text_style(suffix_component, *suffix,
+            if(composed_suffix) slots.mount_slot_with_semantic_text_style(suffix_component, *composed_suffix,
                 Prop<runtime::SemanticForeground>{state.slot_foreground},
                 Prop<runtime::SemanticTypography>{state.slot_typography});
         }});
@@ -351,6 +366,7 @@ struct InputPropsAccess {
             owner.host_->interactions().set_eligible(current.mounted.interaction, !current.disabled);
             if(current.disabled) owner.host_->pointer().cancel_interaction(current.mounted.interaction);
             owner.host_->focus().synchronize();
+            owner.update_clear_visibility(current.mounted.component);
             owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
         };
         connect(props.disabled_, [eligibility](auto& owner, auto& current, bool value) {
@@ -360,6 +376,11 @@ struct InputPropsAccess {
         connect(props.read_only_, [eligibility](auto& owner, auto& current, bool value) {
             if(current.read_only == value) return;
             current.read_only = value; eligibility(owner, current);
+        });
+        if(props.allow_clear_) connect(*props.allow_clear_, [](auto& owner, auto& current, bool value) {
+            if(current.allow_clear == value) return;
+            current.allow_clear = value;
+            owner.update_clear_visibility(current.mounted.component);
         });
         if(props.max_length_) connect(*props.max_length_, [](auto& owner, auto& current, std::size_t value) {
             auto& editor = owner.editors_.require(current.mounted.editor);
@@ -690,6 +711,7 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     auto* state = host_->components().state<InputState>(component);
     if(!state || !state->text_scene.valid()) return;
     const auto& editor = editors_.require(state->mounted.editor);
+    update_clear_visibility(component);
     const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible);
     auto& scene = host_->text().scene_service();
     if(changed.text_changed && scene.text_state(state->text_scene).content().bytes() != state->display.snapshot().text) {
@@ -711,6 +733,32 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
         state->session_visible = state->visible;
         static_cast<void>(sessions_.focus(state->mounted.editor, input_properties(*state)));
     }
+}
+void InputComponentHost::update_clear_visibility(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if(!state) return;
+    const bool visible = state->allow_clear && !state->disabled && !state->read_only
+        && !editors_.require(state->mounted.editor).value().empty();
+    if(state->clear_visible.get() == visible) return;
+    state->clear_visible.set(visible);
+    const bool suffix = state->custom_suffix || visible;
+    if(state->layout.suffix != suffix) {
+        state->layout.suffix = suffix;
+        host_->layout().set_layout(state->mounted.node, state->layout);
+        invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
+            | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    }
+}
+void InputComponentHost::clear(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if(!state || !state->allow_clear || state->disabled || state->read_only) return;
+    const auto editor_id = state->mounted.editor;
+    auto& editor = editors_.require(editor_id);
+    if(editor.value().empty()) return;
+    if(editor.composition().active) static_cast<void>(sessions_.cancel_composition());
+    const auto result = editor.replace_range({0, editor.value().size()}, {});
+    check(result);
+    if(result.value_changed) notify_change(editor_id);
 }
 InputLayoutSnapshot InputComponentHost::layout_snapshot(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);

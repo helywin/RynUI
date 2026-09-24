@@ -67,6 +67,8 @@ private:
     friend struct InputPropsAccess;
     friend struct PasswordPropsAccess;
     void notify_change(input::TextInputOwnerId);
+    void clear(runtime::ComponentId);
+    void update_clear_visibility(runtime::ComponentId);
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
     void update_text(runtime::ComponentId, bool measure_layout = true);
     void update_theme(runtime::ComponentId);
