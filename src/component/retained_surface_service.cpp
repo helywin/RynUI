@@ -1,73 +1,71 @@
-#include "component/button_scene_service.hpp"
+#include "component/retained_surface_service.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <span>
 #include <stdexcept>
 
 namespace ryn::component {
 
-ButtonSceneService::ButtonSceneService(
+RetainedSurfaceService::RetainedSurfaceService(
     runtime::ComponentHost& components,
     runtime::NodeStore& nodes,
     ComponentSceneComposer& composer) noexcept
     : components_(&components), nodes_(&nodes), composer_(&composer) {}
 
-void ButtonSceneService::reserve(std::size_t button_capacity) {
+void RetainedSurfaceService::reserve(
+    std::size_t surface_capacity, std::size_t visual_capacity) {
     ensure_owner_thread();
-    if (button_capacity
-            > std::numeric_limits<std::uint32_t>::max()
-                / button_visual_layer_count) {
-        throw std::length_error("Button scene capacity exceeds uint32_t");
+    if (visual_capacity > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::length_error("retained visual capacity exceeds uint32_t");
     }
-    slots_.reserve(button_capacity);
-    free_slots_.reserve(button_capacity);
-    instances_.reserve(
-        button_capacity * button_visual_layer_count,
-        button_capacity);
+    slots_.reserve(surface_capacity);
+    free_slots_.reserve(surface_capacity);
+    instances_.reserve(visual_capacity, surface_capacity);
 }
 
-ButtonSceneId ButtonSceneService::create(
+RetainedSurfaceId RetainedSurfaceService::create(
     runtime::ComponentId component,
     runtime::NodeId node,
     runtime::SceneFragmentId fragment,
     std::optional<input::InteractionId> interaction,
-    const ButtonVisualData& visuals,
-    const ButtonEffectData& effects) {
+    std::span<const graphics::QuadInstance> visuals,
+    const RetainedSurfaceEffects& effects) {
     return create_record(
         component, node, fragment, interaction, visuals, effects);
 }
 
-ButtonSceneId ButtonSceneService::create_surface(
+RetainedSurfaceId RetainedSurfaceService::create_surface(
     runtime::ComponentId component,
     runtime::NodeId node,
     runtime::SceneFragmentId fragment,
     std::span<const graphics::QuadInstance> visuals,
-    const ButtonEffectData& effects,
+    const RetainedSurfaceEffects& effects,
     std::optional<input::InteractionId> interaction) {
     return create_record(
         component, node, fragment, interaction, visuals, effects);
 }
 
-ButtonSceneId ButtonSceneService::create_record(
+RetainedSurfaceId RetainedSurfaceService::create_record(
     runtime::ComponentId component,
     runtime::NodeId node,
     runtime::SceneFragmentId fragment,
     std::optional<input::InteractionId> interaction,
     std::span<const graphics::QuadInstance> visuals,
-    const ButtonEffectData& effects) {
+    const RetainedSurfaceEffects& effects) {
     ensure_owner_thread();
     if (!components_->contains(component)
             || components_->root(component) != node
             || nodes_->find(node) == nullptr
             || !components_->contains(fragment)) {
         throw std::invalid_argument(
-            "Button scene requires live Component, root Node, and fragment identities");
+            "retained surface requires live Component, root Node, and fragment identities");
     }
     validate_visuals(visuals);
     const auto slot_index = acquire_slot();
     auto& slot = slots_[slot_index];
-    const ButtonSceneId id{slot_index, slot.generation};
+    const RetainedSurfaceId id{slot_index, slot.generation};
     graphics::QuadInstanceRange range;
     try {
         range = instances_.append(visuals);
@@ -104,7 +102,7 @@ ButtonSceneId ButtonSceneService::create_record(
     return id;
 }
 
-bool ButtonSceneService::destroy(ButtonSceneId id) {
+bool RetainedSurfaceService::destroy(RetainedSurfaceId id) {
     ensure_owner_thread();
     auto* record = find(id);
     if (record == nullptr) {
@@ -139,14 +137,14 @@ bool ButtonSceneService::destroy(ButtonSceneId id) {
     return true;
 }
 
-std::size_t ButtonSceneService::update(
-    ButtonSceneId id,
-    const ButtonVisualData& visuals) {
+std::size_t RetainedSurfaceService::update(
+    RetainedSurfaceId id,
+    std::span<const graphics::QuadInstance> visuals) {
     return update_surface(id, visuals);
 }
 
-std::size_t ButtonSceneService::update_surface(
-    ButtonSceneId id,
+std::size_t RetainedSurfaceService::update_surface(
+    RetainedSurfaceId id,
     std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     auto& record = require(id);
@@ -175,9 +173,9 @@ std::size_t ButtonSceneService::update_surface(
     return material_updates + geometry_updates;
 }
 
-std::size_t ButtonSceneService::update_effects(
-    ButtonSceneId id,
-    const ButtonEffectData& effects) {
+std::size_t RetainedSurfaceService::update_effects(
+    RetainedSurfaceId id,
+    const RetainedSurfaceEffects& effects) {
     ensure_owner_thread();
     auto& record = require(id);
     if (record.effects == effects) {
@@ -246,7 +244,7 @@ std::size_t ButtonSceneService::update_effects(
     return updates;
 }
 
-bool ButtonSceneService::compact_effects(runtime::Rect window_clip) {
+bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip) {
     ensure_owner_thread();
     if (!effect_scene_.store().compact(window_clip)) {
         return false;
@@ -259,59 +257,59 @@ bool ButtonSceneService::compact_effects(runtime::Rect window_clip) {
     return true;
 }
 
-void ButtonSceneService::synchronize_gpu(
+void RetainedSurfaceService::synchronize_gpu(
     graphics::QuadGpuBuffer& gpu_buffer) {
     ensure_owner_thread();
     gpu_buffer.synchronize(instances_);
 }
 
-graphics::QuadInstanceRange ButtonSceneService::visual_range(
-    ButtonSceneId id) const {
+graphics::QuadInstanceRange RetainedSurfaceService::visual_range(
+    RetainedSurfaceId id) const {
     ensure_owner_thread();
     return require(id).range;
 }
 
-const graphics::RoundedEffectInstance& ButtonSceneService::focus_effect(
-    ButtonSceneId id) const {
+const graphics::RoundedEffectInstance& RetainedSurfaceService::focus_effect(
+    RetainedSurfaceId id) const {
     ensure_owner_thread();
     const auto& record = require(id);
     return effect_scene_.store().at(record.focus_id);
 }
 
-std::span<const graphics::RoundedEffectId> ButtonSceneService::shadow_effects(
-    ButtonSceneId id) const {
+std::span<const graphics::RoundedEffectId> RetainedSurfaceService::shadow_effects(
+    RetainedSurfaceId id) const {
     ensure_owner_thread();
     return require(id).shadow_ids;
 }
 
-graphics::QuadInstanceStore& ButtonSceneService::instances() noexcept {
+graphics::QuadInstanceStore& RetainedSurfaceService::instances() noexcept {
     return instances_;
 }
 
 const graphics::QuadInstanceStore&
-ButtonSceneService::instances() const noexcept {
+RetainedSurfaceService::instances() const noexcept {
     return instances_;
 }
 
-graphics::RoundedEffectStore& ButtonSceneService::effects() noexcept {
+graphics::RoundedEffectStore& RetainedSurfaceService::effects() noexcept {
     return effect_scene_.store();
 }
 
-const graphics::RoundedEffectStore& ButtonSceneService::effects() const noexcept {
+const graphics::RoundedEffectStore& RetainedSurfaceService::effects() const noexcept {
     return effect_scene_.store();
 }
 
-std::size_t ButtonSceneService::size() const noexcept {
+std::size_t RetainedSurfaceService::size() const noexcept {
     return live_records_;
 }
 
-const ButtonSceneDiagnostics&
-ButtonSceneService::diagnostics() const noexcept {
+const RetainedSurfaceDiagnostics&
+RetainedSurfaceService::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-ButtonSceneService::Record* ButtonSceneService::find(
-    ButtonSceneId id) noexcept {
+RetainedSurfaceService::Record* RetainedSurfaceService::find(
+    RetainedSurfaceId id) noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -327,8 +325,8 @@ ButtonSceneService::Record* ButtonSceneService::find(
         : nullptr;
 }
 
-const ButtonSceneService::Record* ButtonSceneService::find(
-    ButtonSceneId id) const noexcept {
+const RetainedSurfaceService::Record* RetainedSurfaceService::find(
+    RetainedSurfaceId id) const noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -344,36 +342,36 @@ const ButtonSceneService::Record* ButtonSceneService::find(
         : nullptr;
 }
 
-ButtonSceneService::Record& ButtonSceneService::require(ButtonSceneId id) {
+RetainedSurfaceService::Record& RetainedSurfaceService::require(RetainedSurfaceId id) {
     if (auto* record = find(id)) {
         return *record;
     }
     ++diagnostics_.stale_rejections;
-    throw std::out_of_range("ButtonSceneId is stale or has stale associations");
+    throw std::out_of_range("RetainedSurfaceId is stale or has stale associations");
 }
 
-const ButtonSceneService::Record& ButtonSceneService::require(
-    ButtonSceneId id) const {
+const RetainedSurfaceService::Record& RetainedSurfaceService::require(
+    RetainedSurfaceId id) const {
     if (const auto* record = find(id)) {
         return *record;
     }
-    throw std::out_of_range("ButtonSceneId is stale or has stale associations");
+    throw std::out_of_range("RetainedSurfaceId is stale or has stale associations");
 }
 
-std::uint32_t ButtonSceneService::acquire_slot() {
+std::uint32_t RetainedSurfaceService::acquire_slot() {
     if (!free_slots_.empty()) {
         const auto index = free_slots_.back();
         free_slots_.pop_back();
         return index;
     }
-    if (slots_.size() >= ButtonSceneId::invalid_index) {
-        throw std::length_error("ButtonSceneService exhausted ButtonSceneId indices");
+    if (slots_.size() >= RetainedSurfaceId::invalid_index) {
+        throw std::length_error("RetainedSurfaceService exhausted RetainedSurfaceId indices");
     }
     slots_.emplace_back();
     return static_cast<std::uint32_t>(slots_.size() - 1);
 }
 
-void ButtonSceneService::bind_fragment(const Record& record) {
+void RetainedSurfaceService::bind_fragment(const Record& record) {
     const graphics::SceneDrawCommand fill{
         graphics::SceneDrawKind::quad,
         record.range.first,
@@ -389,7 +387,7 @@ void ButtonSceneService::bind_fragment(const Record& record) {
         record.interaction);
 }
 
-void ButtonSceneService::create_effects(Record& record) {
+void RetainedSurfaceService::create_effects(Record& record) {
     record.shadow_ids.clear();
     record.effect_primitive = {};
     record.shadow_ids.reserve(record.effects.shadows.size());
@@ -429,7 +427,7 @@ void ButtonSceneService::create_effects(Record& record) {
     }
 }
 
-void ButtonSceneService::remove_effects(Record& record) noexcept {
+void RetainedSurfaceService::remove_effects(Record& record) noexcept {
     try {
         static_cast<void>(effect_scene_.remove(record.effect_primitive));
     } catch (...) {
@@ -439,14 +437,14 @@ void ButtonSceneService::remove_effects(Record& record) noexcept {
     record.effect_primitive = {};
 }
 
-void ButtonSceneService::ensure_owner_thread() const {
+void RetainedSurfaceService::ensure_owner_thread() const {
     if (!components_->is_owner_thread()) {
         throw std::logic_error(
-            "ButtonSceneService can only be used on its owner thread");
+            "RetainedSurfaceService can only be used on its owner thread");
     }
 }
 
-void ButtonSceneService::validate_visuals(
+void RetainedSurfaceService::validate_visuals(
     std::span<const graphics::QuadInstance> visuals) {
     if (visuals.empty()
             || visuals.size() > retained_surface_visual_capacity) {
@@ -466,12 +464,12 @@ void ButtonSceneService::validate_visuals(
                 || visual.opacity < 0.0F || visual.opacity > 1.0F
                 || visual.corner_radius < 0.0F
                 || visual.corner_radius > 0.5F) {
-            throw std::invalid_argument("Button visual data is invalid");
+            throw std::invalid_argument("retained surface visual data is invalid");
         }
     }
 }
 
-void ButtonSceneService::advance_generation(Slot& slot) noexcept {
+void RetainedSurfaceService::advance_generation(Slot& slot) noexcept {
     ++slot.generation;
     if (slot.generation == 0) {
         slot.generation = 1;

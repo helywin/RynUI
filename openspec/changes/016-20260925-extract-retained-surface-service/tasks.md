@@ -2,8 +2,8 @@
 
 ## 1. 通用 surface core
 
-- [ ] 1.1 迁出通用 surface ID/effects/diagnostics/service 与 span create/update/destroy，实现和场景/effect/store/generation 行为等价；Button visuals 留在专属头
-- [ ] 1.2 用正式 Windows MSVC Debug preset 跑 surface/scene/effect/stale ID/dirty/upload 定向 CTest、`git diff --check`；英文提交 core 阶段，不主动 push
+- [x] 1.1 迁出通用 surface ID/effects/diagnostics/service 与 span create/update/destroy，实现和场景/effect/store/generation 行为等价；Button visuals 留在专属头
+- [x] 1.2 用正式 Windows MSVC Debug preset 跑 surface/scene/effect/stale ID/dirty/upload 定向 CTest、`git diff --check`；英文提交 core 阶段，不主动 push
 
 ## 2. Consumer 迁移
 

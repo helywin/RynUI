@@ -151,7 +151,8 @@ int main() {
             components, interactions, hit_test);
         composer.reserve(button_count, button_count, 0);
         ryn::component::ButtonSceneService buttons(components, nodes, composer);
-        buttons.reserve(button_count);
+        buttons.reserve(button_count,
+            button_count * ryn::component::button_visual_layer_count);
 
         std::vector<ryn::component::ButtonSceneId> scenes;
         std::vector<ryn::component::ButtonVisualData> visuals;

@@ -125,7 +125,7 @@ struct Fixture final {
     ryn::input::HitTestSnapshot hit_test{interactions, nodes};
     ryn::component::ComponentSceneComposer composer{
         components, interactions, hit_test};
-    ryn::component::ButtonSceneService buttons{components, nodes, composer};
+    ryn::component::RetainedSurfaceService buttons{components, nodes, composer};
     std::array<ryn::input::InteractionId, 3> interaction_ids;
 
     Fixture() {
@@ -152,7 +152,7 @@ struct Fixture final {
             });
         }
         composer.reserve(3, 6, 3);
-        buttons.reserve(3);
+        buttons.reserve(3, 3 * ryn::component::button_visual_layer_count);
     }
 };
 

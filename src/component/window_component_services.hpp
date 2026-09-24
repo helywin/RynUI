@@ -83,8 +83,8 @@ public:
     [[nodiscard]] input::InteractionRegistry& interactions() noexcept { return interactions_; }
     [[nodiscard]] input::HitTestSnapshot& hit_test() noexcept { return hit_test_; }
     [[nodiscard]] component::ComponentSceneComposer& scene_composer() noexcept { return scene_composer_; }
-    [[nodiscard]] component::ButtonSceneService& surfaces() noexcept { return surfaces_; }
-    [[nodiscard]] component::ButtonSceneService& button_scene() noexcept { return surfaces_; }
+    [[nodiscard]] component::RetainedSurfaceService& surfaces() noexcept { return surfaces_; }
+    [[nodiscard]] component::RetainedSurfaceService& button_scene() noexcept { return surfaces_; }
     [[nodiscard]] graphics::RoundedEffectStore& rounded_effects() noexcept { return surfaces_.effects(); }
     [[nodiscard]] input::FocusManager& focus() noexcept { return focus_; }
     [[nodiscard]] input::PointerRouter& pointer() noexcept { return pointer_; }
@@ -103,7 +103,7 @@ private:
     input::InteractionRegistry interactions_;
     input::HitTestSnapshot hit_test_;
     component::ComponentSceneComposer scene_composer_;
-    component::ButtonSceneService surfaces_;
+    component::RetainedSurfaceService surfaces_;
     input::FocusManager focus_;
     input::PointerRouter pointer_;
     animation::AnimationRuntime animations_;
