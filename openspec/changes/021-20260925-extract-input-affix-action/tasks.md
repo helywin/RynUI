@@ -6,8 +6,8 @@
 
 ## 2. 内部 helper 提取
 
-- [ ] 2.1 提取 `InputAffixAction` 的状态、挂载、按压、键盘、禁用和清理；Password 改为传入标签与激活回调，公开 API 及视觉几何不变
-- [ ] 2.2 在正式 Windows MSVC Debug preset 构建，运行 Password、Input、Pointer、Focus、Gallery frame 与 Search 定向测试；运行 `git diff --check` 并英文提交实现与平台通用证据
+- [x] 2.1 提取 `InputAffixAction` 的状态、挂载、按压、键盘、禁用和清理；Password 改为传入标签与激活回调，公开 API 及视觉几何不变
+- [x] 2.2 在正式 Windows MSVC Debug preset 构建，运行 Password、Input、Pointer、Focus、Gallery frame 与 Search 定向测试；运行 `git diff --check` 并英文提交实现与平台通用证据
 
 ## 3. Windows 专属回归
 

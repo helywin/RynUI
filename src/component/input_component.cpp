@@ -1,12 +1,11 @@
 #include "component/input_component.hpp"
+#include "component/input_affix_action.hpp"
 #include "component/input_material_transition.hpp"
 #include "component/input_caret_blink.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
-#include "input/pressable_behavior.hpp"
 #include <ryn/password.hpp>
-#include <ryn/text.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -66,14 +65,6 @@ struct InputState {
     std::uint64_t measured_value_revision{};
 };
 struct InputSlotState {};
-struct PasswordToggleState {
-    runtime::ComponentId component;
-    runtime::NodeId node;
-    input::InteractionId interaction;
-    runtime::SceneFragmentId fragment;
-    input::PressableBehavior press;
-    std::function<void()> activate;
-};
 struct InputVisuals {
     Color background, border, foreground, affix, caret;
     const ShadowList* shadow{};
@@ -397,90 +388,6 @@ struct PasswordPropsAccess final {
         Scope scope;
     };
 
-    static void toggle(InputComponentHost& owner, Prop<bool> disabled,
-        const std::shared_ptr<VisibilityBridge>& bridge, bool controlled,
-        std::function<void(bool)> on_visible_change) {
-        auto& host = *owner.host_;
-        auto& build = runtime::require_component_build_context();
-        const auto component = build.mount_component<PasswordToggleState>();
-        auto& state = build.state<PasswordToggleState>(component);
-        state.component = component;
-        state.node = build.root(component);
-        state.activate = [disabled, bridge, controlled, callback = std::move(on_visible_change)] {
-            if(read_prop(disabled)) return;
-            const bool next = !bridge->visible.get();
-            if(!controlled) bridge->visible.set(next);
-            if(callback) callback(next);
-        };
-        build.on_resource_cleanup(component, [&host, component] {
-            if(auto* current = host.components().state<PasswordToggleState>(component)) {
-                host.pointer().cancel_interaction(current->interaction);
-                host.focus().cancel_interaction(current->interaction);
-                static_cast<void>(host.interactions().remove(current->interaction));
-                static_cast<void>(host.scene_composer().remove_fragment(current->fragment));
-                static_cast<void>(host.layout().remove_layout(current->node));
-            }
-        });
-        layout::BoxLayout box;
-        box.padding.left = box.padding.right = 4.0F;
-        host.layout().set_layout(state.node, box);
-        std::optional<input::InteractionId> parent;
-        for(auto ancestor = host.components().parent(component); ancestor && !parent;
-            ancestor = host.components().parent(*ancestor)) {
-            for(const auto interaction : host.interactions().declaration_order()) {
-                if(const auto* record = host.interactions().find(interaction);
-                    record && record->component == *ancestor) { parent = interaction; break; }
-            }
-        }
-        state.interaction = host.interactions().create({component, state.node, parent,
-            !read_prop(disabled), true, {}, false});
-        state.fragment = build.register_scene_fragment(component,
-            runtime::SceneFragmentPlacement::before_children);
-        host.scene_composer().set_fragment(state.fragment, {}, state.interaction);
-        host.mark_scene_structure_dirty();
-        input::InteractionHandlers pointer;
-        pointer.target = [&host, component](input::PointerDispatchContext& context) {
-            auto* current = host.components().state<PasswordToggleState>(component);
-            if(!current) return;
-            const auto result = current->press.dispatch(context, current->interaction,
-                host.interactions().require(current->interaction).eligible);
-            if(result.activate) {
-                auto callback = current->activate;
-                callback();
-            }
-        };
-        static_cast<void>(host.interactions().set_handlers(state.interaction, std::move(pointer)));
-        input::FocusHandlers focus;
-        focus.activation_allowed = [&host, component] {
-            if(const auto* current = host.components().state<PasswordToggleState>(component))
-                return host.interactions().require(current->interaction).eligible;
-            return false;
-        };
-        focus.activate = [&host, component] {
-            if(auto* current = host.components().state<PasswordToggleState>(component)) {
-                auto callback = current->activate;
-                callback();
-            }
-        };
-        static_cast<void>(host.interactions().set_focus_handlers(state.interaction, std::move(focus)));
-        static_cast<void>(connect_prop(build.scope(component), disabled,
-            [&host, component](bool value) {
-                if(auto* current = host.components().state<PasswordToggleState>(component)) {
-                    if(value) {
-                        static_cast<void>(current->press.reset());
-                        host.pointer().cancel_interaction(current->interaction);
-                    }
-                    static_cast<void>(host.interactions().set_eligible(current->interaction, !value));
-                    host.focus().synchronize();
-                }
-            }));
-        build.mount_slot(component, Content{[bridge] {
-            Text(TextProps{}.content(bind([bridge] {
-                return bridge->visible.get() ? String{u8"隐藏"} : String{u8"显示"};
-            })));
-        }});
-    }
-
     static void mount(PasswordProps props) {
         if(!active_input_host) throw std::logic_error("Password requires an active InputComponentHost");
         if(props.value_ && props.default_value_)
@@ -511,7 +418,14 @@ struct PasswordPropsAccess final {
         if(props.visibility_toggle_) {
             suffix = InputSuffix{[bridge, controlled, disabled = props.disabled_,
                 callback = std::move(props.on_visible_change_)] {
-                PasswordPropsAccess::toggle(*active_input_host, disabled, bridge, controlled, callback);
+                mount_input_affix_action(*active_input_host->host_, bind([bridge] {
+                    return bridge->visible.get() ? String{u8"隐藏"} : String{u8"显示"};
+                }), disabled, [disabled, bridge, controlled, callback] {
+                    if(read_prop(disabled)) return;
+                    const bool next = !bridge->visible.get();
+                    if(!controlled) bridge->visible.set(next);
+                    if(callback) callback(next);
+                });
             }};
         }
         Input(std::move(input), {}, std::move(suffix));
