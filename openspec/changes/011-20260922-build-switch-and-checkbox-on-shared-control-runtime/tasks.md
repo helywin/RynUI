@@ -8,19 +8,19 @@
 
 ## 2. Switch
 
-- [ ] 2.1 使用 013 的 `WindowComponentServices` 和 `PressableBehavior` 实现 `ryn::Switch` 的 typed Props、controlled/uncontrolled checked、disabled/loading、onChange 与 reactive 连接；以 public API、冲突/模式、Signal 回写、pointer/Space/repeat/cancel/focus tests 验证
-- [ ] 2.2 以共享 scene/effect/animation 服务实现 Switch 轨道、滑块、loading 与 token 状态，仅覆盖 6.6.5 来源的 Middle/Small 尺寸、Default/Dark/Compact 和 1.0/1.25/1.5/2.0 模拟 scale；以 geometry/color、retained identity、最小 dirty/upload、idle benchmark 验证
-- [ ] 2.3 在一个受支持正式 preset 运行 Switch、Button/Input 回归与 `git diff --check`，记录结果；以英文 `feat: add reusable switch control` 提交，不主动 push
+- [x] 2.1 使用 013 的 `WindowComponentServices` 和 `PressableBehavior` 实现 `ryn::Switch` 的 typed Props、controlled/uncontrolled checked、disabled/loading、onChange 与 reactive 连接；以 public API、冲突/模式、Signal 回写、pointer/Space/repeat/cancel/focus tests 验证
+- [x] 2.2 以共享 scene/effect/animation 服务实现 Switch 轨道、滑块、loading 与 token 状态，仅覆盖 6.6.5 来源的 Middle/Small 尺寸、Default/Dark/Compact 和 1.0/1.25/1.5/2.0 模拟 scale；以 geometry/color、retained identity、最小 dirty/upload、idle benchmark 验证
+- [x] 2.3 在一个受支持正式 preset 运行 Switch、Button/Input 回归与 `git diff --check`，记录结果；与 Checkbox 共用同一实现宿主，以英文 `feat: add reusable selection controls` 合并提交，不主动 push
 
 ## 3. Checkbox
 
-- [ ] 3.1 使用 013 的窗口服务和 `PressableBehavior` 实现 `ryn::Checkbox` 的 typed Props、checked/defaultChecked、indeterminate、disabled、onChange 与 typed label slot；以 public API、模式冲突、label 生命周期、pointer/Space/repeat/cancel 与 callback 自毁测试验证
-- [ ] 3.2 以共享 scene/effect/Text 服务实现 box、check、居中 `fontSizeLG / 2` indeterminate 方块、label 与 focus-visible 的独立 token 状态，覆盖 Default/Dark/Compact 和模拟 scale；以 CJK/Latin、布局/clip/HitTest、retained identity、最小 dirty/upload 与 idle tests 验证
-- [ ] 3.3 在一个受支持正式 preset 运行 Checkbox、Switch、Button/Input 回归与 `git diff --check`，记录结果；以英文 `feat: add reusable checkbox control` 提交，不主动 push
+- [x] 3.1 使用 013 的窗口服务和 `PressableBehavior` 实现 `ryn::Checkbox` 的 typed Props、checked/defaultChecked、indeterminate、disabled、onChange 与 typed label slot；以 public API、模式冲突、label 生命周期、pointer/Space/repeat/cancel 与 callback 自毁测试验证
+- [x] 3.2 以共享 scene/effect/Text 服务实现 box、check、居中 `fontSizeLG / 2` indeterminate 方块、label 与 focus-visible 的独立 token 状态，覆盖 Default/Dark/Compact 和模拟 scale；以 CJK/Latin、布局/clip/HitTest、retained identity、最小 dirty/upload 与 idle tests 验证
+- [x] 3.3 在一个受支持正式 preset 运行 Checkbox、Switch、Button/Input 回归与 `git diff --check`，记录结果；与 Switch 共用 `feat: add reusable selection controls` 提交，不主动 push
 
 ## 4. 平台通用集成
 
-- [ ] 4.1 增加 Button/Input/Switch/Checkbox 同窗 headless journey，覆盖 Tab 顺序、pointer/keyboard 语义、Theme、controlled/uncontrolled 回写、destroy/reuse、scene ownership 和 idle；以完整 journey 与 diagnostics 验证无 sibling remount/shape/upload
+- [x] 4.1 增加 Button/Input/Switch/Checkbox 同窗 headless journey，覆盖 Tab 顺序、pointer/keyboard 语义、Theme、controlled/uncontrolled 回写、destroy/reuse、scene ownership 和 idle；以完整 journey 与 diagnostics 验证无 sibling remount/shape/upload
 - [ ] 4.2 在一个受支持正式 preset 运行全部相关 unit/headless/contract/benchmark、public dependency、lock/license、无网络 runtime 与 Python cache 检查，记录实际 OS/compiler/preset/result；不要求另一平台重复通用合同
 - [ ] 4.3 运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check`；以英文 `test: validate shared selection controls` 提交平台通用 evidence，不主动 push
 

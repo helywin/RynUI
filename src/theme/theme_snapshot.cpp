@@ -484,6 +484,42 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     };
 }
 
+[[nodiscard]] SwitchThemeToken derive_switch(const ThemeMapToken& map) {
+    constexpr float padding = 2.0F;
+    const float height = map.font_size * map.line_height;
+    const float small_height = map.control_height / 2.0F;
+    const float handle = height - 2.0F * padding;
+    const float small_handle = small_height - 2.0F * padding;
+    return {height, small_height, handle * 2.0F + padding * 4.0F,
+        small_handle * 2.0F + padding * 2.0F, padding,
+        Color::rgba8(255, 255, 255), handle, small_handle};
+}
+
+void apply_switch_override(SwitchThemeToken& token,
+    const SwitchTokenOverride& override) {
+    token.track_height = fixed_length(override.track_height, token.track_height,
+        "Switch trackHeight must be positive", true);
+    token.track_height_small = fixed_length(override.track_height_small,
+        token.track_height_small, "Switch trackHeightSM must be positive", true);
+    token.track_min_width = fixed_length(override.track_min_width,
+        token.track_min_width, "Switch trackMinWidth must be positive", true);
+    token.track_min_width_small = fixed_length(override.track_min_width_small,
+        token.track_min_width_small, "Switch trackMinWidthSM must be positive", true);
+    token.track_padding = fixed_length(override.track_padding, token.track_padding,
+        "Switch trackPadding must be non-negative");
+    token.handle_size = fixed_length(override.handle_size, token.handle_size,
+        "Switch handleSize must be positive", true);
+    token.handle_size_small = fixed_length(override.handle_size_small,
+        token.handle_size_small, "Switch handleSizeSM must be positive", true);
+    if (override.handle_background) token.handle_background = *override.handle_background;
+    if (token.track_height < token.handle_size + token.track_padding * 2.0F
+        || token.track_height_small < token.handle_size_small + token.track_padding * 2.0F
+        || token.track_min_width < token.handle_size + token.track_padding * 2.0F
+        || token.track_min_width_small < token.handle_size_small + token.track_padding * 2.0F) {
+        throw std::invalid_argument("Switch Component Token geometry does not fit its track");
+    }
+}
+
 void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& override) {
     if (override.default_color) button.default_color = *override.default_color;
     if (override.default_background) button.default_background = *override.default_background;
@@ -555,6 +591,7 @@ void append_color(std::ostringstream& stream, Color color) {
     const ThemeAliasToken& alias,
     const ButtonThemeToken& button,
     const TextThemeToken& text,
+    const SwitchThemeToken& switch_token,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms,
     std::uint64_t identity) {
@@ -611,6 +648,15 @@ void append_color(std::ostringstream& stream, Color color) {
            << ",\"paddingInline\":" << button.padding_inline
            << ",\"borderRadius\":" << button.border_radius
            << ",\"shadowLayers\":" << button.primary_shadow.size()
+           << "},\"switch\":{\"trackHeight\":" << switch_token.track_height
+           << ",\"trackHeightSM\":" << switch_token.track_height_small
+           << ",\"trackMinWidth\":" << switch_token.track_min_width
+           << ",\"trackMinWidthSM\":" << switch_token.track_min_width_small
+           << ",\"trackPadding\":" << switch_token.track_padding
+           << ",\"handleBg\":";
+    append_color(stream, switch_token.handle_background);
+    stream << ",\"handleSize\":" << switch_token.handle_size
+           << ",\"handleSizeSM\":" << switch_token.handle_size_small
            << "},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family)
@@ -692,6 +738,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     const ThemeAliasToken& alias,
     const ButtonThemeToken& button,
     const TextThemeToken& text,
+    const SwitchThemeToken& switch_token,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
@@ -781,6 +828,13 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_integer(hash, text.font_weight);
     hash_float(hash, text.font_size);
     hash_float(hash, text.line_height);
+    hash_color(hash, switch_token.handle_background);
+    for (const float value : {switch_token.track_height,
+            switch_token.track_height_small, switch_token.track_min_width,
+            switch_token.track_min_width_small, switch_token.track_padding,
+            switch_token.handle_size, switch_token.handle_size_small}) {
+        hash_float(hash, value);
+    }
     for(const auto& size : input.sizes) {
         hash_float(hash, size.control_height); hash_float(hash, size.font_size);
         hash_float(hash, size.line_height); hash_float(hash, size.padding_inline);
@@ -804,6 +858,7 @@ ThemeSnapshot::ThemeSnapshot(
     ThemeAliasToken alias,
     ButtonThemeToken button,
     TextThemeToken text,
+    SwitchThemeToken switch_token,
     std::shared_ptr<const detail::InputTokenSet> input,
     std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)),
@@ -811,11 +866,13 @@ ThemeSnapshot::ThemeSnapshot(
       alias_(std::move(alias)),
       button_(std::move(button)),
       text_(std::move(text)),
+      switch_token_(std::move(switch_token)),
       input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, *input_, algorithms_);
+    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_,
+        switch_token_, *input_, algorithms_);
     diagnostic_json_ = serialize_snapshot(
-        seed_, map_, alias_, button_, text_, *input_, algorithms_, identity_);
+        seed_, map_, alias_, button_, text_, switch_token_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept { return seed_; }
@@ -823,6 +880,7 @@ const ThemeMapToken& ThemeSnapshot::map() const noexcept { return map_; }
 const ThemeAliasToken& ThemeSnapshot::alias() const noexcept { return alias_; }
 const ButtonThemeToken& ThemeSnapshot::button() const noexcept { return button_; }
 const TextThemeToken& ThemeSnapshot::text() const noexcept { return text_; }
+const SwitchThemeToken& ThemeSnapshot::switch_token() const noexcept { return switch_token_; }
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -834,7 +892,8 @@ const std::string& ThemeSnapshot::diagnostic_json() const noexcept { return diag
 bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_
         && left.alias_ == right.alias_ && left.button_ == right.button_
-        && left.text_ == right.text_ && *left.input_ == *right.input_
+        && left.text_ == right.text_ && left.switch_token_ == right.switch_token_
+        && *left.input_ == *right.input_
         && left.algorithms_ == right.algorithms_;
 }
 
@@ -914,9 +973,24 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         input = derive_input_theme(seed, map, alias, algorithms);
     }
     detail::apply_input_override(input, config.input.tokens);
+    SwitchThemeToken switch_token;
+    const bool inherit_parent_switch = parent != nullptr && config.inherit
+        && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{}
+        && config.algorithms.empty() && !config.switch_.algorithm
+        && config.switch_.seed == SeedTokenOverride{};
+    if (inherit_parent_switch) {
+        switch_token = parent->switch_token();
+    } else if (config.switch_.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.switch_.seed);
+        switch_token = derive_switch(derive_map(component_seed, algorithms));
+    } else {
+        switch_token = derive_switch(map);
+    }
+    apply_switch_override(switch_token, config.switch_.tokens);
     return ThemeSnapshot(
         std::move(seed), std::move(map), std::move(alias), std::move(button),
-        std::move(text),
+        std::move(text), std::move(switch_token),
         std::make_shared<const detail::InputTokenSet>(std::move(input)),
         std::move(algorithms));
 }

@@ -249,6 +249,17 @@ std::size_t collect_changed(
         || old_input.error_active_shadow != new_input.error_active_shadow
         || old_input.warning_active_shadow != new_input.warning_active_shadow;
     append_if_changed(false, input_shadows, TokenIdentity::input_shadows, changed, count);
+    const auto& old_switch = before.switch_token();
+    const auto& new_switch = after.switch_token();
+    append_if_changed(std::array{old_switch.track_height, old_switch.track_height_small,
+            old_switch.track_min_width, old_switch.track_min_width_small,
+            old_switch.track_padding, old_switch.handle_size, old_switch.handle_size_small},
+        std::array{new_switch.track_height, new_switch.track_height_small,
+            new_switch.track_min_width, new_switch.track_min_width_small,
+            new_switch.track_padding, new_switch.handle_size, new_switch.handle_size_small},
+        TokenIdentity::switch_geometry, changed, count);
+    append_if_changed(old_switch.handle_background, new_switch.handle_background,
+        TokenIdentity::switch_colors, changed, count);
     return count;
 }
 
@@ -529,6 +540,14 @@ const detail::InputTokenSet& ThemeScope::input_shadows() const {
     ensure_owner_thread(); record(TokenIdentity::input_shadows);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+const SwitchThemeToken& ThemeScope::switch_geometry() const {
+    ensure_owner_thread(); record(TokenIdentity::switch_geometry);
+    return snapshot_->switch_token();
+}
+const SwitchThemeToken& ThemeScope::switch_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::switch_colors);
+    return snapshot_->switch_token();
+}
 
 const ButtonThemeToken& ThemeScope::button_typography() const {
     ensure_owner_thread();
@@ -733,7 +752,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Button.iconGap", "Button.shadows", "Text.color", "Text.fontFamily",
         "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
         "Input.layoutMetrics", "Input.typography", "Input.borderRadius",
-        "Input.colors", "Input.shadows",
+        "Input.colors", "Input.shadows", "Switch.geometry", "Switch.colors",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -764,6 +783,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_color_background_base:
     case TokenIdentity::button_colors:
     case TokenIdentity::input_colors:
+    case TokenIdentity::switch_colors:
     case TokenIdentity::text_color:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -802,6 +822,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_control_height_large:
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
+    case TokenIdentity::switch_geometry:
     case TokenIdentity::button_padding_inline:
     case TokenIdentity::button_icon_gap:
         return DirtyPhase::measure_layout | DirtyPhase::geometry

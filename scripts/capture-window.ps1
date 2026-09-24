@@ -4,7 +4,9 @@ param(
     [string] $Title,
 
     [Parameter(Mandatory)]
-    [string] $OutputPath
+    [string] $OutputPath,
+
+    [switch] $ClientOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +18,9 @@ using System.Runtime.InteropServices;
 
 public static class RynWindowCaptureNative
 {
+    [DllImport("user32.dll")]
+    public static extern bool SetProcessDPIAware();
+
     [StructLayout(LayoutKind.Sequential)]
     public struct Rect
     {
@@ -25,8 +30,21 @@ public static class RynWindowCaptureNative
         public int Bottom;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Point
+    {
+        public int X;
+        public int Y;
+    }
+
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr handle, out Rect rectangle);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetClientRect(IntPtr handle, out Rect rectangle);
+
+    [DllImport("user32.dll")]
+    public static extern bool ClientToScreen(IntPtr handle, ref Point point);
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr handle);
@@ -42,6 +60,10 @@ public static class RynWindowCaptureNative
         uint flags);
 }
 '@
+
+# GetWindowRect and CopyFromScreen must use the same physical pixels at 125%+
+# display scale; otherwise Windows virtualizes the rect and crops the capture.
+[void] [RynWindowCaptureNative]::SetProcessDPIAware()
 
 $process = Get-Process | Where-Object { $_.MainWindowTitle -eq $Title } |
     Select-Object -First 1
@@ -61,6 +83,18 @@ $handle = $process.MainWindowHandle
 [RynWindowCaptureNative+Rect] $rectangle = New-Object RynWindowCaptureNative+Rect
 if(-not [RynWindowCaptureNative]::GetWindowRect($handle, [ref] $rectangle)) {
     throw 'GetWindowRect failed.'
+}
+if($ClientOnly) {
+    [RynWindowCaptureNative+Rect] $client = New-Object RynWindowCaptureNative+Rect
+    [RynWindowCaptureNative+Point] $origin = New-Object RynWindowCaptureNative+Point
+    if(-not [RynWindowCaptureNative]::GetClientRect($handle, [ref] $client) -or
+            -not [RynWindowCaptureNative]::ClientToScreen($handle, [ref] $origin)) {
+        throw 'Unable to locate the window client area.'
+    }
+    $rectangle.Left = $origin.X
+    $rectangle.Top = $origin.Y
+    $rectangle.Right = $origin.X + $client.Right
+    $rectangle.Bottom = $origin.Y + $client.Bottom
 }
 
 [void] [RynWindowCaptureNative]::SetForegroundWindow($handle)

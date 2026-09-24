@@ -4,6 +4,7 @@
 
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
+#include "component/selection_component.hpp"
 #include "font/font_runtime.hpp"
 #include "graphics/quad_primitive.hpp"
 #include "platform/default_font_chain.hpp"
@@ -554,22 +555,26 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--animation-acceptance");
         const bool input_acceptance =
             has_argument(argc, argv, "--input-acceptance");
+        const bool selection_acceptance =
+            has_argument(argc, argv, "--selection-acceptance");
         const bool scroll_acceptance =
             has_argument(argc, argv, "--scroll-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
         if ((motion_disabled && reduced_motion)
-                || (animation_acceptance && (input_acceptance || motion_disabled || reduced_motion))
-                || (input_acceptance && (motion_disabled || reduced_motion))
+                || (animation_acceptance && (input_acceptance || selection_acceptance
+                    || motion_disabled || reduced_motion))
+                || (input_acceptance && (selection_acceptance || motion_disabled || reduced_motion))
+                || (selection_acceptance && (motion_disabled || reduced_motion))
                 || (scroll_acceptance && (animation_acceptance || input_acceptance
-                    || motion_disabled || reduced_motion))) {
+                    || selection_acceptance || motion_disabled || reduced_motion))) {
             throw std::invalid_argument(
                 "--motion-disabled, --reduced-motion, --animation-acceptance, and "
-                "--input-acceptance, and --scroll-acceptance "
+                "--input-acceptance, --selection-acceptance, and --scroll-acceptance "
                 "are mutually exclusive");
         }
         const bool smoke_mode = has_argument(argc, argv, "--smoke")
-            || animation_acceptance || input_acceptance;
+            || animation_acceptance || input_acceptance || selection_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
@@ -637,6 +642,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::ButtonComponentHost application(services);
         ReferenceSurfaceHost reference_surfaces(application);
         ryn::detail::InputComponentHost inputs(services, platform, platform);
+        ryn::detail::SelectionComponentHost selections(services);
         inputs.set_display_scale(render_scale);
         if (reduced_motion) {
             application.set_motion_preference(
@@ -697,6 +703,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         bool input_theme_status = false;
         bool input_caret_active = false;
         bool input_caret_idle = false;
+        bool selection_keyboard = false;
+        bool selection_pointer = false;
+        bool selection_blocked = false;
+        bool selection_scroll = false;
         std::uint64_t input_initial_theme_identity = 0;
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
@@ -882,6 +892,101 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             std::cout << "input_acceptance_stage=" << stage << '\n' << std::flush;
         };
+        const auto dispatch_selection_acceptance = [&](std::size_t stage) {
+            const auto mounted = selections.mounted();
+            if (mounted.size() != 8)
+                throw std::logic_error("selection acceptance requires eight Gallery controls");
+            const auto key = [&](ryn::input::Key value, ryn::input::KeyAction action) {
+                application.focus().dispatch({value, action,
+                    ryn::input::KeyModifier::none, false});
+                ++automated_input_events;
+            };
+            switch (stage) {
+            case 0:
+                selection_scroll = document_viewport.scroll_to(
+                    document_viewport.snapshot().maximum_offset);
+                frame_requests.request_frame();
+                break;
+            case 1:
+                if (!application.focus().request_focus(mounted[0].interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("selection acceptance could not focus Switch");
+                key(ryn::input::Key::enter, ryn::input::KeyAction::down);
+                key(ryn::input::Key::enter, ryn::input::KeyAction::up);
+                selection_keyboard = !selections.snapshot(mounted[0].component).checked;
+                key(ryn::input::Key::space, ryn::input::KeyAction::down);
+                key(ryn::input::Key::space, ryn::input::KeyAction::up);
+                selection_keyboard = selection_keyboard
+                    && selections.snapshot(mounted[0].component).checked;
+                key(ryn::input::Key::tab, ryn::input::KeyAction::down);
+                selection_keyboard = selection_keyboard
+                    && application.focus().state().focused == mounted[1].interaction;
+                break;
+            case 2:
+                if (!application.focus().request_focus(mounted[4].interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("selection acceptance could not focus Checkbox");
+                key(ryn::input::Key::enter, ryn::input::KeyAction::down);
+                key(ryn::input::Key::enter, ryn::input::KeyAction::up);
+                selection_keyboard = selection_keyboard
+                    && !selections.snapshot(mounted[4].component).checked;
+                key(ryn::input::Key::space, ryn::input::KeyAction::down);
+                key(ryn::input::Key::space, ryn::input::KeyAction::up);
+                selection_keyboard = selection_keyboard
+                    && selections.snapshot(mounted[4].component).checked;
+                key(ryn::input::Key::tab, ryn::input::KeyAction::down);
+                selection_keyboard = selection_keyboard
+                    && application.focus().state().focused == mounted[5].interaction;
+                break;
+            case 3: {
+                const auto& node = nodes.require(mounted[1].node);
+                const ryn::runtime::Point center{
+                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                automated_input_events += 2;
+                selection_pointer = !selections.snapshot(mounted[1].component).checked;
+                break;
+            }
+            case 4: {
+                const auto click = [&](const ryn::detail::MountedSelectionComponent& item) {
+                    const auto& node = nodes.require(item.node);
+                    const ryn::runtime::Point center{
+                        node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                        node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                    application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                        ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
+                        center.x, center.y});
+                    application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                        ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
+                        center.x, center.y});
+                    automated_input_events += 2;
+                };
+                click(mounted[2]);
+                click(mounted[3]);
+                click(mounted[7]);
+                selection_blocked = !selections.snapshot(mounted[2].component).checked
+                    && !selections.snapshot(mounted[3].component).checked
+                    && !selections.snapshot(mounted[7].component).checked;
+                if (!application.focus().request_focus(mounted[3].interaction,
+                        ryn::input::FocusModality::keyboard))
+                    throw std::logic_error("selection acceptance could not focus loading Switch");
+                key(ryn::input::Key::space, ryn::input::KeyAction::down);
+                key(ryn::input::Key::space, ryn::input::KeyAction::up);
+                selection_blocked = selection_blocked
+                    && !selections.snapshot(mounted[3].component).checked;
+                break;
+            }
+            default:
+                throw std::out_of_range("unknown selection acceptance stage");
+            }
+            std::cout << "selection_acceptance_stage=" << stage << '\n' << std::flush;
+        };
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
@@ -901,11 +1006,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 }
                 ++scroll_stage;
             }
-            const std::size_t smoke_stage_count = input_acceptance
-                ? 13 : animation_acceptance ? 16 : 5;
+            const std::size_t smoke_stage_count = selection_acceptance
+                ? 5 : input_acceptance ? 13 : animation_acceptance ? 16 : 5;
             if (smoke_mode && smoke_stage < smoke_stage_count
                     && elapsed >= 250 * (smoke_stage + 1)) {
-                if (input_acceptance) {
+                if (selection_acceptance) {
+                    dispatch_selection_acceptance(smoke_stage);
+                } else if (input_acceptance) {
                     dispatch_input_acceptance(smoke_stage);
                 } else if (!animation_acceptance || smoke_stage >= 11) {
                     definition.smoke_step(
@@ -943,9 +1050,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            const auto completion_time = input_acceptance
-                ? 4'000U : animation_acceptance ? 4'700U : 1'700U;
-            const bool acceptance_complete = input_acceptance
+            const auto completion_time = selection_acceptance
+                ? 5'000U : input_acceptance ? 4'000U
+                : animation_acceptance ? 4'700U : 1'700U;
+            const bool acceptance_complete = selection_acceptance
+                ? true : input_acceptance
                 ? input_caret_idle && !inputs.next_caret_deadline().has_value()
                 : loop.counters().idle_waits >= 20;
             if (smoke_mode && smoke_stage == smoke_stage_count
@@ -1002,12 +1111,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             layout_passes += nodes.require(mounted.node).place_count;
         }
 
-        const auto expected_stages = input_acceptance
-            ? 13U : animation_acceptance ? 16U : 5U;
-        const auto expected_theme_updates = input_acceptance
+        const auto expected_stages = selection_acceptance
+            ? 5U : input_acceptance ? 13U : animation_acceptance ? 16U : 5U;
+        const auto expected_theme_updates = selection_acceptance
+            ? 0U : input_acceptance
             ? 1U : animation_acceptance ? 6U
             : motion_disabled ? 5U : 4U;
-        const auto expected_motion_updates = input_acceptance
+        const auto expected_motion_updates = selection_acceptance
+            ? 0U : input_acceptance
             ? 0U : animation_acceptance ? 2U
             : motion_disabled ? 1U : 0U;
         const bool scroll_failed = scroll_acceptance
@@ -1023,8 +1134,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             && (smoke_stage != expected_stages || telemetry.content_runs != 1
                 || telemetry.theme_updates != expected_theme_updates
                 || telemetry.motion_updates != expected_motion_updates
-                || (!input_acceptance
+                || (!input_acceptance && !selection_acceptance
                     && (telemetry.brand_updates != 1 || telemetry.state_updates != 2))
+                || (selection_acceptance
+                    && (!selection_scroll || !selection_keyboard || !selection_pointer
+                        || !selection_blocked || automated_input_events != 20
+                        || telemetry.live_samples != 22))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status
@@ -1164,6 +1279,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " input_acceptance=" << (input_acceptance ? "true" : "false")
+            << " selection_acceptance=" << (selection_acceptance ? "true" : "false")
+            << " selection_keyboard=" << (selection_keyboard ? "true" : "false")
+            << " selection_pointer=" << (selection_pointer ? "true" : "false")
+            << " selection_blocked=" << (selection_blocked ? "true" : "false")
             << " scroll_acceptance=" << (scroll_acceptance ? "true" : "false")
             << " scroll_acceptance_steps=" << scroll_stage
             << " scroll_sequence_ms="

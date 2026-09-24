@@ -28,6 +28,8 @@ struct GalleryState final {
     ryn::Signal<bool> narrow_layout{false};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
+    ryn::Signal<bool> switch_checked{false};
+    ryn::Signal<bool> checkbox_checked{false};
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
@@ -618,6 +620,44 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         }});
     });
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
+    ryn::Text(u8"Switch / 开关 · Middle、Small、disabled、loading");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center)
+        .size(ryn::dp(12.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            ryn::Text(u8"受控");
+            ryn::Switch(ryn::SwitchProps{}.checked(state->switch_checked)
+                .onChange([state](bool value) { state->switch_checked.set(value); }));
+            ++state->telemetry.live_samples;
+            ryn::Text(u8"Small / 已选");
+            ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).defaultChecked(true));
+            ++state->telemetry.live_samples;
+            ryn::Text(u8"禁用");
+            ryn::Switch(ryn::SwitchProps{}.disabled(true));
+            ++state->telemetry.live_samples;
+            ryn::Text(u8"加载");
+            ryn::Switch(ryn::SwitchProps{}.loading(state->loading));
+            ++state->telemetry.live_samples;
+        });
+    ryn::Text(u8"Checkbox / 多选框 · checked、indeterminate、disabled");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center)
+        .size(ryn::dp(12.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            ryn::Checkbox(ryn::CheckboxProps{}.checked(state->checkbox_checked)
+                .onChange([state](bool value) { state->checkbox_checked.set(value); }),
+                ryn::CheckboxLabel{[] { ryn::Text(u8"受控 / Control"); }});
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}.defaultChecked(true),
+                ryn::CheckboxLabel{[] { ryn::Text(u8"已选 / Checked"); }});
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}.indeterminate(true),
+                ryn::CheckboxLabel{[] { ryn::Text(u8"半选 / Mixed"); }});
+            ++state->telemetry.live_samples;
+            ryn::Checkbox(ryn::CheckboxProps{}.disabled(true),
+                ryn::CheckboxLabel{[] { ryn::Text(u8"禁用 / Disabled"); }});
+            ++state->telemetry.live_samples;
+        });
+    ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
+        ryn::FlexContent{[] {}});
 }
 
 } // namespace

@@ -233,6 +233,13 @@ void test_inheritance_diagnostics_and_atomic_failure() {
                     "invalid override did not fail atomically");
     require(parent.identity() == old_identity,
             "failed Theme resolution mutated the parent snapshot");
+    ryn::ThemeConfig invalid_switch;
+    invalid_switch.switch_.tokens.handle_size = ryn::dp(100.0F);
+    require_invalid([&] {
+        static_cast<void>(ryn::resolve_theme(invalid_switch, &parent));
+    }, "oversized Switch handle token did not fail atomically");
+    require(parent.identity() == old_identity,
+            "failed Switch token resolution mutated the parent snapshot");
 }
 
 [[nodiscard]] std::string read_golden(const char* name) {

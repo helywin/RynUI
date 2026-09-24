@@ -144,12 +144,32 @@ struct InputThemeConfig final {
     friend bool operator==(const InputThemeConfig&, const InputThemeConfig&) = default;
 };
 
+struct SwitchTokenOverride final {
+    std::optional<LogicalLength> track_height;
+    std::optional<LogicalLength> track_height_small;
+    std::optional<LogicalLength> track_min_width;
+    std::optional<LogicalLength> track_min_width_small;
+    std::optional<LogicalLength> track_padding;
+    std::optional<Color> handle_background;
+    std::optional<LogicalLength> handle_size;
+    std::optional<LogicalLength> handle_size_small;
+    friend bool operator==(const SwitchTokenOverride&, const SwitchTokenOverride&) = default;
+};
+
+struct SwitchThemeConfig final {
+    SwitchTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SwitchThemeConfig&, const SwitchThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
     ButtonThemeConfig button;
     TextThemeConfig text;
     InputThemeConfig input;
+    SwitchThemeConfig switch_;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -268,6 +288,18 @@ struct TextThemeToken final {
     friend constexpr bool operator==(const TextThemeToken&, const TextThemeToken&) = default;
 };
 
+struct SwitchThemeToken final {
+    float track_height{};
+    float track_height_small{};
+    float track_min_width{};
+    float track_min_width_small{};
+    float track_padding{};
+    Color handle_background;
+    float handle_size{};
+    float handle_size_small{};
+    friend constexpr bool operator==(const SwitchThemeToken&, const SwitchThemeToken&) = default;
+};
+
 class ThemeSnapshot final {
 public:
     ThemeSnapshot(const ThemeSnapshot&) = default;
@@ -281,6 +313,7 @@ public:
     [[nodiscard]] const ThemeAliasToken& alias() const noexcept;
     [[nodiscard]] const ButtonThemeToken& button() const noexcept;
     [[nodiscard]] const TextThemeToken& text() const noexcept;
+    [[nodiscard]] const SwitchThemeToken& switch_token() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -301,6 +334,7 @@ private:
         ThemeAliasToken alias,
         ButtonThemeToken button,
         TextThemeToken text,
+        SwitchThemeToken switch_token,
         std::shared_ptr<const detail::InputTokenSet> input,
         std::vector<ThemeAlgorithm> algorithms);
 
@@ -309,6 +343,7 @@ private:
     ThemeAliasToken alias_;
     ButtonThemeToken button_;
     TextThemeToken text_;
+    SwitchThemeToken switch_token_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

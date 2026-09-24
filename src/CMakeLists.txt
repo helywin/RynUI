@@ -188,6 +188,7 @@ add_library(rynui_components STATIC
     component/input_component.cpp
     component/input_material_transition.cpp
     component/input_display.cpp
+    component/selection_component.cpp
     component/button_scene_service.cpp
     component/component_scene.cpp
     component/default_theme.cpp

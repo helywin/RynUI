@@ -43,9 +43,10 @@ ButtonSceneId ButtonSceneService::create_surface(
     runtime::NodeId node,
     runtime::SceneFragmentId fragment,
     std::span<const graphics::QuadInstance> visuals,
-    const ButtonEffectData& effects) {
+    const ButtonEffectData& effects,
+    std::optional<input::InteractionId> interaction) {
     return create_record(
-        component, node, fragment, std::nullopt, visuals, effects);
+        component, node, fragment, interaction, visuals, effects);
 }
 
 ButtonSceneId ButtonSceneService::create_record(

@@ -316,16 +316,24 @@
     },
     {
       "identity": "ant.component.checkbox",
-      "status": "planned",
-      "summary": "多选框（Checkbox）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed Checkbox、受控/非受控选中、独立半选状态、标签 slot 和 pointer/Space/focus 交互；Checkbox.Group 与完整 Web API 尚未覆盖。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "checked/defaultChecked and indeterminate",
+        "disabled and onChange",
+        "typed label slot with CJK/Latin text",
+        "pointer/Space/focus-visible interaction",
+        "Theme token geometry and colors"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Checkbox.Group and option arrays",
+        "complete Ant Design Web API",
+        "Windows and Linux visual acceptance"
       ],
       "evidence_identifiers": [
-        "source:components/checkbox/index.en-US.md"
+        "source:components/checkbox/index.en-US.md",
+        "openspec:011-20260922-build-switch-and-checkbox-on-shared-control-runtime",
+        "test:rynui.selection_component"
       ]
     },
     {
@@ -483,16 +491,24 @@
     },
     {
       "identity": "ant.component.switch",
-      "status": "planned",
-      "summary": "开关（Switch）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供 typed Switch、受控/非受控选中、Middle/Small、禁用/加载和 pointer/Space/focus 交互；完整 Web 内容与视觉变体尚未覆盖。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "checked/defaultChecked and onChange",
+        "Middle/Small sizes",
+        "disabled and loading spinner",
+        "pointer/Space/focus-visible interaction",
+        "Theme Switch Component Token geometry and handle color"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "checkedChildren/unCheckedChildren and icon content",
+        "complete Ant Design Web API",
+        "Windows and Linux visual acceptance"
       ],
       "evidence_identifiers": [
-        "source:components/switch/index.en-US.md"
+        "source:components/switch/index.en-US.md",
+        "openspec:011-20260922-build-switch-and-checkbox-on-shared-control-runtime",
+        "test:rynui.selection_component"
       ]
     },
     {

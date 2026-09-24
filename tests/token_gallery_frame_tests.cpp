@@ -1,4 +1,5 @@
 #include "component/button_component.hpp"
+#include "component/selection_component.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -176,6 +177,7 @@ struct Fixture final {
             frames);
         surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(*host);
         inputs = std::make_unique<ryn::detail::InputComponentHost>(host->services(), platform, platform);
+        selections = std::make_unique<ryn::detail::SelectionComponentHost>(host->services());
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
@@ -195,6 +197,7 @@ struct Fixture final {
     std::unique_ptr<rynui::example::ReferenceSurfaceHost> surfaces;
     ryn_test::input_component::Platform platform;
     std::unique_ptr<ryn::detail::InputComponentHost> inputs;
+    std::unique_ptr<ryn::detail::SelectionComponentHost> selections;
 };
 
 class IdleEvents final : public ryn::runtime::FrameEventSource {
@@ -614,7 +617,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                     "hidden Gallery filter entry retained layout extent");
         }
     }
-    require(visible == 6 && hidden == 67,
+    require(visible == 8 && hidden == 65,
             "Gallery partial filter did not match the support catalog");
     const auto hidden_surface = surfaces[53].component;
     std::size_t hidden_texts = 0;
@@ -761,8 +764,10 @@ void test_token_gallery_frame_contract() {
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 126,
             "Token Gallery document reference surface count drifted");
+    require(fixture.selections->mounted().size() == 8,
+            "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 14,
+                == definition.navigation_control_count + 22,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -777,7 +782,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 14,
+                == definition.navigation_control_count + 22,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -787,7 +792,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126
                 && initial.reference_content_runs == 126
-                && initial.live_samples == 14,
+                && initial.live_samples == 22,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0

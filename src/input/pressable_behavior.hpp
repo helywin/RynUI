@@ -32,13 +32,13 @@ public:
         if (!pointer_ || *pointer_ != pointer) return {};
         const bool activate = allowed && target_ == target
             && origin == target && actual_hit == target;
-        reset();
+        static_cast<void>(reset());
         return {true, activate};
     }
 
     [[nodiscard]] PressableResult cancel(PointerIdentity pointer) noexcept {
         if (!pointer_ || *pointer_ != pointer) return {};
-        reset();
+        static_cast<void>(reset());
         return {true, false};
     }
 

@@ -90,7 +90,7 @@ void test_typed_status_filter_covers_every_catalog_entry() {
             counts[index] += expected ? 1U : 0U;
         }
     }
-    require(counts[1] == 6 && counts[2] == 66 && counts[4] == 1,
+    require(counts[1] == 8 && counts[2] == 64 && counts[4] == 1,
             "Gallery initial partial/planned support overlay drifted");
     require(counts[0] == 0 && counts[3] == 0
                 && counts[5] == 0,

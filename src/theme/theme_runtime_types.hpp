@@ -71,6 +71,8 @@ enum class TokenIdentity : std::uint8_t {
     input_border_radius,
     input_colors,
     input_shadows,
+    switch_geometry,
+    switch_colors,
     count,
 };
 

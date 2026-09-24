@@ -97,7 +97,8 @@ public:
         runtime::NodeId node,
         runtime::SceneFragmentId fragment,
         std::span<const graphics::QuadInstance> visuals,
-        const ButtonEffectData& effects = ButtonEffectData{});
+        const ButtonEffectData& effects = ButtonEffectData{},
+        std::optional<input::InteractionId> interaction = std::nullopt);
     bool destroy(ButtonSceneId id);
     [[nodiscard]] std::size_t update(
         ButtonSceneId id,

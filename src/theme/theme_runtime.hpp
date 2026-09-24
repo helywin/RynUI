@@ -68,6 +68,8 @@ public:
     [[nodiscard]] const detail::InputTokenSet& input_border_radius() const;
     [[nodiscard]] const detail::InputTokenSet& input_colors() const;
     [[nodiscard]] const detail::InputTokenSet& input_shadows() const;
+    [[nodiscard]] const SwitchThemeToken& switch_geometry() const;
+    [[nodiscard]] const SwitchThemeToken& switch_colors() const;
 
     [[nodiscard]] Color text_color() const;
     [[nodiscard]] SystemFontFamily text_font_family() const;
