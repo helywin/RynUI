@@ -776,7 +776,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 36,
+                == definition.navigation_control_count + 40,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -791,7 +791,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 36,
+                == definition.navigation_control_count + 40,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -801,7 +801,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126
                 && initial.reference_content_runs == 126
-                && initial.live_samples == 31,
+                && initial.live_samples == 33,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0
@@ -967,7 +967,7 @@ void test_live_input_samples() {
         if(step == ryn::runtime::FrameLoopStep::idle) break;
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 7, "Gallery Input/Search samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 9, "Gallery Input/Search/Password samples absent");
     const auto controlled = fixture.inputs->mounted_inputs()[0];
     const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);

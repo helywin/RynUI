@@ -13,8 +13,8 @@
 
 ## 3. Windows 专属验收
 
-- [ ] 3.1 Gallery 混排 Password/Input，在真实 Win32 窗口检查 1.0/1.25/1.5/2.0 scale、焦点、指针切换、编辑、禁用、主题和退出；记录系统字体、D3D12/DXIL 截图与诊断
-- [ ] 3.2 运行正式 `windows-msvc-release` 受影响构建/CTest、OpenSpec doctor/strict validate 和 `git diff --check`，保存 Windows 独立证据并英文提交
+- [x] 3.1 Gallery 混排 Password/Input，在真实 Win32 窗口检查 1.0/1.25/1.5/2.0 scale、焦点、指针切换、编辑、禁用、主题和退出；记录系统字体、D3D12/DXIL 截图与诊断
+- [x] 3.2 运行正式 `windows-msvc-release` 受影响构建/CTest、OpenSpec doctor/strict validate 和 `git diff --check`，保存 Windows 独立证据并英文提交
 
 ## 4. Linux 专属验收
 

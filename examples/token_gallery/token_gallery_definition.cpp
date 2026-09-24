@@ -587,7 +587,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         });
     ryn::Text(u8"Input / 单行输入 · partial");
     ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
-    ryn::Text(u8"缺失：TextArea、Password、allowClear；Search 的首批组合能力见下方");
+    ryn::Text(u8"缺失：TextArea、allowClear；Search 与 Password 的组合能力见下方");
     ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
         .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
         ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
@@ -659,6 +659,17 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ++state->telemetry.live_samples;
     });
     ryn::Text(ryn::TextProps{}.content(state->search_feedback));
+    ryn::Text(u8"Password / 密码 · 复用 Input 编辑与窗口输入会话");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
+        .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        ryn::Password(ryn::PasswordProps{}.defaultValue(u8"RynUI 密码")
+            .placeholder(u8"输入密码 / Password")
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+        ryn::Password(ryn::PasswordProps{}.defaultValue(u8"禁用密码")
+            .disabled(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+    });
     ryn::Text(u8"Switch / 开关 · Middle、Small、disabled、loading");
     ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center)
         .size(ryn::dp(12.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
