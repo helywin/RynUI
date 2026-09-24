@@ -26,9 +26,9 @@
 
 ## 5. Windows 专属验收
 
-- [ ] 5.1 使用 `windows-msvc` 正式 preset 完成 Windows 受影响的 Debug/Release build 与 CTest，核对 Ninja Multi-Config、MSVC x64、Win32 输入、D3D12/DXIL 和系统字体，保存独立结果
-- [ ] 5.2 在 Windows 真实窗口以系统 display scale 与 1.0/1.25/1.5/2.0 acceptance scale 操作 Switch Middle/Small 与 Checkbox 固定尺寸的 checked、居中方块 indeterminate、disabled、loading、pointer/Space/Tab，并与 Button/Input 混排；人工核对视觉、CJK/Latin、clip、focus 与正常退出，保存截图、driver、font、scale、exit code 和 diagnostics
-- [ ] 5.3 运行 Windows passed evidence contract、受影响平台测试、shader/lock/license/cache 检查、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows selection controls` 提交 Windows evidence，不修改 Linux 清单且不主动 push
+- [x] 5.1 使用 `windows-msvc` 正式 preset 完成 Windows 受影响的 Debug/Release build 与 CTest，核对 Ninja Multi-Config、MSVC x64、Win32 输入、D3D12/DXIL 和系统字体，保存独立结果
+- [x] 5.2 在 Windows 真实窗口以系统 display scale 与 1.0/1.25/1.5/2.0 acceptance scale 操作 Switch Middle/Small 与 Checkbox 固定尺寸的 checked、居中方块 indeterminate、disabled、loading、pointer/Space/Tab，并与 Button/Input 混排；人工核对视觉、CJK/Latin、clip、focus 与正常退出，保存截图、driver、font、scale、exit code 和 diagnostics
+- [x] 5.3 运行 Windows passed evidence contract、受影响平台测试、shader/lock/license/cache 检查、OpenSpec strict validate 与 `git diff --check`；以英文 `test: validate Windows selection controls` 提交 Windows evidence，不修改 Linux 清单且不主动 push
 
 ## 6. Linux 专属验收
 

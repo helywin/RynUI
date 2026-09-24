@@ -508,6 +508,21 @@ add_test(
         "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_evidence.py"
         --scope platform-generic
         --evidence "${selection_evidence_directory}/platform-generic-selection.md")
+if(WIN32)
+    add_test(
+        NAME rynui.selection_windows_evidence
+        COMMAND "${Python3_EXECUTABLE}" -B
+            "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_evidence.py"
+            --scope windows
+            --evidence "${selection_evidence_directory}/windows-selection.md")
+    add_test(
+        NAME rynui.selection_evidence_cross_scope_rejected
+        COMMAND "${Python3_EXECUTABLE}" -B
+            "${PROJECT_SOURCE_DIR}/tools/verify_selection_controls_evidence.py"
+            --scope platform-generic
+            --evidence "${selection_evidence_directory}/windows-selection.md")
+    set_tests_properties(rynui.selection_evidence_cross_scope_rejected PROPERTIES WILL_FAIL TRUE)
+endif()
 add_test(NAME rynui.input_public_compile_fail COMMAND ${CMAKE_COMMAND}
     "-DTEST_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
     "-DTEST_BINARY_DIR=${CMAKE_BINARY_DIR}/contract-tests/input-public"
