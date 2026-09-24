@@ -13,9 +13,9 @@
 
 ## 3. 集成证据
 
-- [ ] 3.1 在一个正式 preset 运行完整 CTest、公开头/依赖锁/license/shader/Python cache，记录平台、编译器、preset 与结果；不在另一平台重复通用合同
-- [ ] 3.2 Windows MSVC x64 Debug/Release 构建及受影响平台集成测试，复用实际 Win32/D3D12/DXIL/系统字体的 Gallery/Input/Search/Selection 实窗回归，记录退出码，不代替 014 原生 IME 待验
-- [ ] 3.3 运行 OpenSpec doctor/strict validate、`git diff --check`，提交独立 evidence；不主动 push 或 archive
+- [x] 3.1 在一个正式 preset 运行完整 CTest、公开头/依赖锁/license/shader/Python cache，记录平台、编译器、preset 与结果；不在另一平台重复通用合同
+- [x] 3.2 Windows MSVC x64 Debug/Release 构建及受影响平台集成测试，复用实际 Win32/D3D12/DXIL/系统字体的 Gallery/Input/Search/Selection 实窗回归，记录退出码，不代替 014 原生 IME 待验
+- [x] 3.3 运行 OpenSpec doctor/strict validate、`git diff --check`，提交独立 evidence；不主动 push 或 archive
 
 ## 4. Linux 待验
 
