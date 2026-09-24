@@ -11,8 +11,8 @@
 
 ## 3. Windows 专属回归
 
-- [ ] 3.1 用真实 Win32 Gallery 在 1.5 倍 Default/Dark 检查 Password 指针/键盘切换、焦点、禁用、D3D12/DXIL、系统字体与退出；记录诊断和截图
-- [ ] 3.2 正式 Release preset 构建并运行受影响 CTest；OpenSpec doctor、strict validate 和 `git diff --check`，英文提交 Windows 独立证据
+- [x] 3.1 用真实 Win32 Gallery 在 1.5 倍 Default/Dark 检查 Password 指针/键盘切换、焦点、禁用、D3D12/DXIL、系统字体与退出；记录诊断和截图
+- [x] 3.2 正式 Release preset 构建并运行受影响 CTest；OpenSpec doctor、strict validate 和 `git diff --check`，英文提交 Windows 独立证据
 
 ## 4. Linux 专属回归
 
