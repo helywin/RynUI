@@ -13,8 +13,8 @@
 
 ## 3. 按压行为
 
-- [ ] 3.1 提取内部 `PressableBehavior` 处理 primary pointer 捕获、inside release、cancel、disable、window blur、generation 复用和一次性 activation intent；以独立行为测试覆盖多指针、回调自毁与释放顺序。
-- [ ] 3.2 Button 改用 `PressableBehavior`，保留 Enter/Space、loading、hover、focus 与视觉策略；运行 Button pointer/keyboard/state、Input 混合回归、scene dirty/upload 和 steady-state allocation 测试，运行 `git diff --check` 并以英文提交按压阶段。
+- [x] 3.1 提取内部 `PressableBehavior` 处理 primary pointer 捕获、inside release、cancel、disable、window blur、generation 复用和一次性 activation intent；以独立行为测试覆盖多指针、回调自毁与释放顺序。
+- [x] 3.2 Button 改用 `PressableBehavior`，保留 Enter/Space、loading、hover、focus 与视觉策略；运行 Button pointer/keyboard/state、Input 混合回归、scene dirty/upload 和 steady-state allocation 测试，运行 `git diff --check` 并以英文提交按压阶段。
 
 ## 4. 集成验收
 

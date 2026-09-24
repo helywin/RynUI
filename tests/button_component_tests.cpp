@@ -186,6 +186,39 @@ void test_window_services_have_single_external_owner() {
             "Window services lost their retained owner after Button host destruction");
 }
 
+void test_pressable_behavior_pointer_identity_and_generation() {
+    ryn::input::PressableBehavior press;
+    const ryn::input::InteractionId first{7, 1}, reused{7, 2};
+    const auto mouse = ryn::input::PointerIdentity::mouse();
+    const auto touch = ryn::input::PointerIdentity::touch(2, 3);
+    require(!press.begin(mouse, first, false, true).pressed_changed
+                && !press.begin(mouse, first, true, false).pressed_changed,
+            "Pressable accepted disabled or uncaptured press");
+    require(press.begin(mouse, first, true, true).pressed_changed && press.pressed(),
+            "Pressable did not acquire primary pointer");
+    require(!press.begin(touch, first, true, true).pressed_changed
+                && !press.release(touch, first, true, first, first).activate
+                && press.pressed(),
+            "Second pointer changed the active gesture");
+    const auto stale = press.release(mouse, reused, true, first, first);
+    require(stale.pressed_changed && !stale.activate && !press.pressed(),
+            "Reused interaction generation received stale activation");
+    require(press.begin(mouse, first, true, true).pressed_changed,
+            "Pressable could not begin after stale release");
+    require(!press.release(mouse, first, true, first, reused).activate,
+            "Outside release activated the control");
+    require(press.begin(mouse, first, true, true).pressed_changed,
+            "Pressable could not begin after outside release");
+    const auto activated = press.release(mouse, first, true, first, first);
+    require(activated.pressed_changed && activated.activate && !press.pressed()
+                && !press.release(mouse, first, true, first, first).activate,
+            "Pressable did not produce exactly one activation intent");
+    require(press.begin(mouse, first, true, true).pressed_changed
+                && press.cancel(mouse).pressed_changed
+                && !press.pressed(),
+            "Pressable cancel retained capture state");
+}
+
 ryn::input::PointerInputEvent pointer_event(
     ryn::input::PointerAction action,
     ryn::runtime::Point point,
@@ -1376,6 +1409,7 @@ void test_flex_composes_text_button_and_nested_flex() {
 int main() {
     try {
         test_window_services_have_single_external_owner();
+        test_pressable_behavior_pointer_identity_and_generation();
         test_mount_scene_composition_and_lifecycle();
         test_reactive_state_matrix_and_minimal_dirty_ranges();
         test_solid_border_box_and_focus_modalities_at_simulated_dpi();

@@ -62,7 +62,7 @@ struct ButtonComponentState final {
     bool disabled{false};
     bool loading{false};
     bool hovered{false};
-    bool pointer_pressed{false};
+    input::PressableBehavior press;
     input::FocusPresentation focus;
     Signal<runtime::SemanticForeground> foreground;
     Signal<runtime::SemanticTypography> typography;
@@ -228,7 +228,7 @@ ResolvedButtonVisualState visual_token(
         };
     }
     const bool active = !state.loading
-        && (state.pointer_pressed || state.focus.keyboard_pressed);
+        && (state.press.pressed() || state.focus.keyboard_pressed);
     const bool hovered = !state.loading && !active && state.hovered;
     const Color transparent = Color::rgba8(0, 0, 0, 0);
     switch (state.type) {
@@ -773,7 +773,7 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(
         state->disabled,
         state->loading,
         state->hovered,
-        state->pointer_pressed,
+        state->press.pressed(),
         state->focus,
         state->presentation_background,
         state->presentation_border,
@@ -856,7 +856,7 @@ void ButtonComponentHost::apply_disabled(
     state->disabled = disabled;
     if (disabled) {
         state->hovered = false;
-        state->pointer_pressed = false;
+        static_cast<void>(state->press.reset());
         pointer_.cancel_interaction(state->interaction);
     }
     static_cast<void>(interactions_.set_eligible(
@@ -878,7 +878,7 @@ void ButtonComponentHost::apply_loading(
     }
     state->loading = loading;
     if (loading) {
-        state->pointer_pressed = false;
+        static_cast<void>(state->press.reset());
         pointer_.cancel_pointer_interaction(state->interaction);
         state = find_state(component);
         if (state == nullptr) {
@@ -907,7 +907,6 @@ void ButtonComponentHost::handle_pointer(
     if (state == nullptr) {
         return;
     }
-    const bool primary = event.event().button == input::PointerButton::primary;
     switch (event.kind()) {
     case input::PointerEventKind::enter:
         if (!state->disabled) {
@@ -922,35 +921,16 @@ void ButtonComponentHost::handle_pointer(
         }
         return;
     case input::PointerEventKind::down:
-        if (primary && activation_allowed(component)) {
-            state->pointer_pressed = true;
-            update_visuals(*state);
-            static_cast<void>(event.capture_pointer());
-        }
-        return;
-    case input::PointerEventKind::up: {
-        if (!primary) {
-            return;
-        }
-        const bool should_activate = state->pointer_pressed
-            && event.press_origin() == state->interaction
-            && event.actual_hit_target() == state->interaction
-            && activation_allowed(component);
-        state->pointer_pressed = false;
-        static_cast<void>(event.release_pointer_capture());
-        update_visuals(*state);
-        if (should_activate) {
-            activate(component);
-        }
+    case input::PointerEventKind::up:
+    case input::PointerEventKind::cancel: {
+        const auto result = state->press.dispatch(
+            event, state->interaction, activation_allowed(component));
+        state = find_state(component);
+        if (state == nullptr) return;
+        if (result.pressed_changed) update_visuals(*state);
+        if (result.activate) activate(component);
         return;
     }
-    case input::PointerEventKind::cancel:
-        if (state->pointer_pressed) {
-            state->pointer_pressed = false;
-            update_visuals(*state);
-        }
-        static_cast<void>(event.release_pointer_capture());
-        return;
     case input::PointerEventKind::move:
         return;
     }

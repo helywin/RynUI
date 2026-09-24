@@ -825,6 +825,11 @@ target_compile_definitions(
 )
 add_test(NAME rynui.button_component COMMAND rynui_button_component_tests)
 
+add_executable(rynui_pressable_behavior_allocation_tests pressable_behavior_allocation_tests.cpp)
+rynui_configure_cpp_target(rynui_pressable_behavior_allocation_tests)
+target_link_libraries(rynui_pressable_behavior_allocation_tests PRIVATE rynui_interaction)
+add_test(NAME rynui.pressable_behavior_allocation COMMAND rynui_pressable_behavior_allocation_tests)
+
 add_executable(rynui_reference_surface_tests reference_surface_tests.cpp)
 rynui_configure_cpp_target(rynui_reference_surface_tests)
 target_link_libraries(

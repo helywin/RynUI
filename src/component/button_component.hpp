@@ -6,6 +6,7 @@
 #include "component/text_component.hpp"
 #include "input/focus_manager.hpp"
 #include "input/pointer_router.hpp"
+#include "input/pressable_behavior.hpp"
 #include "layout/layout_engine.hpp"
 #include "runtime/invalidation.hpp"
 #include "text/text_scene_service.hpp"
