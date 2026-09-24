@@ -495,6 +495,14 @@ target_compile_definitions(rynui_search_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.search_component COMMAND rynui_search_component_tests)
+add_executable(rynui_search_idle_benchmark search_idle_benchmark.cpp)
+rynui_configure_cpp_target(rynui_search_idle_benchmark)
+target_include_directories(rynui_search_idle_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_search_idle_benchmark PRIVATE rynui_components)
+target_compile_definitions(rynui_search_idle_benchmark PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.search_idle_benchmark COMMAND rynui_search_idle_benchmark)
 
 add_executable(rynui_selection_controls_public_api_tests selection_controls_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_selection_controls_public_api_tests)

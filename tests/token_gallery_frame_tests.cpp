@@ -760,14 +760,14 @@ void test_token_gallery_frame_contract() {
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
     require(fixture.host->mounted_buttons().size()
-                == definition.navigation_control_count + 12,
+                == definition.navigation_control_count + 16,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 126,
             "Token Gallery document reference surface count drifted");
     require(fixture.selections->mounted().size() == 8,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 22,
+                == definition.navigation_control_count + 30,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -782,7 +782,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 22,
+                == definition.navigation_control_count + 30,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -792,7 +792,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126
                 && initial.reference_content_runs == 126
-                && initial.live_samples == 22,
+                && initial.live_samples == 26,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0
@@ -958,7 +958,7 @@ void test_live_input_samples() {
         if(step == ryn::runtime::FrameLoopStep::idle) break;
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 2, "Gallery Input samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 6, "Gallery Input/Search samples absent");
     const auto controlled = fixture.inputs->mounted_inputs()[0];
     const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);
@@ -986,6 +986,37 @@ void test_live_input_samples() {
     require(fixture.inputs->editors().require(uncontrolled.editor).value() == ryn::String{u8"Latin中文"}.bytes()
         && definition.telemetry().input_changes == 2, "Gallery uncontrolled paste failed");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery uncontrolled frame failed");
+    const auto search_input = fixture.inputs->mounted_inputs()[2];
+    const auto search_button = fixture.host->mounted_buttons()[fixture.host->mounted_buttons().size() - 4];
+    const auto second_search_button = fixture.host->mounted_buttons()[fixture.host->mounted_buttons().size() - 3];
+    require(fixture.host->components().parent(search_input.component)
+            == fixture.host->components().parent(search_button.component)
+        && &fixture.inputs->editors() == &fixture.host->services().text_edit()->editors(),
+        "Gallery Search did not reuse Input/Button or window editor ownership");
+    require(fixture.host->focus().request_focus(search_input.interaction,
+                ryn::input::FocusModality::keyboard),
+        "Gallery Search Input focus failed");
+    require(bool(fixture.inputs->dispatch(ryn::input::TextCommitted{
+                ryn::String{u8"搜索"}, fixture.inputs->sessions().active()})),
+        "Gallery Search commit failed");
+    fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
+    require(definition.telemetry().search_submits == 1,
+        "Gallery Search Enter did not submit");
+    fixture.host->focus().dispatch({ryn::input::Key::tab, ryn::input::KeyAction::down});
+    require(fixture.host->focus().state().focused == search_button.interaction,
+        "Gallery Search Tab did not reach its Button");
+    fixture.host->focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::down});
+    fixture.host->focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::up});
+    require(definition.telemetry().search_submits == 2,
+        "Gallery Search Button did not submit");
+    require(fixture.host->focus().request_focus(second_search_button.interaction,
+                ryn::input::FocusModality::keyboard),
+        "Gallery second Search Button focus failed");
+    fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
+    require(definition.telemetry().search_submits == 3,
+        "Gallery second Search Button did not submit");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
+        "Gallery Search frame did not submit");
     fixture.inputs->set_window_active(false);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery blur frame failed");
     const auto final = definition.telemetry();

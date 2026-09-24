@@ -9,6 +9,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/reactive.hpp>
+#include <ryn/search.hpp>
 #include <ryn/space.hpp>
 #include <ryn/string.hpp>
 #include <ryn/switch.hpp>

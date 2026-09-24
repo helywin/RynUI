@@ -14,9 +14,9 @@
 
 ## 3. 布局、Theme 与 Gallery
 
-- [ ] 3.1 使 Search 的 Input flex grow/shrink、Button 固定并在三档尺寸、窄宽、Default/Dark/Compact 及 1.0/1.25/1.5/2.0 模拟 scale 下验证 clip、hit-test、focus、Token、retained identity 与最小 dirty/upload
-- [ ] 3.2 在 Gallery 加入真实 Search 样例及准确 `partial` 能力说明，更新目录生成与文档合同；以同窗 headless journey 和 idle benchmark 验证无第二编辑会话、无 sibling remount 或持续提交
-- [ ] 3.3 在正式 Windows MSVC Debug preset 运行相关测试、OpenSpec doctor/strict validate 与 `git diff --check`；以英文 `feat: integrate Search composition in Gallery` 提交，不主动 push
+- [x] 3.1 使 Search 的 Input flex grow/shrink、Button 固定并在三档尺寸、窄宽、Default/Dark/Compact 及 1.0/1.25/1.5/2.0 模拟 scale 下验证 clip、hit-test、focus、Token、retained identity 与最小 dirty/upload
+- [x] 3.2 在 Gallery 加入真实 Search 样例及准确 `partial` 能力说明，更新目录生成与文档合同；以同窗 headless journey 和 idle benchmark 验证无第二编辑会话、无 sibling remount 或持续提交
+- [x] 3.3 在正式 Windows MSVC Debug preset 运行相关测试、OpenSpec doctor/strict validate 与 `git diff --check`；以英文 `feat: integrate Search composition in Gallery` 提交，不主动 push
 
 ## 4. 平台通用验证
 

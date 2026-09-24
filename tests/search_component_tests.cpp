@@ -2,6 +2,7 @@
 
 #include <ryn/search.hpp>
 
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 
@@ -235,6 +236,70 @@ void invalid_mount() {
         "conflicting Search Props acquired identities");
 }
 
+void layout_theme_and_scale() {
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        for (const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark,
+                                     ThemeAlgorithm::Compact}) {
+            for (const auto size : {ControlSize::Small, ControlSize::Middle,
+                                    ControlSize::Large}) {
+                Fixture fixture;
+                fixture.font_scale = scale;
+                fixture.inputs.set_display_scale(scale);
+                ThemeConfig config;
+                config.algorithms = {algorithm};
+                Signal<ThemeConfig> theme{config};
+                int content_runs{};
+                fixture.buttons.mount(Content{[&] {
+                    Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                        ++content_runs;
+                        Search(SearchProps{}.defaultValue(u8"很长的 Search 查询文本 abcdefghijklmnop")
+                            .size(size).enterButton(true)
+                            .layout(LayoutStyle{}.width(dp(130.0F))));
+                    }});
+                }});
+                fixture.synchronize(320);
+                const auto input = fixture.inputs.mounted_inputs().front();
+                const auto button = fixture.buttons.mounted_buttons().front();
+                const auto input_bounds = fixture.nodes.require(input.node).bounds;
+                const auto button_bounds = fixture.nodes.require(button.node).bounds;
+                const auto root = *fixture.buttons.components().parent(input.component);
+                const auto root_bounds = fixture.nodes.require(fixture.buttons.components().root(root)).bounds;
+                require(input_bounds.width > 0.0F && button_bounds.width > 0.0F
+                    && input_bounds.x + input_bounds.width <= button_bounds.x + 0.1F
+                    && button_bounds.x + button_bounds.width <= root_bounds.x + root_bounds.width + 0.1F,
+                    "narrow Search geometry overlaps or escapes root");
+                require(std::fabs(input_bounds.height - button_bounds.height) < 0.1F
+                    && fixture.buttons.snapshot(button.component).size == size,
+                    "Search Input/Button control heights or sizes differ");
+                require(fixture.services.focus().request_focus(input.interaction, FocusModality::keyboard),
+                    "scaled Search focus failed");
+                require(bool(fixture.inputs.editors().require(input.editor).move(TextCaretMove::end)),
+                    "scaled Search caret failed to move");
+                fixture.synchronize(320);
+                const auto geometry = fixture.inputs.layout_snapshot(input.component);
+                require(geometry.caret.x >= geometry.clip.x - 0.01F
+                    && geometry.caret.x + geometry.caret.width <=
+                        geometry.clip.x + geometry.clip.width + 0.01F,
+                    "scaled Search caret escaped clip");
+                const auto scene = fixture.inputs.text_scene(input.component);
+                const auto shapes = fixture.scene.text_state(scene).counters().shape_count;
+                const auto measures = fixture.nodes.require(input.node).measure_count;
+                const auto mounts = fixture.buttons.components().mount_runs();
+                const auto rebuilds = fixture.buttons.scene_composer().diagnostics().rebuilds;
+                config.seed.color_primary = Color::rgba8(114, 46, 209);
+                theme.set(config);
+                fixture.synchronize(320);
+                require(content_runs == 1
+                    && fixture.buttons.components().mount_runs() == mounts
+                    && fixture.scene.text_state(scene).counters().shape_count == shapes
+                    && fixture.nodes.require(input.node).measure_count == measures
+                    && fixture.buttons.scene_composer().diagnostics().rebuilds == rebuilds,
+                    "Search color change reran content, shape, measure or scene topology");
+            }
+        }
+    }
+}
+
 } // namespace
 
 int main() {
@@ -244,6 +309,7 @@ int main() {
         uncontrolled_and_gates();
         controlled_without_echo_and_multiple_searches();
         composition_and_lifecycle();
+        layout_theme_and_scale();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

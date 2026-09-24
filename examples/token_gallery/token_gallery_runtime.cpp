@@ -1139,7 +1139,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 || (selection_acceptance
                     && (!selection_scroll || !selection_keyboard || !selection_pointer
                         || !selection_blocked || automated_input_events != 20
-                        || telemetry.live_samples != 22))
+                        || telemetry.live_samples != 26))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status
@@ -1191,6 +1191,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " live_samples=" << telemetry.live_samples
             << " input_changes=" << telemetry.input_changes
             << " input_submits=" << telemetry.input_submits
+            << " search_submits=" << telemetry.search_submits
             << " navigation_controls=" << definition.navigation_control_count
             << " navigation_requests=" << telemetry.navigation_requests
             << " filter_updates=" << telemetry.filter_updates

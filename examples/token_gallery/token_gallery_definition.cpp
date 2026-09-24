@@ -32,6 +32,8 @@ struct GalleryState final {
     ryn::Signal<bool> checkbox_checked{false};
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
+    ryn::Signal<ryn::String> search_value{ryn::String{}};
+    ryn::Signal<ryn::String> search_feedback{ryn::String{u8"Enter 或按钮提交搜索"}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
@@ -582,7 +584,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         });
     ryn::Text(u8"Input / 单行输入 · partial");
     ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
-    ryn::Text(u8"缺失：TextArea、Password、Search、allowClear；系统 IME 与视觉仍待分平台验收");
+    ryn::Text(u8"缺失：TextArea、Password、allowClear；Search 的首批组合能力见下方");
     ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
         .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
         ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
@@ -620,6 +622,35 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         }});
     });
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
+    ryn::Text(u8"Search / 搜索 · partial：复用 Input、Button 与 Flex");
+    ryn::Text(u8"支持：受控/非受控、Enter/按钮提交、loading/disabled；暂缺 clear、自定义图标与紧凑边角");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F))
+        .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        ryn::Search(ryn::SearchProps{}.value(state->search_value)
+            .placeholder(u8"输入搜索词 / Search")
+            .onChange([state](ryn::String next) { state->search_value.set(std::move(next)); })
+            .onSearch([state](ryn::String next, ryn::SearchSource) {
+                ++state->telemetry.search_submits;
+                state->search_feedback.set(std::move(next));
+            }).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+        ryn::Search(ryn::SearchProps{}.defaultValue(u8"RynUI")
+            .enterButton(true).onSearch([state](ryn::String next, ryn::SearchSource) {
+                ++state->telemetry.search_submits;
+                state->search_feedback.set(std::move(next));
+            }).layout(ryn::LayoutStyle{}.width(state->cell_width)),
+            ryn::SearchButtonContent{[] { ryn::Text(u8"查询"); }});
+        ++state->telemetry.live_samples;
+        ryn::Search(ryn::SearchProps{}.defaultValue(u8"loading")
+            .enterButton(true).loading(state->loading)
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+        ryn::Search(ryn::SearchProps{}.defaultValue(u8"disabled")
+            .disabled(state->disabled)
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+    });
+    ryn::Text(ryn::TextProps{}.content(state->search_feedback));
     ryn::Text(u8"Switch / 开关 · Middle、Small、disabled、loading");
     ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center)
         .size(ryn::dp(12.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),

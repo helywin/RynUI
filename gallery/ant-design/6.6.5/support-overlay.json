@@ -381,15 +381,16 @@
     {
       "identity": "ant.component.input",
       "status": "partial",
-      "summary": "RynUI 已提供 typed 单行 Input、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
+      "summary": "RynUI 已提供 typed 单行 Input 与首批 Search 组合、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
       "supported_scope": [
         "typed Props and prefix/suffix slots",
         "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
         "selection, clipboard, undo/redo and composition event bridge",
-        "Theme/status/disabled/readOnly and retained caret deadline"
+        "Theme/status/disabled/readOnly and retained caret deadline",
+        "Search Input/Button composition with Enter/button submission and loading gate"
       ],
       "missing_scope": [
-        "TextArea, Password, Search, OTP and allowClear",
+        "TextArea, Password, OTP and allowClear; Search icon and compact visual parity",
         "native Windows/Wayland IME and visual acceptance",
         "system placeholder/default text/max length properties",
         "complete Ant Design Web API and visual bidi navigation"
@@ -402,7 +403,11 @@
         "test:rynui.input_component",
         "test:rynui.token_gallery_frame",
         "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-journey.md",
-        "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-gallery.md"
+        "evidence:openspec/changes/010-20260831-build-text-input-foundation/evidence/platform-generic-input-gallery.md",
+        "openspec:014-20260925-compose-search-from-input-and-button#3.2",
+        "api:include/ryn/search.hpp",
+        "runtime:src/component/search_component.cpp",
+        "test:rynui.search_component"
       ]
     },
     {
