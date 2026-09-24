@@ -359,7 +359,9 @@ struct InputPropsAccess {
 
 InputComponentHost::InputComponentHost(WindowComponentServices& host, input::TextInputPlatform& platform,
     input::TextClipboard& clipboard)
-    : host_(&host), sessions_(editors_, platform), clipboard_(editors_, clipboard) { host_->attach(*this); }
+    : host_(&host), edit_services_(&host.bind_text_edit(platform, clipboard)),
+      editors_(edit_services_->editors()), sessions_(edit_services_->sessions()),
+      clipboard_(edit_services_->clipboard()) { host_->attach(*this); }
 InputComponentHost::~InputComponentHost() { dispose(); host_->detach(*this); }
 void InputComponentHost::mount(const Content& content) {
     host_->mount(content);

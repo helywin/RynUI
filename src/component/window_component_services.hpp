@@ -4,6 +4,7 @@
 #include "animation/motion_policy.hpp"
 #include "component/button_scene_service.hpp"
 #include "component/text_component.hpp"
+#include "component/window_text_edit_services.hpp"
 #include "input/focus_manager.hpp"
 #include "input/pointer_router.hpp"
 
@@ -52,6 +53,7 @@ public:
         runtime::FrameRequestState& frame_requests);
     WindowComponentServices(const WindowComponentServices&) = delete;
     WindowComponentServices& operator=(const WindowComponentServices&) = delete;
+    ~WindowComponentServices();
 
     void attach(WindowComponentParticipant& participant);
     void detach(WindowComponentParticipant& participant) noexcept;
@@ -68,6 +70,9 @@ public:
     [[nodiscard]] bool layout_and_synchronize(runtime::Size viewport, runtime::Rect clip,
         runtime::Point origin = {}, float gap = 0.0F, bool unbounded_root_height = false);
     void mark_scene_structure_dirty() noexcept { scene_structure_dirty_ = true; }
+    [[nodiscard]] WindowTextEditServices& bind_text_edit(
+        input::TextInputPlatform& platform, input::TextClipboard& clipboard);
+    [[nodiscard]] WindowTextEditServices* text_edit() noexcept { return text_edit_.get(); }
 
     [[nodiscard]] TextComponentHost& text() noexcept { return text_; }
     [[nodiscard]] const TextComponentHost& text() const noexcept { return text_; }
@@ -104,6 +109,7 @@ private:
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
     std::vector<WindowComponentParticipant*> participants_;
     bool scene_structure_dirty_{true};
+    std::unique_ptr<WindowTextEditServices> text_edit_;
 };
 
 } // namespace ryn::detail

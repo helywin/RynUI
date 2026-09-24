@@ -8,8 +8,8 @@
 
 ## 2. 窗口文本编辑设施
 
-- [ ] 2.1 将现有 editor store、唯一 text-input session 和 clipboard commands 置于窗口服务的按需编辑设施，Input 改用受限引用；以同窗重复绑定、冲突端口、销毁顺序和单一 session 测试验证。
-- [ ] 2.2 运行 Input editing、IME、selection、clipboard、controlled echo、caret 与 Button/Input 混合生命周期回归，检查 idle frame/无重复 session；运行 `git diff --check` 并以英文提交编辑服务阶段。
+- [x] 2.1 将现有 editor store、唯一 text-input session 和 clipboard commands 置于窗口服务的按需编辑设施，Input 改用受限引用；以同窗重复绑定、冲突端口、销毁顺序和单一 session 测试验证。
+- [x] 2.2 运行 Input editing、IME、selection、clipboard、controlled echo、caret 与 Button/Input 混合生命周期回归，检查 idle frame/无重复 session；运行 `git diff --check` 并以英文提交编辑服务阶段。
 
 ## 3. 按压行为
 

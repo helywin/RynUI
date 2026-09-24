@@ -2,8 +2,6 @@
 
 #include "component/window_component_services.hpp"
 #include "component/input_display.hpp"
-#include "input/text_input_session.hpp"
-#include "input/text_clipboard_commands.hpp"
 #include <ryn/input.hpp>
 
 namespace ryn::detail {
@@ -85,9 +83,10 @@ private:
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
     WindowComponentServices* host_;
-    input::TextEditorStore editors_;
-    input::TextInputSessionHost sessions_;
-    input::TextClipboardCommands clipboard_;
+    WindowTextEditServices* edit_services_;
+    input::TextEditorStore& editors_;
+    input::TextInputSessionHost& sessions_;
+    input::TextClipboardCommands& clipboard_;
     std::vector<MountedInputComponent> mounted_;
     float display_scale_{1.0F};
 };

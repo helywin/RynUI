@@ -32,6 +32,17 @@ void input_without_button_host() {
         }, frames);
     ryn_test::input_component::Platform platform;
     detail::InputComponentHost inputs(services, platform, platform);
+    auto* edit = services.text_edit();
+    require(edit != nullptr && edit == &services.bind_text_edit(platform, platform)
+                && &inputs.editors() == &edit->editors()
+                && &inputs.sessions() == &edit->sessions(),
+            "Input did not reuse the window editing services");
+    ryn_test::input_component::Platform foreign;
+    bool rejected_foreign_port = false;
+    try { static_cast<void>(services.bind_text_edit(foreign, foreign)); }
+    catch (const std::logic_error&) { rejected_foreign_port = true; }
+    require(rejected_foreign_port && services.text_edit() == edit,
+            "Window accepted a second text-input platform session");
     inputs.mount(Content{[] { Input(InputProps{}.defaultValue(u8"独立输入")); }});
     require(inputs.mounted_inputs().size() == 1
                 && services.layout_and_synchronize({320, 240}, {0, 0, 320, 240}),

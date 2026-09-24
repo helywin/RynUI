@@ -413,12 +413,26 @@ WindowComponentServices::WindowComponentServices(
     animations_.reserve(256, 64, 256);
 }
 
+WindowComponentServices::~WindowComponentServices() {
+    dispose();
+}
+
 void WindowComponentServices::attach(WindowComponentParticipant& participant) {
     if (std::find(participants_.begin(), participants_.end(), &participant)
             != participants_.end()) {
         throw std::logic_error("window component participant is already attached");
     }
     participants_.push_back(&participant);
+}
+
+WindowTextEditServices& WindowComponentServices::bind_text_edit(
+    input::TextInputPlatform& platform, input::TextClipboard& clipboard) {
+    if (!text_edit_) {
+        text_edit_ = std::make_unique<WindowTextEditServices>(platform, clipboard);
+    } else if (!text_edit_->uses(platform, clipboard)) {
+        throw std::logic_error("window text edit services are bound to different platform ports");
+    }
+    return *text_edit_;
 }
 
 void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
