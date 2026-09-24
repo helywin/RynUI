@@ -7,5 +7,5 @@
 
 ## 2. 集成验证与证据
 
-- [ ] 2.1 在正式 `windows-msvc-release` 构建并运行受影响 CTest 与真实 Win32/D3D12/DXIL/系统字体 Gallery 动画回归；记录编译器、preset、诊断、缩放和退出码
-- [ ] 2.2 运行 OpenSpec doctor/strict validate、`git diff --check`，核对纯内部边界和 014 原生 IME 待验，英文提交独立证据；不主动 push 或 archive
+- [x] 2.1 在正式 `windows-msvc-release` 构建并运行受影响 CTest 与真实 Win32/D3D12/DXIL/系统字体 Gallery 动画回归；记录编译器、preset、诊断、缩放和退出码
+- [x] 2.2 运行 OpenSpec doctor/strict validate、`git diff --check`，核对纯内部边界和 014 原生 IME 待验，英文提交独立证据；不主动 push 或 archive
