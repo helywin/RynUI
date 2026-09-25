@@ -11,7 +11,7 @@
 
 ## 3. Windows 真实窗口验收
 
-- [ ] 3.1 Windows MSVC Release 干净构建及五进程 D3D12 Gallery 滚动复测；记录工作量、CPU 和终态对照，通过后以 `test:` 提交
+- [x] 3.1 Windows MSVC Release 干净构建及五进程 D3D12 Gallery 滚动复测；记录工作量、CPU 和终态对照，通过后以 `test:` 提交
 
 ## 4. 集成验收
 
