@@ -13,7 +13,7 @@
 ## Decisions
 
 1. **每 domain 的 slot stamp，保留有界小队列路径。** 各 domain 保存 `slot -> (generation, epoch)`；dense vector 保留首次入队顺序。新队列的前 256 个元素先用有界线性查找，避免只更新少量节点时为历史最大 slot 容量分配元数据；超过阈值一次建立 stamp，此后按 slot 查重。`clear()` 前进 epoch，回绕时清空 stamp。这样大批量入队不扫描累计队列，也避免 `unordered_set` 的逐元素分配。自动布局根仍按现有父链确定；高树深的根查找另列为后续布局阶段问题。
-2. **读取边界归并脏区。** Store 在 `mark_dirty` 时仅 append；dirty getter 首次调用时对该 domain 原位排序合并，重复读取直接复用。变长 replace 先裁掉受影响后缀的旧区间，再标记新的完整后缀。相邻范围归并不改变上传 byte 覆盖。保留既有 getter 与 GPU buffer 同步 API，避免将未排序范围交给旧调用方。
+2. **读取边界归并脏区，连续重复更新即时折叠。** Store 标脏时先尝试与最后一段做常数时间的重叠/相邻合并，其余范围 append；dirty getter 首次调用时对该 domain 原位排序合并，重复读取直接复用。headless 或暂不提交的路径可能长时间不消费计划，最后一段折叠避免同一 caret/材质范围反复更新导致记录无界增长和热路径分配。变长 replace 先裁掉受影响后缀的旧区间，再标记新的完整后缀。保留既有 getter 与 GPU buffer 同步 API，避免将未排序范围交给旧调用方。
 3. **Atlas 使用 key 索引到稳定 deque 下标。** 自定义完整 key hash 的 `unordered_map` 只保存下标；entry 保留在 deque 中。查找先 hash 再比较完整 key。仅在成功建立 entry 后加入索引；bitmap 无效、过大或容量错误不缓存为成功。页级淘汰与 UV generation 尚未引入，避免提前改变 residency 合同。
 4. **规模基准同时报告工作量与时间。** 保留相同 seed、场景大小和变更量，对旧提交及新提交运行相同基准。记录墙钟 CPU 时间、操作/区间计数和运行环境；真实 GPU 未参与的结果标为未测。Windows 使用 `windows-msvc` 的 Ninja Multi-Config Debug 验证和 Release 测时；Linux 平台通用逻辑无需重复，但涉及 Linux 后端的未来变更必须原机验收。
 

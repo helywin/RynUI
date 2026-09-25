@@ -18,10 +18,27 @@ public:
     }
 
     void append(Range range) {
-        if (range.count != 0) {
-            ranges_.push_back(range);
-            needs_normalization_ = true;
+        if (range.count == 0) {
+            return;
         }
+        if (!ranges_.empty()) {
+            Range& last = ranges_.back();
+            const auto last_end =
+                static_cast<std::uint64_t>(last.first) + last.count;
+            const auto range_end =
+                static_cast<std::uint64_t>(range.first) + range.count;
+            if (range.first <= last_end && last.first <= range_end) {
+                const auto first = std::min(last.first, range.first);
+                last = {
+                    first,
+                    static_cast<std::uint32_t>(std::max(last_end, range_end) - first),
+                };
+                needs_normalization_ = true;
+                return;
+            }
+        }
+        ranges_.push_back(range);
+        needs_normalization_ = true;
     }
 
     void discard_shifted(std::uint32_t first) noexcept {

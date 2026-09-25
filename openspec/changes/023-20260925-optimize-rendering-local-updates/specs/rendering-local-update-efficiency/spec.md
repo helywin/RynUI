@@ -29,6 +29,10 @@ RynUI SHALL 在 Quad 和 Glyph 实例更新时累积脏区，并在读取上传�
 - **WHEN** 变长 replace 搬移后缀实例
 - **THEN** 上传计划覆盖搬移后的后缀，旧的移位脏区不越界
 
+#### Scenario: 暂不消费的重复局部更新
+- **WHEN** headless 或延迟提交路径反复修改同一段实例且暂不读取上传计划
+- **THEN** 待处理范围不会因为重复写入同一段而持续增长；预热后的 Input selection 更新保持零额外分配
+
 ### Requirement: Glyph atlas 完整 key 索引
 RynUI SHALL 使用完整的 font identity、glyph id、像素尺寸、raster phase 和 mode 区分 atlas entry，并在命中时复用稳定 entry 而不增加脏区。容量或 bitmap 错误 SHALL 不写入索引。
 
