@@ -34,3 +34,9 @@ Windows 11 10.0.26200、Intel Core Ultra 9 285HX，正式 `windows-msvc` / Ninja
 首帧 CPU 中位数减少约 20%，资源同步减少约 57%；五次首帧总时长的前后取值区间未重叠。这个收益来自共享提交/pass 与命令编码路径的整体改变，不能把全部差值归因于单个 SDL 调用；纹理 transfer 的 1,077 次创建和映射仍保留。滚动终态、区域、draw 数与退出码保持一致。未测 GPU 执行时间，也未做逐帧人工像素检查。
 
 Windows MSVC Debug 定向 `rynui.buffer_upload_batch_layout`、`rynui.glyph_atlas`、`rynui.glyph_gpu_resources` 3/3 通过；Debug 真实 D3D12 `--scroll-acceptance` 完成 240 步且首帧上传提交为 1。Release 的 `--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 均一次通过。
+
+## 集成校验状态
+
+正式 Windows MSVC Release 完整 `--clean-first` 构建成功。使用相同 VS Developer Environment 运行完整 CTest，228/234 通过；六项失败与 026 基线一致：`rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`。本 change 涉及的 atlas、Glyph GPU 资源及上传布局测试通过。完整原始输出在被忽略的 `out/build/windows-msvc/atlas-full-ctest-msvc.log`。
+
+`openspec validate 027-20260925-batch-gallery-atlas-uploads --strict --no-interactive` 通过；全仓 strict validate 为 21/27，既有 change 013、015、016、017、018、021 缺 delta spec。OpenSpec CLI 1.4.1 的 `openspec doctor --json` 返回 `unknown command 'doctor'`。`git diff --check` 通过。全仓集成门槛尚未满足，tasks 4.1 保持未勾选。
