@@ -4,6 +4,7 @@
 #include "graphics/quad_primitive.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
+#include "renderer/sdl/buffer_upload_batch_layout.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
 
@@ -109,6 +110,8 @@ public:
     void cancel_buffer_upload_batch() noexcept;
 
 private:
+    bool begin_buffer_upload_chunk(std::uint32_t minimum_capacity);
+    bool flush_buffer_upload_chunk();
     bool upload_buffer(
         void* buffer,
         std::size_t offset,
@@ -127,6 +130,9 @@ private:
     bool upload_batch_active_{false};
     void* upload_command_{nullptr};
     void* upload_pass_{nullptr};
+    void* active_upload_transfer_{nullptr};
+    void* active_upload_mapped_{nullptr};
+    BufferUploadBatchLayout upload_layout_;
     std::vector<void*> upload_transfers_;
     std::string shader_format_;
     std::string last_error_;

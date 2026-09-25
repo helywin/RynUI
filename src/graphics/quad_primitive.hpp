@@ -110,6 +110,7 @@ public:
     [[nodiscard]] std::span<const QuadInstanceRange>
         geometry_dirty_ranges() const noexcept;
     void clear_dirty_ranges() noexcept;
+    void mark_all_dirty();
 
 private:
     void require_range(QuadInstanceRange range) const;

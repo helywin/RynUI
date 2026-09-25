@@ -29,6 +29,10 @@ RoundedEffectGpuResources::~RoundedEffectGpuResources() {
     }
 }
 
+void RoundedEffectGpuResources::invalidate_upload() noexcept {
+    metrics_.reset();
+}
+
 void RoundedEffectGpuResources::synchronize(
     graphics::RoundedEffectStore& store,
     graphics::RoundedEffectDeviceMetrics metrics) {

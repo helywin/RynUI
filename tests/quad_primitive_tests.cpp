@@ -123,6 +123,27 @@ ryn::graphics::QuadInstance instance(float value) {
     };
 }
 
+void test_full_retry_after_batch_submit_failure() {
+    ryn::graphics::QuadInstanceStore store;
+    const std::array initial{instance(0.1F), instance(0.2F)};
+    static_cast<void>(store.append(initial));
+    RecordingUploadApi api;
+    ryn::graphics::QuadGpuBuffer gpu(api, store);
+    require(store.geometry_dirty_ranges().empty(),
+            "initial Quad upload did not optimistically clear dirty ranges");
+    api.buffer.assign(api.buffer.size(), std::byte{});
+    store.mark_all_dirty();
+    require(store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front()
+                    == ryn::graphics::QuadInstanceRange{0, 2},
+            "failed batch did not restore the full Quad upload range");
+    gpu.synchronize(store);
+    const auto expected = std::as_bytes(store.instances());
+    require(api.buffer == std::vector<std::byte>(expected.begin(), expected.end())
+                && api.upload_offsets.back() == 0,
+            "Quad retry did not restore the complete GPU buffer");
+}
+
 void test_sparse_dirty_ranges_and_compaction() {
     ryn::graphics::QuadInstanceStore store;
     const std::array initial{
@@ -253,6 +274,7 @@ int main() {
     try {
         test_instance_layout_matches_shader_contract();
         test_initial_upload_preserves_instance_bytes();
+        test_full_retry_after_batch_submit_failure();
         test_sparse_dirty_ranges_and_compaction();
         test_gpu_buffer_growth_and_sparse_synchronization();
         test_out_of_order_dirty_planning_and_shifted_suffix();

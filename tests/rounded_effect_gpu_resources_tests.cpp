@@ -186,12 +186,31 @@ void test_zero_effect_and_failure_paths_preserve_dirty_state() {
             "rounded-effect GPU buffer leaked after partial upload failure");
 }
 
+void test_full_retry_after_batch_submit_failure() {
+    RecordingApi api;
+    ryn::graphics::RoundedEffectStore store;
+    const std::array initial{effect(10.0F, 1), effect(30.0F, 2)};
+    static_cast<void>(store.add_batch(initial));
+    ryn::detail::RoundedEffectGpuResources resources(api);
+    resources.synchronize(store, {100, 100, 1.0F});
+    require(store.geometry_dirty_ranges().empty() && api.uploads.size() == 1,
+            "effect fixture did not clear optimistic upload state");
+    resources.invalidate_upload();
+    resources.synchronize(store, {100, 100, 1.0F});
+    require(api.uploads.size() == 2 && api.uploads.back().offset == 0
+                && api.uploads.back().bytes.size()
+                    == 2 * sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                && resources.counters().full_uploads == 2,
+            "failed batch did not force a complete effect retry");
+}
+
 } // namespace
 
 int main() {
     try {
         test_full_partial_metrics_growth_and_idle_uploads();
         test_zero_effect_and_failure_paths_preserve_dirty_state();
+        test_full_retry_after_batch_submit_failure();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

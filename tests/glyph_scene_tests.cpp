@@ -336,6 +336,21 @@ void test_out_of_order_glyph_ranges_and_shifted_suffix() {
             "Glyph shifted suffix left stale or missing dirty ranges");
 }
 
+void test_full_retry_after_batch_submit_failure() {
+    ryn::graphics::GlyphInstanceStore store;
+    const std::array initial{instance(0.1F), instance(0.2F), instance(0.3F)};
+    static_cast<void>(store.append(initial));
+    store.clear_dirty_ranges();
+    require(store.geometry_dirty_ranges().empty(),
+            "Glyph fixture did not clear optimistic dirty ranges");
+    store.mark_all_dirty();
+    require(store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front() == GlyphInstanceRange{0, 3}
+                && store.material_dirty_ranges().empty()
+                && store.bytes({0, 3}).size() == 3 * sizeof(GlyphInstance),
+            "failed batch did not restore all Glyph instance bytes");
+}
+
 void test_ordered_scene_preserves_quad_glyph_z_order() {
     ryn::graphics::OrderedScene scene;
     scene.append_quad(0, 1);
@@ -372,6 +387,7 @@ int main() {
         test_physical_phase_scale_and_size_matrix();
         test_dirty_ranges_remain_layered_and_sparse();
         test_out_of_order_glyph_ranges_and_shifted_suffix();
+        test_full_retry_after_batch_submit_failure();
         test_ordered_scene_preserves_quad_glyph_z_order();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

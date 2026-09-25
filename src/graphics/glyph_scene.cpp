@@ -338,6 +338,15 @@ void GlyphInstanceStore::clear_dirty_ranges() noexcept {
     geometry_dirty_ranges_.clear();
 }
 
+void GlyphInstanceStore::mark_all_dirty() {
+    clear_dirty_ranges();
+    if (!instances_.empty()) {
+        geometry_dirty_ranges_.append({
+            0, static_cast<std::uint32_t>(instances_.size()),
+        });
+    }
+}
+
 void GlyphInstanceStore::require_range(GlyphInstanceRange range) const {
     const std::uint64_t end = static_cast<std::uint64_t>(range.first) + range.count;
     if (end > instances_.size()) {

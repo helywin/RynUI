@@ -376,10 +376,12 @@ public:
             } catch (...) {
                 if (batch_uploads) {
                     renderer_->cancel_buffer_upload_batch();
+                    invalidate_buffer_uploads();
                 }
                 throw;
             }
             if (batch_uploads && !renderer_->finish_buffer_upload_batch()) {
+                invalidate_buffer_uploads();
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -549,6 +551,12 @@ public:
     }
 
 private:
+    void invalidate_buffer_uploads() {
+        application_->services().surfaces().instances().mark_all_dirty();
+        text_scene_->glyph_scene().instances().mark_all_dirty();
+        effect_resources_.invalidate_upload();
+    }
+
     static constexpr std::int64_t scroll_capture_frames = 240;
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;

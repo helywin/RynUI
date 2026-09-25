@@ -47,6 +47,7 @@ public:
     void synchronize(
         graphics::RoundedEffectStore& store,
         graphics::RoundedEffectDeviceMetrics metrics);
+    void invalidate_upload() noexcept;
 
     [[nodiscard]] RoundedEffectGpuBufferHandle buffer() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;

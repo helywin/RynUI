@@ -90,6 +90,7 @@ public:
     [[nodiscard]] std::span<const GlyphInstanceRange> material_dirty_ranges() const noexcept;
     [[nodiscard]] std::span<const GlyphInstanceRange> geometry_dirty_ranges() const noexcept;
     void clear_dirty_ranges() noexcept;
+    void mark_all_dirty();
 
 private:
     void require_range(GlyphInstanceRange range) const;

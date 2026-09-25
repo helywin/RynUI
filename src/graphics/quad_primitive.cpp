@@ -229,6 +229,15 @@ void QuadInstanceStore::clear_dirty_ranges() noexcept {
     geometry_dirty_ranges_.clear();
 }
 
+void QuadInstanceStore::mark_all_dirty() {
+    clear_dirty_ranges();
+    if (!instances_.empty()) {
+        geometry_dirty_ranges_.append({
+            0, static_cast<std::uint32_t>(instances_.size()),
+        });
+    }
+}
+
 void QuadInstanceStore::require_range(QuadInstanceRange range) const {
     const std::uint64_t end = static_cast<std::uint64_t>(range.first) + range.count;
     if (end > instances_.size()) {

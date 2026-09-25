@@ -7,8 +7,7 @@
 
 ## 2. 平台通用上传合同
 
-- [ ] 2.1 增加多目标、不连续区域、容量边界和批次失败恢复回归；Windows MSVC Debug 定向测试通过后以 `test:` 提交
-- [ ] 2.2 实现有界同帧 staging 与完整重传恢复，保持 SDL unmap/编码顺序和目标局部更新；相关 Debug CTest 通过后以 `refactor:` 提交
+- [x] 2.1 同阶段完成多目标、不连续区域、容量边界与批次失败恢复回归，以及有界同帧 staging 和完整重传恢复；Windows MSVC Debug 定向 CTest 与真实 D3D12 Gallery 窗口通过后以 `refactor:` 提交
 
 ## 3. Windows 真实窗口验收
 
