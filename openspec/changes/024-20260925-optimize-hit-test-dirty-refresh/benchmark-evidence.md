@@ -59,3 +59,9 @@
 | GPU 上传提交 / Quad、Glyph、Effect draw 累计数 | 1,320 / 2,190、2,178、553 | 1,320 / 2,190、2,178、553 |
 
 整帧中位数增加 474 µs，落在五进程波动范围内，不能归因于本算法；命中刷新保持 5 µs。Gallery 规模仅 61 条交互，因此定向批量基准的收益没有转化为该场景的整帧收益。自动滚动路径和退出码验证了此场景可运行，未进行人工逐帧视觉检查；GPU 实际执行和输入到展示延迟仍未测。当前可见的约 14 ms 布局与场景同步外层耗时需要单独拆分后再优化。
+
+## 集成校验状态
+
+Windows MSVC Release 完整 `--clean-first` 构建成功。完整 CTest 为 227/233 通过；六项失败分别为 `rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`。这些失败与变更 023 基线的同六项一致；本 change 新增的批量命中基准和命中刷新测试通过。完整 CTest 原始输出保存在被忽略的 `out/build/windows-msvc/hit-refresh-full-ctest.log`。
+
+本机 OpenSpec CLI 为 1.4.1，`openspec doctor --json` 返回 `unknown command 'doctor'`。`openspec validate --all --strict --no-interactive` 为 18/24 通过，六项失败是已有 change 013、015、016、017、018、021 缺少 delta spec；`openspec validate 024-20260925-optimize-hit-test-dirty-refresh --strict --no-interactive` 单项通过。`git diff --check` 通过。因全仓校验未通过且 doctor 命令不可用，tasks 4.1 保持未勾选。
