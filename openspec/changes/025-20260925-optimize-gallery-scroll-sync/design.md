@@ -13,9 +13,9 @@
 ## Decisions
 
 1. **先观测再改算法。** 在原有 `--scroll-acceptance` 输出中增加命名稳定的累积时间与计数；每个阶段以同一帧数为分母，明确计时口径。先运行五个独立 Release D3D12 进程，并保存原始数值。
-2. **将 Input 文本的容器平移转为已有 post-raster patch。** 五进程基线明确 `InputComponentHost` 中三个文本图层随每个 Input 的全局 viewport origin 变化而全部走 `replace_text`：滚动 240 帧、9 个 Input、6,480 次 geometry rebuild、零 patch，约 13.94 ms/帧。保持 Input 的 world viewport、clip、caret、effect 与 surface 几何现有算法；只让 `GlyphPlacement.origin_pixels` 使用未平移的 viewport Node bounds，再把该 Node 的 translation 与 Input 水平滚动量合成后交给 `TextSceneService::set_phase_preserving_scroll_translation`。剩余非整数物理像素位移放入 `GlyphPlacement.translation_pixels`，继续触发必要的 raster phase rebuild。各图层分别调用，以保留 base/selected/placeholder 的独立身份、material 和 clip。
+2. **将 Input 文本的容器平移转为已有 post-raster patch。** 五进程基线明确 `InputComponentHost` 中三个文本图层随每个 Input 的全局 viewport origin 变化而全部走 `replace_text`：滚动 240 帧、9 个 Input、6,480 次 geometry rebuild、零 patch，约 13.94 ms/帧。保持 Input 的 world viewport、clip、caret、effect 与 surface 几何现有算法；只让 `GlyphPlacement.origin_pixels` 使用未平移的 viewport Node bounds，再把该 Node 的 translation 与已按 display scale 对齐的 Input 水平滚动量一次交给 `TextSceneService::set_phase_preserving_scroll_translation`。仅容器平移参与 raster phase 分离，剩余残差放入 `GlyphPlacement.translation_pixels`；水平滚动 offset 原样加到 snapped 平移，避免一帧两次更改 scroll translation。各图层分别调用，以保留 base/selected/placeholder 的独立身份、material 和 clip。
 3. **以现有完整重建为位置 oracle。** 测试用 1.0、1.25、1.5、2.0 scale，比较整数物理像素与分数位移后可见 glyph 的位置、clip、phase、三图层顺序和 hit bounds；内容/字体/宽度/clip 变化仍必须走原有失效路径。整数物理像素滚动在 warmed scene 上要求 geometry rebuild 不增加、patch 增加。离屏后重新进入视口还需同步最新内容。
-4. **前后比较。** 保持机器、preset、窗口、自动滚动步骤及 telemetry 一致。全量 Node、实际可见 fragment、GPU 上传和 draw 数与退出码共同检查。性能差异小于进程波动时只报告不确定，不宣称加速。
+4. **前后比较。** 保持机器、preset、窗口、自动滚动步骤及 telemetry 一致。优化后可能在 1.8 秒验收结束前出现更多非滚动动画帧，因此计时与 renderer 计数限定自动滚动开始后的前 240 个提交帧；旧基线也恰好是 240 帧。全量 Node、实际可见 fragment、GPU 上传和 draw 数与退出码共同检查。性能差异小于进程波动时只报告不确定，不宣称加速。
 
 ## Risks / Trade-offs
 

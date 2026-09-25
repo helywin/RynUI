@@ -401,36 +401,44 @@ public:
                         .count());
             };
             const auto elapsed = microseconds(frame_started, frame_finished);
-            total_scene_sync_microseconds_ +=
-                microseconds(frame_started, scene_synchronized);
-            total_hit_refresh_nanoseconds_ += application_->services()
-                .hit_test_refresh_nanoseconds() - hit_refresh_before;
-            total_translation_microseconds_ +=
-                microseconds(frame_started, document_translated);
-            total_layout_microseconds_ +=
-                microseconds(document_translated, layout_synchronized);
-            total_anchor_input_microseconds_ +=
-                microseconds(layout_synchronized, scene_synchronized);
-            total_resource_sync_microseconds_ +=
-                microseconds(scene_synchronized, resources_synchronized);
-            total_quad_sync_microseconds_ +=
-                microseconds(scene_synchronized, quad_synchronized);
-            total_glyph_sync_microseconds_ +=
-                microseconds(quad_synchronized, glyph_synchronized);
-            total_effect_sync_microseconds_ +=
-                microseconds(glyph_synchronized, effect_synchronized);
-            total_upload_finish_microseconds_ +=
-                microseconds(effect_synchronized, resources_synchronized);
-            total_cull_microseconds_ +=
-                microseconds(resources_synchronized, scene_culled);
-            total_submit_microseconds_ +=
-                microseconds(scene_culled, frame_finished);
-            total_frame_microseconds_ += elapsed;
-            max_frame_microseconds_ = std::max(max_frame_microseconds_, elapsed);
-            if (sampled_frames_ < frame_samples_.size()) {
-                frame_samples_[sampled_frames_++] = elapsed;
+            if (!scroll_capture_enabled_ || timed_frames_ < scroll_capture_frames) {
+                total_scene_sync_microseconds_ +=
+                    microseconds(frame_started, scene_synchronized);
+                total_hit_refresh_nanoseconds_ += application_->services()
+                    .hit_test_refresh_nanoseconds() - hit_refresh_before;
+                total_translation_microseconds_ +=
+                    microseconds(frame_started, document_translated);
+                total_layout_microseconds_ +=
+                    microseconds(document_translated, layout_synchronized);
+                total_anchor_input_microseconds_ +=
+                    microseconds(layout_synchronized, scene_synchronized);
+                total_resource_sync_microseconds_ +=
+                    microseconds(scene_synchronized, resources_synchronized);
+                total_quad_sync_microseconds_ +=
+                    microseconds(scene_synchronized, quad_synchronized);
+                total_glyph_sync_microseconds_ +=
+                    microseconds(quad_synchronized, glyph_synchronized);
+                total_effect_sync_microseconds_ +=
+                    microseconds(glyph_synchronized, effect_synchronized);
+                total_upload_finish_microseconds_ +=
+                    microseconds(effect_synchronized, resources_synchronized);
+                total_cull_microseconds_ +=
+                    microseconds(resources_synchronized, scene_culled);
+                total_submit_microseconds_ +=
+                    microseconds(scene_culled, frame_finished);
+                total_frame_microseconds_ += elapsed;
+                max_frame_microseconds_ = std::max(max_frame_microseconds_, elapsed);
+                if (sampled_frames_ < frame_samples_.size()) {
+                    frame_samples_[sampled_frames_++] = elapsed;
+                }
+                ++timed_frames_;
+                if (scroll_capture_enabled_ && timed_frames_ == scroll_capture_frames) {
+                    captured_renderer_counters_ = renderer_->counters();
+                    scroll_capture_complete_ = true;
+                    application_->services().set_sync_profiling_enabled(false);
+                    inputs_->set_sync_profiling_enabled(false);
+                }
             }
-            ++timed_frames_;
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
             }
@@ -496,6 +504,8 @@ public:
         return samples[rank];
     }
     void reset_frame_timings() noexcept {
+        scroll_capture_enabled_ = true;
+        scroll_capture_complete_ = false;
         application_->services().set_sync_profiling_enabled(true);
         application_->services().reset_sync_profile();
         inputs_->set_sync_profiling_enabled(true);
@@ -524,11 +534,17 @@ public:
         return quad_buffer_->counters();
     }
     [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters&
-        effect_uploads() const noexcept {
+    effect_uploads() const noexcept {
         return effect_resources_.counters();
+    }
+    [[nodiscard]] const ryn::detail::SceneRendererCounters&
+    captured_renderer_counters() const noexcept {
+        return scroll_capture_complete_ ? captured_renderer_counters_
+                                        : renderer_->counters();
     }
 
 private:
+    static constexpr std::int64_t scroll_capture_frames = 240;
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::InputComponentHost* inputs_;
@@ -546,6 +562,9 @@ private:
     ryn::graphics::OrderedScene visible_scene_;
     ryn::component::VisibleSceneStats last_visible_scene_;
     std::uint64_t reconciliation_syncs_{};
+    bool scroll_capture_enabled_{};
+    bool scroll_capture_complete_{};
+    ryn::detail::SceneRendererCounters captured_renderer_counters_{};
     std::int64_t total_frame_microseconds_{};
     std::int64_t total_scene_sync_microseconds_{};
     std::uint64_t total_hit_refresh_nanoseconds_{};
@@ -1421,7 +1440,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto quad = submitter.quad_uploads();
         const auto glyph = glyph_resources.counters();
         const auto effect = submitter.effect_uploads();
-        const auto render = renderer.counters();
+        const auto render = submitter.captured_renderer_counters();
         const auto phase_times = submitter.average_phase_microseconds();
         const auto detail_times = submitter.average_detail_microseconds();
         const auto sync_profile = application.services().sync_profile();
@@ -1604,6 +1623,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << submitter.last_visible_scene().fragments_considered
             << " draw_fragments_visible="
             << submitter.last_visible_scene().fragments_visible
+            << " frame_samples=" << submitter.timed_frames()
             << " frame_average_us=" << submitter.average_frame_microseconds()
             << " frame_max_us=" << submitter.max_frame_microseconds()
             << " frame_p95_us=" << submitter.p95_frame_microseconds()
