@@ -145,6 +145,28 @@ void test_generation_aware_deduplication_and_order() {
             "new dirty epoch suppressed a live Node");
 }
 
+void test_large_queue_keeps_order_across_stamp_transition() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    std::vector<ryn::runtime::NodeId> children;
+    for (int index = 0; index < 300; ++index) {
+        children.push_back(nodes.create_child(root));
+    }
+    ryn::runtime::DirtyQueues dirty(nodes);
+    for (const auto child : children) {
+        dirty.invalidate(child, ryn::runtime::DirtyFlags::Material);
+    }
+    dirty.invalidate(children.front(), ryn::runtime::DirtyFlags::Material);
+    dirty.invalidate(children.back(), ryn::runtime::DirtyFlags::Material);
+    require(dirty.material_nodes() == children,
+            "stamp transition changed dirty order or admitted duplicates");
+    dirty.clear();
+    dirty.invalidate(children.back(), ryn::runtime::DirtyFlags::Material);
+    require(dirty.material_nodes()
+                == std::vector<ryn::runtime::NodeId>({children.back()}),
+            "preallocated stamps suppressed a later epoch");
+}
+
 } // namespace
 
 int main() {
@@ -153,6 +175,7 @@ int main() {
         test_size_update_queues_layout_root_and_geometry();
         test_explicit_subtree_invalidation_does_not_bubble_to_page_root();
         test_generation_aware_deduplication_and_order();
+        test_large_queue_keeps_order_across_stamp_transition();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

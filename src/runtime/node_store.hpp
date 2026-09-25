@@ -92,6 +92,7 @@ public:
     bool destroy(NodeId id) noexcept;
 
     [[nodiscard]] std::size_t size() const noexcept;
+    [[nodiscard]] std::size_t slot_capacity() const noexcept;
     [[nodiscard]] std::uint64_t topology_revision() const noexcept;
 
 private:

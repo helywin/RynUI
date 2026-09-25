@@ -161,8 +161,34 @@ void DirtyQueues::enqueue_unique(
     std::vector<NodeId>& queue, NodeId id, Domain domain) {
     const auto domain_index = static_cast<std::size_t>(domain);
     auto& stamps = stamps_[domain_index];
+    constexpr std::size_t small_queue_limit = 256;
+    if (stamps.empty() && queue.size() < small_queue_limit) {
+        // The first few entries are cheaper to scan than initializing a slot
+        // table for a large, mostly clean tree. This scan has a fixed bound.
+        if (std::find(queue.begin(), queue.end(), id) != queue.end()) {
+            return;
+        }
+        if (queue.empty()) {
+            checked_topology_revisions_[domain_index] = nodes_->topology_revision();
+        }
+        queue.push_back(id);
+        return;
+    }
+    if (stamps.empty()) {
+        stamps.resize(std::max(
+            static_cast<std::size_t>(id.index) + 1, nodes_->slot_capacity()));
+        for (const NodeId queued : queue) {
+            if (nodes_->find(queued) != nullptr) {
+                stamps[queued.index] = {queued.generation, epoch_};
+            }
+        }
+    }
     if (id.index >= stamps.size()) {
-        stamps.resize(static_cast<std::size_t>(id.index) + 1);
+        stamps.resize(std::max({
+            static_cast<std::size_t>(id.index) + 1,
+            nodes_->slot_capacity(),
+            stamps.size() * 2,
+        }));
     }
     auto& stamp = stamps[id.index];
     if (stamp.epoch == epoch_ && stamp.generation == id.generation) {

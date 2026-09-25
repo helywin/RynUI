@@ -74,6 +74,10 @@ std::size_t NodeStore::size() const noexcept {
     return live_nodes_;
 }
 
+std::size_t NodeStore::slot_capacity() const noexcept {
+    return slots_.size();
+}
+
 std::uint64_t NodeStore::topology_revision() const noexcept {
     return topology_revision_;
 }
