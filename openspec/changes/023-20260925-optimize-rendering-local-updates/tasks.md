@@ -14,4 +14,4 @@
 ## 3. 通用验证与收口
 
 - [x] 3.1 Windows MSVC Release 重新运行同一 benchmark，记录改造前后 CPU 结果、平台/preset、工作量和未测 GPU 边界；运行受影响 CTest 与 `git diff --check` 后英文提交证据
-- [ ] 3.2 运行 OpenSpec doctor、strict validate、受影响完整 CTest；核对所有 task 的实际证据并英文提交最终状态
+- [x] 3.2 运行 OpenSpec doctor、strict validate、受影响完整 CTest；核对所有 task 的实际证据并英文提交最终状态
