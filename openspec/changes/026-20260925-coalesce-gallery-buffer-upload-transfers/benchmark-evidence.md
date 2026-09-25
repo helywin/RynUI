@@ -37,3 +37,9 @@ Windows 11 10.0.26200、Intel Core Ultra 9 285HX，正式 `windows-msvc` / Ninja
 transfer 创建与映射减少约 91%，资源同步阶段约减少 80%；平均整帧时间只减少约 0.8%，不能宣称整体吞吐量有同幅提升。提交阶段包含 swapchain 等待，快路径释放的时间大部分转成等待；p95 减少约 14%。上传区域、字节数、提交数、draw 数、组件及滚动终态保持一致。未用 GPU profiler 测 GPU 执行时间，也未做逐帧人工像素检查。
 
 Windows MSVC Debug 定向 `rynui.buffer_upload_batch_layout`、`rynui.quad_primitive`、`rynui.glyph_scene`、`rynui.rounded_effect_gpu_resources` 4/4 通过；Debug 真实 D3D12 `--scroll-acceptance` 完成 240 步。Release 的 `--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 一次通过；首次 `--input-acceptance` 因无法聚焦受控 Input 以代码 7 退出，紧接两次重试均通过。该一次焦点失败尚未定位成因，不计作已稳定解决。
+
+## 集成校验状态
+
+正式 Windows MSVC Release 完整 `--clean-first` 构建成功。使用相同 VS Developer Environment 运行完整 CTest，228/234 通过；六项失败与 025 基线一致：`rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`。本 change 新增 `rynui.buffer_upload_batch_layout` 及相关 Quad/Glyph/Effect 测试均通过。完整原始输出在被忽略的 `out/build/windows-msvc/transfer-full-ctest-msvc.log`。首次未加载 VS Developer Environment 的 CTest 运行有大量工具链合同失败，不能作为代码回归证据；重新加载后只剩上述六项。
+
+`openspec validate 026-20260925-coalesce-gallery-buffer-upload-transfers --strict --no-interactive` 通过；全仓 strict validate 为 20/26，既有 change 013、015、016、017、018、021 缺 delta spec。OpenSpec CLI 1.4.1 的 `openspec doctor --json` 返回 `unknown command 'doctor'`。`git diff --check` 通过。全仓集成门槛尚未满足，tasks 4.1 保持未勾选。
