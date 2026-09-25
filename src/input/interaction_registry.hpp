@@ -12,6 +12,7 @@
 #include <optional>
 #include <span>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace ryn::input {
@@ -185,6 +186,11 @@ public:
     [[nodiscard]] const HitTestDiagnostics& diagnostics() const noexcept;
 
 private:
+    struct DirtyNodeStamp final {
+        std::uint32_t generation{};
+        std::uint32_t epoch{};
+    };
+
     [[nodiscard]] HitTestRecord make_record(
         const HitTestPaintEntry& entry,
         std::size_t paint_order,
@@ -205,6 +211,9 @@ private:
     runtime::NodeStore* nodes_;
     runtime::Rect window_clip_;
     std::vector<HitTestRecord> records_;
+    std::vector<DirtyNodeStamp> dirty_node_stamps_;
+    std::unordered_set<std::uint64_t> conflicting_dirty_nodes_;
+    std::uint32_t dirty_node_epoch_{};
     HitTestDiagnostics diagnostics_;
 };
 

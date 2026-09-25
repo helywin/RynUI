@@ -363,14 +363,70 @@ std::size_t HitTestSnapshot::refresh(
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("HitTestSnapshot can only be used on its owner thread");
     }
+    constexpr std::size_t sparse_linear_limit = 8;
+    const bool use_stamps = dirty_nodes.size() > sparse_linear_limit;
+    if (use_stamps) {
+        const auto node_key = [](runtime::NodeId id) {
+            return (static_cast<std::uint64_t>(id.index) << 32) | id.generation;
+        };
+        conflicting_dirty_nodes_.clear();
+        if (dirty_node_stamps_.size() < nodes_->slot_capacity()) {
+            dirty_node_stamps_.resize(nodes_->slot_capacity());
+        }
+        ++dirty_node_epoch_;
+        if (dirty_node_epoch_ == 0) {
+            std::ranges::fill(dirty_node_stamps_, DirtyNodeStamp{});
+            dirty_node_epoch_ = 1;
+        }
+        for (const auto dirty : dirty_nodes) {
+            if (dirty.valid() && dirty.index < dirty_node_stamps_.size()) {
+                auto& stamp = dirty_node_stamps_[dirty.index];
+                if (stamp.epoch == dirty_node_epoch_
+                        && stamp.generation != dirty.generation) {
+                    if (stamp.generation != 0) {
+                        conflicting_dirty_nodes_.insert(node_key({
+                            dirty.index, stamp.generation}));
+                    }
+                    conflicting_dirty_nodes_.insert(node_key(dirty));
+                    stamp.generation = 0;
+                } else if (stamp.epoch != dirty_node_epoch_) {
+                    stamp = {dirty.generation, dirty_node_epoch_};
+                }
+            }
+        }
+    }
     std::size_t refreshed = 0;
     for (std::size_t index = 0; index < records_.size(); ++index) {
-        const bool affected = std::any_of(
-            dirty_nodes.begin(),
-            dirty_nodes.end(),
-            [&](runtime::NodeId dirty) {
-                return node_descends_from(records_[index].node, dirty);
-            });
+        bool affected = false;
+        if (use_stamps) {
+            auto current = std::optional<runtime::NodeId>{records_[index].node};
+            while (current.has_value()) {
+                if (current->index < dirty_node_stamps_.size()) {
+                    const auto& stamp = dirty_node_stamps_[current->index];
+                    if (stamp.epoch == dirty_node_epoch_
+                            && (stamp.generation == current->generation
+                                || (stamp.generation == 0
+                                    && conflicting_dirty_nodes_.contains(
+                                        (static_cast<std::uint64_t>(current->index) << 32)
+                                            | current->generation)))) {
+                        affected = true;
+                        break;
+                    }
+                }
+                const auto* node = nodes_->find(*current);
+                if (node == nullptr) {
+                    break;
+                }
+                current = node->parent;
+            }
+        } else {
+            affected = std::any_of(
+                dirty_nodes.begin(),
+                dirty_nodes.end(),
+                [&](runtime::NodeId dirty) {
+                    return node_descends_from(records_[index].node, dirty);
+                });
+        }
         if (affected && refresh_record(index)) {
             ++refreshed;
         }

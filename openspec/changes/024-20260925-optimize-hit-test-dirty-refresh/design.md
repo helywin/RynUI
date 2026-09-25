@@ -20,7 +20,7 @@
 ## Risks / Trade-offs
 
 - [stamp 占用与历史最大 Node slot 数相关] → 仅大批量首次使用时扩容，后续复用；记录容量。
-- [slot 重用或 epoch 回绕产生假命中] → stamp 同时比较 generation 与 epoch，并以回绕及复用测试覆盖。
+- [slot 重用或 epoch 回绕产生假命中] → stamp 同时比较 generation 与 epoch，以复用测试覆盖；epoch 回绕分支通过代码审查确认。
 - [改变影响选择后遗漏祖先 clip/eligibility 更新] → 与逐节点参考结果、命中点和 `records_refreshed` 对照，保持原有刷新顺序。
 - [Gallery 整帧变化被 vsync、字体或系统噪声掩盖] → 固定机器、preset 和场景，报告五次原始值与中位数；不把局部基准乘数外推到帧率。
 

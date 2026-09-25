@@ -1,11 +1,13 @@
 #include "input/interaction_registry.hpp"
 #include "runtime/invalidation.hpp"
+#include "support/allocation_probe.hpp"
 
 #include <ryn/component.hpp>
 
 #include <array>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -142,12 +144,111 @@ void test_stale_component_is_counted_and_skipped() {
             "stale HitTest record was not diagnosed");
 }
 
+void test_large_batch_preserves_ancestor_and_unrelated_records() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost components(nodes);
+    ryn::runtime::ComponentId component;
+    components.mount(ryn::Content{[&] { component = mount_leaf(); }});
+    const auto root = components.root(component);
+    const auto ancestor = nodes.create_child(root);
+    const auto child = nodes.create_child(ancestor);
+    const auto outside = nodes.create_child(root);
+    commit(nodes, ancestor, {0.0F, 0.0F, 40.0F, 40.0F});
+    commit(nodes, child, {5.0F, 5.0F, 10.0F, 10.0F});
+    commit(nodes, outside, {80.0F, 0.0F, 10.0F, 10.0F});
+
+    ryn::input::InteractionRegistry registry(components, nodes);
+    const auto parent_interaction = registry.create({
+        component, ancestor, std::nullopt, true, false, {}});
+    const auto child_interaction = registry.create({
+        component, child, parent_interaction, true, false, {}});
+    const auto outside_interaction = registry.create({
+        component, outside, std::nullopt, true, false, {}});
+    ryn::input::HitTestSnapshot snapshot(registry, nodes);
+    const std::array entries{
+        ryn::input::HitTestPaintEntry{parent_interaction, std::nullopt},
+        ryn::input::HitTestPaintEntry{child_interaction, std::nullopt},
+        ryn::input::HitTestPaintEntry{outside_interaction, std::nullopt},
+    };
+    snapshot.rebuild(entries, {0.0F, 0.0F, 100.0F, 100.0F});
+
+    std::vector<ryn::runtime::NodeId> unrelated;
+    for (int index = 0; index < 9; ++index) {
+        unrelated.push_back(nodes.create_child(root));
+    }
+    require(snapshot.refresh(unrelated) == 0,
+            "large unrelated batch refreshed HitTest records");
+
+    auto dirty = unrelated;
+    dirty.push_back(child);
+    dirty.push_back(ancestor);
+    dirty.push_back(ancestor);
+    require(registry.set_eligible(parent_interaction, false),
+            "parent eligibility setup failed");
+    require(snapshot.refresh(dirty) == 2,
+            "large ancestor batch did not refresh each affected record once");
+    require(!snapshot.hit_test({6.0F, 6.0F}).has_value()
+                && snapshot.hit_test({85.0F, 5.0F}) == outside_interaction,
+            "large batch lost ancestor eligibility or unrelated hit");
+
+    require(registry.set_eligible(parent_interaction, true),
+            "parent eligibility restore failed");
+    require(snapshot.refresh(dirty) == 2
+                && snapshot.hit_test({6.0F, 6.0F}) == child_interaction,
+            "next batch retained stale epoch or lost child hit");
+}
+
+void test_large_batch_distinguishes_reused_slot_and_small_batch_allocations() {
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::ComponentHost components(nodes);
+    ryn::runtime::ComponentId component;
+    components.mount(ryn::Content{[&] { component = mount_leaf(); }});
+    const auto root = components.root(component);
+    const auto stale = nodes.create_child(root);
+    std::vector<ryn::runtime::NodeId> unrelated;
+    for (int index = 0; index < 9; ++index) {
+        unrelated.push_back(nodes.create_child(root));
+    }
+    require(nodes.destroy(stale), "stale Node setup destroy failed");
+    const auto replacement = nodes.create_child(root);
+    require(replacement.index == stale.index
+                && replacement.generation != stale.generation,
+            "Node slot was not reused with a new generation");
+    commit(nodes, replacement, {0.0F, 0.0F, 10.0F, 10.0F});
+
+    ryn::input::InteractionRegistry registry(components, nodes);
+    const auto interaction = registry.create({
+        component, replacement, std::nullopt, true, false, {}});
+    ryn::input::HitTestSnapshot snapshot(registry, nodes);
+    const std::array entries{
+        ryn::input::HitTestPaintEntry{interaction, std::nullopt},
+    };
+    snapshot.rebuild(entries, {0.0F, 0.0F, 100.0F, 100.0F});
+
+    auto dirty = unrelated;
+    dirty.push_back(stale);
+    require(snapshot.refresh(dirty) == 0,
+            "stale generation dirtied reused Node record");
+    dirty.push_back(replacement);
+    require(snapshot.refresh(dirty) == 1,
+            "mixed old and new generations lost live Node refresh");
+
+    const std::array single{replacement};
+    ryn_test::allocation::begin();
+    const auto refreshed = snapshot.refresh(single);
+    const auto allocations = ryn_test::allocation::end();
+    require(refreshed == 1 && allocations == 0,
+            "single-node HitTest refresh allocated or lost the record");
+}
+
 } // namespace
 
 int main() {
     try {
         test_dirty_refresh_is_minimal_and_observable();
         test_stale_component_is_counted_and_skipped();
+        test_large_batch_preserves_ancestor_and_unrelated_records();
+        test_large_batch_distinguishes_reused_slot_and_small_batch_allocations();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
