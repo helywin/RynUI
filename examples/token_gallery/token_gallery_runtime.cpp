@@ -234,6 +234,17 @@ private:
 
 class GallerySubmitter final : public ryn::runtime::FrameSubmitter {
 public:
+    struct FirstFrameProfile final {
+        std::int64_t cpu_microseconds{};
+        std::int64_t resource_microseconds{};
+        std::int64_t glyph_microseconds{};
+        std::int64_t upload_finish_microseconds{};
+        std::uint64_t upload_submissions{};
+        std::uint64_t texture_transfers{};
+        std::uint64_t buffer_transfers{};
+        std::uint64_t glyph_texture_uploads{};
+    };
+
     GallerySubmitter(
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
@@ -265,6 +276,10 @@ public:
         ryn::animation::AnimationTime frame_time) override {
         try {
             const auto frame_started = std::chrono::steady_clock::now();
+            const auto renderer_before_first = !first_frame_captured_
+                ? renderer_->counters() : ryn::detail::SceneRendererCounters{};
+            const auto glyph_before_first = !first_frame_captured_
+                ? glyph_resources_->counters().texture_uploads : 0;
             const auto hit_refresh_before = application_->services()
                 .hit_test_refresh_nanoseconds();
             static_cast<void>(application_->tick_animations(frame_time));
@@ -403,6 +418,24 @@ public:
                         .count());
             };
             const auto elapsed = microseconds(frame_started, frame_finished);
+            if (!first_frame_captured_
+                    && result == ryn::runtime::FrameSubmissionResult::submitted) {
+                const auto& renderer_after = renderer_->counters();
+                first_frame_profile_ = {
+                    elapsed,
+                    microseconds(scene_synchronized, resources_synchronized),
+                    microseconds(quad_synchronized, glyph_synchronized),
+                    microseconds(effect_synchronized, resources_synchronized),
+                    renderer_after.upload_submissions
+                        - renderer_before_first.upload_submissions,
+                    renderer_after.texture_transfer_creations
+                        - renderer_before_first.texture_transfer_creations,
+                    renderer_after.buffer_transfer_creations
+                        - renderer_before_first.buffer_transfer_creations,
+                    glyph_resources_->counters().texture_uploads - glyph_before_first,
+                };
+                first_frame_captured_ = true;
+            }
             if (!scroll_capture_enabled_ || timed_frames_ < scroll_capture_frames) {
                 total_scene_sync_microseconds_ +=
                     microseconds(frame_started, scene_synchronized);
@@ -462,6 +495,9 @@ public:
         return timed_frames_ == 0 ? 0 : total_frame_microseconds_ / timed_frames_;
     }
     [[nodiscard]] std::int64_t timed_frames() const noexcept { return timed_frames_; }
+    [[nodiscard]] FirstFrameProfile first_frame_profile() const noexcept {
+        return first_frame_profile_;
+    }
     [[nodiscard]] std::int64_t max_frame_microseconds() const noexcept {
         return max_frame_microseconds_;
     }
@@ -577,6 +613,8 @@ private:
     std::uint64_t reconciliation_syncs_{};
     bool scroll_capture_enabled_{};
     bool scroll_capture_complete_{};
+    bool first_frame_captured_{};
+    FirstFrameProfile first_frame_profile_{};
     ryn::detail::SceneRendererCounters captured_renderer_counters_{};
     ryn::detail::SceneRendererCounters renderer_counters_before_scroll_{};
     std::int64_t total_frame_microseconds_{};
@@ -1457,6 +1495,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto render = submitter.captured_renderer_counters();
         const auto render_before_scroll = submitter.renderer_counters_before_scroll();
         const auto phase_times = submitter.average_phase_microseconds();
+        const auto first_frame = submitter.first_frame_profile();
         const auto detail_times = submitter.average_detail_microseconds();
         const auto sync_profile = application.services().sync_profile();
         const auto text_profile = application.text().sync_profile();
@@ -1639,6 +1678,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " draw_fragments_visible="
             << submitter.last_visible_scene().fragments_visible
             << " frame_samples=" << submitter.timed_frames()
+            << " first_frame_cpu_us=" << first_frame.cpu_microseconds
+            << " first_frame_resource_us=" << first_frame.resource_microseconds
+            << " first_frame_glyph_us=" << first_frame.glyph_microseconds
+            << " first_frame_upload_finish_us="
+            << first_frame.upload_finish_microseconds
+            << " first_frame_upload_submissions=" << first_frame.upload_submissions
+            << " first_frame_texture_transfers=" << first_frame.texture_transfers
+            << " first_frame_buffer_transfers=" << first_frame.buffer_transfers
+            << " first_frame_glyph_texture_uploads="
+            << first_frame.glyph_texture_uploads
             << " frame_average_us=" << submitter.average_frame_microseconds()
             << " frame_max_us=" << submitter.max_frame_microseconds()
             << " frame_p95_us=" << submitter.p95_frame_microseconds()
