@@ -265,6 +265,8 @@ public:
         ryn::animation::AnimationTime frame_time) override {
         try {
             const auto frame_started = std::chrono::steady_clock::now();
+            const auto hit_refresh_before = application_->services()
+                .hit_test_refresh_nanoseconds();
             static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
                 16.0F,
@@ -401,6 +403,8 @@ public:
             const auto elapsed = microseconds(frame_started, frame_finished);
             total_scene_sync_microseconds_ +=
                 microseconds(frame_started, scene_synchronized);
+            total_hit_refresh_nanoseconds_ += application_->services()
+                .hit_test_refresh_nanoseconds() - hit_refresh_before;
             total_translation_microseconds_ +=
                 microseconds(frame_started, document_translated);
             total_layout_microseconds_ +=
@@ -450,6 +454,10 @@ public:
     [[nodiscard]] std::int64_t max_frame_microseconds() const noexcept {
         return max_frame_microseconds_;
     }
+    [[nodiscard]] std::int64_t average_hit_refresh_microseconds() const noexcept {
+        return timed_frames_ == 0 ? 0 : static_cast<std::int64_t>(
+            total_hit_refresh_nanoseconds_ / timed_frames_ / 1000);
+    }
     [[nodiscard]] std::array<std::int64_t, 4> average_phase_microseconds() const noexcept {
         if (timed_frames_ == 0) {
             return {};
@@ -489,6 +497,7 @@ public:
     void reset_frame_timings() noexcept {
         total_frame_microseconds_ = 0;
         total_scene_sync_microseconds_ = 0;
+        total_hit_refresh_nanoseconds_ = 0;
         total_translation_microseconds_ = 0;
         total_layout_microseconds_ = 0;
         total_anchor_input_microseconds_ = 0;
@@ -534,6 +543,7 @@ private:
     std::uint64_t reconciliation_syncs_{};
     std::int64_t total_frame_microseconds_{};
     std::int64_t total_scene_sync_microseconds_{};
+    std::uint64_t total_hit_refresh_nanoseconds_{};
     std::int64_t total_translation_microseconds_{};
     std::int64_t total_layout_microseconds_{};
     std::int64_t total_anchor_input_microseconds_{};
@@ -1575,6 +1585,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " frame_scene_sync_us=" << phase_times[0]
             << " frame_translation_us=" << detail_times[0]
             << " frame_layout_us=" << detail_times[1]
+            << " frame_hit_refresh_us=" << submitter.average_hit_refresh_microseconds()
             << " frame_anchor_input_us=" << detail_times[2]
             << " frame_resource_sync_us=" << phase_times[1]
             << " frame_quad_sync_us=" << detail_times[3]
@@ -1598,6 +1609,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " focus_changes=" << focus_diagnostics.focus_changes
             << " keyboard_activations=" << focus_diagnostics.activations
             << " component_count=" << application.components().component_count()
+            << " node_count=" << nodes.size()
+            << " interaction_count=" << application.interactions().size()
             << " layout_passes=" << layout_passes
             << " scene_rebuilds=" << scene.rebuilds
             << " effect_layers=" << application.rounded_effects().live_count()

@@ -1,0 +1,6 @@
+run,gpu_driver,shader_format,display_scale,pixel_size,component_count,node_count,interaction_count,document_translated_nodes,draw_fragments_considered,draw_fragments_visible,frame_average_us,frame_p95_us,frame_layout_us,frame_hit_refresh_us,frame_resource_sync_us,frame_submit_us,gpu_upload_submissions,quad_draws,glyph_draws,effect_draws,submits,scroll_acceptance_steps,exit_code
+1,direct3d12,DXIL,1.25,1280x900,923,923,61,222443,886,87,16761,17506,14046,5,1516,1125,1320,2190,2178,553,241,240,0
+2,direct3d12,DXIL,1.25,1280x900,923,923,61,222443,886,87,16588,17245,13914,5,1500,1099,1320,2190,2178,553,241,240,0
+3,direct3d12,DXIL,1.25,1280x900,923,923,61,222443,886,87,16798,17620,14106,5,1512,1103,1320,2190,2178,553,241,240,0
+4,direct3d12,DXIL,1.25,1280x900,923,923,61,222443,886,87,17543,19433,14145,5,1847,1470,1320,2190,2178,553,241,240,0
+5,direct3d12,DXIL,1.25,1280x900,923,923,61,222443,886,87,17368,19367,13947,5,1965,1376,1320,2190,2178,553,241,240,0

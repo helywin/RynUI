@@ -8,6 +8,7 @@
 #include "input/focus_manager.hpp"
 #include "input/pointer_router.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
@@ -69,6 +70,9 @@ public:
     [[nodiscard]] std::optional<animation::AnimationTime> next_frame_deadline() const;
     [[nodiscard]] bool layout_and_synchronize(runtime::Size viewport, runtime::Rect clip,
         runtime::Point origin = {}, float gap = 0.0F, bool unbounded_root_height = false);
+    [[nodiscard]] std::uint64_t hit_test_refresh_nanoseconds() const noexcept {
+        return hit_test_refresh_nanoseconds_;
+    }
     void mark_scene_structure_dirty() noexcept { scene_structure_dirty_ = true; }
     [[nodiscard]] WindowTextEditServices& bind_text_edit(
         input::TextInputPlatform& platform, input::TextClipboard& clipboard);
@@ -108,6 +112,7 @@ private:
     std::vector<WindowComponentParticipant*> participants_;
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
+    std::uint64_t hit_test_refresh_nanoseconds_{};
     std::unique_ptr<WindowTextEditServices> text_edit_;
 };
 

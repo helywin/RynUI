@@ -1,5 +1,7 @@
 #include "component/window_component_services.hpp"
 
+#include <chrono>
+
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
@@ -173,11 +175,19 @@ bool WindowComponentServices::layout_and_synchronize(
         scene_composer_.rebuild(clip);
         scene_structure_dirty_ = false;
     } else if (text_.layout_performed_last_sync()) {
+        const auto started = std::chrono::steady_clock::now();
         for (const auto interaction : interactions_.declaration_order()) {
             static_cast<void>(hit_test_.refresh_interaction(interaction));
         }
+        hit_test_refresh_nanoseconds_ += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - started).count());
     } else if (!dirty_->hit_test_nodes().empty()) {
+        const auto started = std::chrono::steady_clock::now();
         static_cast<void>(hit_test_.refresh(dirty_->hit_test_nodes()));
+        hit_test_refresh_nanoseconds_ += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - started).count());
     }
     focus_.synchronize();
     dirty_->clear();
