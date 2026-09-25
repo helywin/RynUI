@@ -23,3 +23,5 @@ Windows 真实窗口复测：代码 `6798a7e` 在同一机器以正式 `windows-
 首帧 CPU 中位数减少约 72%，五次旧/新取值区间不重叠。代价是原来首帧完成的部分字形工作转移到滚动：滚动平均增加约 49 µs，p95 增加约 5.4%，最长帧增加到约 15 ms。不能把首帧收益描述为整体无回归；滚动期间 740 次新增 raster 是下一阶段需要关注的停顿来源。五次文档最终 offset 均为最大值 15,068、section 为 `gallery.document.live-samples`，可见 fragment 数仍为 87。累计 draw / 提交数因启动速度和滚动期间资源实现化而变化，不能仅按生命周期计数判断像素等价；逐帧像素与 GPU 执行时间未测。
 
 Release 真实 D3D12 `--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 均退出码 0。另做一次半视口 overscan 的探索性运行，首帧上传 364 个区域且滚动最长帧约 22.8 ms，未保留该试验改动；恢复正式 32 logical px guard 后再次构建并通过滚动验收，首帧上传恢复为 257 个区域。
+
+集成复核：Windows MSVC Release 完整 CTest 为 229/235，通过数与 028 一致。失败项仍是 `rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`；完整日志保存在被忽略的 `out/build/windows-msvc/offscreen-text-full-ctest-msvc.log`。本 change strict validate 通过；全仓 strict 为 23/29，旧 change 013、015、016、017、018、021 失败。当前 OpenSpec CLI 对 `openspec doctor --json` 报 `unknown command 'doctor'`。`git diff --check` 通过。由于完整 CTest 与全仓 strict 未通过，`tasks.md` 4.1 保持未勾选。
