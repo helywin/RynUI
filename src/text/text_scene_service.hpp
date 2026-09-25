@@ -98,7 +98,8 @@ public:
     // Splits a requested translation into an aligned scroll patch and the
     // residual that must retain normal raster-phase placement semantics.
     [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(
-        TextSceneId id, runtime::Point pixels);
+        TextSceneId id, runtime::Point pixels,
+        runtime::Point aligned_offset = {});
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);

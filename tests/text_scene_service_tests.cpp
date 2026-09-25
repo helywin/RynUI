@@ -360,6 +360,19 @@ void test_scroll_translation_preserves_glyphs() {
     require(fixture.service.synchronize(view), "scroll source replacement failed");
     require(fixture.service.glyph_scene().instances().at(fixture.service.primitive(view).instances.first)
         .translation_opacity[0] == offset, "content replacement lost scroll translation");
+    const auto combined_residual = fixture.service.set_phase_preserving_scroll_translation(
+        view, {4.0F, 0.0F}, {-5.0F, 0.0F});
+    placement.translation_pixels = combined_residual;
+    require(fixture.service.synchronize(view, placement),
+        "combined aligned offset synchronization failed");
+    const auto patches_before_repeat = fixture.service.record_counters(view).geometry_patches;
+    const auto rebuilds_before_repeat = fixture.service.record_counters(view).geometry_rebuilds;
+    require(fixture.service.set_phase_preserving_scroll_translation(
+                view, {4.0F, 0.0F}, {-5.0F, 0.0F}) == combined_residual
+            && fixture.service.synchronize(view, placement)
+            && fixture.service.record_counters(view).geometry_patches == patches_before_repeat
+            && fixture.service.record_counters(view).geometry_rebuilds == rebuilds_before_repeat,
+        "unchanged combined text translation dirtied retained glyphs");
     bool rejected{};
     try { fixture.service.set_scroll_translation(view, {std::numeric_limits<float>::infinity(), 0}); }
     catch (const std::invalid_argument&) { rejected = true; }

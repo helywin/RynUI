@@ -271,9 +271,11 @@ bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pix
 }
 
 runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
-    TextSceneId id, runtime::Point pixels) {
+    TextSceneId id, runtime::Point pixels, runtime::Point aligned_offset) {
     ensure_owner_thread();
-    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)) {
+    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)
+            || !std::isfinite(aligned_offset.x)
+            || !std::isfinite(aligned_offset.y)) {
         throw std::invalid_argument("Text translation must be finite");
     }
     auto& record = require_record(id);
@@ -294,14 +296,17 @@ runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
         }
     }
     if (record.scroll_scale <= 0.0F) {
-        static_cast<void>(set_scroll_translation(id, {}));
+        static_cast<void>(set_scroll_translation(id, aligned_offset));
         return pixels;
     }
     const runtime::Point snapped{
         std::round(pixels.x * record.scroll_scale) / record.scroll_scale,
         std::round(pixels.y * record.scroll_scale) / record.scroll_scale,
     };
-    static_cast<void>(set_scroll_translation(id, snapped));
+    static_cast<void>(set_scroll_translation(id, {
+        snapped.x + aligned_offset.x,
+        snapped.y + aligned_offset.y,
+    }));
     return {pixels.x - snapped.x, pixels.y - snapped.y};
 }
 
