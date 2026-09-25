@@ -10,7 +10,7 @@
 
 ## 3. Windows 真实窗口验收
 
-- [ ] 3.1 Windows MSVC Release 完整干净构建，五进程 D3D12 首帧和滚动复测；记录 transfer、CPU、draw 与终态，通过后以 `test:` 提交
+- [x] 3.1 Windows MSVC Release 完整干净构建，五进程 D3D12 首帧和滚动复测；记录 transfer、CPU、draw 与终态，通过后以 `test:` 提交
 
 ## 4. 集成验收
 
