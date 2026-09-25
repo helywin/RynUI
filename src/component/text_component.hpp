@@ -30,6 +30,16 @@ struct MountedTextComponent final {
     std::vector<graphics::SceneDrawCommand> fragment_commands;
 };
 
+struct TextComponentSyncProfile final {
+    std::uint64_t layout_nanoseconds{};
+    std::uint64_t mounted_loop_nanoseconds{};
+    std::uint64_t text_scene_nanoseconds{};
+    std::uint64_t layout_calls{};
+    std::uint64_t mounted_visited{};
+    std::uint64_t mounted_synchronized{};
+    std::uint64_t offscreen_skipped{};
+};
+
 class TextComponentHost final {
 public:
     TextComponentHost(
@@ -65,6 +75,9 @@ public:
         const std::function<std::optional<input::InteractionId>(
             runtime::ComponentId)>& interaction_for);
     [[nodiscard]] bool layout_performed_last_sync() const noexcept;
+    void set_sync_profiling_enabled(bool enabled) noexcept { sync_profiling_enabled_ = enabled; }
+    void reset_sync_profile() noexcept { sync_profile_ = {}; }
+    [[nodiscard]] TextComponentSyncProfile sync_profile() const noexcept { return sync_profile_; }
 
     [[nodiscard]] runtime::ComponentHost& components() noexcept;
     [[nodiscard]] const runtime::ComponentHost& components() const noexcept;
@@ -101,6 +114,8 @@ private:
     bool layout_unbounded_root_height_{false};
     bool layout_snapshot_valid_{false};
     bool layout_performed_last_sync_{false};
+    bool sync_profiling_enabled_{};
+    TextComponentSyncProfile sync_profile_{};
 };
 
 void mount_text_component(const TextProps& props);

@@ -8,6 +8,7 @@
 #include <ryn/password.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -816,10 +817,25 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
     invalidate(component, runtime::DirtyFlags::Geometry);
 }
 void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
+    const auto profile_started = sync_profiling_enabled_
+        ? std::chrono::steady_clock::now()
+        : std::chrono::steady_clock::time_point{};
+    const auto record_phase = [this](auto started, std::uint64_t& total) {
+        if (sync_profiling_enabled_) {
+            total += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - started).count());
+        }
+    };
     for(const auto& mounted : mounted_) {
+        if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
         auto* state = host_->components().state<InputState>(mounted.component);
         if(!state) continue;
+        const auto update_started = sync_profiling_enabled_
+            ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
         update_text(mounted.component, false);
+        record_phase(update_started, sync_profile_.update_text_nanoseconds);
         auto& text_scene = host_->text().scene_service();
         if(state->carets.revision() != text_scene.text_state(state->text_scene).revision()
             && !text_scene.synchronize_caret_map(state->text_scene, state->carets))
@@ -863,9 +879,13 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         state->next_container_clip = clip;
         const float border = std::min(state->layout.border_width,
             0.5F * std::min(root_bounds.width, root_bounds.height));
+        const auto theme_started = sync_profiling_enabled_
+            ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
         const auto& tokens = derive_input_tokens(theme);
         const float radius = tokens.size(state->size).border_radius;
         const auto visual = resolve_visuals(*state, tokens);
+        record_phase(theme_started, sync_profile_.theme_nanoseconds);
         const auto& presentation = state->transition->value();
         std::array<Color, input_shadow_layer_capacity> shadow_colors;
         std::copy_n(presentation.colors.begin() + 8, input_shadow_layer_capacity, shadow_colors.begin());
@@ -934,7 +954,11 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 && display.selection.begin() != display.selection.end() ? 1.0F : 0.0F);
         text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 1.0F : 0.0F);
         graphics::GlyphPlacement placement{{viewport.x, viewport.y}, window, state->geometry.clip};
+        const auto scene_started = sync_profiling_enabled_
+            ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
         for(const auto id : {state->text_scene, state->selected_scene, state->placeholder_scene}) {
+            if (sync_profiling_enabled_) ++sync_profile_.text_scene_calls;
             auto layer_placement = placement;
             if(id == state->selected_scene) {
                 layer_placement.clip_pixels = graphics::intersect_effect_bounds(state->geometry.clip,
@@ -944,7 +968,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             text_scene.set_scroll_translation(id, {-state->geometry.scroll_offset, 0});
             if(!text_scene.synchronize(id, layer_placement)) throw std::runtime_error("Input glyph synchronization failed");
         }
+        record_phase(scene_started, sync_profile_.text_scene_nanoseconds);
     }
+    record_phase(profile_started, sync_profile_.total_nanoseconds);
 }
 bool InputComponentHost::synchronize_auxiliary_fragments() {
     bool changed{};

@@ -31,6 +31,15 @@ struct InputTextLayers {
     TextSceneId base, selected, placeholder;
 };
 
+struct InputSyncProfile final {
+    std::uint64_t total_nanoseconds{};
+    std::uint64_t update_text_nanoseconds{};
+    std::uint64_t theme_nanoseconds{};
+    std::uint64_t text_scene_nanoseconds{};
+    std::uint64_t mounted_visited{};
+    std::uint64_t text_scene_calls{};
+};
+
 // The containing component host and platform ports must outlive this host.
 class InputComponentHost final : private AuxiliaryComponentSynchronizer {
 public:
@@ -47,6 +56,9 @@ public:
     // coordinate transform independently of glyph raster/display scale.
     bool synchronize_input_area(double logical_to_window_scale, int window_width, int window_height);
     [[nodiscard]] std::span<const MountedInputComponent> mounted_inputs() const noexcept { return mounted_; }
+    void set_sync_profiling_enabled(bool enabled) noexcept { sync_profiling_enabled_ = enabled; }
+    void reset_sync_profile() noexcept { sync_profile_ = {}; }
+    [[nodiscard]] InputSyncProfile sync_profile() const noexcept { return sync_profile_; }
     [[nodiscard]] input::TextEditorStore& editors() noexcept { return editors_; }
     [[nodiscard]] input::TextInputSessionHost& sessions() noexcept { return sessions_; }
     [[nodiscard]] input::TextEditResult dispatch(const input::TextCommitted&);
@@ -92,6 +104,8 @@ private:
     input::TextClipboardCommands& clipboard_;
     std::vector<MountedInputComponent> mounted_;
     float display_scale_{1.0F};
+    bool sync_profiling_enabled_{};
+    InputSyncProfile sync_profile_{};
 };
 
 } // namespace ryn::detail

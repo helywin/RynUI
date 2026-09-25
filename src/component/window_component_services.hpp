@@ -8,6 +8,7 @@
 #include "input/focus_manager.hpp"
 #include "input/pointer_router.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -31,6 +32,20 @@ public:
 };
 
 using AuxiliaryComponentSynchronizer = WindowComponentParticipant;
+
+struct WindowSyncProfile final {
+    std::uint64_t text_nanoseconds{};
+    std::uint64_t auxiliary_geometry_nanoseconds{};
+    std::array<std::uint64_t, 8> participant_geometry_nanoseconds{};
+    std::uint64_t participant_count{};
+    std::uint64_t effect_nanoseconds{};
+    std::uint64_t text_fragments_nanoseconds{};
+    std::uint64_t auxiliary_fragments_nanoseconds{};
+    std::uint64_t composer_nanoseconds{};
+    std::uint64_t hit_nanoseconds{};
+    std::uint64_t focus_nanoseconds{};
+    std::uint64_t calls{};
+};
 
 // One owner for the retained resources shared by components in a window.
 // Component hosts borrow these resources and must be destroyed before this object.
@@ -73,6 +88,9 @@ public:
     [[nodiscard]] std::uint64_t hit_test_refresh_nanoseconds() const noexcept {
         return hit_test_refresh_nanoseconds_;
     }
+    void set_sync_profiling_enabled(bool enabled) noexcept;
+    void reset_sync_profile() noexcept;
+    [[nodiscard]] WindowSyncProfile sync_profile() const noexcept { return sync_profile_; }
     void mark_scene_structure_dirty() noexcept { scene_structure_dirty_ = true; }
     [[nodiscard]] WindowTextEditServices& bind_text_edit(
         input::TextInputPlatform& platform, input::TextClipboard& clipboard);
@@ -113,6 +131,8 @@ private:
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
     std::uint64_t hit_test_refresh_nanoseconds_{};
+    bool sync_profiling_enabled_{};
+    WindowSyncProfile sync_profile_{};
     std::unique_ptr<WindowTextEditServices> text_edit_;
 };
 

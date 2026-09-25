@@ -5,6 +5,7 @@
 #include "runtime/prop_connection.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -216,6 +217,9 @@ bool TextComponentHost::layout_and_synchronize(
         || !dirty_->placement_roots().empty();
     layout_performed_last_sync_ = needs_layout;
     if (needs_layout) {
+        const auto layout_started = sync_profiling_enabled_
+            ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
         float cursor_y = origin.y;
         for (const auto component : components_.root_components()) {
             if (!components_.contains(component)) {
@@ -237,9 +241,19 @@ bool TextComponentHost::layout_and_synchronize(
         layout_gap_ = gap;
         layout_unbounded_root_height_ = unbounded_root_height;
         layout_snapshot_valid_ = true;
+        if (sync_profiling_enabled_) {
+            ++sync_profile_.layout_calls;
+            sync_profile_.layout_nanoseconds += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - layout_started).count());
+        }
     }
 
+    const auto loop_started = sync_profiling_enabled_
+        ? std::chrono::steady_clock::now()
+        : std::chrono::steady_clock::time_point{};
     for (const auto& mounted : mounted_texts_) {
+        if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
         if (!components_.contains(mounted.component)
                 || !text_scene_->contains(mounted.scene)) {
             continue;
@@ -256,20 +270,36 @@ bool TextComponentHost::layout_and_synchronize(
                     || left + retained.bounds.width <= clip.x - visual_overflow
                     || top >= clip.y + clip.height + visual_overflow
                     || top + retained.bounds.height <= clip.y - visual_overflow)) {
+            if (sync_profiling_enabled_) ++sync_profile_.offscreen_skipped;
             continue;
         }
         const auto phase_residual = text_scene_->set_phase_preserving_scroll_translation(
             mounted.scene, retained.translation);
-        if (!text_scene_->synchronize(mounted.scene, {
+        const auto sync_started = sync_profiling_enabled_
+            ? std::chrono::steady_clock::now()
+            : std::chrono::steady_clock::time_point{};
+        const bool synchronized = text_scene_->synchronize(mounted.scene, {
                 {retained.bounds.x, retained.bounds.y},
                 viewport,
                 clip,
                 phase_residual,
                 {},
                 1.0F,
-            })) {
+            });
+        if (sync_profiling_enabled_) {
+            ++sync_profile_.mounted_synchronized;
+            sync_profile_.text_scene_nanoseconds += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - sync_started).count());
+        }
+        if (!synchronized) {
             return false;
         }
+    }
+    if (sync_profiling_enabled_) {
+        sync_profile_.mounted_loop_nanoseconds += static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now() - loop_started).count());
     }
     if (clear_dirty) {
         dirty_->clear();

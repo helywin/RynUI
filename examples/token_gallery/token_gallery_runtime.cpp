@@ -451,6 +451,7 @@ public:
     [[nodiscard]] std::int64_t average_frame_microseconds() const noexcept {
         return timed_frames_ == 0 ? 0 : total_frame_microseconds_ / timed_frames_;
     }
+    [[nodiscard]] std::int64_t timed_frames() const noexcept { return timed_frames_; }
     [[nodiscard]] std::int64_t max_frame_microseconds() const noexcept {
         return max_frame_microseconds_;
     }
@@ -495,6 +496,10 @@ public:
         return samples[rank];
     }
     void reset_frame_timings() noexcept {
+        application_->services().set_sync_profiling_enabled(true);
+        application_->services().reset_sync_profile();
+        inputs_->set_sync_profiling_enabled(true);
+        inputs_->reset_sync_profile();
         total_frame_microseconds_ = 0;
         total_scene_sync_microseconds_ = 0;
         total_hit_refresh_nanoseconds_ = 0;
@@ -1419,6 +1424,26 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto render = renderer.counters();
         const auto phase_times = submitter.average_phase_microseconds();
         const auto detail_times = submitter.average_detail_microseconds();
+        const auto sync_profile = application.services().sync_profile();
+        const auto text_profile = application.text().sync_profile();
+        const auto input_profile = inputs.sync_profile();
+        std::uint64_t input_geometry_rebuilds = 0;
+        std::uint64_t input_geometry_patches = 0;
+        std::uint64_t input_instance_rebuilds = 0;
+        for (const auto& mounted : inputs.mounted_inputs()) {
+            const auto layers = inputs.text_layers(mounted.component);
+            for (const auto scene : {layers.base, layers.selected, layers.placeholder}) {
+                const auto& counters = text_scene.record_counters(scene);
+                input_geometry_rebuilds += counters.geometry_rebuilds;
+                input_geometry_patches += counters.geometry_patches;
+                input_instance_rebuilds += counters.instance_rebuilds;
+            }
+        }
+        const auto average_sync_us = [frames = submitter.timed_frames()](
+            std::uint64_t nanoseconds) -> std::uint64_t {
+            return frames == 0 ? 0 : nanoseconds /
+                static_cast<std::uint64_t>(frames) / 1000;
+        };
         const auto font_counters = fonts->counters();
         const auto frames = loop.counters();
         const auto metrics = platform.window_metrics();
@@ -1586,6 +1611,46 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " frame_translation_us=" << detail_times[0]
             << " frame_layout_us=" << detail_times[1]
             << " frame_hit_refresh_us=" << submitter.average_hit_refresh_microseconds()
+            << " frame_text_host_us=" << average_sync_us(sync_profile.text_nanoseconds)
+            << " frame_text_layout_us=" << average_sync_us(text_profile.layout_nanoseconds)
+            << " frame_text_mounted_loop_us="
+            << average_sync_us(text_profile.mounted_loop_nanoseconds)
+            << " frame_text_scene_us=" << average_sync_us(text_profile.text_scene_nanoseconds)
+            << " frame_aux_geometry_us="
+            << average_sync_us(sync_profile.auxiliary_geometry_nanoseconds)
+            << " frame_button_geometry_us="
+            << average_sync_us(sync_profile.participant_geometry_nanoseconds[0])
+            << " frame_reference_geometry_us="
+            << average_sync_us(sync_profile.participant_geometry_nanoseconds[1])
+            << " frame_input_geometry_us="
+            << average_sync_us(sync_profile.participant_geometry_nanoseconds[2])
+            << " frame_selection_geometry_us="
+            << average_sync_us(sync_profile.participant_geometry_nanoseconds[3])
+            << " frame_input_update_text_us="
+            << average_sync_us(input_profile.update_text_nanoseconds)
+            << " frame_input_theme_us="
+            << average_sync_us(input_profile.theme_nanoseconds)
+            << " frame_input_text_scene_us="
+            << average_sync_us(input_profile.text_scene_nanoseconds)
+            << " input_mounted_visited=" << input_profile.mounted_visited
+            << " input_text_scene_calls=" << input_profile.text_scene_calls
+            << " input_geometry_rebuilds=" << input_geometry_rebuilds
+            << " input_geometry_patches=" << input_geometry_patches
+            << " input_instance_rebuilds=" << input_instance_rebuilds
+            << " ordered_scene_rebuilds=" << text_scene.counters().ordered_scene_rebuilds
+            << " sync_participant_count=" << sync_profile.participant_count
+            << " frame_effect_compact_us=" << average_sync_us(sync_profile.effect_nanoseconds)
+            << " frame_text_fragments_us="
+            << average_sync_us(sync_profile.text_fragments_nanoseconds)
+            << " frame_aux_fragments_us="
+            << average_sync_us(sync_profile.auxiliary_fragments_nanoseconds)
+            << " frame_composer_us=" << average_sync_us(sync_profile.composer_nanoseconds)
+            << " frame_focus_sync_us=" << average_sync_us(sync_profile.focus_nanoseconds)
+            << " sync_calls=" << sync_profile.calls
+            << " text_layout_calls=" << text_profile.layout_calls
+            << " text_mounted_visited=" << text_profile.mounted_visited
+            << " text_mounted_synchronized=" << text_profile.mounted_synchronized
+            << " text_offscreen_skipped=" << text_profile.offscreen_skipped
             << " frame_anchor_input_us=" << detail_times[2]
             << " frame_resource_sync_us=" << phase_times[1]
             << " frame_quad_sync_us=" << detail_times[3]

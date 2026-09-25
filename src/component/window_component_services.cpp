@@ -8,6 +8,29 @@
 #include <vector>
 
 namespace ryn::detail {
+namespace {
+
+class SyncPhaseTimer final {
+public:
+    SyncPhaseTimer(bool enabled, std::uint64_t& total) noexcept
+        : enabled_(enabled), total_(total), started_(
+            enabled ? std::chrono::steady_clock::now()
+                    : std::chrono::steady_clock::time_point{}) {}
+    ~SyncPhaseTimer() {
+        if (enabled_) {
+            total_ += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - started_).count());
+        }
+    }
+
+private:
+    bool enabled_;
+    std::uint64_t& total_;
+    std::chrono::steady_clock::time_point started_;
+};
+
+} // namespace
 
 WindowComponentServices::WindowComponentServices(
     runtime::NodeStore& nodes,
@@ -158,23 +181,55 @@ std::optional<animation::AnimationTime> WindowComponentServices::next_frame_dead
 bool WindowComponentServices::layout_and_synchronize(
     runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
     float gap, bool unbounded_root_height) {
-    if (!text_.layout_and_synchronize(
-            viewport, clip, origin, gap, false, unbounded_root_height)) return false;
-    for (auto* participant : participants_) {
-        participant->synchronize_auxiliary_geometry(viewport, clip);
+    if (sync_profiling_enabled_) ++sync_profile_.calls;
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.text_nanoseconds);
+        if (!text_.layout_and_synchronize(
+                viewport, clip, origin, gap, false, unbounded_root_height)) return false;
     }
-    if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height})) {
-        scene_structure_dirty_ = true;
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.auxiliary_geometry_nanoseconds);
+        if (sync_profiling_enabled_) {
+            sync_profile_.participant_count = participants_.size();
+        }
+        for (std::size_t index = 0; index < participants_.size(); ++index) {
+            const auto started = sync_profiling_enabled_
+                ? std::chrono::steady_clock::now()
+                : std::chrono::steady_clock::time_point{};
+            participants_[index]->synchronize_auxiliary_geometry(viewport, clip);
+            if (sync_profiling_enabled_
+                    && index < sync_profile_.participant_geometry_nanoseconds.size()) {
+                sync_profile_.participant_geometry_nanoseconds[index] +=
+                    static_cast<std::uint64_t>(
+                        std::chrono::duration_cast<std::chrono::nanoseconds>(
+                            std::chrono::steady_clock::now() - started).count());
+            }
+        }
     }
-    const bool text_fragments_changed = text_.synchronize_scene_fragments(
-        [](runtime::ComponentId) { return std::optional<input::InteractionId>{}; });
-    for (auto* participant : participants_) {
-        if (participant->synchronize_auxiliary_fragments()) scene_structure_dirty_ = true;
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
+        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height})) {
+            scene_structure_dirty_ = true;
+        }
+    }
+    bool text_fragments_changed = false;
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.text_fragments_nanoseconds);
+        text_fragments_changed = text_.synchronize_scene_fragments(
+            [](runtime::ComponentId) { return std::optional<input::InteractionId>{}; });
+    }
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.auxiliary_fragments_nanoseconds);
+        for (auto* participant : participants_) {
+            if (participant->synchronize_auxiliary_fragments()) scene_structure_dirty_ = true;
+        }
     }
     if (scene_structure_dirty_ || text_fragments_changed) {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.composer_nanoseconds);
         scene_composer_.rebuild(clip);
         scene_structure_dirty_ = false;
     } else if (text_.layout_performed_last_sync()) {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.hit_nanoseconds);
         const auto started = std::chrono::steady_clock::now();
         for (const auto interaction : interactions_.declaration_order()) {
             static_cast<void>(hit_test_.refresh_interaction(interaction));
@@ -183,15 +238,29 @@ bool WindowComponentServices::layout_and_synchronize(
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now() - started).count());
     } else if (!dirty_->hit_test_nodes().empty()) {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.hit_nanoseconds);
         const auto started = std::chrono::steady_clock::now();
         static_cast<void>(hit_test_.refresh(dirty_->hit_test_nodes()));
         hit_test_refresh_nanoseconds_ += static_cast<std::uint64_t>(
             std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::steady_clock::now() - started).count());
     }
-    focus_.synchronize();
+    {
+        SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.focus_nanoseconds);
+        focus_.synchronize();
+    }
     dirty_->clear();
     return true;
+}
+
+void WindowComponentServices::set_sync_profiling_enabled(bool enabled) noexcept {
+    sync_profiling_enabled_ = enabled;
+    text_.set_sync_profiling_enabled(enabled);
+}
+
+void WindowComponentServices::reset_sync_profile() noexcept {
+    sync_profile_ = {};
+    text_.reset_sync_profile();
 }
 
 } // namespace ryn::detail
