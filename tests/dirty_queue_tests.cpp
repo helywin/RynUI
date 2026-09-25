@@ -111,6 +111,40 @@ void test_explicit_subtree_invalidation_does_not_bubble_to_page_root() {
             "explicit subtree invalidation bubbled or changed sibling topology");
 }
 
+void test_generation_aware_deduplication_and_order() {
+    ryn::runtime::NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto first = nodes.create_child(root);
+    const auto second = nodes.create_child(root);
+    ryn::runtime::DirtyQueues dirty(nodes);
+
+    dirty.invalidate(second, ryn::runtime::DirtyFlags::Material |
+                                 ryn::runtime::DirtyFlags::Transform);
+    dirty.invalidate(first, ryn::runtime::DirtyFlags::Material);
+    dirty.invalidate(second, ryn::runtime::DirtyFlags::Material);
+    require(dirty.material_nodes()
+                == std::vector<ryn::runtime::NodeId>({second, first})
+                && dirty.transform_nodes()
+                    == std::vector<ryn::runtime::NodeId>({second}),
+            "dirty domain lost first-insertion order or duplicated an ID");
+
+    require(nodes.destroy(second), "failed to destroy dirty Node");
+    const auto reused = nodes.create_child(root);
+    require(reused.index == second.index && reused.generation != second.generation,
+            "NodeStore did not reuse the expected slot with a new generation");
+    dirty.invalidate(reused, ryn::runtime::DirtyFlags::Material);
+    require(dirty.material_nodes()
+                == std::vector<ryn::runtime::NodeId>({first, reused})
+                && dirty.transform_nodes().empty(),
+            "stale generation remained in a dirty queue");
+
+    dirty.clear();
+    dirty.invalidate(reused, ryn::runtime::DirtyFlags::Material);
+    require(dirty.material_nodes()
+                == std::vector<ryn::runtime::NodeId>({reused}),
+            "new dirty epoch suppressed a live Node");
+}
+
 } // namespace
 
 int main() {
@@ -118,6 +152,7 @@ int main() {
         test_material_and_transform_updates_skip_layout();
         test_size_update_queues_layout_root_and_geometry();
         test_explicit_subtree_invalidation_does_not_bubble_to_page_root();
+        test_generation_aware_deduplication_and_order();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

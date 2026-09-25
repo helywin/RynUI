@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace ryn::runtime {
@@ -23,25 +24,25 @@ void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_fram
         frames_->request_frame();
     }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
-        enqueue_unique(layout_roots_, layout_root_for(id));
+        enqueue_unique(layout_roots_, layout_root_for(id), Domain::layout);
     }
     if (has_any(flags, DirtyFlags::Placement)) {
-        enqueue_unique(placement_roots_, layout_root_for(id));
+        enqueue_unique(placement_roots_, layout_root_for(id), Domain::placement);
     }
     if (has_any(flags, DirtyFlags::Material)) {
-        enqueue_unique(material_nodes_, id);
+        enqueue_unique(material_nodes_, id, Domain::material);
     }
     if (has_any(flags, DirtyFlags::Transform)) {
-        enqueue_unique(transform_nodes_, id);
+        enqueue_unique(transform_nodes_, id, Domain::transform);
     }
     if (has_any(flags, DirtyFlags::Geometry)) {
-        enqueue_unique(geometry_nodes_, id);
+        enqueue_unique(geometry_nodes_, id, Domain::geometry);
     }
     if (has_any(flags, DirtyFlags::Text)) {
-        enqueue_unique(text_nodes_, id);
+        enqueue_unique(text_nodes_, id, Domain::text);
     }
     if (has_any(flags, DirtyFlags::Animation)) {
-        enqueue_unique(animation_nodes_, id);
+        enqueue_unique(animation_nodes_, id, Domain::animation);
     }
     if (has_any(
             flags,
@@ -58,7 +59,7 @@ void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_fram
                 | DirtyFlags::Placement)
             ? layout_root_for(id)
             : id;
-        enqueue_unique(hit_test_nodes_, hit_test_root);
+        enqueue_unique(hit_test_nodes_, hit_test_root, Domain::hit_test);
     }
 }
 
@@ -68,29 +69,29 @@ void DirtyQueues::invalidate_subtree(NodeId root, DirtyFlags flags) {
         frames_->request_frame();
     }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
-        enqueue_unique(layout_roots_, root);
+        enqueue_unique(layout_roots_, root, Domain::layout);
     }
     if (has_any(flags, DirtyFlags::Placement)) {
-        enqueue_unique(placement_roots_, root);
+        enqueue_unique(placement_roots_, root, Domain::placement);
     }
     if (has_any(flags, DirtyFlags::Material)) {
-        enqueue_unique(material_nodes_, root);
+        enqueue_unique(material_nodes_, root, Domain::material);
     }
     if (has_any(flags, DirtyFlags::Transform)) {
-        enqueue_unique(transform_nodes_, root);
+        enqueue_unique(transform_nodes_, root, Domain::transform);
     }
     if (has_any(flags, DirtyFlags::Geometry)) {
-        enqueue_unique(geometry_nodes_, root);
+        enqueue_unique(geometry_nodes_, root, Domain::geometry);
     }
     if (has_any(flags, DirtyFlags::Text)) {
-        enqueue_unique(text_nodes_, root);
+        enqueue_unique(text_nodes_, root, Domain::text);
     }
     if (has_any(flags, DirtyFlags::Animation)) {
-        enqueue_unique(animation_nodes_, root);
+        enqueue_unique(animation_nodes_, root, Domain::animation);
     }
     if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure |
                            DirtyFlags::Layout | DirtyFlags::Placement)) {
-        enqueue_unique(hit_test_nodes_, root);
+        enqueue_unique(hit_test_nodes_, root, Domain::hit_test);
     }
 }
 
@@ -103,38 +104,47 @@ void DirtyQueues::clear() noexcept {
     hit_test_nodes_.clear();
     text_nodes_.clear();
     animation_nodes_.clear();
+    if (epoch_ == std::numeric_limits<std::uint64_t>::max()) {
+        for (auto& domain_stamps : stamps_) {
+            domain_stamps.clear();
+        }
+        epoch_ = 1;
+    } else {
+        ++epoch_;
+    }
+    checked_topology_revisions_.fill(nodes_->topology_revision());
 }
 
 const std::vector<NodeId>& DirtyQueues::layout_roots() const noexcept {
-    return layout_roots_;
+    return live_queue(layout_roots_, Domain::layout);
 }
 
 const std::vector<NodeId>& DirtyQueues::placement_roots() const noexcept {
-    return placement_roots_;
+    return live_queue(placement_roots_, Domain::placement);
 }
 
 const std::vector<NodeId>& DirtyQueues::material_nodes() const noexcept {
-    return material_nodes_;
+    return live_queue(material_nodes_, Domain::material);
 }
 
 const std::vector<NodeId>& DirtyQueues::transform_nodes() const noexcept {
-    return transform_nodes_;
+    return live_queue(transform_nodes_, Domain::transform);
 }
 
 const std::vector<NodeId>& DirtyQueues::geometry_nodes() const noexcept {
-    return geometry_nodes_;
+    return live_queue(geometry_nodes_, Domain::geometry);
 }
 
 const std::vector<NodeId>& DirtyQueues::hit_test_nodes() const noexcept {
-    return hit_test_nodes_;
+    return live_queue(hit_test_nodes_, Domain::hit_test);
 }
 
 const std::vector<NodeId>& DirtyQueues::text_nodes() const noexcept {
-    return text_nodes_;
+    return live_queue(text_nodes_, Domain::text);
 }
 
 const std::vector<NodeId>& DirtyQueues::animation_nodes() const noexcept {
-    return animation_nodes_;
+    return live_queue(animation_nodes_, Domain::animation);
 }
 
 NodeId DirtyQueues::layout_root_for(NodeId id) const {
@@ -147,10 +157,33 @@ NodeId DirtyQueues::layout_root_for(NodeId id) const {
     return root;
 }
 
-void DirtyQueues::enqueue_unique(std::vector<NodeId>& queue, NodeId id) {
-    if (std::find(queue.begin(), queue.end(), id) == queue.end()) {
-        queue.push_back(id);
+void DirtyQueues::enqueue_unique(
+    std::vector<NodeId>& queue, NodeId id, Domain domain) {
+    const auto domain_index = static_cast<std::size_t>(domain);
+    auto& stamps = stamps_[domain_index];
+    if (id.index >= stamps.size()) {
+        stamps.resize(static_cast<std::size_t>(id.index) + 1);
     }
+    auto& stamp = stamps[id.index];
+    if (stamp.epoch == epoch_ && stamp.generation == id.generation) {
+        return;
+    }
+    if (queue.empty()) {
+        checked_topology_revisions_[domain_index] = nodes_->topology_revision();
+    }
+    queue.push_back(id);
+    stamp = {id.generation, epoch_};
+}
+
+const std::vector<NodeId>& DirtyQueues::live_queue(
+    std::vector<NodeId>& queue, Domain domain) const noexcept {
+    const auto domain_index = static_cast<std::size_t>(domain);
+    const auto revision = nodes_->topology_revision();
+    if (checked_topology_revisions_[domain_index] != revision) {
+        std::erase_if(queue, [this](NodeId id) { return nodes_->find(id) == nullptr; });
+        checked_topology_revisions_[domain_index] = revision;
+    }
+    return queue;
 }
 
 NodePropertyWriter::NodePropertyWriter(NodeStore& nodes, DirtyQueues& dirty) noexcept

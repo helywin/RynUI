@@ -5,6 +5,7 @@
 #include "theme/theme_runtime_types.hpp"
 
 #include <cstdint>
+#include <array>
 #include <vector>
 
 namespace ryn::runtime {
@@ -113,20 +114,42 @@ public:
     [[nodiscard]] const std::vector<NodeId>& animation_nodes() const noexcept;
 
 private:
+    enum class Domain : std::size_t {
+        layout,
+        placement,
+        material,
+        transform,
+        geometry,
+        hit_test,
+        text,
+        animation,
+        count,
+    };
+    struct QueueStamp final {
+        std::uint32_t generation{};
+        std::uint64_t epoch{};
+    };
+
     void invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame);
     [[nodiscard]] NodeId layout_root_for(NodeId id) const;
-    static void enqueue_unique(std::vector<NodeId>& queue, NodeId id);
+    void enqueue_unique(std::vector<NodeId>& queue, NodeId id, Domain domain);
+    [[nodiscard]] const std::vector<NodeId>& live_queue(
+        std::vector<NodeId>& queue, Domain domain) const noexcept;
 
     NodeStore* nodes_;
     FrameRequestState* frames_;
-    std::vector<NodeId> layout_roots_;
-    std::vector<NodeId> placement_roots_;
-    std::vector<NodeId> material_nodes_;
-    std::vector<NodeId> transform_nodes_;
-    std::vector<NodeId> geometry_nodes_;
-    std::vector<NodeId> hit_test_nodes_;
-    std::vector<NodeId> text_nodes_;
-    std::vector<NodeId> animation_nodes_;
+    mutable std::vector<NodeId> layout_roots_;
+    mutable std::vector<NodeId> placement_roots_;
+    mutable std::vector<NodeId> material_nodes_;
+    mutable std::vector<NodeId> transform_nodes_;
+    mutable std::vector<NodeId> geometry_nodes_;
+    mutable std::vector<NodeId> hit_test_nodes_;
+    mutable std::vector<NodeId> text_nodes_;
+    mutable std::vector<NodeId> animation_nodes_;
+    std::array<std::vector<QueueStamp>, static_cast<std::size_t>(Domain::count)> stamps_;
+    mutable std::array<std::uint64_t, static_cast<std::size_t>(Domain::count)>
+        checked_topology_revisions_{};
+    std::uint64_t epoch_{1};
 };
 
 class NodePropertyWriter final {

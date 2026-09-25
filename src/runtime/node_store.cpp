@@ -66,11 +66,16 @@ bool NodeStore::destroy(NodeId id) noexcept {
     advance_generation(*slot);
     free_slots_.push_back(id.index);
     --live_nodes_;
+    ++topology_revision_;
     return true;
 }
 
 std::size_t NodeStore::size() const noexcept {
     return live_nodes_;
+}
+
+std::uint64_t NodeStore::topology_revision() const noexcept {
+    return topology_revision_;
 }
 
 NodeId NodeStore::create(std::optional<NodeId> parent) {
@@ -98,6 +103,7 @@ NodeId NodeStore::create(std::optional<NodeId> parent) {
     if (parent.has_value()) {
         require(*parent).children.push_back(id);
     }
+    ++topology_revision_;
     return id;
 }
 

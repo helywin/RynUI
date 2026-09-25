@@ -92,6 +92,7 @@ public:
     bool destroy(NodeId id) noexcept;
 
     [[nodiscard]] std::size_t size() const noexcept;
+    [[nodiscard]] std::uint64_t topology_revision() const noexcept;
 
 private:
     struct Slot {
@@ -108,6 +109,7 @@ private:
     std::deque<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::size_t live_nodes_{0};
+    std::uint64_t topology_revision_{0};
 };
 
 } // namespace ryn::runtime
