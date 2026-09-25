@@ -646,6 +646,90 @@ void translated_subtree_geometry() {
         "Input viewport accumulated ancestor translations");
 }
 
+void translated_input_text_matches_full_rebuild() {
+    const auto near = [](float left, float right) {
+        return std::abs(left - right) < 0.0001F;
+    };
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        Fixture f;
+        f.font_scale = scale;
+        f.inputs.set_display_scale(scale);
+        Signal<String> value{String{u8"Scroll 中文 text"}};
+        f.inputs.mount(Content{[&] {
+            Input(InputProps{}.value(value).placeholder(u8"Hint"));
+        }});
+        f.synchronize();
+        const auto mounted = f.inputs.mounted_inputs().front();
+        const auto layers = f.inputs.text_layers(mounted.component);
+        runtime::NodePropertyWriter writer(f.nodes, f.dirty);
+        const auto translate = [&](const auto& self, runtime::NodeId id,
+                                   runtime::Point amount) -> void {
+            const auto children = f.nodes.require(id).children;
+            static_cast<void>(writer.set_translation(id, amount));
+            for (const auto child : children) self(self, child, amount);
+        };
+        for (const auto amount : {runtime::Point{0.0F, -16.0F / scale},
+                                  runtime::Point{0.0F, -16.25F / scale}}) {
+            translate(translate, mounted.node, amount);
+            f.synchronize(320, {0, 0, 320, 200});
+            const auto geometry = f.inputs.layout_snapshot(mounted.component);
+            for (const auto id : {layers.base, layers.placeholder}) {
+                const auto range = f.scene.primitive(id).instances;
+                require(range.count > 0, "translated Input text fixture has no glyphs");
+                std::vector<graphics::GlyphInstance> observed;
+                observed.reserve(range.count);
+                for (std::uint32_t index = 0; index < range.count; ++index) {
+                    observed.push_back(f.scene.glyph_scene().instances().at(range.first + index));
+                }
+                static_cast<void>(f.scene.set_scroll_translation(
+                    id, {-geometry.scroll_offset, 0.0F}));
+                const graphics::GlyphPlacement reference{
+                    {geometry.viewport.x, geometry.viewport.y},
+                    {320.0F, 240.0F}, geometry.clip};
+                require(f.scene.synchronize(id, reference),
+                    "translated Input reference rebuild failed");
+                const auto rebuilt = f.scene.primitive(id).instances;
+                require(rebuilt.count == range.count,
+                    "translated Input changed glyph count against reference");
+                for (std::uint32_t index = 0; index < range.count; ++index) {
+                    const auto& left = observed[index];
+                    const auto& right = f.scene.glyph_scene().instances().at(
+                        rebuilt.first + index);
+                    require(near(left.position_size[0] + left.translation_opacity[0],
+                                right.position_size[0] + right.translation_opacity[0])
+                            && near(left.position_size[1] + left.translation_opacity[1],
+                                right.position_size[1] + right.translation_opacity[1])
+                            && near(left.position_size[2], right.position_size[2])
+                            && near(left.position_size[3], right.position_size[3])
+                            && left.uv_rect == right.uv_rect
+                            && left.clip_bounds == right.clip_bounds
+                            && left.color == right.color
+                            && near(left.translation_opacity[2],
+                                    right.translation_opacity[2]),
+                        "translated Input glyph differs from full rebuild");
+                }
+            }
+        }
+        translate(translate, mounted.node, {0.0F, -400.0F});
+        value.set(String{u8"Updated while offscreen"});
+        f.synchronize();
+        translate(translate, mounted.node, {});
+        f.synchronize();
+        require(f.scene.text_state(layers.base).content()
+                == String{u8"Updated while offscreen"}.view(),
+            "Input did not show latest offscreen text on return");
+        f.synchronize(280, {0, 0, 280, 180});
+        const auto resized = f.inputs.layout_snapshot(mounted.component);
+        require(resized.clip.x + resized.clip.width <= 280.0001F
+                && resized.clip.y + resized.clip.height <= 180.0001F
+                && f.scene.primitive(layers.base).instances.first
+                    < f.scene.primitive(layers.selected).instances.first
+                && f.scene.primitive(layers.selected).instances.first
+                    <= f.scene.primitive(layers.placeholder).instances.first,
+            "Input resize clip or text layer order changed after scroll");
+    }
+}
+
 void composition_display() {
     Fixture f; Signal<String> value{String{}}; int changes{};
     f.inputs.mount(Content{[&] {
@@ -690,6 +774,6 @@ void composition_display() {
 }
 int main() {
     try { input_without_button_host(); lifecycle(); invalid_mount(); self_destroy(false); self_destroy(true); reuse_and_rollback(); readonly_blur(); capture_teardown();
-        layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); translated_subtree_geometry(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
+        layout_matrix(); token_geometry(); reactive_input_tokens(); material_animation(); state_materials(); mixed_shadow_topology(); reactive_phases(); retained_scene_layers(); retained_range_remapping(); input_pixel_grid(); translated_subtree_geometry(); translated_input_text_matches_full_rebuild(); composition_display(); std::cout << "Input lifecycle, layout and controlled callbacks passed\n"; }
     catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }
