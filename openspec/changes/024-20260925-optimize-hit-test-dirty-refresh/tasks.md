@@ -9,7 +9,7 @@
 ## 2. 平台通用刷新优化
 
 - [x] 2.1 实现小批量线性路径与大批量 generation/epoch slot stamp；补充重复、祖先、无关节点、slot 复用及零分配回归；Windows MSVC Debug 定向 CTest 通过后英文格式提交
-- [ ] 2.2 Windows MSVC Release 干净构建并重测相同的五进程定向 benchmark；记录前后时间及工作量，相关 CTest 通过后英文格式提交证据
+- [x] 2.2 Windows MSVC Release 干净构建并重测相同的五进程定向 benchmark；记录前后时间及工作量，相关 CTest 通过后英文格式提交证据
 
 ## 3. Windows 真实窗口验收
 
