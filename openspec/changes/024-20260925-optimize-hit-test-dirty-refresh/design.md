@@ -2,7 +2,7 @@
 
 ## Context
 
-见 `proposal.md`。现有 `HitTestSnapshot::refresh` 为每条记录对 `dirty_nodes` 做 `any_of`，每次比较调用 `node_descends_from` 沿父链检查；`refresh_record` 再按 paint 顺序重建受影响记录。`NodeId` 已有 slot index 与 generation，`NodeStore` 提供 slot capacity。Gallery 的 `frame_layout_us` 包含文本、participant、effect、fragment 和命中同步，尚不能把整个 9.4 ms 归因于命中刷新。
+见 `proposal.md`。现有 `HitTestSnapshot::refresh` 为每条记录对 `dirty_nodes` 做 `any_of`，每次比较调用 `node_descends_from` 沿父链检查；`refresh_record` 再按 paint 顺序重建受影响记录。`NodeId` 已有 slot index 与 generation，`NodeStore` 提供 slot capacity。Gallery 的 `frame_layout_us` 包含文本、participant、effect、fragment 和命中同步；五进程旧实现基线约 14.0 ms，命中刷新本身约 5 µs。
 
 ## Goals / Non-Goals
 

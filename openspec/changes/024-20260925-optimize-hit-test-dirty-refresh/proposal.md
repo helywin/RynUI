@@ -2,7 +2,7 @@
 
 ## Why
 
-Windows D3D12 的 Gallery 滚动验收显示，整帧 CPU 平均约 12.7 ms，其中布局与场景同步阶段约 9.4 ms。`HitTestSnapshot::refresh` 对每条交互记录遍历整批 dirty Node，并反复向上寻找祖先；滚动等批量 transform 更新因此可能产生与交互数和脏节点数乘积相关的工作。
+Windows D3D12 Gallery 滚动的五进程基线显示整帧 CPU 平均中位数约 16.8 ms，其中布局与场景同步阶段约 14.0 ms；命中刷新仅约 5 µs，并非该窗口的主要耗时。独立规模基准显示，`HitTestSnapshot::refresh` 对每条交互记录遍历整批 dirty Node，并反复向上寻找祖先；大量交互与 dirty Node 同时出现时，工作量会随两者的乘积增长。
 
 ## What Changes
 
