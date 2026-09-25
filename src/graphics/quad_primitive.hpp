@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/dirty_ranges.hpp"
 #include "runtime/node_store.hpp"
 
 #include <array>
@@ -111,14 +112,11 @@ public:
     void clear_dirty_ranges() noexcept;
 
 private:
-    static void mark_dirty(
-        std::vector<QuadInstanceRange>& ranges,
-        QuadInstanceRange range);
     void require_range(QuadInstanceRange range) const;
 
     std::vector<QuadInstance> instances_;
-    std::vector<QuadInstanceRange> material_dirty_ranges_;
-    std::vector<QuadInstanceRange> geometry_dirty_ranges_;
+    DirtyRangeAccumulator<QuadInstanceRange> material_dirty_ranges_;
+    DirtyRangeAccumulator<QuadInstanceRange> geometry_dirty_ranges_;
 };
 
 using QuadGpuBufferHandle = void*;

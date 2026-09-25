@@ -206,6 +206,47 @@ void test_gpu_buffer_growth_and_sparse_synchronization() {
             "Quad GPU synchronization expanded a sparse Material upload");
 }
 
+void test_out_of_order_dirty_planning_and_shifted_suffix() {
+    ryn::graphics::QuadInstanceStore store;
+    std::array<ryn::graphics::QuadInstance, 8> initial{};
+    static_cast<void>(store.append(initial));
+    store.clear_dirty_ranges();
+    const std::array material{
+        ryn::graphics::QuadMaterial{{0.1F, 0.2F, 0.3F, 1.0F}, 0.5F}};
+    static_cast<void>(store.update_material({5, 1}, material));
+    static_cast<void>(store.update_material({2, 1}, material));
+    static_cast<void>(store.update_material({1, 1}, material));
+    const auto first_plan = store.material_dirty_ranges();
+    require(first_plan.size() == 2
+                && first_plan[0] == ryn::graphics::QuadInstanceRange{1, 2}
+                && first_plan[1] == ryn::graphics::QuadInstanceRange{5, 1},
+            "Quad dirty plan did not sort and merge adjacent ranges once");
+    const auto second_plan = store.material_dirty_ranges();
+    require(second_plan.data() == first_plan.data() && second_plan.size() == 2,
+            "unchanged Quad dirty plan was rebuilt");
+
+    const std::array overlapping{
+        ryn::graphics::QuadMaterial{{0.4F, 0.3F, 0.2F, 1.0F}, 0.8F},
+        ryn::graphics::QuadMaterial{{0.4F, 0.3F, 0.2F, 1.0F}, 0.8F},
+        ryn::graphics::QuadMaterial{{0.4F, 0.3F, 0.2F, 1.0F}, 0.8F},
+    };
+    static_cast<void>(store.update_material({2, 3}, overlapping));
+    require(store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front()
+                    == ryn::graphics::QuadInstanceRange{1, 5},
+            "overlapping Quad ranges were not merged into the exact union");
+
+    const std::array replacement{instance(0.7F), instance(0.8F)};
+    static_cast<void>(store.replace({2, 1}, replacement));
+    const auto geometry = store.geometry_dirty_ranges();
+    require(store.size() == 9 && geometry.size() == 1
+                && geometry.front() == ryn::graphics::QuadInstanceRange{2, 7}
+                && store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front()
+                    == ryn::graphics::QuadInstanceRange{1, 1},
+            "Quad shifted suffix left stale or missing dirty ranges");
+}
+
 } // namespace
 
 int main() {
@@ -214,6 +255,7 @@ int main() {
         test_initial_upload_preserves_instance_bytes();
         test_sparse_dirty_ranges_and_compaction();
         test_gpu_buffer_growth_and_sparse_synchronization();
+        test_out_of_order_dirty_planning_and_shifted_suffix();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

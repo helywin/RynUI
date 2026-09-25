@@ -27,27 +27,6 @@ std::runtime_error upload_error(QuadUploadApi& api, const char* fallback) {
         message != nullptr && message[0] != '\0' ? message : fallback);
 }
 
-void discard_shifted_dirty_ranges(
-    std::vector<QuadInstanceRange>& ranges,
-    std::uint32_t first) {
-    std::vector<QuadInstanceRange> retained;
-    retained.reserve(ranges.size());
-    for (auto range : ranges) {
-        if (range.first >= first) {
-            continue;
-        }
-        const std::uint64_t end =
-            static_cast<std::uint64_t>(range.first) + range.count;
-        if (end > first) {
-            range.count = first - range.first;
-        }
-        if (range.count != 0) {
-            retained.push_back(range);
-        }
-    }
-    ranges = std::move(retained);
-}
-
 } // namespace
 
 QuadPrimitive QuadInstanceStore::add(runtime::NodeId node, QuadInstance instance) {
@@ -72,7 +51,7 @@ QuadInstanceRange QuadInstanceStore::append(
         static_cast<std::uint32_t>(instances.size()),
     };
     instances_.insert(instances_.end(), instances.begin(), instances.end());
-    mark_dirty(geometry_dirty_ranges_, range);
+    geometry_dirty_ranges_.append(range);
     return range;
 }
 
@@ -101,18 +80,15 @@ QuadInstanceRange QuadInstanceStore::replace(
     instances_.swap(replacement);
 
     if (range.count == instances.size()) {
-        mark_dirty(
-            geometry_dirty_ranges_,
-            {range.first, static_cast<std::uint32_t>(instances.size())});
+        geometry_dirty_ranges_.append({
+            range.first, static_cast<std::uint32_t>(instances.size())});
     } else {
-        discard_shifted_dirty_ranges(material_dirty_ranges_, range.first);
-        discard_shifted_dirty_ranges(geometry_dirty_ranges_, range.first);
-        mark_dirty(
-            geometry_dirty_ranges_,
-            {
-                range.first,
-                static_cast<std::uint32_t>(instances_.size() - range.first),
-            });
+        material_dirty_ranges_.discard_shifted(range.first);
+        geometry_dirty_ranges_.discard_shifted(range.first);
+        geometry_dirty_ranges_.append({
+            range.first,
+            static_cast<std::uint32_t>(instances_.size() - range.first),
+        });
     }
     return {range.first, static_cast<std::uint32_t>(instances.size())};
 }
@@ -176,9 +152,7 @@ std::size_t QuadInstanceStore::update_material(
         auto& instance = instances_[index];
         if (instance.color == material.color && instance.opacity == material.opacity) {
             if (dirty_start.has_value()) {
-                mark_dirty(
-                    material_dirty_ranges_,
-                    {*dirty_start, index - *dirty_start});
+                material_dirty_ranges_.append({*dirty_start, index - *dirty_start});
                 dirty_start.reset();
             }
             continue;
@@ -189,9 +163,8 @@ std::size_t QuadInstanceStore::update_material(
         ++updated;
     }
     if (dirty_start.has_value()) {
-        mark_dirty(
-            material_dirty_ranges_,
-            {*dirty_start, range.first + range.count - *dirty_start});
+        material_dirty_ranges_.append({
+            *dirty_start, range.first + range.count - *dirty_start});
     }
     return updated;
 }
@@ -223,9 +196,7 @@ std::size_t QuadInstanceStore::update_geometry(
                 && instance.corner_radius == value.corner_radius
                 && instance.translation == value.translation) {
             if (dirty_start.has_value()) {
-                mark_dirty(
-                    geometry_dirty_ranges_,
-                    {*dirty_start, index - *dirty_start});
+                geometry_dirty_ranges_.append({*dirty_start, index - *dirty_start});
                 dirty_start.reset();
             }
             continue;
@@ -237,55 +208,25 @@ std::size_t QuadInstanceStore::update_geometry(
         ++updated;
     }
     if (dirty_start.has_value()) {
-        mark_dirty(
-            geometry_dirty_ranges_,
-            {*dirty_start, range.first + range.count - *dirty_start});
+        geometry_dirty_ranges_.append({
+            *dirty_start, range.first + range.count - *dirty_start});
     }
     return updated;
 }
 
 std::span<const QuadInstanceRange>
 QuadInstanceStore::material_dirty_ranges() const noexcept {
-    return material_dirty_ranges_;
+    return material_dirty_ranges_.ranges();
 }
 
 std::span<const QuadInstanceRange>
 QuadInstanceStore::geometry_dirty_ranges() const noexcept {
-    return geometry_dirty_ranges_;
+    return geometry_dirty_ranges_.ranges();
 }
 
 void QuadInstanceStore::clear_dirty_ranges() noexcept {
     material_dirty_ranges_.clear();
     geometry_dirty_ranges_.clear();
-}
-
-void QuadInstanceStore::mark_dirty(
-    std::vector<QuadInstanceRange>& ranges,
-    QuadInstanceRange range) {
-    if (range.count == 0) {
-        return;
-    }
-    ranges.push_back(range);
-    std::ranges::sort(ranges, {}, &QuadInstanceRange::first);
-    std::size_t merged_size = 0;
-    for (const auto candidate : ranges) {
-        if (merged_size == 0) {
-            ranges[merged_size++] = candidate;
-            continue;
-        }
-        auto& prior = ranges[merged_size - 1];
-        const std::uint64_t prior_end =
-            static_cast<std::uint64_t>(prior.first) + prior.count;
-        const std::uint64_t candidate_end =
-            static_cast<std::uint64_t>(candidate.first) + candidate.count;
-        if (candidate.first <= prior_end) {
-            prior.count = static_cast<std::uint32_t>(
-                std::max(prior_end, candidate_end) - prior.first);
-        } else {
-            ranges[merged_size++] = candidate;
-        }
-    }
-    ranges.resize(merged_size);
 }
 
 void QuadInstanceStore::require_range(QuadInstanceRange range) const {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "graphics/dirty_ranges.hpp"
 #include "graphics/glyph_atlas.hpp"
 #include "runtime/geometry.hpp"
 #include "text/text_engine.hpp"
@@ -91,14 +92,11 @@ public:
     void clear_dirty_ranges() noexcept;
 
 private:
-    static void mark_dirty(
-        std::vector<GlyphInstanceRange>& ranges,
-        GlyphInstanceRange range);
     void require_range(GlyphInstanceRange range) const;
 
     std::vector<GlyphInstance> instances_;
-    std::vector<GlyphInstanceRange> material_dirty_ranges_;
-    std::vector<GlyphInstanceRange> geometry_dirty_ranges_;
+    DirtyRangeAccumulator<GlyphInstanceRange> material_dirty_ranges_;
+    DirtyRangeAccumulator<GlyphInstanceRange> geometry_dirty_ranges_;
 };
 
 struct GlyphPlacement {

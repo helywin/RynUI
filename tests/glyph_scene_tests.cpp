@@ -308,6 +308,34 @@ void test_dirty_ranges_remain_layered_and_sparse() {
             "Glyph dirty ranges did not clear");
 }
 
+void test_out_of_order_glyph_ranges_and_shifted_suffix() {
+    ryn::graphics::GlyphInstanceStore store;
+    std::array<GlyphInstance, 8> initial{};
+    static_cast<void>(store.append(initial));
+    const std::array color{0.1F, 0.2F, 0.3F, 1.0F};
+    static_cast<void>(store.update_material({5, 1}, color, 0.5F));
+    static_cast<void>(store.update_material({2, 1}, color, 0.5F));
+    static_cast<void>(store.update_material({1, 1}, color, 0.5F));
+    const auto material = store.material_dirty_ranges();
+    require(material.size() == 2 && material[0] == GlyphInstanceRange{1, 2}
+                && material[1] == GlyphInstanceRange{5, 1},
+            "Glyph dirty plan did not preserve sparse ordered ranges");
+
+    static_cast<void>(store.update_material({2, 3}, {0.4F, 0.3F, 0.2F, 1.0F}, 0.8F));
+    require(store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front() == GlyphInstanceRange{1, 5},
+            "overlapping Glyph ranges were not merged into the exact union");
+
+    const std::array replacement{instance(0.7F), instance(0.8F)};
+    static_cast<void>(store.replace({2, 1}, replacement));
+    const auto geometry = store.geometry_dirty_ranges();
+    require(store.size() == 9 && geometry.size() == 1
+                && geometry.front() == GlyphInstanceRange{2, 7}
+                && store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front() == GlyphInstanceRange{1, 1},
+            "Glyph shifted suffix left stale or missing dirty ranges");
+}
+
 void test_ordered_scene_preserves_quad_glyph_z_order() {
     ryn::graphics::OrderedScene scene;
     scene.append_quad(0, 1);
@@ -343,6 +371,7 @@ int main() {
         test_instance_layout_and_text_positioning();
         test_physical_phase_scale_and_size_matrix();
         test_dirty_ranges_remain_layered_and_sparse();
+        test_out_of_order_glyph_ranges_and_shifted_suffix();
         test_ordered_scene_preserves_quad_glyph_z_order();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
