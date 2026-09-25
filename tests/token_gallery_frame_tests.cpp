@@ -461,11 +461,16 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     std::uint64_t text_rebuilds_before_scroll = 0;
     std::uint64_t text_geometry_before_scroll = 0;
     std::uint64_t text_geometry_rebuilds_before_scroll = 0;
+    std::vector<bool> realized_before_scroll;
+    std::vector<std::uint64_t> rebuilds_before_scroll;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_before_scroll += counters.instance_rebuilds;
         text_geometry_before_scroll += counters.geometry_updates;
         text_geometry_rebuilds_before_scroll += counters.geometry_rebuilds;
+        realized_before_scroll.push_back(
+            fixture.text_scene.primitive(text.scene).instances.count > 0);
+        rebuilds_before_scroll.push_back(counters.instance_rebuilds);
     }
     require(document.apply_subtree_translation(
                 root, fixture.nodes, fixture.dirty)
@@ -482,20 +487,29 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     std::uint64_t text_rebuilds_after_scroll = 0;
     std::uint64_t text_geometry_after_scroll = 0;
     std::uint64_t text_geometry_rebuilds_after_scroll = 0;
-    std::uint64_t text_geometry_patches_after_scroll = 0;
+    std::size_t newly_realized = 0;
+    std::size_t text_index = 0;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_after_scroll += counters.instance_rebuilds;
         text_geometry_after_scroll += counters.geometry_updates;
         text_geometry_rebuilds_after_scroll += counters.geometry_rebuilds;
-        text_geometry_patches_after_scroll += counters.geometry_patches;
+        if (realized_before_scroll[text_index]) {
+            require(counters.instance_rebuilds == rebuilds_before_scroll[text_index],
+                    "Gallery scroll rebuilt already-realized glyph instances");
+        } else if (fixture.text_scene.primitive(text.scene).instances.count > 0) {
+            ++newly_realized;
+        }
+        ++text_index;
     }
-    require(text_rebuilds_after_scroll == text_rebuilds_before_scroll
-                && text_geometry_after_scroll > text_geometry_before_scroll
-                && text_geometry_rebuilds_after_scroll
-                    == text_geometry_rebuilds_before_scroll
-                && text_geometry_patches_after_scroll > 0,
-            "Gallery scroll rebuilt glyph instances instead of patching translation");
+    require(newly_realized > 0
+                && text_rebuilds_after_scroll > text_rebuilds_before_scroll,
+            "Gallery scroll did not realize newly visible text");
+    require(text_geometry_after_scroll == text_geometry_before_scroll,
+            "Gallery long jump updated glyph geometry outside the viewport");
+    require(text_geometry_rebuilds_after_scroll
+                == text_geometry_rebuilds_before_scroll,
+            "Gallery long jump rebuilt existing glyph geometry");
 
     const auto live_button = fixture.host->mounted_buttons()[
         definition.navigation_control_count];

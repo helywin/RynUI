@@ -263,13 +263,12 @@ bool TextComponentHost::layout_and_synchronize(
         constexpr float visual_overflow = 32.0F;
         const float left = retained.bounds.x + retained.translation.x;
         const float top = retained.bounds.y + retained.translation.y;
-        if (!needs_layout
-                && (retained.bounds.width <= 0.0F
+        if (retained.bounds.width <= 0.0F
                     || retained.bounds.height <= 0.0F
                     || left >= clip.x + clip.width + visual_overflow
                     || left + retained.bounds.width <= clip.x - visual_overflow
                     || top >= clip.y + clip.height + visual_overflow
-                    || top + retained.bounds.height <= clip.y - visual_overflow)) {
+                    || top + retained.bounds.height <= clip.y - visual_overflow) {
             if (sync_profiling_enabled_) ++sync_profile_.offscreen_skipped;
             continue;
         }

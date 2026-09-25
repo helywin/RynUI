@@ -755,6 +755,49 @@ void test_static_loading_layout_keeps_cjk_text_and_idle_state() {
             "static loading removal changed content identity or idle state");
 }
 
+void test_offscreen_text_realizes_after_first_layout_and_reentry() {
+    Fixture fixture;
+    ryn::Signal<ryn::String> trailing{ryn::String{u8"old"}};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Text(u8"Visible heading");
+        ryn::Text(ryn::TextProps{}.content(trailing));
+    }});
+    const auto mounted = fixture.host->mounted_texts();
+    require(mounted.size() == 2, "offscreen Text fixture did not mount two records");
+    const auto trailing_node = fixture.host->components().root(mounted[1].component);
+    const auto synchronize = [&] {
+        return fixture.host->layout_and_synchronize(
+            {320.0F, 160.0F}, {0.0F, 0.0F, 320.0F, 160.0F},
+            {12.0F, 16.0F}, 500.0F, true, true);
+    };
+    require(synchronize(), "first offscreen Text layout failed");
+    const auto& offscreen_bounds = fixture.nodes.require(trailing_node).bounds;
+    require(offscreen_bounds.y > 192.0F
+                && offscreen_bounds.width > 0.0F
+                && fixture.scene.text_state(mounted[1].scene).measurement().width > 0.0F
+                && fixture.scene.primitive(mounted[0].scene).instances.count > 0
+                && fixture.scene.primitive(mounted[1].scene).instances.count == 0,
+            "first layout did not measure and defer offscreen Text realization");
+
+    trailing.set(ryn::String{u8"new visible content"});
+    require(synchronize()
+                && fixture.scene.primitive(mounted[1].scene).instances.count == 0,
+            "offscreen content update realized Glyph geometry prematurely");
+    const auto y = fixture.nodes.require(trailing_node).bounds.y;
+    ryn::runtime::NodePropertyWriter writer(fixture.nodes, fixture.dirty);
+    require(writer.set_translation(trailing_node, {0.0F, 48.0F - y})
+                && synchronize(),
+            "offscreen Text did not synchronize after entering the clip");
+    const auto& state = fixture.scene.text_state(mounted[1].scene);
+    const auto range = fixture.scene.primitive(mounted[1].scene).instances;
+    require(state.content().utf8() == u8"new visible content"
+                && range.count > 3,
+            "reentered Text did not realize the latest content");
+    const auto& glyph = fixture.scene.glyph_scene().instances().at(range.first);
+    require(glyph.translation_opacity[1] > 1.0F,
+            "reentered Text glyph did not use the current translation");
+}
+
 } // namespace
 
 int main() {
@@ -767,6 +810,7 @@ int main() {
         test_semantic_foreground_context_restores_after_exception();
         test_theme_tokens_update_text_material_and_typography_precisely();
         test_static_loading_layout_keeps_cjk_text_and_idle_state();
+        test_offscreen_text_realizes_after_first_layout_and_reentry();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
