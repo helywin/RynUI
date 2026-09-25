@@ -3,7 +3,7 @@
 ## 1. 规划与改造前基线
 
 - [x] 1.1 完成 proposal、spec、design、tasks；运行 OpenSpec doctor、strict validate 与 `git diff --check`，英文格式提交规划
-- [ ] 1.2 增加固定规模与 seed 的批量命中刷新 benchmark；Windows MSVC Release 运行五个独立进程并记录旧实现结果、工作量和源码 SHA，定向 CTest 通过后英文格式提交
+- [x] 1.2 增加固定规模与 seed 的批量命中刷新 benchmark；Windows MSVC Release 运行五个独立进程并记录旧实现结果、工作量和源码 SHA，定向 CTest 通过后英文格式提交
 - [ ] 1.3 Windows 真实 D3D12 Gallery `--scroll-acceptance` 运行五个独立进程，记录改造前整帧和各 CPU 阶段、节点/交互规模、后端与未测 GPU 边界，核对每次退出码后英文格式提交证据
 
 ## 2. 平台通用刷新优化
