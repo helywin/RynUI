@@ -668,10 +668,21 @@ void translated_input_text_matches_full_rebuild() {
             static_cast<void>(writer.set_translation(id, amount));
             for (const auto child : children) self(self, child, amount);
         };
-        for (const auto amount : {runtime::Point{0.0F, -16.0F / scale},
+        for (const auto amount : {runtime::Point{0.0F, -16.0F},
                                   runtime::Point{0.0F, -16.25F / scale}}) {
+            const auto rebuilds_before = f.scene.record_counters(layers.base).geometry_rebuilds;
+            const auto patches_before = f.scene.record_counters(layers.base).geometry_patches;
+            const auto ordered_before = f.scene.counters().ordered_scene_rebuilds;
             translate(translate, mounted.node, amount);
             f.synchronize(320, {0, 0, 320, 200});
+            if (amount.y == -16.0F) {
+                require(f.scene.record_counters(layers.base).geometry_rebuilds
+                            == rebuilds_before
+                        && f.scene.record_counters(layers.base).geometry_patches
+                            > patches_before
+                        && f.scene.counters().ordered_scene_rebuilds == ordered_before,
+                    "whole-pixel Input scroll rebuilt retained glyph geometry");
+            }
             const auto geometry = f.inputs.layout_snapshot(mounted.component);
             for (const auto id : {layers.base, layers.placeholder}) {
                 const auto range = f.scene.primitive(id).instances;

@@ -9,7 +9,7 @@
 ## 2. 平台通用局部化
 
 - [x] 2.1 添加离屏进入、分数 phase、clip/resize、失效与顺序回归；正式 Windows MSVC Debug 定向测试通过后以 `test:` 提交
-- [ ] 2.2 优化选定同步热点并保留参考路径语义，相关 Debug CTest 通过后以 `refactor:` 提交
+- [x] 2.2 优化选定同步热点并保留参考路径语义，相关 Debug CTest 通过后以 `refactor:` 提交
 - [ ] 2.3 Windows MSVC Release 干净构建并重复五进程真实 D3D12 滚动；记录工作量、阶段与整帧差异，退出码通过后以 `test:` 提交
 
 ## 3. 集成验收

@@ -953,7 +953,10 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             state->focused && !state->disabled && !display.placeholder
                 && display.selection.begin() != display.selection.end() ? 1.0F : 0.0F);
         text_scene.set_opacity(state->placeholder_scene, display.placeholder ? 1.0F : 0.0F);
-        graphics::GlyphPlacement placement{{viewport.x, viewport.y}, window, state->geometry.clip};
+        const auto& viewport_node = host_->nodes().require(state->viewport);
+        graphics::GlyphPlacement placement{
+            {viewport_node.bounds.x, viewport_node.bounds.y}, window,
+            state->geometry.clip};
         const auto scene_started = sync_profiling_enabled_
             ? std::chrono::steady_clock::now()
             : std::chrono::steady_clock::time_point{};
@@ -965,7 +968,16 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                     {state->geometry.selection_start, viewport.y,
                         state->geometry.selection_end - state->geometry.selection_start, viewport.height});
             }
-            text_scene.set_scroll_translation(id, {-state->geometry.scroll_offset, 0});
+            const auto residual = text_scene.set_phase_preserving_scroll_translation(
+                id, viewport_node.translation);
+            // Input's horizontal caret scroll is already aligned to the window
+            // display scale; retain that exact offset when adding node motion.
+            static_cast<void>(text_scene.set_scroll_translation(id, {
+                viewport_node.translation.x - residual.x
+                    - state->geometry.scroll_offset,
+                viewport_node.translation.y - residual.y,
+            }));
+            layer_placement.translation_pixels = residual;
             if(!text_scene.synchronize(id, layer_placement)) throw std::runtime_error("Input glyph synchronization failed");
         }
         record_phase(scene_started, sync_profile_.text_scene_nanoseconds);
