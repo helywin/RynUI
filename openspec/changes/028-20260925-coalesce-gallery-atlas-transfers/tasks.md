@@ -6,7 +6,7 @@
 
 ## 2. 平台通用上传合同
 
-- [ ] 2.1 实现有界纹理 transfer chunk 和纯布局回归，覆盖 512-byte 对齐、多页、跨块及 buffer/纹理顺序；Windows MSVC Debug 定向 CTest 和真实 D3D12 Gallery 通过后以 `refactor:` 提交
+- [x] 2.1 实现有界纹理 transfer chunk 和纯布局回归，覆盖 512-byte 对齐、多页、跨块及 buffer/纹理顺序；Windows MSVC Debug 定向 CTest 和真实 D3D12 Gallery 通过后以 `refactor:` 提交
 
 ## 3. Windows 真实窗口验收
 

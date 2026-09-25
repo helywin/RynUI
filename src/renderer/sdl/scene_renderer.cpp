@@ -337,12 +337,37 @@ bool SdlSceneRenderer::upload_glyph_texture(
         last_error_ = "Glyph texture upload violates owner, handle, or alignment contract";
         return false;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
     if (upload.bytes.size()
             > std::numeric_limits<Uint32>::max() - upload.transfer_offset) {
         last_error_ = "Glyph texture transfer buffer exceeds uint32_t";
         return false;
     }
+    if (upload_batch_active_) {
+        if (!flush_buffer_upload_chunk()) {
+            cancel_upload_batch();
+            return false;
+        }
+        if (active_texture_transfer_ == nullptr
+                || !texture_layout_.can_fit(upload.bytes.size())) {
+            if (!flush_texture_upload_chunk()
+                    || !begin_texture_upload_chunk(
+                        static_cast<Uint32>(upload.bytes.size()))) {
+                cancel_upload_batch();
+                return false;
+            }
+        }
+        const auto source_offset = texture_layout_.append(
+            texture,
+            upload.rectangle,
+            upload.pixels_per_row,
+            upload.rows_per_layer,
+            static_cast<Uint32>(upload.bytes.size()));
+        std::memcpy(
+            static_cast<std::byte*>(active_texture_mapped_) + source_offset,
+            upload.bytes.data(), upload.bytes.size());
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
     const SDL_GPUTransferBufferCreateInfo transfer_info{
         SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         static_cast<Uint32>(upload.transfer_offset + upload.bytes.size()),
@@ -383,26 +408,6 @@ bool SdlSceneRenderer::upload_glyph_texture(
         rectangle.height,
         1,
     };
-    if (upload_batch_active_) {
-        if (!flush_buffer_upload_chunk() || !ensure_upload_copy_pass()) {
-            SDL_ReleaseGPUTransferBuffer(device, transfer);
-            cancel_upload_batch();
-            return false;
-        }
-        try {
-            upload_transfers_.push_back(transfer);
-        } catch (const std::bad_alloc&) {
-            last_error_ = "Failed to record Glyph texture transfer buffer";
-            SDL_ReleaseGPUTransferBuffer(device, transfer);
-            cancel_upload_batch();
-            return false;
-        }
-        SDL_UploadToGPUTexture(
-            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
-        counters_.uploaded_bytes += upload.bytes.size();
-        return true;
-    }
-
     auto* command = SDL_AcquireGPUCommandBuffer(device);
     if (command == nullptr) {
         last_error_ = sdl_error("Failed to acquire Glyph texture upload command buffer");
@@ -648,6 +653,7 @@ bool SdlSceneRenderer::begin_upload_batch() {
         return false;
     }
     upload_layout_.reset();
+    texture_layout_.reset();
     upload_batch_active_ = true;
     return true;
 }
@@ -657,7 +663,7 @@ bool SdlSceneRenderer::finish_upload_batch() {
         last_error_ = "Upload batch finish violates owner or state contract";
         return false;
     }
-    if (!flush_buffer_upload_chunk()) {
+    if (!flush_buffer_upload_chunk() || !flush_texture_upload_chunk()) {
         cancel_upload_batch();
         return false;
     }
@@ -687,6 +693,16 @@ bool SdlSceneRenderer::finish_upload_batch() {
 
 void SdlSceneRenderer::cancel_upload_batch() noexcept {
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    if (active_texture_mapped_ != nullptr) {
+        SDL_UnmapGPUTransferBuffer(
+            device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
+        active_texture_mapped_ = nullptr;
+    }
+    if (active_texture_transfer_ != nullptr) {
+        SDL_ReleaseGPUTransferBuffer(
+            device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
+        active_texture_transfer_ = nullptr;
+    }
     if (active_upload_mapped_ != nullptr) {
         SDL_UnmapGPUTransferBuffer(
             device, static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_));
@@ -710,6 +726,7 @@ void SdlSceneRenderer::cancel_upload_batch() noexcept {
     }
     upload_transfers_.clear();
     upload_layout_.reset();
+    texture_layout_.reset();
     upload_batch_active_ = false;
 }
 
@@ -736,6 +753,32 @@ bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity)
     upload_layout_.reset(capacity);
     active_upload_transfer_ = transfer;
     active_upload_mapped_ = mapped;
+    return true;
+}
+
+bool SdlSceneRenderer::begin_texture_upload_chunk(std::uint32_t minimum_capacity) {
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    const auto capacity = std::max(
+        TextureUploadBatchLayout::default_capacity, minimum_capacity);
+    const SDL_GPUTransferBufferCreateInfo transfer_info{
+        SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, capacity, 0,
+    };
+    auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
+    if (transfer == nullptr) {
+        last_error_ = sdl_error("Failed to create Glyph texture upload chunk");
+        return false;
+    }
+    ++counters_.texture_transfer_creations;
+    void* mapped = SDL_MapGPUTransferBuffer(device, transfer, false);
+    if (mapped == nullptr) {
+        last_error_ = sdl_error("Failed to map Glyph texture upload chunk");
+        SDL_ReleaseGPUTransferBuffer(device, transfer);
+        return false;
+    }
+    ++counters_.texture_transfer_maps;
+    texture_layout_.reset(capacity);
+    active_texture_transfer_ = transfer;
+    active_texture_mapped_ = mapped;
     return true;
 }
 
@@ -792,6 +835,51 @@ bool SdlSceneRenderer::flush_buffer_upload_chunk() {
     return true;
 }
 
+bool SdlSceneRenderer::flush_texture_upload_chunk() {
+    if (active_texture_transfer_ == nullptr) {
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* transfer = static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_);
+    SDL_UnmapGPUTransferBuffer(device, transfer);
+    active_texture_mapped_ = nullptr;
+    if (!ensure_upload_copy_pass()) {
+        return false;
+    }
+    try {
+        upload_transfers_.push_back(transfer);
+    } catch (const std::bad_alloc&) {
+        last_error_ = "Failed to record Glyph texture upload chunk";
+        return false;
+    }
+    active_texture_transfer_ = nullptr;
+    for (const auto region : texture_layout_.regions()) {
+        const SDL_GPUTextureTransferInfo source{
+            transfer,
+            region.source_offset,
+            region.pixels_per_row,
+            region.rows_per_layer,
+        };
+        const auto& rectangle = region.rectangle;
+        const SDL_GPUTextureRegion destination{
+            static_cast<SDL_GPUTexture*>(region.target),
+            0,
+            0,
+            rectangle.x,
+            rectangle.y,
+            0,
+            rectangle.width,
+            rectangle.height,
+            1,
+        };
+        SDL_UploadToGPUTexture(
+            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        counters_.uploaded_bytes += region.byte_count;
+    }
+    texture_layout_.reset();
+    return true;
+}
+
 bool SdlSceneRenderer::upload_buffer(
     void* buffer,
     std::size_t offset,
@@ -805,6 +893,10 @@ bool SdlSceneRenderer::upload_buffer(
         return false;
     }
     if (upload_batch_active_) {
+        if (!flush_texture_upload_chunk()) {
+            cancel_upload_batch();
+            return false;
+        }
         if (active_upload_transfer_ == nullptr || !upload_layout_.can_fit(bytes.size())) {
             if (!flush_buffer_upload_chunk()
                     || !begin_buffer_upload_chunk(static_cast<Uint32>(bytes.size()))) {

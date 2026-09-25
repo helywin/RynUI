@@ -1360,6 +1360,14 @@ target_include_directories(rynui_buffer_upload_batch_layout_tests
 add_test(NAME rynui.buffer_upload_batch_layout
     COMMAND rynui_buffer_upload_batch_layout_tests)
 
+add_executable(rynui_texture_upload_batch_layout_tests
+    texture_upload_batch_layout_tests.cpp)
+rynui_configure_cpp_target(rynui_texture_upload_batch_layout_tests)
+target_include_directories(rynui_texture_upload_batch_layout_tests
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+add_test(NAME rynui.texture_upload_batch_layout
+    COMMAND rynui_texture_upload_batch_layout_tests)
+
 add_executable(rynui_rendering_locality_benchmark rendering_locality_benchmark.cpp)
 rynui_configure_cpp_target(rynui_rendering_locality_benchmark)
 target_include_directories(rynui_rendering_locality_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")

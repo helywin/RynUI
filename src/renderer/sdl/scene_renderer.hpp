@@ -5,6 +5,7 @@
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/buffer_upload_batch_layout.hpp"
+#include "renderer/sdl/texture_upload_batch_layout.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
 
@@ -111,8 +112,10 @@ public:
 
 private:
     bool begin_buffer_upload_chunk(std::uint32_t minimum_capacity);
+    bool begin_texture_upload_chunk(std::uint32_t minimum_capacity);
     bool ensure_upload_copy_pass();
     bool flush_buffer_upload_chunk();
+    bool flush_texture_upload_chunk();
     bool upload_buffer(
         void* buffer,
         std::size_t offset,
@@ -134,6 +137,9 @@ private:
     void* active_upload_transfer_{nullptr};
     void* active_upload_mapped_{nullptr};
     BufferUploadBatchLayout upload_layout_;
+    void* active_texture_transfer_{nullptr};
+    void* active_texture_mapped_{nullptr};
+    TextureUploadBatchLayout texture_layout_;
     std::vector<void*> upload_transfers_;
     std::string shader_format_;
     std::string last_error_;
