@@ -42,3 +42,9 @@ telemetry 在自动滚动开始时清零，只有 `--scroll-acceptance` 开启�
 优化后 240 步约一秒完成，而旧实现约四秒；Gallery 原有验收仍运行到启动后 1.8 秒，快路径会在滚动结束后额外提交动画帧。因此最终 telemetry 固定捕获开始后的前 240 个提交帧，并在第 240 帧保存 renderer 计数；旧基线本来恰好捕获 240 帧，前后比较才使用同一工作窗口。滚动仍以原有 240 步、最终 offset、可见 fragment 与退出码验收。平均整帧 CPU 下降约 76%，p95 下降约 73%；Submit 阶段等待在快路径中上升，不能把阶段 CPU 墙钟时间解读为 GPU 执行时间或输入到展示延迟。
 
 新路径只改变 Input 文本图层的平移表达：整物理像素部分通过 post-raster geometry patch，分数残差继续参与 glyph raster phase。输入水平滚动与容器平移一次合并写入，避免同帧重复脏化；对照完整重建的多 DPI/clip/离屏内容回归以及 Windows Debug 定向测试通过。自动滚动验证了真实窗口可运行及终态统计，未做逐帧人工像素检查，GPU 实际执行仍未测。
+
+## 集成校验状态
+
+Windows MSVC Release 完整 `--clean-first` 构建成功，完整 CTest 227/233 通过。六项失败与 024 集成基线一致：`rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`；本 change 相关 Input、文本场景及 Gallery 测试通过。完整原始输出在被忽略的 `out/build/windows-msvc/gallery-scroll-full-ctest.log`。额外的真实 D3D12 窗口 `--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 均以退出码 0 完成。
+
+`openspec validate 025-20260925-optimize-gallery-scroll-sync --strict --no-interactive` 通过；全仓 strict validate 19/25 通过，既有 change 013、015、016、017、018、021 缺 delta spec。OpenSpec CLI 1.4.1 的 `openspec doctor --json` 返回 `unknown command 'doctor'`。`git diff --check` 通过。因此全仓集成门槛尚未满足，tasks 3.1 保持未勾选。
