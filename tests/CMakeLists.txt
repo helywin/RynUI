@@ -1353,6 +1353,12 @@ target_include_directories(rynui_quad_primitive_tests PRIVATE "${PROJECT_SOURCE_
 target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_graphics)
 add_test(NAME rynui.quad_primitive COMMAND rynui_quad_primitive_tests)
 
+add_executable(rynui_rendering_locality_benchmark rendering_locality_benchmark.cpp)
+rynui_configure_cpp_target(rynui_rendering_locality_benchmark)
+target_include_directories(rynui_rendering_locality_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_rendering_locality_benchmark PRIVATE rynui_graphics rynui_runtime)
+add_test(NAME rynui.rendering_locality COMMAND rynui_rendering_locality_benchmark)
+
 add_executable(rynui_glyph_atlas_tests glyph_atlas_tests.cpp)
 rynui_configure_cpp_target(rynui_glyph_atlas_tests)
 target_include_directories(rynui_glyph_atlas_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

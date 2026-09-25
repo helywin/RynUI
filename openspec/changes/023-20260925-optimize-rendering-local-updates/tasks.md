@@ -3,7 +3,7 @@
 ## 1. 规划与基线
 
 - [x] 1.1 完成 proposal、spec、design、tasks；运行 `openspec doctor --json`、`openspec validate --all --strict --no-interactive`、`git diff --check` 并英文提交规划
-- [ ] 1.2 添加固定 seed 的局部更新规模 benchmark，使用 Windows MSVC Release preset 在改造前记录 Node 数、脏量、脏区数、atlas entry 数、CPU 时间与源码 SHA；定向测试通过后英文提交
+- [x] 1.2 添加固定 seed 的局部更新规模 benchmark，使用 Windows MSVC Release preset 在改造前记录 Node 数、脏量、脏区数、atlas entry 数、CPU 时间与源码 SHA；定向测试通过后英文提交
 
 ## 2. 平台通用局部更新实现
 
