@@ -179,6 +179,21 @@ void GlyphAtlas::clear_dirty_regions() noexcept {
     dirty_regions_.clear();
 }
 
+void GlyphAtlas::mark_all_pages_dirty() {
+    std::vector<GlyphAtlasUploadPlan> full_pages;
+    full_pages.reserve(pages_.size());
+    for (std::size_t page = 0; page < pages_.size(); ++page) {
+        full_pages.push_back({
+            static_cast<std::uint32_t>(page),
+            {0, 0, config_.page_width, config_.page_height},
+            0,
+            config_.page_width,
+            static_cast<std::size_t>(config_.page_width) * config_.page_height,
+        });
+    }
+    dirty_regions_.swap(full_pages);
+}
+
 const GlyphAtlasEntry* GlyphAtlas::find(GlyphAtlasKey key) const noexcept {
     const auto found = key_index_.find(key);
     return found == key_index_.end() ? nullptr : &entries_[found->second];

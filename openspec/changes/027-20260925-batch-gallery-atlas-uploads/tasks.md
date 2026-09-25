@@ -7,7 +7,7 @@
 
 ## 2. 上传事务
 
-- [ ] 2.1 实现 atlas 全页恢复与有序纹理/buffer 共享 copy pass，增加多页、row pitch 和提交失败恢复回归；Windows MSVC Debug 定向测试与真实 D3D12 Gallery 通过后以 `refactor:` 提交
+- [x] 2.1 实现 atlas 全页恢复与有序纹理/buffer 共享 copy pass，增加多页、row pitch 和提交失败恢复回归；Windows MSVC Debug 定向测试与真实 D3D12 Gallery 通过后以 `refactor:` 提交
 
 ## 3. Windows 真实窗口验收
 

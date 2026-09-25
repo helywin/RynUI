@@ -227,6 +227,29 @@ void test_real_font_cache_and_dirty_plan() {
             "space glyph produced texture dirty state");
 }
 
+void test_full_page_retry_after_batch_submit_failure() {
+    GlyphAtlas atlas{{8, 8, 2}};
+    require(atlas.insert(key(10), bitmap(4, 4, 10))
+                && atlas.insert(key(11), bitmap(4, 4, 40))
+                && atlas.page_count() == 2,
+            "multi-page atlas retry fixture did not allocate two pages");
+    atlas.clear_dirty_regions();
+    atlas.mark_all_pages_dirty();
+    const auto dirty = atlas.dirty_regions();
+    require(dirty.size() == 2, "failed batch did not requeue every atlas page");
+    for (std::uint32_t page = 0; page < 2; ++page) {
+        require(dirty[page].page == page
+                    && dirty[page].rectangle == ryn::graphics::GlyphAtlasRect{0, 0, 8, 8}
+                    && dirty[page].source_offset == 0
+                    && dirty[page].source_row_pitch == 8
+                    && dirty[page].uploaded_bytes == atlas.page_bytes(page).size(),
+                "full-page retry plan omitted atlas coverage or used the wrong pitch");
+    }
+    atlas.clear_dirty_regions();
+    require(atlas.dirty_regions().empty(),
+            "confirmed full-page retry did not clear dirty regions");
+}
+
 } // namespace
 
 int main() {
@@ -235,6 +258,7 @@ int main() {
         test_page_boundary_capacity_and_empty_glyph();
         test_complete_key_index_and_stable_entries();
         test_real_font_cache_and_dirty_plan();
+        test_full_page_retry_after_batch_submit_failure();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

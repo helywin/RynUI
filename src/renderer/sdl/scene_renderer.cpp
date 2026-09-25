@@ -215,7 +215,7 @@ SdlSceneRenderer::SdlSceneRenderer(
 }
 
 SdlSceneRenderer::~SdlSceneRenderer() {
-    cancel_buffer_upload_batch();
+    cancel_upload_batch();
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
     if (effect_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(
@@ -338,13 +338,14 @@ bool SdlSceneRenderer::upload_glyph_texture(
         return false;
     }
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
-    if (upload.bytes.size() > std::numeric_limits<Uint32>::max()) {
+    if (upload.bytes.size()
+            > std::numeric_limits<Uint32>::max() - upload.transfer_offset) {
         last_error_ = "Glyph texture transfer buffer exceeds uint32_t";
         return false;
     }
     const SDL_GPUTransferBufferCreateInfo transfer_info{
         SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        static_cast<Uint32>(upload.bytes.size()),
+        static_cast<Uint32>(upload.transfer_offset + upload.bytes.size()),
         0,
     };
     auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
@@ -360,22 +361,10 @@ bool SdlSceneRenderer::upload_glyph_texture(
         return false;
     }
     ++counters_.texture_transfer_maps;
-    std::memcpy(mapped, upload.bytes.data(), upload.bytes.size());
+    std::memcpy(static_cast<std::byte*>(mapped) + upload.transfer_offset,
+        upload.bytes.data(), upload.bytes.size());
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
-    auto* command = SDL_AcquireGPUCommandBuffer(device);
-    if (command == nullptr) {
-        last_error_ = sdl_error("Failed to acquire Glyph texture upload command buffer");
-        SDL_ReleaseGPUTransferBuffer(device, transfer);
-        return false;
-    }
-    auto* pass = SDL_BeginGPUCopyPass(command);
-    if (pass == nullptr) {
-        last_error_ = sdl_error("Failed to begin Glyph texture copy pass");
-        SDL_CancelGPUCommandBuffer(command);
-        SDL_ReleaseGPUTransferBuffer(device, transfer);
-        return false;
-    }
     const SDL_GPUTextureTransferInfo source{
         transfer,
         upload.transfer_offset,
@@ -394,6 +383,39 @@ bool SdlSceneRenderer::upload_glyph_texture(
         rectangle.height,
         1,
     };
+    if (upload_batch_active_) {
+        if (!flush_buffer_upload_chunk() || !ensure_upload_copy_pass()) {
+            SDL_ReleaseGPUTransferBuffer(device, transfer);
+            cancel_upload_batch();
+            return false;
+        }
+        try {
+            upload_transfers_.push_back(transfer);
+        } catch (const std::bad_alloc&) {
+            last_error_ = "Failed to record Glyph texture transfer buffer";
+            SDL_ReleaseGPUTransferBuffer(device, transfer);
+            cancel_upload_batch();
+            return false;
+        }
+        SDL_UploadToGPUTexture(
+            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        counters_.uploaded_bytes += upload.bytes.size();
+        return true;
+    }
+
+    auto* command = SDL_AcquireGPUCommandBuffer(device);
+    if (command == nullptr) {
+        last_error_ = sdl_error("Failed to acquire Glyph texture upload command buffer");
+        SDL_ReleaseGPUTransferBuffer(device, transfer);
+        return false;
+    }
+    auto* pass = SDL_BeginGPUCopyPass(command);
+    if (pass == nullptr) {
+        last_error_ = sdl_error("Failed to begin Glyph texture copy pass");
+        SDL_CancelGPUCommandBuffer(command);
+        SDL_ReleaseGPUTransferBuffer(device, transfer);
+        return false;
+    }
     SDL_UploadToGPUTexture(pass, &source, &destination, false);
     SDL_EndGPUCopyPass(pass);
     if (!SDL_SubmitGPUCommandBuffer(command)) {
@@ -620,9 +642,9 @@ const SceneRendererCounters& SdlSceneRenderer::counters() const noexcept {
     return counters_;
 }
 
-bool SdlSceneRenderer::begin_buffer_upload_batch() {
+bool SdlSceneRenderer::begin_upload_batch() {
     if (!platform_->is_owner_thread() || upload_batch_active_) {
-        last_error_ = "Buffer upload batch violates owner or state contract";
+        last_error_ = "Upload batch violates owner or state contract";
         return false;
     }
     upload_layout_.reset();
@@ -630,13 +652,13 @@ bool SdlSceneRenderer::begin_buffer_upload_batch() {
     return true;
 }
 
-bool SdlSceneRenderer::finish_buffer_upload_batch() {
+bool SdlSceneRenderer::finish_upload_batch() {
     if (!platform_->is_owner_thread() || !upload_batch_active_) {
-        last_error_ = "Buffer upload batch finish violates owner or state contract";
+        last_error_ = "Upload batch finish violates owner or state contract";
         return false;
     }
     if (!flush_buffer_upload_chunk()) {
-        cancel_buffer_upload_batch();
+        cancel_upload_batch();
         return false;
     }
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
@@ -651,7 +673,7 @@ bool SdlSceneRenderer::finish_buffer_upload_batch() {
         if (submitted) {
             ++counters_.upload_submissions;
         } else {
-            last_error_ = sdl_error("Failed to submit buffer upload batch");
+            last_error_ = sdl_error("Failed to submit upload batch");
         }
         upload_command_ = nullptr;
     }
@@ -663,7 +685,7 @@ bool SdlSceneRenderer::finish_buffer_upload_batch() {
     return submitted;
 }
 
-void SdlSceneRenderer::cancel_buffer_upload_batch() noexcept {
+void SdlSceneRenderer::cancel_upload_batch() noexcept {
     auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
     if (active_upload_mapped_ != nullptr) {
         SDL_UnmapGPUTransferBuffer(
@@ -717,6 +739,25 @@ bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity)
     return true;
 }
 
+bool SdlSceneRenderer::ensure_upload_copy_pass() {
+    if (upload_pass_ != nullptr) {
+        return true;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    upload_command_ = SDL_AcquireGPUCommandBuffer(device);
+    if (upload_command_ == nullptr) {
+        last_error_ = sdl_error("Failed to acquire upload batch command buffer");
+        return false;
+    }
+    upload_pass_ = SDL_BeginGPUCopyPass(
+        static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+    if (upload_pass_ == nullptr) {
+        last_error_ = sdl_error("Failed to begin upload batch copy pass");
+        return false;
+    }
+    return true;
+}
+
 bool SdlSceneRenderer::flush_buffer_upload_chunk() {
     if (active_upload_transfer_ == nullptr) {
         return true;
@@ -725,18 +766,8 @@ bool SdlSceneRenderer::flush_buffer_upload_chunk() {
     auto* transfer = static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_);
     SDL_UnmapGPUTransferBuffer(device, transfer);
     active_upload_mapped_ = nullptr;
-    if (upload_command_ == nullptr) {
-        upload_command_ = SDL_AcquireGPUCommandBuffer(device);
-        if (upload_command_ == nullptr) {
-            last_error_ = sdl_error("Failed to acquire buffer upload batch command buffer");
-            return false;
-        }
-        upload_pass_ = SDL_BeginGPUCopyPass(
-            static_cast<SDL_GPUCommandBuffer*>(upload_command_));
-        if (upload_pass_ == nullptr) {
-            last_error_ = sdl_error("Failed to begin buffer upload batch copy pass");
-            return false;
-        }
+    if (!ensure_upload_copy_pass()) {
+        return false;
     }
     try {
         upload_transfers_.push_back(transfer);
@@ -777,7 +808,7 @@ bool SdlSceneRenderer::upload_buffer(
         if (active_upload_transfer_ == nullptr || !upload_layout_.can_fit(bytes.size())) {
             if (!flush_buffer_upload_chunk()
                     || !begin_buffer_upload_chunk(static_cast<Uint32>(bytes.size()))) {
-                cancel_buffer_upload_batch();
+                cancel_upload_batch();
                 return false;
             }
         }

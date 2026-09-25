@@ -105,12 +105,13 @@ public:
 
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
-    bool begin_buffer_upload_batch();
-    bool finish_buffer_upload_batch();
-    void cancel_buffer_upload_batch() noexcept;
+    bool begin_upload_batch();
+    bool finish_upload_batch();
+    void cancel_upload_batch() noexcept;
 
 private:
     bool begin_buffer_upload_chunk(std::uint32_t minimum_capacity);
+    bool ensure_upload_copy_pass();
     bool flush_buffer_upload_chunk();
     bool upload_buffer(
         void* buffer,

@@ -150,6 +150,7 @@ public:
     [[nodiscard]] std::span<const std::uint8_t> page_bytes(std::uint32_t page) const;
     [[nodiscard]] std::span<const GlyphAtlasUploadPlan> dirty_regions() const noexcept;
     void clear_dirty_regions() noexcept;
+    void mark_all_pages_dirty();
 
 private:
     struct Page;

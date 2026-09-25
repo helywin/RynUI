@@ -360,9 +360,7 @@ public:
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto scene_synchronized = std::chrono::steady_clock::now();
-            const bool batch_uploads = quad_buffer_ != nullptr
-                && text_scene_->atlas().dirty_regions().empty();
-            if (batch_uploads && !renderer_->begin_buffer_upload_batch()) {
+            if (!renderer_->begin_upload_batch()) {
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -389,14 +387,12 @@ public:
                     });
                 effect_synchronized = std::chrono::steady_clock::now();
             } catch (...) {
-                if (batch_uploads) {
-                    renderer_->cancel_buffer_upload_batch();
-                    invalidate_buffer_uploads();
-                }
+                renderer_->cancel_upload_batch();
+                invalidate_uploads();
                 throw;
             }
-            if (batch_uploads && !renderer_->finish_buffer_upload_batch()) {
-                invalidate_buffer_uploads();
+            if (!renderer_->finish_upload_batch()) {
+                invalidate_uploads();
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -587,7 +583,8 @@ public:
     }
 
 private:
-    void invalidate_buffer_uploads() {
+    void invalidate_uploads() {
+        text_scene_->atlas().mark_all_pages_dirty();
         application_->services().surfaces().instances().mark_all_dirty();
         text_scene_->glyph_scene().instances().mark_all_dirty();
         effect_resources_.invalidate_upload();
