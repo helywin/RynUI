@@ -506,6 +506,7 @@ public:
     void reset_frame_timings() noexcept {
         scroll_capture_enabled_ = true;
         scroll_capture_complete_ = false;
+        renderer_counters_before_scroll_ = renderer_->counters();
         application_->services().set_sync_profiling_enabled(true);
         application_->services().reset_sync_profile();
         inputs_->set_sync_profiling_enabled(true);
@@ -542,6 +543,10 @@ public:
         return scroll_capture_complete_ ? captured_renderer_counters_
                                         : renderer_->counters();
     }
+    [[nodiscard]] const ryn::detail::SceneRendererCounters&
+    renderer_counters_before_scroll() const noexcept {
+        return renderer_counters_before_scroll_;
+    }
 
 private:
     static constexpr std::int64_t scroll_capture_frames = 240;
@@ -565,6 +570,7 @@ private:
     bool scroll_capture_enabled_{};
     bool scroll_capture_complete_{};
     ryn::detail::SceneRendererCounters captured_renderer_counters_{};
+    ryn::detail::SceneRendererCounters renderer_counters_before_scroll_{};
     std::int64_t total_frame_microseconds_{};
     std::int64_t total_scene_sync_microseconds_{};
     std::uint64_t total_hit_refresh_nanoseconds_{};
@@ -1441,6 +1447,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto glyph = glyph_resources.counters();
         const auto effect = submitter.effect_uploads();
         const auto render = submitter.captured_renderer_counters();
+        const auto render_before_scroll = submitter.renderer_counters_before_scroll();
         const auto phase_times = submitter.average_phase_microseconds();
         const auto detail_times = submitter.average_detail_microseconds();
         const auto sync_profile = application.services().sync_profile();
@@ -1715,6 +1722,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " effect_uploads=" << effect.buffer_uploads
             << " effect_uploaded_bytes=" << effect.uploaded_bytes
             << " gpu_upload_submissions=" << render.upload_submissions
+            << " scroll_buffer_upload_regions="
+            << render.buffer_upload_regions - render_before_scroll.buffer_upload_regions
+            << " scroll_buffer_transfer_creations="
+            << render.buffer_transfer_creations
+                - render_before_scroll.buffer_transfer_creations
+            << " scroll_buffer_transfer_maps="
+            << render.buffer_transfer_maps - render_before_scroll.buffer_transfer_maps
+            << " scroll_texture_transfer_creations="
+            << render.texture_transfer_creations
+                - render_before_scroll.texture_transfer_creations
+            << " scroll_texture_transfer_maps="
+            << render.texture_transfer_maps - render_before_scroll.texture_transfer_maps
             << " quad_draws=" << render.quad_draws
             << " glyph_draws=" << render.glyph_draws
             << " effect_draws=" << render.effect_draws

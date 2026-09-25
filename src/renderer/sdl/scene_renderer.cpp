@@ -350,12 +350,14 @@ bool SdlSceneRenderer::upload_glyph_texture(
         last_error_ = sdl_error("Failed to create Glyph texture transfer buffer");
         return false;
     }
+    ++counters_.texture_transfer_creations;
     void* mapped = SDL_MapGPUTransferBuffer(device, transfer, false);
     if (mapped == nullptr) {
         last_error_ = sdl_error("Failed to map Glyph texture transfer buffer");
         SDL_ReleaseGPUTransferBuffer(device, transfer);
         return false;
     }
+    ++counters_.texture_transfer_maps;
     std::memcpy(mapped, upload.bytes.data(), upload.bytes.size());
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
@@ -693,12 +695,14 @@ bool SdlSceneRenderer::upload_buffer(
         last_error_ = sdl_error("Failed to create buffer transfer buffer");
         return false;
     }
+    ++counters_.buffer_transfer_creations;
     void* mapped = SDL_MapGPUTransferBuffer(device, transfer, false);
     if (mapped == nullptr) {
         last_error_ = sdl_error("Failed to map buffer transfer buffer");
         SDL_ReleaseGPUTransferBuffer(device, transfer);
         return false;
     }
+    ++counters_.buffer_transfer_maps;
     std::memcpy(mapped, bytes.data(), bytes.size());
     SDL_UnmapGPUTransferBuffer(device, transfer);
     if (upload_batch_active_) {
@@ -732,6 +736,7 @@ bool SdlSceneRenderer::upload_buffer(
         };
         SDL_UploadToGPUBuffer(
             static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        ++counters_.buffer_upload_regions;
         counters_.uploaded_bytes += bytes.size();
         return true;
     }
@@ -755,6 +760,7 @@ bool SdlSceneRenderer::upload_buffer(
         static_cast<Uint32>(bytes.size()),
     };
     SDL_UploadToGPUBuffer(pass, &source, &destination, false);
+    ++counters_.buffer_upload_regions;
     SDL_EndGPUCopyPass(pass);
     if (!SDL_SubmitGPUCommandBuffer(command)) {
         last_error_ = sdl_error("Failed to submit buffer upload");

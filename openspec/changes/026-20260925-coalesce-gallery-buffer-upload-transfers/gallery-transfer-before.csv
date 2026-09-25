@@ -1,0 +1,6 @@
+"run","gpu_driver","shader_format","display_scale","pixel_size","frame_samples","frame_average_us","frame_p95_us","frame_resource_sync_us","frame_quad_sync_us","frame_glyph_sync_us","frame_effect_sync_us","frame_upload_finish_us","gpu_upload_submissions","scroll_buffer_upload_regions","scroll_buffer_transfer_creations","scroll_buffer_transfer_maps","scroll_texture_transfer_creations","scroll_texture_transfer_maps","quad_draws","glyph_draws","effect_draws","scroll_acceptance_steps","scroll_sequence_ms","exit_code"
+"1",,,,,"240","4154","5078","1354","160","1018","26","148","1320","2848","2848","2848","0","0","2190","2178","553","240","999","0"
+"2",,,,,"240","4157","5075","1334","156","993","24","159","1320","2848","2848","2848","0","0","2190","2178","553","240","999","0"
+"3",,,,,"240","4153","5076","1308","155","1000","26","125","1320","2848","2848","2848","0","0","2190","2178","553","240","999","0"
+"4",,,,,"240","4125","5154","1397","161","1030","27","176","1320","2848","2848","2848","0","0","2190","2178","553","240","991","0"
+"5",,,,,"240","4127","5089","1298","155","984","23","134","1320","2848","2848","2848","0","0","2190","2178","553","240","993","0"

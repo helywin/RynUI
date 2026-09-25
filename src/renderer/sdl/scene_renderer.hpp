@@ -21,6 +21,11 @@ namespace ryn::detail {
 struct SceneRendererCounters {
     std::uint64_t upload_submissions{};
     std::uint64_t uploaded_bytes{};
+    std::uint64_t buffer_upload_regions{};
+    std::uint64_t buffer_transfer_creations{};
+    std::uint64_t buffer_transfer_maps{};
+    std::uint64_t texture_transfer_creations{};
+    std::uint64_t texture_transfer_maps{};
     std::uint64_t command_buffers{};
     std::uint64_t render_passes{};
     std::uint64_t quad_draws{};

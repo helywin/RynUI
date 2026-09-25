@@ -3,7 +3,7 @@
 ## 1. 规划与基线
 
 - [x] 1.1 建立 proposal、spec、design 与任务，运行可用的 OpenSpec 校验和 `git diff --check`，以 `docs:` 提交
-- [ ] 1.2 增加 renderer transfer 创建/映射及区域 telemetry；正式 Windows MSVC Release 干净构建，五进程真实 D3D12 Gallery 建立基线，以 `test:` 提交
+- [x] 1.2 增加 renderer transfer 创建/映射及区域 telemetry；正式 Windows MSVC Release 干净构建，五进程真实 D3D12 Gallery 建立基线，以 `test:` 提交
 
 ## 2. 平台通用上传合同
 
