@@ -9,7 +9,7 @@
 
 - [x] 2.1 实现每 domain generation-aware slot stamp；补充重复入队、首次顺序、slot 重用、clear 后重新入队及根语义测试；Windows MSVC Debug 构建与定向 CTest 通过后英文提交
 - [x] 2.2 Quad/Glyph 脏区改为 append 与读取时一次归并；补充乱序、重复、相邻与变长 replace 测试；Windows MSVC Debug 构建与定向 CTest 通过后英文提交
-- [ ] 2.3 Glyph atlas 增加完整 key 索引；补充 phase/mode/字体区分及失败后重试测试；Windows MSVC Debug 构建与定向 CTest 通过后英文提交
+- [x] 2.3 Glyph atlas 增加完整 key 索引；补充 phase/mode/字体区分及失败后重试测试；Windows MSVC Debug 构建与定向 CTest 通过后英文提交
 
 ## 3. 通用验证与收口
 

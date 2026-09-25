@@ -92,6 +92,7 @@ void run(std::uint32_t count, std::uint32_t dirty_count) {
 } // namespace
 
 int main() {
+    std::cout << std::unitbuf;
     std::cout << "node_count,dirty_count,queued,quad_ranges,atlas_entries,"
                  "queue_cpu_us,quad_collect_cpu_us,quad_plan_cpu_us,atlas_lookup_cpu_us\n";
     for (const auto count : {1024U, 4096U, 16384U}) {

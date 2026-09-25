@@ -7,6 +7,7 @@
 #include <deque>
 #include <limits>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 namespace ryn::graphics {
@@ -152,6 +153,9 @@ public:
 
 private:
     struct Page;
+    struct KeyHash final {
+        [[nodiscard]] std::size_t operator()(const GlyphAtlasKey& key) const noexcept;
+    };
 
     [[nodiscard]] const GlyphAtlasEntry* find(GlyphAtlasKey key) const noexcept;
     [[nodiscard]] GlyphAtlasResult allocate(
@@ -161,6 +165,7 @@ private:
     GlyphAtlasConfig config_;
     std::vector<Page> pages_;
     std::deque<GlyphAtlasEntry> entries_;
+    std::unordered_map<GlyphAtlasKey, std::size_t, KeyHash> key_index_;
     std::vector<GlyphAtlasUploadPlan> dirty_regions_;
 };
 

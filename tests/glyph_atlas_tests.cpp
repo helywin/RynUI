@@ -119,6 +119,10 @@ void test_page_boundary_capacity_and_empty_glyph() {
                 && exhausted.error.kind == GlyphAtlasErrorKind::capacity_exhausted
                 && exhausted.error.page_count == 2,
             "full atlas did not report explicit capacity exhaustion");
+    const auto retry = atlas.insert(key(12), bitmap(1, 1, 3));
+    require(!retry && retry.error.kind == GlyphAtlasErrorKind::capacity_exhausted
+                && atlas.entry_count() == 2,
+            "capacity failure incorrectly entered the glyph key index");
 
     GlyphAtlas too_small{{6, 6, 1}};
     const auto oversized = too_small.insert(key(20), bitmap(5, 5, 1));
@@ -133,6 +137,44 @@ void test_page_boundary_capacity_and_empty_glyph() {
                 && too_small.page_count() == 0
                 && too_small.dirty_regions().empty(),
             "empty glyph allocated atlas storage");
+    auto invalid = bitmap(1, 1, 4);
+    invalid.coverage.clear();
+    const auto rejected = too_small.insert(key(22), invalid);
+    const auto accepted = too_small.insert(key(22), empty);
+    require(!rejected && rejected.error.kind == GlyphAtlasErrorKind::invalid_bitmap
+                && accepted && !accepted.cache_hit,
+            "invalid bitmap was incorrectly cached as a glyph entry");
+}
+
+void test_complete_key_index_and_stable_entries() {
+    GlyphAtlas atlas;
+    GlyphBitmap empty;
+    empty.advance_x = 2.0F;
+    const auto base = key(50);
+    const auto first = atlas.insert(base, empty);
+    require(first && first.entry->empty, "empty glyph insert failed");
+
+    auto other_font = base;
+    ++other_font.font.generation;
+    auto other_size = base;
+    ++other_size.pixel_size;
+    auto other_phase = base;
+    other_phase.phase = ryn::font::GlyphRasterPhase::half;
+    auto other_mode = base;
+    other_mode.mode = static_cast<GlyphRasterMode>(1);
+    for (const auto variant : {other_font, other_size, other_phase, other_mode}) {
+        const auto inserted = atlas.insert(variant, empty);
+        require(inserted && !inserted.cache_hit && inserted.entry != first.entry,
+                "glyph key index merged distinct raster identities");
+    }
+    for (std::uint32_t glyph_id = 100; glyph_id < 16484; ++glyph_id) {
+        require(static_cast<bool>(atlas.insert(key(glyph_id), empty)),
+                "glyph index growth failed");
+    }
+    const auto repeated = atlas.insert(base, empty);
+    require(repeated && repeated.cache_hit && repeated.entry == first.entry
+                && atlas.entry_count() == 16389 && atlas.dirty_regions().empty(),
+            "glyph index rehash changed a stable entry or dirtied atlas storage");
 }
 
 void test_real_font_cache_and_dirty_plan() {
@@ -191,6 +233,7 @@ int main() {
     try {
         test_shelf_allocation_padding_and_stability();
         test_page_boundary_capacity_and_empty_glyph();
+        test_complete_key_index_and_stable_entries();
         test_real_font_cache_and_dirty_plan();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

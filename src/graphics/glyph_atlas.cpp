@@ -82,6 +82,21 @@ GlyphAtlas::GlyphAtlas(GlyphAtlasConfig config) : config_(config) {
 
 GlyphAtlas::~GlyphAtlas() = default;
 
+std::size_t GlyphAtlas::KeyHash::operator()(const GlyphAtlasKey& key) const noexcept {
+    std::uint64_t hash = 14695981039346656037ULL;
+    const auto mix = [&hash](std::uint32_t value) {
+        hash ^= value;
+        hash *= 1099511628211ULL;
+    };
+    mix(key.font.slot);
+    mix(key.font.generation);
+    mix(key.glyph_id);
+    mix(key.pixel_size);
+    mix(static_cast<std::uint32_t>(key.phase));
+    mix(static_cast<std::uint32_t>(key.mode));
+    return static_cast<std::size_t>(hash);
+}
+
 GlyphAtlasResult GlyphAtlas::ensure(
     font::FontRuntime& fonts,
     font::FontIdentity font_identity,
@@ -165,8 +180,8 @@ void GlyphAtlas::clear_dirty_regions() noexcept {
 }
 
 const GlyphAtlasEntry* GlyphAtlas::find(GlyphAtlasKey key) const noexcept {
-    const auto found = std::ranges::find(entries_, key, &GlyphAtlasEntry::key);
-    return found == entries_.end() ? nullptr : &*found;
+    const auto found = key_index_.find(key);
+    return found == key_index_.end() ? nullptr : &entries_[found->second];
 }
 
 GlyphAtlasResult GlyphAtlas::allocate(
@@ -194,6 +209,12 @@ GlyphAtlasResult GlyphAtlas::allocate(
             glyph.raster_scale,
             true,
         });
+        try {
+            key_index_.emplace(key, entries_.size() - 1);
+        } catch (...) {
+            entries_.pop_back();
+            throw;
+        }
         return {&entries_.back(), false, {}};
     }
 
@@ -255,27 +276,12 @@ GlyphAtlasResult GlyphAtlas::allocate(
             allocation_height);
     }
 
-    Page& page = pages_[selected_page];
-    page.cursor_x = placement->next_cursor_x;
-    page.cursor_y = placement->next_cursor_y;
-    page.shelf_height = placement->next_shelf_height;
     const GlyphAtlasRect coverage_rect{
         placement->rectangle.x + glyph_atlas_padding,
         placement->rectangle.y + glyph_atlas_padding,
         glyph.width,
         glyph.height,
     };
-    for (std::uint32_t row = 0; row < glyph.height; ++row) {
-        const std::size_t source_offset = static_cast<std::size_t>(row) * glyph.row_stride;
-        const std::size_t destination_offset =
-            static_cast<std::size_t>(coverage_rect.y + row) * config_.page_width
-            + coverage_rect.x;
-        std::copy_n(
-            glyph.coverage.begin() + source_offset,
-            glyph.width,
-            page.coverage.begin() + destination_offset);
-    }
-
     entries_.push_back({
         key,
         selected_page,
@@ -296,15 +302,36 @@ GlyphAtlasResult GlyphAtlas::allocate(
         glyph.raster_scale,
         false,
     });
-    dirty_regions_.push_back({
-        selected_page,
-        placement->rectangle,
-        static_cast<std::size_t>(placement->rectangle.y) * config_.page_width
-            + placement->rectangle.x,
-        config_.page_width,
-        static_cast<std::size_t>(placement->rectangle.width)
-            * placement->rectangle.height,
-    });
+    try {
+        key_index_.emplace(key, entries_.size() - 1);
+        dirty_regions_.push_back({
+            selected_page,
+            placement->rectangle,
+            static_cast<std::size_t>(placement->rectangle.y) * config_.page_width
+                + placement->rectangle.x,
+            config_.page_width,
+            static_cast<std::size_t>(placement->rectangle.width)
+                * placement->rectangle.height,
+        });
+    } catch (...) {
+        key_index_.erase(key);
+        entries_.pop_back();
+        throw;
+    }
+    Page& page = pages_[selected_page];
+    page.cursor_x = placement->next_cursor_x;
+    page.cursor_y = placement->next_cursor_y;
+    page.shelf_height = placement->next_shelf_height;
+    for (std::uint32_t row = 0; row < glyph.height; ++row) {
+        const std::size_t source_offset = static_cast<std::size_t>(row) * glyph.row_stride;
+        const std::size_t destination_offset =
+            static_cast<std::size_t>(coverage_rect.y + row) * config_.page_width
+            + coverage_rect.x;
+        std::copy_n(
+            glyph.coverage.begin() + source_offset,
+            glyph.width,
+            page.coverage.begin() + destination_offset);
+    }
     return {&entries_.back(), false, {}};
 }
 
