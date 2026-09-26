@@ -34,6 +34,8 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 
 需要丢弃旧 CMake cache 并重新探测工具链时，加上 `-Fresh`。
 
+Windows presets 在 configure、build 和 test 中设置 `VSLANG=1033`，优先使用英文诊断；只有中文编译器资源的机器仍会回退到中文。工程会在 UTF-8 控制台重新探测实际 `/showIncludes` 前缀，避免 CMake 的诊断解码差异让 Ninja 丢失头文件依赖。已有构建树若出现乱码前缀或头文件修改后没有重编译，先 `cmake --fresh --preset windows-msvc`，再对使用的 configuration 执行 `cmake --build --preset windows-msvc-debug --clean-first`（Release 使用对应 preset）；仅重新链接不能修复新旧对象的 ABI 混用。configure 与 build 应使用相同控制台编码。
+
 如果已经位于 Visual Studio Developer PowerShell，也可以直接执行：
 
 ```powershell

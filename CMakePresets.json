@@ -23,6 +23,9 @@
       "displayName": "Windows x64 / MSVC",
       "description": "Run from a Visual Studio Developer Environment.",
       "inherits": "base",
+      "environment": {
+        "VSLANG": "1033"
+      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",

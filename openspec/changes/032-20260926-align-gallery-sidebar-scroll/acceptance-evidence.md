@@ -15,6 +15,15 @@ Windows 正式验收：用 `windows-msvc-release` 构建并在真实 Windows 窗
 集成收口：Windows MSVC Debug 全量构建通过。完整 CTest 首次为 229/235；六项失败均源于旧 Windows 工作区检出的 14 个被 SHA/golden 校验的文件仍为 CRLF。把这 14 个文件恢复 LF 后，Git 对象哈希与 `HEAD` 相同且无内容差异；六项定向复测通过，完整 CTest 重跑 235/235 通过（166.19 秒）。本 change strict validate 通过；全仓 strict 仍为 26/32，既有 change 013、015、016、017、018、021 失败，本 change 通过。当前 CLI 对 `openspec doctor --json` 报 `unknown command 'doctor'`。`git diff --check` 通过，工作树在提交前无其他内容差异。
 # 用户反馈修正（2026-09-26）
 
+## Windows 增量构建修复
+
+- Release 启动复现 `0xc0000005`，模块偏移 `0x105b`；反汇编位于结构体内 `std::function` 的析构路径。修改 `TokenGalleryDefinition` 后的构建日志没有重编译 `main.cpp`，Ninja 对该对象记录 `#deps 0`。
+- 本机只有 `2052/clui.dll`，`VSLANG=1033` 回退到中文；console output code page 为 65001、ANSI code page 为 936。CMake 自动探测把 UTF-8 `/showIncludes` 输出按 ANSI 解码，规则前缀成为乱码。新增配置探测使用真实输出代码页及 UTF-8 解码，规则恢复为 `注意: 包含文件:  `。
+- 对 Debug 和 Release **分别** clean build。两者的 `main.cpp` 均记录 `#deps 15`，包含 `token_gallery_definition.hpp`。随后触碰该头文件，真实 Release 增量构建重新编译 `main.cpp`、`token_gallery_runtime.cpp` 与 `token_gallery_definition.cpp`。
+- 清理重建后的 Windows MSVC Release D3D12 连续拖动在 100%、125%、150%、200% 四种 render scale 均 exit 0；每种 495 个阶段，包含 480 次跨帧移动及固定顶栏目录按钮。实际系统 DPI 为 125%，其余通过 Gallery 的 acceptance-scale 映射验证，未更改系统 DPI 设置。
+
+## 裁剪边缘修复
+
 - 扩展 `--scrollbar-acceptance` 后，修复前 Windows MSVC Debug 真实窗口稳定退出：`frame_error=Cannot pack a fully clipped rounded effect`（exit 5）。阴影 store 使用 1 logical px 的保守 AA 范围，GPU 使用 1 physical px；125% DPI 下只有保守边缘与 clip 相交的合法阴影被 GPU pack 拒绝。
 - 新增 GPU resource 回归在修复前同样失败；修复后合法的完全裁剪实例上传透明零面积 quad，保留 store 索引与已组合 draw 顺序，重新进入视口时正常恢复。无效 geometry/metrics 仍按原合同拒绝。
 - Windows `windows-msvc` / Debug 定向 CTest 10/10 通过，包含 rounded effect math/store/scene/GPU/resources、shader contract 和 Gallery frame/viewport。回归覆盖 100%、125%、150%、200% 以及返回 100%，窗口与 ancestor clip 两种边缘，往返进入/离开物理可见区。
