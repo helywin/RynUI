@@ -17,4 +17,4 @@
 - [x] 4.1 Windows MSVC Release D3D12：亮/暗、导航悬浮/子项、图标/密码、两列与窄窗口、四种缩放连续拖动及输入回归，保存 GPU 图像与事件证据，以 `test:` 提交
 
 ## 5. 平台通用集成验收
-- [ ] 5.1 Windows MSVC Debug 完整 CTest、当前 strict、全仓 strict、可用 doctor、diff check；更新支持边界与证据，以 `test:` 提交
+- [x] 5.1 Windows MSVC Debug 完整 CTest、当前 strict、全仓 strict、可用 doctor、diff check；更新支持边界与证据，以 `test:` 提交

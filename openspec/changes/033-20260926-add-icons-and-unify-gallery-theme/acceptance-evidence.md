@@ -45,3 +45,9 @@ Password 的可见性操作使用 Eye/EyeInvisible；Input clear 使用 CloseCir
 - [滚动条亮色悬浮](evidence/scrollbar-hover.png) · [按下](evidence/scrollbar-pressed.png) · [暗色悬浮](evidence/scrollbar-dark-hover.png)
 
 真实窗口验收通过，不代表 Linux 窗口或 GPU 已运行；本 change 未要求 Linux 平台验收。
+
+## 集成收口
+
+Windows MSVC Debug 全量构建通过。完整 CTest 首轮 215/236：20 项测试内部重新配置 CMake 时找不到 Ninja，因为调用 CTest 的 shell 没有继承 MSVC 开发环境；另 1 项 `rynui.gallery_document_contract` 仍假设旧 Gallery 只有四处 Button 调用。合同按新增顶栏主题切换更新为五处，且使用 `VsDevCmd.bat -arch=x64` 启动 CTest 后，两个原因各选一项定向复测均通过。完整 CTest 重跑 **236/236** 通过（160.56 秒）；这也是本 change 的平台通用集成证据。
+
+`openspec validate 033-20260926-add-icons-and-unify-gallery-theme --strict --no-interactive` 通过；全仓 `openspec validate --all --strict --no-interactive` 为 27/33，历史 change 013、015、016、017、018、021 仍失败，033 通过。当前 OpenSpec CLI 对 `doctor --json` 返回 `unknown command 'doctor'`。`git diff --check` 通过；源码、合同和验收文本经 `git ls-files --eol` 检查均为 index/working-tree LF。全局 Git 配置为 `core.autocrlf=input`、`core.eol=lf`。
