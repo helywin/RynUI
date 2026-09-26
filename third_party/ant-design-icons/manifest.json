@@ -1,0 +1,64 @@
+{
+  "package": "@ant-design/icons-svg",
+  "version": "4.6.0",
+  "upstream_commit": "7f2516ac91226d2b41f93b35cb5197c8d94f7189",
+  "license_sha256": "5d367fb0a07340571542eb4ee8eb1add62d37b71bad6786a57c2e9a86bf76c70",
+  "fonttools_version": "4.60.1",
+  "outline_container_sha256": "f035282c326560884263c4181ad02c83c9b2231e7167a11d402d6d4eeb834b88",
+  "icons": [
+    {
+      "name": "EyeOutlined",
+      "file": "outlined-eye.svg",
+      "codepoint": 57344,
+      "sha256": "ca545385afc10fba55bd3fee796d3028acf2ea719c15691edcc2be13b31882b9"
+    },
+    {
+      "name": "EyeInvisibleOutlined",
+      "file": "outlined-eye-invisible.svg",
+      "codepoint": 57345,
+      "sha256": "5cf34fba95519cfbbede759a88752d6f5dded7e5a33613986298b5475d0c5284"
+    },
+    {
+      "name": "SearchOutlined",
+      "file": "outlined-search.svg",
+      "codepoint": 57346,
+      "sha256": "2e9ac2cc3cc98da2c623fd07ee412c771dc649d46587c1d144b6e5a98d9c440c"
+    },
+    {
+      "name": "CloseCircleFilled",
+      "file": "filled-close-circle.svg",
+      "codepoint": 57347,
+      "sha256": "b0c3a47527a743a15f521086b7f9b199354e91b7e500317eb2aad8bfaf0e6cc9"
+    },
+    {
+      "name": "MenuOutlined",
+      "file": "outlined-menu.svg",
+      "codepoint": 57348,
+      "sha256": "e919d3d502e97ef1b630aa5f4e25f27029a8b8f7d602436c80d973ff9a0f6375"
+    },
+    {
+      "name": "SunOutlined",
+      "file": "outlined-sun.svg",
+      "codepoint": 57349,
+      "sha256": "eafd84a029b2a2cc66a58ab7c02b4fd15f1b7e8d372ab7d3be71a1bbe6d48a3c"
+    },
+    {
+      "name": "MoonOutlined",
+      "file": "outlined-moon.svg",
+      "codepoint": 57350,
+      "sha256": "642742b8ea12544a86e7c0a3f26ccaf669f7b24d27bdb3c87e696d6422b69b40"
+    },
+    {
+      "name": "UserOutlined",
+      "file": "outlined-user.svg",
+      "codepoint": 57351,
+      "sha256": "c7d426037729be2eb44aa5abeea0296e1f78ff6d6ea12b275984ecfaeaa6a797"
+    },
+    {
+      "name": "LockOutlined",
+      "file": "outlined-lock.svg",
+      "codepoint": 57352,
+      "sha256": "0ef3c9d9b67c6003a493963d1784172670fe1f65759227d76a36efe4f35db9ab"
+    }
+  ]
+}

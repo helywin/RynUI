@@ -1,6 +1,12 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_test(
+    NAME rynui.icon_asset_contract
+    COMMAND "${Python3_EXECUTABLE}"
+        "${PROJECT_SOURCE_DIR}/tools/verify_icon_assets.py"
+)
+
 add_executable(rynui_text_input_event_tests text_input_event_tests.cpp)
 rynui_configure_cpp_target(rynui_text_input_event_tests)
 target_link_libraries(rynui_text_input_event_tests PRIVATE rynui_input)

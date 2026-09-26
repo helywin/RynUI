@@ -1,5 +1,21 @@
 include_guard(GLOBAL)
 
+# Checked-in icon artwork. No runtime download or system-font fallback.
+set(RYNUI_ANT_ICONS_VERSION "4.6.0")
+set(RYNUI_ANT_ICONS_COMMIT "7f2516ac91226d2b41f93b35cb5197c8d94f7189")
+set(RYNUI_ANT_ICONS_SOURCE_URL
+    "https://registry.npmjs.org/@ant-design/icons-svg/-/icons-svg-4.6.0.tgz")
+set(RYNUI_ANT_ICONS_SOURCE_SHA256
+    "7e07fdcf459f1f2ae6721ca1796811d9fb7737693af0724b55840f4edccde80b")
+set(RYNUI_ANT_ICONS_LICENSE "MIT")
+# Optional maintenance tool, not a configure/build/runtime dependency.
+set(RYNUI_ICON_FONTTOOLS_VERSION "4.60.1")
+set(RYNUI_ICON_FONTTOOLS_SOURCE_URL
+    "https://files.pythonhosted.org/packages/4b/42/97a13e47a1e51a5a7142475bbcf5107fe3a68fc34aef331c897d5fb98ad0/fonttools-4.60.1.tar.gz")
+set(RYNUI_ICON_FONTTOOLS_SOURCE_SHA256
+    "ef00af0439ebfee806b25f24c8f92109157ff3fac5731dc7867957812e87b8d9")
+set(RYNUI_ICON_FONTTOOLS_LICENSE "MIT")
+
 set(RYNUI_UTF8PROC_VERSION "2.11.3")
 set(RYNUI_UTF8PROC_SOURCE_URL
     "https://github.com/JuliaStrings/utf8proc/releases/download/v2.11.3/utf8proc-2.11.3.tar.gz")
