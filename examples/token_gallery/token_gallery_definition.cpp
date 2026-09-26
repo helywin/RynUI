@@ -211,49 +211,43 @@ void filter_button(
 }
 
 void navigation_controls(const std::shared_ptr<GalleryState>& state) {
-    ryn::Text(utf8("Navigation / 文档导航"));
-    ryn::Space(
-        ryn::SpaceProps{}
-            .wrap(true)
-            .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
-        [state] {
-            for (const auto& section : gallery_document_sections()) {
-                navigation_button(
-                    state,
-                    section.title,
-                    GalleryNavigationTarget::to_section(section.kind));
-            }
-        });
-    ryn::Text(utf8("Component Categories / 组件分类"));
-    ryn::Space(
-        ryn::SpaceProps{}
-            .wrap(true)
-            .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
-        [state] {
-            for (const auto& category : ant_design_reference_categories()) {
-                navigation_button(
-                    state,
-                    gallery_category_title(category.category),
-                    GalleryNavigationTarget::to_category(category.category));
-            }
-        });
-    ryn::Text(utf8("Support Filter / 支持状态筛选"));
-    ryn::Space(
-        ryn::SpaceProps{}
-            .wrap(true)
-            .size(ryn::dp(8.0F), ryn::dp(8.0F))
-            .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
-        [state] {
-            filter_button(state, "All / 全部", GallerySupportFilter::all);
-            filter_button(state, "Implemented / 已实现", GallerySupportFilter::implemented);
-            filter_button(state, "Partial / 部分支持", GallerySupportFilter::partial);
-            filter_button(state, "Planned / 规划中", GallerySupportFilter::planned);
-            filter_button(state, "Web only / 仅 Web", GallerySupportFilter::web_only);
-            filter_button(state, "Deprecated / 已弃用", GallerySupportFilter::deprecated);
-            filter_button(state, "Out of scope / 不在范围", GallerySupportFilter::out_of_scope);
-        });
+    ryn::Text(utf8("Components / 组件"));
+    ryn::Text(ryn::TextProps{}
+        .content(utf8("Guides / 文档"))
+        .tone(ryn::TextTone::Secondary));
+    for (const auto& section : gallery_document_sections()) {
+        navigation_button(
+            state, section.title,
+            GalleryNavigationTarget::to_section(section.kind));
+    }
+    ryn::Text(ryn::TextProps{}
+        .content(utf8("Component Categories / 组件分类"))
+        .tone(ryn::TextTone::Secondary));
+    for (const auto& category : ant_design_reference_categories()) {
+        navigation_button(
+            state,
+            gallery_category_title(category.category),
+            GalleryNavigationTarget::to_category(category.category));
+        for (const auto& entry : ant_design_reference_entries()) {
+            if (entry.category != category.category) continue;
+            ryn::Text(ryn::TextProps{}
+                .content(utf8(std::string(entry.english_name) + " / "
+                    + std::string(entry.chinese_name)))
+                .tone(ryn::TextTone::Secondary)
+                .layout(ryn::LayoutStyle{}
+                    .margin_left(ryn::dp(16.0F))));
+        }
+    }
+    ryn::Text(ryn::TextProps{}
+        .content(utf8("Support Filter / 支持状态筛选"))
+        .tone(ryn::TextTone::Secondary));
+    filter_button(state, "All / 全部", GallerySupportFilter::all);
+    filter_button(state, "Implemented / 已实现", GallerySupportFilter::implemented);
+    filter_button(state, "Partial / 部分支持", GallerySupportFilter::partial);
+    filter_button(state, "Planned / 规划中", GallerySupportFilter::planned);
+    filter_button(state, "Web only / 仅 Web", GallerySupportFilter::web_only);
+    filter_button(state, "Deprecated / 已弃用", GallerySupportFilter::deprecated);
+    filter_button(state, "Out of scope / 不在范围", GallerySupportFilter::out_of_scope);
 }
 
 void design_values(const std::shared_ptr<GalleryState>& state) {
@@ -779,31 +773,57 @@ TokenGalleryDefinition make_token_gallery_definition() {
                     ++state->telemetry.theme_content_runs;
                     ryn::Flex(
                         ryn::FlexProps{}
-                            .vertical(state->narrow_layout)
-                            .gap(ryn::dp(16.0F))
+                            .vertical(true)
+                            .gap(ryn::dp(12.0F))
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
                             ryn::Flex(
                                 ryn::FlexProps{}
-                                    .vertical(true)
-                                    .gap(ryn::dp(8.0F))
-                                    .layout(ryn::LayoutStyle{}
-                                        .width(state->navigation_width)),
-                                [state] { navigation_controls(state); });
-                            ryn::Flex(
-                                ryn::FlexProps{}
-                                    .vertical(true)
+                                    .vertical(state->narrow_layout)
                                     .gap(ryn::dp(16.0F))
                                     .layout(ryn::LayoutStyle{}
-                                        .width(state->document_width)),
+                                        .width(state->gallery_width)),
                                 [state] {
-                                    source_section(state);
-                                    section_surface(
-                                        state, gallery_document_sections()[1]);
-                                    design_values(state);
-                                    foundation_tokens(state);
-                                    component_overview(state);
-                                    add_live_samples(state);
+                                    ryn::Flex(
+                                        ryn::FlexProps{}
+                                            .vertical(true)
+                                            .gap(ryn::dp(8.0F))
+                                            .layout(ryn::LayoutStyle{}
+                                                .width(state->navigation_width)),
+                                        [state] { navigation_controls(state); });
+                                    ryn::Flex(
+                                        ryn::FlexProps{}
+                                            .vertical(true)
+                                            .gap(ryn::dp(16.0F))
+                                            .layout(ryn::LayoutStyle{}
+                                                .width(state->document_width)),
+                                        [state] {
+                                            source_section(state);
+                                            section_surface(
+                                                state, gallery_document_sections()[1]);
+                                            design_values(state);
+                                            foundation_tokens(state);
+                                            component_overview(state);
+                                            add_live_samples(state);
+                                        });
+                                });
+                            ReferenceSurface(
+                                ReferenceSurfaceProps{}
+                                    .role(ReferenceSurfaceRole::site_header)
+                                    .layout(ryn::LayoutStyle{}
+                                        .width(state->gallery_width)
+                                        .height(ryn::dp(56.0F))
+                                        .order(-1)),
+                                [] {
+                                    ryn::Flex(
+                                        ryn::FlexProps{}
+                                            .gap(ryn::dp(24.0F)),
+                                        [] {
+                                            ryn::Text(utf8("RynUI"));
+                                            ryn::Text(utf8("Design"));
+                                            ryn::Text(utf8("Components"));
+                                            ryn::Text(utf8("Token Gallery"));
+                                        });
                                 });
                         });
                 }});

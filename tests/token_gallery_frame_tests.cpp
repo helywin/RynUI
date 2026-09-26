@@ -704,16 +704,26 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 0.0F,
                 true),
             "wide responsive Gallery layout failed");
-    const auto wide_children = fixture.nodes.require(root).children;
+    const auto root_children = fixture.nodes.require(root).children;
+    require(root_children.size() == 2,
+            "responsive Gallery duplicated body or header roots");
+    const auto body = root_children[0];
+    const auto header = root_children[1];
+    const auto wide_children = fixture.nodes.require(body).children;
     require(wide_children.size() == 2,
             "responsive Gallery duplicated navigation or document roots");
     const auto wide_navigation = fixture.nodes.require(wide_children[0]).bounds;
     const auto wide_document = fixture.nodes.require(wide_children[1]).bounds;
+    const auto wide_header = fixture.nodes.require(header).bounds;
     require(wide_navigation.x < wide_document.x
                 && near(wide_navigation.y, wide_document.y)
                 && near(wide_navigation.width, 220.0F)
-                && wide_document.width > 800.0F,
-            "wide Gallery did not produce navigation/document columns");
+                && wide_document.width > 800.0F
+                && wide_header.y < wide_navigation.y
+                && near(wide_header.height, 56.0F),
+            "wide Gallery did not produce a header above both columns");
+    require(fixture.nodes.require(wide_children[0]).children.size() == 97,
+            "Gallery navigation did not include every document and catalog entry");
 
     definition.set_viewport_width(560.0F);
     require(fixture.host->layout_and_synchronize(
@@ -723,7 +733,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 0.0F,
                 true),
             "narrow responsive Gallery layout failed");
-    const auto narrow_children = fixture.nodes.require(root).children;
+    const auto narrow_children = fixture.nodes.require(body).children;
     const auto narrow_navigation = fixture.nodes.require(narrow_children[0]).bounds;
     const auto narrow_document = fixture.nodes.require(narrow_children[1]).bounds;
     require(near(narrow_navigation.x, narrow_document.x)
@@ -749,10 +759,8 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 0.0F,
                 true),
             "wide Gallery restoration failed");
-    const auto restored_navigation = fixture.nodes.require(
-        fixture.nodes.require(root).children[0]).bounds;
-    const auto restored_document = fixture.nodes.require(
-        fixture.nodes.require(root).children[1]).bounds;
+    const auto restored_navigation = fixture.nodes.require(wide_children[0]).bounds;
+    const auto restored_document = fixture.nodes.require(wide_children[1]).bounds;
     require(restored_navigation.x < restored_document.x
                 && fixture.host->components().component_count() == components
                 && fixture.host->components().contains(first_surface)
@@ -790,8 +798,11 @@ void test_token_gallery_frame_contract() {
     require(fixture.host->mounted_buttons().size()
                 == definition.navigation_control_count + 17,
             "Token Gallery live sample count drifted");
-    require(fixture.surfaces->mounted_surfaces().size() == 126,
-            "Token Gallery document reference surface count drifted");
+    require(fixture.surfaces->mounted_surfaces().size() == 127
+                && fixture.surfaces->snapshot(
+                    fixture.surfaces->mounted_surfaces().back().component).role
+                    == rynui::example::ReferenceSurfaceRole::site_header,
+            "Token Gallery document and header surface count drifted");
     require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
