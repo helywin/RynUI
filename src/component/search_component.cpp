@@ -5,6 +5,7 @@
 
 #include <ryn/button.hpp>
 #include <ryn/flex.hpp>
+#include <ryn/icon.hpp>
 #include <ryn/text.hpp>
 
 #include <memory>
@@ -183,7 +184,7 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
                  if (button) {
                      detail::SlotContentAccess::function(*button)();
                  } else {
-                     Text(u8"搜索");
+                     Icon(IconProps{}.name(IconName::SearchOutlined));
                  }
              }});
          }});

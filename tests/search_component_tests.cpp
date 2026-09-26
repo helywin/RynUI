@@ -100,6 +100,9 @@ void uncontrolled_and_gates() {
     const auto button = fixture.buttons.mounted_buttons().front();
     require(fixture.buttons.snapshot(button.component).type == ButtonType::Default,
         "default Search did not select default Button semantics");
+    require(fixture.scene.text_state(fixture.buttons.text().mounted_texts().front().scene)
+        .content().bytes() == String{u8"\uE002"}.bytes(),
+        "default Search button did not mount SearchOutlined");
     require(fixture.services.focus().request_focus(input.interaction, FocusModality::keyboard),
         "uncontrolled Search focus failed");
     require(bool(fixture.inputs.editors().require(input.editor).move(TextCaretMove::end)),

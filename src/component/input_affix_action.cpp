@@ -3,7 +3,7 @@
 #include "input/pressable_behavior.hpp"
 #include "runtime/prop_connection.hpp"
 
-#include <ryn/text.hpp>
+#include <ryn/icon.hpp>
 
 #include <optional>
 #include <utility>
@@ -18,7 +18,17 @@ struct InputAffixActionState {
     input::PressableBehavior press;
     std::function<void()> activate;
     bool disabled{}, visible{true};
+    bool hovered{};
+    input::FocusPresentation focus;
+    Signal<TextTone> tone{TextTone::Secondary};
 };
+
+void update_tone(InputAffixActionState& state) {
+    const auto tone = state.disabled || !state.visible ? TextTone::Disabled
+        : state.hovered || state.press.pressed() || state.focus.focus_visible
+            ? TextTone::Primary : TextTone::Secondary;
+    state.tone.set(tone);
+}
 
 void synchronize(InputAffixActionState& state, WindowComponentServices& host, bool layout_changed) {
     if(layout_changed) {
@@ -30,16 +40,18 @@ void synchronize(InputAffixActionState& state, WindowComponentServices& host, bo
             | runtime::DirtyFlags::HitTest);
     }
     if(state.disabled || !state.visible) {
+        state.hovered = false;
         static_cast<void>(state.press.reset());
         host.pointer().cancel_interaction(state.interaction);
     }
     static_cast<void>(host.interactions().set_eligible(state.interaction,
         !state.disabled && state.visible));
     host.focus().synchronize();
+    update_tone(state);
 }
 } // namespace
 
-void mount_input_affix_action(WindowComponentServices& host, Prop<String> label,
+void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon,
     Prop<bool> disabled, std::function<void()> activate, Prop<bool> visible) {
     auto& build = runtime::require_component_build_context();
     const auto component = build.mount_component<InputAffixActionState>();
@@ -49,6 +61,7 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<String> label,
     state.activate = std::move(activate);
     state.disabled = read_prop(disabled);
     state.visible = read_prop(visible);
+    update_tone(state);
     build.on_resource_cleanup(component, [&host, component] {
         if(auto* current = host.components().state<InputAffixActionState>(component)) {
             host.pointer().cancel_interaction(current->interaction);
@@ -79,8 +92,12 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<String> label,
     pointer.target = [&host, component](input::PointerDispatchContext& context) {
         auto* current = host.components().state<InputAffixActionState>(component);
         if(!current) return;
+        if(context.kind() == input::PointerEventKind::enter) current->hovered = true;
+        if(context.kind() == input::PointerEventKind::leave
+            || context.kind() == input::PointerEventKind::cancel) current->hovered = false;
         const auto result = current->press.dispatch(context, current->interaction,
             host.interactions().require(current->interaction).eligible);
+        update_tone(*current);
         if(result.activate) {
             auto callback = current->activate;
             callback();
@@ -88,6 +105,12 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<String> label,
     };
     static_cast<void>(host.interactions().set_handlers(state.interaction, std::move(pointer)));
     input::FocusHandlers focus;
+    focus.state_changed = [&host, component](input::FocusPresentation presentation) {
+        if(auto* current = host.components().state<InputAffixActionState>(component)) {
+            current->focus = presentation;
+            update_tone(*current);
+        }
+    };
     focus.activation_allowed = [&host, component] {
         if(const auto* current = host.components().state<InputAffixActionState>(component))
             return host.interactions().require(current->interaction).eligible;
@@ -116,10 +139,9 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<String> label,
                 synchronize(*current, host, true);
             }
         }));
-    build.mount_slot(component, Content{[label = std::move(label), visible = std::move(visible)] {
-        Text(TextProps{}.content(bind([label, visible] {
-            return read_prop(visible) ? read_prop(label) : String{};
-        })));
+    build.mount_slot(component, Content{[icon = std::move(icon), visible = std::move(visible),
+        tone = state.tone] {
+        Icon(IconProps{}.name(icon).tone(tone).visible(visible));
     }});
 }
 

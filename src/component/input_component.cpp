@@ -267,7 +267,7 @@ struct InputPropsAccess {
         if(props.allow_clear_) {
             const auto clear_visible = state.clear_visible;
             composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix] {
-                mount_input_affix_action(*owner.host_, String{u8"×"}, false,
+                mount_input_affix_action(*owner.host_, IconName::CloseCircleFilled, false,
                     [&owner, component] { owner.clear(component); }, clear_visible);
                 if(suffix) SlotContentAccess::function(*suffix)();
             }};
@@ -441,7 +441,8 @@ struct PasswordPropsAccess final {
             suffix = InputSuffix{[bridge, controlled, disabled = props.disabled_,
                 callback = std::move(props.on_visible_change_)] {
                 mount_input_affix_action(*active_input_host->host_, bind([bridge] {
-                    return bridge->visible.get() ? String{u8"隐藏"} : String{u8"显示"};
+                    return bridge->visible.get() ? IconName::EyeInvisibleOutlined
+                        : IconName::EyeOutlined;
                 }), disabled, [disabled, bridge, controlled, callback] {
                     if(read_prop(disabled)) return;
                     const bool next = !bridge->visible.get();

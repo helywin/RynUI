@@ -36,6 +36,9 @@ void default_and_composition() {
     const auto password = f.inputs.mounted_inputs()[0], sibling = f.inputs.mounted_inputs()[1];
     f.synchronize();
     const auto toggler = toggle(f, password.interaction);
+    const auto icon = f.buttons.text().mounted_texts().front().scene;
+    require(f.scene.text_state(icon).content().bytes() == String{u8"\uE000"}.bytes(),
+        "Password toggle did not mount EyeOutlined");
     require(!f.buttons.interactions().require(toggler).focus_on_pointer, "toggle pointer focus policy absent");
     require(f.inputs.display_snapshot(password.component).text == String{u8"••"}.bytes()
         && f.scene.text_state(f.inputs.text_scene(password.component)).content().bytes() == String{u8"••"}.bytes(),
@@ -50,6 +53,8 @@ void default_and_composition() {
     require(bool(f.inputs.dispatch(CompositionChanged{String{u8"ni"}, {2, 0}, stamp})), "Password preedit failed");
     const auto cancels = f.platform.cancels;
     click(f, toggler);
+    require(f.scene.text_state(icon).content().bytes() == String{u8"\uE001"}.bytes(),
+        "Password reveal did not switch to EyeInvisibleOutlined");
     require(f.buttons.focus().state().focused == password.interaction && editor.selection() == before
         && editor.composition().active && f.inputs.sessions().active() == stamp
         && f.platform.cancels == cancels,
@@ -62,6 +67,8 @@ void default_and_composition() {
         "Password visible platform type did not apply after composition");
     require(f.buttons.focus().request_focus(toggler, FocusModality::keyboard), "toggle keyboard focus failed");
     send(f, Key::space); send(f, Key::space, KeyModifier::none, KeyAction::up);
+    require(f.scene.text_state(icon).content().bytes() == String{u8"\uE000"}.bytes(),
+        "Password keyboard toggle did not restore EyeOutlined");
     require(f.inputs.display_snapshot(password.component).text == String{u8"•••"}.bytes(),
         "keyboard toggle did not mask Password");
     require(f.buttons.destroy(password.component) && f.inputs.editors().size() == 1

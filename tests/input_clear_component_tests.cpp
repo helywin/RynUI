@@ -42,6 +42,9 @@ void clear_uncontrolled_and_composition() {
     const auto input = fixture.inputs.mounted_inputs().front();
     fixture.synchronize();
     const auto action = clear_action(fixture, input.interaction);
+    const auto icon = fixture.buttons.text().mounted_texts().front().scene;
+    require(fixture.scene.text_state(icon).content().bytes() == String{u8"\uE003"}.bytes(),
+        "clear action did not mount CloseCircleFilled");
     require(suffix_runs == 1 && fixture.buttons.interactions().require(action).eligible,
         "clear action or custom suffix missing");
     require(!fixture.buttons.interactions().require(action).focus_on_pointer,
