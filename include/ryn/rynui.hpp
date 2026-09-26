@@ -5,6 +5,7 @@
 #include <ryn/component.hpp>
 #include <ryn/design_token.hpp>
 #include <ryn/flex.hpp>
+#include <ryn/icon.hpp>
 #include <ryn/input.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/password.hpp>

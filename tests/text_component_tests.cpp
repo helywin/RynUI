@@ -798,6 +798,82 @@ void test_offscreen_text_realizes_after_first_layout_and_reentry() {
             "reentered Text glyph did not use the current translation");
 }
 
+void test_icon_uses_embedded_outline_and_reacts_locally() {
+    Fixture fixture;
+    ryn::Signal<ryn::IconName> name{ryn::IconName::EyeOutlined};
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    int content_runs = 0;
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
+            ++content_runs;
+            ryn::Icon(ryn::IconProps{}.name(name));
+            ryn::Text(u8"Stable sibling");
+        }});
+    }});
+    require(fixture.layout_texts(), "embedded Icon did not synchronize");
+    const auto icon = fixture.host->mounted_texts()[0];
+    const auto sibling = fixture.host->mounted_texts()[1];
+    const auto icon_node = fixture.host->components().root(icon.component);
+    const auto before = fixture.scene.text_state(icon.scene).counters();
+    const auto sibling_before = fixture.scene.text_state(sibling.scene).counters();
+    require(fixture.scene.primitive(icon.scene).instances.count == 1
+                && fixture.scene.atlas().entry_count() > 0
+                && near(fixture.scene.text_state(icon.scene).measurement().width, 14.0F),
+            "Icon did not produce one real outline at the inherited text size");
+    const auto icon_font = fixture.scene.icon_font(fixture.chain.front(), 14);
+    const auto same_font = fixture.scene.icon_font(fixture.chain.front(), 14);
+    const auto glyph = fixture.fonts->glyph_index(icon_font, U'\uE000');
+    require(icon_font == same_font && glyph && glyph.glyph.glyph_id != 0,
+            "Icon font cache or private Unicode mapping is invalid");
+    const auto bitmap = fixture.fonts->rasterize(icon_font, glyph.glyph.glyph_id);
+    require(bitmap && bitmap.glyph->width > 0 && bitmap.glyph->height > 0
+                && std::any_of(bitmap.glyph->coverage.begin(), bitmap.glyph->coverage.end(),
+                    [](std::uint8_t pixel) { return pixel != 0; }),
+            "Official eye outline rasterized to an empty bitmap");
+
+    fixture.dirty.clear();
+    auto dark = ryn::ThemeConfig{};
+    dark.algorithms.push_back(ryn::ThemeAlgorithm::Dark);
+    require(config.set(dark)
+                && fixture.dirty.material_nodes()
+                    == std::vector<ryn::runtime::NodeId>{icon_node,
+                        fixture.host->components().root(sibling.component)}
+                && fixture.dirty.layout_roots().empty(),
+            "Dark Icon Theme update required a layout pass");
+    require(fixture.layout_texts()
+                && fixture.scene.text_state(icon.scene).counters().shape_count
+                    == before.shape_count
+                && content_runs == 1,
+            "Icon theme color remounted or reshaped its outline");
+    const auto dark_color = ryn::resolve_theme(dark).text().color;
+    require(mounted_color(fixture, 0) == ryn::runtime::SemanticForeground{
+                dark_color.red(), dark_color.green(), dark_color.blue(), dark_color.alpha()},
+            "Icon did not inherit dark theme foreground");
+
+    fixture.dirty.clear();
+    require(name.set(ryn::IconName::EyeInvisibleOutlined)
+                && fixture.layout_texts()
+                && fixture.host->mounted_texts()[0].component == icon.component
+                && fixture.scene.text_state(icon.scene).counters().shape_count
+                    == before.shape_count + 1
+                && fixture.scene.text_state(sibling.scene).counters().shape_count
+                    == sibling_before.shape_count,
+            "Changing Icon name remounted its parent or reshaped its sibling");
+
+    ryn::font::FontRasterConfig scaled;
+    scaled.logical_pixel_size = 14;
+    scaled.display_scale = 1.5F;
+    const auto reference = fixture.fonts->load_font_file(
+        RYNUI_VALIDATION_LATIN_FONT, 0, scaled);
+    require(static_cast<bool>(reference), "Scaled reference font failed to load");
+    const auto scaled_icon = fixture.scene.icon_font(reference.font, 14);
+    const auto scaled_metrics = fixture.fonts->metrics(scaled_icon);
+    require(scaled_icon != icon_font && scaled_metrics
+                && near(scaled_metrics.metrics.display_scale, 1.5F)
+                && fixture.scene.icon_font(reference.font, 14) == scaled_icon,
+            "Icon font cache did not isolate DPI scales");
+}
+
 } // namespace
 
 int main() {
@@ -811,6 +887,7 @@ int main() {
         test_theme_tokens_update_text_material_and_typography_precisely();
         test_static_loading_layout_keeps_cjk_text_and_idle_state();
         test_offscreen_text_realizes_after_first_layout_and_reentry();
+        test_icon_uses_embedded_outline_and_reacts_locally();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

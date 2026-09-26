@@ -4,7 +4,10 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
+#include <ryn/icon.hpp>
+
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -30,6 +33,37 @@ struct TextPropsAccess final {
     }
 };
 
+struct IconPropsAccess final {
+    [[nodiscard]] static const Prop<IconName>& name(const IconProps& props) noexcept {
+        return props.name_;
+    }
+    [[nodiscard]] static const std::optional<Prop<TextTone>>& tone(
+        const IconProps& props) noexcept {
+        return props.tone_;
+    }
+    [[nodiscard]] static const Prop<bool>& visible(const IconProps& props) noexcept {
+        return props.visible_;
+    }
+    [[nodiscard]] static const LayoutStyle& layout(const IconProps& props) noexcept {
+        return props.layout_;
+    }
+};
+
+[[nodiscard]] String icon_content(IconName name) {
+    const auto index = static_cast<std::uint32_t>(name);
+    if (index > static_cast<std::uint32_t>(IconName::LockOutlined)) {
+        throw std::invalid_argument("Icon name is outside the bundled catalog");
+    }
+    const char32_t codepoint = 0xE000 + index;
+    const std::array<char, 3> bytes{
+        static_cast<char>(0xE0 | (codepoint >> 12)),
+        static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)),
+        static_cast<char>(0x80 | (codepoint & 0x3F)),
+    };
+    return std::move(String::from_utf8(
+        std::string_view(bytes.data(), bytes.size()))).value();
+}
+
 namespace {
 
 struct TextComponentState final {
@@ -38,6 +72,7 @@ struct TextComponentState final {
     bool explicit_tone{};
     bool semantic_foreground{};
     bool semantic_typography{};
+    bool icon_font{};
     runtime::SemanticTypography resolved_typography;
     theme_runtime::Subscription theme_subscription;
 };
@@ -417,6 +452,10 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
         if (chain.empty()) {
             throw std::runtime_error("Theme font resolver returned an empty chain");
         }
+        if (state->icon_font) {
+            chain = {text_scene_->icon_font(
+                chain.front(), static_cast<std::uint32_t>(std::lround(typography.font_size)))};
+        }
         if (!text_scene_->set_font_chain(state->scene, std::move(chain))) {
             continue;
         }
@@ -455,6 +494,10 @@ bool TextComponentHost::apply_typography(
         static_cast<std::uint32_t>(std::lround(typography.font_size)));
     if (chain.empty()) {
         throw std::runtime_error("Theme font resolver returned an empty chain");
+    }
+    if (state->icon_font) {
+        chain = {text_scene_->icon_font(
+            chain.front(), static_cast<std::uint32_t>(std::lround(typography.font_size)))};
     }
     const bool font_selection_changed =
         state->resolved_typography.font_family != typography.font_family
@@ -544,7 +587,7 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
         });
 }
 
-void mount_text_component(const TextProps& props) {
+void mount_text_component(const TextProps& props, bool icon_font) {
     if (active_text_host == nullptr) {
         throw std::logic_error(
             "ryn::Text can only be declared inside an active TextComponentHost");
@@ -582,6 +625,10 @@ void mount_text_component(const TextProps& props) {
     if (initial_font_chain.empty()) {
         throw std::runtime_error("Theme font resolver returned an empty chain");
     }
+    if (icon_font) {
+        initial_font_chain = {host.text_scene_->icon_font(initial_font_chain.front(),
+            static_cast<std::uint32_t>(std::lround(initial_typography.font_size)))};
+    }
     const auto scene = host.text_scene_->create(
         node,
         initial_content,
@@ -605,6 +652,7 @@ void mount_text_component(const TextProps& props) {
     state.semantic_foreground = !explicit_tone.has_value()
         && semantic_foreground.has_value();
     state.semantic_typography = semantic_typography.has_value();
+    state.icon_font = icon_font;
     state.resolved_typography = initial_typography;
     build.on_resource_cleanup(component, [
         layout = host.layout_,
@@ -713,7 +761,20 @@ void mount_text_component(const TextProps& props) {
 namespace ryn {
 
 void Text(TextProps props) {
-    detail::mount_text_component(props);
+    detail::mount_text_component(props, false);
+}
+
+void Icon(IconProps props) {
+    TextProps text;
+    const auto name = detail::IconPropsAccess::name(props);
+    const auto visible = detail::IconPropsAccess::visible(props);
+    text.content(bind([name, visible] {
+        return detail::read_prop(visible)
+            ? detail::icon_content(detail::read_prop(name)) : String{};
+    }));
+    if (const auto& tone = detail::IconPropsAccess::tone(props)) text.tone(*tone);
+    text.layout(detail::IconPropsAccess::layout(props));
+    detail::mount_text_component(text, true);
 }
 
 } // namespace ryn

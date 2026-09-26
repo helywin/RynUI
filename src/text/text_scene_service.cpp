@@ -1,4 +1,6 @@
 #include "text/text_scene_service.hpp"
+
+#include "icons/ant_design_icon_font.inc"
 #include "text/text_caret_map.hpp"
 
 #include <algorithm>
@@ -62,6 +64,40 @@ TextSceneService::TextSceneService(
       owner_thread_(std::this_thread::get_id()) {}
 
 TextSceneService::~TextSceneService() = default;
+
+font::FontIdentity TextSceneService::icon_font(
+    font::FontIdentity reference, std::uint32_t logical_pixel_size) {
+    ensure_owner_thread();
+    if (logical_pixel_size == 0) {
+        throw std::invalid_argument("Icon pixel size must be positive");
+    }
+    const auto reference_metrics = fonts_->metrics(reference);
+    if (!reference_metrics) {
+        throw std::runtime_error("Icon reference font is invalid: "
+            + reference_metrics.error.diagnostic);
+    }
+    const float display_scale = reference_metrics.metrics.display_scale;
+    for (const auto& cached : icon_fonts_) {
+        if (cached.logical_pixel_size == logical_pixel_size
+                && cached.display_scale == display_scale) {
+            return cached.font;
+        }
+    }
+    font::FontRasterConfig raster;
+    raster.logical_pixel_size = logical_pixel_size;
+    raster.display_scale = display_scale;
+    raster.policy.hinting = false;
+    raster.policy.embedded_bitmap = false;
+    const auto* first = reinterpret_cast<const std::byte*>(ant_design_icon_font_bytes);
+    const auto result = fonts_->load_font_bytes(
+        {first, sizeof(ant_design_icon_font_bytes)}, 0, raster);
+    if (!result) {
+        throw std::runtime_error("Cannot load embedded Ant Design icons: "
+            + result.error.diagnostic);
+    }
+    icon_fonts_.push_back({logical_pixel_size, display_scale, result.font});
+    return result.font;
+}
 
 TextSceneId TextSceneService::create(
     runtime::NodeId node,

@@ -5,7 +5,7 @@
 
 ## 2. 平台通用图标基础
 - [x] 2.1 锁定官方图标、许可证及 SHA256，加入可重现生成工具与内嵌轮廓；验证资源/生成合同，以 `feat:` 提交
-- [ ] 2.2 实现 typed Icon、主题/语义样式继承、字号/DPI 缓存与生命周期；Windows MSVC Debug 构建和图标/文字定向 CTest 验证后以 `feat:` 提交
+- [x] 2.2 实现 typed Icon、主题/语义样式继承、字号/DPI 缓存与生命周期；Windows MSVC Debug 构建和图标/文字定向 CTest 验证后以 `feat:` 提交
 
 ## 3. 平台通用控件与导航
 - [ ] 3.1 接入 Password、Input clear、Search 默认图标及辅助操作主题/焦点反馈；受控、键盘、禁用与清理定向 CTest 通过后以 `feat:` 提交

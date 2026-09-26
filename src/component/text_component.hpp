@@ -88,7 +88,7 @@ public:
         const runtime::SemanticTypography& typography) const;
 
 private:
-    friend void mount_text_component(const TextProps& props);
+    friend void mount_text_component(const TextProps& props, bool icon_font);
 
     void record_mounted_text(
         runtime::ComponentId component,
@@ -118,6 +118,6 @@ private:
     TextComponentSyncProfile sync_profile_{};
 };
 
-void mount_text_component(const TextProps& props);
+void mount_text_component(const TextProps& props, bool icon_font = false);
 
 } // namespace ryn::detail
