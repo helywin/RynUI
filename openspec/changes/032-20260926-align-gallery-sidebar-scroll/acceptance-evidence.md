@@ -36,3 +36,24 @@ Windows 正式验收：用 `windows-msvc-release` 构建并在真实 Windows 窗
 - 左右列保持独立滚动，当前文档高亮随正文 section 更新；窄窗口初始定位正文，固定顶栏的目录按钮返回导航，再从导航跳回正文。
 - Windows MSVC Debug 定向 CTest 6/6 通过（6.97 秒），包括 frame、reference surface 与 contract、document contract、viewport 与 contract。新断言覆盖文字不换行、导航/正文与滚动条不重叠、六个语义标题、响应式几何，以及高亮实际颜色从旧行移到当前行。
 - 完整 Debug CTest 在整合布局与构建依赖修复后 235/235 通过（213.67 秒）；最后的设计理念样式及导出等待调整后复测上述受影响的六项，未重复完整平台通用测试。
+
+## 最终 Windows 复验
+
+最终实现提交 `cb7dcaf`：Debug 与 Release Gallery 均已构建。Windows MSVC Release / D3D12 的自动输入注入走 Gallery 实际事件、帧、上传与绘制路径；并非手工鼠标长时间试用。每种缩放单独启动原生窗口，全部正常退出。
+
+| 验收 | 结果 |
+| --- | --- |
+| `--scrollbar-acceptance --acceptance-scale=1.0` | exit 0；495 阶段；连续拖动、滑块几何/绘制、目录跳转通过 |
+| `--scrollbar-acceptance --acceptance-scale=1.25` | exit 0；495 阶段；连续拖动、滑块几何/绘制、目录跳转通过 |
+| `--scrollbar-acceptance --acceptance-scale=1.5` | exit 0；495 阶段；窄布局共享滚动与目录往返通过 |
+| `--scrollbar-acceptance --acceptance-scale=2.0` | exit 0；495 阶段；窄布局共享滚动与目录往返通过 |
+| `--scroll-acceptance`、`--smoke` | 2/2 exit 0 |
+| `--input-acceptance`、`--selection-acceptance`、`--search-acceptance`、`--password-acceptance`、`--input-clear-acceptance` | 5/5 exit 0 |
+
+GPU 帧导出后检查了三张 1280×900 图像，确认标题层级、左栏单行排版、正文与滑块间距、固定顶栏及中段高亮。实际系统 DPI 为 125%；窄图使用 2.0 render scale，对应逻辑 viewport 640×450。PNG 是同一 scene 的 D3D12 离屏导出，未包含操作系统标题栏；BMP 到 PNG 仅改变格式。
+
+- [首页](evidence/windows-home.png)：`--snapshot=<absolute-path>.bmp`
+- [正文中段](evidence/windows-middle.png)：增加 `--snapshot-middle`；section 为 `gallery.document.component-overview`
+- [窄窗口](evidence/windows-narrow.png)：增加 `--acceptance-scale=2.0`；初始 section 为 `gallery.document.header-source`
+
+最终本 change strict validate 通过；全仓 strict 仍为 26/32，既有 change 013、015、016、017、018、021 失败。`openspec doctor --json` 仍不被当前 CLI 支持。`git diff --check` 通过。全局 Git 设置确认 `core.autocrlf=input`、`core.eol=lf`；本次编辑的文本以 LF 保存。没有 Linux 实机证据，本阶段未声称 Linux 窗口/GPU 验收通过。
