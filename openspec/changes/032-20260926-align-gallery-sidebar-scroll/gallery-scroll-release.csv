@@ -1,0 +1,6 @@
+run,gpu_driver,shader_format,display_scale,pixel_size,frame_samples,first_frame_cpu_us,frame_average_us,frame_p95_us,scroll_buffer_upload_regions,gpu_upload_submissions,quad_draws,glyph_draws,effect_draws,scroll_acceptance_steps,document_offset,scrollbar_geometry,scrollbar_draw,exit_code
+1,direct3d12,DXIL,1.25,1280x900,240,55355,4157,4560,785,290,4920,5195,2810,240,15144,passed,passed,0
+2,direct3d12,DXIL,1.25,1280x900,240,55670,4158,4557,785,290,4920,5195,2810,240,15144,passed,passed,0
+3,direct3d12,DXIL,1.25,1280x900,240,58638,4159,4579,785,289,4905,5179,2800,240,15144,passed,passed,0
+4,direct3d12,DXIL,1.25,1280x900,240,55227,4159,4582,785,290,4920,5195,2810,240,15144,passed,passed,0
+5,direct3d12,DXIL,1.25,1280x900,240,54703,4157,4565,785,291,4935,5211,2820,240,15144,passed,passed,0

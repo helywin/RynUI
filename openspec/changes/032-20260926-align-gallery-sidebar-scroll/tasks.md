@@ -16,7 +16,7 @@
 
 ## 4. Windows 真实窗口验收
 
-- [ ] 4.1 正式 Windows MSVC Release 构建，运行真实 D3D12 滚轮、拖动/轨道、主题与输入验收，记录两列终态、首帧/滚动 CPU、上传与 draw；通过后以 `test:` 提交
+- [x] 4.1 正式 Windows MSVC Release 构建，运行真实 D3D12 滚轮、拖动/轨道、主题与输入验收，记录两列终态、首帧/滚动 CPU、上传与 draw；通过后以 `test:` 提交
 
 ## 5. 集成验收
 

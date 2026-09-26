@@ -2225,7 +2225,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " motion_mode=" << (motion_disabled
                     ? "theme-disabled"
                     : reduced_motion ? "reduced" : "normal")
-            << " exit_code=" << (smoke_failed ? 6 : 0) << '\n';
+            << " exit_code=" << (smoke_failed ? 6 : 0) << '\n' << std::flush;
         return smoke_failed ? 6 : 0;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';
