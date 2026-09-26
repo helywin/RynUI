@@ -69,6 +69,8 @@ struct ButtonTokenOverride final {
     std::optional<Color> default_color;
     std::optional<Color> default_background;
     std::optional<Color> default_border_color;
+    std::optional<Color> text_color;
+    std::optional<Color> text_background;
     std::optional<Color> primary_color;
     std::optional<Color> primary_background;
     std::optional<Color> danger_background;
@@ -239,6 +241,12 @@ struct ButtonThemeToken final {
     Color default_border_color;
     Color default_hover_color;
     Color default_active_color;
+    Color text_color;
+    Color text_background;
+    Color text_hover_color;
+    Color text_active_color;
+    Color text_hover_background;
+    Color text_active_background;
     Color primary_color;
     Color primary_background;
     Color primary_hover_background;

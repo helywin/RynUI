@@ -50,6 +50,13 @@ struct GalleryState final {
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
+
+    void set_theme(ryn::ThemeConfig config, bool brand = false) {
+        background_color = ryn::resolve_theme(config).alias().color_background_container;
+        theme.set(std::move(config));
+        ++telemetry.theme_updates;
+        if (brand) ++telemetry.brand_updates;
+    }
 };
 
 constexpr std::size_t navigation_control_count = 20;
@@ -160,10 +167,6 @@ ryn::ThemeConfig algorithm_config(ryn::ThemeAlgorithm algorithm) {
 
 ryn::ThemeConfig navigation_theme_config() {
     ryn::ThemeConfig config;
-    const auto transparent = ryn::Color::rgba8(0, 0, 0, 0);
-    config.button.tokens.default_background = transparent;
-    config.button.tokens.default_border_color = transparent;
-    config.button.tokens.default_shadow = ryn::ShadowList{};
     config.button.tokens.padding_inline = ryn::dp(8.0F);
     config.button.tokens.border_radius = ryn::dp(6.0F);
     return config;
@@ -239,9 +242,9 @@ void navigation_button(
         if (active.get() == target) {
             const auto tokens = ryn::resolve_theme(parent_theme.get());
             const auto primary = tokens.map().color_primary;
-            theme.button.tokens.default_background = ryn::Color(
+            theme.button.tokens.text_background = ryn::Color(
                 primary.red(), primary.green(), primary.blue(), 0.08F);
-            theme.button.tokens.default_color = tokens.map().color_primary;
+            theme.button.tokens.text_color = tokens.map().color_primary;
         }
         return theme;
     });
@@ -249,6 +252,7 @@ void navigation_button(
         ryn::ThemeContent{[state, target, text, nav_width] {
             ryn::Button(
                 ryn::ButtonProps{}
+                    .type(ryn::ButtonType::Text)
                     .size(ryn::ControlSize::Small)
                     .layout(ryn::LayoutStyle{}
                         .width(ryn::bind([nav_width] {
@@ -627,8 +631,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                 algorithm_config(ryn::ThemeAlgorithm::Default),
                 ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
                 [state] {
-                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Default));
-                    ++state->telemetry.theme_updates;
+                    state->set_theme(algorithm_config(ryn::ThemeAlgorithm::Default));
                     ++state->telemetry.activations;
                 });
             themed_button(
@@ -636,8 +639,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                 algorithm_config(ryn::ThemeAlgorithm::Dark),
                 ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
                 [state] {
-                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Dark));
-                    ++state->telemetry.theme_updates;
+                    state->set_theme(algorithm_config(ryn::ThemeAlgorithm::Dark));
                     ++state->telemetry.activations;
                 });
             themed_button(
@@ -645,8 +647,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                 algorithm_config(ryn::ThemeAlgorithm::Compact),
                 ryn::ButtonType::Default, ryn::ControlSize::Middle, false, false,
                 [state] {
-                    state->theme.set(algorithm_config(ryn::ThemeAlgorithm::Compact));
-                    ++state->telemetry.theme_updates;
+                    state->set_theme(algorithm_config(ryn::ThemeAlgorithm::Compact));
                     ++state->telemetry.activations;
                 });
             auto nested = algorithm_config(ryn::ThemeAlgorithm::Dark);
@@ -847,13 +848,7 @@ float token_gallery_pointer_to_render_logical(
 TokenGalleryDefinition make_token_gallery_definition() {
     auto state = std::make_shared<GalleryState>();
     auto set_theme = [state](ryn::ThemeConfig config, bool brand) {
-        state->background_color = ryn::resolve_theme(config)
-            .alias().color_background_container;
-        state->theme.set(std::move(config));
-        ++state->telemetry.theme_updates;
-        if (brand) {
-            ++state->telemetry.brand_updates;
-        }
+        state->set_theme(std::move(config), brand);
     };
 
     TokenGalleryDefinition definition{
@@ -950,6 +945,28 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         GalleryNavigationTarget::to_navigation();
                                                     ++state->telemetry.navigation_requests;
                                                 }), [] { ryn::Text(u8"目录"); });
+                                            ryn::Button(ryn::ButtonProps{}
+                                                .type(ryn::ButtonType::Text)
+                                                .size(ryn::ControlSize::Small)
+                                                .onClick([state] {
+                                                    const auto config = state->theme.get();
+                                                    const bool dark = std::find(config.algorithms.begin(),
+                                                        config.algorithms.end(), ryn::ThemeAlgorithm::Dark)
+                                                        != config.algorithms.end();
+                                                    state->set_theme(algorithm_config(dark
+                                                        ? ryn::ThemeAlgorithm::Default
+                                                        : ryn::ThemeAlgorithm::Dark));
+                                                }), [state] {
+                                                    ryn::Icon(ryn::IconProps{}.name(ryn::bind([theme = state->theme] {
+                                                        const auto config = theme.get();
+                                                        return std::find(config.algorithms.begin(),
+                                                            config.algorithms.end(), ryn::ThemeAlgorithm::Dark)
+                                                            != config.algorithms.end()
+                                                            ? ryn::IconName::SunOutlined
+                                                            : ryn::IconName::MoonOutlined;
+                                                    })));
+                                                    ryn::Text(u8"主题");
+                                                });
                                         });
                                 });
                         });

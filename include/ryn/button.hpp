@@ -19,6 +19,7 @@ enum class ButtonType {
     Default,
     Primary,
     Danger,
+    Text,
 };
 
 class ButtonProps final {

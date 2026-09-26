@@ -161,6 +161,12 @@ std::size_t collect_changed(
         || before_button.default_border_color != after_button.default_border_color
         || before_button.default_hover_color != after_button.default_hover_color
         || before_button.default_active_color != after_button.default_active_color
+        || before_button.text_color != after_button.text_color
+        || before_button.text_background != after_button.text_background
+        || before_button.text_hover_color != after_button.text_hover_color
+        || before_button.text_active_color != after_button.text_active_color
+        || before_button.text_hover_background != after_button.text_hover_background
+        || before_button.text_active_background != after_button.text_active_background
         || before_button.primary_color != after_button.primary_color
         || before_button.primary_background != after_button.primary_background
         || before_button.primary_hover_background != after_button.primary_hover_background

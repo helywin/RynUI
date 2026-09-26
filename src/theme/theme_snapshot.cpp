@@ -449,6 +449,14 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         .default_border_color = alias.color_border,
         .default_hover_color = map.color_primary_hover,
         .default_active_color = map.color_primary_active,
+        .text_color = alias.color_text,
+        .text_background = Color::rgba8(0, 0, 0, 0),
+        .text_hover_color = map.color_primary_hover,
+        .text_active_color = map.color_primary_active,
+        .text_hover_background = Color(map.color_primary.red(), map.color_primary.green(),
+            map.color_primary.blue(), 0.08F),
+        .text_active_background = Color(map.color_primary.red(), map.color_primary.green(),
+            map.color_primary.blue(), 0.15F),
         .primary_color = Color::rgba8(255, 255, 255),
         .primary_background = map.color_primary,
         .primary_hover_background = map.color_primary_hover,
@@ -524,6 +532,8 @@ void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& 
     if (override.default_color) button.default_color = *override.default_color;
     if (override.default_background) button.default_background = *override.default_background;
     if (override.default_border_color) button.default_border_color = *override.default_border_color;
+    if (override.text_color) button.text_color = *override.text_color;
+    if (override.text_background) button.text_background = *override.text_background;
     if (override.primary_color) button.primary_color = *override.primary_color;
     if (override.primary_background) button.primary_background = *override.primary_background;
     if (override.danger_background) button.danger_background = *override.danger_background;
@@ -802,7 +812,9 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
 
     const std::array button_colors{
         button.default_color, button.default_background, button.default_border_color,
-        button.default_hover_color, button.default_active_color, button.primary_color,
+        button.default_hover_color, button.default_active_color,
+        button.text_color, button.text_background, button.text_hover_color, button.text_active_color,
+        button.text_hover_background, button.text_active_background, button.primary_color,
         button.primary_background, button.primary_hover_background,
         button.primary_active_background, button.danger_color, button.danger_background,
         button.danger_hover_background, button.danger_active_background,

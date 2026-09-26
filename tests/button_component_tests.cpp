@@ -1302,6 +1302,52 @@ void test_nested_theme_override_updates_button_without_remounting() {
             "nested Button effect update rebuilt identity or missed radius/shadow tokens");
 }
 
+void test_text_button_hover_and_theme_keep_foreground_visible() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(theme), ryn::ThemeContent{[] {
+            ryn::Button(ryn::ButtonProps{}.type(ryn::ButtonType::Text),
+                [] { ryn::Text(u8"Navigation"); });
+        }});
+    }});
+    require(fixture.synchronize(), "Text Button did not synchronize");
+    const auto component = fixture.host->mounted_buttons().front().component;
+    const auto before = fixture.host->snapshot(component);
+    require(before.presentation_background.alpha() == 0.0F
+        && before.presentation_border.alpha() == 0.0F
+        && before.presentation_foreground == ryn::resolve_theme().alias().color_text
+        && fixture.host->button_scene().shadow_effects(
+            fixture.host->mounted_buttons().front().scene).empty(),
+        "Text Button resting visual has a border, shadow, or wrong foreground");
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::move, fixture.center(0)));
+    const auto hovered = fixture.host->snapshot(component);
+    require(hovered.hovered && hovered.presentation_background.alpha() > 0.0F
+        && hovered.presentation_border.alpha() == 0.0F
+        && hovered.presentation_foreground != hovered.presentation_background,
+        "Text Button hover obscures its label");
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::down, fixture.center(0),
+        ryn::input::PointerButton::primary));
+    const auto pressed = fixture.host->snapshot(component);
+    require(pressed.pointer_pressed
+        && pressed.presentation_background.alpha() > hovered.presentation_background.alpha()
+        && pressed.presentation_border.alpha() == 0.0F,
+        "Text Button press did not change fill without painting a border");
+    fixture.host->pointer().dispatch(pointer_event(
+        ryn::input::PointerAction::up, fixture.center(0),
+        ryn::input::PointerButton::primary));
+    auto dark = ryn::ThemeConfig{};
+    dark.algorithms = {ryn::ThemeAlgorithm::Dark};
+    theme.set(dark);
+    require(fixture.synchronize(), "dark Text Button did not synchronize");
+    require(fixture.host->snapshot(component).presentation_foreground
+        == ryn::resolve_theme(dark).button().text_hover_color,
+        "Text Button hover did not follow the dark theme");
+}
+
 struct ParentState final {};
 struct ParentContentSlot final {};
 using ParentContent = ryn::SlotContent<ParentContentSlot>;
@@ -1417,6 +1463,7 @@ int main() {
         test_retained_loading_spinner_phase_and_policy_lifecycle();
         test_pointer_keyboard_click_path_and_callback_mutation();
         test_nested_theme_override_updates_button_without_remounting();
+        test_text_button_hover_and_theme_keep_foreground_visible();
         test_click_callback_can_destroy_parent_scope();
         test_flex_composes_text_button_and_nested_flex();
     } catch (const std::exception& error) {

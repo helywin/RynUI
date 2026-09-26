@@ -144,6 +144,7 @@ void validate(ButtonType type) {
     case ButtonType::Default:
     case ButtonType::Primary:
     case ButtonType::Danger:
+    case ButtonType::Text:
         return;
     }
     throw std::invalid_argument("ButtonType value is invalid");
@@ -215,7 +216,11 @@ struct ResolvedButtonVisualState final {
 ResolvedButtonVisualState visual_token(
     const ButtonThemeToken& button,
     const ButtonComponentState& state) {
+    const Color transparent = Color::rgba8(0, 0, 0, 0);
     if (state.disabled) {
+        if (state.type == ButtonType::Text) {
+            return {transparent, transparent, button.disabled_color, {}};
+        }
         const auto* shadow = &button.default_shadow;
         if (state.type == ButtonType::Primary) {
             shadow = &button.primary_shadow;
@@ -232,7 +237,6 @@ ResolvedButtonVisualState visual_token(
     const bool active = !state.loading
         && (state.press.pressed() || state.focus.keyboard_pressed);
     const bool hovered = !state.loading && !active && state.hovered;
-    const Color transparent = Color::rgba8(0, 0, 0, 0);
     switch (state.type) {
     case ButtonType::Default:
         return {
@@ -263,6 +267,15 @@ ResolvedButtonVisualState visual_token(
             button.danger_color,
             button.danger_shadow,
         };
+    case ButtonType::Text:
+        return {
+            active ? button.text_active_background
+                   : hovered ? button.text_hover_background : button.text_background,
+            transparent,
+            active ? button.text_active_color
+                   : hovered ? button.text_hover_color : button.text_color,
+            {},
+        };
     }
     throw std::invalid_argument("ButtonType value is invalid");
 }
@@ -288,7 +301,7 @@ layout::HorizontalContentLayout content_layout(
     return {
         size.control_height,
         size.padding_inline,
-        button.border_width,
+        state.type == ButtonType::Text ? 0.0F : button.border_width,
         button.icon_gap,
         state.loading,
         button.loading_indicator_size,
@@ -657,6 +670,7 @@ void ButtonComponentHost::apply_type(
     }
     const bool previous_border_box = solid_fills_border_box(*state);
     state->type = type;
+    update_layout(*state);
     if (previous_border_box != solid_fills_border_box(*state)) {
         dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
     }
