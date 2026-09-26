@@ -1085,6 +1085,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         std::size_t smoke_stage = 0;
         std::size_t scroll_stage = 0;
         std::size_t scrollbar_stage = 0;
+        constexpr std::size_t scrollbar_drag_steps = 240;
+        constexpr std::size_t scrollbar_drag_stages = scrollbar_drag_steps + 2;
+        constexpr std::size_t scrollbar_stage_count = 8 + 2 * scrollbar_drag_stages;
+        std::optional<float> scrollbar_expected_offset;
+        bool continuous_drag_passed = true;
         bool navigation_wheel_passed = false;
         bool navigation_drag_passed = false;
         bool document_track_passed = false;
@@ -1686,8 +1691,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            if (scrollbar_acceptance && scrollbar_stage < 8
-                    && elapsed >= 250 + 90 * scrollbar_stage) {
+            if (scrollbar_acceptance && scrollbar_stage < scrollbar_stage_count
+                    && elapsed >= 250 + 90 * std::min(scrollbar_stage, std::size_t{8})) {
                 const auto& bars = scroll_presentation;
                 switch (scrollbar_stage) {
                 case 0:
@@ -1758,6 +1763,35 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         document_viewport.snapshot().offset > document_after_track
                         && navigation_scroll.snapshot().offset == navigation_after_drag;
                     break;
+                default: {
+                    const auto stage = (scrollbar_stage - 8) % scrollbar_drag_stages;
+                    const bool document_drag = scrollbar_stage - 8 < scrollbar_drag_stages;
+                    const auto& geometry = document_drag ? bars.document : bars.navigation;
+                    const float x = geometry.thumb.x + geometry.thumb.width * 0.5F;
+                    const float grab = geometry.thumb.height * 0.5F;
+                    if (stage == 0) {
+                        events.inject_pointer_at(ryn::input::PointerAction::down,
+                            x, geometry.thumb.y + grab, ryn::input::PointerButton::primary);
+                    } else if (stage <= scrollbar_drag_steps) {
+                        // Cross every intermediate viewport in both directions,
+                        // including bursts of input before a frame is submitted.
+                        const auto move = stage - 1;
+                        const float progress = static_cast<float>(move % 60) / 59.0F;
+                        const float fraction = (move / 60) % 2 == 0
+                            ? 1.0F - progress : progress;
+                        const float y = geometry.track.y + grab
+                            + (geometry.track.height - geometry.thumb.height) * fraction;
+                        for (int burst = 0; burst < 3; ++burst) {
+                            events.inject_pointer_at(ryn::input::PointerAction::move,
+                                x + (burst == 1 ? -32.0F : 0.0F), y);
+                        }
+                        scrollbar_expected_offset = geometry.maximum_offset * fraction;
+                    } else {
+                        events.inject_pointer_at(ryn::input::PointerAction::up,
+                            x, geometry.thumb.y + grab, ryn::input::PointerButton::primary);
+                    }
+                    break;
+                }
                 }
                 ++scrollbar_stage;
             }
@@ -1816,6 +1850,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 ++smoke_stage;
             }
             const auto step = loop.step();
+            if (scrollbar_expected_offset.has_value()) {
+                const bool document_drag = scrollbar_stage - 9 < scrollbar_drag_stages;
+                const float offset = document_drag ? document_viewport.snapshot().offset
+                    : navigation_scroll.snapshot().offset;
+                continuous_drag_passed = continuous_drag_passed
+                    && std::abs(offset - *scrollbar_expected_offset) < 0.25F
+                    && submitter.scrollbar_geometry_matches();
+                scrollbar_expected_offset.reset();
+            }
             if (scroll_acceptance && scroll_stage == 240
                     && scroll_finished_milliseconds == 0) {
                 scroll_finished_milliseconds = events.now_milliseconds();
@@ -1844,7 +1887,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && elapsed >= 1'800) {
                 break;
             }
-            if (scrollbar_acceptance && scrollbar_stage == 8
+            if (scrollbar_acceptance && scrollbar_stage == scrollbar_stage_count
                     && elapsed >= 1'100) {
                 break;
             }
@@ -1939,7 +1982,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 || telemetry.content_runs != 1
                 || render.frame_submissions < 2);
         const bool scrollbar_failed = scrollbar_acceptance
-            && (scrollbar_stage != 8 || !navigation_wheel_passed
+            && (scrollbar_stage != scrollbar_stage_count || !continuous_drag_passed
+                || !navigation_wheel_passed
                 || !navigation_drag_passed || !document_track_passed
                 || !document_drag_passed || telemetry.content_runs != 1
                 || !submitter.scrollbar_geometry_matches()
@@ -2207,6 +2251,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " scroll_acceptance=" << (scroll_acceptance ? "true" : "false")
             << " scrollbar_acceptance=" << (scrollbar_acceptance ? "true" : "false")
             << " scrollbar_stage=" << scrollbar_stage
+            << " continuous_drag=" << (continuous_drag_passed ? "passed" : "failed")
             << " navigation_wheel=" << (navigation_wheel_passed ? "passed" : "not-run")
             << " navigation_drag=" << (navigation_drag_passed ? "passed" : "not-run")
             << " document_track=" << (document_track_passed ? "passed" : "not-run")

@@ -13,3 +13,9 @@
 Windows 正式验收：用 `windows-msvc-release` 构建并在真实 Windows 窗口运行 D3D12/DXIL。第一次增量 Release 运行发生访问冲突；重新配置并完整重建相关 Release 单元后恢复原始 `/O2 /Ob2 /DNDEBUG` 与 `/INCREMENTAL:NO` 设置，随后 `--scroll-acceptance`、`--scrollbar-acceptance`、`--smoke`、`--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 7/7 退出 0。初次崩溃最可能与旧构建产物不一致有关，这是基于完整重建后消失的推断，尚未独立定位到源代码缺陷。滚动条验收确认左栏滚轮、左栏滑块、正文轨道、正文滑块及最终两列 offset 全部通过，四个滚动条图层几何和可见 draw 命令匹配。五次正式 240 帧滚动数据见 `gallery-scroll-release.csv`：首帧 CPU 54.7–58.6ms，滚动平均 4.157–4.159ms，p95 4.557–4.582ms，每次 785 个 buffer upload region，draw 命令累计 quad 4905–4935、glyph 5179–5211、effect 2800–2820。相较 change 031 的旧布局五次记录，滚动平均约 4.16ms 基本持平；可见固定目录与滑块带来更多 draw 与每帧约一个额外上传区域，内容及可视范围也发生变化，不能把两组数据当作同内容的纯性能回归比较。
 
 集成收口：Windows MSVC Debug 全量构建通过。完整 CTest 首次为 229/235；六项失败均源于旧 Windows 工作区检出的 14 个被 SHA/golden 校验的文件仍为 CRLF。把这 14 个文件恢复 LF 后，Git 对象哈希与 `HEAD` 相同且无内容差异；六项定向复测通过，完整 CTest 重跑 235/235 通过（166.19 秒）。本 change strict validate 通过；全仓 strict 仍为 26/32，既有 change 013、015、016、017、018、021 失败，本 change 通过。当前 CLI 对 `openspec doctor --json` 报 `unknown command 'doctor'`。`git diff --check` 通过，工作树在提交前无其他内容差异。
+# 用户反馈修正（2026-09-26）
+
+- 扩展 `--scrollbar-acceptance` 后，修复前 Windows MSVC Debug 真实窗口稳定退出：`frame_error=Cannot pack a fully clipped rounded effect`（exit 5）。阴影 store 使用 1 logical px 的保守 AA 范围，GPU 使用 1 physical px；125% DPI 下只有保守边缘与 clip 相交的合法阴影被 GPU pack 拒绝。
+- 新增 GPU resource 回归在修复前同样失败；修复后合法的完全裁剪实例上传透明零面积 quad，保留 store 索引与已组合 draw 顺序，重新进入视口时正常恢复。无效 geometry/metrics 仍按原合同拒绝。
+- Windows `windows-msvc` / Debug 定向 CTest 10/10 通过，包含 rounded effect math/store/scene/GPU/resources、shader contract 和 Gallery frame/viewport。回归覆盖 100%、125%、150%、200% 以及返回 100%，窗口与 ancestor clip 两种边缘，往返进入/离开物理可见区。
+- Windows `windows-msvc` / Release D3D12、实际 DPI 125%：492 阶段的滚动条验收 exit 0，左右列各 240 次跨帧移动，每步 3 次输入（含横向移出轨道），`continuous_drag=passed`，几何与 offset 逐帧一致。

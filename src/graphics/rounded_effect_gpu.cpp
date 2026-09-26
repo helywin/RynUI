@@ -98,7 +98,11 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(
         rounded_effect_bounds(instance, 1.0F / scale),
         rounded_effect_logical_viewport(metrics));
     if (logical_bounds.width <= 0.0F || logical_bounds.height <= 0.0F) {
-        throw std::invalid_argument("Cannot pack a fully clipped rounded effect");
+        // The retained store culls with a conservative logical AA guard. At
+        // fractional DPI its bound may overlap the clip while the one-pixel
+        // device bound does not. Keep the slot so composed draw indices stay
+        // valid; a transparent, zero-area quad submits no fragments.
+        return {};
     }
     const auto pixel_bounds = scale_rect(logical_bounds, scale);
 

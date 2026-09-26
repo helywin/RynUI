@@ -204,6 +204,47 @@ void test_full_retry_after_batch_submit_failure() {
             "failed batch did not force a complete effect retry");
 }
 
+void test_fractional_dpi_clip_edges_preserve_draw_indices() {
+    RecordingApi api;
+    ryn::graphics::RoundedEffectStore store;
+    auto at_window_edge = effect(-13.9F, 1);
+    auto at_ancestor_edge = effect(20.0F, 2);
+    at_ancestor_edge.geometry.ancestor_clip = ryn::graphics::EffectClip{
+        1, {33.9F, 0.0F, 60.0F, 100.0F}};
+    const auto ids = store.add_batch(std::array{
+        at_window_edge, at_ancestor_edge, effect(50.0F, 3)});
+    ryn::detail::RoundedEffectGpuResources resources(api);
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F, 1.0F}) {
+        for (const float translation : {0.0F, 0.5F, 1.0F, 0.5F, 0.0F}) {
+            for (std::size_t index = 0; index < 2; ++index) {
+                auto geometry = store.at(ids[index]).geometry;
+                geometry.translation.x = translation;
+                static_cast<void>(store.update_geometry(ids[index], geometry));
+            }
+            resources.synchronize(store, {
+                static_cast<std::uint32_t>(100.0F * scale),
+                static_cast<std::uint32_t>(100.0F * scale), scale});
+            require(resources.instance_count() == 3
+                        && store.packed_index(ids[0]) == 0
+                        && store.packed_index(ids[1]) == 1
+                        && store.packed_index(ids[2]) == 2
+                        && resources.instances()[2].shape_rect[0] == 50.0F * scale,
+                    "device clipping changed retained effect draw indices");
+            for (std::size_t index = 0; index < 2; ++index) {
+                const auto& packed = resources.instances()[index];
+                if (scale > 1.0F && translation == 0.0F) {
+                    require(packed.clip_rect == std::array<float, 4>{}
+                                && packed.material_params[0] == 0.0F,
+                            "fully device-clipped effect was not a transparent degenerate quad");
+                } else if (translation == 1.0F || scale == 1.0F) {
+                    require(packed.clip_rect[2] > 0.0F && packed.clip_rect[3] < 0.0F,
+                            "effect did not reappear after moving inside the physical clip");
+                }
+            }
+        }
+    }
+}
+
 } // namespace
 
 int main() {
@@ -211,6 +252,7 @@ int main() {
         test_full_partial_metrics_growth_and_idle_uploads();
         test_zero_effect_and_failure_paths_preserve_dirty_state();
         test_full_retry_after_batch_submit_failure();
+        test_fractional_dpi_clip_edges_preserve_draw_indices();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

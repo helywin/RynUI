@@ -164,7 +164,7 @@ void test_straight_alpha_and_overlapping_layer_contract() {
             "overlapping shadow layers used additive or double-premultiplied alpha");
 }
 
-void test_invalid_metrics_and_clipped_pack_rejected() {
+void test_invalid_metrics_rejected_and_clipped_pack_is_degenerate() {
     require_invalid([] {
         ryn::graphics::validate_rounded_effect_device_metrics({0, 100, 1.0F});
     }, "zero-width effect metrics were accepted");
@@ -172,13 +172,13 @@ void test_invalid_metrics_and_clipped_pack_rejected() {
         ryn::graphics::validate_rounded_effect_device_metrics(
             {100, 100, std::numeric_limits<float>::quiet_NaN()});
     }, "NaN effect display scale was accepted");
-    require_invalid([] {
-        auto clipped = outer();
-        clipped.geometry.ancestor_clip = ryn::graphics::EffectClip{
-            8, {500.0F, 500.0F, 20.0F, 20.0F}};
-        static_cast<void>(ryn::graphics::pack_rounded_effect_instance(
-            clipped, {200, 100, 1.0F}));
-    }, "fully clipped rounded effect was packed for GPU upload");
+    auto clipped = outer();
+    clipped.geometry.ancestor_clip = ryn::graphics::EffectClip{
+        8, {500.0F, 500.0F, 20.0F, 20.0F}};
+    const auto packed = ryn::graphics::pack_rounded_effect_instance(
+        clipped, {200, 100, 1.0F});
+    require(packed == ryn::graphics::RoundedEffectGpuInstance{},
+            "fully clipped rounded effect did not preserve its slot as a degenerate quad");
 }
 
 } // namespace
@@ -189,7 +189,7 @@ int main() {
         test_100_150_200_percent_scale_contract();
         test_shader_reference_matches_logical_reference();
         test_straight_alpha_and_overlapping_layer_contract();
-        test_invalid_metrics_and_clipped_pack_rejected();
+        test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

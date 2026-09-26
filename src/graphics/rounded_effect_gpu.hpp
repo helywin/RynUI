@@ -48,6 +48,8 @@ void validate_rounded_effect_device_metrics(RoundedEffectDeviceMetrics metrics);
 [[nodiscard]] runtime::Rect rounded_effect_logical_viewport(
     RoundedEffectDeviceMetrics metrics);
 
+// Valid effects outside the device clip become transparent zero-area instances,
+// preserving the retained store's indices and draw order across DPI changes.
 [[nodiscard]] RoundedEffectGpuInstance pack_rounded_effect_instance(
     const RoundedEffectInstance& instance,
     RoundedEffectDeviceMetrics metrics);
