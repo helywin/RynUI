@@ -38,6 +38,8 @@ enum class ReferenceSurfaceRole : std::uint8_t {
     site_header,
     scrollbar_track,
     scrollbar_thumb,
+    document_heading,
+    document_note,
 };
 
 class ReferenceSurfaceProps final {

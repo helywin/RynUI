@@ -408,11 +408,15 @@ void test_gallery_chrome_roles_use_theme_without_status_labels() {
                     .width(ryn::dp(8.0F))
                     .height(ryn::dp(40.0F))),
             [] {});
+        ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::document_heading),
+            [] { ryn::Text(u8"Document heading"); });
+        ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::document_note),
+            [] { ryn::Text(u8"Source note"); });
     }});
     require(fixture.synchronize(), "Gallery chrome did not synchronize");
     const auto mounted = fixture.surfaces->mounted_surfaces();
-    require(mounted.size() == 3
-                && fixture.application->text().mounted_texts().size() == 1
+    require(mounted.size() == 5
+                && fixture.application->text().mounted_texts().size() == 3
                 && fixture.application->interactions().size() == 0,
             "Gallery chrome mounted status labels or interactions");
     const auto header = fixture.surfaces->snapshot(mounted[0].component);
@@ -423,8 +427,11 @@ void test_gallery_chrome_roles_use_theme_without_status_labels() {
                 && thumb.role == ReferenceSurfaceRole::scrollbar_thumb,
             "Gallery chrome roles were not retained");
     for (const auto& surface : mounted) {
+        const auto role = fixture.surfaces->snapshot(surface.component).role;
+        const bool document = role == ReferenceSurfaceRole::document_heading
+            || role == ReferenceSurfaceRole::document_note;
         require(fixture.layer(surface, ReferenceSurfaceVisualLayer::background).opacity
-                    == 1.0F
+                    == (document ? 0.0F : 1.0F)
                     && fixture.layer(surface, ReferenceSurfaceVisualLayer::border).opacity
                         == 0.0F
                     && fixture.layer(surface, ReferenceSurfaceVisualLayer::status_badge).opacity

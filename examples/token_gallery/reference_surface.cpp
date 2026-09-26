@@ -1,4 +1,5 @@
 #include "reference_surface.hpp"
+#include "gallery_layout.hpp"
 #include "component/input_component.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
@@ -99,6 +100,8 @@ void validate_status(GallerySupportStatus status) {
 void validate_role(ReferenceSurfaceRole role) {
     switch (role) {
     case ReferenceSurfaceRole::reference:
+    case ReferenceSurfaceRole::document_heading:
+    case ReferenceSurfaceRole::document_note:
     case ReferenceSurfaceRole::site_header:
     case ReferenceSurfaceRole::scrollbar_track:
     case ReferenceSurfaceRole::scrollbar_thumb:
@@ -210,12 +213,20 @@ void refresh_material(
             : ryn::Color(
                 foreground.red(), foreground.green(), foreground.blue(),
                 state.role == ReferenceSurfaceRole::scrollbar_track
-                    ? 0.10F : 0.38F);
+                    ? 0.05F : 0.28F);
         for (auto& visual : state.visuals) visual.opacity = 0.0F;
         auto& fill = state.visuals[static_cast<std::size_t>(
             ReferenceSurfaceVisualLayer::background)];
         fill.color = channels(background);
-        fill.opacity = state.visible ? 1.0F : 0.0F;
+        fill.opacity = state.visible
+                && state.role != ReferenceSurfaceRole::document_heading
+                && state.role != ReferenceSurfaceRole::document_note
+            ? 1.0F : 0.0F;
+        if (state.role == ReferenceSurfaceRole::site_header) {
+            auto& border = state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)];
+            border.color = channels(theme.alias().color_border_secondary);
+            border.opacity = state.visible ? 1.0F : 0.0F;
+        }
         state.effects = {};
         if (state.scene.valid()) {
             static_cast<void>(host.application().services().surfaces().update_surface(
@@ -431,15 +442,30 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
                 : ryn::Color(
                     foreground.red(), foreground.green(), foreground.blue(),
                     state->role == ReferenceSurfaceRole::scrollbar_track
-                        ? 0.10F : 0.38F);
+                        ? 0.05F : 0.28F);
             for (auto& visual : state->visuals) visual.opacity = 0.0F;
             auto& fill = state->visuals[static_cast<std::size_t>(
                 ReferenceSurfaceVisualLayer::background)];
+            const auto fill_bounds = state->role == ReferenceSurfaceRole::site_header
+                ? ryn::runtime::Rect{0.0F, 0.0F, viewport.width,
+                    node.bounds.y + node.bounds.height + GalleryLayoutMetrics::body_gap}
+                : node.bounds;
             fill = make_quad(
-                node.bounds, viewport, color, state->visible ? 1.0F : 0.0F,
+                fill_bounds, viewport, color,
+                state->visible
+                        && state->role != ReferenceSurfaceRole::document_heading
+                        && state->role != ReferenceSurfaceRole::document_note
+                    ? 1.0F : 0.0F,
                 state->role == ReferenceSurfaceRole::site_header
                     ? 0.0F : node.bounds.width * 0.5F,
                 node.translation);
+            if (state->role == ReferenceSurfaceRole::site_header) {
+                // The bottom rule is above the opaque header background layer.
+                state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)] = make_quad(
+                    {0.0F, node.bounds.y + node.bounds.height - 1.0F, viewport.width, 1.0F},
+                    viewport, theme.alias().color_border_secondary,
+                    state->visible ? 1.0F : 0.0F, 0.0F, {});
+            }
             state->effects = {};
             static_cast<void>(application_->services().surfaces().update_surface(
                 state->scene, state->visuals));
@@ -572,6 +598,8 @@ void ReferenceSurface(
     model.cross_gap = 4.0F;
     model.padding = role == ReferenceSurfaceRole::scrollbar_track
             || role == ReferenceSurfaceRole::scrollbar_thumb
+            || role == ReferenceSurfaceRole::document_heading
+            || role == ReferenceSurfaceRole::document_note
         ? ryn::layout::Padding{}
         : ryn::layout::Padding{12.0F, 12.0F, 12.0F, 12.0F};
     model.item_policy = ryn::layout::FlexItemPolicy::sequential;
