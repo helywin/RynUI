@@ -249,6 +249,42 @@ void test_scrollbar_geometry_and_pointer_mapping() {
             "long content thumb violated minimum grab size");
 }
 
+void test_scrollbar_placement_and_column_routing() {
+    using namespace rynui::example;
+    ryn::runtime::FrameRequestState frames;
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::DirtyQueues dirty(nodes, &frames);
+    const auto bar = nodes.create_root();
+    nodes.require(bar).bounds = {24.0F, 5000.0F, 8.0F, 200.0F};
+    const ryn::runtime::Rect target{234.0F, 88.0F, 8.0F, 200.0F};
+    require(gallery_place_scrollbar(bar, target, nodes, dirty)
+                && nodes.require(bar).translation
+                    == ryn::runtime::Point{210.0F, -4912.0F}
+                && dirty.transform_nodes().size() == 1,
+            "scrollbar overlay was not translated to its visible lane");
+    dirty.clear();
+    require(!gallery_place_scrollbar(bar, target, nodes, dirty)
+                && dirty.transform_nodes().empty(),
+            "unchanged scrollbar placement dirtied the scene");
+
+    const ryn::runtime::Rect navigation{24.0F, 88.0F, 220.0F, 600.0F};
+    const ryn::runtime::Rect document{260.0F, 88.0F, 916.0F, 600.0F};
+    require(gallery_scroll_target(100.0F, 200.0F, false,
+                navigation, document) == GalleryScrollTarget::navigation
+                && gallery_scroll_target(500.0F, 200.0F, false,
+                    navigation, document) == GalleryScrollTarget::document
+                && gallery_scroll_target(250.0F, 200.0F, false,
+                    navigation, document) == GalleryScrollTarget::none
+                && gallery_scroll_target(100.0F, 40.0F, false,
+                    navigation, document) == GalleryScrollTarget::none
+                && gallery_scroll_target(100.0F, 200.0F, true,
+                    navigation, document) == GalleryScrollTarget::none,
+            "Gallery wheel routing crossed columns, header, or narrow mode");
+    require(nodes.destroy(bar)
+                && !gallery_place_scrollbar(bar, target, nodes, dirty),
+            "stale scrollbar node was accepted");
+}
+
 } // namespace
 
 int main() {
@@ -259,6 +295,7 @@ int main() {
         test_subtree_translation_is_generation_checked_and_minimal();
         test_two_scroll_ranges_and_translations_remain_independent();
         test_scrollbar_geometry_and_pointer_mapping();
+        test_scrollbar_placement_and_column_routing();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -39,6 +39,7 @@ struct GalleryScrollTranslationResult final {
 
 class GalleryScrollTranslation final {
 public:
+    void invalidate() noexcept { applied_root_.reset(); }
     [[nodiscard]] GalleryScrollTranslationResult apply(
         ryn::runtime::NodeId root,
         float offset,
@@ -62,6 +63,19 @@ struct GalleryScrollbarGeometry final {
 [[nodiscard]] float gallery_scrollbar_offset_for_thumb_top(
     const GalleryScrollbarGeometry& geometry,
     float thumb_top);
+[[nodiscard]] bool gallery_place_scrollbar(
+    ryn::runtime::NodeId node,
+    ryn::runtime::Rect target,
+    ryn::runtime::NodeStore& nodes,
+    ryn::runtime::DirtyQueues& dirty);
+
+enum class GalleryScrollTarget { none, navigation, document };
+[[nodiscard]] GalleryScrollTarget gallery_scroll_target(
+    float x,
+    float y,
+    bool narrow,
+    ryn::runtime::Rect navigation_lane,
+    ryn::runtime::Rect document_lane);
 
 struct GalleryScrollbarAction final {
     bool consumed{};

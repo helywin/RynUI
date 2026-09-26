@@ -142,6 +142,41 @@ float gallery_scrollbar_offset_for_thumb_top(
         0.0F, 1.0F) * geometry.maximum_offset;
 }
 
+bool gallery_place_scrollbar(
+    ryn::runtime::NodeId node,
+    ryn::runtime::Rect target,
+    ryn::runtime::NodeStore& nodes,
+    ryn::runtime::DirtyQueues& dirty) {
+    validate_track(target);
+    const auto* current = nodes.find(node);
+    if (current == nullptr) return false;
+    ryn::runtime::NodePropertyWriter writer(nodes, dirty);
+    return writer.set_translation(node, {
+        target.x - current->bounds.x,
+        target.y - current->bounds.y,
+    });
+}
+
+GalleryScrollTarget gallery_scroll_target(
+    float x,
+    float y,
+    bool narrow,
+    ryn::runtime::Rect navigation_lane,
+    ryn::runtime::Rect document_lane) {
+    validate_track(navigation_lane);
+    validate_track(document_lane);
+    if (!std::isfinite(x) || !std::isfinite(y)) {
+        throw std::invalid_argument("Gallery scroll pointer must be finite");
+    }
+    if (!narrow && contains(navigation_lane, x, y)) {
+        return GalleryScrollTarget::navigation;
+    }
+    if (contains(document_lane, x, y)) {
+        return GalleryScrollTarget::document;
+    }
+    return GalleryScrollTarget::none;
+}
+
 GalleryScrollbarAction GalleryScrollbarController::dispatch(
     const ryn::input::PointerInputEvent& event,
     const GalleryScrollbarGeometry& geometry,

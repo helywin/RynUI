@@ -7,3 +7,5 @@
 滚动条与装饰：`ReferenceSurface` 增加顶栏、轨道和滑块的 Gallery 内部角色，颜色取自 Theme，装饰角色不生成状态文案或交互；`GalleryScrollbarController` 支持指针拖动与轨道翻页，几何按可视比例及最小滑块长度计算。Windows MSVC Debug 定向构建成功，`rynui.reference_surface`、`rynui.gallery_document_viewport`、`rynui.gallery_document_viewport_contract` 3/3 通过；测试覆盖短内容隐藏滑块、比例/最小尺寸、拖动映射、轨道点击及装饰层语义。本阶段只完成组件，尚未接入 Gallery 布局和真实窗口。
 
 布局阶段：导航由横向换行按钮改为纵向文档入口、七个类别及锁定目录的 73 个静态组件条目；站点栏作为最后绘制且优先布局的 56dp Theme 装饰面，位于两列之上。Windows MSVC Debug `rynui.token_gallery_frame` 1/1 通过，覆盖顶栏高度与纵向位置、导航 97 个直接子节点、宽窄列布局及组件 identity 保持。本阶段尚未把滚动和顶栏拦截接入运行时。
+
+运行时滚动：宽窗口滚轮按逻辑坐标路由到左栏或正文；各自保持 offset、轨道和滑块。左栏/正文只平移各自 Node 子树，站点栏不平移；窄窗口改为整段内容共用正文 offset，隐藏左栏条、保留一条可见滚动条。轨道点击翻页、滑块指针捕获拖动、顶部输入拦截、resize 尺寸与锚点恢复已接入；导航 Button 在局部 Theme 下使用透明背景与边框。Windows MSVC Debug 定向 `rynui.token_gallery_frame`、`rynui.gallery_document_viewport`、`rynui.gallery_document_viewport_contract` 3/3 通过；新增单元测试覆盖列路由、装饰节点定位、导航/正文隔离与窄窗口共滚。Debug 真实 D3D12 `--scroll-acceptance` 和 `--scrollbar-acceptance` 均退出 0；后者日志确认左右滚动、拖动、轨道点击及滑块绘制/几何均通过。正式 Release 验收仍在下一阶段。

@@ -290,14 +290,26 @@ void require_all_cells_reachable(
         require(bounds.y >= 19.75F && bounds.y + bounds.height <= viewport.height - 19.75F,
                 "Token Gallery cell escaped the vertical viewport");
     }
+    std::size_t surface_index = 0;
     for (const auto& mounted : fixture.surfaces->mounted_surfaces()) {
+        if (fixture.surfaces->snapshot(mounted.component).role
+                != rynui::example::ReferenceSurfaceRole::reference) {
+            ++surface_index;
+            continue;
+        }
         const auto bounds = fixture.nodes.require(mounted.node).bounds;
-        require(bounds.width > 0.0F && bounds.height > 0.0F,
-                "Token Gallery produced an empty reference surface");
+        if (bounds.width <= 0.0F || bounds.height <= 0.0F) {
+            throw std::runtime_error(
+                "Token Gallery produced an empty reference surface "
+                + std::to_string(surface_index) + " "
+                + std::to_string(bounds.width) + "x"
+                + std::to_string(bounds.height));
+        }
         require(bounds.x >= 23.75F && bounds.x + bounds.width <= viewport.width - 23.75F,
                 "Token Gallery reference surface escaped the horizontal viewport");
         require(bounds.y >= 19.75F && bounds.y + bounds.height <= viewport.height - 19.75F,
                 "Token Gallery reference surface escaped the vertical viewport");
+        ++surface_index;
     }
 }
 
@@ -415,18 +427,22 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     require(roots.size() == 1,
             "Token Gallery document did not preserve one retained root");
     const auto root = fixture.host->components().root(roots.front());
+    const auto body = fixture.nodes.require(root).children.front();
+    const auto navigation_root = fixture.nodes.require(body).children[0];
+    const auto document_root = fixture.nodes.require(body).children[1];
+    const auto header_root = fixture.nodes.require(root).children.back();
     constexpr ryn::runtime::Size viewport{1200.0F, 900.0F};
     constexpr ryn::runtime::Rect clip{16.0F, 12.0F, 1168.0F, 876.0F};
     constexpr ryn::runtime::Point origin{24.0F, 20.0F};
 
     GalleryDocumentViewport document;
     require(document.apply_subtree_translation(
-                root, fixture.nodes, fixture.dirty)
+                document_root, fixture.nodes, fixture.dirty)
                 && fixture.host->layout_and_synchronize(
                     viewport, clip, origin, 0.0F, true),
             "Token Gallery long document initial layout failed");
-    const auto& root_node = fixture.nodes.require(root);
-    require(root_node.bounds.height > clip.height,
+    const auto& document_node = fixture.nodes.require(document_root);
+    require(document_node.bounds.height > clip.height,
             "Token Gallery document was truncated to the window height");
     ryn::graphics::OrderedScene visible_scene;
     const auto source_commands = fixture.host->scene_composer()
@@ -447,10 +463,10 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     for (std::size_t index = 0; index < anchors.size(); ++index) {
         anchors[index] = fixture.nodes.require(
             surfaces[section_surface_indices[index]].node).bounds.y
-            - root_node.bounds.y;
+            - document_node.bounds.y;
     }
     document.replace_anchors(anchors);
-    document.set_extents(clip.height, root_node.bounds.height);
+    document.set_extents(clip.height, document_node.bounds.height);
     const auto live = document.anchor(GalleryDocumentSectionKind::live_samples);
     require(live.has_value() && document.jump_to(*live),
             "Token Gallery live-sample anchor was not reachable");
@@ -475,10 +491,17 @@ void test_document_viewport_scrolls_long_content_without_remount() {
         rebuilds_before_scroll.push_back(counters.instance_rebuilds);
     }
     require(document.apply_subtree_translation(
-                root, fixture.nodes, fixture.dirty)
+                document_root, fixture.nodes, fixture.dirty)
                 && fixture.host->layout_and_synchronize(
                     viewport, clip, origin, 0.0F, true),
             "Token Gallery live-sample scroll synchronization failed");
+    require(fixture.nodes.require(navigation_root).translation
+                == ryn::runtime::Point{}
+                && fixture.nodes.require(header_root).translation
+                    == ryn::runtime::Point{}
+                && fixture.nodes.require(document_root).translation.y
+                    == -document.snapshot().offset,
+            "document scroll moved the independent sidebar or site header");
     const auto bottom_visibility = fixture.host->scene_composer()
         .build_visible_scene(fixture.nodes, clip, visible_scene);
     require(bottom_visibility.fragments_visible > 0
@@ -533,7 +556,7 @@ void test_document_viewport_scrolls_long_content_without_remount() {
 
     require(document.scroll_to(0.0F)
                 && document.apply_subtree_translation(
-                    root, fixture.nodes, fixture.dirty)
+                    document_root, fixture.nodes, fixture.dirty)
                 && fixture.host->layout_and_synchronize(
                     viewport, clip, origin, 0.0F, true),
             "Token Gallery top-anchor restoration failed");
@@ -705,10 +728,10 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 true),
             "wide responsive Gallery layout failed");
     const auto root_children = fixture.nodes.require(root).children;
-    require(root_children.size() == 2,
-            "responsive Gallery duplicated body or header roots");
+    require(root_children.size() == 6,
+            "responsive Gallery duplicated body, bars, or header roots");
     const auto body = root_children[0];
-    const auto header = root_children[1];
+    const auto header = root_children[5];
     const auto wide_children = fixture.nodes.require(body).children;
     require(wide_children.size() == 2,
             "responsive Gallery duplicated navigation or document roots");
@@ -741,6 +764,44 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
                 && near(narrow_navigation.width, 512.0F)
                 && near(narrow_document.width, 512.0F),
             "narrow Gallery did not stack wrapped navigation above the document");
+    rynui::example::GalleryDocumentViewport shared_scroll;
+    const float narrow_extent = fixture.nodes.require(body).bounds.height;
+    require(shared_scroll.set_extents(600.0F, narrow_extent)
+                && shared_scroll.scroll_to(shared_scroll.snapshot().maximum_offset)
+                && shared_scroll.apply_subtree_translation(
+                    body, fixture.nodes, fixture.dirty)
+                && fixture.host->layout_and_synchronize(
+                    {560.0F, 30000.0F},
+                    {0.0F, 0.0F, 560.0F, 30000.0F},
+                    {24.0F, 20.0F}, 0.0F, true)
+                && fixture.nodes.require(narrow_children[0]).translation.y
+                    == -shared_scroll.snapshot().offset
+                && fixture.nodes.require(narrow_children[1]).translation.y
+                    == -shared_scroll.snapshot().offset
+                && fixture.nodes.require(header).translation
+                    == ryn::runtime::Point{},
+            "narrow Gallery did not keep both columns in one scroll region");
+    rynui::example::GalleryScrollRange short_navigation;
+    short_navigation.set_extents(600.0F, 100.0F);
+    const auto navigation_bar = rynui::example::gallery_scrollbar_geometry(
+        {526.0F, 88.0F, 8.0F, 600.0F}, short_navigation.snapshot());
+    const auto document_bar = rynui::example::gallery_scrollbar_geometry(
+        {526.0F, 88.0F, 8.0F, 600.0F},
+        {600.0F, narrow_extent,
+         shared_scroll.snapshot().maximum_offset,
+         shared_scroll.snapshot().offset});
+    require(definition.set_scrollbars(navigation_bar, document_bar, true),
+            "narrow Gallery scrollbar presentation did not update");
+    const auto chrome = fixture.surfaces->mounted_surfaces();
+    require(!fixture.surfaces->snapshot(chrome[126].component).visible
+                && !fixture.surfaces->snapshot(chrome[127].component).visible
+                && fixture.surfaces->snapshot(chrome[128].component).visible
+                && fixture.surfaces->snapshot(chrome[129].component).visible,
+            "narrow Gallery did not keep exactly one visible scrollbar");
+    require(shared_scroll.scroll_to(0.0F)
+                && shared_scroll.apply_subtree_translation(
+                    body, fixture.nodes, fixture.dirty),
+            "narrow Gallery could not restore its shared scroll origin");
     for (std::size_t index = 52; index < 125; ++index) {
         const auto& node = fixture.nodes.require(
             fixture.surfaces->mounted_surfaces()[index].node);
@@ -798,7 +859,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.host->mounted_buttons().size()
                 == definition.navigation_control_count + 17,
             "Token Gallery live sample count drifted");
-    require(fixture.surfaces->mounted_surfaces().size() == 127
+    require(fixture.surfaces->mounted_surfaces().size() == 131
                 && fixture.surfaces->snapshot(
                     fixture.surfaces->mounted_surfaces().back().component).role
                     == rynui::example::ReferenceSurfaceRole::site_header,
@@ -826,7 +887,7 @@ void test_token_gallery_frame_contract() {
 
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1
-                && initial.theme_content_runs == definition.stable_test_ids.size() + 1
+                && initial.theme_content_runs == definition.stable_test_ids.size() + 2
                 && initial.document_sections == 6
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126

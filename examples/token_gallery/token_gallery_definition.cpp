@@ -27,6 +27,12 @@ struct GalleryState final {
     ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(884.0F)};
     ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
     ryn::Signal<bool> narrow_layout{false};
+    ryn::Signal<ryn::LogicalLength> navigation_track_height{ryn::dp(1.0F)};
+    ryn::Signal<ryn::LogicalLength> navigation_thumb_height{ryn::dp(1.0F)};
+    ryn::Signal<ryn::LogicalLength> document_track_height{ryn::dp(1.0F)};
+    ryn::Signal<ryn::LogicalLength> document_thumb_height{ryn::dp(1.0F)};
+    ryn::Signal<bool> navigation_bar_visible{true};
+    ryn::Signal<bool> document_bar_visible{true};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
     ryn::Signal<bool> clear_disabled{false};
@@ -135,6 +141,17 @@ ryn::ThemeConfig algorithm_config(ryn::ThemeAlgorithm algorithm) {
     if (algorithm != ryn::ThemeAlgorithm::Default) {
         config.algorithms.push_back(algorithm);
     }
+    return config;
+}
+
+ryn::ThemeConfig navigation_theme_config() {
+    ryn::ThemeConfig config;
+    const auto transparent = ryn::Color::rgba8(0, 0, 0, 0);
+    config.button.tokens.default_background = transparent;
+    config.button.tokens.default_border_color = transparent;
+    config.button.tokens.default_shadow = ryn::ShadowList{};
+    config.button.tokens.padding_inline = ryn::dp(4.0F);
+    config.button.tokens.border_radius = ryn::dp(4.0F);
     return config;
 }
 
@@ -248,6 +265,21 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
     filter_button(state, "Web only / 仅 Web", GallerySupportFilter::web_only);
     filter_button(state, "Deprecated / 已弃用", GallerySupportFilter::deprecated);
     filter_button(state, "Out of scope / 不在范围", GallerySupportFilter::out_of_scope);
+}
+
+void scrollbar_surface(
+    ReferenceSurfaceRole role,
+    const ryn::Signal<ryn::LogicalLength>& height,
+    const ryn::Signal<bool>& visible) {
+    ReferenceSurface(
+        ReferenceSurfaceProps{}
+            .role(role)
+            .visible(visible)
+            .layout(ryn::LayoutStyle{}
+                .width(ryn::dp(8.0F))
+                .height(height)
+                .order(2)),
+        [] {});
 }
 
 void design_values(const std::shared_ptr<GalleryState>& state) {
@@ -774,7 +806,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                     ryn::Flex(
                         ryn::FlexProps{}
                             .vertical(true)
-                            .gap(ryn::dp(12.0F))
+                            .gap(ryn::dp(0.0F))
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
                             ryn::Flex(
@@ -782,7 +814,9 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                     .vertical(state->narrow_layout)
                                     .gap(ryn::dp(16.0F))
                                     .layout(ryn::LayoutStyle{}
-                                        .width(state->gallery_width)),
+                                        .width(state->gallery_width)
+                                        .margin_top(ryn::dp(12.0F))
+                                        .order(1)),
                                 [state] {
                                     ryn::Flex(
                                         ryn::FlexProps{}
@@ -790,7 +824,15 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                             .gap(ryn::dp(8.0F))
                                             .layout(ryn::LayoutStyle{}
                                                 .width(state->navigation_width)),
-                                        [state] { navigation_controls(state); });
+                                        [state] {
+                                            ryn::Theme(
+                                                ryn::ThemeProps{}.config(
+                                                    navigation_theme_config()),
+                                                ryn::ThemeContent{[state] {
+                                                    ++state->telemetry.theme_content_runs;
+                                                    navigation_controls(state);
+                                                }});
+                                        });
                                     ryn::Flex(
                                         ryn::FlexProps{}
                                             .vertical(true)
@@ -807,6 +849,22 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                             add_live_samples(state);
                                         });
                                 });
+                            scrollbar_surface(
+                                ReferenceSurfaceRole::scrollbar_track,
+                                state->navigation_track_height,
+                                state->navigation_bar_visible);
+                            scrollbar_surface(
+                                ReferenceSurfaceRole::scrollbar_thumb,
+                                state->navigation_thumb_height,
+                                state->navigation_bar_visible);
+                            scrollbar_surface(
+                                ReferenceSurfaceRole::scrollbar_track,
+                                state->document_track_height,
+                                state->document_bar_visible);
+                            scrollbar_surface(
+                                ReferenceSurfaceRole::scrollbar_thumb,
+                                state->document_thumb_height,
+                                state->document_bar_visible);
                             ReferenceSurface(
                                 ReferenceSurfaceProps{}
                                     .role(ReferenceSurfaceRole::site_header)
@@ -883,6 +941,27 @@ TokenGalleryDefinition make_token_gallery_definition() {
                 ++state->telemetry.viewport_updates;
             }
         },
+        [state](
+            const GalleryScrollbarGeometry& navigation,
+            const GalleryScrollbarGeometry& document,
+            bool narrow) {
+            const auto assign = [](const ryn::Signal<ryn::LogicalLength>& target,
+                                   float value) {
+                return target.set(ryn::dp(value));
+            };
+            bool changed = false;
+            changed = assign(state->navigation_track_height,
+                navigation.track.height) || changed;
+            changed = assign(state->navigation_thumb_height,
+                navigation.thumb.height) || changed;
+            changed = assign(state->document_track_height,
+                document.track.height) || changed;
+            changed = assign(state->document_thumb_height,
+                document.thumb.height) || changed;
+            changed = state->navigation_bar_visible.set(!narrow) || changed;
+            return changed;
+        },
+        [state] { return state->narrow_layout.get(); },
         [state, set_theme](bool enabled) {
             auto config = state->theme.get();
             if (config.seed.motion.value_or(true) == enabled) {

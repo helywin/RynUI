@@ -73,6 +73,53 @@ std::filesystem::path executable_directory(char* executable) {
     return std::filesystem::absolute(executable).parent_path();
 }
 
+struct GalleryScrollPresentation final {
+    bool narrow{};
+    ryn::runtime::Rect navigation_lane;
+    ryn::runtime::Rect document_lane;
+    GalleryScrollbarGeometry navigation;
+    GalleryScrollbarGeometry document;
+};
+
+GalleryScrollPresentation gallery_scroll_presentation(
+    ryn::runtime::Size viewport,
+    bool narrow,
+    GalleryScrollRangeSnapshot navigation,
+    GalleryDocumentViewportSnapshot document) {
+    constexpr float left = 24.0F;
+    constexpr float top = 88.0F;
+    constexpr float bottom = 12.0F;
+    constexpr float bar_width = 8.0F;
+    const float content_width = std::max(256.0F, viewport.width - 48.0F);
+    const float navigation_width = narrow ? content_width : 220.0F;
+    const float document_left = narrow ? left : left + 236.0F;
+    const float document_width = narrow ? content_width
+        : std::max(256.0F, content_width - 236.0F);
+    const float height = std::max(1.0F, viewport.height - top - bottom);
+    const ryn::runtime::Rect navigation_lane{
+        left, top, navigation_width, height};
+    const ryn::runtime::Rect document_lane{
+        document_left, top, document_width, height};
+    return {
+        narrow,
+        navigation_lane,
+        document_lane,
+        gallery_scrollbar_geometry(
+            {left + navigation_width - bar_width - 2.0F,
+             top, bar_width, height}, navigation),
+        gallery_scrollbar_geometry(
+            {document_left + document_width - bar_width - 2.0F,
+             top, bar_width, height},
+            {document.viewport_extent, document.content_extent,
+             document.maximum_offset, document.offset}),
+    };
+}
+
+bool gallery_contains(ryn::runtime::Rect bounds, float x, float y) noexcept {
+    return x >= bounds.x && x < bounds.x + bounds.width
+        && y >= bounds.y && y < bounds.y + bounds.height;
+}
+
 class GalleryEvents final : public ryn::runtime::FrameEventSource {
 public:
     GalleryEvents(
@@ -81,6 +128,8 @@ public:
         ryn::detail::InputComponentHost& inputs,
         ryn::runtime::FrameRequestState& frame_requests,
         GalleryDocumentViewport& document_viewport,
+        GalleryScrollRange& navigation_scroll,
+        GalleryScrollPresentation& scroll_presentation,
         ryn::runtime::Size& viewport,
         float& render_scale,
         bool fixed_render_scale,
@@ -94,6 +143,8 @@ public:
           inputs_(&inputs),
           frame_requests_(&frame_requests),
           document_viewport_(&document_viewport),
+          navigation_scroll_(&navigation_scroll),
+          scroll_presentation_(&scroll_presentation),
           viewport_(&viewport),
           render_scale_(&render_scale),
           fixed_render_scale_(fixed_render_scale),
@@ -118,6 +169,21 @@ public:
     [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
     [[nodiscard]] std::uint64_t scroll_events() const noexcept {
         return scroll_events_;
+    }
+    void inject_scroll_at(float x, float y, float delta_y) {
+        const float host_factor = *render_scale_ / platform_->display_scale();
+        dispatch(ryn::input::ScrollInputEvent{
+            0.0F, delta_y, x * host_factor, y * host_factor});
+    }
+    void inject_pointer_at(
+        ryn::input::PointerAction action,
+        float x,
+        float y,
+        ryn::input::PointerButton button = ryn::input::PointerButton::none) {
+        const float host_factor = *render_scale_ / platform_->display_scale();
+        dispatch(ryn::input::PointerInputEvent{
+            ryn::input::PointerIdentity::mouse(), action, button,
+            x * host_factor, y * host_factor});
     }
 
 private:
@@ -154,13 +220,68 @@ private:
             event.x, host_scale, *render_scale_);
         mapped.y = token_gallery_pointer_to_render_logical(
             event.y, host_scale, *render_scale_);
+        auto& presentation = *scroll_presentation_;
+        const auto handle_bar = [this, &mapped](
+            GalleryScrollbarController& controller,
+            const GalleryScrollbarGeometry& geometry,
+            float viewport_extent,
+            float current_offset,
+            auto&& scroll_to) {
+            const auto result = controller.dispatch(
+                mapped, geometry, viewport_extent, current_offset);
+            if (result.requested_offset.has_value()
+                    && scroll_to(*result.requested_offset)) {
+                frame_requests_->request_frame();
+            }
+            return result.consumed;
+        };
+        if (!presentation.narrow && handle_bar(
+                navigation_bar_, presentation.navigation,
+                navigation_scroll_->snapshot().viewport_extent,
+                navigation_scroll_->snapshot().offset,
+                [this](float value) { return navigation_scroll_->scroll_to(value); })) {
+            return;
+        }
+        if (handle_bar(
+                document_bar_, presentation.document,
+                document_viewport_->snapshot().viewport_extent,
+                document_viewport_->snapshot().offset,
+                [this](float value) { return document_viewport_->scroll_to(value); })) {
+            return;
+        }
+        const bool over_bar = (!presentation.narrow && gallery_contains(
+                presentation.navigation.track, mapped.x, mapped.y))
+            || gallery_contains(presentation.document.track, mapped.x, mapped.y);
+        if ((mapped.y < presentation.document_lane.y || over_bar)
+                && mapped.action != ryn::input::PointerAction::up
+                && mapped.action != ryn::input::PointerAction::cancel) {
+            return;
+        }
         application_->pointer().dispatch(mapped);
     }
 
     void dispatch(const ryn::input::ScrollInputEvent& event) {
         const float ticks = event.delta_y != 0.0F
             ? -event.delta_y : -event.delta_x;
-        if (document_viewport_->scroll_by(ticks * 48.0F)) {
+        const float x = token_gallery_pointer_to_render_logical(
+            event.x, platform_->display_scale(), *render_scale_);
+        const float y = token_gallery_pointer_to_render_logical(
+            event.y, platform_->display_scale(), *render_scale_);
+        bool changed = false;
+        switch (gallery_scroll_target(
+            x, y, scroll_presentation_->narrow,
+            scroll_presentation_->navigation_lane,
+            scroll_presentation_->document_lane)) {
+        case GalleryScrollTarget::navigation:
+            changed = navigation_scroll_->scroll_by(ticks * 48.0F);
+            break;
+        case GalleryScrollTarget::document:
+            changed = document_viewport_->scroll_by(ticks * 48.0F);
+            break;
+        case GalleryScrollTarget::none:
+            break;
+        }
+        if (changed) {
             frame_requests_->request_frame();
         }
         ++scroll_events_;
@@ -218,6 +339,10 @@ private:
     ryn::detail::InputComponentHost* inputs_;
     ryn::runtime::FrameRequestState* frame_requests_;
     GalleryDocumentViewport* document_viewport_;
+    GalleryScrollRange* navigation_scroll_;
+    GalleryScrollPresentation* scroll_presentation_;
+    GalleryScrollbarController navigation_bar_;
+    GalleryScrollbarController document_bar_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
     bool fixed_render_scale_{};
@@ -255,6 +380,15 @@ public:
         const std::function<ryn::Color()>& background_color,
         ReferenceSurfaceHost& reference_surfaces,
         GalleryDocumentViewport& document_viewport,
+        GalleryScrollRange& navigation_scroll,
+        GalleryScrollPresentation& scroll_presentation,
+        const std::function<bool(
+            const GalleryScrollbarGeometry&,
+            const GalleryScrollbarGeometry&,
+            bool)>& set_scrollbars,
+        const std::function<bool()>& narrow_layout,
+        ryn::runtime::NodeId body_root,
+        ryn::runtime::NodeId navigation_root,
         ryn::runtime::NodeId document_root,
         ryn::runtime::Size& viewport,
         float& render_scale) noexcept
@@ -268,6 +402,12 @@ public:
           effect_resources_(renderer),
           reference_surfaces_(&reference_surfaces),
           document_viewport_(&document_viewport),
+          navigation_scroll_(&navigation_scroll),
+          scroll_presentation_(&scroll_presentation),
+          set_scrollbars_(&set_scrollbars),
+          narrow_layout_(&narrow_layout),
+          body_root_(body_root),
+          navigation_root_(navigation_root),
           document_root_(document_root),
           viewport_(&viewport),
           render_scale_(&render_scale) {}
@@ -289,9 +429,31 @@ public:
                 std::max(0.0F, viewport_->width - 32.0F),
                 std::max(0.0F, viewport_->height - 24.0F),
             };
+            const bool narrow = (*narrow_layout_)();
+            if (previous_narrow_.has_value() && *previous_narrow_ != narrow) {
+                navigation_translation_.invalidate();
+            }
+            previous_narrow_ = narrow;
+            if (narrow) {
+                static_cast<void>(navigation_scroll_->scroll_to(0.0F));
+            }
+            *scroll_presentation_ = gallery_scroll_presentation(
+                *viewport_, narrow, navigation_scroll_->snapshot(),
+                document_viewport_->snapshot());
+            static_cast<void>((*set_scrollbars_)(
+                scroll_presentation_->navigation,
+                scroll_presentation_->document, narrow));
+            static_cast<void>(position_scrollbars());
+            const auto scroll_root = narrow ? body_root_ : document_root_;
             if (!document_viewport_->apply_subtree_translation(
-                    document_root_, application_->nodes(), application_->dirty())) {
+                    scroll_root, application_->nodes(), application_->dirty())) {
                 last_error_ = "Token Gallery document root is stale";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
+            if (!narrow && !navigation_translation_.apply(
+                    navigation_root_, navigation_scroll_->snapshot().offset,
+                    application_->nodes(), application_->dirty()).valid) {
+                last_error_ = "Token Gallery navigation root is stale";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto document_translated = std::chrono::steady_clock::now();
@@ -308,7 +470,7 @@ public:
                 last_error_ = "Token Gallery section surface inventory is incomplete";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            const auto& root = application_->nodes().require(document_root_);
+            const auto& root = application_->nodes().require(scroll_root);
             std::array<float, 6> anchors{};
             for (std::size_t index = 0; index < anchors.size(); ++index) {
                 const auto& section = application_->nodes().require(
@@ -334,23 +496,47 @@ public:
                 category_anchors) || anchors_changed;
             const float applied_offset = document_viewport_->snapshot().offset;
             static_cast<void>(document_viewport_->set_extents(
-                clip.height, root.bounds.height));
+                scroll_presentation_->document.track.height, root.bounds.height));
+            const float applied_navigation_offset =
+                navigation_scroll_->snapshot().offset;
+            static_cast<void>(navigation_scroll_->set_extents(
+                scroll_presentation_->navigation.track.height,
+                application_->nodes().require(navigation_root_).bounds.height));
             if (anchors_changed && had_section_anchors
                     && document_viewport_->snapshot().offset > 0.0F) {
                 static_cast<void>(
                     document_viewport_->restore_resize_anchor(resize_anchor));
             }
-            // The first sync already flushed ordinary wheel translation. Only
-            // reconcile geometry again when layout changed the clamped offset.
-            if (document_viewport_->snapshot().offset != applied_offset) {
+            // Ordinary wheel translation is flushed by the first sync. A resize
+            // or first layout can change scroll clamps and scrollbar dimensions.
+            *scroll_presentation_ = gallery_scroll_presentation(
+                *viewport_, narrow, navigation_scroll_->snapshot(),
+                document_viewport_->snapshot());
+            const bool chrome_changed = (*set_scrollbars_)(
+                scroll_presentation_->navigation,
+                scroll_presentation_->document, narrow);
+            const bool chrome_position_changed = position_scrollbars();
+            const bool offset_changed =
+                document_viewport_->snapshot().offset != applied_offset
+                || navigation_scroll_->snapshot().offset != applied_navigation_offset;
+            if (offset_changed || chrome_changed || chrome_position_changed) {
                 if (!document_viewport_->apply_subtree_translation(
-                        document_root_, application_->nodes(), application_->dirty())
+                        scroll_root, application_->nodes(), application_->dirty())
+                        || (!narrow && !navigation_translation_.apply(
+                            navigation_root_, navigation_scroll_->snapshot().offset,
+                            application_->nodes(), application_->dirty()).valid)
                         || !application_->layout_and_synchronize(
                             *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                     last_error_ = "Token Gallery final scroll sync failed";
                     return ryn::runtime::FrameSubmissionResult::failed;
                 }
-                ++reconciliation_syncs_;
+                if (offset_changed) ++reconciliation_syncs_;
+                if (position_scrollbars()
+                        && !application_->layout_and_synchronize(
+                            *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+                    last_error_ = "Token Gallery scrollbar placement sync failed";
+                    return ryn::runtime::FrameSubmissionResult::failed;
+                }
             }
             const auto metrics = platform_->window_metrics();
             if (!inputs_->synchronize_input_area(
@@ -484,6 +670,48 @@ public:
     [[nodiscard]] std::uint64_t reconciliation_syncs() const noexcept {
         return reconciliation_syncs_;
     }
+    [[nodiscard]] bool scrollbar_geometry_matches() const {
+        const auto mounted = reference_surfaces_->mounted_surfaces();
+        if (mounted.size() < 5) return false;
+        const std::array targets{
+            scroll_presentation_->navigation.track,
+            scroll_presentation_->navigation.thumb,
+            scroll_presentation_->document.track,
+            scroll_presentation_->document.thumb,
+        };
+        for (std::size_t index = 0; index < targets.size(); ++index) {
+            const auto& node = application_->nodes().require(
+                mounted[mounted.size() - 5 + index].node);
+            const auto& target = targets[index];
+            if (std::abs(node.bounds.x + node.translation.x - target.x) > 0.25F
+                    || std::abs(node.bounds.y + node.translation.y - target.y) > 0.25F
+                    || std::abs(node.bounds.width - target.width) > 0.25F
+                    || std::abs(node.bounds.height - target.height) > 0.25F) {
+                return false;
+            }
+        }
+        return true;
+    }
+    [[nodiscard]] bool scrollbar_draw_commands_present() const {
+        const auto mounted = reference_surfaces_->mounted_surfaces();
+        if (mounted.size() < 5) return false;
+        for (std::size_t index = 0; index < 4; ++index) {
+            if (scroll_presentation_->narrow && index < 2) continue;
+            const auto range = reference_surfaces_->snapshot(
+                mounted[mounted.size() - 5 + index].component).visual_range;
+            const bool present = std::any_of(
+                visible_scene_.commands().begin(),
+                visible_scene_.commands().end(),
+                [range](const auto& command) {
+                    return command.kind == ryn::graphics::SceneDrawKind::quad
+                        && command.first_instance < range.first + range.count
+                        && range.first < command.first_instance
+                            + command.instance_count;
+                });
+            if (!present) return false;
+        }
+        return true;
+    }
     [[nodiscard]] ryn::component::VisibleSceneStats last_visible_scene() const noexcept {
         return last_visible_scene_;
     }
@@ -583,6 +811,27 @@ public:
     }
 
 private:
+    bool position_scrollbars() {
+        const auto mounted = reference_surfaces_->mounted_surfaces();
+        if (mounted.size() < 5) {
+            throw std::logic_error("Token Gallery scrollbar inventory is incomplete");
+        }
+        const std::array targets{
+            scroll_presentation_->navigation.track,
+            scroll_presentation_->navigation.thumb,
+            scroll_presentation_->document.track,
+            scroll_presentation_->document.thumb,
+        };
+        bool changed = false;
+        for (std::size_t index = 0; index < targets.size(); ++index) {
+            const auto node = mounted[mounted.size() - 5 + index].node;
+            changed = gallery_place_scrollbar(
+                node, targets[index], application_->nodes(),
+                application_->dirty()) || changed;
+        }
+        return changed;
+    }
+
     void invalidate_uploads() {
         text_scene_->atlas().mark_all_pages_dirty();
         application_->services().surfaces().instances().mark_all_dirty();
@@ -601,6 +850,17 @@ private:
     ryn::detail::RoundedEffectGpuResources effect_resources_;
     ReferenceSurfaceHost* reference_surfaces_;
     GalleryDocumentViewport* document_viewport_;
+    GalleryScrollRange* navigation_scroll_;
+    GalleryScrollTranslation navigation_translation_;
+    GalleryScrollPresentation* scroll_presentation_;
+    const std::function<bool(
+        const GalleryScrollbarGeometry&,
+        const GalleryScrollbarGeometry&,
+        bool)>* set_scrollbars_;
+    const std::function<bool()>* narrow_layout_;
+    std::optional<bool> previous_narrow_;
+    ryn::runtime::NodeId body_root_;
+    ryn::runtime::NodeId navigation_root_;
     ryn::runtime::NodeId document_root_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
@@ -654,6 +914,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             has_argument(argc, argv, "--input-clear-acceptance");
         const bool scroll_acceptance =
             has_argument(argc, argv, "--scroll-acceptance");
+        const bool scrollbar_acceptance =
+            has_argument(argc, argv, "--scrollbar-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
         const int acceptance_modes = static_cast<int>(animation_acceptance)
@@ -663,13 +925,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             + static_cast<int>(password_acceptance)
             + static_cast<int>(clear_acceptance)
             + static_cast<int>(scroll_acceptance)
+            + static_cast<int>(scrollbar_acceptance)
             + static_cast<int>(motion_disabled)
             + static_cast<int>(reduced_motion);
         if (acceptance_modes > 1) {
             throw std::invalid_argument(
                 "--motion-disabled, --reduced-motion, --animation-acceptance, and "
                 "--input-acceptance, --selection-acceptance, --search-acceptance, --password-acceptance, --input-clear-acceptance, "
-                "and --scroll-acceptance "
+                "and --scroll-acceptance, --scrollbar-acceptance "
                 "are mutually exclusive");
         }
         if ((selection_dark && selection_compact)
@@ -762,8 +1025,21 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             throw std::logic_error(
                 "Token Gallery document requires exactly one retained root");
         }
-        const auto document_root = application.components().root(roots.front());
+        const auto site_root = application.components().root(roots.front());
+        const auto& site_children = nodes.require(site_root).children;
+        if (site_children.size() != 6) {
+            throw std::logic_error("Token Gallery requires body, four bars, and header");
+        }
+        const auto body_root = site_children.front();
+        const auto& body_children = nodes.require(body_root).children;
+        if (body_children.size() != 2) {
+            throw std::logic_error("Token Gallery requires navigation and document roots");
+        }
+        const auto navigation_root = body_children[0];
+        const auto document_root = body_children[1];
         GalleryDocumentViewport document_viewport;
+        GalleryScrollRange navigation_scroll;
+        GalleryScrollPresentation scroll_presentation;
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
@@ -778,6 +1054,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             definition.background_color,
             reference_surfaces,
             document_viewport,
+            navigation_scroll,
+            scroll_presentation,
+            definition.set_scrollbars,
+            definition.narrow_layout,
+            body_root,
+            navigation_root,
             document_root,
             viewport,
             render_scale);
@@ -787,6 +1069,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             inputs,
             frame_requests,
             document_viewport,
+            navigation_scroll,
+            scroll_presentation,
             viewport,
             render_scale,
             acceptance_scale.has_value(),
@@ -800,6 +1084,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         std::size_t smoke_stage = 0;
         std::size_t scroll_stage = 0;
+        std::size_t scrollbar_stage = 0;
+        bool navigation_wheel_passed = false;
+        bool navigation_drag_passed = false;
+        bool document_track_passed = false;
+        bool document_drag_passed = false;
+        float navigation_after_drag = 0.0F;
+        float document_after_track = 0.0F;
         std::uint64_t scroll_started_milliseconds = 0;
         std::uint64_t scroll_finished_milliseconds = 0;
         std::uint64_t rasterizations_before_scroll = 0;
@@ -1395,6 +1686,81 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
+            if (scrollbar_acceptance && scrollbar_stage < 8
+                    && elapsed >= 250 + 90 * scrollbar_stage) {
+                const auto& bars = scroll_presentation;
+                switch (scrollbar_stage) {
+                case 0:
+                    events.inject_scroll_at(
+                        bars.navigation_lane.x + 40.0F,
+                        bars.navigation_lane.y + 80.0F, -3.0F);
+                    break;
+                case 1:
+                    navigation_wheel_passed = navigation_scroll.snapshot().offset > 0.0F
+                        && document_viewport.snapshot().offset == 0.0F;
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::down,
+                        bars.navigation.thumb.x + 4.0F,
+                        bars.navigation.thumb.y + bars.navigation.thumb.height * 0.5F,
+                        ryn::input::PointerButton::primary);
+                    break;
+                case 2:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::move,
+                        bars.navigation.track.x + 4.0F,
+                        bars.navigation.track.y + bars.navigation.track.height - 2.0F);
+                    break;
+                case 3:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::up,
+                        bars.navigation.track.x + 4.0F,
+                        bars.navigation.track.y + bars.navigation.track.height - 2.0F,
+                        ryn::input::PointerButton::primary);
+                    navigation_after_drag = navigation_scroll.snapshot().offset;
+                    navigation_drag_passed = navigation_after_drag > 144.0F
+                        && document_viewport.snapshot().offset == 0.0F;
+                    break;
+                case 4:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::down,
+                        bars.document.track.x + 4.0F,
+                        bars.document.track.y + bars.document.track.height * 0.75F,
+                        ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::up,
+                        bars.document.track.x + 4.0F,
+                        bars.document.track.y + bars.document.track.height * 0.75F,
+                        ryn::input::PointerButton::primary);
+                    document_after_track = document_viewport.snapshot().offset;
+                    document_track_passed = document_after_track > 0.0F
+                        && navigation_scroll.snapshot().offset == navigation_after_drag;
+                    break;
+                case 5:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::down,
+                        bars.document.thumb.x + 4.0F,
+                        bars.document.thumb.y + bars.document.thumb.height * 0.5F,
+                        ryn::input::PointerButton::primary);
+                    break;
+                case 6:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::move,
+                        bars.document.track.x + 4.0F,
+                        bars.document.track.y + bars.document.track.height - 2.0F);
+                    break;
+                case 7:
+                    events.inject_pointer_at(
+                        ryn::input::PointerAction::up,
+                        bars.document.track.x + 4.0F,
+                        bars.document.track.y + bars.document.track.height - 2.0F,
+                        ryn::input::PointerButton::primary);
+                    document_drag_passed =
+                        document_viewport.snapshot().offset > document_after_track
+                        && navigation_scroll.snapshot().offset == navigation_after_drag;
+                    break;
+                }
+                ++scrollbar_stage;
+            }
             if (scroll_acceptance && scroll_stage < 240
                     && elapsed >= 250 + 4 * scroll_stage) {
                 if (scroll_stage == 0) {
@@ -1476,6 +1842,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             if (scroll_acceptance && scroll_stage == 240
                     && elapsed >= 1'800) {
+                break;
+            }
+            if (scrollbar_acceptance && scrollbar_stage == 8
+                    && elapsed >= 1'100) {
                 break;
             }
         }
@@ -1568,7 +1938,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     >= submitter.last_visible_scene().fragments_considered
                 || telemetry.content_runs != 1
                 || render.frame_submissions < 2);
-        const bool smoke_failed = scroll_failed || (smoke_mode
+        const bool scrollbar_failed = scrollbar_acceptance
+            && (scrollbar_stage != 8 || !navigation_wheel_passed
+                || !navigation_drag_passed || !document_track_passed
+                || !document_drag_passed || telemetry.content_runs != 1
+                || !submitter.scrollbar_geometry_matches()
+                || !submitter.scrollbar_draw_commands_present()
+                || render.frame_submissions < 4);
+        const bool smoke_failed = scroll_failed || scrollbar_failed || (smoke_mode
             && (smoke_stage != expected_stages || telemetry.content_runs != 1
                 || telemetry.theme_updates != expected_theme_updates
                 || telemetry.motion_updates != expected_motion_updates
@@ -1651,6 +2028,13 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " document_viewport_extent=" << document.viewport_extent
             << " document_offset=" << document.offset
             << " document_maximum_offset=" << document.maximum_offset
+            << " navigation_offset=" << navigation_scroll.snapshot().offset
+            << " navigation_maximum_offset="
+            << navigation_scroll.snapshot().maximum_offset
+            << " scrollbar_geometry="
+            << (submitter.scrollbar_geometry_matches() ? "passed" : "failed")
+            << " scrollbar_draw="
+            << (submitter.scrollbar_draw_commands_present() ? "passed" : "failed")
             << " document_section="
             << gallery_document_sections()[static_cast<std::size_t>(
                 document.current_section)].identity
@@ -1821,6 +2205,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " selection_pointer=" << (selection_pointer ? "true" : "false")
             << " selection_blocked=" << (selection_blocked ? "true" : "false")
             << " scroll_acceptance=" << (scroll_acceptance ? "true" : "false")
+            << " scrollbar_acceptance=" << (scrollbar_acceptance ? "true" : "false")
+            << " scrollbar_stage=" << scrollbar_stage
+            << " navigation_wheel=" << (navigation_wheel_passed ? "passed" : "not-run")
+            << " navigation_drag=" << (navigation_drag_passed ? "passed" : "not-run")
+            << " document_track=" << (document_track_passed ? "passed" : "not-run")
+            << " document_drag=" << (document_drag_passed ? "passed" : "not-run")
             << " scroll_acceptance_steps=" << scroll_stage
             << " scroll_sequence_ms="
             << (scroll_finished_milliseconds - scroll_started_milliseconds)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gallery_document_model.hpp"
+#include "gallery_scroll_region.hpp"
 
 #include <ryn/component.hpp>
 #include <ryn/design_token.hpp>
@@ -47,6 +48,11 @@ struct TokenGalleryDefinition final {
     ryn::Content content;
     std::function<void(std::size_t)> smoke_step;
     std::function<void(float)> set_viewport_width;
+    std::function<bool(
+        const GalleryScrollbarGeometry&,
+        const GalleryScrollbarGeometry&,
+        bool)> set_scrollbars;
+    std::function<bool()> narrow_layout;
     std::function<void(bool)> set_motion_enabled;
     std::function<void(bool)> set_clear_disabled;
     std::function<std::optional<GalleryNavigationTarget>()>
