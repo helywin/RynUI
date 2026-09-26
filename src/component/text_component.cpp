@@ -252,48 +252,62 @@ bool TextComponentHost::layout_and_synchronize(
     const auto loop_started = sync_profiling_enabled_
         ? std::chrono::steady_clock::now()
         : std::chrono::steady_clock::time_point{};
-    for (const auto& mounted : mounted_texts_) {
-        if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
-        if (!components_.contains(mounted.component)
-                || !text_scene_->contains(mounted.scene)) {
-            continue;
-        }
-        const auto node = components_.root(mounted.component);
-        const auto& retained = nodes_->require(node);
-        constexpr float visual_overflow = 32.0F;
-        const float left = retained.bounds.x + retained.translation.x;
-        const float top = retained.bounds.y + retained.translation.y;
-        if (retained.bounds.width <= 0.0F
+    const auto synchronize_mounted = [&]() {
+        for (const auto& mounted : mounted_texts_) {
+            if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
+            if (!components_.contains(mounted.component)
+                    || !text_scene_->contains(mounted.scene)) {
+                continue;
+            }
+            const auto node = components_.root(mounted.component);
+            const auto& retained = nodes_->require(node);
+            constexpr float visual_overflow = 32.0F;
+            const float left = retained.bounds.x + retained.translation.x;
+            const float top = retained.bounds.y + retained.translation.y;
+            if (retained.bounds.width <= 0.0F
                     || retained.bounds.height <= 0.0F
                     || left >= clip.x + clip.width + visual_overflow
                     || left + retained.bounds.width <= clip.x - visual_overflow
                     || top >= clip.y + clip.height + visual_overflow
                     || top + retained.bounds.height <= clip.y - visual_overflow) {
-            if (sync_profiling_enabled_) ++sync_profile_.offscreen_skipped;
-            continue;
+                if (sync_profiling_enabled_) ++sync_profile_.offscreen_skipped;
+                continue;
+            }
+            const auto phase_residual = text_scene_->set_phase_preserving_scroll_translation(
+                mounted.scene, retained.translation);
+            const auto sync_started = sync_profiling_enabled_
+                ? std::chrono::steady_clock::now()
+                : std::chrono::steady_clock::time_point{};
+            const bool synchronized = text_scene_->synchronize(mounted.scene, {
+                    {retained.bounds.x, retained.bounds.y},
+                    viewport,
+                    clip,
+                    phase_residual,
+                    {},
+                    1.0F,
+                });
+            if (sync_profiling_enabled_) {
+                ++sync_profile_.mounted_synchronized;
+                sync_profile_.text_scene_nanoseconds += static_cast<std::uint64_t>(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - sync_started).count());
+            }
+            if (!synchronized) {
+                return false;
+            }
         }
-        const auto phase_residual = text_scene_->set_phase_preserving_scroll_translation(
-            mounted.scene, retained.translation);
-        const auto sync_started = sync_profiling_enabled_
-            ? std::chrono::steady_clock::now()
-            : std::chrono::steady_clock::time_point{};
-        const bool synchronized = text_scene_->synchronize(mounted.scene, {
-                {retained.bounds.x, retained.bounds.y},
-                viewport,
-                clip,
-                phase_residual,
-                {},
-                1.0F,
-            });
-        if (sync_profiling_enabled_) {
-            ++sync_profile_.mounted_synchronized;
-            sync_profile_.text_scene_nanoseconds += static_cast<std::uint64_t>(
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now() - sync_started).count());
-        }
+        return true;
+    };
+    text_scene_->begin_ordered_scene_batch();
+    try {
+        const bool synchronized = synchronize_mounted();
+        text_scene_->finish_ordered_scene_batch();
         if (!synchronized) {
             return false;
         }
+    } catch (...) {
+        text_scene_->cancel_ordered_scene_batch();
+        throw;
     }
     if (sync_profiling_enabled_) {
         sync_profile_.mounted_loop_nanoseconds += static_cast<std::uint64_t>(

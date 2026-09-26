@@ -111,6 +111,11 @@ public:
         TextSceneId id,
         graphics::GlyphPlacement placement);
     [[nodiscard]] bool synchronize_all();
+    // Only the owner-thread host synchronization loop may defer rebuilding.
+    // Read ordered_scene() after finish, never inside an active batch.
+    void begin_ordered_scene_batch();
+    void finish_ordered_scene_batch();
+    void cancel_ordered_scene_batch() noexcept;
 
     [[nodiscard]] bool contains(TextSceneId id) const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
@@ -149,6 +154,7 @@ private:
         bool request_frame);
     void remap_following(TextSceneId id, std::int64_t offset);
     std::size_t patch_geometry(Record& record, const graphics::GlyphPlacement& placement);
+    void invalidate_ordered_scene();
     void rebuild_ordered_scene();
     static void shift_primitive(
         graphics::GlyphPrimitive& primitive,
@@ -167,6 +173,8 @@ private:
     std::vector<TextSceneId> ordered_ids_;
     std::size_t live_records_{0};
     std::size_t next_declaration_order_{0};
+    bool ordered_scene_batch_active_{};
+    bool ordered_scene_pending_{};
     TextSceneServiceCounters counters_;
 };
 

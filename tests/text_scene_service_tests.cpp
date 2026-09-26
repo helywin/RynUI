@@ -420,6 +420,76 @@ void test_shared_shape_views() {
     require(fixture.service.destroy(selected) && fixture.service.destroy(placeholder), "view cleanup failed");
 }
 
+void test_ordered_scene_batch_matches_serial_and_recovers_after_cancel() {
+    Fixture serial;
+    Fixture batched;
+    const std::array<ryn::String, 3> contents{
+        ryn::String{u8"Short"},
+        ryn::String{u8"A longer 中间 text"},
+        ryn::String{u8"Tail"}};
+    std::array<ryn::detail::TextSceneId, 3> serial_ids{};
+    std::array<ryn::detail::TextSceneId, 3> batched_ids{};
+    for (std::size_t index = 0; index < contents.size(); ++index) {
+        serial_ids[index] = serial.create(contents[index]);
+        batched_ids[index] = batched.create(contents[index]);
+        const auto placement = Fixture::placement(20.0F + 120.0F * index);
+        require(serial.service.set_placement(serial_ids[index], placement)
+                    && batched.service.set_placement(batched_ids[index], placement),
+                "batched Text placement setup failed");
+    }
+    for (const auto id : serial_ids) {
+        require(serial.service.synchronize(id), "serial Text synchronization failed");
+    }
+    const auto rebuilds_before = batched.service.counters().ordered_scene_rebuilds;
+    batched.service.begin_ordered_scene_batch();
+    for (const auto id : batched_ids) {
+        require(batched.service.synchronize(id), "batched Text synchronization failed");
+        require(batched.service.counters().ordered_scene_rebuilds == rebuilds_before,
+                "ordered scene rebuilt before the batch finished");
+    }
+    batched.service.finish_ordered_scene_batch();
+    require(batched.service.counters().ordered_scene_rebuilds == rebuilds_before + 1,
+            "multiple Text replacements did not share one ordered scene rebuild");
+    const auto serial_commands = serial.service.ordered_scene().commands();
+    const auto batched_commands = batched.service.ordered_scene().commands();
+    require(std::vector<ryn::graphics::SceneDrawCommand>{
+                serial_commands.begin(), serial_commands.end()}
+                    == std::vector<ryn::graphics::SceneDrawCommand>{
+                        batched_commands.begin(), batched_commands.end()},
+            "batched Text draw order differs from serial synchronization");
+    for (std::size_t index = 0; index < contents.size(); ++index) {
+        require(serial.service.primitive(serial_ids[index]).instances
+                    == batched.service.primitive(batched_ids[index]).instances,
+                "batched Text instance ranges differ from serial synchronization");
+    }
+
+    batched.service.begin_ordered_scene_batch();
+    batched.service.finish_ordered_scene_batch();
+    require(batched.service.counters().ordered_scene_rebuilds == rebuilds_before + 1,
+            "unchanged ordered scene batch rebuilt unnecessarily");
+
+    require(serial.service.set_content(serial_ids[0], ryn::String{u8"Expanded first"})
+                && batched.service.set_content(
+                    batched_ids[0], ryn::String{u8"Expanded first"})
+                && serial.service.synchronize(serial_ids[0]),
+            "Text cancellation reference update failed");
+    batched.service.begin_ordered_scene_batch();
+    require(batched.service.synchronize(batched_ids[0]),
+            "Text cancellation fixture update failed");
+    batched.service.cancel_ordered_scene_batch();
+    require(batched.service.synchronize(batched_ids[0])
+                && batched.service.counters().ordered_scene_rebuilds
+                    == rebuilds_before + 2,
+            "cancelled Text batch did not rebuild on the next successful sync");
+    const auto serial_after_cancel = serial.service.ordered_scene().commands();
+    const auto batched_after_cancel = batched.service.ordered_scene().commands();
+    require(std::vector<ryn::graphics::SceneDrawCommand>{
+                serial_after_cancel.begin(), serial_after_cancel.end()}
+                    == std::vector<ryn::graphics::SceneDrawCommand>{
+                        batched_after_cancel.begin(), batched_after_cancel.end()},
+            "cancelled Text batch lost the final ordered draw ranges");
+}
+
 } // namespace
 
 int main() {
@@ -429,6 +499,7 @@ int main() {
         test_dirty_paths_remain_per_text_and_sparse();
         test_shared_shape_views();
         test_scroll_translation_preserves_glyphs();
+        test_ordered_scene_batch_matches_serial_and_recovers_after_cancel();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

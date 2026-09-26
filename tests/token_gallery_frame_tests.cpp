@@ -458,6 +458,8 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto mounted_before = fixture.host->components().mount_runs();
     const auto component_count = fixture.host->components().component_count();
     const auto content_runs = definition.telemetry().content_runs;
+    const auto ordered_rebuilds_before_scroll =
+        fixture.text_scene.counters().ordered_scene_rebuilds;
     std::uint64_t text_rebuilds_before_scroll = 0;
     std::uint64_t text_geometry_before_scroll = 0;
     std::uint64_t text_geometry_rebuilds_before_scroll = 0;
@@ -505,6 +507,9 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     require(newly_realized > 0
                 && text_rebuilds_after_scroll > text_rebuilds_before_scroll,
             "Gallery scroll did not realize newly visible text");
+    require(fixture.text_scene.counters().ordered_scene_rebuilds
+                == ordered_rebuilds_before_scroll + 1,
+            "Gallery long jump rebuilt text draw order more than once");
     require(text_geometry_after_scroll == text_geometry_before_scroll,
             "Gallery long jump updated glyph geometry outside the viewport");
     require(text_geometry_rebuilds_after_scroll

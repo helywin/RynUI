@@ -145,7 +145,7 @@ bool TextSceneService::destroy(TextSceneId id) {
     if (range.count != 0) {
         ++counters_.range_compactions;
     }
-    rebuild_ordered_scene();
+    invalidate_ordered_scene();
     frame_requests_->request_frame();
     return true;
 }
@@ -414,7 +414,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
         if (offset != 0 && old_range.count != 0) {
             ++counters_.range_compactions;
         }
-        rebuild_ordered_scene();
+        invalidate_ordered_scene();
         return true;
     }
 
@@ -437,7 +437,33 @@ bool TextSceneService::synchronize(TextSceneId id) {
         record.patchable_geometry_dirty = false;
     }
     record.placement = placement;
+    if (!ordered_scene_batch_active_ && ordered_scene_pending_) {
+        rebuild_ordered_scene();
+    }
     return true;
+}
+
+void TextSceneService::begin_ordered_scene_batch() {
+    ensure_owner_thread();
+    if (ordered_scene_batch_active_) {
+        throw std::logic_error("Text ordered scene batch is already active");
+    }
+    ordered_scene_batch_active_ = true;
+}
+
+void TextSceneService::finish_ordered_scene_batch() {
+    ensure_owner_thread();
+    if (!ordered_scene_batch_active_) {
+        throw std::logic_error("Text ordered scene batch is not active");
+    }
+    if (ordered_scene_pending_) {
+        rebuild_ordered_scene();
+    }
+    ordered_scene_batch_active_ = false;
+}
+
+void TextSceneService::cancel_ordered_scene_batch() noexcept {
+    ordered_scene_batch_active_ = false;
 }
 
 bool TextSceneService::synchronize_measurement(TextSceneId id) {
@@ -642,12 +668,20 @@ void TextSceneService::remap_following(TextSceneId id, std::int64_t offset) {
     }
 }
 
+void TextSceneService::invalidate_ordered_scene() {
+    ordered_scene_pending_ = true;
+    if (!ordered_scene_batch_active_) {
+        rebuild_ordered_scene();
+    }
+}
+
 void TextSceneService::rebuild_ordered_scene() {
     ordered_scene_.clear();
     for (const auto id : ordered_ids_) {
         ordered_scene_.append_glyph(require_record(id).primitive);
     }
     ++counters_.ordered_scene_rebuilds;
+    ordered_scene_pending_ = false;
 }
 
 void TextSceneService::shift_primitive(

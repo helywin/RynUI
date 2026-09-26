@@ -6,7 +6,7 @@
 
 ## 2. 平台通用 ordered scene 合同
 
-- [ ] 2.1 实现仅在文本宿主同步轮次使用的批次与失败恢复；增加逐条等价、重建次数和取消重试测试；Windows MSVC Debug 定向 CTest 通过后以 `perf:` 提交
+- [x] 2.1 实现仅在文本宿主同步轮次使用的批次与失败恢复；增加逐条等价、重建次数和取消重试测试；Windows MSVC Debug 定向 CTest 通过后以 `perf:` 提交
 
 ## 3. Windows 真实窗口验收
 
