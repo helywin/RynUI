@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace ryn::graphics {
@@ -202,6 +204,33 @@ GlyphInstanceRange GlyphInstanceStore::replace(
     }
     if (range.count == 0 && instances.empty()) {
         return {range.first, 0};
+    }
+
+    if (range.count == 0) {
+        static_assert(std::is_trivially_copyable_v<GlyphInstance>);
+        std::span<const GlyphInstance> source = instances;
+        std::vector<GlyphInstance> aliased_source;
+        if (!instances_.empty()) {
+            const auto* source_begin = instances.data();
+            const auto* source_end = source_begin + instances.size();
+            const auto* store_begin = instances_.data();
+            const auto* store_end = store_begin + instances_.size();
+            const std::less<const GlyphInstance*> less;
+            if (less(source_begin, store_end) && less(store_begin, source_end)) {
+                aliased_source.assign(instances.begin(), instances.end());
+                source = aliased_source;
+            }
+        }
+        geometry_dirty_ranges_.reserve_for_append();
+        instances_.insert(
+            instances_.begin() + range.first, source.begin(), source.end());
+        material_dirty_ranges_.discard_shifted(range.first);
+        geometry_dirty_ranges_.discard_shifted(range.first);
+        geometry_dirty_ranges_.append({
+            range.first,
+            static_cast<std::uint32_t>(instances_.size() - range.first),
+        });
+        return {range.first, static_cast<std::uint32_t>(instances.size())};
     }
 
     std::vector<GlyphInstance> replacement;

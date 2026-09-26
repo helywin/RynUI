@@ -17,6 +17,10 @@ public:
         ranges_.reserve(capacity);
     }
 
+    void reserve_for_append() {
+        ranges_.reserve(ranges_.size() + 1);
+    }
+
     void append(Range range) {
         if (range.count == 0) {
             return;

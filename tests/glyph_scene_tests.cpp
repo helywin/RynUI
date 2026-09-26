@@ -336,6 +336,61 @@ void test_out_of_order_glyph_ranges_and_shifted_suffix() {
             "Glyph shifted suffix left stale or missing dirty ranges");
 }
 
+void test_new_glyph_ranges_insert_in_place_and_preserve_aliased_source() {
+    ryn::graphics::GlyphInstanceStore store;
+    const std::array initial{
+        instance(0.0F), instance(1.0F), instance(2.0F), instance(3.0F)};
+    static_cast<void>(store.append(initial));
+    store.clear_dirty_ranges();
+    static_cast<void>(store.update_material({0, 1}, {1, 0, 0, 1}, 1.0F));
+    static_cast<void>(store.update_material({3, 1}, {0, 0, 1, 1}, 1.0F));
+    const std::array inserted{instance(10.0F), instance(11.0F)};
+    require(store.replace({1, 0}, inserted) == GlyphInstanceRange{1, 2}
+                && store.size() == 6
+                && store.at(0).position_size[0] == 0.0F
+                && store.at(1).position_size[0] == 10.0F
+                && store.at(2).position_size[0] == 11.0F
+                && store.at(3).position_size[0] == 1.0F
+                && store.at(4).position_size[0] == 2.0F
+                && store.at(5).position_size[0] == 3.0F,
+            "zero-length Glyph insertion changed instance order");
+    require(store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front()
+                    == GlyphInstanceRange{1, 5}
+                && store.material_dirty_ranges().size() == 1
+                && store.material_dirty_ranges().front()
+                    == GlyphInstanceRange{0, 1},
+            "zero-length Glyph insertion left stale dirty ranges");
+
+    const auto aliased = store.instances().subspan(3, 2);
+    store.clear_dirty_ranges();
+    require(store.replace({0, 0}, aliased) == GlyphInstanceRange{0, 2}
+                && store.size() == 8
+                && store.at(0).position_size[0] == 1.0F
+                && store.at(1).position_size[0] == 2.0F
+                && store.at(2).position_size[0] == 0.0F
+                && store.at(5).position_size[0] == 1.0F
+                && store.geometry_dirty_ranges().size() == 1
+                && store.geometry_dirty_ranges().front()
+                    == GlyphInstanceRange{0, 8},
+            "aliased Glyph insertion lost the original source or suffix");
+
+    ryn::graphics::GlyphInstanceStore repeated;
+    const std::array seed{instance(-1.0F)};
+    static_cast<void>(repeated.append(seed));
+    const auto* previous_data = repeated.instances().data();
+    std::size_t reallocations = 0;
+    for (std::size_t index = 0; index < 128; ++index) {
+        const std::array next{instance(static_cast<float>(index))};
+        static_cast<void>(repeated.replace({0, 0}, next));
+        const auto* data = repeated.instances().data();
+        reallocations += data != previous_data;
+        previous_data = data;
+    }
+    require(repeated.size() == 129 && reallocations < 32,
+            "small Glyph insertions still allocated a whole store each time");
+}
+
 void test_full_retry_after_batch_submit_failure() {
     ryn::graphics::GlyphInstanceStore store;
     const std::array initial{instance(0.1F), instance(0.2F), instance(0.3F)};
@@ -388,6 +443,7 @@ int main() {
         test_dirty_ranges_remain_layered_and_sparse();
         test_out_of_order_glyph_ranges_and_shifted_suffix();
         test_full_retry_after_batch_submit_failure();
+        test_new_glyph_ranges_insert_in_place_and_preserve_aliased_source();
         test_ordered_scene_preserves_quad_glyph_z_order();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

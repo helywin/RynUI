@@ -6,7 +6,7 @@
 
 ## 2. 平台通用插入合同
 
-- [ ] 2.1 实现零长度 range 原位插入与重叠源保护，新增顺序、dirty 和容量复用测试；Windows MSVC Debug 定向 CTest 通过后以 `perf:` 提交
+- [x] 2.1 实现零长度 range 原位插入与重叠源保护，新增顺序、dirty 和容量复用测试；Windows MSVC Debug 定向 CTest 通过后以 `perf:` 提交
 
 ## 3. Windows 真实窗口验收
 
