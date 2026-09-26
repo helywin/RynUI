@@ -1002,7 +1002,19 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
         }
         const bool snapshot_middle = has_argument(argc, argv, "--snapshot-middle");
+        const bool snapshot_dark = has_argument(argc, argv, "--snapshot-theme=dark");
+        const bool snapshot_navigation_hover =
+            has_argument(argc, argv, "--snapshot-navigation=hover");
+        const bool snapshot_navigation_click =
+            has_argument(argc, argv, "--snapshot-navigation=click");
+        const bool snapshot_password = has_argument(argc, argv, "--snapshot-password");
+        const bool snapshot_scrollbar_hover =
+            has_argument(argc, argv, "--snapshot-scrollbar=hover");
+        const bool snapshot_scrollbar_pressed =
+            has_argument(argc, argv, "--snapshot-scrollbar=pressed");
         bool snapshot_positioned = false;
+        bool snapshot_navigation_positioned = false;
+        bool snapshot_scrollbar_positioned = false;
         std::optional<std::chrono::steady_clock::time_point> snapshot_settle_until;
         const bool animation_acceptance =
             has_argument(argc, argv, "--animation-acceptance");
@@ -1042,7 +1054,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 "are mutually exclusive");
         }
         if ((snapshot_path && (acceptance_modes != 0 || has_argument(argc, argv, "--smoke")))
-                || (snapshot_middle && !snapshot_path)) {
+                || ((snapshot_middle || snapshot_dark || snapshot_navigation_hover
+                    || snapshot_navigation_click || snapshot_password) && !snapshot_path)
+                || (snapshot_navigation_hover && snapshot_navigation_click)
+                || ((snapshot_scrollbar_hover || snapshot_scrollbar_pressed) && !snapshot_path)
+                || (snapshot_scrollbar_hover && snapshot_scrollbar_pressed)
+                || (snapshot_password && (snapshot_middle || snapshot_navigation_hover
+                    || snapshot_navigation_click || snapshot_scrollbar_hover
+                    || snapshot_scrollbar_pressed))) {
             throw std::invalid_argument("--snapshot is a separate visual acceptance mode");
         }
         if ((selection_dark && selection_compact)
@@ -1079,7 +1098,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         if (motion_disabled) {
             definition.set_motion_enabled(false);
         }
-        if (selection_dark) definition.smoke_step(0);
+        if (selection_dark || snapshot_dark) definition.smoke_step(0);
         if (selection_compact) definition.smoke_step(1);
         const auto initial_metrics = platform.window_metrics();
         float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
@@ -2037,9 +2056,52 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 return 5;
             }
             if (snapshot_path && step == ryn::runtime::FrameLoopStep::submitted) {
-                if (!snapshot_positioned && snapshot_middle) {
-                    static_cast<void>(document_viewport.scroll_to(
-                        document_viewport.snapshot().maximum_offset * 0.5F));
+                if (!snapshot_scrollbar_positioned
+                    && (snapshot_scrollbar_hover || snapshot_scrollbar_pressed)) {
+                    const auto& thumb = scroll_presentation.document.thumb;
+                    const float x = thumb.x + thumb.width * 0.5F;
+                    const float y = thumb.y + thumb.height * 0.5F;
+                    events.inject_pointer_at(ryn::input::PointerAction::move, x, y);
+                    if (snapshot_scrollbar_pressed) {
+                        events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
+                            ryn::input::PointerButton::primary);
+                    }
+                    snapshot_scrollbar_positioned = true;
+                    frame_requests.request_frame();
+                } else if (!snapshot_navigation_positioned
+                    && (snapshot_navigation_hover || snapshot_navigation_click)) {
+                    if (definition.narrow_layout()) {
+                        throw std::logic_error("navigation snapshot requires a visible sidebar");
+                    }
+                    const auto& buttons = application.mounted_buttons();
+                    if (buttons.size() <= 7) {
+                        throw std::logic_error("navigation snapshot requires a component entry");
+                    }
+                    const auto& node = nodes.require(buttons[7].node);
+                    const float x = node.bounds.x + node.translation.x + node.bounds.width * 0.5F;
+                    const float y = node.bounds.y + node.translation.y + node.bounds.height * 0.5F;
+                    events.inject_pointer_at(ryn::input::PointerAction::move, x, y);
+                    if (snapshot_navigation_click) {
+                        events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
+                            ryn::input::PointerButton::primary);
+                        events.inject_pointer_at(ryn::input::PointerAction::up, x, y,
+                            ryn::input::PointerButton::primary);
+                    }
+                    snapshot_navigation_positioned = true;
+                    frame_requests.request_frame();
+                } else if (!snapshot_positioned && (snapshot_middle || snapshot_password)) {
+                    if (snapshot_password) {
+                        const auto mounted = inputs.mounted_inputs();
+                        if (mounted.size() <= 7) {
+                            throw std::logic_error("password snapshot requires a Password field");
+                        }
+                        const auto& node = nodes.require(mounted[7].node);
+                        static_cast<void>(document_viewport.scroll_to(
+                            node.bounds.y - document_viewport.snapshot().viewport_extent * 0.5F));
+                    } else {
+                        static_cast<void>(document_viewport.scroll_to(
+                            document_viewport.snapshot().maximum_offset * 0.5F));
+                    }
                     snapshot_positioned = true;
                     frame_requests.request_frame();
                 } else {
@@ -2053,6 +2115,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         frame_requests.request_frame();
                         continue;
                     }
+                    if (snapshot_navigation_click
+                        && definition.telemetry().navigation_requests == 0) {
+                        throw std::logic_error("component navigation click was not delivered");
+                    }
+                    if (snapshot_navigation_hover
+                        && application.pointer().diagnostics().hover_enters == 0) {
+                        throw std::logic_error("component navigation hover was not delivered");
+                    }
                     if (!renderer.save_frame_bmp(*snapshot_path)) {
                         std::cerr << "snapshot_error=" << renderer.last_error() << '\n';
                         return 6;
@@ -2060,6 +2130,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     std::cout << "snapshot=" << snapshot_path->string()
                         << " gpu_driver=" << platform.gpu_driver()
                         << " display_scale=" << render_scale
+                        << " theme=" << (snapshot_dark ? "dark" : "light")
+                        << " navigation=" << (snapshot_navigation_hover ? "hover"
+                            : snapshot_navigation_click ? "click" : "none")
+                        << " scrollbar=" << (snapshot_scrollbar_hover ? "hover"
+                            : snapshot_scrollbar_pressed ? "pressed" : "none")
+                        << " navigation_requests=" << definition.telemetry().navigation_requests
                         << " document_section=" << gallery_document_sections()[static_cast<std::size_t>(
                             document_viewport.snapshot().current_section)].identity << '\n';
                     return 0;
@@ -2109,8 +2185,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         std::uint64_t input_instance_rebuilds = 0;
         for (const auto& mounted : inputs.mounted_inputs()) {
             const auto layers = inputs.text_layers(mounted.component);
-            for (const auto scene : {layers.base, layers.selected, layers.placeholder}) {
-                const auto& counters = text_scene.record_counters(scene);
+            for (const auto text_layer : {layers.base, layers.selected, layers.placeholder}) {
+                const auto& counters = text_scene.record_counters(text_layer);
                 input_geometry_rebuilds += counters.geometry_rebuilds;
                 input_geometry_patches += counters.geometry_patches;
                 input_instance_rebuilds += counters.instance_rebuilds;
