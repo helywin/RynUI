@@ -19,3 +19,5 @@ Windows 真实窗口复测：代码 `4189317` 在同一机器以正式 `windows-
 | 滚动 buffer 上传区域 / transfer 创建 | 542 / 419 | 542 / 419 |
 
 最长 CPU 帧中位数减少约 68%，五次旧区间 14,809–15,974 µs 与新区间 4,758–5,300 µs 不重叠。滚动平均 scene sync 明显下降；首帧与 p95 接近旧值，不能声称这些指标进一步加速。五次最终 offset 均为最大值 15,068、section 为 `gallery.document.live-samples`，滚动工作量和 glyph raster/上传计数保持一致。累计 draw/提交数随运行帧数变化，不能代替逐帧像素比较；GPU 执行时间仍未测。Release 真实 D3D12 `--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 均退出码 0。
+
+集成复核：正式 Windows MSVC Release 完整构建通过；完整 CTest 为 229/235，通过率 97%，失败项仍为此前已有的 `rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`，本 change 的测试均通过。本 change strict validate 通过；全仓 strict 仍为 25/31，失败的是既有 change 013、015、016、017、018、021。当前 OpenSpec CLI 的 `doctor --json` 不可用，报 `unknown command 'doctor'`；`git diff --check` 通过。由于完整 CTest 和全仓 strict 门槛尚未通过，tasks 4.1 保持未勾选。完整测试输出保存在被忽略的 `out/build/windows-msvc/glyph-insert-full-ctest-msvc.log`。
