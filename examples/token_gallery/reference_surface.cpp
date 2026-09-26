@@ -19,6 +19,8 @@ struct ReferenceSurfacePropsAccess final {
         const ReferenceSurfaceProps& props) noexcept {
         return props.role_;
     }
+    [[nodiscard]] static std::string_view identity(
+        const ReferenceSurfaceProps& props) noexcept { return props.identity_; }
 
     [[nodiscard]] static const ryn::Prop<GallerySupportStatus>& status(
         const ReferenceSurfaceProps& props) noexcept {
@@ -52,6 +54,7 @@ struct ReferenceSurfaceComponentState final {
     ryn::runtime::SceneFragmentId fragment;
     ryn::component::RetainedSurfaceId scene;
     ReferenceSurfaceRole role{ReferenceSurfaceRole::reference};
+    std::string_view identity;
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};
@@ -411,6 +414,7 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
     }
     return {
         state->role,
+        state->identity,
         state->status,
         state->swatch,
         state->elevated,
@@ -586,6 +590,7 @@ void ReferenceSurface(
     state.component = component;
     state.node = build.root(component);
     state.role = role;
+    state.identity = detail::ReferenceSurfacePropsAccess::identity(props);
     state.status = initial_status;
     state.swatch = initial_swatch;
     state.elevated = initial_elevated;

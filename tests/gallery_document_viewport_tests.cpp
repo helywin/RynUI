@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <string>
 
 namespace {
 
@@ -88,6 +89,37 @@ void test_anchor_jump_current_section_and_stale_generation() {
     require(feedback.has_value() && viewport.jump_to(*feedback)
                 && near(viewport.snapshot().offset, 1500.0F),
             "Gallery category anchor did not navigate independently");
+}
+
+void test_component_identity_anchors_follow_reflow_and_reject_stale_ids() {
+    using namespace rynui::example;
+    GalleryDocumentViewport viewport;
+    viewport.set_extents(300.0F, 5000.0F);
+    std::array<std::string, 73> names;
+    std::array<GalleryComponentAnchor, 73> anchors;
+    for (std::size_t index = 0; index < anchors.size(); ++index) {
+        names[index] = "ant.component.fixture-" + std::to_string(index);
+        anchors[index] = {names[index], 1000.0F + 40.0F * static_cast<float>(index)};
+    }
+    require(viewport.replace_component_anchors(anchors),
+        "component anchors were not registered");
+    const auto target = viewport.component_anchor(names[10]);
+    require(target && viewport.jump_to(*target)
+        && near(viewport.snapshot().offset, 1400.0F),
+        "component identity did not jump to its own card");
+    const auto generation = viewport.snapshot().anchor_generation;
+    require(!viewport.replace_component_anchors(anchors)
+        && viewport.snapshot().anchor_generation == generation,
+        "identical component anchors changed generation");
+    anchors[10].offset = 1600.0F;
+    require(viewport.replace_component_anchors(anchors)
+        && !viewport.jump_to(*target),
+        "reflowed component anchor accepted a stale generation");
+    const auto reflowed = viewport.component_anchor(names[10]);
+    require(reflowed && viewport.jump_to(*reflowed)
+        && near(viewport.snapshot().offset, 1600.0F)
+        && !viewport.component_anchor("missing"),
+        "component identity did not survive reflow");
 }
 
 void test_resize_anchor_restores_intra_section_distance() {
@@ -291,6 +323,7 @@ int main() {
     try {
         test_empty_short_and_long_extent_clamping();
         test_anchor_jump_current_section_and_stale_generation();
+        test_component_identity_anchors_follow_reflow_and_reject_stale_ids();
         test_resize_anchor_restores_intra_section_distance();
         test_subtree_translation_is_generation_checked_and_minimal();
         test_two_scroll_ranges_and_translations_remain_independent();

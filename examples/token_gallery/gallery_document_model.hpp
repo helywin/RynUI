@@ -34,6 +34,7 @@ struct GalleryDesignValue final {
 enum class GalleryNavigationTargetKind : std::uint8_t {
     section,
     category,
+    component,
     navigation_start,
 };
 
@@ -41,6 +42,7 @@ struct GalleryNavigationTarget final {
     GalleryNavigationTargetKind kind{GalleryNavigationTargetKind::section};
     GalleryDocumentSectionKind section{GalleryDocumentSectionKind::header_source};
     AntDesignGalleryCategory category{AntDesignGalleryCategory::general};
+    std::string_view component_identity;
 
     [[nodiscard]] static constexpr GalleryNavigationTarget to_section(
         GalleryDocumentSectionKind value) noexcept {
@@ -54,6 +56,12 @@ struct GalleryNavigationTarget final {
             GalleryDocumentSectionKind::component_overview,
             value,
         };
+    }
+
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_component(
+        std::string_view identity) noexcept {
+        return {GalleryNavigationTargetKind::component,
+            GalleryDocumentSectionKind::component_overview, {}, identity};
     }
 
     friend constexpr bool operator==(

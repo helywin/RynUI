@@ -6,22 +6,23 @@
     {
       "identity": "ant.component.button",
       "status": "partial",
-      "summary": "RynUI 已提供 typed Button、三种核心类型、三档尺寸、禁用/加载和 pointer/keyboard/focus 交互；完整 Ant Web 变体仍未覆盖。",
+      "summary": "RynUI 已提供 typed Button、Default/Primary/Danger/Text 类型、三档尺寸、禁用/加载和 pointer/keyboard/focus 交互；完整 Ant Web 变体仍未覆盖。",
       "supported_scope": [
-        "Default/Primary/Danger types",
+        "Default/Primary/Danger/Text types",
         "Small/Middle/Large sizes",
         "disabled and loading priority",
         "pointer/keyboard/focus-visible interaction",
         "Theme component tokens"
       ],
       "missing_scope": [
-        "dashed/text/link/ghost and preset color variants",
+        "dashed/link/ghost and preset color variants",
         "icon placement public contract",
         "wave effect",
         "complete Ant Design Web API"
       ],
       "evidence_identifiers": [
         "openspec:004-20260827-build-button-interaction-foundation",
+        "openspec:033-20260926-add-icons-and-unify-gallery-theme",
         "test:rynui.button_component",
         "test:rynui.button_scene_service",
         "test:rynui.keyboard_activation"
@@ -43,16 +44,22 @@
     },
     {
       "identity": "ant.component.icon",
-      "status": "planned",
-      "summary": "图标（Icon）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供九种离线 Ant Design 图标的 typed Icon、主题颜色和 DPI 缓存；完整图标集与 Web API 仍未覆盖。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Icon with nine bundled outlines",
+        "Theme and semantic foreground inheritance",
+        "reactive icon switching and DPI-aware raster cache"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "complete Ant Design icon catalog",
+        "two-tone and arbitrary SVG APIs"
       ],
       "evidence_identifiers": [
-        "source:components/icon/index.en-US.md"
+        "source:components/icon/index.en-US.md",
+        "openspec:033-20260926-add-icons-and-unify-gallery-theme",
+        "test:rynui.text_component",
+        "test:rynui.icon_asset_contract"
       ]
     },
     {

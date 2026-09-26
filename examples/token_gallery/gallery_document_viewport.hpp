@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
+#include <vector>
 
 namespace rynui::example {
 
@@ -21,6 +23,14 @@ struct GalleryDocumentAnchorId final {
     friend constexpr bool operator==(
         GalleryDocumentAnchorId,
         GalleryDocumentAnchorId) = default;
+};
+
+struct GalleryComponentAnchor final {
+    std::string_view identity;
+    float offset{};
+
+    friend constexpr bool operator==(GalleryComponentAnchor,
+        GalleryComponentAnchor) = default;
 };
 
 struct GalleryDocumentResizeAnchor final {
@@ -61,6 +71,9 @@ public:
     bool replace_category_anchors(std::span<const float> offsets);
     [[nodiscard]] std::optional<GalleryDocumentAnchorId> category_anchor(
         AntDesignGalleryCategory category) const noexcept;
+    bool replace_component_anchors(std::span<const GalleryComponentAnchor> anchors);
+    [[nodiscard]] std::optional<GalleryDocumentAnchorId> component_anchor(
+        std::string_view identity) const noexcept;
     bool jump_to(GalleryDocumentAnchorId anchor);
     [[nodiscard]] GalleryDocumentResizeAnchor capture_resize_anchor() const;
     bool restore_resize_anchor(const GalleryDocumentResizeAnchor& anchor);
@@ -87,6 +100,7 @@ private:
     mutable GalleryScrollTranslation translation_;
     std::array<float, anchor_count> anchors_{};
     std::array<bool, anchor_count> anchor_present_{};
+    std::vector<GalleryComponentAnchor> component_anchors_;
     std::uint32_t anchor_generation_{1};
     mutable GalleryDocumentViewportDiagnostics diagnostics_;
 };

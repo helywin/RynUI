@@ -59,7 +59,7 @@ struct GalleryState final {
     }
 };
 
-constexpr std::size_t navigation_control_count = 20;
+const std::size_t navigation_control_count = 20 + ant_design_reference_entries().size();
 
 constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.theme.default",
@@ -233,7 +233,8 @@ void source_section(const std::shared_ptr<GalleryState>& state) {
 void navigation_button(
     const std::shared_ptr<GalleryState>& state,
     std::string_view caption,
-    GalleryNavigationTarget target) {
+    GalleryNavigationTarget target,
+    bool child = false) {
     const auto text = utf8(caption);
     const auto nav_width = state->navigation_width;
     const auto active = state->active_navigation;
@@ -249,25 +250,35 @@ void navigation_button(
         return theme;
     });
     ryn::Theme(ryn::ThemeProps{}.config(config),
-        ryn::ThemeContent{[state, target, text, nav_width] {
+        ryn::ThemeContent{[state, target, text, nav_width, child] {
             ryn::Button(
                 ryn::ButtonProps{}
                     .type(ryn::ButtonType::Text)
                     .size(ryn::ControlSize::Small)
                     .layout(ryn::LayoutStyle{}
-                        .width(ryn::bind([nav_width] {
-                            return ryn::dp(nav_width.get().value() - 16.0F);
+                        .width(ryn::bind([nav_width, child] {
+                            return ryn::dp(nav_width.get().value() - (child ? 28.0F : 16.0F));
                         }))
+                        .margin_left(ryn::dp(child ? 12.0F : 0.0F))
                         .height(ryn::dp(36.0F)))
                     .onClick([state, target] {
+                        if (target.kind == GalleryNavigationTargetKind::component) {
+                            const auto* entry = find_ant_design_reference_entry(
+                                target.component_identity);
+                            if (entry && !gallery_support_filter_matches(
+                                    state->support_filter.get(), entry->support_status)) {
+                                state->support_filter.set(GallerySupportFilter::all);
+                                ++state->telemetry.filter_updates;
+                            }
+                        }
                         state->active_navigation.set(target);
                         state->navigation_request = target;
                         ++state->telemetry.navigation_requests;
                     }),
-                [text, nav_width] {
+                [text, nav_width, child] {
                     ryn::Text(ryn::TextProps{}.content(text).layout(ryn::LayoutStyle{}
-                        .width(ryn::bind([nav_width] {
-                            return ryn::dp(nav_width.get().value() - 36.0F);
+                        .width(ryn::bind([nav_width, child] {
+                            return ryn::dp(nav_width.get().value() - (child ? 48.0F : 36.0F));
                         }))));
                 });
         }});
@@ -315,12 +326,8 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
             GalleryNavigationTarget::to_category(category.category));
         for (const auto& entry : ant_design_reference_entries()) {
             if (entry.category != category.category) continue;
-            ryn::Text(ryn::TextProps{}
-                .content(utf8(entry.english_name))
-                .tone(ryn::TextTone::Secondary)
-                .layout(ryn::LayoutStyle{}
-                    .margin_left(ryn::dp(12.0F))
-                    .height(ryn::dp(32.0F))));
+            navigation_button(state, entry.english_name,
+                GalleryNavigationTarget::to_component(entry.identity), true);
         }
     }
     ryn::Text(ryn::TextProps{}
@@ -544,6 +551,7 @@ void component_entry(
     });
     ReferenceSurface(
         ReferenceSurfaceProps{}
+            .identity(entry.identity)
             .status(entry.support_status)
             .visible(visible)
             .layout(ryn::LayoutStyle{}.width(width).height(height)),
@@ -1046,7 +1054,8 @@ TokenGalleryDefinition make_token_gallery_definition() {
         [state] { return state->narrow_layout.get(); },
         [state](GalleryDocumentSectionKind section) {
             if (section == GalleryDocumentSectionKind::component_overview
-                    && state->active_navigation.get().kind == GalleryNavigationTargetKind::category) {
+                    && (state->active_navigation.get().kind == GalleryNavigationTargetKind::category
+                        || state->active_navigation.get().kind == GalleryNavigationTargetKind::component)) {
                 return false;
             }
             return state->active_navigation.set(GalleryNavigationTarget::to_section(section));

@@ -122,7 +122,8 @@ public:
         const ryn::detail::DefaultFontChainResult& font_chain,
         const std::function<void(float)>& set_viewport_width,
         const std::function<std::optional<GalleryNavigationTarget>()>&
-            take_navigation_request) noexcept
+            take_navigation_request,
+        std::optional<GalleryNavigationTarget>& deferred_navigation) noexcept
         : platform_(&platform),
           application_(&application),
           inputs_(&inputs),
@@ -138,6 +139,7 @@ public:
           font_chain_(&font_chain),
           set_viewport_width_(&set_viewport_width),
           take_navigation_request_(&take_navigation_request),
+          deferred_navigation_(&deferred_navigation),
           started_(std::chrono::steady_clock::now()) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
@@ -186,6 +188,9 @@ private:
                         ? document_viewport_->scroll_to(0.0F)
                         : navigation_scroll_->scroll_to(0.0F);
                     if (changed) frame_requests_->request_frame();
+                } else if (request->kind == GalleryNavigationTargetKind::component) {
+                    *deferred_navigation_ = request;
+                    frame_requests_->request_frame();
                 } else {
                     const auto anchor = request->kind
                             == GalleryNavigationTargetKind::section
@@ -359,6 +364,7 @@ private:
     const std::function<void(float)>* set_viewport_width_;
     const std::function<std::optional<GalleryNavigationTarget>()>*
         take_navigation_request_;
+    std::optional<GalleryNavigationTarget>* deferred_navigation_;
     std::chrono::steady_clock::time_point started_;
     bool quit_requested_{};
     std::uint64_t scroll_events_{};
@@ -396,6 +402,7 @@ public:
             bool)>& set_scrollbars,
         const std::function<bool()>& narrow_layout,
         const std::function<bool(GalleryDocumentSectionKind)>& set_current_section,
+        std::optional<GalleryNavigationTarget>& deferred_navigation,
         ryn::runtime::NodeId body_root,
         ryn::runtime::NodeId navigation_root,
         ryn::runtime::NodeId document_root,
@@ -416,6 +423,7 @@ public:
           set_scrollbars_(&set_scrollbars),
           narrow_layout_(&narrow_layout),
           set_current_section_(&set_current_section),
+          deferred_navigation_(&deferred_navigation),
           body_root_(body_root),
           navigation_root_(navigation_root),
           document_root_(document_root),
@@ -495,17 +503,45 @@ public:
                 document_viewport_->capture_resize_anchor();
             bool anchors_changed =
                 document_viewport_->replace_anchors(anchors);
-            constexpr std::array<std::size_t, 7> category_surface_indices{
-                52, 56, 63, 70, 88, 108, 119};
+            const auto catalog = ant_design_reference_entries();
+            if (component_nodes_.empty()) {
+                component_nodes_.reserve(catalog.size());
+                component_anchors_.reserve(catalog.size());
+                for (const auto& entry : catalog) {
+                    const auto found = std::find_if(mounted_surfaces.begin(),
+                        mounted_surfaces.end(), [&](const auto& surface) {
+                            return reference_surfaces_->snapshot(surface.component).identity
+                                == entry.identity;
+                        });
+                    if (found == mounted_surfaces.end()) {
+                        throw std::logic_error("Token Gallery component surface identity is missing");
+                    }
+                    component_nodes_.push_back(found->node);
+                    component_anchors_.push_back({entry.identity, 0.0F});
+                }
+            }
             std::array<float, 7> category_anchors{};
-            for (std::size_t index = 0; index < category_anchors.size(); ++index) {
-                const auto& category = application_->nodes().require(
-                    mounted_surfaces[category_surface_indices[index]].node);
-                category_anchors[index] =
-                    std::max(0.0F, category.bounds.y - root.bounds.y);
+            std::array<bool, 7> category_present{};
+            for (std::size_t index = 0; index < catalog.size(); ++index) {
+                const auto& node = application_->nodes().require(component_nodes_[index]);
+                const auto offset = std::max(0.0F, node.bounds.y - root.bounds.y);
+                component_anchors_[index].offset = offset;
+                const auto category = static_cast<std::size_t>(catalog[index].category);
+                if (category >= category_anchors.size()) {
+                    throw std::logic_error("Token Gallery component category is invalid");
+                }
+                if (!category_present[category]) {
+                    category_anchors[category] = offset;
+                    category_present[category] = true;
+                }
+            }
+            if (std::ranges::find(category_present, false) != category_present.end()) {
+                throw std::logic_error("Token Gallery component category is missing");
             }
             anchors_changed = document_viewport_->replace_category_anchors(
                 category_anchors) || anchors_changed;
+            anchors_changed = document_viewport_->replace_component_anchors(
+                component_anchors_) || anchors_changed;
             const float applied_offset = document_viewport_->snapshot().offset;
             static_cast<void>(document_viewport_->set_extents(
                 scroll_presentation_->document.track.height, root.bounds.height));
@@ -519,6 +555,13 @@ public:
             } else if (anchors_changed && had_section_anchors) {
                 static_cast<void>(
                     document_viewport_->restore_resize_anchor(resize_anchor));
+            }
+            if (deferred_navigation_->has_value()) {
+                const auto anchor = document_viewport_->component_anchor(
+                    deferred_navigation_->value().component_identity);
+                if (!anchor) throw std::logic_error("Token Gallery component anchor is missing");
+                static_cast<void>(document_viewport_->jump_to(*anchor));
+                deferred_navigation_->reset();
             }
             // Ordinary wheel translation is flushed by the first sync. A resize
             // or first layout can change scroll clamps and scrollbar dimensions.
@@ -874,6 +917,9 @@ private:
         bool)>* set_scrollbars_;
     const std::function<bool()>* narrow_layout_;
     const std::function<bool(GalleryDocumentSectionKind)>* set_current_section_;
+    std::optional<GalleryNavigationTarget>* deferred_navigation_;
+    std::vector<ryn::runtime::NodeId> component_nodes_;
+    std::vector<GalleryComponentAnchor> component_anchors_;
     std::optional<bool> previous_narrow_;
     ryn::runtime::NodeId body_root_;
     ryn::runtime::NodeId navigation_root_;
@@ -1072,6 +1118,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         GalleryDocumentViewport document_viewport;
         GalleryScrollRange navigation_scroll;
         GalleryScrollPresentation scroll_presentation;
+        std::optional<GalleryNavigationTarget> deferred_navigation;
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::GlyphGpuResources glyph_resources(renderer);
@@ -1091,6 +1138,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             definition.set_scrollbars,
             definition.narrow_layout,
             definition.set_current_section,
+            deferred_navigation,
             body_root,
             navigation_root,
             document_root,
@@ -1111,7 +1159,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             *fonts,
             font_chain,
             definition.set_viewport_width,
-            definition.take_navigation_request);
+            definition.take_navigation_request,
+            deferred_navigation);
         auto& animation_deadlines = application;
         ryn::runtime::OnDemandFrameLoop loop(
             frame_requests, events, submitter, animation_deadlines, 10);

@@ -639,7 +639,7 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     require(definition.take_navigation_request().has_value(),
             "Gallery keyboard activation did not emit a navigation target");
 
-    constexpr std::size_t first_filter_control = 13;
+    constexpr std::size_t first_filter_control = 13 + 73;
     constexpr std::size_t partial_filter_control = first_filter_control + 2;
     click(partial_filter_control);
     require(fixture.host->layout_and_synchronize(
@@ -661,7 +661,12 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                     "hidden Gallery filter entry retained layout extent");
         }
     }
-    require(visible == 8 && hidden == 65,
+    const auto expected_partial = std::ranges::count_if(
+        ant_design_reference_entries(), [](const auto& entry) {
+            return entry.support_status == GallerySupportStatus::partial;
+        });
+    require(visible == static_cast<std::size_t>(expected_partial)
+        && hidden == ant_design_reference_entries().size() - visible,
             "Gallery partial filter did not match the support catalog");
     const auto hidden_surface = surfaces[53].component;
     std::size_t hidden_texts = 0;
@@ -688,6 +693,21 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
                 && definition.telemetry().navigation_requests == 2
                 && definition.telemetry().filter_updates == 1,
             "Gallery navigation/filter remounted content or disturbed its live sibling");
+
+    const auto hidden_entry = ant_design_reference_entries()[1];
+    require(hidden_entry.support_status != GallerySupportStatus::partial,
+        "Gallery filtered-entry fixture no longer selects a hidden component");
+    click(8);
+    const auto component_request = definition.take_navigation_request();
+    require(component_request.has_value()
+        && component_request->kind == GalleryNavigationTargetKind::component
+        && component_request->component_identity == hidden_entry.identity,
+        "Gallery component child did not emit its stable navigation identity");
+    require(fixture.host->layout_and_synchronize(
+                viewport, clip, {24.0F, 20.0F}, 0.0F, true),
+        "Gallery hidden component navigation did not restore layout");
+    require(fixture.surfaces->snapshot(surfaces[53].component).visible,
+        "Gallery child navigation did not restore the hidden component");
 
     click(first_filter_control);
     require(fixture.host->layout_and_synchronize(

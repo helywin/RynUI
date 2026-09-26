@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -49,6 +50,11 @@ public:
         return *this;
     }
 
+    ReferenceSurfaceProps& identity(std::string_view value) noexcept {
+        identity_ = value;
+        return *this;
+    }
+
     ReferenceSurfaceProps& status(ryn::Prop<GallerySupportStatus> value) {
         status_ = std::move(value);
         return *this;
@@ -83,6 +89,7 @@ private:
     friend struct detail::ReferenceSurfacePropsAccess;
 
     ReferenceSurfaceRole role_{ReferenceSurfaceRole::reference};
+    std::string_view identity_;
     ryn::Prop<GallerySupportStatus> status_{GallerySupportStatus::planned};
     ryn::Prop<std::optional<ryn::Color>> swatch_{std::optional<ryn::Color>{}};
     ryn::Prop<bool> elevated_{false};
@@ -106,6 +113,7 @@ struct MountedReferenceSurface final {
 
 struct ReferenceSurfaceSnapshot final {
     ReferenceSurfaceRole role{ReferenceSurfaceRole::reference};
+    std::string_view identity;
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};

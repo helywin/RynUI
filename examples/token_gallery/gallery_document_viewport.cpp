@@ -115,6 +115,39 @@ GalleryDocumentViewport::category_anchor(
     };
 }
 
+bool GalleryDocumentViewport::replace_component_anchors(
+    std::span<const GalleryComponentAnchor> next) {
+    if (next.empty()) {
+        throw std::invalid_argument("Gallery document requires component anchors");
+    }
+    if (std::ranges::equal(next, component_anchors_)) return false;
+    for (std::size_t index = 0; index < next.size(); ++index) {
+        if (next[index].identity.empty() || !finite_non_negative(next[index].offset)) {
+            throw std::invalid_argument("Gallery component anchors need finite offsets and identities");
+        }
+        for (std::size_t previous = 0; previous < index; ++previous) {
+            if (next[index].identity == next[previous].identity) {
+                throw std::invalid_argument("Gallery component anchor identity is duplicated");
+            }
+        }
+    }
+    component_anchors_.assign(next.begin(), next.end());
+    advance_generation(anchor_generation_);
+    ++diagnostics_.anchor_updates;
+    return true;
+}
+
+std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::component_anchor(
+    std::string_view identity) const noexcept {
+    const auto found = std::find_if(component_anchors_.begin(), component_anchors_.end(),
+        [identity](const auto& anchor) { return anchor.identity == identity; });
+    if (found == component_anchors_.end()) return std::nullopt;
+    return GalleryDocumentAnchorId{
+        static_cast<std::uint32_t>(anchor_count +
+            static_cast<std::size_t>(found - component_anchors_.begin())),
+        anchor_generation_};
+}
+
 std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
     GalleryDocumentSectionKind section) const noexcept {
     const auto index = section_index(section);
@@ -128,12 +161,19 @@ std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
 }
 
 bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
-    if (!value.valid() || value.generation != anchor_generation_
-            || value.index >= anchor_count
-            || !anchor_present_[value.index]) {
+    if (!value.valid() || value.generation != anchor_generation_) {
         return false;
     }
-    const bool changed = scroll_to(anchors_[value.index]);
+    float offset{};
+    if (value.index < anchor_count) {
+        if (!anchor_present_[value.index]) return false;
+        offset = anchors_[value.index];
+    } else {
+        const auto component_index = value.index - anchor_count;
+        if (component_index >= component_anchors_.size()) return false;
+        offset = component_anchors_[component_index].offset;
+    }
+    const bool changed = scroll_to(offset);
     if (changed) {
         ++diagnostics_.navigation_jumps;
     }
