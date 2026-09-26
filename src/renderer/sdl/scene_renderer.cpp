@@ -639,6 +639,109 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
     return runtime::FrameSubmissionResult::submitted;
 }
 
+bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
+    if (!platform_->is_owner_thread() || scene_ == nullptr || glyph_resources_ == nullptr) {
+        last_error_ = "Frame export requires an attached scene on the Window owner thread";
+        return false;
+    }
+    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    const auto metrics = platform_->window_metrics();
+    const auto width = static_cast<Uint32>(metrics.pixel_width);
+    const auto height = static_cast<Uint32>(metrics.pixel_height);
+    const auto format = SDL_GetGPUSwapchainTextureFormat(
+        device, static_cast<SDL_Window*>(platform_->window()));
+    if (width == 0 || height == 0 || width > 16384 || height > 16384
+            || (format != SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+                && format != SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM)) {
+        last_error_ = "Frame export requires an SDR RGBA8 or BGRA8 target of valid size";
+        return false;
+    }
+    SDL_GPUTextureCreateInfo texture_info{};
+    texture_info.type = SDL_GPU_TEXTURETYPE_2D;
+    texture_info.format = format;
+    texture_info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+    texture_info.width = width;
+    texture_info.height = height;
+    texture_info.layer_count_or_depth = 1;
+    texture_info.num_levels = 1;
+    texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    auto* texture = SDL_CreateGPUTexture(device, &texture_info);
+    const Uint32 pitch = (width * 4U + 255U) & ~255U;
+    const SDL_GPUTransferBufferCreateInfo transfer_info{
+        SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
+    auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
+    SDL_GPUCommandBuffer* command = nullptr;
+    SDL_GPUFence* fence = nullptr;
+    const auto cleanup = [&] {
+        if (command) SDL_CancelGPUCommandBuffer(command);
+        if (fence) SDL_ReleaseGPUFence(device, fence);
+        if (transfer) SDL_ReleaseGPUTransferBuffer(device, transfer);
+        if (texture) SDL_ReleaseGPUTexture(device, texture);
+    };
+    if (!texture || !transfer || !(command = SDL_AcquireGPUCommandBuffer(device))) {
+        last_error_ = sdl_error("Failed to allocate frame export resources");
+        cleanup();
+        return false;
+    }
+    SDL_GPUColorTargetInfo target{};
+    target.texture = texture;
+    target.clear_color = {clear_color_.red(), clear_color_.green(),
+        clear_color_.blue(), clear_color_.alpha()};
+    target.load_op = SDL_GPU_LOADOP_CLEAR;
+    target.store_op = SDL_GPU_STOREOP_STORE;
+    auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
+    if (!pass) {
+        last_error_ = sdl_error("Failed to begin frame export render pass");
+        cleanup();
+        return false;
+    }
+    active_render_pass_ = pass;
+    try {
+        draw_ordered_scene(*scene_, *this);
+    } catch (const std::exception& error) {
+        active_render_pass_ = nullptr;
+        SDL_EndGPURenderPass(pass);
+        last_error_ = error.what();
+        cleanup();
+        return false;
+    }
+    active_render_pass_ = nullptr;
+    SDL_EndGPURenderPass(pass);
+    auto* copy = SDL_BeginGPUCopyPass(command);
+    if (!copy) {
+        last_error_ = sdl_error("Failed to begin frame export readback");
+        cleanup();
+        return false;
+    }
+    const SDL_GPUTextureRegion source{texture, 0, 0, 0, 0, 0, width, height, 1};
+    const SDL_GPUTextureTransferInfo destination{transfer, 0, pitch / 4U, height};
+    SDL_DownloadFromGPUTexture(copy, &source, &destination);
+    SDL_EndGPUCopyPass(copy);
+    fence = SDL_SubmitGPUCommandBufferAndAcquireFence(command);
+    command = nullptr;
+    if (!fence || !SDL_WaitForGPUFences(device, true, &fence, 1)) {
+        last_error_ = sdl_error("Failed to complete frame export readback");
+        cleanup();
+        return false;
+    }
+    void* pixels = SDL_MapGPUTransferBuffer(device, transfer, false);
+    bool saved = false;
+    if (pixels) {
+        auto* surface = SDL_CreateSurfaceFrom(width, height,
+            format == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+                ? SDL_PIXELFORMAT_RGBA32 : SDL_PIXELFORMAT_BGRA32,
+            pixels, pitch);
+        if (surface) {
+            saved = SDL_SaveBMP(surface, path.string().c_str());
+            SDL_DestroySurface(surface);
+        }
+        SDL_UnmapGPUTransferBuffer(device, transfer);
+    }
+    if (!saved) last_error_ = sdl_error("Failed to save exported frame");
+    cleanup();
+    return saved;
+}
+
 const char* SdlSceneRenderer::shader_format() const noexcept {
     return shader_format_.c_str();
 }

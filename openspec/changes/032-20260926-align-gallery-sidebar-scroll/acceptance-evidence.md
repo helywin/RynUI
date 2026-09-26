@@ -28,3 +28,11 @@ Windows 正式验收：用 `windows-msvc-release` 构建并在真实 Windows 窗
 - 新增 GPU resource 回归在修复前同样失败；修复后合法的完全裁剪实例上传透明零面积 quad，保留 store 索引与已组合 draw 顺序，重新进入视口时正常恢复。无效 geometry/metrics 仍按原合同拒绝。
 - Windows `windows-msvc` / Debug 定向 CTest 10/10 通过，包含 rounded effect math/store/scene/GPU/resources、shader contract 和 Gallery frame/viewport。回归覆盖 100%、125%、150%、200% 以及返回 100%，窗口与 ancestor clip 两种边缘，往返进入/离开物理可见区。
 - Windows `windows-msvc` / Release D3D12、实际 DPI 125%：492 阶段的滚动条验收 exit 0，左右列各 240 次跨帧移动，每步 3 次输入（含横向移出轨道），`continuous_drag=passed`，几何与 offset 逐帧一致。
+
+## 排版与导航修正
+
+- 共用 `GalleryLayoutMetrics` 计算两列、正文最大宽度、卡片列数与滚动条沟槽；左栏宽 216dp，正文最大宽 960dp，列间距 40dp，卡片间距 16dp。正文与滑块保持至少 16dp 空隙。
+- 导航行高 36dp、组件条目 32dp，文字左对齐且不换行；主标题 28/40dp、分节标题 22/32dp，来源与设计理念采用文档排版，移除无关的状态外框。长支持范围占整行，规划条目随宽度以 1/2/3 列呈现。
+- 左右列保持独立滚动，当前文档高亮随正文 section 更新；窄窗口初始定位正文，固定顶栏的目录按钮返回导航，再从导航跳回正文。
+- Windows MSVC Debug 定向 CTest 6/6 通过（6.97 秒），包括 frame、reference surface 与 contract、document contract、viewport 与 contract。新断言覆盖文字不换行、导航/正文与滚动条不重叠、六个语义标题、响应式几何，以及高亮实际颜色从旧行移到当前行。
+- 完整 Debug CTest 在整合布局与构建依赖修复后 235/235 通过（213.67 秒）；最后的设计理念样式及导出等待调整后复测上述受影响的六项，未重复完整平台通用测试。

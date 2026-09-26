@@ -2,6 +2,7 @@
 
 #include "ant_design_reference_catalog.hpp"
 #include "gallery_document_model.hpp"
+#include "gallery_layout.hpp"
 #include "reference_surface.hpp"
 
 #include <ryn/rynui.hpp>
@@ -23,8 +24,8 @@ struct GalleryState final {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     ryn::Color background_color{ryn::Color::rgba8(255, 255, 255)};
     ryn::Signal<ryn::LogicalLength> gallery_width{ryn::dp(1120.0F)};
-    ryn::Signal<ryn::LogicalLength> navigation_width{ryn::dp(220.0F)};
-    ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(884.0F)};
+    ryn::Signal<ryn::LogicalLength> navigation_width{ryn::dp(216.0F)};
+    ryn::Signal<ryn::LogicalLength> document_width{ryn::dp(840.0F)};
     ryn::Signal<ryn::LogicalLength> cell_width{ryn::dp(260.0F)};
     ryn::Signal<bool> narrow_layout{false};
     ryn::Signal<ryn::LogicalLength> navigation_track_height{ryn::dp(1.0F)};
@@ -45,6 +46,8 @@ struct GalleryState final {
     ryn::Signal<ryn::String> search_value{ryn::String{}};
     ryn::Signal<ryn::String> search_feedback{ryn::String{u8"Enter 或按钮提交搜索"}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
+    ryn::Signal<GalleryNavigationTarget> active_navigation{
+        GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
 };
@@ -136,6 +139,17 @@ std::string joined_scope(
     return result;
 }
 
+ryn::String reference_source_note(const AntDesignReferenceEntry& entry) {
+    std::size_t records = entry.evidence_identifiers.empty() ? 0 : 1;
+    std::size_t position = 0;
+    while ((position = entry.evidence_identifiers.find(" · ", position)) != std::string_view::npos) {
+        ++records;
+        position += std::string_view{" · "}.size();
+    }
+    return utf8("来源：" + std::string(entry.source_path) + " · "
+        + std::to_string(records) + " 项参考记录");
+}
+
 ryn::ThemeConfig algorithm_config(ryn::ThemeAlgorithm algorithm) {
     ryn::ThemeConfig config;
     if (algorithm != ryn::ThemeAlgorithm::Default) {
@@ -150,27 +164,41 @@ ryn::ThemeConfig navigation_theme_config() {
     config.button.tokens.default_background = transparent;
     config.button.tokens.default_border_color = transparent;
     config.button.tokens.default_shadow = ryn::ShadowList{};
-    config.button.tokens.padding_inline = ryn::dp(4.0F);
-    config.button.tokens.border_radius = ryn::dp(4.0F);
+    config.button.tokens.padding_inline = ryn::dp(8.0F);
+    config.button.tokens.border_radius = ryn::dp(6.0F);
     return config;
+}
+
+void document_text(ryn::String content, float size, float line_height,
+                   std::uint32_t weight = 400,
+                   ryn::TextTone tone = ryn::TextTone::Primary) {
+    ryn::ThemeConfig config;
+    config.text.tokens.font_size = ryn::dp(size);
+    config.text.tokens.line_height = ryn::dp(line_height);
+    config.text.tokens.font_weight = weight;
+    ryn::Theme(ryn::ThemeProps{}.config(config),
+        ryn::ThemeContent{[content, tone] {
+            ryn::Text(ryn::TextProps{}.content(content).tone(tone));
+        }});
 }
 
 void section_surface(
     const std::shared_ptr<GalleryState>& state,
     const GalleryDocumentSection& section) {
-    const auto title = utf8(section.title);
+    const bool page_title = section.kind == GalleryDocumentSectionKind::header_source;
+    const auto title = page_title ? utf8("RynUI Design System") : utf8(section.title);
     const auto summary = utf8(section.summary);
     ReferenceSurface(
         ReferenceSurfaceProps{}
-            .status(GallerySupportStatus::partial)
-            .elevated(true)
-            .layout(ryn::LayoutStyle{}.width(state->document_width)),
-        [state, title, summary] {
+            .role(ReferenceSurfaceRole::document_heading)
+            .layout(ryn::LayoutStyle{}.width(state->document_width)
+                .margin_top(ryn::dp(page_title ? 0.0F : 24.0F))
+                .margin_bottom(ryn::dp(8.0F))),
+        [state, title, summary, page_title] {
             ++state->telemetry.reference_content_runs;
-            ryn::Text(title);
-            ryn::Text(ryn::TextProps{}
-                .content(summary)
-                .tone(ryn::TextTone::Secondary));
+            document_text(title, page_title ? 28.0F : 22.0F,
+                page_title ? 40.0F : 32.0F, 600);
+            document_text(summary, 14.0F, 24.0F, 400, ryn::TextTone::Secondary);
         });
     ++state->telemetry.document_sections;
     ++state->telemetry.reference_surfaces;
@@ -178,22 +206,25 @@ void section_surface(
 
 void source_section(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[0]);
-    for (const auto& source : ant_design_reference_sources()) {
-        const auto title = utf8(source.title);
-        const auto url = utf8(source.official_url);
-        ReferenceSurface(
-            ReferenceSurfaceProps{}
-                .status(GallerySupportStatus::planned)
-                .layout(ryn::LayoutStyle{}.width(state->document_width)),
-            [state, title, url] {
-                ++state->telemetry.reference_content_runs;
-                ryn::Text(title);
-                ryn::Text(ryn::TextProps{}
-                    .content(url)
-                    .tone(ryn::TextTone::Secondary));
-            });
-        ++state->telemetry.reference_surfaces;
-    }
+    ryn::Flex(ryn::FlexProps{}.wrap(true)
+        .gap(ryn::dp(GalleryLayoutMetrics::card_gap))
+        .layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        for (const auto& source : ant_design_reference_sources()) {
+            const auto title = utf8(source.title);
+            const auto url = utf8(source.official_url);
+            ReferenceSurface(
+                ReferenceSurfaceProps{}
+                    .role(ReferenceSurfaceRole::document_note)
+                    .layout(ryn::LayoutStyle{}.width(state->cell_width)
+                        .margin_bottom(ryn::dp(8.0F))),
+                [state, title, url] {
+                    ++state->telemetry.reference_content_runs;
+                    document_text(title, 13.0F, 22.0F, 500);
+                    document_text(url, 12.0F, 20.0F, 400, ryn::TextTone::Secondary);
+                });
+            ++state->telemetry.reference_surfaces;
+        }
+    });
 }
 
 void navigation_button(
@@ -201,14 +232,41 @@ void navigation_button(
     std::string_view caption,
     GalleryNavigationTarget target) {
     const auto text = utf8(caption);
-    ryn::Button(
-        ryn::ButtonProps{}
-            .size(ryn::ControlSize::Small)
-            .onClick([state, target] {
-                state->navigation_request = target;
-                ++state->telemetry.navigation_requests;
-            }),
-        [text] { ryn::Text(text); });
+    const auto nav_width = state->navigation_width;
+    const auto active = state->active_navigation;
+    const auto config = ryn::bind([active, target, parent_theme = state->theme] {
+        auto theme = navigation_theme_config();
+        if (active.get() == target) {
+            const auto tokens = ryn::resolve_theme(parent_theme.get());
+            const auto primary = tokens.map().color_primary;
+            theme.button.tokens.default_background = ryn::Color(
+                primary.red(), primary.green(), primary.blue(), 0.08F);
+            theme.button.tokens.default_color = tokens.map().color_primary;
+        }
+        return theme;
+    });
+    ryn::Theme(ryn::ThemeProps{}.config(config),
+        ryn::ThemeContent{[state, target, text, nav_width] {
+            ryn::Button(
+                ryn::ButtonProps{}
+                    .size(ryn::ControlSize::Small)
+                    .layout(ryn::LayoutStyle{}
+                        .width(ryn::bind([nav_width] {
+                            return ryn::dp(nav_width.get().value() - 16.0F);
+                        }))
+                        .height(ryn::dp(36.0F)))
+                    .onClick([state, target] {
+                        state->active_navigation.set(target);
+                        state->navigation_request = target;
+                        ++state->telemetry.navigation_requests;
+                    }),
+                [text, nav_width] {
+                    ryn::Text(ryn::TextProps{}.content(text).layout(ryn::LayoutStyle{}
+                        .width(ryn::bind([nav_width] {
+                            return ryn::dp(nav_width.get().value() - 36.0F);
+                        }))));
+                });
+        }});
 }
 
 void filter_button(
@@ -228,18 +286,24 @@ void filter_button(
 }
 
 void navigation_controls(const std::shared_ptr<GalleryState>& state) {
-    ryn::Text(utf8("Components / 组件"));
+    document_text(utf8("文档"), 12.0F, 24.0F, 500, ryn::TextTone::Secondary);
     ryn::Text(ryn::TextProps{}
-        .content(utf8("Guides / 文档"))
-        .tone(ryn::TextTone::Secondary));
+        .content(utf8("RynUI · Ant Design 6"))
+        .tone(ryn::TextTone::Secondary)
+        .layout(ryn::LayoutStyle{}.margin_bottom(ryn::dp(8.0F))));
+    constexpr std::array<std::string_view, 6> section_labels{
+        "概览", "设计介绍", "设计价值", "基础样式与 Token", "组件总览", "交互示例"};
+    std::size_t section_index = 0;
     for (const auto& section : gallery_document_sections()) {
         navigation_button(
-            state, section.title,
+            state, section_labels[section_index++],
             GalleryNavigationTarget::to_section(section.kind));
     }
     ryn::Text(ryn::TextProps{}
-        .content(utf8("Component Categories / 组件分类"))
-        .tone(ryn::TextTone::Secondary));
+        .content(utf8("组件"))
+        .tone(ryn::TextTone::Secondary)
+        .layout(ryn::LayoutStyle{}.margin_top(ryn::dp(24.0F))
+            .margin_bottom(ryn::dp(8.0F))));
     for (const auto& category : ant_design_reference_categories()) {
         navigation_button(
             state,
@@ -248,16 +312,17 @@ void navigation_controls(const std::shared_ptr<GalleryState>& state) {
         for (const auto& entry : ant_design_reference_entries()) {
             if (entry.category != category.category) continue;
             ryn::Text(ryn::TextProps{}
-                .content(utf8(std::string(entry.english_name) + " / "
-                    + std::string(entry.chinese_name)))
+                .content(utf8(entry.english_name))
                 .tone(ryn::TextTone::Secondary)
                 .layout(ryn::LayoutStyle{}
-                    .margin_left(ryn::dp(16.0F))));
+                    .margin_left(ryn::dp(12.0F))
+                    .height(ryn::dp(32.0F))));
         }
     }
     ryn::Text(ryn::TextProps{}
-        .content(utf8("Support Filter / 支持状态筛选"))
-        .tone(ryn::TextTone::Secondary));
+        .content(utf8("支持状态筛选"))
+        .tone(ryn::TextTone::Secondary)
+        .layout(ryn::LayoutStyle{}.margin_top(ryn::dp(24.0F))));
     filter_button(state, "All / 全部", GallerySupportFilter::all);
     filter_button(state, "Implemented / 已实现", GallerySupportFilter::implemented);
     filter_button(state, "Partial / 部分支持", GallerySupportFilter::partial);
@@ -287,7 +352,7 @@ void design_values(const std::shared_ptr<GalleryState>& state) {
     ryn::Flex(
         ryn::FlexProps{}
             .wrap(true)
-            .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+            .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
             .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             for (const auto& value : gallery_design_values()) {
@@ -297,14 +362,13 @@ void design_values(const std::shared_ptr<GalleryState>& state) {
                 const auto summary = utf8(value.summary);
                 ReferenceSurface(
                     ReferenceSurfaceProps{}
-                        .status(GallerySupportStatus::planned)
-                        .layout(ryn::LayoutStyle{}.width(state->cell_width)),
+                        .role(ReferenceSurfaceRole::document_note)
+                        .layout(ryn::LayoutStyle{}.width(state->cell_width)
+                            .margin_bottom(ryn::dp(8.0F))),
                     [state, title, summary] {
                         ++state->telemetry.reference_content_runs;
-                        ryn::Text(title);
-                        ryn::Text(ryn::TextProps{}
-                            .content(summary)
-                            .tone(ryn::TextTone::Secondary));
+                        document_text(title, 16.0F, 26.0F, 500);
+                        document_text(summary, 14.0F, 24.0F, 400, ryn::TextTone::Secondary);
                     });
                 ++state->telemetry.reference_surfaces;
             }
@@ -440,7 +504,7 @@ void foundation_tokens(const std::shared_ptr<GalleryState>& state) {
     ryn::Flex(
         ryn::FlexProps{}
             .wrap(true)
-            .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+            .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
             .layout(ryn::LayoutStyle{}.width(state->document_width)),
         [state] {
             add_palette_cells(state);
@@ -458,17 +522,17 @@ void component_entry(
     const auto summary = utf8(entry.summary);
     const auto supported = utf8(joined_scope("支持：", entry.supported_scope));
     const auto missing = utf8(joined_scope("缺失：", entry.missing_scope));
-    const auto evidence = utf8(
-        std::string("证据：") + std::string(entry.evidence_identifiers)
-        + " · Source: " + std::string(entry.source_path));
+    const auto source_note = reference_source_note(entry);
     const auto filter = state->support_filter;
     const auto cell_width = state->cell_width;
+    const auto document_width = state->document_width;
     const auto visible = ryn::bind([filter, status = entry.support_status] {
         return gallery_support_filter_matches(filter.get(), status);
     });
-    const auto width = ryn::bind([filter, cell_width, status = entry.support_status] {
+    const auto width = ryn::bind([filter, cell_width, document_width, status = entry.support_status] {
         return gallery_support_filter_matches(filter.get(), status)
-            ? cell_width.get() : ryn::dp(0.0F);
+            ? (status == GallerySupportStatus::partial
+                ? document_width.get() : cell_width.get()) : ryn::dp(0.0F);
     });
     const auto height = ryn::bind([filter, status = entry.support_status] {
         return gallery_support_filter_matches(filter.get(), status)
@@ -479,21 +543,17 @@ void component_entry(
             .status(entry.support_status)
             .visible(visible)
             .layout(ryn::LayoutStyle{}.width(width).height(height)),
-        [state, name, summary, supported, missing, evidence] {
+        [state, name, summary, supported, missing, source_note, status = entry.support_status] {
             ++state->telemetry.reference_content_runs;
-            ryn::Text(name);
+            document_text(name, 16.0F, 26.0F, 500);
             ryn::Text(ryn::TextProps{}
                 .content(summary)
                 .tone(ryn::TextTone::Secondary));
-            ryn::Text(ryn::TextProps{}
-                .content(supported)
-                .tone(ryn::TextTone::Secondary));
-            ryn::Text(ryn::TextProps{}
-                .content(missing)
-                .tone(ryn::TextTone::Secondary));
-            ryn::Text(ryn::TextProps{}
-                .content(evidence)
-                .tone(ryn::TextTone::Secondary));
+            if (status == GallerySupportStatus::partial) {
+                document_text(supported, 12.0F, 20.0F, 400, ryn::TextTone::Secondary);
+                document_text(missing, 12.0F, 20.0F, 400, ryn::TextTone::Secondary);
+            }
+            document_text(source_note, 11.0F, 18.0F, 400, ryn::TextTone::Secondary);
         });
     ++state->telemetry.component_entries;
     ++state->telemetry.reference_surfaces;
@@ -503,11 +563,11 @@ void component_overview(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[4]);
     const auto entries = ant_design_reference_entries();
     for (const auto& category : ant_design_reference_categories()) {
-        ryn::Text(utf8(gallery_category_title(category.category)));
+        document_text(utf8(gallery_category_title(category.category)), 18.0F, 28.0F, 500);
         ryn::Flex(
             ryn::FlexProps{}
                 .wrap(true)
-                .gap(ryn::dp(8.0F), ryn::dp(8.0F))
+                .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
                 .layout(ryn::LayoutStyle{}.width(state->document_width)),
             [state, entries, category] {
                 for (const auto& entry : entries) {
@@ -812,16 +872,16 @@ TokenGalleryDefinition make_token_gallery_definition() {
                             ryn::Flex(
                                 ryn::FlexProps{}
                                     .vertical(state->narrow_layout)
-                                    .gap(ryn::dp(16.0F))
+                                    .gap(ryn::dp(GalleryLayoutMetrics::column_gap))
                                     .layout(ryn::LayoutStyle{}
                                         .width(state->gallery_width)
-                                        .margin_top(ryn::dp(12.0F))
+                                        .margin_top(ryn::dp(GalleryLayoutMetrics::body_gap))
                                         .order(1)),
                                 [state] {
                                     ryn::Flex(
                                         ryn::FlexProps{}
                                             .vertical(true)
-                                            .gap(ryn::dp(8.0F))
+                                            .gap(ryn::dp(0.0F))
                                             .layout(ryn::LayoutStyle{}
                                                 .width(state->navigation_width)),
                                         [state] {
@@ -870,17 +930,26 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                     .role(ReferenceSurfaceRole::site_header)
                                     .layout(ryn::LayoutStyle{}
                                         .width(state->gallery_width)
-                                        .height(ryn::dp(56.0F))
+                                        .height(ryn::dp(GalleryLayoutMetrics::header_height))
                                         .order(-1)),
-                                [] {
+                                [state] {
                                     ryn::Flex(
                                         ryn::FlexProps{}
                                             .gap(ryn::dp(24.0F)),
-                                        [] {
-                                            ryn::Text(utf8("RynUI"));
-                                            ryn::Text(utf8("Design"));
-                                            ryn::Text(utf8("Components"));
-                                            ryn::Text(utf8("Token Gallery"));
+                                        [state] {
+                                            document_text(utf8("RynUI"), 20.0F, 28.0F, 600);
+                                            document_text(utf8("组件"), 14.0F, 28.0F, 500);
+                                            document_text(utf8("Design Tokens"), 14.0F, 28.0F,
+                                                400, ryn::TextTone::Secondary);
+                                            document_text(utf8("Ant Design 6.6.5"), 12.0F, 28.0F,
+                                                400, ryn::TextTone::Secondary);
+                                            ryn::Button(ryn::ButtonProps{}
+                                                .size(ryn::ControlSize::Small)
+                                                .onClick([state] {
+                                                    state->navigation_request =
+                                                        GalleryNavigationTarget::to_navigation();
+                                                    ++state->telemetry.navigation_requests;
+                                                }), [] { ryn::Text(u8"目录"); });
                                         });
                                 });
                         });
@@ -911,16 +980,12 @@ TokenGalleryDefinition make_token_gallery_definition() {
             }
         },
         [state](float viewport_width) {
-            const float content_width = std::max(256.0F, viewport_width - 48.0F);
-            const bool narrow = content_width < 960.0F;
-            const float navigation_width = narrow ? content_width : 220.0F;
-            const float document_width = narrow
-                ? content_width : std::max(256.0F, content_width - 236.0F);
-            const float next_cell_width = document_width < 520.0F
-                ? document_width
-                : document_width < 820.0F
-                    ? (document_width - 8.0F) / 2.0F
-                    : 260.0F;
+            const auto metrics = gallery_layout_metrics({viewport_width, 900.0F});
+            const auto content_width = metrics.gallery_width;
+            const auto narrow = metrics.narrow;
+            const auto navigation_width = metrics.navigation_width;
+            const auto document_width = metrics.document_width;
+            const auto next_cell_width = metrics.cell_width;
             if (state->gallery_width.get() != ryn::dp(content_width)) {
                 state->gallery_width.set(ryn::dp(content_width));
                 ++state->telemetry.viewport_updates;
@@ -962,6 +1027,13 @@ TokenGalleryDefinition make_token_gallery_definition() {
             return changed;
         },
         [state] { return state->narrow_layout.get(); },
+        [state](GalleryDocumentSectionKind section) {
+            if (section == GalleryDocumentSectionKind::component_overview
+                    && state->active_navigation.get().kind == GalleryNavigationTargetKind::category) {
+                return false;
+            }
+            return state->active_navigation.set(GalleryNavigationTarget::to_section(section));
+        },
         [state, set_theme](bool enabled) {
             auto config = state->theme.get();
             if (config.seed.motion.value_or(true) == enabled) {

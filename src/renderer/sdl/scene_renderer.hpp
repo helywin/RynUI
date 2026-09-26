@@ -103,6 +103,8 @@ public:
         std::uint32_t count) override;
     runtime::FrameSubmissionResult submit_frame(
         animation::AnimationTime frame_time) override;
+    // Render the attached scene into a matching offscreen target for visual QA.
+    bool save_frame_bmp(const std::filesystem::path& path);
 
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;

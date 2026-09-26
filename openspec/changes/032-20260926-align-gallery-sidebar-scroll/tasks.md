@@ -27,5 +27,5 @@
 - [x] 6.0 修复 Windows MSVC 诊断语言引起的 Ninja 头文件依赖丢失，清理重建 Debug/Release，验证依赖记录与增量重编译后以 `fix:` 提交
 
 - [x] 6.1 复现持续拖动至正文中段的问题，修复根因；增加经过中间位置、往返及结束拖动的回归，运行 Windows MSVC Debug 定向 CTest 与 Release D3D12 连续拖动验收，以 `fix:` 提交
-- [ ] 6.2 按官方组件页重新整理左栏行高、对齐、正文宽度、标题层级及内容间距；同步布局与滚动几何来源，运行 Windows MSVC Debug 布局/viewport 定向 CTest，以 `fix:` 提交
+- [x] 6.2 按官方组件页重新整理左栏行高、对齐、正文宽度、标题层级及内容间距；同步布局与滚动几何来源，运行 Windows MSVC Debug 布局/viewport 定向 CTest，以 `fix:` 提交
 - [ ] 6.3 在 Windows MSVC Release 真实窗口检查首页、中段和窄窗口排版，复验拖动、滚动与输入；运行本 change strict、全仓 strict、可用 doctor、`git diff --check` 并记录证据，以 `test:` 提交

@@ -53,6 +53,7 @@ struct TokenGalleryDefinition final {
         const GalleryScrollbarGeometry&,
         bool)> set_scrollbars;
     std::function<bool()> narrow_layout;
+    std::function<bool(GalleryDocumentSectionKind)> set_current_section;
     std::function<void(bool)> set_motion_enabled;
     std::function<void(bool)> set_clear_disabled;
     std::function<std::optional<GalleryNavigationTarget>()>

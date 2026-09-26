@@ -6,12 +6,14 @@
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/invalidation.hpp"
 #include "gallery_document_viewport.hpp"
+#include "gallery_layout.hpp"
 #include "reference_surface.hpp"
 #include "token_gallery_definition.hpp"
 #include "support/input_fixture.hpp"
 
 #include <ryn/rynui.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -740,13 +742,48 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     const auto wide_header = fixture.nodes.require(header).bounds;
     require(wide_navigation.x < wide_document.x
                 && near(wide_navigation.y, wide_document.y)
-                && near(wide_navigation.width, 220.0F)
+                && near(wide_navigation.width, 216.0F)
                 && wide_document.width > 800.0F
                 && wide_header.y < wide_navigation.y
                 && near(wide_header.height, 56.0F),
             "wide Gallery did not produce a header above both columns");
     require(fixture.nodes.require(wide_children[0]).children.size() == 97,
             "Gallery navigation did not include every document and catalog entry");
+    const auto metrics = rynui::example::gallery_layout_metrics({1200.0F, 900.0F});
+    require(near(wide_document.x, metrics.document_lane.x)
+                && near(wide_document.y, metrics.document_lane.y)
+                && near(wide_document.width, metrics.document_width)
+                && metrics.document_track.x - (wide_document.x + wide_document.width) >= 16.0F,
+            "Gallery layout and scrollbar geometry disagree or overlap document content");
+    for (const auto child : fixture.nodes.require(wide_children[0]).children) {
+        const auto& node = fixture.nodes.require(child);
+        require(node.bounds.x + node.bounds.width <= metrics.navigation_track.x + 0.25F,
+                "Gallery navigation row overlaps its scrollbar");
+    }
+    std::size_t heading_count = 0;
+    for (const auto& surface : fixture.surfaces->mounted_surfaces()) {
+        if (fixture.surfaces->snapshot(surface.component).role
+                == rynui::example::ReferenceSurfaceRole::document_heading) ++heading_count;
+    }
+    require(heading_count == 6, "Gallery lost its semantic document headings");
+    for (const auto& text : fixture.host->text().mounted_texts()) {
+        auto parent = fixture.nodes.require(fixture.text_scene.node(text.scene)).parent;
+        while (parent && *parent != wide_children[0]) {
+            parent = fixture.nodes.require(*parent).parent;
+        }
+        if (parent) {
+            require(fixture.text_scene.text_state(text.scene).measurement().lines.size() <= 1,
+                    "Gallery navigation label wraps into the following row");
+        }
+    }
+    definition.set_motion_enabled(false);
+    require(definition.set_current_section(rynui::example::GalleryDocumentSectionKind::design_values)
+                && !definition.set_current_section(rynui::example::GalleryDocumentSectionKind::design_values),
+            "Gallery active section failed to update or remained dirty at rest");
+    const auto buttons = fixture.host->mounted_buttons();
+    require(near(fixture.host->snapshot(buttons[0].component).presentation_background.alpha(), 0.0F)
+                && near(fixture.host->snapshot(buttons[2].component).presentation_background.alpha(), 0.08F),
+            "Gallery active section did not move the rendered navigation highlight");
 
     definition.set_viewport_width(560.0F);
     require(fixture.host->layout_and_synchronize(
@@ -762,7 +799,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     require(near(narrow_navigation.x, narrow_document.x)
                 && narrow_navigation.y < narrow_document.y
                 && near(narrow_navigation.width, 512.0F)
-                && near(narrow_document.width, 512.0F),
+                && near(narrow_document.width, 488.0F),
             "narrow Gallery did not stack wrapped navigation above the document");
     rynui::example::GalleryDocumentViewport shared_scroll;
     const float narrow_extent = fixture.nodes.require(body).bounds.height;
@@ -857,7 +894,7 @@ void test_token_gallery_frame_contract() {
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
     require(fixture.host->mounted_buttons().size()
-                == definition.navigation_control_count + 17,
+                == definition.navigation_control_count + 18,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131
                 && fixture.surfaces->snapshot(
@@ -867,7 +904,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 41,
+                == definition.navigation_control_count + 42,
             "Token Gallery documentation entered the interaction registry");
 
     RecordingGpuApi gpu;
@@ -882,7 +919,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                == definition.navigation_control_count + 41,
+                    == definition.navigation_control_count + 42,
             "Token Gallery reference content entered scene interaction order");
 
     const auto initial = definition.telemetry();
@@ -1087,8 +1124,17 @@ void test_live_input_samples() {
         && definition.telemetry().input_changes == 2, "Gallery uncontrolled paste failed");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery uncontrolled frame failed");
     const auto search_input = fixture.inputs->mounted_inputs()[2];
-    const auto search_button = fixture.host->mounted_buttons()[fixture.host->mounted_buttons().size() - 5];
-    const auto second_search_button = fixture.host->mounted_buttons()[fixture.host->mounted_buttons().size() - 4];
+    const auto button_for_input = [&](std::size_t index) {
+        const auto parent = fixture.host->components().parent(fixture.inputs->mounted_inputs()[index].component);
+        const auto buttons = fixture.host->mounted_buttons();
+        const auto found = std::find_if(buttons.begin(), buttons.end(), [&](const auto& button) {
+            return fixture.host->components().parent(button.component) == parent;
+        });
+        require(found != buttons.end(), "Gallery Search sibling button is absent");
+        return *found;
+    };
+    const auto search_button = button_for_input(2);
+    const auto second_search_button = button_for_input(3);
     require(fixture.host->components().parent(search_input.component)
             == fixture.host->components().parent(search_button.component)
         && &fixture.inputs->editors() == &fixture.host->services().text_edit()->editors(),

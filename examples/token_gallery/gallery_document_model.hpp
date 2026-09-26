@@ -34,6 +34,7 @@ struct GalleryDesignValue final {
 enum class GalleryNavigationTargetKind : std::uint8_t {
     section,
     category,
+    navigation_start,
 };
 
 struct GalleryNavigationTarget final {
@@ -58,6 +59,10 @@ struct GalleryNavigationTarget final {
     friend constexpr bool operator==(
         GalleryNavigationTarget,
         GalleryNavigationTarget) = default;
+
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_navigation() noexcept {
+        return {GalleryNavigationTargetKind::navigation_start, {}, {}};
+    }
 };
 
 enum class GallerySupportFilter : std::uint8_t {
