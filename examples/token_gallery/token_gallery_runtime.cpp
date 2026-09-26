@@ -110,6 +110,7 @@ public:
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
         ryn::detail::InputComponentHost& inputs,
+        ReferenceSurfaceHost& reference_surfaces,
         ryn::runtime::FrameRequestState& frame_requests,
         GalleryDocumentViewport& document_viewport,
         GalleryScrollRange& navigation_scroll,
@@ -127,6 +128,7 @@ public:
         : platform_(&platform),
           application_(&application),
           inputs_(&inputs),
+          reference_surfaces_(&reference_surfaces),
           frame_requests_(&frame_requests),
           document_viewport_(&document_viewport),
           navigation_scroll_(&navigation_scroll),
@@ -175,10 +177,29 @@ public:
     }
 
 private:
+    void publish_scrollbar_visuals() {
+        const auto mounted = reference_surfaces_->mounted_surfaces();
+        if (mounted.size() < 5) return;
+        const auto navigation = navigation_bar_.visual_state();
+        const auto document = document_bar_.visual_state();
+        bool changed = false;
+        changed = reference_surfaces_->set_scrollbar_visual_state(
+            mounted[mounted.size() - 5].component, navigation) || changed;
+        changed = reference_surfaces_->set_scrollbar_visual_state(
+            mounted[mounted.size() - 4].component, navigation) || changed;
+        changed = reference_surfaces_->set_scrollbar_visual_state(
+            mounted[mounted.size() - 3].component, document) || changed;
+        changed = reference_surfaces_->set_scrollbar_visual_state(
+            mounted[mounted.size() - 2].component, document) || changed;
+        if (changed) frame_requests_->request_frame();
+    }
+
     bool consume(const ryn::detail::PlatformEvents& events) noexcept {
         application_->set_animation_time(now());
         quit_requested_ = quit_requested_ || events.quit_requested;
         try {
+            if (scroll_presentation_->narrow && navigation_bar_.reset())
+                publish_scrollbar_visuals();
             for (const auto& event : events.input.events()) {
                 std::visit([this](const auto& value) { dispatch(value); }, event);
             }
@@ -238,13 +259,17 @@ private:
                 navigation_scroll_->snapshot().viewport_extent,
                 navigation_scroll_->snapshot().offset,
                 [this](float value) { return navigation_scroll_->scroll_to(value); })) {
+            static_cast<void>(document_bar_.clear_hover());
+            publish_scrollbar_visuals();
             return;
         }
-        if (handle_bar(
+        const bool document_bar_consumed = handle_bar(
                 document_bar_, presentation.document,
                 document_viewport_->snapshot().viewport_extent,
                 document_viewport_->snapshot().offset,
-                [this](float value) { return document_viewport_->scroll_to(value); })) {
+                [this](float value) { return document_viewport_->scroll_to(value); });
+        publish_scrollbar_visuals();
+        if (document_bar_consumed) {
             return;
         }
         const bool over_bar = (!presentation.narrow && gallery_contains(
@@ -315,6 +340,9 @@ private:
             inputs_->set_window_active(true);
             return;
         case ryn::input::WindowInputAction::focus_lost:
+            static_cast<void>(navigation_bar_.reset());
+            static_cast<void>(document_bar_.reset());
+            publish_scrollbar_visuals();
             application_->set_window_active(false);
             inputs_->set_window_active(false);
             return;
@@ -337,6 +365,9 @@ private:
                     metrics.pixel_height,
                     *render_scale_);
                 *viewport_ = {logical.width, logical.height};
+                static_cast<void>(navigation_bar_.reset());
+                static_cast<void>(document_bar_.reset());
+                publish_scrollbar_visuals();
                 (*set_viewport_width_)(viewport_->width);
                 frame_requests_->request_frame();
             }
@@ -349,6 +380,7 @@ private:
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::InputComponentHost* inputs_;
+    ReferenceSurfaceHost* reference_surfaces_;
     ryn::runtime::FrameRequestState* frame_requests_;
     GalleryDocumentViewport* document_viewport_;
     GalleryScrollRange* navigation_scroll_;
@@ -1148,6 +1180,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             platform,
             application,
             inputs,
+            reference_surfaces,
             frame_requests,
             document_viewport,
             navigation_scroll,
@@ -1861,7 +1894,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         && navigation_scroll.snapshot().offset == navigation_after_drag;
                     break;
                 case scrollbar_drag_end: {
-                    const auto& header_button = application.mounted_buttons().back();
+                    const auto& buttons = application.mounted_buttons();
+                    const auto& header_button = buttons[buttons.size() - 2];
                     const auto& node = nodes.require(header_button.node);
                     const float x = node.bounds.x + node.bounds.width * 0.5F;
                     const float y = node.bounds.y + node.bounds.height * 0.5F;

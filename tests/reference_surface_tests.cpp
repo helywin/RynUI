@@ -440,12 +440,59 @@ void test_gallery_chrome_roles_use_theme_without_status_labels() {
     }
 }
 
+void test_scrollbar_material_uses_hover_press_and_dark_theme() {
+    using namespace rynui::example;
+    Fixture fixture;
+    ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
+    fixture.surfaces->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(theme), ryn::ThemeContent{[] {
+            ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::scrollbar_track)
+                .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(200))), [] {});
+            ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::scrollbar_thumb)
+                .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(40))), [] {});
+        }});
+    }});
+    require(fixture.synchronize(), "scrollbar visual fixture did not synchronize");
+    const auto mounted = fixture.surfaces->mounted_surfaces();
+    const auto track = mounted[0], thumb = mounted[1];
+    const auto color = [&](const auto& surface) {
+        return fixture.layer(surface, ReferenceSurfaceVisualLayer::background).color;
+    };
+    require(near(color(track)[3], 0.05F) && near(color(thumb)[3], 0.28F),
+        "scrollbar resting material drifted");
+    fixture.dirty.clear();
+    GalleryScrollbarVisualState hover;
+    hover.track_hover = hover.thumb_hover = true;
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover)
+        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover)
+        && near(color(track)[3], 0.10F) && near(color(thumb)[3], 0.46F)
+        && fixture.dirty.layout_roots().empty(),
+        "scrollbar hover did not stay a material-only update");
+    hover.track_pressed = hover.thumb_pressed = hover.dragging = true;
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover)
+        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover)
+        && near(color(track)[3], 0.16F) && near(color(thumb)[3], 0.62F),
+        "scrollbar press did not change track and thumb colors");
+    auto dark = ryn::ThemeConfig{};
+    dark.algorithms = {ryn::ThemeAlgorithm::Dark};
+    theme.set(dark);
+    require(fixture.synchronize()
+        && color(thumb)[0] > 0.5F
+        && near(color(thumb)[3], 0.62F),
+        "dark scrollbar did not inherit its theme foreground");
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, {})
+        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, {})
+        && near(color(track)[3], 0.05F) && near(color(thumb)[3], 0.28F),
+        "scrollbar release did not restore resting colors");
+}
+
 } // namespace
 
 int main() {
     try {
         test_typed_mount_retained_scene_and_non_interaction();
         test_gallery_chrome_roles_use_theme_without_status_labels();
+        test_scrollbar_material_uses_hover_press_and_dark_theme();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

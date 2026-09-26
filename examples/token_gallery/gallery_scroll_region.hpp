@@ -82,6 +82,17 @@ struct GalleryScrollbarAction final {
     std::optional<float> requested_offset;
 };
 
+struct GalleryScrollbarVisualState final {
+    bool track_hover{};
+    bool thumb_hover{};
+    bool track_pressed{};
+    bool thumb_pressed{};
+    bool dragging{};
+
+    friend constexpr bool operator==(GalleryScrollbarVisualState,
+        GalleryScrollbarVisualState) = default;
+};
+
 class GalleryScrollbarController final {
 public:
     [[nodiscard]] GalleryScrollbarAction dispatch(
@@ -90,9 +101,15 @@ public:
         float viewport_extent,
         float current_offset);
     [[nodiscard]] bool dragging() const noexcept { return dragging_pointer_.has_value(); }
+    [[nodiscard]] GalleryScrollbarVisualState visual_state() const noexcept;
+    [[nodiscard]] bool reset() noexcept;
+    [[nodiscard]] bool clear_hover() noexcept;
 
 private:
+    enum class HoverPart { none, track, thumb };
     std::optional<ryn::input::PointerIdentity> dragging_pointer_;
+    std::optional<ryn::input::PointerIdentity> pressed_track_pointer_;
+    HoverPart hover_{HoverPart::none};
     float grab_offset_{};
 };
 

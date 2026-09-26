@@ -247,12 +247,28 @@ void test_scrollbar_geometry_and_pointer_mapping() {
         ryn::input::PointerAction::down,
         ryn::input::PointerButton::primary,
         224.0F, 170.0F};
+    pointer.action = ryn::input::PointerAction::move;
+    pointer.button = ryn::input::PointerButton::none;
+    static_cast<void>(controller.dispatch(pointer, geometry, 200.0F, 400.0F));
+    require(controller.visual_state().track_hover
+        && controller.visual_state().thumb_hover
+        && !controller.visual_state().thumb_pressed,
+        "scrollbar thumb hover did not update visual state");
+    pointer.action = ryn::input::PointerAction::down;
+    pointer.button = ryn::input::PointerButton::primary;
     const auto start = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
     require(start.consumed && !start.requested_offset.has_value()
-                && controller.dragging(),
+                && controller.dragging() && controller.visual_state().thumb_pressed,
             "scrollbar thumb did not start dragging");
     pointer.action = ryn::input::PointerAction::move;
     pointer.button = ryn::input::PointerButton::none;
+    pointer.x = 1000.0F;
+    pointer.y = 300.0F;
+    static_cast<void>(controller.dispatch(pointer, geometry, 200.0F, 400.0F));
+    require(controller.visual_state().thumb_pressed
+        && controller.visual_state().dragging,
+        "thumb drag outside the track lost its pressed visual");
+    pointer.x = 224.0F;
     pointer.y = 250.0F;
     const auto moved = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
     require(moved.consumed && moved.requested_offset.has_value()
@@ -260,7 +276,7 @@ void test_scrollbar_geometry_and_pointer_mapping() {
             "scrollbar drag did not map to content offset");
     pointer.action = ryn::input::PointerAction::up;
     require(controller.dispatch(pointer, geometry, 200.0F, 800.0F).consumed
-                && !controller.dragging(),
+                && !controller.dragging() && !controller.visual_state().thumb_pressed,
             "scrollbar drag was not released");
 
     pointer.action = ryn::input::PointerAction::down;
@@ -268,8 +284,24 @@ void test_scrollbar_geometry_and_pointer_mapping() {
     pointer.y = 270.0F;
     const auto page = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
     require(page.consumed && page.requested_offset.has_value()
-                && near(*page.requested_offset, 580.0F),
+                && near(*page.requested_offset, 580.0F)
+                && controller.visual_state().track_pressed,
             "scrollbar track click did not page forward");
+    pointer.action = ryn::input::PointerAction::cancel;
+    static_cast<void>(controller.dispatch(pointer, geometry, 200.0F, 400.0F));
+    require(controller.visual_state() == GalleryScrollbarVisualState{},
+        "scrollbar cancel retained hover or pressed visual");
+    pointer.action = ryn::input::PointerAction::move;
+    pointer.button = ryn::input::PointerButton::none;
+    pointer.y = 170.0F;
+    static_cast<void>(controller.dispatch(pointer, geometry, 200.0F, 400.0F));
+    require(controller.clear_hover()
+        && controller.visual_state() == GalleryScrollbarVisualState{},
+        "scrollbar pointer leave did not clear hover");
+    static_cast<void>(controller.dispatch(pointer, geometry, 200.0F, 400.0F));
+    require(controller.reset()
+        && controller.visual_state() == GalleryScrollbarVisualState{},
+        "scrollbar focus loss or layout reset retained hover");
 
     range.set_extents(200.0F, 100.0F);
     geometry = gallery_scrollbar_geometry(track, range.snapshot());

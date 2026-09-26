@@ -188,8 +188,17 @@ GalleryScrollbarAction GalleryScrollbarController::dispatch(
             || !std::isfinite(event.x) || !std::isfinite(event.y)) {
         throw std::invalid_argument("Gallery scrollbar input must be finite and valid");
     }
+    const auto update_hover = [&] {
+        hover_ = event.action == ryn::input::PointerAction::cancel
+            ? HoverPart::none
+            : contains(geometry.thumb, event.x, event.y)
+                ? HoverPart::thumb
+                : contains(geometry.track, event.x, event.y)
+                    ? HoverPart::track : HoverPart::none;
+    };
     if (dragging_pointer_.has_value()) {
         if (event.pointer != *dragging_pointer_) return {};
+        update_hover();
         switch (event.action) {
         case ryn::input::PointerAction::move:
             return {true, gallery_scrollbar_offset_for_thumb_top(
@@ -202,6 +211,17 @@ GalleryScrollbarAction GalleryScrollbarController::dispatch(
             return {true, std::nullopt};
         }
     }
+    if (pressed_track_pointer_.has_value()
+            && event.pointer == *pressed_track_pointer_) {
+        update_hover();
+        if (event.action == ryn::input::PointerAction::up
+                || event.action == ryn::input::PointerAction::cancel) {
+            pressed_track_pointer_.reset();
+            return {true, std::nullopt};
+        }
+        if (event.action == ryn::input::PointerAction::move) return {true, std::nullopt};
+    }
+    update_hover();
     if (event.action != ryn::input::PointerAction::down
             || event.button != ryn::input::PointerButton::primary
             || !contains(geometry.track, event.x, event.y)) {
@@ -215,11 +235,38 @@ GalleryScrollbarAction GalleryScrollbarController::dispatch(
         grab_offset_ = event.y - geometry.thumb.y;
         return {true, std::nullopt};
     }
+    pressed_track_pointer_ = event.pointer;
     const float step = viewport_extent * 0.9F;
     const float direction = event.y < geometry.thumb.y ? -1.0F : 1.0F;
     return {true, std::clamp(
         current_offset + direction * step,
         0.0F, geometry.maximum_offset)};
+}
+
+GalleryScrollbarVisualState GalleryScrollbarController::visual_state() const noexcept {
+    const bool dragging = dragging_pointer_.has_value();
+    return {
+        hover_ != HoverPart::none || dragging,
+        hover_ == HoverPart::thumb || dragging,
+        pressed_track_pointer_.has_value() || dragging,
+        dragging,
+        dragging,
+    };
+}
+
+bool GalleryScrollbarController::reset() noexcept {
+    const bool changed = visual_state() != GalleryScrollbarVisualState{};
+    dragging_pointer_.reset();
+    pressed_track_pointer_.reset();
+    hover_ = HoverPart::none;
+    grab_offset_ = 0.0F;
+    return changed;
+}
+
+bool GalleryScrollbarController::clear_hover() noexcept {
+    if (hover_ == HoverPart::none) return false;
+    hover_ = HoverPart::none;
+    return true;
 }
 
 } // namespace rynui::example

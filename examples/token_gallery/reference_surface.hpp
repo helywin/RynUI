@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ant_design_reference_catalog.hpp"
+#include "gallery_scroll_region.hpp"
 #include "component/button_component.hpp"
 
 #include <ryn/component.hpp>
@@ -120,6 +121,7 @@ struct ReferenceSurfaceSnapshot final {
     bool visible{true};
     ryn::component::RetainedSurfaceId scene;
     ryn::graphics::QuadInstanceRange visual_range;
+    GalleryScrollbarVisualState scrollbar_visual;
 };
 
 class ReferenceSurfaceHost final
@@ -142,6 +144,8 @@ public:
         mounted_surfaces() const noexcept;
     [[nodiscard]] ReferenceSurfaceSnapshot snapshot(
         ryn::runtime::ComponentId component) const;
+    bool set_scrollbar_visual_state(ryn::runtime::ComponentId component,
+        GalleryScrollbarVisualState visual);
     [[nodiscard]] ryn::detail::ButtonComponentHost& application() noexcept;
     [[nodiscard]] detail::ReferenceSurfaceComponentState* find_state(
         ryn::runtime::ComponentId component) noexcept;

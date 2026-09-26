@@ -59,6 +59,7 @@ struct ReferenceSurfaceComponentState final {
     std::optional<ryn::Color> swatch;
     bool elevated{};
     bool visible{true};
+    GalleryScrollbarVisualState scrollbar_visual;
     ReferenceSurfaceVisualData visuals;
     ryn::component::RetainedSurfaceEffects effects;
     ryn::Signal<ryn::String> status_label{ryn::String{u8"规划中"}};
@@ -204,19 +205,29 @@ float logical_radius(ryn::runtime::Rect bounds, float radius) noexcept {
         0.5F * std::min(bounds.width, bounds.height));
 }
 
+ryn::Color chrome_background(const detail::ReferenceSurfaceComponentState& state,
+    const ryn::ThemeSnapshot& theme) {
+    if (state.role == ReferenceSurfaceRole::site_header)
+        return theme.alias().color_background_container;
+    const auto foreground = theme.alias().color_text;
+    float alpha = 0.28F;
+    if (state.role == ReferenceSurfaceRole::scrollbar_track) {
+        alpha = state.scrollbar_visual.track_pressed ? 0.16F
+            : state.scrollbar_visual.track_hover ? 0.10F : 0.05F;
+    } else if (state.role == ReferenceSurfaceRole::scrollbar_thumb) {
+        alpha = state.scrollbar_visual.thumb_pressed ? 0.62F
+            : state.scrollbar_visual.thumb_hover ? 0.46F : 0.28F;
+    }
+    return {foreground.red(), foreground.green(), foreground.blue(), alpha};
+}
+
 void refresh_material(
     ReferenceSurfaceHost& host,
     detail::ReferenceSurfaceComponentState& state) {
     const auto& theme = host.application().components()
         .theme_scope(state.component)->snapshot();
     if (state.role != ReferenceSurfaceRole::reference) {
-        const auto foreground = theme.alias().color_text;
-        const auto background = state.role == ReferenceSurfaceRole::site_header
-            ? theme.alias().color_background_container
-            : ryn::Color(
-                foreground.red(), foreground.green(), foreground.blue(),
-                state.role == ReferenceSurfaceRole::scrollbar_track
-                    ? 0.05F : 0.28F);
+        const auto background = chrome_background(state, theme);
         for (auto& visual : state.visuals) visual.opacity = 0.0F;
         auto& fill = state.visuals[static_cast<std::size_t>(
             ReferenceSurfaceVisualLayer::background)];
@@ -421,7 +432,21 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
         state->visible,
         state->scene,
         application_->services().surfaces().visual_range(state->scene),
+        state->scrollbar_visual,
     };
+}
+
+bool ReferenceSurfaceHost::set_scrollbar_visual_state(
+    ryn::runtime::ComponentId component, GalleryScrollbarVisualState visual) {
+    auto* state = find_state(component);
+    if (!state || (state->role != ReferenceSurfaceRole::scrollbar_track
+            && state->role != ReferenceSurfaceRole::scrollbar_thumb)) {
+        return false;
+    }
+    if (state->scrollbar_visual == visual) return false;
+    state->scrollbar_visual = visual;
+    refresh_material(*this, *state);
+    return true;
 }
 
 ryn::detail::ButtonComponentHost& ReferenceSurfaceHost::application() noexcept {
@@ -440,13 +465,7 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
             .theme_scope(state->component)->snapshot();
         const auto& node = application_->nodes().require(state->node);
         if (state->role != ReferenceSurfaceRole::reference) {
-            const auto foreground = theme.alias().color_text;
-            const auto color = state->role == ReferenceSurfaceRole::site_header
-                ? theme.alias().color_background_container
-                : ryn::Color(
-                    foreground.red(), foreground.green(), foreground.blue(),
-                    state->role == ReferenceSurfaceRole::scrollbar_track
-                        ? 0.05F : 0.28F);
+            const auto color = chrome_background(*state, theme);
             for (auto& visual : state->visuals) visual.opacity = 0.0F;
             auto& fill = state->visuals[static_cast<std::size_t>(
                 ReferenceSurfaceVisualLayer::background)];
