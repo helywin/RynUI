@@ -33,8 +33,20 @@ enum class ReferenceSurfaceVisualLayer : std::uint8_t {
     status_badge,
 };
 
+enum class ReferenceSurfaceRole : std::uint8_t {
+    reference,
+    site_header,
+    scrollbar_track,
+    scrollbar_thumb,
+};
+
 class ReferenceSurfaceProps final {
 public:
+    ReferenceSurfaceProps& role(ReferenceSurfaceRole value) noexcept {
+        role_ = value;
+        return *this;
+    }
+
     ReferenceSurfaceProps& status(ryn::Prop<GallerySupportStatus> value) {
         status_ = std::move(value);
         return *this;
@@ -68,6 +80,7 @@ public:
 private:
     friend struct detail::ReferenceSurfacePropsAccess;
 
+    ReferenceSurfaceRole role_{ReferenceSurfaceRole::reference};
     ryn::Prop<GallerySupportStatus> status_{GallerySupportStatus::planned};
     ryn::Prop<std::optional<ryn::Color>> swatch_{std::optional<ryn::Color>{}};
     ryn::Prop<bool> elevated_{false};
@@ -90,6 +103,7 @@ struct MountedReferenceSurface final {
 };
 
 struct ReferenceSurfaceSnapshot final {
+    ReferenceSurfaceRole role{ReferenceSurfaceRole::reference};
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};

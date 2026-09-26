@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/platform_input.hpp"
 #include "runtime/invalidation.hpp"
 #include "runtime/node_store.hpp"
 
@@ -61,5 +62,24 @@ struct GalleryScrollbarGeometry final {
 [[nodiscard]] float gallery_scrollbar_offset_for_thumb_top(
     const GalleryScrollbarGeometry& geometry,
     float thumb_top);
+
+struct GalleryScrollbarAction final {
+    bool consumed{};
+    std::optional<float> requested_offset;
+};
+
+class GalleryScrollbarController final {
+public:
+    [[nodiscard]] GalleryScrollbarAction dispatch(
+        const ryn::input::PointerInputEvent& event,
+        const GalleryScrollbarGeometry& geometry,
+        float viewport_extent,
+        float current_offset);
+    [[nodiscard]] bool dragging() const noexcept { return dragging_pointer_.has_value(); }
+
+private:
+    std::optional<ryn::input::PointerIdentity> dragging_pointer_;
+    float grab_offset_{};
+};
 
 } // namespace rynui::example

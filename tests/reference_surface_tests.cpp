@@ -383,11 +383,62 @@ void test_typed_mount_retained_scene_and_non_interaction() {
             "parent ReferenceSurface destroy retained interactions");
 }
 
+void test_gallery_chrome_roles_use_theme_without_status_labels() {
+    using namespace rynui::example;
+    Fixture fixture;
+    fixture.surfaces->mount(ryn::Content{[] {
+        ReferenceSurface(
+            ReferenceSurfaceProps{}
+                .role(ReferenceSurfaceRole::site_header)
+                .layout(ryn::LayoutStyle{}
+                    .width(ryn::dp(400.0F))
+                    .height(ryn::dp(64.0F))),
+            [] { ryn::Text(u8"RynUI"); });
+        ReferenceSurface(
+            ReferenceSurfaceProps{}
+                .role(ReferenceSurfaceRole::scrollbar_track)
+                .layout(ryn::LayoutStyle{}
+                    .width(ryn::dp(8.0F))
+                    .height(ryn::dp(200.0F))),
+            [] {});
+        ReferenceSurface(
+            ReferenceSurfaceProps{}
+                .role(ReferenceSurfaceRole::scrollbar_thumb)
+                .layout(ryn::LayoutStyle{}
+                    .width(ryn::dp(8.0F))
+                    .height(ryn::dp(40.0F))),
+            [] {});
+    }});
+    require(fixture.synchronize(), "Gallery chrome did not synchronize");
+    const auto mounted = fixture.surfaces->mounted_surfaces();
+    require(mounted.size() == 3
+                && fixture.application->text().mounted_texts().size() == 1
+                && fixture.application->interactions().size() == 0,
+            "Gallery chrome mounted status labels or interactions");
+    const auto header = fixture.surfaces->snapshot(mounted[0].component);
+    const auto track = fixture.surfaces->snapshot(mounted[1].component);
+    const auto thumb = fixture.surfaces->snapshot(mounted[2].component);
+    require(header.role == ReferenceSurfaceRole::site_header
+                && track.role == ReferenceSurfaceRole::scrollbar_track
+                && thumb.role == ReferenceSurfaceRole::scrollbar_thumb,
+            "Gallery chrome roles were not retained");
+    for (const auto& surface : mounted) {
+        require(fixture.layer(surface, ReferenceSurfaceVisualLayer::background).opacity
+                    == 1.0F
+                    && fixture.layer(surface, ReferenceSurfaceVisualLayer::border).opacity
+                        == 0.0F
+                    && fixture.layer(surface, ReferenceSurfaceVisualLayer::status_badge).opacity
+                        == 0.0F,
+                "Gallery chrome rendered reference card decoration");
+    }
+}
+
 } // namespace
 
 int main() {
     try {
         test_typed_mount_retained_scene_and_non_interaction();
+        test_gallery_chrome_roles_use_theme_without_status_labels();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

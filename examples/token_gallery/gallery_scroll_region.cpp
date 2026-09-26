@@ -29,6 +29,12 @@ void validate_track(ryn::runtime::Rect track) {
     }
 }
 
+bool contains(ryn::runtime::Rect bounds, float x, float y) noexcept {
+    return x >= bounds.x && y >= bounds.y
+        && x < bounds.x + bounds.width
+        && y < bounds.y + bounds.height;
+}
+
 } // namespace
 
 bool GalleryScrollRange::set_extents(
@@ -134,6 +140,51 @@ float gallery_scrollbar_offset_for_thumb_top(
     return std::clamp(
         (thumb_top - geometry.track.y) / travel,
         0.0F, 1.0F) * geometry.maximum_offset;
+}
+
+GalleryScrollbarAction GalleryScrollbarController::dispatch(
+    const ryn::input::PointerInputEvent& event,
+    const GalleryScrollbarGeometry& geometry,
+    float viewport_extent,
+    float current_offset) {
+    validate_track(geometry.track);
+    if (!std::isfinite(viewport_extent) || viewport_extent <= 0.0F
+            || !std::isfinite(current_offset)
+            || !std::isfinite(event.x) || !std::isfinite(event.y)) {
+        throw std::invalid_argument("Gallery scrollbar input must be finite and valid");
+    }
+    if (dragging_pointer_.has_value()) {
+        if (event.pointer != *dragging_pointer_) return {};
+        switch (event.action) {
+        case ryn::input::PointerAction::move:
+            return {true, gallery_scrollbar_offset_for_thumb_top(
+                geometry, event.y - grab_offset_)};
+        case ryn::input::PointerAction::up:
+        case ryn::input::PointerAction::cancel:
+            dragging_pointer_.reset();
+            return {true, std::nullopt};
+        default:
+            return {true, std::nullopt};
+        }
+    }
+    if (event.action != ryn::input::PointerAction::down
+            || event.button != ryn::input::PointerButton::primary
+            || !contains(geometry.track, event.x, event.y)) {
+        return {};
+    }
+    if (geometry.maximum_offset <= 0.0F) {
+        return {true, std::nullopt};
+    }
+    if (contains(geometry.thumb, event.x, event.y)) {
+        dragging_pointer_ = event.pointer;
+        grab_offset_ = event.y - geometry.thumb.y;
+        return {true, std::nullopt};
+    }
+    const float step = viewport_extent * 0.9F;
+    const float direction = event.y < geometry.thumb.y ? -1.0F : 1.0F;
+    return {true, std::clamp(
+        current_offset + direction * step,
+        0.0F, geometry.maximum_offset)};
 }
 
 } // namespace rynui::example

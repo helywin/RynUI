@@ -14,6 +14,11 @@
 namespace rynui::example::detail {
 
 struct ReferenceSurfacePropsAccess final {
+    [[nodiscard]] static ReferenceSurfaceRole role(
+        const ReferenceSurfaceProps& props) noexcept {
+        return props.role_;
+    }
+
     [[nodiscard]] static const ryn::Prop<GallerySupportStatus>& status(
         const ReferenceSurfaceProps& props) noexcept {
         return props.status_;
@@ -45,6 +50,7 @@ struct ReferenceSurfaceComponentState final {
     ryn::runtime::NodeId node;
     ryn::runtime::SceneFragmentId fragment;
     ryn::component::RetainedSurfaceId scene;
+    ReferenceSurfaceRole role{ReferenceSurfaceRole::reference};
     GallerySupportStatus status{GallerySupportStatus::planned};
     std::optional<ryn::Color> swatch;
     bool elevated{};
@@ -88,6 +94,17 @@ void validate_status(GallerySupportStatus status) {
         return;
     }
     throw std::invalid_argument("ReferenceSurface support status is invalid");
+}
+
+void validate_role(ReferenceSurfaceRole role) {
+    switch (role) {
+    case ReferenceSurfaceRole::reference:
+    case ReferenceSurfaceRole::site_header:
+    case ReferenceSurfaceRole::scrollbar_track:
+    case ReferenceSurfaceRole::scrollbar_thumb:
+        return;
+    }
+    throw std::invalid_argument("ReferenceSurface role is invalid");
 }
 
 ryn::String status_label(GallerySupportStatus status) {
@@ -186,6 +203,30 @@ void refresh_material(
     detail::ReferenceSurfaceComponentState& state) {
     const auto& theme = host.application().components()
         .theme_scope(state.component)->snapshot();
+    if (state.role != ReferenceSurfaceRole::reference) {
+        const auto foreground = theme.alias().color_text;
+        const auto background = state.role == ReferenceSurfaceRole::site_header
+            ? theme.alias().color_background_container
+            : ryn::Color(
+                foreground.red(), foreground.green(), foreground.blue(),
+                state.role == ReferenceSurfaceRole::scrollbar_track
+                    ? 0.10F : 0.38F);
+        for (auto& visual : state.visuals) visual.opacity = 0.0F;
+        auto& fill = state.visuals[static_cast<std::size_t>(
+            ReferenceSurfaceVisualLayer::background)];
+        fill.color = channels(background);
+        fill.opacity = state.visible ? 1.0F : 0.0F;
+        state.effects = {};
+        if (state.scene.valid()) {
+            static_cast<void>(host.application().services().surfaces().update_surface(
+                state.scene, state.visuals));
+            static_cast<void>(host.application().services().surfaces().update_effects(
+                state.scene, state.effects));
+            host.application().dirty().invalidate(
+                state.node, ryn::runtime::DirtyFlags::Material);
+        }
+        return;
+    }
     state.visuals[static_cast<std::size_t>(
         ReferenceSurfaceVisualLayer::border)].color =
             channels(theme.alias().color_border_secondary);
@@ -358,6 +399,7 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
             "ReferenceSurface component is stale or invalid");
     }
     return {
+        state->role,
         state->status,
         state->swatch,
         state->elevated,
@@ -382,6 +424,29 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
         const auto& theme = application_->components()
             .theme_scope(state->component)->snapshot();
         const auto& node = application_->nodes().require(state->node);
+        if (state->role != ReferenceSurfaceRole::reference) {
+            const auto foreground = theme.alias().color_text;
+            const auto color = state->role == ReferenceSurfaceRole::site_header
+                ? theme.alias().color_background_container
+                : ryn::Color(
+                    foreground.red(), foreground.green(), foreground.blue(),
+                    state->role == ReferenceSurfaceRole::scrollbar_track
+                        ? 0.10F : 0.38F);
+            for (auto& visual : state->visuals) visual.opacity = 0.0F;
+            auto& fill = state->visuals[static_cast<std::size_t>(
+                ReferenceSurfaceVisualLayer::background)];
+            fill = make_quad(
+                node.bounds, viewport, color, state->visible ? 1.0F : 0.0F,
+                state->role == ReferenceSurfaceRole::site_header
+                    ? 0.0F : node.bounds.width * 0.5F,
+                node.translation);
+            state->effects = {};
+            static_cast<void>(application_->services().surfaces().update_surface(
+                state->scene, state->visuals));
+            static_cast<void>(application_->services().surfaces().update_effects(
+                state->scene, state->effects));
+            continue;
+        }
         const float border_width = theme.seed().line_width;
         const float radius = theme.map().border_radius;
         const ryn::runtime::Rect background{
@@ -477,6 +542,8 @@ void ReferenceSurface(
     }
     auto& host = *active_reference_surface_host;
     auto& build = ryn::runtime::require_component_build_context();
+    const auto role = detail::ReferenceSurfacePropsAccess::role(props);
+    validate_role(role);
     const auto initial_status = ryn::detail::read_prop(
         detail::ReferenceSurfacePropsAccess::status(props));
     validate_status(initial_status);
@@ -492,6 +559,7 @@ void ReferenceSurface(
     auto& state = build.state<detail::ReferenceSurfaceComponentState>(component);
     state.component = component;
     state.node = build.root(component);
+    state.role = role;
     state.status = initial_status;
     state.swatch = initial_swatch;
     state.elevated = initial_elevated;
@@ -502,7 +570,10 @@ void ReferenceSurface(
     model.direction = ryn::layout::FlexDirection::vertical;
     model.main_gap = 4.0F;
     model.cross_gap = 4.0F;
-    model.padding = {12.0F, 12.0F, 12.0F, 12.0F};
+    model.padding = role == ReferenceSurfaceRole::scrollbar_track
+            || role == ReferenceSurfaceRole::scrollbar_thumb
+        ? ryn::layout::Padding{}
+        : ryn::layout::Padding{12.0F, 12.0F, 12.0F, 12.0F};
     model.item_policy = ryn::layout::FlexItemPolicy::sequential;
     host.application().layout().set_layout(state.node, model);
     build.on_resource_cleanup(component, [
@@ -572,10 +643,12 @@ void ReferenceSurface(
         }));
 
     const ReferenceSurfaceContent children{[&state, &content] {
-        ryn::Text(
-            ryn::TextProps{}
-                .content(state.status_label)
-                .tone(ryn::TextTone::Secondary));
+        if (state.role == ReferenceSurfaceRole::reference) {
+            ryn::Text(
+                ryn::TextProps{}
+                    .content(state.status_label)
+                    .tone(ryn::TextTone::Secondary));
+        }
         ryn::detail::SlotContentAccess::function(content)();
     }};
     build.mount_slot(component, children);

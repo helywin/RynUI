@@ -196,6 +196,59 @@ void test_two_scroll_ranges_and_translations_remain_independent() {
             "stale navigation root generation was accepted");
 }
 
+void test_scrollbar_geometry_and_pointer_mapping() {
+    using namespace rynui::example;
+    GalleryScrollRange range;
+    range.set_extents(200.0F, 1000.0F);
+    range.scroll_to(400.0F);
+    const ryn::runtime::Rect track{220.0F, 80.0F, 8.0F, 200.0F};
+    auto geometry = gallery_scrollbar_geometry(track, range.snapshot());
+    require(near(geometry.thumb.height, 40.0F)
+                && near(geometry.thumb.y, 160.0F)
+                && near(gallery_scrollbar_offset_for_thumb_top(
+                    geometry, 240.0F), 800.0F),
+            "scrollbar thumb did not reflect viewport and offset");
+
+    GalleryScrollbarController controller;
+    auto pointer = ryn::input::PointerInputEvent{
+        ryn::input::PointerIdentity::mouse(),
+        ryn::input::PointerAction::down,
+        ryn::input::PointerButton::primary,
+        224.0F, 170.0F};
+    const auto start = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
+    require(start.consumed && !start.requested_offset.has_value()
+                && controller.dragging(),
+            "scrollbar thumb did not start dragging");
+    pointer.action = ryn::input::PointerAction::move;
+    pointer.button = ryn::input::PointerButton::none;
+    pointer.y = 250.0F;
+    const auto moved = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
+    require(moved.consumed && moved.requested_offset.has_value()
+                && near(*moved.requested_offset, 800.0F),
+            "scrollbar drag did not map to content offset");
+    pointer.action = ryn::input::PointerAction::up;
+    require(controller.dispatch(pointer, geometry, 200.0F, 800.0F).consumed
+                && !controller.dragging(),
+            "scrollbar drag was not released");
+
+    pointer.action = ryn::input::PointerAction::down;
+    pointer.button = ryn::input::PointerButton::primary;
+    pointer.y = 270.0F;
+    const auto page = controller.dispatch(pointer, geometry, 200.0F, 400.0F);
+    require(page.consumed && page.requested_offset.has_value()
+                && near(*page.requested_offset, 580.0F),
+            "scrollbar track click did not page forward");
+
+    range.set_extents(200.0F, 100.0F);
+    geometry = gallery_scrollbar_geometry(track, range.snapshot());
+    require(geometry.thumb == track && geometry.maximum_offset == 0.0F,
+            "short content left a scrollable thumb");
+    range.set_extents(200.0F, 10000.0F);
+    geometry = gallery_scrollbar_geometry(track, range.snapshot());
+    require(near(geometry.thumb.height, 28.0F),
+            "long content thumb violated minimum grab size");
+}
+
 } // namespace
 
 int main() {
@@ -205,6 +258,7 @@ int main() {
         test_resize_anchor_restores_intra_section_distance();
         test_subtree_translation_is_generation_checked_and_minimal();
         test_two_scroll_ranges_and_translations_remain_independent();
+        test_scrollbar_geometry_and_pointer_mapping();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
