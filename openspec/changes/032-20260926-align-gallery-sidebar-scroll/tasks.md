@@ -20,4 +20,4 @@
 
 ## 5. 集成验收
 
-- [ ] 5.1 运行完整 CTest、本 change strict、全仓 strict、可用 doctor、`git diff --check`；记录未通过项，满足门槛后以 `test:` 提交
+- [x] 5.1 运行完整 CTest、本 change strict、全仓 strict、可用 doctor、`git diff --check`；记录未通过项，满足门槛后以 `test:` 提交
