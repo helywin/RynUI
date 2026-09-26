@@ -1,4 +1,5 @@
 #include "gallery_document_viewport.hpp"
+#include "gallery_scroll_region.hpp"
 
 #include "runtime/frame_scheduler.hpp"
 
@@ -141,6 +142,60 @@ void test_subtree_translation_is_generation_checked_and_minimal() {
             "stale Gallery root generation was accepted");
 }
 
+void test_two_scroll_ranges_and_translations_remain_independent() {
+    using namespace rynui::example;
+    GalleryScrollRange navigation;
+    GalleryScrollRange document;
+    navigation.set_extents(300.0F, 900.0F);
+    document.set_extents(300.0F, 1800.0F);
+    require(document.scroll_by(360.0F)
+                && navigation.snapshot().offset == 0.0F,
+            "document scroll changed navigation offset");
+    require(navigation.scroll_to(450.0F)
+                && near(document.snapshot().offset, 360.0F),
+            "navigation scroll changed document offset");
+
+    ryn::runtime::FrameRequestState frames;
+    ryn::runtime::NodeStore nodes;
+    ryn::runtime::DirtyQueues dirty(nodes, &frames);
+    const auto root = nodes.create_root();
+    const auto nav_root = nodes.create_child(root);
+    const auto nav_child = nodes.create_child(nav_root);
+    const auto doc_root = nodes.create_child(root);
+    const auto doc_child = nodes.create_child(doc_root);
+    GalleryScrollTranslation nav_translation;
+    GalleryScrollTranslation doc_translation;
+    const auto doc_result = doc_translation.apply(
+        doc_root, document.snapshot().offset, nodes, dirty);
+    require(doc_result.valid && doc_result.changed
+                && doc_result.translated_nodes == 2
+                && nodes.require(nav_root).translation == ryn::runtime::Point{}
+                && nodes.require(nav_child).translation == ryn::runtime::Point{}
+                && nodes.require(doc_root).translation
+                    == ryn::runtime::Point{0.0F, -360.0F}
+                && nodes.require(doc_child).translation
+                    == ryn::runtime::Point{0.0F, -360.0F},
+            "document translation changed the navigation subtree");
+    const auto nav_result = nav_translation.apply(
+        nav_root, navigation.snapshot().offset, nodes, dirty);
+    require(nav_result.valid && nav_result.changed
+                && nav_result.translated_nodes == 2
+                && nodes.require(nav_root).translation
+                    == ryn::runtime::Point{0.0F, -450.0F}
+                && nodes.require(doc_root).translation
+                    == ryn::runtime::Point{0.0F, -360.0F},
+            "navigation translation changed the document subtree");
+    dirty.clear();
+    require(!doc_translation.apply(
+                 doc_root, document.snapshot().offset, nodes, dirty).changed
+                && dirty.transform_nodes().empty(),
+            "unchanged document region dirtied the scene");
+    require(nodes.destroy(nav_root)
+                && !nav_translation.apply(
+                    nav_root, navigation.snapshot().offset, nodes, dirty).valid,
+            "stale navigation root generation was accepted");
+}
+
 } // namespace
 
 int main() {
@@ -149,6 +204,7 @@ int main() {
         test_anchor_jump_current_section_and_stale_generation();
         test_resize_anchor_restores_intra_section_distance();
         test_subtree_translation_is_generation_checked_and_minimal();
+        test_two_scroll_ranges_and_translations_remain_independent();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

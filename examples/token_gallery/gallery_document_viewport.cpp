@@ -24,43 +24,23 @@ void advance_generation(std::uint32_t& generation) noexcept {
 bool GalleryDocumentViewport::set_extents(
     float viewport_extent,
     float content_extent) {
-    if (!std::isfinite(viewport_extent) || viewport_extent <= 0.0F
-            || !finite_non_negative(content_extent)) {
-        throw std::invalid_argument(
-            "Gallery document extents must be finite and valid");
-    }
-    const float previous_offset = offset_;
-    const bool changed = viewport_extent_ != viewport_extent
-        || content_extent_ != content_extent;
-    viewport_extent_ = viewport_extent;
-    content_extent_ = content_extent;
-    offset_ = clamped(offset_);
-    if (changed || offset_ != previous_offset) {
+    const bool changed = scroll_.set_extents(viewport_extent, content_extent);
+    if (changed) {
         ++diagnostics_.extent_updates;
     }
-    return changed || offset_ != previous_offset;
+    return changed;
 }
 
 bool GalleryDocumentViewport::scroll_to(float offset) {
-    if (!std::isfinite(offset)) {
-        throw std::invalid_argument(
-            "Gallery document offset must be finite");
-    }
-    const float next = clamped(offset);
-    if (next == offset_) {
-        return false;
-    }
-    offset_ = next;
-    ++diagnostics_.scroll_updates;
-    return true;
+    const bool changed = scroll_.scroll_to(offset);
+    if (changed) ++diagnostics_.scroll_updates;
+    return changed;
 }
 
 bool GalleryDocumentViewport::scroll_by(float delta) {
-    if (!std::isfinite(delta)) {
-        throw std::invalid_argument(
-            "Gallery document scroll delta must be finite");
-    }
-    return scroll_to(offset_ + delta);
+    const bool changed = scroll_.scroll_by(delta);
+    if (changed) ++diagnostics_.scroll_updates;
+    return changed;
 }
 
 bool GalleryDocumentViewport::replace_anchors(
@@ -164,9 +144,10 @@ GalleryDocumentResizeAnchor
 GalleryDocumentViewport::capture_resize_anchor() const {
     const auto section = current_section();
     const auto index = section_index(section);
+    const float offset = scroll_.snapshot().offset;
     return {
         section,
-        anchor_present_[index] ? offset_ - anchors_[index] : offset_,
+        anchor_present_[index] ? offset - anchors_[index] : offset,
     };
 }
 
@@ -187,31 +168,23 @@ bool GalleryDocumentViewport::apply_subtree_translation(
     ryn::runtime::NodeId root,
     ryn::runtime::NodeStore& nodes,
     ryn::runtime::DirtyQueues& dirty) const {
-    if (nodes.find(root) == nullptr) {
-        return false;
+    const auto result = translation_.apply(
+        root, scroll_.snapshot().offset, nodes, dirty);
+    if (result.changed) {
+        ++diagnostics_.translation_passes;
+        diagnostics_.translated_nodes += result.translated_nodes;
     }
-    if (translation_applied_ && applied_root_ == root
-            && applied_offset_ == offset_) {
-        return true;
-    }
-    ryn::runtime::NodePropertyWriter writer(nodes, dirty);
-    const auto translated = translate_subtree(
-        root, {0.0F, -offset_}, nodes, writer);
-    applied_root_ = root;
-    applied_offset_ = offset_;
-    translation_applied_ = true;
-    ++diagnostics_.translation_passes;
-    diagnostics_.translated_nodes += translated;
-    return true;
+    return result.valid;
 }
 
 GalleryDocumentViewportSnapshot
 GalleryDocumentViewport::snapshot() const noexcept {
+    const auto range = scroll_.snapshot();
     return {
-        viewport_extent_,
-        content_extent_,
-        maximum_offset(),
-        offset_,
+        range.viewport_extent,
+        range.content_extent,
+        range.maximum_offset,
+        range.offset,
         current_section(),
         anchor_generation_,
     };
@@ -227,20 +200,13 @@ std::size_t GalleryDocumentViewport::section_index(
     return static_cast<std::size_t>(section);
 }
 
-float GalleryDocumentViewport::maximum_offset() const noexcept {
-    return std::max(0.0F, content_extent_ - viewport_extent_);
-}
-
-float GalleryDocumentViewport::clamped(float value) const noexcept {
-    return std::clamp(value, 0.0F, maximum_offset());
-}
-
 GalleryDocumentSectionKind
 GalleryDocumentViewport::current_section() const noexcept {
     constexpr float bottom_section_tolerance = 32.0F;
-    if (maximum_offset() > 0.0F
-            && offset_ >= std::max(
-                0.0F, maximum_offset() - bottom_section_tolerance)) {
+    const auto range = scroll_.snapshot();
+    if (range.maximum_offset > 0.0F
+            && range.offset >= std::max(
+                0.0F, range.maximum_offset - bottom_section_tolerance)) {
         for (std::size_t index = section_count; index > 0; --index) {
             if (anchor_present_[index - 1]) {
                 return static_cast<GalleryDocumentSectionKind>(index - 1);
@@ -249,25 +215,11 @@ GalleryDocumentViewport::current_section() const noexcept {
     }
     std::size_t current = 0;
     for (std::size_t index = 0; index < section_count; ++index) {
-        if (anchor_present_[index] && anchors_[index] <= offset_) {
+        if (anchor_present_[index] && anchors_[index] <= range.offset) {
             current = index;
         }
     }
     return static_cast<GalleryDocumentSectionKind>(current);
-}
-
-std::size_t GalleryDocumentViewport::translate_subtree(
-    ryn::runtime::NodeId root,
-    ryn::runtime::Point translation,
-    ryn::runtime::NodeStore& nodes,
-    ryn::runtime::NodePropertyWriter& writer) {
-    const auto& children = nodes.require(root).children;
-    static_cast<void>(writer.set_translation(root, translation));
-    std::size_t translated = 1;
-    for (const auto child : children) {
-        translated += translate_subtree(child, translation, nodes, writer);
-    }
-    return translated;
 }
 
 } // namespace rynui::example

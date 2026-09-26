@@ -149,6 +149,7 @@ add_library(
 add_library(
     rynui_token_gallery_document_viewport STATIC
     token_gallery/gallery_document_viewport.cpp
+    token_gallery/gallery_scroll_region.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery_document_viewport)
 target_include_directories(

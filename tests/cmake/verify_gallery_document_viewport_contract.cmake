@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-foreach(required_variable IN ITEMS PUBLIC_UMBRELLA VIEWPORT_HEADER VIEWPORT_SOURCE)
+foreach(required_variable IN ITEMS PUBLIC_UMBRELLA VIEWPORT_HEADER VIEWPORT_SOURCE SCROLL_SOURCE)
     if(NOT DEFINED ${required_variable} OR NOT EXISTS "${${required_variable}}")
         message(FATAL_ERROR "${required_variable} is required and must exist")
     endif()
@@ -34,10 +34,15 @@ foreach(required IN ITEMS
         "maximum_offset"
         "replace_anchors"
         "anchor_generation_"
-        "translation_passes"
-        "NodePropertyWriter"
-        "translate_subtree")
+        "translation_passes")
     if(NOT viewport_source MATCHES "${required}")
         message(FATAL_ERROR "Gallery viewport implementation is missing ${required}")
+    endif()
+endforeach()
+
+file(READ "${SCROLL_SOURCE}" scroll_source)
+foreach(required IN ITEMS "NodePropertyWriter" "translate_subtree")
+    if(NOT scroll_source MATCHES "${required}")
+        message(FATAL_ERROR "Gallery scroll implementation is missing ${required}")
     endif()
 endforeach()

@@ -1,8 +1,7 @@
 #pragma once
 
 #include "gallery_document_model.hpp"
-#include "runtime/invalidation.hpp"
-#include "runtime/node_store.hpp"
+#include "gallery_scroll_region.hpp"
 
 #include <array>
 #include <cstdint>
@@ -82,24 +81,13 @@ private:
 
     [[nodiscard]] static std::size_t section_index(
         GalleryDocumentSectionKind section) noexcept;
-    [[nodiscard]] float maximum_offset() const noexcept;
-    [[nodiscard]] float clamped(float value) const noexcept;
     [[nodiscard]] GalleryDocumentSectionKind current_section() const noexcept;
-    static std::size_t translate_subtree(
-        ryn::runtime::NodeId root,
-        ryn::runtime::Point translation,
-        ryn::runtime::NodeStore& nodes,
-        ryn::runtime::NodePropertyWriter& writer);
 
-    float viewport_extent_{1.0F};
-    float content_extent_{};
-    float offset_{};
+    GalleryScrollRange scroll_;
+    mutable GalleryScrollTranslation translation_;
     std::array<float, anchor_count> anchors_{};
     std::array<bool, anchor_count> anchor_present_{};
     std::uint32_t anchor_generation_{1};
-    mutable std::optional<ryn::runtime::NodeId> applied_root_;
-    mutable float applied_offset_{};
-    mutable bool translation_applied_{};
     mutable GalleryDocumentViewportDiagnostics diagnostics_;
 };
 

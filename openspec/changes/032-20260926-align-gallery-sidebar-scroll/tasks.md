@@ -6,7 +6,7 @@
 
 ## 2. 平台通用滚动区与装饰组件
 
-- [ ] 2.1 抽取 Gallery 内部滚动区状态，保留文档锚点、clamp 与 generation 合同；增加独立 offset 和子树隔离单元测试，在 Windows MSVC Debug 定向 CTest 后以 `feat:` 提交
+- [x] 2.1 抽取 Gallery 内部滚动区状态，保留文档锚点、clamp 与 generation 合同；增加独立 offset 和子树隔离单元测试，在 Windows MSVC Debug 定向 CTest 后以 `feat:` 提交
 - [ ] 2.2 先完成 Gallery 滚动条/顶栏装饰组件及 Theme 样式，单元测试覆盖轨道滑块几何、拖动映射与短内容，在 Windows MSVC Debug 定向 CTest 后以 `feat:` 提交
 
 ## 3. 平台通用导航与布局

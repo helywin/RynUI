@@ -1125,6 +1125,7 @@ add_test(
         "-DPUBLIC_UMBRELLA=${PROJECT_SOURCE_DIR}/include/ryn/rynui.hpp"
         "-DVIEWPORT_HEADER=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_viewport.hpp"
         "-DVIEWPORT_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_document_viewport.cpp"
+        "-DSCROLL_SOURCE=${PROJECT_SOURCE_DIR}/examples/token_gallery/gallery_scroll_region.cpp"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_gallery_document_viewport_contract.cmake"
 )
 
