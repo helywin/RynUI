@@ -20,3 +20,5 @@ Windows 真实窗口复测：代码 `53d68b1` 在同一机器以正式 `windows-
 重建次数减少 362 次，但首帧、滚动平均和最长帧都处于旧/新五进程重叠区间，不能宣称用户可见的长帧已改善。五次最终 offset 均为 15,068、section 为 `gallery.document.live-samples`，可见 fragment 数仍为 87；累计 draw 数会随启动时序变化，不能代替逐帧像素比较。GPU 执行时间未测。Release 干净重建后另一次滚动验收与 `--input-acceptance`、`--selection-acceptance`、`--password-acceptance`、`--input-clear-acceptance` 均退出码 0。
 
 为定位剩余峰值，临时在 `TextSceneService` 分段计时并复测一次第 240 步：约 14.3 ms CPU 帧中，`GlyphScene::replace_text` 约 11.5 ms、后续 range remap 约 14 µs、ordered scene 重建约 11 µs。该单次诊断不作为五进程性能结论，临时代码已撤销，日志在被忽略的 `out/build/windows-msvc/text-order-followup-profile.txt`。因此下一轮应处理 glyph instance 插入时的整数组复制，而不是继续优化 ordered scene 重建。
+
+集成复核：Windows MSVC Release 完整 CTest 229/235 通过，仍失败于 `rynui.design_token_catalog`、`rynui.ant_design_current_baseline`、`rynui.ant_design_665_evidence_contract`、`rynui.ant_design_gallery_catalog_generator`、`rynui.theme_algorithm`、`rynui.dependency_lock`，与 029 相同；完整日志在被忽略的 `out/build/windows-msvc/text-order-batch-full-ctest-msvc.log`。本 change strict validate 通过，全仓 strict 为 24/30，旧 change 013、015、016、017、018、021 失败；当前 CLI 的 `openspec doctor --json` 不支持该子命令。`git diff --check` 通过。完整 CTest 与全仓 strict 未通过，`tasks.md` 4.1 保持未勾选。
