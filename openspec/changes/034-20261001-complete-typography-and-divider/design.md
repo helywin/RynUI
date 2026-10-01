@@ -47,7 +47,9 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 
 ### 4. 装饰度量需要扩展字体度量（前置工作）
 
-`font::FontMetrics` 目前只有 ascent/descent/line_gap/size/scale，**没有** underline/strikeout 的位置与厚度，`underline` 与 `delete` 不能凭空猜位置。决定：扩展 `font::FontMetrics`，从 FreeType face 读取 `underline_position`、`underline_thickness`、`strikeout_position`、`strikeout_thickness`，并按现有 display scale 归一化。备选是用 ascent/descent 派生近似位置，会在不同字体与 DPI 下明显偏移，不采用。
+`font::FontMetrics` 目前只有 ascent/descent/line_gap/size/scale，**没有** underline/strikeout 的位置与厚度，`underline` 与 `delete` 不能凭空猜位置。决定：扩展 `font::FontMetrics` 的装饰字段。规划阶段曾写成「FreeType 在 `FT_Face` 上直接提供四个字段」，实施时核实这是错的：`FT_FaceRec` 只有 `underline_position` 与 `underline_thickness`，strikeout 必须通过 `FT_Get_Sfnt_Table(face, FT_SFNT_OS2)` 读 OS/2 表的 `yStrikeoutPosition`/`yStrikeoutSize`（font units）。
+
+四个字段统一以 **em 相对值**保存（除以光栅像素尺寸或 `units_per_EM`），并在 `FontMetrics` 注释中说明：FreeType 把 underline 值按当前像素尺寸缩放到 26.6 单位，14px 下量化步长约 1.25px，按像素尺寸归一化会在不同 DPI 间不稳定；em 相对形式与像素尺寸无关，使用方乘以字号即可得到装饰偏移。备选是用 ascent/descent 派生近似位置，会在不同字体与 DPI 下明显偏移，不采用。
 
 ### 5. 字重与斜体需要真实 face 解析（前置工作）
 

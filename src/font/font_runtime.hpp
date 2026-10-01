@@ -66,6 +66,16 @@ struct FontMetrics {
     float ascent{};
     float descent{};
     float line_gap{};
+    // Decoration geometry, expressed as a fraction of the em so it stays
+    // independent of the pixel size (and therefore stable across DPI changes).
+    // Multiply by the font size in logical pixels to get the decoration offset.
+    // FreeType reports `underline_position` as the distance from the baseline
+    // going up and `strikeout_position` as the distance going down, matching the
+    // sign convention of `ascent`/`descent`.
+    float underline_position{};
+    float underline_thickness{};
+    float strikeout_position{};
+    float strikeout_thickness{};
     std::uint32_t logical_pixel_size{};
     std::uint32_t raster_pixel_size{};
     float display_scale{1.0F};

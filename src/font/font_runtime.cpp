@@ -10,6 +10,9 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+// `TT_OS2` and `FT_Get_Sfnt_Table` are only declared by the SFNT table header;
+// FreeType does not expose strikeout geometry on `FT_FaceRec`.
+#include FT_TRUETYPE_TABLES_H
 #include <hb-ft.h>
 #include <hb.h>
 
@@ -504,6 +507,30 @@ FontLoadResult FontRuntime::load_font_bytes(
         0.0F,
         fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender)
             / raster_scale);
+    // Decoration geometry comes from the face rather than being derived from
+    // ascent/descent, so the underline and strikethrough land where the font
+    // designer placed them. Values are stored RELATIVE TO THE EM and are
+    // therefore independent of the pixel size: FreeType scales
+    // `underline_position`/`underline_thickness` to the loaded pixel size in
+    // 26.6 units, which quantizes small sizes badly (14px gives 1/64 px steps
+    // that are ~1.25 px apart), so comparing two pixel sizes is only stable in
+    // em-relative form. The OS/2 strikeout values are already in font units and
+    // normalize through `units_per_EM` the same way.
+    const float em = static_cast<float>(*raster_pixel_size);
+    record.metrics.underline_position =
+        fixed_26_6_to_pixels(record.face->underline_position) / em;
+    record.metrics.underline_thickness = std::max(0.0F,
+        fixed_26_6_to_pixels(record.face->underline_thickness) / em);
+    if (const auto* os2 = static_cast<const TT_OS2*>(
+            FT_Get_Sfnt_Table(record.face, FT_SFNT_OS2));
+            os2 != nullptr && record.face->units_per_EM != 0
+            && os2->version != 0xFFFFU) {
+        const float units_per_em = static_cast<float>(record.face->units_per_EM);
+        record.metrics.strikeout_position =
+            static_cast<float>(os2->yStrikeoutPosition) / units_per_em;
+        record.metrics.strikeout_thickness = std::max(0.0F,
+            static_cast<float>(os2->yStrikeoutSize) / units_per_em);
+    }
     record.metrics.logical_pixel_size = raster.logical_pixel_size;
     record.metrics.raster_pixel_size = *raster_pixel_size;
     record.metrics.display_scale = raster.display_scale;

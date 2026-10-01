@@ -194,6 +194,26 @@ void test_load_errors_and_metrics() {
                 && std::abs(high_density_metrics.metrics.raster_scale - 1.5F) < 0.00001F,
             "high-density font did not separate logical and raster sizes");
 
+    // Decoration geometry must come from the face and be expressed relative to
+    // the em, so the same font at a higher raster density reports the same
+    // logical underline/strikeout geometry.
+    require(first_metrics.metrics.underline_thickness > 0.0F
+                && first_metrics.metrics.underline_position < 0.0F,
+            "underline geometry is missing or uses an unexpected sign convention");
+    require(std::abs(high_density_metrics.metrics.underline_position
+                - first_metrics.metrics.underline_position) < 0.05F
+                && std::abs(high_density_metrics.metrics.underline_thickness
+                    - first_metrics.metrics.underline_thickness) < 0.05F,
+            "underline geometry is not stable across raster densities");
+    require(std::abs(high_density_metrics.metrics.strikeout_position
+                - first_metrics.metrics.strikeout_position) < 0.05F
+                && std::abs(high_density_metrics.metrics.strikeout_thickness
+                    - first_metrics.metrics.strikeout_thickness) < 0.05F,
+            "strikeout geometry is not stable across raster densities");
+    require(larger_metrics.metrics.underline_thickness >= 0.0F
+                && larger_metrics.metrics.strikeout_thickness >= 0.0F,
+            "decoration thickness went negative at a larger pixel size");
+
     const auto logical_shape = runtime->shape_utf8_segment(first.font, "RynUI", 0, 5);
     const auto high_density_shape = runtime->shape_utf8_segment(
         high_density.font, "RynUI", 0, 5);
