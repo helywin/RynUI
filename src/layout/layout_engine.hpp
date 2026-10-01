@@ -135,8 +135,16 @@ struct InputContentLayout final {
     friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
 };
 
+class LayoutEngine;
+// Internal component layouts measure and place persistent children in the same
+// engine generation, before any text scene publishes its glyph positions.
+struct ComponentLayout final {
+    std::function<runtime::Size(LayoutEngine&, runtime::NodeId, Constraints)> measure;
+    std::function<void(LayoutEngine&, runtime::NodeId, runtime::Rect)> place;
+};
+
 using LayoutModel = std::variant<LeafLayout, BoxLayout, FlexLayout,
-    HorizontalContentLayout, InputContentLayout>;
+    HorizontalContentLayout, InputContentLayout, ComponentLayout>;
 
 class LayoutEngine final {
 public:
@@ -153,6 +161,10 @@ public:
     bool set_intrinsic_revision(runtime::NodeId id, std::uint64_t revision);
     bool remove_intrinsic_measure(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure(runtime::NodeId root, Constraints constraints);
+    [[nodiscard]] runtime::Size measure_child(runtime::NodeId child, Constraints constraints) {
+        return measure_node(child, constraints);
+    }
+    void place_child(runtime::NodeId child, runtime::Rect bounds) { place_node(child, bounds); }
     void place(runtime::NodeId root, runtime::Point origin = {});
     [[nodiscard]] runtime::Size layout(
         runtime::NodeId root,

@@ -31,6 +31,10 @@ struct InputContainerPresentation {
 struct InputState {
     MountedInputComponent mounted;
     bool controlled{}, disabled{}, read_only{}, focused{};
+    bool active{true};
+    std::optional<runtime::SemanticTypography> inherited_typography;
+    std::function<void(String)> on_internal_commit, on_internal_blur;
+    std::function<void()> on_internal_cancel;
     bool password{}, visible{}, session_visible{};
     bool allow_clear{}, custom_suffix{};
     Signal<bool> clear_visible{false};
@@ -245,6 +249,11 @@ struct InputPropsAccess {
                 else if(was_focused)
                     static_cast<void>(owner.sessions_.blur());
                 owner.invalidate(component, runtime::DirtyFlags::Material);
+                if(was_focused && !focus.focused && current->active && current->on_internal_blur) {
+                    auto callback = current->on_internal_blur;
+                    auto value = String::from_utf8(owner.editors_.require(current->mounted.editor).value()).value();
+                    callback(std::move(value));
+                }
             }
         };
         // Enter submission is routed separately from Button's Space/Enter activation.
@@ -363,8 +372,8 @@ struct InputPropsAccess {
                 current.hovering_pointers = 0;
                 static_cast<void>(owner.sessions_.blur());
             }
-            owner.editors_.require(current.mounted.editor).set_eligibility(current.disabled, current.read_only);
-            owner.host_->interactions().set_eligible(current.mounted.interaction, !current.disabled);
+            owner.editors_.require(current.mounted.editor).set_eligibility(current.disabled || !current.active, current.read_only);
+            owner.host_->interactions().set_eligible(current.mounted.interaction, current.active && !current.disabled);
             if(current.disabled) owner.host_->pointer().cancel_interaction(current.mounted.interaction);
             owner.host_->focus().synchronize();
             owner.update_clear_visibility(current.mounted.component);
@@ -459,8 +468,8 @@ InputComponentHost::InputComponentHost(WindowComponentServices& host, input::Tex
     input::TextClipboard& clipboard)
     : host_(&host), edit_services_(&host.bind_text_edit(platform, clipboard)),
       editors_(edit_services_->editors()), sessions_(edit_services_->sessions()),
-      clipboard_(edit_services_->clipboard()) { host_->attach_input_host(*this); }
-InputComponentHost::~InputComponentHost() { dispose(); host_->detach_input_host(*this); }
+      clipboard_(edit_services_->clipboard()) { host_->attach_input_host(*this); host_->set_input_runtime(this); }
+InputComponentHost::~InputComponentHost() { dispose(); host_->set_input_runtime(nullptr); host_->detach_input_host(*this); }
 void InputComponentHost::mount(const Content& content) {
     host_->mount(content);
 }
@@ -612,7 +621,7 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
 bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const input::KeyboardInputEvent& event) {
     using input::Key; using input::KeyModifier;
     auto* state = host_->components().state<InputState>(component);
-    if(!state || state->disabled || !state->focused) return false;
+    if(!state || !state->active || state->disabled || !state->focused) return false;
     auto& editor = editors_.require(state->mounted.editor);
     if(editor.composition().active) {
         if(event.key == Key::escape && event.action == input::KeyAction::down && !event.repeat) {
@@ -623,7 +632,13 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         // it commits or cancels. Never mutate committed text from these keys.
         return true;
     }
-    if(event.key == Key::tab || event.key == Key::escape) return false;
+    if(event.key == Key::escape) {
+        if(event.action == input::KeyAction::down && !event.repeat && state->on_internal_cancel) {
+            auto callback = state->on_internal_cancel; callback(); return true;
+        }
+        return false;
+    }
+    if(event.key == Key::tab) return false;
     const bool shift = input::has_modifier(event.modifiers, KeyModifier::shift);
     const auto other = event.primary_modifier == KeyModifier::control ? KeyModifier::meta : KeyModifier::control;
     const bool primary = input::has_modifier(event.modifiers, event.primary_modifier)
@@ -683,14 +698,17 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     model.padding_inline = size_tokens.padding_inline;
     model.padding_block = size_tokens.padding_block;
     model.gap = tokens.affix_padding;
+    runtime::SemanticTypography typography = state->inherited_typography.value_or(
+        runtime::SemanticTypography{theme.text().font_family, theme.text().font_weight,
+            false, size_tokens.font_size, size_tokens.line_height});
+    if (state->inherited_typography) model.control_height = std::max(model.control_height,
+        typography.line_height + 2 * (model.padding_block + model.border_width));
     if(!state->text_scene.valid() || model != state->layout) {
         state->layout = model;
         host_->layout().set_layout(state->mounted.node, model);
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
             | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
-    runtime::SemanticTypography typography{theme.text().font_family, theme.text().font_weight,
-        false, size_tokens.font_size, size_tokens.line_height};
     auto& scene = host_->text().scene_service();
     if(!state->text_scene.valid()) {
         state->text_scene = scene.create(state->viewport, String{}, host_->text().resolve_fonts(typography),
@@ -831,7 +849,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
     for(const auto& mounted : mounted_) {
         if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
         auto* state = host_->components().state<InputState>(mounted.component);
-        if(!state) continue;
+        if(!state || !state->active) continue;
         const auto update_started = sync_profiling_enabled_
             ? std::chrono::steady_clock::now()
             : std::chrono::steady_clock::time_point{};
@@ -985,7 +1003,7 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
     bool changed{};
     for(const auto& mounted : mounted_) {
         auto* state = host_->components().state<InputState>(mounted.component);
-        if(!state) continue;
+        if(!state || !state->active) continue;
         std::array<graphics::SceneDrawCommand, input_effect_layer_count> container;
         std::size_t count{};
         for(const auto effect : state->container_effects) {
@@ -1048,13 +1066,56 @@ input::TextEditResult InputComponentHost::dispatch(const input::CompositionChang
     return result;
 }
 input::TextEditResult InputComponentHost::dispatch(const input::CandidatesChanged& event) { return sessions_.dispatch(event); }
+void InputComponentHost::set_active(runtime::ComponentId component, bool active) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state || state->active == active) return;
+    state->active = active;
+    host_->components().set_branch_active(component, active);
+    editors_.require(state->mounted.editor).set_eligibility(state->disabled || !active, state->read_only);
+    static_cast<void>(host_->interactions().set_eligible(state->mounted.interaction, active && !state->disabled));
+    if (!active) {
+        host_->pointer().cancel_interaction(state->mounted.interaction);
+        host_->focus().cancel_interaction(state->mounted.interaction);
+        if (sessions_.active().owner == state->mounted.editor) static_cast<void>(sessions_.blur());
+        state->focused = false;
+        state->caret_blink.stop();
+        state->selecting_pointer.reset();
+        state->hovering_pointers = 0;
+        for (auto effect : state->container_effects) {
+            auto material = host_->rounded_effects().at(effect).material;
+            material.visible = false;
+            static_cast<void>(host_->rounded_effects().update_material(effect, material));
+        }
+    }
+    host_->mark_scene_structure_dirty();
+    invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+}
+
+void InputComponentHost::configure_typography_editor(runtime::ComponentId component,
+    Prop<runtime::SemanticTypography> typography, Prop<bool> active,
+    std::function<void(String)> commit, std::function<void()> cancel, std::function<void(String)> blur) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) throw std::invalid_argument("typography editor requires a mounted Input");
+    state->on_internal_commit = std::move(commit);
+    state->on_internal_cancel = std::move(cancel);
+    state->on_internal_blur = std::move(blur);
+    auto& scope = host_->components().scope(component);
+    static_cast<void>(connect_prop(scope, typography, [this, component](runtime::SemanticTypography value) {
+        if (auto* state = host_->components().state<InputState>(component)) {
+            state->inherited_typography = value;
+            update_theme(component);
+        }
+    }));
+    static_cast<void>(connect_prop(scope, active, [this, component](bool value) { set_active(component, value); }));
+}
+
 void InputComponentHost::submit(runtime::ComponentId component) {
     const auto* state = host_->components().state<InputState>(component);
-    if(!state || state->disabled || state->read_only) return;
+    if(!state || !state->active || state->disabled || state->read_only) return;
     auto& editor = editors_.require(state->mounted.editor);
     if(editor.composition().active) return;
     editor.break_history_merge();
-    auto callback = state->on_submit;
+    auto callback = state->on_internal_commit ? state->on_internal_commit : state->on_submit;
     if(callback) { auto value = String::from_utf8(editor.value()).value(); callback(std::move(value)); }
 }
 } // namespace ryn::detail

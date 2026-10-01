@@ -6,6 +6,8 @@
 #include <ryn/theme.hpp>
 
 #include <cstdint>
+#include <functional>
+#include <limits>
 #include <optional>
 #include <utility>
 
@@ -13,6 +15,7 @@ namespace ryn {
 namespace detail {
 
 struct TypographyPropsAccess;
+class TypographyComponentHost;
 
 } // namespace detail
 
@@ -48,6 +51,21 @@ struct TypographyEllipsis final {
     String expand_text{u8"展开"};
     String collapse_text{u8"收起"};
     friend bool operator==(const TypographyEllipsis&, const TypographyEllipsis&) = default;
+};
+
+struct TypographyCopyable final {
+    bool enabled{true};
+    String tooltip{u8"复制"};
+    String copied_tooltip{u8"已复制"};
+    float feedback_milliseconds{3000};
+    friend bool operator==(const TypographyCopyable&, const TypographyCopyable&) = default;
+};
+
+struct TypographyEditable final {
+    bool enabled{true};
+    std::size_t max_length{std::numeric_limits<std::size_t>::max()};
+    String tooltip{u8"编辑"};
+    friend bool operator==(const TypographyEditable&, const TypographyEditable&) = default;
 };
 
 // Typography props shared by `Title`, `Text` and `Paragraph`. `type` selects a
@@ -113,6 +131,10 @@ public:
     TypographyProps& ellipsis(Prop<TypographyEllipsis> value) {
         ellipsis_ = std::move(value); return *this;
     }
+    TypographyProps& copyable(Prop<TypographyCopyable> value) { copyable_ = std::move(value); return *this; }
+    TypographyProps& editable(Prop<TypographyEditable> value) { editable_ = std::move(value); return *this; }
+    TypographyProps& onEdit(std::function<void(String)> value) { on_edit_ = std::move(value); return *this; }
+    TypographyProps& onCopy(std::function<void(bool)> value) { on_copy_ = std::move(value); return *this; }
 
     TypographyProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
@@ -121,6 +143,7 @@ public:
 
 private:
     friend struct detail::TypographyPropsAccess;
+    friend class detail::TypographyComponentHost;
 
     Prop<String> content_{String{}};
     std::optional<Prop<TypographyType>> type_;
@@ -133,6 +156,10 @@ private:
     std::optional<Prop<bool>> underline_;
     std::optional<Prop<bool>> strikethrough_;
     std::optional<Prop<TypographyEllipsis>> ellipsis_;
+    std::optional<Prop<TypographyCopyable>> copyable_;
+    std::optional<Prop<TypographyEditable>> editable_;
+    std::function<void(String)> on_edit_;
+    std::function<void(bool)> on_copy_;
     LayoutStyle layout_;
 };
 
@@ -169,6 +196,10 @@ public:
     TitleProps& keyboard(Prop<bool> value) { typography_.keyboard(std::move(value)); return *this; }
     TitleProps& mark(Prop<bool> value) { typography_.mark(std::move(value)); return *this; }
     TitleProps& ellipsis(Prop<TypographyEllipsis> value) { typography_.ellipsis(std::move(value)); return *this; }
+    TitleProps& copyable(Prop<TypographyCopyable> value) { typography_.copyable(std::move(value)); return *this; }
+    TitleProps& editable(Prop<TypographyEditable> value) { typography_.editable(std::move(value)); return *this; }
+    TitleProps& onEdit(std::function<void(String)> value) { typography_.onEdit(std::move(value)); return *this; }
+    TitleProps& onCopy(std::function<void(bool)> value) { typography_.onCopy(std::move(value)); return *this; }
 
     TitleProps& strong(Prop<bool> value) {
         typography_.strong(std::move(value));
@@ -205,6 +236,25 @@ private:
 void Title(TitleProps props);
 void Text(TypographyProps props);
 void Paragraph(TypographyProps props);
+
+class LinkProps final {
+public:
+    LinkProps& content(Prop<String> value) { content_ = std::move(value); return *this; }
+    template<std::size_t N> LinkProps& content(const char8_t (&value)[N]) { return content(String{value}); }
+    LinkProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
+    LinkProps& type(Prop<TypographyType> value) { type_ = std::move(value); return *this; }
+    LinkProps& onClick(std::function<void()> value) { click_ = std::move(value); return *this; }
+    LinkProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
+private:
+    friend class detail::TypographyComponentHost;
+    Prop<String> content_{String{}};
+    Prop<bool> disabled_{false};
+    Prop<TypographyType> type_{TypographyType::Default};
+    std::function<void()> click_;
+    LayoutStyle layout_;
+};
+
+void Link(LinkProps props);
 
 inline void Title(TypographyLevel level, String content) {
     TitleProps props;

@@ -116,12 +116,15 @@ public:
     [[nodiscard]] std::optional<ComponentId> parent(ComponentId id) const;
     [[nodiscard]] const std::vector<ComponentId>& children(ComponentId id) const;
     [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;
+    bool set_branch_active(ComponentId id, bool active);
+    [[nodiscard]] bool branch_active(ComponentId id) const;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(
         ComponentId id) const;
     bool remove_scene_fragment(SceneFragmentId id);
     [[nodiscard]] bool contains(SceneFragmentId id) const noexcept;
+    [[nodiscard]] ComponentId fragment_component(SceneFragmentId id) const;
     [[nodiscard]] std::span<const SceneFragmentPaintEntry> paint_traversal();
 
     template <typename State>

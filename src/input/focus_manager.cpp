@@ -182,6 +182,12 @@ bool FocusManager::request_focus(
     }
 }
 
+void FocusManager::defer_focus(std::optional<InteractionId> target, FocusModality modality) {
+    if (!registry_->is_owner_thread()) throw std::logic_error("FocusManager can only be used on its owner thread");
+    pending_focus_ = FocusRequest{target, modality};
+    if (!dispatching_ && !flushing_focus_) end_operation();
+}
+
 bool FocusManager::clear_focus() {
     begin_operation();
     try {
@@ -316,8 +322,22 @@ void FocusManager::begin_operation() {
     frame_requested_during_dispatch_ = false;
 }
 
-void FocusManager::end_operation() noexcept {
+void FocusManager::end_operation() {
     dispatching_ = false;
+    if (flushing_focus_) return;
+    flushing_focus_ = true;
+    try {
+        std::size_t transfers = 0;
+        while (pending_focus_) {
+            if (++transfers > 32) throw std::logic_error("focus transaction failed to converge");
+            const auto request = *pending_focus_;
+            pending_focus_.reset();
+            if (request.target) {
+                if (can_focus(*request.target)) static_cast<void>(request_focus(*request.target, request.modality));
+            } else static_cast<void>(clear_focus());
+        }
+    } catch (...) { pending_focus_.reset(); flushing_focus_ = false; throw; }
+    flushing_focus_ = false;
 }
 
 void FocusManager::rebuild_focus_order() {

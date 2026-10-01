@@ -51,6 +51,9 @@ public:
     bool focus_from_pointer(std::optional<InteractionId> target);
     bool request_focus(InteractionId target, FocusModality modality);
     bool clear_focus();
+    // Queue transfers requested by activation/blur handlers; generation and
+    // eligibility are checked after the enclosing dispatch has finished.
+    void defer_focus(std::optional<InteractionId> target, FocusModality modality);
     void set_window_active(bool active);
     void synchronize();
     void cancel_interaction(InteractionId interaction);
@@ -60,7 +63,7 @@ public:
 
 private:
     void begin_operation();
-    void end_operation() noexcept;
+    void end_operation();
     void rebuild_focus_order();
     [[nodiscard]] bool can_focus(InteractionId target) const;
     [[nodiscard]] std::optional<InteractionId> focus_candidate(
@@ -88,6 +91,9 @@ private:
     FocusManagerDiagnostics diagnostics_;
     bool dispatching_{false};
     bool frame_requested_during_dispatch_{false};
+    struct FocusRequest { std::optional<InteractionId> target; FocusModality modality; };
+    std::optional<FocusRequest> pending_focus_;
+    bool flushing_focus_{};
 };
 
 } // namespace ryn::input

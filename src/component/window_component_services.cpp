@@ -1,4 +1,5 @@
 #include "component/window_component_services.hpp"
+#include "component/typography_component.hpp"
 
 #include <chrono>
 
@@ -76,6 +77,7 @@ WindowComponentServices::WindowComponentServices(
     text_.attach_component_scene(scene_composer_);
     text_.attach_surfaces(surfaces_);
     animations_.reserve(256, 64, 256);
+    typography_ = std::make_unique<TypographyComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {
@@ -110,7 +112,15 @@ WindowTextEditServices& WindowComponentServices::bind_text_edit(
     } else if (!text_edit_->uses(platform, clipboard)) {
         throw std::logic_error("window text edit services are bound to different platform ports");
     }
+    bind_clipboard(clipboard);
     return *text_edit_;
+}
+
+void WindowComponentServices::bind_clipboard(input::TextClipboard& clipboard) {
+    if (clipboard_ == &clipboard) return;
+    if (clipboard_) throw std::logic_error("window clipboard is bound to a different port");
+    clipboard_ = &clipboard;
+    for (auto* participant : participants_) participant->on_clipboard_bound();
 }
 
 void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
@@ -156,6 +166,7 @@ void WindowComponentServices::dispose() noexcept {
 void WindowComponentServices::set_window_active(bool active) {
     if (!active) pointer_.cancel_all();
     focus_.set_window_active(active);
+    for (auto* participant : participants_) participant->on_window_active(active);
 }
 
 void WindowComponentServices::set_motion_preference(animation::MotionPreference preference) {

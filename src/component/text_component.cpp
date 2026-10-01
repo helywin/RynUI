@@ -1,6 +1,7 @@
 #include "component/text_component.hpp"
 
 #include "component/layout_component_context.hpp"
+#include "component/typography_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -394,6 +395,23 @@ std::vector<font::FontIdentity> TextComponentHost::resolve_fonts(
     return chain;
 }
 
+runtime::SemanticTypography TextComponentHost::resolved_typography(runtime::ComponentId component) const {
+    const auto* state = components_.state<TextComponentState>(component);
+    if (!state) throw std::out_of_range("typography component is stale");
+    return state->resolved_typography;
+}
+
+void TextComponentHost::reserve_ellipsis_inline(runtime::ComponentId component, float width) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state) return;
+    auto config = text_scene_->text_state(state->scene).ellipsis();
+    config.reserved_inline = width;
+    if (text_scene_->set_ellipsis(state->scene, std::move(config))) {
+        layout_->set_intrinsic_revision(components_.root(component),
+            intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision);
+    }
+}
+
 void TextComponentHost::mount(const Content& content) {
     ActiveTextHostGuard guard(*this);
     LayoutComponentServices services{*nodes_, *layout_, *dirty_};
@@ -490,6 +508,7 @@ bool TextComponentHost::layout_and_synchronize(
         for (const auto& mounted : mounted_texts_) {
             if (sync_profiling_enabled_) ++sync_profile_.mounted_visited;
             if (!components_.contains(mounted.component)
+                    || !components_.branch_active(mounted.component)
                     || !text_scene_->contains(mounted.scene)) {
                 continue;
             }
@@ -661,6 +680,7 @@ bool TextComponentHost::synchronize_scene_fragments(
     bool changed = false;
     for (auto& mounted : mounted_texts_) {
         if (!mounted.fragment.has_value()
+                || !components_.branch_active(mounted.component)
                 || !components_.contains(mounted.component)
                 || !text_scene_->contains(mounted.scene)) {
             continue;
@@ -755,7 +775,7 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
         const auto node = components_.root(mounted.component);
         static_cast<void>(layout_->set_intrinsic_revision(
             node,
-            intrinsic_revision(text_scene_->revisions(state->scene))));
+            intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision));
         dirty_->invalidate(
             node,
             runtime::DirtyFlags::Measure
@@ -813,7 +833,7 @@ bool TextComponentHost::apply_typography(
         const auto node = components_.root(component);
         static_cast<void>(layout_->set_intrinsic_revision(
             node,
-            intrinsic_revision(text_scene_->revisions(state->scene))));
+            intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision));
         dirty_->invalidate(
             node,
             runtime::DirtyFlags::Measure
@@ -1222,6 +1242,7 @@ void mount_typography_component(
         scope,
         TypographyPropsAccess::content(props),
         [
+            &host, component,
             text_scene = host.text_scene_,
             layout = host.layout_,
             dirty = host.dirty_,
@@ -1232,7 +1253,8 @@ void mount_typography_component(
             }
             static_cast<void>(layout->set_intrinsic_revision(
                 node,
-                intrinsic_revision(text_scene->revisions(scene))));
+                intrinsic_revision(text_scene->revisions(scene))
+                    + host.components_.state<TextComponentState>(component)->metric_revision));
             dirty->invalidate(
                 node,
                 runtime::DirtyFlags::Measure
@@ -1362,6 +1384,8 @@ void Icon(IconProps props) {
 }
 
 void Title(TitleProps props) {
+    if (detail::try_mount_typography_interactions(detail::TypographyPropsAccess::base(props),
+        detail::TypographySemantics::Role::heading, detail::TypographyPropsAccess::level(props))) return;
     detail::mount_typography_component(
         detail::TypographyPropsAccess::base(props),
         detail::TypographySemantics::Role::heading,
@@ -1369,12 +1393,16 @@ void Title(TitleProps props) {
 }
 
 void Text(TypographyProps props) {
+    if (detail::try_mount_typography_interactions(props, detail::TypographySemantics::Role::body,
+        Prop<TypographyLevel>{TypographyLevel::H1})) return;
     detail::mount_typography_component(props,
         detail::TypographySemantics::Role::body, Prop<TypographyLevel>{
             TypographyLevel::H1});
 }
 
 void Paragraph(TypographyProps props) {
+    if (detail::try_mount_typography_interactions(props, detail::TypographySemantics::Role::paragraph,
+        Prop<TypographyLevel>{TypographyLevel::H1})) return;
     detail::mount_typography_component(props,
         detail::TypographySemantics::Role::paragraph, Prop<TypographyLevel>{
             TypographyLevel::H1});

@@ -112,6 +112,8 @@ public:
     [[nodiscard]] std::span<const MountedTextComponent> mounted_texts() const noexcept;
     [[nodiscard]] std::vector<font::FontIdentity> resolve_fonts(
         const runtime::SemanticTypography& typography) const;
+    [[nodiscard]] runtime::SemanticTypography resolved_typography(runtime::ComponentId component) const;
+    void reserve_ellipsis_inline(runtime::ComponentId component, float width);
 
 private:
     friend void mount_text_component(const TextProps& props, bool icon_font);
@@ -152,5 +154,7 @@ private:
 };
 
 void mount_text_component(const TextProps& props, bool icon_font = false);
+void mount_typography_component(const TypographyProps& props, TypographySemantics::Role role,
+    const Prop<TypographyLevel>& level);
 
 } // namespace ryn::detail

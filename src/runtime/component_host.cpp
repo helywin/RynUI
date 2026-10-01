@@ -41,6 +41,7 @@ struct ComponentHost::Record final {
     std::vector<SceneFragmentId> before_children_fragments;
     std::vector<SceneFragmentId> after_children_fragments;
     std::size_t declaration_order{0};
+    bool branch_active{true};
 
     Record(
         std::optional<ComponentId> component_parent,
@@ -213,6 +214,21 @@ std::span<const ComponentId> ComponentHost::root_components() const noexcept {
     return root_components_;
 }
 
+bool ComponentHost::set_branch_active(ComponentId id, bool active) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.branch_active == active) return false;
+    record.branch_active = active;
+    paint_traversal_dirty_ = true;
+    return true;
+}
+
+bool ComponentHost::branch_active(ComponentId id) const {
+    const auto* record = find_record(id);
+    if (!record || !record->branch_active) return false;
+    return !record->parent || branch_active(*record->parent);
+}
+
 std::size_t ComponentHost::declaration_order(ComponentId id) const {
     return require_record(id).declaration_order;
 }
@@ -256,6 +272,12 @@ bool ComponentHost::contains(SceneFragmentId id) const noexcept {
     const auto& slot = fragment_slots_[id.index];
     return slot.generation == id.generation && slot.record.has_value()
         && contains(slot.record->component);
+}
+
+ComponentId ComponentHost::fragment_component(SceneFragmentId id) const {
+    ensure_owner_thread();
+    if (!contains(id)) throw std::out_of_range("scene fragment is stale");
+    return fragment_slots_[id.index].record->component;
 }
 
 std::span<const SceneFragmentPaintEntry> ComponentHost::paint_traversal() {
@@ -541,6 +563,7 @@ void ComponentHost::release_component_fragments(Record& record) noexcept {
 }
 
 void ComponentHost::append_paint_subtree(ComponentId id) {
+    if (!branch_active(id)) return;
     const auto& record = require_record(id);
     for (const auto fragment : record.before_children_fragments) {
         if (contains(fragment)) {

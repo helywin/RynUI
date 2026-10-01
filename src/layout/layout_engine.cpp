@@ -298,7 +298,9 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
     auto& node = nodes_->require(id);
     std::visit([](const auto& model) {
         using Model = std::decay_t<decltype(model)>;
-        if constexpr (std::is_same_v<Model, LeafLayout>) {
+        if constexpr (std::is_same_v<Model, ComponentLayout>) {
+            if (!model.measure || !model.place) throw std::invalid_argument("component layout requires both phases");
+        } else if constexpr (std::is_same_v<Model, LeafLayout>) {
             if (model.preferred_size.width < 0.0F || model.preferred_size.height < 0.0F
                     || std::isnan(model.preferred_size.width)
                     || std::isnan(model.preferred_size.height)) {
@@ -579,6 +581,12 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 content_constraint.max_height,
                 natural.height);
             measured = content_constraint.constrain(natural);
+        } else if constexpr (std::is_same_v<Model, ComponentLayout>) {
+            measured = current.measure(*this, id, content_constraint);
+            if (!std::isfinite(measured.width) || !std::isfinite(measured.height)
+                    || measured.width < 0 || measured.height < 0)
+                throw std::invalid_argument("component layout returned an invalid size");
+            measured = content_constraint.constrain(measured);
         } else if constexpr (std::is_same_v<Model, FlexLayout>) {
             const auto child_constraints = content_constraints(
                 content_constraint,
@@ -890,6 +898,8 @@ void LayoutEngine::place_node(
         using Model = std::decay_t<decltype(current)>;
         if constexpr (std::is_same_v<Model, LeafLayout>) {
             return;
+        } else if constexpr (std::is_same_v<Model, ComponentLayout>) {
+            current.place(*this, id, node.bounds);
         } else if constexpr (std::is_same_v<Model, BoxLayout>) {
             const auto content = content_bounds(node.bounds, current.padding);
             for (const auto child : node.children) {

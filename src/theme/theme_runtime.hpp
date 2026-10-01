@@ -101,6 +101,8 @@ public:
     [[nodiscard]] float button_icon_gap() const;
     [[nodiscard]] const ButtonThemeToken& button_shadows() const;
     [[nodiscard]] Color focus_outline_color() const;
+    [[nodiscard]] Color color_link_hover() const;
+    [[nodiscard]] Color color_link_active() const;
     [[nodiscard]] float focus_outline_width() const;
     [[nodiscard]] float focus_outline_offset() const;
 

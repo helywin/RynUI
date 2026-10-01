@@ -17,6 +17,10 @@
 
 namespace ryn::detail {
 
+class InputComponentHost;
+class TypographyComponentHost;
+class DividerComponentHost;
+
 class WindowComponentParticipant {
 public:
     virtual ~WindowComponentParticipant() = default;
@@ -24,6 +28,8 @@ public:
     virtual void end_mount(void*) noexcept {}
     virtual void on_destroy() noexcept {}
     virtual void on_dispose() noexcept {}
+    virtual void on_clipboard_bound() {}
+    virtual void on_window_active(bool) {}
     virtual void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) = 0;
     virtual bool synchronize_auxiliary_fragments() { return false; }
     virtual void synchronize_auxiliary_motion() {}
@@ -95,6 +101,11 @@ public:
     [[nodiscard]] WindowTextEditServices& bind_text_edit(
         input::TextInputPlatform& platform, input::TextClipboard& clipboard);
     [[nodiscard]] WindowTextEditServices* text_edit() noexcept { return text_edit_.get(); }
+    void bind_clipboard(input::TextClipboard& clipboard);
+    [[nodiscard]] input::TextClipboard* clipboard() const noexcept { return clipboard_; }
+    void set_input_runtime(InputComponentHost* host) noexcept { input_runtime_ = host; }
+    [[nodiscard]] InputComponentHost* input_runtime() const noexcept { return input_runtime_; }
+    [[nodiscard]] TypographyComponentHost& typography() noexcept { return *typography_; }
 
     [[nodiscard]] TextComponentHost& text() noexcept { return text_; }
     [[nodiscard]] const TextComponentHost& text() const noexcept { return text_; }
@@ -134,6 +145,9 @@ private:
     bool sync_profiling_enabled_{};
     WindowSyncProfile sync_profile_{};
     std::unique_ptr<WindowTextEditServices> text_edit_;
+    input::TextClipboard* clipboard_{};
+    InputComponentHost* input_runtime_{};
+    std::unique_ptr<TypographyComponentHost> typography_;
 };
 
 } // namespace ryn::detail

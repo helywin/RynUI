@@ -7,6 +7,15 @@
 #include <utility>
 
 namespace ryn::theme_runtime {
+
+Color ThemeScope::color_link_hover() const {
+    ensure_owner_thread(); record(TokenIdentity::map_color_link_hover);
+    return snapshot_->map().color_link_hover;
+}
+Color ThemeScope::color_link_active() const {
+    ensure_owner_thread(); record(TokenIdentity::map_color_link_active);
+    return snapshot_->map().color_link_active;
+}
 namespace {
 
 constexpr std::size_t identity_count =

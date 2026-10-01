@@ -34,13 +34,8 @@ void ComponentSceneComposer::set_fragment(
     }
     if (interaction.has_value()) {
         const auto* record = interactions_->find(*interaction);
-        const auto traversal = components_->paint_traversal();
-        const auto owner = std::find_if(
-            traversal.begin(),
-            traversal.end(),
-            [&](const auto& entry) { return entry.fragment == fragment; });
-        if (record == nullptr || owner == traversal.end()
-                || record->component != owner->component) {
+        if (record == nullptr
+                || record->component != components_->fragment_component(fragment)) {
             throw std::invalid_argument(
                 "Scene fragment interaction must belong to the same component");
         }

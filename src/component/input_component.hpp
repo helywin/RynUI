@@ -65,6 +65,10 @@ public:
     [[nodiscard]] input::TextEditResult dispatch(const input::CompositionChanged&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CandidatesChanged&);
     void submit(runtime::ComponentId);
+    void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>,
+        Prop<bool> active, std::function<void(String)> commit, std::function<void()> cancel,
+        std::function<void(String)> blur);
+    void set_active(runtime::ComponentId, bool);
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);
     [[nodiscard]] TextSceneId text_scene(runtime::ComponentId) const;
