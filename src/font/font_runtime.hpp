@@ -67,11 +67,18 @@ struct FontMetrics {
     float descent{};
     float line_gap{};
     // Decoration geometry, expressed as a fraction of the em so it stays
-    // independent of the pixel size (and therefore stable across DPI changes).
-    // Multiply by the font size in logical pixels to get the decoration offset.
-    // FreeType reports `underline_position` as the distance from the baseline
-    // going up and `strikeout_position` as the distance going down, matching the
-    // sign convention of `ascent`/`descent`.
+    // independent of the pixel size and of the raster density. Multiply by the
+    // font size in logical pixels to get the decoration offset.
+    //
+    // Sign convention: every position and thickness is positive UPWARD from the
+    // baseline, matching font space and the `ascent` field. A caller painting
+    // into screen space (y growing downward) places the underline at
+    // `baseline - underline_position * font_size`. Both the FreeType underline
+    // fields and the OS/2 strikeout fields are in font units and normalize
+    // through `units_per_EM`; a face without a usable em square leaves these
+    // fields at zero, and `strikeout_*` also stays zero for faces without an
+    // OS/2 table, so a decoration drawn from a zero thickness is skipped rather
+    // than painted as a hairline at the baseline.
     float underline_position{};
     float underline_thickness{};
     float strikeout_position{};

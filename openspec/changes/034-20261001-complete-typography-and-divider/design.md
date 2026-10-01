@@ -48,7 +48,16 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 
 `font::FontMetrics` 目前只有 ascent/descent/line_gap/size/scale，**没有** underline/strikeout 的位置与厚度，`underline` 与 `delete` 不能凭空猜位置。决定：扩展 `font::FontMetrics` 的装饰字段。规划阶段曾写成「FreeType 在 `FT_Face` 上直接提供四个字段」，实施时核实这是错的：`FT_FaceRec` 只有 `underline_position` 与 `underline_thickness`，strikeout 必须通过 `FT_Get_Sfnt_Table(face, FT_SFNT_OS2)` 读 OS/2 表的 `yStrikeoutPosition`/`yStrikeoutSize`（font units）。
 
-四个字段统一以 **em 相对值**保存（除以光栅像素尺寸或 `units_per_EM`），并在 `FontMetrics` 注释中说明：FreeType 把 underline 值按当前像素尺寸缩放到 26.6 单位，14px 下量化步长约 1.25px，按像素尺寸归一化会在不同 DPI 间不稳定；em 相对形式与像素尺寸无关，使用方乘以字号即可得到装饰偏移。备选是用 ascent/descent 派生近似位置，会在不同字体与 DPI 下明显偏移，不采用。
+四个字段统一以 **em 相对值**保存，且**全部通过 `units_per_EM` 归一化**。这里有两处规划／实施错误，均已修正：
+
+1. 规划阶段曾写成「FreeType 在 `FT_Face` 上直接提供四个字段」。`FT_FaceRec` 只有 `underline_position` 与 `underline_thickness`，strikeout 必须通过 `FT_Get_Sfnt_Table(face, FT_SFNT_OS2)` 读 OS/2 表的 `yStrikeoutPosition`/`yStrikeoutSize`。
+2. 实施阶段我先按「FreeType 把 underline 值缩放到 26.6 单位」写了除以 `64 × raster_pixel_size` 的换算，**这是错的**，由 codex 独立审查发现。锁定到本地的 FreeType 2.14.3 头文件明确写着 `underline_position`/`underline_thickness` 的单位是 **font units**，与 `units_per_EM` 同坐标系；`fixed_26_6_to_pixels` 只适用于 `FT_Size_Metrics` 上的 26.6 字段。错误换算会额外除以 64，使下划线位置与厚度偏小约一个数量级并随像素尺寸漂移。
+
+坐标约定冻结为：位置与厚度均**相对 baseline 向上为正**（与 font space 及 `ascent` 一致）；绘制到屏幕坐标（y 向下增长）时用 `baseline - position * font_size`。`units_per_EM` 不可用的 face 四个字段保持 0，缺 OS/2 表的 face `strikeout_*` 保持 0；厚度为 0 时装饰跳过，而不是在 baseline 上画一条发丝线。
+
+测试必须能证伪换算错误：旧公式的偏差在固定像素尺寸下是**系统性常数**，宽松绝对容差抓不住（原测试用 `0.05F` 容差与「非负」检查，因此放过了错误实现）。改为断言三条独立性质——同一 face 在两个逻辑像素尺寸下的 em 比值相等、em 比值等于「像素差值 ÷ 字号差」、数值落在真实字体表使用的区间内（下划线位置约占 em 的 -0.02～-0.30，厚度 0.01～0.20）。已用「临时恢复错误公式 → 新测试报 `underline position is not em-relative`」验证该断言确实可证伪。
+
+备选是用 ascent/descent 派生近似位置，会在不同字体与 DPI 下明显偏移，不采用。
 
 ### 5. 字重与斜体需要真实 face 解析（前置工作）
 

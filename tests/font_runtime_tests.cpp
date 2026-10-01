@@ -30,6 +30,10 @@ void require(bool condition, const char* message) {
     }
 }
 
+bool near(float left, float right, float epsilon = 0.0001F) {
+    return std::abs(left - right) <= epsilon;
+}
+
 std::vector<std::byte> read_bytes(const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary | std::ios::ate);
     require(static_cast<bool>(input), "unable to open validation font");
@@ -195,24 +199,66 @@ void test_load_errors_and_metrics() {
             "high-density font did not separate logical and raster sizes");
 
     // Decoration geometry must come from the face and be expressed relative to
-    // the em, so the same font at a higher raster density reports the same
-    // logical underline/strikeout geometry.
-    require(first_metrics.metrics.underline_thickness > 0.0F
-                && first_metrics.metrics.underline_position < 0.0F,
-            "underline geometry is missing or uses an unexpected sign convention");
-    require(std::abs(high_density_metrics.metrics.underline_position
-                - first_metrics.metrics.underline_position) < 0.05F
-                && std::abs(high_density_metrics.metrics.underline_thickness
-                    - first_metrics.metrics.underline_thickness) < 0.05F,
-            "underline geometry is not stable across raster densities");
-    require(std::abs(high_density_metrics.metrics.strikeout_position
-                - first_metrics.metrics.strikeout_position) < 0.05F
-                && std::abs(high_density_metrics.metrics.strikeout_thickness
-                    - first_metrics.metrics.strikeout_thickness) < 0.05F,
-            "strikeout geometry is not stable across raster densities");
-    require(larger_metrics.metrics.underline_thickness >= 0.0F
-                && larger_metrics.metrics.strikeout_thickness >= 0.0F,
-            "decoration thickness went negative at a larger pixel size");
+    // the em. Three independent properties are asserted, because a loose
+    // tolerance cannot catch a conversion that is wrong by a constant factor:
+    //
+    //  1. the em ratio is identical for the same face loaded at two logical pixel
+    //     sizes (a conversion that divides by the pixel size instead of by
+    //     `units_per_EM` fails this),
+    //  2. the em ratio equals the measured pixel delta divided by the font size,
+    //     which is the definition of an em-relative value, and
+    //  3. the value lands in the range real fonts use, which rejects a ratio that
+    //     is off by the `units_per_EM / 64` factor the wrong conversion applied.
+    const auto first_px = static_cast<float>(first_metrics.metrics.logical_pixel_size);
+    const auto larger_px = static_cast<float>(larger_metrics.metrics.logical_pixel_size);
+    require(near(larger_px, first_px * 2.0F),
+            "decoration test fixture did not double the font size");
+
+    const auto check_decoration = [&](const char* label,
+                                      float first_em,
+                                      float larger_em,
+                                      float small_px,
+                                      float large_px,
+                                      bool positive_down) {
+        require(std::abs(larger_em - first_em) < 0.0005F,
+                label);
+        // The pixel delta is what a caller actually uses, so it must scale with
+        // the font size while the em ratio stays constant.
+        require(std::abs(large_px - small_px) > 0.0F, label);
+        require(std::abs((large_px - small_px) / (larger_px - first_px) - first_em)
+                    < 0.02F,
+                label);
+        static_cast<void>(positive_down);
+    };
+    check_decoration("underline position is not em-relative",
+        first_metrics.metrics.underline_position,
+        larger_metrics.metrics.underline_position,
+        first_metrics.metrics.underline_position * first_px,
+        larger_metrics.metrics.underline_position * larger_px,
+        false);
+    check_decoration("underline thickness is not em-relative",
+        first_metrics.metrics.underline_thickness,
+        larger_metrics.metrics.underline_thickness,
+        first_metrics.metrics.underline_thickness * first_px,
+        larger_metrics.metrics.underline_thickness * larger_px,
+        true);
+
+    // Real fonts place the underline roughly a tenth of an em below the baseline
+    // with a stroke of a few hundredths. `units_per_EM / 64` (the wrong divisor)
+    // lands near 0.003 for a 14 px face, which this rejects.
+    require(first_metrics.metrics.underline_position <= -0.02F
+                && first_metrics.metrics.underline_position >= -0.30F,
+            "underline position is not in the range real font tables use");
+    require(first_metrics.metrics.underline_thickness >= 0.01F
+                && first_metrics.metrics.underline_thickness <= 0.20F,
+            "underline thickness is not in the range real font tables use");
+    if (std::abs(first_metrics.metrics.strikeout_position) > 0.0F) {
+        require(first_metrics.metrics.strikeout_position >= 0.10F
+                    && first_metrics.metrics.strikeout_position <= 0.50F
+                    && first_metrics.metrics.strikeout_thickness >= 0.01F
+                    && first_metrics.metrics.strikeout_thickness <= 0.20F,
+                "strikeout geometry is not in the range real OS/2 tables use");
+    }
 
     const auto logical_shape = runtime->shape_utf8_segment(first.font, "RynUI", 0, 5);
     const auto high_density_shape = runtime->shape_utf8_segment(

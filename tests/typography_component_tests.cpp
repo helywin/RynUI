@@ -268,6 +268,47 @@ void test_inline_semantics_reach_the_resolver_and_scale() {
             "code or keyboard did not resolve at its inline token size");
 }
 
+void test_inline_token_change_reaches_the_shape() {
+    Fixture fixture;
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
+            ryn::Text(ryn::TypographyProps{}.content(u8"Code").code(true));
+        }});
+        ryn::Text(ryn::TypographyProps{}.content(u8"Stable sibling"));
+    }});
+    require(fixture.layout_texts(), "inline token fixture did not synchronize");
+    const auto target_node = fixture.scene.node(fixture.host->mounted_texts()[0].scene);
+    const auto component_count = fixture.host->components().component_count();
+    const auto sibling_shape_before = fixture.text_state(1).counters().shape_count;
+    const auto code_requests_before = fixture.requests.size();
+    fixture.dirty.clear();
+
+    // The inline token group is its own TokenIdentity, so without an explicit
+    // capture a scale change would silently not reach this component.
+    auto scaled = ryn::ThemeConfig{};
+    scaled.typography.tokens.code.font_scale = 0.5F;
+    require(config.set(scaled), "inline code token update was suppressed");
+    require(fixture.dirty.layout_roots() == std::vector<ryn::runtime::NodeId>{target_node},
+            "inline code font scale did not invalidate the code component layout");
+    require(fixture.layout_texts(), "inline code token update did not synchronize");
+
+    const auto expected = static_cast<std::uint32_t>(std::lround(
+        ryn::resolve_theme(scaled).typography().base_font_size * 0.5F));
+    const auto resolved_scaled = std::ranges::any_of(
+        std::span{fixture.requests}.subspan(code_requests_before),
+        [&](const FontRequest& request) {
+            return request.family == ryn::SystemFontFamily::ui_monospace
+                && request.pixel_size == expected;
+        });
+    require(resolved_scaled,
+            "inline code font scale did not change the resolved code font size");
+    require(fixture.host->components().component_count() == component_count,
+            "inline code token update remounted the component");
+    require(fixture.text_state(1).counters().shape_count == sibling_shape_before,
+            "inline code token update reshaped an unrelated sibling");
+}
+
 void test_reactive_props_stay_local() {
     Fixture fixture;
     ryn::Signal<ryn::String> content{ryn::String{u8"First"}};
@@ -350,6 +391,7 @@ int main() {
         test_semantic_colours_and_disabled();
         test_emphasis_reaches_the_shape_request();
         test_inline_semantics_reach_the_resolver_and_scale();
+        test_inline_token_change_reaches_the_shape();
         test_reactive_props_stay_local();
         test_theme_update_rescales_headings_without_remount();
     } catch (const std::exception& error) {

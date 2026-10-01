@@ -510,22 +510,28 @@ FontLoadResult FontRuntime::load_font_bytes(
     // Decoration geometry comes from the face rather than being derived from
     // ascent/descent, so the underline and strikethrough land where the font
     // designer placed them. Values are stored RELATIVE TO THE EM and are
-    // therefore independent of the pixel size: FreeType scales
-    // `underline_position`/`underline_thickness` to the loaded pixel size in
-    // 26.6 units, which quantizes small sizes badly (14px gives 1/64 px steps
-    // that are ~1.25 px apart), so comparing two pixel sizes is only stable in
-    // em-relative form. The OS/2 strikeout values are already in font units and
-    // normalize through `units_per_EM` the same way.
-    const float em = static_cast<float>(*raster_pixel_size);
-    record.metrics.underline_position =
-        fixed_26_6_to_pixels(record.face->underline_position) / em;
-    record.metrics.underline_thickness = std::max(0.0F,
-        fixed_26_6_to_pixels(record.face->underline_thickness) / em);
+    // therefore independent of the pixel size and of the raster density.
+    //
+    // All four fields are declared by FreeType and by the OS/2 table in FONT
+    // UNITS, so they normalize through `units_per_EM`. They must NOT be routed
+    // through `fixed_26_6_to_pixels`: that conversion is only correct for the
+    // 26.6 fixed-point fields on `FT_Size_Metrics`, and applying it here would
+    // divide by 64 twice and make the values depend on the loaded pixel size.
+    //
+    // Sign convention: positions and thicknesses are em-relative and positive
+    // UPWARD from the baseline, matching font space. A caller that paints into
+    // the screen space (y growing downward) must subtract the position from the
+    // baseline, which is where the underline and strikeout lines go.
+    const float units_per_em = static_cast<float>(record.face->units_per_EM);
+    if (units_per_em > 0.0F) {
+        record.metrics.underline_position =
+            static_cast<float>(record.face->underline_position) / units_per_em;
+        record.metrics.underline_thickness = std::max(0.0F,
+            static_cast<float>(record.face->underline_thickness) / units_per_em);
+    }
     if (const auto* os2 = static_cast<const TT_OS2*>(
             FT_Get_Sfnt_Table(record.face, FT_SFNT_OS2));
-            os2 != nullptr && record.face->units_per_EM != 0
-            && os2->version != 0xFFFFU) {
-        const float units_per_em = static_cast<float>(record.face->units_per_EM);
+            os2 != nullptr && units_per_em > 0.0F && os2->version != 0xFFFFU) {
         record.metrics.strikeout_position =
             static_cast<float>(os2->yStrikeoutPosition) / units_per_em;
         record.metrics.strikeout_thickness = std::max(0.0F,

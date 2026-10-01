@@ -781,10 +781,14 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
         [theme, state, semantic] {
             if (semantic) {
                 // A semantic component resolves size and weight from the
-                // Typography Component Token group.
+                // Typography Component Token group. The inline token group is a
+                // separate identity, so a change to the code or keyboard scale
+                // only reaches a component that captured it here.
                 static_cast<void>(theme->typography_headings());
                 static_cast<void>(theme->typography_fonts());
                 static_cast<void>(theme->typography_base_typography());
+                static_cast<void>(theme->typography_inline_code());
+                static_cast<void>(theme->typography_inline_keyboard());
             } else if (!state->semantic_typography) {
                 // The plain `Text` builder keeps deriving its shape from the Text
                 // token group, so those identities must stay captured.
