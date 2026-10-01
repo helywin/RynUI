@@ -321,6 +321,17 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 仍需在实现时定稿的**细节**（不改变上述方向）：省略的退化场景表与计数器精确数值、装饰 quad 的逐行几何取整、Divider 内部布局模型的 measure/place 阶段落点、焦点事务队列的刷新时机。这些应在对应任务的测试里固定。
 
+**4.3b 装饰渲染的实现记录（未完成，勿重走弯路）。** 4.3a（服务层可变数量内容范围）已完成并提交。4.3b 曾实现到「片段注册 + 逐行几何 + quad 发布」，但测试失败后已整体回滚；以下是这次调查确认的事实：
+
+- **四个片段的排序机制成立。** 实际遍历结果为「背景（before_children）→ glyph（before_children）→ 线（after_children）」，与决策 18 的预期一致；`register_scene_fragment` 允许一个组件注册多个片段。
+- **em 度量正确。** 测试字体读出 `underline_position = -0.125`、`underline_thickness = 0.05`、`strikeout_position = 0.322`、`strikeout_thickness = 0.05`（全部 em 相对），坐标与决策 4 一致；装饰线位置为 `baseline - position * font_size`。
+- **两个已修的真实缺陷（回滚时一并丢弃，重做时要注意）**：
+  1. `ComponentHost` 只在**挂载期间**接受片段注册，而被连接的 props 在挂载**末尾**才写入 `state.typography`。因此装饰意图必须用 `read_prop` 直接从 props 读取，不能在挂载早期读 `state.typography`；副作用是「初始为 false、之后变为 true」的装饰无法再获得片段，这一点需要作为限制写进规格或改为常驻注册。
+  2. 装饰帧无法监听 `composer_`/`surfaces_` 帧事件（`ComponentSceneComposer` 没有挂载钩子），因此片段必须在挂载前就绪，服务必须在 mount 之前 attach。
+- **未定位的失败**：测试报出 `line_quads` 为空（`lnQ=0`），而同一组件的 `line_fragment` 已注册、`state.typography` 的 `underline`/`strikethrough` 读回为 `false`，尽管 props 读回为 `true`（`[init] ulProp=1 ulVal=1`）。**下次应从「`connect_prop` 的静态值回调是否真的把语义写进 `state.typography`」入手**，而不是继续在几何或发布路径上找。
+- **测试夹具的一个真实陷阱**：`TextComponentHost` 必须在 `ComponentSceneComposer` 与 `RetainedSurfaceService` **之前**析构，否则宿主的 `dispose()` 会通过已销毁的服务清理组件并崩溃。夹具若把 host 声明在服务之前，必须显式在析构函数里先 `host->dispose()`。这次的 segfault 就是这个原因，与产品代码无关。
+- **不要把 `paint_traversal()` 的 span 存进局部变量后跨其他宿主查询复用**：注册或移除片段会让宿主重建底层 vector，span 随之失效；需要先快照成 `std::vector`，并且**只调用一次** `paint_traversal()`（用同一次调用的 `begin()`/`end()`）。
+
 **一致性问题状态：**
 
 1. ~~`Title` 改 level 未满足规格~~ → **已修复**（提交 92fb975）。`Title::level` 改为响应式 `Prop<TypographyLevel>`，挂载后改级别会重解析标题 token 并保持组件 identity；测试断言组件数、`ComponentId` 与 `NodeId` 均不变、兄弟组件不被重塑。
