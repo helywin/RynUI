@@ -309,6 +309,41 @@ void test_inline_token_change_reaches_the_shape() {
             "inline code token update reshaped an unrelated sibling");
 }
 
+void test_reactive_heading_level_keeps_identity() {
+    Fixture fixture;
+    ryn::Signal<ryn::TypographyLevel> level{ryn::TypographyLevel::H1};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Title(ryn::TitleProps{}.content(u8"Heading").level(level));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Stable sibling"));
+    }});
+    require(fixture.layout_texts(), "reactive level fixture did not synchronize");
+    const auto target_node = fixture.scene.node(fixture.host->mounted_texts()[0].scene);
+    const auto target_component = fixture.host->mounted_texts()[0].component;
+    const auto component_count = fixture.host->components().component_count();
+    const auto sibling_shape_before = fixture.text_state(1).counters().shape_count;
+    const auto bottom_before = fixture.text_state(0).measurement().content_bounds.bottom;
+    fixture.dirty.clear();
+
+    // The spec requires a level change after mount to keep the component
+    // identity, so the node, component id and component count must all survive.
+    require(level.set(ryn::TypographyLevel::H4),
+            "reactive level Signal did not propagate");
+    require(fixture.dirty.layout_roots() == std::vector<ryn::runtime::NodeId>{target_node},
+            "level change did not invalidate exactly the heading layout");
+    require(fixture.layout_texts(), "level change did not synchronize");
+    require(fixture.host->components().component_count() == component_count
+                && fixture.host->mounted_texts()[0].component == target_component
+                && fixture.scene.node(fixture.host->mounted_texts()[0].scene) == target_node,
+            "level change changed the heading component identity");
+    const auto& typography = ryn::resolve_theme().typography();
+    require(fixture.text_state(0).measurement().content_bounds.bottom < bottom_before
+                && fixture.text_state(0).measurement().content_bounds.bottom
+                    > typography.headings[4].font_size * 0.5F,
+            "level change did not re-resolve the heading tokens");
+    require(fixture.text_state(1).counters().shape_count == sibling_shape_before,
+            "level change reshaped an unrelated sibling");
+}
+
 void test_reactive_props_stay_local() {
     Fixture fixture;
     ryn::Signal<ryn::String> content{ryn::String{u8"First"}};
@@ -392,6 +427,7 @@ int main() {
         test_emphasis_reaches_the_shape_request();
         test_inline_semantics_reach_the_resolver_and_scale();
         test_inline_token_change_reaches_the_shape();
+        test_reactive_heading_level_keeps_identity();
         test_reactive_props_stay_local();
         test_theme_update_rescales_headings_without_remount();
     } catch (const std::exception& error) {

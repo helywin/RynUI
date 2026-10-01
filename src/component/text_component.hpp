@@ -116,7 +116,7 @@ private:
     friend void mount_typography_component(
         const TypographyProps& props,
         TypographySemantics::Role role,
-        TypographyLevel level);
+        const Prop<TypographyLevel>& level);
 
     void record_mounted_text(
         runtime::ComponentId component,

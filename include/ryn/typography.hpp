@@ -121,9 +121,8 @@ private:
     LayoutStyle layout_;
 };
 
-// `level` is a plain value rather than a `Prop`: mounting a different heading
-// level would change the element identity, and RynUI keeps one component
-// identity per level instead of re-levelling an existing heading.
+// `level` is a reactive `Prop<T>`, so changing it after mount re-resolves the
+// heading tokens while the component keeps its identity.
 class TitleProps final {
 public:
     TitleProps& content(Prop<String> value) {
@@ -136,8 +135,8 @@ public:
         return content(String{literal});
     }
 
-    TitleProps& level(TypographyLevel value) noexcept {
-        level_ = value;
+    TitleProps& level(Prop<TypographyLevel> value) {
+        level_ = std::move(value);
         return *this;
     }
 
@@ -180,7 +179,7 @@ private:
     friend struct detail::TypographyPropsAccess;
 
     TypographyProps typography_;
-    TypographyLevel level_{TypographyLevel::H1};
+    Prop<TypographyLevel> level_{TypographyLevel::H1};
 };
 
 void Title(TitleProps props);

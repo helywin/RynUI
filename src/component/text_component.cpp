@@ -102,7 +102,8 @@ struct TypographyPropsAccess final {
         const TitleProps& props) noexcept {
         return props.typography_;
     }
-    [[nodiscard]] static TypographyLevel level(const TitleProps& props) noexcept {
+    [[nodiscard]] static const Prop<TypographyLevel>& level(
+        const TitleProps& props) noexcept {
         return props.level_;
     }
 };
@@ -980,7 +981,7 @@ void mount_text_component(const TextProps& props, bool icon_font) {
 void mount_typography_component(
     const TypographyProps& props,
     TypographySemantics::Role role,
-    TypographyLevel level) {
+    const Prop<TypographyLevel>& level) {
     if (active_text_host == nullptr) {
         throw std::logic_error(
             "Typography components can only be declared inside an active "
@@ -995,7 +996,8 @@ void mount_typography_component(
 
     const auto theme_scope = build.theme_scope();
     auto& state = build.state<TextComponentState>(component);
-    state.typography = TypographySemantics{.role = role, .level = level};
+    state.typography = TypographySemantics{
+        .role = role, .level = read_prop(level)};
     const auto content = read_prop(TypographyPropsAccess::content(props));
     // Resolve once and reuse: `create` must already carry the semantic font size
     // and line height, otherwise the first frame would rasterize at a wrong
@@ -1087,43 +1089,66 @@ void mount_typography_component(
         host.subscribe_theme(component);
         host.apply_theme(component);
     };
-    const auto connect_semantic = [&](
-            const std::optional<Prop<bool>>& prop,
-            bool TypographySemantics::*member) {
+    // Connects one semantic property. A setter is used instead of a member
+    // pointer so both ool flags and the TypographyLevel enum share one
+    // path; the setter is captured by value because a capturing lambda cannot
+    // convert to a function pointer. optional_semantic handles the props that
+    // are only present when the caller set them, semantic the ones that always
+    // have a value.
+    const auto apply_semantic = [update_semantics](auto setter, auto value) {
+        update_semantics([setter, value](TypographySemantics& semantics) {
+            setter(semantics, value);
+        });
+    };
+    const auto optional_semantic = [&](const auto& prop, auto setter) {
         if (!prop.has_value()) {
             return;
         }
+        using Value = std::decay_t<decltype(read_prop(*prop))>;
         static_cast<void>(connect_prop(scope, *prop,
-            [update_semantics, member](bool value) {
-                update_semantics([member, value](TypographySemantics& semantics) {
-                    semantics.*member = value;
-                });
+            [apply_semantic, setter](Value value) {
+                apply_semantic(setter, value);
             }));
     };
-    connect_semantic(TypographyPropsAccess::strong(props),
-        &TypographySemantics::strong);
-    connect_semantic(TypographyPropsAccess::italic(props),
-        &TypographySemantics::italic);
-    connect_semantic(TypographyPropsAccess::code(props),
-        &TypographySemantics::code);
-    connect_semantic(TypographyPropsAccess::keyboard(props),
-        &TypographySemantics::keyboard);
-    connect_semantic(TypographyPropsAccess::mark(props),
-        &TypographySemantics::mark);
-    connect_semantic(TypographyPropsAccess::underline(props),
-        &TypographySemantics::underline);
-    connect_semantic(TypographyPropsAccess::strikethrough(props),
-        &TypographySemantics::strikethrough);
-    connect_semantic(TypographyPropsAccess::disabled(props),
-        &TypographySemantics::disabled);
-    if (const auto& type = TypographyPropsAccess::type(props); type.has_value()) {
-        static_cast<void>(connect_prop(scope, *type,
-            [update_semantics](TypographyType value) {
-                update_semantics([value](TypographySemantics& semantics) {
-                    semantics.type = value;
-                });
+    const auto always_semantic = [&](const auto& prop, auto setter) {
+        using Value = std::decay_t<decltype(read_prop(prop))>;
+        static_cast<void>(connect_prop(scope, prop,
+            [apply_semantic, setter](Value value) {
+                apply_semantic(setter, value);
             }));
-    }
+    };
+    optional_semantic(TypographyPropsAccess::strong(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.strong = value;
+        });
+    optional_semantic(TypographyPropsAccess::italic(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.italic = value;
+        });
+    optional_semantic(TypographyPropsAccess::code(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.code = value;
+        });
+    optional_semantic(TypographyPropsAccess::keyboard(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.keyboard = value;
+        });
+    optional_semantic(TypographyPropsAccess::mark(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.mark = value;
+        });
+    optional_semantic(TypographyPropsAccess::disabled(props),
+        [](TypographySemantics& semantics, bool value) {
+            semantics.disabled = value;
+        });
+    optional_semantic(TypographyPropsAccess::type(props),
+        [](TypographySemantics& semantics, TypographyType value) {
+            semantics.type = value;
+        });
+    always_semantic(level,
+        [](TypographySemantics& semantics, TypographyLevel value) {
+            semantics.level = value;
+        });
 
     // Apply the initial shape and colour, then keep both in sync with the theme.
     static_cast<void>(host.apply_typography(component, initial_typography));
@@ -1168,12 +1193,14 @@ void Title(TitleProps props) {
 
 void Text(TypographyProps props) {
     detail::mount_typography_component(props,
-        detail::TypographySemantics::Role::body, TypographyLevel::H1);
+        detail::TypographySemantics::Role::body, Prop<TypographyLevel>{
+            TypographyLevel::H1});
 }
 
 void Paragraph(TypographyProps props) {
     detail::mount_typography_component(props,
-        detail::TypographySemantics::Role::paragraph, TypographyLevel::H1);
+        detail::TypographySemantics::Role::paragraph, Prop<TypographyLevel>{
+            TypographyLevel::H1});
 }
 
 } // namespace ryn
