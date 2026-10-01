@@ -321,11 +321,11 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 仍需在实现时定稿的**细节**（不改变上述方向）：省略的退化场景表与计数器精确数值、装饰 quad 的逐行几何取整、Divider 内部布局模型的 measure/place 阶段落点、焦点事务队列的刷新时机。这些应在对应任务的测试里固定。
 
-**未解决的一致性问题（实现前必须处理）：**
+**一致性问题状态：**
 
-1. **Title 改 level 未满足规格。** Typography 规格要求挂载后改 level 保持 identity，但 include/ryn/typography.hpp 把 level 设计为非 Prop，	ext_component.cpp 只在挂载时初始化它。已勾选的 4.1 并未覆盖这条规格；要么把 level 改为响应式 Prop 并接上失效与编辑字体继承，要么修改规格。此项必须在 4.4/4.6 之前定。
-2. **省略退化场景表缺失。** 决策 7 的「rows == 0 只留后缀」与 Typography 规格「保留最小可见内容或显式换行结构、禁止空场景」输出不同，必须写出精确场景表并同步两边。
-3. **strict 证据表述不一致。** 	asks.md 勾选了「全仓 strict 通过」，而本文件记录全仓有 6 个既有 strict 失败、只要求本 change strict 通过。需用实际证据统一，并保留既有失败清单。
+1. ~~`Title` 改 level 未满足规格~~ → **已修复**（提交 92fb975）。`Title::level` 改为响应式 `Prop<TypographyLevel>`，挂载后改级别会重解析标题 token 并保持组件 identity；测试断言组件数、`ComponentId` 与 `NodeId` 均不变、兄弟组件不被重塑。
+2. **省略退化场景表缺失（待处理）。** 决策 7 的「`rows == 0` 只留后缀」与 Typography 规格「保留最小可见内容或显式换行结构、禁止空场景」输出不同，必须在实现 4.4 之前写出精确场景表并同步两边。
+3. ~~strict 证据表述不一致~~ → **已修复**。实测：本 change `openspec validate --strict` 通过；全仓 `--all --strict` 为 28 passed / 6 failed，失败项 013/015/016/017/018/021 均为本 change 之前既存。`tasks.md` 1.2 已改为记录实测结果，不再声称全仓通过。当前 CLI 1.4.1 无 `doctor` 子命令，`AGENTS.md` 最低验证中的该步骤不适用。
 
 ## Validation
 
