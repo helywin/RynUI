@@ -151,9 +151,14 @@ std::size_t RetainedSurfaceService::update_surface(
     validate_visuals(visuals);
     if (visuals.size() != record.range.count) {
         throw std::invalid_argument(
-            "retained surface update changed its visual layer count");
+            "retained surface update changed its visual layer count; use the "
+            "content range API for a variable count");
     }
 
+    // Surface updates run on interaction frames and are covered by allocation
+    // count assertions, so this path stays on the stack; the fixed layer limit
+    // keeps those buffers bounded. Variable counts belong to the content range
+    // API below, which is not on the per-interaction path.
     std::array<graphics::QuadMaterial, retained_surface_visual_capacity> materials;
     std::array<graphics::QuadGeometry, retained_surface_visual_capacity> geometry;
     for (std::size_t index = 0; index < visuals.size(); ++index) {
@@ -171,6 +176,116 @@ std::size_t RetainedSurfaceService::update_surface(
     diagnostics_.material_updates += material_updates;
     diagnostics_.geometry_updates += geometry_updates;
     return material_updates + geometry_updates;
+}
+
+std::uint32_t RetainedSurfaceService::acquire_content_slot() {
+    if (!free_content_slots_.empty()) {
+        const auto index = free_content_slots_.back();
+        free_content_slots_.pop_back();
+        return index;
+    }
+    if (content_slots_.size() >= RetainedSurfaceId::invalid_index) {
+        throw std::length_error(
+            "RetainedSurfaceService exhausted content range indices");
+    }
+    content_slots_.emplace_back();
+    return static_cast<std::uint32_t>(content_slots_.size() - 1);
+}
+
+RetainedSurfaceService::ContentRecord* RetainedSurfaceService::find_content(
+    RetainedSurfaceId id) noexcept {
+    if (!id.valid() || id.index >= content_slots_.size()) {
+        return nullptr;
+    }
+    auto& slot = content_slots_[id.index];
+    if (!slot.record.has_value() || slot.record->id.generation != id.generation) {
+        return nullptr;
+    }
+    return &*slot.record;
+}
+
+RetainedSurfaceService::ContentRecord& RetainedSurfaceService::require_content(
+    RetainedSurfaceId id) {
+    auto* record = find_content(id);
+    if (record == nullptr) {
+        throw std::out_of_range("content range id is stale or unknown");
+    }
+    return *record;
+}
+
+void RetainedSurfaceService::publish_content(ContentRecord& record) {
+    const graphics::SceneDrawCommand fill{
+        graphics::SceneDrawKind::quad,
+        record.range.first,
+        record.range.count,
+        graphics::invalid_glyph_atlas_page,
+    };
+    // The fragment belongs to the caller, so the command list is replaced rather
+    // than merged; the caller keeps sole ownership of that fragment's contents.
+    composer_->set_fragment(record.fragment, std::span{&fill, 1});
+}
+
+std::size_t RetainedSurfaceService::republish_range(
+    graphics::QuadInstanceRange& range,
+    std::span<const graphics::QuadInstance> visuals) {
+    // `replace` reallocates when the count changes, which is exactly what a
+    // reflowed decoration layer needs; the fragment command is refreshed by the
+    // caller with the new range so the renderer reads the relocated instances.
+    const auto replaced = instances_.replace(range, visuals);
+    if (replaced.first != range.first || replaced.count != range.count) {
+        ++diagnostics_.fragment_remaps;
+    }
+    range = replaced;
+    return range.count;
+}
+
+RetainedSurfaceId RetainedSurfaceService::create_content_range(
+    runtime::SceneFragmentId fragment,
+    std::span<const graphics::QuadInstance> visuals) {
+    ensure_owner_thread();
+    validate_content_visuals(visuals);
+    const auto slot_index = acquire_content_slot();
+    auto& slot = content_slots_[slot_index];
+    const RetainedSurfaceId id{slot_index, slot.generation};
+    try {
+        slot.record.emplace(ContentRecord{
+            id, fragment, instances_.append(visuals)});
+        publish_content(*slot.record);
+    } catch (...) {
+        slot.record.reset();
+        try {
+            free_content_slots_.push_back(slot_index);
+        } catch (...) {
+        }
+        throw;
+    }
+    ++live_records_;
+    ++diagnostics_.creates;
+    return id;
+}
+
+std::size_t RetainedSurfaceService::set_content_range(
+    RetainedSurfaceId id,
+    runtime::SceneFragmentId fragment,
+    std::span<const graphics::QuadInstance> visuals) {
+    ensure_owner_thread();
+    auto& record = require_content(id);
+    validate_content_visuals(visuals);
+    record.fragment = fragment;
+    const auto updates = republish_range(record.range, visuals);
+    publish_content(record);
+    return updates;
+}
+
+std::size_t RetainedSurfaceService::update_content_range(
+    RetainedSurfaceId id,
+    std::span<const graphics::QuadInstance> visuals) {
+    ensure_owner_thread();
+    auto& record = require_content(id);
+    validate_content_visuals(visuals);
+    const auto updates = republish_range(record.range, visuals);
+    publish_content(record);
+    return updates;
 }
 
 std::size_t RetainedSurfaceService::update_effects(
@@ -451,6 +566,22 @@ void RetainedSurfaceService::validate_visuals(
         throw std::invalid_argument(
             "retained surface visual layer count is invalid");
     }
+    validate_finite_visuals(visuals);
+}
+
+void RetainedSurfaceService::validate_content_visuals(
+    std::span<const graphics::QuadInstance> visuals) {
+    // A content range may legitimately be empty (a text run with no decoration
+    // after a reflow), and its count is not bounded by the surface layer limit.
+    if (visuals.size() > retained_content_visual_capacity) {
+        throw std::invalid_argument(
+            "retained content visual count is invalid");
+    }
+    validate_finite_visuals(visuals);
+}
+
+void RetainedSurfaceService::validate_finite_visuals(
+    std::span<const graphics::QuadInstance> visuals) {
     for (const auto& visual : visuals) {
         const bool finite_clip = std::ranges::all_of(
             visual.clip_rect, [](float value) { return std::isfinite(value); });

@@ -16,6 +16,10 @@
 namespace ryn::component {
 
 inline constexpr std::size_t retained_surface_visual_capacity = 16;
+// A content range carries a variable number of visuals because decorations are
+// produced per shaped line and therefore change count on reflow. The limit only
+// exists to reject absurd inputs, not to bound a layout.
+inline constexpr std::size_t retained_content_visual_capacity = 4096;
 
 struct RetainedSurfaceEffects final {
     graphics::LogicalRoundedRect shape;
@@ -88,6 +92,21 @@ public:
     [[nodiscard]] std::size_t update_surface(
         RetainedSurfaceId id,
         std::span<const graphics::QuadInstance> visuals);
+    // Content ranges back a caller-owned fragment (a text decoration layer, for
+    // example) with a variable number of quads. `set_content_range` creates or
+    // re-targets the range, `update_content_range` re-publishes it, and both
+    // reallocate the range when the count changes so the owning component can add
+    // or drop decoration quads on reflow.
+    [[nodiscard]] RetainedSurfaceId create_content_range(
+        runtime::SceneFragmentId fragment,
+        std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t set_content_range(
+        RetainedSurfaceId id,
+        runtime::SceneFragmentId fragment,
+        std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t update_content_range(
+        RetainedSurfaceId id,
+        std::span<const graphics::QuadInstance> visuals);
     [[nodiscard]] std::size_t update_effects(
         RetainedSurfaceId id,
         const RetainedSurfaceEffects& effects);
@@ -120,6 +139,19 @@ private:
         graphics::RoundedEffectPrimitive effect_primitive;
     };
 
+    // A content range is owned by a caller-provided fragment instead of a
+    // component record, so it has no effects, no interaction and no node.
+    struct ContentRecord final {
+        RetainedSurfaceId id;
+        runtime::SceneFragmentId fragment;
+        graphics::QuadInstanceRange range;
+    };
+
+    struct ContentSlot final {
+        std::optional<ContentRecord> record;
+        std::uint32_t generation{1};
+    };
+
     struct Slot final {
         std::optional<Record> record;
         std::uint32_t generation{1};
@@ -137,11 +169,22 @@ private:
         std::span<const graphics::QuadInstance> visuals,
         const RetainedSurfaceEffects& effects);
     [[nodiscard]] std::uint32_t acquire_slot();
+    [[nodiscard]] std::uint32_t acquire_content_slot();
+    [[nodiscard]] ContentRecord* find_content(RetainedSurfaceId id) noexcept;
+    [[nodiscard]] ContentRecord& require_content(RetainedSurfaceId id);
+    void publish_content(ContentRecord& record);
+    [[nodiscard]] std::size_t republish_range(
+        graphics::QuadInstanceRange& range,
+        std::span<const graphics::QuadInstance> visuals);
     void bind_fragment(const Record& record);
     void create_effects(Record& record);
     void remove_effects(Record& record) noexcept;
     void ensure_owner_thread() const;
     static void validate_visuals(
+        std::span<const graphics::QuadInstance> visuals);
+    static void validate_content_visuals(
+        std::span<const graphics::QuadInstance> visuals);
+    static void validate_finite_visuals(
         std::span<const graphics::QuadInstance> visuals);
     static void advance_generation(Slot& slot) noexcept;
 
@@ -153,6 +196,8 @@ private:
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::size_t live_records_{0};
+    std::vector<ContentSlot> content_slots_;
+    std::vector<std::uint32_t> free_content_slots_;
     RetainedSurfaceDiagnostics diagnostics_;
 };
 
