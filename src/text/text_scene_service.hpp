@@ -89,6 +89,7 @@ public:
         std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
     bool set_line_height(TextSceneId id, float line_height);
+    bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config);
     void request_reshape(TextSceneId id);
     bool set_width_constraint(TextSceneId id, float width);
     bool set_color(TextSceneId id, std::array<float, 4> color);

@@ -1,8 +1,10 @@
 #include "text/text_engine.hpp"
+#include "input/text_boundary.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -610,6 +612,101 @@ bool TextState::set_opacity(float opacity) {
     return true;
 }
 
+bool TextEngine::has_exact_glyphs(StringView text,
+    std::span<const font::FontIdentity> fallback_chain) const {
+    input::Utf8ScalarIterator scalars(text.bytes());
+    while (const auto scalar = scalars.next()) {
+        if (!fonts_->find_glyph(fallback_chain, scalar->value, std::nullopt)) return false;
+    }
+    return scalars.valid();
+}
+
+bool TextState::set_ellipsis(TextEllipsisConfig config) {
+    if (!std::isfinite(config.reserved_inline) || config.reserved_inline < 0)
+        throw std::invalid_argument("ellipsis reserved width must be finite and non-negative");
+    if (config == ellipsis_) return false;
+    const bool mode_changed = config.rows.has_value() != ellipsis_.rows.has_value();
+    ellipsis_ = std::move(config);
+    if (mode_changed) invalidate_shape(); else invalidate_layout();
+    return true;
+}
+
+bool TextState::synchronize_ellipsis() {
+    ++counters_.measure_count;
+    auto natural = engine_->measure(natural_shaped_, layout_);
+    if (!natural) { last_error_ = std::move(natural.error); return false; }
+    truncated_ = false;
+    suffix_available_ = engine_->has_exact_glyphs(ellipsis_.suffix.view(), fallback_chain_);
+    const auto rows = *ellipsis_.rows;
+    if (!ellipsis_.expanded && (rows == 0 || layout_.max_width <= 0)) {
+        shaped_ = {}; measurement_ = {}; displayed_ = String{};
+        truncated_ = !content_.empty();
+        return true;
+    }
+    if (ellipsis_.expanded || (natural.measurement.lines.size() <= rows
+            && !natural.measurement.overflow
+            && (natural.measurement.lines.empty()
+                || natural.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width))) {
+        shaped_ = natural_shaped_; measurement_ = std::move(natural.measurement);
+        displayed_ = content_;
+        return true;
+    }
+    truncated_ = true;
+    ++counters_.ellipsis_searches;
+    input::TextBoundaryMap boundaries;
+    if (!boundaries.assign(content_.bytes())) throw std::logic_error("validated String lost its UTF-8 boundaries");
+    const auto graphemes = boundaries.grapheme_bytes();
+    // Suffixes are atomic. An absent glyph or a suffix wider than the final
+    // line selects the prefix-only path; replacement glyphs never stand in.
+    bool use_suffix = suffix_available_ && !ellipsis_.suffix.empty();
+    if (use_suffix) {
+        ++counters_.shape_count; ++counters_.ellipsis_shapes;
+        auto suffix = engine_->shape(ellipsis_.suffix.view(), fallback_chain_);
+        ++counters_.measure_count;
+        auto measured = suffix ? engine_->measure(suffix.text, {layout_.line_height,
+            std::numeric_limits<float>::infinity()}) : TextMeasureResult{};
+        use_suffix = suffix && measured && measured.measurement.lines.size() == 1
+            && measured.measurement.width + ellipsis_.reserved_inline <= layout_.max_width;
+    }
+    struct Candidate { String content; ShapedText shaped; TextMeasurement measurement; bool fits{}; };
+    std::map<std::size_t, Candidate> cache;
+    const auto candidate = [&](std::size_t index) -> Candidate& {
+        if (const auto found = cache.find(index); found != cache.end()) return found->second;
+        auto bytes = std::string(content_.bytes().substr(0, graphemes[index]));
+        if (use_suffix) bytes += ellipsis_.suffix.bytes();
+        Candidate value;
+        value.content = std::move(String::from_utf8(bytes)).value();
+        ++counters_.shape_count; ++counters_.ellipsis_shapes;
+        auto shape = engine_->shape(value.content.view(), fallback_chain_);
+        if (!shape) { last_error_ = std::move(shape.error); return cache.emplace(index, std::move(value)).first->second; }
+        value.shaped = std::move(shape.text);
+        ++counters_.measure_count;
+        auto measure = engine_->measure(value.shaped, layout_);
+        if (!measure) { last_error_ = std::move(measure.error); return cache.emplace(index, std::move(value)).first->second; }
+        value.measurement = std::move(measure.measurement);
+        value.fits = value.measurement.lines.size() <= rows && !value.measurement.overflow
+            && (value.measurement.lines.empty()
+                || value.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width);
+        return cache.emplace(index, std::move(value)).first->second;
+    };
+    std::size_t low = 0, high = graphemes.size() - 1;
+    while (low < high) {
+        const auto mid = low + (high - low + 1) / 2;
+        if (candidate(mid).fits) low = mid; else high = mid - 1;
+    }
+    // HarfBuzz does not guarantee monotone prefix widths. Confirm every longer
+    // prefix before accepting the binary-search result; cache avoids repeats.
+    for (auto index = graphemes.size() - 1; index > low; --index) {
+        if (candidate(index).fits) { low = index; break; }
+    }
+    auto& selected = candidate(low);
+    if (last_error_) return false;
+    displayed_ = std::move(selected.content);
+    shaped_ = std::move(selected.shaped);
+    measurement_ = std::move(selected.measurement);
+    return true;
+}
+
 bool TextState::synchronize() {
     // An empty diagnostic contains an MSVC Debug string iterator proxy.
     // Do not recreate that allocation on every successful retained sync.
@@ -622,10 +719,14 @@ bool TextState::synchronize() {
             return false;
         }
         shaped_ = std::move(result.text);
+        if (ellipsis_.rows) natural_shaped_ = shaped_;
         shape_dirty_ = false;
         layout_dirty_ = true;
     }
     if (layout_dirty_) {
+        if (ellipsis_.rows) {
+            if (!synchronize_ellipsis()) return false;
+        } else {
         ++counters_.measure_count;
         TextMeasureResult result = engine_->measure(shaped_, layout_);
         if (!result) {
@@ -633,6 +734,8 @@ bool TextState::synchronize() {
             return false;
         }
         measurement_ = std::move(result.measurement);
+        truncated_ = false;
+        }
         ++counters_.layout_count;
         layout_dirty_ = false;
     }

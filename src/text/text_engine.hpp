@@ -115,6 +115,14 @@ struct TextLayoutConfig {
     friend bool operator==(const TextLayoutConfig&, const TextLayoutConfig&) = default;
 };
 
+struct TextEllipsisConfig final {
+    std::optional<std::size_t> rows;
+    String suffix{u8"…"};
+    bool expanded{};
+    float reserved_inline{};
+    friend bool operator==(const TextEllipsisConfig&, const TextEllipsisConfig&) = default;
+};
+
 struct TextLine {
     std::size_t glyph_begin{};
     std::size_t glyph_count{};
@@ -173,6 +181,8 @@ public:
     [[nodiscard]] TextMeasureResult measure(
         const ShapedText& text,
         TextLayoutConfig config) const;
+    [[nodiscard]] bool has_exact_glyphs(StringView text,
+        std::span<const font::FontIdentity> fallback_chain) const;
 
 private:
     font::FontRuntime* fonts_;
@@ -190,6 +200,8 @@ struct TextStateCounters {
     std::size_t measure_count{};
     std::size_t layout_count{};
     std::size_t material_range_updates{};
+    std::size_t ellipsis_searches{};
+    std::size_t ellipsis_shapes{};
 };
 
 class TextState final {
@@ -210,6 +222,7 @@ public:
     bool set_width_constraint(float max_width, bool request_frame = true);
     bool set_color(std::array<float, 4> color);
     bool set_opacity(float opacity);
+    bool set_ellipsis(TextEllipsisConfig config);
 
     [[nodiscard]] bool synchronize();
     [[nodiscard]] const ShapedText& shaped() const noexcept;
@@ -217,6 +230,12 @@ public:
     [[nodiscard]] const TextMaterial& material() const noexcept;
     [[nodiscard]] const TextStateCounters& counters() const noexcept;
     [[nodiscard]] StringView content() const noexcept { return content_.view(); }
+    [[nodiscard]] StringView display_content() const noexcept {
+        return ellipsis_.rows ? displayed_.view() : content_.view();
+    }
+    [[nodiscard]] bool truncated() const noexcept { return truncated_; }
+    [[nodiscard]] bool suffix_available() const noexcept { return suffix_available_; }
+    [[nodiscard]] const TextEllipsisConfig& ellipsis() const noexcept { return ellipsis_; }
     [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
     [[nodiscard]] const TextError& last_error() const noexcept;
 
@@ -224,6 +243,7 @@ private:
     void invalidate_shape();
     void invalidate_layout(bool request_frame = true);
     void request_frame();
+    bool synchronize_ellipsis();
 
     TextEngine* engine_;
     String content_;
@@ -233,6 +253,11 @@ private:
     TextMaterial material_;
     std::function<void()> request_frame_callback_;
     ShapedText shaped_;
+    ShapedText natural_shaped_;
+    TextEllipsisConfig ellipsis_;
+    String displayed_;
+    bool truncated_{};
+    bool suffix_available_{true};
     TextMeasurement measurement_;
     TextStateCounters counters_;
     std::uint64_t revision_{1};

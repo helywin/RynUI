@@ -54,6 +54,7 @@ struct IconPropsAccess final {
 // host. Keeping them separate from `TextTone` lets the theme subscription
 // resolve the semantic colour without a second colour path.
 struct TypographyPropsAccess final {
+    static const std::optional<Prop<TypographyEllipsis>>& ellipsis(const TypographyProps& props) { return props.ellipsis_; }
     [[nodiscard]] static const Prop<String>& content(
         const TypographyProps& props) noexcept {
         return props.content_;
@@ -1205,6 +1206,18 @@ void mount_typography_component(
     auto& scope = build.scope(component);
     // Content and layout first, then the initial theme application, so the first
     // frame already carries the semantic colour and the resolved face.
+    if (const auto& ellipsis = TypographyPropsAccess::ellipsis(props)) {
+        static_cast<void>(connect_prop(scope, *ellipsis,
+            [&host, component, scene, node](TypographyEllipsis config) {
+                if (!host.text_scene_->set_ellipsis(scene, {config.rows, config.suffix,
+                        config.expanded, 0})) return;
+                const auto* state = host.components_.state<TextComponentState>(component);
+                static_cast<void>(host.layout_->set_intrinsic_revision(node,
+                    intrinsic_revision(host.text_scene_->revisions(scene)) + state->metric_revision));
+                host.dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
+                    | runtime::DirtyFlags::Geometry);
+            }));
+    }
     static_cast<void>(connect_prop(
         scope,
         TypographyPropsAccess::content(props),

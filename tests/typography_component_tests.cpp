@@ -1,5 +1,6 @@
 #include "component/text_component.hpp"
 #include "runtime/invalidation.hpp"
+#include "input/text_boundary.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -575,6 +576,82 @@ void test_decoration_geometry_at_display_scales() {
     }
 }
 
+void test_ellipsis_longest_grapheme_prefix_and_cache() {
+    Fixture fixture;
+    fixture.enable_surfaces();
+    const ryn::String full{u8"e\u0301 hello 中文 world e\u0301 again"};
+    ryn::Signal<ryn::TypographyEllipsis> config{ryn::TypographyEllipsis{}};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Text(ryn::TypographyProps{}.content(full).ellipsis(config));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Stable sibling"));
+    }});
+    const auto component = fixture.host->mounted_texts()[0].component;
+    std::string previous;
+    for (const float width : {40.0F, 75.0F, 120.0F, 75.0F, 40.0F}) {
+        require(fixture.host->layout_and_synchronize({width, 360}, {0, 0, width, 360}),
+            "ellipsis layout failed");
+        const auto& state = fixture.text_state(0);
+        require(state.truncated() && state.content() == full.view()
+            && state.measurement().lines.size() == 1 && state.measurement().width <= width,
+            "ellipsis did not retain the original or overflowed its row");
+        ryn::input::TextBoundaryMap boundaries;
+        require(boundaries.assign(full.bytes()), "oracle boundaries failed");
+        std::string expected;
+        for (const auto boundary : boundaries.grapheme_bytes()) {
+            const auto candidate = std::string(full.bytes().substr(0, boundary)) + "\xe2\x80\xa6";
+            const auto value = std::move(ryn::String::from_utf8(candidate)).value();
+            const auto shaped = fixture.engine.shape(value.view(), fixture.chain);
+            require(static_cast<bool>(shaped), "oracle shape failed");
+            const auto measured = fixture.engine.measure(shaped.text, {22, width});
+            if (measured && !measured.measurement.overflow && measured.measurement.lines.size() == 1)
+                expected = candidate;
+        }
+        require(state.display_content().bytes() == expected, "ellipsis did not choose the longest whole grapheme prefix");
+        const auto counters = state.counters();
+        require(fixture.text_state(0).synchronize()
+            && fixture.text_state(0).counters().shape_count == counters.shape_count
+            && fixture.text_state(0).counters().measure_count == counters.measure_count,
+            "repeated same-width ellipsis query reshaped or measured");
+        require(fixture.host->mounted_texts()[0].component == component
+            && fixture.scene.size() == 2, "candidate search polluted retained text scenes or remounted");
+    }
+    auto expanded = ryn::TypographyEllipsis{};
+    expanded.expanded = true;
+    require(config.set(expanded) && fixture.layout_texts(40)
+        && fixture.text_state(0).display_content() == full.view()
+        && !fixture.text_state(0).truncated(), "expanded ellipsis did not restore the full content");
+    expanded.expanded = false;
+    require(config.set(expanded) && fixture.layout_texts(40)
+        && fixture.text_state(0).truncated(), "ellipsis collapse failed");
+}
+
+void test_ellipsis_degenerate_rows_suffix_and_explicit_newlines() {
+    Fixture fixture;
+    ryn::text::TextState state(fixture.engine, ryn::String{u8"First\nSecond\nThird"},
+        fixture.chain, 14, {22, 100});
+    require(state.set_ellipsis({2}) && state.synchronize()
+        && state.measurement().lines.size() == 2
+        && state.display_content().bytes().find('\n') != std::string_view::npos,
+        "multiline ellipsis collapsed explicit newlines");
+    require(state.set_ellipsis({0}) && state.synchronize()
+        && state.display_content().empty() && state.measurement().lines.empty(),
+        "rows zero produced a suffix or line boxes");
+    require(state.set_ellipsis({1}) && state.set_width_constraint(1)
+        && state.synchronize() && state.display_content().empty()
+        && state.measurement().lines.size() == 1 && state.measurement().height == 22,
+        "unfittable grapheme did not preserve an empty line box");
+    require(state.set_width_constraint(0) && state.synchronize()
+        && state.measurement().lines.empty(), "zero width produced line boxes");
+    const ryn::String missing{u8"\U0010ffff"};
+    require(state.set_ellipsis({1, missing}) && state.set_width_constraint(60)
+        && state.synchronize() && !state.suffix_available()
+        && state.display_content().bytes().find(missing.bytes()) == std::string_view::npos,
+        "missing suffix was rendered as a replacement glyph");
+    require(state.set_ellipsis({std::nullopt}) && state.synchronize()
+        && state.display_content() == state.content() && state.measurement().lines.size() >= 3,
+        "unlimited rows did not restore original content");
+}
+
 } // namespace
 
 int main() {
@@ -591,6 +668,8 @@ int main() {
         test_multiline_decoration_ranges_translation_and_clip();
         test_disabled_secondary_uses_component_color_and_subscription();
         test_decoration_geometry_at_display_scales();
+        test_ellipsis_longest_grapheme_prefix_and_cache();
+        test_ellipsis_degenerate_rows_suffix_and_explicit_newlines();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

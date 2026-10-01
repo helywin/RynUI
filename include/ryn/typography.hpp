@@ -39,6 +39,17 @@ enum class TypographyInline : std::uint8_t {
     Strikethrough,
 };
 
+struct TypographyEllipsis final {
+    std::optional<std::size_t> rows{1};
+    String suffix{u8"…"};
+    bool expandable{};
+    bool expanded{};
+    std::optional<String> tooltip;
+    String expand_text{u8"展开"};
+    String collapse_text{u8"收起"};
+    friend bool operator==(const TypographyEllipsis&, const TypographyEllipsis&) = default;
+};
+
 // Typography props shared by `Title`, `Text` and `Paragraph`. `type` selects a
 // semantic colour, `strong`/`italic` select real faces from the font chain, and
 // decoration flags control retained background and foreground layers.
@@ -99,6 +110,10 @@ public:
         return *this;
     }
 
+    TypographyProps& ellipsis(Prop<TypographyEllipsis> value) {
+        ellipsis_ = std::move(value); return *this;
+    }
+
     TypographyProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -117,6 +132,7 @@ private:
     std::optional<Prop<bool>> italic_;
     std::optional<Prop<bool>> underline_;
     std::optional<Prop<bool>> strikethrough_;
+    std::optional<Prop<TypographyEllipsis>> ellipsis_;
     LayoutStyle layout_;
 };
 
@@ -152,6 +168,7 @@ public:
     TitleProps& code(Prop<bool> value) { typography_.code(std::move(value)); return *this; }
     TitleProps& keyboard(Prop<bool> value) { typography_.keyboard(std::move(value)); return *this; }
     TitleProps& mark(Prop<bool> value) { typography_.mark(std::move(value)); return *this; }
+    TitleProps& ellipsis(Prop<TypographyEllipsis> value) { typography_.ellipsis(std::move(value)); return *this; }
 
     TitleProps& strong(Prop<bool> value) {
         typography_.strong(std::move(value));
