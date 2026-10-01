@@ -380,6 +380,47 @@ void test_non_interactive_surface_range_and_generation_reuse() {
             "non-interactive surface slot reuse did not reject its stale generation");
 }
 
+void test_content_reflow_remaps_shared_surfaces_and_cleans_up() {
+    Fixture fixture;
+    const auto content = fixture.buttons.create_content_range(fixture.fragments[0], {});
+    const auto surface = fixture.buttons.create_surface(fixture.component_ids[1],
+        fixture.components.root(fixture.component_ids[1]), fixture.fragments[1],
+        surface_visuals(0.25F));
+    require(content != surface, "content range aliases a surface identity");
+    std::vector<ryn::graphics::QuadInstance> lines(40, surface_visuals(0.5F)[0]);
+    static_cast<void>(fixture.buttons.update_content_range(content, lines));
+    const auto tail = fixture.buttons.create_content_range(fixture.fragments[2], lines);
+    lines.resize(20);
+    static_cast<void>(fixture.buttons.update_content_range(content, lines));
+    require(fixture.buttons.visual_range(tail).first == 24
+        && fixture.buttons.instances().at(fixture.buttons.visual_range(surface).first)
+            == surface_visuals(0.25F)[0], "content shrink did not remap shared ranges");
+    fixture.buttons.instances().clear_dirty_ranges();
+    lines[0].color = {1, 0, 0, 1};
+    require(fixture.buttons.update_content_range(content, lines) == 1
+        && fixture.buttons.instances().geometry_dirty_ranges().empty(),
+        "content color update invalidated geometry");
+    fixture.buttons.instances().clear_dirty_ranges();
+    require(fixture.buttons.update_content_range(content, lines) == 0
+        && fixture.buttons.instances().material_dirty_ranges().empty(),
+        "identical content update dirtied its range");
+    require(fixture.buttons.destroy(surface)
+        && fixture.buttons.visual_range(content).first == 0
+        && fixture.buttons.visual_range(tail).first == 20,
+        "surface removal did not remap following content ranges");
+    require(fixture.buttons.destroy_content_range(content)
+        && fixture.buttons.visual_range(tail).first == 0
+        && !fixture.buttons.destroy_content_range(content),
+        "content destroy did not compact or reject stale identity");
+    const auto reused = fixture.buttons.create_content_range(fixture.fragments[0], {});
+    require(reused.index == content.index && reused.generation != content.generation,
+        "content slot reuse did not advance generation");
+    require(fixture.buttons.destroy_content_range(tail)
+        && fixture.buttons.destroy_content_range(reused)
+        && fixture.buttons.size() == 0 && fixture.buttons.instances().size() == 0,
+        "content range teardown leaked shared instances");
+}
+
 } // namespace
 
 int main() {
@@ -387,6 +428,7 @@ int main() {
         test_fixed_ranges_compaction_and_shared_hit_order();
         test_gpu_capacity_sparse_upload_and_failure_retention();
         test_non_interactive_surface_range_and_generation_reuse();
+        test_content_reflow_remaps_shared_surfaces_and_cleans_up();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -114,16 +114,7 @@ bool RetainedSurfaceService::destroy(RetainedSurfaceId id) {
     static_cast<void>(instances_.replace(removed, {}));
     remove_effects(*record);
 
-    for (auto& candidate_slot : slots_) {
-        if (!candidate_slot.record.has_value()
-                || candidate_slot.record->id == id
-                || candidate_slot.record->range.first <= removed.first) {
-            continue;
-        }
-        candidate_slot.record->range.first -= removed.count;
-        bind_fragment(*candidate_slot.record);
-        ++diagnostics_.fragment_remaps;
-    }
+    remap_after_replace(removed, 0, &record->range);
 
     auto& slot = slots_[id.index];
     slot.record.reset();
@@ -194,11 +185,12 @@ std::uint32_t RetainedSurfaceService::acquire_content_slot() {
 
 RetainedSurfaceService::ContentRecord* RetainedSurfaceService::find_content(
     RetainedSurfaceId id) noexcept {
-    if (!id.valid() || id.index >= content_slots_.size()) {
+    if (!id.valid() || !id.content_range || id.index >= content_slots_.size()) {
         return nullptr;
     }
     auto& slot = content_slots_[id.index];
-    if (!slot.record.has_value() || slot.record->id.generation != id.generation) {
+    if (!slot.record.has_value() || slot.record->id.generation != id.generation
+            || !components_->contains(slot.record->fragment)) {
         return nullptr;
     }
     return &*slot.record;
@@ -228,13 +220,29 @@ void RetainedSurfaceService::publish_content(ContentRecord& record) {
 std::size_t RetainedSurfaceService::republish_range(
     graphics::QuadInstanceRange& range,
     std::span<const graphics::QuadInstance> visuals) {
-    // `replace` reallocates when the count changes, which is exactly what a
-    // reflowed decoration layer needs; the fragment command is refreshed by the
-    // caller with the new range so the renderer reads the relocated instances.
-    const auto replaced = instances_.replace(range, visuals);
-    if (replaced.first != range.first || replaced.count != range.count) {
-        ++diagnostics_.fragment_remaps;
+    if (range.count == visuals.size()) {
+        std::size_t updates = 0;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto& visual = visuals[index];
+            const graphics::QuadMaterial material{visual.color, visual.opacity};
+            const graphics::QuadGeometry geometry{visual.clip_rect,
+                visual.corner_radius, visual.translation};
+            const graphics::QuadInstanceRange single{range.first + index, 1};
+            const auto material_updates = instances_.update_material(single, {&material, 1});
+            const auto geometry_updates = instances_.update_geometry(single, {&geometry, 1});
+            diagnostics_.material_updates += material_updates;
+            diagnostics_.geometry_updates += geometry_updates;
+            updates += material_updates + geometry_updates;
+        }
+        return updates;
     }
+    // Empty ranges have no storage position. Insert them at the tail to avoid
+    // ambiguous ownership when several empty layers share the same index.
+    if (range.count == 0) range.first = static_cast<std::uint32_t>(instances_.size());
+    const auto old = range;
+    const auto replaced = instances_.replace(range, visuals);
+    remap_after_replace(old, replaced.count, &range);
+    ++diagnostics_.fragment_remaps;
     range = replaced;
     return range.count;
 }
@@ -246,12 +254,17 @@ RetainedSurfaceId RetainedSurfaceService::create_content_range(
     validate_content_visuals(visuals);
     const auto slot_index = acquire_content_slot();
     auto& slot = content_slots_[slot_index];
-    const RetainedSurfaceId id{slot_index, slot.generation};
+    const RetainedSurfaceId id{slot_index, slot.generation, true};
     try {
         slot.record.emplace(ContentRecord{
             id, fragment, instances_.append(visuals)});
         publish_content(*slot.record);
     } catch (...) {
+        if (slot.record) {
+            const auto removed = slot.record->range;
+            static_cast<void>(instances_.replace(removed, {}));
+            remap_after_replace(removed, 0, &slot.record->range);
+        }
         slot.record.reset();
         try {
             free_content_slots_.push_back(slot_index);
@@ -262,6 +275,46 @@ RetainedSurfaceId RetainedSurfaceService::create_content_range(
     ++live_records_;
     ++diagnostics_.creates;
     return id;
+}
+
+void RetainedSurfaceService::remap_after_replace(
+    graphics::QuadInstanceRange old_range, std::uint32_t new_count,
+    const graphics::QuadInstanceRange* owner) {
+    const auto end = old_range.first + old_range.count;
+    const auto shift = static_cast<std::int64_t>(new_count) - old_range.count;
+    if (shift == 0) return;
+    for (auto& slot : slots_) {
+        if (!slot.record || &slot.record->range == owner
+                || slot.record->range.first < end) continue;
+        slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
+        bind_fragment(*slot.record);
+        ++diagnostics_.fragment_remaps;
+    }
+    for (auto& slot : content_slots_) {
+        if (!slot.record || &slot.record->range == owner
+                || slot.record->range.first < end) continue;
+        slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
+        publish_content(*slot.record);
+        ++diagnostics_.fragment_remaps;
+    }
+}
+
+bool RetainedSurfaceService::destroy_content_range(RetainedSurfaceId id) {
+    ensure_owner_thread();
+    // Cleanup is also valid after ComponentHost has removed the fragment.
+    if (!id.valid() || !id.content_range || id.index >= content_slots_.size()) return false;
+    auto& slot = content_slots_[id.index];
+    if (!slot.record || slot.generation != id.generation) return false;
+    const auto removed = slot.record->range;
+    static_cast<void>(composer_->remove_fragment(slot.record->fragment));
+    static_cast<void>(instances_.replace(removed, {}));
+    remap_after_replace(removed, 0, &slot.record->range);
+    slot.record.reset();
+    if (++slot.generation == 0) slot.generation = 1;
+    free_content_slots_.push_back(id.index);
+    --live_records_;
+    ++diagnostics_.destroys;
+    return true;
 }
 
 std::size_t RetainedSurfaceService::set_content_range(
@@ -381,6 +434,14 @@ void RetainedSurfaceService::synchronize_gpu(
 graphics::QuadInstanceRange RetainedSurfaceService::visual_range(
     RetainedSurfaceId id) const {
     ensure_owner_thread();
+    if (id.content_range) {
+        if (!id.valid() || id.index >= content_slots_.size())
+            throw std::out_of_range("content range id is stale or unknown");
+        const auto& slot = content_slots_[id.index];
+        if (!slot.record || slot.generation != id.generation)
+            throw std::out_of_range("content range id is stale or unknown");
+        return slot.record->range;
+    }
     return require(id).range;
 }
 
@@ -425,7 +486,7 @@ RetainedSurfaceService::diagnostics() const noexcept {
 
 RetainedSurfaceService::Record* RetainedSurfaceService::find(
     RetainedSurfaceId id) noexcept {
-    if (!id.valid() || id.index >= slots_.size()) {
+    if (!id.valid() || id.content_range || id.index >= slots_.size()) {
         return nullptr;
     }
     auto& slot = slots_[id.index];
@@ -442,7 +503,7 @@ RetainedSurfaceService::Record* RetainedSurfaceService::find(
 
 const RetainedSurfaceService::Record* RetainedSurfaceService::find(
     RetainedSurfaceId id) const noexcept {
-    if (!id.valid() || id.index >= slots_.size()) {
+    if (!id.valid() || id.content_range || id.index >= slots_.size()) {
         return nullptr;
     }
     const auto& slot = slots_[id.index];

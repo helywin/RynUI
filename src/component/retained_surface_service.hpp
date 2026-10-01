@@ -42,6 +42,7 @@ struct RetainedSurfaceId final {
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
+    bool content_range{};
 
     [[nodiscard]] constexpr bool valid() const noexcept {
         return index != invalid_index && generation != 0;
@@ -107,6 +108,7 @@ public:
     [[nodiscard]] std::size_t update_content_range(
         RetainedSurfaceId id,
         std::span<const graphics::QuadInstance> visuals);
+    bool destroy_content_range(RetainedSurfaceId id);
     [[nodiscard]] std::size_t update_effects(
         RetainedSurfaceId id,
         const RetainedSurfaceEffects& effects);
@@ -173,6 +175,8 @@ private:
     [[nodiscard]] ContentRecord* find_content(RetainedSurfaceId id) noexcept;
     [[nodiscard]] ContentRecord& require_content(RetainedSurfaceId id);
     void publish_content(ContentRecord& record);
+    void remap_after_replace(graphics::QuadInstanceRange old_range,
+        std::uint32_t new_count, const graphics::QuadInstanceRange* owner);
     [[nodiscard]] std::size_t republish_range(
         graphics::QuadInstanceRange& range,
         std::span<const graphics::QuadInstance> visuals);
