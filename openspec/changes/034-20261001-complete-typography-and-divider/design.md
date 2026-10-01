@@ -55,10 +55,12 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 
 评审确认：默认 resolver 忽略 weight，Windows 初选固定 NORMAL weight/style，`SemanticTypography` 与 `ThemeFontResolver` 都没有 slant。因此仅增加 `(font_family, pixel_size)` 缓存**不会**让 `strong`/`italic` 生效。决定：
 
-- `ThemeFontResolver` 签名扩展为携带 weight 与 slant，缓存键为 `(font_family, font_weight, italic, pixel_size)`。
-- 平台解析按 weight/slant 选择真实 face：Windows 走 DirectWrite 的 weight/style 请求，Linux 走 Fontconfig 的 weight/slant 匹配；取不到对应 face 时回退常规 face并在诊断中记录，不静默假设已生效。
+- `ThemeFontResolver` 签名扩展为 `(family, weight, italic, pixel_size)`，`runtime::SemanticTypography` 增加 `italic`，缓存键为四元组并按需惰性解析（不预载 weight×slant 矩阵）。
+- 平台解析统一为 `platform_styled_descriptor(family, weight, italic)`。Windows 枚举 family 的字体列表并按 weight/style 距离选取：**实施时核实 `GetFirstMatchingFont`（含按 weight 请求）对可变字体（Segoe UI Variable）会对每个 weight 返回同一文件**，因此按原设计直接请求 weight 会让 bold 静默复用常规 face。Linux 通过 Fontconfig 的 `FC_WEIGHT`/`FC_SLANT` 匹配并回传真实 style 供调用方判定。
+- 取不到对应 face 时回退常规 face，并把精确原因写入 `DefaultFontChainResult::diagnostic_fallbacks`；styled face 只 FRONT 在常规链之前，等宽链仍追加 UI 链，保证覆盖不下降。
 - `strong` 使用 `alias.fontWeightStrong`（600）；`italic` 请求 italic face。
 - `code`/`keyboard` 使用 `TypographyThemeToken::font_family_code`，并在 `ThemeScope` 新增独立的 `code_font_family()` accessor；**不得**复用 `text_font_family()`（它只返回 Text 字族）。
+- 已知边界：Windows 的 `latin_families`/`monospace_families` 是具名族优先列表，只有这些具名族按 weight/slant 请求；Linux 的 `sans-serif`/`monospace` 是 Fontconfig 别名、无法枚举，故交由 `FC_WEIGHT`/`FC_SLANT` 匹配。两平台的实测结果必须各自记录，不得互相代替。
 
 ### 6. 等宽字族走参数化字体链
 
