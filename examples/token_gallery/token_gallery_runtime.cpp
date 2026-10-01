@@ -1087,9 +1087,6 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 : "RynUI Ant Design Token Gallery";
         platform_config.width = static_cast<int>(requested_window.width);
         platform_config.height = static_cast<int>(requested_window.height);
-#if !defined(NDEBUG)
-        platform_config.gpu_debug = true;
-#endif
         auto platform_result = ryn::detail::PlatformState::create(platform_config);
         if (!platform_result) {
             std::cerr << "platform_error=" << platform_result.error->message << '\n';
@@ -2129,7 +2126,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         return 6;
                     }
                     std::cout << "snapshot=" << snapshot_path->string()
-                        << " gpu_driver=" << platform.gpu_driver()
+                        << " gpu_driver=" << renderer.gpu_driver()
                         << " display_scale=" << render_scale
                         << " theme=" << (snapshot_dark ? "dark" : "light")
                         << " navigation=" << (snapshot_navigation_hover ? "hover"
@@ -2304,7 +2301,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
 
         std::cout
             << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH
-            << " gpu_driver=" << platform.gpu_driver()
+            << " gpu_driver=" << renderer.gpu_driver()
             << " shader_format=" << renderer.shader_format()
             << " display_scale=" << render_scale
             << " host_display_scale=" << platform.display_scale()

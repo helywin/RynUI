@@ -109,12 +109,7 @@ struct FakeApi final : PlatformApi {
     void quit() noexcept override {}
     PlatformWindowHandle create_window(const char*, int, int, bool) override { return &token; }
     void destroy_window(PlatformWindowHandle) noexcept override {}
-    PlatformGpuDeviceHandle create_gpu_device(bool) override { return &token; }
-    void destroy_gpu_device(PlatformGpuDeviceHandle) noexcept override {}
-    bool claim_window(PlatformGpuDeviceHandle, PlatformWindowHandle) override { return true; }
-    void release_window(PlatformGpuDeviceHandle, PlatformWindowHandle) noexcept override {}
     const char* last_error() const noexcept override { return "injected platform error"; }
-    const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override { return "fake"; }
     PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override { return {800, 600}; }
     void delay(std::uint32_t) noexcept override {}
     std::uint32_t window_id(PlatformWindowHandle) const noexcept override { return 7; }

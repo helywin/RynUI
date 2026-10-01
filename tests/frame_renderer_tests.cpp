@@ -12,7 +12,7 @@ namespace {
 
 using namespace ryn::detail;
 
-class FakePlatformApi final : public PlatformApi {
+class FakePlatformApi final : public PlatformApi, public GpuBindingApi {
 public:
     bool init_video() override { return true; }
     void quit() noexcept override {}
@@ -20,12 +20,12 @@ public:
         return &window_;
     }
     void destroy_window(PlatformWindowHandle) noexcept override {}
-    PlatformGpuDeviceHandle create_gpu_device(bool) override { return &device_; }
-    void destroy_gpu_device(PlatformGpuDeviceHandle) noexcept override {}
-    bool claim_window(PlatformGpuDeviceHandle, PlatformWindowHandle) override { return true; }
-    void release_window(PlatformGpuDeviceHandle, PlatformWindowHandle) noexcept override {}
+    GpuDeviceHandle create_gpu_device(bool) override { return &device_; }
+    void destroy_gpu_device(GpuDeviceHandle) noexcept override {}
+    bool claim_window(GpuDeviceHandle, PlatformWindowHandle) override { return true; }
+    void release_window(GpuDeviceHandle, PlatformWindowHandle) noexcept override {}
     [[nodiscard]] const char* last_error() const noexcept override { return "platform error"; }
-    [[nodiscard]] const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override {
+    [[nodiscard]] const char* gpu_driver(GpuDeviceHandle) const noexcept override {
         return "fake-gpu";
     }
     [[nodiscard]] PlatformWindowMetrics window_metrics(
@@ -50,7 +50,7 @@ public:
 
     explicit FakeGpuFrameApi(Mode mode) : mode_(mode) {}
 
-    GpuCommandBufferHandle acquire_command_buffer(PlatformGpuDeviceHandle) override {
+    GpuCommandBufferHandle acquire_command_buffer(GpuDeviceHandle) override {
         calls.emplace_back("acquire_command_buffer");
         return mode_ == Mode::command_failure ? nullptr : &command_buffer_;
     }
@@ -128,7 +128,8 @@ void test_submitted_frame() {
     FakePlatformApi platform_api;
     auto platform = create_platform(platform_api);
     FakeGpuFrameApi frame_api(FakeGpuFrameApi::Mode::submitted);
-    FrameRenderer renderer(*platform, frame_api);
+    SdlGpuBinding binding(*platform, platform_api);
+    FrameRenderer renderer(binding, frame_api);
 
     const auto result = renderer.clear_and_present();
     require(result.status == FrameStatus::submitted, "frame was not submitted");
@@ -151,7 +152,8 @@ void test_minimized_frame_submits_without_render_pass() {
     FakePlatformApi platform_api;
     auto platform = create_platform(platform_api);
     FakeGpuFrameApi frame_api(FakeGpuFrameApi::Mode::minimized);
-    FrameRenderer renderer(*platform, frame_api);
+    SdlGpuBinding binding(*platform, platform_api);
+    FrameRenderer renderer(binding, frame_api);
 
     const auto result = renderer.clear_and_present();
     require(
@@ -169,7 +171,8 @@ void test_pre_swapchain_failure_cancels_command_buffer() {
     FakePlatformApi platform_api;
     auto platform = create_platform(platform_api);
     FakeGpuFrameApi frame_api(FakeGpuFrameApi::Mode::swapchain_failure);
-    FrameRenderer renderer(*platform, frame_api);
+    SdlGpuBinding binding(*platform, platform_api);
+    FrameRenderer renderer(binding, frame_api);
 
     const auto result = renderer.clear_and_present();
     require(result.status == FrameStatus::failed, "swapchain failure unexpectedly succeeded");
@@ -184,7 +187,8 @@ void test_owner_thread_guard() {
     FakePlatformApi platform_api;
     auto platform = create_platform(platform_api);
     FakeGpuFrameApi frame_api(FakeGpuFrameApi::Mode::submitted);
-    FrameRenderer renderer(*platform, frame_api);
+    SdlGpuBinding binding(*platform, platform_api);
+    FrameRenderer renderer(binding, frame_api);
     FrameResult result;
 
     std::thread worker([&] { result = renderer.clear_and_present(); });

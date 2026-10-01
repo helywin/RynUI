@@ -253,9 +253,6 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         platform_config.title = "RynUI Public Flex and Space DSL";
         platform_config.width = static_cast<int>(requested_window.width);
         platform_config.height = static_cast<int>(requested_window.height);
-#if !defined(NDEBUG)
-        platform_config.gpu_debug = true;
-#endif
         auto platform_result = ryn::detail::PlatformState::create(platform_config);
         if (!platform_result) {
             std::cerr << "platform_error=" << platform_result.error->message << '\n';
@@ -362,7 +359,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         const auto loop_counters = loop.counters();
         const auto window_metrics = platform.window_metrics();
         std::cout
-            << "gpu_driver=" << platform.gpu_driver()
+            << "gpu_driver=" << renderer.gpu_driver()
             << " shader_format=" << renderer.shader_format()
             << " display_scale=" << platform.display_scale()
             << " pixel_density=" << window_metrics.pixel_density

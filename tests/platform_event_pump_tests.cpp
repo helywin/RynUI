@@ -109,7 +109,6 @@ namespace {
 using ryn::detail::PlatformApi;
 using ryn::detail::PlatformConfig;
 using ryn::detail::PlatformEvents;
-using ryn::detail::PlatformGpuDeviceHandle;
 using ryn::detail::PlatformState;
 using ryn::detail::PlatformWindowHandle;
 using ryn::detail::PlatformWindowMetrics;
@@ -136,21 +135,10 @@ public:
 
     void destroy_window(PlatformWindowHandle) noexcept override {}
 
-    PlatformGpuDeviceHandle create_gpu_device(bool) override {
-        return &device_token_;
-    }
 
-    void destroy_gpu_device(PlatformGpuDeviceHandle) noexcept override {}
 
-    bool claim_window(PlatformGpuDeviceHandle, PlatformWindowHandle) override {
-        return true;
-    }
 
-    void release_window(PlatformGpuDeviceHandle, PlatformWindowHandle) noexcept override {}
     [[nodiscard]] const char* last_error() const noexcept override { return ""; }
-    [[nodiscard]] const char* gpu_driver(PlatformGpuDeviceHandle) const noexcept override {
-        return "fake";
-    }
     [[nodiscard]] PlatformWindowMetrics window_metrics(
         PlatformWindowHandle) const noexcept override {
         return {960, 640, 960, 640, 1.0F, 1.0F};

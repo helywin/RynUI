@@ -10,7 +10,7 @@ namespace {
 class SdlGpuFrameApi final : public GpuFrameApi {
 public:
     GpuCommandBufferHandle acquire_command_buffer(
-        PlatformGpuDeviceHandle device) override {
+        GpuDeviceHandle device) override {
         return SDL_AcquireGPUCommandBuffer(static_cast<SDL_GPUDevice*>(device));
     }
 
@@ -78,11 +78,11 @@ std::string copy_error(GpuFrameApi& api, const char* fallback) {
 
 } // namespace
 
-FrameRenderer::FrameRenderer(PlatformState& platform)
-    : FrameRenderer(platform, real_gpu_frame_api()) {}
+FrameRenderer::FrameRenderer(SdlGpuBinding& binding)
+    : FrameRenderer(binding, real_gpu_frame_api()) {}
 
-FrameRenderer::FrameRenderer(PlatformState& platform, GpuFrameApi& api) noexcept
-    : platform_(&platform), api_(&api) {}
+FrameRenderer::FrameRenderer(SdlGpuBinding& binding, GpuFrameApi& api) noexcept
+    : platform_(&binding.host()), binding_(&binding), api_(&api) {}
 
 FrameResult FrameRenderer::clear_and_present(ClearColor color) {
     if (!platform_->is_owner_thread()) {
@@ -92,7 +92,7 @@ FrameResult FrameRenderer::clear_and_present(ClearColor color) {
         };
     }
 
-    const auto command_buffer = api_->acquire_command_buffer(platform_->gpu_device());
+    const auto command_buffer = api_->acquire_command_buffer(binding_->device());
     if (command_buffer == nullptr) {
         return FrameResult{
             FrameStatus::failed,

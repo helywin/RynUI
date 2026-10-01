@@ -33,10 +33,6 @@ const char* stage_name(ryn::detail::PlatformStage stage) {
         return "sdl_init";
     case PlatformStage::window:
         return "window";
-    case PlatformStage::gpu_device:
-        return "gpu_device";
-    case PlatformStage::window_claim:
-        return "window_claim";
     }
     return "unknown";
 }
@@ -135,9 +131,6 @@ int main(int argc, char** argv) {
         config.title = "RynUI Reactive Quad";
         config.width = static_cast<int>(requested_window.width);
         config.height = static_cast<int>(requested_window.height);
-#if !defined(NDEBUG)
-        config.gpu_debug = true;
-#endif
 
         auto created = ryn::detail::PlatformState::create(config);
         if (!created) {
@@ -281,7 +274,7 @@ int main(int argc, char** argv) {
         const auto& loop_counters = frame_loop.counters();
         const auto window_metrics = platform.window_metrics();
         std::cout
-            << "gpu_driver=" << platform.gpu_driver()
+            << "gpu_driver=" << renderer.gpu_driver()
             << " shader_format=" << renderer.shader_format()
             << " display_scale=" << window_metrics.display_scale
             << " pixel_density=" << window_metrics.pixel_density

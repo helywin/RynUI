@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/sdl/platform_state.hpp"
+#include "renderer/sdl/gpu_binding.hpp"
 
 #include <cstdint>
 #include <string>
@@ -46,7 +47,7 @@ public:
     virtual ~GpuFrameApi() = default;
 
     virtual GpuCommandBufferHandle acquire_command_buffer(
-        PlatformGpuDeviceHandle device) = 0;
+        GpuDeviceHandle device) = 0;
     virtual bool wait_and_acquire_swapchain(
         GpuCommandBufferHandle command_buffer,
         PlatformWindowHandle window,
@@ -65,14 +66,15 @@ public:
 
 class FrameRenderer final {
 public:
-    explicit FrameRenderer(PlatformState& platform);
-    FrameRenderer(PlatformState& platform, GpuFrameApi& api) noexcept;
+    explicit FrameRenderer(SdlGpuBinding& binding);
+    FrameRenderer(SdlGpuBinding& binding, GpuFrameApi& api) noexcept;
 
     [[nodiscard]] FrameResult clear_and_present(ClearColor color = {});
     [[nodiscard]] const FrameCounters& counters() const noexcept;
 
 private:
     PlatformState* platform_;
+    SdlGpuBinding* binding_;
     GpuFrameApi* api_;
     FrameCounters counters_;
 };

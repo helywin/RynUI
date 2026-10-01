@@ -245,6 +245,7 @@ endif()
 
 if(RYNUI_HAS_SDL_GPU)
 add_library(rynui_renderer_sdl STATIC
+    renderer/sdl/gpu_binding.cpp
     renderer/sdl/frame_renderer.cpp
     renderer/sdl/quad_renderer.cpp
     renderer/sdl/scene_renderer.cpp

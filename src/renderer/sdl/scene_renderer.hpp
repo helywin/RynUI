@@ -3,6 +3,7 @@
 #include "graphics/glyph_scene.hpp"
 #include "graphics/quad_primitive.hpp"
 #include "platform/sdl/platform_state.hpp"
+#include "renderer/sdl/gpu_binding.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/sdl/buffer_upload_batch_layout.hpp"
 #include "renderer/sdl/texture_upload_batch_layout.hpp"
@@ -47,7 +48,7 @@ class SdlSceneRenderer final : public graphics::QuadUploadApi,
 public:
     SdlSceneRenderer(
         PlatformState& platform,
-        const std::filesystem::path& shader_directory);
+        const std::filesystem::path& shader_directory, bool debug_mode = default_sdl_gpu_debug);
     SdlSceneRenderer(const SdlSceneRenderer&) = delete;
     SdlSceneRenderer& operator=(const SdlSceneRenderer&) = delete;
     ~SdlSceneRenderer() override;
@@ -107,6 +108,7 @@ public:
     bool save_frame_bmp(const std::filesystem::path& path);
 
     [[nodiscard]] const char* shader_format() const noexcept;
+    [[nodiscard]] const char* gpu_driver() const noexcept { return binding_.driver(); }
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
     bool begin_upload_batch();
     bool finish_upload_batch();
@@ -125,6 +127,7 @@ private:
         const char* label);
 
     PlatformState* platform_;
+    SdlGpuBinding binding_;
     void* quad_pipeline_{nullptr};
     void* glyph_pipeline_{nullptr};
     void* effect_pipeline_{nullptr};

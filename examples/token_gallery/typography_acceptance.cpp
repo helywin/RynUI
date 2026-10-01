@@ -47,9 +47,6 @@ int run_typography_acceptance(int argc, char **argv) {
     config.title = "RynUI Typography / Divider Acceptance";
     config.width = 1280;
     config.height = 1000;
-#if !defined(NDEBUG)
-    config.gpu_debug = true;
-#endif
     auto created = detail::PlatformState::create(config);
     require(bool(created), "native window creation failed");
     auto &platform = *created.state;
@@ -435,7 +432,7 @@ int run_typography_acceptance(int argc, char **argv) {
                                 }),
             "code never requested monospace");
     std::cout << "typography_acceptance=passed gpu_driver="
-              << platform.gpu_driver()
+              << renderer.gpu_driver()
               << " shader_format=" << renderer.shader_format()
               << " system_display_scale=" << metrics.display_scale
               << " render_scale=" << scale

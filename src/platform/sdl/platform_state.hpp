@@ -13,13 +13,10 @@
 namespace ryn::detail {
 
 using PlatformWindowHandle = void*;
-using PlatformGpuDeviceHandle = void*;
 
 enum class PlatformStage {
     sdl_init,
     window,
-    gpu_device,
-    window_claim,
 };
 
 struct PlatformError {
@@ -31,7 +28,6 @@ struct PlatformConfig {
     std::string title{"RynUI"};
     int width{960};
     int height{640};
-    bool gpu_debug{false};
     bool high_pixel_density{true};
 };
 
@@ -134,17 +130,7 @@ public:
         int height,
         bool high_pixel_density) = 0;
     virtual void destroy_window(PlatformWindowHandle window) noexcept = 0;
-    virtual PlatformGpuDeviceHandle create_gpu_device(bool debug_mode) = 0;
-    virtual void destroy_gpu_device(PlatformGpuDeviceHandle device) noexcept = 0;
-    virtual bool claim_window(
-        PlatformGpuDeviceHandle device,
-        PlatformWindowHandle window) = 0;
-    virtual void release_window(
-        PlatformGpuDeviceHandle device,
-        PlatformWindowHandle window) noexcept = 0;
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
-    [[nodiscard]] virtual const char* gpu_driver(
-        PlatformGpuDeviceHandle device) const noexcept = 0;
     [[nodiscard]] virtual PlatformWindowMetrics window_metrics(
         PlatformWindowHandle window) const noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
@@ -184,8 +170,6 @@ public:
         const PlatformConfig& config);
 
     [[nodiscard]] PlatformWindowHandle window() const noexcept;
-    [[nodiscard]] PlatformGpuDeviceHandle gpu_device() const noexcept;
-    [[nodiscard]] const char* gpu_driver() const noexcept;
     [[nodiscard]] PlatformWindowMetrics window_metrics() const noexcept;
     [[nodiscard]] float display_scale() const noexcept;
     [[nodiscard]] bool is_owner_thread() const noexcept;
@@ -203,9 +187,7 @@ private:
 
     PlatformApi* api_;
     PlatformWindowHandle window_{nullptr};
-    PlatformGpuDeviceHandle gpu_device_{nullptr};
     bool sdl_initialized_{false};
-    bool window_claimed_{false};
     std::thread::id owner_thread_;
     PlatformEvents events_;
     input::TextInputSessionStamp text_session_;

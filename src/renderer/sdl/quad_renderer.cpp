@@ -74,9 +74,9 @@ std::string sdl_error(const char* fallback) {
 
 SdlQuadRenderer::SdlQuadRenderer(
     PlatformState& platform,
-    const std::filesystem::path& shader_directory)
-    : platform_(&platform) {
-    auto* device = static_cast<SDL_GPUDevice*>(platform.gpu_device());
+    const std::filesystem::path& shader_directory, bool debug_mode)
+    : platform_(&platform), binding_(platform, debug_mode) {
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
@@ -153,7 +153,7 @@ SdlQuadRenderer::SdlQuadRenderer(
 SdlQuadRenderer::~SdlQuadRenderer() {
     if (pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(
-            static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+            static_cast<SDL_GPUDevice*>(binding_.device()),
             static_cast<SDL_GPUGraphicsPipeline*>(pipeline_));
     }
 }
@@ -177,7 +177,7 @@ graphics::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t 
     info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     info.size = static_cast<Uint32>(size);
     auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+        static_cast<SDL_GPUDevice*>(binding_.device()),
         &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create Quad vertex buffer");
@@ -187,7 +187,7 @@ graphics::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t 
 
 void SdlQuadRenderer::release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept {
     SDL_ReleaseGPUBuffer(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+        static_cast<SDL_GPUDevice*>(binding_.device()),
         static_cast<SDL_GPUBuffer*>(buffer));
 }
 
@@ -206,7 +206,7 @@ bool SdlQuadRenderer::upload(
         return false;
     }
 
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     SDL_GPUTransferBufferCreateInfo transfer_info{};
     transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
     transfer_info.size = static_cast<Uint32>(bytes.size());
@@ -273,7 +273,7 @@ runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
         return runtime::FrameSubmissionResult::failed;
     }
 
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* command = SDL_AcquireGPUCommandBuffer(device);
     if (command == nullptr) {
         last_error_ = sdl_error("Failed to acquire Quad frame command buffer");

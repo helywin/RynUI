@@ -2,6 +2,7 @@
 
 #include "graphics/quad_primitive.hpp"
 #include "platform/sdl/platform_state.hpp"
+#include "renderer/sdl/gpu_binding.hpp"
 #include "runtime/frame_scheduler.hpp"
 
 #include <cstddef>
@@ -27,7 +28,7 @@ class SdlQuadRenderer final : public graphics::QuadUploadApi,
 public:
     SdlQuadRenderer(
         PlatformState& platform,
-        const std::filesystem::path& shader_directory);
+        const std::filesystem::path& shader_directory, bool debug_mode = default_sdl_gpu_debug);
     SdlQuadRenderer(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer& operator=(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer(SdlQuadRenderer&&) = delete;
@@ -48,10 +49,12 @@ public:
         animation::AnimationTime frame_time) override;
 
     [[nodiscard]] const char* shader_format() const noexcept;
+    [[nodiscard]] const char* gpu_driver() const noexcept { return binding_.driver(); }
     [[nodiscard]] const QuadRendererCounters& counters() const noexcept;
 
 private:
     PlatformState* platform_;
+    SdlGpuBinding binding_;
     void* pipeline_{nullptr};
     void* scene_buffer_{nullptr};
     std::uint32_t instance_count_{0};

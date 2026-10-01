@@ -10,8 +10,8 @@
 
 ## 2. SDL 宿主与 GPU 所有权（平台通用）
 
-- [ ] 2.1 将 GPU create/claim/release/destroy 移入 renderer binding，迁移 renderer 与示例，宿主只拥有窗口和服务；生命周期 fake tests 覆盖设备/claim 失败后宿主可继续使用。
-- [ ] 2.2 明确 binding/host/resource 析构顺序和显式重建边界，更新架构；默认 MSVC 构建、platform/frame tests 通过，并提交本阶段。
+- [x] 2.1 将 GPU create/claim/release/destroy 移入 renderer binding，迁移 renderer 与示例，宿主只拥有窗口和服务；生命周期 fake tests 覆盖设备/claim 失败后宿主可继续使用。
+- [x] 2.2 明确 binding/host/resource 析构顺序和显式重建边界，更新架构；默认 MSVC 构建、platform/frame tests 通过，并提交本阶段。
 
 ## 3. 场景事务与 Recording（平台通用）
 

@@ -1573,7 +1573,7 @@ add_test(NAME rynui.focus_allocation COMMAND rynui_focus_allocation_tests)
 add_executable(rynui_platform_lifecycle_tests platform_lifecycle_tests.cpp)
 rynui_configure_cpp_target(rynui_platform_lifecycle_tests)
 target_include_directories(rynui_platform_lifecycle_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(rynui_platform_lifecycle_tests PRIVATE rynui_platform_sdl)
+target_link_libraries(rynui_platform_lifecycle_tests PRIVATE rynui_platform_sdl rynui_renderer_sdl)
 add_test(NAME rynui.platform_lifecycle COMMAND rynui_platform_lifecycle_tests)
 
 add_executable(rynui_frame_renderer_tests frame_renderer_tests.cpp)

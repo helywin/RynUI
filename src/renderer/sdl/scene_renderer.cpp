@@ -125,9 +125,9 @@ template <std::size_t AttributeCount>
 
 SdlSceneRenderer::SdlSceneRenderer(
     PlatformState& platform,
-    const std::filesystem::path& shader_directory)
-    : platform_(&platform) {
-    auto* device = static_cast<SDL_GPUDevice*>(platform.gpu_device());
+    const std::filesystem::path& shader_directory, bool debug_mode)
+    : platform_(&platform), binding_(platform, debug_mode) {
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
@@ -216,7 +216,7 @@ SdlSceneRenderer::SdlSceneRenderer(
 
 SdlSceneRenderer::~SdlSceneRenderer() {
     cancel_upload_batch();
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (effect_pipeline_ != nullptr) {
         SDL_ReleaseGPUGraphicsPipeline(
             device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
@@ -283,7 +283,7 @@ GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
     info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     auto* sampler = SDL_CreateGPUSampler(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()), &info);
+        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (sampler == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph sampler");
     }
@@ -303,7 +303,7 @@ GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
     info.num_levels = 1;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     auto* texture = SDL_CreateGPUTexture(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()), &info);
+        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (texture == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph atlas texture");
     }
@@ -321,7 +321,7 @@ GlyphGpuBufferHandle SdlSceneRenderer::create_glyph_buffer(std::size_t size) {
         0,
     };
     auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()), &info);
+        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph vertex buffer");
     }
@@ -367,7 +367,7 @@ bool SdlSceneRenderer::upload_glyph_texture(
             upload.bytes.data(), upload.bytes.size());
         return true;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const SDL_GPUTransferBufferCreateInfo transfer_info{
         SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         static_cast<Uint32>(upload.transfer_offset + upload.bytes.size()),
@@ -443,19 +443,19 @@ bool SdlSceneRenderer::upload_glyph_buffer(
 
 void SdlSceneRenderer::release_glyph_buffer(GlyphGpuBufferHandle buffer) noexcept {
     SDL_ReleaseGPUBuffer(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+        static_cast<SDL_GPUDevice*>(binding_.device()),
         static_cast<SDL_GPUBuffer*>(buffer));
 }
 
 void SdlSceneRenderer::release_glyph_texture(GlyphGpuTextureHandle texture) noexcept {
     SDL_ReleaseGPUTexture(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+        static_cast<SDL_GPUDevice*>(binding_.device()),
         static_cast<SDL_GPUTexture*>(texture));
 }
 
 void SdlSceneRenderer::release_glyph_sampler(GlyphGpuSamplerHandle sampler) noexcept {
     SDL_ReleaseGPUSampler(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()),
+        static_cast<SDL_GPUDevice*>(binding_.device()),
         static_cast<SDL_GPUSampler*>(sampler));
 }
 
@@ -475,7 +475,7 @@ RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
         0,
     };
     auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(platform_->gpu_device()), &info);
+        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create rounded-effect vertex buffer");
     }
@@ -577,7 +577,7 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
         last_error_ = "Ordered Scene is not attached";
         return runtime::FrameSubmissionResult::failed;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* command = SDL_AcquireGPUCommandBuffer(device);
     if (command == nullptr) {
         last_error_ = sdl_error("Failed to acquire Scene command buffer");
@@ -644,7 +644,7 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
         last_error_ = "Frame export requires an attached scene on the Window owner thread";
         return false;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const auto metrics = platform_->window_metrics();
     const auto width = static_cast<Uint32>(metrics.pixel_width);
     const auto height = static_cast<Uint32>(metrics.pixel_height);
@@ -770,7 +770,7 @@ bool SdlSceneRenderer::finish_upload_batch() {
         cancel_upload_batch();
         return false;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (upload_pass_ != nullptr) {
         SDL_EndGPUCopyPass(static_cast<SDL_GPUCopyPass*>(upload_pass_));
         upload_pass_ = nullptr;
@@ -795,7 +795,7 @@ bool SdlSceneRenderer::finish_upload_batch() {
 }
 
 void SdlSceneRenderer::cancel_upload_batch() noexcept {
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (active_texture_mapped_ != nullptr) {
         SDL_UnmapGPUTransferBuffer(
             device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
@@ -834,7 +834,7 @@ void SdlSceneRenderer::cancel_upload_batch() noexcept {
 }
 
 bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity) {
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const auto capacity = std::max(
         BufferUploadBatchLayout::default_capacity, minimum_capacity);
     const SDL_GPUTransferBufferCreateInfo transfer_info{
@@ -860,7 +860,7 @@ bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity)
 }
 
 bool SdlSceneRenderer::begin_texture_upload_chunk(std::uint32_t minimum_capacity) {
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const auto capacity = std::max(
         TextureUploadBatchLayout::default_capacity, minimum_capacity);
     const SDL_GPUTransferBufferCreateInfo transfer_info{
@@ -889,7 +889,7 @@ bool SdlSceneRenderer::ensure_upload_copy_pass() {
     if (upload_pass_ != nullptr) {
         return true;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     upload_command_ = SDL_AcquireGPUCommandBuffer(device);
     if (upload_command_ == nullptr) {
         last_error_ = sdl_error("Failed to acquire upload batch command buffer");
@@ -908,7 +908,7 @@ bool SdlSceneRenderer::flush_buffer_upload_chunk() {
     if (active_upload_transfer_ == nullptr) {
         return true;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* transfer = static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_);
     SDL_UnmapGPUTransferBuffer(device, transfer);
     active_upload_mapped_ = nullptr;
@@ -942,7 +942,7 @@ bool SdlSceneRenderer::flush_texture_upload_chunk() {
     if (active_texture_transfer_ == nullptr) {
         return true;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* transfer = static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_);
     SDL_UnmapGPUTransferBuffer(device, transfer);
     active_texture_mapped_ = nullptr;
@@ -1014,7 +1014,7 @@ bool SdlSceneRenderer::upload_buffer(
             bytes.data(), bytes.size());
         return true;
     }
-    auto* device = static_cast<SDL_GPUDevice*>(platform_->gpu_device());
+    auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const SDL_GPUTransferBufferCreateInfo transfer_info{
         SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
         static_cast<Uint32>(bytes.size()),

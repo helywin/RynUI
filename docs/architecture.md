@@ -66,7 +66,7 @@ SDL3 GPU
 D3D12 / Vulkan / Metal
 ```
 
-SDL3 同时作为第一阶段的平台层，负责 Window、Mouse、Keyboard、IME、Clipboard、Cursor、Touch 和 GPU device 接入。上层模块不得直接依赖具体 D3D12、Vulkan 或 Metal 类型。
+SDL3 是现有原生宿主，负责 Window、Mouse、Keyboard、IME、Clipboard、Cursor 和 Touch。`PlatformState` 只拥有宿主与窗口服务；renderer 层的 `SdlGpuBinding` 独立拥有 GPU device 和窗口 claim。GPU 初始化失败不得销毁已创建的宿主。上层模块不得直接依赖具体 D3D12、Vulkan 或 Metal 类型。
 
 ## 4. 不可破坏的设计原则
 
@@ -356,6 +356,10 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 - RynUI 特有性能指标，包括 Component 执行、Layout、Primitive 更新和 GPU upload 范围。
 
 ## 10. GPU Scene 与 Renderer
+
+共同资源与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。现有 packed scene ABI 与编译期 backend 选择见 [renderer 合同](renderer-contract.md)。`windows-msvc-headless` 使用真实 Core、文本依赖和共同资源验收；Recording/新平台的具体状态由当前 change 证据说明。
+
+GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；binding 必须在 host/window 销毁前清理。显式重建顺序是失效附件 → 旧 device 活着时释放资源/pipeline → release claim/destroy device → 创建新 binding/renderer → 从保留 CPU scene 上传。不能把旧 handle 交给新 device 释放；实际设备已消失时只丢弃其代际记录。现有 SDL 路径不承诺自动 device-loss 检测/恢复。
 
 ### 10.1 Primitive
 
