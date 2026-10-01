@@ -170,6 +170,18 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 - **`plain` 语义**：只改**文字**（`plain_text` 色、常规字重、`plain_font_size`），不改线条填充。spec 中「更浅的填充色」删除。
 - **`disabled`**：本 change **不提供** `Divider.disabled`。Divider 没有交互状态，proposal／spec／tasks 中相关表述一律删除。
 
+#### 实施时核实的两个约束（影响 Divider 的测量方案）
+
+1. **`LeafLayout` + intrinsic measure 不会先测量子节点。** `LayoutEngine::measure_node` 对 `LeafLayout` 直接调用 intrinsic 回调，只有 `BoxLayout`/`FlexLayout` 才先 `measure_node` 各子节点。因此若把标签作为分割线的子节点、同时给分割线挂 intrinsic measure，回调里**读不到标签的已测宽度**。
+2. **标签宽度只能在文本同步后得知。** 文本宽度来自 `TextSceneService` 的 shape 结果，而布局测量发生在窗口同步之前，所以「测量时按标签实际宽度分配两条轨道」存在先有鸡还是先有蛋的问题；Button 那类组件用「缓存测量 + 版本修正」跨帧收敛解决。
+
+因此带标签的水平分割线的落地路径是二者之一，必须在实现前选定并在 `tasks.md` 中体现：
+
+- **路径 A（推荐）**：有标签时用 `BoxLayout`／`FlexLayout`，由布局引擎测量标签节点并承担轨道与整体高度的组合；无标签时用 `LeafLayout` + intrinsic measure 产出贯通全宽的单条轨道。切换标签内容时布局模型随之切换，需要显式重挂载或模型切换事务。
+- **路径 B**：保留 `LeafLayout` 单节点，用「缓存标签测量 + 版本修正」跨帧收敛整体高度，代价是首帧高度可能不准，且需要额外的版本账本。
+
+两条路径都必须覆盖：无标签贯通全宽、`left`/`right`/`center` 的轨道比例、`orientationMargin` 的 `Theme`/`None`/显式比例三态、垂直分割线的固定高度与行内间距、`plain` 只改文字，以及颜色变化只产生材质失效。
+
 ### 15. `Link` 交互按 Button 现有模式实现
 
 `Link` 接入 `InteractionRegistry` 的 eligible/focusable、`FocusManager` 的 Tab/Enter/Space 与 `PressableBehavior` 的指针手势与 capture，与 Button 同一路径；`disabled` 同时取消 capture、清除 eligibility、清理焦点并更新 hit snapshot。评审确认普通 Link 点击**不需要**新增导航 API；需要延迟焦点事务的只有 `editable` 这类内部结构与焦点切换（见决策 12），不得把 019 的限制误报成所有 Link 都不可实现。
