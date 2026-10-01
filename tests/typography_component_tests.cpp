@@ -4,6 +4,7 @@
 #include <ryn/rynui.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <exception>
 #include <iostream>
