@@ -63,7 +63,7 @@ struct Fixture {
         chains.emplace(pixels, chain); return chain;
     }
     detail::WindowComponentServices services{nodes, layout, dirty, scene,
-        [this](SystemFontFamily, std::uint32_t, std::uint32_t pixels) { return resolve(pixels); }, frames};
+        [this](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) { return resolve(pixels); }, frames};
     detail::ButtonComponentHost buttons{services};
     Platform platform;
     detail::InputComponentHost inputs{services, platform, platform};

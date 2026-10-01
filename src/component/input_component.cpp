@@ -690,7 +690,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
             | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
     runtime::SemanticTypography typography{theme.text().font_family, theme.text().font_weight,
-        size_tokens.font_size, size_tokens.line_height};
+        false, size_tokens.font_size, size_tokens.line_height};
     auto& scene = host_->text().scene_service();
     if(!state->text_scene.valid()) {
         state->text_scene = scene.create(state->viewport, String{}, host_->text().resolve_fonts(typography),

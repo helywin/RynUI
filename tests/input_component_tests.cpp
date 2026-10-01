@@ -24,7 +24,7 @@ void input_without_button_host() {
     text::TextEngine engine(*fonts);
     detail::TextSceneService scene(*fonts, engine, frames);
     detail::WindowComponentServices services(nodes, layout, dirty, scene,
-        [&fonts](SystemFontFamily, std::uint32_t, std::uint32_t pixels) {
+        [&fonts](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) {
             const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixels);
             const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixels);
             if (!latin || !cjk) throw std::runtime_error("Input-only fonts failed");

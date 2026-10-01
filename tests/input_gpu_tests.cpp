@@ -75,7 +75,7 @@ struct Fixture final : runtime::FrameSubmitter {
     float scale;
     std::vector<font::FontIdentity> chain;
     detail::ButtonComponentHost host{nodes, layout, dirty, scene,
-        [this](SystemFontFamily, std::uint32_t, std::uint32_t) { return chain; }, requests};
+        [this](SystemFontFamily, std::uint32_t, bool, std::uint32_t) { return chain; }, requests};
     Platform platform;
     detail::InputComponentHost inputs{host.services(), platform, platform};
     Gpu api;

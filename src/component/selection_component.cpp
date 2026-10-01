@@ -665,7 +665,8 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
         ? token.disabled_foreground : theme.alias().color_text;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
     static_cast<void>(state.label_typography.set({theme.text().font_family,
-        theme.text().font_weight, theme.text().font_size, theme.text().line_height}));
+        theme.text().font_weight, false, theme.text().font_size,
+        theme.text().line_height}));
 }
 
 void SelectionComponentHost::update_geometry(SelectionState& state,

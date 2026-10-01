@@ -25,7 +25,7 @@ void test_default_ui_font_chain() {
     request.raster = {14, 1.5F};
     request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
     request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
-    const auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
     require(static_cast<bool>(chain), "default UI font chain did not load");
     require(!chain.faces.empty() && !chain.telemetry_families().empty(),
             "default UI font chain lost face diagnostics");
@@ -50,13 +50,11 @@ void test_default_ui_font_chain() {
     require(static_cast<bool>(fonts->find_glyph(identities, U'中', std::nullopt)),
             "default UI font chain does not cover Simplified Chinese text");
     auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.5F);
-    const auto initial_resolved = resolver(
-        ryn::SystemFontFamily::ui_sans, 400, 14);
-    const auto large_resolved = resolver(
-        ryn::SystemFontFamily::ui_sans, 400, 16);
+    const auto initial_resolved = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
+    const auto large_resolved = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16);
     require(initial_resolved == identities
                 && !large_resolved.empty()
-                && resolver(ryn::SystemFontFamily::ui_sans, 400, 16)
+                && resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16)
                     == large_resolved,
             "default Theme font resolver did not reuse initial and cached size chains");
     for (const auto identity : large_resolved) {
@@ -68,8 +66,7 @@ void test_default_ui_font_chain() {
     }
     auto moved_resolver = ryn::detail::make_default_ui_font_resolver(
         *fonts, chain, 2.0F);
-    const auto moved_resolved = moved_resolver(
-        ryn::SystemFontFamily::ui_sans, 400, 14);
+    const auto moved_resolved = moved_resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
     require(!moved_resolved.empty() && moved_resolved != identities,
             "display-scale refresh reused the startup font identity");
     for (const auto identity : moved_resolved) {
@@ -162,7 +159,7 @@ void test_monospace_chain_resolution() {
     request.raster = {14, 1.5F};
     request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
     request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
-    const auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
     require(static_cast<bool>(chain), "default UI font chain did not load");
 
     const auto ui = chain.identities();
@@ -175,8 +172,8 @@ void test_monospace_chain_resolution() {
     }
 
     auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.5F);
-    const auto resolved_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, 14);
-    const auto resolved_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, 14);
+    const auto resolved_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
+    const auto resolved_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, false, 14);
     require(!resolved_ui.empty() && !resolved_mono.empty(),
             "family-aware resolver returned an empty chain");
     require(resolved_ui == ui,
@@ -205,12 +202,12 @@ void test_monospace_chain_resolution() {
 
     // Distinct families must not share a cache entry: the same pixel size has to
     // keep resolving to each family's own chain.
-    require(resolver(ryn::SystemFontFamily::ui_monospace, 400, 14) == resolved_mono
-                && resolver(ryn::SystemFontFamily::ui_sans, 400, 14) == resolved_ui,
+    require(resolver(ryn::SystemFontFamily::ui_monospace, 400, false, 14) == resolved_mono
+                && resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14) == resolved_ui,
             "family caches leaked into each other");
 
     // A different pixel size re-resolves both families at the new DPI.
-    const auto large_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, 16);
+    const auto large_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, false, 16);
     require(!large_mono.empty() && large_mono != resolved_mono,
             "monospace resolution ignored the pixel size");
     for (const auto identity : large_mono) {
@@ -220,8 +217,8 @@ void test_monospace_chain_resolution() {
                 "monospace chain lost logical-to-device raster sizing");
     }
     // Both families stay available at the new size.
-    const auto large_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, 16);
-    require(large_ui == resolver(ryn::SystemFontFamily::ui_sans, 400, 16)
+    const auto large_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16);
+    require(large_ui == resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16)
                 && large_ui != large_mono,
             "ui_sans and ui_monospace converged at a second pixel size");
 
@@ -236,6 +233,109 @@ void test_monospace_chain_resolution() {
     require(found_monospace_system,
             "Windows monospace resolution found no known monospace family");
 #endif
+}
+
+void test_weight_and_slant_face_selection() {
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.0F};
+    request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
+    request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(static_cast<bool>(chain), "default UI font chain did not load");
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.0F);
+
+    const auto regular = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
+    const auto strong = resolver(ryn::SystemFontFamily::ui_sans, 700, false, 14);
+    const auto italic = resolver(ryn::SystemFontFamily::ui_sans, 400, true, 14);
+    require(!regular.empty() && !strong.empty() && !italic.empty(),
+            "styled resolution returned an empty chain");
+    // Identity values are slot+generation pairs assigned per load, so they are not
+    // stable across separate resolver calls. Assert coverage instead: every styled
+    // chain keeps Latin and CJK resolvable, which is the contract that matters.
+    for (const auto& chain : {strong, italic}) {
+        require(static_cast<bool>(fonts->find_glyph(chain, U'A', std::nullopt)),
+                "styled chain does not cover Latin text");
+        require(static_cast<bool>(fonts->find_glyph(chain, U'中', std::nullopt)),
+                "styled chain does not keep the CJK fallback");
+    }
+    // Requesting the same key twice must reuse the cached entry.
+    require(resolver(ryn::SystemFontFamily::ui_sans, 700, false, 14) == strong,
+            "styled resolution did not cache per weight");
+    const auto italic_again = resolver(ryn::SystemFontFamily::ui_sans, 400, true, 14);
+    require(italic_again == italic,
+            "styled resolution did not cache per slant");
+
+    // A styled request must either lead with a genuinely different face or record
+    // a precise fallback note. Which one happens depends on the platform: some
+    // Windows installs expose only the variable Segoe UI Variable file through
+    // DirectWrite, so the bold instance is not selectable and the regular face is
+    // the correct answer.
+    const auto note_for = [&chain](std::string_view needle) {
+        return std::ranges::any_of(chain.diagnostic_fallbacks, [&](const auto& note) {
+            return note.find(needle) != std::string::npos;
+        });
+    };
+    const bool bold_swapped = strong.size() > regular.size();
+    const bool italic_swapped = italic.size() > regular.size();
+    require(bold_swapped || note_for("weight 700"),
+            "bold request neither swapped the face nor recorded a fallback");
+    require(italic_swapped || note_for("400 italic"),
+            "italic request neither swapped the face nor recorded a fallback");
+    if (!bold_swapped || !italic_swapped) {
+        // A fallback note must still leave a usable chain.
+        require(static_cast<bool>(fonts->find_glyph(strong, U'A', std::nullopt))
+                    && static_cast<bool>(fonts->find_glyph(italic, U'A', std::nullopt)),
+                "fallback styled chain lost Latin coverage");
+    }
+}
+
+// A styled request must stay resolvable when the application supplies its own
+// fonts, so pages that use `strong`/`italic` do not depend on which system faces
+// the host exposes.
+void test_injected_styled_faces() {
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.0F};
+    request.preferred_fonts.push_back({
+        RYNUI_VALIDATION_LATIN_FONT, 0, "InjectedRegular", 400, false});
+    // The loader deduplicates by (path, face index), so an application cannot
+    // register the same file three times under different styles. The injected
+    // style metadata is therefore only meaningful for distinct faces.
+    request.preferred_fonts.push_back({
+        RYNUI_VALIDATION_LATIN_FONT, 0, "InjectedRegularAgain", 700, false});
+    request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
+    request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
+
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(static_cast<bool>(chain), "injected styled chain did not load");
+    // The first injected descriptor wins: a later duplicate of the same face must
+    // not overwrite the style metadata of the face already registered.
+    require(!chain.faces.empty() && chain.faces.front().custom_font
+                && chain.faces.front().family_name == std::string_view{"InjectedRegular"}
+                && chain.faces.front().weight == 400U && !chain.faces.front().italic,
+            "duplicate injected face overwrote the registered style metadata");
+
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.0F);
+    const auto resolved_regular =
+        resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
+    const auto resolved_bold = resolver(ryn::SystemFontFamily::ui_sans, 700, false, 14);
+    const auto resolved_italic = resolver(ryn::SystemFontFamily::ui_sans, 400, true, 14);
+    require(!resolved_regular.empty() && !resolved_bold.empty()
+                && !resolved_italic.empty(),
+            "injected styled resolution returned an empty chain");
+    for (const auto& chain_identities : {resolved_bold, resolved_italic}) {
+        require(static_cast<bool>(fonts->find_glyph(chain_identities, U'A', std::nullopt))
+                    && static_cast<bool>(
+                        fonts->find_glyph(chain_identities, U'中', std::nullopt)),
+                "injected styled chain lost coverage");
+    }
 }
 
 void test_custom_monospace_font_precedes_platform() {
@@ -253,7 +353,7 @@ void test_custom_monospace_font_precedes_platform() {
     request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
     request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
 
-    const auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
     require(static_cast<bool>(chain), "custom monospace chain did not load");
     require(!chain.monospace_faces.empty()
                 && chain.monospace_faces.front().family_name
@@ -272,6 +372,8 @@ int main() {
     try {
         test_default_ui_font_chain();
         test_monospace_chain_resolution();
+        test_weight_and_slant_face_selection();
+        test_injected_styled_faces();
         test_custom_monospace_font_precedes_platform();
         test_custom_font_precedes_platform_defaults();
         test_invalid_custom_font_fails_fast();

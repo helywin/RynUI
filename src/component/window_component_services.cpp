@@ -47,6 +47,7 @@ WindowComponentServices::WindowComponentServices(
           [chain = std::move(default_font_chain)](
               SystemFontFamily,
               std::uint32_t,
+              bool,
               std::uint32_t) { return chain; },
           frame_requests) {}
 

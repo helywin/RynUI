@@ -67,7 +67,7 @@ struct Fixture final {
             layout,
             dirty,
             text_scene,
-            [this](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+            [this](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixel_size) {
                 return resolve_fonts(pixel_size);
             },
             frames);
@@ -164,7 +164,7 @@ void test_window_services_have_single_external_owner() {
     fixture.host.reset();
     auto services = std::make_unique<ryn::detail::WindowComponentServices>(
         fixture.nodes, fixture.layout, fixture.dirty, fixture.text_scene,
-        [&fixture](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixels) {
+        [&fixture](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) {
             return fixture.resolve_fonts(pixels);
         }, fixture.frames);
     {

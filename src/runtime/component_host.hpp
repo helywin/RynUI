@@ -40,6 +40,7 @@ using SemanticForeground = std::array<float, 4>;
 struct SemanticTypography final {
     SystemFontFamily font_family{SystemFontFamily::ui_sans};
     std::uint32_t font_weight{400};
+    bool italic{};
     float font_size{14.0F};
     float line_height{22.0F};
 

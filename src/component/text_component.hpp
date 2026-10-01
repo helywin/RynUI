@@ -20,6 +20,7 @@ namespace ryn::detail {
 using ThemeFontResolver = std::function<std::vector<font::FontIdentity>(
     SystemFontFamily,
     std::uint32_t,
+    bool,
     std::uint32_t)>;
 
 struct MountedTextComponent final {

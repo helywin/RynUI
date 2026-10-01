@@ -56,7 +56,7 @@ struct Fixture final {
             layout,
             dirty,
             scene,
-            [this](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+            [this](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixel_size) {
                 return resolve_fonts(pixel_size);
             });
     }
@@ -263,7 +263,7 @@ void test_font_resolver_refresh_keeps_scene_identity_and_updates_density() {
     fixture.dirty.clear();
 
     const bool changed = fixture.host->set_font_resolver(
-        [&fixture](ryn::SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
+        [&fixture](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixel_size) {
             const auto latin = fixture.fonts->load_font_file(
                 RYNUI_VALIDATION_LATIN_FONT,
                 0,

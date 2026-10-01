@@ -120,7 +120,7 @@ public:
         float& render_scale,
         bool fixed_render_scale,
         ryn::font::FontRuntime& fonts,
-        const ryn::detail::DefaultFontChainResult& font_chain,
+        ryn::detail::DefaultFontChainResult& font_chain,
         const std::function<void(float)>& set_viewport_width,
         const std::function<std::optional<GalleryNavigationTarget>()>&
             take_navigation_request,
@@ -392,7 +392,7 @@ private:
     float* render_scale_;
     bool fixed_render_scale_{};
     ryn::font::FontRuntime* fonts_;
-    const ryn::detail::DefaultFontChainResult* font_chain_;
+    ryn::detail::DefaultFontChainResult* font_chain_;
     const std::function<void(float)>* set_viewport_width_;
     const std::function<std::optional<GalleryNavigationTarget>()>*
         take_navigation_request_;
@@ -1123,7 +1123,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         font_request.raster = {14, render_scale};
         font_request.fallback_latin = executable / "fonts/latin.ttf";
         font_request.fallback_cjk = executable / "fonts/cjk.otf";
-        const auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
+        auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
             return 3;

@@ -286,7 +286,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         font_request.raster = font_raster;
         font_request.fallback_latin = executable / "fonts/latin.ttf";
         font_request.fallback_cjk = executable / "fonts/cjk.otf";
-        const auto font_chain =
+        auto font_chain =
             ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';

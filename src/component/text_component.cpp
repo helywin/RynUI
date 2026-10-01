@@ -159,6 +159,7 @@ TextComponentHost::TextComponentHost(
           [chain = std::move(default_font_chain)](
               SystemFontFamily,
               std::uint32_t,
+              bool,
               std::uint32_t) { return chain; }) {}
 
 TextComponentHost::TextComponentHost(
@@ -177,7 +178,7 @@ TextComponentHost::TextComponentHost(
         throw std::invalid_argument(
             "TextComponentHost requires a Theme font resolver");
     }
-    if (font_resolver_(SystemFontFamily::ui_sans, 400, 14).empty()) {
+    if (font_resolver_(SystemFontFamily::ui_sans, 400, false, 14).empty()) {
         throw std::invalid_argument(
             "TextComponentHost Theme font resolver returned an empty default chain");
     }
@@ -189,7 +190,10 @@ TextComponentHost::~TextComponentHost() {
 
 std::vector<font::FontIdentity> TextComponentHost::resolve_fonts(
     const runtime::SemanticTypography& typography) const {
-    auto chain = font_resolver_(typography.font_family, typography.font_weight,
+    auto chain = font_resolver_(
+        typography.font_family,
+        typography.font_weight,
+        typography.italic,
         static_cast<std::uint32_t>(std::lround(typography.font_size)));
     if(chain.empty()) throw std::runtime_error("Theme font resolver returned an empty chain");
     return chain;
@@ -432,7 +436,7 @@ TextComponentHost::mounted_texts() const noexcept {
 
 bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
     if (!font_resolver
-            || font_resolver(SystemFontFamily::ui_sans, 400, 14).empty()) {
+            || font_resolver(SystemFontFamily::ui_sans, 400, false, 14).empty()) {
         throw std::invalid_argument(
             "Theme font resolver must provide a default UI font chain");
     }
@@ -446,9 +450,10 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
         }
         const auto& typography = state->resolved_typography;
         auto chain = font_resolver_(
-            typography.font_family,
-            typography.font_weight,
-            static_cast<std::uint32_t>(std::lround(typography.font_size)));
+        typography.font_family,
+        typography.font_weight,
+        typography.italic,
+        static_cast<std::uint32_t>(std::lround(typography.font_size)));
         if (chain.empty()) {
             throw std::runtime_error("Theme font resolver returned an empty chain");
         }
@@ -491,6 +496,7 @@ bool TextComponentHost::apply_typography(
     auto chain = font_resolver_(
         typography.font_family,
         typography.font_weight,
+        typography.italic,
         static_cast<std::uint32_t>(std::lround(typography.font_size)));
     if (chain.empty()) {
         throw std::runtime_error("Theme font resolver returned an empty chain");
@@ -541,6 +547,7 @@ void TextComponentHost::apply_theme(runtime::ComponentId component) {
         typography_changed = apply_typography(component, {
             text.font_family,
             text.font_weight,
+            false,
             text.font_size,
             text.line_height,
         });
@@ -610,6 +617,7 @@ void mount_text_component(const TextProps& props, bool icon_font) {
         : runtime::SemanticTypography{
             snapshot.text().font_family,
             snapshot.text().font_weight,
+            false,
             snapshot.text().font_size,
             snapshot.text().line_height,
         };
@@ -621,6 +629,7 @@ void mount_text_component(const TextProps& props, bool icon_font) {
     auto initial_font_chain = host.font_resolver_(
         initial_typography.font_family,
         initial_typography.font_weight,
+        initial_typography.italic,
         static_cast<std::uint32_t>(std::lround(initial_typography.font_size)));
     if (initial_font_chain.empty()) {
         throw std::runtime_error("Theme font resolver returned an empty chain");

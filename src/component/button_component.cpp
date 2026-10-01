@@ -315,6 +315,7 @@ runtime::SemanticTypography content_typography(
     return {
         theme.text().font_family,
         theme.text().font_weight,
+        false,
         size.content_font_size,
         size.content_line_height,
     };
@@ -1283,6 +1284,7 @@ void mount_button_component(
         {
             theme.text().font_family,
             theme.text().font_weight,
+            false,
             theme.text().font_size,
             theme.text().line_height,
         }};
