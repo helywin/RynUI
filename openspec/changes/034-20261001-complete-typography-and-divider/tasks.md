@@ -2,7 +2,7 @@
 
 ## 1. 规划与基线核对
 
-- [ ] 1.1 核对 `design-tokens/ant-design/6.6.5` 中 Typography/Divider Component Token、`fontSizeHeading1`–`5`、`lineHeightHeading1`–`5`、`fontWeightStrong`、`colorTextHeading`、`colorTextDescription`、`colorSuccessText`、`colorWarningText`、`colorErrorText(Hover/Active)`、`colorTextDisabled`、`colorSplit`、`colorLink`、`marginLG/margin/marginXS` 的 identity 与默认值，并确认 `SystemFontFamily::ui_monospace`、`font_family_code` 现状；把核对结论与后续实现要引用的 Token identity 追加到 `design.md`，确认本 change strict、全仓 strict 与 `git diff --check` 结果后以 `docs:` 提交规划产物
+- [x] 1.1 核对 `design-tokens/ant-design/6.6.5` 中 Typography/Divider Component Token、`fontSizeHeading1`–`5`、`lineHeightHeading1`–`5`、`fontWeightStrong`、`colorTextHeading`、`colorTextDescription`、`colorSuccessText`、`colorWarningText`、`colorErrorText(Hover/Active)`、`colorTextDisabled`、`colorSplit`、`colorLink`、`marginLG/margin/marginXS` 的 identity 与默认值，并确认 `SystemFontFamily::ui_monospace`、`font_family_code` 现状；把核对结论与后续实现要引用的 Token identity 追加到 `design.md`，确认本 change strict、全仓 strict 与 `git diff --check` 结果后以 `docs:` 提交规划产物
 
 ## 2. 图标与主题 Token 基线（平台通用）
 

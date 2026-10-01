@@ -52,14 +52,20 @@ RynUI 目前只有 `ryn::Text`（content + tone + LayoutStyle），标题层级�
 | 标题行高 h1–h5 | `ant.map.lineHeightHeading1`–`5` | 1.4 / 1.35 / 1.3 / 1.25 / 1.2 |
 | 标题字重与颜色 | `ant.alias.fontWeightStrong`、`ant.alias.colorTextHeading` | 600、`colorText` 同源 |
 | 标题上下间距 | `ant.component.Typography.titleMarginTop`、`ant.component.Typography.titleMarginBottom` | `1.2em`、`0.5em` |
-| 正文与次要文字 | `ant.map.colorText`、`ant.alias.colorTextDescription` | 主文字、次要文字 |
-| 语义文字 | `ant.map.colorSuccessText`、`ant.map.colorWarningText`、`ant.map.colorErrorText`、`ant.map.colorErrorTextHover`、`ant.map.colorErrorTextActive` | 成功/警告/错误语义色 |
-| 禁用与链接 | `ant.alias.colorTextDisabled`、`ant.map.colorLink` | 禁用文字、链接色 |
-| 分割线 | `ant.alias.colorSplit` | 分割线色，线宽取 `seed.lineWidth` |
-| 间距 | `ant.alias.marginLG`、`ant.alias.margin`、`ant.alias.marginXS` | 24 / 16 / 8（`sizeUnit` 4 派生） |
+| 正文与次要文字 | `ant.map.colorText`、`ant.alias.colorTextDescription` | 主文字、`colorTextTertiary` |
+| 语义文字 | `ant.map.colorSuccessText`、`ant.map.colorWarningText`、`ant.map.colorErrorText`、`ant.map.colorErrorTextHover`、`ant.map.colorErrorTextActive` | 各自调色板 key 9 / 8 / 10 |
+| 禁用与链接 | `ant.alias.colorTextDisabled`、`ant.map.colorLink` | `colorTextQuaternary`、`seed.colorLink ?? seed.colorInfo` 调色板 key 6 |
+| 分割线 | `ant.alias.colorSplit` | `getAlphaColor(colorBorderSecondary, colorBgContainer)`，线宽取 `seed.lineWidth` |
+| 间距 | `ant.alias.marginLG`、`ant.alias.margin`、`ant.alias.marginXS` | `sizeLG` / `size` / `sizeXS` = 24 / 16 / 8（`sizeUnit` 4 派生） |
 | Divider 文字间距与朝向 | `ant.component.Divider.textPaddingInline`、`ant.component.Divider.orientationMargin`、`ant.component.Divider.verticalMarginInline` | `1em`、0.05、`marginXS` |
 | 等宽字族 | `seed.fontFamilyCode`（`SystemFontFamily::ui_monospace`） | 目前未被字体链消费，本 change 接通 |
 | 高亮底色 | `mark` 上游硬编码 `gold[2]` | RynUI 以 Typography Component Token 承载固定高亮色，不引入上游硬编码 |
+
+### 决策 9 的精确派生（已在锁定 commit 核实）
+
+- `colorSplit = getAlphaColor(colorBorderSecondary, colorBgContainer)`；`colorBorderSecondary` 与 `colorBgContainer` 在 RynUI 已分别实现为 `ThemeAliasToken::color_border_secondary` 与 `color_background_container`，因此 `color_split` 可直接按同一公式在 `derive_alias` 中派生。
+- 语义文字色来自 `genColorMapToken`：`colorXxxText = palettes[9]`、`colorXxxTextHover = palettes[8]`、`colorXxxTextActive = palettes[10]`。RynUI 的 `palette_variant(seed, step, light)` 已实现 `@ant-design/colors` 8.0.1 的同一算法并覆盖 step 1–5、7，需要扩展到 step 8–10 才能派生出这三个语义文字色；扩展后必须用现有 Token 快照测试证明已使用的 step 1–7 取值不变。
+- `colorTextHeading`、`colorTextDescription`、`colorTextDisabled` 分别等于 `colorText`、`colorTextTertiary`、`colorTextQuaternary`；RynUI 已有 `color_text`（对应 heading/正文主色）、`color_text_secondary`（对应 `colorTextDescription`）和 `color_text_disabled`（对应 `colorTextDisabled`），`TypographyThemeToken` 复用它们，不新增重复字段。`colorWarningText` 同样是 `metadata` 级，本 change 一并补运行时值。
 
 ## Risks / Trade-offs
 
