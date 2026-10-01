@@ -217,6 +217,20 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 ## Risks / Trade-offs
 
+### 实施进度与未决点（截至 2026-10-01）
+
+已完成：图标资源（2.1）、Theme Token 基线（2.2–2.6）、字体前置工作（3.1–3.3）、Typography 公开 API 与五级标题/语义色（4.1）、`strong`/`italic`/`code`/`keyboard` 的形状接入（4.2）。
+
+尚未开工，且各自有必须**先选定再实现**的架构决策，避免重复返工：
+
+1. **4.3 装饰渲染**：`mark` 高亮与 `code`/`keyboard` 方块必须在 glyph **之前**绘制，`underline`/`delete` 必须在 glyph **之后**绘制。当前 `TextComponentHost` 对每个组件只注册**一个** `before_children` 片段，因此需要先决定：是在同一 `ComponentHost` 记录上注册两个片段（扩展片段注册路径），还是把背景交给子节点、装饰线留给父节点。选定前不要动手。
+2. **4.4 ellipsis**：需要独立于 retained scene 的候选测量通道；设计决策 7 已经冻结了判据（自然宽度比较、`lines.size() > rows`、字素边界收缩、退化行为），但「候选测量如何复用塑形、`shape_count`/`measure_count` 合同的具体数值」仍需在实现时定稿并写入测试。
+3. **4.5 copyable**：设计决策 8 已冻结「独立于文本输入的剪贴板绑定 + 晚绑定通知」。实现前需要确认 `WindowComponentServices` 的绑定入口由哪个 adapter 调用（窗口 runtime／Gallery），以及没有 Input 的窗口由谁提供端口。
+4. **4.6 editable**：设计决策 12 已冻结「首次挂载预建编辑子树」。仍需先设计：`Input` 的内部 `SemanticTypography` 继承入口、blur/cancel 生命周期回调、以及「派发之后执行并校验 generation」的焦点事务。这是本 change 最大的风险项。
+5. **4.7 Link**：`Link` 需要 `InteractionRegistry` 的 eligible/focusable、`FocusManager` 的 Tab/Enter/Space 与 `PressableBehavior`。`TextComponentHost` 目前完全不接触输入服务，因此需要先决定：是给 `TextComponentHost` 增加可选输入服务，还是让 Link 走 `WindowComponentServices` 参与者（像 `SelectionComponentHost` 那样）。选定前不要动手。
+6. **Section 5 Divider**：见决策 14 的「实施时核实的两个约束」，带标签分割线的测量路径 A/B 必须先选定。
+7. **Section 7 Windows 实机验收**：需要真实窗口截图、driver、shader format、字体与 scale 记录。这一步必须在 4.x/5.x/6.x 全部落地后才能做，否则证据无效。
+
 - **前置工作会扩大本 change 的实现面** → 决策 4（字体装饰度量）、决策 5（weight/slant face 解析与 resolver 签名）、决策 8（独立 clipboard 绑定）、决策 12（Input 内部 typography/blur/cancel 入口与焦点事务）都是新增运行时改动，必须排在对应功能之前。若要收窄，正确做法是缩小 034 范围或拆分后续 change，而不是把这些前置工作降级为近似实现或推迟勾选。
 - **等宽字体链的平台差异** → Windows 与原生 Linux 的系统等宽族名称、缺字覆盖与度量不同；两平台分别验证 `code`/`keyboard` 的字形与回退，任一平台的证据不得代替另一方。
 - **装饰与字形的坐标系一致性** → 背景在 glyph 前、装饰线在 glyph 后，两层必须与 glyph 使用同一 origin、clip 与滚动 translation；用命令顺序测试加滚动/裁剪/DPI 变化测试固定。
