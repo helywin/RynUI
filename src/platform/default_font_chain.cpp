@@ -201,7 +201,8 @@ private:
             best_index = index;
         }
     }
-    if (FAILED(family->GetFont(best_index, font.put()))) {
+    if (best_distance == std::numeric_limits<int>::max()
+            || FAILED(family->GetFont(best_index, font.put()))) {
         return std::nullopt;
     }
     const auto matched_weight = font->GetWeight();

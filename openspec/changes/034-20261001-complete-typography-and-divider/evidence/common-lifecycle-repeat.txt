@@ -1,0 +1,85 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+    Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+1/2 Test #195: rynui.pointer_allocation .........   Passed    0.02 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+    Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+    Start 199: rynui.focus_lifecycle
+2/2 Test #199: rynui.focus_lifecycle ............   Passed    0.01 sec
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.67 sec

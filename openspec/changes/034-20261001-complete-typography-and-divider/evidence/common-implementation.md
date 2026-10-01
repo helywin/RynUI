@@ -39,3 +39,27 @@ Gallery 长跳转暴露 Input 文本层各自重建顺序的问题；窗口批�
 ## Windows 字体复核修复
 
 真实窗口验收发现先前的 DirectWrite 枚举仍把 Segoe UI Variable 的不同 weight 描述映射到同一文件/index；FreeType 不带 variation coordinates 加载，实际绘制仍是常规字重。现在 styled 解析排除 simulated face，并跳过与该族 regular 共用文件/index 的描述，继续查找静态 Segoe UI。Windows 回归明确断言 600/700 与 italic 的真实源 face；原先允许「有 fallback note 即通过」的弱断言不能代替这些检查。实际 600 解析到 `SEGUISB.TTF`，italic 到 `SEGOEUII.TTF`；`rynui.default_font_chain` 通过。
+
+## 8.1 全量集成验收（2026-10-02）
+
+在 Windows `windows-msvc` Debug / MSVC x64 环境完成一次完整 CTest：**首轮 237/240 通过，180.51 秒**。保留完整原始结果 [common-full-ctest.txt](common-full-ctest.txt)，不把首轮描述为 240/240。
+
+首轮失败项及后续结果：
+
+| 项目 | 首轮 | 处理与补测 |
+| --- | --- | --- |
+| gallery_document_model | partial/planned 数量旧断言 | Divider 从 planned 提升 partial 后，应为 partial=10、planned=62、deprecated=1；同步该精确断言后通过 |
+| pointer_allocation | Windows access violation | 强制重编译/重新链接原样源码后通过，10,000 次 move 仍为 0 分配；再连续 20 次通过 |
+| focus_lifecycle | Windows access violation | 强制重编译/重新链接原样源码后通过；再连续 20 次通过 |
+
+补测 **3/3 通过**：[common-retests.txt](common-retests.txt)；两项稳定性复测各 **20/20 通过**：[common-lifecycle-repeat.txt](common-lifecycle-repeat.txt)。调试用临时异常跟踪 include 已移除，测试源码与先前一致；没有跳过或放宽指针/焦点断言，也没有提交未经证实的运行时修复。
+
+**尚未确认的边界：** Windows CrashDumps 中保存了这两个首次异常，均为 `0xc0000005`、exception address `0x0`。后续重新链接的 PDB 与首次 dump 不匹配，无法据此给出可靠的源码调用栈。重编译后未复现，当前证据不能把根因归因于源码、增量链接器或环境，也不能声称已定位并修复这两个首次崩溃。保留此记录供后续复现核查。
+
+最终受影响的 README/架构职责/Gallery 文档/Windows evidence 合同 **4/4 通过**；Debug/Release 的 Gallery document model 重新构建通过。此前已通过的 237 项没有再次全量重跑。当前 240 项均有通过记录，首次失败及补测边界如上。
+
+最后字体边界复核补上「全族都没有合法候选时返回 nullopt」的 guard，避免 best_index 默认 0 绕过 simulated face 排除。两个配置完整增量构建通过；字体、Gallery 模型、文档/evidence 和两项生命周期测试 **8/8 通过**。原生 Debug 默认系统缩放与 Release 无 Input 复制再次退出 0；这项边界没有改变先前已保存的系统字体解析结果与四档截图。
+
+OpenSpec CLI **1.14.0**：`doctor --json` 为 `healthy=true`、status 空；本 change strict 通过；全仓 strict **34 passed / 0 failed**。这是当前实测，取代规划时 CLI 1.4.1 的六项既有失败统计。`git diff --check` 通过。README 中英文当前进展表已同步，未把 Linux 原生 Wayland 或物理 IME 候选窗描述为已验收。
+
+本 change 功能实现、平台通用验证与 Windows 窗口验收已经落地；Linux 9.1–9.3 及 archive 准备 10.1 保持未勾选。未执行 push、PR 或 archive。

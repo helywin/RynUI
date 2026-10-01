@@ -1,0 +1,21 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start  50: rynui.animation_architecture_contract
+1/8 Test  #50: rynui.animation_architecture_contract ...   Passed    0.02 sec
+    Start  96: rynui.default_font_chain
+2/8 Test  #96: rynui.default_font_chain ................   Passed    0.41 sec
+    Start  97: rynui.typography_windows_evidence
+3/8 Test  #97: rynui.typography_windows_evidence .......   Passed    0.08 sec
+    Start 142: rynui.gallery_document_model
+4/8 Test #142: rynui.gallery_document_model ............   Passed    0.01 sec
+    Start 143: rynui.gallery_document_contract
+5/8 Test #143: rynui.gallery_document_contract .........   Passed    0.02 sec
+    Start 158: rynui.theme_architecture_contract
+6/8 Test #158: rynui.theme_architecture_contract .......   Passed    0.02 sec
+    Start 195: rynui.pointer_allocation
+7/8 Test #195: rynui.pointer_allocation ................   Passed    0.03 sec
+    Start 199: rynui.focus_lifecycle
+8/8 Test #199: rynui.focus_lifecycle ...................   Passed    0.01 sec
+
+100% tests passed out of 8
+
+Total Test time (real) =   0.73 sec

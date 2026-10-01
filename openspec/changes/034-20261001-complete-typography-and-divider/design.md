@@ -2,7 +2,7 @@
 
 ## Context
 
-RynUI 目前只有 `ryn::Text`（content + tone + LayoutStyle），标题层级、行内语义、省略、复制、编辑和 Divider 都不存在。可复用的地基：`TextSceneService` 提供 shape/measure/synchronize 与局部失效，`GlyphScene` 的 quad/glyph 命令进入 `ComponentSceneComposer`，`WindowComponentServices` 统一持有窗口级交互、焦点、动画与 retained surface，`PressableBehavior` 与 `TextEditorStore`/`TextInputSessionHost` 已分别被 Button 与 Input 验证，033 已建立离线图标资源的锁定与验证流程。
+规划开始时 RynUI 只有 `ryn::Text`（content + tone + LayoutStyle），标题层级、行内语义、省略、复制、编辑和 Divider 都不存在。可复用的地基：`TextSceneService` 提供 shape/measure/synchronize 与局部失效，`GlyphScene` 的 quad/glyph 命令进入 `ComponentSceneComposer`，`WindowComponentServices` 统一持有窗口级交互、焦点、动画与 retained surface，`PressableBehavior` 与 `TextEditorStore`/`TextInputSessionHost` 已分别被 Button 与 Input 验证，033 已建立离线图标资源的锁定与验证流程。
 
 本设计在规划评审后做了修正，结论落在「上游数值来源与验证边界」与决策 3、4、5、7、8、9、10、12、14：
 
@@ -64,7 +64,7 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 评审确认：默认 resolver 忽略 weight，Windows 初选固定 NORMAL weight/style，`SemanticTypography` 与 `ThemeFontResolver` 都没有 slant。因此仅增加 `(font_family, pixel_size)` 缓存**不会**让 `strong`/`italic` 生效。决定：
 
 - `ThemeFontResolver` 签名扩展为 `(family, weight, italic, pixel_size)`，`runtime::SemanticTypography` 增加 `italic`，缓存键为四元组并按需惰性解析（不预载 weight×slant 矩阵）。
-- 平台解析统一为 `platform_styled_descriptor(family, weight, italic)`。Windows 枚举 family 的字体列表并按 weight/style 距离选取：**实施时核实 `GetFirstMatchingFont`（含按 weight 请求）对可变字体（Segoe UI Variable）会对每个 weight 返回同一文件**，因此按原设计直接请求 weight 会让 bold 静默复用常规 face。Linux 通过 Fontconfig 的 `FC_WEIGHT`/`FC_SLANT` 匹配并回传真实 style 供调用方判定。
+- 平台解析统一为 `platform_styled_descriptor(family, weight, italic)`。Windows 枚举 family 的字体列表并按 weight/style 距离选取；排除 simulated face，若 styled 描述与 regular 共用文件/index 则继续下一具名族。**单纯枚举可变字体仍可能只改变 DirectWrite 的 weight 元数据，FreeType 不携带 variation coordinates 加载时实际绘制不变**。本次实测强调/斜体分别使用静态 `SEGUISB.TTF`/`SEGOEUII.TTF`。Linux 通过 Fontconfig 的 `FC_WEIGHT`/`FC_SLANT` 匹配并回传真实 style 供调用方判定。
 - 取不到对应 face 时回退常规 face，并把精确原因写入 `DefaultFontChainResult::diagnostic_fallbacks`；styled face 只 FRONT 在常规链之前，等宽链仍追加 UI 链，保证覆盖不下降。
 - `strong` 使用 `alias.fontWeightStrong`（600）；`italic` 请求 italic face。
 - `code`/`keyboard` 使用 `TypographyThemeToken::font_family_code`，并在 `ThemeScope` 新增独立的 `code_font_family()` accessor；**不得**复用 `text_font_family()`（它只返回 Text 字族）。
@@ -302,33 +302,39 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 ## Risks / Trade-offs
 
-### 实施进度与设计状态（截至 2026-10-01）
+### 当前实施状态（2026-10-02）
+
+图标与主题、字体前置、Typography 装饰/省略/复制/编辑/Link、Divider 与 Gallery 已实现；Windows Debug/Release 与真实 D3D12/DXIL 窗口验收已完成。Windows 的真实 styled face 已复核修正；平台通用测试结果与首次失败的补测记录见 `evidence/common-implementation.md`，原生窗口截图与日志见 `evidence/windows-typography.md`。Linux 原生 Wayland 仍待实测，未进入 archive。
+
+实现落点：装饰片段常驻；候选省略只测量、不发布场景；复制端口独立于 Input；编辑显示/输入分支常驻，焦点事务在 dispatch 后刷新并校验 generation；Divider 使用内部 ComponentLayout 在同一轮 measure/place 放置标签与轨道；整个窗口的 Text/辅助文字同步共用有序批次。
+
+### 规划修订时状态（历史记录，2026-10-01）
 
 已完成：图标资源（2.1）、Theme Token 基线（2.2-2.6）、字体前置工作（3.1-3.3）、Typography 公开 API 与五级标题/语义色（4.1）、strong/italic/code/keyboard 的形状接入（4.2）。
 
 **二次修订说明。** 决策 18-23 的第一版由一个独立审查（gpt-6.1-sol / xhigh）逐条对照源码核查，结论是六项都无法按原文落地，其中决策 23 要求的重挂载路径被 ComponentHost 明确禁止、同时违反 Divider 规格的 identity 要求。该审查还发现两处已提交实现中的真实缺陷（装饰度量的单位换算、inline token 的订阅缺口），两者已修复并补上可证伪的回归测试（提交 c2fa37f）。决策 18-23 与决策 14 已据此重写；下表反映修订后的状态。
 
-| 剩余任务 | 决策 | 落地要点 |
+| 当时剩余任务 | 决策 | 落地要点 |
 | --- | --- | --- |
 | 4.3 装饰渲染 | 18 | 三个独立片段 + 窗口级共享 quad store + 服务支持可变 range 与重映射；颜色与度量拆成不同 identity |
 | 4.4 ellipsis | 19 | 截断在 TextState；需要 rows/suffix/expanded/reserved_inline 配置协议、保留全文与自然塑形、后缀缺字退化 |
-| 4.5 copyable | 20 | 新增独立 ind_clipboard；可用性查询看写能力而非 has_text；晚绑定显式遍历 participant |
+| 4.5 copyable | 20 | 新增独立 bind_clipboard；可用性查询看写能力而非 has_text；晚绑定显式遍历 participant |
 | 4.6 editable | 21 | 常驻双分支 + 内部 active/suspended 统一关闭交互与绘制 + 继承行高派生 control_height/viewport |
 | 4.7 Link | 22 | build context 内 slot composition；Link 自己的 fragment 承载 interaction |
 | Section 5 Divider | 23 + 14 | 标签节点常驻、模型可切换、禁止重挂载；标签尺寸由引擎测、轨道与放置由 Divider 在正确阶段分配；垂直忽略标签并写入规格 |
 | Section 6 Gallery | 17 | 支持状态只在能力真实接通后提升 |
 | Section 7 Windows 验收 | 4/5/14 的平台边界 | 必须在 4.x/5.x/6.x 全部落地后进行，否则证据无效 |
 
-仍需在实现时定稿的**细节**（不改变上述方向）：省略的退化场景表与计数器精确数值、装饰 quad 的逐行几何取整、Divider 内部布局模型的 measure/place 阶段落点、焦点事务队列的刷新时机。这些应在对应任务的测试里固定。
+当时需在实现时定稿的**细节**（不改变上述方向）：省略的退化场景表与计数器精确数值、装饰 quad 的逐行几何取整、Divider 内部布局模型的 measure/place 阶段落点、焦点事务队列的刷新时机。现在均已由对应实现和测试固定。
 
-**4.3b 装饰渲染的实现记录（未完成，勿重走弯路）。** 4.3a（服务层可变数量内容范围）已完成并提交。4.3b 曾实现到「片段注册 + 逐行几何 + quad 发布」，但测试失败后已整体回滚；以下是这次调查确认的事实：
+**4.3b 装饰渲染的历史回滚记录。** 下列问题已在后续实施中修复；这里保留当时调查的事实。4.3b 曾实现到「片段注册 + 逐行几何 + quad 发布」，但测试失败后整体回滚：
 
 - **四个片段的排序机制成立。** 实际遍历结果为「背景（before_children）→ glyph（before_children）→ 线（after_children）」，与决策 18 的预期一致；`register_scene_fragment` 允许一个组件注册多个片段。
 - **em 度量正确。** 测试字体读出 `underline_position = -0.125`、`underline_thickness = 0.05`、`strikeout_position = 0.322`、`strikeout_thickness = 0.05`（全部 em 相对），坐标与决策 4 一致；装饰线位置为 `baseline - position * font_size`。
 - **两个已修的真实缺陷（回滚时一并丢弃，重做时要注意）**：
   1. `ComponentHost` 只在**挂载期间**接受片段注册，而被连接的 props 在挂载**末尾**才写入 `state.typography`。因此装饰意图必须用 `read_prop` 直接从 props 读取，不能在挂载早期读 `state.typography`；副作用是「初始为 false、之后变为 true」的装饰无法再获得片段，这一点需要作为限制写进规格或改为常驻注册。
   2. 装饰帧无法监听 `composer_`/`surfaces_` 帧事件（`ComponentSceneComposer` 没有挂载钩子），因此片段必须在挂载前就绪，服务必须在 mount 之前 attach。
-- **未定位的失败**：测试报出 `line_quads` 为空（`lnQ=0`），而同一组件的 `line_fragment` 已注册、`state.typography` 的 `underline`/`strikethrough` 读回为 `false`，尽管 props 读回为 `true`（`[init] ulProp=1 ulVal=1`）。**下次应从「`connect_prop` 的静态值回调是否真的把语义写进 `state.typography`」入手**，而不是继续在几何或发布路径上找。
+- **已定位并修复的失败**：`underline`/`strikethrough` 缺少 `connect_prop` 接线，导致 props 为 true 而 state 为 false、`line_quads` 为空。补齐接线并常驻注册片段后，初始装饰及挂载后切换均通过几何与层级断言。
 - **测试夹具的一个真实陷阱**：`TextComponentHost` 必须在 `ComponentSceneComposer` 与 `RetainedSurfaceService` **之前**析构，否则宿主的 `dispose()` 会通过已销毁的服务清理组件并崩溃。夹具若把 host 声明在服务之前，必须显式在析构函数里先 `host->dispose()`。这次的 segfault 就是这个原因，与产品代码无关。
 - **不要把 `paint_traversal()` 的 span 存进局部变量后跨其他宿主查询复用**：注册或移除片段会让宿主重建底层 vector，span 随之失效；需要先快照成 `std::vector`，并且**只调用一次** `paint_traversal()`（用同一次调用的 `begin()`/`end()`）。
 
@@ -350,4 +356,4 @@ Linux 专属项只在真实 Linux 机器上完成，本 change 不声明 Linux �
 
 依次提交规划修订、字体与主题基线（含前置工作）、平台通用 Typography、平台通用 Divider、Gallery 接入、Windows 实机与集成收口。每个阶段运行该阶段列出的测试后再以英文 conventional commit 提交。现有 `ryn::Text` 公开行为不变，新增 API 不需要迁移；决策 5 会改变 `ThemeFontResolver` 的内部签名，属仓库内部 API，需要同步更新既有测试夹具。
 
-当前 OpenSpec CLI 拒绝以数字开头的项目约定 change 名，因此规划文件按既有 schema 手工创建，并使用支持该名称的 `openspec validate`；全仓已有 6 个与 034 无关的既有 strict 失败项，本 change 只要求自身 strict 通过。
+规划时 OpenSpec CLI 1.4.1 存在数字名称与既有 strict 兼容问题。当前工具已升级到 1.14.0，doctor 与本 change/全仓 strict 的最终实测结果记录在平台通用证据中；不沿用旧版本的失败统计。

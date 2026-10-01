@@ -19,7 +19,7 @@
 ## 3. 字体前置工作（平台通用）
 
 - [x] 3.1 让默认字体链按 `SystemFontFamily` 参数化：`DefaultFontChainRequest` 增加 `preferred_monospace_fonts`，`DefaultFontChainResult` 增加独立的 `monospace_faces` 与 `monospace_identities()`（等宽族在前、UI 链在后，保证未覆盖码位仍可读）；`make_default_ui_font_resolver` 按字族分别缓存并按像素尺寸重载；Windows 解析 Cascadia Mono/Consolas/Lucida Console，Linux 走 Fontconfig 的 `monospace` 别名；用注入字体覆盖两族解析、缺字回退、族间缓存隔离、DPI 变化与等宽族不进入 UI 链，以 `feat:` 提交
-- [x] 3.2 扩展 `font::FontMetrics` 的装饰字段（`underline_position`、`underline_thickness`、`strikeout_position`、`strikeout_thickness`）：underline 读 `FT_FaceRec`，strikeout 读 `FT_Get_Sfnt_Table(face, FT_SFNT_OS2)` 的 OS/2 表；四个字段统一保存为 **em 相对值**（freeType 的 underline 值按像素尺寸量化，14px 下步长约 1.25px，按像素归一化会在不同 DPI 间不稳定）；测试断言符号约定、厚度为正、跨光栅密度的稳定性与更大字号不出现负值，并同步修正 `design.md` 中「FreeType 直接提供四个字段」的错误表述，以 `feat:` 提交
+- [x] 3.2 扩展 `font::FontMetrics` 的装饰字段（`underline_position`、`underline_thickness`、`strikeout_position`、`strikeout_thickness`）：underline 读 `FT_FaceRec`，strikeout 读 `FT_Get_Sfnt_Table(face, FT_SFNT_OS2)` 的 OS/2 表；四个字段的原始值均为 font units，通过 `units_per_EM` 归一化为 **em 相对值**；测试断言符号约定、厚度为正、跨字号/光栅密度稳定性与实际表值区间，并同步修正 `design.md` 中「FreeType 直接提供四个字段」和按 26.6 像素换算的错误表述，以 `feat:` 提交
 - [x] 3.3 让 `ThemeFontResolver` 与 `runtime::SemanticTypography` 携带 `italic`，平台解析统一为 `platform_styled_descriptor(family, weight, italic)`，解析器惰性缓存键为 `(font_family, font_weight, italic, pixel_size)`，styled face 只 FRONT 在常规链之前、等宽请求仍追加 UI 链；Windows 枚举 family 字体列表按 weight/style 距离选最接近的 face（`GetFirstMatchingFont` 对可变字体会对所有 weight 返回同一文件），Linux 通过 Fontconfig 的 `FC_WEIGHT`/`FC_SLANT` 匹配并回传真实 style；取不到时回退常规 face 并写入 `diagnostic_fallbacks`；同步更新全部既有夹具与示例的 resolver 签名，并断言常规/强调/斜体的覆盖、族间缓存隔离与回退说明的精确性，以 `feat:` 提交
 
 ## 4. 平台通用 Typography（平台通用）
@@ -48,7 +48,7 @@
 
 ## 8. 平台通用集成验收（平台通用）
 
-- [ ] 8.1 在 Windows `windows-msvc` Debug 上运行**一次**完整 CTest、本 change strict、全仓 strict、可用 doctor 与 `git diff --check`；记录未通过项与平台边界，补齐平台通用证据并更新 `README.md` 当前进展表（避免把未验收的平台结果描述为通过），满足门槛后以 `test:` 提交
+- [x] 8.1 在 Windows `windows-msvc` Debug 上运行**一次**完整 CTest、本 change strict、全仓 strict、可用 doctor 与 `git diff --check`；记录未通过项与平台边界，补齐平台通用证据并更新 `README.md` 当前进展表（避免把未验收的平台结果描述为通过），满足门槛后以 `test:` 提交
 
 ## 9. Linux 验收（Linux）
 
