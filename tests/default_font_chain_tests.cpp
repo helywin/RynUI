@@ -236,6 +236,25 @@ void test_monospace_chain_resolution() {
 }
 
 void test_weight_and_slant_face_selection() {
+#if defined(_WIN32)
+    const auto regular_face = ryn::detail::resolve_platform_face(
+        ryn::SystemFontFamily::ui_sans, 400, false);
+    require(regular_face.has_value(), "Windows regular face missing");
+    for (const auto weight : {600U, 700U}) {
+        const auto face = ryn::detail::resolve_platform_face(
+            ryn::SystemFontFamily::ui_sans, weight, false);
+        require(face && face->weight >= 500 && !face->italic
+                    && (face->source_path != regular_face->source_path
+                        || face->face_index != regular_face->face_index),
+                "Windows styled resolution reused default variable coordinates");
+    }
+    const auto italic_face = ryn::detail::resolve_platform_face(
+        ryn::SystemFontFamily::ui_sans, 400, true);
+    require(italic_face && italic_face->italic
+                && (italic_face->source_path != regular_face->source_path
+                    || italic_face->face_index != regular_face->face_index),
+            "Windows italic resolution did not select a real slanted face");
+#endif
     auto created = ryn::font::FontRuntime::create();
     require(static_cast<bool>(created), "Font Runtime initialization failed");
     auto fonts = std::move(created.runtime);
@@ -271,9 +290,9 @@ void test_weight_and_slant_face_selection() {
 
     // A styled request must either lead with a genuinely different face or record
     // a precise fallback note. Which one happens depends on the platform: some
-    // Windows installs expose only the variable Segoe UI Variable file through
-    // DirectWrite, so the bold instance is not selectable and the regular face is
-    // the correct answer.
+    // Platforms can expose only a regular family; that fallback must be explicit.
+    // Windows separately requires a real static Segoe style above, since default
+    // variation coordinates cannot represent a named DirectWrite instance.
     const auto note_for = [&chain](std::string_view needle) {
         return std::ranges::any_of(chain.diagnostic_fallbacks, [&](const auto& note) {
             return note.find(needle) != std::string::npos;

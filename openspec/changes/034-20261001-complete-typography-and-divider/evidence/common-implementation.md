@@ -35,3 +35,7 @@ Divider 文字节点常驻，内部 ComponentLayout 在同轮 measure/place 完�
 组件参考卡片直接提供五级标题、strong/italic/code/keyboard/mark/underline/strikethrough、Link 和 Divider 样例。live samples 新增单行/多行展开、全文复制、受控正文/标题编辑、disabled Link 与 Divider 各形式；共 57 个样例，Input 增至 11 个（含两个常驻但默认暂停的编辑分支）。support overlay 与生成目录同步，Tooltip、富文本、HTML clipboard 和多行编辑仍列为缺失项。
 
 Gallery 长跳转暴露 Input 文本层各自重建顺序的问题；窗口批处理现在覆盖 Text 与全部辅助组件，同次同步只刷新一次文本顺序。省略操作宽度测量不请求新帧，展开入口不反复切换可见性，展开时全文和操作行不重叠。`token_gallery_frame` 的滚动单次重建、结构不变与 idle 合同保持通过；目录生成/目录合同/文档合同及 TextEngine/TextScene/交互/Divider 回归通过。
+
+## Windows 字体复核修复
+
+真实窗口验收发现先前的 DirectWrite 枚举仍把 Segoe UI Variable 的不同 weight 描述映射到同一文件/index；FreeType 不带 variation coordinates 加载，实际绘制仍是常规字重。现在 styled 解析排除 simulated face，并跳过与该族 regular 共用文件/index 的描述，继续查找静态 Segoe UI。Windows 回归明确断言 600/700 与 italic 的真实源 face；原先允许「有 fallback note 即通过」的弱断言不能代替这些检查。实际 600 解析到 `SEGUISB.TTF`，italic 到 `SEGOEUII.TTF`；`rynui.default_font_chain` 通过。

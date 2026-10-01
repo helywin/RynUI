@@ -188,7 +188,8 @@ private:
     int best_distance = std::numeric_limits<int>::max();
     for (UINT32 index = 0; index < font_count; ++index) {
         ComHandle<IDWriteFont> candidate;
-        if (FAILED(family->GetFont(index, candidate.put()))) {
+        if (FAILED(family->GetFont(index, candidate.put()))
+                || candidate->GetSimulations() != DWRITE_FONT_SIMULATIONS_NONE) {
             continue;
         }
         const int rank = slant_rank(candidate->GetStyle());
@@ -334,25 +335,42 @@ enum class PlatformFontRole {
     }
     const auto style = italic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
     std::vector<FontDescriptor> result;
+    const auto resolve_real_style = [&](std::wstring_view name) {
+        auto resolved = resolve_family(*collection.get(), name,
+            static_cast<DWRITE_FONT_WEIGHT>(weight), style);
+        if (!resolved || resolved->italic != italic) {
+            return std::optional<FontDescriptor>{};
+        }
+        if (weight != 400U || italic) {
+            const auto regular = resolve_family(*collection.get(), name);
+            // FreeType loads the default variation coordinates from a file.
+            // DirectWrite can expose several named instances of that same file,
+            // but a path/index descriptor cannot carry their axis coordinates.
+            // Continue to a static family instead of claiming that metadata alone
+            // changed the rendered weight or slant.
+            if (regular && resolved->path == regular->path
+                    && resolved->face_index == regular->face_index) {
+                return std::optional<FontDescriptor>{};
+            }
+        }
+        return resolved;
+    };
     if (role == PlatformFontRole::monospace) {
         for (const auto family : monospace_families) {
-            if (auto resolved = resolve_family(*collection.get(), family,
-                    static_cast<DWRITE_FONT_WEIGHT>(weight), style)) {
+            if (auto resolved = resolve_real_style(family)) {
                 append_unique(result, std::move(*resolved));
             }
         }
         return result;
     }
     for (const auto family : latin_families) {
-        if (auto resolved = resolve_family(*collection.get(), family,
-                static_cast<DWRITE_FONT_WEIGHT>(weight), style)) {
+        if (auto resolved = resolve_real_style(family)) {
             resolved->coverage_probe = U'A';
             result.push_back(std::move(*resolved));
             break;
         }
     }
-    if (auto resolved = resolve_family(*collection.get(), L"Microsoft YaHei UI",
-            static_cast<DWRITE_FONT_WEIGHT>(weight), style)) {
+    if (auto resolved = resolve_real_style(L"Microsoft YaHei UI")) {
         resolved->coverage_probe = U'中';
         result.push_back(std::move(*resolved));
     }
