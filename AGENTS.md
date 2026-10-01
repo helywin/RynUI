@@ -24,6 +24,9 @@
 - Compose 只作为 slot composition、Constraints 和 phased invalidation 的机制参考，不使用通用 `Modifier` 作为稳定组件的视觉入口。
 - 不使用 Virtual DOM；普通属性更新不得重新执行无关 Component。
 - SDL3 类型不得泄漏到 Reactive、Layout、Component 或公开 API。
+- Core（含 Input/Text/动画）与 `renderer/common` 不 include 具体 backend/OS SDK，也不得传递链接平台宿主、系统字体或 SDL。configure 守卫与实际 HEADLESS 构建负责验证；新增 backend 必须维持这一边界。
+- 新组件只更新共同 CPU scene/stores，通过 SceneResources 上传事务与 SceneBackend 呈现；不得添加组件私有 SDL 上传路径。遵守 `docs/renderer-contract.md` 的 packed ABI v1、owner/epoch、失败重试与析构顺序。
+- 新 dirty 更新通过 FrameRequestState/DirtyQueues 唤醒；动画本帧 invalidation 与显式下一帧请求保持独立。callback host 使用非阻塞 tick、单调时间和 lifetime/generation ticket；deferred 不无条件立即重试。平台通用验证包含 `windows-msvc-headless` 的 Debug/Release CTest。
 - 正式构建统一通过 `CMakePresets.json` 驱动并使用 `Ninja Multi-Config`；Windows 必须使用 MSVC，不得用 MinGW 结果代替 Windows 验收。
 - 第三方依赖只允许显式 `BUNDLED|SYSTEM` 模式；版本、source SHA256 和 license 必须集中锁定，不使用 Git submodule 或隐式 system-first fallback。
 

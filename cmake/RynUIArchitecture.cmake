@@ -3,14 +3,17 @@ include_guard(GLOBAL)
 # Internal headers are part of the boundary too, even when a target's include
 # directory makes backend headers reachable to the compiler.
 function(rynui_verify_core_includes source_directory)
-    foreach(area IN ITEMS animation component font graphics interaction layout
+    foreach(area IN ITEMS animation base component font foundation graphics input interaction layout
             motion reactive runtime text theme renderer/common)
         file(GLOB_RECURSE sources CONFIGURE_DEPENDS
             "${source_directory}/${area}/*.hpp" "${source_directory}/${area}/*.cpp")
         foreach(source IN LISTS sources)
             file(STRINGS "${source}" includes REGEX "^[ \t]*#[ \t]*include")
             foreach(line IN LISTS includes)
-                if(line MATCHES "[<\"]((SDL[23]?/|platform/|renderer/(sdl|recording)/|windows\\.h|Windows\\.h|d3d[^/>]*[/.]|vulkan/|metal/|Metal/|UIKit/|android/|emscripten/|X11/|wayland|CoreFoundation/|AppKit/|jni\\.h))")
+                string(TOLOWER "${line}" normalized)
+                string(REPLACE "\\" "/" normalized "${normalized}")
+                if(normalized MATCHES "[<\"](sdl[23]?/|sdl[^/>]*\\.h|platform/|windows\\.h|windowsx\\.h|d3d[^/>]*[/.]|dxgi|dwrite|wrl/|vulkan/|metal/|uikit/|android/|emscripten/|x11/|wayland|corefoundation/|appkit/|jni\\.h)"
+                        OR (normalized MATCHES "[<\"]renderer/" AND NOT normalized MATCHES "[<\"]renderer/common/"))
                     message(FATAL_ERROR "Portable Core include violation in ${source}: ${line}")
                 endif()
             endforeach()
@@ -40,9 +43,18 @@ function(rynui_assert_portable_link_closure root_target)
                         if(dependency MATCHES "SDL|PlatformFonts|renderer_sdl|platform_sdl|default_fonts|shadercross")
                             message(FATAL_ERROR "Portable target ${root_target} links forbidden dependency ${dependency} via ${current}")
                         endif()
-                        if(TARGET "${dependency}")
-                            list(APPEND queue "${dependency}")
-                        endif()
+                        # Traverse targets inside conditional generator expressions
+                        # too: a portable target may not acquire a native link in
+                        # another configuration or through an intermediate target.
+                        string(REPLACE "::" "__RYN_NAMESPACE__" expression "${dependency}")
+                        string(REPLACE ":" " " expression "${expression}")
+                        string(REPLACE "__RYN_NAMESPACE__" "::" expression "${expression}")
+                        string(REGEX MATCHALL "[A-Za-z0-9_./:+-]+" candidates "${expression}")
+                        foreach(candidate IN LISTS candidates)
+                            if(TARGET "${candidate}")
+                                list(APPEND queue "${candidate}")
+                            endif()
+                        endforeach()
                     endforeach()
                 endif()
             endforeach()

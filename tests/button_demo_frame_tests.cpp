@@ -625,8 +625,14 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 && gpu.failed_quad_uploads == 1
                 && !fixture.host->button_scene().instances()
                     .material_dirty_ranges().empty()
-                && loop.step() == ryn::runtime::FrameLoopStep::submitted,
-            "deferred Button GPU upload did not retain and retry its exact range");
+                && loop.pending_presentation_revision().has_value()
+                && !fixture.frames.pending(),
+            "deferred Button GPU upload lost its range or scheduled immediate retry");
+    // Recovery is an explicit event/request; an unavailable surface must not
+    // depend on animation invalidations accidentally requesting a busy retry.
+    fixture.frames.request_frame();
+    require(loop.tick() == ryn::runtime::FrameLoopStep::submitted,
+            "explicit Button recovery did not retry the retained range");
 
     auto motion_disabled = dark_theme;
     motion_disabled.seed.motion = false;

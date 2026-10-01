@@ -15,7 +15,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 - **Declarative C++ API:** public APIs live in the `ryn` namespace and compose components through typed Props, content slots, and reactive `Prop<T>` values.
 - **Fine-grained reactivity:** mounted components retain their nodes and dependencies. Ordinary property updates affect the relevant layout or rendering data without rerunning unrelated components.
 - **Consistent theming:** Theme and Component Tokens control colors, typography, corners, shadows, and interaction states. `LayoutStyle` controls external layout.
-- **Native GPU rendering:** SDL3 provides window, input, and GPU integration. A dedicated renderer draws text, rectangles, rounded shapes, and shadows, with frames scheduled on demand.
+- **Native GPU rendering:** the SDL3 host manages windows and input, while a separate renderer binding owns the GPU. Dedicated renderers draw text, rectangles, rounded shapes, and shadows, with frames scheduled on demand.
 
 ## Current status
 
@@ -28,6 +28,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
 | Single-line editing | Controlled/uncontrolled values, placeholders, prefix/suffix slots, grapheme-safe selection, clipboard, undo/redo, IME composition events, and caret blinking |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
+| Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
 The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, and multiline editing are not available yet.
 
@@ -45,6 +46,8 @@ Start with `rynui_token_gallery` to explore design tokens, component support, an
 | Linux | GCC or Clang | SDL3 GPU / Vulkan / SPIR-V |
 
 macOS is a future architecture target; it does not yet have an official build preset or validation results.
+
+The [035 checklist](openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md) and [renderer contract](docs/renderer-contract.md) record the portable foundation. HEADLESS/Recording exercise production shared components and text code; mobile/Web hosts and a second real GPU renderer remain future work.
 
 You need Git, CMake 3.25+, Ninja, and a C++20 toolchain. Running the examples requires a graphical desktop and a driver supporting the corresponding GPU backend. On Windows, install the Visual Studio C++ x64 tools. On Linux, install Fontconfig 2.13+ development files; the default bundled Wayland build also requires Meson, pkg-config, patch, wayland-scanner, and development dependencies for Wayland, wayland-protocols, Cairo, and PangoCairo.
 

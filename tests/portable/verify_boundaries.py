@@ -40,18 +40,22 @@ with tempfile.TemporaryDirectory(prefix="rynui-boundary-") as temporary:
         (project / "CMakeLists.txt").write_text(
             f'cmake_minimum_required(VERSION 3.25)\nproject(Guard NONE)\n{settings}\ninclude("{module}/RynUIBackends.cmake")\n', encoding="utf-8")
         configure(project, expected)
-    project = root / "includes"
-    (project / "src/component").mkdir(parents=True)
-    (project / "src/component/leak.hpp").write_text('#include <SDL3/SDL.h>\n', encoding="utf-8")
-    (project / "CMakeLists.txt").write_text(
-        f'cmake_minimum_required(VERSION 3.25)\nproject(Guard NONE)\ninclude("{module}/RynUIArchitecture.cmake")\nrynui_verify_core_includes("${{CMAKE_CURRENT_SOURCE_DIR}}/src")\n', encoding="utf-8")
-    configure(project, "Portable Core include violation")
+    for index, (area, header) in enumerate([
+        ("component", "SDL3/SDL.h"), ("input", "windows.h"),
+        ("renderer/common", "renderer/future_backend/device.hpp"),
+    ]):
+        project = root / f"includes-{index}"
+        (project / "src" / area).mkdir(parents=True)
+        (project / "src" / area / "leak.hpp").write_text(f'#include <{header}>\n', encoding="utf-8")
+        (project / "CMakeLists.txt").write_text(
+            f'cmake_minimum_required(VERSION 3.25)\nproject(Guard NONE)\ninclude("{module}/RynUIArchitecture.cmake")\nrynui_verify_core_includes("${{CMAKE_CURRENT_SOURCE_DIR}}/src")\n', encoding="utf-8")
+        configure(project, "Portable Core include violation")
     project = root / "links"
     project.mkdir()
     (project / "CMakeLists.txt").write_text(
         f'cmake_minimum_required(VERSION 3.25)\nproject(Guard NONE)\ninclude("{module}/RynUIArchitecture.cmake")\n'
         'add_library(core INTERFACE)\nadd_library(middle INTERFACE)\nadd_library(rynui_platform_sdl INTERFACE)\n'
-        'target_link_libraries(core INTERFACE middle)\ntarget_link_libraries(middle INTERFACE rynui_platform_sdl)\n'
+        'target_link_libraries(core INTERFACE "$<$<CONFIG:Debug>:middle>")\ntarget_link_libraries(middle INTERFACE rynui_platform_sdl)\n'
         'rynui_assert_portable_link_closure(core)\n', encoding="utf-8")
     configure(project, "forbidden dependency")
 print("Actual headless compilation graph and negative boundary fixtures passed")

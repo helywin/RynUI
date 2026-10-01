@@ -26,8 +26,8 @@
 
 ## 5. 集成验收（平台通用）
 
-- [ ] 5.1 HEADLESS Debug/Release 构建与共同 CTest、默认 preset 的完整 CTest 通过；只新增影响范围相关检查，记录实际 suite 结果与失败边界。
-- [ ] 5.2 更新正式架构、AGENTS、README 与研究文档的已实现/未来范围，保存 Astra 审查结论及证据索引；doctor、全量 strict、diff check 通过并提交。
+- [x] 5.1 HEADLESS Debug/Release 构建与共同 CTest、默认 preset 的完整 CTest 通过；只新增影响范围相关检查，记录实际 suite 结果与失败边界。
+- [x] 5.2 更新正式架构、AGENTS、README 与研究文档的已实现/未来范围，保存 Astra 审查结论及证据索引；doctor、全量 strict、diff check 通过并提交。
 
 ## 6. Windows 原生验收
 

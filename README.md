@@ -15,7 +15,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 - **声明式 C++ API**：公开 API 使用 `ryn` 命名空间，通过 typed Props、内容插槽和 reactive `Prop<T>` 组合组件。
 - **细粒度响应**：组件挂载后保留节点与依赖关系，普通属性更新只推进受影响的布局或绘制数据，不重新执行无关组件。
 - **统一主题**：颜色、字体、圆角、阴影和交互状态由 Theme 与 Component Token 控制；`LayoutStyle` 负责外部布局。
-- **原生 GPU 绘制**：SDL3 负责窗口、输入和 GPU 接入，专用渲染链路绘制文字、矩形、圆角和阴影，并按需调度帧。
+- **原生 GPU 绘制**：SDL3 宿主管窗口和输入，独立 renderer binding 管 GPU；专用渲染链路绘制文字、矩形、圆角和阴影，并按需调度帧。
 
 ## 当前进展
 
@@ -28,6 +28,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 排版与分割线 | 五级标题、行内语义与装饰、字素安全省略和展开、全文复制、原地单行编辑、Link 交互；水平/垂直、带文字、虚线和 plain Divider |
 | 单行编辑 | 受控/非受控值、占位文本、前后缀、Unicode 字素安全选区、剪贴板、撤销/重做、输入法组合事件与光标闪烁 |
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
+| 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
 
 当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Table`、`Tree` 和多行编辑等仍未提供。
 
@@ -45,6 +46,8 @@ Typography 与 Divider 已完成实现及 Windows Debug/Release、D3D12/DXIL 真
 | Linux | GCC 或 Clang | SDL3 GPU / Vulkan / SPIR-V |
 
 macOS 属于后续架构目标，当前尚未提供正式构建 preset 或验收结果。
+
+跨端框架基础由 [035 清单](openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)和 [renderer 合同](docs/renderer-contract.md)记录。HEADLESS/Recording 运行真实共享组件与文本代码用于测试；移动端、Web 和第二真实 GPU renderer 仍属于后续范围。
 
 需要 Git、CMake 3.25+、Ninja 和 C++20 工具链；运行示例需要图形桌面和支持相应 GPU 后端的驱动。Windows 需要安装 Visual Studio C++ x64 工具。Linux 需要 Fontconfig 2.13+ 开发包；默认 bundled Wayland 构建还需要 Meson、pkg-config、patch、wayland-scanner，以及 Wayland、wayland-protocols、Cairo、PangoCairo 开发依赖。
 
@@ -90,7 +93,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [开发构建说明](docs/development/building.md)：环境、presets 与构建选项。
 - [VS Code 使用说明](docs/development/vscode.md)：IntelliSense 配置来源、生效条件与排查。
 - [架构基线](docs/architecture.md)：设计目标、模块边界和长期技术决策；包含尚未实现的规划。
-- [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：桌面、移动端与 Web 的后端分层、推荐路线及验收范围；尚未实施。
+- [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：已实施的框架基础与未来桌面、移动端、Web 路线和验收范围。
 - [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
 - [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。

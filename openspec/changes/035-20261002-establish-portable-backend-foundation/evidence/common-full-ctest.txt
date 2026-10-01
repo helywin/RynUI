@@ -1,0 +1,485 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+        Start   1: rynui.icon_asset_contract
+  1/240 Test   #1: rynui.icon_asset_contract ..................................   Passed    0.06 sec
+        Start   2: rynui.text_input_events
+  2/240 Test   #2: rynui.text_input_events ....................................   Passed    0.04 sec
+        Start   3: rynui.text_input_session
+  3/240 Test   #3: rynui.text_input_session ...................................   Passed    0.01 sec
+        Start   4: rynui.sdl_text_input
+  4/240 Test   #4: rynui.sdl_text_input .......................................   Passed    0.01 sec
+        Start   5: rynui.text_input_focus
+  5/240 Test   #5: rynui.text_input_focus .....................................   Passed    0.01 sec
+        Start   6: rynui.text_input_atomicity
+  6/240 Test   #6: rynui.text_input_atomicity .................................   Passed    0.01 sec
+        Start   7: rynui.text_clipboard
+  7/240 Test   #7: rynui.text_clipboard .......................................   Passed    0.01 sec
+        Start   8: rynui.text_clipboard_commands
+  8/240 Test   #8: rynui.text_clipboard_commands ..............................   Passed    0.01 sec
+        Start   9: rynui.text_history
+  9/240 Test   #9: rynui.text_history .........................................   Passed    0.49 sec
+        Start  10: rynui.text_reconcile
+ 10/240 Test  #10: rynui.text_reconcile .......................................   Passed    0.01 sec
+        Start  11: rynui.text_editor
+ 11/240 Test  #11: rynui.text_editor ..........................................   Passed    0.01 sec
+        Start  12: rynui.text_editor_allocation
+ 12/240 Test  #12: rynui.text_editor_allocation ...............................   Passed    0.28 sec
+        Start  13: rynui.text_boundary
+ 13/240 Test  #13: rynui.text_boundary ........................................   Passed    0.02 sec
+        Start  14: rynui.unicode_grapheme_corpus
+ 14/240 Test  #14: rynui.unicode_grapheme_corpus ..............................   Passed    0.02 sec
+        Start  15: rynui.unicode_grapheme_fixture
+ 15/240 Test  #15: rynui.unicode_grapheme_fixture .............................   Passed    0.06 sec
+        Start  16: rynui.unicode_dependency_contract
+ 16/240 Test  #16: rynui.unicode_dependency_contract ..........................   Passed    0.02 sec
+        Start  17: rynui.utf8proc_resolver.positive
+ 17/240 Test  #17: rynui.utf8proc_resolver.positive ...........................   Passed    0.10 sec
+        Start  18: rynui.utf8proc_resolver.missing-package
+ 18/240 Test  #18: rynui.utf8proc_resolver.missing-package ....................   Passed    0.09 sec
+        Start  19: rynui.utf8proc_resolver.wrong-version
+ 19/240 Test  #19: rynui.utf8proc_resolver.wrong-version ......................   Passed    0.27 sec
+        Start  20: rynui.utf8proc_resolver.missing-target
+ 20/240 Test  #20: rynui.utf8proc_resolver.missing-target .....................   Passed    0.09 sec
+        Start  21: rynui.utf8proc_resolver.invalid-mode
+ 21/240 Test  #21: rynui.utf8proc_resolver.invalid-mode .......................   Passed    0.08 sec
+        Start  22: rynui.utf8proc_resolver.bundled-offline
+ 22/240 Test  #22: rynui.utf8proc_resolver.bundled-offline ....................   Passed    0.11 sec
+        Start  23: rynui.utf8proc_resolver.bundled-wrong-version
+ 23/240 Test  #23: rynui.utf8proc_resolver.bundled-wrong-version ..............   Passed    0.09 sec
+        Start  24: rynui.libdecor_dependency_contract
+ 24/240 Test  #24: rynui.libdecor_dependency_contract .........................   Passed    0.02 sec
+        Start  25: rynui.libdecor_resolver_contract.non-linux
+ 25/240 Test  #25: rynui.libdecor_resolver_contract.non-linux .................   Passed    0.69 sec
+        Start  26: rynui.windows_libdecor_isolation
+ 26/240 Test  #26: rynui.windows_libdecor_isolation ...........................   Passed    0.03 sec
+        Start  27: rynui.windows_libdecor_evidence
+ 27/240 Test  #27: rynui.windows_libdecor_evidence ............................   Passed    0.02 sec
+        Start  28: rynui.design_token_catalog
+ 28/240 Test  #28: rynui.design_token_catalog .................................   Passed    0.16 sec
+        Start  29: rynui.ant_design_current_baseline
+ 29/240 Test  #29: rynui.ant_design_current_baseline ..........................   Passed    0.13 sec
+        Start  30: rynui.ant_design_665_evidence_contract
+ 30/240 Test  #30: rynui.ant_design_665_evidence_contract .....................   Passed    0.13 sec
+        Start  31: rynui.ant_design_gallery_catalog_generator
+ 31/240 Test  #31: rynui.ant_design_gallery_catalog_generator .................   Passed    0.08 sec
+        Start  32: rynui.ant_design_gallery_catalog_contract
+ 32/240 Test  #32: rynui.ant_design_gallery_catalog_contract ..................   Passed    0.09 sec
+        Start  33: rynui.public_api_smoke
+ 33/240 Test  #33: rynui.public_api_smoke .....................................   Passed    0.01 sec
+        Start  34: rynui.design_token
+ 34/240 Test  #34: rynui.design_token .........................................   Passed    0.01 sec
+        Start  35: rynui.animation_time
+ 35/240 Test  #35: rynui.animation_time .......................................   Passed    0.01 sec
+        Start  36: rynui.animation_value
+ 36/240 Test  #36: rynui.animation_value ......................................   Passed    0.01 sec
+        Start  37: rynui.animation_easing
+ 37/240 Test  #37: rynui.animation_easing .....................................   Passed    0.01 sec
+        Start  38: rynui.animation_runtime
+ 38/240 Test  #38: rynui.animation_runtime ....................................   Passed    0.01 sec
+        Start  39: rynui.material_transition_channels
+ 39/240 Test  #39: rynui.material_transition_channels .........................   Passed    0.03 sec
+        Start  40: rynui.animation_deadline
+ 40/240 Test  #40: rynui.animation_deadline ...................................   Passed    0.01 sec
+        Start  41: rynui.motion_policy
+ 41/240 Test  #41: rynui.motion_policy ........................................   Passed    0.02 sec
+        Start  42: rynui.animation_runtime_allocation
+ 42/240 Test  #42: rynui.animation_runtime_allocation .........................   Passed    0.03 sec
+        Start  43: rynui.animation_primitives_contract
+ 43/240 Test  #43: rynui.animation_primitives_contract ........................   Passed    0.02 sec
+        Start  44: rynui.animation_generic_evidence
+ 44/240 Test  #44: rynui.animation_generic_evidence ...........................   Passed    0.02 sec
+        Start  45: rynui.animation_windows_evidence_schema
+ 45/240 Test  #45: rynui.animation_windows_evidence_schema ....................   Passed    0.02 sec
+        Start  46: rynui.animation_linux_evidence_schema
+ 46/240 Test  #46: rynui.animation_linux_evidence_schema ......................   Passed    0.02 sec
+        Start  47: rynui.animation_evidence_cross_platform_rejected
+ 47/240 Test  #47: rynui.animation_evidence_cross_platform_rejected ...........   Passed    0.02 sec
+        Start  48: rynui.animation_evidence_planning_only_rejected
+ 48/240 Test  #48: rynui.animation_evidence_planning_only_rejected ............   Passed    0.02 sec
+        Start  49: rynui.animation_evidence_completion_idle_required
+ 49/240 Test  #49: rynui.animation_evidence_completion_idle_required ..........   Passed    0.02 sec
+        Start  50: rynui.animation_architecture_contract
+ 50/240 Test  #50: rynui.animation_architecture_contract ......................   Passed    0.02 sec
+        Start  51: rynui.python_cache_clean
+ 51/240 Test  #51: rynui.python_cache_clean ...................................   Passed    0.05 sec
+        Start  52: rynui.theme_algorithm
+ 52/240 Test  #52: rynui.theme_algorithm ......................................   Passed    0.03 sec
+        Start  53: rynui.theme_public_api
+ 53/240 Test  #53: rynui.theme_public_api .....................................   Passed    0.01 sec
+        Start  54: rynui.theme_runtime
+ 54/240 Test  #54: rynui.theme_runtime ........................................   Passed    0.03 sec
+        Start  55: rynui.ant_design_button_source_contract
+ 55/240 Test  #55: rynui.ant_design_button_source_contract ....................   Passed    0.01 sec
+        Start  56: rynui.ant_design_input_source_contract
+ 56/240 Test  #56: rynui.ant_design_input_source_contract .....................   Passed    0.03 sec
+        Start  57: rynui.selection_controls_source_contract
+ 57/240 Test  #57: rynui.selection_controls_source_contract ...................   Passed    0.07 sec
+        Start  58: rynui.search_source_contract
+ 58/240 Test  #58: rynui.search_source_contract ...............................   Passed    0.05 sec
+        Start  59: rynui.theme_scope_component
+ 59/240 Test  #59: rynui.theme_scope_component ................................   Passed    0.02 sec
+        Start  60: rynui.theme_allocation
+ 60/240 Test  #60: rynui.theme_allocation .....................................   Passed    0.02 sec
+        Start  61: rynui.design_token_header_isolation
+ 61/240 Test  #61: rynui.design_token_header_isolation ........................   Passed    0.01 sec
+        Start  62: rynui.prop_public_api
+ 62/240 Test  #62: rynui.prop_public_api ......................................   Passed    0.01 sec
+        Start  63: rynui.component_public_api
+ 63/240 Test  #63: rynui.component_public_api .................................   Passed    0.01 sec
+        Start  64: rynui.layout_style_public_api
+ 64/240 Test  #64: rynui.layout_style_public_api ..............................   Passed    0.01 sec
+        Start  65: rynui.text_public_api
+ 65/240 Test  #65: rynui.text_public_api ......................................   Passed    0.01 sec
+        Start  66: rynui.input_public_api
+ 66/240 Test  #66: rynui.input_public_api .....................................   Passed    0.01 sec
+        Start  67: rynui.search_public_api
+ 67/240 Test  #67: rynui.search_public_api ....................................   Passed    0.01 sec
+        Start  68: rynui.search_component
+ 68/240 Test  #68: rynui.search_component .....................................   Passed    1.47 sec
+        Start  69: rynui.search_idle_benchmark
+ 69/240 Test  #69: rynui.search_idle_benchmark ................................   Passed    0.04 sec
+        Start  70: rynui.search_generic_evidence
+ 70/240 Test  #70: rynui.search_generic_evidence ..............................   Passed    0.06 sec
+        Start  71: rynui.search_windows_automated_evidence
+ 71/240 Test  #71: rynui.search_windows_automated_evidence ....................   Passed    0.06 sec
+        Start  72: rynui.search_evidence_cross_scope_rejected
+ 72/240 Test  #72: rynui.search_evidence_cross_scope_rejected .................   Passed    0.06 sec
+        Start  73: rynui.selection_controls_public_api
+ 73/240 Test  #73: rynui.selection_controls_public_api ........................   Passed    0.01 sec
+        Start  74: rynui.selection_component
+ 74/240 Test  #74: rynui.selection_component ..................................   Passed    0.45 sec
+        Start  75: rynui.radio_public_api
+ 75/240 Test  #75: rynui.radio_public_api .....................................   Passed    0.01 sec
+        Start  76: rynui.radio_component
+ 76/240 Test  #76: rynui.radio_component ......................................   Passed    0.42 sec
+        Start  77: rynui.selection_idle_benchmark
+ 77/240 Test  #77: rynui.selection_idle_benchmark .............................   Passed    0.04 sec
+        Start  78: rynui.selection_generic_evidence
+ 78/240 Test  #78: rynui.selection_generic_evidence ...........................   Passed    0.06 sec
+        Start  79: rynui.selection_windows_evidence
+ 79/240 Test  #79: rynui.selection_windows_evidence ...........................   Passed    0.06 sec
+        Start  80: rynui.selection_evidence_cross_scope_rejected
+ 80/240 Test  #80: rynui.selection_evidence_cross_scope_rejected ..............   Passed    0.06 sec
+        Start  81: rynui.input_public_compile_fail
+ 81/240 Test  #81: rynui.input_public_compile_fail ............................   Passed    3.66 sec
+        Start  82: rynui.button_public_api
+ 82/240 Test  #82: rynui.button_public_api ....................................   Passed    0.01 sec
+        Start  83: rynui.flex_public_api
+ 83/240 Test  #83: rynui.flex_public_api ......................................   Passed    0.01 sec
+        Start  84: rynui.space_public_api
+ 84/240 Test  #84: rynui.space_public_api .....................................   Passed    0.01 sec
+        Start  85: rynui.flex_header_isolation
+ 85/240 Test  #85: rynui.flex_header_isolation ................................   Passed    0.01 sec
+        Start  86: rynui.space_header_isolation
+ 86/240 Test  #86: rynui.space_header_isolation ...............................   Passed    0.01 sec
+        Start  87: rynui.button_header_isolation
+ 87/240 Test  #87: rynui.button_header_isolation ..............................   Passed    0.01 sec
+        Start  88: rynui.button_dependency_contract
+ 88/240 Test  #88: rynui.button_dependency_contract ...........................   Passed    0.02 sec
+        Start  89: rynui.component_theme_contract
+ 89/240 Test  #89: rynui.component_theme_contract .............................   Passed    0.02 sec
+        Start  90: rynui.flex_dependency_contract
+ 90/240 Test  #90: rynui.flex_dependency_contract .............................   Passed    0.02 sec
+        Start  91: rynui.space_dependency_contract
+ 91/240 Test  #91: rynui.space_dependency_contract ............................   Passed    0.06 sec
+        Start  92: rynui.string
+ 92/240 Test  #92: rynui.string ...............................................   Passed    0.01 sec
+        Start  93: rynui.font_dependency_contract
+ 93/240 Test  #93: rynui.font_dependency_contract .............................   Passed    0.01 sec
+        Start  94: rynui.text_caret_map
+ 94/240 Test  #94: rynui.text_caret_map .......................................   Passed    0.05 sec
+        Start  95: rynui.font_runtime
+ 95/240 Test  #95: rynui.font_runtime .........................................   Passed    0.04 sec
+        Start  96: rynui.default_font_chain
+ 96/240 Test  #96: rynui.default_font_chain ...................................   Passed    0.41 sec
+        Start  97: rynui.typography_windows_evidence
+ 97/240 Test  #97: rynui.typography_windows_evidence ..........................   Passed    0.08 sec
+        Start  98: rynui.text_engine
+ 98/240 Test  #98: rynui.text_engine ..........................................   Passed    0.10 sec
+        Start  99: rynui.text_state
+ 99/240 Test  #99: rynui.text_state ...........................................   Passed    0.06 sec
+        Start 100: rynui.signal
+100/240 Test #100: rynui.signal ...............................................   Passed    0.01 sec
+        Start 101: rynui.memo
+101/240 Test #101: rynui.memo .................................................   Passed    0.01 sec
+        Start 102: rynui.batch
+102/240 Test #102: rynui.batch ................................................   Passed    0.01 sec
+        Start 103: rynui.scope_effect
+103/240 Test #103: rynui.scope_effect .........................................   Passed    0.01 sec
+        Start 104: rynui.prop
+104/240 Test #104: rynui.prop .................................................   Passed    0.01 sec
+        Start 105: rynui.reactive_allocation
+105/240 Test #105: rynui.reactive_allocation ..................................   Passed    0.03 sec
+        Start 106: rynui.node_store
+106/240 Test #106: rynui.node_store ...........................................   Passed    0.01 sec
+        Start 107: rynui.component_mount
+107/240 Test #107: rynui.component_mount ......................................   Passed    0.01 sec
+        Start 108: rynui.component_scene_traversal
+108/240 Test #108: rynui.component_scene_traversal ............................   Passed    0.01 sec
+        Start 109: rynui.component_scene_composer
+109/240 Test #109: rynui.component_scene_composer .............................   Passed    0.01 sec
+        Start 110: rynui.button_scene_service
+110/240 Test #110: rynui.button_scene_service .................................   Passed    0.01 sec
+        Start 111: rynui.input_display
+111/240 Test #111: rynui.input_display ........................................   Passed    0.05 sec
+        Start 112: rynui.input_component
+112/240 Test #112: rynui.input_component ......................................   Passed    1.63 sec
+        Start 113: rynui.password_component
+113/240 Test #113: rynui.password_component ...................................   Passed    0.11 sec
+        Start 114: rynui.input_clear_component
+114/240 Test #114: rynui.input_clear_component ................................   Passed    0.08 sec
+        Start 115: rynui.input_pointer
+115/240 Test #115: rynui.input_pointer ........................................   Passed    0.64 sec
+        Start 116: rynui.input_keyboard
+116/240 Test #116: rynui.input_keyboard .......................................   Passed    0.49 sec
+        Start 117: rynui.input_caret_blink
+117/240 Test #117: rynui.input_caret_blink ....................................   Passed    0.04 sec
+        Start 118: rynui.input_journey
+118/240 Test #118: rynui.input_journey ........................................   Passed    0.20 sec
+        Start 119: rynui.input_gpu
+119/240 Test #119: rynui.input_gpu ............................................   Passed    0.11 sec
+        Start 120: rynui.input_material_transition
+120/240 Test #120: rynui.input_material_transition ............................   Passed    0.40 sec
+        Start 121: rynui.input_scene_allocation
+121/240 Test #121: rynui.input_scene_allocation ...............................   Passed   73.63 sec
+        Start 122: rynui.input_generic_evidence_schema
+122/240 Test #122: rynui.input_generic_evidence_schema ........................   Passed    0.03 sec
+        Start 123: rynui.input_windows_evidence_schema
+123/240 Test #123: rynui.input_windows_evidence_schema ........................   Passed    0.02 sec
+        Start 124: rynui.windows_input_build_evidence
+124/240 Test #124: rynui.windows_input_build_evidence .........................   Passed    0.02 sec
+        Start 125: rynui.windows_input_acceptance_runner_contract
+125/240 Test #125: rynui.windows_input_acceptance_runner_contract .............   Passed    0.02 sec
+        Start 126: rynui.input_linux_evidence_schema
+126/240 Test #126: rynui.input_linux_evidence_schema ..........................   Passed    0.02 sec
+        Start 127: rynui.input_evidence_cross_platform_rejected
+127/240 Test #127: rynui.input_evidence_cross_platform_rejected ...............   Passed    0.02 sec
+        Start 128: rynui.input_evidence_planning_only_rejected
+128/240 Test #128: rynui.input_evidence_planning_only_rejected ................   Passed    0.02 sec
+        Start 129: rynui.input_evidence_commit_idle_required
+129/240 Test #129: rynui.input_evidence_commit_idle_required ..................   Passed    0.02 sec
+        Start 130: rynui.button_component
+130/240 Test #130: rynui.button_component .....................................   Passed    0.43 sec
+        Start 131: rynui.pressable_behavior_allocation
+131/240 Test #131: rynui.pressable_behavior_allocation ........................   Passed    0.02 sec
+        Start 132: rynui.reference_surface
+132/240 Test #132: rynui.reference_surface ....................................   Passed    0.11 sec
+        Start 133: rynui.reference_surface_contract
+133/240 Test #133: rynui.reference_surface_contract ...........................   Passed    0.02 sec
+        Start 134: rynui.button_spinner_benchmark
+134/240 Test #134: rynui.button_spinner_benchmark .............................   Passed    0.07 sec
+        Start 135: rynui.flex_component
+135/240 Test #135: rynui.flex_component .......................................   Passed    0.02 sec
+        Start 136: rynui.space_component
+136/240 Test #136: rynui.space_component ......................................   Passed    0.04 sec
+        Start 137: rynui.button_demo_frame
+137/240 Test #137: rynui.button_demo_frame ....................................   Passed    0.06 sec
+        Start 138: rynui.layout_demo_frame
+138/240 Test #138: rynui.layout_demo_frame ....................................   Passed    0.04 sec
+        Start 139: rynui.token_gallery_frame
+139/240 Test #139: rynui.token_gallery_frame ..................................   Passed   11.68 sec
+        Start 140: rynui.gallery_platform_generic_journey
+140/240 Test #140: rynui.gallery_platform_generic_journey .....................   Passed   11.71 sec
+        Start 141: rynui.ant_design_reference_catalog
+141/240 Test #141: rynui.ant_design_reference_catalog .........................   Passed    0.01 sec
+        Start 142: rynui.gallery_document_model
+142/240 Test #142: rynui.gallery_document_model ...............................   Passed    0.01 sec
+        Start 143: rynui.gallery_document_contract
+143/240 Test #143: rynui.gallery_document_contract ............................   Passed    0.02 sec
+        Start 144: rynui.gallery_document_viewport
+144/240 Test #144: rynui.gallery_document_viewport ............................   Passed    0.01 sec
+        Start 145: rynui.gallery_document_viewport_contract
+145/240 Test #145: rynui.gallery_document_viewport_contract ...................   Passed    0.02 sec
+        Start 146: rynui.gallery_document_benchmark
+146/240 Test #146: rynui.gallery_document_benchmark ...........................   Passed    0.10 sec
+        Start 147: rynui.token_gallery_benchmark
+147/240 Test #147: rynui.token_gallery_benchmark ..............................   Passed    4.90 sec
+        Start 148: rynui.token_gallery_contract
+148/240 Test #148: rynui.token_gallery_contract ...............................   Passed    0.04 sec
+        Start 149: rynui.reference_gallery_evidence
+149/240 Test #149: rynui.reference_gallery_evidence ...........................   Passed    0.02 sec
+        Start 150: rynui.reference_gallery_evidence_cross_platform_rejected
+150/240 Test #150: rynui.reference_gallery_evidence_cross_platform_rejected ...   Passed    0.02 sec
+        Start 151: rynui.reference_gallery_evidence_planning_only_rejected
+151/240 Test #151: rynui.reference_gallery_evidence_planning_only_rejected ....   Passed    0.02 sec
+        Start 152: rynui.windows_reference_gallery_build_evidence
+152/240 Test #152: rynui.windows_reference_gallery_build_evidence .............   Passed    0.02 sec
+        Start 153: rynui.windows_gallery_acceptance_runner_contract
+153/240 Test #153: rynui.windows_gallery_acceptance_runner_contract ...........   Passed    0.02 sec
+        Start 154: rynui.token_gallery_evidence_schema
+154/240 Test #154: rynui.token_gallery_evidence_schema ........................   Passed    0.02 sec
+        Start 155: rynui.token_gallery_windows_evidence
+155/240 Test #155: rynui.token_gallery_windows_evidence .......................   Passed    0.02 sec
+        Start 156: rynui.token_gallery_evidence_cross_platform_rejected
+156/240 Test #156: rynui.token_gallery_evidence_cross_platform_rejected .......   Passed    0.02 sec
+        Start 157: rynui.token_gallery_generic_evidence
+157/240 Test #157: rynui.token_gallery_generic_evidence .......................   Passed    0.02 sec
+        Start 158: rynui.theme_architecture_contract
+158/240 Test #158: rynui.theme_architecture_contract ..........................   Passed    0.02 sec
+        Start 159: rynui.layout_example_contract
+159/240 Test #159: rynui.layout_example_contract ..............................   Passed    0.02 sec
+        Start 160: rynui.layout_evidence_schema
+160/240 Test #160: rynui.layout_evidence_schema ...............................   Passed    0.02 sec
+        Start 161: rynui.layout_evidence_cross_platform_rejected
+161/240 Test #161: rynui.layout_evidence_cross_platform_rejected ..............   Passed    0.02 sec
+        Start 162: rynui.button_example_contract
+162/240 Test #162: rynui.button_example_contract ..............................   Passed    0.02 sec
+        Start 163: rynui.button_evidence_schema
+163/240 Test #163: rynui.button_evidence_schema ...............................   Passed    0.02 sec
+        Start 164: rynui.button_evidence_cross_platform_rejected
+164/240 Test #164: rynui.button_evidence_cross_platform_rejected ..............   Passed    0.02 sec
+        Start 165: rynui.layout_engine
+165/240 Test #165: rynui.layout_engine ........................................   Passed    0.01 sec
+        Start 166: rynui.layout_allocation
+166/240 Test #166: rynui.layout_allocation ....................................   Passed    0.03 sec
+        Start 167: rynui.layout_style
+167/240 Test #167: rynui.layout_style .........................................   Passed    0.01 sec
+        Start 168: rynui.dirty_queue
+168/240 Test #168: rynui.dirty_queue ..........................................   Passed    0.01 sec
+        Start 169: rynui.quad_primitive
+169/240 Test #169: rynui.quad_primitive .......................................   Passed    0.01 sec
+        Start 170: rynui.buffer_upload_batch_layout
+170/240 Test #170: rynui.buffer_upload_batch_layout ...........................   Passed    0.01 sec
+        Start 171: rynui.texture_upload_batch_layout
+171/240 Test #171: rynui.texture_upload_batch_layout ..........................   Passed    0.01 sec
+        Start 172: rynui.rendering_locality
+172/240 Test #172: rynui.rendering_locality ...................................   Passed    0.13 sec
+        Start 173: rynui.glyph_atlas
+173/240 Test #173: rynui.glyph_atlas ..........................................   Passed    0.03 sec
+        Start 174: rynui.glyph_scene
+174/240 Test #174: rynui.glyph_scene ..........................................   Passed    0.30 sec
+        Start 175: rynui.rounded_effect_math
+175/240 Test #175: rynui.rounded_effect_math ..................................   Passed    0.01 sec
+        Start 176: rynui.rounded_effect_store
+176/240 Test #176: rynui.rounded_effect_store .................................   Passed    0.01 sec
+        Start 177: rynui.rounded_effect_scene
+177/240 Test #177: rynui.rounded_effect_scene .................................   Passed    0.01 sec
+        Start 178: rynui.rounded_effect_allocation_benchmark
+178/240 Test #178: rynui.rounded_effect_allocation_benchmark ..................   Passed    0.01 sec
+        Start 179: rynui.rounded_effect_gpu
+179/240 Test #179: rynui.rounded_effect_gpu ...................................   Passed    0.01 sec
+        Start 180: rynui.rounded_effect_gpu_resources
+180/240 Test #180: rynui.rounded_effect_gpu_resources .........................   Passed    0.01 sec
+        Start 181: rynui.binding_quad_integration
+181/240 Test #181: rynui.binding_quad_integration .............................   Passed    0.01 sec
+        Start 182: rynui.frame_scheduler
+182/240 Test #182: rynui.frame_scheduler ......................................   Passed    0.01 sec
+        Start 183: rynui.platform_input
+183/240 Test #183: rynui.platform_input .......................................   Passed    0.01 sec
+        Start 184: rynui.sdl_event_adapter
+184/240 Test #184: rynui.sdl_event_adapter ....................................   Passed    0.01 sec
+        Start 185: rynui.platform_event_pump
+185/240 Test #185: rynui.platform_event_pump ..................................   Passed    0.01 sec
+        Start 186: rynui.input_dependency_contract
+186/240 Test #186: rynui.input_dependency_contract ............................   Passed    0.02 sec
+        Start 187: rynui.interaction_registry
+187/240 Test #187: rynui.interaction_registry .................................   Passed    0.01 sec
+        Start 188: rynui.hit_test
+188/240 Test #188: rynui.hit_test .............................................   Passed    0.01 sec
+        Start 189: rynui.hit_test_refresh
+189/240 Test #189: rynui.hit_test_refresh .....................................   Passed    0.01 sec
+        Start 190: rynui.hit_test_benchmark
+190/240 Test #190: rynui.hit_test_benchmark ...................................   Passed    4.22 sec
+        Start 191: rynui.hit_test_dirty_refresh_benchmark
+191/240 Test #191: rynui.hit_test_dirty_refresh_benchmark .....................   Passed    0.30 sec
+        Start 192: rynui.pointer_route
+192/240 Test #192: rynui.pointer_route ........................................   Passed    0.01 sec
+        Start 193: rynui.pointer_state
+193/240 Test #193: rynui.pointer_state ........................................   Passed    0.01 sec
+        Start 194: rynui.pointer_lifecycle
+194/240 Test #194: rynui.pointer_lifecycle ....................................   Passed    0.01 sec
+        Start 195: rynui.pointer_allocation
+195/240 Test #195: rynui.pointer_allocation ...................................   Passed    0.03 sec
+        Start 196: rynui.focus_order
+196/240 Test #196: rynui.focus_order ..........................................   Passed    0.01 sec
+        Start 197: rynui.focus_state
+197/240 Test #197: rynui.focus_state ..........................................   Passed    0.01 sec
+        Start 198: rynui.keyboard_activation
+198/240 Test #198: rynui.keyboard_activation ..................................   Passed    0.01 sec
+        Start 199: rynui.focus_lifecycle
+199/240 Test #199: rynui.focus_lifecycle ......................................   Passed    0.01 sec
+        Start 200: rynui.focus_allocation
+200/240 Test #200: rynui.focus_allocation .....................................   Passed    0.03 sec
+        Start 201: rynui.platform_lifecycle
+201/240 Test #201: rynui.platform_lifecycle ...................................   Passed    0.01 sec
+        Start 202: rynui.frame_renderer
+202/240 Test #202: rynui.frame_renderer .......................................   Passed    0.01 sec
+        Start 203: rynui.glyph_gpu_resources
+203/240 Test #203: rynui.glyph_gpu_resources ..................................   Passed    0.01 sec
+        Start 204: rynui.text_render_integration
+204/240 Test #204: rynui.text_render_integration ..............................   Passed    0.03 sec
+        Start 205: rynui.text_scene_service
+205/240 Test #205: rynui.text_scene_service ...................................   Passed    0.20 sec
+        Start 206: rynui.default_theme
+206/240 Test #206: rynui.default_theme ........................................   Passed    0.01 sec
+        Start 207: rynui.text_component
+207/240 Test #207: rynui.text_component .......................................   Passed    0.39 sec
+        Start 208: rynui.typography_component
+208/240 Test #208: rynui.typography_component .................................   Passed    0.76 sec
+        Start 209: rynui.typography_interaction
+209/240 Test #209: rynui.typography_interaction ...............................   Passed    0.19 sec
+        Start 210: rynui.divider_component
+210/240 Test #210: rynui.divider_component ....................................   Passed    0.12 sec
+        Start 211: rynui.text_component_frame
+211/240 Test #211: rynui.text_component_frame .................................   Passed    0.04 sec
+        Start 212: rynui.text_example_contract
+212/240 Test #212: rynui.text_example_contract ................................   Passed    0.02 sec
+        Start 213: rynui.windows_text_evidence
+213/240 Test #213: rynui.windows_text_evidence ................................   Passed    0.02 sec
+        Start 214: rynui.linux_text_evidence
+214/240 Test #214: rynui.linux_text_evidence ..................................   Passed    0.02 sec
+        Start 215: rynui.generated_shaders
+215/240 Test #215: rynui.generated_shaders ....................................   Passed    0.02 sec
+        Start 216: rynui.deployed_shaders
+216/240 Test #216: rynui.deployed_shaders .....................................   Passed    0.02 sec
+        Start 217: rynui.glyph_shader_contract
+217/240 Test #217: rynui.glyph_shader_contract ................................   Passed    0.02 sec
+        Start 218: rynui.quad_shader_contract
+218/240 Test #218: rynui.quad_shader_contract .................................   Passed    0.02 sec
+        Start 219: rynui.rounded_effect_shader_contract
+219/240 Test #219: rynui.rounded_effect_shader_contract .......................   Passed    0.02 sec
+        Start 220: rynui.dependency_lock
+220/240 Test #220: rynui.dependency_lock ......................................   Passed    0.05 sec
+        Start 221: rynui.prop_reference_compile_fail
+221/240 Test #221: rynui.prop_reference_compile_fail ..........................   Passed    1.15 sec
+        Start 222: rynui.design_token_public_compile_fail
+222/240 Test #222: rynui.design_token_public_compile_fail .....................   Passed    2.95 sec
+        Start 223: rynui.theme_public_compile_fail
+223/240 Test #223: rynui.theme_public_compile_fail ............................   Passed    1.20 sec
+        Start 224: rynui.text_public_compile_fail
+224/240 Test #224: rynui.text_public_compile_fail .............................   Passed    2.31 sec
+        Start 225: rynui.button_public_compile_fail
+225/240 Test #225: rynui.button_public_compile_fail ...........................   Passed    3.43 sec
+        Start 226: rynui.flex_public_compile_fail
+226/240 Test #226: rynui.flex_public_compile_fail .............................   Passed    4.66 sec
+        Start 227: rynui.space_public_compile_fail
+227/240 Test #227: rynui.space_public_compile_fail ............................   Passed    8.23 sec
+        Start 228: rynui.text_dependency_options
+228/240 Test #228: rynui.text_dependency_options ..............................   Passed    0.02 sec
+        Start 229: rynui.dependency_contract.invalid-mode
+229/240 Test #229: rynui.dependency_contract.invalid-mode .....................   Passed    1.48 sec
+        Start 230: rynui.dependency_contract.missing-target
+230/240 Test #230: rynui.dependency_contract.missing-target ...................   Passed    1.46 sec
+        Start 231: rynui.dependency_contract.missing-shadercross
+231/240 Test #231: rynui.dependency_contract.missing-shadercross ..............   Passed    1.44 sec
+        Start 232: rynui.dependency_contract.invalid-shadercross
+232/240 Test #232: rynui.dependency_contract.invalid-shadercross ..............   Passed    1.48 sec
+        Start 233: rynui.dependency_contract.wrong-shadercross
+233/240 Test #233: rynui.dependency_contract.wrong-shadercross ................   Passed    1.49 sec
+        Start 234: rynui.dependency_contract.cross-missing-shadercross
+234/240 Test #234: rynui.dependency_contract.cross-missing-shadercross ........   Passed    1.50 sec
+        Start 235: rynui.text_dependency_contract.positive
+235/240 Test #235: rynui.text_dependency_contract.positive ....................   Passed    0.67 sec
+        Start 236: rynui.text_dependency_contract.missing-package
+236/240 Test #236: rynui.text_dependency_contract.missing-package .............   Passed    0.63 sec
+        Start 237: rynui.text_dependency_contract.wrong-version
+237/240 Test #237: rynui.text_dependency_contract.wrong-version ...............   Passed    0.89 sec
+        Start 238: rynui.text_dependency_contract.missing-target
+238/240 Test #238: rynui.text_dependency_contract.missing-target ..............   Passed    0.64 sec
+        Start 239: rynui.text_dependency_contract.missing-font
+239/240 Test #239: rynui.text_dependency_contract.missing-font ................   Passed    0.65 sec
+        Start 240: rynui.shadercross_override
+240/240 Test #240: rynui.shadercross_override .................................   Passed    2.03 sec
+
+100% tests passed out of 240
+
+Total Test time (real) = 164.40 sec

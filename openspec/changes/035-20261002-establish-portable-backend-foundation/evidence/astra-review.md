@@ -36,3 +36,9 @@
 - Recording tombstone 保留已退休资源大块数据：释放 bytes 容量，保留 handle 元数据拒绝旧引用。
 
 修复后的共同测试 20/20、相关原生合同 13/13；见 scene-transaction.md。
+
+## 调度复审
+
+复审发现活动 submit 中销毁 pump 的 use-after-free，以及真实 Button/Input 动画 dirty 请求压过未来 deadline。修复独立 token 存活检查，将本帧动画 dirty invalidation 与显式下一 epoch request 分开，RAII 保存实际消费 revision。测试覆盖 completion 显式请求和晚到更新、执行中销毁/异常与真实组件运动。
+
+Astra 对最终修复只读复核，未发现仍需修复的实质遗漏；其结论不冒充重复运行测试。主 agent 实际共同 21/21、相关 native 19/19，详见 frame-pump.md。

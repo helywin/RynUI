@@ -1,10 +1,10 @@
 # RynUI 多 backend 与桌面、移动端、Web 可移植性调研
 
-调研日期：2026-10-01。状态：**研究建议，未实施、未进行新平台构建或真机验收**。
+调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 已建立可执行的跨端框架基础；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。
 
-本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。它不替代 [正式架构](../architecture.md)，也不修改现有 change 的实施范围；采纳建议后应通过独立 OpenSpec change 明确接口、兼容范围与验收。
+本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，本次采用的范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
 
-源码审阅基线为 `main` 的 `6991a133720a55c567368556b1626b2460c27eca`。调研期间工作区有 Typography 等在途实现，本文的现状判断基于下列平台、渲染、调度和构建文件，不将这些在途实现当作已发布能力。上游资料在调研日核对；上游支持某个平台与 RynUI 已经通过该平台验收是两件事。
+初始研究基线为 `6991a133720a55c567368556b1626b2460c27eca`；035 实施基线为 `1640127`。Astra xhigh 复核研究、规划及实现，发现的问题与修复见 [审查记录](../../openspec/changes/035-20261002-establish-portable-backend-foundation/evidence/astra-review.md)。上游资料仍是调研日快照；上游支持某个平台与 RynUI 已经通过该平台验收是两件事。
 
 ## 1. 推荐方向
 
@@ -16,29 +16,28 @@
 2. Android/iOS 先复用 SDL 宿主与现有场景渲染器，再按真实设备证据补充生命周期、软键盘、系统服务桥接。
 3. Web 使用 Emscripten/Wasm 编译共享 C++ Core，浏览器宿主驱动事件和帧，新增 WebGPU Renderer。
 4. 面向较广设备范围时，增加共享实现基础的 GLES3/WebGL2 Renderer：Android Vulkan 不可用时走 GLES3，浏览器 WebGPU 不可用时走 WebGL2。
-5. Headless/Counting Renderer 用于合同测试；软件绘制是否成为产品兜底，另按目标设备决定。
+5. Headless/Recording Renderer 用于真实数据合同测试；软件绘制是否成为产品兜底，另按目标设备决定。
 
-**多 backend 的主要价值是让宿主、系统服务、GPU 实现分别替换，而不是重写一套组件库。** 当前优先拆依赖边界并完成第二个真实 renderer；不必一开始同时维护直接 D3D12/Vulkan/Metal 实现。
+**多 backend 的主要价值是让宿主、系统服务、GPU 实现分别替换，而不是重写一套组件库。** 本次优先改造框架，建立依赖边界、共同上传事务、真实 Recording 和非阻塞调度；第二真实 renderer 作为下一阶段 PoC，不要求本次交付新平台。
 
 这里的“网页能用”首先指浏览器中的交互式 Canvas 应用，例如工具、监控面板和 Gallery。搜索引擎内容、浏览器原生全文选择/查找、CSS 排版、SSR 和普通内容网站不由 Canvas 自动提供。若这些成为产品要求，需要另行研究 DOM 输出或外围 HTML 内容层。
 
-## 2. 现状：有隔离基础，还没有完整多 backend 合同
+## 2. 035 后可确认的框架基础
 
 | 位置 | 当前可确认事实 | 跨平台扩展的影响 |
 | --- | --- | --- |
 | [架构基线](../architecture.md) §2、§10 | 桌面优先；允许替换平台/渲染后端；SDL GPU 为第一阶段路径 | 扩展方向与长期边界相容，但移动端/Web 尚需正式范围 |
-| [平台状态](../../src/platform/sdl/platform_state.hpp)：`PlatformApi`、`PlatformState` | window、GPU device、claim/release、事件等待、文字输入和 clipboard 集中在一起 | GPU 创建与窗口宿主需拆开；`void*` 隐藏类型不等于可以换任意实现 |
-| [平台实现](../../src/platform/sdl/platform_state.cpp)：`create_gpu_device` | 仅声明 DXIL/SPIR-V shader；创建 GPU 是平台初始化必要步骤 | 无法直接创建 Metal 路径，也不能作为纯浏览器宿主 |
-| [场景渲染器](../../src/renderer/sdl/scene_renderer.hpp)：`SdlSceneRenderer` | 消费通用 Quad/Glyph/OrderedScene，但构造依赖 `PlatformState` 和 shader 目录 | 场景可复用；device/surface/资源和 shader 载入仍属于 SDL 路径 |
-| [绘制与文字 GPU 接口](../../src/renderer/sdl/glyph_gpu_resources.hpp) | `SceneDrawApi`、`GlyphGpuApi` 已存在，但放在 SDL renderer 目录，资源句柄为指针 | 可作为抽象提取起点；资源所有权、异步完成和失效语义仍需定义 |
-| [Quad 上传接口](../../src/graphics/quad_primitive.hpp)：`QuadUploadApi` | 已能替换 upload 实现，接口同步返回成功/失败 | Web 需要明确“已接受上传”和“GPU 已执行”的区别 |
-| [帧调度](../../src/runtime/frame_scheduler.hpp) | `FrameSubmitter`、deadline、按需帧请求已抽象；事件源包含阻塞等待 | 复用帧阶段与 deadline；增加由浏览器/移动宿主回调驱动的入口 |
+| [平台状态](../../src/platform/sdl/platform_state.hpp)、[GPU binding](../../src/renderer/sdl/gpu_binding.hpp) | host 拥有窗口和服务；renderer binding 独立拥有 GPU create/claim/release/destroy | GPU 失败保留可用 host；新平台 binding 仍需实际实现 |
+| [共同场景](../../src/renderer/common/scene_resources.hpp) | SceneBackend/SceneResources 共同事务，失败不可呈现、完整重试，附件校验 owner/epoch/revision | 可从 CPU scene 重建，不 remount；没有自动 device-loss 恢复 |
+| [Recording](../../src/renderer/recording/recording_renderer.hpp) | 拥有真实 buffer/texture bytes，范围/kind/owner/epoch 检查、有序 draw | 验证数据和控制合同，不能代替真实 GPU |
+| [共同 GPU resources](../../src/renderer/common/glyph_gpu_resources.hpp) | Glyph/Effect resources 与 draw 位于 common target；对齐要求来自 backend | 当前 ABI 冻结，未来后端消费/转换同一数据 |
+| [帧调度](../../src/runtime/frame_scheduler.hpp)、[callback pump](../../src/runtime/callback_frame_pump.hpp) | native step 共用非阻塞 tick；Core 自动 wake，deadline 变更/取消、独立 lifetime token | future host 可实现 callback 排程；尚无 DOM/JNI/UIKit 宿主 |
 | [输入](../../src/input/platform_input.hpp)、[文字输入端口](../../src/input/text_input_platform.hpp) | 已有 mouse/touch identity、cancel、平台无关 UTF-8 与 text session | 有复用基础；不等于已有手势仲裁、原生移动编辑体验 |
 | [默认字体](../../src/platform/default_font_chain.cpp) | Windows DirectWrite、Linux Fontconfig 发现系统字体 | macOS、移动端、浏览器要增加各自字体来源，不依赖桌面文件路径 |
 | [Shader 构建](../../cmake/RynUIShaders.cmake) | Quad/Glyph/RoundedEffect 的 HLSL 只生成 DXIL/SPIR-V | 需增加 Metal、WGSL、GLSL ES 资产与 ABI 校验 |
-| [构建入口](../../CMakeLists.txt)、[模块](../../src/CMakeLists.txt)、[presets](../../CMakePresets.json) | 配置时统一解析 SDL、shadercross、文本依赖；正式 presets 仅 Windows/Linux | Headless/Web 应能不解析无用原生后端；交叉编译与打包需独立路径 |
+| [构建入口](../../CMakeLists.txt)、[模块](../../src/CMakeLists.txt)、[presets](../../CMakePresets.json) | 显式 SDL/HEADLESS 与 SDL_GPU/RECORDING 组合；HEADLESS 实际编译且无 SDL/shader/default-font 解析 | Core include/传递依赖和实际构建图守卫；交叉编译与新平台打包仍需独立路径 |
 
-上述接口是已有扩展点；本文后续提到的 `PlatformHost`、`RenderSurfaceBinding`、`RenderCapabilities` 等均为建议名称，不是已经存在的 API。
+本文后续的完整 `PlatformHost`、`RenderSurfaceBinding`、`RenderCapabilities` 与浏览器异步 provider 是未来建议；当前具体实现名称以本节链接为准。正式合同没有把建议能力自动转成支持承诺。
 
 ## 3. 上游支持边界
 
@@ -125,17 +124,17 @@ Renderer 消费通用场景与上传计划，管理自己的 GPU 资源、pipeli
 
 | 主题 | 建议共同合同 |
 | --- | --- |
-| 坐标 | Core 用 logical units，左上原点、向下为正；NDC、texture origin 与 clip 转换由 renderer 完成 |
+| 坐标 | layout/输入用 logical units；当前 Quad/Glyph 已打包 NDC，Effect 在 common 转为 NDC/pixel，冻结 packed ABI v1；完全 logical scene 转换为后续独立迁移 |
 | 绘制顺序 | 保持 OrderedScene 的 Z order、clip 和 blend；只合并不会改变结果的相邻范围 |
 | GPU ABI | 明确 instance stride、字段 offset、vertex attribute、uniform packing、bind slot；后端可转换存储格式 |
 | 基础能力 | instanced triangles、R8 coverage atlas、采样、局部 buffer/texture 更新、scissor、已支持的圆角/阴影 |
 | 可选能力 | GPU timestamp、MSAA、storage/compute、indirect、readback 等通过 capability 明示，组件不直接分支 |
-| FrameResult | submitted、deferred/no surface、device lost、failed；deferred 保留需要绘制的最新 revision |
+| FrameResult | 当前 submitted、deferred、failed；deferred 保留待呈现 revision，恢复需明确 wake；device-lost 细分状态是未来能力 |
 | 上传事务 | 只有安全接受且持有所需 bytes 后才能确认相应 revision；失败不可静默清空 dirty |
 | 异步完成 | 提交成功不等于 GPU 完成；retire/fence/completion 管 staging 与资源释放，callback 不重入 Core |
 | 资源恢复 | device/surface generation 失效；从 CPU 场景、atlas 和资源来源重新上传，组件状态保持 |
 
-当前 GlyphInstance 有固定 80-byte 布局，但不能假设 C++ 任意 struct 都可作为 WGSL uniform。布局反射与静态断言共同约束 ABI，shader 和 CPU 描述从同一字段合同生成或校验。
+当前 GlyphInstance 为固定 80-byte、Quad 为 48-byte，字段/坐标/颜色以 [ABI v1](../renderer-contract.md)为准。不能假设 C++ 任意 struct 都可作为 WGSL uniform；新 shader 需实际反射与校验。当前 upload commit 表示命令安全接受，不代表 GPU 完成。
 
 上传计划应表达源 rectangle/row stride/byte range，而非强迫所有后端复用 SDL staging 布局。WebGPU 不同写入 API、GLES pixel store 与 SDL copy 路径各有对齐规则；由各后端打包并验证。WebGL2 的 draw range 还需处理 instance 起始偏移，不能假设其有与 SDL 等价的 base-instance 参数。
 
@@ -221,7 +220,7 @@ Shader 首期建议保留现有 HLSL 原生路径，新增版本锁定的 Metal 
 
 ## 11. 构建与工程落点
 
-建议后续增加以下内部模块；这是目标结构，不是当前目录迁移：
+建议后续增加下列平台模块；共同层已采用 `renderer/common`，测试后端采用 `renderer/recording`，其余新平台目录仍是目标结构：
 
 ```text
 src/platform/contracts/      host, metrics, assets, service ports
@@ -229,14 +228,14 @@ src/platform/sdl/            native desktop + initial mobile host
 src/platform/browser/        JS/DOM integration and callback pump
 src/platform/android/        required JNI/system bridges
 src/platform/apple/          required Cocoa/UIKit bridges
-src/renderer/contracts/      scene submission, resources, capabilities
+src/renderer/common/         scene submission, resources, packed ABI v1
 src/renderer/sdl/            existing native GPU path
 src/renderer/webgpu/         browser path; optional native experiment
 src/renderer/gles/           GLES3 + WebGL2 shared implementation
-src/renderer/testing/        counting/recording adapters
+src/renderer/recording/       owned bytes, ordered draws, failure/epoch tests
 ```
 
-后端选择应是显式的 build 配置与运行时策略，二者分开。可考虑 `RYNUI_PLATFORM_BACKEND`、`RYNUI_RENDER_BACKENDS` 等变量；已编译的后端列表不等于当前设备可用后端。仅在应用装配层选择 renderer，并报告实际选择、capability 与 fallback 原因。
+后端选择应是显式的 build 配置与运行时策略，二者分开。035 已实现 `RYNUI_PLATFORM_BACKEND`、`RYNUI_RENDER_BACKENDS` 和不支持组合的配置拒绝；没有运行时 renderer selector。已编译的列表不等于当前设备可用后端；未来设备选择与 fallback 在应用装配层实现。
 
 保持 CMakePresets/Ninja Multi-Config：Windows target 使用 MSVC；Android 使用 NDK Clang；Apple 使用 AppleClang/SDK；Web 使用 Emscripten toolchain。host OS 与 target OS 的判断分开，不能因为交叉构建在 Windows 上运行就强迫 Android/Web target 使用 MSVC。
 
@@ -248,7 +247,7 @@ Android Gradle 和 Apple Xcode 负责外层应用宿主、资源、签名/打包
 
 | 阶段 | 范围 | 通过后才能作出的判断 |
 | --- | --- | --- |
-| P0：合同与依赖提取 | 分离 platform/GPU、tick/pump、资产/provider；现有 SDL 实现适配新边界 | Windows/Linux 原有路径可保持；Core 不直接依赖具体 backend |
+| P0：框架基础（035） | 分离 host/GPU、tick/pump、共同 resources/事务，实际 HEADLESS + Recording 和内部守卫；保留现有字体 byte API，异步 provider 后续实现 | 在实际环境验证 Core 边界、数据重试和既有 SDL 路径；Windows/Linux 原生结果分别留证 |
 | P1：WebGPU 纵向闭环 | 共享 C++ 页面：文本、Button、Input、主题、resize、按需帧；异步资产和 DOM 输入桥 | 第二 renderer 能消费共同场景；浏览器可交互 PoC |
 | P2：兼容路径 | GLES3/WebGL2，能力探测与 fallback；同一 fixture 在所有 renderer 绘制 | 可以讨论目标设备覆盖，而不只讨论 WebGPU 理论支持 |
 | P3：原生移动与 Apple | Android SDL/Vulkan/GLES，macOS/iOS Metal 资产；生命周期、IME/字体/系统桥接 | 真机闭环与输入合同；模拟器结果不能替代 iOS GPU 真机 |
@@ -277,7 +276,7 @@ Web 浏览器范围需包含 Chromium、Firefox、Safari 的目标实际环境�
 
 至少记录首帧耗时、Wasm/资源下载量、常驻与峰值内存、atlas/显存预算、CPU tick 与 upload bytes、提交/绘制数、idle wake、p50/p95/p99 输入与更新延迟。GPU 时间仅在真实后端支持测量时报告；不能把 CPU submit 时间当 GPU 时间。移动端补后台活动与能耗观测。
 
-最终支持清单采用 `未开始 / PoC / 集成通过 / 发布支持`，并关联证据。本文只完成源码审阅、资料核对与方案设计，尚未新增 backend、CMake preset、移动包或浏览器产物。
+最终支持清单采用 `未开始 / PoC / 集成通过 / 发布支持`，并关联证据。035 已新增 HEADLESS preset 与 Recording、共同场景和调度合同；实际结果见该 change 的 evidence。macOS、Android、iOS、Web 均未新增构建/包或真实运行证据，第二真实 GPU renderer 也未实现。
 
 ## 14. 后续 change 前需要确定的产品范围
 

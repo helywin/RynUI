@@ -50,7 +50,21 @@ ctest --preset windows-msvc-debug
 
 根工程会检查 generator 和编译器。Windows 上没有解析到 MSVC，或 generator 不是 `Ninja Multi-Config` 时，configure 会立即失败。
 
-## 离线 shader
+## HEADLESS / Recording 合同构建
+
+在 x64 Visual Studio Developer Environment 使用独立 preset：
+
+```powershell
+cmake --preset windows-msvc-headless
+cmake --build --preset windows-msvc-headless-debug
+ctest --preset windows-msvc-headless-debug
+cmake --build --preset windows-msvc-headless-release
+ctest --preset windows-msvc-headless-release
+```
+
+该 preset 选择 `RYNUI_PLATFORM_BACKEND=HEADLESS` 与 `RYNUI_RENDER_BACKENDS=RECORDING`，关闭原生 examples；保留 FT/HB/utf8proc 和锁定验证字体，跳过 SDL/libdecor、shader host tool、shader 输出与系统字体。后端变量是编译期列表，不是运行时设备探测；支持矩阵见 [renderer 合同](../renderer-contract.md)。
+
+## 离线 shader（SDL_GPU）
 
 `rynui_shaders` target 从单一 `shaders/quad.hlsl` 离线生成 vertex/fragment 的 DXIL 与 SPIR-V：
 
@@ -95,8 +109,10 @@ ctest --preset linux-clang-debug
 | `rynui_runtime` | 持久化 UI Runtime | `rynui_reactive` |
 | `rynui_layout` | Layout 核心 | `rynui_runtime` |
 | `rynui_graphics` | 平台无关图形层 | `rynui_layout` |
-| `rynui_platform_sdl` | SDL init、Window 与 GPU device 生命周期 | `SDL3::SDL3` |
-| `rynui_renderer_sdl` | command buffer 与 clear/present | `rynui_platform_sdl`、`SDL3::SDL3` |
+| `rynui_platform_sdl` | SDL init、Window 与输入/系统服务 | `SDL3::SDL3`、`rynui_input` |
+| `rynui_renderer_common` | 场景事务、共同 GPU resources / draw 合同 | `rynui_graphics`、`rynui_text_scene` |
+| `rynui_renderer_recording` | 拥有上传数据、范围/顺序/代际测试 | `rynui_renderer_common` |
+| `rynui_renderer_sdl` | GPU binding、pipelines、uploads 与 present | 共同 renderer、SDL 宿主与 `SDL3::SDL3` 等内部 targets |
 | `rynui` / `RynUI::RynUI` | 公开 facade | `rynui_graphics` |
 
 CMake 在 configure 阶段核对这些直接依赖，并扫描 `include/ryn/`，阻止公开 API 提前出现通用 `Modifier` 类型。公开 API smoke test 只依赖当前 facade；平台与 renderer 测试分别链接最小内部 target。示例应用会检查自身没有链接仅供构建使用的 `SDL3_shadercross` library。
