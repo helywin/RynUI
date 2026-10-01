@@ -1,0 +1,864 @@
+{
+  "scope": "windows-native",
+  "status": "passed",
+  "preset": "windows-msvc",
+  "toolchain": "MSVC x64",
+  "generator": "Ninja Multi-Config",
+  "clean_configure_exit_code": 0,
+  "build_exit_codes": {
+    "Debug": 0,
+    "Release": 0
+  },
+  "date": "2026-10-02",
+  "os": "Windows 11 Professional Workstations 10.0.26300",
+  "input_evidence": "Normalized FocusManager/PointerRouter/TextInput events in a native window; real SDL IME session and system clipboard. Physical IME candidate UI is outside this change.",
+  "runs": [
+    {
+      "id": "scale-1.0",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "294"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=294\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/scale-1.0/committed.png",
+          "sha256": "29ade9f60e4a334d57b48999f910e54b1fd56a15adc317b2dd055e764d246e2f"
+        },
+        {
+          "path": "windows-captures/scale-1.0/copied.png",
+          "sha256": "49d69a27d5af80c1c03223c3c43e8eacd5ad28db9699d678a27ad4e9cce03681"
+        },
+        {
+          "path": "windows-captures/scale-1.0/dividers.png",
+          "sha256": "898be3e69ab5de47a8e5e73f03b9b3fc691a07c0ef23b8f244fad6b950ed13bb"
+        },
+        {
+          "path": "windows-captures/scale-1.0/editing.png",
+          "sha256": "0af588b0add6c86541a0a7baaa94b35bd3f165472179cc263107bf29167908df"
+        },
+        {
+          "path": "windows-captures/scale-1.0/expanded.png",
+          "sha256": "4c7d7a7b64a7dcb2bca0f738b3c1a8f9793f81d21dcdeac53cf4c0728157a7e5"
+        },
+        {
+          "path": "windows-captures/scale-1.0/headings.png",
+          "sha256": "8a07883d32afb4b6e62427eaea2aff6e10a3d9ba20ac28d89bd2e0cf618a2aa1"
+        },
+        {
+          "path": "windows-captures/scale-1.0/link-focus.png",
+          "sha256": "c177a64c2687cbdc2d79212e9b45aa4a1ae94f9d65f4016279b7ba206a2ec243"
+        },
+        {
+          "path": "windows-captures/scale-1.0/multiline-expanded.png",
+          "sha256": "afcd9eeb4653129961ba9011603c2dd15bc9894fc5c3ae89246fd3e9be25bbb0"
+        },
+        {
+          "path": "windows-captures/scale-1.0/semantics.png",
+          "sha256": "02f69a3cef68fda5bd8d0c14ed6c31ba8613d1fa40232e818e7b1da377389d8d"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "scale-1.25",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "370"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/scale-1.25/committed.png",
+          "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+        },
+        {
+          "path": "windows-captures/scale-1.25/copied.png",
+          "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+        },
+        {
+          "path": "windows-captures/scale-1.25/dividers.png",
+          "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+        },
+        {
+          "path": "windows-captures/scale-1.25/editing.png",
+          "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+        },
+        {
+          "path": "windows-captures/scale-1.25/expanded.png",
+          "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+        },
+        {
+          "path": "windows-captures/scale-1.25/headings.png",
+          "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+        },
+        {
+          "path": "windows-captures/scale-1.25/link-focus.png",
+          "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+        },
+        {
+          "path": "windows-captures/scale-1.25/multiline-expanded.png",
+          "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+        },
+        {
+          "path": "windows-captures/scale-1.25/semantics.png",
+          "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "scale-1.5",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1.5",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "349"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.5 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=349\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/scale-1.5/committed.png",
+          "sha256": "632402d91e028283b754fcb005a75d9b60af394649b521ce7707ff4de4681603"
+        },
+        {
+          "path": "windows-captures/scale-1.5/copied.png",
+          "sha256": "fdd7efc0118fb8176af078ecf45ff9de31a8ffddad783a71252d4f4d24d6dd61"
+        },
+        {
+          "path": "windows-captures/scale-1.5/dividers.png",
+          "sha256": "872eb604984595bdfb8dc9b83015ff52dec8ea2c406fc5c411c1157c9addb1b5"
+        },
+        {
+          "path": "windows-captures/scale-1.5/editing.png",
+          "sha256": "c9ba5b99c0087b39c92f7cb3de05c02521ff8b256709d1209ca32350ea9cef2f"
+        },
+        {
+          "path": "windows-captures/scale-1.5/expanded.png",
+          "sha256": "8abb896e2bda11d2b9ac0bf9b4be78b4eda9ee771f4e91b0ce811378df6b9dac"
+        },
+        {
+          "path": "windows-captures/scale-1.5/headings.png",
+          "sha256": "815724d0c1e77f5984fc051e218b275b8c17fe4335a4a75b8a1f33c78b297e8c"
+        },
+        {
+          "path": "windows-captures/scale-1.5/link-focus.png",
+          "sha256": "77d8071d926fb97d8f324d7444dd2faab011e79767cd350ee66fd150cf51a77d"
+        },
+        {
+          "path": "windows-captures/scale-1.5/multiline-expanded.png",
+          "sha256": "341c9e9c3776f80d38493848ae38dcd9ca402fdace401fd87c5364d50a274440"
+        },
+        {
+          "path": "windows-captures/scale-1.5/semantics.png",
+          "sha256": "8ecca82d3b59fd17752c95454119db57bcb08e36b31d5a17225f515c32d835f2"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "scale-2.0",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "2",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "283"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/scale-2.0/committed.png",
+          "sha256": "e184523a91bd09b5aab09cb13fd048603192d54693ea8abfccd24b0c9c93f4c0"
+        },
+        {
+          "path": "windows-captures/scale-2.0/copied.png",
+          "sha256": "e9ec20e9e3b80aecd5fe1a0ee59aa4cbc1e236a41fbfb0836956e4403cfc5247"
+        },
+        {
+          "path": "windows-captures/scale-2.0/dividers.png",
+          "sha256": "7075c3792a0167675a99054e640e01d6a51ff23e44d28e00dc27519aa54fa589"
+        },
+        {
+          "path": "windows-captures/scale-2.0/editing.png",
+          "sha256": "b7e48cf6a49e2f8e60085e992e6b3dab2d018d441dc41b0568628395e3144bd0"
+        },
+        {
+          "path": "windows-captures/scale-2.0/expanded.png",
+          "sha256": "f4ced7ce898ed0f33eac57ef94b79fb89408e0dd42c30b1e5311c2f26f2d6a30"
+        },
+        {
+          "path": "windows-captures/scale-2.0/headings.png",
+          "sha256": "ffd2f283d8bc7de0507b4b1a21867b361d7eaf28bda51f6b0bbb1550f0e1285a"
+        },
+        {
+          "path": "windows-captures/scale-2.0/link-focus.png",
+          "sha256": "0f18865a0165f9a5f5cd4f569341d2f6c735432b64a5faeb0780826357abcc48"
+        },
+        {
+          "path": "windows-captures/scale-2.0/multiline-expanded.png",
+          "sha256": "555746105ff3d79b362ac8b9fd7ee8e78028bf71d52da326c4ae430a7f8a27e5"
+        },
+        {
+          "path": "windows-captures/scale-2.0/semantics.png",
+          "sha256": "d4da5c6bae25bdda3ebfd2b37c4701d44ffab5f93aa57ebe1ed9e7b875cd32ca"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "dark-1.0",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1",
+        "copy_only": "false",
+        "theme": "dark",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "294"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1 copy_only=false theme=dark clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=294\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/dark-1.0/committed.png",
+          "sha256": "76e54d773553a381eee81bdbc140d7ed594a1656d063d8c62531b68a56810ae6"
+        },
+        {
+          "path": "windows-captures/dark-1.0/copied.png",
+          "sha256": "32b7a0b1511bbfa47ea4d5d46c5258d6a5e9b5112b6afa8db6d984576c841e8f"
+        },
+        {
+          "path": "windows-captures/dark-1.0/dividers.png",
+          "sha256": "4bbe23ecf87235c26b5fda18d7e5b4a8c3a3123ea1cf6b86f9404e10ff761c66"
+        },
+        {
+          "path": "windows-captures/dark-1.0/editing.png",
+          "sha256": "bf0e64c985d311282fd32cff5e4b667856054fe3989df325646e34c8b73c3e8e"
+        },
+        {
+          "path": "windows-captures/dark-1.0/expanded.png",
+          "sha256": "d3867f7a2411419ce5d9c04e46b535f852c4212282e3722ad86b30866703ccc9"
+        },
+        {
+          "path": "windows-captures/dark-1.0/headings.png",
+          "sha256": "e1968f6d9e79563637eaf1f821e9601aec0a98071f897a7be3a5531b730ab8e1"
+        },
+        {
+          "path": "windows-captures/dark-1.0/link-focus.png",
+          "sha256": "aabe254c44021007135d77eb3b617adf522e3f1afba65c08cc31e126c785553f"
+        },
+        {
+          "path": "windows-captures/dark-1.0/multiline-expanded.png",
+          "sha256": "65b5c6b39e6bfa1214af4574e8a9d5f6578153213a53e8aa2ffa37018c76182f"
+        },
+        {
+          "path": "windows-captures/dark-1.0/semantics.png",
+          "sha256": "60d6ce21a15087012888a83bc65251eaaff524f08c0cc602ffbf110c61c6882e"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "dark-2.0",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "2",
+        "copy_only": "false",
+        "theme": "dark",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "283"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=dark clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/dark-2.0/committed.png",
+          "sha256": "1ce1916ab64a28fad805be663007b380a4c607cd23ceed2ea6c4e08615b1166c"
+        },
+        {
+          "path": "windows-captures/dark-2.0/copied.png",
+          "sha256": "14333ea812b9bb8f631d8ef31678773e1bddc1b061a17c93b1a2dd20b2abfce1"
+        },
+        {
+          "path": "windows-captures/dark-2.0/dividers.png",
+          "sha256": "57cb86c514903e0bfb1c30c078cd9b7c4a614472762ddcef2f1988c872ec6dc7"
+        },
+        {
+          "path": "windows-captures/dark-2.0/editing.png",
+          "sha256": "3e6c805c14441d442e67f35b1e035c7f1afc51f5d8ea5263dd1f6b4089763532"
+        },
+        {
+          "path": "windows-captures/dark-2.0/expanded.png",
+          "sha256": "f7997c06a1e8d6b04071b7b89a4f25115bea2963e4eb8e8348fab71132f42ebe"
+        },
+        {
+          "path": "windows-captures/dark-2.0/headings.png",
+          "sha256": "d668009f29038ba23ad84bf08f393552aa5ae0a725312c624005c2b7f6de1a8b"
+        },
+        {
+          "path": "windows-captures/dark-2.0/link-focus.png",
+          "sha256": "2385dd158e3cd69ff74cee2bcc21e9f1943f408ae944121ff13b934bf215e4c8"
+        },
+        {
+          "path": "windows-captures/dark-2.0/multiline-expanded.png",
+          "sha256": "55ade24e282d6b5728a235fb0370953aa22df41ccaa856ccdb5648214e41f87e"
+        },
+        {
+          "path": "windows-captures/dark-2.0/semantics.png",
+          "sha256": "6f92746a38ee62ef9de1b28ff117e4964995d0be2243c3916924160b61cb894e"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "copy-only",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1.25",
+        "copy_only": "true",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "not-applicable",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "14",
+        "quad_draws": "132",
+        "glyph_draws": "147",
+        "effect_draws": "72",
+        "components": "57",
+        "rasterizations": "342"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=true theme=light clipboard=passed ellipsis=passed edit=not-applicable link=passed divider=passed submits=14 quad_draws=132 glyph_draws=147 effect_draws=72 components=57 rasterizations=342\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/copy-only/copied.png",
+          "sha256": "6ba9948eb447873169f6cc17c8d10945141e72018aca9b050eec3048b87fe1ad"
+        },
+        {
+          "path": "windows-captures/copy-only/dividers.png",
+          "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+        },
+        {
+          "path": "windows-captures/copy-only/expanded.png",
+          "sha256": "e5d7e23d7ee495a7de63d3fc9fcab49b9c015924282f7cee96c83c2714949b16"
+        },
+        {
+          "path": "windows-captures/copy-only/headings.png",
+          "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+        },
+        {
+          "path": "windows-captures/copy-only/link-focus.png",
+          "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+        },
+        {
+          "path": "windows-captures/copy-only/multiline-expanded.png",
+          "sha256": "ebbdcc674d11ecb8abe5b330c732f1f95926d4f9f4d1dfe460b3536bce1415e2"
+        },
+        {
+          "path": "windows-captures/copy-only/semantics.png",
+          "sha256": "bdc06f45dfaf025a1f93f03414f98870c080bf6a78128fc5d21c2b4f8e4bdef1"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "system-scale",
+      "configuration": "Debug",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "370"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/system-scale/committed.png",
+          "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+        },
+        {
+          "path": "windows-captures/system-scale/copied.png",
+          "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+        },
+        {
+          "path": "windows-captures/system-scale/dividers.png",
+          "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+        },
+        {
+          "path": "windows-captures/system-scale/editing.png",
+          "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+        },
+        {
+          "path": "windows-captures/system-scale/expanded.png",
+          "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+        },
+        {
+          "path": "windows-captures/system-scale/headings.png",
+          "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+        },
+        {
+          "path": "windows-captures/system-scale/link-focus.png",
+          "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+        },
+        {
+          "path": "windows-captures/system-scale/multiline-expanded.png",
+          "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+        },
+        {
+          "path": "windows-captures/system-scale/semantics.png",
+          "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+        }
+      ],
+      "executable_sha256": "3658fef75984bcb7683e6b687e396530cf4534d407e7f67362649caacfc16622"
+    },
+    {
+      "id": "release",
+      "configuration": "Release",
+      "fields": {
+        "typography_acceptance": "passed",
+        "gpu_driver": "direct3d12",
+        "shader_format": "DXIL",
+        "system_display_scale": "1.25",
+        "render_scale": "1.25",
+        "copy_only": "false",
+        "theme": "light",
+        "clipboard": "passed",
+        "ellipsis": "passed",
+        "edit": "passed",
+        "link": "passed",
+        "divider": "passed",
+        "submits": "18",
+        "quad_draws": "195",
+        "glyph_draws": "213",
+        "effect_draws": "120",
+        "components": "67",
+        "rasterizations": "370"
+      },
+      "fonts": {
+        "regular": {
+          "family": "Segoe UI Variable Text",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        },
+        "strong": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGUISB.TTF",
+          "face_index": "0",
+          "weight": "600",
+          "italic": "0"
+        },
+        "italic": {
+          "family": "Segoe UI",
+          "path": "C:\\WINDOWS\\FONTS\\SEGOEUII.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "1"
+        },
+        "monospace": {
+          "family": "Cascadia Mono",
+          "path": "C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF",
+          "face_index": "0",
+          "weight": "400",
+          "italic": "0"
+        }
+      },
+      "exit_code": 0,
+      "raw_log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n",
+      "screenshots": [
+        {
+          "path": "windows-captures/release/committed.png",
+          "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+        },
+        {
+          "path": "windows-captures/release/copied.png",
+          "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+        },
+        {
+          "path": "windows-captures/release/dividers.png",
+          "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+        },
+        {
+          "path": "windows-captures/release/editing.png",
+          "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+        },
+        {
+          "path": "windows-captures/release/expanded.png",
+          "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+        },
+        {
+          "path": "windows-captures/release/headings.png",
+          "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+        },
+        {
+          "path": "windows-captures/release/link-focus.png",
+          "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+        },
+        {
+          "path": "windows-captures/release/multiline-expanded.png",
+          "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+        },
+        {
+          "path": "windows-captures/release/semantics.png",
+          "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+        }
+      ],
+      "executable_sha256": "1d03d1c2a1e1ac5507be86a922879498efb118b65905ae04508e470177c47a2c"
+    }
+  ]
+}

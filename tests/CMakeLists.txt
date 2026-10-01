@@ -719,6 +719,13 @@ target_compile_definitions(
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
 )
 add_test(NAME rynui.default_font_chain COMMAND rynui_default_font_chain_tests)
+if(WIN32)
+    add_test(NAME rynui.typography_windows_evidence
+        COMMAND "${Python3_EXECUTABLE}" -B
+            "${PROJECT_SOURCE_DIR}/tools/verify_typography_windows_evidence.py"
+            --evidence "${PROJECT_SOURCE_DIR}/openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.json"
+            --self-test)
+endif()
 
 add_executable(rynui_text_engine_tests text_engine_tests.cpp)
 rynui_configure_cpp_target(rynui_text_engine_tests)

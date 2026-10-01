@@ -178,6 +178,7 @@ add_executable(
     rynui_token_gallery
     token_gallery/main.cpp
     token_gallery/token_gallery_runtime.cpp
+    token_gallery/typography_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(

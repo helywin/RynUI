@@ -43,8 +43,8 @@
 
 ## 7. Windows 验收（Windows）
 
-- [ ] 7.1 使用 `windows-msvc` preset clean configure 完成 Debug/Release build，并在 MSVC x64 + D3D12/DXIL 真实窗口运行 `rynui_token_gallery`：核对五级标题、真字重与斜体 face、行内语义（含 `code`/`keyboard` 等宽字形与缺字回退）、省略单行/多行/展开、无 Input 窗口的复制成功反馈、原地编辑提交与取消及字体继承、Link 指针与键盘激活、Divider 各形式；在系统 display scale 与 acceptance render scale 1.0/1.25/1.5/2.0 下检查布局、裁切与装饰对齐，保存截图、driver、shader format、字体、scale、诊断计数与退出码到 `evidence/windows-*.md`
-- [ ] 7.2 只运行 Windows 平台分支相关的受影响测试（DirectWrite 字体 face 解析、图标资源验证、shader/lock/license、未跟踪依赖）与 Windows evidence passed contract、`git diff --check`；不重复已经通过的平台通用 CTest，以英文 `test: validate Windows typography and divider` 提交 Windows 证据；不修改 Linux 条目，不主动 push
+- [x] 7.1 使用 `windows-msvc` preset clean configure 完成 Debug/Release build，并在 MSVC x64 + D3D12/DXIL 真实窗口运行 `rynui_token_gallery`：核对五级标题、真字重与斜体 face、行内语义（含 `code`/`keyboard` 等宽字形与缺字回退）、省略单行/多行/展开、无 Input 窗口的复制成功反馈、原地编辑提交与取消及字体继承、Link 指针与键盘激活、Divider 各形式；在系统 display scale 与 acceptance render scale 1.0/1.25/1.5/2.0 下检查布局、裁切与装饰对齐，保存截图、driver、shader format、字体、scale、诊断计数与退出码到 `evidence/windows-*.md`
+- [x] 7.2 只运行 Windows 平台分支相关的受影响测试（DirectWrite 字体 face 解析、图标资源验证、shader/lock/license、未跟踪依赖）与 Windows evidence passed contract、`git diff --check`；不重复已经通过的平台通用 CTest，以英文 `test: validate Windows typography and divider` 提交 Windows 证据；不修改 Linux 条目，不主动 push
 
 ## 8. 平台通用集成验收（平台通用）
 

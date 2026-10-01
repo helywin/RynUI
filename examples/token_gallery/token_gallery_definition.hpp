@@ -77,5 +77,6 @@ struct TokenGalleryDefinition final {
     float render_scale);
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition);
+int run_typography_acceptance(int argc, char** argv);
 
 } // namespace rynui::example
