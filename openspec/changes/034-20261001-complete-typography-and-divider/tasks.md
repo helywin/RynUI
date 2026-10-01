@@ -5,7 +5,7 @@
 ## 1. 规划与基线核对（平台通用）
 
 - [x] 1.1 核对 `design-tokens/ant-design/6.6.5` 中 Typography/Divider Component Token、`fontSizeHeading1`–`5`、`lineHeightHeading1`–`5`、`fontWeightStrong`、`colorTextHeading`、`colorTextDescription`、`colorSuccessText`、`colorWarningText`、`colorErrorText(Hover/Active)`、`colorTextDisabled`、`colorSplit`、`colorLink`、`marginLG/margin/marginXS` 的 identity 与默认值，并确认 `SystemFontFamily::ui_monospace`、`font_family_code` 现状；通过 `openspec validate` 与 `git diff --check` 后以 `docs:` 提交规划产物
-- [x] 1.2 落实规划评审结论：修正 palette key 与相对 step 的映射、按 dirty domain 重新划分 Typography/Divider Token 分组、把字体装饰度量·weight/slant face 解析·独立 clipboard 绑定·编辑子树与焦点事务列为显式前置任务、冻结 Divider 垂直高度与 `orientationMargin`/`plain` 语义并移除 `disabled`、明确平台通用与分平台 CTest 边界；本 change strict、全仓 strict 与 `git diff --check` 通过后以 `docs:` 提交
+- [x] 1.2 落实规划评审结论：修正 palette key 与相对 step 的映射、按 dirty domain 重新划分 Typography/Divider Token 分组、把字体装饰度量·weight/slant face 解析·独立 clipboard 绑定·编辑子树与焦点事务列为显式前置任务、冻结 Divider 垂直高度与 `orientationMargin`/`plain` 语义并移除 `disabled`、明确平台通用与分平台 CTest 边界；本 change `openspec validate --strict` 与 `git diff --check` 通过后以 `docs:` 提交（实测记录：本 change 通过；全仓 `openspec validate --all --strict` 为 28 passed / 6 failed，失败项 013/015/016/017/018/021 均为本 change 之前既存，本 change 不负责修复，也不得据此声称「全仓 strict 通过」；当前 CLI 1.4.1 无 `doctor` 子命令，因此该步骤不适用）
 
 ## 2. 图标与主题 Token 基线（平台通用）
 
