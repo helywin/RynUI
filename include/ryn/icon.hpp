@@ -21,7 +21,16 @@ enum class IconName : std::uint8_t {
     MoonOutlined,
     UserOutlined,
     LockOutlined,
+    CopyOutlined,
+    CheckOutlined,
+    EditOutlined,
+    DownOutlined,
+    UpOutlined,
 };
+
+// Bundled outlines are locked in third_party/ant-design-icons/manifest.json and
+// embedded in the same declaration order, so the enum value is the glyph index.
+inline constexpr IconName last_bundled_icon = IconName::UpOutlined;
 
 class IconProps final {
 public:

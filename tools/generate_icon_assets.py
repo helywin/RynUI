@@ -30,6 +30,11 @@ ICONS = [
     ("MoonOutlined", "outlined-moon.svg"),
     ("UserOutlined", "outlined-user.svg"),
     ("LockOutlined", "outlined-lock.svg"),
+    ("CopyOutlined", "outlined-copy.svg"),
+    ("CheckOutlined", "outlined-check.svg"),
+    ("EditOutlined", "outlined-edit.svg"),
+    ("DownOutlined", "outlined-down.svg"),
+    ("UpOutlined", "outlined-up.svg"),
 ]
 
 

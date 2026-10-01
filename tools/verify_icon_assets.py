@@ -29,8 +29,8 @@ require(f'RYNUI_ANT_ICONS_COMMIT "{manifest["upstream_commit"]}"' in lock,
         "Icon upstream commit is not locked")
 require(sha((asset_dir / "LICENSE").read_bytes()) == manifest["license_sha256"],
         "Icon license changed")
-require(len(manifest["icons"]) == 9, "Initial icon inventory changed")
-require(len({item["name"] for item in manifest["icons"]}) == 9, "Duplicate icon name")
+require(len(manifest["icons"]) == 14, "Locked icon inventory changed")
+require(len({item["name"] for item in manifest["icons"]}) == 14, "Duplicate icon name")
 for index, item in enumerate(manifest["icons"]):
     require(item["codepoint"] == 0xE000 + index, "Icon codepoint drifted")
     source = (asset_dir / item["file"]).read_bytes()

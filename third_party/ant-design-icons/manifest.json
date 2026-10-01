@@ -4,7 +4,7 @@
   "upstream_commit": "7f2516ac91226d2b41f93b35cb5197c8d94f7189",
   "license_sha256": "5d367fb0a07340571542eb4ee8eb1add62d37b71bad6786a57c2e9a86bf76c70",
   "fonttools_version": "4.60.1",
-  "outline_container_sha256": "f035282c326560884263c4181ad02c83c9b2231e7167a11d402d6d4eeb834b88",
+  "outline_container_sha256": "518becc28454da4b09543f11528bd75406f4e7ef6537b272c9e2161f4d385d50",
   "icons": [
     {
       "name": "EyeOutlined",
@@ -59,6 +59,36 @@
       "file": "outlined-lock.svg",
       "codepoint": 57352,
       "sha256": "0ef3c9d9b67c6003a493963d1784172670fe1f65759227d76a36efe4f35db9ab"
+    },
+    {
+      "name": "CopyOutlined",
+      "file": "outlined-copy.svg",
+      "codepoint": 57353,
+      "sha256": "f36a67d23f0901ee3e299cda3d7d0db5609dfd605a0bebc9fab57f68f8ec0f90"
+    },
+    {
+      "name": "CheckOutlined",
+      "file": "outlined-check.svg",
+      "codepoint": 57354,
+      "sha256": "fab568b7d804d0c0f8bd4e530e03d6d8c3b0942148430f8c2403eb36c601722f"
+    },
+    {
+      "name": "EditOutlined",
+      "file": "outlined-edit.svg",
+      "codepoint": 57355,
+      "sha256": "ac90d17ae3b20f7278f095e7d122411c4c931719e59f49c4cd15325d9c8bd120"
+    },
+    {
+      "name": "DownOutlined",
+      "file": "outlined-down.svg",
+      "codepoint": 57356,
+      "sha256": "c1f1e12af607241f418219e963d40b4bfd4cc23acb77919a8eef11183d6f516e"
+    },
+    {
+      "name": "UpOutlined",
+      "file": "outlined-up.svg",
+      "codepoint": 57357,
+      "sha256": "6e00c4f7320bbbc6a03c37d3bdb653c38196ee6f10301833cfe09a2714542de6"
     }
   ]
 }

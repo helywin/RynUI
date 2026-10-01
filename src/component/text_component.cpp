@@ -51,7 +51,7 @@ struct IconPropsAccess final {
 
 [[nodiscard]] String icon_content(IconName name) {
     const auto index = static_cast<std::uint32_t>(name);
-    if (index > static_cast<std::uint32_t>(IconName::LockOutlined)) {
+    if (index > static_cast<std::uint32_t>(last_bundled_icon)) {
         throw std::invalid_argument("Icon name is outside the bundled catalog");
     }
     const char32_t codepoint = 0xE000 + index;
