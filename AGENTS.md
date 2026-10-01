@@ -30,6 +30,7 @@
 ## OpenSpec 工作流
 
 - 执行 OpenSpec 工作前，先读取当前操作对应的 `.agents/skills/openspec-*/SKILL.md`。
+- 使用 pnpm 全局安装的 OpenSpec；CLI 与仓库生成 skills 当前配套版本为 `1.14.0`，安装及升级见 `docs/development/openspec.md`，不得在仓库安装 OpenSpec 依赖。
 - change 名称使用 `NNN-YYYYMMDD-lowercase-kebab-case`，例如 `001-20260908-my-first-change`。
 - `NNN` 是三位递增序号，`YYYYMMDD` 是创建日期，slug 必须表达具体目标。
 - OpenSpec 说明性正文使用简体中文。
