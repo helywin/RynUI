@@ -10,9 +10,13 @@
 #include <new>
 #include <stdexcept>
 #include <vector>
+#include <utility>
 
 namespace ryn::detail {
 namespace {
+
+constexpr std::uint32_t glyph_texture_row_alignment = 256;
+constexpr std::uint32_t glyph_texture_offset_alignment = 512;
 
 struct ShaderSelection {
     SDL_GPUShaderFormat format;
@@ -231,15 +235,19 @@ SdlSceneRenderer::~SdlSceneRenderer() {
     }
 }
 
-void SdlSceneRenderer::attach_scene(
-    graphics::QuadGpuBufferHandle quad_buffer,
-    GlyphGpuResources& glyph_resources,
-    const graphics::OrderedScene& scene,
-    RoundedEffectGpuResources* effect_resources) {
-    quad_buffer_ = quad_buffer;
-    glyph_resources_ = &glyph_resources;
-    effect_resources_ = effect_resources;
-    scene_ = &scene;
+bool SdlSceneRenderer::attach_scene(const SceneAttachment& value) noexcept {
+    if (!SceneBackend::attach_scene(value)) {
+        quad_buffer_ = nullptr;
+        glyph_resources_ = nullptr;
+        effect_resources_ = nullptr;
+        scene_ = nullptr;
+        return false;
+    }
+    quad_buffer_ = value.quads();
+    glyph_resources_ = value.glyphs();
+    effect_resources_ = value.effects();
+    scene_ = value.scene();
+    return true;
 }
 
 bool SdlSceneRenderer::resize_window(int width, int height) {
@@ -256,18 +264,25 @@ bool SdlSceneRenderer::resize_window(int width, int height) {
 }
 
 graphics::QuadGpuBufferHandle SdlSceneRenderer::create_vertex_buffer(std::size_t size) {
-    return create_glyph_buffer(size);
+    auto* handle = create_glyph_buffer(size);
+    if (handle) resources_.at(handle)->kind = ResourceKind::quad;
+    return handle;
 }
 
 void SdlSceneRenderer::release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept {
-    release_glyph_buffer(buffer);
+    release_resource(buffer, ResourceKind::quad);
 }
 
 bool SdlSceneRenderer::upload(
     graphics::QuadGpuBufferHandle buffer,
     std::size_t offset,
     std::span<const std::byte> bytes) {
-    return upload_buffer(buffer, offset, bytes, "Quad");
+    auto* owned = resource(buffer, ResourceKind::quad);
+    if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
+        last_error_ = "Foreign, stale or out-of-range Quad buffer";
+        return false;
+    }
+    return upload_buffer(owned->native, offset, bytes, "Quad");
 }
 
 const char* SdlSceneRenderer::last_error() const noexcept {
@@ -275,6 +290,7 @@ const char* SdlSceneRenderer::last_error() const noexcept {
 }
 
 GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
+    if (!platform_->is_owner_thread()) return nullptr;
     SDL_GPUSamplerCreateInfo info{};
     info.min_filter = SDL_GPU_FILTER_LINEAR;
     info.mag_filter = SDL_GPU_FILTER_LINEAR;
@@ -287,12 +303,13 @@ GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
     if (sampler == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph sampler");
     }
-    return sampler;
+    return track_resource(sampler, ResourceKind::sampler);
 }
 
 GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
     std::uint32_t width,
     std::uint32_t height) {
+    if (!platform_->is_owner_thread() || !width || !height) return nullptr;
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
     info.format = SDL_GPU_TEXTUREFORMAT_R8_UNORM;
@@ -307,11 +324,11 @@ GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
     if (texture == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph atlas texture");
     }
-    return texture;
+    return track_resource(texture, ResourceKind::texture, 0, width, height);
 }
 
 GlyphGpuBufferHandle SdlSceneRenderer::create_glyph_buffer(std::size_t size) {
-    if (size == 0 || size > std::numeric_limits<Uint32>::max()) {
+    if (!platform_->is_owner_thread() || size == 0 || size > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Glyph vertex buffer size is invalid";
         return nullptr;
     }
@@ -325,18 +342,27 @@ GlyphGpuBufferHandle SdlSceneRenderer::create_glyph_buffer(std::size_t size) {
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph vertex buffer");
     }
-    return buffer;
+    return track_resource(buffer, ResourceKind::glyph, size);
 }
 
 bool SdlSceneRenderer::upload_glyph_texture(
     GlyphGpuTextureHandle texture,
     const GlyphTextureUpload& upload) {
-    if (!platform_->is_owner_thread() || texture == nullptr || upload.bytes.empty()
+    const auto* owned = resource(texture, ResourceKind::texture);
+    const auto rect = upload.rectangle;
+    const auto needed = std::uint64_t(rect.height ? rect.height - 1 : 0) * upload.pixels_per_row + rect.width;
+    if (!platform_->is_owner_thread() || !owned || upload.bytes.empty()
+            || !rect.width || !rect.height
+            || std::uint64_t(rect.x) + rect.width > (owned ? owned->width : 0)
+            || std::uint64_t(rect.y) + rect.height > (owned ? owned->height : 0)
+            || upload.pixels_per_row < rect.width || upload.rows_per_layer < rect.height
+            || needed > upload.bytes.size()
             || upload.transfer_offset % glyph_texture_offset_alignment != 0
             || upload.pixels_per_row % glyph_texture_row_alignment != 0) {
         last_error_ = "Glyph texture upload violates owner, handle, or alignment contract";
         return false;
     }
+    texture = owned->native;
     if (upload.bytes.size()
             > std::numeric_limits<Uint32>::max() - upload.transfer_offset) {
         last_error_ = "Glyph texture transfer buffer exceeds uint32_t";
@@ -438,25 +464,24 @@ bool SdlSceneRenderer::upload_glyph_buffer(
     GlyphGpuBufferHandle buffer,
     std::size_t offset,
     std::span<const std::byte> bytes) {
-    return upload_buffer(buffer, offset, bytes, "Glyph");
+    auto* owned = resource(buffer, ResourceKind::glyph);
+    if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
+        last_error_ = "Foreign, stale or out-of-range Glyph buffer";
+        return false;
+    }
+    return upload_buffer(owned->native, offset, bytes, "Glyph");
 }
 
 void SdlSceneRenderer::release_glyph_buffer(GlyphGpuBufferHandle buffer) noexcept {
-    SDL_ReleaseGPUBuffer(
-        static_cast<SDL_GPUDevice*>(binding_.device()),
-        static_cast<SDL_GPUBuffer*>(buffer));
+    release_resource(buffer, ResourceKind::glyph);
 }
 
 void SdlSceneRenderer::release_glyph_texture(GlyphGpuTextureHandle texture) noexcept {
-    SDL_ReleaseGPUTexture(
-        static_cast<SDL_GPUDevice*>(binding_.device()),
-        static_cast<SDL_GPUTexture*>(texture));
+    release_resource(texture, ResourceKind::texture);
 }
 
 void SdlSceneRenderer::release_glyph_sampler(GlyphGpuSamplerHandle sampler) noexcept {
-    SDL_ReleaseGPUSampler(
-        static_cast<SDL_GPUDevice*>(binding_.device()),
-        static_cast<SDL_GPUSampler*>(sampler));
+    release_resource(sampler, ResourceKind::sampler);
 }
 
 const char* SdlSceneRenderer::glyph_gpu_error() const noexcept {
@@ -465,7 +490,7 @@ const char* SdlSceneRenderer::glyph_gpu_error() const noexcept {
 
 RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
     std::size_t size) {
-    if (size == 0 || size > std::numeric_limits<Uint32>::max()) {
+    if (!platform_->is_owner_thread() || size == 0 || size > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Rounded effect vertex buffer size is invalid";
         return nullptr;
     }
@@ -479,23 +504,75 @@ RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create rounded-effect vertex buffer");
     }
-    return buffer;
+    return track_resource(buffer, ResourceKind::effect, size);
 }
 
 bool SdlSceneRenderer::upload_effect_buffer(
     RoundedEffectGpuBufferHandle buffer,
     std::size_t offset,
     std::span<const std::byte> bytes) {
-    return upload_buffer(buffer, offset, bytes, "Rounded effect");
+    auto* owned = resource(buffer, ResourceKind::effect);
+    if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
+        last_error_ = "Foreign, stale or out-of-range effect buffer";
+        return false;
+    }
+    return upload_buffer(owned->native, offset, bytes, "Rounded effect");
 }
 
 void SdlSceneRenderer::release_effect_buffer(
     RoundedEffectGpuBufferHandle buffer) noexcept {
-    release_glyph_buffer(buffer);
+    release_resource(buffer, ResourceKind::effect);
 }
 
 const char* SdlSceneRenderer::effect_gpu_error() const noexcept {
     return last_error();
+}
+
+SdlSceneRenderer::Resource::~Resource() { release(); }
+
+void SdlSceneRenderer::Resource::release() noexcept {
+    if (!native) return;
+    auto* gpu = static_cast<SDL_GPUDevice*>(device);
+    switch (kind) {
+    case ResourceKind::sampler: SDL_ReleaseGPUSampler(gpu, static_cast<SDL_GPUSampler*>(native)); break;
+    case ResourceKind::texture: SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native)); break;
+    default: SDL_ReleaseGPUBuffer(gpu, static_cast<SDL_GPUBuffer*>(native)); break;
+    }
+    native = nullptr;
+}
+
+void* SdlSceneRenderer::track_resource(void* native, ResourceKind kind, std::size_t size,
+    std::uint32_t width, std::uint32_t height) {
+    if (!native) return nullptr;
+    Resource pending{native, binding_.device(), kind, size, width, height};
+    auto owned = std::make_unique<Resource>();
+    owned->device = pending.device;
+    owned->kind = kind;
+    owned->size = size;
+    owned->width = width;
+    owned->height = height;
+    owned->native = std::exchange(pending.native, nullptr);
+    auto* handle = owned.get();
+    resources_.emplace(handle, std::move(owned));
+    return handle;
+}
+
+SdlSceneRenderer::Resource* SdlSceneRenderer::resource(void* handle, ResourceKind kind) const noexcept {
+    const auto found = resources_.find(handle);
+    if (found == resources_.end() || !found->second->native || found->second->kind != kind
+        || found->second->device != binding_.device()) return nullptr;
+    return found->second.get();
+}
+
+void SdlSceneRenderer::release_resource(void* handle, ResourceKind kind) noexcept {
+    if (!platform_->is_owner_thread()) return;
+    if (auto* owned = resource(handle, kind)) owned->release();
+}
+
+void* SdlSceneRenderer::native_resource(void* handle, ResourceKind kind) const {
+    const auto* owned = resource(handle, kind);
+    if (!owned) throw std::invalid_argument("Foreign, stale or wrong-kind SDL GPU resource");
+    return owned->native;
 }
 
 void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
@@ -506,7 +583,7 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
     SDL_BindGPUGraphicsPipeline(
         pass, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
     const SDL_GPUBufferBinding binding{
-        static_cast<SDL_GPUBuffer*>(quad_buffer_),
+        static_cast<SDL_GPUBuffer*>(native_resource(quad_buffer_, ResourceKind::quad)),
         first * static_cast<Uint32>(sizeof(graphics::QuadInstance)),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
@@ -526,13 +603,13 @@ void SdlSceneRenderer::draw_glyph(
     SDL_BindGPUGraphicsPipeline(
         pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
     const SDL_GPUBufferBinding vertex_binding{
-        static_cast<SDL_GPUBuffer*>(glyph_resources_->instance_buffer()),
+        static_cast<SDL_GPUBuffer*>(native_resource(glyph_resources_->instance_buffer(), ResourceKind::glyph)),
         first * static_cast<Uint32>(sizeof(graphics::GlyphInstance)),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &vertex_binding, 1);
     const SDL_GPUTextureSamplerBinding atlas_binding{
-        static_cast<SDL_GPUTexture*>(glyph_resources_->texture(atlas_page)),
-        static_cast<SDL_GPUSampler*>(glyph_resources_->sampler()),
+        static_cast<SDL_GPUTexture*>(native_resource(glyph_resources_->texture(atlas_page), ResourceKind::texture)),
+        static_cast<SDL_GPUSampler*>(native_resource(glyph_resources_->sampler(), ResourceKind::sampler)),
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &atlas_binding, 1);
     SDL_DrawGPUPrimitives(pass, graphics::glyph_vertex_count, count, 0, 0);
@@ -558,7 +635,7 @@ void SdlSceneRenderer::draw_rounded_effect(
     SDL_BindGPUGraphicsPipeline(
         pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
     const SDL_GPUBufferBinding binding{
-        static_cast<SDL_GPUBuffer*>(effect_resources_->buffer()),
+        static_cast<SDL_GPUBuffer*>(native_resource(effect_resources_->buffer(), ResourceKind::effect)),
         static_cast<Uint32>(byte_offset),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
@@ -573,7 +650,7 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
         last_error_ = "GPU frame work must run on the Window owner thread";
         return runtime::FrameSubmissionResult::failed;
     }
-    if (scene_ == nullptr || glyph_resources_ == nullptr) {
+    if (!attached_scene_ready() || upload_batch_active_) {
         last_error_ = "Ordered Scene is not attached";
         return runtime::FrameSubmissionResult::failed;
     }
@@ -640,7 +717,7 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
 }
 
 bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
-    if (!platform_->is_owner_thread() || scene_ == nullptr || glyph_resources_ == nullptr) {
+    if (!platform_->is_owner_thread() || !attached_scene_ready() || upload_batch_active_) {
         last_error_ = "Frame export requires an attached scene on the Window owner thread";
         return false;
     }

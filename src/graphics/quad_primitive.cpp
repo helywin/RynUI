@@ -259,10 +259,13 @@ QuadGpuBuffer::QuadGpuBuffer(QuadUploadApi& api, QuadInstanceStore& store)
     if (handle_ == nullptr) {
         throw upload_error(*api_, "Failed to create Quad GPU buffer");
     }
-    if (!api_->upload(handle_, 0, store.bytes(0, capacity_))) {
+    try {
+        if (!api_->upload(handle_, 0, store.bytes(0, capacity_)))
+            throw upload_error(*api_, "Failed to upload initial Quad instances");
+    } catch (...) {
         api_->release_buffer(handle_);
         handle_ = nullptr;
-        throw upload_error(*api_, "Failed to upload initial Quad instances");
+        throw;
     }
     ++counters_.initial_uploads;
     counters_.uploaded_bytes += byte_count;
@@ -305,12 +308,13 @@ void QuadGpuBuffer::synchronize(QuadInstanceStore& store) {
         if (replacement == nullptr) {
             throw upload_error(*api_, "Failed to grow Quad GPU buffer");
         }
-        if (!api_->upload(
-                replacement,
-                0,
-                store.bytes(0, static_cast<std::uint32_t>(store.size())))) {
+        try {
+            if (!api_->upload(replacement, 0,
+                    store.bytes(0, static_cast<std::uint32_t>(store.size()))))
+                throw upload_error(*api_, "Failed to upload grown Quad GPU buffer");
+        } catch (...) {
             api_->release_buffer(replacement);
-            throw upload_error(*api_, "Failed to upload grown Quad GPU buffer");
+            throw;
         }
         api_->release_buffer(handle_);
         handle_ = replacement;

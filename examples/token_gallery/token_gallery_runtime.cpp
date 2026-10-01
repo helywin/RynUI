@@ -10,7 +10,7 @@
 #include "graphics/quad_primitive.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
-#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -421,7 +421,7 @@ public:
         ryn::detail::ButtonComponentHost& application,
         ryn::detail::InputComponentHost& inputs,
         ryn::detail::TextSceneService& text_scene,
-        ryn::detail::GlyphGpuResources& glyph_resources,
+        ryn::detail::SceneResources& resources,
         ryn::detail::SdlSceneRenderer& renderer,
         const std::function<ryn::Color()>& background_color,
         ReferenceSurfaceHost& reference_surfaces,
@@ -444,10 +444,9 @@ public:
           application_(&application),
           inputs_(&inputs),
           text_scene_(&text_scene),
-          glyph_resources_(&glyph_resources),
+          resources_(&resources),
           renderer_(&renderer),
           background_color_(&background_color),
-          effect_resources_(renderer),
           reference_surfaces_(&reference_surfaces),
           document_viewport_(&document_viewport),
           navigation_scroll_(&navigation_scroll),
@@ -469,7 +468,7 @@ public:
             const auto renderer_before_first = !first_frame_captured_
                 ? renderer_->counters() : ryn::detail::SceneRendererCounters{};
             const auto glyph_before_first = !first_frame_captured_
-                ? glyph_resources_->counters().texture_uploads : 0;
+                ? resources_->glyphs().counters().texture_uploads : 0;
             const auto hit_refresh_before = application_->services()
                 .hit_test_refresh_nanoseconds();
             static_cast<void>(application_->tick_animations(frame_time));
@@ -636,51 +635,29 @@ public:
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto scene_synchronized = std::chrono::steady_clock::now();
-            if (!renderer_->begin_upload_batch()) {
+            ryn::detail::SceneUploadTiming upload_timing;
+            if (!resources_->synchronize({
+                    &application_->services().surfaces().instances(),
+                    text_scene_->atlas(), text_scene_->glyph_scene().instances(),
+                    &application_->rounded_effects(),
+                    {static_cast<std::uint32_t>(metrics.pixel_width),
+                     static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_}},
+                    &upload_timing)) {
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            auto quad_synchronized = scene_synchronized;
-            auto glyph_synchronized = scene_synchronized;
-            auto effect_synchronized = scene_synchronized;
-            try {
-                if (quad_buffer_ == nullptr) {
-                    quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                        *renderer_, application_->services().surfaces().instances());
-                } else {
-                    application_->services().surfaces().synchronize_gpu(*quad_buffer_);
-                }
-                quad_synchronized = std::chrono::steady_clock::now();
-                glyph_resources_->synchronize(
-                    text_scene_->atlas(), text_scene_->glyph_scene().instances());
-                glyph_synchronized = std::chrono::steady_clock::now();
-                effect_resources_.synchronize(
-                    application_->rounded_effects(),
-                    {
-                        static_cast<std::uint32_t>(metrics.pixel_width),
-                        static_cast<std::uint32_t>(metrics.pixel_height),
-                        *render_scale_,
-                    });
-                effect_synchronized = std::chrono::steady_clock::now();
-            } catch (...) {
-                renderer_->cancel_upload_batch();
-                invalidate_uploads();
-                throw;
-            }
-            if (!renderer_->finish_upload_batch()) {
-                invalidate_uploads();
-                last_error_ = renderer_->last_error();
-                return ryn::runtime::FrameSubmissionResult::failed;
-            }
-            const auto resources_synchronized = std::chrono::steady_clock::now();
+            quad_buffer_ = resources_->quads();
+            const auto quad_synchronized = upload_timing.quads;
+            const auto glyph_synchronized = upload_timing.glyphs;
+            const auto effect_synchronized = upload_timing.effects;
+            const auto resources_synchronized = upload_timing.committed;
             last_visible_scene_ = application_->scene_composer().build_visible_scene(
                 application_->nodes(), clip, visible_scene_);
             const auto scene_culled = std::chrono::steady_clock::now();
-            renderer_->attach_scene(
-                quad_buffer_->handle(),
-                *glyph_resources_,
-                visible_scene_,
-                &effect_resources_);
+            if (!renderer_->attach_scene(resources_->attach(visible_scene_))) {
+                last_error_ = "Token Gallery scene attachment is invalid";
+                return ryn::runtime::FrameSubmissionResult::failed;
+            }
             renderer_->set_clear_color((*background_color_)());
             const auto result = renderer_->submit_frame(frame_time);
             const auto frame_finished = std::chrono::steady_clock::now();
@@ -704,7 +681,7 @@ public:
                         - renderer_before_first.texture_transfer_creations,
                     renderer_after.buffer_transfer_creations
                         - renderer_before_first.buffer_transfer_creations,
-                    glyph_resources_->counters().texture_uploads - glyph_before_first,
+                    resources_->glyphs().counters().texture_uploads - glyph_before_first,
                 };
                 first_frame_captured_ = true;
             }
@@ -888,7 +865,7 @@ public:
     }
     [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters&
     effect_uploads() const noexcept {
-        return effect_resources_.counters();
+        return resources_->effects().counters();
     }
     [[nodiscard]] const ryn::detail::SceneRendererCounters&
     captured_renderer_counters() const noexcept {
@@ -922,22 +899,14 @@ private:
         return changed;
     }
 
-    void invalidate_uploads() {
-        text_scene_->atlas().mark_all_pages_dirty();
-        application_->services().surfaces().instances().mark_all_dirty();
-        text_scene_->glyph_scene().instances().mark_all_dirty();
-        effect_resources_.invalidate_upload();
-    }
-
     static constexpr std::int64_t scroll_capture_frames = 240;
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::InputComponentHost* inputs_;
     ryn::detail::TextSceneService* text_scene_;
-    ryn::detail::GlyphGpuResources* glyph_resources_;
+    ryn::detail::SceneResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
     const std::function<ryn::Color()>* background_color_;
-    ryn::detail::RoundedEffectGpuResources effect_resources_;
     ReferenceSurfaceHost* reference_surfaces_;
     GalleryDocumentViewport* document_viewport_;
     GalleryScrollRange* navigation_scroll_;
@@ -958,7 +927,7 @@ private:
     ryn::runtime::NodeId document_root_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
-    std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
+    ryn::graphics::QuadGpuBuffer* quad_buffer_{};
     ryn::graphics::OrderedScene visible_scene_;
     ryn::component::VisibleSceneStats last_visible_scene_;
     std::uint64_t reconciliation_syncs_{};
@@ -1170,14 +1139,14 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         std::optional<GalleryNavigationTarget> deferred_navigation;
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
-        ryn::detail::GlyphGpuResources glyph_resources(renderer);
-        glyph_resources.set_sparse_upload_coalescing_limit(512 * 1024);
+        ryn::detail::SceneResources scene_resources(renderer);
+        scene_resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
         GallerySubmitter submitter(
             platform,
             application,
             inputs,
             text_scene,
-            glyph_resources,
+            scene_resources,
             renderer,
             definition.background_color,
             reference_surfaces,
@@ -2168,7 +2137,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto scene = application.scene_composer().diagnostics();
         const auto retained_surfaces = application.services().surfaces().diagnostics();
         const auto quad = submitter.quad_uploads();
-        const auto glyph = glyph_resources.counters();
+        const auto glyph = scene_resources.glyphs().counters();
         const auto effect = submitter.effect_uploads();
         const auto render = submitter.captured_renderer_counters();
         const auto render_before_scroll = submitter.renderer_counters_before_scroll();
@@ -2467,7 +2436,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " glyph_uploads=" << glyph.texture_uploads + glyph.buffer_uploads
             << " glyph_buffer_uploads=" << glyph.buffer_uploads
             << " glyph_buffer_coalesces=" << glyph.buffer_upload_coalesces
-            << " glyph_buffer_capacity=" << glyph_resources.instance_capacity()
+            << " glyph_buffer_capacity=" << scene_resources.glyphs().instance_capacity()
             << " glyph_uploaded_bytes="
             << glyph.texture_uploaded_bytes + glyph.buffer_uploaded_bytes
             << " effect_uploads=" << effect.buffer_uploads

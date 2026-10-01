@@ -224,6 +224,7 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/scene_resources.cpp
     renderer/common/glyph_gpu_resources.cpp
     renderer/common/rounded_effect_gpu_resources.cpp
     renderer/common/text_render_controller.cpp
@@ -232,6 +233,13 @@ rynui_configure_cpp_target(rynui_renderer_common)
 target_include_directories(rynui_renderer_common PUBLIC
     "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_renderer_common PUBLIC rynui_graphics rynui_text_scene)
+
+if("RECORDING" IN_LIST RYNUI_RENDER_BACKENDS)
+    add_library(rynui_renderer_recording STATIC renderer/recording/recording_renderer.cpp)
+    rynui_configure_cpp_target(rynui_renderer_recording)
+    target_link_libraries(rynui_renderer_recording PUBLIC rynui_renderer_common)
+    rynui_assert_portable_link_closure(rynui_renderer_recording)
+endif()
 
 if(RYNUI_HAS_SDL_HOST)
 add_library(rynui_platform_sdl STATIC

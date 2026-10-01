@@ -1,6 +1,7 @@
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/gpu_binding.hpp"
 #include "graphics/quad_primitive.hpp"
+#include "renderer/common/scene_resources.hpp"
 
 #include <array>
 #include <iostream>
@@ -220,6 +221,78 @@ void test_resources_retired_before_binding_rebuild() {
         "release_resource", "release_window", "destroy_device"});
 }
 
+class BindingSceneApi final : public ryn::detail::SceneBackend {
+public:
+    BindingSceneApi(SdlGpuBinding& binding, FakePlatformApi& api) : binding_(&binding), api_(&api) {}
+    std::uint64_t device_epoch() const noexcept override { return binding_->epoch(); }
+    bool begin_upload_batch() override { return api_->device_live; }
+    bool finish_upload_batch() override { return api_->device_live; }
+    void cancel_upload_batch() noexcept override {}
+    void* create_vertex_buffer(std::size_t) override { return &buffer_; }
+    void release_buffer(void*) noexcept override {
+        released_live &= api_->device_live;
+        api_->calls.emplace_back("release_scene_buffer");
+    }
+    bool upload(void*, std::size_t, std::span<const std::byte>) override { return api_->device_live; }
+    void* create_glyph_sampler() override { return &sampler_; }
+    void* create_glyph_texture(std::uint32_t, std::uint32_t) override { return &texture_; }
+    void* create_glyph_buffer(std::size_t size) override { return create_vertex_buffer(size); }
+    bool upload_glyph_texture(void*, const ryn::detail::GlyphTextureUpload&) override { return api_->device_live; }
+    bool upload_glyph_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override { return upload(value, offset, bytes); }
+    void release_glyph_buffer(void* value) noexcept override { release_buffer(value); }
+    void release_glyph_texture(void*) noexcept override { released_live &= api_->device_live; }
+    void release_glyph_sampler(void*) noexcept override {
+        released_live &= api_->device_live;
+        api_->calls.emplace_back("release_scene_sampler");
+    }
+    void* create_effect_buffer(std::size_t size) override { return create_vertex_buffer(size); }
+    bool upload_effect_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override { return upload(value, offset, bytes); }
+    void release_effect_buffer(void* value) noexcept override { release_buffer(value); }
+    const char* last_error() const noexcept override { return "device not alive"; }
+    const char* glyph_gpu_error() const noexcept override { return last_error(); }
+    const char* effect_gpu_error() const noexcept override { return last_error(); }
+    void draw_quad(std::uint32_t, std::uint32_t) override {}
+    void draw_glyph(std::uint32_t, std::uint32_t, std::uint32_t) override {}
+    void draw_rounded_effect(std::uint32_t, std::uint32_t) override {}
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime) override {
+        return attached_scene_ready() ? ryn::runtime::FrameSubmissionResult::submitted : ryn::runtime::FrameSubmissionResult::failed;
+    }
+    bool released_live{true};
+private:
+    SdlGpuBinding* binding_;
+    FakePlatformApi* api_;
+    int buffer_{}, sampler_{}, texture_{};
+};
+
+void test_shared_scene_retirement_and_binding_order() {
+    FakePlatformApi api(FailurePoint::none);
+    auto host = PlatformState::create(api, {});
+    ryn::graphics::QuadInstanceStore quads;
+    static_cast<void>(quads.append(std::array<ryn::graphics::QuadInstance, 1>{}));
+    ryn::graphics::GlyphAtlas atlas;
+    ryn::graphics::GlyphInstanceStore glyphs;
+    ryn::graphics::OrderedScene scene;
+    scene.append_quad(0, 1);
+    std::uint64_t old_epoch{};
+    for (int index = 0; index != 2; ++index) {
+        SdlGpuBinding binding(*host.state, api);
+        require(binding.epoch() > old_epoch, "shared rebuild reused epoch");
+        old_epoch = binding.epoch();
+        BindingSceneApi backend(binding, api);
+        ryn::detail::SceneResources resources(backend);
+        require(resources.synchronize({&quads, atlas, glyphs, nullptr, {}}), "shared lifecycle sync failed");
+        const auto attached = resources.attach(scene);
+        require(backend.attach_scene(attached), "shared lifecycle attach failed");
+        resources.retire();
+        require(!backend.valid_attachment(attached) && backend.released_live,
+                "shared retire left attachment valid or released on dead device");
+    }
+    require_calls(api.calls, {"init", "create_window", "create_device", "claim_window",
+        "release_scene_buffer", "release_scene_sampler", "release_window", "destroy_device",
+        "create_device", "claim_window", "release_scene_buffer", "release_scene_sampler",
+        "release_window", "destroy_device"});
+}
+
 } // namespace
 
 int main() {
@@ -232,6 +305,7 @@ int main() {
         test_gpu_failure_preserves_host(FailurePoint::device);
         test_gpu_failure_preserves_host(FailurePoint::claim);
         test_resources_retired_before_binding_rebuild();
+        test_shared_scene_retirement_and_binding_order();
         test_success_cleanup();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

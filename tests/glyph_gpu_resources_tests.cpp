@@ -36,6 +36,8 @@ struct BufferRecord {
 
 class RecordingGpuApi final : public ryn::detail::GlyphGpuApi {
 public:
+    static constexpr std::uint32_t row_alignment = 256;
+    [[nodiscard]] std::uint32_t glyph_texture_row_alignment_bytes() const noexcept override { return row_alignment; }
     enum class Failure {
         none,
         sampler,
@@ -188,8 +190,8 @@ void test_aligned_dirty_texture_and_sparse_buffer_uploads() {
         resources.synchronize(atlas, instances);
         require(api.textures.size() == 2, "dirty atlas rectangles were not uploaded exactly");
         for (const auto& upload : api.textures) {
-            require(upload.offset % ryn::detail::glyph_texture_offset_alignment == 0
-                        && upload.row_pitch % ryn::detail::glyph_texture_row_alignment == 0,
+            require(upload.offset == 0
+                        && upload.row_pitch % RecordingGpuApi::row_alignment == 0,
                     "texture staging alignment contract was not preserved");
             require(upload.row_pitch == 256
                         && upload.bytes.size()

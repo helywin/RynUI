@@ -1,6 +1,6 @@
 # Astra xhigh 审查结论
 
-日期：2026-10-02。模型：`gpt-6-astra`，reasoning effort：`xhigh`。两次只读审查：研究文档 + 当前实现；035 proposal/design/specs/tasks。没有实施代码。
+日期：2026-10-02。模型：`gpt-6-astra`，reasoning effort：`xhigh`。只读审查：研究文档 + 当前实现；035 proposal/design/specs/tasks；共同事务与 Recording 实现。审查 agent 没有实施代码。
 
 ## 研究审查
 
@@ -25,3 +25,14 @@
 5. 明确非空 renderer 列表的编译期组合，不实现运行时选择器。
 
 实现证据在阶段记录中单独保存；审查结论不作为构建、运行、GPU 或新平台支持证据。
+
+## 代码复审与修复
+
+- 基类 attach 未虚派发会遗漏 SDL scene 缓存：改为 virtual/override；原生验收通过基类调用。
+- 三类资源初建/扩容 upload 抛异常泄漏临时 handle：增加异常释放，Recording 初建/扩容 live-resource 断言通过。
+- rollback 恢复 dirty queue 分配失败会丢重试：先置持久 retry 标记，恢复信息失败仍使附件不可呈现；下一次提交前完整重建 dirty。
+- epoch 重建中 Effect 创建失败可能留下空资源：同步入口检测不完整资源并重新构造。
+- 示例保存 Glyph/Effect 引用会跨 retire 悬空：使用 SceneResources 查询当前资源。
+- Recording tombstone 保留已退休资源大块数据：释放 bytes 容量，保留 handle 元数据拒绝旧引用。
+
+修复后的共同测试 20/20、相关原生合同 13/13；见 scene-transaction.md。

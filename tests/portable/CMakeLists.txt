@@ -19,6 +19,11 @@ foreach(name IN ITEMS font_runtime text_engine text_state text_scene_service
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()
 
+if(TARGET rynui_renderer_recording)
+    rynui_portable_test(scene_backend "scene_backend_tests.cpp")
+    target_link_libraries(rynui_portable_scene_backend PRIVATE rynui_renderer_recording)
+endif()
+
 add_test(NAME rynui.portable.backend_boundaries
     COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/portable/verify_boundaries.py"
         --source "${PROJECT_SOURCE_DIR}" --build "${CMAKE_BINARY_DIR}")

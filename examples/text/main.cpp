@@ -2,7 +2,7 @@
 #include "font/font_runtime.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
-#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
@@ -74,7 +74,7 @@ public:
     TextComponentSubmitter(
         ryn::detail::TextComponentHost& host,
         ryn::detail::TextSceneService& scene,
-        ryn::detail::GlyphGpuResources& resources,
+        ryn::detail::SceneResources& resources,
         ryn::detail::SdlSceneRenderer& renderer,
         ryn::runtime::Size& viewport) noexcept
         : host_(&host),
@@ -97,10 +97,11 @@ public:
                 last_error_ = "Text component layout or scene synchronization failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            resources_->synchronize(
-                scene_->atlas(),
-                scene_->glyph_scene().instances());
-            renderer_->attach_scene(nullptr, *resources_, scene_->ordered_scene());
+            if (!resources_->synchronize({nullptr, scene_->atlas(),
+                    scene_->glyph_scene().instances(), nullptr, {}}))
+                throw std::runtime_error(renderer_->last_error());
+            if (!renderer_->attach_scene(resources_->attach(scene_->ordered_scene())))
+                throw std::runtime_error("Text scene attachment invalid");
             const auto result = renderer_->submit_frame(frame_time);
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -119,7 +120,7 @@ public:
 private:
     ryn::detail::TextComponentHost* host_;
     ryn::detail::TextSceneService* scene_;
-    ryn::detail::GlyphGpuResources* resources_;
+    ryn::detail::SceneResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
     ryn::runtime::Size* viewport_;
     std::string last_error_;
@@ -224,7 +225,7 @@ int main(int argc, char** argv) {
         }});
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
-        ryn::detail::GlyphGpuResources resources(renderer);
+        ryn::detail::SceneResources resources(renderer);
         TextComponentSubmitter submitter(
             application, scene, resources, renderer, viewport);
         PlatformFrameEvents events(platform);
@@ -301,7 +302,7 @@ int main(int argc, char** argv) {
         }
 
         const auto& font_counters = fonts->counters();
-        const auto& resource_counters = resources.counters();
+        const auto& resource_counters = resources.glyphs().counters();
         const auto& renderer_counters = renderer.counters();
         const auto& loop_counters = loop.counters();
         const auto window_metrics = platform.window_metrics();

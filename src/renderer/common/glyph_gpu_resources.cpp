@@ -132,7 +132,8 @@ void GlyphGpuResources::ensure_textures(const graphics::GlyphAtlas& atlas) {
         if (texture == nullptr) {
             throw gpu_failure(*api_, "Failed to create Glyph atlas texture");
         }
-        textures_.push_back(texture);
+        try { textures_.push_back(texture); }
+        catch (...) { api_->release_glyph_texture(texture); throw; }
         ++counters_.textures_created;
     }
 }
@@ -154,9 +155,12 @@ bool GlyphGpuResources::ensure_instance_buffer(
         0,
         static_cast<std::uint32_t>(instances.size()),
     });
-    if (!api_->upload_glyph_buffer(replacement, 0, bytes)) {
+    try {
+        if (!api_->upload_glyph_buffer(replacement, 0, bytes))
+            throw gpu_failure(*api_, "Failed to upload Glyph instance buffer");
+    } catch (...) {
         api_->release_glyph_buffer(replacement);
-        throw gpu_failure(*api_, "Failed to upload Glyph instance buffer");
+        throw;
     }
     if (instance_buffer_ != nullptr) {
         api_->release_glyph_buffer(instance_buffer_);
@@ -170,10 +174,13 @@ bool GlyphGpuResources::ensure_instance_buffer(
 }
 
 void GlyphGpuResources::upload_atlas(graphics::GlyphAtlas& atlas) {
+    const auto alignment = api_->glyph_texture_row_alignment_bytes();
+    if (!alignment || (alignment & (alignment - 1)) != 0)
+        throw std::invalid_argument("Glyph texture row alignment must be a positive power of two");
     for (const graphics::GlyphAtlasUploadPlan& plan : atlas.dirty_regions()) {
         const std::uint32_t row_pitch = align_up(
             plan.rectangle.width,
-            glyph_texture_row_alignment);
+            alignment);
         const std::uint64_t transfer_size =
             static_cast<std::uint64_t>(row_pitch) * plan.rectangle.height;
         if (transfer_size > std::numeric_limits<std::size_t>::max()) {

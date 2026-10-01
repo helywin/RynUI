@@ -8,6 +8,7 @@
 #include "renderer/sdl/buffer_upload_batch_layout.hpp"
 #include "renderer/sdl/texture_upload_batch_layout.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/scene_backend.hpp"
 #include "runtime/frame_scheduler.hpp"
 
 #include <ryn/design_token.hpp>
@@ -18,6 +19,8 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <memory>
+#include <unordered_map>
 
 namespace ryn::detail {
 
@@ -40,11 +43,7 @@ struct SceneRendererCounters {
     std::uint64_t no_texture_frames{};
 };
 
-class SdlSceneRenderer final : public graphics::QuadUploadApi,
-                               public GlyphGpuApi,
-                               public RoundedEffectGpuApi,
-                               public SceneDrawApi,
-                               public runtime::FrameSubmitter {
+class SdlSceneRenderer final : public SceneBackend {
 public:
     SdlSceneRenderer(
         PlatformState& platform,
@@ -53,11 +52,9 @@ public:
     SdlSceneRenderer& operator=(const SdlSceneRenderer&) = delete;
     ~SdlSceneRenderer() override;
 
-    void attach_scene(
-        graphics::QuadGpuBufferHandle quad_buffer,
-        GlyphGpuResources& glyph_resources,
-        const graphics::OrderedScene& scene,
-        RoundedEffectGpuResources* effect_resources = nullptr);
+    bool attach_scene(const SceneAttachment& attachment) noexcept override;
+    [[nodiscard]] std::uint64_t device_epoch() const noexcept override { return binding_.epoch(); }
+    [[nodiscard]] std::uint32_t glyph_texture_row_alignment_bytes() const noexcept override { return 256; }
     bool resize_window(int width, int height);
     void set_clear_color(Color value) noexcept { clear_color_ = value; }
 
@@ -110,9 +107,9 @@ public:
     [[nodiscard]] const char* shader_format() const noexcept;
     [[nodiscard]] const char* gpu_driver() const noexcept { return binding_.driver(); }
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
-    bool begin_upload_batch();
-    bool finish_upload_batch();
-    void cancel_upload_batch() noexcept;
+    bool begin_upload_batch() override;
+    bool finish_upload_batch() override;
+    void cancel_upload_batch() noexcept override;
 
 private:
     bool begin_buffer_upload_chunk(std::uint32_t minimum_capacity);
@@ -125,6 +122,21 @@ private:
         std::size_t offset,
         std::span<const std::byte> bytes,
         const char* label);
+    enum class ResourceKind { quad, glyph, effect, texture, sampler };
+    struct Resource final {
+        void* native{};
+        GpuDeviceHandle device{};
+        ResourceKind kind{};
+        std::size_t size{};
+        std::uint32_t width{}, height{};
+        void release() noexcept;
+        ~Resource();
+    };
+    void* track_resource(void* native, ResourceKind kind, std::size_t size = 0,
+        std::uint32_t width = 0, std::uint32_t height = 0);
+    [[nodiscard]] Resource* resource(void* handle, ResourceKind kind) const noexcept;
+    void release_resource(void* handle, ResourceKind kind) noexcept;
+    [[nodiscard]] void* native_resource(void* handle, ResourceKind kind) const;
 
     PlatformState* platform_;
     SdlGpuBinding binding_;
@@ -132,8 +144,8 @@ private:
     void* glyph_pipeline_{nullptr};
     void* effect_pipeline_{nullptr};
     void* quad_buffer_{nullptr};
-    GlyphGpuResources* glyph_resources_{nullptr};
-    RoundedEffectGpuResources* effect_resources_{nullptr};
+    const GlyphGpuResources* glyph_resources_{nullptr};
+    const RoundedEffectGpuResources* effect_resources_{nullptr};
     const graphics::OrderedScene* scene_{nullptr};
     void* active_render_pass_{nullptr};
     bool upload_batch_active_{false};
@@ -150,6 +162,8 @@ private:
     std::string last_error_;
     Color clear_color_{Color::rgba8(255, 255, 255)};
     SceneRendererCounters counters_;
+    // Opaque handles are tombstone addresses, never reusable native SDK pointers.
+    std::unordered_map<void*, std::unique_ptr<Resource>> resources_;
 };
 
 } // namespace ryn::detail

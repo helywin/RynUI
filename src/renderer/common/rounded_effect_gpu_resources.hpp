@@ -43,6 +43,7 @@ public:
     RoundedEffectGpuResources(RoundedEffectGpuResources&&) = delete;
     RoundedEffectGpuResources& operator=(RoundedEffectGpuResources&&) = delete;
     ~RoundedEffectGpuResources();
+    void abandon_device() noexcept { buffer_ = nullptr; }
 
     void synchronize(
         graphics::RoundedEffectStore& store,

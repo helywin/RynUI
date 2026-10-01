@@ -4,6 +4,7 @@
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
+#include "renderer/common/scene_resources.hpp"
 #include "token_gallery_definition.hpp"
 #include <chrono>
 #include <filesystem>
@@ -237,9 +238,20 @@ int run_typography_acceptance(int argc, char **argv) {
           }});
     }});
     detail::SdlSceneRenderer renderer{platform, executable / "shaders"};
-    detail::GlyphGpuResources glyphs{renderer};
-    detail::RoundedEffectGpuResources effects{renderer};
-    std::unique_ptr<graphics::QuadGpuBuffer> quads;
+    detail::SceneBackend& backend = renderer;
+    std::array<std::byte, 16> contract_bytes{};
+    auto* retired_buffer = backend.create_vertex_buffer(contract_bytes.size());
+    require(retired_buffer != nullptr, "native contract buffer creation failed");
+    backend.release_buffer(retired_buffer);
+    auto* fresh_buffer = backend.create_vertex_buffer(contract_bytes.size());
+    require(fresh_buffer && fresh_buffer != retired_buffer, "native opaque handle reused a tombstone");
+    require(!backend.upload(retired_buffer, 0, contract_bytes)
+                && !backend.upload(fresh_buffer, contract_bytes.size(), contract_bytes)
+                && !backend.upload_glyph_buffer(fresh_buffer, 0, contract_bytes)
+                && !backend.upload(&contract_bytes, 0, contract_bytes),
+            "native backend accepted stale, foreign, wrong-kind or out-of-range handle");
+    backend.release_buffer(fresh_buffer);
+    detail::SceneResources resources{renderer};
     const runtime::Size viewport{
         static_cast<float>(metrics.pixel_width) / scale,
         static_cast<float>(metrics.pixel_height) / scale};
@@ -253,21 +265,15 @@ int run_typography_acceptance(int argc, char **argv) {
         (void)services.tick_animations(time);
         require(services.layout_and_synchronize(viewport, clip, {16, 12}),
                 "acceptance layout failed");
-        require(renderer.begin_upload_batch(), "GPU upload begin failed");
-        if (!quads)
-          quads = std::make_unique<graphics::QuadGpuBuffer>(
-              renderer, services.surfaces().instances());
-        else
-          services.surfaces().synchronize_gpu(*quads);
-        glyphs.synchronize(scene.atlas(), scene.glyph_scene().instances());
-        effects.synchronize(services.rounded_effects(),
+        require(resources.synchronize({&services.surfaces().instances(),
+                            scene.atlas(), scene.glyph_scene().instances(),
+                            &services.rounded_effects(),
                             {static_cast<std::uint32_t>(metrics.pixel_width),
                              static_cast<std::uint32_t>(metrics.pixel_height),
-                             scale});
-        require(renderer.finish_upload_batch(), "GPU upload finish failed");
-        renderer.attach_scene(quads->handle(), glyphs,
-                              services.scene_composer().ordered_scene(),
-                              &effects);
+                             scale}}), "GPU upload transaction failed");
+        require(backend.attach_scene(resources.attach(
+                              services.scene_composer().ordered_scene())),
+                              "GPU scene attachment failed");
         renderer.set_clear_color(
             resolve_theme(theme.get()).alias().color_background_container);
         require(renderer.submit_frame(time) !=

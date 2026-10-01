@@ -94,15 +94,13 @@ void RoundedEffectGpuResources::synchronize(
         }
     }
 
+    try {
     for (const auto range : dirty_ranges_) {
         const auto bytes = std::as_bytes(std::span(instances_).subspan(
             range.first, range.count));
         const auto offset = static_cast<std::size_t>(range.first)
             * sizeof(graphics::RoundedEffectGpuInstance);
         if (!api_->upload_effect_buffer(upload_buffer, offset, bytes)) {
-            if (needs_growth) {
-                api_->release_effect_buffer(upload_buffer);
-            }
             throw gpu_failure(*api_, "Failed to upload rounded-effect GPU buffer");
         }
         ++counters_.buffer_uploads;
@@ -112,6 +110,10 @@ void RoundedEffectGpuResources::synchronize(
         } else {
             ++counters_.partial_uploads;
         }
+    }
+    } catch (...) {
+        if (needs_growth) api_->release_effect_buffer(upload_buffer);
+        throw;
     }
 
     if (needs_growth) {

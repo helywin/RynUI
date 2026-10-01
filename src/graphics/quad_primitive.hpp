@@ -144,6 +144,8 @@ struct QuadUploadCounters {
 
 class QuadGpuBuffer final {
 public:
+    // The owning device epoch no longer exists; do not release via a new device.
+    void abandon_device() noexcept { handle_ = nullptr; }
     QuadGpuBuffer(QuadUploadApi& api, QuadInstanceStore& store);
     QuadGpuBuffer(const QuadGpuBuffer&) = delete;
     QuadGpuBuffer& operator=(const QuadGpuBuffer&) = delete;

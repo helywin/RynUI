@@ -7,7 +7,7 @@
 #include "graphics/quad_primitive.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
-#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -145,15 +145,14 @@ public:
         ryn::detail::PlatformState& platform,
         ryn::detail::ButtonComponentHost& application,
         ryn::detail::TextSceneService& text_scene,
-        ryn::detail::GlyphGpuResources& glyph_resources,
+        ryn::detail::SceneResources& resources,
         ryn::detail::SdlSceneRenderer& renderer,
         ryn::runtime::Size& viewport) noexcept
         : platform_(&platform),
           application_(&application),
           text_scene_(&text_scene),
-          glyph_resources_(&glyph_resources),
+          resources_(&resources),
           renderer_(&renderer),
-          effect_resources_(renderer),
           viewport_(&viewport) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame(
@@ -171,27 +170,16 @@ public:
                 last_error_ = "Layout demo layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            if (quad_buffer_ == nullptr) {
-                quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                    *renderer_, application_->button_scene().instances());
-            } else {
-                application_->button_scene().synchronize_gpu(*quad_buffer_);
-            }
-            glyph_resources_->synchronize(
-                text_scene_->atlas(), text_scene_->glyph_scene().instances());
             const auto metrics = platform_->window_metrics();
-            effect_resources_.synchronize(
-                application_->rounded_effects(),
-                {
+            if (!resources_->synchronize({
+                &application_->button_scene().instances(), text_scene_->atlas(),
+                text_scene_->glyph_scene().instances(), &application_->rounded_effects(), {
                     static_cast<std::uint32_t>(metrics.pixel_width),
                     static_cast<std::uint32_t>(metrics.pixel_height),
                     metrics.display_scale,
-                });
-            renderer_->attach_scene(
-                quad_buffer_->handle(),
-                *glyph_resources_,
-                application_->scene_composer().ordered_scene(),
-                &effect_resources_);
+                }})) throw std::runtime_error(renderer_->last_error());
+            if (!renderer_->attach_scene(resources_->attach(application_->scene_composer().ordered_scene())))
+                throw std::runtime_error("Layout scene attachment invalid");
             const auto result = renderer_->submit_frame(frame_time);
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -209,11 +197,9 @@ private:
     ryn::detail::PlatformState* platform_;
     ryn::detail::ButtonComponentHost* application_;
     ryn::detail::TextSceneService* text_scene_;
-    ryn::detail::GlyphGpuResources* glyph_resources_;
+    ryn::detail::SceneResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
-    ryn::detail::RoundedEffectGpuResources effect_resources_;
     ryn::runtime::Size* viewport_;
-    std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
     std::string last_error_;
 };
 
@@ -315,9 +301,9 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         application.mount(definition.content);
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
-        ryn::detail::GlyphGpuResources glyph_resources(renderer);
+        ryn::detail::SceneResources scene_resources(renderer);
         LayoutComponentSubmitter submitter(
-            platform, application, text_scene, glyph_resources, renderer, viewport);
+            platform, application, text_scene, scene_resources, renderer, viewport);
         LayoutPlatformEvents events(platform, application, frame_requests, viewport);
         auto& animation_deadlines = application;
         ryn::runtime::OnDemandFrameLoop loop(

@@ -15,9 +15,9 @@
 
 ## 3. 场景事务与 Recording（平台通用）
 
-- [ ] 3.1 实现共同 SceneBackend/SceneResources 上传事务、失败回滚及 owner/epoch 附件检查；begin、部分上传、commit、异常与扩容失败测试通过。
-- [ ] 3.2 实现复制真实 bytes/texture、验证范围与 draw 顺序的 Recording renderer；真实组件/字体/效果 fixture 验证内容、idle/局部上传、跨 owner/旧 epoch 拒绝与 CPU 重建。
-- [ ] 3.3 将纹理上传对齐限制放在 backend 合同，Gallery 和其他 scene 示例接入共同事务；SDL 默认构建和相应资源/源合同测试通过，更新文档并提交。
+- [x] 3.1 实现共同 SceneBackend/SceneResources 上传事务、失败回滚及 owner/epoch 附件检查；begin、部分上传、commit、异常与扩容失败测试通过。
+- [x] 3.2 实现复制真实 bytes/texture、验证范围与 draw 顺序的 Recording renderer；真实组件/字体/效果 fixture 验证内容、idle/局部上传、跨 owner/旧 epoch 拒绝与 CPU 重建。
+- [x] 3.3 将纹理上传对齐限制放在 backend 合同，Gallery 和其他 scene 示例接入共同事务；SDL 默认构建和相应资源/源合同测试通过，更新文档并提交。
 
 ## 4. 非阻塞帧调度（平台通用）
 

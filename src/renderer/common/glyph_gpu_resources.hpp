@@ -14,9 +14,6 @@ using GlyphGpuTextureHandle = void*;
 using GlyphGpuSamplerHandle = void*;
 using GlyphGpuBufferHandle = void*;
 
-inline constexpr std::uint32_t glyph_texture_row_alignment = 256;
-inline constexpr std::uint32_t glyph_texture_offset_alignment = 512;
-
 struct GlyphTextureUpload {
     std::uint32_t page{};
     graphics::GlyphAtlasRect rectangle{};
@@ -29,6 +26,7 @@ struct GlyphTextureUpload {
 class GlyphGpuApi {
 public:
     virtual ~GlyphGpuApi() = default;
+    [[nodiscard]] virtual std::uint32_t glyph_texture_row_alignment_bytes() const noexcept { return 1; }
 
     virtual GlyphGpuSamplerHandle create_glyph_sampler() = 0;
     virtual GlyphGpuTextureHandle create_glyph_texture(
@@ -66,6 +64,7 @@ public:
     GlyphGpuResources(GlyphGpuResources&&) = delete;
     GlyphGpuResources& operator=(GlyphGpuResources&&) = delete;
     ~GlyphGpuResources();
+    void abandon_device() noexcept { sampler_ = nullptr; textures_.clear(); instance_buffer_ = nullptr; }
 
     void synchronize(
         graphics::GlyphAtlas& atlas,
@@ -74,6 +73,7 @@ public:
 
     [[nodiscard]] GlyphGpuSamplerHandle sampler() const noexcept;
     [[nodiscard]] GlyphGpuTextureHandle texture(std::uint32_t page) const;
+    [[nodiscard]] std::size_t texture_count() const noexcept { return textures_.size(); }
     [[nodiscard]] GlyphGpuBufferHandle instance_buffer() const noexcept;
     [[nodiscard]] std::uint32_t instance_capacity() const noexcept;
     [[nodiscard]] const GlyphGpuResourceCounters& counters() const noexcept;
