@@ -1,5 +1,7 @@
 #include "component/button_component.hpp"
 #include "component/selection_component.hpp"
+#include "component/typography_component.hpp"
+#include "component/divider_component.hpp"
 #include "renderer/sdl/glyph_gpu_resources.hpp"
 #include "renderer/sdl/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -924,8 +926,11 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 12,
             "Token Gallery selection samples did not mount");
     require(fixture.host->interactions().size()
-                == definition.navigation_control_count + 43,
-            "Token Gallery documentation entered the interaction registry");
+                == definition.navigation_control_count + 53,
+            "Token Gallery control and Typography interaction inventory drifted");
+    require(fixture.host->services().typography().mounted().size()==4
+                && fixture.host->services().divider().mounted().size()==8,
+            "Gallery Typography actions or Divider examples absent");
 
     RecordingGpuApi gpu;
     RecordingDrawApi draw;
@@ -939,8 +944,8 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
     require(fixture.host->scene_composer().interaction_order().size()
-                    == definition.navigation_control_count + 43,
-            "Token Gallery reference content entered scene interaction order");
+                    == definition.navigation_control_count + 51,
+            "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1
@@ -949,7 +954,7 @@ void test_token_gallery_frame_contract() {
                 && initial.component_entries == 73
                 && initial.reference_surfaces == 126
                 && initial.reference_content_runs == 126
-                && initial.live_samples == 33,
+                && initial.live_samples == 57,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1
                 && gpu.effect_uploads == 1 && draw.quad_draws > 0
@@ -1115,7 +1120,7 @@ void test_live_input_samples() {
         if(step == ryn::runtime::FrameLoopStep::idle) break;
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 9, "Gallery Input/Search/Password samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 11, "Gallery Input/Search/Password/Typography samples absent");
     const auto controlled = fixture.inputs->mounted_inputs()[0];
     const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);

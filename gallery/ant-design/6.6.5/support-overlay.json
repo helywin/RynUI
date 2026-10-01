@@ -45,9 +45,9 @@
     {
       "identity": "ant.component.icon",
       "status": "partial",
-      "summary": "RynUI 已提供九种离线 Ant Design 图标的 typed Icon、主题颜色和 DPI 缓存；完整图标集与 Web API 仍未覆盖。",
+      "summary": "RynUI 已提供十四种离线 Ant Design 图标的 typed Icon、主题颜色和 DPI 缓存；完整图标集与 Web API 仍未覆盖。",
       "supported_scope": [
-        "typed Icon with nine bundled outlines",
+        "typed Icon with fourteen bundled outlines",
         "Theme and semantic foreground inheritance",
         "reactive icon switching and DPI-aware raster cache"
       ],
@@ -65,36 +65,51 @@
     {
       "identity": "ant.component.typography",
       "status": "partial",
-      "summary": "RynUI 已提供 Theme 驱动的 Text、CJK/Latin 排版与 retained 文本渲染，但尚未覆盖 Ant Design Typography 的完整语义集合。",
+      "summary": "RynUI 已提供五级 Title、Text、Paragraph、Link、行内语义、省略展开、全文复制与真实 Input 原地编辑；Tooltip 浮层及完整 Web API 尚未覆盖。",
       "supported_scope": [
         "typed Text props",
         "CJK/Latin shaping and rendering",
         "Theme typography tokens",
-        "retained text scene"
+        "retained text scene",
+        "five heading levels and semantic colors",
+        "strong/italic/code/keyboard/mark/underline/strikethrough",
+        "grapheme-safe ellipsis with expand/collapse",
+        "full-content copy with independent late-bound clipboard",
+        "persistent Input editing with controlled draft and IME lifecycle",
+        "Link pointer/keyboard/focus-visible interaction"
       ],
       "missing_scope": [
-        "Title/Paragraph/Link public components",
-        "editable/copyable/ellipsis contracts",
-        "complete Ant Design Typography variants"
+        "Tooltip floating layer",
+        "rich text and HTML clipboard format",
+        "TextArea multiline editing",
+        "complete Ant Design Web API"
       ],
       "evidence_identifiers": [
         "openspec:003-20260827-build-text-component-foundation",
         "test:rynui.text_component",
-        "test:rynui.text_component_frame"
+        "test:rynui.text_component_frame",
+        "openspec:034-20261001-complete-typography-and-divider",
+        "test:rynui.typography_component",
+        "test:rynui.typography_interaction"
       ]
     },
     {
       "identity": "ant.component.divider",
-      "status": "planned",
-      "summary": "分割线（Divider）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供水平/垂直 Divider、typed 文字 slot、三种朝向、Theme/None/比例间距、虚线与 plain；完整 Web API 尚未覆盖。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "horizontal/vertical and persistent typed text slot",
+        "left/center/right orientation and explicit margin precedence",
+        "dashed/plain variants and Theme component tokens",
+        "same-frame label/rail layout and material-only color updates"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "complete Ant Design Web API"
       ],
       "evidence_identifiers": [
-        "source:components/divider/index.en-US.md"
+        "source:components/divider/index.en-US.md",
+        "openspec:034-20261001-complete-typography-and-divider",
+        "test:rynui.divider_component"
       ]
     },
     {

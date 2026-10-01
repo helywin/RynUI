@@ -29,3 +29,9 @@
 Divider 文字节点常驻，内部 ComponentLayout 在同轮 measure/place 完成文字尺寸、轨道长度和 glyph 发布前的放置。垂直忽略并暂停标签，按当前行高取 0.9 高度与 -0.06 偏移。Theme/None/显式比例分别编码，显式比例覆盖 Theme；0 比例保留文字 padding，None 使用 no-default 的 0 padding。该规则按规格修正规划中相互冲突的说明。
 
 `rynui.divider_component` 验证全部形式、typed slot、同帧 glyph 位置、空/非空/垂直切换、三态朝向间距、超宽文字、plain 字体、虚线实例、身份稳定、兄弟局部性、颜色只更新材质以及资源销毁。Windows `windows-msvc` Debug 通过。
+
+## 6.1 Gallery 集成
+
+组件参考卡片直接提供五级标题、strong/italic/code/keyboard/mark/underline/strikethrough、Link 和 Divider 样例。live samples 新增单行/多行展开、全文复制、受控正文/标题编辑、disabled Link 与 Divider 各形式；共 57 个样例，Input 增至 11 个（含两个常驻但默认暂停的编辑分支）。support overlay 与生成目录同步，Tooltip、富文本、HTML clipboard 和多行编辑仍列为缺失项。
+
+Gallery 长跳转暴露 Input 文本层各自重建顺序的问题；窗口批处理现在覆盖 Text 与全部辅助组件，同次同步只刷新一次文本顺序。省略操作宽度测量不请求新帧，展开入口不反复切换可见性，展开时全文和操作行不重叠。`token_gallery_frame` 的滚动单次重建、结构不变与 idle 合同保持通过；目录生成/目录合同/文档合同及 TextEngine/TextScene/交互/Divider 回归通过。

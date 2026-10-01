@@ -621,13 +621,13 @@ bool TextEngine::has_exact_glyphs(StringView text,
     return scalars.valid();
 }
 
-bool TextState::set_ellipsis(TextEllipsisConfig config) {
+bool TextState::set_ellipsis(TextEllipsisConfig config, bool request_frame) {
     if (!std::isfinite(config.reserved_inline) || config.reserved_inline < 0)
         throw std::invalid_argument("ellipsis reserved width must be finite and non-negative");
     if (config == ellipsis_) return false;
     const bool mode_changed = config.rows.has_value() != ellipsis_.rows.has_value();
     ellipsis_ = std::move(config);
-    if (mode_changed) invalidate_shape(); else invalidate_layout();
+    if (mode_changed) invalidate_shape(request_frame); else invalidate_layout(request_frame);
     return true;
 }
 
@@ -766,12 +766,12 @@ const TextError& TextState::last_error() const noexcept {
     return last_error_;
 }
 
-void TextState::invalidate_shape() {
+void TextState::invalidate_shape(bool request_frame) {
     if(revision_ == std::numeric_limits<std::uint64_t>::max()) throw std::overflow_error("Text revision exhausted");
     ++revision_;
     shape_dirty_ = true;
     layout_dirty_ = true;
-    request_frame();
+    if (request_frame) this->request_frame();
 }
 
 void TextState::invalidate_layout(bool request_frame) {

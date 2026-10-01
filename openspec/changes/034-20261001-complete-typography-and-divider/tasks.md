@@ -39,7 +39,7 @@
 
 ## 6. Gallery 与参考数据（平台通用）
 
-- [ ] 6.1 在 Token Gallery 接入 Typography 与 Divider 真实样例（五级标题、行内语义、省略展开、复制与编辑、Link、水平/带文字/垂直/虚线/plain 分割线），同步 `gallery/ant-design/6.6.5/support-overlay.json` 的 `status`、`supported_scope`、`missing_scope`、`evidence_identifiers` 与 reference catalog 合同；`missing_scope` 如实保留 `tooltip` 浮层等未覆盖项；只有在能力真实接通后才提升 support，不提前提升 hover/active/Link，也不把私有 code/kbd 字段冒充新增上游 Component Token；Gallery 参考目录合同测试、文档合同测试与样例帧测试通过后以 `feat:` 提交
+- [x] 6.1 在 Token Gallery 接入 Typography 与 Divider 真实样例（五级标题、行内语义、省略展开、复制与编辑、Link、水平/带文字/垂直/虚线/plain 分割线），同步 `gallery/ant-design/6.6.5/support-overlay.json` 的 `status`、`supported_scope`、`missing_scope`、`evidence_identifiers` 与 reference catalog 合同；`missing_scope` 如实保留 `tooltip` 浮层等未覆盖项；只有在能力真实接通后才提升 support，不提前提升 hover/active/Link，也不把私有 code/kbd 字段冒充新增上游 Component Token；Gallery 参考目录合同测试、文档合同测试与样例帧测试通过后以 `feat:` 提交
 
 ## 7. Windows 验收（Windows）
 

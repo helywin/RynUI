@@ -44,6 +44,7 @@ struct TypographyState {
   TypographyCopyable copy_config;
   TypographyEditable edit_config;
   runtime::Size display_size, action_size;
+  float display_width{};
   std::optional<animation::AnimationTime> copied_until;
   std::function<void(String)> on_edit;
   std::function<void(bool)> on_copy;
@@ -57,7 +58,6 @@ void invalidate(WindowComponentServices &services,
       services.components().root(component),
       runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
-  services.mark_scene_structure_dirty();
 }
 void color_action(WindowComponentServices &services, runtime::ComponentId id) {
   auto *state = services.components().state<ActionState>(id);
@@ -86,7 +86,10 @@ void eligibility(WindowComponentServices &services, runtime::ComponentId id) {
   if (!state)
     return;
   const bool eligible = state->visible && !state->disabled;
-  services.components().set_branch_active(id, state->visible);
+  const bool visibility_changed =
+      services.components().set_branch_active(id, state->visible);
+  if (visibility_changed)
+    services.mark_scene_structure_dirty();
   services.interactions().set_eligible(state->interaction, eligible);
   if (!eligible) {
     services.pointer().cancel_interaction(state->interaction);
@@ -95,7 +98,11 @@ void eligibility(WindowComponentServices &services, runtime::ComponentId id) {
     state->hovered = false;
   }
   color_action(services, id);
-  invalidate(services, id);
+  if (visibility_changed)
+    invalidate(services, id);
+  else
+    services.dirty().invalidate(state->node, runtime::DirtyFlags::Material |
+                                                 runtime::DirtyFlags::HitTest);
 }
 runtime::ComponentId
 mount_action(WindowComponentServices &services, Prop<String> label,
@@ -441,36 +448,47 @@ bool TypographyComponentHost::mount(const TypographyProps &props,
             if (s.editing.get())
               return engine.measure_child(
                   services_->components().root(s.editor), limits);
-            if (s.has_ellipsis)
-              s.expand_visible.set(s.ellipsis_config.expandable && s.expanded);
-            auto measure = [&] {
+            auto measure = [&](bool exclude_expand) {
               s.action_size = engine.measure_child(
                   services_->components().root(s.row),
                   {0, limits.max_width, 0, limits.max_height});
-              const float reserve =
-                  s.action_size.width > 0 ? s.action_size.width + 4 : 0;
+              float actions = s.action_size.width;
+              if (exclude_expand && s.expand_visible.get() &&
+                  s.expand_action.valid()) {
+                const auto expand =
+                    services_->nodes()
+                        .require(services_->components().root(s.expand_action))
+                        .measured_size.width;
+                actions = std::max(0.0F, actions - expand);
+                if (actions > 0)
+                  actions = std::max(0.0F, actions - 4);
+              }
+              const float reserve = actions > 0 ? actions + 4 : 0;
               services_->text().reserve_ellipsis_inline(s.display, reserve);
               const float width =
-                  s.has_ellipsis ? limits.max_width
-                                 : std::max(0.0F, limits.max_width - reserve);
+                  s.has_ellipsis && !s.expanded
+                      ? limits.max_width
+                      : std::max(0.0F, limits.max_width - reserve);
               s.display_size =
                   engine.measure_child(services_->components().root(s.display),
                                        {0, width, 0, limits.max_height});
+              s.display_width =
+                  std::isfinite(width) ? width : s.display_size.width;
             };
-            measure();
-            if (s.has_ellipsis && s.ellipsis_config.expandable && !s.expanded &&
-                services_->text()
-                    .scene_service()
-                    .text_state(s.scene)
-                    .truncated()) {
-              s.expand_visible.set(true);
-              measure();
+            measure(!s.expanded);
+            if (s.has_ellipsis) {
+              s.expand_visible.set(s.ellipsis_config.expandable &&
+                                   (s.expanded || services_->text()
+                                                      .scene_service()
+                                                      .text_state(s.scene)
+                                                      .truncated()));
+              if (s.expand_visible.get())
+                measure(false);
             }
             const float reserve =
                 s.action_size.width > 0 ? s.action_size.width + 4 : 0;
             float result_width = s.display_size.width + reserve;
-            if (std::isfinite(limits.max_width) && s.has_ellipsis &&
-                reserve > 0)
+            if (std::isfinite(limits.max_width) && s.has_ellipsis)
               result_width = limits.max_width;
             return limits.constrain(
                 {result_width,
@@ -484,9 +502,9 @@ bool TypographyComponentHost::mount(const TypographyProps &props,
                                  bounds);
               return;
             }
-            engine.place_child(services_->components().root(s.display),
-                               {bounds.x, bounds.y, s.display_size.width,
-                                s.display_size.height});
+            engine.place_child(
+                services_->components().root(s.display),
+                {bounds.x, bounds.y, s.display_width, s.display_size.height});
             engine.place_child(
                 services_->components().root(s.row),
                 {bounds.x + std::max(0.0F, bounds.width - s.action_size.width),
@@ -585,8 +603,10 @@ void TypographyComponentHost::refresh(runtime::ComponentId id) {
   s->copy_visible.set(s->has_copy && s->copy_config.enabled && !editing);
   s->edit_visible.set(s->has_edit && s->edit_config.enabled &&
                       s->editor.valid() && !editing);
-  s->expand_visible.set(s->has_ellipsis && s->ellipsis_config.expandable &&
-                        !editing);
+  if (!s->has_ellipsis || !s->ellipsis_config.expandable || editing)
+    s->expand_visible.set(false);
+  else if (s->expanded)
+    s->expand_visible.set(true);
   s->expand_label.set(s->expanded ? s->ellipsis_config.collapse_text
                                   : s->ellipsis_config.expand_text);
   s->copy_icon.set(s->copied ? IconName::CheckOutlined
@@ -595,8 +615,10 @@ void TypographyComponentHost::refresh(runtime::ComponentId id) {
   auto ellipsis = s->ellipsis_config;
   ellipsis.expanded = s->expanded;
   s->ellipsis.set(std::move(ellipsis));
-  services_->components().set_branch_active(s->display, !editing);
-  services_->components().set_branch_active(s->row, !editing);
+  if (services_->components().set_branch_active(s->display, !editing))
+    services_->mark_scene_structure_dirty();
+  if (services_->components().set_branch_active(s->row, !editing))
+    services_->mark_scene_structure_dirty();
   if (s->editor.valid())
     services_->input_runtime()->set_active(s->editor, editing);
   invalidate(*services_, id);

@@ -242,11 +242,11 @@ bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
     return true;
 }
 
-bool TextSceneService::set_ellipsis(TextSceneId id, text::TextEllipsisConfig config) {
+bool TextSceneService::set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame) {
     ensure_owner_thread();
     auto& record = require_record(id);
     if (record.view) throw std::logic_error("Text views cannot replace ellipsis configuration");
-    if (!record.state->set_ellipsis(std::move(config))) return false;
+    if (!record.state->set_ellipsis(std::move(config), request_frame)) return false;
     ++record.revisions.layout;
     record.content_dirty = true;
     record.placement_rebuild_pending = true;

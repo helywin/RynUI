@@ -1572,7 +1572,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto dispatch_search_acceptance = [&](std::size_t stage) {
             const auto mounted_inputs = inputs.mounted_inputs();
             const auto mounted_buttons = application.mounted_buttons();
-            if (mounted_inputs.size() != 9 || mounted_buttons.size() < 5)
+            if (mounted_inputs.size() < 9 || mounted_buttons.size() < 5)
                 throw std::logic_error("search acceptance requires five Gallery Search cells");
             const auto& field = mounted_inputs[2];
             const auto search_button = [&](std::size_t input_index) -> const auto& {
@@ -2271,18 +2271,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && (!search_scroll || !search_text || !search_keyboard
                         || !search_pointer || !search_blocked
                         || telemetry.search_submits != 3
-                        || telemetry.live_samples != 33))
+                        || telemetry.live_samples != 57))
                 || (selection_acceptance
                     && (!selection_scroll || !selection_keyboard || !selection_pointer
                         || !selection_blocked || automated_input_events != 31
-                        || telemetry.live_samples != 33))
+                        || telemetry.live_samples != 57))
                 || (password_acceptance
                     && (!password_scroll || !password_hidden || !password_pointer
                         || !password_keyboard || !password_disabled
-                        || telemetry.live_samples != 33))
+                        || telemetry.live_samples != 57))
                 || (clear_acceptance
                     && (!clear_scroll || !clear_pointer || !clear_keyboard || !clear_disabled
-                        || telemetry.input_changes < 3 || telemetry.live_samples != 33))
+                        || telemetry.input_changes < 3 || telemetry.live_samples != 57))
                 || (input_acceptance
                     && (!input_latin || !input_selection || !input_clipboard
                         || !input_undo || !input_redo || !input_theme_status

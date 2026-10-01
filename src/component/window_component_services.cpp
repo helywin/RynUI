@@ -196,6 +196,12 @@ std::optional<animation::AnimationTime> WindowComponentServices::next_frame_dead
 bool WindowComponentServices::layout_and_synchronize(
     runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
     float gap, bool unbounded_root_height) {
+    auto& text_scene = text_.scene_service();
+    struct SceneBatch {
+        TextSceneService& scene;
+        ~SceneBatch() { scene.cancel_ordered_scene_batch(); }
+    } batch{text_scene};
+    text_scene.begin_ordered_scene_batch();
     if (sync_profiling_enabled_) ++sync_profile_.calls;
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.text_nanoseconds);
@@ -223,6 +229,7 @@ bool WindowComponentServices::layout_and_synchronize(
     }
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
+        text_scene.finish_ordered_scene_batch();
         if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height})) {
             scene_structure_dirty_ = true;
         }

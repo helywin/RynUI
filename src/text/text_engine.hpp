@@ -222,7 +222,7 @@ public:
     bool set_width_constraint(float max_width, bool request_frame = true);
     bool set_color(std::array<float, 4> color);
     bool set_opacity(float opacity);
-    bool set_ellipsis(TextEllipsisConfig config);
+    bool set_ellipsis(TextEllipsisConfig config, bool request_frame = true);
 
     [[nodiscard]] bool synchronize();
     [[nodiscard]] const ShapedText& shaped() const noexcept;
@@ -240,7 +240,7 @@ public:
     [[nodiscard]] const TextError& last_error() const noexcept;
 
 private:
-    void invalidate_shape();
+    void invalidate_shape(bool request_frame = true);
     void invalidate_layout(bool request_frame = true);
     void request_frame();
     bool synchronize_ellipsis();

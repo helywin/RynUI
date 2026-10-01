@@ -89,7 +89,7 @@ public:
         std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
     bool set_line_height(TextSceneId id, float line_height);
-    bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config);
+    bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame = true);
     void request_reshape(TextSceneId id);
     bool set_width_constraint(TextSceneId id, float width);
     bool set_color(TextSceneId id, std::array<float, 4> color);
@@ -117,6 +117,7 @@ public:
     // Only the owner-thread host synchronization loop may defer rebuilding.
     // Read ordered_scene() after finish, never inside an active batch.
     void begin_ordered_scene_batch();
+    [[nodiscard]] bool ordered_scene_batch_active() const noexcept { return ordered_scene_batch_active_; }
     void finish_ordered_scene_batch();
     void cancel_ordered_scene_batch() noexcept;
 

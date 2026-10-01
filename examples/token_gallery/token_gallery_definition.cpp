@@ -45,6 +45,8 @@ struct GalleryState final {
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<ryn::String> search_value{ryn::String{}};
     ryn::Signal<ryn::String> search_feedback{ryn::String{u8"Enter 或按钮提交搜索"}};
+    ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
+    ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
     ryn::Signal<GalleryNavigationTarget> active_navigation{
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
@@ -555,7 +557,7 @@ void component_entry(
             .status(entry.support_status)
             .visible(visible)
             .layout(ryn::LayoutStyle{}.width(width).height(height)),
-        [state, name, summary, supported, missing, source_note, status = entry.support_status] {
+        [state, name, summary, supported, missing, source_note, identity=entry.identity, status = entry.support_status] {
             ++state->telemetry.reference_content_runs;
             document_text(name, 16.0F, 26.0F, 500);
             ryn::Text(ryn::TextProps{}
@@ -566,6 +568,20 @@ void component_entry(
                 document_text(missing, 12.0F, 20.0F, 400, ryn::TextTone::Secondary);
             }
             document_text(source_note, 11.0F, 18.0F, 400, ryn::TextTone::Secondary);
+            if(identity=="ant.component.typography"){
+                for(auto level:{ryn::TypographyLevel::H1,ryn::TypographyLevel::H2,ryn::TypographyLevel::H3,ryn::TypographyLevel::H4,ryn::TypographyLevel::H5})
+                    ryn::Title(ryn::TitleProps{}.level(level).content(u8"RynUI 标题层级"));
+                ryn::Text(ryn::TypographyProps{}.content(u8"Strong / Italic · 强调与斜体").strong(true).italic(true).type(ryn::TypographyType::Danger));
+                ryn::Text(ryn::TypographyProps{}.content(u8"code: a += b; 中文回退").code(true).type(ryn::TypographyType::Success));
+                ryn::Text(ryn::TypographyProps{}.content(u8"Ctrl + C / 键帽").keyboard(true).type(ryn::TypographyType::Warning));
+                ryn::Text(ryn::TypographyProps{}.content(u8"高亮、下划线、删除线").mark(true).underline(true).strikethrough(true).type(ryn::TypographyType::Secondary));
+                ryn::Link(ryn::LinkProps{}.content(u8"Link · 指针与键盘激活").onClick([state]{++state->telemetry.activations;}));
+                state->telemetry.live_samples+=10;
+            }
+            if(identity=="ant.component.divider"){
+                ryn::Divider();ryn::Divider(ryn::DividerProps{}.content(u8"Divider 标签"));ryn::Divider(ryn::DividerProps{}.dashed(true));
+                state->telemetry.live_samples+=3;
+            }
         });
     ++state->telemetry.component_entries;
     ++state->telemetry.reference_surfaces;
@@ -819,6 +835,26 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             }));
             state->telemetry.live_samples += 3;
         });
+    ryn::Text(u8"Typography · 省略、复制与原地编辑（Tooltip 浮层尚未实现）");
+    ryn::Text(ryn::TypographyProps{}.content(u8"原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。")
+        .ellipsis(ryn::TypographyEllipsis{.expandable=true}).copyable(ryn::TypographyCopyable{})
+        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Paragraph(ryn::TypographyProps{}.content(u8"多行省略保留字素边界，英文 Latin 和中文均复用同一文本测量通道。\n显式换行也计入行数。\n展开后显示全部行。")
+        .ellipsis(ryn::TypographyEllipsis{.rows=2,.expandable=true}).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Text(ryn::TypographyProps{}.content(state->typography_value).editable(ryn::TypographyEditable{.max_length=64})
+        .onEdit([state](ryn::String value){state->typography_value.set(std::move(value));}).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Title(ryn::TitleProps{}.level(ryn::TypographyLevel::H3).content(state->typography_title).editable(ryn::TypographyEditable{})
+        .onEdit([state](ryn::String value){state->typography_title.set(std::move(value));}).layout(ryn::LayoutStyle{}.width(state->document_width)));
+    ryn::Link(ryn::LinkProps{}.content(u8"Link · 激活计数").onClick([state]{++state->telemetry.activations;}));
+    ryn::Link(ryn::LinkProps{}.content(u8"禁用 Link").disabled(true));
+    state->telemetry.live_samples+=6;
+    ryn::Text(u8"Divider · 水平、虚线、plain、None 朝向间距与垂直线");
+    ryn::Divider(ryn::DividerProps{}.orientation(ryn::DividerOrientation::Left).content(u8"Left"));
+    ryn::Divider(ryn::DividerProps{}.orientation(ryn::DividerOrientation::Right).content(u8"Right").dashed(true));
+    ryn::Divider(ryn::DividerProps{}.content(u8"Plain").plain(true));
+    ryn::Divider(ryn::DividerProps{}.content(u8"None / 显式无朝向间距").orientation(ryn::DividerOrientation::Left).orientationMargin(ryn::DividerOrientationMargin::none()));
+    ryn::Space(ryn::SpaceProps{}.align(ryn::SpaceAlign::Center),[]{ryn::Text(u8"文字");ryn::Divider(ryn::DividerProps{}.type(ryn::DividerType::Vertical));ryn::Text(u8"文字");});
+    state->telemetry.live_samples+=5;
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
         ryn::FlexContent{[] {}});
 }

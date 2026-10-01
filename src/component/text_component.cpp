@@ -406,7 +406,7 @@ void TextComponentHost::reserve_ellipsis_inline(runtime::ComponentId component, 
     if (!state) return;
     auto config = text_scene_->text_state(state->scene).ellipsis();
     config.reserved_inline = width;
-    if (text_scene_->set_ellipsis(state->scene, std::move(config))) {
+    if (text_scene_->set_ellipsis(state->scene, std::move(config), false)) {
         layout_->set_intrinsic_revision(components_.root(component),
             intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision);
     }
@@ -554,15 +554,16 @@ bool TextComponentHost::layout_and_synchronize(
         }
         return true;
     };
-    text_scene_->begin_ordered_scene_batch();
+    const bool owns_batch = !text_scene_->ordered_scene_batch_active();
+    if (owns_batch) text_scene_->begin_ordered_scene_batch();
     try {
         const bool synchronized = synchronize_mounted();
-        text_scene_->finish_ordered_scene_batch();
+        if (owns_batch) text_scene_->finish_ordered_scene_batch();
         if (!synchronized) {
             return false;
         }
     } catch (...) {
-        text_scene_->cancel_ordered_scene_batch();
+        if (owns_batch) text_scene_->cancel_ordered_scene_batch();
         throw;
     }
     if (sync_profiling_enabled_) {
