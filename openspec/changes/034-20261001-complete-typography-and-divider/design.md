@@ -27,7 +27,6 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 **Non-Goals:** `Tooltip` 浮层本体（`ellipsis.tooltip` 与 `copyable.tooltip` 只发布 typed 入口与状态，真实浮层留给后续 Tooltip change）；`Typography` 的 `setContent` 级联排版与 `ul`/`ol`/`pre`/`blockquote`/`table` reset；富文本；`TextArea` 多行编辑；任意值类型的编辑回调；`copyable.format` 同时写入 HTML；本 change 未列出的额外线型。
 
 ## 决策
-
 ### 1. 两个独立组件宿主，各自复用窗口服务
 
 新增 `TypographyComponentHost` 与 `DividerComponentHost`，都以 `WindowComponentServices&` 构造并实现 `WindowComponentParticipant`，沿用 `PressableBehavior`、`InteractionRegistry`、`FocusManager`、`AnimationRuntime` 与 retained surface。不把两者塞进 Button 宿主，也不建立新的窗口级单例。备选是继续扩张 `ButtonComponentHost` 的兼容宿主，会让排版组件依赖按钮语义。
@@ -194,6 +193,60 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 `ant.component.typography` 与 `ant.component.divider` 增加真实样例，support overlay 的 `status`、`supported_scope`、`missing_scope`、`evidence_identifiers` 与 reference catalog 合同同步更新，`missing_scope` 明确保留 `tooltip` 浮层等未覆盖项。`tools/update_ant_design_tokens.py` 只在相应能力**真实接通**后提升 support，不提前提升 hover/active/Link 或未实现的渲染支持；本次新增的 C++ 私有 code/kbd 字段不得冒充新增上游 Component Token。
 
+### 18. 装饰分层通过每组件的前置/后置片段实现（4.3 定稿）
+
+`ComponentHost::Record` 已经同时持有 `before_children_fragments` 与 `after_children_fragments` 两个列表，`register_scene_fragment` 也已接受 placement，所以「背景在 glyph 前、装饰线在 glyph 后」不需要新的分层机制，只需要让一个组件能注册**两个**片段。决定：
+
+- 文本组件注册两个片段：`before_children`（`mark` 高亮底、`code`/`keyboard` 的底与边框）与 `after_children`（`underline`/`delete` 线）。glyph 片段保持现在的 `before_children`，并由注册顺序保证背景先于 glyph。
+- 片段的 quad 命令由 `TextComponentHost` 在几何同步阶段写入：位置取自 `TextMeasurement` 的逐行 `baseline`/`width`/`content_bounds`，线位置与厚度取自该行 run 的 `font::FontMetrics` 装饰字段（决策 4），按 `font_size` 换算为逻辑像素；`mark` 仅覆盖 `content_bounds` 的水平范围。
+- 纯 `Text(String)` 与 Icon 不注册任何装饰片段，保持零开销；只有声明了装饰/背景语义的组件才付出额外片段。
+- 备选是把背景交给子节点、线留给父节点。否决理由：会造成一个语义组件对应多个组件记录，命中测试、主题订阅与销毁路径都要跟着复制，收益不足。
+
+### 19. 省略在 `TextState` 的塑形时执行（4.4 定稿）
+
+判据已在决策 7 冻结（自然宽度比较、`lines.size() > rows`、字素边界、退化行为）。候选测量的落点决定如下：
+
+- 在 `TextState` 内部完成截断，而不是在组件层做二分搜索：`synchronize` 先按可用宽度塑形一次；若需要截断，则用 `TextBoundaryMap::grapheme_bytes` 枚举字素边界作为二分点，对每个候选按「候选文本 + 省略后缀」重新 `shape` + `measure` 直到收敛。组件层只读最终测量结果。
+- 复用同一条 `font::FontRuntime` 塑形路径，不新增测量后端；候选塑形不写入 glyph 实例（只有最终文本进入 `GlyphScene`），因此不污染 retained scene。
+- 可观察合同：`TextStateCounters` 增加 `ellipsis_searches` 与 `ellipsis_shapes`，测试据此断言「同宽度重复查询不新增塑形」以及二分搜索次数上界为 `log2(字素数) + 1`。
+- 退化行为按决策 7 固定：`rows == 0` 时只留省略后缀（无后缀则留空）、可用宽度小于后缀时不加后缀、显式换行保留换行结构。
+
+### 20. 剪贴板绑定入口由窗口 adapter 显式调用（4.5 定稿）
+
+决策 8 已冻结「独立于文本输入的绑定 + 晚绑定通知」，但没定谁调用。决定：
+
+- 调用方是**窗口 adapter**，即构造 `WindowComponentServices` 并驱动帧循环的那一层（Gallery 与各示例的 runtime）。它在启动时调用 `bind_text_edit(platform, clipboard)`，而不是等 Input 组件挂载时才碰巧绑定。
+- `WindowComponentServices` 增加只读的剪贴板可用性查询，组件据此决定复制入口是否可用；`bind_text_edit` 完成时通知已挂载的参与者（`WindowComponentParticipant` 新增带默认实现的钩子），实现晚绑定后可用。
+- 未绑定的窗口仍然完整渲染与排版，复制入口不可用且可观察，不抛出。测试同时覆盖「绑定的窗口」与「完全没有 Input 组件与 host 的窗口」两种。
+- 明确不做：不让 `copyable` 依赖 `TextClipboardCommands`（那是为 editor owner 设计的），也不为排版组件创建 `TextEditorStore`。
+
+### 21. `editable` 用预建子树 + 延迟焦点事务（4.6 定稿）
+
+决策 12 已冻结「首次挂载预建编辑子树」。三处未定的接口落点如下：
+
+- **字体继承**：`InputComponentHost` 增加内部入口，允许挂载方为一个输入提供一个 `Prop<runtime::SemanticTypography>`，与 Text 的 `semantic_typography` 走同一条通道；编辑态由排版组件把当前解析结果传进去，因此标题编辑不会掉回 14px。
+- **编辑生命周期**：`InputComponentHost` 增加内部 `on_commit`/`on_cancel`/`on_blur` 回调注册（只暴露给仓库内部调用方，不进入公开 API）。Esc 优先级固定为：有 IME composition 时先取消 composition 并保持编辑态，再次 Esc 才放弃草稿。
+- **焦点事务**：`FocusManager` 增加「请求队列 + 派发结束后刷新」的机制。组件 handler 在派发期间只入队请求，刷新在 `begin_operation` 作用域之外执行，并在应用前校验 `ComponentId` 的 generation，避免 handler 期间销毁导致悬空。这与 019 记录的「`request_focus` 在 dispatch 内被拒绝」是同一个根因，本 change 把它修在焦点管理器里，而不是在组件 handler 里绕过。
+- 受控语义：编辑草稿优先于受控 `content`；提交后等待外部回写，外部拒绝回写时保留草稿并保持编辑态，状态可观察。该行为必须有测试。
+
+### 22. Link 走独立输入参与者，不改 `TextComponentHost` 的职责（4.7 定稿）
+
+`TextComponentHost` 现在完全不接触输入服务，给它加可选输入服务会把「文本渲染宿主」变成「什么都做的宿主」。决定：
+
+- `Link` 是独立组件宿主 `LinkComponentHost`（`WindowComponentServices` 参与者），像 `SelectionComponentHost` 一样借用 `interactions`/`focus`/`pointer`，并复用 `TextComponentHost` 的文本渲染能力（通过其 `mount`/`resolve_fonts` 接口）绘制链接文字。
+- 交互合同与 Button 一致：`InteractionRegistry` 的 eligible/focusable、`FocusManager` 的 Tab/Enter/Space、`PressableBehavior` 的指针手势与 capture；`disabled` 时取消 capture、清除 eligibility、清理焦点并更新 hit snapshot。
+- 备选是给 `TextComponentHost` 增加可选输入服务。否决理由：那会让每个纯文本组件都持有永不使用的输入指针，并把焦点合同扩散到排版宿主。
+
+### 23. 带标签分割线走路径 A：标签节点由布局引擎测量（Divider 定稿）
+
+决策 14 记录的约束是：`LeafLayout` + intrinsic measure 不会先测量子节点，而标签宽度只能在文本同步后得知。定稿选择**路径 A**，并给出具体形态：
+
+- **无标签**：`LeafLayout` + intrinsic measure，返回 `{可用宽度, 线宽 + 2 × 块级间距}`，渲染一条贯通全宽的轨道。
+- **有标签**：改为 `BoxLayout`，由布局引擎先测量标签子节点，再组合整体高度；标签自身是一个 `Text` 子组件，它的固有测量回调走已有的 `TextSceneService::synchronize_measurement` 路径，与 Button 内容文本完全相同。轨道与标签的几何由父节点在一次几何同步里按测量结果分配，不读「上一帧缓存」。
+- **标签内容变化**：因为布局模型在「有标签」与「无标签」之间切换，标签从空变非空（或反向）时以显式重挂载收口；仅标签文本内容变化时不需要重挂载，由文本组件的 `Prop<String>` 通路处理。
+- **备选路径 B**（单节点缓存测量 + 版本修正）否决理由：首帧高度可能不准，且需要额外的版本账本；路径 A 把组合交给已经过验证的布局引擎，符合「能局部解决的不要自己重算」。
+- 垂直分割线无论有无标签都用 `LeafLayout` + intrinsic measure，因为它不参与水平轨道分配。
+
 ## Token 引用清单
 
 实现阶段 MUST 只引用下表 identity。除 `seed.lineWidth`（catalog 已锁定为 runtime、默认 1）外，其余非 seed Token 在 `catalog.yaml` 中均为 `metadata` 且 `upstream_default: null`，数值来源与验证边界见上文「上游数值来源与验证边界」。
@@ -217,28 +270,24 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 
 ## Risks / Trade-offs
 
-### 实施进度与未决点（截至 2026-10-01）
+### 实施进度与设计冻结状态（截至 2026-10-01）
 
-已完成：图标资源（2.1）、Theme Token 基线（2.2–2.6）、字体前置工作（3.1–3.3）、Typography 公开 API 与五级标题/语义色（4.1）、`strong`/`italic`/`code`/`keyboard` 的形状接入（4.2）。
+已完成：图标资源（2.1）、Theme Token 基线（2.2-2.6）、字体前置工作（3.1-3.3）、Typography 公开 API 与五级标题/语义色（4.1）、strong/italic/code/keyboard 的形状接入（4.2）。
 
-尚未开工，且各自有必须**先选定再实现**的架构决策，避免重复返工：
+剩余 14 项原先各自卡在一个**未定的架构决策**上，这些决策现已全部冻结（决策 18-23），实施阶段不再需要重新选择：
 
-1. **4.3 装饰渲染**：`mark` 高亮与 `code`/`keyboard` 方块必须在 glyph **之前**绘制，`underline`/`delete` 必须在 glyph **之后**绘制。当前 `TextComponentHost` 对每个组件只注册**一个** `before_children` 片段，因此需要先决定：是在同一 `ComponentHost` 记录上注册两个片段（扩展片段注册路径），还是把背景交给子节点、装饰线留给父节点。选定前不要动手。
-2. **4.4 ellipsis**：需要独立于 retained scene 的候选测量通道；设计决策 7 已经冻结了判据（自然宽度比较、`lines.size() > rows`、字素边界收缩、退化行为），但「候选测量如何复用塑形、`shape_count`/`measure_count` 合同的具体数值」仍需在实现时定稿并写入测试。
-3. **4.5 copyable**：设计决策 8 已冻结「独立于文本输入的剪贴板绑定 + 晚绑定通知」。实现前需要确认 `WindowComponentServices` 的绑定入口由哪个 adapter 调用（窗口 runtime／Gallery），以及没有 Input 的窗口由谁提供端口。
-4. **4.6 editable**：设计决策 12 已冻结「首次挂载预建编辑子树」。仍需先设计：`Input` 的内部 `SemanticTypography` 继承入口、blur/cancel 生命周期回调、以及「派发之后执行并校验 generation」的焦点事务。这是本 change 最大的风险项。
-5. **4.7 Link**：`Link` 需要 `InteractionRegistry` 的 eligible/focusable、`FocusManager` 的 Tab/Enter/Space 与 `PressableBehavior`。`TextComponentHost` 目前完全不接触输入服务，因此需要先决定：是给 `TextComponentHost` 增加可选输入服务，还是让 Link 走 `WindowComponentServices` 参与者（像 `SelectionComponentHost` 那样）。选定前不要动手。
-6. **Section 5 Divider**：见决策 14 的「实施时核实的两个约束」，带标签分割线的测量路径 A/B 必须先选定。
-7. **Section 7 Windows 实机验收**：需要真实窗口截图、driver、shader format、字体与 scale 记录。这一步必须在 4.x/5.x/6.x 全部落地后才能做，否则证据无效。
+| 剩余任务 | 已冻结的决策 | 落点 |
+| --- | --- | --- |
+| 4.3 装饰渲染 | 决策 18 | 每组件注册 before_children（背景）与 after_children（装饰线）两个片段 |
+| 4.4 ellipsis | 决策 19 | 截断在 TextState::synchronize 内完成，TextStateCounters 增加 ellipsis_searches/ellipsis_shapes |
+| 4.5 copyable | 决策 20 | 窗口 adapter 启动时显式 bind_text_edit，晚绑定通知参与者 |
+| 4.6 editable | 决策 21 | 预建子树 + Input 内部 typography/blur/cancel 入口 + FocusManager 延迟焦点事务 |
+| 4.7 Link | 决策 22 | 独立 LinkComponentHost 参与者，复用文本渲染而不改排版宿主职责 |
+| Section 5 Divider | 决策 23 + 决策 14 | 有标签用 BoxLayout（引擎测量标签），无标签用 LeafLayout + intrinsic measure |
+| Section 6 Gallery | 决策 17 | 支持状态只在能力真实接通后提升 |
+| Section 7 Windows 验收 | 决策 4/5/14 的平台边界 | 必须在 4.x/5.x/6.x 全部落地后进行，否则证据无效 |
 
-- **前置工作会扩大本 change 的实现面** → 决策 4（字体装饰度量）、决策 5（weight/slant face 解析与 resolver 签名）、决策 8（独立 clipboard 绑定）、决策 12（Input 内部 typography/blur/cancel 入口与焦点事务）都是新增运行时改动，必须排在对应功能之前。若要收窄，正确做法是缩小 034 范围或拆分后续 change，而不是把这些前置工作降级为近似实现或推迟勾选。
-- **等宽字体链的平台差异** → Windows 与原生 Linux 的系统等宽族名称、缺字覆盖与度量不同；两平台分别验证 `code`/`keyboard` 的字形与回退，任一平台的证据不得代替另一方。
-- **装饰与字形的坐标系一致性** → 背景在 glyph 前、装饰线在 glyph 后，两层必须与 glyph 使用同一 origin、clip 与滚动 translation；用命令顺序测试加滚动/裁剪/DPI 变化测试固定。
-- **省略的测量成本与稳定性** → 候选测量通道不得污染 retained scene；二分搜索只在确实需要截断时进入，并给出 `shape_count`/`measure_count` 合同。多行截断与 `expandable` 会改变组件高度，需确认只触发自身 Measure/Layout。
-- **编辑态复用 Input 的视觉继承** → 需要把当前 Typography 的 `SemanticTypography` 传给内部 Input，属内部 API 调整，可能同时影响 InputToken 与既有 Input 测试预期。
-- **主题 Token 数量增长** → 新增 map/alias 色与两组 Component Token 进入 changed-identity 比较；必须确认颜色 identity 精确为 `paint_material`，字体 identity 含 `text`，度量 identity 含 `measure_layout`，不出现跨组误报。五个 golden 全部需要重新生成。
-- **焦点与命中顺序** → `copyable`/`editable`/`expandable` 与 `Link` 都会新增可聚焦或可命中元素，必须确认 Tab 顺序、`focus-visible` 呈现、命中裁剪与「父级 disabled 时操作入口仍可交互」行为明确，且不回归 Button/Input/Search。
-- **`Tooltip` 缺口** → `ellipsis.tooltip` 与 `copyable.tooltip` 只有 typed 入口与状态，没有真实浮层；支持范围必须如实标注。
+实施阶段仍需在实现时定稿的**细节**（不改变上述方向）：省略的二分收敛判据与计数器精确数值、装饰 quad 的逐行几何取整、BoxLayout 标签与轨道的分配顺序、以及焦点事务队列的刷新时机。这些属于实现细节，应在对应任务的测试里固定下来。
 
 ## Validation
 
