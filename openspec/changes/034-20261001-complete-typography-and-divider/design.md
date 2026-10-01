@@ -83,7 +83,7 @@ Typography 与 Divider 的 Component Token 默认值、几何规则和行内度�
 
 字素边界复用 `TextBoundaryMap::grapheme_bytes`，不得把 HarfBuzz cluster 或 UTF-8 scalar 当字素。候选测量需要独立于 retained scene：新增一个不发布到 glyph scene 的测量通道，并在同一轮内缓存候选结果；`set_content` 会 invalidate shape，所以候选文本查询不能依赖「已同步缓存」自动消除重新塑形。实现必须给出 `shape_count`/`measure_count` 合同，明确哪些查询可复用、哪些必然 reshape。
 
-退化行为需要冻结并有测试：`rows == 0`、可用宽度小于后缀本身、文本含显式换行、`expandable` 与 `rows` 同时设置。
+退化行为已冻结为精确场景表（决策 19 定稿，规格 `Degenerate ellipsis inputs` 同步），**不再**使用早期「`rows == 0` 只留省略后缀」的表述——该表述与规格的「保留最小可见内容」冲突，且会让 `rows == 0` 显示一个没有内容的省略后缀。冻结结果：`rows == 0` 或可用宽度 `<= 0` 不产生行盒；行数超限但末行放不下后缀时**不加后缀**（后缀永远不作为可裁内容）；末行放不下任何完整字素时产生空行盒；显式换行保留为行结构，截断只作用于行数。完整表见规格。
 
 ### 8. `copyable` 的剪贴板必须能独立于文本输入绑定
 
