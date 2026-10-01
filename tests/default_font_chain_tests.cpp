@@ -1,5 +1,6 @@
 #include "platform/default_font_chain.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <iostream>
@@ -152,11 +153,126 @@ void test_invalid_custom_font_fails_fast() {
             "failed custom UI font diagnostic lost the configured path");
 }
 
+void test_monospace_chain_resolution() {
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.5F};
+    request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
+    request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
+    const auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(static_cast<bool>(chain), "default UI font chain did not load");
+
+    const auto ui = chain.identities();
+    const auto mono = chain.monospace_identities();
+    // The monospace chain always appends the UI chain, so an uncovered codepoint
+    // still resolves to a readable face instead of a missing glyph.
+    for (const auto identity : ui) {
+        require(std::ranges::find(mono, identity) != mono.end(),
+                "monospace chain dropped the UI fallback faces");
+    }
+
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.5F);
+    const auto resolved_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, 14);
+    const auto resolved_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, 14);
+    require(!resolved_ui.empty() && !resolved_mono.empty(),
+            "family-aware resolver returned an empty chain");
+    require(resolved_ui == ui,
+            "ui_sans resolution drifted from the loaded UI chain");
+    require(resolved_mono == mono,
+            "ui_monospace resolution drifted from the monospace chain");
+
+    if (!chain.monospace_faces.empty()) {
+        // A real monospace face must lead the monospace chain while the UI chain
+        // keeps its proportional Latin face.
+        require(resolved_mono.front() != resolved_ui.front(),
+                "monospace resolution reused the proportional Latin face first");
+        const auto metrics = fonts->metrics(resolved_mono.front());
+        require(metrics && metrics.metrics.logical_pixel_size == 14
+                    && metrics.metrics.raster_pixel_size == 21,
+                "monospace face lost high-DPI raster metrics");
+        // The monospace family itself must cover ASCII; the UI chain covers CJK.
+        const std::vector<ryn::font::FontIdentity> monospace_only{
+            resolved_mono.front()};
+        require(static_cast<bool>(
+                    fonts->find_glyph(monospace_only, U'M', std::nullopt)),
+                "resolved monospace face does not cover ASCII");
+        require(static_cast<bool>(fonts->find_glyph(resolved_mono, U'中', std::nullopt)),
+                "monospace chain does not fall back for Simplified Chinese");
+    }
+
+    // Distinct families must not share a cache entry: the same pixel size has to
+    // keep resolving to each family's own chain.
+    require(resolver(ryn::SystemFontFamily::ui_monospace, 400, 14) == resolved_mono
+                && resolver(ryn::SystemFontFamily::ui_sans, 400, 14) == resolved_ui,
+            "family caches leaked into each other");
+
+    // A different pixel size re-resolves both families at the new DPI.
+    const auto large_mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, 16);
+    require(!large_mono.empty() && large_mono != resolved_mono,
+            "monospace resolution ignored the pixel size");
+    for (const auto identity : large_mono) {
+        const auto metrics = fonts->metrics(identity);
+        require(metrics && metrics.metrics.logical_pixel_size == 16
+                    && metrics.metrics.raster_pixel_size == 24,
+                "monospace chain lost logical-to-device raster sizing");
+    }
+    // Both families stay available at the new size.
+    const auto large_ui = resolver(ryn::SystemFontFamily::ui_sans, 400, 16);
+    require(large_ui == resolver(ryn::SystemFontFamily::ui_sans, 400, 16)
+                && large_ui != large_mono,
+            "ui_sans and ui_monospace converged at a second pixel size");
+
+#if defined(_WIN32)
+    bool found_monospace_system = false;
+    for (const auto& face : chain.monospace_faces) {
+        found_monospace_system = found_monospace_system
+            || face.family_name == std::string_view{"Cascadia Mono"}
+            || face.family_name == std::string_view{"Consolas"}
+            || face.family_name == std::string_view{"Lucida Console"};
+    }
+    require(found_monospace_system,
+            "Windows monospace resolution found no known monospace family");
+#endif
+}
+
+void test_custom_monospace_font_precedes_platform() {
+    auto created = ryn::font::FontRuntime::create();
+    require(static_cast<bool>(created), "Font Runtime initialization failed");
+    auto fonts = std::move(created.runtime);
+
+    ryn::detail::DefaultFontChainRequest request;
+    request.raster = {14, 1.0F};
+    request.preferred_monospace_fonts.push_back({
+        RYNUI_VALIDATION_LATIN_FONT,
+        0,
+        "ConfiguredMonospaceFont",
+    });
+    request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
+    request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
+
+    const auto chain = ryn::detail::load_default_ui_font_chain(*fonts, request);
+    require(static_cast<bool>(chain), "custom monospace chain did not load");
+    require(!chain.monospace_faces.empty()
+                && chain.monospace_faces.front().family_name
+                    == std::string_view{"ConfiguredMonospaceFont"},
+            "configured monospace font did not precede the platform family");
+    // A configured monospace face must not enter the UI chain.
+    for (const auto& face : chain.faces) {
+        require(face.family_name != std::string_view{"ConfiguredMonospaceFont"},
+                "configured monospace font leaked into the UI chain");
+    }
+}
+
 } // namespace
 
 int main() {
     try {
         test_default_ui_font_chain();
+        test_monospace_chain_resolution();
+        test_custom_monospace_font_precedes_platform();
         test_custom_font_precedes_platform_defaults();
         test_invalid_custom_font_fails_fast();
     } catch (const std::exception& error) {

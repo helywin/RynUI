@@ -18,7 +18,7 @@
 
 ## 3. 字体前置工作（平台通用）
 
-- [ ] 3.1 让默认字体链按 `SystemFontFamily` 参数化：`make_default_ui_font_resolver` 按字族与像素尺寸分别缓存，`ui_monospace` 增加各平台等宽首选族并复用现有缺字回退与验证字体兜底，`DefaultFontChainRequest` 增加等宽首选入口；用注入字体覆盖两族解析、缓存命中、DPI 变化与缺字回退（不依赖系统字体），以 `feat:` 提交
+- [x] 3.1 让默认字体链按 `SystemFontFamily` 参数化：`DefaultFontChainRequest` 增加 `preferred_monospace_fonts`，`DefaultFontChainResult` 增加独立的 `monospace_faces` 与 `monospace_identities()`（等宽族在前、UI 链在后，保证未覆盖码位仍可读）；`make_default_ui_font_resolver` 按字族分别缓存并按像素尺寸重载；Windows 解析 Cascadia Mono/Consolas/Lucida Console，Linux 走 Fontconfig 的 `monospace` 别名；用注入字体覆盖两族解析、缺字回退、族间缓存隔离、DPI 变化与等宽族不进入 UI 链，以 `feat:` 提交
 - [ ] 3.2 扩展 `font::FontMetrics` 的装饰字段（`underline_position`、`underline_thickness`、`strikeout_position`、`strikeout_thickness`），从 FreeType face 读取并按 display scale 归一化；用注入字体断言精确数值与 DPI 缩放后以 `feat:` 提交
 - [ ] 3.3 让 `ThemeFontResolver` 与 `SemanticTypography` 携带 weight 与 slant，缓存键为 `(font_family, font_weight, italic, pixel_size)`；平台侧按 weight/slant 选择真实 face（Windows DirectWrite、Linux Fontconfig），取不到时回退常规 face 并记录诊断；同步更新既有测试夹具，断言常规/强调/斜体请求得到不同 face，以 `feat:` 提交
 

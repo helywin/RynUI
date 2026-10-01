@@ -204,6 +204,9 @@ private:
     };
 }
 
+[[nodiscard]] bool same_face(const FontDescriptor& left, const FontDescriptor& right);
+void append_unique(std::vector<FontDescriptor>& descriptors, FontDescriptor descriptor);
+
 [[nodiscard]] std::vector<FontDescriptor> windows_system_ui_fonts() {
     ComHandle<IDWriteFactory> factory;
     if (FAILED(DWriteCreateFactory(
@@ -233,6 +236,34 @@ private:
     if (auto resolved = resolve_family(*collection.get(), L"Microsoft YaHei UI")) {
         resolved->coverage_probe = U'中';
         result.push_back(std::move(*resolved));
+    }
+    return result;
+}
+
+[[nodiscard]] std::vector<FontDescriptor> windows_system_monospace_fonts() {
+    ComHandle<IDWriteFactory> factory;
+    if (FAILED(DWriteCreateFactory(
+            DWRITE_FACTORY_TYPE_SHARED,
+            __uuidof(IDWriteFactory),
+            reinterpret_cast<IUnknown**>(factory.put())))) {
+        return {};
+    }
+    ComHandle<IDWriteFontCollection> collection;
+    if (FAILED(factory->GetSystemFontCollection(collection.put()))) {
+        return {};
+    }
+    std::vector<FontDescriptor> result;
+    // Cascadia Mono ships with Windows Terminal and Consolas with the OS; either
+    // gives a monospace face without requiring an application font.
+    constexpr std::array monospace_families{
+        std::wstring_view{L"Cascadia Mono"},
+        std::wstring_view{L"Consolas"},
+        std::wstring_view{L"Lucida Console"},
+    };
+    for (const auto family : monospace_families) {
+        if (auto resolved = resolve_family(*collection.get(), family)) {
+            append_unique(result, std::move(*resolved));
+        }
     }
     return result;
 }
@@ -329,15 +360,20 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     return policy;
 }
 
-[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_default(
+// Resolves one Fontconfig generic family. `generic_family` is a Fontconfig alias
+// such as `sans-serif` or `monospace`, so the platform decides which concrete
+// face backs it.
+[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_family(
     FcConfig& config,
     const char* language,
-    char32_t coverage_probe) {
+    char32_t coverage_probe,
+    const char* generic_family,
+    const char* fallback_name) {
     UniqueFcPattern request{FcPatternCreate()};
     if (!request
             || FcPatternAddString(
                 request.get(), FC_FAMILY,
-                reinterpret_cast<const FcChar8*>("sans-serif")) == FcFalse
+                reinterpret_cast<const FcChar8*>(generic_family)) == FcFalse
             || FcPatternAddString(
                 request.get(), FC_LANG,
                 reinterpret_cast<const FcChar8*>(language)) == FcFalse
@@ -366,12 +402,33 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
         static_cast<long>(face_index),
         family != nullptr
             ? reinterpret_cast<const char*>(family)
-            : std::string{"LinuxSystemSans"},
+            : std::string{fallback_name},
         coverage_probe,
         false,
         true,
         fontconfig_raster_policy(*match),
     };
+}
+
+[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_default(
+    FcConfig& config,
+    const char* language,
+    char32_t coverage_probe) {
+    return resolve_fontconfig_family(config, language, coverage_probe, "sans-serif",
+        "LinuxSystemSans");
+}
+
+[[nodiscard]] std::vector<FontDescriptor> platform_system_monospace_fonts() {
+    UniqueFcConfig config{FcInitLoadConfigAndFonts()};
+    if (!config) {
+        return {};
+    }
+    std::vector<FontDescriptor> result;
+    if (auto mono = resolve_fontconfig_family(*config, "en", U'\0', "monospace",
+            "LinuxSystemMonospace")) {
+        result.push_back(std::move(*mono));
+    }
+    return result;
 }
 
 [[nodiscard]] std::vector<FontDescriptor> platform_system_ui_fonts() {
@@ -392,11 +449,19 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
 [[nodiscard]] std::vector<FontDescriptor> platform_system_ui_fonts() {
     return {};
 }
+
+[[nodiscard]] std::vector<FontDescriptor> platform_system_monospace_fonts() {
+    return {};
+}
 #endif
 
 #if defined(_WIN32)
 [[nodiscard]] std::vector<FontDescriptor> platform_system_ui_fonts() {
     return windows_system_ui_fonts();
+}
+
+[[nodiscard]] std::vector<FontDescriptor> platform_system_monospace_fonts() {
+    return windows_system_monospace_fonts();
 }
 #endif
 
@@ -415,6 +480,11 @@ void append_unique(
 }
 
 void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) noexcept {
+    for (auto face = result.monospace_faces.rbegin();
+         face != result.monospace_faces.rend(); ++face) {
+        static_cast<void>(fonts.remove_font(face->identity));
+    }
+    result.monospace_faces.clear();
     for (auto face = result.faces.rbegin(); face != result.faces.rend(); ++face) {
         static_cast<void>(fonts.remove_font(face->identity));
     }
@@ -429,11 +499,10 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     return static_cast<bool>(fonts.find_glyph(identities, codepoint, std::nullopt));
 }
 
-[[nodiscard]] bool load_descriptor(
+[[nodiscard]] std::optional<LoadedDefaultFontFace> load_face(
     font::FontRuntime& fonts,
     const FontDescriptor& descriptor,
-    font::FontRasterConfig raster,
-    DefaultFontChainResult& result) {
+    font::FontRasterConfig raster) {
     if (descriptor.raster_policy.has_value()) {
         raster.policy = *descriptor.raster_policy;
     }
@@ -442,9 +511,9 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
         descriptor.face_index,
         raster);
     if (!loaded) {
-        return false;
+        return std::nullopt;
     }
-    result.faces.push_back({
+    return LoadedDefaultFontFace{
         loaded.font,
         descriptor.path,
         descriptor.face_index,
@@ -452,12 +521,37 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
         raster.policy,
         descriptor.custom_font,
         descriptor.system_font,
-    });
+    };
+}
+
+[[nodiscard]] bool load_descriptor(
+    font::FontRuntime& fonts,
+    const FontDescriptor& descriptor,
+    font::FontRasterConfig raster,
+    DefaultFontChainResult& result) {
+    auto face = load_face(fonts, descriptor, raster);
+    if (!face.has_value()) {
+        return false;
+    }
+    result.faces.push_back(std::move(*face));
     result.uses_custom_fonts = result.uses_custom_fonts || descriptor.custom_font;
     result.uses_system_fonts = result.uses_system_fonts || descriptor.system_font;
     result.uses_bundled_fallbacks = result.uses_bundled_fallbacks
         || (!descriptor.custom_font && !descriptor.system_font);
     return true;
+}
+
+// Monospace faces are separate from the UI chain, so a failure to resolve them
+// is not fatal: the UI chain still covers the codepoint.
+void load_monospace_descriptor(
+    font::FontRuntime& fonts,
+    const FontDescriptor& descriptor,
+    font::FontRasterConfig raster,
+    DefaultFontChainResult& result) {
+    auto face = load_face(fonts, descriptor, raster);
+    if (face.has_value()) {
+        result.monospace_faces.push_back(std::move(*face));
+    }
 }
 
 [[nodiscard]] std::string_view hint_style_name(font::FontHintStyle value) noexcept {
@@ -517,6 +611,26 @@ std::vector<font::FontIdentity> DefaultFontChainResult::identities() const {
     result.reserve(faces.size());
     for (const auto& face : faces) {
         result.push_back(face.identity);
+    }
+    return result;
+}
+
+// The monospace chain is the monospace faces followed by the whole UI chain, so
+// a codepoint the monospace family does not cover still resolves to a readable
+// face instead of a missing glyph.
+std::vector<font::FontIdentity> DefaultFontChainResult::monospace_identities() const {
+    std::vector<font::FontIdentity> result;
+    result.reserve(monospace_faces.size() + faces.size());
+    const auto append_unique = [&result](font::FontIdentity identity) {
+        if (std::ranges::find(result, identity) == result.end()) {
+            result.push_back(identity);
+        }
+    };
+    for (const auto& face : monospace_faces) {
+        append_unique(face.identity);
+    }
+    for (const auto& face : faces) {
+        append_unique(face.identity);
     }
     return result;
 }
@@ -643,6 +757,35 @@ DefaultFontChainResult load_default_ui_font_chain(
             return result;
         }
     }
+
+    // Monospace faces are resolved after the UI chain and are never fatal: a
+    // missing monospace family only means `ui_monospace` falls back to the UI
+    // chain, which the resolver still reports through the same identity list.
+    std::vector<FontDescriptor> monospace;
+    for (const auto& preferred : request.preferred_monospace_fonts) {
+        append_unique(monospace, {
+            preferred.path,
+            preferred.face_index,
+            preferred.family_name.empty() ? "CustomMonospaceFont"
+                                          : preferred.family_name,
+            U'\0',
+            true,
+            false,
+            {},
+        });
+    }
+    for (auto descriptor : platform_system_monospace_fonts()) {
+        append_unique(monospace, std::move(descriptor));
+    }
+    for (const auto& descriptor : monospace) {
+        if (std::ranges::any_of(result.faces, [&](const auto& existing) {
+                return existing.source_path == descriptor.path
+                    && existing.face_index == descriptor.face_index;
+            })) {
+            continue;
+        }
+        load_monospace_descriptor(fonts, descriptor, request.raster, result);
+    }
     return result;
 }
 
@@ -657,12 +800,15 @@ DefaultUiFontResolver make_default_ui_font_resolver(
     struct ResolverState final {
         font::FontRuntime* fonts{};
         std::vector<LoadedDefaultFontFace> faces;
+        std::vector<LoadedDefaultFontFace> monospace_faces;
         float display_scale{1.0F};
         std::map<std::uint32_t, std::vector<font::FontIdentity>> cache;
+        std::map<std::uint32_t, std::vector<font::FontIdentity>> monospace_cache;
     };
     auto state = std::make_shared<ResolverState>();
     state->fonts = &fonts;
     state->faces = initial_chain.faces;
+    state->monospace_faces = initial_chain.monospace_faces;
     state->display_scale = display_scale;
     const auto initial_metrics = fonts.metrics(initial_chain.faces.front().identity);
     if (initial_metrics
@@ -671,29 +817,65 @@ DefaultUiFontResolver make_default_ui_font_resolver(
         state->cache.emplace(
             initial_metrics.metrics.logical_pixel_size,
             initial_chain.identities());
+        if (!state->monospace_faces.empty()) {
+            state->monospace_cache.emplace(
+                initial_metrics.metrics.logical_pixel_size,
+                initial_chain.monospace_identities());
+        }
     }
-    return [state](SystemFontFamily, std::uint32_t, std::uint32_t pixel_size) {
-        if (const auto found = state->cache.find(pixel_size);
-                found != state->cache.end()) {
+    return [state](SystemFontFamily family, std::uint32_t weight,
+                    std::uint32_t pixel_size) {
+        // The UI and monospace chains reload per pixel size, because DPI changes
+        // the raster size. Weight and slant are part of the future request shape;
+        // face selection by weight is a separate change, so only the family
+        // selects the chain here.
+        static_cast<void>(weight);
+        const bool monospace = family == SystemFontFamily::ui_monospace
+            && !state->monospace_faces.empty();
+        auto& cache = monospace ? state->monospace_cache : state->cache;
+        if (const auto found = cache.find(pixel_size); found != cache.end()) {
             return found->second;
         }
-        std::vector<font::FontIdentity> identities;
-        identities.reserve(state->faces.size());
-        for (const auto& face : state->faces) {
-            const auto loaded = state->fonts->load_font_file(
-                face.source_path,
-                face.face_index,
-                font::FontRasterConfig{
-                    pixel_size,
-                    state->display_scale,
-                    face.raster_policy});
-            if (!loaded) {
+        const auto reload = [&](std::span<const LoadedDefaultFontFace> source)
+            -> std::optional<std::vector<font::FontIdentity>> {
+            std::vector<font::FontIdentity> identities;
+            identities.reserve(source.size());
+            for (const auto& face : source) {
+                const auto loaded = state->fonts->load_font_file(
+                    face.source_path,
+                    face.face_index,
+                    font::FontRasterConfig{
+                        pixel_size,
+                        state->display_scale,
+                        face.raster_policy});
+                if (!loaded) {
+                    return std::nullopt;
+                }
+                identities.push_back(loaded.font);
+            }
+            return identities;
+        };
+        // The monospace chain is the monospace faces plus the UI chain, so an
+        // uncovered codepoint still resolves to a readable face.
+        auto identities = reload(monospace
+                ? std::span<const LoadedDefaultFontFace>{state->monospace_faces}
+                : std::span<const LoadedDefaultFontFace>{state->faces});
+        if (!identities.has_value()) {
+            return std::vector<font::FontIdentity>{};
+        }
+        if (monospace) {
+            const auto ui = reload(state->faces);
+            if (!ui.has_value()) {
                 return std::vector<font::FontIdentity>{};
             }
-            identities.push_back(loaded.font);
+            for (const auto identity : *ui) {
+                if (std::ranges::find(*identities, identity) == identities->end()) {
+                    identities->push_back(identity);
+                }
+            }
         }
-        state->cache.emplace(pixel_size, identities);
-        return identities;
+        cache.emplace(pixel_size, *identities);
+        return *identities;
     };
 }
 

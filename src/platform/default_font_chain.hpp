@@ -20,6 +20,9 @@ struct FontFilePreference {
 struct DefaultFontChainRequest {
     font::FontRasterConfig raster{};
     std::vector<FontFilePreference> preferred_fonts;
+    // Optional application-supplied monospace faces. When empty the platform
+    // monospace family is resolved instead.
+    std::vector<FontFilePreference> preferred_monospace_fonts;
     std::filesystem::path fallback_latin;
     std::filesystem::path fallback_cjk;
 };
@@ -41,6 +44,9 @@ using DefaultUiFontResolver = std::function<std::vector<font::FontIdentity>(
 
 struct DefaultFontChainResult {
     std::vector<LoadedDefaultFontFace> faces;
+    // Monospace-only faces discovered for `SystemFontFamily::ui_monospace`. They
+    // are released alongside `faces` but are not part of the UI chain.
+    std::vector<LoadedDefaultFontFace> monospace_faces;
     std::string diagnostic;
     bool uses_custom_fonts{};
     bool uses_system_fonts{};
@@ -51,6 +57,7 @@ struct DefaultFontChainResult {
     }
 
     [[nodiscard]] std::vector<font::FontIdentity> identities() const;
+    [[nodiscard]] std::vector<font::FontIdentity> monospace_identities() const;
     [[nodiscard]] std::string telemetry_source() const;
     [[nodiscard]] std::string telemetry_families() const;
     [[nodiscard]] std::string telemetry_rendering() const;
