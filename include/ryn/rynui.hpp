@@ -4,6 +4,7 @@
 #include <ryn/checkbox.hpp>
 #include <ryn/component.hpp>
 #include <ryn/design_token.hpp>
+#include <ryn/divider.hpp>
 #include <ryn/flex.hpp>
 #include <ryn/icon.hpp>
 #include <ryn/input.hpp>

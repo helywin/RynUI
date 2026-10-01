@@ -35,7 +35,7 @@
 
 ## 5. 平台通用 Divider（平台通用）
 
-- [ ] 5.1 发布 `include/ryn/divider.hpp` 与 `ryn::Divider`，实现水平/垂直、`orientation`（left/right/center）、`orientationMargin`、`dashed`、`plain` 与可选 typed 文字 slot 的几何与材质：水平无线条使用 `marginLG` 上下间距，水平带文字使用 `margin`、`colorTextHeading`、字重 500 与 `fontSizeLG`；`orientationMargin` 区分主题默认值与组件显式覆盖，仅当 left/right 且两级都无有效比例时才把对应轨道归零并使用 `sizePaddingEdgeHorizontal`；垂直以当前行高为基准的固定高度加相对偏移；`plain` 只改文字；文字超宽时退化不溢出；不提供 `disabled` 或任何交互状态；`DividerComponentHost` 挂载/销毁/几何同步与 `LayoutStyle` 边界、各形式几何、方向与外边距、`Prop<T>` 响应式更新和颜色变化只更新材质测试通过后以 `feat:` 提交
+- [x] 5.1 发布 `include/ryn/divider.hpp` 与 `ryn::Divider`，实现水平/垂直、`orientation`（left/right/center）、`orientationMargin`、`dashed`、`plain` 与可选 typed 文字 slot 的几何与材质：水平无线条使用 `marginLG` 上下间距，水平带文字使用 `margin`、`colorTextHeading`、字重 500 与 `fontSizeLG`；`orientationMargin` 区分主题默认值与组件显式覆盖，仅当 left/right 且两级都无有效比例时才把对应轨道归零并使用 `sizePaddingEdgeHorizontal`；垂直以当前行高为基准的固定高度加相对偏移；`plain` 只改文字；文字超宽时退化不溢出；不提供 `disabled` 或任何交互状态；`DividerComponentHost` 挂载/销毁/几何同步与 `LayoutStyle` 边界、各形式几何、方向与外边距、`Prop<T>` 响应式更新和颜色变化只更新材质测试通过后以 `feat:` 提交
 
 ## 6. Gallery 与参考数据（平台通用）
 

@@ -106,6 +106,7 @@ public:
     void set_input_runtime(InputComponentHost* host) noexcept { input_runtime_ = host; }
     [[nodiscard]] InputComponentHost* input_runtime() const noexcept { return input_runtime_; }
     [[nodiscard]] TypographyComponentHost& typography() noexcept { return *typography_; }
+    [[nodiscard]] DividerComponentHost& divider() noexcept { return *divider_; }
 
     [[nodiscard]] TextComponentHost& text() noexcept { return text_; }
     [[nodiscard]] const TextComponentHost& text() const noexcept { return text_; }
@@ -148,6 +149,7 @@ private:
     input::TextClipboard* clipboard_{};
     InputComponentHost* input_runtime_{};
     std::unique_ptr<TypographyComponentHost> typography_;
+    std::unique_ptr<DividerComponentHost> divider_;
 };
 
 } // namespace ryn::detail

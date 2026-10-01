@@ -200,6 +200,7 @@ add_library(rynui_components STATIC
     component/space_component.cpp
     component/text_component.cpp
     component/typography_component.cpp
+    component/divider_component.cpp
     component/theme_component.cpp
 )
 rynui_configure_cpp_target(rynui_components)

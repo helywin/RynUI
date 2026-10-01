@@ -174,7 +174,7 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 原 spec／design／tasks 互相矛盾，冻结如下：
 
 - **垂直高度基准**：垂直分割线沿用上游 `0.9em` 相对高度的语义，但以**当前行高**为基准解算为 fixed 长度，并保留 `top: -0.06em` 的相对偏移；spec 中「延续整行可用高度」的措辞删除，改为「使用相对当前行高的固定高度，不撑高或压缩相邻内容」。
-- **`orientation_margin` 语义（二次修订）**：区分两个来源。Theme `DividerThemeToken::metrics.orientation_margin` 是 Component Token 默认值（`0.05`）；组件 prop `orientationMargin` 是显式覆盖。**Theme 比例优先**：只要 Theme 比例有效就使用它，无论 prop 是否设置；只有当显式取 `None` 时才按上游 `no-default-orientation-margin` 规则把该侧轨道宽度归零、并把 `text_padding_inline` 换成 `sizePaddingEdgeHorizontal`（`0`）。三态 `Theme`/`None`/显式比例必须分别编码，「0」与「未设置」不得混用。本节原先写的「prop 未设置即归零」与规格冲突（默认 0.05 下两者给出不同轨道宽度与 padding），已按规格统一。
+- **`orientation_margin` 语义（二次修订）**：区分两个来源。Theme `DividerThemeToken::metrics.orientation_margin` 是 Component Token 默认值（`0.05`）；组件 prop `orientationMargin` 是显式覆盖。**显式组件比例覆盖 Theme 默认比例**：`Theme` 使用 Token 比例，显式比例（含 0）使用 prop；当显式取 `None` 时才按上游 `no-default-orientation-margin` 规则把该侧轨道宽度归零、并把 `text_padding_inline` 换成 `sizePaddingEdgeHorizontal`（`0`）。三态 `Theme`/`None`/显式比例必须分别编码，「0」与「未设置」不得混用。本节原先写的「prop 未设置即归零」与规格冲突（默认 0.05 下两者给出不同轨道宽度与 padding），已按规格统一。
 - **`plain` 语义（二次修订）**：只改**文字**（`plain_text` 色、常规字重、`plain_font_size`），不改线色、线宽与轨道规则；但允许文字度量变化引起布局重算（字号变化会改变标签宽度与整体高度）。spec 中「更浅的填充色」与「线条几何保持不变」的绝对表述一并删除。
 - **`disabled`**：本 change **不提供** `Divider.disabled`。Divider 没有交互状态，proposal／spec／tasks 中相关表述一律删除。
 
@@ -276,7 +276,7 @@ step 9 会把饱和度按 `-0.16 × 9` 夹到 0.06、value 按 `+0.05 × 9` 夹�
 - **垂直分割线的标签必须显式定义。** `LeafLayout` 既不测量也不放置子节点（`layout_engine.cpp:525-558,891-892`），因此垂直带标签不能沿用有标签子树。决定：垂直分割线忽略标签并在规格中写明（而不是静默丢弃一个已声明的 prop）。
 - **空标签的几何要写清楚**：零占位、块级间距取「无标签」分支、整体高度按无线条规则计算。
 - 保留「同轮测量、不读上一帧缓存」的目标，但它**不是 Box 的自动能力**，必须由上一条的模型与阶段落点保证。
-- **`orientationMargin` 必须只剩一套规则。** 决策 14 规定「left/right 且 prop 未设置时即归零」，Divider 规格与任务则规定「先使用有效 Theme 比例，两级都无比例才归零」。默认 Theme 比例是 0.05，两者对同一个未设置 prop 的 left Divider 给出**不同的轨道宽度与 label padding**。决定统一为规格那一套：**Theme 比例（默认 0.05）优先；只有显式取 `None` 时才归零该侧轨道并把 `text_padding_inline` 换成 `sizePaddingEdgeHorizontal`（0）**。`Theme`/`None`/显式比例三态必须分别编码，「0」与「未设置」不得混用；决策 14、本节与规格、任务同步修正。
+- **`orientationMargin` 必须只剩一套规则。** 决策 14 规定「left/right 且 prop 未设置时即归零」，Divider 规格与任务则规定「先使用有效 Theme 比例，两级都无比例才归零」。默认 Theme 比例是 0.05，两者对同一个未设置 prop 的 left Divider 给出**不同的轨道宽度与 label padding**。决定统一为规格那一套：**组件显式比例覆盖 Theme 默认比例（0.05）；`Theme` 使用默认比例，显式 0 比例保留文字 padding，只有显式取 `None` 时才归零该侧轨道并把 `text_padding_inline` 换成 `sizePaddingEdgeHorizontal`（0）**。`Theme`/`None`/显式比例三态必须分别编码，「0」与「未设置」不得混用；决策 14、本节与规格、任务同步修正。
 - **`plain` 的几何承诺要放宽。** 规格要求 `plain` 改文字字号/字重却承诺「线条几何保持不变」，但字号改变会改变标签宽度、整体高度与两条轨道长度。改为：`plain` 不改**线色、线宽与轨道规则**，允许文字度量引起布局重算。
 
 ## Token 引用清单

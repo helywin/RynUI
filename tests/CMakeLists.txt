@@ -1629,6 +1629,13 @@ target_compile_definitions(rynui_typography_interaction_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.typography_interaction COMMAND rynui_typography_interaction_tests)
+add_executable(rynui_divider_component_tests divider_component_tests.cpp)
+rynui_configure_cpp_target(rynui_divider_component_tests)
+target_link_libraries(rynui_divider_component_tests PRIVATE rynui_components rynui_text_input_session)
+target_compile_definitions(rynui_divider_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.divider_component COMMAND rynui_divider_component_tests)
 
 add_executable(rynui_text_component_frame_tests text_component_frame_tests.cpp)
 rynui_configure_cpp_target(rynui_text_component_frame_tests)

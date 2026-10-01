@@ -23,3 +23,9 @@
 编辑在首次挂载创建真实 Input，内部继承字体与标题行高。非活动分支跳过布局和绘制并取消 eligibility、caret 与 IME。Enter/blur 提交、Esc 先取消 IME 后取消草稿，受控拒绝保留可观测 pending draft。FocusManager 在派发之后执行队列并检查目标 generation/eligibility；场景片段归属从独立身份表验证，允许持久的隐藏分支保留资源。
 
 `rynui.typography_interaction` 覆盖没有 Input host 的复制窗口、成功/失败/晚绑定/失焦/timer/回调销毁、展开 identity、标题编辑字体继承、IME Esc、提交/取消、受控拒绝与回写、maxLength、disabled、Link 键盘/指针/Tab、捕获取消、提交回调销毁，以及队列目标提前销毁。Windows Debug 上相关 11 项回归通过；证据仍为 headless。
+
+## 5.1 Divider
+
+Divider 文字节点常驻，内部 ComponentLayout 在同轮 measure/place 完成文字尺寸、轨道长度和 glyph 发布前的放置。垂直忽略并暂停标签，按当前行高取 0.9 高度与 -0.06 偏移。Theme/None/显式比例分别编码，显式比例覆盖 Theme；0 比例保留文字 padding，None 使用 no-default 的 0 padding。该规则按规格修正规划中相互冲突的说明。
+
+`rynui.divider_component` 验证全部形式、typed slot、同帧 glyph 位置、空/非空/垂直切换、三态朝向间距、超宽文字、plain 字体、虚线实例、身份稳定、兄弟局部性、颜色只更新材质以及资源销毁。Windows `windows-msvc` Debug 通过。

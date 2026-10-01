@@ -1,5 +1,6 @@
 #include "component/window_component_services.hpp"
 #include "component/typography_component.hpp"
+#include "component/divider_component.hpp"
 
 #include <chrono>
 
@@ -78,6 +79,7 @@ WindowComponentServices::WindowComponentServices(
     text_.attach_surfaces(surfaces_);
     animations_.reserve(256, 64, 256);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
+    divider_ = std::make_unique<DividerComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

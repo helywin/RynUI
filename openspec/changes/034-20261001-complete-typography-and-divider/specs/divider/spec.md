@@ -28,6 +28,10 @@ Divider SHALL 按 Ant Design 6.6.5 规则计算线宽、文字间距与水平/�
 - **WHEN** 垂直分割线与相邻内容在同一行内声明
 - **THEN** 使用相对当前行高的固定高度并保留行内间距与相对偏移，不撑高或压缩相邻内容，宽度只由线宽与行内间距决定
 
+#### Scenario: Vertical divider ignores a label
+- **WHEN** 垂直分割线声明文字内容或 typed 文字 slot
+- **THEN** 保留文字子树身份但暂停其测量、放置与绘制，垂直线条几何不包含文字
+
 #### Scenario: Orientation margin from Theme token
 - **WHEN** `orientation` 为 left 或 right 且组件未显式设置 `orientationMargin`
 - **THEN** 该侧轨道宽度使用 `DividerThemeToken::metrics.orientation_margin` 比例
@@ -37,7 +41,7 @@ Divider SHALL 按 Ant Design 6.6.5 规则计算线宽、文字间距与水平/�
 - **THEN** 该侧轨道宽度使用该比例，文字与对应边缘的距离由该比例决定，另一侧仍按分割线规则填充
 
 #### Scenario: Left or right without orientation margin
-- **WHEN** `orientation` 为 left 或 right 且既没有组件级 `orientationMargin` 也没有有效的主题比例
+- **WHEN** `orientation` 为 left 或 right 且组件明确设置 `orientationMargin` 为 `None`
 - **THEN** 按上游 `no-default-orientation-margin` 规则把对应轨道宽度归零，文字改用 `sizePaddingEdgeHorizontal` 边距，另一侧占满剩余宽度
 
 #### Scenario: Text wider than the available width
@@ -54,7 +58,7 @@ Divider 的颜色、线宽、间距、带文字排版与 plain 文字排版 SHAL
 
 #### Scenario: Plain divider changes text only
 - **WHEN** Divider 启用 `plain`
-- **THEN** 文字改用 `colorText`、常规字重与 `fontSize`，线条颜色、线宽与几何保持不变
+- **THEN** 文字改用 `colorText`、常规字重与 `fontSize`，线条颜色、线宽与轨道规则保持不变，允许文字度量变化引起轨道长度与整体高度重算
 
 #### Scenario: Color-only update stays local
 - **WHEN** 主题只改变分割线颜色
