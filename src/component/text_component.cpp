@@ -137,6 +137,12 @@ struct TextComponentState final {
     // builders leave it empty so their existing behaviour is unchanged.
     std::optional<TypographySemantics> typography;
     runtime::SemanticTypography resolved_typography;
+    std::optional<runtime::SceneFragmentId> background_fragment;
+    std::optional<runtime::SceneFragmentId> line_fragment;
+    std::optional<component::RetainedSurfaceId> background_range;
+    std::optional<component::RetainedSurfaceId> line_range;
+    std::array<float, 3> insets{}; // inline, block start, block end
+    std::uint64_t metric_revision{};
     theme_runtime::Subscription theme_subscription;
 };
 
@@ -228,11 +234,10 @@ private:
         return typography_color(theme, state.typography->type);
     }
     if (state.typography.has_value()) {
-        return state.typography->type == TypographyType::Secondary
+        return state.typography->disabled ? theme.typography().colors.disabled
+            : state.typography->type == TypographyType::Secondary
             ? theme.typography().colors.description
-            : (state.typography->disabled
-                ? theme.typography().colors.disabled
-                : theme.typography().colors.text);
+            : theme.typography().colors.text;
     }
     return state.explicit_tone ? tone_color(theme, state.tone) : theme.text().color;
 }
@@ -259,25 +264,6 @@ void capture_semantic_color(
     const std::shared_ptr<theme_runtime::ThemeScope>& theme,
     const TextComponentState& state) {
     if (state.typography.has_value()) {
-        switch (state.typography->type) {
-        case TypographyType::Secondary:
-            static_cast<void>(theme->typography_colors());
-            return;
-        case TypographyType::Success:
-        case TypographyType::Warning:
-        case TypographyType::Danger:
-            if (!state.typography->disabled) {
-                static_cast<void>(theme->typography_colors());
-                return;
-            }
-            break;
-        case TypographyType::Default:
-            break;
-        }
-        if (state.typography->disabled) {
-            static_cast<void>(theme->text_disabled_color());
-            return;
-        }
         static_cast<void>(theme->typography_colors());
         return;
     }
@@ -301,7 +287,7 @@ void capture_semantic_color(
     resolved.font_family = (semantics.code || semantics.keyboard)
         ? typography.font_family_code
         : typography.font_family;
-    resolved.font_weight = semantics.strong
+    resolved.font_weight = (semantics.strong || semantics.role == TypographySemantics::Role::heading)
         ? typography.font_weight_strong : typography.font_weight;
     resolved.italic = semantics.italic;
     if (semantics.role == TypographySemantics::Role::heading) {
@@ -321,6 +307,22 @@ void capture_semantic_color(
         resolved.font_size *= typography.keyboard.font_scale;
     }
     return resolved;
+}
+
+std::array<float, 3> typography_insets(const ThemeSnapshot& theme,
+    const TypographySemantics& semantics, runtime::SemanticTypography typography) {
+    std::array<float, 3> result{};
+    if (semantics.code || semantics.keyboard) {
+        const auto& token = semantics.code ? theme.typography().code : theme.typography().keyboard;
+        result = {token.padding_inline_em * typography.font_size + token.border_width,
+            token.padding_block_start_em * typography.font_size + token.border_width,
+            token.padding_block_end_em * typography.font_size + token.border_bottom_width};
+    }
+    if (semantics.role == TypographySemantics::Role::heading) {
+        result[1] += theme.typography().title_margin_top_em * typography.font_size;
+        result[2] += theme.typography().title_margin_bottom_em * typography.font_size;
+    }
+    return result;
 }
 
 [[nodiscard]] std::uint64_t intrinsic_revision(
@@ -492,6 +494,8 @@ bool TextComponentHost::layout_and_synchronize(
             }
             const auto node = components_.root(mounted.component);
             const auto& retained = nodes_->require(node);
+            const auto* state = components_.state<TextComponentState>(mounted.component);
+            const auto insets = state == nullptr ? std::array<float, 3>{} : state->insets;
             constexpr float visual_overflow = 32.0F;
             const float left = retained.bounds.x + retained.translation.x;
             const float top = retained.bounds.y + retained.translation.y;
@@ -510,7 +514,7 @@ bool TextComponentHost::layout_and_synchronize(
                 ? std::chrono::steady_clock::now()
                 : std::chrono::steady_clock::time_point{};
             const bool synchronized = text_scene_->synchronize(mounted.scene, {
-                    {retained.bounds.x, retained.bounds.y},
+                    {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
                     viewport,
                     clip,
                     phase_residual,
@@ -526,6 +530,7 @@ bool TextComponentHost::layout_and_synchronize(
             if (!synchronized) {
                 return false;
             }
+            synchronize_decorations(mounted.component, viewport, clip);
         }
         return true;
     };
@@ -554,6 +559,96 @@ bool TextComponentHost::layout_and_synchronize(
 void TextComponentHost::attach_component_scene(
     component::ComponentSceneComposer& composer) noexcept {
     composer_ = &composer;
+}
+
+void TextComponentHost::attach_surfaces(component::RetainedSurfaceService& surfaces) noexcept {
+    surfaces_ = &surfaces;
+}
+
+void TextComponentHost::synchronize_decorations(runtime::ComponentId component,
+    runtime::Size viewport, runtime::Rect clip) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!surfaces_ || !state || !state->typography || !state->background_range || !state->line_range) return;
+    const auto& semantics = *state->typography;
+    const auto& token = components_.theme_scope(component)->snapshot().typography();
+    const auto& node = nodes_->require(components_.root(component));
+    const auto& text = text_scene_->text_state(state->scene);
+    const auto& shaped = text.shaped();
+    const auto& measurement = text.measurement();
+    const float x = node.bounds.x + node.translation.x + state->insets[0];
+    const float y = node.bounds.y + node.translation.y + state->insets[1];
+    std::vector<graphics::QuadInstance> backgrounds, lines;
+    std::vector<graphics::RoundedEffectInstance> borders;
+    const auto append = [&](auto& destination, runtime::Rect rect, Color color, float radius = 0) {
+        const float right = std::min(rect.x + rect.width, clip.x + clip.width);
+        const float bottom = std::min(rect.y + rect.height, clip.y + clip.height);
+        rect.x = std::max(rect.x, clip.x); rect.y = std::max(rect.y, clip.y);
+        rect.width = right - rect.x; rect.height = bottom - rect.y;
+        if (rect.width <= 0 || rect.height <= 0) return;
+        destination.push_back(graphics::QuadInstance{
+            {-1 + 2 * rect.x / viewport.width, 1 - 2 * rect.y / viewport.height,
+                2 * rect.width / viewport.width, -2 * rect.height / viewport.height},
+            channels(color), 1, std::clamp(radius / std::min(rect.width, rect.height), 0.0F, 0.5F), {}});
+    };
+    const float size = state->resolved_typography.font_size;
+    const auto foreground = text.material().color;
+    const auto color = Color(foreground[0], foreground[1], foreground[2], foreground[3]);
+    for (std::size_t index = 0; index < measurement.lines.size(); ++index) {
+        const auto& line = measurement.lines[index];
+        const float top = y + static_cast<float>(index) * state->resolved_typography.line_height;
+        if (semantics.mark) append(backgrounds,
+            {x, top, line.width, state->resolved_typography.line_height}, token.colors.mark_background);
+        const auto inline_box = [&](const InlineCodeThemeToken& t) {
+            const float inline_padding = t.padding_inline_em * size;
+            const float start = t.padding_block_start_em * size;
+            const float end = t.padding_block_end_em * size;
+            const runtime::Rect outer{x - inline_padding - t.border_width,
+                top - start - t.border_width,
+                line.width + 2 * (inline_padding + t.border_width),
+                state->resolved_typography.line_height + start + end + t.border_width + t.border_bottom_width};
+            append(backgrounds, {outer.x + t.border_width, outer.y + t.border_width,
+                std::max(0.0F, outer.width - 2 * t.border_width),
+                std::max(0.0F, outer.height - t.border_width - t.border_bottom_width)},
+                t.background, std::max(0.0F, t.border_radius - t.border_width));
+            if (t.border_width > 0 && outer.width > 2 * t.border_width
+                    && outer.height > 2 * t.border_width) {
+                const runtime::Rect inner{outer.x + t.border_width, outer.y + t.border_width,
+                    outer.width - 2 * t.border_width, outer.height - 2 * t.border_width};
+                borders.push_back(graphics::make_outline_effect(
+                    {inner, std::clamp(t.border_radius - t.border_width, 0.0F,
+                        std::min(inner.width, inner.height) / 2)},
+                    t.border_width, 0, t.border_color, 1, {}, graphics::EffectClip{1, clip}));
+            }
+            if (t.border_bottom_width > t.border_width) append(backgrounds,
+                {outer.x + t.border_width, outer.y + outer.height - t.border_bottom_width,
+                    std::max(0.0F, outer.width - 2 * t.border_width),
+                    t.border_bottom_width - t.border_width}, t.border_color);
+        };
+        if (semantics.code) inline_box(token.code);
+        if (semantics.keyboard) inline_box(token.keyboard);
+        if (!semantics.underline && !semantics.strikethrough) continue;
+        float pen = 0;
+        const auto end = line.glyph_begin + line.glyph_count;
+        for (std::size_t begin = line.glyph_begin; begin < end;) {
+            const auto font = shaped.glyphs[begin].font;
+            float width = 0;
+            auto next = begin;
+            while (next < end && shaped.glyphs[next].font == font) width += shaped.glyphs[next++].advance_x;
+            const auto metrics = text_scene_->font_metrics(font);
+            if (metrics) {
+                const auto draw_line = [&](float position, float thickness) {
+                    if (thickness > 0) append(lines, {x + pen,
+                        y + line.baseline - position * size, width, thickness * size}, color);
+                };
+                if (semantics.underline) draw_line(metrics.metrics.underline_position, metrics.metrics.underline_thickness);
+                if (semantics.strikethrough) draw_line(metrics.metrics.strikeout_position, metrics.metrics.strikeout_thickness);
+            }
+            pen += width; begin = next;
+        }
+    }
+    static_cast<void>(surfaces_->update_content_range(*state->background_range, backgrounds));
+    static_cast<void>(surfaces_->update_content_effects(*state->background_range, borders));
+    static_cast<void>(surfaces_->update_content_range(*state->line_range, lines));
 }
 
 bool TextComponentHost::synchronize_scene_fragments(
@@ -699,7 +794,8 @@ bool TextComponentHost::apply_typography(
     }
     const bool font_selection_changed =
         state->resolved_typography.font_family != typography.font_family
-        || state->resolved_typography.font_weight != typography.font_weight;
+        || state->resolved_typography.font_weight != typography.font_weight
+        || state->resolved_typography.italic != typography.italic;
     const bool chain_changed = text_scene_->set_font_chain(
         state->scene, std::move(chain));
     if (font_selection_changed && !chain_changed) {
@@ -740,6 +836,15 @@ void TextComponentHost::apply_theme(runtime::ComponentId component) {
         // the emphasis variants without a remount.
         typography_changed = apply_typography(component,
             resolve_semantic_typography(theme, *state->typography));
+        const auto insets = typography_insets(theme, *state->typography, state->resolved_typography);
+        if (state->insets != insets) {
+            state->insets = insets;
+            ++state->metric_revision;
+            static_cast<void>(layout_->set_intrinsic_revision(node,
+                intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision));
+            dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
+                | runtime::DirtyFlags::Geometry);
+        }
     } else if (!state->semantic_typography) {
         const auto& text = theme.text();
         typography_changed = apply_typography(component, {
@@ -776,8 +881,20 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
         return;
     }
     state->theme_subscription = theme->capture(
-        [this, component](theme_runtime::DirtyPhase) {
+        [this, component](theme_runtime::DirtyPhase phase) {
             apply_theme(component);
+            if (auto* state = components_.state<TextComponentState>(component); state && state->typography) {
+                if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::measure_layout)) {
+                    ++state->metric_revision;
+                    const auto node = components_.root(component);
+                    static_cast<void>(layout_->set_intrinsic_revision(node,
+                        intrinsic_revision(text_scene_->revisions(state->scene)) + state->metric_revision));
+                    dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
+                        | runtime::DirtyFlags::Geometry);
+                } else {
+                    dirty_->invalidate(components_.root(component), runtime::DirtyFlags::Material);
+                }
+            }
         },
         [theme, state, semantic] {
             if (semantic) {
@@ -785,11 +902,15 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
                 // Typography Component Token group. The inline token group is a
                 // separate identity, so a change to the code or keyboard scale
                 // only reaches a component that captured it here.
-                static_cast<void>(theme->typography_headings());
+                if (state->typography->role == TypographySemantics::Role::heading)
+                    static_cast<void>(theme->typography_headings());
                 static_cast<void>(theme->typography_fonts());
                 static_cast<void>(theme->typography_base_typography());
-                static_cast<void>(theme->typography_inline_code());
-                static_cast<void>(theme->typography_inline_keyboard());
+                static_cast<void>(theme->typography_metrics());
+                if (state->typography->code) static_cast<void>(theme->typography_inline_code());
+                if (state->typography->keyboard) static_cast<void>(theme->typography_inline_keyboard());
+                if (state->typography->code || state->typography->keyboard)
+                    static_cast<void>(theme->typography_inline_colors());
             } else if (!state->semantic_typography) {
                 // The plain `Text` builder keeps deriving its shape from the Text
                 // token group, so those identities must stay captured.
@@ -998,6 +1119,19 @@ void mount_typography_component(
     auto& state = build.state<TextComponentState>(component);
     state.typography = TypographySemantics{
         .role = role, .level = read_prop(level)};
+    const auto initial_flag = [](const std::optional<Prop<bool>>& prop) {
+        return prop && read_prop(*prop);
+    };
+    state.typography->type = TypographyPropsAccess::type(props)
+        ? read_prop(*TypographyPropsAccess::type(props)) : TypographyType::Default;
+    state.typography->disabled = initial_flag(TypographyPropsAccess::disabled(props));
+    state.typography->strong = initial_flag(TypographyPropsAccess::strong(props));
+    state.typography->italic = initial_flag(TypographyPropsAccess::italic(props));
+    state.typography->code = initial_flag(TypographyPropsAccess::code(props));
+    state.typography->keyboard = initial_flag(TypographyPropsAccess::keyboard(props));
+    state.typography->mark = initial_flag(TypographyPropsAccess::mark(props));
+    state.typography->underline = initial_flag(TypographyPropsAccess::underline(props));
+    state.typography->strikethrough = initial_flag(TypographyPropsAccess::strikethrough(props));
     const auto content = read_prop(TypographyPropsAccess::content(props));
     // Resolve once and reuse: `create` must already carry the semantic font size
     // and line height, otherwise the first frame would rasterize at a wrong
@@ -1016,21 +1150,37 @@ void mount_typography_component(
         });
     state.scene = scene;
     state.resolved_typography = initial_typography;
+    state.insets = typography_insets(theme_scope->snapshot(), *state.typography, initial_typography);
     state.explicit_tone = true;
     state.tone = semantic_tone(*state.typography);
+    // Semantic components keep both layers even when the initial flags are off;
+    // reactive decoration changes cannot register fragments after mount.
+    if (host.composer_ && host.surfaces_) {
+        state.background_fragment = build.register_scene_fragment(component,
+            runtime::SceneFragmentPlacement::before_children);
+        state.background_range = host.surfaces_->create_content_range(*state.background_fragment, {});
+    }
     const auto fragment = host.composer_ == nullptr
         ? std::optional<runtime::SceneFragmentId>{}
         : std::optional<runtime::SceneFragmentId>{
             build.register_scene_fragment(
                 component,
                 runtime::SceneFragmentPlacement::before_children)};
+    if (host.composer_ && host.surfaces_) {
+        state.line_fragment = build.register_scene_fragment(component,
+            runtime::SceneFragmentPlacement::after_children);
+        state.line_range = host.surfaces_->create_content_range(*state.line_fragment, {});
+    }
     build.on_resource_cleanup(component, [
         layout = host.layout_,
         composer = host.composer_,
         text_scene = host.text_scene_,
         node,
         scene,
-        fragment] {
+        fragment, surfaces = host.surfaces_, background_range = state.background_range,
+        line_range = state.line_range] {
+        if (surfaces && background_range) static_cast<void>(surfaces->destroy_content_range(*background_range));
+        if (surfaces && line_range) static_cast<void>(surfaces->destroy_content_range(*line_range));
         static_cast<void>(layout->remove_intrinsic_measure(node));
         if (composer != nullptr && fragment.has_value()) {
             static_cast<void>(composer->remove_fragment(*fragment));
@@ -1040,13 +1190,16 @@ void mount_typography_component(
     host.layout_->set_intrinsic_measure(
         node,
         intrinsic_revision(host.text_scene_->revisions(scene)),
-        [text_scene = host.text_scene_, scene](layout::Constraints constraints) {
+        [&host, component, text_scene = host.text_scene_, scene](layout::Constraints constraints) {
+            const auto& state = *host.components_.state<TextComponentState>(component);
+            const auto insets = state.insets;
             if (!text_scene->synchronize_measurement(
-                    scene, constraints.max_width)) {
+                    scene, std::max(0.0F, constraints.max_width - 2 * insets[0]))) {
                 throw std::runtime_error("Typography intrinsic measurement failed");
             }
             const auto& measurement = text_scene->text_state(scene).measurement();
-            return runtime::Size{measurement.width, measurement.height};
+            return runtime::Size{measurement.width + 2 * insets[0],
+                measurement.height + insets[1] + insets[2]};
         });
 
     auto& scope = build.scope(component);
@@ -1085,7 +1238,14 @@ void mount_typography_component(
         if (current == nullptr || !current->typography.has_value()) {
             return;
         }
+        const auto before = *current->typography;
         apply(*current->typography);
+        if (before == *current->typography) return;
+        ++current->metric_revision;
+        const auto node = host.components_.root(component);
+        if (before.mark != current->typography->mark || before.underline != current->typography->underline
+                || before.strikethrough != current->typography->strikethrough)
+            host.dirty_->invalidate(node, runtime::DirtyFlags::Geometry);
         host.subscribe_theme(component);
         host.apply_theme(component);
     };
@@ -1137,6 +1297,10 @@ void mount_typography_component(
         [](TypographySemantics& semantics, bool value) {
             semantics.mark = value;
         });
+    optional_semantic(TypographyPropsAccess::underline(props),
+        [](TypographySemantics& semantics, bool value) { semantics.underline = value; });
+    optional_semantic(TypographyPropsAccess::strikethrough(props),
+        [](TypographySemantics& semantics, bool value) { semantics.strikethrough = value; });
     optional_semantic(TypographyPropsAccess::disabled(props),
         [](TypographySemantics& semantics, bool value) {
             semantics.disabled = value;
@@ -1151,7 +1315,7 @@ void mount_typography_component(
         });
 
     // Apply the initial shape and colour, then keep both in sync with the theme.
-    static_cast<void>(host.apply_typography(component, initial_typography));
+    host.apply_theme(component);
     static_cast<void>(host.text_scene_->set_color(scene,
         channels(semantic_color(theme_scope->snapshot(), state))));
     host.subscribe_theme(component);

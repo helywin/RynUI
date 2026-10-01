@@ -138,6 +138,7 @@ public:
     [[nodiscard]] const graphics::GlyphScene& glyph_scene() const noexcept;
     [[nodiscard]] const graphics::OrderedScene& ordered_scene() const noexcept;
     [[nodiscard]] const TextSceneServiceCounters& counters() const noexcept;
+    [[nodiscard]] font::FontMetricsResult font_metrics(font::FontIdentity font) const;
 
 private:
     struct Record;

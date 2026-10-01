@@ -9,6 +9,10 @@
 #include <utility>
 
 namespace ryn::detail {
+font::FontMetricsResult TextSceneService::font_metrics(font::FontIdentity font) const {
+    ensure_owner_thread();
+    return fonts_->metrics(font);
+}
 namespace {
 
 [[nodiscard]] bool same_position_geometry(

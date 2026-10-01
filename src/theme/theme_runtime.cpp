@@ -303,10 +303,20 @@ std::size_t collect_changed(
         std::array{new_typography.title_margin_top_em,
             new_typography.title_margin_bottom_em},
         TokenIdentity::typography_metrics, changed, count);
-    append_if_changed(old_typography.code, new_typography.code,
+    const auto inline_metrics = [](const InlineCodeThemeToken& t) {
+        return std::array{t.font_scale, t.padding_inline_em, t.padding_block_start_em,
+            t.padding_block_end_em, t.border_width, t.border_radius, t.border_bottom_width};
+    };
+    const auto inline_colors = [](const TypographyThemeToken& t) {
+        return std::array{t.code.background, t.code.border_color,
+            t.keyboard.background, t.keyboard.border_color};
+    };
+    append_if_changed(inline_metrics(old_typography.code), inline_metrics(new_typography.code),
         TokenIdentity::typography_inline_code, changed, count);
-    append_if_changed(old_typography.keyboard, new_typography.keyboard,
+    append_if_changed(inline_metrics(old_typography.keyboard), inline_metrics(new_typography.keyboard),
         TokenIdentity::typography_inline_keyboard, changed, count);
+    append_if_changed(inline_colors(old_typography), inline_colors(new_typography),
+        TokenIdentity::typography_inline_colors, changed, count);
     const auto& old_divider = before.divider();
     const auto& new_divider = after.divider();
     append_if_changed(old_divider.colors, new_divider.colors,
@@ -842,6 +852,11 @@ std::size_t ThemeScope::live_subscriber_count() const noexcept {
         }));
 }
 
+const TypographyThemeToken& ThemeScope::typography_inline_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_inline_colors);
+    return snapshot_->typography();
+}
+
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
@@ -871,7 +886,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Input.colors", "Input.shadows", "Switch.geometry", "Switch.colors",
         "Typography.colors", "Typography.headings", "Typography.fonts",
         "Typography.baseTypography", "Typography.metrics", "Typography.inlineCode",
-        "Typography.inlineKeyboard", "Divider.colors", "Divider.metrics",
+        "Typography.inlineKeyboard", "Typography.inlineColors", "Divider.colors", "Divider.metrics",
         "Divider.typography",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
@@ -913,6 +928,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::switch_colors:
     case TokenIdentity::text_color:
     case TokenIdentity::typography_colors:
+    case TokenIdentity::typography_inline_colors:
     case TokenIdentity::divider_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:

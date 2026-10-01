@@ -41,8 +41,7 @@ enum class TypographyInline : std::uint8_t {
 
 // Typography props shared by `Title`, `Text` and `Paragraph`. `type` selects a
 // semantic colour, `strong`/`italic` select real faces from the font chain, and
-// the decoration flags are carried as data so a later change can render them
-// without touching this public shape.
+// decoration flags control retained background and foreground layers.
 class TypographyProps final {
 public:
     TypographyProps& content(Prop<String> value) {
@@ -149,6 +148,10 @@ public:
         typography_.disabled(std::move(value));
         return *this;
     }
+
+    TitleProps& code(Prop<bool> value) { typography_.code(std::move(value)); return *this; }
+    TitleProps& keyboard(Prop<bool> value) { typography_.keyboard(std::move(value)); return *this; }
+    TitleProps& mark(Prop<bool> value) { typography_.mark(std::move(value)); return *this; }
 
     TitleProps& strong(Prop<bool> value) {
         typography_.strong(std::move(value));

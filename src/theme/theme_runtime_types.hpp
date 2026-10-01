@@ -87,6 +87,7 @@ enum class TokenIdentity : std::uint8_t {
     typography_metrics,
     typography_inline_code,
     typography_inline_keyboard,
+    typography_inline_colors,
     divider_colors,
     divider_metrics,
     divider_typography,

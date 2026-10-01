@@ -1,6 +1,7 @@
 #pragma once
 
 #include "component/component_scene.hpp"
+#include "component/retained_surface_service.hpp"
 #include "input/interaction_registry.hpp"
 #include "layout/layout_engine.hpp"
 #include "runtime/component_host.hpp"
@@ -94,6 +95,7 @@ public:
         bool clear_dirty = true,
         bool unbounded_root_height = false);
     void attach_component_scene(component::ComponentSceneComposer& composer) noexcept;
+    void attach_surfaces(component::RetainedSurfaceService& surfaces) noexcept;
     bool set_font_resolver(ThemeFontResolver font_resolver);
     [[nodiscard]] bool synchronize_scene_fragments(
         const std::function<std::optional<input::InteractionId>(
@@ -127,6 +129,8 @@ private:
         runtime::SemanticTypography typography);
     void apply_theme(runtime::ComponentId component);
     void subscribe_theme(runtime::ComponentId component);
+    void synchronize_decorations(runtime::ComponentId component,
+        runtime::Size viewport, runtime::Rect clip);
 
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
@@ -134,6 +138,7 @@ private:
     TextSceneService* text_scene_;
     ThemeFontResolver font_resolver_;
     component::ComponentSceneComposer* composer_{nullptr};
+    component::RetainedSurfaceService* surfaces_{nullptr};
     runtime::ComponentHost components_;
     std::vector<MountedTextComponent> mounted_texts_;
     runtime::Size layout_viewport_;

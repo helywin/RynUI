@@ -77,6 +77,7 @@ public:
     [[nodiscard]] const TypographyThemeToken& typography_metrics() const;
     [[nodiscard]] const InlineCodeThemeToken& typography_inline_code() const;
     [[nodiscard]] const InlineCodeThemeToken& typography_inline_keyboard() const;
+    [[nodiscard]] const TypographyThemeToken& typography_inline_colors() const;
     [[nodiscard]] const DividerThemeToken& divider_colors() const;
     [[nodiscard]] const DividerThemeToken& divider_metrics() const;
     [[nodiscard]] const DividerThemeToken& divider_typography() const;

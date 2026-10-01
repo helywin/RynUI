@@ -74,6 +74,7 @@ WindowComponentServices::WindowComponentServices(
       focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
     text_.attach_component_scene(scene_composer_);
+    text_.attach_surfaces(surfaces_);
     animations_.reserve(256, 64, 256);
 }
 

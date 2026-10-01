@@ -214,7 +214,14 @@ void RetainedSurfaceService::publish_content(ContentRecord& record) {
     };
     // The fragment belongs to the caller, so the command list is replaced rather
     // than merged; the caller keeps sole ownership of that fragment's contents.
-    composer_->set_fragment(record.fragment, std::span{&fill, 1});
+    std::vector<graphics::SceneDrawCommand> commands;
+    if (record.range.count) commands.push_back(fill);
+    for (const auto effect : record.effects) {
+        if (const auto packed = effect_scene_.store().packed_index(effect))
+            commands.push_back({graphics::SceneDrawKind::rounded_effect, *packed, 1,
+                graphics::invalid_glyph_atlas_page});
+    }
+    composer_->set_fragment(record.fragment, commands);
 }
 
 std::size_t RetainedSurfaceService::republish_range(
@@ -252,6 +259,7 @@ RetainedSurfaceId RetainedSurfaceService::create_content_range(
     std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     validate_content_visuals(visuals);
+    if (!components_->contains(fragment)) throw std::invalid_argument("content fragment is stale");
     const auto slot_index = acquire_content_slot();
     auto& slot = content_slots_[slot_index];
     const RetainedSurfaceId id{slot_index, slot.generation, true};
@@ -287,14 +295,14 @@ void RetainedSurfaceService::remap_after_replace(
         if (!slot.record || &slot.record->range == owner
                 || slot.record->range.first < end) continue;
         slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
-        bind_fragment(*slot.record);
+        if (components_->contains(slot.record->fragment)) bind_fragment(*slot.record);
         ++diagnostics_.fragment_remaps;
     }
     for (auto& slot : content_slots_) {
         if (!slot.record || &slot.record->range == owner
                 || slot.record->range.first < end) continue;
         slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
-        publish_content(*slot.record);
+        if (components_->contains(slot.record->fragment)) publish_content(*slot.record);
         ++diagnostics_.fragment_remaps;
     }
 }
@@ -307,6 +315,7 @@ bool RetainedSurfaceService::destroy_content_range(RetainedSurfaceId id) {
     if (!slot.record || slot.generation != id.generation) return false;
     const auto removed = slot.record->range;
     static_cast<void>(composer_->remove_fragment(slot.record->fragment));
+    for (const auto effect : slot.record->effects) static_cast<void>(effect_scene_.store().remove(effect));
     static_cast<void>(instances_.replace(removed, {}));
     remap_after_replace(removed, 0, &slot.record->range);
     slot.record.reset();
@@ -324,6 +333,8 @@ std::size_t RetainedSurfaceService::set_content_range(
     ensure_owner_thread();
     auto& record = require_content(id);
     validate_content_visuals(visuals);
+    if (!components_->contains(fragment)) throw std::invalid_argument("content fragment is stale");
+    if (record.fragment != fragment) static_cast<void>(composer_->remove_fragment(record.fragment));
     record.fragment = fragment;
     const auto updates = republish_range(record.range, visuals);
     publish_content(record);
@@ -337,6 +348,29 @@ std::size_t RetainedSurfaceService::update_content_range(
     auto& record = require_content(id);
     validate_content_visuals(visuals);
     const auto updates = republish_range(record.range, visuals);
+    publish_content(record);
+    return updates;
+}
+
+std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
+    std::span<const graphics::RoundedEffectInstance> effects) {
+    ensure_owner_thread();
+    auto& record = require_content(id);
+    for (const auto& effect : effects) graphics::validate_rounded_effect(effect);
+    auto& store = effect_scene_.store();
+    std::size_t updates = 0;
+    while (record.effects.size() > effects.size()) {
+        static_cast<void>(store.remove(record.effects.back()));
+        record.effects.pop_back(); ++updates;
+    }
+    for (std::size_t index = 0; index < effects.size(); ++index) {
+        if (index == record.effects.size()) {
+            record.effects.push_back(store.add(effects[index])); ++updates;
+        } else {
+            updates += store.update_geometry(record.effects[index], effects[index].geometry);
+            updates += store.update_material(record.effects[index], effects[index].material);
+        }
+    }
     publish_content(record);
     return updates;
 }
@@ -421,6 +455,9 @@ bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip) {
         if (slot.record.has_value()) {
             bind_fragment(*slot.record);
         }
+    }
+    for (auto& slot : content_slots_) {
+        if (slot.record && components_->contains(slot.record->fragment)) publish_content(*slot.record);
     }
     return true;
 }

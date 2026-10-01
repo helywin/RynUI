@@ -109,6 +109,8 @@ public:
         RetainedSurfaceId id,
         std::span<const graphics::QuadInstance> visuals);
     bool destroy_content_range(RetainedSurfaceId id);
+    std::size_t update_content_effects(RetainedSurfaceId id,
+        std::span<const graphics::RoundedEffectInstance> effects);
     [[nodiscard]] std::size_t update_effects(
         RetainedSurfaceId id,
         const RetainedSurfaceEffects& effects);
@@ -147,6 +149,7 @@ private:
         RetainedSurfaceId id;
         runtime::SceneFragmentId fragment;
         graphics::QuadInstanceRange range;
+        std::vector<graphics::RoundedEffectId> effects;
     };
 
     struct ContentSlot final {
