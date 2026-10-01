@@ -18,4 +18,5 @@
 #include <ryn/switch.hpp>
 #include <ryn/text.hpp>
 #include <ryn/theme.hpp>
+#include <ryn/typography.hpp>
 #include <ryn/version.hpp>

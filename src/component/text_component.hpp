@@ -8,6 +8,7 @@
 #include "text/text_scene_service.hpp"
 
 #include <ryn/text.hpp>
+#include <ryn/typography.hpp>
 
 #include <functional>
 #include <memory>
@@ -29,6 +30,25 @@ struct MountedTextComponent final {
     std::optional<runtime::SceneFragmentId> fragment;
     std::optional<input::InteractionId> interaction;
     std::vector<graphics::SceneDrawCommand> fragment_commands;
+};
+
+// Semantics a `Title`/`Text`/`Paragraph` builder carries into the shared text
+// host. Declared here so the host can friend the mount entry point.
+struct TypographySemantics final {
+    enum class Role : std::uint8_t { body, heading, paragraph };
+
+    Role role{Role::body};
+    TypographyType type{TypographyType::Default};
+    TypographyLevel level{TypographyLevel::H1};
+    bool disabled{};
+    bool strong{};
+    bool italic{};
+    bool underline{};
+    bool strikethrough{};
+
+    friend constexpr bool operator==(
+        TypographySemantics,
+        TypographySemantics) = default;
 };
 
 struct TextComponentSyncProfile final {
@@ -90,6 +110,10 @@ public:
 
 private:
     friend void mount_text_component(const TextProps& props, bool icon_font);
+    friend void mount_typography_component(
+        const TypographyProps& props,
+        TypographySemantics::Role role,
+        TypographyLevel level);
 
     void record_mounted_text(
         runtime::ComponentId component,

@@ -24,7 +24,7 @@
 
 ## 4. 平台通用 Typography（平台通用）
 
-- [ ] 4.1 发布 `include/ryn/typography.hpp` 与 `ryn::Title`（level 1–5）、`ryn::Text`、`ryn::Paragraph` 的 typed Props、typed slot 与 reactive `Prop<T>`，从 `rynui.hpp` 聚合头导出并保持现有 `ryn::Text(String)` 重载源码兼容；实现 `TypographyComponentHost` 的挂载、销毁、主题订阅与几何同步，使五级标题使用上游字号/行高/`fontWeightStrong`/`colorTextHeading` 与 `title_margin_top`/`title_margin_bottom`；公开 API 合同、标题级别度量、`type`/`disabled` 颜色、`Prop<T>` 响应式更新与局部失效测试通过后以 `feat:` 提交
+- [x] 4.1 发布 `include/ryn/typography.hpp` 与 `ryn::Title`（level 1–5）、`ryn::Text`、`ryn::Paragraph` 的 typed Props、typed slot 与 reactive `Prop<T>`，从 `rynui.hpp` 聚合头导出并保持现有 `ryn::Text(String)` 重载源码兼容；语义组件复用 `TextComponentHost`（字体链解析、场景生命周期、主题订阅与失效不重复实现），`Title`/`Paragraph` 只用 `level` 值、正文与段落共用 base 排版；语义颜色统一走 Typography Component Token 组（含 secondary/disabled），`TextTone` 不再劫持语义色；测试覆盖五级标题的字号链与行为度量、六种语义色、emphasis 触发自身 reshape 且不重挂载、reactive 内容/type 的局部失效，以及主题切换下标题按 Component Token 重算字号且不重挂载、不影响兄弟组件；public API 合同、标题级别度量、`type`/`disabled` 颜色、`Prop<T>` 响应式更新与局部失效测试通过后以 `feat:` 提交
 - [ ] 4.2 实现 `strong`/`italic` 的真 face 呈现与 `code`/`keyboard` 的等宽外观（`code` 底色、内边距、边框、85% 字号与圆角；`keyboard` 底色、边框、2px 下边框与 90% 字号）；等宽字形度量、缺字逐字素回退、真字重/斜体 face、`code`/`keyboard` 几何与主题响应测试通过后以 `feat:` 提交
 - [ ] 4.3 实现 `mark`、`code`、`keyboard` 背景在字形**之前**绘制，`underline`/`delete` 装饰线在字形**之后**绘制且位置厚度取自字体装饰度量；覆盖单行、多行段落、同名叠加、滚动 translation、裁剪与 DPI 变化，用命令顺序断言加几何断言证明层级与对齐，并证明装饰颜色变化只更新材质后以 `feat:` 提交
 - [ ] 4.4 实现 `ellipsis`：单行以自然宽度与可用宽度比较判定截断（不依赖换行 overflow）、多行用 `lines.size() > rows` 且末行留足后缀与操作入口宽度、`expandable` 展开/收起入口；新增不污染 retained scene 的候选测量通道并给出 `shape_count`/`measure_count` 合同；覆盖字素边界、退化输入（`rows == 0`、宽度小于后缀、显式换行）、展开/收起 identity、宽度重算可重复性与只触发自身 Measure/Layout 后以 `feat:` 提交
