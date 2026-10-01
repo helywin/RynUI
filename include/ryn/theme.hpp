@@ -5,6 +5,8 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <memory>
@@ -34,6 +36,7 @@ struct SeedTokenOverride final {
     std::optional<Color> color_warning;
     std::optional<Color> color_error;
     std::optional<Color> color_info;
+    std::optional<Color> color_link;
     std::optional<LogicalLength> font_size;
     std::optional<LogicalLength> line_width;
     std::optional<LogicalLength> border_radius;
@@ -57,6 +60,7 @@ struct AliasTokenOverride final {
     std::optional<Color> color_text_disabled;
     std::optional<Color> color_background_container;
     std::optional<Color> color_border;
+    std::optional<Color> color_split;
     std::optional<Color> color_focus_outline;
     std::optional<ShadowList> box_shadow;
     std::optional<ShadowList> box_shadow_secondary;
@@ -165,6 +169,113 @@ struct SwitchThemeConfig final {
     friend bool operator==(const SwitchThemeConfig&, const SwitchThemeConfig&) = default;
 };
 
+enum class TypographyLevel : std::uint8_t {
+    H1,
+    H2,
+    H3,
+    H4,
+    H5,
+};
+
+inline constexpr std::size_t typography_level_count = 5;
+
+[[nodiscard]] constexpr std::size_t typography_level_index(
+    TypographyLevel level) noexcept {
+    return static_cast<std::size_t>(level);
+}
+
+// Inline code / keyboard keycap appearance. Sizes are ratios of the surrounding
+// font size, matching the upstream `em` units, so padding resolves against the
+// font size actually used instead of a frozen pixel value.
+struct InlineCodeTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> border_color;
+    std::optional<float> font_scale;
+    std::optional<float> padding_inline_em;
+    std::optional<float> padding_block_start_em;
+    std::optional<float> padding_block_end_em;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> border_radius;
+    friend bool operator==(const InlineCodeTokenOverride&, const InlineCodeTokenOverride&) = default;
+};
+
+struct KeyboardTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> border_color;
+    std::optional<float> font_scale;
+    std::optional<float> padding_inline_em;
+    std::optional<float> padding_block_start_em;
+    std::optional<float> padding_block_end_em;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> border_bottom_width;
+    friend bool operator==(const KeyboardTokenOverride&, const KeyboardTokenOverride&) = default;
+};
+
+// Typography Component Token. Colors are grouped separately from typography and
+// metrics because the Theme invalidation domain is fixed per identity group: a
+// color-only change must stay in paint/material, while font and geometry changes
+// must re-run text shaping and measurement.
+struct TypographyTokenOverride final {
+    std::optional<Color> text;
+    std::optional<Color> description;
+    std::optional<Color> success;
+    std::optional<Color> warning;
+    std::optional<Color> error;
+    std::optional<Color> error_text_hover;
+    std::optional<Color> error_text_active;
+    std::optional<Color> disabled;
+    std::optional<Color> link;
+    std::optional<Color> mark_background;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<SystemFontFamily> font_family_code;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> font_weight_strong;
+    std::array<std::optional<LogicalLength>, typography_level_count> heading_font_sizes;
+    std::array<std::optional<float>, typography_level_count> heading_line_heights;
+    std::optional<LogicalLength> base_font_size;
+    std::optional<LogicalLength> base_line_height;
+    std::optional<float> title_margin_top_em;
+    std::optional<float> title_margin_bottom_em;
+    InlineCodeTokenOverride code;
+    KeyboardTokenOverride keyboard;
+    friend bool operator==(const TypographyTokenOverride&, const TypographyTokenOverride&) = default;
+};
+
+struct TypographyThemeConfig final {
+    TypographyTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TypographyThemeConfig&, const TypographyThemeConfig&) = default;
+};
+
+// Divider Component Token. `orientation_margin` keeps the upstream unitless
+// 0..1 ratio and `text_padding_inline` is its `1em` gutter resolved against
+// `typography.text_font_size`.
+struct DividerTokenOverride final {
+    std::optional<Color> line;
+    std::optional<Color> text;
+    std::optional<Color> plain_text;
+    std::optional<LogicalLength> line_width;
+    std::optional<float> orientation_margin;
+    std::optional<LogicalLength> text_padding_inline;
+    std::optional<LogicalLength> vertical_margin_inline;
+    std::optional<LogicalLength> horizontal_margin;
+    std::optional<LogicalLength> horizontal_with_text_margin;
+    std::optional<LogicalLength> text_font_size;
+    std::optional<std::uint32_t> text_font_weight;
+    std::optional<LogicalLength> plain_font_size;
+    std::optional<std::uint32_t> plain_font_weight;
+    friend bool operator==(const DividerTokenOverride&, const DividerTokenOverride&) = default;
+};
+
+struct DividerThemeConfig final {
+    DividerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DividerThemeConfig&, const DividerThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -172,6 +283,8 @@ struct ThemeConfig final {
     TextThemeConfig text;
     InputThemeConfig input;
     SwitchThemeConfig switch_;
+    TypographyThemeConfig typography;
+    DividerThemeConfig divider;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -189,6 +302,12 @@ struct ThemeMapToken final {
     Color color_error_hover;
     Color color_error_active;
     Color color_info;
+    Color color_success_text;
+    Color color_warning_text;
+    Color color_error_text;
+    Color color_link;
+    Color color_link_hover;
+    Color color_link_active;
     Color color_text_base;
     Color color_background_base;
     float font_size_small{};
@@ -223,6 +342,7 @@ struct ThemeAliasToken final {
     Color color_background_container_disabled;
     Color color_border;
     Color color_border_secondary;
+    Color color_split;
     Color color_focus_outline;
     float line_width_focus{3.0F};
     float focus_outline_offset{1.0F};
@@ -308,6 +428,119 @@ struct SwitchThemeToken final {
     friend constexpr bool operator==(const SwitchThemeToken&, const SwitchThemeToken&) = default;
 };
 
+// Inline `code` / `kbd` appearance. Sizes stay as ratios of the resolved font
+// size so padding tracks the surrounding typography. These have no upstream
+// Component Token; they are a RynUI typed adaptation of the locked reference
+// styles and are grouped with metrics because a background change and a padding
+// change share one visual unit.
+struct InlineCodeThemeToken final {
+    Color background;
+    Color border_color;
+    float font_scale{0.85F};
+    float padding_inline_em{0.4F};
+    float padding_block_start_em{0.2F};
+    float padding_block_end_em{0.1F};
+    float border_width{1.0F};
+    float border_radius{3.0F};
+    float border_bottom_width{1.0F};
+
+    friend constexpr bool operator==(
+        const InlineCodeThemeToken&,
+        const InlineCodeThemeToken&) = default;
+};
+
+struct TypographyHeadingToken final {
+    float font_size{};
+    float line_height{};
+
+    friend constexpr bool operator==(
+        const TypographyHeadingToken&,
+        const TypographyHeadingToken&) = default;
+};
+
+struct TypographyColorToken final {
+    Color text;
+    Color description;
+    Color success;
+    Color warning;
+    Color error;
+    Color error_text_hover;
+    Color error_text_active;
+    Color disabled;
+    Color link;
+    Color mark_background;
+
+    friend constexpr bool operator==(
+        const TypographyColorToken&,
+        const TypographyColorToken&) = default;
+};
+
+// Groups follow the Theme invalidation domains: `colors` only repaints,
+// `headings`/`fonts` re-shape and re-measure, `metrics` only re-lays out.
+struct TypographyThemeToken final {
+    std::array<TypographyHeadingToken, typography_level_count> headings{};
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    SystemFontFamily font_family_code{SystemFontFamily::ui_monospace};
+    std::uint32_t font_weight{400};
+    std::uint32_t font_weight_strong{600};
+    float base_font_size{14.0F};
+    float base_line_height{22.0F};
+    // Title margins are em ratios of the heading's own font size, matching the
+    // upstream `titleMarginTop: '1.2em'` / `titleMarginBottom: '0.5em'`.
+    float title_margin_top_em{1.2F};
+    float title_margin_bottom_em{0.5F};
+    TypographyColorToken colors;
+    InlineCodeThemeToken code;
+    InlineCodeThemeToken keyboard;
+
+    [[nodiscard]] const TypographyHeadingToken& heading(
+        TypographyLevel level) const noexcept {
+        return headings[typography_level_index(level)];
+    }
+
+    friend constexpr bool operator==(
+        const TypographyThemeToken&,
+        const TypographyThemeToken&) = default;
+};
+
+struct DividerColorToken final {
+    Color line;
+    Color text;
+    Color plain_text;
+
+    friend constexpr bool operator==(const DividerColorToken&, const DividerColorToken&) = default;
+};
+
+struct DividerMetricToken final {
+    float line_width{1.0F};
+    float orientation_margin{0.05F};
+    float text_padding_inline{};
+    float vertical_margin_inline{};
+    float horizontal_margin{};
+    float horizontal_with_text_margin{};
+
+    friend constexpr bool operator==(const DividerMetricToken&, const DividerMetricToken&) = default;
+};
+
+struct DividerTypographyToken final {
+    float text_font_size{16.0F};
+    std::uint32_t text_font_weight{500};
+    float plain_font_size{14.0F};
+    std::uint32_t plain_font_weight{400};
+
+    friend constexpr bool operator==(
+        const DividerTypographyToken&,
+        const DividerTypographyToken&) = default;
+};
+
+struct DividerThemeToken final {
+    DividerColorToken colors;
+    DividerMetricToken metrics;
+    DividerTypographyToken typography;
+
+    friend constexpr bool operator==(const DividerThemeToken&, const DividerThemeToken&) = default;
+};
+
 class ThemeSnapshot final {
 public:
     ThemeSnapshot(const ThemeSnapshot&) = default;
@@ -322,6 +555,8 @@ public:
     [[nodiscard]] const ButtonThemeToken& button() const noexcept;
     [[nodiscard]] const TextThemeToken& text() const noexcept;
     [[nodiscard]] const SwitchThemeToken& switch_token() const noexcept;
+    [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
+    [[nodiscard]] const DividerThemeToken& divider() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -343,6 +578,8 @@ private:
         ButtonThemeToken button,
         TextThemeToken text,
         SwitchThemeToken switch_token,
+        TypographyThemeToken typography,
+        DividerThemeToken divider,
         std::shared_ptr<const detail::InputTokenSet> input,
         std::vector<ThemeAlgorithm> algorithms);
 
@@ -352,6 +589,8 @@ private:
     ButtonThemeToken button_;
     TextThemeToken text_;
     SwitchThemeToken switch_token_;
+    TypographyThemeToken typography_;
+    DividerThemeToken divider_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

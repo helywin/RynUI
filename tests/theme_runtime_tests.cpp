@@ -141,6 +141,64 @@ void test_dirty_domains_and_queue_bridge() {
             == Phase::animation,
         "motion Token phase mapping is incorrect");
 
+    // Typography and Divider groups must land on disjoint domains: a color-only
+    // change may not re-measure, and a font change must re-shape text.
+    require(ryn::theme_runtime::dirty_phase_for(Identity::typography_colors)
+            == Phase::paint_material
+                && ryn::theme_runtime::dirty_phase_for(Identity::divider_colors)
+                    == Phase::paint_material
+                && ryn::theme_runtime::dirty_phase_for(Identity::alias_color_split)
+                    == Phase::paint_material
+                && ryn::theme_runtime::dirty_phase_for(Identity::map_color_success_text)
+                    == Phase::paint_material
+                && ryn::theme_runtime::dirty_phase_for(Identity::map_color_link)
+                    == Phase::paint_material,
+        "Typography/Divider color identities are not paint-only");
+    require(ryn::theme_runtime::has_any(
+            ryn::theme_runtime::dirty_phase_for(Identity::typography_headings),
+            Phase::text | Phase::measure_layout)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::typography_fonts),
+                    Phase::text | Phase::measure_layout)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::typography_base_typography),
+                    Phase::text | Phase::measure_layout)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::divider_typography),
+                    Phase::text | Phase::measure_layout),
+        "Typography/Divider font identities do not re-shape text");
+    require(ryn::theme_runtime::has_any(
+            ryn::theme_runtime::dirty_phase_for(Identity::typography_metrics),
+            Phase::measure_layout | Phase::geometry)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::divider_metrics),
+                    Phase::measure_layout | Phase::geometry | Phase::hit_test)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::typography_inline_code),
+                    Phase::geometry)
+                && ryn::theme_runtime::has_any(
+                    ryn::theme_runtime::dirty_phase_for(Identity::typography_inline_keyboard),
+                    Phase::geometry),
+        "Typography/Divider metric identities do not re-lay out");
+    for (auto identity = Identity::typography_colors;
+         identity <= Identity::divider_typography;
+         identity = static_cast<Identity>(static_cast<std::uint8_t>(identity) + 1U)) {
+        require(ryn::theme_runtime::dirty_phase_for(identity) != Phase::none,
+                "a Typography/Divider identity has no invalidation domain");
+    }
+    // Every identity must have a stable, distinct, non-placeholder name.
+    require(ryn::theme_runtime::token_identity_name(Identity::alias_color_split)
+                == "alias.colorSplit"
+                && ryn::theme_runtime::token_identity_name(Identity::typography_colors)
+                    == "Typography.colors"
+                && ryn::theme_runtime::token_identity_name(Identity::typography_inline_keyboard)
+                    == "Typography.inlineKeyboard"
+                && ryn::theme_runtime::token_identity_name(Identity::divider_typography)
+                    == "Divider.typography"
+                && ryn::theme_runtime::token_identity_name(Identity::seed_line_width)
+                    == "seed.lineWidth",
+        "new Token identity names drifted from their declaration order");
+
     ryn::runtime::NodeStore nodes;
     const auto node = nodes.create_root();
     ryn::runtime::FrameRequestState frames;
@@ -242,6 +300,141 @@ void test_error_rollback_and_cross_thread_failure() {
         "cross-thread ThemeScope access did not fail fast");
 }
 
+void test_typography_and_divider_subscription_domains() {
+    using Phase = ryn::theme_runtime::DirtyPhase;
+
+    // Each case uses its own scope: `ThemeScope::update` replaces the whole
+    // config rather than merging with the previous one, so reusing a scope would
+    // let a dropped override look like an unrelated token change.
+    const auto observe = [](const ryn::ThemeConfig& config, int& colors, int& typography,
+                             Phase& color_phase) {
+        const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+        auto color_subscription = scope->capture(
+            [&](Phase phase) {
+                ++colors;
+                color_phase = phase;
+            },
+            [&] {
+                static_cast<void>(scope->typography_colors());
+                static_cast<void>(scope->divider_colors());
+            });
+        auto typography_subscription = scope->capture(
+            [&](Phase) { ++typography; },
+            [&] {
+                static_cast<void>(scope->typography_headings());
+                static_cast<void>(scope->typography_fonts());
+                static_cast<void>(scope->typography_base_typography());
+                static_cast<void>(scope->typography_metrics());
+                static_cast<void>(scope->typography_inline_code());
+                static_cast<void>(scope->typography_inline_keyboard());
+                static_cast<void>(scope->divider_metrics());
+                static_cast<void>(scope->divider_typography());
+                static_cast<void>(scope->code_font_family());
+            });
+        const bool updated = scope->update(config);
+        static_cast<void>(color_subscription);
+        static_cast<void>(typography_subscription);
+        return updated;
+    };
+
+    // A color-only change must stay in paint/material.
+    {
+        int colors = 0;
+        int typography = 0;
+        Phase color_phase{Phase::none};
+        ryn::ThemeConfig config;
+        config.typography.tokens.error = ryn::Color::rgba8(1, 2, 3);
+        require(observe(config, colors, typography, color_phase),
+            "Typography color update was suppressed");
+        require(colors == 1 && color_phase == Phase::paint_material,
+            "Typography color change did not stay in paint/material");
+        require(typography == 0,
+            "Typography color change invalidated measurement tokens");
+    }
+
+    // A divider color-only change must also stay in paint/material.
+    {
+        int colors = 0;
+        int typography = 0;
+        Phase color_phase{Phase::none};
+        ryn::ThemeConfig config;
+        config.divider.tokens.line = ryn::Color::rgba8(9, 9, 9);
+        require(observe(config, colors, typography, color_phase),
+            "Divider color update was suppressed");
+        require(colors == 1 && color_phase == Phase::paint_material,
+            "Divider color change did not stay in paint/material");
+        require(typography == 0,
+            "Divider color change invalidated measurement tokens");
+    }
+
+    // A metric-only change must reach measurement tokens and never colors.
+    {
+        int colors = 0;
+        int typography = 0;
+        Phase color_phase{Phase::none};
+        ryn::ThemeConfig config;
+        config.divider.tokens.horizontal_margin = ryn::dp(9.0F);
+        require(observe(config, colors, typography, color_phase),
+            "Divider metric update was suppressed");
+        require(colors == 0, "Divider metric change reached color tokens");
+        require(typography == 1,
+            "Divider metric change missed the measurement tokens");
+    }
+
+    // A font change re-shapes text and must not be reported as a color change.
+    {
+        int colors = 0;
+        int typography = 0;
+        Phase color_phase{Phase::none};
+        ryn::ThemeConfig config;
+        config.typography.tokens.font_family_code = ryn::SystemFontFamily::ui_sans;
+        require(observe(config, colors, typography, color_phase),
+            "Typography font update was suppressed");
+        require(colors == 0 && typography == 1,
+            "Typography font change reached the wrong token groups");
+    }
+
+    // Heading metrics must stay out of the color group as well.
+    {
+        int colors = 0;
+        int typography = 0;
+        Phase color_phase{Phase::none};
+        ryn::ThemeConfig config;
+        config.typography.tokens.heading_font_sizes[0] = ryn::dp(40.0F);
+        require(observe(config, colors, typography, color_phase),
+            "Typography heading update was suppressed");
+        require(colors == 0 && typography == 1,
+            "Typography heading change reached the wrong token groups");
+    }
+
+    // `code_font_family` reads the code family, not the UI family, and follows
+    // Theme updates.
+    {
+        const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+        require(scope->code_font_family() == ryn::SystemFontFamily::ui_monospace,
+            "code_font_family did not return the monospace family");
+        ryn::ThemeConfig config;
+        config.typography.tokens.font_family_code = ryn::SystemFontFamily::ui_sans;
+        require(scope->update(config), "Typography font update was suppressed");
+        require(scope->code_font_family() == ryn::SystemFontFamily::ui_sans,
+            "code_font_family did not follow the Theme update");
+        // An equal update must be suppressed without notifying the new groups.
+        int colors = 0;
+        int typography = 0;
+        auto subscription = scope->capture(
+            [&](Phase) { ++colors; },
+            [&] { static_cast<void>(scope->typography_colors()); });
+        auto heading_subscription = scope->capture(
+            [&](Phase) { ++typography; },
+            [&] { static_cast<void>(scope->typography_headings()); });
+        require(!scope->update(config), "equal Typography update was not suppressed");
+        require(colors == 0 && typography == 0,
+            "equal Typography update notified subscribers");
+        static_cast<void>(subscription);
+        static_cast<void>(heading_subscription);
+    }
+}
+
 void test_focus_outline_seed_invalidation() {
     const auto scope = ryn::theme_runtime::ThemeScope::create_default();
     int notifications = 0;
@@ -272,6 +465,7 @@ int main() {
         test_nested_override_masks_parent_subscription();
         test_dirty_domains_and_queue_bridge();
         test_motion_subscription_is_animation_only();
+        test_typography_and_divider_subscription_domains();
         test_error_rollback_and_cross_thread_failure();
         test_focus_outline_seed_invalidation();
     } catch (const std::exception& error) {

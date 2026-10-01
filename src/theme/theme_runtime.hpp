@@ -70,6 +70,16 @@ public:
     [[nodiscard]] const detail::InputTokenSet& input_shadows() const;
     [[nodiscard]] const SwitchThemeToken& switch_geometry() const;
     [[nodiscard]] const SwitchThemeToken& switch_colors() const;
+    [[nodiscard]] const TypographyThemeToken& typography_colors() const;
+    [[nodiscard]] const TypographyThemeToken& typography_headings() const;
+    [[nodiscard]] const TypographyThemeToken& typography_fonts() const;
+    [[nodiscard]] const TypographyThemeToken& typography_base_typography() const;
+    [[nodiscard]] const TypographyThemeToken& typography_metrics() const;
+    [[nodiscard]] const InlineCodeThemeToken& typography_inline_code() const;
+    [[nodiscard]] const InlineCodeThemeToken& typography_inline_keyboard() const;
+    [[nodiscard]] const DividerThemeToken& divider_colors() const;
+    [[nodiscard]] const DividerThemeToken& divider_metrics() const;
+    [[nodiscard]] const DividerThemeToken& divider_typography() const;
 
     [[nodiscard]] Color text_color() const;
     [[nodiscard]] SystemFontFamily text_font_family() const;
@@ -79,6 +89,7 @@ public:
     [[nodiscard]] float line_width() const;
     [[nodiscard]] Color text_secondary_color() const;
     [[nodiscard]] Color text_disabled_color() const;
+    [[nodiscard]] SystemFontFamily code_font_family() const;
 
     [[nodiscard]] const ButtonThemeToken& button_colors() const;
     [[nodiscard]] const ButtonThemeToken& button_control_heights() const;

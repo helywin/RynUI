@@ -75,6 +75,168 @@ void test_default_parity() {
             "Default Text component token drifted");
 }
 
+void test_semantic_text_and_link_colors() {
+    const auto snapshot = ryn::resolve_theme();
+    const auto& map = snapshot.map();
+    // Derived from palette keys 8/9/10, which are the dark-side relative steps
+    // 2/3/4 because `palette_variant` steps away from the seed at key 6.
+    require(map.color_success_text == ryn::Color::rgba8(19, 82, 0)
+                && map.color_warning_text == ryn::Color::rgba8(135, 77, 0)
+                && map.color_error_text == ryn::Color::rgba8(140, 21, 35),
+            "Semantic text colors are not opaque dark-side palette keys");
+    for (const auto color : {map.color_success_text, map.color_warning_text,
+             map.color_error_text, map.color_link}) {
+        require(color.alpha() == 1.0F,
+                "Semantic text color lost its opacity");
+        const auto luma = 0.2126F * color.red() + 0.7152F * color.green()
+            + 0.0722F * color.blue();
+        require(luma < 0.8F, "Semantic text color is too light to read as text");
+    }
+    require(map.color_link == ryn::Color::rgba8(23, 120, 255)
+                && map.color_link_hover == ryn::Color::rgba8(0, 62, 179)
+                && map.color_link_active == ryn::Color::rgba8(0, 29, 102),
+            "Link palette drifted");
+    // `colorLink` falls back to `colorInfo`, whose own palette entry is cyan.
+    require(map.color_link != map.color_info || map.color_info == ryn::Color::rgba8(19, 194, 194),
+            "colorLink fallback to colorInfo is inconsistent");
+
+    ryn::ThemeConfig explicit_link;
+    explicit_link.seed.color_link = ryn::Color::rgba8(255, 0, 0);
+    const auto linked = ryn::resolve_theme(explicit_link);
+    require(linked.map().color_link != map.color_link
+                && linked.map().color_link.alpha() == 1.0F,
+            "explicit colorLink seed override was ignored");
+
+    ryn::ThemeConfig dark_config;
+    dark_config.algorithms = {ryn::ThemeAlgorithm::Dark};
+    const auto dark = ryn::resolve_theme(dark_config);
+    require(dark.map().color_success_text == ryn::Color::rgba8(19, 73, 3)
+                && dark.map().color_error_text == ryn::Color::rgba8(122, 21, 33)
+                && dark.map().color_link == ryn::Color::rgba8(23, 105, 220),
+            "dark semantic text colors did not repaint onto the dark surface");
+    // Legacy palette values must not move: only the new text colors were added.
+    require(dark.map().color_error != map.color_error
+                && dark.map().color_error_hover != map.color_error_hover,
+            "dark algorithm no longer repaints the legacy error palette");
+    require(map.color_error_hover == ryn::Color::rgba8(255, 120, 117)
+                && map.color_primary_hover == ryn::Color::rgba8(64, 150, 255),
+            "legacy light palette steps changed");
+}
+
+void test_semantic_text_color_edges() {
+    // Grayscale seeds take the `grayscale` branch of the palette generator, which
+    // keeps hue and saturation untouched instead of clamping them.
+    const auto grayscale = [](std::uint8_t channel) {
+        ryn::ThemeConfig config;
+        config.seed.color_success = ryn::Color::rgba8(channel, channel, channel);
+        config.seed.color_warning = ryn::Color::rgba8(channel, channel, channel);
+        config.seed.color_error = ryn::Color::rgba8(channel, channel, channel);
+        return ryn::resolve_theme(config).map();
+    };
+    const auto gray = grayscale(128);
+    require(gray.color_success_text == ryn::Color::rgba8(13, 13, 13)
+                && gray.color_warning_text == gray.color_success_text
+                && gray.color_error_text == gray.color_success_text
+                && gray.color_success_text.alpha() == 1.0F,
+            "grayscale seed did not stay on the grayscale palette branch");
+    const auto black = grayscale(0);
+    require(black.color_success_text == ryn::Color::rgba8(0, 0, 0),
+            "black seed produced an unexpected semantic text color");
+
+    // Fully saturated boundary seeds must stay opaque and inside the gamut.
+    ryn::ThemeConfig saturated;
+    saturated.seed.color_success = ryn::Color::rgba8(255, 0, 0);
+    const auto red = ryn::resolve_theme(saturated).map();
+    require(red.color_success_text == ryn::Color::rgba8(140, 0, 14),
+            "saturated red seed produced an unexpected semantic text color");
+
+    // Semantic text colors are not derived through `color_split` or the alias
+    // override path, so overriding the split colour leaves them untouched.
+    const auto baseline = ryn::resolve_theme();
+    ryn::ThemeConfig split;
+    split.alias.color_split = ryn::Color::rgba8(1, 1, 1);
+    const auto overridden = ryn::resolve_theme(split);
+    require(overridden.alias().color_split == ryn::Color::rgba8(1, 1, 1)
+                && overridden.divider().colors.line == ryn::Color::rgba8(1, 1, 1)
+                && overridden.map().color_success_text
+                    == baseline.map().color_success_text,
+            "colorSplit override did not stay confined to the split tokens");
+}
+
+void test_typography_and_divider_defaults() {
+    const auto snapshot = ryn::resolve_theme();
+    const auto& typography = snapshot.typography();
+    require(typography.headings[0].font_size == 38.0F
+                && typography.headings[1].font_size == 30.0F
+                && typography.headings[2].font_size == 24.0F
+                && typography.headings[3].font_size == 20.0F
+                && typography.headings[4].font_size == 16.0F,
+            "Typography heading size chain drifted from 38/30/24/20/16");
+    require(typography.headings[0].line_height > 53.19F
+                && typography.headings[0].line_height < 53.21F
+                && typography.headings[2].line_height > 31.19F
+                && typography.headings[2].line_height < 31.21F,
+            "Typography heading line heights drifted");
+    require(typography.title_margin_top_em == 1.2F
+                && typography.title_margin_bottom_em == 0.5F,
+            "Typography title margins drifted from the 1.2em/0.5em ratios");
+    require(typography.font_weight == 400 && typography.font_weight_strong == 600
+                && typography.font_family == ryn::SystemFontFamily::ui_sans
+                && typography.font_family_code == ryn::SystemFontFamily::ui_monospace,
+            "Typography font defaults drifted");
+    require(typography.colors.text == snapshot.alias().color_text
+                && typography.colors.description == snapshot.alias().color_text_secondary
+                && typography.colors.disabled == snapshot.alias().color_text_disabled
+                && typography.colors.mark_background == ryn::Color::rgba8(255, 229, 143),
+            "Typography semantic colors are not bound to the alias tokens");
+    require(typography.code.background == ryn::Color(0.588F, 0.588F, 0.588F, 0.1F)
+                && typography.code.font_scale == 0.85F
+                && typography.keyboard.font_scale == 0.9F
+                && typography.keyboard.border_bottom_width == 2.0F
+                && typography.code.border_bottom_width == 1.0F,
+            "inline code/keyboard metrics drifted from the locked reference");
+
+    const auto& divider = snapshot.divider();
+    require(divider.colors.line == snapshot.alias().color_split
+                && divider.colors.text == snapshot.alias().color_text
+                && divider.colors.plain_text == snapshot.alias().color_text,
+            "Divider colors are not bound to the alias tokens");
+    require(divider.metrics.line_width == snapshot.seed().line_width
+                && divider.metrics.orientation_margin == 0.05F
+                && divider.metrics.text_padding_inline == 16.0F
+                && divider.metrics.vertical_margin_inline == 8.0F
+                && divider.metrics.horizontal_margin == 24.0F
+                && divider.metrics.horizontal_with_text_margin == 16.0F,
+            "Divider metrics drifted from the locked Component Token values");
+    require(divider.typography.text_font_size == 16.0F
+                && divider.typography.text_font_weight == 500
+                && divider.typography.plain_font_size == 14.0F
+                && divider.typography.plain_font_weight == 400,
+            "Divider typography drifted");
+
+    // Compact must scale spacing from the algorithm instead of freezing 24/16/8.
+    ryn::ThemeConfig compact_config;
+    compact_config.algorithms = {ryn::ThemeAlgorithm::Compact};
+    const auto compact = ryn::resolve_theme(compact_config);
+    require(compact.divider().metrics.horizontal_margin
+                == compact.map().size_large
+                && compact.divider().metrics.vertical_margin_inline
+                    == compact.map().size_xs
+                && compact.divider().metrics.horizontal_margin != 24.0F
+                && compact.divider().metrics.line_width == 1.0F,
+            "Divider spacing did not follow the Compact algorithm");
+    require(compact.typography().headings[0].font_size == 33.0F
+                && compact.typography().headings[4].font_size == 14.0F,
+            "Typography headings did not follow the Compact base size");
+
+    // `colorSplit` is the upstream alpha solve of border-secondary on the
+    // container, so its alpha changes with the algorithm while the composite
+    // stays the 1px split colour.
+    require(snapshot.alias().color_split == ryn::Color(5.0F / 255.0F, 5.0F / 255.0F,
+                5.0F / 255.0F, 0.06F),
+            "Default colorSplit drifted");
+}
+
 void test_focus_outline_seed() {
     const auto normal = ryn::resolve_theme();
     require(normal.seed().focus_outline && normal.alias().line_width_focus == 3.0F,
@@ -326,6 +488,9 @@ int main(int argc, char** argv) {
             return 0;
         }
         test_default_parity();
+        test_semantic_text_and_link_colors();
+        test_semantic_text_color_edges();
+        test_typography_and_divider_defaults();
         test_focus_outline_seed();
         test_algorithm_composition();
         test_overrides_and_component_algorithm();

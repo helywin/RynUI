@@ -23,14 +23,14 @@ constexpr std::string_view ant_design_commit =
 [[nodiscard]] float fixed_length(
     const std::optional<LogicalLength>& value,
     float fallback,
-    const char* name,
+    std::string_view name,
     bool strictly_positive = false) {
     if (!value.has_value()) {
         return fallback;
     }
     if (value->is_auto() || !detail::finite(value->value())
         || (strictly_positive ? value->value() <= 0.0F : value->value() < 0.0F)) {
-        throw std::invalid_argument(name);
+        throw std::invalid_argument(std::string(name));
     }
     return value->value();
 }
@@ -41,6 +41,7 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
     if (override.color_warning) seed.color_warning = *override.color_warning;
     if (override.color_error) seed.color_error = *override.color_error;
     if (override.color_info) seed.color_info = *override.color_info;
+    if (override.color_link) seed.color_link = *override.color_link;
     seed.font_size = static_cast<std::uint32_t>(std::lround(fixed_length(
         override.font_size, static_cast<float>(seed.font_size),
         "font size must be a positive fixed logical length", true)));
@@ -215,6 +216,66 @@ struct SemanticPalette final {
     return color == Color::rgba8(22, 119, 255);
 }
 
+// Upstream `getAlphaColor(color, background)`: find the smallest 1% alpha whose
+// integer channel solve stays inside [0, 255]. Preserve the double loop and
+// Math.round semantics; inputs are 8-bit palette values.
+[[nodiscard]] Color get_alpha_color(Color foreground, Color background) {
+    if (foreground.alpha() < 1.0F) {
+        return foreground;
+    }
+    const std::array front{foreground.red(), foreground.green(), foreground.blue()};
+    const std::array back{background.red(), background.green(), background.blue()};
+    for (double alpha = 0.01; alpha <= 1.0; alpha += 0.01) {
+        std::array<int, 3> channels{};
+        bool stable = true;
+        for (std::size_t i = 0; i < channels.size(); ++i) {
+            const auto f = std::round(static_cast<double>(front[i]) * 255.0);
+            const auto b = std::round(static_cast<double>(back[i]) * 255.0);
+            channels[i] = static_cast<int>(
+                std::floor((f - b * (1.0 - alpha)) / alpha + 0.5));
+            stable = stable && channels[i] >= 0 && channels[i] <= 255;
+        }
+        if (stable) {
+            return Color(static_cast<float>(channels[0]) / 255.0F,
+                static_cast<float>(channels[1]) / 255.0F,
+                static_cast<float>(channels[2]) / 255.0F,
+                static_cast<float>(std::round(alpha * 100.0) / 100.0));
+        }
+    }
+    return foreground;
+}
+
+// Upstream `genColorMapToken` reads `generateColorPalettes(base)` by palette
+// KEY: key 9 is the semantic text color, key 8 its hover and key 10 its active.
+// `palette_variant` takes a step RELATIVE to the seed, which is key 6, so keys
+// 8/9/10 map to the dark-side relative steps 2/3/4. The light side brightens as
+// the step grows and therefore cannot reach keys 8/9/10 at all.
+// The palette is a pure function of the seed and does not depend on the theme
+// algorithm, so the surface mix stays fixed: identity for the light container
+// and the established 0.85 mix for the dark container.
+[[nodiscard]] constexpr int palette_key_step(int key) noexcept {
+    return key - 6;
+}
+
+[[nodiscard]] Color semantic_text_color(Color seed, int key, bool dark) {
+    const Color palette = palette_variant(seed, palette_key_step(key), false);
+    if (!dark) {
+        return palette;
+    }
+    return mix(Color::rgba8(20, 20, 20), palette, 0.85F);
+}
+
+void apply_semantic_text_colors(
+    ThemeMapToken& map, const AntDesignDefaultSeed& seed, bool dark) {
+    map.color_success_text = semantic_text_color(seed.color_success, 9, dark);
+    map.color_warning_text = semantic_text_color(seed.color_warning, 9, dark);
+    map.color_error_text = semantic_text_color(seed.color_error, 9, dark);
+    const Color link = seed.color_link.value_or(seed.color_info);
+    map.color_link = semantic_text_color(link, 6, dark);
+    map.color_link_hover = semantic_text_color(link, 8, dark);
+    map.color_link_active = semantic_text_color(link, 10, dark);
+}
+
 [[nodiscard]] ThemeMapToken derive_default_map(const AntDesignDefaultSeed& seed) {
     const Color white = Color::rgba8(255, 255, 255);
     const Color black = Color::rgba8(0, 0, 0);
@@ -242,6 +303,12 @@ struct SemanticPalette final {
         .color_error_hover = error_palette.hover,
         .color_error_active = error_palette.active,
         .color_info = seed.color_info,
+        .color_success_text = semantic_text_color(seed.color_success, 9, false),
+        .color_warning_text = semantic_text_color(seed.color_warning, 9, false),
+        .color_error_text = semantic_text_color(seed.color_error, 9, false),
+        .color_link = semantic_text_color(seed.color_link.value_or(seed.color_info), 6, false),
+        .color_link_hover = semantic_text_color(seed.color_link.value_or(seed.color_info), 8, false),
+        .color_link_active = semantic_text_color(seed.color_link.value_or(seed.color_info), 10, false),
         .color_text_base = seed.color_text_base.value_or(black),
         .color_background_base = seed.color_background_base.value_or(white),
         .font_size_small = small_font,
@@ -266,7 +333,7 @@ struct SemanticPalette final {
     };
 }
 
-void apply_dark(ThemeMapToken& map) {
+void apply_dark(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
     const bool default_primary = is_default_primary(map.color_primary);
     const Color black = Color::rgba8(0, 0, 0);
     const Color white = Color::rgba8(255, 255, 255);
@@ -284,6 +351,7 @@ void apply_dark(ThemeMapToken& map) {
     map.color_error_hover = mix(dark_surface, error_seed, 0.65F);
     map.color_error = mix(dark_surface, error_seed, 0.85F);
     map.color_error_active = mix(dark_surface, error_light_hover, 0.90F);
+    apply_semantic_text_colors(map, seed, true);
     map.color_text_base = white;
     map.color_background_base = black;
 }
@@ -322,7 +390,7 @@ void apply_compact(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
             map = derive_default_map(seed);
             break;
         case ThemeAlgorithm::Dark:
-            apply_dark(map);
+            apply_dark(map, seed);
             break;
         case ThemeAlgorithm::Compact:
             apply_compact(map, seed);
@@ -356,6 +424,9 @@ void apply_compact(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
         .color_border = dark ? Color::rgba8(66, 66, 66) : Color::rgba8(217, 217, 217),
         .color_border_secondary = dark ? Color::rgba8(48, 48, 48)
                                        : Color::rgba8(240, 240, 240),
+        .color_split = get_alpha_color(
+            dark ? Color::rgba8(48, 48, 48) : Color::rgba8(240, 240, 240),
+            dark ? Color::rgba8(20, 20, 20) : Color::rgba8(255, 255, 255)),
         .color_focus_outline = map.color_primary_border,
         .line_width_focus = seed.focus_outline ? seed.line_width * 3.0F : 0.0F,
         .box_shadow = shadows.box_shadow,
@@ -373,6 +444,7 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         alias.color_background_container = *override.color_background_container;
     }
     if (override.color_border) alias.color_border = *override.color_border;
+    if (override.color_split) alias.color_split = *override.color_split;
     if (override.color_focus_outline) alias.color_focus_outline = *override.color_focus_outline;
     if (override.box_shadow) alias.box_shadow = *override.box_shadow;
     if (override.box_shadow_secondary) alias.box_shadow_secondary = *override.box_shadow_secondary;
@@ -397,26 +469,7 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     const auto error = palette(seed.color_error);
     const auto warning = palette(seed.color_warning);
     const auto outline_color = [&](Color foreground) {
-        if(foreground.alpha() < 1.0F) return foreground;
-        const auto background = alias.color_background_container;
-        const std::array front{foreground.red(), foreground.green(), foreground.blue()};
-        const std::array back{background.red(), background.green(), background.blue()};
-        // Preserve the upstream double loop and Math.round semantics, including
-        // its rounding near a channel boundary. Input colors are 8-bit palette values.
-        for(double alpha = 0.01; alpha <= 1.0; alpha += 0.01) {
-            std::array<int, 3> channels{};
-            bool stable = true;
-            for(std::size_t i = 0; i < channels.size(); ++i) {
-                const auto f = std::round(static_cast<double>(front[i]) * 255.0);
-                const auto b = std::round(static_cast<double>(back[i]) * 255.0);
-                channels[i] = static_cast<int>(std::floor((f - b * (1.0 - alpha)) / alpha + 0.5));
-                stable = stable && channels[i] >= 0 && channels[i] <= 255;
-            }
-            if(stable) return Color(static_cast<float>(channels[0]) / 255.0F,
-                static_cast<float>(channels[1]) / 255.0F, static_cast<float>(channels[2]) / 255.0F,
-                static_cast<float>(std::round(alpha * 100.0) / 100.0));
-        }
-        return foreground;
+        return get_alpha_color(foreground, alias.color_background_container);
     };
     const auto shadow = [&](Color background) {
         return ShadowList{{ShadowKind::outer, {}, 0, 2 * seed.line_width, outline_color(background)}};
@@ -437,6 +490,248 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     input.error_active_shadow = shadow(error.background);
     input.warning_active_shadow = shadow(warning.background);
     return input;
+}
+
+[[nodiscard]] TypographyThemeToken derive_typography(
+    const AntDesignDefaultSeed& seed,
+    const ThemeMapToken& map,
+    const ThemeAliasToken& alias) {
+    // Heading sizes are the locked reference chain 38/30/24/20/16 at the default
+    // 14 base size. Keep them as ratios of the base size so a `base_font_size`
+    // override or the Compact algorithm (base 12) stays proportional instead of
+    // freezing the reference pixels. Note that level 5 is `fontSizeLG`, which is
+    // one step ABOVE the base size.
+    constexpr std::array<float, typography_level_count> reference_sizes{
+        38.0F, 30.0F, 24.0F, 20.0F, 16.0F};
+    constexpr float reference_base_size = 14.0F;
+    std::array<float, typography_level_count> computed_sizes{};
+    for (std::size_t index = 0; index < typography_level_count; ++index) {
+        computed_sizes[index] =
+            std::round(map.font_size * reference_sizes[index] / reference_base_size);
+    }
+    const std::array<float, typography_level_count> computed_line_heights{
+        1.4F, 1.35F, 1.3F, 1.25F, 1.2F};
+    TypographyThemeToken token;
+    for (std::size_t index = 0; index < typography_level_count; ++index) {
+        token.headings[index].font_size = computed_sizes[index];
+        token.headings[index].line_height =
+            computed_sizes[index] * computed_line_heights[index];
+    }
+    token.font_family = seed.font_family;
+    token.font_family_code = seed.font_family_code;
+    token.font_weight = 400;
+    token.font_weight_strong = 600;
+    token.base_font_size = map.font_size;
+    token.base_line_height = map.font_size + 8.0F;
+    // Upstream `titleMarginTop: '1.2em'` / `titleMarginBottom: '0.5em'` relative
+    // to the heading's own font size. Keep the ratios so a per-level heading size
+    // override scales the margins the way the em units do.
+    token.title_margin_top_em = 1.2F;
+    token.title_margin_bottom_em = 0.5F;
+    token.colors = {
+        .text = alias.color_text,
+        .description = alias.color_text_secondary,
+        .success = map.color_success_text,
+        .warning = map.color_warning_text,
+        .error = map.color_error_text,
+        .error_text_hover = map.color_error_hover,
+        .error_text_active = map.color_error_active,
+        .disabled = alias.color_text_disabled,
+        .link = map.color_link,
+        // The upstream highlight is a fixed reference colour (`gold[2]`), not a
+        // seed derivation, so it stays a constant rather than tracking the seed.
+        .mark_background = Color::rgba8(255, 229, 143),
+    };
+    token.code = {
+        .background = Color(0.588F, 0.588F, 0.588F, 0.1F),
+        .border_color = Color(0.392F, 0.392F, 0.392F, 0.2F),
+        .font_scale = 0.85F,
+        .padding_inline_em = 0.4F,
+        .padding_block_start_em = 0.2F,
+        .padding_block_end_em = 0.1F,
+        .border_width = seed.line_width,
+        .border_radius = 3.0F,
+        .border_bottom_width = seed.line_width,
+    };
+    token.keyboard = {
+        .background = Color(0.588F, 0.588F, 0.588F, 0.06F),
+        .border_color = Color(0.392F, 0.392F, 0.392F, 0.2F),
+        .font_scale = 0.9F,
+        .padding_inline_em = 0.4F,
+        .padding_block_start_em = 0.15F,
+        .padding_block_end_em = 0.1F,
+        .border_width = seed.line_width,
+        .border_radius = 3.0F,
+        .border_bottom_width = seed.line_width * 2.0F,
+    };
+    return token;
+}
+
+void apply_typography_override(
+    TypographyThemeToken& token, const TypographyTokenOverride& override_) {
+    const auto weight = [](const std::optional<std::uint32_t>& value,
+                            std::uint32_t fallback, std::string_view name) {
+        if (!value) return fallback;
+        if (*value < 100 || *value > 1000) throw std::invalid_argument(std::string(name));
+        return *value;
+    };
+    const auto ratio = [](const std::optional<float>& value, float fallback,
+                           std::string_view name, bool positive = false) {
+        if (!value) return fallback;
+        if (!detail::finite(*value) || (positive ? *value <= 0.0F : *value < 0.0F)) {
+            throw std::invalid_argument(std::string(name));
+        }
+        return *value;
+    };
+    if (override_.text) token.colors.text = *override_.text;
+    if (override_.description) token.colors.description = *override_.description;
+    if (override_.success) token.colors.success = *override_.success;
+    if (override_.warning) token.colors.warning = *override_.warning;
+    if (override_.error) token.colors.error = *override_.error;
+    if (override_.error_text_hover) token.colors.error_text_hover = *override_.error_text_hover;
+    if (override_.error_text_active) token.colors.error_text_active = *override_.error_text_active;
+    if (override_.disabled) token.colors.disabled = *override_.disabled;
+    if (override_.link) token.colors.link = *override_.link;
+    if (override_.mark_background) token.colors.mark_background = *override_.mark_background;
+    if (override_.font_family) token.font_family = *override_.font_family;
+    if (override_.font_family_code) token.font_family_code = *override_.font_family_code;
+    token.font_weight = weight(override_.font_weight, token.font_weight,
+        "Typography font weight must be in [100, 1000]");
+    token.font_weight_strong = weight(override_.font_weight_strong, token.font_weight_strong,
+        "Typography strong font weight must be in [100, 1000]");
+    token.base_font_size = fixed_length(override_.base_font_size, token.base_font_size,
+        "Typography base font size must be a positive fixed logical length", true);
+    token.base_line_height = fixed_length(override_.base_line_height, token.base_line_height,
+        "Typography base line height must be positive", true);
+    token.title_margin_top_em = ratio(override_.title_margin_top_em, token.title_margin_top_em,
+        "Typography title margin top must be non-negative");
+    token.title_margin_bottom_em = ratio(override_.title_margin_bottom_em,
+        token.title_margin_bottom_em, "Typography title margin bottom must be non-negative");
+    for (std::size_t index = 0; index < typography_level_count; ++index) {
+        auto& heading = token.headings[index];
+        heading.font_size = fixed_length(override_.heading_font_sizes[index], heading.font_size,
+            "Typography heading font size must be a positive fixed logical length", true);
+        heading.line_height = ratio(override_.heading_line_heights[index], heading.line_height,
+            "Typography heading line height must be positive", true);
+    }
+    const auto inline_code = [&](InlineCodeThemeToken& target,
+                                  const std::optional<Color>& background,
+                                  const std::optional<Color>& border_color,
+                                  const std::optional<float>& font_scale,
+                                  const std::optional<float>& padding_inline,
+                                  const std::optional<float>& padding_block_start,
+                                  const std::optional<float>& padding_block_end,
+                                  const std::optional<LogicalLength>& border_width,
+                                  const std::optional<LogicalLength>& border_radius,
+                                  const std::optional<LogicalLength>& border_bottom_width,
+                                  std::string_view prefix) {
+        const auto message = [prefix](std::string_view detail) {
+            return std::string(prefix) + " " + std::string(detail);
+        };
+        if (background) target.background = *background;
+        if (border_color) target.border_color = *border_color;
+        target.font_scale = ratio(font_scale, target.font_scale,
+            message("font scale must be positive"), true);
+        target.padding_inline_em = ratio(padding_inline, target.padding_inline_em,
+            message("padding inline must be non-negative"));
+        target.padding_block_start_em = ratio(padding_block_start,
+            target.padding_block_start_em, message("padding block start must be non-negative"));
+        target.padding_block_end_em = ratio(padding_block_end, target.padding_block_end_em,
+            message("padding block end must be non-negative"));
+        target.border_width = fixed_length(border_width, target.border_width,
+            message("border width must be non-negative"));
+        target.border_radius = fixed_length(border_radius, target.border_radius,
+            message("border radius must be non-negative"));
+        if (border_bottom_width) {
+            if (border_bottom_width->is_auto()
+                || !detail::finite(border_bottom_width->value())
+                || border_bottom_width->value() < 0.0F) {
+                throw std::invalid_argument(message("border bottom width must be non-negative"));
+            }
+            target.border_bottom_width = border_bottom_width->value();
+        }
+        if (target.border_bottom_width < target.border_width) {
+            throw std::invalid_argument(
+                message("border bottom width must not be smaller than its border width"));
+        }
+    };
+    inline_code(token.code, override_.code.background, override_.code.border_color,
+        override_.code.font_scale, override_.code.padding_inline_em,
+        override_.code.padding_block_start_em, override_.code.padding_block_end_em,
+        override_.code.border_width, override_.code.border_radius, std::nullopt,
+        "Typography code");
+    inline_code(token.keyboard, override_.keyboard.background, override_.keyboard.border_color,
+        override_.keyboard.font_scale, override_.keyboard.padding_inline_em,
+        override_.keyboard.padding_block_start_em, override_.keyboard.padding_block_end_em,
+        override_.keyboard.border_width, override_.keyboard.border_radius,
+        override_.keyboard.border_bottom_width, "Typography keyboard");
+}
+
+[[nodiscard]] DividerThemeToken derive_divider(
+    const AntDesignDefaultSeed& seed,
+    const ThemeMapToken& map,
+    const ThemeAliasToken& alias) {
+    DividerThemeToken token;
+    token.colors = {
+        .line = alias.color_split,
+        .text = alias.color_text,
+        .plain_text = alias.color_text,
+    };
+    token.metrics = {
+        .line_width = seed.line_width,
+        .orientation_margin = 0.05F,
+        .text_padding_inline = map.font_size_large,
+        .vertical_margin_inline = map.size_xs,
+        .horizontal_margin = map.size_large,
+        .horizontal_with_text_margin = map.size,
+    };
+    token.typography = {
+        .text_font_size = map.font_size_large,
+        .text_font_weight = 500,
+        .plain_font_size = map.font_size,
+        .plain_font_weight = 400,
+    };
+    return token;
+}
+
+void apply_divider_override(
+    DividerThemeToken& token, const DividerTokenOverride& override_) {
+    if (override_.line) token.colors.line = *override_.line;
+    if (override_.text) token.colors.text = *override_.text;
+    if (override_.plain_text) token.colors.plain_text = *override_.plain_text;
+    token.metrics.line_width = fixed_length(override_.line_width, token.metrics.line_width,
+        "Divider line width must be non-negative");
+    if (override_.orientation_margin) {
+        if (!detail::finite(*override_.orientation_margin)
+            || *override_.orientation_margin < 0.0F
+            || *override_.orientation_margin > 1.0F) {
+            throw std::invalid_argument("Divider orientation margin must be in [0, 1]");
+        }
+        token.metrics.orientation_margin = *override_.orientation_margin;
+    }
+    token.metrics.text_padding_inline = fixed_length(override_.text_padding_inline,
+        token.metrics.text_padding_inline, "Divider text padding must be non-negative");
+    token.metrics.vertical_margin_inline = fixed_length(override_.vertical_margin_inline,
+        token.metrics.vertical_margin_inline, "Divider vertical margin must be non-negative");
+    token.metrics.horizontal_margin = fixed_length(override_.horizontal_margin,
+        token.metrics.horizontal_margin, "Divider horizontal margin must be non-negative");
+    token.metrics.horizontal_with_text_margin = fixed_length(
+        override_.horizontal_with_text_margin, token.metrics.horizontal_with_text_margin,
+        "Divider horizontal margin with text must be non-negative");
+    token.typography.text_font_size = fixed_length(override_.text_font_size,
+        token.typography.text_font_size, "Divider text font size must be positive", true);
+    token.typography.plain_font_size = fixed_length(override_.plain_font_size,
+        token.typography.plain_font_size, "Divider plain font size must be positive", true);
+    const auto weight = [](const std::optional<std::uint32_t>& value,
+                            std::uint32_t fallback, std::string_view name) {
+        if (!value) return fallback;
+        if (*value < 100 || *value > 1000) throw std::invalid_argument(std::string(name));
+        return *value;
+    };
+    token.typography.text_font_weight = weight(override_.text_font_weight,
+        token.typography.text_font_weight, "Divider text font weight must be in [100, 1000]");
+    token.typography.plain_font_weight = weight(override_.plain_font_weight,
+        token.typography.plain_font_weight, "Divider plain font weight must be in [100, 1000]");
 }
 
 [[nodiscard]] ButtonThemeToken derive_button(
@@ -602,6 +897,8 @@ void append_color(std::ostringstream& stream, Color color) {
     const ButtonThemeToken& button,
     const TextThemeToken& text,
     const SwitchThemeToken& switch_token,
+    const TypographyThemeToken& typography,
+    const DividerThemeToken& divider,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms,
     std::uint64_t identity) {
@@ -633,6 +930,18 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, map.color_error_hover);
     stream << ",\"colorErrorActive\":";
     append_color(stream, map.color_error_active);
+    stream << ",\"colorSuccessText\":";
+    append_color(stream, map.color_success_text);
+    stream << ",\"colorWarningText\":";
+    append_color(stream, map.color_warning_text);
+    stream << ",\"colorErrorText\":";
+    append_color(stream, map.color_error_text);
+    stream << ",\"colorLink\":";
+    append_color(stream, map.color_link);
+    stream << ",\"colorLinkHover\":";
+    append_color(stream, map.color_link_hover);
+    stream << ",\"colorLinkActive\":";
+    append_color(stream, map.color_link_active);
     stream << ",\"fontSizeSM\":" << map.font_size_small << ",\"fontSize\":"
            << map.font_size << ",\"fontSizeLG\":" << map.font_size_large
            << ",\"sizeXS\":" << map.size_xs << ",\"sizeSM\":" << map.size_small
@@ -649,6 +958,8 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, alias.color_background_container);
     stream << ",\"colorBorder\":";
     append_color(stream, alias.color_border);
+    stream << ",\"colorSplit\":";
+    append_color(stream, alias.color_split);
     stream << ",\"lineWidthFocus\":" << alias.line_width_focus
            << ",\"focusOutlineOffset\":" << alias.focus_outline_offset
            << ",\"boxShadowLayers\":" << alias.box_shadow.size()
@@ -688,7 +999,78 @@ void append_color(std::ostringstream& stream, Color color) {
     }
     stream << "],\"activeShadowLayers\":" << input.active_shadow.size()
         << ",\"errorActiveShadowLayers\":" << input.error_active_shadow.size()
-        << ",\"warningActiveShadowLayers\":" << input.warning_active_shadow.size() << "}}\n";
+        << ",\"warningActiveShadowLayers\":" << input.warning_active_shadow.size()
+        << "},\"typography\":{\"headings\":[";
+    for (std::size_t index = 0; index < typography_level_count; ++index) {
+        if (index) stream << ',';
+        stream << "{\"fontSize\":" << typography.headings[index].font_size
+               << ",\"lineHeight\":" << typography.headings[index].line_height << '}';
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(typography.font_family)
+        << ",\"fontFamilyCode\":" << static_cast<int>(typography.font_family_code)
+        << ",\"fontWeight\":" << typography.font_weight
+        << ",\"fontWeightStrong\":" << typography.font_weight_strong
+        << ",\"baseFontSize\":" << typography.base_font_size
+        << ",\"baseLineHeight\":" << typography.base_line_height
+        << ",\"titleMarginTopEm\":" << typography.title_margin_top_em
+        << ",\"titleMarginBottomEm\":" << typography.title_margin_bottom_em
+        << ",\"colors\":{\"text\":";
+    append_color(stream, typography.colors.text);
+    stream << ",\"description\":";
+    append_color(stream, typography.colors.description);
+    stream << ",\"success\":";
+    append_color(stream, typography.colors.success);
+    stream << ",\"warning\":";
+    append_color(stream, typography.colors.warning);
+    stream << ",\"error\":";
+    append_color(stream, typography.colors.error);
+    stream << ",\"errorTextHover\":";
+    append_color(stream, typography.colors.error_text_hover);
+    stream << ",\"errorTextActive\":";
+    append_color(stream, typography.colors.error_text_active);
+    stream << ",\"disabled\":";
+    append_color(stream, typography.colors.disabled);
+    stream << ",\"link\":";
+    append_color(stream, typography.colors.link);
+    stream << ",\"markBackground\":";
+    append_color(stream, typography.colors.mark_background);
+    stream << "},\"code\":{\"background\":";
+    append_color(stream, typography.code.background);
+    stream << ",\"borderColor\":";
+    append_color(stream, typography.code.border_color);
+    stream << ",\"fontScale\":" << typography.code.font_scale
+        << ",\"paddingInlineEm\":" << typography.code.padding_inline_em
+        << ",\"paddingBlockStartEm\":" << typography.code.padding_block_start_em
+        << ",\"paddingBlockEndEm\":" << typography.code.padding_block_end_em
+        << ",\"borderWidth\":" << typography.code.border_width
+        << ",\"borderRadius\":" << typography.code.border_radius
+        << "},\"keyboard\":{\"background\":";
+    append_color(stream, typography.keyboard.background);
+    stream << ",\"borderColor\":";
+    append_color(stream, typography.keyboard.border_color);
+    stream << ",\"fontScale\":" << typography.keyboard.font_scale
+        << ",\"paddingInlineEm\":" << typography.keyboard.padding_inline_em
+        << ",\"paddingBlockStartEm\":" << typography.keyboard.padding_block_start_em
+        << ",\"paddingBlockEndEm\":" << typography.keyboard.padding_block_end_em
+        << ",\"borderWidth\":" << typography.keyboard.border_width
+        << ",\"borderRadius\":" << typography.keyboard.border_radius
+        << ",\"borderBottomWidth\":" << typography.keyboard.border_bottom_width
+        << "}},\"divider\":{\"colors\":{\"line\":";
+    append_color(stream, divider.colors.line);
+    stream << ",\"text\":";
+    append_color(stream, divider.colors.text);
+    stream << ",\"plainText\":";
+    append_color(stream, divider.colors.plain_text);
+    stream << "},\"metrics\":{\"lineWidth\":" << divider.metrics.line_width
+        << ",\"orientationMargin\":" << divider.metrics.orientation_margin
+        << ",\"textPaddingInline\":" << divider.metrics.text_padding_inline
+        << ",\"verticalMarginInline\":" << divider.metrics.vertical_margin_inline
+        << ",\"horizontalMargin\":" << divider.metrics.horizontal_margin
+        << ",\"horizontalWithTextMargin\":" << divider.metrics.horizontal_with_text_margin
+        << "},\"typography\":{\"textFontSize\":" << divider.typography.text_font_size
+        << ",\"textFontWeight\":" << divider.typography.text_font_weight
+        << ",\"plainFontSize\":" << divider.typography.plain_font_size
+        << ",\"plainFontWeight\":" << divider.typography.plain_font_weight << "}}}\n";
     return stream.str();
 }
 
@@ -730,6 +1112,62 @@ void hash_color(std::uint64_t& hash, Color color) noexcept {
     hash_float(hash, color.alpha());
 }
 
+void hash_optional_color(
+    std::uint64_t& hash, const std::optional<Color>& color) noexcept {
+    hash_integer(hash, color.has_value());
+    if (color) {
+        hash_color(hash, *color);
+    }
+}
+
+void hash_inline_code(std::uint64_t& hash, const InlineCodeThemeToken& token) noexcept {
+    hash_color(hash, token.background);
+    hash_color(hash, token.border_color);
+    for (const float value : {token.font_scale, token.padding_inline_em,
+            token.padding_block_start_em, token.padding_block_end_em,
+            token.border_width, token.border_radius, token.border_bottom_width}) {
+        hash_float(hash, value);
+    }
+}
+
+void hash_typography(std::uint64_t& hash, const TypographyThemeToken& token) noexcept {
+    for (const auto& heading : token.headings) {
+        hash_float(hash, heading.font_size);
+        hash_float(hash, heading.line_height);
+    }
+    hash_integer(hash, token.font_family);
+    hash_integer(hash, token.font_family_code);
+    hash_integer(hash, token.font_weight);
+    hash_integer(hash, token.font_weight_strong);
+    hash_float(hash, token.base_font_size);
+    hash_float(hash, token.base_line_height);
+    hash_float(hash, token.title_margin_top_em);
+    hash_float(hash, token.title_margin_bottom_em);
+    const auto& colors = token.colors;
+    for (const Color color : {colors.text, colors.description, colors.success,
+            colors.warning, colors.error, colors.error_text_hover,
+            colors.error_text_active, colors.disabled, colors.link,
+            colors.mark_background}) {
+        hash_color(hash, color);
+    }
+    hash_inline_code(hash, token.code);
+    hash_inline_code(hash, token.keyboard);
+}
+
+void hash_divider(std::uint64_t& hash, const DividerThemeToken& token) noexcept {
+    hash_color(hash, token.colors.line);
+    hash_color(hash, token.colors.text);
+    hash_color(hash, token.colors.plain_text);
+    for (const float value : {token.metrics.line_width, token.metrics.orientation_margin,
+            token.metrics.text_padding_inline, token.metrics.vertical_margin_inline,
+            token.metrics.horizontal_margin, token.metrics.horizontal_with_text_margin,
+            token.typography.text_font_size, token.typography.plain_font_size}) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, token.typography.text_font_weight);
+    hash_integer(hash, token.typography.plain_font_weight);
+}
+
 void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_integer(hash, shadows.size());
     for (const ShadowLayer& layer : shadows.layers()) {
@@ -749,6 +1187,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     const ButtonThemeToken& button,
     const TextThemeToken& text,
     const SwitchThemeToken& switch_token,
+    const TypographyThemeToken& typography,
+    const DividerThemeToken& divider,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
@@ -760,6 +1200,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_color(hash, seed.color_warning);
     hash_color(hash, seed.color_error);
     hash_color(hash, seed.color_info);
+    hash_optional_color(hash, seed.color_link);
     hash_integer(hash, seed.font_family);
     hash_integer(hash, seed.font_family_code);
     hash_integer(hash, seed.font_size);
@@ -782,6 +1223,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
         map.color_primary, map.color_primary_hover, map.color_primary_active,
         map.color_primary_border, map.color_success, map.color_warning, map.color_error,
         map.color_error_hover, map.color_error_active, map.color_info,
+        map.color_success_text, map.color_warning_text, map.color_error_text,
+        map.color_link, map.color_link_hover, map.color_link_active,
         map.color_text_base, map.color_background_base,
     };
     for (const Color color : map_colors) hash_color(hash, color);
@@ -801,7 +1244,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
         alias.color_text, alias.color_text_secondary, alias.color_text_disabled,
         alias.color_background_container, alias.color_background_elevated,
         alias.color_background_container_disabled, alias.color_border,
-        alias.color_border_secondary, alias.color_focus_outline,
+        alias.color_border_secondary, alias.color_split, alias.color_focus_outline,
     };
     for (const Color color : alias_colors) hash_color(hash, color);
     hash_float(hash, alias.line_width_focus);
@@ -847,6 +1290,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
             switch_token.handle_size, switch_token.handle_size_small}) {
         hash_float(hash, value);
     }
+    hash_typography(hash, typography);
+    hash_divider(hash, divider);
     for(const auto& size : input.sizes) {
         hash_float(hash, size.control_height); hash_float(hash, size.font_size);
         hash_float(hash, size.line_height); hash_float(hash, size.padding_inline);
@@ -871,6 +1316,8 @@ ThemeSnapshot::ThemeSnapshot(
     ButtonThemeToken button,
     TextThemeToken text,
     SwitchThemeToken switch_token,
+    TypographyThemeToken typography,
+    DividerThemeToken divider,
     std::shared_ptr<const detail::InputTokenSet> input,
     std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)),
@@ -879,12 +1326,14 @@ ThemeSnapshot::ThemeSnapshot(
       button_(std::move(button)),
       text_(std::move(text)),
       switch_token_(std::move(switch_token)),
+      typography_(std::move(typography)),
+      divider_(std::move(divider)),
       input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_,
-        switch_token_, *input_, algorithms_);
-    diagnostic_json_ = serialize_snapshot(
-        seed_, map_, alias_, button_, text_, switch_token_, *input_, algorithms_, identity_);
+        switch_token_, typography_, divider_, *input_, algorithms_);
+    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_,
+        switch_token_, typography_, divider_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept { return seed_; }
@@ -893,6 +1342,8 @@ const ThemeAliasToken& ThemeSnapshot::alias() const noexcept { return alias_; }
 const ButtonThemeToken& ThemeSnapshot::button() const noexcept { return button_; }
 const TextThemeToken& ThemeSnapshot::text() const noexcept { return text_; }
 const SwitchThemeToken& ThemeSnapshot::switch_token() const noexcept { return switch_token_; }
+const TypographyThemeToken& ThemeSnapshot::typography() const noexcept { return typography_; }
+const DividerThemeToken& ThemeSnapshot::divider() const noexcept { return divider_; }
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -905,6 +1356,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_
         && left.alias_ == right.alias_ && left.button_ == right.button_
         && left.text_ == right.text_ && left.switch_token_ == right.switch_token_
+        && left.typography_ == right.typography_ && left.divider_ == right.divider_
         && *left.input_ == *right.input_
         && left.algorithms_ == right.algorithms_;
 }
@@ -1000,9 +1452,44 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         switch_token = derive_switch(map);
     }
     apply_switch_override(switch_token, config.switch_.tokens);
+    const bool inherit_parent_typography = parent != nullptr && config.inherit
+        && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{}
+        && config.algorithms.empty() && !config.typography.algorithm
+        && config.typography.seed == SeedTokenOverride{};
+    TypographyThemeToken typography;
+    if (inherit_parent_typography) {
+        typography = parent->typography();
+    } else if (config.typography.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.typography.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        typography = derive_typography(component_seed, component_map,
+            derive_alias(component_seed, component_map, algorithms));
+    } else {
+        typography = derive_typography(seed, map, alias);
+    }
+    apply_typography_override(typography, config.typography.tokens);
+    const bool inherit_parent_divider = parent != nullptr && config.inherit
+        && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{}
+        && config.algorithms.empty() && !config.divider.algorithm
+        && config.divider.seed == SeedTokenOverride{};
+    DividerThemeToken divider;
+    if (inherit_parent_divider) {
+        divider = parent->divider();
+    } else if (config.divider.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.divider.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        divider = derive_divider(component_seed, component_map,
+            derive_alias(component_seed, component_map, algorithms));
+    } else {
+        divider = derive_divider(seed, map, alias);
+    }
+    apply_divider_override(divider, config.divider.tokens);
     return ThemeSnapshot(
         std::move(seed), std::move(map), std::move(alias), std::move(button),
-        std::move(text), std::move(switch_token),
+        std::move(text), std::move(switch_token), std::move(typography),
+        std::move(divider),
         std::make_shared<const detail::InputTokenSet>(std::move(input)),
         std::move(algorithms));
 }

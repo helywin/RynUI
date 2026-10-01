@@ -75,6 +75,8 @@ std::size_t collect_changed(
         TokenIdentity::alias_color_border, changed, count);
     append_if_changed(before_alias.color_border_secondary, after_alias.color_border_secondary,
         TokenIdentity::alias_color_border_secondary, changed, count);
+    append_if_changed(before_alias.color_split, after_alias.color_split,
+        TokenIdentity::alias_color_split, changed, count);
     append_if_changed(before_alias.color_focus_outline, after_alias.color_focus_outline,
         TokenIdentity::alias_color_focus_outline, changed, count);
     append_if_changed(before_alias.line_width_focus, after_alias.line_width_focus,
@@ -110,6 +112,18 @@ std::size_t collect_changed(
         TokenIdentity::map_color_error_active, changed, count);
     append_if_changed(before_map.color_info, after_map.color_info,
         TokenIdentity::map_color_info, changed, count);
+    append_if_changed(before_map.color_success_text, after_map.color_success_text,
+        TokenIdentity::map_color_success_text, changed, count);
+    append_if_changed(before_map.color_warning_text, after_map.color_warning_text,
+        TokenIdentity::map_color_warning_text, changed, count);
+    append_if_changed(before_map.color_error_text, after_map.color_error_text,
+        TokenIdentity::map_color_error_text, changed, count);
+    append_if_changed(before_map.color_link, after_map.color_link,
+        TokenIdentity::map_color_link, changed, count);
+    append_if_changed(before_map.color_link_hover, after_map.color_link_hover,
+        TokenIdentity::map_color_link_hover, changed, count);
+    append_if_changed(before_map.color_link_active, after_map.color_link_active,
+        TokenIdentity::map_color_link_active, changed, count);
     append_if_changed(before_map.color_text_base, after_map.color_text_base,
         TokenIdentity::map_color_text_base, changed, count);
     append_if_changed(before_map.color_background_base, after_map.color_background_base,
@@ -266,6 +280,41 @@ std::size_t collect_changed(
         TokenIdentity::switch_geometry, changed, count);
     append_if_changed(old_switch.handle_background, new_switch.handle_background,
         TokenIdentity::switch_colors, changed, count);
+    const auto& old_typography = before.typography();
+    const auto& new_typography = after.typography();
+    append_if_changed(old_typography.colors, new_typography.colors,
+        TokenIdentity::typography_colors, changed, count);
+    append_if_changed(old_typography.headings, new_typography.headings,
+        TokenIdentity::typography_headings, changed, count);
+    const auto typography_fonts = [](const TypographyThemeToken& token) {
+        return std::array<std::uint32_t, 4>{
+            static_cast<std::uint32_t>(token.font_family),
+            static_cast<std::uint32_t>(token.font_family_code),
+            token.font_weight,
+            token.font_weight_strong};
+    };
+    append_if_changed(typography_fonts(old_typography), typography_fonts(new_typography),
+        TokenIdentity::typography_fonts, changed, count);
+    append_if_changed(std::array{old_typography.base_font_size, old_typography.base_line_height},
+        std::array{new_typography.base_font_size, new_typography.base_line_height},
+        TokenIdentity::typography_base_typography, changed, count);
+    append_if_changed(std::array{old_typography.title_margin_top_em,
+            old_typography.title_margin_bottom_em},
+        std::array{new_typography.title_margin_top_em,
+            new_typography.title_margin_bottom_em},
+        TokenIdentity::typography_metrics, changed, count);
+    append_if_changed(old_typography.code, new_typography.code,
+        TokenIdentity::typography_inline_code, changed, count);
+    append_if_changed(old_typography.keyboard, new_typography.keyboard,
+        TokenIdentity::typography_inline_keyboard, changed, count);
+    const auto& old_divider = before.divider();
+    const auto& new_divider = after.divider();
+    append_if_changed(old_divider.colors, new_divider.colors,
+        TokenIdentity::divider_colors, changed, count);
+    append_if_changed(old_divider.metrics, new_divider.metrics,
+        TokenIdentity::divider_metrics, changed, count);
+    append_if_changed(old_divider.typography, new_divider.typography,
+        TokenIdentity::divider_typography, changed, count);
     return count;
 }
 
@@ -417,6 +466,7 @@ const ThemeAliasToken& ThemeScope::alias() const {
         TokenIdentity::alias_color_background_container_disabled,
         TokenIdentity::alias_color_border,
         TokenIdentity::alias_color_border_secondary,
+        TokenIdentity::alias_color_split,
         TokenIdentity::alias_color_focus_outline,
         TokenIdentity::alias_line_width_focus,
         TokenIdentity::alias_focus_outline_offset,
@@ -553,6 +603,62 @@ const SwitchThemeToken& ThemeScope::switch_geometry() const {
 const SwitchThemeToken& ThemeScope::switch_colors() const {
     ensure_owner_thread(); record(TokenIdentity::switch_colors);
     return snapshot_->switch_token();
+}
+
+const TypographyThemeToken& ThemeScope::typography_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_colors);
+    return snapshot_->typography();
+}
+
+const TypographyThemeToken& ThemeScope::typography_headings() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_headings);
+    return snapshot_->typography();
+}
+
+const TypographyThemeToken& ThemeScope::typography_fonts() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_fonts);
+    return snapshot_->typography();
+}
+
+const TypographyThemeToken& ThemeScope::typography_base_typography() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_base_typography);
+    return snapshot_->typography();
+}
+
+const TypographyThemeToken& ThemeScope::typography_metrics() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_metrics);
+    return snapshot_->typography();
+}
+
+const InlineCodeThemeToken& ThemeScope::typography_inline_code() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_inline_code);
+    return snapshot_->typography().code;
+}
+
+const InlineCodeThemeToken& ThemeScope::typography_inline_keyboard() const {
+    ensure_owner_thread(); record(TokenIdentity::typography_inline_keyboard);
+    return snapshot_->typography().keyboard;
+}
+
+const DividerThemeToken& ThemeScope::divider_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::divider_colors);
+    return snapshot_->divider();
+}
+
+const DividerThemeToken& ThemeScope::divider_metrics() const {
+    ensure_owner_thread(); record(TokenIdentity::divider_metrics);
+    return snapshot_->divider();
+}
+
+const DividerThemeToken& ThemeScope::divider_typography() const {
+    ensure_owner_thread(); record(TokenIdentity::divider_typography);
+    return snapshot_->divider();
+}
+
+SystemFontFamily ThemeScope::code_font_family() const {
+    ensure_owner_thread();
+    record(TokenIdentity::typography_fonts);
+    return snapshot_->typography().font_family_code;
 }
 
 const ButtonThemeToken& ThemeScope::button_typography() const {
@@ -737,16 +843,20 @@ std::size_t ThemeScope::live_subscriber_count() const noexcept {
 }
 
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
+    // Order MUST match the TokenIdentity declaration: several readers walk the
+    // enum by contiguous range, and the count assert guards the pairing.
     constexpr std::array names{
         "alias.colorText", "alias.colorTextSecondary", "alias.colorTextDisabled",
         "alias.colorBgContainer", "alias.colorBgElevated",
         "alias.colorBgContainerDisabled", "alias.colorBorder",
-        "alias.colorBorderSecondary", "alias.colorFocusOutline",
+        "alias.colorBorderSecondary", "alias.colorSplit", "alias.colorFocusOutline",
         "alias.lineWidthFocus", "alias.focusOutlineOffset", "alias.boxShadow",
         "alias.boxShadowSecondary", "alias.boxShadowTertiary", "map.colorPrimary",
         "map.colorPrimaryHover", "map.colorPrimaryActive", "map.colorPrimaryBorder",
         "map.colorSuccess", "map.colorWarning", "map.colorError",
         "map.colorErrorHover", "map.colorErrorActive", "map.colorInfo",
+        "map.colorSuccessText", "map.colorWarningText", "map.colorErrorText",
+        "map.colorLink", "map.colorLinkHover", "map.colorLinkActive",
         "map.colorTextBase", "map.colorBgBase", "map.fontSizeSM",
         "map.fontSize", "map.fontSizeLG", "map.lineHeightSM", "map.lineHeight",
         "map.lineHeightLG", "map.sizeXS", "map.sizeSM", "map.size",
@@ -759,6 +869,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
         "Input.layoutMetrics", "Input.typography", "Input.borderRadius",
         "Input.colors", "Input.shadows", "Switch.geometry", "Switch.colors",
+        "Typography.colors", "Typography.headings", "Typography.fonts",
+        "Typography.baseTypography", "Typography.metrics", "Typography.inlineCode",
+        "Typography.inlineKeyboard", "Divider.colors", "Divider.metrics",
+        "Divider.typography",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -775,6 +889,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::alias_color_background_container_disabled:
     case TokenIdentity::alias_color_border:
     case TokenIdentity::alias_color_border_secondary:
+    case TokenIdentity::alias_color_split:
     case TokenIdentity::map_color_primary:
     case TokenIdentity::map_color_primary_hover:
     case TokenIdentity::map_color_primary_active:
@@ -785,12 +900,20 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_color_error_hover:
     case TokenIdentity::map_color_error_active:
     case TokenIdentity::map_color_info:
+    case TokenIdentity::map_color_success_text:
+    case TokenIdentity::map_color_warning_text:
+    case TokenIdentity::map_color_error_text:
+    case TokenIdentity::map_color_link:
+    case TokenIdentity::map_color_link_hover:
+    case TokenIdentity::map_color_link_active:
     case TokenIdentity::map_color_text_base:
     case TokenIdentity::map_color_background_base:
     case TokenIdentity::button_colors:
     case TokenIdentity::input_colors:
     case TokenIdentity::switch_colors:
     case TokenIdentity::text_color:
+    case TokenIdentity::typography_colors:
+    case TokenIdentity::divider_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
@@ -817,6 +940,10 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::text_font_weight:
     case TokenIdentity::text_font_size:
     case TokenIdentity::text_line_height:
+    case TokenIdentity::typography_headings:
+    case TokenIdentity::typography_fonts:
+    case TokenIdentity::typography_base_typography:
+    case TokenIdentity::divider_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -831,6 +958,10 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::switch_geometry:
     case TokenIdentity::button_padding_inline:
     case TokenIdentity::button_icon_gap:
+    case TokenIdentity::typography_metrics:
+    case TokenIdentity::typography_inline_code:
+    case TokenIdentity::typography_inline_keyboard:
+    case TokenIdentity::divider_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry
             | DirtyPhase::hit_test;
     case TokenIdentity::map_border_radius_small:
