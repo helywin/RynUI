@@ -1,0 +1,19 @@
+{
+  // C/C++ IntelliSense 的 include 路径、宏和语言标准来自 .vscode/c_cpp_properties.json。
+  // 背景与验证方式见 docs/development/vscode.md。
+  "C_Cpp.default.cStandard": "c17",
+  "C_Cpp.default.cppStandard": "c++20",
+
+  // 着色器源码使用 HLSL。
+  "files.associations": {
+    "*.hlsl": "hlsl"
+  },
+
+  // out/ 是完整构建树，包含锁定的第三方源码；不参与全局搜索和文件监视。
+  "search.exclude": {
+    "**/out": true
+  },
+  "files.watcherExclude": {
+    "**/out/**": true
+  }
+}

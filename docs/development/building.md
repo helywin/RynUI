@@ -15,6 +15,10 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 
 默认 preset 使用锁定归档的 `BUNDLED` 依赖模式。系统或 package-manager 提供的 SDL3 使用带 `-system` 后缀的 configure/build/test preset；完整规则与锁定值见 [第三方依赖](third-party.md)。
 
+## 编辑器
+
+仓库自带 `.vscode/` 配置，用于 C/C++ IntelliSense：include 路径、宏和语言标准集中在该目录，任何 preset 都会生成 `compile_commands.json`。配置来源、生效条件和排查方式见 [VS Code 使用说明](vscode.md)。
+
 ## Windows / MSVC
 
 推荐从普通 PowerShell 运行仓库包装脚本。脚本只负责定位 Visual Studio、进入 x64 Developer Environment，随后仍通过 presets 完成全部操作：

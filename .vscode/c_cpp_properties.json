@@ -1,0 +1,78 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "Win32",
+      "compileCommands": [
+        "${workspaceFolder}/out/build/windows-msvc/compile_commands.json"
+      ],
+      "includePath": [
+        "${workspaceFolder}/include",
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/examples/token_gallery",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/sdl3-src/include",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/sdl3-build/include-revision",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/sdl3-build/include-config-debug/build_config",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/sdl3-src/src",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_freetype-src/include",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_freetype-build/include",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_freetype-build/include/freetype/config",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_harfbuzz-src/src",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_harfbuzz-build/src",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_utf8proc-src",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_spirv_cross-src",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_spirv_cross-build",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_dxc-src/inc",
+        "${workspaceFolder}/out/build/windows-msvc/_deps/rynui_sdl_shadercross-src/include"
+      ],
+      "defines": [
+        "WIN32",
+        "_WINDOWS"
+      ],
+      "cStandard": "c17",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "windows-msvc-x64",
+      "compilerArgs": [
+        "/permissive-",
+        "/Zc:__cplusplus",
+        "/utf-8"
+      ],
+      "browse": {
+        "limitSymbolsToIncludedHeaders": true
+      }
+    },
+    {
+      "name": "Linux",
+      "compileCommands": [
+        "${workspaceFolder}/out/build/linux-gcc/compile_commands.json"
+      ],
+      "includePath": [
+        "${workspaceFolder}/include",
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/examples/token_gallery",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/sdl3-src/include",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/sdl3-build/include-revision",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/sdl3-build/include-config-debug/build_config",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/sdl3-src/src",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_freetype-src/include",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_freetype-build/include",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_freetype-build/include/freetype/config",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_harfbuzz-src/src",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_harfbuzz-build/src",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_utf8proc-src",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_spirv_cross-src",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_spirv_cross-build",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_dxc-src/include/dxc",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui_sdl_shadercross-src/include",
+        "${workspaceFolder}/out/build/linux-gcc/_deps/rynui-libdecor-stage/include/libdecor-0"
+      ],
+      "defines": [],
+      "cStandard": "c17",
+      "cppStandard": "c++20",
+      "intelliSenseMode": "linux-gcc-x64",
+      "browse": {
+        "limitSymbolsToIncludedHeaders": true
+      }
+    }
+  ]
+}
