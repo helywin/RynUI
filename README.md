@@ -87,8 +87,10 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [开发构建说明](docs/development/building.md)：环境、presets 与构建选项。
 - [VS Code 使用说明](docs/development/vscode.md)：IntelliSense 配置来源、生效条件与排查。
 - [架构基线](docs/architecture.md)：设计目标、模块边界和长期技术决策；包含尚未实现的规划。
+- [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：桌面、移动端与 Web 的后端分层、推荐路线及验收范围；尚未实施。
 - [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
+- [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。
 - [OpenSpec changes](openspec/changes)：各项变更的范围、任务和验收证据。
 - [Agent 协作规则](AGENTS.md)：仓库开发与验证约定。
 
