@@ -43,6 +43,9 @@ struct TypographySemantics final {
     bool disabled{};
     bool strong{};
     bool italic{};
+    bool code{};
+    bool keyboard{};
+    bool mark{};
     bool underline{};
     bool strikethrough{};
 

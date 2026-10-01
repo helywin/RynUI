@@ -70,6 +70,18 @@ struct TypographyPropsAccess final {
         const TypographyProps& props) noexcept {
         return props.strong_;
     }
+    [[nodiscard]] static const std::optional<Prop<bool>>& code(
+        const TypographyProps& props) noexcept {
+        return props.code_;
+    }
+    [[nodiscard]] static const std::optional<Prop<bool>>& keyboard(
+        const TypographyProps& props) noexcept {
+        return props.keyboard_;
+    }
+    [[nodiscard]] static const std::optional<Prop<bool>>& mark(
+        const TypographyProps& props) noexcept {
+        return props.mark_;
+    }
     [[nodiscard]] static const std::optional<Prop<bool>>& italic(
         const TypographyProps& props) noexcept {
         return props.italic_;
@@ -277,13 +289,17 @@ void capture_semantic_color(
 
 // Resolves the shape a semantic component should render with. Heading levels use
 // the per-level tokens; body and paragraph use the base tokens with the
-// emphasis variants applied.
+// emphasis variants applied. `code`/`keyboard` switch to the code font family
+// and scale by the inline token, which is what makes an inline run monospace at
+// a smaller size than its surrounding text.
 [[nodiscard]] runtime::SemanticTypography resolve_semantic_typography(
     const ThemeSnapshot& theme,
     const TypographySemantics& semantics) {
     const auto& typography = theme.typography();
     runtime::SemanticTypography resolved;
-    resolved.font_family = typography.font_family;
+    resolved.font_family = (semantics.code || semantics.keyboard)
+        ? typography.font_family_code
+        : typography.font_family;
     resolved.font_weight = semantics.strong
         ? typography.font_weight_strong : typography.font_weight;
     resolved.italic = semantics.italic;
@@ -294,6 +310,14 @@ void capture_semantic_color(
     } else {
         resolved.font_size = typography.base_font_size;
         resolved.line_height = typography.base_line_height;
+    }
+    // Inline code and keyboard render at a fraction of the surrounding size; the
+    // line box keeps the surrounding line height so an inline run does not
+    // disturb the paragraph rhythm.
+    if (semantics.code) {
+        resolved.font_size *= typography.code.font_scale;
+    } else if (semantics.keyboard) {
+        resolved.font_size *= typography.keyboard.font_scale;
     }
     return resolved;
 }
@@ -1076,6 +1100,12 @@ void mount_typography_component(
         &TypographySemantics::strong);
     connect_semantic(TypographyPropsAccess::italic(props),
         &TypographySemantics::italic);
+    connect_semantic(TypographyPropsAccess::code(props),
+        &TypographySemantics::code);
+    connect_semantic(TypographyPropsAccess::keyboard(props),
+        &TypographySemantics::keyboard);
+    connect_semantic(TypographyPropsAccess::mark(props),
+        &TypographySemantics::mark);
     connect_semantic(TypographyPropsAccess::underline(props),
         &TypographySemantics::underline);
     connect_semantic(TypographyPropsAccess::strikethrough(props),

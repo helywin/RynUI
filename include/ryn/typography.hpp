@@ -24,6 +24,21 @@ enum class TypographyType : std::uint8_t {
     Danger,
 };
 
+// Inline semantics that change the rendered shape rather than only the colour.
+// `Code` and `Keyboard` switch to the code font family at the token scale,
+// `Mark` paints a highlight behind the glyphs, and the two decoration kinds draw
+// a line through the run.
+enum class TypographyInline : std::uint8_t {
+    None,
+    Strong,
+    Italic,
+    Code,
+    Keyboard,
+    Mark,
+    Underline,
+    Strikethrough,
+};
+
 // Typography props shared by `Title`, `Text` and `Paragraph`. `type` selects a
 // semantic colour, `strong`/`italic` select real faces from the font chain, and
 // the decoration flags are carried as data so a later change can render them
@@ -42,6 +57,21 @@ public:
 
     TypographyProps& type(Prop<TypographyType> value) {
         type_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& code(Prop<bool> value) {
+        code_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& keyboard(Prop<bool> value) {
+        keyboard_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& mark(Prop<bool> value) {
+        mark_ = std::move(value);
         return *this;
     }
 
@@ -80,6 +110,9 @@ private:
 
     Prop<String> content_{String{}};
     std::optional<Prop<TypographyType>> type_;
+    std::optional<Prop<bool>> code_;
+    std::optional<Prop<bool>> keyboard_;
+    std::optional<Prop<bool>> mark_;
     std::optional<Prop<bool>> disabled_;
     std::optional<Prop<bool>> strong_;
     std::optional<Prop<bool>> italic_;

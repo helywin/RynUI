@@ -24,6 +24,13 @@ bool near(float left, float right) {
     return std::abs(left - right) < 0.0001F;
 }
 
+struct FontRequest final {
+    ryn::SystemFontFamily family{ryn::SystemFontFamily::ui_sans};
+    std::uint32_t weight{400};
+    bool italic{};
+    std::uint32_t pixel_size{};
+};
+
 struct Fixture final {
     Fixture()
         : layout(nodes),
@@ -41,7 +48,9 @@ struct Fixture final {
             layout,
             dirty,
             scene,
-            [this](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixel_size) {
+            [this](ryn::SystemFontFamily family, std::uint32_t weight, bool italic,
+                   std::uint32_t pixel_size) {
+                requests.push_back(FontRequest{family, weight, italic, pixel_size});
                 return resolve_fonts(pixel_size);
             });
     }
@@ -97,7 +106,18 @@ struct Fixture final {
     ryn::detail::TextSceneService scene;
     std::vector<ryn::font::FontIdentity> chain;
     std::map<std::uint32_t, std::vector<ryn::font::FontIdentity>> chains;
+    // Every resolver call, so a test can assert which family, weight and slant
+    // the component actually asked for.
+    std::vector<FontRequest> requests;
     std::unique_ptr<ryn::detail::TextComponentHost> host;
+
+    [[nodiscard]] bool requested(ryn::SystemFontFamily family, std::uint32_t weight,
+                                  bool italic) const {
+        return std::ranges::any_of(requests, [&](const FontRequest& request) {
+            return request.family == family && request.weight == weight
+                && request.italic == italic;
+        });
+    }
 };
 
 [[nodiscard]] ryn::runtime::SemanticForeground channels(ryn::Color color) {
@@ -204,6 +224,49 @@ void test_emphasis_reaches_the_shape_request() {
             "emphasis change did not reshape or remounted the component");
 }
 
+void test_inline_semantics_reach_the_resolver_and_scale() {
+    Fixture fixture;
+    fixture.host->mount(ryn::Content{[] {
+        ryn::Text(ryn::TypographyProps{}.content(u8"Plain"));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Strong").strong(true));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Italic").italic(true));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Code").code(true));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Key").keyboard(true));
+    }});
+    require(fixture.layout_texts(), "inline Typography fixture did not synchronize");
+
+    const auto& typography = ryn::resolve_theme().typography();
+    // Every inline variant must reach the resolver with its own request.
+    require(fixture.requested(ryn::SystemFontFamily::ui_sans, 400, false),
+            "plain Typography text did not request the UI family at regular weight");
+    require(fixture.requested(ryn::SystemFontFamily::ui_sans,
+                typography.font_weight_strong, false),
+            "strong Typography text did not request the strong weight");
+    require(fixture.requested(ryn::SystemFontFamily::ui_sans, 400, true),
+            "italic Typography text did not request a slanted face");
+    require(fixture.requested(ryn::SystemFontFamily::ui_monospace, 400, false),
+            "code and keyboard Typography text did not request the code family");
+
+    // `code` and `keyboard` scale by their inline token instead of the base size.
+    const auto expected_code =
+        static_cast<std::uint32_t>(std::lround(
+            typography.base_font_size * typography.code.font_scale));
+    const auto expected_keyboard =
+        static_cast<std::uint32_t>(std::lround(
+            typography.base_font_size * typography.keyboard.font_scale));
+    require(expected_code != expected_keyboard,
+            "code and keyboard inline scales are not distinct");
+    require(std::ranges::any_of(fixture.requests, [&](const FontRequest& request) {
+                return request.family == ryn::SystemFontFamily::ui_monospace
+                    && request.pixel_size == expected_code;
+            })
+                && std::ranges::any_of(fixture.requests, [&](const FontRequest& request) {
+                    return request.family == ryn::SystemFontFamily::ui_monospace
+                        && request.pixel_size == expected_keyboard;
+                }),
+            "code or keyboard did not resolve at its inline token size");
+}
+
 void test_reactive_props_stay_local() {
     Fixture fixture;
     ryn::Signal<ryn::String> content{ryn::String{u8"First"}};
@@ -285,6 +348,7 @@ int main() {
         test_public_api_and_heading_levels();
         test_semantic_colours_and_disabled();
         test_emphasis_reaches_the_shape_request();
+        test_inline_semantics_reach_the_resolver_and_scale();
         test_reactive_props_stay_local();
         test_theme_update_rescales_headings_without_remount();
     } catch (const std::exception& error) {
