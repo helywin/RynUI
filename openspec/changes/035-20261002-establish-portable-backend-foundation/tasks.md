@@ -31,7 +31,7 @@
 
 ## 6. Windows 原生验收
 
-- [ ] 6.1 在 Windows/MSVC 默认 Debug 和 Release 上实际运行 SDL Gallery，验证窗口/GPU/字体/输入服务、resize 与 DPI 场景；保存日志和截图并独立提交 Windows 证据。
+- [x] 6.1 在 Windows/MSVC 默认 Debug 和 Release 上实际运行 SDL Gallery，验证窗口/GPU/字体/输入服务、resize 与 DPI 场景；保存日志和截图并独立提交 Windows 证据。
 
 ## 7. Linux 原生验收
 

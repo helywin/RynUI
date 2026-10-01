@@ -1,0 +1,244 @@
+[
+  {
+    "configuration": "Debug",
+    "mode": "system",
+    "exit_code": 0,
+    "executable_sha256": "8b44c91733fe3108fd861ef3182ba6dc2faebef0036b275a59670dfd39c410e6",
+    "captures": [
+      {
+        "path": "debug-system/committed.png",
+        "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+      },
+      {
+        "path": "debug-system/copied.png",
+        "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+      },
+      {
+        "path": "debug-system/dividers.png",
+        "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+      },
+      {
+        "path": "debug-system/editing.png",
+        "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+      },
+      {
+        "path": "debug-system/expanded.png",
+        "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+      },
+      {
+        "path": "debug-system/headings.png",
+        "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+      },
+      {
+        "path": "debug-system/link-focus.png",
+        "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+      },
+      {
+        "path": "debug-system/multiline-expanded.png",
+        "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+      },
+      {
+        "path": "debug-system/semantics.png",
+        "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "exit_code": 0,
+    "executable_sha256": "8b44c91733fe3108fd861ef3182ba6dc2faebef0036b275a59670dfd39c410e6",
+    "captures": [
+      {
+        "path": "debug-scale-2/committed.png",
+        "sha256": "e184523a91bd09b5aab09cb13fd048603192d54693ea8abfccd24b0c9c93f4c0"
+      },
+      {
+        "path": "debug-scale-2/copied.png",
+        "sha256": "e9ec20e9e3b80aecd5fe1a0ee59aa4cbc1e236a41fbfb0836956e4403cfc5247"
+      },
+      {
+        "path": "debug-scale-2/dividers.png",
+        "sha256": "7075c3792a0167675a99054e640e01d6a51ff23e44d28e00dc27519aa54fa589"
+      },
+      {
+        "path": "debug-scale-2/editing.png",
+        "sha256": "b7e48cf6a49e2f8e60085e992e6b3dab2d018d441dc41b0568628395e3144bd0"
+      },
+      {
+        "path": "debug-scale-2/expanded.png",
+        "sha256": "f4ced7ce898ed0f33eac57ef94b79fb89408e0dd42c30b1e5311c2f26f2d6a30"
+      },
+      {
+        "path": "debug-scale-2/headings.png",
+        "sha256": "ffd2f283d8bc7de0507b4b1a21867b361d7eaf28bda51f6b0bbb1550f0e1285a"
+      },
+      {
+        "path": "debug-scale-2/link-focus.png",
+        "sha256": "0f18865a0165f9a5f5cd4f569341d2f6c735432b64a5faeb0780826357abcc48"
+      },
+      {
+        "path": "debug-scale-2/multiline-expanded.png",
+        "sha256": "555746105ff3d79b362ac8b9fd7ee8e78028bf71d52da326c4ae430a7f8a27e5"
+      },
+      {
+        "path": "debug-scale-2/semantics.png",
+        "sha256": "d4da5c6bae25bdda3ebfd2b37c4701d44ffab5f93aa57ebe1ed9e7b875cd32ca"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Debug",
+    "mode": "native-resize",
+    "exit_code": 0,
+    "sizes": [
+      {
+        "outer_size": [
+          1200,
+          840
+        ],
+        "client_size": [
+          1182,
+          793
+        ],
+        "capture": "debug-resize-wide.png",
+        "sha256": "09342fad78eee191a59c12978315ef784e216060d309c31f6cfc3ee21234e623"
+      },
+      {
+        "outer_size": [
+          900,
+          700
+        ],
+        "client_size": [
+          882,
+          653
+        ],
+        "capture": "debug-resize-narrow.png",
+        "sha256": "1d34491596486d90629ea7c812679c539c284743a32f7e70ec29bde7537d123f"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "system",
+    "exit_code": 0,
+    "executable_sha256": "2a54f462819c3756b11ade55ef96940051c3623ee0bf329b581c493c0438ecf3",
+    "captures": [
+      {
+        "path": "release-system/committed.png",
+        "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+      },
+      {
+        "path": "release-system/copied.png",
+        "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+      },
+      {
+        "path": "release-system/dividers.png",
+        "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+      },
+      {
+        "path": "release-system/editing.png",
+        "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+      },
+      {
+        "path": "release-system/expanded.png",
+        "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+      },
+      {
+        "path": "release-system/headings.png",
+        "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+      },
+      {
+        "path": "release-system/link-focus.png",
+        "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+      },
+      {
+        "path": "release-system/multiline-expanded.png",
+        "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+      },
+      {
+        "path": "release-system/semantics.png",
+        "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-2",
+    "exit_code": 0,
+    "executable_sha256": "2a54f462819c3756b11ade55ef96940051c3623ee0bf329b581c493c0438ecf3",
+    "captures": [
+      {
+        "path": "release-scale-2/committed.png",
+        "sha256": "e184523a91bd09b5aab09cb13fd048603192d54693ea8abfccd24b0c9c93f4c0"
+      },
+      {
+        "path": "release-scale-2/copied.png",
+        "sha256": "e9ec20e9e3b80aecd5fe1a0ee59aa4cbc1e236a41fbfb0836956e4403cfc5247"
+      },
+      {
+        "path": "release-scale-2/dividers.png",
+        "sha256": "7075c3792a0167675a99054e640e01d6a51ff23e44d28e00dc27519aa54fa589"
+      },
+      {
+        "path": "release-scale-2/editing.png",
+        "sha256": "b7e48cf6a49e2f8e60085e992e6b3dab2d018d441dc41b0568628395e3144bd0"
+      },
+      {
+        "path": "release-scale-2/expanded.png",
+        "sha256": "f4ced7ce898ed0f33eac57ef94b79fb89408e0dd42c30b1e5311c2f26f2d6a30"
+      },
+      {
+        "path": "release-scale-2/headings.png",
+        "sha256": "ffd2f283d8bc7de0507b4b1a21867b361d7eaf28bda51f6b0bbb1550f0e1285a"
+      },
+      {
+        "path": "release-scale-2/link-focus.png",
+        "sha256": "0f18865a0165f9a5f5cd4f569341d2f6c735432b64a5faeb0780826357abcc48"
+      },
+      {
+        "path": "release-scale-2/multiline-expanded.png",
+        "sha256": "555746105ff3d79b362ac8b9fd7ee8e78028bf71d52da326c4ae430a7f8a27e5"
+      },
+      {
+        "path": "release-scale-2/semantics.png",
+        "sha256": "d4da5c6bae25bdda3ebfd2b37c4701d44ffab5f93aa57ebe1ed9e7b875cd32ca"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Release",
+    "mode": "native-resize",
+    "exit_code": 0,
+    "sizes": [
+      {
+        "outer_size": [
+          1200,
+          840
+        ],
+        "client_size": [
+          1182,
+          793
+        ],
+        "capture": "release-resize-wide.png",
+        "sha256": "409548a4cdbcf883957a6af32dc69ac36487523c78202eedc3b1cb2fe25acb4d"
+      },
+      {
+        "outer_size": [
+          900,
+          700
+        ],
+        "client_size": [
+          882,
+          653
+        ],
+        "capture": "release-resize-narrow.png",
+        "sha256": "b25c3a49197ab8d8ebf13b17ef425c23360914e0d4c639e6d37b75ade634668a"
+      }
+    ]
+  }
+]
