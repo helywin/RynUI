@@ -337,7 +337,7 @@ Token 读取会在 reactive scope 记录 identity subscription。Theme 更新比
 
 基础动画由 internal `AnimationRuntime` 统一管理，不从 `rynui.hpp` 导出稳定 consumer DSL。Runtime 使用整数 microseconds、production steady clock 与 controlled test clock；动画、target 和 owner scope 都使用 slot + generation identity，并受 UI owner thread 约束。closed typed value 首批支持 `float`、`Color` 和 logical geometry，easing 使用 validated typed cubic-bezier，不接受 CSS transition string。
 
-`OnDemandFrameLoop` 通过可选 deadline source 获取最早 animation deadline，把 input、resize 与 animation wake 合并到同一 frame timestamp。没有活动动画时继续使用 blocking one-shot 行为，不以固定 16ms timer 轮询；deferred GPU submit 保留 dirty range，并在同一 timestamp 重试时不得重复推进动画。
+`OnDemandFrameLoop` 通过可选 deadline source 获取最早 animation deadline，把 input、resize 与 animation wake 合并到同一 frame timestamp。非阻塞 `tick` 与原生等待 `step` 共用更新逻辑，callback pump 无工作时撤销回调；原生宿主保留 blocking one-shot 的有界事件等待。deferred 保留待呈现 revision，已接受的上传不因 surface 不可用而重复；上传失败才恢复 dirty。恢复需明确事件或 request，同一 timestamp 重试不得重复推进动画。
 
 Theme snapshot 解析 `motionBase`、`motionUnit`、fast/mid/slow duration 和八组 typed easing。effective `MotionPolicy` 组合 Theme `motion` 与可注入的 `normal|reduced` preference；motion disabled 或 reduced 时，非必要 duration/delay 归零并同步提交最终可访问状态。平台系统偏好 source 是后续 adapter 边界，不得把某个桌面私有设置写进跨平台 Runtime。
 
@@ -464,6 +464,10 @@ Input / mailbox wake
 Scheduler 必须支持批处理、Dirty root 合并、确定性队列顺序，以及更新过程中再次失效时的边界控制。同一次 drain 中接受的状态消息默认在一个外层 `batch()` 中应用；不可丢事件仍按队列顺序逐个还原，不得因批处理改变事件语义。
 
 响应传播、结构更新、Layout、GPU 提交和 Effect 仍只在 UI thread 执行。后台任务的完成通知是下一个 UI epoch 的输入，不允许在 worker 完成栈上同步继续 UI Effect。
+
+`CallbackFramePump` 由 host 保存一个可替换 callback ticket：FrameRequestState/DirtyQueues 唤醒，AnimationRuntime schedule observer 更新提前/撤销的 deadline。host 必须异步安排 callback，使用相同 owner thread 和单调 microsecond clock，不能在排程函数中直接调用 tick。ticket 使用独立 weak lifetime token 与 generation；旧回调、跨线程调用和重入不执行帧，pump 在提交回调内被销毁后也不访问旧对象。
+
+动画采样产生的 Core dirty invalidation 在当前提交阶段由本帧布局/上传消费，使用 `request_invalidation_frame` 合并；显式 `request_frame` 始终安排下一 epoch，completion 或晚到用户更新不得被吞。deferred/failed 的 pending presentation revision 与立即 wake 分开，恢复呈现最新场景；这是按需调度与显式恢复合同，不是完整浏览器/移动后台策略。
 
 ## 13. 建议工程结构
 

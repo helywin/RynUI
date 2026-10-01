@@ -21,8 +21,8 @@
 
 ## 4. 非阻塞帧调度（平台通用）
 
-- [ ] 4.1 提供原生 step 共用的非阻塞 tick 与 callback wake/deadline/generation 封装；测试验证无 wait、wake 合并、重入/旧 callback 拒绝与单调时间。
-- [ ] 4.2 明确 deferred 的待呈现 revision 与恢复，不无条件立即重试；Recording surface 挂起/最新内容恢复/无重复上传和既有 scheduler tests 通过，更新文档并提交。
+- [x] 4.1 提供原生 step 共用的非阻塞 tick 与 callback wake/deadline/generation 封装；测试验证无 wait、wake 合并、重入/旧 callback 拒绝与单调时间。
+- [x] 4.2 明确 deferred 的待呈现 revision 与恢复，不无条件立即重试；Recording surface 挂起/最新内容恢复/无重复上传和既有 scheduler tests 通过，更新文档并提交。
 
 ## 5. 集成验收（平台通用）
 

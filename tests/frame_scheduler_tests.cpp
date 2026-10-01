@@ -2,6 +2,10 @@
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/animation_frame_submitter.hpp"
 #include "runtime/invalidation.hpp"
+#include "runtime/callback_frame_pump.hpp"
+
+#include <functional>
+#include <thread>
 
 #include <deque>
 #include <iostream>
@@ -32,6 +36,7 @@ public:
     }
 
     bool wait_for_frame_event(std::uint32_t timeout_milliseconds) noexcept override {
+        ++waits;
         if (wake_on_wait) {
             wake_on_wait = false;
             current = current
@@ -48,6 +53,7 @@ public:
     std::uint32_t last_timeout{0};
     bool poll_event{false};
     bool wake_on_wait{false};
+    int waits{};
 };
 
 class ControlledSubmitter final : public ryn::runtime::FrameSubmitter {
@@ -56,6 +62,7 @@ public:
         ryn::animation::AnimationTime frame_time) override {
         ++calls;
         timestamps.push_back(frame_time);
+        if (on_submit) on_submit();
         if (results.empty()) {
             return ryn::runtime::FrameSubmissionResult::submitted;
         }
@@ -67,6 +74,7 @@ public:
     std::deque<ryn::runtime::FrameSubmissionResult> results;
     std::vector<ryn::animation::AnimationTime> timestamps;
     int calls{0};
+    std::function<void()> on_submit;
 };
 
 class ControlledDeadline final : public ryn::runtime::FrameDeadlineSource {
@@ -79,6 +87,26 @@ public:
     std::optional<ryn::animation::AnimationTime> deadline;
 };
 
+class CallbackHost final : public ryn::runtime::FrameCallbackHost {
+public:
+    void replace_callback(std::optional<ryn::animation::AnimationTime> time,
+        ryn::runtime::FrameCallback callback) noexcept override {
+        deadline = time;
+        current = callback;
+        ++replacements;
+        scheduled = true;
+    }
+    void cancel_callback() noexcept override { ++cancellations; scheduled = false; }
+    ryn::runtime::FrameLoopStep fire(ryn::animation::AnimationTime time) {
+        scheduled = false;
+        return current.run(time);
+    }
+    ryn::runtime::FrameCallback current;
+    std::optional<ryn::animation::AnimationTime> deadline;
+    bool scheduled{};
+    int replacements{}, cancellations{};
+};
+
 class RecordingAnimationSink final : public ryn::animation::AnimationTargetSink {
 public:
     void apply(
@@ -88,17 +116,20 @@ public:
         ryn::animation::AnimationDirtyDomain) override {
         values.push_back(std::get<float>(value));
         dirty = true;
+        if (on_apply) on_apply();
     }
 
     void completed(
         ryn::animation::AnimationId,
         ryn::animation::AnimationTargetId) override {
         ++completions;
+        if (on_complete) on_complete();
     }
 
     std::vector<float> values;
     int completions{0};
     bool dirty{false};
+    std::function<void()> on_apply, on_complete;
 };
 
 class DeferredDownstream final : public ryn::runtime::FrameSubmitter {
@@ -283,6 +314,162 @@ void test_dirty_update_requests_a_frame() {
             "equal property update requested an extra frame");
 }
 
+void test_nonblocking_callback_requests_and_lifetime() {
+    using namespace ryn::runtime;
+    using ryn::animation::AnimationTime;
+    FrameRequestState requests;
+    ControlledEvents events;
+    ControlledSubmitter submitter;
+    OnDemandFrameLoop loop(requests, events, submitter);
+    CallbackHost host;
+    FrameCallback retired;
+    {
+        CallbackFramePump pump(requests, loop, host);
+        require(!host.scheduled, "idle pump scheduled callback");
+        NodeStore nodes;
+        const auto node = nodes.create_root();
+        DirtyQueues dirty(nodes, &requests);
+        NodePropertyWriter properties(nodes, dirty);
+        require(properties.set_color(node, {0.2F, 0.5F, 0.9F, 1}), "property update failed");
+        requests.request_frame();
+        requests.request_frame();
+        require(host.replacements == 1 && host.scheduled && !host.deadline,
+            "Core property requests did not coalesce into immediate callback");
+        const auto previous = host.current;
+        submitter.on_submit = [&] {
+            require(previous.run(AnimationTime::microseconds(100)) == FrameLoopStep::idle,
+                "callback reentered frame submission");
+        };
+        require(host.fire(AnimationTime::microseconds(100)) == FrameLoopStep::submitted,
+            "callback did not submit");
+        require(events.waits == 0 && submitter.calls == 1 && !host.scheduled,
+            "callback waited or idle callback remained scheduled");
+        submitter.on_submit = {};
+        requests.request_frame();
+        require(previous.run(AnimationTime::microseconds(200)) == FrameLoopStep::idle,
+            "old callback submitted newer request");
+        require(host.fire(AnimationTime::microseconds(50)) == FrameLoopStep::submitted
+            && submitter.timestamps.back() == AnimationTime::microseconds(100)
+            && loop.counters().clamped_timestamps == 1, "callback clock moved backwards");
+        requests.request_frame();
+        retired = host.current;
+        auto wrong_thread_result = FrameLoopStep::submitted;
+        std::thread foreign([&] { wrong_thread_result = retired.run(AnimationTime::microseconds(300)); });
+        foreign.join();
+        require(wrong_thread_result == FrameLoopStep::idle, "foreign-thread callback accepted");
+    }
+    require(retired.run(AnimationTime::microseconds(400)) == FrameLoopStep::idle
+        && host.cancellations == 1, "destroyed pump callback touched released object");
+    require(loop.tick() == FrameLoopStep::submitted && events.waits == 0,
+        "nonblocking tick did not remain usable after callback pump destruction");
+}
+
+void test_callback_animation_schedule_changes() {
+    using namespace ryn::animation;
+    using namespace ryn::runtime;
+    FrameRequestState requests;
+    AnimationRuntime animations;
+    animations.set_schedule_observer(&requests);
+    animations.set_nominal_frame_period(AnimationDuration::microseconds(1000));
+    RecordingAnimationSink sink;
+    const auto scope = animations.create_scope();
+    const auto target = animations.register_target(scope, sink, AnimationValueKind::scalar,
+        AnimationDirtyDomain::material);
+    ControlledEvents events;
+    ControlledSubmitter downstream;
+    AnimationFrameSubmitter submitter(animations, downstream);
+    AnimationFrameDeadlineSource deadlines(animations);
+    OnDemandFrameLoop loop(requests, events, submitter, deadlines);
+    CallbackHost host;
+    CallbackFramePump pump(requests, loop, host);
+    const auto id = animations.play(target, 0.0F, 1.0F,
+        {AnimationDuration::microseconds(10000), AnimationDuration::microseconds(3000), Easing::linear()}, {});
+    require(host.scheduled && host.deadline == AnimationTime::microseconds(10000),
+        "animation play did not schedule future callback");
+    const auto late = host.current;
+    require(animations.retarget(id, 1.0F,
+        {AnimationDuration::microseconds(2000), AnimationDuration::microseconds(3000), Easing::linear()}, {}),
+        "animation retarget failed");
+    require(host.replacements == 2 && host.deadline == AnimationTime::microseconds(2000),
+        "earlier animation deadline did not replace callback");
+    require(late.run(AnimationTime::microseconds(10000)) == FrameLoopStep::idle,
+        "replaced deadline callback submitted");
+    const auto canceled = host.current;
+    require(animations.cancel(id, {}) && !host.scheduled && host.cancellations == 1,
+        "animation cancellation left deadline scheduled");
+    require(canceled.run(AnimationTime::microseconds(2000)) == FrameLoopStep::idle,
+        "canceled deadline callback submitted");
+    static_cast<void>(animations.play(target, 0.0F, 1.0F,
+        {{}, AnimationDuration::microseconds(2000), Easing::linear()}, {}));
+    require(host.fire(AnimationTime::microseconds(1000)) == FrameLoopStep::submitted
+        && host.deadline == AnimationTime::microseconds(2000), "animation callback did not advance deadline");
+    require(host.fire(AnimationTime::microseconds(2000)) == FrameLoopStep::submitted
+        && !host.scheduled && animations.size() == 0 && events.waits == 0,
+        "completed animation did not restore callback idle");
+    sink.on_apply = [&] { requests.request_invalidation_frame(); };
+    sink.on_complete = [&] { requests.request_frame(); };
+    static_cast<void>(animations.play(target, 0.0F, 1.0F,
+        {{}, AnimationDuration::microseconds(1000), Easing::linear()}, AnimationTime::microseconds(2000)));
+    downstream.results.push_back(FrameSubmissionResult::deferred);
+    require(host.fire(AnimationTime::microseconds(3000)) == FrameLoopStep::deferred
+        && loop.pending_presentation_revision() && *loop.pending_presentation_revision() >= 2
+        && requests.pending() && host.scheduled && !host.deadline,
+        "completion explicit request swallowed or sampled deferred revision lost");
+    require(host.fire(AnimationTime::microseconds(3000)) == FrameLoopStep::submitted
+        && !requests.pending() && !host.scheduled, "completion next epoch did not settle idle");
+}
+
+void test_pump_destroyed_during_submission() {
+    using namespace ryn::runtime;
+    FrameRequestState requests;
+    ControlledEvents events;
+    ControlledSubmitter submitter;
+    OnDemandFrameLoop loop(requests, events, submitter);
+    CallbackHost host;
+    auto pump = std::make_unique<CallbackFramePump>(requests, loop, host);
+    requests.request_frame();
+    const auto callback = host.current;
+    submitter.on_submit = [&] { pump.reset(); };
+    require(host.fire({}) == FrameLoopStep::submitted && !pump && !host.scheduled,
+        "pump destruction inside submission failed");
+    require(callback.run({}) == FrameLoopStep::idle, "callback survived active pump destruction");
+    pump = std::make_unique<CallbackFramePump>(requests, loop, host);
+    requests.request_frame();
+    submitter.on_submit = [&] { pump.reset(); throw std::runtime_error("after destruction"); };
+    bool caught = false;
+    try { static_cast<void>(host.fire({})); } catch (const std::runtime_error&) { caught = true; }
+    require(caught && !pump && !host.scheduled, "exception after pump destruction accessed dead pump");
+    submitter.on_submit = {};
+    pump = std::make_unique<CallbackFramePump>(requests, loop, host);
+    requests.request_frame();
+    submitter.on_submit = [&] { requests.request_frame(); };
+    require(host.fire({}) == FrameLoopStep::submitted && requests.pending() && host.scheduled,
+        "late non-animation request was consumed by current frame");
+}
+
+void test_deferred_revision_and_reentrant_tick() {
+    using namespace ryn::runtime;
+    FrameRequestState requests;
+    ControlledEvents events;
+    ControlledSubmitter submitter;
+    OnDemandFrameLoop loop(requests, events, submitter);
+    requests.request_frame();
+    submitter.results.push_back(FrameSubmissionResult::deferred);
+    require(loop.tick() == FrameLoopStep::deferred && loop.pending_presentation_revision() == 1
+        && !requests.pending(), "deferred revision became immediate wake or disappeared");
+    for (int i = 0; i < 100; ++i) require(loop.tick() == FrameLoopStep::idle, "deferred busy loop");
+    requests.request_frame();
+    submitter.results.push_back(FrameSubmissionResult::deferred);
+    require(loop.tick() == FrameLoopStep::deferred && loop.pending_presentation_revision() == 2,
+        "deferred newer revision did not supersede previous content");
+    bool rejected = false;
+    submitter.on_submit = [&] { try { static_cast<void>(loop.tick()); }
+        catch (const std::logic_error&) { rejected = true; } };
+    events.poll_event = true;
+    require(loop.tick() == FrameLoopStep::submitted && !loop.pending_presentation_revision()
+        && rejected && events.waits == 0, "resume or tick reentry guard failed");
+}
+
 } // namespace
 
 int main() {
@@ -292,6 +479,10 @@ int main() {
         test_deadline_wait_rounding_and_event_coalescing();
         test_animation_pipeline_deferred_retry_and_idle_recovery();
         test_dirty_update_requests_a_frame();
+        test_nonblocking_callback_requests_and_lifetime();
+        test_callback_animation_schedule_changes();
+        test_pump_destroyed_during_submission();
+        test_deferred_revision_and_reentrant_tick();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

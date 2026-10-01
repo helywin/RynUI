@@ -150,6 +150,7 @@ AnimationId AnimationRuntime::play(
     }
     ++diagnostics_.created;
     ++diagnostics_.active;
+    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
 
     if (spec.duration == AnimationDuration{}) {
         static_cast<void>(finish(id));
@@ -259,6 +260,7 @@ bool AnimationRuntime::retarget(
     record->spec = spec;
     record->start_time = effective_time;
     ++diagnostics_.retargeted;
+    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
     if (spec.duration == AnimationDuration{}) {
         if (record->in_callback) {
             record->finish_requested = true;
@@ -291,6 +293,11 @@ std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
     }
 
     tick_snapshot_.assign(active_.begin(), active_.end());
+    struct Sampling {
+        AnimationScheduleObserver* observer;
+        ~Sampling() { if (observer) observer->animation_tick_finished(); }
+    } sampling{schedule_observer_};
+    if (sampling.observer) sampling.observer->animation_tick_started();
     std::size_t updates = 0;
     for (const auto id : tick_snapshot_) {
         const auto* record = find(id);
@@ -344,6 +351,7 @@ void AnimationRuntime::set_nominal_frame_period(AnimationDuration period) {
             "nominal animation frame period must be positive");
     }
     nominal_frame_period_ = period;
+    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
 }
 
 AnimationDuration AnimationRuntime::nominal_frame_period() const noexcept {
@@ -667,6 +675,7 @@ bool AnimationRuntime::remove_animation(
     advance_generation(slot.generation);
     free_animation_slots_.push_back(animation.index);
     --diagnostics_.active;
+    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
     if (canceled && !completion_counted) {
         ++diagnostics_.canceled;
     }

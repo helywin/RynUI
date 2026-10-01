@@ -1,5 +1,6 @@
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/recording/recording_renderer.hpp"
+#include "runtime/callback_frame_pump.hpp"
 #include "support/input_fixture.hpp"
 
 #include <algorithm>
@@ -145,6 +146,17 @@ struct Fixture final {
     }
 };
 
+class SurfaceEvents final : public runtime::FrameEventSource {
+  public:
+    animation::AnimationTime now() const noexcept override { return {}; }
+    bool poll_frame_event() noexcept override { return false; }
+    bool wait_for_frame_event(std::uint32_t) noexcept override {
+        ++waits;
+        return false;
+    }
+    int waits{};
+};
+
 void real_scene_transaction_and_epoch() {
     Fixture fixture;
     check(fixture.resources.synchronize(fixture.data()), "initial transaction failed");
@@ -228,17 +240,94 @@ void deferred_surface_retains_uploads() {
     check(fixture.resources.synchronize(fixture.data()), "surface initial sync failed");
     check(fixture.backend.attach_scene(fixture.attachment()), "surface attach failed");
     auto uploads = fixture.backend.counters().uploads;
+    runtime::FrameRequestState requests;
+    SurfaceEvents events;
+    runtime::OnDemandFrameLoop loop(requests, events, fixture.backend);
     fixture.backend.set_surface_available(false);
-    check(fixture.backend.submit_frame(animation::AnimationTime{}) ==
-              runtime::FrameSubmissionResult::deferred,
-          "unavailable surface did not defer");
+    requests.request_frame();
+    check(loop.tick() == runtime::FrameLoopStep::deferred, "unavailable surface did not defer");
+    check(loop.pending_presentation_revision() == 1, "surface defer lost presentation revision");
+    for (int i = 0; i < 50; ++i)
+        check(loop.tick() == runtime::FrameLoopStep::idle, "surface defer spun");
     check(fixture.resources.synchronize(fixture.data()), "deferred idle sync failed");
     check(fixture.backend.counters().uploads == uploads, "accepted data reuploaded while deferred");
     fixture.content.set(String{u8"挂起期间的最新内容 Latest"});
     fixture.layout();
     check(fixture.resources.synchronize(fixture.data()), "latest deferred data failed");
+    check(fixture.backend.attach_scene(fixture.attachment()), "latest deferred attachment failed");
+    requests.request_frame();
+    check(loop.tick() == runtime::FrameLoopStep::deferred &&
+              loop.pending_presentation_revision() == 2,
+          "latest surface content did not supersede deferred revision");
+    uploads = fixture.backend.counters().uploads;
     fixture.backend.set_surface_available(true);
+    requests.request_frame();
+    check(loop.tick() == runtime::FrameLoopStep::submitted &&
+              !loop.pending_presentation_revision() &&
+              fixture.backend.counters().uploads == uploads && events.waits == 0,
+          "surface resume lost content, reuploaded accepted data, or waited");
     fixture.verify();
+}
+
+void real_component_animation_uses_future_callback() {
+    Fixture fixture;
+    struct Deadline final : runtime::FrameDeadlineSource {
+        explicit Deadline(Fixture &value) : fixture(&value) {}
+        std::optional<animation::AnimationTime> next_deadline() const override {
+            return fixture->ui.services.next_frame_deadline();
+        }
+        Fixture *fixture;
+    } deadlines{fixture};
+    struct Submitter final : runtime::FrameSubmitter {
+        explicit Submitter(Fixture &value) : fixture(&value) {}
+        runtime::FrameSubmissionResult submit_frame(animation::AnimationTime time) override {
+            static_cast<void>(fixture->ui.services.tick_animations(time));
+            fixture->layout();
+            if (!fixture->resources.synchronize(fixture->data()) ||
+                !fixture->backend.attach_scene(fixture->attachment()))
+                return runtime::FrameSubmissionResult::failed;
+            return fixture->backend.submit_frame(time);
+        }
+        Fixture *fixture;
+    } submitter{fixture};
+    struct Host final : runtime::FrameCallbackHost {
+        void replace_callback(std::optional<animation::AnimationTime> value,
+                              runtime::FrameCallback cb) noexcept override {
+            deadline = value;
+            callback = cb;
+            scheduled = true;
+        }
+        void cancel_callback() noexcept override { scheduled = false; }
+        std::optional<animation::AnimationTime> deadline;
+        runtime::FrameCallback callback;
+        bool scheduled{};
+    } host;
+    SurfaceEvents events;
+    auto &requests = fixture.ui.frames;
+    runtime::OnDemandFrameLoop loop(requests, events, submitter, deadlines);
+    runtime::CallbackFramePump pump(requests, loop, host);
+    fixture.ui.buttons.set_motion_preference(animation::MotionPreference::normal);
+    const auto button = fixture.ui.buttons.mounted_buttons().front();
+    check(fixture.ui.services.focus().request_focus(button.interaction, input::FocusModality::keyboard),
+        "real Input blur transition did not start");
+    const auto rect = fixture.ui.nodes.require(button.node).bounds;
+    input::PointerInputEvent hover{};
+    hover.pointer = input::PointerIdentity::mouse();
+    hover.action = input::PointerAction::move;
+    hover.x = rect.x + rect.width / 2;
+    hover.y = rect.y + rect.height / 2;
+    fixture.ui.services.pointer().dispatch(hover);
+    check(fixture.ui.services.animations().size() > 0, "real Button hover did not animate");
+    check(host.callback.run(animation::AnimationTime::microseconds(100000)) ==
+              runtime::FrameLoopStep::submitted,
+          "real component animation did not submit");
+    check(!requests.pending() && host.scheduled && host.deadline &&
+              *host.deadline > animation::AnimationTime::microseconds(100000),
+          "real Button/Input invalidation scheduled immediate animation loop");
+    fixture.backend.set_surface_available(false);
+    check(host.callback.run(*host.deadline) == runtime::FrameLoopStep::deferred &&
+              !requests.pending() && host.deadline,
+          "real deferred animation self-requested immediate retry");
 }
 
 void upload_exceptions_release_temporary_resources() {
@@ -331,6 +420,7 @@ int main() {
         real_scene_transaction_and_epoch();
         deferred_surface_retains_uploads();
         upload_exceptions_release_temporary_resources();
+        real_component_animation_uses_future_callback();
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';
         return 1;

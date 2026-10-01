@@ -2,16 +2,41 @@
 
 #include <algorithm>
 #include <limits>
+#include <stdexcept>
 
 namespace ryn::runtime {
 
 void FrameRequestState::request_frame() noexcept {
     ++counters_.requests;
+    ++revision_;
     if (pending_) {
         ++counters_.coalesced_requests;
+        animation_schedule_changed();
         return;
     }
     pending_ = true;
+    animation_schedule_changed();
+}
+
+void FrameRequestState::request_invalidation_frame() noexcept {
+    if (submitting_ && animation_tick_depth_) {
+        ++counters_.requests;
+        ++counters_.coalesced_requests;
+        submission_revision_ = ++revision_;
+    } else {
+        request_frame();
+    }
+}
+
+void FrameRequestState::bind_wake_sink(FrameWakeSink& sink) {
+    if (wake_sink_ && wake_sink_ != &sink) throw std::logic_error("Frame requests already have a pump");
+    wake_sink_ = &sink;
+}
+void FrameRequestState::unbind_wake_sink(FrameWakeSink& sink) noexcept {
+    if (wake_sink_ == &sink) wake_sink_ = nullptr;
+}
+void FrameRequestState::animation_schedule_changed() noexcept {
+    if (wake_sink_) wake_sink_->wake();
 }
 
 bool FrameRequestState::consume_request() noexcept {
@@ -57,7 +82,29 @@ OnDemandFrameLoop::OnDemandFrameLoop(
       idle_wait_milliseconds_(std::max(1U, idle_wait_milliseconds)) {}
 
 FrameLoopStep OnDemandFrameLoop::step() {
-    auto frame_time = events_->now();
+    const auto initial = tick();
+    if (initial != FrameLoopStep::idle) return initial;
+    ++counters_.idle_waits;
+    if (events_->wait_for_frame_event(wait_timeout(events_->now()))) {
+        ++counters_.event_wakes;
+        requests_->request_frame();
+    }
+    return tick();
+}
+
+FrameLoopStep OnDemandFrameLoop::tick() { return tick(events_->now()); }
+
+std::optional<animation::AnimationTime> OnDemandFrameLoop::next_deadline() const {
+    return deadlines_ ? deadlines_->next_deadline() : std::nullopt;
+}
+
+FrameLoopStep OnDemandFrameLoop::tick(animation::AnimationTime candidate) {
+    if (ticking_) throw std::logic_error("Frame tick must not reenter");
+    ticking_ = true;
+    struct Guard { bool& flag; ~Guard() { flag = false; } } guard{ticking_};
+    const auto observation = time_cursor_.observe(candidate);
+    if (observation.clamped) ++counters_.clamped_timestamps;
+    const auto frame_time = observation.effective;
     if (events_->poll_frame_event()) {
         requests_->request_frame();
     }
@@ -66,16 +113,7 @@ FrameLoopStep OnDemandFrameLoop::step() {
         return submit_pending(frame_time, initial_deadline_due);
     }
 
-    ++counters_.idle_waits;
-    if (events_->wait_for_frame_event(wait_timeout(frame_time))) {
-        ++counters_.event_wakes;
-        requests_->request_frame();
-    }
-    frame_time = events_->now();
-    const bool waited_deadline_due = request_due_deadline(frame_time);
-    return requests_->pending()
-        ? submit_pending(frame_time, waited_deadline_due)
-        : FrameLoopStep::idle;
+    return FrameLoopStep::idle;
 }
 
 const FrameLoopCounters& OnDemandFrameLoop::counters() const noexcept {
@@ -129,15 +167,25 @@ FrameLoopStep OnDemandFrameLoop::submit_pending(
     if (!requests_->consume_request()) {
         return FrameLoopStep::idle;
     }
+    pending_presentation_revision_ = requests_->revision();
 
     if (deadline_due) {
         ++counters_.animation_frames;
     }
     const bool had_animation_deadline = deadlines_ != nullptr
         && deadlines_->next_deadline().has_value();
+    requests_->submitting_ = true;
+    requests_->submission_revision_ = *pending_presentation_revision_;
+    struct Submission {
+        bool& flag;
+        std::uint64_t& revision;
+        std::optional<std::uint64_t>& pending;
+        ~Submission() { if (pending) pending = revision; flag = false; }
+    } submission{requests_->submitting_, requests_->submission_revision_, pending_presentation_revision_};
     const auto result = submitter_->submit_frame(frame_time);
     switch (result) {
     case FrameSubmissionResult::submitted:
+        pending_presentation_revision_.reset();
         ++counters_.submissions;
         counters_.last_submission_microseconds = static_cast<std::uint64_t>(
             frame_time.count_microseconds());

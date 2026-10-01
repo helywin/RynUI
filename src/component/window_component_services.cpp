@@ -78,6 +78,7 @@ WindowComponentServices::WindowComponentServices(
     text_.attach_component_scene(scene_composer_);
     text_.attach_surfaces(surfaces_);
     animations_.reserve(256, 64, 256);
+    animations_.set_schedule_observer(&frame_requests);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
 }

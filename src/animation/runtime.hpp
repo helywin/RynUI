@@ -1,5 +1,7 @@
 #pragma once
 
+#include "animation/schedule_observer.hpp"
+
 #include "animation/easing.hpp"
 #include "animation/time.hpp"
 #include "animation/value.hpp"
@@ -136,6 +138,9 @@ struct AnimationRuntimeDiagnostics final {
 class AnimationRuntime final {
 public:
     AnimationRuntime() noexcept;
+    void set_schedule_observer(AnimationScheduleObserver* observer) noexcept {
+        schedule_observer_ = observer;
+    }
 
     void reserve(
         std::size_t animation_capacity,
@@ -262,6 +267,7 @@ private:
     std::vector<AnimationId> active_;
     std::vector<AnimationId> tick_snapshot_;
     AnimationRuntimeDiagnostics diagnostics_;
+    AnimationScheduleObserver* schedule_observer_{nullptr};
     AnimationDuration nominal_frame_period_{
         AnimationDuration::microseconds(16'667)};
 };

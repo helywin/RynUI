@@ -21,7 +21,7 @@ void DirtyQueues::invalidate_in_frame(NodeId id, DirtyFlags flags) {
 void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame) {
     static_cast<void>(nodes_->require(id));
     if (request_frame && flags != DirtyFlags::None && frames_ != nullptr) {
-        frames_->request_frame();
+        frames_->request_invalidation_frame();
     }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
         enqueue_unique(layout_roots_, layout_root_for(id), Domain::layout);
@@ -66,7 +66,7 @@ void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_fram
 void DirtyQueues::invalidate_subtree(NodeId root, DirtyFlags flags) {
     static_cast<void>(nodes_->require(root));
     if (flags != DirtyFlags::None && frames_ != nullptr) {
-        frames_->request_frame();
+        frames_->request_invalidation_frame();
     }
     if (has_any(flags, DirtyFlags::Measure | DirtyFlags::Layout)) {
         enqueue_unique(layout_roots_, root, Domain::layout);
