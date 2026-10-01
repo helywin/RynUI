@@ -30,6 +30,8 @@
 
 ## Risks / Trade-offs
 
+补充 Astra 对规划的审查合同：epoch 替换前先使附件失效，在旧 device 活着时 retire 旧资源，再销毁 binding；若设备已消失，只丢弃旧代际记录，不得经新设备 release。失败事务后共同资源不可呈现，直到成功 commit。callback 使用独立生命周期 token，析构后旧 callback 不得访问 pump；既有 Core frame requests 自动唤醒，deadline 提前/撤销会更新排程，并用真实属性/动画 fixture 验证。编译期选择矩阵详见 `docs/renderer-contract.md`，不实现运行时多后端选择器。
+
 - 内部 API 迁移影响 fake 与源代码合同 → 更新真实合同并跑既有 suite，不扩大无关计数断言。
 - rollback 标脏可产生失败后的全量上传 → 仅失败/epoch reset 路径承担该成本，idle 与局部更新仍验收。
 - Recording 无 GPU 视觉覆盖 → Windows 实际窗口、DPI、字体/输入、截图与 Release 验收独立。

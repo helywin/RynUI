@@ -1,5 +1,5 @@
 #include "component/text_component.hpp"
-#include "renderer/sdl/glyph_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
 

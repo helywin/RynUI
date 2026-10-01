@@ -7,6 +7,16 @@
   },
   "configurePresets": [
     {
+      "name": "windows-msvc-headless",
+      "displayName": "Windows MSVC / portable Core and Recording",
+      "inherits": "windows-msvc",
+      "cacheVariables": {
+        "RYNUI_PLATFORM_BACKEND": "HEADLESS",
+        "RYNUI_RENDER_BACKENDS": "RECORDING",
+        "RYNUI_BUILD_EXAMPLES": "OFF"
+      }
+    },
+    {
       "name": "base",
       "hidden": true,
       "generator": "Ninja Multi-Config",
@@ -93,6 +103,16 @@
   ],
   "buildPresets": [
     {
+      "name": "windows-msvc-headless-debug",
+      "configurePreset": "windows-msvc-headless",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-headless-release",
+      "configurePreset": "windows-msvc-headless",
+      "configuration": "Release"
+    },
+    {
       "name": "windows-msvc-debug",
       "configurePreset": "windows-msvc",
       "configuration": "Debug"
@@ -154,6 +174,18 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "windows-msvc-headless-debug",
+      "configurePreset": "windows-msvc-headless",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-msvc-headless-release",
+      "configurePreset": "windows-msvc-headless",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
     {
       "name": "windows-msvc-debug",
       "configurePreset": "windows-msvc",

@@ -1,6 +1,6 @@
 #pragma once
-#include "renderer/sdl/glyph_gpu_resources.hpp"
-#include "renderer/sdl/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "graphics/quad_primitive.hpp"
 #include <stdexcept>
 

@@ -1,6 +1,6 @@
 #include "component/button_component.hpp"
-#include "renderer/sdl/glyph_gpu_resources.hpp"
-#include "renderer/sdl/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/animation_frame_deadline.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"

@@ -12,6 +12,7 @@ include(RynUIShaders)
 include(CTest)
 
 option(RYNUI_BUILD_EXAMPLES "Build RynUI examples" ON)
+include(RynUIBackends)
 set(RYNUI_EXPECTED_TOOLCHAIN "" CACHE STRING "Expected compiler family for preset validation")
 set_property(CACHE RYNUI_EXPECTED_TOOLCHAIN PROPERTY STRINGS "" msvc gcc clang)
 
@@ -19,26 +20,29 @@ if(PROJECT_IS_TOP_LEVEL)
     rynui_verify_build_contract()
 endif()
 
-rynui_resolve_sdl3()
-rynui_resolve_shadercross_host_tool(
-    RYNUI_SHADERCROSS_COMMAND
-    RYNUI_SHADERCROSS_DEPENDENCY
-)
+if(RYNUI_HAS_SDL_HOST)
+    rynui_resolve_sdl3()
+    rynui_resolve_platform_font_service()
+endif()
+if(RYNUI_HAS_SDL_GPU)
+    rynui_resolve_shadercross_host_tool(
+        RYNUI_SHADERCROSS_COMMAND
+        RYNUI_SHADERCROSS_DEPENDENCY)
+    rynui_add_shader_targets(
+        "${RYNUI_SHADERCROSS_COMMAND}"
+        "${RYNUI_SHADERCROSS_DEPENDENCY}")
+endif()
 rynui_resolve_text_dependencies()
 rynui_resolve_utf8proc()
-rynui_resolve_platform_font_service()
 rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE
     RYNUI_VALIDATION_CJK_FONT_FILE
-)
-rynui_add_shader_targets(
-    "${RYNUI_SHADERCROSS_COMMAND}"
-    "${RYNUI_SHADERCROSS_DEPENDENCY}"
 )
 
 add_subdirectory(src)
 
 rynui_verify_public_api("${CMAKE_CURRENT_SOURCE_DIR}/include/ryn")
+rynui_verify_core_includes("${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 if(RYNUI_BUILD_EXAMPLES)
     add_subdirectory(examples)

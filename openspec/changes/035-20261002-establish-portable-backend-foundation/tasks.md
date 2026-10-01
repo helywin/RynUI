@@ -4,9 +4,9 @@
 
 ## 1. 构建与共同 renderer 边界（平台通用）
 
-- [ ] 1.1 提取共同 GPU resources/draw 合同至独立 target，更新调用者和 resource tests；默认 MSVC 构建及相关 CTest 通过。
-- [ ] 1.2 增加显式 backend 选择、HEADLESS preset、无 SDL/shader/default-font 解析路径；HEADLESS 实际配置/编译并检查构建图与 compile commands，非法组合负向测试通过。
-- [ ] 1.3 增加内部 Core include 与传递依赖守卫，固定 packed scene ABI v1 文档；负向泄漏 fixture 和现有 ABI tests 通过，并提交本阶段。
+- [x] 1.1 提取共同 GPU resources/draw 合同至独立 target，更新调用者和 resource tests；默认 MSVC 构建及相关 CTest 通过。
+- [x] 1.2 增加显式 backend 选择、HEADLESS preset、无 SDL/shader/default-font 解析路径；HEADLESS 实际配置/编译并检查构建图与 compile commands，非法组合负向测试通过。
+- [x] 1.3 增加内部 Core include 与传递依赖守卫，固定 packed scene ABI v1 文档；负向泄漏 fixture 和现有 ABI tests 通过，并提交本阶段。
 
 ## 2. SDL 宿主与 GPU 所有权（平台通用）
 

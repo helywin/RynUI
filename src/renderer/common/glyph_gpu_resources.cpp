@@ -1,4 +1,4 @@
-#include "renderer/sdl/glyph_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
 
 #include <algorithm>
 #include <cstring>

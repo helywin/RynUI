@@ -1,6 +1,11 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+if(NOT RYNUI_HAS_SDL_GPU)
+    add_subdirectory(portable)
+    return()
+endif()
+
 add_test(
     NAME rynui.icon_asset_contract
     COMMAND "${Python3_EXECUTABLE}"
@@ -871,21 +876,21 @@ target_compile_definitions(rynui_input_keyboard_tests PRIVATE
 add_test(NAME rynui.input_keyboard COMMAND rynui_input_keyboard_tests)
 add_executable(rynui_input_caret_blink_tests input_caret_blink_tests.cpp)
 rynui_configure_cpp_target(rynui_input_caret_blink_tests)
-target_link_libraries(rynui_input_caret_blink_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
+target_link_libraries(rynui_input_caret_blink_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_common)
 target_compile_definitions(rynui_input_caret_blink_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_caret_blink COMMAND rynui_input_caret_blink_tests)
 add_executable(rynui_input_journey_tests input_journey_tests.cpp)
 rynui_configure_cpp_target(rynui_input_journey_tests)
-target_link_libraries(rynui_input_journey_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
+target_link_libraries(rynui_input_journey_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_common)
 target_compile_definitions(rynui_input_journey_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.input_journey COMMAND rynui_input_journey_tests)
 add_executable(rynui_input_gpu_tests input_gpu_tests.cpp)
 rynui_configure_cpp_target(rynui_input_gpu_tests)
-target_link_libraries(rynui_input_gpu_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
+target_link_libraries(rynui_input_gpu_tests PRIVATE rynui_components rynui_text_input_session rynui_renderer_common)
 target_compile_definitions(rynui_input_gpu_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
@@ -897,7 +902,7 @@ target_link_libraries(rynui_input_material_transition_tests PRIVATE rynui_compon
 add_test(NAME rynui.input_material_transition COMMAND rynui_input_material_transition_tests)
 add_executable(rynui_input_scene_allocation_benchmark input_scene_allocation_benchmark.cpp)
 rynui_configure_cpp_target(rynui_input_scene_allocation_benchmark)
-target_link_libraries(rynui_input_scene_allocation_benchmark PRIVATE rynui_components rynui_text_input_session rynui_renderer_sdl)
+target_link_libraries(rynui_input_scene_allocation_benchmark PRIVATE rynui_components rynui_text_input_session rynui_renderer_common)
 target_compile_definitions(rynui_input_scene_allocation_benchmark PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
@@ -1024,7 +1029,7 @@ target_link_libraries(
     rynui_button_demo_frame_tests
     PRIVATE
         rynui_components
-        rynui_renderer_sdl
+        rynui_renderer_common
 )
 target_compile_definitions(
     rynui_button_demo_frame_tests
@@ -1064,7 +1069,7 @@ target_link_libraries(
         rynui_token_gallery_reference_surface
         rynui_token_gallery_document_viewport
         rynui_components
-        rynui_renderer_sdl
+        rynui_renderer_common
 )
 target_compile_definitions(
     rynui_token_gallery_frame_tests
@@ -1444,7 +1449,7 @@ add_executable(
 rynui_configure_cpp_target(rynui_rounded_effect_gpu_resources_tests)
 target_link_libraries(
     rynui_rounded_effect_gpu_resources_tests
-    PRIVATE rynui_renderer_sdl
+    PRIVATE rynui_renderer_common
 )
 add_test(
     NAME rynui.rounded_effect_gpu_resources
@@ -1578,12 +1583,12 @@ add_test(NAME rynui.frame_renderer COMMAND rynui_frame_renderer_tests)
 
 add_executable(rynui_glyph_gpu_resources_tests glyph_gpu_resources_tests.cpp)
 rynui_configure_cpp_target(rynui_glyph_gpu_resources_tests)
-target_link_libraries(rynui_glyph_gpu_resources_tests PRIVATE rynui_renderer_sdl)
+target_link_libraries(rynui_glyph_gpu_resources_tests PRIVATE rynui_renderer_common)
 add_test(NAME rynui.glyph_gpu_resources COMMAND rynui_glyph_gpu_resources_tests)
 
 add_executable(rynui_text_render_integration_tests text_render_integration_tests.cpp)
 rynui_configure_cpp_target(rynui_text_render_integration_tests)
-target_link_libraries(rynui_text_render_integration_tests PRIVATE rynui_renderer_sdl)
+target_link_libraries(rynui_text_render_integration_tests PRIVATE rynui_renderer_common)
 target_compile_definitions(
     rynui_text_render_integration_tests
     PRIVATE
@@ -1594,7 +1599,7 @@ add_test(NAME rynui.text_render_integration COMMAND rynui_text_render_integratio
 
 add_executable(rynui_text_scene_service_tests text_scene_service_tests.cpp)
 rynui_configure_cpp_target(rynui_text_scene_service_tests)
-target_link_libraries(rynui_text_scene_service_tests PRIVATE rynui_renderer_sdl)
+target_link_libraries(rynui_text_scene_service_tests PRIVATE rynui_renderer_common)
 target_compile_definitions(
     rynui_text_scene_service_tests
     PRIVATE
@@ -1650,7 +1655,7 @@ target_link_libraries(
     rynui_text_component_frame_tests
     PRIVATE
         rynui_components
-        rynui_renderer_sdl
+        rynui_renderer_common
 )
 target_compile_definitions(
     rynui_text_component_frame_tests

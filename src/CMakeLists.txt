@@ -42,6 +42,7 @@ target_include_directories(rynui_font PUBLIC
 )
 target_link_libraries(rynui_font PRIVATE RynUI::FreeType RynUI::HarfBuzz)
 
+if(RYNUI_HAS_SDL_HOST)
 add_library(rynui_default_fonts STATIC
     platform/default_font_chain.cpp
 )
@@ -53,6 +54,7 @@ target_link_libraries(
     rynui_default_fonts
     PUBLIC rynui_theme
     PRIVATE RynUI::PlatformFonts rynui_font)
+endif()
 
 add_library(rynui_text STATIC
     text/text_engine.cpp
@@ -221,6 +223,17 @@ target_link_libraries(rynui_components PRIVATE
     rynui_theme
 )
 
+add_library(rynui_renderer_common STATIC
+    renderer/common/glyph_gpu_resources.cpp
+    renderer/common/rounded_effect_gpu_resources.cpp
+    renderer/common/text_render_controller.cpp
+)
+rynui_configure_cpp_target(rynui_renderer_common)
+target_include_directories(rynui_renderer_common PUBLIC
+    "${PROJECT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(rynui_renderer_common PUBLIC rynui_graphics rynui_text_scene)
+
+if(RYNUI_HAS_SDL_HOST)
 add_library(rynui_platform_sdl STATIC
     platform/sdl/sdl_event_adapter.cpp
     platform/sdl/platform_state.cpp
@@ -228,14 +241,13 @@ add_library(rynui_platform_sdl STATIC
 rynui_configure_cpp_target(rynui_platform_sdl)
 target_include_directories(rynui_platform_sdl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(rynui_platform_sdl PRIVATE SDL3::SDL3 PUBLIC rynui_input)
+endif()
 
+if(RYNUI_HAS_SDL_GPU)
 add_library(rynui_renderer_sdl STATIC
     renderer/sdl/frame_renderer.cpp
-    renderer/sdl/glyph_gpu_resources.cpp
     renderer/sdl/quad_renderer.cpp
-    renderer/sdl/rounded_effect_gpu_resources.cpp
     renderer/sdl/scene_renderer.cpp
-    renderer/sdl/text_render_controller.cpp
 )
 rynui_configure_cpp_target(rynui_renderer_sdl)
 target_include_directories(rynui_renderer_sdl PUBLIC
@@ -243,6 +255,7 @@ target_include_directories(rynui_renderer_sdl PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(rynui_renderer_sdl PRIVATE
+    rynui_renderer_common
     rynui_graphics
     rynui_platform_sdl
     rynui_runtime
@@ -250,6 +263,7 @@ target_link_libraries(rynui_renderer_sdl PRIVATE
     rynui_text_scene
     SDL3::SDL3
 )
+endif()
 
 add_library(rynui INTERFACE)
 add_library(RynUI::RynUI ALIAS rynui)
@@ -271,8 +285,10 @@ rynui_assert_direct_dependencies(rynui_string)
 rynui_assert_direct_dependencies(rynui_theme)
 rynui_assert_direct_dependencies(rynui_animation)
 rynui_assert_direct_dependencies(rynui_font RynUI::FreeType RynUI::HarfBuzz)
-rynui_assert_direct_dependencies(
-    rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)
+if(TARGET rynui_default_fonts)
+    rynui_assert_direct_dependencies(
+        rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)
+endif()
 rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string rynui_text_boundary)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input rynui_string)
@@ -302,9 +318,14 @@ rynui_assert_direct_dependencies(
     rynui_text_scene
     rynui_theme
 )
-rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
+rynui_assert_direct_dependencies(rynui_renderer_common rynui_graphics rynui_text_scene)
+if(RYNUI_HAS_SDL_HOST)
+    rynui_assert_direct_dependencies(rynui_platform_sdl SDL3::SDL3 rynui_input)
+endif()
+if(RYNUI_HAS_SDL_GPU)
 rynui_assert_direct_dependencies(
     rynui_renderer_sdl
+    rynui_renderer_common
     SDL3::SDL3
     rynui_graphics
     rynui_platform_sdl
@@ -312,6 +333,7 @@ rynui_assert_direct_dependencies(
     rynui_text
     rynui_text_scene
 )
+endif()
 rynui_assert_direct_dependencies(
     rynui
     rynui_components
@@ -320,3 +342,8 @@ rynui_assert_direct_dependencies(
     rynui_string
     rynui_theme
 )
+
+foreach(core_target IN ITEMS rynui rynui_renderer_common rynui_text_input_session
+        rynui_text_clipboard_commands)
+    rynui_assert_portable_link_closure(${core_target})
+endforeach()

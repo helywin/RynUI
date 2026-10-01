@@ -1,4 +1,4 @@
-#include "renderer/sdl/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/rounded_effect_gpu_resources.hpp"
 
 #include <algorithm>
 #include <bit>

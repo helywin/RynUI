@@ -1,5 +1,5 @@
-#include "renderer/sdl/glyph_gpu_resources.hpp"
-#include "renderer/sdl/text_render_controller.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/text_render_controller.hpp"
 #include "runtime/frame_scheduler.hpp"
 
 #include <array>

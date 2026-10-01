@@ -24,6 +24,10 @@ SDL GPU 和 Recording SHALL 消费同一 packed scene ABI、共同资源管理�
 - **WHEN** 一个资源接受上传后其他上传或最终 commit 失败
 - **THEN** 重试得到完整的最新场景字节与纹理，并且随后 idle 同步没有新增上传
 
+#### Scenario: Presentation after failed transaction
+- **WHEN** 部分上传失败后在成功重试前直接呈现旧附件
+- **THEN** 呈现被拒绝，不显示部分更新的场景
+
 ### Requirement: Resource ownership and device epoch
 资源 MUST 归属于唯一 backend 与设备 epoch；外部 backend、旧 epoch 的附件/handle SHALL 被拒绝。设备 epoch 重建 SHALL 从保留的 CPU scene 恢复，无需重新执行组件挂载。
 

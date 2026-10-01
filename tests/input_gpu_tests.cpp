@@ -1,7 +1,7 @@
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
-#include "renderer/sdl/glyph_gpu_resources.hpp"
-#include "renderer/sdl/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
+#include "renderer/common/rounded_effect_gpu_resources.hpp"
 
 #include <ryn/rynui.hpp>
 #include <algorithm>

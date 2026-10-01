@@ -2,7 +2,7 @@
 #include "font/font_runtime.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
-#include "renderer/sdl/glyph_gpu_resources.hpp"
+#include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/invalidation.hpp"
