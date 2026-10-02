@@ -595,11 +595,11 @@ void component_overview(const std::shared_ptr<GalleryState>& state) {
 }
 
 void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view test_id, std::string_view caption,
-                   ryn::ThemeConfig config, ryn::ButtonType type = ryn::ButtonType::Default,
+                   const ryn::ThemeConfig& config, ryn::ButtonType type = ryn::ButtonType::Default,
                    ryn::ControlSize size = ryn::ControlSize::Small, ryn::Prop<bool> disabled = false,
                    ryn::Prop<bool> loading = false, std::function<void()> on_click = {}) {
     const auto text = label(test_id, caption);
-    ryn::Theme(ryn::ThemeProps{}.config(std::move(config)),
+    ryn::Theme(ryn::ThemeProps{}.config(config),
                ryn::ThemeContent{[state, text, type, size, disabled = std::move(disabled), loading = std::move(loading),
                                   on_click = std::move(on_click)]() mutable {
                    ++state->telemetry.theme_content_runs;
@@ -617,7 +617,7 @@ void themed_button(const std::shared_ptr<GalleryState>& state, std::string_view 
                }});
 }
 
-void add_live_samples(const std::shared_ptr<GalleryState>& state) {
+void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[5]);
     ryn::Space(
         ryn::SpaceProps{}
@@ -826,6 +826,9 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                                        }));
                    state->telemetry.live_samples += 3;
                });
+}
+
+void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Typography · 省略、复制与原地编辑");
     ryn::Text(ryn::TypographyProps{}
                   .content(u8"原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。")
@@ -943,6 +946,9 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                          .handleDisabled(ryn::SliderDisabledHandles{false, true, false})
                          .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     state->telemetry.live_samples += 3;
+}
+
+void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Button · 原生颜色 / 六变体 / ghost / 图标 / shape / block / ref / loading delay / wave");
     ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
         constexpr std::array colors{ryn::ButtonColor::Blue,    ryn::ButtonColor::Purple,   ryn::ButtonColor::Cyan,
@@ -1017,6 +1023,13 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ryn::Text(u8"Dotted");
     });
     state->telemetry.live_samples += 3;
+}
+
+// Keep individual sample scopes bounded under the Windows Debug default stack.
+void add_live_samples(const std::shared_ptr<GalleryState>& state) {
+    add_basic_live_samples(state);
+    add_typography_layout_slider_samples(state);
+    add_button_and_divider_variant_samples(state);
 }
 
 void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
