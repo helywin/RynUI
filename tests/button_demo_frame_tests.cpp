@@ -494,6 +494,7 @@ void test_public_button_demo_input_frame_and_idle_contract() {
     static_cast<void>(drain_animation_frames(*fixture.host, loop, "controlled Button journey did not return to idle"));
 
     const auto submissions = loop.counters().submissions;
+    const auto settled_rebuilds = fixture.host->scene_composer().diagnostics().rebuilds;
     for (int index = 0; index < 60; ++index) {
         require(loop.step() == ryn::runtime::FrameLoopStep::idle, "stable Button demo continued submitting frames");
     }
@@ -505,7 +506,12 @@ void test_public_button_demo_input_frame_and_idle_contract() {
                 events.input_events() >= 14 && hit_test_diagnostics.queries > 0 &&
                 pointer_diagnostics.routes_dispatched > 0 && pointer_diagnostics.captures_started == 2 &&
                 pointer_diagnostics.captures_released == 2 && focus_diagnostics.focus_changes > 0 &&
-                fixture.host->scene_composer().diagnostics().rebuilds == 1 &&
+                fixture.host->scene_composer().diagnostics().rebuilds == settled_rebuilds &&
+                fixture.host->mounted_buttons().front().component == target.component &&
+                fixture.host->mounted_buttons().front().node == target.node &&
+                fixture.host->mounted_buttons().front().interaction == target.interaction &&
+                fixture.host->mounted_buttons().front().scene == target.scene &&
+                fixture.host->mounted_buttons().front().fragment == target.fragment &&
                 loop.counters().deferred_submissions == 1 && quad_counters.range_uploads > 0 &&
                 gpu.glyph_buffer_uploads > 1 && gpu.effect_buffer_uploads > 1 && draw.quad_draws > 1 &&
                 draw.glyph_draws > 1 && draw.effect_draws > 1,

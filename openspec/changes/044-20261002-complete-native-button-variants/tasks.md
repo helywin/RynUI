@@ -22,7 +22,7 @@
 
 ## 6. Windows 原生验收
 
-- [ ] 6.1 windows-msvc Debug/Release 完整 build/受影响平台 CTest，实际 D3D12/DXIL preset色/透明ghost/虚线/图标位置/shape/block/focus/loading/wave、三主题、系统字体/系统scale与1/1.25/1.5/2、resize；保存图像/诊断/EXE和PNG SHA256/退出码并独立提交。
+- [x] 6.1 windows-msvc Debug/Release 完整 build/受影响平台 CTest，实际 D3D12/DXIL preset色/透明ghost/虚线/图标位置/shape/block/focus/loading/wave、三主题、系统字体/系统scale与1/1.25/1.5/2、resize；保存图像/诊断/EXE和PNG SHA256/退出码并独立提交。
 
 ## 7. Linux 原生验收
 

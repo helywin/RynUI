@@ -72,5 +72,6 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition);
 int run_typography_acceptance(int argc, char** argv);
 int run_slider_acceptance(int argc, char** argv);
 int run_tooltip_acceptance(int argc, char** argv);
+int run_button_acceptance(int argc, char** argv);
 
 } // namespace rynui::example

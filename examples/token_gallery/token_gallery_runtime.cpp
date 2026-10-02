@@ -891,6 +891,9 @@ private:
 } // namespace
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
+    if (has_argument(argc, argv, "--button-acceptance")) {
+        return run_button_acceptance(argc, argv);
+    }
     if (has_argument(argc, argv, "--typography-acceptance")) {
         return run_typography_acceptance(argc, argv);
     }
