@@ -44,6 +44,7 @@ public:
 
     SearchProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -98,6 +99,7 @@ private:
     std::optional<String> default_value_;
     Prop<String> placeholder_{String{}};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};

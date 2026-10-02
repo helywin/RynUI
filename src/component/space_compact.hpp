@@ -36,6 +36,8 @@ struct CompactBorder final {
 class CompactContext final : public std::enable_shared_from_this<CompactContext> {
 public:
     CompactContext(runtime::ComponentHost& host, LayoutComponentServices services, runtime::ComponentId component);
+    void claim(runtime::ComponentId component);
+    [[nodiscard]] bool owns_ancestor(const runtime::ComponentBuildContext& build) const;
     void attach(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                 std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces = nullptr);
     void attach_many(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
@@ -81,6 +83,7 @@ private:
     runtime::ComponentId component_;
     runtime::NodeId node_;
     std::vector<Member> members_;
+    std::vector<runtime::ComponentId> claims_;
     component::RetainedSurfaceService* surfaces_{};
     runtime::SceneFragmentId seam_fragment_;
     component::RetainedSurfaceId seam_range_;

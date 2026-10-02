@@ -2,6 +2,7 @@
 
 #include "runtime/component_host.hpp"
 #include "runtime/prop_connection.hpp"
+#include "component/space_compact.hpp"
 
 #include <ryn/button.hpp>
 #include <ryn/flex.hpp>
@@ -29,6 +30,10 @@ struct SearchPropsAccess final {
 
     [[nodiscard]] static const Prop<ControlSize>& size(const SearchProps& props) noexcept {
         return props.size_;
+    }
+
+    [[nodiscard]] static bool explicit_size(const SearchProps& props) noexcept {
+        return props.explicit_size_;
     }
 
     [[nodiscard]] static const Prop<InputStatus>& status(const SearchProps& props) noexcept {
@@ -131,7 +136,6 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     InputProps input;
     input.value(bridge->committed)
         .placeholder(detail::SearchPropsAccess::placeholder(props))
-        .size(detail::SearchPropsAccess::size(props))
         .status(detail::SearchPropsAccess::status(props))
         .disabled(detail::SearchPropsAccess::disabled(props))
         .readOnly(detail::SearchPropsAccess::read_only(props))
@@ -159,7 +163,6 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
         .type(bind([enter = detail::SearchPropsAccess::enter_button(props)] {
             return detail::read_prop(enter) ? ButtonType::Primary : ButtonType::Default;
         }))
-        .size(detail::SearchPropsAccess::size(props))
         .disabled(bind([disabled = detail::SearchPropsAccess::disabled(props),
                         read_only = detail::SearchPropsAccess::read_only(props)] {
             return detail::read_prop(disabled) || detail::read_prop(read_only);
@@ -173,18 +176,28 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
             }
         });
 
-    Flex(FlexProps{}.gap(dp(0.0F)).align(FlexAlign::Center).layout(detail::SearchPropsAccess::layout(props)),
-         FlexContent{
-             [bridge, input = std::move(input), action = std::move(action), button = std::move(button)]() mutable {
-                 Input(std::move(input));
-                 Button(std::move(action), ButtonContent{[button = std::move(button)] {
-                            if (button) {
-                                detail::SlotContentAccess::function (*button)();
-                            } else {
-                                Icon(IconProps{}.name(IconName::SearchOutlined));
-                            }
-                        }});
-             }});
+    if (detail::SearchPropsAccess::explicit_size(props)) {
+        input.size(detail::SearchPropsAccess::size(props));
+        action.size(detail::SearchPropsAccess::size(props));
+    }
+    auto content = [bridge, input = std::move(input), action = std::move(action),
+                    button = std::move(button)]() mutable {
+        Input(std::move(input));
+        Button(std::move(action), ButtonContent{[button = std::move(button)] {
+                   if (button) {
+                       detail::SlotContentAccess::function (*button)();
+                   } else {
+                       Icon(IconProps{}.name(IconName::SearchOutlined));
+                   }
+               }});
+    };
+    if (detail::nearest_compact(runtime::require_component_build_context())) {
+        SpaceCompact(SpaceCompactProps{}.layout(detail::SearchPropsAccess::layout(props)),
+                     SpaceCompactContent{std::move(content)});
+    } else {
+        Flex(FlexProps{}.gap(dp(0.0F)).align(FlexAlign::Center).layout(detail::SearchPropsAccess::layout(props)),
+             FlexContent{std::move(content)});
+    }
 }
 
 } // namespace ryn

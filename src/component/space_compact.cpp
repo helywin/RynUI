@@ -1,5 +1,7 @@
 #include "component/space_compact.hpp"
 
+#include "layout/flex_distribution.hpp"
+
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -83,6 +85,14 @@ runtime::ComponentId CompactContext::direct_child(runtime::ComponentId component
     return {};
 }
 
+void CompactContext::claim(runtime::ComponentId component) {
+    claims_.push_back(component);
+}
+
+bool CompactContext::owns_ancestor(const runtime::ComponentBuildContext& build) const {
+    return std::any_of(claims_.begin(), claims_.end(), [&](const auto id) { return build.has_ancestor(id); });
+}
+
 void CompactContext::attach(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                             std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces) {
     if (members_.size() >= component::retained_content_visual_capacity / 4) {
@@ -140,6 +150,7 @@ void CompactContext::detach(runtime::ComponentId component) {
     if (!active_) {
         return;
     }
+    std::erase(claims_, component);
     std::erase_if(members_, [component](const auto& member) { return member.component == component; });
     if (host_->active() && host_->contains(component_) && host_->scope(component_).active()) {
         refresh();
@@ -210,20 +221,44 @@ float CompactContext::overlap(runtime::NodeId left, runtime::NodeId right) const
 runtime::Size CompactContext::measure(layout::LayoutEngine& engine, layout::Constraints constraints) {
     auto& node = services_.nodes.require(node_);
     const bool vertical = metadata.orientation == SpaceOrientation::Vertical;
+
+    struct Item final {
+        runtime::NodeId id;
+        float main_size;
+        float base_main_size;
+        float min_main_size;
+        float max_main_size;
+        float grow;
+        float shrink;
+        bool frozen{};
+    };
+
+    std::vector<Item> items;
     float main{};
     float cross{};
+    float joined_extent{};
     node.first_baseline.reset();
     std::optional<runtime::NodeId> previous;
+    const layout::Constraints child_constraints{0, constraints.max_width, 0, constraints.max_height};
     for (const auto component : flow_children()) {
         const auto child = host_->root(component);
-        const auto size = engine.measure_child(child, {0, constraints.max_width, 0, constraints.max_height});
+        const auto& style = services_.nodes.require(child).external_layout;
+        const float margin = vertical ? style.margin.top + style.margin.bottom : style.margin.left + style.margin.right;
+        const float minimum = (vertical ? style.min_height : style.min_width).value_or(0) + margin;
+        const float maximum =
+            (vertical ? style.max_height : style.max_width).value_or(std::numeric_limits<float>::infinity()) + margin;
+        const auto basis =
+            style.flex_basis ? std::optional{std::clamp(*style.flex_basis + margin, minimum, maximum)} : std::nullopt;
+        const auto size = engine.measure_child(child, child_constraints, vertical ? std::nullopt : basis,
+                                               vertical ? basis : std::nullopt);
         if (previous) {
-            main -= std::min(overlap(*previous, child), std::min(main, vertical ? size.height : size.width));
+            const float joined =
+                std::min(overlap(*previous, child), std::min(main, vertical ? size.height : size.width));
+            main -= joined;
+            joined_extent += joined;
         }
-        auto& item = services_.nodes.require(child);
-        if (!node.first_baseline && item.first_baseline) {
-            node.first_baseline = (vertical ? main : 0) + item.external_layout.margin.top + *item.first_baseline;
-        }
+        const float extent = vertical ? size.height : size.width;
+        items.push_back({child, extent, extent, minimum, maximum, style.flex_grow, style.flex_shrink});
         main += vertical ? size.height : size.width;
         cross = std::max(cross, vertical ? size.width : size.height);
         previous = child;
@@ -233,6 +268,25 @@ runtime::Size CompactContext::measure(layout::LayoutEngine& engine, layout::Cons
         result.width = constraints.max_width;
     }
     result = constraints.constrain(result);
+    layout::distribute_flex_space(std::span{items}, (vertical ? result.height : result.width) - main);
+    main = -joined_extent;
+    cross = 0;
+    for (const auto& item : items) {
+        auto size = services_.nodes.require(item.id).measured_size;
+        if (std::abs(item.main_size - item.base_main_size) > layout::flex_distribution_epsilon) {
+            size = engine.measure_child(item.id, child_constraints,
+                                        vertical ? std::nullopt : std::optional{item.main_size},
+                                        vertical ? std::optional{item.main_size} : std::nullopt);
+        }
+        main += vertical ? size.height : size.width;
+        cross = std::max(cross, vertical ? size.width : size.height);
+        const auto& child = services_.nodes.require(item.id);
+        if (!node.first_baseline && child.first_baseline) {
+            node.first_baseline = child.external_layout.margin.top + *child.first_baseline;
+        }
+    }
+    result = constraints.constrain(vertical ? runtime::Size{std::max(result.width, cross), main}
+                                            : runtime::Size{std::max(result.width, main), cross});
     if (vertical) {
         // Column groups stretch automatic inline widths while preserving explicit
         // width and min/max constraints, just like the shared Flex contract.
@@ -372,6 +426,7 @@ void CompactContext::publish_seams() {
 void CompactContext::dispose() noexcept {
     active_ = false;
     members_.clear();
+    claims_.clear();
     seams_.clear();
     if (surfaces_ && seam_range_.valid()) {
         try {
@@ -384,7 +439,7 @@ void CompactContext::dispose() noexcept {
 std::shared_ptr<CompactContext> nearest_compact(runtime::ComponentBuildContext& build) {
     // The lifetime scope belongs to the current parent, including transparent Theme slots.
     const auto* state = build.nearest_state<SpaceCompactState>(true);
-    return state ? state->context : nullptr;
+    return state && !state->context->owns_ancestor(build) ? state->context : nullptr;
 }
 
 void mount_space_compact(const SpaceCompactProps& props, const SpaceCompactContent& content) {

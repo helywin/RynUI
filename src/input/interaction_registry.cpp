@@ -284,6 +284,11 @@ const InteractionRecord* InteractionRegistry::find_slot_record(InteractionId id)
     return &*slot.record;
 }
 
+bool InteractionRegistry::branch_active(InteractionId id) const {
+    const auto* record = find(id);
+    return record && components_->branch_active(record->component);
+}
+
 bool InteractionRegistry::associations_are_live(const InteractionRecord& record) const {
     if (!components_->contains(record.component) || nodes_->find(record.node) == nullptr ||
         !node_belongs_to_component(record.node, record.component)) {

@@ -300,6 +300,108 @@ void overlay_controls_do_not_join_the_trigger_group() {
     require(!fixture.buttons.snapshot(buttons[1].component).spinner_running && !fixture.buttons.next_deadline(),
             "closed popup retained an endless Button deadline");
 }
+
+void compact_editors_keep_sessions_and_owned_slots() {
+    Fixture fixture;
+    Signal<ControlSize> size{ControlSize::Large};
+    Signal<FlexDirection> direction{FlexDirection::LeftToRight};
+    int slots{};
+    fixture.buttons.mount(Content{[&] {
+        SpaceCompact(SpaceCompactProps{}.size(size).direction(direction).block(true), SpaceCompactContent{[&] {
+                         Input(InputProps{}.defaultValue(u8"原文").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))),
+                               InputPrefix{[&] {
+                                   ++slots;
+                                   Button(ButtonProps{}, [] { Text(u8"内部"); });
+                               }});
+                         Password(PasswordProps{}.defaultValue(u8"秘密"));
+                         Input(InputProps{}.size(ControlSize::Middle).defaultValue(u8"显式"));
+                         Button(ButtonProps{}, [] { Text(u8"末项"); });
+                     }});
+    }});
+    fixture.synchronize(960, {0, 0, 960, 240});
+    const auto first = fixture.inputs.mounted_inputs()[0];
+    const auto password = fixture.inputs.mounted_inputs()[1];
+    const auto explicit_middle = fixture.inputs.mounted_inputs()[2];
+    require(fixture.inputs.size(first.component) == ControlSize::Large &&
+                fixture.inputs.size(password.component) == ControlSize::Large &&
+                fixture.inputs.size(explicit_middle.component) == ControlSize::Middle &&
+                !fixture.buttons.snapshot(fixture.buttons.mounted_buttons()[0].component).compact,
+            "Input/Password inheritance or owned slot isolation failed");
+    require(fixture.inputs.compact_corners(first.component) == std::array{true, false, false, true} &&
+                fixture.inputs.compact_corners(password.component) == std::array{false, false, false, false},
+            "Compact Input retained internal rounded corners");
+    require(fixture.services.focus().request_focus(first.interaction, input::FocusModality::keyboard),
+            "Compact Input cannot focus");
+    const auto stamp = fixture.inputs.sessions().active();
+    auto& editor = fixture.inputs.editors().require(first.editor);
+    require(bool(editor.move(input::TextCaretMove::end)), "Compact caret did not move");
+    require(bool(fixture.inputs.dispatch(input::CompositionChanged{String{u8"ni"}, {2, 0}, stamp})),
+            "Compact IME did not start");
+    const auto effects = fixture.services.surfaces().effects().live_count();
+    size.set(ControlSize::Small);
+    direction.set(FlexDirection::RightToLeft);
+    fixture.synchronize(960, {0, 0, 960, 240});
+    require(fixture.inputs.sessions().active() == stamp && editor.composition().active &&
+                fixture.inputs.mounted_inputs()[0].editor == first.editor && slots == 1 &&
+                fixture.inputs.size(first.component) == ControlSize::Small &&
+                fixture.inputs.compact_corners(first.component) == std::array{false, true, true, false} &&
+                fixture.services.surfaces().effects().live_count() == effects,
+            "Compact size/direction replaced editor, IME, slot or effect identity");
+    require(bool(fixture.inputs.dispatch(input::TextCommitted{String{u8"你"}, stamp})) && editor.value() == "原文你",
+            "Compact Unicode commit failed");
+    fixture.buttons.dispose();
+    require(!fixture.inputs.sessions().active().valid() && fixture.inputs.editors().size() == 0 &&
+                fixture.platform.starts == fixture.platform.stops,
+            "Compact editor disposal leaked its session");
+}
+
+void compact_search_flex_distribution_and_popup_input() {
+    Fixture fixture;
+    Signal<bool> open{false};
+    fixture.buttons.mount(Content{[&] {
+        SpaceCompact(SpaceCompactProps{}.size(ControlSize::Large).block(true), SpaceCompactContent{[] {
+                         Search(SearchProps{}.layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                         Button(ButtonProps{}, [] { Text(u8"更多"); });
+                     }});
+        Tooltip(TooltipProps{}.open(open), TooltipTrigger{[] { Button(ButtonProps{}, [] { Text(u8"编辑"); }); }},
+                TooltipTitle{[] { Input(InputProps{}.defaultValue(u8"浮层输入")); }});
+    }});
+    fixture.synchronize(500, {0, 0, 500, 240});
+    const auto search = fixture.inputs.mounted_inputs()[0];
+    const auto popup = fixture.inputs.mounted_inputs()[1];
+    const auto action = fixture.buttons.mounted_buttons()[0];
+    const auto last = fixture.buttons.mounted_buttons()[1];
+    const auto input_bounds = fixture.nodes.require(search.node).bounds;
+    const auto action_bounds = fixture.nodes.require(action.node).bounds;
+    const auto last_bounds = fixture.nodes.require(last.node).bounds;
+    require(fixture.inputs.size(search.component) == ControlSize::Large &&
+                fixture.buttons.snapshot(action.component).size == ControlSize::Large &&
+                near(input_bounds.x + input_bounds.width - 1, action_bounds.x) &&
+                near(action_bounds.x + action_bounds.width - 1, last_bounds.x) &&
+                near(last_bounds.x + last_bounds.width, 500),
+            "Compact Search inherited wrong size or did not distribute its width/shared borders");
+    require(!fixture.services.focus().request_focus(popup.interaction, input::FocusModality::keyboard),
+            "hidden popup Input accepted focus");
+    open.set(true);
+    fixture.synchronize(500, {0, 0, 500, 240});
+    require(fixture.services.focus().request_focus(popup.interaction, input::FocusModality::keyboard),
+            "visible popup Input rejected focus");
+    const auto stamp = fixture.inputs.sessions().active();
+    require(bool(fixture.inputs.dispatch(input::CompositionChanged{String{u8"ni"}, {2, 0}, stamp})),
+            "popup composition failed");
+    const auto bounds = fixture.nodes.require(popup.node).bounds;
+    fixture.services.pointer().dispatch({input::PointerIdentity::mouse(), input::PointerAction::down,
+                                         input::PointerButton::primary, bounds.x + bounds.width / 2,
+                                         bounds.y + bounds.height / 2});
+    open.set(false);
+    require(!fixture.inputs.sessions().active().valid() && !fixture.services.focus().state().focused &&
+                !fixture.services.pointer().state(input::PointerIdentity::mouse())->capture &&
+                !fixture.inputs.editors().require(popup.editor).composition().active,
+            "closing popup retained editing session, IME, focus or capture");
+    fixture.synchronize();
+    require(!fixture.inputs.dispatch(input::TextCommitted{String{u8"迟到"}, stamp}),
+            "closed popup accepted stale commit");
+}
 } // namespace
 
 int main() {
@@ -309,6 +411,8 @@ int main() {
         empty_nested_capture_loading_and_finite_motion();
         corner_shadow_coverage_and_retained_geometry();
         overlay_controls_do_not_join_the_trigger_group();
+        compact_editors_keep_sessions_and_owned_slots();
+        compact_search_flex_distribution_and_popup_input();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

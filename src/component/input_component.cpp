@@ -2,6 +2,7 @@
 #include "component/input_affix_action.hpp"
 #include "component/input_material_transition.hpp"
 #include "component/input_caret_blink.hpp"
+#include "component/space_compact.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -30,6 +31,7 @@ struct InputContainerPresentation {
     ShadowList shadows;
     std::array<Color, input_shadow_layer_capacity> shadow_colors;
     float shadow_opacity{};
+    std::array<bool, 4> corners{true, true, true, true};
     friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
 };
 
@@ -70,7 +72,9 @@ struct InputState {
     component::RetainedSurfaceId selection_surface;
     component::RetainedSurfaceId overlay_surface;
     // Both shadow kinds retain all slots; changing a typed list never changes topology.
-    std::array<graphics::RoundedEffectId, input_effect_layer_count> container_effects;
+    std::vector<graphics::RoundedEffectId> container_effects;
+    std::optional<CompactMetadata> compact;
+    std::weak_ptr<CompactContext> compact_context;
     std::optional<InputContainerPresentation> container_presentation;
     std::vector<graphics::SceneDrawCommand> container_commands;
     std::optional<runtime::Rect> container_clip;
@@ -214,7 +218,9 @@ struct InputPropsAccess {
             throw std::invalid_argument("Input value and defaultValue are mutually exclusive");
         }
         const auto initial = props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(String{});
-        const auto size = read_prop(props.size_);
+        auto& build = runtime::require_component_build_context();
+        const auto compact = nearest_compact(build);
+        const auto size = compact && !props.explicit_size_ ? compact->metadata.size : read_prop(props.size_);
         const auto status = read_prop(props.status_);
         validate(size);
         validate(status);
@@ -223,11 +229,16 @@ struct InputPropsAccess {
         const input::TextEditorLimits limits{props.max_length_ ? read_prop(*props.max_length_)
                                                                : std::numeric_limits<std::size_t>::max()};
         auto& host = *owner.host_;
-        auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<InputState>();
         auto& state = build.state<InputState>(component);
         state.mounted.component = component;
         state.mounted.node = build.root(component);
+        if (compact) {
+            compact->claim(component);
+            state.compact = compact->metadata;
+            state.compact_context = compact;
+            build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
+        }
         state.controlled = props.value_.has_value();
         state.size = size;
         state.status = status;
@@ -332,6 +343,7 @@ struct InputPropsAccess {
         host.interactions().set_focus_handlers(state.mounted.interaction, std::move(handlers));
         state.container_fragment =
             build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
+        state.container_effects.resize(input_effect_layer_count * (compact ? 4 : 1));
         for (auto& effect : state.container_effects) {
             effect = host.rounded_effects().add({});
         }
@@ -447,14 +459,16 @@ struct InputPropsAccess {
                 owner.update_text(current.mounted.component);
             }
         });
-        connect(props.size_, [](auto& owner, auto& current, ControlSize value) {
-            validate(value);
-            if (current.size == value) {
-                return;
-            }
-            current.size = value;
-            owner.update_theme(current.mounted.component);
-        });
+        if (!compact || props.explicit_size_) {
+            connect(props.size_, [](auto& owner, auto& current, ControlSize value) {
+                validate(value);
+                if (current.size == value) {
+                    return;
+                }
+                current.size = value;
+                owner.update_theme(current.mounted.component);
+            });
+        }
         connect(props.status_, [](auto& owner, auto& current, InputStatus value) {
             validate(value);
             if (current.status == value) {
@@ -537,6 +551,40 @@ struct InputPropsAccess {
                                static_cast<void>(theme->motion_enabled());
                            });
         owner.mounted_.push_back(state.mounted);
+        if (compact) {
+            compact->attach(
+                component,
+                [&owner, component, explicit_size = props.explicit_size_](const CompactMetadata& value) {
+                    if (auto* current = owner.host_->components().state<InputState>(component);
+                        current && current->compact != value) {
+                        current->compact = value;
+                        if (!explicit_size && current->size != value.size) {
+                            current->size = value.size;
+                            owner.update_theme(component);
+                        }
+                        owner.invalidate(component, runtime::DirtyFlags::Geometry);
+                    }
+                },
+                [&owner, component] {
+                    const auto& current = *owner.host_->components().state<InputState>(component);
+                    const auto& theme = owner.host_->components().theme_scope(component)->snapshot();
+                    const auto bounds = translated_bounds(owner.host_->nodes(), current.mounted.node);
+                    const auto& tokens = derive_input_tokens(theme);
+                    return CompactBorder{.shape = {bounds, std::clamp(tokens.size(current.size).border_radius, 0.0F,
+                                                                      0.5F * std::min(bounds.width, bounds.height))},
+                                         .corners = current.compact->corners,
+                                         .color = current.transition->value().colors[1],
+                                         .width = current.layout.border_width,
+                                         .priority = current.disabled            ? 0
+                                                     : current.hovering_pointers ? 4
+                                                     : current.focused           ? 3
+                                                                                 : 2,
+                                         .clip = current.container_clip
+                                                     ? std::optional{graphics::EffectClip{1, *current.container_clip}}
+                                                     : std::nullopt};
+                },
+                &host.surfaces());
+        }
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
     }
 };
@@ -579,13 +627,15 @@ struct PasswordPropsAccess final {
             input.defaultValue(*props.default_value_);
         }
         input.placeholder(props.placeholder_)
-            .size(props.size_)
             .status(props.status_)
             .disabled(props.disabled_)
             .readOnly(props.read_only_)
             .onChange(std::move(props.on_change_))
             .onSubmit(std::move(props.on_submit_))
             .layout(std::move(props.layout_));
+        if (props.explicit_size_) {
+            input.size(props.size_);
+        }
         if (props.max_length_) {
             input.maxLength(*props.max_length_);
         }
@@ -1097,6 +1147,22 @@ InputStatus InputComponentHost::status(runtime::ComponentId component) const {
     return state->status;
 }
 
+ControlSize InputComponentHost::size(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->size;
+}
+
+std::optional<std::array<bool, 4>> InputComponentHost::compact_corners(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->compact ? std::optional{state->compact->corners} : std::nullopt;
+}
+
 const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
     if (!state) {
@@ -1159,7 +1225,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             ++sync_profile_.mounted_visited;
         }
         auto* state = host_->components().state<InputState>(mounted.component);
-        if (!state || !state->active) {
+        if (!state || !state->active || !host_->components().branch_active(mounted.component)) {
             continue;
         }
         const auto update_started =
@@ -1234,9 +1300,12 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                                                         presentation.colors[1],
                                                         *visual.shadow,
                                                         shadow_colors,
-                                                        presentation.shadow_opacity};
+                                                        presentation.shadow_opacity,
+                                                        state->compact ? state->compact->corners
+                                                                       : std::array{true, true, true, true}};
         if (state->container_presentation != next_container) {
-            for (std::size_t layer = 0; layer < state->container_effects.size(); ++layer) {
+            const std::size_t stride = state->compact ? 4 : 1;
+            for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
                 const bool outer = layer < input_shadow_layer_capacity;
                 const bool inner = layer >= input_inset_shadow_layer && layer < input_focus_layer;
                 auto bounds = root_bounds;
@@ -1270,10 +1339,36 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                     effect.geometry.outline_width = std::max(0.001F, 3 * tokens.border_width);
                     effect.geometry.outline_offset = 1;
                 }
-                static_cast<void>(
-                    host_->rounded_effects().update_geometry(state->container_effects[layer], effect.geometry));
-                static_cast<void>(
-                    host_->rounded_effects().update_material(state->container_effects[layer], effect.material));
+                std::array<graphics::RoundedEffectInstance, 4> corners;
+                if (state->compact) {
+                    if (outer || inner) {
+                        const ShadowLayer shadow{effect.geometry.kind == graphics::RoundedEffectKind::inset_shadow
+                                                     ? ShadowKind::inset
+                                                     : ShadowKind::outer,
+                                                 effect.geometry.offset, effect.geometry.blur, effect.geometry.spread,
+                                                 effect.material.color};
+                        corners = graphics::make_corner_shadow_effects(effect.geometry.shape, state->compact->corners,
+                                                                       shadow, {}, effect.geometry.ancestor_clip);
+                        for (auto& corner : corners) {
+                            corner.material = effect.material;
+                        }
+                    } else if (layer == input_focus_layer) {
+                        corners = graphics::make_corner_outline_effects(
+                            effect.geometry.shape, state->compact->corners, effect.geometry.outline_width,
+                            effect.geometry.outline_offset, effect.material.color, effect.material.opacity, {},
+                            effect.geometry.ancestor_clip);
+                    } else {
+                        corners = graphics::make_corner_fill_effects(effect.geometry.shape, state->compact->corners,
+                                                                     effect.material.color, effect.material.opacity, {},
+                                                                     effect.geometry.ancestor_clip);
+                    }
+                }
+                for (std::size_t corner = 0; corner < stride; ++corner) {
+                    const auto& candidate = state->compact ? corners[corner] : effect;
+                    const auto id = state->container_effects[layer * stride + corner];
+                    static_cast<void>(host_->rounded_effects().update_geometry(id, candidate.geometry));
+                    static_cast<void>(host_->rounded_effects().update_material(id, candidate.material));
+                }
             }
             state->container_presentation = next_container;
         }
@@ -1330,6 +1425,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             }
         }
         record_phase(scene_started, sync_profile_.text_scene_nanoseconds);
+        if (const auto compact = state->compact_context.lock()) {
+            compact->publish_seams();
+        }
     }
     record_phase(profile_started, sync_profile_.total_nanoseconds);
 }
@@ -1338,10 +1436,10 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
     bool changed{};
     for (const auto& mounted : mounted_) {
         auto* state = host_->components().state<InputState>(mounted.component);
-        if (!state || !state->active) {
+        if (!state || !state->active || !host_->components().branch_active(mounted.component)) {
             continue;
         }
-        std::array<graphics::SceneDrawCommand, input_effect_layer_count> container;
+        std::array<graphics::SceneDrawCommand, input_effect_layer_count * 4> container;
         std::size_t count{};
         for (const auto effect : state->container_effects) {
             if (const auto index = host_->rounded_effects().packed_index(effect)) {

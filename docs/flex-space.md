@@ -49,4 +49,6 @@ grow/shrink 为有限非负值；basis 为非负 logical length 或 auto。min/m
 
 Button 六视觉变体已接入：共有边按 hover、focus/active、normal、disabled 优先，稳定 paint/Tab 顺序；嵌套组在外层共有边传递实际子控件状态。按角 fill、shadow、focus、wave 与虚线使用共同 logical effects；loading spinner 保持在背景之后，有限动画结束后无持续 deadline。每组支持最多 1024 个已接入控件，seam/虚线各自上限 4096 effects，超限显式拒绝并由挂载回滚清理。
 
-Input/Password/Search/RadioButton 与 SpaceAddon 按 050 的下一阶段接入。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。
+Input/Password 继承未显式配置的尺寸，按外角绘制背景、边框和 shadow；尺寸/方向变化保留 editor、selection、IME session 和 slot 身份。控件自己拥有的 prefix/suffix 内容不会自动加入外层 Compact。Search 在组合内使用嵌套 Compact 连接输入框和按钮，grow/shrink/basis 与 min/max 使用和 Flex 相同的分配规则；block 的剩余宽度分配给 grow 项。
+
+关闭 Tooltip 富内容浮层会立即取消其失活分支的 focus、IME 和指针 capture，失活控件不可通过 Tab/显式 focus 或旧命中快照接收交互。RadioButton 与 SpaceAddon 按 050 的后续阶段接入。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。

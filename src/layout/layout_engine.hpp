@@ -173,8 +173,10 @@ public:
     bool remove_intrinsic_measure(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure(runtime::NodeId root, Constraints constraints);
 
-    [[nodiscard]] runtime::Size measure_child(runtime::NodeId child, Constraints constraints) {
-        return measure_node(child, constraints);
+    [[nodiscard]] runtime::Size measure_child(runtime::NodeId child, Constraints constraints,
+                                              std::optional<float> forced_outer_width = {},
+                                              std::optional<float> forced_outer_height = {}) {
+        return measure_node(child, constraints, forced_outer_width, forced_outer_height);
     }
 
     void place_child(runtime::NodeId child, runtime::Rect bounds, bool stretch_width = false,

@@ -102,10 +102,13 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
 
         auto actual_target = event.action == PointerAction::cancel ? std::optional<InteractionId>{}
                                                                    : hit_test_->hit_test(pointer->position);
+        if (actual_target && !registry_->branch_active(*actual_target)) {
+            actual_target.reset();
+        }
         if (event.action != PointerAction::cancel) {
             update_hover(*pointer, actual_target, event);
         }
-        if (actual_target && !registry_->find(*actual_target)) {
+        if (actual_target && !registry_->branch_active(*actual_target)) {
             actual_target.reset();
         }
         const auto kind = event_kind(event.action);
@@ -129,7 +132,7 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
             dispatch_route(*pointer, event, kind, *route_target, actual_target);
         }
 
-        if (actual_target && !registry_->find(*actual_target)) {
+        if (actual_target && !registry_->branch_active(*actual_target)) {
             actual_target.reset();
         }
         const auto observer = observer_;
@@ -418,7 +421,7 @@ bool PointerRouter::invoke_handler(PointerState& state, PointerDispatchContext& 
         return context.propagation_stopped_;
     }
     const bool cleanup_event = context.kind_ == PointerEventKind::cancel || context.kind_ == PointerEventKind::leave;
-    if (!record->eligible && !cleanup_event) {
+    if ((!record->eligible || !registry_->branch_active(current)) && !cleanup_event) {
         ++diagnostics_.stale_skips;
         prune_invalid_state(state);
         return context.propagation_stopped_;
@@ -455,7 +458,7 @@ bool PointerRouter::invoke_handler(PointerState& state, PointerDispatchContext& 
 void PointerRouter::sanitize_before_dispatch(PointerState& state, const PointerInputEvent& event) {
     if (state.capture.has_value()) {
         const auto* capture = registry_->find(*state.capture);
-        if (capture == nullptr || !capture->eligible) {
+        if (capture == nullptr || !capture->eligible || !registry_->branch_active(*state.capture)) {
             const auto stale_capture = state.capture;
             if (capture != nullptr) {
                 dispatch_route(state,
@@ -473,7 +476,7 @@ void PointerRouter::sanitize_before_dispatch(PointerState& state, const PointerI
     }
     if (state.press_origin.has_value()) {
         const auto* press = registry_->find(*state.press_origin);
-        if (press == nullptr || !press->eligible) {
+        if (press == nullptr || !press->eligible || !registry_->branch_active(*state.press_origin)) {
             state.press_origin.reset();
         }
     }
@@ -482,13 +485,13 @@ void PointerRouter::sanitize_before_dispatch(PointerState& state, const PointerI
 void PointerRouter::prune_invalid_state(PointerState& state) {
     if (state.capture.has_value()) {
         const auto* capture = registry_->find(*state.capture);
-        if (capture == nullptr || !capture->eligible) {
+        if (capture == nullptr || !capture->eligible || !registry_->branch_active(*state.capture)) {
             clear_primary_state(state, true);
         }
     }
     if (state.press_origin.has_value()) {
         const auto* press = registry_->find(*state.press_origin);
-        if (press == nullptr || !press->eligible) {
+        if (press == nullptr || !press->eligible || !registry_->branch_active(*state.press_origin)) {
             state.press_origin.reset();
         }
     }
@@ -532,7 +535,8 @@ bool PointerRouter::request_capture(const PointerDispatchContext& context) {
         return false;
     }
     auto* state = find_state(context.event_->pointer);
-    if (state == nullptr || !state->primary_down || registry_->find(context.current_target_) == nullptr) {
+    if (state == nullptr || !state->primary_down || registry_->find(context.current_target_) == nullptr ||
+        !registry_->branch_active(context.current_target_)) {
         return false;
     }
     if (state->capture == context.current_target_) {

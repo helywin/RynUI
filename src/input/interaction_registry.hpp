@@ -104,6 +104,7 @@ public:
     [[nodiscard]] InteractionRecord& require(InteractionId id);
     [[nodiscard]] const InteractionRecord& require(InteractionId id) const;
     [[nodiscard]] bool contains(InteractionId id) const;
+    [[nodiscard]] bool branch_active(InteractionId id) const;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] std::span<const InteractionId> declaration_order() const;

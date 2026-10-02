@@ -1,4 +1,5 @@
 #include "layout/layout_engine.hpp"
+#include "layout/flex_distribution.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -708,66 +709,9 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                                                  ? static_cast<float>(measured_line.item_count - 1) * current.main_gap
                                                  : 0.0F;
                     const float free_space = final_available_main - measured_line.main_size;
-                    const bool growing = free_space > distribution_epsilon;
-                    float remaining = std::abs(free_space);
-                    for (std::size_t index = 0; index < measured_line.item_count; ++index) {
-                        scratch.items[measured_line.first_item + index].frozen = false;
-                    }
-
-                    while (remaining > distribution_epsilon) {
-                        float total_weight = 0.0F;
-                        std::size_t last_adjustable = scratch.items.size();
-                        for (std::size_t index = 0; index < measured_line.item_count; ++index) {
-                            auto& item = scratch.items[measured_line.first_item + index];
-                            const float capacity =
-                                growing ? item.max_main_size - item.main_size : item.main_size - item.min_main_size;
-                            const float weight = growing ? item.grow : item.shrink * item.base_main_size;
-                            if (!item.frozen && capacity > distribution_epsilon && weight > 0.0F) {
-                                total_weight += weight;
-                                last_adjustable = measured_line.first_item + index;
-                            } else {
-                                item.frozen = true;
-                            }
-                        }
-                        if (last_adjustable == scratch.items.size() || total_weight <= 0.0F) {
-                            break;
-                        }
-
-                        float distributed = 0.0F;
-                        bool clamped = false;
-                        for (std::size_t index = 0; index < measured_line.item_count; ++index) {
-                            auto& item = scratch.items[measured_line.first_item + index];
-                            if (item.frozen) {
-                                continue;
-                            }
-                            const float weight = growing ? item.grow : item.shrink * item.base_main_size;
-                            const float requested = remaining * weight / total_weight;
-                            const float capacity =
-                                growing ? item.max_main_size - item.main_size : item.main_size - item.min_main_size;
-                            const float delta = std::min(requested, capacity);
-                            item.main_size += growing ? delta : -delta;
-                            distributed += delta;
-                            if (delta + distribution_epsilon < requested) {
-                                item.frozen = true;
-                                clamped = true;
-                            }
-                        }
-                        if (!clamped) {
-                            const float residual = remaining - distributed;
-                            if (residual > 0.0F) {
-                                auto& item = scratch.items[last_adjustable];
-                                const float capacity =
-                                    growing ? item.max_main_size - item.main_size : item.main_size - item.min_main_size;
-                                const float delta = std::min(residual, capacity);
-                                item.main_size += growing ? delta : -delta;
-                                distributed += delta;
-                            }
-                        }
-                        if (distributed <= distribution_epsilon) {
-                            break;
-                        }
-                        remaining = std::max(0.0F, remaining - distributed);
-                    }
+                    distribute_flex_space(
+                        std::span{scratch.items}.subspan(measured_line.first_item, measured_line.item_count),
+                        free_space);
 
                     measured_line.main_size = gap_extent;
                     measured_line.cross_size = 0.0F;

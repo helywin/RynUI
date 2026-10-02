@@ -212,6 +212,15 @@ public:
         return *host_;
     }
 
+    [[nodiscard]] bool has_ancestor(ComponentId ancestor) const {
+        for (auto current = parent_; current; current = host_->parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     template <typename SlotTag>
     void mount_slot_with_semantic_foreground(ComponentId parent, const SlotContent<SlotTag>& content,
                                              Prop<SemanticForeground> foreground) {

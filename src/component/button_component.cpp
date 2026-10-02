@@ -1845,6 +1845,10 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     auto& state = build.state<ButtonComponentState>(component);
     state.component = component;
     state.node = build.root(component);
+    if (compact) {
+        compact->claim(component);
+        build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
+    }
     if (reference) {
         state.ref = reference;
         reference->binding = true;
@@ -2109,7 +2113,6 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
                     .decorations = current.decorations};
             },
             &host.button_scene_);
-        build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
     }
 }
 

@@ -356,7 +356,7 @@ void FocusManager::rebuild_focus_order() {
     focus_order_.clear();
     for (const auto interaction : registry_->declaration_order()) {
         const auto* record = registry_->find(interaction);
-        if (record != nullptr && record->eligible && record->focusable && record->tab_stop) {
+        if (record != nullptr && can_focus(interaction) && record->tab_stop) {
             focus_order_.push_back(interaction);
         }
     }
@@ -364,7 +364,7 @@ void FocusManager::rebuild_focus_order() {
 
 bool FocusManager::can_focus(InteractionId target) const {
     const auto* record = registry_->find(target);
-    return record != nullptr && record->eligible && record->focusable;
+    return record != nullptr && record->eligible && record->focusable && registry_->branch_active(target);
 }
 
 std::optional<InteractionId> FocusManager::focus_candidate(std::optional<InteractionId> target) const {

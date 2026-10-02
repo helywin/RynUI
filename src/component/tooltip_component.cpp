@@ -219,6 +219,7 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
         return;
     }
     const bool visible = state->open && !state->disabled && has_title(*state) && window_active_;
+    const bool closed = state->geometry.visible && !visible;
     if (state->geometry.visible != visible) {
         state->geometry.visible = visible;
         state->needs_measure = visible;
@@ -231,6 +232,17 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
         state->deadline.reset();
         state->action_open = false;
         state->context_anchor.reset();
+    }
+    if (closed) {
+        // Cleanup callbacks may destroy a component. Snapshot identities and
+        // finish every state access before cancelling retained interactions.
+        const auto order = services_->interactions().declaration_order();
+        const std::vector<input::InteractionId> interactions{order.begin(), order.end()};
+        for (const auto interaction : interactions) {
+            if (!services_->interactions().branch_active(interaction)) {
+                services_->pointer().cancel_interaction(interaction);
+            }
+        }
     }
 }
 
