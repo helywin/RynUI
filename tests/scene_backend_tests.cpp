@@ -132,7 +132,7 @@ void texture_source_lifetime_cancel_and_invalid_ranges() {
 }
 
 void required_capabilities_and_scene_limits() {
-    for (int mode = 0; mode < 11; ++mode) {
+    for (int mode = 0; mode < 12; ++mode) {
         auto caps = baseline_scene_capabilities();
         switch (mode) {
         case 0:
@@ -167,6 +167,9 @@ void required_capabilities_and_scene_limits() {
             break;
         case 10:
             caps.maximum_texture_height = 0;
+            break;
+        case 11:
+            caps.packed_abi_version = 1;
             break;
         }
         RecordingRenderer backend(caps);

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <numbers>
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
@@ -159,6 +160,19 @@ void offset_draw_ranges(std::vector<GlyphDrawRange>& ranges, std::uint32_t first
 }
 
 } // namespace
+
+runtime::Point glyph_vertex(const GlyphInstance& instance, runtime::Point corner) {
+    const auto transform = instance.transform;
+    validate_finite(std::array{transform.pivot.x, transform.pivot.y, transform.angle_degrees},
+                    "Glyph transform must be finite");
+    const auto radians = std::remainder(static_cast<double>(transform.angle_degrees), 360.0) * std::numbers::pi / 180.0;
+    const auto cosine = static_cast<float>(std::cos(radians));
+    const auto sine = static_cast<float>(std::sin(radians));
+    const auto x = instance.position_size[0] + corner.x * instance.position_size[2] - transform.pivot.x;
+    const auto y = instance.position_size[1] + corner.y * instance.position_size[3] - transform.pivot.y;
+    return {transform.pivot.x + cosine * x - sine * y + instance.translation_opacity[0],
+            transform.pivot.y + sine * x + cosine * y + instance.translation_opacity[1]};
+}
 
 GlyphInstanceRange GlyphInstanceStore::append(std::span<const GlyphInstance> instances) {
     if (instances_.size() + instances.size() > std::numeric_limits<std::uint32_t>::max()) {
@@ -316,6 +330,32 @@ std::size_t GlyphInstanceStore::update_geometry(GlyphInstanceRange range, std::a
 
 std::span<const GlyphInstanceRange> GlyphInstanceStore::material_dirty_ranges() const noexcept {
     return material_dirty_ranges_.ranges();
+}
+
+std::size_t GlyphInstanceStore::update_transform(GlyphInstanceRange range, GlyphTransform transform) {
+    require_range(range);
+    validate_finite(std::array{transform.pivot.x, transform.pivot.y, transform.angle_degrees},
+                    "Glyph transform must be finite");
+    std::size_t updated{};
+    std::optional<std::uint32_t> dirty_start;
+    for (std::uint32_t offset = 0; offset < range.count; ++offset) {
+        const auto index = range.first + offset;
+        auto& instance = instances_[index];
+        if (instance.transform == transform) {
+            if (dirty_start) {
+                geometry_dirty_ranges_.append({*dirty_start, index - *dirty_start});
+                dirty_start.reset();
+            }
+            continue;
+        }
+        instance.transform = transform;
+        dirty_start = dirty_start.value_or(index);
+        ++updated;
+    }
+    if (dirty_start) {
+        geometry_dirty_ranges_.append({*dirty_start, range.first + range.count - *dirty_start});
+    }
+    return updated;
 }
 
 std::span<const GlyphInstanceRange> GlyphInstanceStore::geometry_dirty_ranges() const noexcept {

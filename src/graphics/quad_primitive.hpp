@@ -12,7 +12,7 @@
 
 namespace ryn::graphics {
 
-inline constexpr std::uint32_t logical_scene_version = 2;
+inline constexpr std::uint32_t logical_scene_version = 3;
 
 // Logical x/y/width/height, radius and translation. Not a shader byte layout.
 struct QuadInstance {

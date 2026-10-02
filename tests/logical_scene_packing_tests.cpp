@@ -36,7 +36,7 @@ template <class F> void rejects(F action) {
 void literal_packing() {
     static_assert(!std::is_same_v<graphics::QuadInstance, QuadGpuInstance>);
     static_assert(!std::is_same_v<graphics::GlyphInstance, GlyphGpuInstance>);
-    static_assert(graphics::logical_scene_version == 2 && packed_scene_abi_version == 1);
+    static_assert(graphics::logical_scene_version == 3 && packed_scene_abi_version == 2);
     const graphics::QuadInstance quad{{10, 20, 30, 40}, {0.2F, 0.4F, 0.6F, 0.8F}, 0.75F, 6, {5, -10}};
     const auto gpu = pack_quad_instance(quad, {400, 200, 2}); // logical viewport 200 x 100
     const auto viewport = scene_logical_viewport({400, 200, 2});
@@ -79,11 +79,60 @@ void literal_packing() {
     invalid.bounds[3] = -1;
     rejects([&] { (void)pack_quad_instance(invalid, {400, 200, 2}); });
 }
+
+void rotated_glyph_packing() {
+    graphics::GlyphInstance glyph{
+        {20, 30, 8, 12}, {0, 0, 1, 1}, {10, 20, 90, 80}, {0.2F, 0.4F, 0.6F, 1}, {5, -3, 0.5F, 0}};
+    glyph.transform = {{24, 36}, 90};
+    const auto literal = graphics::glyph_vertex(glyph, {0, 0});
+    near(std::array{literal.x, literal.y}, {35.0F, 29.0F});
+    for (auto metrics :
+         {SceneDeviceMetrics{1000, 400, 1.25F}, SceneDeviceMetrics{400, 1000, 2}, SceneDeviceMetrics{800, 800, 1}}) {
+        const auto viewport = scene_logical_viewport(metrics);
+        for (auto angle : {0.0F, 45.0F, 90.0F, -30.0F, 360.0F, 1000000.0F}) {
+            glyph.transform.angle_degrees = angle;
+            const auto packed = pack_glyph_instance(glyph, metrics);
+            for (auto corner :
+                 {runtime::Point{0, 0}, runtime::Point{1, 0}, runtime::Point{1, 1}, runtime::Point{0, 1}}) {
+                const auto actual = packed_glyph_vertex(packed, corner);
+                const auto expected = graphics::glyph_vertex(glyph, corner);
+                near(std::array{actual.x, actual.y},
+                     {-1 + 2 * expected.x / viewport.width, 1 - 2 * expected.y / viewport.height});
+            }
+            check(packed.color == glyph.color && packed.uv_rect == glyph.uv_rect &&
+                      packed.translation_opacity[2] == 0.5F,
+                  "rotation changed glyph material or coverage coordinates");
+        }
+    }
+    const auto saved = glyph;
+    for (auto invalid : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
+        glyph.transform.angle_degrees = invalid;
+        rejects([&] { (void)pack_glyph_instance(glyph, {400, 200, 2}); });
+        glyph = saved;
+        glyph.transform.pivot.x = invalid;
+        rejects([&] { (void)pack_glyph_instance(glyph, {400, 200, 2}); });
+        glyph = saved;
+    }
+    graphics::GlyphInstanceStore store;
+    const std::array values{glyph};
+    const auto range = store.append(values);
+    store.clear_dirty_ranges();
+    check(store.update_transform(range, {{30, 40}, 15}) == 1 && store.geometry_dirty_ranges().size() == 1 &&
+              store.material_dirty_ranges().empty(),
+          "rotation dirtied material or missed retained geometry");
+    store.clear_dirty_ranges();
+    check(store.update_transform(range, {{30, 40}, 15}) == 0 && store.geometry_dirty_ranges().empty(),
+          "unchanged rotation dirtied geometry");
+    rejects([&] { (void)store.update_transform(range, {{0, 0}, std::numeric_limits<float>::quiet_NaN()}); });
+    check(store.at(range.first).transform == graphics::GlyphTransform{{30, 40}, 15},
+          "invalid transform replaced valid geometry");
+}
 } // namespace
 
 int main() {
     try {
         literal_packing();
+        rotated_glyph_packing();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

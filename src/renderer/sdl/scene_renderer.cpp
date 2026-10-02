@@ -162,6 +162,7 @@ SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, const std::filesyste
             SDL_GPUVertexAttribute{2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},
             SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
             SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
+            SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
         };
         glyph_pipeline_ = build_pipeline("glyph", sizeof(GlyphGpuInstance), glyph_attributes, 1);
         const std::array effect_attributes{

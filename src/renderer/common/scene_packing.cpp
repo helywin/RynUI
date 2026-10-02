@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -35,13 +36,39 @@ QuadGpuInstance pack_quad_instance(const graphics::QuadInstance& instance, Scene
 
 GlyphGpuInstance pack_glyph_instance(const graphics::GlyphInstance& instance, SceneDeviceMetrics metrics) {
     const auto viewport = scene_logical_viewport(metrics);
-    return {pack_bounds(instance.position_size, viewport),
+    auto bounds = instance.position_size;
+    validate_bounds(bounds);
+    const auto transform = instance.transform;
+    if (!std::isfinite(transform.pivot.x) || !std::isfinite(transform.pivot.y) ||
+        !std::isfinite(transform.angle_degrees)) {
+        throw std::invalid_argument("Glyph transform must be finite");
+    }
+    const auto radians = std::remainder(static_cast<double>(transform.angle_degrees), 360.0) * std::numbers::pi / 180.0;
+    const auto cosine = static_cast<float>(std::cos(radians));
+    const auto sine = static_cast<float>(std::sin(radians));
+    if (transform.angle_degrees != 0) {
+        const auto x = bounds[0] - transform.pivot.x;
+        const auto y = bounds[1] - transform.pivot.y;
+        bounds[0] = transform.pivot.x + cosine * x - sine * y;
+        bounds[1] = transform.pivot.y + sine * x + cosine * y;
+    }
+    return {pack_bounds(bounds, viewport),
             instance.uv_rect,
             {-1 + 2 * instance.clip_bounds[0] / viewport.width, 1 - 2 * instance.clip_bounds[1] / viewport.height,
              -1 + 2 * instance.clip_bounds[2] / viewport.width, 1 - 2 * instance.clip_bounds[3] / viewport.height},
             instance.color,
             {2 * instance.translation_opacity[0] / viewport.width,
              -2 * instance.translation_opacity[1] / viewport.height, instance.translation_opacity[2],
-             instance.translation_opacity[3]}};
+             instance.translation_opacity[3]},
+            {cosine, sine * viewport.height / viewport.width, -sine * viewport.width / viewport.height, cosine}};
+}
+
+runtime::Point packed_glyph_vertex(const GlyphGpuInstance& instance, runtime::Point corner) {
+    const auto x = corner.x * instance.position_size[2];
+    const auto y = corner.y * instance.position_size[3];
+    return {instance.position_size[0] + instance.translation_opacity[0] + x * instance.rotation_basis[0] +
+                y * instance.rotation_basis[1],
+            instance.position_size[1] + instance.translation_opacity[1] + x * instance.rotation_basis[2] +
+                y * instance.rotation_basis[3]};
 }
 } // namespace ryn::detail

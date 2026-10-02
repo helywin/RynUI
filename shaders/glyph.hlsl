@@ -11,12 +11,15 @@ struct VertexOutput {
 };
 
 VertexOutput VSMain(uint vertexId : SV_VertexID, float4 positionSize : TEXCOORD0, float4 uvRect : TEXCOORD1,
-                    float4 clipBounds : TEXCOORD2, float4 color : TEXCOORD3, float4 translationOpacity : TEXCOORD4) {
+                    float4 clipBounds : TEXCOORD2, float4 color : TEXCOORD3, float4 translationOpacity : TEXCOORD4,
+                    float4 rotationBasis : TEXCOORD5) {
     static const float2 corners[6] = {float2(0.0, 0.0), float2(1.0, 0.0), float2(1.0, 1.0),
                                       float2(0.0, 0.0), float2(1.0, 1.0), float2(0.0, 1.0)};
 
     float2 corner = corners[vertexId];
-    float2 clipPosition = positionSize.xy + translationOpacity.xy + corner * positionSize.zw;
+    float2 delta = corner * positionSize.zw;
+    float2 clipPosition =
+        positionSize.xy + translationOpacity.xy + float2(dot(delta, rotationBasis.xy), dot(delta, rotationBasis.zw));
     VertexOutput output;
     output.position = float4(clipPosition, 0.0, 1.0);
     output.uv = lerp(uvRect.xy, uvRect.zw, corner);

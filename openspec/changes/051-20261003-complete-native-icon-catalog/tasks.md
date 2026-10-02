@@ -6,7 +6,7 @@
 
 ## 2. 共同保留旋转（平台通用）
 
-- [ ] 2.1 扩展 logical glyph pivot/angle 与 TextScene transform patch，升级共同 packed ABI/能力声明/SDL attributes/HLSL/reference；更新 renderer-contract。加入不同宽高比/density/clip/非法值/版本拒绝/无 reshape 与 coverage upload 的合同，HEADLESS D/R 受影响 CTest 与格式/OpenSpec/diff 通过后提交。
+- [x] 2.1 扩展 logical glyph pivot/angle 与 TextScene transform patch，升级共同 packed ABI/能力声明/SDL attributes/HLSL/reference；更新 renderer-contract。加入不同宽高比/density/clip/非法值/版本拒绝/无 reshape 与 coverage upload 的合同，HEADLESS D/R 受影响 CTest 与格式/OpenSpec/diff 通过后提交。
 
 ## 3. Icon 双色与 motion（平台通用）
 

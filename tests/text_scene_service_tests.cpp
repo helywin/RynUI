@@ -440,6 +440,56 @@ void test_ordered_scene_batch_matches_serial_and_recovers_after_cancel() {
             "cancelled Text batch lost the final ordered draw ranges");
 }
 
+void test_rotation_preserves_coverage_and_survives_rebuild() {
+    Fixture fixture;
+    const auto id = fixture.create(ryn::String{u8"A"});
+    auto placement = Fixture::placement(20);
+    require(fixture.service.synchronize(id, placement), "rotation initial synchronization failed");
+    RecordingGpuApi api;
+    ryn::detail::GlyphGpuResources resources{api};
+    resources.synchronize(fixture.service.atlas(), fixture.service.glyph_scene().instances(), {640, 360, 1});
+    const auto before = fixture.service.text_state(id).counters();
+    const auto rasterizations = fixture.fonts->counters().rasterizations;
+    const auto uploads = api.texture_uploads;
+    const auto range = fixture.service.primitive(id).instances;
+    const auto material = fixture.service.glyph_scene().instances().at(range.first).color;
+    for (int angle = 0; angle < 360; angle += 15) {
+        fixture.service.set_transform(id, {{7, 10}, static_cast<float>(angle)});
+        require(fixture.service.synchronize(id), "rotation patch synchronization failed");
+        resources.synchronize(fixture.service.atlas(), fixture.service.glyph_scene().instances(), {640, 360, 1});
+        require(fixture.service.primitive(id).instances == range &&
+                    fixture.service.text_state(id).counters().shape_count == before.shape_count &&
+                    fixture.fonts->counters().rasterizations == rasterizations && api.texture_uploads == uploads &&
+                    fixture.service.glyph_scene().instances().at(range.first).color == material,
+                "rotation reshaped/rasterized/uploaded coverage or changed material");
+    }
+    const auto expected = ryn::graphics::GlyphTransform{{27, 34}, 345};
+    require(fixture.service.glyph_scene().instances().at(range.first).transform == expected,
+            "local rotation pivot did not follow text origin");
+    placement.origin_pixels.x += 8;
+    require(fixture.service.synchronize(id, placement), "placement rebuild failed");
+    require(fixture.service.glyph_scene().instances().at(range.first).transform ==
+                ryn::graphics::GlyphTransform{{35, 34}, 345},
+            "placement rebuild lost rotation or pivot");
+    fixture.service.set_content(id, ryn::String{u8"B"});
+    require(fixture.service.synchronize(id) &&
+                fixture.service.glyph_scene().instances().at(fixture.service.primitive(id).instances.first).transform ==
+                    ryn::graphics::GlyphTransform{{35, 34}, 345},
+            "content rebuild lost retained rotation");
+    static_cast<void>(fixture.frames.consume_request());
+    require(!fixture.service.set_transform(id, {{7, 10}, 345}) && !fixture.frames.pending(),
+            "unchanged transform woke an idle frame");
+    bool rejected{};
+    try {
+        fixture.service.set_transform(id, {{7, 10}, std::numeric_limits<float>::infinity()});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected && fixture.service.synchronize(id), "invalid transform recovery failed");
+    require(fixture.service.destroy(id) && fixture.service.size() == 0 &&
+                fixture.service.glyph_scene().instances().size() == 0,
+            "rotated scene cleanup failed");
+}
 } // namespace
 
 int main() {
@@ -450,6 +500,7 @@ int main() {
         test_shared_shape_views();
         test_scroll_translation_preserves_glyphs();
         test_ordered_scene_batch_matches_serial_and_recovers_after_cancel();
+        test_rotation_preserves_coverage_and_survives_rebuild();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

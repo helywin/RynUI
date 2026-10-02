@@ -15,15 +15,25 @@ namespace ryn::graphics {
 
 // Logical x/y/width/height and left/top/right/bottom clip; UV stays normalized.
 // The first two translation_opacity entries are logical lengths, not NDC.
+struct GlyphTransform final {
+    runtime::Point pivot;
+    float angle_degrees{};
+
+    friend bool operator==(const GlyphTransform&, const GlyphTransform&) = default;
+};
+
 struct GlyphInstance {
     std::array<float, 4> position_size{};
     std::array<float, 4> uv_rect{};
     std::array<float, 4> clip_bounds{};
     std::array<float, 4> color{1.0F, 1.0F, 1.0F, 1.0F};
     std::array<float, 4> translation_opacity{0.0F, 0.0F, 1.0F, 0.0F};
+    GlyphTransform transform;
 
     friend bool operator==(const GlyphInstance&, const GlyphInstance&) = default;
 };
+
+[[nodiscard]] runtime::Point glyph_vertex(const GlyphInstance& instance, runtime::Point corner);
 
 struct GlyphInstanceRange {
     std::uint32_t first{};
@@ -52,6 +62,7 @@ public:
     [[nodiscard]] std::size_t update_material(GlyphInstanceRange range, std::array<float, 4> color, float opacity);
     [[nodiscard]] std::size_t update_geometry(GlyphInstanceRange range, std::array<float, 4> clip_bounds,
                                               std::array<float, 2> translation);
+    [[nodiscard]] std::size_t update_transform(GlyphInstanceRange range, GlyphTransform transform);
 
     [[nodiscard]] std::span<const GlyphInstanceRange> material_dirty_ranges() const noexcept;
     [[nodiscard]] std::span<const GlyphInstanceRange> geometry_dirty_ranges() const noexcept;

@@ -25,7 +25,7 @@
 - 不使用 Virtual DOM；普通属性更新不得重新执行无关 Component。
 - SDL3 类型不得泄漏到 Reactive、Layout、Component 或公开 API。
 - Core（含 Input/Text/动画）不得 include 或直接/间接链接 renderer；`renderer/common` 可以依赖 Core 和共同 renderer 模块。两者都不 include 具体 backend/OS SDK，也不得传递链接平台宿主、系统字体或 SDL。configure 的 include/link 守卫与实际 HEADLESS 构建负责验证；新增 backend 必须维持这一边界。
-- 新组件只更新 logical CPU scene v2/stores，通过 SceneResources 上传事务与 SceneBackend 呈现；Quad/Glyph/RoundedEffect 的 GPU ABI、打包、shader reference 和 GPU 上传均属于 renderer，不得添加组件私有 SDL 上传路径。遵守 `docs/renderer-contract.md` 的 logical 单位、renderer/common packed GPU ABI v1、统一 SceneDeviceMetrics、owner/epoch、失败重试与析构顺序。
+- 新组件只更新 logical CPU scene v3/stores，通过 SceneResources 上传事务与 SceneBackend 呈现；Quad/Glyph/RoundedEffect 的 GPU ABI、打包、shader reference 和 GPU 上传均属于 renderer，不得添加组件私有 SDL 上传路径。遵守 `docs/renderer-contract.md` 的 logical 单位、renderer/common packed GPU ABI v2、统一 SceneDeviceMetrics、owner/epoch、失败重试与析构顺序。
 - Glyph atlas 上传只传 R8 source bytes/offset/row stride/目标 rectangle；transfer row/offset 对齐、padding 与 source ownership 由 backend 完成。backend 显式声明必需能力、ABI 与输入上限；共同资源 preflight 拒绝不兼容/超限，组件不得分支选择 backend 或静默丢弃基础视觉。
 - 新 dirty 更新通过 FrameRequestState/DirtyQueues 唤醒；动画本帧 invalidation 与显式下一帧请求保持独立。callback host 使用非阻塞 tick、单调时间和 lifetime/generation ticket；deferred 不无条件立即重试。平台通用验证包含 `windows-msvc-headless` 的 Debug/Release CTest。
 - 正式构建统一通过 `CMakePresets.json` 驱动并使用 `Ninja Multi-Config`；Windows 必须使用 MSVC，不得用 MinGW 结果代替 Windows 验收。

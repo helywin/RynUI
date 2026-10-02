@@ -1,26 +1,28 @@
 # Renderer 合同
 
-035 建立共同 renderer 边界，036 分离 Quad/Glyph logical CPU scene 与 GPU 打包，037 完成 Effect packing 与 Core 的依赖隔离，038 集中收口纹理源视图、必需能力与资源输入限制；实现与验收状态以各 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
+035 建立共同 renderer 边界，036 分离 Quad/Glyph logical CPU scene 与 GPU 打包，037 完成 Effect packing 与 Core 的依赖隔离，038 集中收口纹理源视图、必需能力与资源输入限制；051 为 retained glyph 增加共同旋转，logical scene v3 / packed ABI v2。实现与验收状态以各 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
 
-## Logical CPU scene v2
+## Logical CPU scene v3
 
 Core 使用左上原点、x 向右/y 向下的 logical units。`QuadInstance::bounds` 为 `(x, y, width, height)`，宽高非负；translation 与 corner_radius 都是 logical 长度。`GlyphInstance::position_size` 为 logical `(x, y, width, height)`，`clip_bounds` 为 logical `(left, top, right, bottom)`，`translation_opacity` 前两项为 logical 平移。字体 density、quarter-pixel phase、bearing 与 atlas padding 已决定 glyph logical bounds，共同 packer 不再 round 或 rasterize。
 
+GlyphTransform 的 pivot 为 logical point，angle_degrees 为绕 pivot 的顺时针角度；先旋转 glyph coverage 矩形再施加 translation，UV/coverage/material 不变。TextSceneService 的 pivot 输入相对 content origin，placement rebuild 时还原绝对 logical pivot。angle/pivot 必须有限，普通角度更新只 patch geometry，不改变 shaping、rasterization 或 atlas coverage。
+
 CPU 类型没有 shader stride/offset 承诺，CPU bytes 不得直接作为 vertex upload。组件、TextSceneService、RetainedSurfaceService 和 QuadScene 只发布 CPU dirty ranges；GPU 资源和上传入口属于 renderer。新功能必须遵守此边界。
 
-## Packed scene ABI v1
+## Packed scene ABI v2
 
-`renderer/common/scene_packing` 与 `rounded_effect_packing` 将保留的 logical CPU scene 转为下表的数据；三个 packed 类型均属于 `ryn::detail`，与 Core CPU 类型独立。packed GPU ABI v1 保持原有 shader 合同；shader coverage/fragment reference 留在 renderer，Core 仅保留 logical reference。
+`renderer/common/scene_packing` 与 `rounded_effect_packing` 将保留的 logical CPU scene 转为下表的数据；三个 packed 类型均属于 `ryn::detail`，与 Core CPU 类型独立。v2 仅扩展 glyph rotation basis，Quad/Effect 保持原有字段；shader coverage/fragment reference 留在 renderer，Core 仅保留 logical reference。旧 packed ABI v1 必须被能力检查拒绝，不能继续使用 80-byte glyph stride。
 
 | 数据 | 合同 |
 | --- | --- |
 | Quad | 48 bytes、16-byte alignment；rect 为 NDC `(left, top, width, negative-height)`，translation 为 NDC 向量；圆角为最短边的 0..0.5 比值 |
-| Glyph | `GlyphGpuInstance` 80 bytes、16-byte alignment；rect/clip 为 NDC，UV 左上原点、范围 0..1，translation 与 opacity 存在 instance 数据中 |
+| Glyph | `GlyphGpuInstance` 96 bytes、16-byte alignment；rect/clip 为 NDC，UV 左上原点、范围 0..1，translation/opacity/rotation basis 存在 instance 数据中；字段 offset 0/16/32/48/64/80 |
 | RoundedEffect | `RoundedEffectGpuInstance` 112 bytes、16-byte alignment；NDC rect，物理 pixel shape/clip、半径与效果参数；字段 offset 0/16/32/48/64/80/96；logical store 保留在 Core |
 | 颜色 | RGBA 浮点 token 值直接传入现有 shader；RGB 使用 source-alpha 混合，alpha 使用 `one + one-minus-source-alpha`；现有路径未增加统一线性/sRGB 转换 |
 | 顺序 | OrderedScene 的 Quad/Glyph/RoundedEffect 顺序必须保持；仅已有场景合同允许合并相邻兼容 draw |
 
-NDC x 向右、y 向上；完整视口范围 [-1, 1]。clip 边界、atlas UV 和 glyph padding 保持现有 shader 合同。backend 在消费边界转换 GPU API 特有的坐标、格式、传输对齐，不能让组件选择 shader 或 OS 类型。
+NDC x 向右、y 向上；完整视口范围 [-1, 1]。Glyph packer 绕 logical pivot 旋转矩形原点，并打包 `[cos, sin*H/W, -sin*W/H, cos]`，H/W 为 logical viewport 比例；HLSL VS 和 packed_glyph_vertex reference 用同一两条基得到顶点，确保非正方形 viewport 不改变物理角度。clip 边界、atlas UV 和 glyph padding 保持现有 shader 合同。backend 在消费边界转换 GPU API 特有的坐标、格式、传输对齐，不能让组件选择 shader 或 OS 类型。
 
 `renderer/common/scene_metrics` 独立定义 SceneDeviceMetrics，三类 primitive 共用 physical pixel extent/display_scale，logical viewport = extent / scale；extent 必须正，scale 必须有限正，派生 viewport 也必须有限正。非法 metrics 在 begin upload 前拒绝；零尺寸/不可用 surface 留给宿主决定恢复时机。resources 复用 packed staging；首次、容量增长、metrics 改变全量重打包，普通更新只转换合并 dirty ranges，idle 不上传。resize 不改写 Quad/Glyph CPU store，不重建字体 atlas；Effect 继续按 logical viewport compact/cull。上传失败使资源 metrics 缓存失效，即使回到失败前的原 metrics 且无 CPU dirty，也完整重试。SceneResources 的提交失败还恢复所有参与数据。字体 DPI 变化所需的 shaping/raster 更新由文本服务现有机制负责，不能仅用重打包替代。
 
@@ -44,7 +46,7 @@ Recording 实际复制 buffer/texture 数据、校验范围和类型、保持 ha
 
 ## 必需能力与资源输入限制
 
-SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v2、packed ABI v1，Quad/Glyph/RoundedEffect、R8 sampling、ordered draws、partial uploads 与正的 maximum_buffer_bytes/texture width/height。缺任一必需能力或版本不匹配，SceneResources 在创建 sampler/buffer/texture 前给出原因；组件不静默忽略阴影、文字或顺序。SDL 实际查询 device 的 R8 sampling support；其他声明由当前 pipelines/上传实现提供。
+SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v3、packed ABI v2，Quad/Glyph/RoundedEffect、R8 sampling、ordered draws、partial uploads 与正的 maximum_buffer_bytes/texture width/height。缺任一必需能力或版本不匹配，SceneResources 在创建 sampler/buffer/texture 前给出原因；组件不静默忽略阴影、文字或顺序。SDL 实际查询 device 的 R8 sampling support；其他声明由当前 pipelines/上传实现提供。
 
 资源限制是 backend 接受输入的上限，不是可用显存或硬件能力保证。SDL buffer limit 为 API uint32 上限，texture extent 只约束可表示输入；实际 GPU create 仍可能失败。共同 preflight 在 begin 前检查 Quad 的实际增长容量（共享 helper，初次精确 count、后续 max(required, old_capacity×2)）、Glyph 精确 count 与 live Effect 的保守 power-of-two 容量；epoch 改变不带入旧 Quad capacity。Effect budget 用 live count，可能高于 cull 后的可见 count。有 page 才检查 atlas extent，空 atlas config 不导致错误。超限使附件失效并保留 retry/dirty 数据，修正输入后可重试。
 

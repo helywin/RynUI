@@ -88,6 +88,8 @@ public:
     // Post-rasterization scrolling; callers align the offset to physical pixels.
     // Unlike placement.translation_pixels, this never changes rasterization phase.
     bool set_scroll_translation(TextSceneId id, runtime::Point pixels);
+    // Pivot is relative to the content origin; rotation precedes scroll translation.
+    bool set_transform(TextSceneId id, graphics::GlyphTransform transform);
     // Splits a requested translation into an aligned scroll patch and the
     // residual that must retain normal raster-phase placement semantics.
     [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(TextSceneId id, runtime::Point pixels,

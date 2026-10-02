@@ -39,6 +39,7 @@ struct TextSceneService::Record final {
     graphics::GlyphPrimitive primitive;
     std::optional<graphics::GlyphPlacement> placement;
     runtime::Point scroll_translation{};
+    graphics::GlyphTransform transform;
     std::uint64_t scroll_scale_revision{};
     float scroll_scale{};
     graphics::GlyphAtlasError last_error{};
@@ -336,6 +337,23 @@ bool TextSceneService::set_placement(TextSceneId id, graphics::GlyphPlacement pl
     return update_placement(id, std::move(placement), true);
 }
 
+bool TextSceneService::set_transform(TextSceneId id, graphics::GlyphTransform transform) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!std::isfinite(transform.pivot.x) || !std::isfinite(transform.pivot.y) ||
+        !std::isfinite(transform.angle_degrees)) {
+        throw std::invalid_argument("Text glyph transform must be finite");
+    }
+    if (record.transform == transform) {
+        return false;
+    }
+    record.transform = transform;
+    record.patchable_geometry_dirty = true;
+    ++record.revisions.placement;
+    frame_requests_->request_frame();
+    return true;
+}
+
 bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pixels) {
     ensure_owner_thread();
     auto& record = require_record(id);
@@ -393,17 +411,23 @@ runtime::Point TextSceneService::set_phase_preserving_scroll_translation(TextSce
 
 std::size_t TextSceneService::patch_geometry(Record& record, const graphics::GlyphPlacement& placement) {
     const auto clip = placement.clip_pixels;
-    return glyph_scene_.instances().update_geometry(record.primitive.instances,
-                                                    {
-                                                        clip.x,
-                                                        clip.y,
-                                                        clip.x + clip.width,
-                                                        clip.y + clip.height,
-                                                    },
-                                                    {
-                                                        record.scroll_translation.x,
-                                                        record.scroll_translation.y,
-                                                    });
+    const auto updated = glyph_scene_.instances().update_geometry(record.primitive.instances,
+                                                                  {
+                                                                      clip.x,
+                                                                      clip.y,
+                                                                      clip.x + clip.width,
+                                                                      clip.y + clip.height,
+                                                                  },
+                                                                  {
+                                                                      record.scroll_translation.x,
+                                                                      record.scroll_translation.y,
+                                                                  });
+    auto transform = record.transform;
+    if (transform != graphics::GlyphTransform{}) {
+        transform.pivot.x += placement.origin_pixels.x + placement.translation_pixels.x;
+        transform.pivot.y += placement.origin_pixels.y + placement.translation_pixels.y;
+    }
+    return updated + glyph_scene_.instances().update_transform(record.primitive.instances, transform);
 }
 
 bool TextSceneService::update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame) {
@@ -465,7 +489,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
         const std::int64_t offset = static_cast<std::int64_t>(result.primitive.instances.count) - old_range.count;
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
-        if (record.scroll_translation != runtime::Point{}) {
+        if (record.scroll_translation != runtime::Point{} || record.transform != graphics::GlyphTransform{}) {
             static_cast<void>(patch_geometry(record, placement));
         }
         record.content_dirty = false;

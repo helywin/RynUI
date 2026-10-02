@@ -361,7 +361,7 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 
 ## 10. GPU Scene 与 Renderer
 
-共同资源、Quad/Glyph/RoundedEffect GPU ABI、打包、shader reference 与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。Core 不 include/link renderer，保留 logical CPU scene v2、其 culling/math/coverage；packed GPU ABI v1 与 CPU 类型分离。renderer 根据独立 SceneDeviceMetrics 打包，并在 metrics 改变或上传失败后重新上传完整投影；device abandon 失效旧代际容量与缓存。include/link configure 守卫约束单向依赖，实际 `windows-msvc-headless` 构建验证真实 Core、文本和共同资源。版本与编译期 backend 选择见 [renderer 合同](renderer-contract.md)，具体平台状态由当前 change 证据说明。
+共同资源、Quad/Glyph/RoundedEffect GPU ABI、打包、shader reference 与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。Core 不 include/link renderer，保留 logical CPU scene v3、其 culling/math/coverage；packed GPU ABI v2 与 CPU 类型分离。renderer 根据独立 SceneDeviceMetrics 打包，并在 metrics 改变或上传失败后重新上传完整投影；device abandon 失效旧代际容量与缓存。include/link configure 守卫约束单向依赖，实际 `windows-msvc-headless` 构建验证真实 Core、文本和共同资源。版本与编译期 backend 选择见 [renderer 合同](renderer-contract.md)，具体平台状态由当前 change 证据说明。
 
 GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；binding 必须在 host/window 销毁前清理。显式重建顺序是失效附件 → 旧 device 活着时释放资源/pipeline → release claim/destroy device → 创建新 binding/renderer → 从保留 CPU scene 上传。不能把旧 handle 交给新 device 释放；实际设备已消失时只丢弃其代际记录。现有 SDL 路径不承诺自动 device-loss 检测/恢复。
 

@@ -137,8 +137,9 @@ void test_instance_layout_and_text_positioning() {
         ryn::detail::GlyphAttributeBinding{2, ryn::detail::GlyphAttributeFormat::float4, 32},
         ryn::detail::GlyphAttributeBinding{3, ryn::detail::GlyphAttributeFormat::float4, 48},
         ryn::detail::GlyphAttributeBinding{4, ryn::detail::GlyphAttributeFormat::float4, 64},
+        ryn::detail::GlyphAttributeBinding{5, ryn::detail::GlyphAttributeFormat::float4, 80},
     };
-    require(sizeof(ryn::detail::GlyphGpuInstance) == 80 && ryn::detail::glyph_attribute_bindings == expected_bindings &&
+    require(sizeof(ryn::detail::GlyphGpuInstance) == 96 && ryn::detail::glyph_attribute_bindings == expected_bindings &&
                 ryn::detail::glyph_vertex_count == 6,
             "Glyph instance layout does not match the shader contract");
 
