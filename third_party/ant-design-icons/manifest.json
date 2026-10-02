@@ -4,7 +4,7 @@
   "upstream_commit": "7f2516ac91226d2b41f93b35cb5197c8d94f7189",
   "license_sha256": "5d367fb0a07340571542eb4ee8eb1add62d37b71bad6786a57c2e9a86bf76c70",
   "fonttools_version": "4.60.1",
-  "outline_container_sha256": "518becc28454da4b09543f11528bd75406f4e7ef6537b272c9e2161f4d385d50",
+  "outline_container_sha256": "bb5403a24b611fd5ca30311070f93fa2975eb7821b9a4e5a8ca9d6305a81b604",
   "icons": [
     {
       "name": "EyeOutlined",
@@ -89,6 +89,108 @@
       "file": "outlined-up.svg",
       "codepoint": 57357,
       "sha256": "6e00c4f7320bbbc6a03c37d3bdb653c38196ee6f10301833cfe09a2714542de6"
+    }
+  ],
+  "primitives": [
+    {
+      "name": "TooltipArrowDown",
+      "codepoint": 61440,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1024,
+          0
+        ],
+        [
+          512,
+          512
+        ]
+      ],
+      "origin": "RynUI",
+      "bounds": [
+        0,
+        384,
+        1024,
+        896
+      ]
+    },
+    {
+      "name": "TooltipArrowUp",
+      "codepoint": 61441,
+      "points": [
+        [
+          0,
+          512
+        ],
+        [
+          512,
+          0
+        ],
+        [
+          1024,
+          512
+        ]
+      ],
+      "origin": "RynUI",
+      "bounds": [
+        0,
+        384,
+        1024,
+        896
+      ]
+    },
+    {
+      "name": "TooltipArrowRight",
+      "codepoint": 61442,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          512,
+          512
+        ],
+        [
+          0,
+          1024
+        ]
+      ],
+      "origin": "RynUI",
+      "bounds": [
+        0,
+        -128,
+        512,
+        896
+      ]
+    },
+    {
+      "name": "TooltipArrowLeft",
+      "codepoint": 61443,
+      "points": [
+        [
+          512,
+          0
+        ],
+        [
+          512,
+          1024
+        ],
+        [
+          0,
+          512
+        ]
+      ],
+      "origin": "RynUI",
+      "bounds": [
+        0,
+        -128,
+        512,
+        896
+      ]
     }
   ]
 }

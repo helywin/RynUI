@@ -37,11 +37,19 @@ ICONS = [
     ("UpOutlined", "outlined-up.svg"),
 ]
 
+# RynUI-owned primitives; separate codepoints keep the locked Ant indices stable.
+PRIMITIVES = [
+    ("TooltipArrowDown", 0xF000, [(0, 0), (1024, 0), (512, 512)]),
+    ("TooltipArrowUp", 0xF001, [(0, 512), (512, 0), (1024, 512)]),
+    ("TooltipArrowRight", 0xF002, [(0, 0), (512, 512), (0, 1024)]),
+    ("TooltipArrowLeft", 0xF003, [(512, 0), (512, 1024), (0, 512)]),
+]
+
 
 def generate():
     if fontTools.version != "4.60.1":
         raise RuntimeError("Regeneration requires fonttools==4.60.1")
-    names = [".notdef"] + [name for name, _ in ICONS]
+    names = [".notdef"] + [name for name, _ in ICONS] + [name for name, _, _ in PRIMITIVES]
     chars = {".notdef": T2CharStringPen(1024, None).getCharString()}
     entries = []
     for index, (name, filename) in enumerate(ICONS):
@@ -58,14 +66,29 @@ def generate():
         entries.append({"name": name, "file": filename,
                         "codepoint": 0xE000 + index,
                         "sha256": hashlib.sha256(source).hexdigest()})
+    primitives = []
+    for name, codepoint, points in PRIMITIVES:
+        pen = T2CharStringPen(1024, None, roundTolerance=0.01)
+        pen.moveTo((points[0][0], 896 - points[0][1]))
+        for x, y in points[1:]:
+            pen.lineTo((x, 896 - y))
+        pen.closePath()
+        chars[name] = pen.getCharString()
+        primitives.append({"name": name, "codepoint": codepoint, "points": points,
+                           "origin": "RynUI", "bounds": [min(x for x, y in points),
+                               896 - max(y for x, y in points), max(x for x, y in points),
+                               896 - min(y for x, y in points)]})
     builder = FontBuilder(1024, isTTF=False)
     builder.setupGlyphOrder(names)
-    builder.setupCharacterMap({item["codepoint"]: item["name"] for item in entries})
+    builder.setupCharacterMap({item["codepoint"]: item["name"] for item in entries + primitives})
     builder.setupCFF("RynUIAntIcons", {"FullName": "RynUI Ant Icons",
                      "FamilyName": "RynUI Ant Icons", "Weight": "Regular"}, chars, {})
     for name, _ in ICONS:
         if chars[name].calcBounds(None) is None:
             raise ValueError(f"Empty outline: {name}")
+    for item in primitives:
+        if list(chars[item["name"]].calcBounds(None)) != item["bounds"]:
+            raise ValueError(f"Primitive bounds changed: {item['name']}")
     builder.setupHorizontalMetrics({name: (1024, 0) for name in names})
     builder.setupHorizontalHeader(ascent=896, descent=-128, lineGap=0)
     builder.setupNameTable({"familyName": "RynUI Ant Icons", "styleName": "Regular",
@@ -90,7 +113,8 @@ def generate():
                 "upstream_commit": "7f2516ac91226d2b41f93b35cb5197c8d94f7189",
                 "license_sha256": hashlib.sha256((ASSETS / "LICENSE").read_bytes()).hexdigest(),
                 "fonttools_version": fontTools.version,
-                "outline_container_sha256": hashlib.sha256(raw).hexdigest(), "icons": entries}
+                "outline_container_sha256": hashlib.sha256(raw).hexdigest(), "icons": entries,
+                "primitives": primitives}
     return "\n".join(lines), json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
 
 

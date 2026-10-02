@@ -31,6 +31,14 @@ require(sha((asset_dir / "LICENSE").read_bytes()) == manifest["license_sha256"],
         "Icon license changed")
 require(len(manifest["icons"]) == 14, "Locked icon inventory changed")
 require(len({item["name"] for item in manifest["icons"]}) == 14, "Duplicate icon name")
+require([item["name"] for item in manifest["primitives"]] ==
+        ["TooltipArrowDown", "TooltipArrowUp", "TooltipArrowRight", "TooltipArrowLeft"],
+        "Private arrow primitives changed")
+for index, item in enumerate(manifest["primitives"]):
+    require(item["codepoint"] == 0xF000 + index and item["origin"] == "RynUI",
+            "Private primitive collided with Ant catalog")
+    require(len(item["points"]) == 3 and len(item["bounds"]) == 4,
+            "Private primitive geometry is invalid")
 for index, item in enumerate(manifest["icons"]):
     require(item["codepoint"] == 0xE000 + index, "Icon codepoint drifted")
     source = (asset_dir / item["file"]).read_bytes()

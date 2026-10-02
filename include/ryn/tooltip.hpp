@@ -97,6 +97,11 @@ public:
         return *this;
     }
 
+    TooltipProps& pointAtCenter(Prop<bool> value) {
+        point_at_center_ = std::move(value);
+        return *this;
+    }
+
     TooltipProps& autoAdjustOverflow(Prop<bool> value) {
         adjust_ = std::move(value);
         return *this;
@@ -135,6 +140,7 @@ private:
     bool explicit_trigger_{};
     std::optional<Prop<TooltipTriggers>> triggers_;
     Prop<bool> arrow_{true};
+    Prop<bool> point_at_center_{false};
     Prop<bool> adjust_{true};
     Prop<Duration> enter_{Duration::milliseconds(100)};
     Prop<Duration> leave_{Duration::milliseconds(100)};

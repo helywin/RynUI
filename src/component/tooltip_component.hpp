@@ -9,10 +9,12 @@ struct TooltipSnapshot final {
     runtime::Rect bounds;
     TooltipPlacement placement{TooltipPlacement::Top};
     bool visible{};
+    float arrow_center{};
 };
 
 [[nodiscard]] TooltipSnapshot position_tooltip(runtime::Rect anchor, runtime::Size popup, runtime::Rect viewport,
-                                               TooltipPlacement placement, float distance, bool adjust);
+                                               TooltipPlacement placement, float distance, bool adjust,
+                                               bool point_at_center = false, float arrow_inset = 0);
 
 class TooltipComponentHost final : public WindowComponentParticipant {
 public:

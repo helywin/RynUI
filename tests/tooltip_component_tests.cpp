@@ -283,6 +283,80 @@ void geometry_and_api() {
           "invalid mode acquired resources");
 }
 
+void centered_arrow_and_vector_coverage() {
+    const runtime::Rect anchor{150, 120, 120, 80};
+    const runtime::Size popup{100, 60};
+    const runtime::Rect viewport{0, 0, 600, 400};
+    for (int value = 0; value < 12; ++value) {
+        const auto placement = static_cast<TooltipPlacement>(value);
+        const auto edge = detail::position_tooltip(anchor, popup, viewport, placement, 12, false, false, 12);
+        const auto center = detail::position_tooltip(anchor, popup, viewport, placement, 12, false, true, 12);
+        const bool horizontal = value / 3 < 2;
+        const float start = horizontal ? center.bounds.x : center.bounds.y;
+        const float target = horizontal ? anchor.x + anchor.width / 2 : anchor.y + anchor.height / 2;
+        check(std::abs(start + center.arrow_center - target) < 0.01F,
+              "pointAtCenter did not align arrow with anchor center");
+        if (value % 3 == 0) {
+            check(center.bounds == edge.bounds, "center placement changed when toggling pointAtCenter");
+        } else {
+            check(center.bounds != edge.bounds && center.arrow_center == edge.arrow_center,
+                  "corner placement did not retain fixed arrow inset");
+        }
+        const auto tiny = detail::position_tooltip({0, 0, 1, 1}, popup, {0, 0, 1, 1}, placement, 12, true, true, 100);
+        check(tiny.bounds == runtime::Rect{0, 0, 1, 1} && tiny.arrow_center == 0.5F,
+              "tiny centered arrow produced invalid coordinates");
+    }
+    rejects(
+        [&] { (void)detail::position_tooltip(anchor, popup, viewport, TooltipPlacement::Top, 1, true, true, NAN); });
+    Fixture f;
+    Signal<bool> centered{false};
+    f.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}
+                    .title(String{u8"arrow"})
+                    .open(true)
+                    .placement(TooltipPlacement::BottomLeft)
+                    .autoAdjustOverflow(false)
+                    .pointAtCenter(centered),
+                TooltipTrigger{[] { Text(u8"a wider anchor for corner alignment"); }});
+    }});
+    f.synchronize();
+    const auto id = f.services.tooltip().mounted()[0];
+    const auto owner = f.services.components().root(id);
+    const auto measures = f.nodes.require(owner).measure_count;
+    const auto edge = f.services.tooltip().snapshot(id);
+    centered.set(true);
+    f.synchronize();
+    const auto center = f.services.tooltip().snapshot(id);
+    check(center.bounds.x != edge.bounds.x && f.nodes.require(owner).measure_count == measures,
+          "centered arrow remounted or remeasured trigger");
+    const auto font = f.scene.icon_font(f.resolve(32).front(), 32);
+    for (int index = 0; index < 4; ++index) {
+        const auto glyph = f.fonts->glyph_index(font, static_cast<char32_t>(0xF000 + index));
+        check(glyph && glyph.glyph.glyph_id != 0, "private arrow mapping missing");
+        const auto raster = f.fonts->rasterize(font, glyph.glyph.glyph_id);
+        check(raster && raster.glyph->width > 0 && raster.glyph->height > 0, "arrow outline failed to rasterize");
+        const auto& bitmap = *raster.glyph;
+        std::uint64_t first{};
+        std::uint64_t last{};
+        if (index < 2) {
+            check(bitmap.width > bitmap.height, "horizontal arrow dimensions are rotated");
+            for (std::uint32_t x = 0; x < bitmap.width; ++x) {
+                first += bitmap.coverage[x];
+                last += bitmap.coverage[(bitmap.height - 1) * bitmap.row_stride + x];
+            }
+        } else {
+            check(bitmap.height > bitmap.width, "vertical arrow dimensions are rotated");
+            for (std::uint32_t y = 0; y < bitmap.height; ++y) {
+                first += bitmap.coverage[y * bitmap.row_stride];
+                last += bitmap.coverage[y * bitmap.row_stride + bitmap.width - 1];
+            }
+        }
+        check(index % 2 == 0 ? first > last : last > first, "arrow vector points in the wrong direction");
+        check(std::count(bitmap.coverage.begin(), bitmap.coverage.end(), 255) > 100,
+              "arrow lost continuous opaque triangle coverage");
+    }
+}
+
 void delayed_hover_and_focus() {
     Fixture f;
     int clicks{};
@@ -322,7 +396,8 @@ void delayed_hover_and_focus() {
     const auto paint = f.services.components().paint_traversal();
     const auto popup = f.services.components().children(id)[1];
     check(f.services.components().in_window_layer(paint.back().component) &&
-              f.services.components().parent(paint.back().component) == popup,
+              f.services.components().parent(paint.back().component) == f.services.components().children(id)[2] &&
+              f.services.components().in_window_layer(popup),
           "Tooltip text was not topmost");
     const auto quad_updates = f.services.surfaces().diagnostics();
     f.synchronize();
@@ -432,16 +507,16 @@ void theme_and_geometry_updates() {
     const auto node = f.services.components().root(popup);
     const auto measures = f.nodes.require(node).measure_count;
     const auto before = f.services.surfaces().diagnostics();
-    const auto quad_count = [&] {
+    const auto glyph_count = [&] {
         std::size_t count{};
         for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
-            if (command.kind == graphics::SceneDrawKind::quad) {
+            if (command.kind == graphics::SceneDrawKind::glyph) {
                 count += command.instance_count;
             }
         }
         return count;
     };
-    const auto with_arrow = quad_count();
+    const auto with_arrow = glyph_count();
     config.tooltip.tokens.background = Color::rgba8(200, 0, 0);
     config.tooltip.tokens.text = Color::rgba8(255, 255, 0);
     theme.set(config);
@@ -451,7 +526,7 @@ void theme_and_geometry_updates() {
           "Tooltip color update remeasured or remounted geometry");
     arrow.set(false);
     f.synchronize();
-    check(quad_count() < with_arrow, "hiding arrow left stale drawn instances");
+    check(glyph_count() + 1 == with_arrow, "hiding arrow left stale drawn glyph");
     config.tooltip.tokens.max_width = dp(60);
     theme.set(config);
     f.synchronize();
@@ -494,6 +569,7 @@ void theme_and_geometry_updates() {
 int main() {
     try {
         geometry_and_api();
+        centered_arrow_and_vector_coverage();
         delayed_hover_and_focus();
         controlled_disabled_and_reentrancy();
         theme_and_geometry_updates();

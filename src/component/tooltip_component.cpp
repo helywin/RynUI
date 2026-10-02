@@ -13,10 +13,13 @@ struct TooltipState final {
     runtime::ComponentId component;
     runtime::ComponentId trigger;
     runtime::ComponentId popup;
+    runtime::ComponentId arrow_component;
     runtime::NodeId node;
     input::InteractionId interaction;
     component::RetainedSurfaceId body;
-    component::RetainedSurfaceId arrow_range;
+    Signal<String> arrow_content{String{u8"\uF000"}};
+    Signal<runtime::SemanticForeground> arrow_foreground{{0, 0, 0, 1}};
+    Signal<runtime::SemanticTypography> arrow_typography{runtime::SemanticTypography{}};
     Signal<String> title{String{}};
     Signal<runtime::SemanticForeground> foreground{{1, 1, 1, 1}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
@@ -29,6 +32,7 @@ struct TooltipState final {
     bool observed{};
     bool dismissed{};
     bool arrow{true};
+    bool point_at_center{};
     bool adjust{true};
     bool action_open{};
     std::optional<runtime::Point> context_anchor;
@@ -97,19 +101,26 @@ int side(TooltipPlacement placement) {
     return static_cast<int>(placement) / 3;
 }
 
-runtime::Rect candidate(runtime::Rect anchor, runtime::Size popup, TooltipPlacement placement, float distance) {
+runtime::Rect candidate(runtime::Rect anchor, runtime::Size popup, TooltipPlacement placement, float distance,
+                        bool point_at_center, float arrow_inset) {
     const int axis = side(placement);
     const int alignment = static_cast<int>(placement) % 3;
     float x = anchor.x + (anchor.width - popup.width) / 2;
     float y = anchor.y + (anchor.height - popup.height) / 2;
     if (axis < 2) {
         if (alignment) {
-            x = alignment == 1 ? anchor.x : anchor.x + anchor.width - popup.width;
+            const float inset = std::min(arrow_inset, popup.width / 2);
+            x = point_at_center  ? anchor.x + anchor.width / 2 - (alignment == 1 ? inset : popup.width - inset)
+                : alignment == 1 ? anchor.x
+                                 : anchor.x + anchor.width - popup.width;
         }
         y = axis == 0 ? anchor.y - popup.height - distance : anchor.y + anchor.height + distance;
     } else {
         if (alignment) {
-            y = alignment == 1 ? anchor.y : anchor.y + anchor.height - popup.height;
+            const float inset = std::min(arrow_inset, popup.height / 2);
+            y = point_at_center  ? anchor.y + anchor.height / 2 - (alignment == 1 ? inset : popup.height - inset)
+                : alignment == 1 ? anchor.y
+                                 : anchor.y + anchor.height - popup.height;
         }
         x = axis == 2 ? anchor.x - popup.width - distance : anchor.x + anchor.width + distance;
     }
@@ -128,26 +139,27 @@ runtime::Rect intersect(runtime::Rect value, runtime::Rect clip) {
 } // namespace
 
 TooltipSnapshot position_tooltip(runtime::Rect anchor, runtime::Size popup, runtime::Rect viewport,
-                                 TooltipPlacement placement, float distance, bool adjust) {
+                                 TooltipPlacement placement, float distance, bool adjust, bool point_at_center,
+                                 float arrow_inset) {
     validate_placement(placement);
     for (float value : {anchor.x, anchor.y, anchor.width, anchor.height, popup.width, popup.height, viewport.x,
-                        viewport.y, viewport.width, viewport.height, distance, anchor.x + anchor.width,
+                        viewport.y, viewport.width, viewport.height, distance, arrow_inset, anchor.x + anchor.width,
                         anchor.y + anchor.height, viewport.x + viewport.width, viewport.y + viewport.height}) {
         if (!std::isfinite(value)) {
             throw std::invalid_argument("Tooltip geometry must be finite");
         }
     }
     if (anchor.width < 0 || anchor.height < 0 || popup.width < 0 || popup.height < 0 || viewport.width < 0 ||
-        viewport.height < 0 || distance < 0) {
+        viewport.height < 0 || distance < 0 || arrow_inset < 0) {
         throw std::invalid_argument("Tooltip extents must be non-negative");
     }
     popup.width = std::min(popup.width, viewport.width);
     popup.height = std::min(popup.height, viewport.height);
-    auto bounds = candidate(anchor, popup, placement, distance);
+    auto bounds = candidate(anchor, popup, placement, distance, point_at_center, arrow_inset);
     if (adjust) {
         const int axis = side(placement);
         const auto opposite = static_cast<TooltipPlacement>((axis ^ 1) * 3 + static_cast<int>(placement) % 3);
-        const auto alternate = candidate(anchor, popup, opposite, distance);
+        const auto alternate = candidate(anchor, popup, opposite, distance, point_at_center, arrow_inset);
         const auto overflow = [viewport, axis](runtime::Rect value) {
             return axis < 2 ? std::max(viewport.y - value.y, 0.0F) +
                                   std::max(value.y + value.height - viewport.y - viewport.height, 0.0F)
@@ -161,7 +173,14 @@ TooltipSnapshot position_tooltip(runtime::Rect anchor, runtime::Size popup, runt
         bounds.x = std::clamp(bounds.x, viewport.x, viewport.x + viewport.width - bounds.width);
         bounds.y = std::clamp(bounds.y, viewport.y, viewport.y + viewport.height - bounds.height);
     }
-    return {anchor, bounds, placement, true};
+    const bool horizontal = side(placement) < 2;
+    const float extent = horizontal ? bounds.width : bounds.height;
+    const float inset = std::min(arrow_inset, extent / 2);
+    const int alignment = static_cast<int>(placement) % 3;
+    const float target = alignment    ? alignment == 1 ? inset : extent - inset
+                         : horizontal ? anchor.x + anchor.width / 2 - bounds.x
+                                      : anchor.y + anchor.height / 2 - bounds.y;
+    return {anchor, bounds, placement, true, std::clamp(target, inset, extent - inset)};
 }
 
 TooltipComponentHost::TooltipComponentHost(WindowComponentServices& services) : services_(&services) {
@@ -204,6 +223,7 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
         state->geometry.visible = visible;
         state->needs_measure = visible;
         services_->components().set_branch_active(state->popup, visible);
+        services_->components().set_branch_active(state->arrow_component, visible && state->arrow);
         services_->mark_scene_structure_dirty();
         services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
     }
@@ -399,10 +419,15 @@ void TooltipComponentHost::update_theme(runtime::ComponentId id, bool geometry) 
     state->foreground.set({token.text.red(), token.text.green(), token.text.blue(), token.text.alpha()});
     state->typography.set(
         {theme.typography().font_family, theme.typography().font_weight, false, token.font_size, token.line_height});
+    state->arrow_foreground.set(
+        {token.background.red(), token.background.green(), token.background.blue(), token.background.alpha()});
     if (geometry) {
         state->needs_measure = true;
     }
     if (services_->components().set_window_layer(state->popup, token.z_index_popup)) {
+        services_->mark_scene_structure_dirty();
+    }
+    if (services_->components().set_window_layer(state->arrow_component, token.z_index_popup)) {
         services_->mark_scene_structure_dirty();
     }
     services_->dirty().invalidate(state->node, runtime::DirtyFlags::Material);
@@ -435,6 +460,7 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
     state.mode = read_prop(props.trigger_);
     state.triggers = props.triggers_ ? read_prop(*props.triggers_) : trigger_actions(state.mode);
     state.arrow = read_prop(props.arrow_);
+    state.point_at_center = read_prop(props.point_at_center_);
     state.adjust = read_prop(props.adjust_);
     state.enter = read_prop(props.enter_);
     state.leave = read_prop(props.leave_);
@@ -493,22 +519,30 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
             effects.focus_enabled = false;
             state.body =
                 services.surfaces().create_surface(state.popup, popup_node, body, std::span{&initial, 1}, effects);
-            const auto arrow =
-                children.register_scene_fragment(state.popup, runtime::SceneFragmentPlacement::before_children);
-            state.arrow_range = services.surfaces().create_content_range(arrow, {});
-            children.on_resource_cleanup(state.popup,
-                                         [&services, popup_node, body_id = state.body, arrow_id = state.arrow_range] {
-                                             services.surfaces().destroy(body_id);
-                                             services.surfaces().destroy_content_range(arrow_id);
-                                             services.layout().remove_layout(popup_node);
-                                         });
+            children.on_resource_cleanup(state.popup, [&services, popup_node, body_id = state.body] {
+                services.surfaces().destroy(body_id);
+                services.layout().remove_layout(popup_node);
+            });
             const Content title_content = title ? Content{SlotContentAccess::function(*title)}
                                                 : Content{[&state] { ryn::Text(TextProps{}.content(state.title)); }};
             children.mount_slot_with_semantic_text_style(state.popup, title_content,
                                                          Prop<runtime::SemanticForeground>{state.foreground},
                                                          Prop<runtime::SemanticTypography>{state.typography});
+            state.arrow_component = children.mount_component<int>(0);
+            const auto arrow_node = children.root(state.arrow_component);
+            services.layout().set_layout(arrow_node, layout::BoxLayout{});
+            services.components().set_window_layer(state.arrow_component,
+                                                   build.theme_scope()->snapshot().tooltip().z_index_popup);
+            children.on_resource_cleanup(state.arrow_component,
+                                         [&services, arrow_node] { services.layout().remove_layout(arrow_node); });
+            children.mount_slot_with_semantic_text_style(
+                state.arrow_component,
+                Content{[&state] { mount_text_component(TextProps{}.content(state.arrow_content), true); }},
+                Prop<runtime::SemanticForeground>{state.arrow_foreground},
+                Prop<runtime::SemanticTypography>{state.arrow_typography});
         }});
     services.components().set_branch_active(state.popup, false);
+    services.components().set_branch_active(state.arrow_component, false);
     services.layout().set_layout(
         state.node, layout::ComponentLayout{
                         [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints constraints) {
@@ -596,6 +630,14 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
     connect_prop(scope, props.arrow_, [this, id](bool value) {
         if (auto* state = services_->components().state<TooltipState>(id)) {
             state->arrow = value;
+            services_->components().set_branch_active(state->arrow_component, state->geometry.visible && value);
+            services_->mark_scene_structure_dirty();
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+        }
+    });
+    connect_prop(scope, props.point_at_center_, [this, id](bool value) {
+        if (auto* state = services_->components().state<TooltipState>(id)) {
+            state->point_at_center = value;
             services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
         }
     });
@@ -673,11 +715,48 @@ void TooltipComponentHost::position_window_layers(runtime::Size viewport, runtim
         if (state->context_anchor) {
             anchor = {state->context_anchor->x, state->context_anchor->y, 0, 0};
         }
-        state->geometry = position_tooltip(anchor, state->popup_size, clip, state->placement,
-                                           token.gap + (state->arrow ? token.arrow_size : 0), state->adjust);
+        state->geometry = position_tooltip(
+            anchor, state->popup_size, clip, state->placement, token.gap + (state->arrow ? token.arrow_size : 0),
+            state->adjust, state->arrow && state->point_at_center, std::max(12.0F, token.border_radius + 2.0F));
         const auto& current = services_->nodes().require(popup);
         if (measure || current.bounds != state->geometry.bounds) {
             engine.place_child(popup, state->geometry.bounds);
+        }
+        const int axis = side(state->geometry.placement);
+        const bool horizontal = axis < 2;
+        const auto bounds = state->geometry.bounds;
+        const float size = std::min(token.arrow_size, (horizontal ? bounds.width : bounds.height) / 2);
+        const bool arrow_visible = state->arrow && size > 0;
+        if (services_->components().set_branch_active(state->arrow_component, arrow_visible)) {
+            services_->mark_scene_structure_dirty();
+        }
+        if (arrow_visible) {
+            static const String glyphs[]{String{u8"\uF000"}, String{u8"\uF001"}, String{u8"\uF002"},
+                                         String{u8"\uF003"}};
+            state->arrow_content.set(glyphs[axis]);
+            const float font_size = std::max(1.0F, std::round(size * 2));
+            state->arrow_typography.set({SystemFontFamily::ui_sans, 400, false, font_size, font_size});
+            const auto arrow_node = services_->components().root(state->arrow_component);
+            (void)engine.measure_child(arrow_node, {0, font_size, 0, font_size});
+            runtime::Rect arrow_bounds{0, 0, font_size, font_size};
+            const float half = font_size / 2;
+            const float center = state->geometry.arrow_center;
+            if (axis == 0) {
+                arrow_bounds.x = bounds.x + center - half;
+                arrow_bounds.y = bounds.y + bounds.height;
+            } else if (axis == 1) {
+                arrow_bounds.x = bounds.x + center - half;
+                arrow_bounds.y = bounds.y - half;
+            } else if (axis == 2) {
+                arrow_bounds.x = bounds.x + bounds.width;
+                arrow_bounds.y = bounds.y + center - half;
+            } else {
+                arrow_bounds.x = bounds.x - half;
+                arrow_bounds.y = bounds.y + center - half;
+            }
+            if (services_->nodes().require(arrow_node).bounds != arrow_bounds || measure) {
+                engine.place_child(arrow_node, arrow_bounds);
+            }
         }
     }
 }
@@ -705,48 +784,6 @@ void TooltipComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport
         effects.shadows = token.shadow;
         effects.ancestor_clip = graphics::EffectClip{1, clip};
         (void)services_->surfaces().update_effects(state->body, effects);
-        std::vector<graphics::QuadInstance> arrow;
-        if (state->arrow && token.arrow_size > 0) {
-            const int axis = side(state->geometry.placement);
-            const bool horizontal = axis < 2;
-            const float extent = horizontal ? bounds.width : bounds.height;
-            const float size = std::min(token.arrow_size, extent / 2);
-            const float padding = std::min(token.border_radius + size, extent / 2);
-            const float target = horizontal ? state->geometry.anchor.x + state->geometry.anchor.width / 2 - bounds.x
-                                            : state->geometry.anchor.y + state->geometry.anchor.height / 2 - bounds.y;
-            const float center = std::clamp(target, padding, extent - padding);
-            constexpr int rows = 32;
-            for (int row = 0; row < rows; ++row) {
-                const float start = size * static_cast<float>(row) / rows;
-                const float thickness = size / rows;
-                const float half = size - start - thickness / 2;
-                runtime::Rect rect;
-                if (axis == 0) {
-                    rect = {bounds.x + center - half, bounds.y + bounds.height + start, 2 * half, thickness};
-                }
-                if (axis == 1) {
-                    rect = {bounds.x + center - half, bounds.y - start - thickness, 2 * half, thickness};
-                }
-                if (axis == 2) {
-                    rect = {bounds.x + bounds.width + start, bounds.y + center - half, thickness, 2 * half};
-                }
-                if (axis == 3) {
-                    rect = {bounds.x - start - thickness, bounds.y + center - half, thickness, 2 * half};
-                }
-                rect = intersect(rect, clip);
-                if (rect.width > 0 && rect.height > 0) {
-                    graphics::QuadInstance quad;
-                    quad.bounds = {rect.x, rect.y, rect.width, rect.height};
-                    quad.color = body.color;
-                    arrow.push_back(quad);
-                }
-            }
-        }
-        const auto previous_count = services_->surfaces().visual_range(state->arrow_range).count;
-        (void)services_->surfaces().update_content_range(state->arrow_range, arrow);
-        if (previous_count != arrow.size()) {
-            services_->mark_scene_structure_dirty();
-        }
     }
 }
 } // namespace ryn::detail

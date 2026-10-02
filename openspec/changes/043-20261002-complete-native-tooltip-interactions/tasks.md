@@ -10,7 +10,7 @@
 
 ## 3. 箭头合同（平台通用）
 
-- [ ] 3.1 实现 reactive pointAtCenter 与四向私有向量 glyph，保留现有 Icon 索引、共同 logical scene/atlas 和 token 更新；补 12 placement/overflow/极小 viewport/identity/颜色不测量/隐藏清理合同、确定性资产与许可验证；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
+- [x] 3.1 实现 reactive pointAtCenter 与四向私有向量 glyph，保留现有 Icon 索引、共同 logical scene/atlas 和 token 更新；补 12 placement/overflow/极小 viewport/identity/颜色不测量/隐藏清理合同、确定性资产与许可验证；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
 
 ## 4. 原生整合（平台通用）
 
