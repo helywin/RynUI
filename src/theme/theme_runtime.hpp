@@ -41,7 +41,8 @@ public:
     using InvalidationCallback = std::function<void(DirtyPhase)>;
 
     [[nodiscard]] static std::shared_ptr<ThemeScope> create_default();
-    [[nodiscard]] static std::shared_ptr<ThemeScope> create(std::shared_ptr<ThemeScope> parent, ThemeConfig config);
+    [[nodiscard]] static std::shared_ptr<ThemeScope> create(std::shared_ptr<ThemeScope> parent,
+                                                            const ThemeConfig& config);
 
     ThemeScope(const ThemeScope&) = delete;
     ThemeScope& operator=(const ThemeScope&) = delete;
@@ -120,7 +121,7 @@ public:
 private:
     struct Subscriber;
 
-    ThemeScope(std::shared_ptr<ThemeScope> parent, ThemeConfig config);
+    ThemeScope(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config);
     void ensure_owner_thread() const;
     void record(TokenIdentity identity) const;
     void recompute_from_parent();

@@ -118,6 +118,12 @@ void test_typed_support_status() {
                 divider->missing_scope.find("DOM") != std::string_view::npos,
             "native Divider completion lost implementation evidence or Web boundary");
     require_partial("ant.component.typography");
+    const auto* switch_entry = find_ant_design_reference_entry("ant.component.switch");
+    require(switch_entry && switch_entry->support_status == GallerySupportStatus::implemented &&
+                switch_entry->evidence_identifiers.find("openspec:046-") != std::string_view::npos &&
+                switch_entry->supported_scope.find("retained") != std::string_view::npos &&
+                switch_entry->missing_scope.find("DOM") != std::string_view::npos,
+            "native Switch completion lost implementation evidence or Web boundary");
     require_partial("ant.component.flex");
     require_partial("ant.component.space");
     require_partial("ant.component.config-provider");

@@ -14,7 +14,7 @@
 | Space | split、Compact、响应尺寸 | typed slots 与共同控件边界 |
 | Checkbox | CheckboxGroup/options | typed value、reactive selection、Group disabled 与键盘/主题 |
 | Radio | 已有组件和 group，目录误标 planned | 审核 API 与合同后同步目录，补缺失项 |
-| Switch | checked/unchecked 内容与图标 | retained typed slots、主题、loading/disabled |
+| Switch | 046 已实现保留状态文字/图标、RTL、ref/autoFocus/onClick、加载透明度、主题/阴影、按压与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Input / Search / Password | TextArea、OTP、Search 图标/Compact；visual bidi、系统输入属性 | 分独立 change；保留编辑会话/Unicode/IME/clipboard 合同 |
 | Theme（ConfigProvider 原生映射） | 原生公共配置覆盖需要审核 | 作为 Theme 收尾，Web ConfigProvider API 不照抄 |
 

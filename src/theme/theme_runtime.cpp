@@ -385,18 +385,18 @@ std::shared_ptr<ThemeScope> ThemeScope::create_default() {
     return std::shared_ptr<ThemeScope>(new ThemeScope(nullptr, ThemeConfig{}));
 }
 
-std::shared_ptr<ThemeScope> ThemeScope::create(std::shared_ptr<ThemeScope> parent, ThemeConfig config) {
+std::shared_ptr<ThemeScope> ThemeScope::create(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config) {
     if (!parent) {
         throw std::invalid_argument("Nested ThemeScope requires a parent scope");
     }
     parent->ensure_owner_thread();
-    auto scope = std::shared_ptr<ThemeScope>(new ThemeScope(parent, std::move(config)));
+    auto scope = std::shared_ptr<ThemeScope>(new ThemeScope(parent, config));
     parent->children_.push_back(scope);
     return scope;
 }
 
-ThemeScope::ThemeScope(std::shared_ptr<ThemeScope> parent, ThemeConfig config)
-    : parent_(std::move(parent)), config_(std::move(config)),
+ThemeScope::ThemeScope(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config)
+    : parent_(std::move(parent)), config_(config),
       snapshot_(std::make_shared<ThemeSnapshot>(
           resolve_theme(config_, config_.inherit && parent_ ? &parent_->snapshot() : nullptr))),
       owner_thread_(std::this_thread::get_id()) {}

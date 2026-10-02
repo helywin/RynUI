@@ -546,24 +546,29 @@
     },
     {
       "identity": "ant.component.switch",
-      "status": "partial",
-      "summary": "RynUI 已提供 typed Switch、受控/非受控选中、Middle/Small、禁用/加载和 pointer/Space/focus 交互；完整 Web 内容与视觉变体尚未覆盖。",
+      "status": "implemented",
+      "summary": "RynUI 已补齐 Switch 原生桌面功能：保留文字/图标内容、RTL、ref/autoFocus/onClick、组件主题、按压伸展与有限 wave；平台验收独立记录。",
       "supported_scope": [
         "checked/defaultChecked and onChange",
         "Middle/Small sizes",
         "disabled and loading spinner",
         "pointer/Space/focus-visible interaction",
-        "Theme Switch Component Token geometry and handle color"
+        "retained checked/unchecked Text/Icon slots and clipping",
+        "RTL, SwitchRef, autoFocus and ordered onClick candidate",
+        "Theme inner margins, handle shadow, component algorithm and opacityLoading",
+        "pressed handle extension, finite wave and cancellation/idle lifecycle"
       ],
       "missing_scope": [
-        "checkedChildren/unCheckedChildren and icon content",
-        "complete Ant Design Web API",
-        "Windows and Linux visual acceptance"
+        "DOM/HTML/CSS and React ref",
+        "Web value/defaultValue aliases",
+        "Linux native acceptance remains an independent platform task"
       ],
       "evidence_identifiers": [
         "source:components/switch/index.en-US.md",
         "openspec:011-20260922-build-switch-and-checkbox-on-shared-control-runtime",
-        "test:rynui.selection_component"
+        "openspec:046-20261002-complete-native-switch-features",
+        "test:rynui.switch_features",
+        "test:rynui.switch_public_api"
       ]
     },
     {

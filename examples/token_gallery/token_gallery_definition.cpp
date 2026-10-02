@@ -40,6 +40,7 @@ struct GalleryState final {
     ryn::ButtonRef button_ref;
     ryn::Signal<bool> clear_disabled{false};
     ryn::Signal<bool> switch_checked{false};
+    ryn::SwitchRef switch_ref;
     ryn::Signal<bool> checkbox_checked{false};
     ryn::Signal<std::optional<ryn::String>> radio_selected{std::optional<ryn::String>{ryn::String{u8"a"}}};
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
@@ -109,6 +110,10 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.divider.small-dotted-rtl",
     "gallery.divider.middle-length",
     "gallery.divider.vertical-dotted",
+    "gallery.switch.content-ref",
+    "gallery.switch.small-icon-rtl",
+    "gallery.switch.component-theme",
+    "gallery.switch.focus",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
@@ -1001,6 +1006,41 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ryn::Text(u8"Dotted");
     });
     state->telemetry.live_samples += 3;
+}
+
+void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(u8"Switch · retained 内容、图标、RTL、ref 与组件主题");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center).size(ryn::dp(12)), [state] {
+        ryn::Text(u8"gallery.switch.content-ref");
+        ryn::Switch(
+            ryn::SwitchProps{}.checked(state->switch_checked).ref(state->switch_ref).onChange([state](bool value) {
+                state->switch_checked.set(value);
+            }),
+            ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
+                             ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
+        ryn::Text(u8"gallery.switch.small-icon-rtl");
+        ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).direction(ryn::SwitchDirection::RightToLeft),
+                    ryn::SwitchSlots{ryn::SwitchCheckedContent{
+                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
+                                     ryn::SwitchUncheckedContent{
+                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseCircleFilled)); }}});
+        ryn::ThemeConfig custom;
+        custom.switch_.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+        custom.switch_.algorithm = true;
+        ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
+                       ++state->telemetry.theme_content_runs;
+                       ryn::Text(u8"gallery.switch.component-theme");
+                       ryn::Switch(ryn::SwitchProps{}.defaultChecked(true),
+                                   ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"紫色"); }},
+                                                    ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关"); }}});
+                   }});
+        ryn::Button(ryn::ButtonProps{}.onClick([state] {
+            static_cast<void>(state->switch_ref.focus());
+            ++state->telemetry.activations;
+        }),
+                    [] { ryn::Text(u8"gallery.switch.focus · 聚焦开关"); });
+        state->telemetry.live_samples += 4;
+    });
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
 }
 
@@ -1073,6 +1113,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         foundation_tokens(state);
                                                         component_overview(state);
                                                         add_live_samples(state);
+                                                        add_switch_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

@@ -436,14 +436,14 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto content_runs = definition.telemetry().content_runs;
     const auto ordered_rebuilds_before_scroll = fixture.text_scene.counters().ordered_scene_rebuilds;
     std::uint64_t text_rebuilds_before_scroll = 0;
-    std::uint64_t text_geometry_before_scroll = 0;
     std::uint64_t text_geometry_rebuilds_before_scroll = 0;
     std::vector<bool> realized_before_scroll;
     std::vector<std::uint64_t> rebuilds_before_scroll;
+    std::vector<std::uint64_t> geometry_before_scroll;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_before_scroll += counters.instance_rebuilds;
-        text_geometry_before_scroll += counters.geometry_updates;
+        geometry_before_scroll.push_back(counters.geometry_updates);
         text_geometry_rebuilds_before_scroll += counters.geometry_rebuilds;
         realized_before_scroll.push_back(fixture.text_scene.primitive(text.scene).instances.count > 0);
         rebuilds_before_scroll.push_back(counters.instance_rebuilds);
@@ -462,15 +462,20 @@ void test_document_viewport_scrolls_long_content_without_remount() {
                 !visible_scene.commands().empty(),
             "Gallery scroll failed to cull offscreen fragments");
     std::uint64_t text_rebuilds_after_scroll = 0;
-    std::uint64_t text_geometry_after_scroll = 0;
     std::uint64_t text_geometry_rebuilds_after_scroll = 0;
     std::size_t newly_realized = 0;
     std::size_t text_index = 0;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_after_scroll += counters.instance_rebuilds;
-        text_geometry_after_scroll += counters.geometry_updates;
         text_geometry_rebuilds_after_scroll += counters.geometry_rebuilds;
+        bool has_content_clip = false;
+        for (std::optional<ryn::runtime::NodeId> id = fixture.host->components().root(text.component); id;
+             id = fixture.nodes.require(*id).parent) {
+            has_content_clip = has_content_clip || fixture.nodes.require(*id).clip_content;
+        }
+        require(has_content_clip || counters.geometry_updates == geometry_before_scroll[text_index],
+                "Gallery scroll updated glyph geometry without an inherited moving content clip");
         if (realized_before_scroll[text_index]) {
             require(counters.instance_rebuilds == rebuilds_before_scroll[text_index],
                     "Gallery scroll rebuilt already-realized glyph instances");
@@ -483,8 +488,6 @@ void test_document_viewport_scrolls_long_content_without_remount() {
             "Gallery scroll did not realize newly visible text");
     require(fixture.text_scene.counters().ordered_scene_rebuilds == ordered_rebuilds_before_scroll + 1,
             "Gallery long jump rebuilt text draw order more than once");
-    require(text_geometry_after_scroll == text_geometry_before_scroll,
-            "Gallery long jump updated glyph geometry outside the viewport");
     require(text_geometry_rebuilds_after_scroll == text_geometry_rebuilds_before_scroll,
             "Gallery long jump rebuilt existing glyph geometry");
 
@@ -787,7 +790,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 81, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 85, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -800,14 +803,14 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 49,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 50,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
-    require(fixture.selections->mounted().size() == 12, "Token Gallery selection samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 149,
+    require(fixture.selections->mounted().size() == 15, "Token Gallery selection samples did not mount");
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 153,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -822,13 +825,13 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 128,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 132,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 55 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 56 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 98,
+                initial.reference_content_runs == 126 && initial.live_samples == 102,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,

@@ -267,6 +267,9 @@ def validate_overlay(
     divider = result["ant.component.divider"]
     if divider["status"] != "implemented" or "openspec:045-20261002-complete-native-divider-variants" not in divider["evidence_identifiers"]:
         raise ValueError("native Divider completion requires its implementation change evidence")
+    switch = result["ant.component.switch"]
+    if switch["status"] != "implemented" or "openspec:046-20261002-complete-native-switch-features" not in switch["evidence_identifiers"]:
+        raise ValueError("native Switch completion requires its implementation change evidence")
     return result
 
 

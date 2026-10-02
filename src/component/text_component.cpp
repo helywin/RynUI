@@ -490,8 +490,8 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             constexpr float visual_overflow = 32.0F;
             const float left = retained.bounds.x + retained.translation.x;
             const float top = retained.bounds.y + retained.translation.y;
-            if (retained.bounds.width <= 0.0F || retained.bounds.height <= 0.0F ||
-                left >= text_clip.x + text_clip.width + visual_overflow ||
+            if (text_clip.width <= 0.0F || text_clip.height <= 0.0F || retained.bounds.width <= 0.0F ||
+                retained.bounds.height <= 0.0F || left >= text_clip.x + text_clip.width + visual_overflow ||
                 left + retained.bounds.width <= text_clip.x - visual_overflow ||
                 top >= text_clip.y + text_clip.height + visual_overflow ||
                 top + retained.bounds.height <= text_clip.y - visual_overflow) {

@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：Gallery 与集成
 
-- [ ] 3.1 集成文字/图标/RTL/ref/尺寸/主题样例和 native implemented 证据，更新生成目录与收尾清单；Windows windows-msvc-headless Debug/Release 完整 build/CTest（含 Core 边界 guards），native Gallery/catalog/字体合同测试；运行 clang-format 22、format-code.py --check、openspec doctor --json、全量 strict validation、git diff --check。
+- [x] 3.1 集成文字/图标/RTL/ref/尺寸/主题样例和 native implemented 证据，更新生成目录与收尾清单；Windows windows-msvc-headless Debug/Release 完整 build/CTest（含 Core 边界 guards），native Gallery/catalog/字体合同测试；运行 clang-format 22、format-code.py --check、openspec doctor --json、全量 strict validation、git diff --check。
 
 ## 4. 原生平台验收
 
