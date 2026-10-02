@@ -51,6 +51,8 @@ Button 六视觉变体已接入：共有边按 hover、focus/active、normal、d
 
 Input/Password 继承未显式配置的尺寸，按外角绘制背景、边框和 shadow；尺寸/方向变化保留 editor、selection、IME session 和 slot 身份。控件自己拥有的 prefix/suffix 内容不会自动加入外层 Compact。Search 在组合内使用嵌套 Compact 连接输入框和按钮，grow/shrink/basis 与 min/max 使用和 Flex 相同的分配规则；block 的剩余宽度分配给 grow 项。
 
+Compact 的直接 Button、Addon、RadioButton/RadioGroup 使用自动 intrinsic 最小主轴尺寸，避免弹性输入框把原生标签压成多行；显式 min_width/min_height 覆盖该最小值。Input 和 Search 保留可收缩空间，透明布局包装器仍由自己的外部布局规则决定尺寸。
+
 RadioButton 和 RadioGroup 的 Button options 接入连接外角、尺寸继承、focus/wave 和共有边状态；RadioGroup 显式 size 优先，保留已有 checked/value、ref 与键盘选择合同。
 
 `SpaceAddon(SpaceAddonProps{}.variant(InputVariant::Filled).status(InputStatus::Error), SpaceAddonContent{[] { Text(u8"https://"); }})` 支持被动富内容、继承或显式尺寸、disabled 和状态。Outlined 使用主题边框和容器禁用背景；Filled 使用透明边框与该背景，错误/警告使用对应语义背景；禁用 Filled 恢复禁用背景/边框。Borderless/Underlined 的 Addon 无边框且背景透明。所有变体的文字、大小、padding 和连接外角受 Theme 与 Compact 驱动，Dark 状态背景复用共同调色规则。Addon 自身无交互、动画或持续 deadline。

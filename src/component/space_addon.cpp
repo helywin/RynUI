@@ -250,7 +250,7 @@ void SpaceAddonHost::mount(const SpaceAddonProps& props, const SpaceAddonContent
                                      .translation = node.translation,
                                      .clip = state->clip};
             },
-            &services_->surfaces());
+            &services_->surfaces(), true);
     }
 }
 

@@ -39,10 +39,11 @@ public:
     void claim(runtime::ComponentId component);
     [[nodiscard]] bool owns_ancestor(const runtime::ComponentBuildContext& build) const;
     void attach(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
-                std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces = nullptr);
+                std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces = nullptr,
+                bool intrinsic_minimum = false);
     void attach_many(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                      std::function<std::vector<CompactBorder>()> borders,
-                     component::RetainedSurfaceService* surfaces = nullptr);
+                     component::RetainedSurfaceService* surfaces = nullptr, bool intrinsic_minimum = false);
 
     [[nodiscard]] component::RetainedSurfaceService* surfaces() const noexcept {
         return surfaces_;
@@ -73,6 +74,7 @@ private:
         runtime::ComponentId component;
         std::function<void(const CompactMetadata&)> apply;
         std::function<std::vector<CompactBorder>()> borders;
+        bool intrinsic_minimum{};
     };
 
     [[nodiscard]] runtime::ComponentId direct_child(runtime::ComponentId component) const;

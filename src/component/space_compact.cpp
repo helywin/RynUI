@@ -94,12 +94,15 @@ bool CompactContext::owns_ancestor(const runtime::ComponentBuildContext& build) 
 }
 
 void CompactContext::attach(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
-                            std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces) {
+                            std::function<CompactBorder()> border, component::RetainedSurfaceService* surfaces,
+                            bool intrinsic_minimum) {
     if (members_.size() >= component::retained_content_visual_capacity / 4) {
         throw std::length_error("SpaceCompact exceeds 1024 supported members");
     }
-    attach_many(component, std::move(apply),
-                [border = std::move(border)] { return border ? std::vector{border()} : std::vector<CompactBorder>{}; });
+    attach_many(
+        component, std::move(apply),
+        [border = std::move(border)] { return border ? std::vector{border()} : std::vector<CompactBorder>{}; },
+        surfaces, intrinsic_minimum);
     if (surfaces) {
         surfaces_ = surfaces;
     }
@@ -107,11 +110,11 @@ void CompactContext::attach(runtime::ComponentId component, std::function<void(c
 
 void CompactContext::attach_many(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                                  std::function<std::vector<CompactBorder>()> borders,
-                                 component::RetainedSurfaceService* surfaces) {
+                                 component::RetainedSurfaceService* surfaces, bool intrinsic_minimum) {
     if (members_.size() >= component::retained_content_visual_capacity / 4) {
         throw std::length_error("SpaceCompact exceeds 1024 supported members");
     }
-    members_.push_back({component, std::move(apply), std::move(borders)});
+    members_.push_back({component, std::move(apply), std::move(borders), intrinsic_minimum});
     if (surfaces) {
         surfaces_ = surfaces;
     }
@@ -244,13 +247,24 @@ runtime::Size CompactContext::measure(layout::LayoutEngine& engine, layout::Cons
         const auto child = host_->root(component);
         const auto& style = services_.nodes.require(child).external_layout;
         const float margin = vertical ? style.margin.top + style.margin.bottom : style.margin.left + style.margin.right;
-        const float minimum = (vertical ? style.min_height : style.min_width).value_or(0) + margin;
+        float minimum = (vertical ? style.min_height : style.min_width).value_or(0) + margin;
         const float maximum =
             (vertical ? style.max_height : style.max_width).value_or(std::numeric_limits<float>::infinity()) + margin;
+        const bool automatic_minimum = !(vertical ? style.min_height : style.min_width) &&
+                                       std::any_of(members_.begin(), members_.end(), [component](const auto& member) {
+                                           return member.component == component && member.intrinsic_minimum;
+                                       });
+        std::optional<runtime::Size> natural;
+        if (automatic_minimum) {
+            natural = engine.measure_child(child, child_constraints);
+            minimum = vertical ? natural->height : natural->width;
+        }
         const auto basis =
             style.flex_basis ? std::optional{std::clamp(*style.flex_basis + margin, minimum, maximum)} : std::nullopt;
-        const auto size = engine.measure_child(child, child_constraints, vertical ? std::nullopt : basis,
-                                               vertical ? basis : std::nullopt);
+        const auto size = natural && !basis
+                              ? *natural
+                              : engine.measure_child(child, child_constraints, vertical ? std::nullopt : basis,
+                                                     vertical ? basis : std::nullopt);
         if (previous) {
             const float joined =
                 std::min(overlap(*previous, child), std::min(main, vertical ? size.height : size.width));

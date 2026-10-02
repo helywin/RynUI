@@ -619,6 +619,30 @@ void mixed_compact_orientation_size_and_direction() {
         }
     }
 }
+
+void compact_automatic_minimum_preserves_control_labels() {
+    Fixture fixture;
+    fixture.buttons.mount(Content{[] {
+        SpaceCompact(SpaceCompactProps{}.block(true).layout(LayoutStyle{}.width(dp(240))), SpaceCompactContent{[] {
+                         Button(ButtonProps{}, [] { Text(u8"操作 A"); });
+                         Button(ButtonProps{}, [] { Text(u8"虚线 B"); });
+                         Input(
+                             InputProps{}.defaultValue(u8"可收缩").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                     }});
+        Button(ButtonProps{}, [] { Text(u8"操作 A"); });
+    }});
+    fixture.synchronize();
+    const auto buttons = fixture.buttons.mounted_buttons();
+    const auto a = fixture.nodes.require(buttons[0].node).bounds;
+    const auto b = fixture.nodes.require(buttons[1].node).bounds;
+    const auto standalone = fixture.nodes.require(buttons[2].node).bounds;
+    const auto input = fixture.nodes.require(fixture.inputs.mounted_inputs().front().node).bounds;
+    require(near(a.width, standalone.width) && near(a.width + b.width + input.width - 2, 240) && input.width > 0,
+            "automatic Compact control minimum shrank Button label or lost input width distribution");
+    require(fixture.scene.text_state(fixture.services.text().mounted_texts().front().scene).measurement().height <=
+                a.height,
+            "Compact control label wrapped outside its bounds");
+}
 } // namespace
 
 int main() {
@@ -633,6 +657,7 @@ int main() {
         compact_radio_and_addon_native_variants();
         addon_invalid_mount_and_reactive_recovery();
         mixed_compact_orientation_size_and_direction();
+        compact_automatic_minimum_preserves_control_labels();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -2112,7 +2112,7 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
                     .dashed = dashed(current),
                     .decorations = current.decorations};
             },
-            &host.button_scene_);
+            &host.button_scene_, true);
     }
 }
 

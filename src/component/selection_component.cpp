@@ -2645,7 +2645,7 @@ struct RadioPropsAccess {
                     const auto* current = host.find(component);
                     return current ? host.compact_border(*current) : CompactBorder{};
                 },
-                &host.services_->surfaces());
+                &host.services_->surfaces(), true);
         }
         if (group) {
             group->options.push_back(component);
@@ -2852,7 +2852,7 @@ struct RadioGroupPropsAccess {
                     }
                     return borders;
                 },
-                &host.services_->surfaces());
+                &host.services_->surfaces(), true);
         }
     }
 };
