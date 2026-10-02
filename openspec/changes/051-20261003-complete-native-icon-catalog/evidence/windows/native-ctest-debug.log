@@ -1,0 +1,85 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/38] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/38] Deploying shaders for rynui_token_gallery
+[3/38] Linking CXX executable tests\Debug\rynui_logical_scene_packing_tests.exe
+[4/38] Building CXX object tests\CMakeFiles\rynui_theme_runtime_tests.dir\Debug\theme_runtime_tests.cpp.obj
+[5/38] Building CXX object tests\CMakeFiles\rynui_glyph_gpu_resources_tests.dir\Debug\glyph_gpu_resources_tests.cpp.obj
+[6/38] Linking CXX executable tests\Debug\rynui_theme_runtime_tests.exe
+[7/38] Building CXX object tests\CMakeFiles\rynui_text_scene_service_tests.dir\Debug\text_scene_service_tests.cpp.obj
+[8/38] Linking CXX executable tests\Debug\rynui_glyph_gpu_resources_tests.exe
+[9/38] Linking CXX executable tests\Debug\rynui_text_scene_service_tests.exe
+[10/38] Building CXX object tests\CMakeFiles\rynui_icon_catalog_tests.dir\Debug\icon_catalog_tests.cpp.obj
+[11/38] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Debug\text_component_frame_tests.cpp.obj
+[12/38] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Debug\input_gpu_tests.cpp.obj
+[13/38] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Debug\password_component_tests.cpp.obj
+[14/38] Building CXX object tests\CMakeFiles\rynui_icon_vector_tests.dir\Debug\icon_vector_tests.cpp.obj
+[15/38] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Debug\typography_interaction_tests.cpp.obj
+[16/38] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Debug\token_gallery_frame_tests.cpp.obj
+[17/38] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Debug\search_component_tests.cpp.obj
+[18/38] Building CXX object tests\CMakeFiles\rynui_icon_component_tests.dir\Debug\icon_component_tests.cpp.obj
+[19/38] Building CXX object tests\CMakeFiles\rynui_text_component_tests.dir\Debug\text_component_tests.cpp.obj
+[20/38] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Debug\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[21/38] Building CXX object tests\CMakeFiles\rynui_tooltip_component_tests.dir\Debug\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[22/38] Linking CXX executable tests\Debug\rynui_text_component_frame_tests.exe
+[23/38] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\icon_acceptance.cpp.obj
+[24/38] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[25/38] Linking CXX executable tests\Debug\rynui_input_gpu_tests.exe
+[26/38] Linking CXX executable tests\Debug\rynui_password_component_tests.exe
+[27/38] Linking CXX executable tests\Debug\rynui_typography_interaction_tests.exe
+[28/38] Linking CXX executable tests\Debug\rynui_icon_catalog_tests.exe
+[29/38] Building CXX object tests\CMakeFiles\rynui_button_component_tests.dir\Debug\button_component_tests.cpp.obj
+[30/38] Linking CXX executable tests\Debug\rynui_search_component_tests.exe
+[31/38] Linking CXX executable tests\Debug\rynui_text_component_tests.exe
+[32/38] Linking CXX executable tests\Debug\rynui_icon_vector_tests.exe
+[33/38] Linking CXX executable examples\Debug\rynui_token_gallery.exe
+[34/38] Linking CXX executable tests\Debug\rynui_input_component_tests.exe
+[35/38] Linking CXX executable tests\Debug\rynui_tooltip_component_tests.exe
+[36/38] Linking CXX executable tests\Debug\rynui_icon_component_tests.exe
+[37/38] Linking CXX executable tests\Debug\rynui_button_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   4: rynui.tooltip_component
+ 1/17 Test   #4: rynui.tooltip_component ..........   Passed    0.63 sec
+      Start   6: rynui.icon_catalog
+ 2/17 Test   #6: rynui.icon_catalog ...............   Passed    0.12 sec
+      Start   7: rynui.icon_component
+ 3/17 Test   #7: rynui.icon_component .............   Passed    0.29 sec
+      Start   8: rynui.icon_vector
+ 4/17 Test   #8: rynui.icon_vector ................   Passed    0.20 sec
+      Start  61: rynui.theme_runtime
+ 5/17 Test  #61: rynui.theme_runtime ..............   Passed    0.11 sec
+      Start  75: rynui.search_component
+ 6/17 Test  #75: rynui.search_component ...........   Passed    1.79 sec
+      Start 124: rynui.input_component
+ 7/17 Test #124: rynui.input_component ............   Passed    1.89 sec
+      Start 125: rynui.password_component
+ 8/17 Test #125: rynui.password_component .........   Passed    0.15 sec
+      Start 131: rynui.input_gpu
+ 9/17 Test #131: rynui.input_gpu ..................   Passed    0.15 sec
+      Start 142: rynui.button_component
+10/17 Test #142: rynui.button_component ...........   Passed    1.22 sec
+      Start 154: rynui.token_gallery_frame
+11/17 Test #154: rynui.token_gallery_frame ........   Passed   23.70 sec
+      Start 184: rynui.logical_scene_packing
+12/17 Test #184: rynui.logical_scene_packing ......   Passed    0.04 sec
+      Start 219: rynui.glyph_gpu_resources
+13/17 Test #219: rynui.glyph_gpu_resources ........   Passed    0.02 sec
+      Start 221: rynui.text_scene_service
+14/17 Test #221: rynui.text_scene_service .........   Passed    0.25 sec
+      Start 223: rynui.text_component
+15/17 Test #223: rynui.text_component .............   Passed    0.49 sec
+      Start 225: rynui.typography_interaction
+16/17 Test #225: rynui.typography_interaction .....   Passed    0.24 sec
+      Start 228: rynui.text_component_frame
+17/17 Test #228: rynui.text_component_frame .......   Passed    0.07 sec
+
+100% tests passed out of 17
+
+Total Test time (real) =  31.66 sec

@@ -24,7 +24,7 @@
 
 ### Windows
 
-- [ ] 6.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest、默认 stack Gallery smoke；实际 D3D12/DXIL/系统字体窗口完成系统及 1/1.25/1.5/2 render scale 的三类/四 layer/双色与 Theme、自定义/非正方形视框、角度/spin/reduced-motion、祖先 clip、resize/命中/失活/idle/销毁验收。保存 EXE/PNG hashes、日志/脚本，检查后独立提交。
+- [x] 6.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest、默认 stack Gallery smoke；实际 D3D12/DXIL/系统字体窗口完成系统及 1/1.25/1.5/2 render scale 的三类/四 layer/双色与 Theme、自定义/非正方形视框、角度/spin/reduced-motion、祖先 clip、resize/命中/失活/idle/销毁验收。保存 EXE/PNG hashes、日志/脚本，检查后独立提交。
 
 ### Linux
 

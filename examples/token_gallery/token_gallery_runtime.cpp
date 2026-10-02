@@ -891,6 +891,9 @@ private:
 } // namespace
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
+    if (has_argument(argc, argv, "--icon-acceptance")) {
+        return run_icon_acceptance(argc, argv);
+    }
     if (has_argument(argc, argv, "--space-acceptance")) {
         return run_space_acceptance(argc, argv);
     }

@@ -79,5 +79,6 @@ int run_checkbox_acceptance(int argc, char** argv);
 int run_radio_acceptance(int argc, char** argv);
 int run_flex_acceptance(int argc, char** argv);
 int run_space_acceptance(int argc, char** argv);
+int run_icon_acceptance(int argc, char** argv);
 
 } // namespace rynui::example

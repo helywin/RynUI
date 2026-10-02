@@ -35,3 +35,5 @@ Icon(IconProps{}.source(IconSource{diamond}));
 构造时完整校验：1–64 paths、总计至多 4096 commands、有限正 viewBox、有限可表示坐标、合法轮廓/角色/透明度；生成字体至多 2 MiB。极端坐标超出 Type2 16.16 范围时抛出 `std::invalid_argument`。向量在构造后只读，复制共享来源身份；相同来源/字号/density 共享窗口字体缓存。内置/自定义 source 切换仍保留 Icon Component/root 与共同 layer 前缀；窗口 TextSceneService 销毁时释放缓存的字体 bytes、FreeType faces 和 shaping 资源。
 
 内存字体依据 [Adobe CFF](https://adobe-type-tools.github.io/font-tech-notes/pdfs/5176.CFF.pdf)、[Type2](https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf) 和 [OpenType 字体表合同](https://learn.microsoft.com/en-us/typography/opentype/spec/otff) 构造，Quadratic 转换为 Cubic；运行时不依赖外部生成工具。平台通用测试见 `tests/icon_component_tests.cpp` 和 `tests/icon_vector_tests.cpp`；Gallery/真实窗口验收由 change 051 后续阶段独立记录。
+
+2026-10-03 平台通用完整 HEADLESS Debug/Release 75/75、Windows 受影响原生 17/17 和默认 Gallery smoke 已通过；十次 D3D12/DXIL 真窗口与 180 GPU readback 见 [Windows 证据](../openspec/changes/051-20261003-complete-native-icon-catalog/evidence/windows/README.md)。Linux 原生窗口验收仍为独立待办，见 [任务清单](../openspec/changes/051-20261003-complete-native-icon-catalog/tasks.md)。
