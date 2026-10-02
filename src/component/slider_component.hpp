@@ -63,6 +63,7 @@ private:
     void set_values(runtime::ComponentId, SliderValues);
     std::optional<std::size_t> thumb_index(runtime::ComponentId, runtime::ComponentId) const;
     void change(runtime::ComponentId, std::size_t, double);
+    void change_values(runtime::ComponentId, SliderValues);
     void complete(runtime::ComponentId);
     void pointer(runtime::ComponentId, std::optional<std::size_t>, input::PointerDispatchContext&);
     bool keyboard(runtime::ComponentId, std::size_t, const input::KeyboardInputEvent&);

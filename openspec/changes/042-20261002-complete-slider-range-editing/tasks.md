@@ -10,7 +10,7 @@
 
 ## 3. 整段轨道（平台通用）
 
-- [ ] 3.1 实现双端/多端 draggableTrack、起始快照/边界/候选/取消/互斥配置；覆盖规则 step 与不规则 marks、reverse/vertical、controlled echo/capture/window loss/reentrant；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
+- [x] 3.1 实现双端/多端 draggableTrack、起始快照/边界/候选/取消/互斥配置；覆盖规则 step 与不规则 marks、reverse/vertical、controlled echo/capture/window loss/reentrant；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
 
 ## 4. 编辑与禁用（平台通用）
 

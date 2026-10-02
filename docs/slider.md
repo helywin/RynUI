@@ -31,4 +31,6 @@ Slider token 按锁定 [Ant Design 6.6.5 API](https://github.com/ant-design/ant-
 
 `MultiSlider(MultiSliderProps)` 使用 `SliderValues`（`std::vector<double>`），最多 64 个端点，finite 输入归一化后排序并允许重合。未指定初值时为两个 minimum；显式空列表没有端点或伪焦点。`rangeOptions(Prop<SliderRangeOptions>)` 原子设置 count 约束，`0 <= min_count <= max_count <= 64`，当前 count 必须处于其间。插入/移除外部 value 时匹配未变值（包括重复值）并保留对应组件、Tooltip 和焦点；数量变化取消旧 gesture，Tab 顺序仍按排序后的端点遍历。相同数量更新保留原索引身份。受控候选和单值/双端模式遵循同一规则。
 
-整段轨道拖动与端点编辑正在 042 实施；range options 的 draggable_track/editable 字段尚未完成交互，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。
+`RangeSliderProps::draggableTrack(true)` 或 MultiSlider range options 的 `draggable_track=true` 启用整段已选轨道拖动（included=true，至少两个端点）。按下不跳值，后续偏移基于按下快照；先对齐第一个端点，再限制整体偏移并分别归一化端点。规则网格保留间距，不规则 marks 可能改变间距。editable 与 draggable_track 互斥，marksOnly 不能启用 draggable_track，非法组合明确拒绝。配置更改或窗口失焦取消 capture，不触发完成。
+
+端点编辑正在 042 实施；editable 字段尚未完成交互，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。

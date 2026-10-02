@@ -96,6 +96,9 @@ struct SliderState final {
     bool reverse{};
     bool rail_hover{};
     bool dragging{};
+    bool dragging_track{};
+    SliderValues drag_origin;
+    float drag_start{};
     bool gesture{};
     bool disposing{};
     SliderOrientation orientation{SliderOrientation::Horizontal};
@@ -167,6 +170,7 @@ void SliderComponentHost::cancel(runtime::ComponentId id) {
     }
     const auto capture = s->capture;
     s->dragging = s->gesture = false;
+    s->dragging_track = false;
     s->key.reset();
     s->capture = {};
     s->candidate = s->value;
@@ -517,8 +521,8 @@ void SliderComponentHost::update_hints(runtime::ComponentId id) {
         const bool active =
             !s->disabled &&
             (s->hint.mode == SliderHintMode::Always ||
-             (s->hint.mode == SliderHintMode::Auto &&
-              (s->handles[i]->hover || s->handles[i]->focus.focus_visible || (s->dragging && s->active == i))));
+             (s->hint.mode == SliderHintMode::Auto && (s->handles[i]->hover || s->handles[i]->focus.focus_visible ||
+                                                       (s->dragging && (s->dragging_track || s->active == i)))));
         if (!active) {
             s->handles[i]->hint_dismissed = false;
         }
@@ -725,6 +729,14 @@ void SliderComponentHost::change(runtime::ComponentId id, std::size_t thumb, dou
     const double lower = thumb == 0 ? s->limits.minimum : next[thumb - 1];
     const double upper = thumb + 1 == next.size() ? s->limits.maximum : next[thumb + 1];
     next[thumb] = std::clamp(value, lower, upper);
+    change_values(id, std::move(next));
+}
+
+void SliderComponentHost::change_values(runtime::ComponentId id, SliderValues next) {
+    auto* s = find(id);
+    if (!s || s->disabled) {
+        return;
+    }
     if (next == (s->gesture ? s->candidate : s->value)) {
         return;
     }
@@ -748,6 +760,7 @@ void SliderComponentHost::complete(runtime::ComponentId id) {
     const auto value = s->candidate;
     auto callback = s->on_complete;
     s->gesture = s->dragging = false;
+    s->dragging_track = false;
     s->key.reset();
     s->capture = {};
     update(id, false);
@@ -808,6 +821,17 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
         }
         s->key.reset();
         s->dragging = s->gesture = true;
+        const float cross = vertical ? e.x - n.translation.x : e.y - n.translation.y;
+        const float rail_cross =
+            vertical ? s->rail_bounds.x + s->rail_bounds.width / 2 : s->rail_bounds.y + s->rail_bounds.height / 2;
+        s->dragging_track = !thumb && s->included && s->options.draggable_track && s->count() > 1 &&
+                            std::abs(cross - rail_cross) <= 4 &&
+                            pos > std::min(vertical ? s->handles.front()->center.y : s->handles.front()->center.x,
+                                           vertical ? s->handles.back()->center.y : s->handles.back()->center.x) &&
+                            pos < std::max(vertical ? s->handles.front()->center.y : s->handles.front()->center.x,
+                                           vertical ? s->handles.back()->center.y : s->handles.back()->center.x);
+        s->drag_origin = s->value;
+        s->drag_start = pos;
         s->candidate = s->value;
         s->pointer = e.pointer;
         s->capture = event.current_target();
@@ -830,12 +854,27 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
     const float inset = std::min(length / 2, handle_extent(token.metrics) / 2);
     const float travel = length - 2 * inset;
     if (travel > 0) {
-        double ratio =
-            std::clamp((pos - s->pointer_offset - (vertical ? n.bounds.y : n.bounds.x) - inset) / travel, 0.0F, 1.0F);
-        if (slider_inverted(s->orientation, s->reverse)) {
-            ratio = 1 - ratio;
+        if (s->dragging_track) {
+            double delta = (pos - s->drag_start) / travel * (s->limits.maximum - s->limits.minimum);
+            if (slider_inverted(s->orientation, s->reverse)) {
+                delta = -delta;
+            }
+            const double first = normalize_slider_value(s->drag_origin.front() + delta, s->limits, s->marks, false);
+            delta = std::clamp(first - s->drag_origin.front(), s->limits.minimum - s->drag_origin.front(),
+                               s->limits.maximum - s->drag_origin.back());
+            auto next = s->drag_origin;
+            for (auto& value : next) {
+                value = normalize_slider_value(value + delta, s->limits, s->marks, false);
+            }
+            change_values(id, std::move(next));
+        } else {
+            double ratio = std::clamp((pos - s->pointer_offset - (vertical ? n.bounds.y : n.bounds.x) - inset) / travel,
+                                      0.0F, 1.0F);
+            if (slider_inverted(s->orientation, s->reverse)) {
+                ratio = 1 - ratio;
+            }
+            change(id, s->active, std::lerp(s->limits.minimum, s->limits.maximum, ratio));
         }
-        change(id, s->active, std::lerp(s->limits.minimum, s->limits.maximum, ratio));
     }
     s = find(id);
     if (!s) {

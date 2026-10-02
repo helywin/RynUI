@@ -281,6 +281,117 @@ void multiple_values_and_retained_topology() {
           "multiple mount rollback leaked endpoints");
 }
 
+void whole_track_drag_contracts() {
+    for (auto orientation : {SliderOrientation::Horizontal, SliderOrientation::Vertical}) {
+        for (bool reverse : {false, true}) {
+            Fixture f;
+            int completed{};
+            Signal<SliderRangeOptions> options{SliderRangeOptions{true, false, 0, 64}};
+            f.services.mount(Content{[&] {
+                MultiSlider(MultiSliderProps{}
+                                .defaultValue({20, 50, 80})
+                                .rangeOptions(options)
+                                .orientation(orientation)
+                                .reverse(reverse)
+                                .limits(SliderLimits{0, 100, 10})
+                                .onChangeComplete([&](SliderValues) { ++completed; }));
+            }});
+            f.synchronize();
+            const auto m = f.services.slider().mounted()[0];
+            const bool inverted = detail::slider_inverted(orientation, reverse);
+            const auto point = [&](double value) {
+                return at(f, m, inverted ? 1 - value : value);
+            };
+            pointer(f, PointerAction::down, point(0.35));
+            check(f.services.slider().snapshot(m.component).values == SliderValues{20, 50, 80},
+                  "track down jumped one endpoint");
+            pointer(f, PointerAction::move, point(0.45));
+            check(f.services.slider().snapshot(m.component).values == SliderValues{30, 60, 90},
+                  "track offset or orientation mapping wrong");
+            pointer(f, PointerAction::move, point(1.2));
+            pointer(f, PointerAction::up, point(1.2));
+            f.synchronize();
+            check(f.services.slider().snapshot(m.component).values == SliderValues{40, 70, 100} && completed == 1,
+                  "track boundary changed spacing or completion");
+            pointer(f, PointerAction::down, point(0.55));
+            pointer(f, PointerAction::move, point(0.45));
+            options.set({false, false, 0, 64});
+            check(!f.services.slider().snapshot(m.component).dragging && completed == 1 &&
+                      !f.services.pointer().state(PointerIdentity::mouse())->capture,
+                  "track config change retained capture or completed cancelled gesture");
+        }
+    }
+    Fixture controlled;
+    Signal<SliderRange> value{SliderRange{20, 80}};
+    std::vector<SliderRange> candidates;
+    std::vector<SliderRange> completed;
+    bool echo{};
+    controlled.services.mount(Content{[&] {
+        RangeSlider(RangeSliderProps{}
+                        .value(value)
+                        .draggableTrack(true)
+                        .onChange([&](SliderRange next) {
+                            candidates.push_back(next);
+                            if (echo) {
+                                value.set(next);
+                            }
+                        })
+                        .onChangeComplete([&](SliderRange next) { completed.push_back(next); }));
+    }});
+    controlled.synchronize();
+    const auto range = controlled.services.slider().mounted()[0];
+    pointer(controlled, PointerAction::down, at(controlled, range, 0.5));
+    pointer(controlled, PointerAction::move, at(controlled, range, 0.6));
+    pointer(controlled, PointerAction::move, at(controlled, range, 0.7));
+    pointer(controlled, PointerAction::up, at(controlled, range, 0.7));
+    check(candidates.back() == SliderRange{40, 100} && completed.back() == SliderRange{40, 100} &&
+              controlled.services.slider().snapshot(range.component).value == SliderRange{20, 80},
+          "controlled track drag mutated display or reused advancing origin");
+    echo = true;
+    pointer(controlled, PointerAction::down, at(controlled, range, 0.5));
+    pointer(controlled, PointerAction::move, at(controlled, range, 0.6));
+    pointer(controlled, PointerAction::move, at(controlled, range, 0.7));
+    pointer(controlled, PointerAction::up, at(controlled, range, 0.7));
+    check(value.get() == SliderRange{40, 100}, "controlled track echo rebased original snapshot");
+    controlled.synchronize();
+    pointer(controlled, PointerAction::down, at(controlled, range, 0.6));
+    controlled.services.set_window_active(false);
+    check(!controlled.services.slider().snapshot(range.component).dragging && completed.size() == 2,
+          "window loss completed track drag");
+    Fixture irregular;
+    irregular.services.mount(Content{[] {
+        MultiSlider(MultiSliderProps{}
+                        .defaultValue({20, 37, 80})
+                        .limits(SliderLimits{0, 100, 10})
+                        .marks(SliderMarks{{37, {}}})
+                        .rangeOptions(SliderRangeOptions{true, false, 0, 64}));
+    }});
+    irregular.synchronize();
+    const auto m = irregular.services.slider().mounted()[0];
+    pointer(irregular, PointerAction::down, at(irregular, m, 0.55));
+    pointer(irregular, PointerAction::up, at(irregular, m, 0.65));
+    check(irregular.services.slider().snapshot(m.component).values == SliderValues{30, 50, 90},
+          "irregular mark drag did not normalize each translated endpoint");
+    Fixture invalid;
+    rejects([&] {
+        invalid.services.mount(Content{[] { RangeSlider(RangeSliderProps{}.marksOnly(true).draggableTrack(true)); }});
+    });
+    check(invalid.services.interactions().size() == 0, "invalid track configuration acquired resources");
+    Fixture dying;
+    runtime::ComponentId id;
+    dying.services.mount(Content{[&] {
+        RangeSlider(RangeSliderProps{}.defaultValue({20, 80}).draggableTrack(true).onChange(
+            [&](SliderRange) { dying.services.destroy(id); }));
+    }});
+    dying.synchronize();
+    const auto own = dying.services.slider().mounted()[0];
+    id = own.component;
+    pointer(dying, PointerAction::down, at(dying, own, 0.5));
+    pointer(dying, PointerAction::move, at(dying, own, 0.6));
+    check(dying.services.slider().mounted().empty() && dying.services.interactions().size() == 0,
+          "reentrant track callback retained component or capture");
+}
+
 void controlled_keyboard_and_limits() {
     Fixture f;
     Signal<double> value{30};
@@ -697,6 +808,7 @@ int main() {
         marks_numeric_contracts();
         numeric_and_api();
         multiple_values_and_retained_topology();
+        whole_track_drag_contracts();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();
         geometry_theme_and_reentrancy();
