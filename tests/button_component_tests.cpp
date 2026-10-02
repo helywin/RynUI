@@ -1151,7 +1151,10 @@ void test_native_color_variant_matrix_and_precedence() {
                         "Button colored hover/active did not use corresponding palette");
             }
             if (value == ryn::ButtonVariant::Filled || value == ryn::ButtonVariant::Text) {
-                require(hovered.presentation_background == token.variants.colors[index].light_hover &&
+                const auto hover_background = value == ryn::ButtonVariant::Text
+                                                  ? token.variants.colors[index].light
+                                                  : token.variants.colors[index].light_hover;
+                require(hovered.presentation_background == hover_background &&
                             pressed.presentation_background == token.variants.colors[index].light_active,
                         "Button filled/text hover/active light palette differs");
             }
@@ -1185,8 +1188,8 @@ void test_native_color_variant_matrix_and_precedence() {
             "Button neutral ghost missed Theme color");
     variant.set(ryn::ButtonVariant::Filled);
     require(fixture.host->snapshot(id).presentation_background.alpha() == 0 &&
-                fixture.host->snapshot(id).presentation_foreground == token.variants.default_ghost_color,
-            "Button filled ghost retained a light fill or missed neutral ghost color");
+                fixture.host->snapshot(id).presentation_foreground == token.default_color,
+            "Button filled ghost retained a light fill or altered neutral filled text color");
     color.set(ryn::ButtonColor::Blue);
     require(fixture.host->snapshot(id).presentation_background.alpha() == 0 &&
                 fixture.host->snapshot(id).presentation_foreground ==

@@ -105,7 +105,12 @@ void require_partial(std::string_view identity) {
 
 void test_typed_support_status() {
     using namespace rynui::example;
-    require_partial("ant.component.button");
+    const auto* button = find_ant_design_reference_entry("ant.component.button");
+    require(button && button->support_status == GallerySupportStatus::implemented &&
+                button->evidence_identifiers.find("openspec:044-") != std::string_view::npos &&
+                button->supported_scope.find("wave") != std::string_view::npos &&
+                button->missing_scope.find("HTML") != std::string_view::npos,
+            "native Button completion lost implementation evidence or Web boundary");
     require_partial("ant.component.typography");
     require_partial("ant.component.flex");
     require_partial("ant.component.space");

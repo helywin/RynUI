@@ -11,7 +11,12 @@ namespace ryn::detail {
 
 struct PropAccess final {
     template <typename T> [[nodiscard]] static const T* static_value(const Prop<T>& prop) noexcept {
-        return std::get_if<T>(&prop.source_);
+        const auto* stored = std::get_if<typename Prop<T>::StaticValue>(&prop.source_);
+        if constexpr (Prop<T>::indirect_static_value) {
+            return stored ? stored->get() : nullptr;
+        } else {
+            return stored;
+        }
     }
 
     template <typename T> [[nodiscard]] static const Binding<T>* binding(const Prop<T>& prop) noexcept {

@@ -5,24 +5,28 @@
   "entries": [
     {
       "identity": "ant.component.button",
-      "status": "partial",
-      "summary": "RynUI 已提供 typed Button、Default/Primary/Danger/Text 类型、三档尺寸、禁用/加载和 pointer/keyboard/focus 交互；完整 Ant Web 变体仍未覆盖。",
+      "status": "implemented",
+      "summary": "原生 Button 已补齐颜色/变体/ghost、虚线、保留图标/加载 slots、形状/block、focus ref/延迟加载与有限 wave；Web 专用 API 不移植，平台验收独立记录。",
       "supported_scope": [
         "Default/Primary/Danger/Text types",
         "Small/Middle/Large sizes",
         "disabled and loading priority",
         "pointer/keyboard/focus-visible interaction",
-        "Theme component tokens"
+        "Theme component tokens and 16 color / 6 variant composition",
+        "transparent ghost and rounded dashed borders",
+        "retained start/end icon and custom loading slots / icon-only",
+        "Default/Circle/Round/Square shape and block sizing",
+        "owner-thread ButtonRef, mount-only autoFocus, cancellable loading delay",
+        "finite theme-driven wave with motion/window/destruction cancellation"
       ],
       "missing_scope": [
-        "dashed/link/ghost and preset color variants",
-        "icon placement public contract",
-        "wave effect",
-        "complete Ant Design Web API"
+        "HTML href/target/htmlType, DOM refs, CSS classNames/styles and React compatibility aliases are out of native scope",
+        "Linux native GPU/font/input evidence remains independent pending"
       ],
       "evidence_identifiers": [
         "openspec:004-20260827-build-button-interaction-foundation",
         "openspec:033-20260926-add-icons-and-unify-gallery-theme",
+        "openspec:044-20261002-complete-native-button-variants",
         "test:rynui.button_component",
         "test:rynui.button_scene_service",
         "test:rynui.keyboard_activation"

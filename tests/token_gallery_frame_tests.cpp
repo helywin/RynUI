@@ -787,7 +787,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 53, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 78, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -800,14 +800,14 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 24,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 49,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
     require(fixture.selections->mounted().size() == 12, "Token Gallery selection samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 124,
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 149,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 8,
@@ -822,14 +822,13 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 103,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 128,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == definition.stable_test_ids.size() + 2 &&
-                initial.document_sections == 6 && initial.component_entries == 73 &&
-                initial.reference_surfaces == 126 && initial.reference_content_runs == 126 &&
-                initial.live_samples == 70,
+    require(initial.content_runs == 1 && initial.theme_content_runs == 55 && initial.document_sections == 6 &&
+                initial.component_entries == 73 && initial.reference_surfaces == 126 &&
+                initial.reference_content_runs == 126 && initial.live_samples == 95,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -871,7 +870,8 @@ void test_token_gallery_frame_contract() {
     submitter.set_viewport({1200.0F, 30000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Token Gallery wide restoration was not submitted");
     const auto component_count = fixture.host->components().component_count();
-    const auto scene_rebuilds = fixture.host->scene_composer().diagnostics().rebuilds;
+    const std::vector<ryn::detail::MountedButtonComponent> retained_buttons{fixture.host->mounted_buttons().begin(),
+                                                                            fixture.host->mounted_buttons().end()};
     const auto effect_uploads = gpu.effect_uploads;
     const auto quad_uploads = gpu.quad_uploads;
 
@@ -932,15 +932,23 @@ void test_token_gallery_frame_contract() {
     const auto final = definition.telemetry();
     require(final.content_runs == initial.content_runs && final.theme_content_runs == initial.theme_content_runs &&
                 fixture.host->components().component_count() == component_count &&
-                fixture.host->scene_composer().diagnostics().rebuilds == scene_rebuilds && final.theme_updates == 4 &&
-                final.brand_updates == 1 && final.state_updates == 2 && final.viewport_updates >= 4,
-            "Token Gallery updates reran content or rebuilt retained topology");
+                std::ranges::equal(retained_buttons, fixture.host->mounted_buttons(),
+                                   [](const auto& before, const auto& after) {
+                                       return before.component == after.component && before.node == after.node &&
+                                              before.scene == after.scene && before.interaction == after.interaction &&
+                                              before.fragment == after.fragment;
+                                   }) &&
+                final.theme_updates == 4 && final.brand_updates == 1 && final.state_updates == 2 &&
+                final.viewport_updates >= 4,
+            "Token Gallery updates reran content or replaced retained component/scene owners");
 
     const auto submissions = loop.counters().submissions;
+    const auto settled_rebuilds = fixture.host->scene_composer().diagnostics().rebuilds;
     for (int index = 0; index < 40; ++index) {
         require(loop.step() == ryn::runtime::FrameLoopStep::idle, "Idle Token Gallery continued submitting frames");
     }
-    require(loop.counters().submissions == submissions && loop.counters().idle_waits >= 40,
+    require(loop.counters().submissions == submissions && loop.counters().idle_waits >= 40 &&
+                fixture.host->scene_composer().diagnostics().rebuilds == settled_rebuilds,
             "Token Gallery idle acceptance counters drifted");
 }
 

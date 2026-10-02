@@ -18,7 +18,7 @@
 
 ## 5. 整合（平台通用）
 
-- [ ] 5.1 更新 Gallery、支持目录与收尾清单，完整 headless Debug/Release CTest、Core/renderer configure 守卫、格式/doctor/full strict/diff 通过后保存平台/preset 和回归证据并提交。
+- [x] 5.1 更新 Gallery、支持目录与收尾清单，完整 headless Debug/Release CTest、Core/renderer configure 守卫、格式/doctor/full strict/diff 通过后保存平台/preset 和回归证据并提交。
 
 ## 6. Windows 原生验收
 

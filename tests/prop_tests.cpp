@@ -2,6 +2,7 @@
 
 #include <ryn/prop.hpp>
 
+#include <array>
 #include <iostream>
 #include <stdexcept>
 
@@ -156,6 +157,42 @@ void test_one_prop_does_not_update_a_sibling_field() {
     require(second.value == 2 && second.applies == 1, "unrelated sibling Prop update path executed");
 }
 
+void test_large_prop_bounds_composition_stack_and_preserves_value_semantics() {
+    struct LargeValue final {
+        std::array<int, 128> values{};
+        bool operator==(const LargeValue&) const = default;
+    };
+
+    static_assert(sizeof(ryn::Prop<LargeValue>) <= 256, "Large Props must have bounded composition stack storage");
+    LargeValue value;
+    value.values[0] = 7;
+    ryn::Prop<LargeValue> fixed{value};
+    const auto copied = fixed;
+    value.values[0] = 8;
+    auto read = ryn::detail::read_prop(copied);
+    require(read.values[0] == 7, "Large static Prop aliases its mutable caller value");
+    read.values[0] = 9;
+    require(ryn::detail::read_prop(fixed).values[0] == 7, "Large static Prop exposes shared mutable storage");
+    ryn::Signal<LargeValue> source{value};
+    ryn::Prop<LargeValue> live{source};
+    ryn::Scope scope;
+    int last{};
+    int applies{};
+    const auto connection = ryn::detail::connect_prop(scope, live, [&](LargeValue next) {
+        last = next.values[0];
+        ++applies;
+    });
+    require(last == 8 && applies == 1, "Large binding Prop did not apply its initial source");
+    value.values[0] = 10;
+    source.set(value);
+    require(last == 10 && applies == 2 && ryn::detail::read_prop(copied).values[0] == 7,
+            "Large binding Prop stopped reacting or changed its static sibling");
+    scope.dispose();
+    value.values[0] = 11;
+    source.set(value);
+    require(last == 10 && applies == 2, "Large binding Prop outlived its owner scope");
+}
+
 } // namespace
 
 int main() {
@@ -166,6 +203,7 @@ int main() {
         test_temporary_prop_and_binding_own_their_sources();
         test_scope_disposal_stops_updates_and_queued_work();
         test_one_prop_does_not_update_a_sibling_field();
+        test_large_prop_bounds_composition_stack_and_preserves_value_semantics();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -34,9 +34,9 @@ endforeach()
 
 string(REGEX MATCHALL "ryn::Button\\(" button_calls "${definition_source}")
 list(LENGTH button_calls button_call_count)
-if(NOT button_call_count EQUAL 10)
+if(NOT button_call_count EQUAL 18)
     message(FATAL_ERROR
-        "Gallery must keep Button call sites limited to navigation, filter, live helpers, five Tooltip anchors, header directory, and theme toggle; found ${button_call_count}")
+        "Gallery must keep Button call sites limited to navigation/filter/live helpers, Tooltip anchors, the native Button matrix, header directory and theme toggle; found ${button_call_count}")
 endif()
 
 foreach(forbidden IN ITEMS

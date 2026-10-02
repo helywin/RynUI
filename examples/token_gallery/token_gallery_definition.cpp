@@ -36,6 +36,8 @@ struct GalleryState final {
     ryn::Signal<bool> document_bar_visible{true};
     ryn::Signal<bool> disabled{true};
     ryn::Signal<bool> loading{true};
+    ryn::Signal<bool> button_loading{false};
+    ryn::ButtonRef button_ref;
     ryn::Signal<bool> clear_disabled{false};
     ryn::Signal<bool> switch_checked{false};
     ryn::Signal<bool> checkbox_checked{false};
@@ -79,6 +81,31 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.state.focus-visible",
     "gallery.state.disabled",
     "gallery.state.loading",
+    "gallery.button.blue",
+    "gallery.button.purple",
+    "gallery.button.cyan",
+    "gallery.button.green",
+    "gallery.button.magenta",
+    "gallery.button.pink",
+    "gallery.button.red",
+    "gallery.button.orange",
+    "gallery.button.yellow",
+    "gallery.button.volcano",
+    "gallery.button.geekblue",
+    "gallery.button.lime",
+    "gallery.button.gold",
+    "gallery.button.outlined",
+    "gallery.button.dashed",
+    "gallery.button.solid",
+    "gallery.button.filled",
+    "gallery.button.text",
+    "gallery.button.link",
+    "gallery.button.icon-end",
+    "gallery.button.circle",
+    "gallery.button.square",
+    "gallery.button.ghost",
+    "gallery.button.round-block",
+    "gallery.button.loading-focus",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
@@ -897,6 +924,62 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                          .handleDisabled(ryn::SliderDisabledHandles{false, true, false})
                          .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     state->telemetry.live_samples += 3;
+    ryn::Text(u8"Button · 原生颜色 / 六变体 / ghost / 图标 / shape / block / ref / loading delay / wave");
+    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        constexpr std::array colors{ryn::ButtonColor::Blue,    ryn::ButtonColor::Purple,   ryn::ButtonColor::Cyan,
+                                    ryn::ButtonColor::Green,   ryn::ButtonColor::Magenta,  ryn::ButtonColor::Pink,
+                                    ryn::ButtonColor::Red,     ryn::ButtonColor::Orange,   ryn::ButtonColor::Yellow,
+                                    ryn::ButtonColor::Volcano, ryn::ButtonColor::Geekblue, ryn::ButtonColor::Lime,
+                                    ryn::ButtonColor::Gold};
+        constexpr std::array<std::string_view, 13> names{"blue",     "purple", "cyan",   "green",  "magenta",
+                                                         "pink",     "red",    "orange", "yellow", "volcano",
+                                                         "geekblue", "lime",   "gold"};
+        for (std::size_t index = 0; index < colors.size(); ++index) {
+            const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
+            ryn::Button(ryn::ButtonProps{}.color(colors[index]).variant(ryn::ButtonVariant::Solid),
+                        [caption] { ryn::Text(caption); });
+        }
+        state->telemetry.live_samples += colors.size();
+    });
+    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        constexpr std::array variants{ryn::ButtonVariant::Outlined, ryn::ButtonVariant::Dashed,
+                                      ryn::ButtonVariant::Solid,    ryn::ButtonVariant::Filled,
+                                      ryn::ButtonVariant::Text,     ryn::ButtonVariant::Link};
+        constexpr std::array<std::string_view, 6> names{"outlined", "dashed", "solid", "filled", "text", "link"};
+        for (std::size_t index = 0; index < variants.size(); ++index) {
+            const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
+            ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(variants[index]),
+                        [caption] { ryn::Text(caption); });
+        }
+        state->telemetry.live_samples += variants.size();
+    });
+    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
+        ryn::Button(ryn::ButtonProps{}
+                        .ref(state->button_ref)
+                        .loading(state->button_loading)
+                        .loadingDelay(ryn::Duration::milliseconds(150))
+                        .iconPlacement(ryn::ButtonIconPlacement::End),
+                    ryn::ButtonContent{[] { ryn::Text(u8"gallery.button.icon-end · End / Loading"); }},
+                    ryn::ButtonIcon{[] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
+                    ryn::ButtonLoadingIcon{[] { ryn::Text(u8"…"); }});
+        ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Circle),
+                    ryn::ButtonSlots{.icon = ryn::ButtonIcon{
+                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::SearchOutlined)); }}});
+        ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Square),
+                    [] { ryn::Text(u8"gallery.button.square · Square"); });
+        ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(ryn::ButtonVariant::Dashed).ghost(true),
+                    [] { ryn::Text(u8"gallery.button.ghost · Ghost dashed"); });
+        ryn::Button(ryn::ButtonProps{}.onClick([state] {
+            state->button_loading.set(!state->button_loading.get());
+            static_cast<void>(state->button_ref.focus());
+            ++state->telemetry.activations;
+        }),
+                    [] { ryn::Text(u8"gallery.button.loading-focus · 切换加载并聚焦"); });
+        state->telemetry.live_samples += 5;
+    });
+    ryn::Button(ryn::ButtonProps{}.block(true).shape(ryn::ButtonShape::Round),
+                [] { ryn::Text(u8"gallery.button.round-block · Round block / resize"); });
+    ++state->telemetry.live_samples;
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
 }
 

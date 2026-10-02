@@ -18,6 +18,7 @@
 4. Wave 是一个额外 outline effect：主题的 spread/opacity 与 motion duration/easing 控制扩散淡出；独立 scalar 动画通道，复用 generation-safe AnimationRuntime，activation 前设置反馈、复制 callback 后允许销毁，销毁无需读取失效 state。关闭/禁用/加载/无边框/窗口失活/减少动画立即取消。影子/focus 的现有 surface 独立保留。
 5. loading(bool) 保留；新增 loadingDelay(Duration) 和 typed loading slot。截止时间纳入 host deadline/tick，在 owner thread 处理，不使用睡眠/平台定时器；取消时清掉请求。ButtonRef 按 SliderRef 的 shared binding、owner thread、组件代际与 cleanup 合同实现。autoFocus 只读初始值，布局前统一 focus 管理，不劫持 disabled 焦点。
 6. Windows MSVC / Ninja Multi-Config 的 `windows-msvc-headless` Debug/Release 验证共同合同；`windows-msvc` Debug/Release 完整 build 和 affected CTest，真实 SDL D3D12/DXIL 默认/暗/紧凑、系统字体、原生 pointer/keyboard 与 DPI 矩阵。Linux GCC/Clang、Vulkan/SPIR-V、Fontconfig/Wayland 独立 pending；当前 Windows 不能替代。
+7. Gallery 整合发现 MSVC Debug 的默认 1 MiB stack 被多个大型 Theme Prop 临时对象耗尽（实际异常 0xC00000FD）。`Prop<T>` 对超过 256 bytes 的静态值使用不可变共享存储，Binding 分支保持轻量；小型标量继续内联。静态只读/复制值语义不变，不通过增大测试 stack 或关闭功能避开问题；完整 Core/headless 与原生 Gallery 复测验证。
 
 ## Risks / Trade-offs
 

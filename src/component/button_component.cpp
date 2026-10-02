@@ -464,12 +464,15 @@ ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const But
     case ButtonVariant::Filled:
         return {state.ghost ? button.variants.ghost_background : light,
                 transparent,
-                state.ghost && neutral && !hover && !active ? button.variants.default_ghost_color
-                : neutral                                   ? button.default_color
-                                                            : color,
+                neutral ? button.default_color : color,
                 {}};
     case ButtonVariant::Text:
-        return {active || hover ? light : transparent, transparent, neutral ? button.text_color : color, {}};
+        return {active  ? palette.light_active
+                : hover ? palette.light
+                        : transparent,
+                transparent,
+                neutral ? button.text_color : color,
+                {}};
     case ButtonVariant::Link:
         return {hover ? button.variants.link_hover_background : transparent,
                 transparent,

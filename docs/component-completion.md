@@ -8,7 +8,7 @@
 | Slider / RangeSlider / MultiSlider | 041/042 已补齐原生 marks/dots/提示、动态多端点、整段拖动/编辑、逐端点禁用与 ref | 原生功能 implemented；042 Windows/GPU 与 Linux 验收独立记录 |
 | Typography | 复制/编辑/省略的提示；多行编辑依赖 TextArea | Tooltip 后补提示，TextArea 后补多行编辑 |
 | Divider | 目录只因 Web API 标 partial，原生合同已有实现 | 核对原生覆盖与测试后更新状态；Linux 验收独立 pending |
-| Button | 044 正在实现 dashed/link/ghost、preset color、icon placement、shape/ref/loading delay、wave | 颜色/变体阶段与后续内容/交互分阶段验证，不提前标 implemented |
+| Button | 044 已实现颜色/六变体/ghost/真实虚线、保留 icon/loading slots、形状/block、ref/autoFocus/延迟加载与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Icon | 完整离线图标集、filled/two-tone 与 typed 原生自定义图标 | 锁定来源/许可/生成器，复用 glyph atlas |
 | Flex | 公开 responsive breakpoint 值 | 窗口宽度响应合同，旧布局/API 兼容 |
 | Space | split、Compact、响应尺寸 | typed slots 与共同控件边界 |

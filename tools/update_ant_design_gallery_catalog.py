@@ -32,7 +32,6 @@ EXPECTED_DOCUMENT_SOURCES = {
     "ant.document.components-overview": "components/overview/index.en-US.md",
 }
 EXPECTED_INITIAL_PARTIALS = {
-    "ant.component.button",
     "ant.component.typography",
     "ant.component.flex",
     "ant.component.space",
@@ -262,6 +261,9 @@ def validate_overlay(
     for identity in EXPECTED_INITIAL_PARTIALS:
         if result[identity]["status"] != "partial":
             raise ValueError(f"initial supported subset must remain explicit partial: {identity}")
+    button = result["ant.component.button"]
+    if button["status"] != "implemented" or "openspec:044-20261002-complete-native-button-variants" not in button["evidence_identifiers"]:
+        raise ValueError("native Button completion requires its implementation change evidence")
     return result
 
 
