@@ -536,6 +536,25 @@ bool TextSceneService::update_placement(TextSceneId id, graphics::GlyphPlacement
     return true;
 }
 
+bool TextSceneService::synchronize_culled(TextSceneId id) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (!record.placement || record.primitive.instances.count == 0) {
+        return false;
+    }
+    if (record.placement->clip_pixels != runtime::Rect{}) {
+        record.placement->clip_pixels = {};
+        ++record.revisions.placement;
+    }
+    const auto updated = glyph_scene_.instances().update_geometry(
+        record.primitive.instances, {}, {record.scroll_translation.x, record.scroll_translation.y});
+    if (updated != 0) {
+        ++record.counters.geometry_updates;
+        ++record.counters.geometry_patches;
+    }
+    return updated != 0;
+}
+
 bool TextSceneService::synchronize(TextSceneId id) {
     ensure_owner_thread();
     auto& record = require_record(id);

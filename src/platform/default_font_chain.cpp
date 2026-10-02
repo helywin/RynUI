@@ -631,7 +631,9 @@ struct FaceKey final {
 
 void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) noexcept {
     for (auto face = result.monospace_faces.rbegin(); face != result.monospace_faces.rend(); ++face) {
-        static_cast<void>(fonts.remove_font(face->identity));
+        if (std::ranges::none_of(result.faces, [&](const auto& ui) { return ui.identity == face->identity; })) {
+            static_cast<void>(fonts.remove_font(face->identity));
+        }
     }
     result.monospace_faces.clear();
     for (auto face = result.faces.rbegin(); face != result.faces.rend(); ++face) {
@@ -873,6 +875,24 @@ DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts, cons
         }
     }
 
+    // Latin/CJK coverage does not imply a replacement glyph. Keep unsupported
+    // Unicode displayable without changing the editor's committed source.
+    if (!covers(fonts, result, U'\uFFFD')) {
+        const bool already_loaded = std::ranges::any_of(result.faces, [&](const auto& face) {
+            return face.source_path == request.fallback_latin && face.face_index == 0;
+        });
+        const FontDescriptor fallback{
+            request.fallback_latin, 0, "BundledLatinFallback", U'\uFFFD', false, false, {},
+        };
+        if (already_loaded || !load_descriptor(fonts, fallback, request.raster, result) ||
+            !covers(fonts, result, U'\uFFFD')) {
+            release_loaded(fonts, result);
+            result.diagnostic = "Default UI font chain could not load a Unicode replacement glyph.";
+            return result;
+        }
+        result.diagnostic_fallbacks.push_back("system/custom UI faces lack U+FFFD; appended bundled Latin fallback");
+    }
+
     // Monospace faces are resolved after the UI chain and are never fatal: a
     // missing monospace family only means `ui_monospace` falls back to the UI
     // chain, which the resolver still reports through the same identity list.
@@ -894,9 +914,21 @@ DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts, cons
         append_unique(monospace, std::move(descriptor));
     }
     for (const auto& descriptor : monospace) {
-        if (std::ranges::any_of(result.faces, [&](const auto& existing) {
-                return existing.source_path == descriptor.path && existing.face_index == descriptor.face_index;
-            })) {
+        // A preferred monospace face can also supply the UI replacement glyph.
+        // Preserve each role's order/metadata and reuse the startup face when
+        // both roles request the same raster policy.
+        const auto shared = std::ranges::find_if(result.faces, [&](const auto& face) {
+            return face.source_path == descriptor.path && face.face_index == descriptor.face_index &&
+                   face.raster_policy == descriptor.raster_policy.value_or(request.raster.policy);
+        });
+        if (shared != result.faces.end()) {
+            auto face = *shared;
+            face.family_name = descriptor.family_name;
+            face.custom_font = descriptor.custom_font;
+            face.system_font = descriptor.system_font;
+            face.weight = descriptor.weight;
+            face.italic = descriptor.italic;
+            result.monospace_faces.push_back(std::move(face));
             continue;
         }
         load_monospace_descriptor(fonts, descriptor, request.raster, result);

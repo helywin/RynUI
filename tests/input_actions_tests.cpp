@@ -66,6 +66,12 @@ void clear_configuration() {
     click(f, clear);
     require(changes == 0 && clears == 0, "disabled clear callback ran");
     disabled.set(false);
+    f.synchronize();
+    const auto clear_bounds = f.nodes.require(f.buttons.interactions().require(clear).node).bounds;
+    const auto enabled_hit = f.buttons.hit_test().hit_test(
+        {clear_bounds.x + clear_bounds.width / 2, clear_bounds.y + clear_bounds.height / 2});
+    require(enabled_hit && *enabled_hit == clear,
+            "reenabled clear retained a stale disabled hit-test snapshot without geometry changes");
     const auto custom = custom_icon();
     icon.set(custom);
     f.synchronize();

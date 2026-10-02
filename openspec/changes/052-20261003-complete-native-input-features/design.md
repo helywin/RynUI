@@ -1,5 +1,9 @@
 # Design
 
+原生窗口验收发现本机 Segoe UI Variable Text / Microsoft YaHei UI 同时不覆盖 🙂 与 U+FFFD，原有默认字体链仅探测 Latin/CJK，导致 Input intrinsic measurement 失败。默认字体加载现在额外保证 U+FFFD，按需要追加显式 bundled Latin fallback；各尺寸/样式/monospace 继续复用该链。保持 FontRuntime 的显式字形合同及 renderer R8 上传合同，未覆盖字符显示替代字形，编辑原值/统计不变。
+
+真实 GPU 读回另外发现旧命中缓存和旧字形覆盖：affix 资格改变显式 invalidate HitTest；零尺寸/offscreen Text 同步 patch retained glyph 为零 clip，并清空装饰，恢复时使用保留 scene 和 pending 更新。该路径不 shape/rasterize 或重建 glyph range，保持 CPU scene/renderer ABI 边界。平台通用回归与最终完整测试记录在 evidence/common/visibility-regressions.md。
+
 ## Context
 
 动机见 proposal.md。InputComponentHost 已持有长期 editor、三个文字 view、选择/caret retained surfaces 和 RoundedEffect 容器；Password/Search 通过 Input 转发属性。当前 Token 只有 Outlined 色组，公共输入属性重复，TextInputPlatform 已具备用途/大小写/autocorrect，公开 API 尚未连接。清空与密码操作复用 InputAffixAction，Search 默认图标已存在但 Clear 来源及 variant 未实现。

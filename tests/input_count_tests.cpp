@@ -62,15 +62,29 @@ void statistics_and_layout() {
     options.set({1, InputCountUnit::Grapheme});
     f.synchronize();
     require(f.inputs.status(mounted.component) == InputStatus::Warning, "soft max overrode explicit status");
+    detail::TextSceneId label_scene;
+    for (const auto& text : f.buttons.text().mounted_texts()) {
+        if (f.scene.text_state(text.scene).content().bytes() == "2 / 1") {
+            label_scene = text.scene;
+        }
+    }
+    require(label_scene.valid(), "counter label scene absent");
     show.set(false);
     f.synchronize();
     require(f.inputs.count_text(mounted.component).empty() && f.nodes.require(children[2]).bounds.width == 0 &&
                 f.nodes.require(children[2]).bounds.height == 0,
             "hidden counter retained layout space");
+    const auto range = f.scene.primitive(label_scene).instances;
+    for (std::uint32_t index = range.first; index < range.first + range.count; ++index) {
+        const auto clip = f.scene.glyph_scene().instances().at(index).clip_bounds;
+        require(clip[2] <= clip[0] || clip[3] <= clip[1], "hidden counter retained visible glyph coverage");
+    }
     show.set(true);
     f.synchronize(90);
     require(f.inputs.layout_snapshot(mounted.component).viewport.width >= 0 && content_runs == 1,
             "narrow affix layout failed or reran content");
+    require(f.scene.text_state(label_scene).content().bytes() == "2 / 1",
+            "counter label failed to restore its retained scene");
 }
 
 void editing_transaction() {

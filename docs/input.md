@@ -26,6 +26,8 @@ purpose 支持 Text、Name、Email、Username、Number；capitalization 支持 N
 
 系统输入端口是否提供对应键盘/纠正 UI 取决于实际平台；端口合同测试不能替代真实 OS 输入证据。
 
+默认系统字体链保证 U+FFFD 替代字形；系统字体缺少该字形时追加显式配置的 bundled Latin fallback。未覆盖的 emoji/其他标量显示替代字形，编辑原文和统计保持不变。
+
 ## 变体与主题
 
 三个单行组件的 `.variant(Prop<InputVariant>)` 支持 Outlined、Filled、Borderless、Underlined，默认 Outlined。三个尺寸保持等高；Underlined 只画底边，Borderless 在键盘焦点时显示 outline。Filled 使用独立背景与边框，半透明背景不会重复混色。disabled 与显式 Error/Warning 状态通过同一 Theme 推导。

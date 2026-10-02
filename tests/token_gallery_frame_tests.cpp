@@ -474,7 +474,13 @@ void test_document_viewport_scrolls_long_content_without_remount() {
              id = fixture.nodes.require(*id).parent) {
             has_content_clip = has_content_clip || fixture.nodes.require(*id).clip_content;
         }
-        require(has_content_clip || counters.geometry_updates == geometry_before_scroll[text_index],
+        const auto range = fixture.text_scene.primitive(text.scene).instances;
+        bool coverage_culled = true;
+        for (std::uint32_t index = range.first; index < range.first + range.count; ++index) {
+            const auto glyph_clip = fixture.text_scene.glyph_scene().instances().at(index).clip_bounds;
+            coverage_culled = coverage_culled && (glyph_clip[2] <= glyph_clip[0] || glyph_clip[3] <= glyph_clip[1]);
+        }
+        require(has_content_clip || counters.geometry_updates == geometry_before_scroll[text_index] || coverage_culled,
                 "Gallery scroll updated glyph geometry without an inherited moving content clip");
         if (realized_before_scroll[text_index]) {
             require(counters.instance_rebuilds == rebuilds_before_scroll[text_index],

@@ -789,6 +789,14 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 if (sync_profiling_enabled_) {
                     ++sync_profile_.offscreen_skipped;
                 }
+                if (state && state->icon) {
+                    for (const auto& layer : state->icon->layers) {
+                        static_cast<void>(text_scene_->synchronize_culled(layer.scene));
+                    }
+                } else {
+                    static_cast<void>(text_scene_->synchronize_culled(mounted.scene));
+                }
+                synchronize_decorations(mounted.component, viewport, {});
                 continue;
             }
             const auto phase_residual =

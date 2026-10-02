@@ -44,12 +44,24 @@ void test_default_ui_font_chain() {
             "default UI font chain does not cover Latin text");
     require(static_cast<bool>(fonts->find_glyph(identities, U'中', std::nullopt)),
             "default UI font chain does not cover Simplified Chinese text");
+    require(static_cast<bool>(fonts->find_glyph(identities, U'\uFFFD', std::nullopt)),
+            "default UI font chain has no Unicode replacement glyph");
+    const auto unsupported = fonts->find_glyph(identities, U'\U0010FFFF');
+    require(unsupported && unsupported.glyph.used_replacement && unsupported.glyph.resolved_codepoint == U'\uFFFD',
+            "default UI font chain cannot display an uncovered Unicode scalar");
     auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.5F);
     const auto initial_resolved = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 14);
     const auto large_resolved = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16);
     require(initial_resolved == identities && !large_resolved.empty() &&
                 resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16) == large_resolved,
             "default Theme font resolver did not reuse initial and cached size chains");
+    for (const auto family : {ryn::SystemFontFamily::ui_sans, ryn::SystemFontFamily::ui_monospace}) {
+        for (const auto weight : {400U, 700U}) {
+            const auto resized = resolver(family, weight, false, 16);
+            require(static_cast<bool>(fonts->find_glyph(resized, U'\uFFFD', std::nullopt)),
+                    "resized/styled default font resolver dropped the Unicode replacement glyph");
+        }
+    }
     for (const auto identity : large_resolved) {
         const auto metrics = fonts->metrics(identity);
         require(metrics && metrics.metrics.logical_pixel_size == 16 && metrics.metrics.raster_pixel_size == 24,
@@ -326,6 +338,7 @@ void test_custom_monospace_font_precedes_platform() {
         0,
         "ConfiguredMonospaceFont",
     });
+    request.preferred_fonts.push_back({RYNUI_VALIDATION_LATIN_FONT, 0, "ConfiguredUiFont"});
     request.fallback_latin = RYNUI_VALIDATION_LATIN_FONT;
     request.fallback_cjk = RYNUI_VALIDATION_CJK_FONT;
 
@@ -339,6 +352,13 @@ void test_custom_monospace_font_precedes_platform() {
         require(face.family_name != std::string_view{"ConfiguredMonospaceFont"},
                 "configured monospace font leaked into the UI chain");
     }
+    require(chain.monospace_faces.front().identity == chain.faces.front().identity,
+            "shared UI/monospace font file was loaded with a different identity");
+    auto resolver = ryn::detail::make_default_ui_font_resolver(*fonts, chain, 1.0F);
+    const auto mono = resolver(ryn::SystemFontFamily::ui_monospace, 400, false, 16);
+    const auto ui = resolver(ryn::SystemFontFamily::ui_sans, 400, false, 16);
+    require(!ui.empty() && !mono.empty() && static_cast<bool>(fonts->find_glyph(mono, U'\uFFFD', std::nullopt)),
+            "shared preferred font lost its order or replacement coverage after resizing");
 }
 
 } // namespace

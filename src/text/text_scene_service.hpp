@@ -105,6 +105,9 @@ public:
     [[nodiscard]] bool synchronize_caret_map(TextSceneId id, text::TextCaretMap& output);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id, float width_constraint);
     [[nodiscard]] bool synchronize(TextSceneId id, graphics::GlyphPlacement placement);
+    // Hide retained coverage during the host's sync without shaping/rasterizing.
+    // A subsequent visible placement restores the clip and pending content.
+    bool synchronize_culled(TextSceneId id);
     [[nodiscard]] bool synchronize_all();
     // Only the owner-thread host synchronization loop may defer rebuilding.
     // Read ordered_scene() after finish, never inside an active batch.

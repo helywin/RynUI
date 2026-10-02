@@ -47,7 +47,9 @@ void synchronize(InputAffixActionState& state, WindowComponentServices& host, bo
         static_cast<void>(state.press.reset());
         host.pointer().cancel_interaction(state.interaction);
     }
-    static_cast<void>(host.interactions().set_eligible(state.interaction, !state.disabled && state.visible));
+    if (host.interactions().set_eligible(state.interaction, !state.disabled && state.visible)) {
+        host.dirty().invalidate(state.node, runtime::DirtyFlags::HitTest);
+    }
     update_tone(state);
     host.focus().synchronize();
 }

@@ -26,6 +26,10 @@ Input、Password、Search SHALL 支持 Outlined、Borderless、Filled、Underlin
 - **WHEN** formatter 抛错、重入修改当前值或卸载输入框
 - **THEN** 未完成候选不发布，不使用已失效对象，统计更新不触发无关组件重新执行
 
+#### Scenario: 计数标签折叠和恢复
+- **WHEN** 已渲染的统计标签切换 showCount=false 或其祖先 clip 折叠为零，随后恢复显示
+- **THEN** 旧 GPU 字形覆盖与装饰立即隐藏，恢复使用保留 scene 及最新内容，culled 同步不重复 shape/rasterize
+
 ### Requirement: Public Input focus and native properties
 
 InputRef SHALL 提供 bound、focus、blur 和基于 UTF-8 grapheme 边界的 select；focus SHALL 支持 Keep、Start、End、All 光标选项。autoFocus、onFocus/onBlur SHALL 遵循窗口焦点与 disabled/branch 生命周期。typed 输入用途、大小写和 autocorrect SHALL 通过平台输入端口传递；Password SHALL 强制密码用途及关闭 autocorrect。属性变更 SHALL 安全刷新会话并拒绝旧事件。
@@ -49,6 +53,14 @@ Search SHALL 转发共用输入属性和 prefix/suffix，支持自定义搜索 I
 #### Scenario: 清空来源与受控回写
 - **WHEN** Search 的清空操作成功且父级同步接受或拒绝候选值
 - **THEN** onChange 与 onClear 各一次，onSearch 收到空候选和 Clear 来源，编辑器不重建；按钮/Enter 读取最新接受的值
+
+### Requirement: Unicode replacement coverage in the default native font chain
+
+默认平台字体链 SHALL 在 Latin/CJK 之外保证 U+FFFD 覆盖；系统或自定义字体缺少该字形时 SHALL 追加显式配置的 bundled Latin fallback。尺寸、样式和 monospace 解析 MUST 保留替代覆盖；无法建立该覆盖时 SHALL 在字体链初始化阶段报告失败，不得直到输入框布局才因未覆盖 Unicode 标量失败。替代字形只影响显示，MUST 不改写编辑原文或计数。
+
+#### Scenario: 系统字体缺少输入标量
+- **WHEN** 输入包含系统字体未覆盖的 emoji 或其他 Unicode 标量
+- **THEN** 显示 U+FFFD 替代字形，输入原值与 grapheme/scalar 统计保持，真实窗口可以继续布局和渲染
 
 ### Requirement: Verifiable native completion boundary
 

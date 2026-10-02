@@ -490,6 +490,39 @@ void test_rotation_preserves_coverage_and_survives_rebuild() {
                 fixture.service.glyph_scene().instances().size() == 0,
             "rotated scene cleanup failed");
 }
+
+void test_culling_hides_coverage_without_shape_and_restores_pending_updates() {
+    Fixture fixture;
+    const auto id = fixture.create(ryn::String{u8"Count"});
+    const auto placement = Fixture::placement(16);
+    require(fixture.service.synchronize(id, placement), "initial cull fixture failed");
+    const auto range = fixture.service.primitive(id).instances;
+    const auto shapes = fixture.service.text_state(id).counters().shape_count;
+    const auto rasters = fixture.fonts->counters().rasterizations;
+    require(range.count > 0 && fixture.service.synchronize_culled(id), "visible coverage did not cull");
+    require(!fixture.service.synchronize_culled(id) && fixture.service.primitive(id).instances == range &&
+                fixture.service.text_state(id).counters().shape_count == shapes &&
+                fixture.fonts->counters().rasterizations == rasters,
+            "repeated culling reshaped/rasterized or replaced ranges");
+    for (std::uint32_t index = range.first; index < range.first + range.count; ++index) {
+        const auto clip = fixture.service.glyph_scene().instances().at(index).clip_bounds;
+        require(clip[2] <= clip[0] || clip[3] <= clip[1], "culled glyph still has visible coverage");
+    }
+    require(fixture.service.set_color(id, {1, 0, 0, 1}) && fixture.service.set_transform(id, {{0, 0}, 45}),
+            "culled updates did not invalidate");
+    require(!fixture.service.synchronize_culled(id) && fixture.service.synchronize(id, placement),
+            "culled coverage did not restore");
+    const auto& glyph = fixture.service.glyph_scene().instances().at(range.first);
+    require(glyph.clip_bounds == std::array<float, 4>{0, 0, 640, 360} &&
+                glyph.color == std::array<float, 4>{1, 0, 0, 1} && glyph.transform.angle_degrees == 45 &&
+                fixture.service.text_state(id).counters().shape_count == shapes &&
+                fixture.fonts->counters().rasterizations == rasters,
+            "reappearance lost pending material/rotation or repeated coverage work");
+    require(fixture.service.synchronize_culled(id) && fixture.service.set_content(id, ryn::String{}),
+            "empty culled content update failed");
+    require(fixture.service.synchronize(id, placement) && fixture.service.primitive(id).instances.count == 0,
+            "pending empty content restored old glyphs");
+}
 } // namespace
 
 int main() {
@@ -501,6 +534,7 @@ int main() {
         test_scroll_translation_preserves_glyphs();
         test_ordered_scene_batch_matches_serial_and_recovers_after_cancel();
         test_rotation_preserves_coverage_and_survives_rebuild();
+        test_culling_hides_coverage_without_shape_and_restores_pending_updates();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
