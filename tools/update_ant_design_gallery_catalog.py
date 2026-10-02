@@ -33,7 +33,6 @@ EXPECTED_DOCUMENT_SOURCES = {
 }
 EXPECTED_INITIAL_PARTIALS = {
     "ant.component.typography",
-    "ant.component.space",
     "ant.component.config-provider",
 }
 ALLOWED_SUPPORT_STATUSES = {
@@ -278,6 +277,9 @@ def validate_overlay(
     flex = result["ant.component.flex"]
     if flex["status"] != "implemented" or "openspec:049-20261003-complete-native-flex-layout" not in flex["evidence_identifiers"]:
         raise ValueError("native Flex completion requires its implementation change evidence")
+    space = result["ant.component.space"]
+    if space["status"] != "implemented" or "openspec:050-20261003-complete-native-space-layout" not in space["evidence_identifiers"]:
+        raise ValueError("native Space completion requires its implementation change evidence")
     return result
 
 

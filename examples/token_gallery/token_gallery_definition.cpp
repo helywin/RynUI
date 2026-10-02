@@ -83,6 +83,14 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.flex.wrap-reverse",
     "gallery.flex.vertical-rtl",
     "gallery.flex.default-stretch",
+    "gallery.space.separator",
+    "gallery.space.baseline",
+    "gallery.space.compact.small",
+    "gallery.space.compact.middle",
+    "gallery.space.compact.large",
+    "gallery.space.compact.vertical-rtl",
+    "gallery.space.compact.mixed",
+    "gallery.space.addon.variants",
     "gallery.theme.default",
     "gallery.theme.dark",
     "gallery.theme.compact",
@@ -1285,6 +1293,81 @@ void add_flex_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 4;
 }
 
+void add_space_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Space · separator / baseline / Compact / mixed / Addon");
+    Text(u8"gallery.space.separator · 富分隔随内容交错布局、绘制和 Tab");
+    Space(SpaceProps{}
+              .wrap(true)
+              .separator(SpaceSeparator{[] {
+                  Text(u8"/");
+                  Button(ButtonProps{}.type(ButtonType::Text).size(ControlSize::Small), [] { Text(u8"分隔操作"); });
+              }})
+              .layout(LayoutStyle{}.width(state->document_width)),
+          SpaceContent{[] {
+              for (const auto label : {u8"第一项", u8"第二项", u8"第三项"}) {
+                  Button(ButtonProps{},
+                         [label] { Text(String::from_utf8(reinterpret_cast<const char*>(label)).value()); });
+              }
+          }});
+    Text(u8"gallery.space.baseline · 大尺寸按钮、输入与文字对齐");
+    Space(SpaceProps{}.align(SpaceAlign::Baseline), SpaceContent{[] {
+              Text(u8"Ag 基线");
+              Button(ButtonProps{}.size(ControlSize::Large), [] { Text(u8"Ag 大按钮"); });
+              Input(
+                  InputProps{}.size(ControlSize::Large).defaultValue(u8"Ag 输入").layout(LayoutStyle{}.width(dp(150))));
+          }});
+    for (const auto size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
+        Text(size == ControlSize::Small   ? String{u8"gallery.space.compact.small"}
+             : size == ControlSize::Large ? String{u8"gallery.space.compact.large"}
+                                          : String{u8"gallery.space.compact.middle"});
+        SpaceCompact(SpaceCompactProps{}.size(size), SpaceCompactContent{[] {
+                         Button(ButtonProps{}.variant(ButtonVariant::Dashed), [] { Text(u8"虚线"); });
+                         Button(ButtonProps{}.type(ButtonType::Primary), [] { Text(u8"连接操作"); });
+                     }});
+    }
+    Text(u8"gallery.space.compact.vertical-rtl · block / 纵向 / RTL");
+    SpaceCompact(SpaceCompactProps{}
+                     .orientation(SpaceOrientation::Vertical)
+                     .direction(FlexDirection::RightToLeft)
+                     .block(true)
+                     .layout(LayoutStyle{}.width(state->cell_width)),
+                 SpaceCompactContent{[] {
+                     Button(ButtonProps{}, [] { Text(u8"上方"); });
+                     Button(ButtonProps{}.danger(true), [] { Text(u8"下方危险操作"); });
+                 }});
+    Text(u8"gallery.space.compact.mixed · Input / Password / Search / Radio / nested");
+    SpaceCompact(
+        SpaceCompactProps{}.size(ControlSize::Small).block(true).layout(LayoutStyle{}.width(state->document_width)),
+        SpaceCompactContent{[] {
+            SpaceAddon(SpaceAddonProps{}, SpaceAddonContent{[] { Text(u8"https://"); }});
+            Input(InputProps{}.defaultValue(u8"输入").layout(LayoutStyle{}.width(dp(120))));
+            Password(PasswordProps{}.defaultValue(u8"秘密").layout(LayoutStyle{}.width(dp(100))));
+            Search(SearchProps{}.defaultValue(u8"搜索").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+            RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选择"); }});
+            SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[] {
+                             Button(ButtonProps{}, [] { Text(u8"嵌套 A"); });
+                             Button(ButtonProps{}.disabled(true), [] { Text(u8"嵌套 B"); });
+                         }});
+        }});
+    Text(u8"gallery.space.addon.variants · 四变体 / 错误与警告 / 禁用");
+    Space(SpaceProps{}.wrap(true).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[] {
+              for (const auto variant :
+                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                  SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[variant] {
+                                   SpaceAddon(SpaceAddonProps{}
+                                                  .variant(variant)
+                                                  .status(variant == InputVariant::Filled ? InputStatus::Error
+                                                                                          : InputStatus::Warning)
+                                                  .disabled(variant == InputVariant::Outlined),
+                                              SpaceAddonContent{[] { Text(u8"附加"); }});
+                                   Button(ButtonProps{}, [] { Text(u8"操作"); });
+                               }});
+              }
+          }});
+    state->telemetry.live_samples += 11;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1362,6 +1445,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_checkbox_samples(state);
                                                         add_radio_samples(state);
                                                         add_flex_samples(state);
+                                                        add_space_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

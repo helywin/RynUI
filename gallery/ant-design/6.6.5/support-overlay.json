@@ -191,23 +191,29 @@
     },
     {
       "identity": "ant.component.space",
-      "status": "partial",
-      "summary": "RynUI 已提供 typed Space 的方向、尺寸、换行与内容组合；尚未覆盖 Compact、split 等完整 Ant Design Space 能力。",
+      "status": "implemented",
+      "summary": "RynUI 已补齐 Space 原生桌面布局、富分隔、Compact 连接控件与四变体 Addon；平台通用与 Windows/Linux 原生验收分别记录。",
       "supported_scope": [
         "horizontal and vertical spacing",
         "typed size and custom logical gap",
         "wrap",
-        "typed content composition"
+        "typed content composition, native Auto/Baseline and orientation/RTL",
+        "retained rich separator/split with interleaved layout/scene/focus order",
+        "Compact H/V/RTL, three sizes, block, nested groups and explicit-size priority",
+        "Button/Input/Password/Search/RadioButton connected exterior corners and state seams",
+        "retained editing/IME/selection/ref identity and native clipboard",
+        "SpaceAddon typed content, four variants, disabled/status and Theme"
       ],
       "missing_scope": [
-        "Space.Compact",
-        "split rendering",
-        "complete Ant Design responsive size API"
+        "Web DOM, CSS strings, React component/HTML attributes (out of native scope)"
       ],
       "evidence_identifiers": [
         "openspec:005-20260827-build-flex-and-space-layout-foundation",
+        "openspec:050-20261003-complete-native-space-layout",
         "test:rynui.space_component",
-        "test:rynui.space_public_api"
+        "test:rynui.space_public_api",
+        "test:rynui.space_features",
+        "test:rynui.space_compact"
       ]
     },
     {

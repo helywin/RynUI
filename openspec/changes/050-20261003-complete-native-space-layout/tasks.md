@@ -18,7 +18,7 @@
 
 ## 5. 集成（平台通用）
 
-- [ ] 5.1 增加 Gallery separator/Compact/mixed/Addon 样例，目录与原生收尾清单同步；生成器 self-test/check、HEADLESS D/R 全部 CTest、文档/格式/OpenSpec/diff 通过，记录实际平台/preset/结果后提交。
+- [x] 5.1 增加 Gallery separator/Compact/mixed/Addon 样例，目录与原生收尾清单同步；生成器 self-test/check、HEADLESS D/R 全部 CTest、文档/格式/OpenSpec/diff 通过，记录实际平台/preset/结果后提交。
 
 ## 6. 平台集成
 
