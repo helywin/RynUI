@@ -1,0 +1,164 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/30] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/30] Deploying shaders for rynui_token_gallery
+[3/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_compact.cpp.obj
+[4/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_addon.cpp.obj
+[5/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\search_component.cpp.obj
+[6/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\window_component_services.cpp.obj
+[7/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\input_component.cpp.obj
+[8/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\button_component.cpp.obj
+D:\code\RynUI\src\component\button_component.cpp(1710): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[9/30] Building CXX object tests\CMakeFiles\rynui_space_compact_tests.dir\Debug\space_compact_tests.cpp.obj
+[10/30] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\space_acceptance.cpp.obj
+[11/30] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\selection_component.cpp.obj
+[12/30] Linking CXX static library src\Debug\rynui_components.lib
+[13/30] Linking CXX executable tests\Debug\rynui_space_header_isolation_tests.exe
+[14/30] Linking CXX executable tests\Debug\rynui_space_public_api_tests.exe
+[15/30] Linking CXX executable tests\Debug\rynui_tooltip_component_tests.exe
+[16/30] Linking CXX executable tests\Debug\rynui_search_component_tests.exe
+[17/30] Linking CXX executable tests\Debug\rynui_password_component_tests.exe
+[18/30] Linking CXX executable tests\Debug\rynui_space_features_tests.exe
+[19/30] Linking CXX executable tests\Debug\rynui_space_component_tests.exe
+[20/30] Linking CXX executable tests\Debug\rynui_button_component_tests.exe
+[21/30] Linking CXX executable tests\Debug\rynui_radio_public_api_tests.exe
+[22/30] Linking CXX executable tests\Debug\rynui_selection_component_tests.exe
+[23/30] Linking CXX executable tests\Debug\rynui_radio_features_tests.exe
+[24/30] Linking CXX executable tests\Debug\rynui_input_component_tests.exe
+[25/30] Linking CXX executable tests\Debug\rynui_space_compact_tests.exe
+[26/30] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Debug\token_gallery\token_gallery_definition.cpp.obj
+[27/30] Linking CXX static library examples\Debug\rynui_token_gallery_definition.lib
+[28/30] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[29/30] Linking CXX executable examples\Debug\rynui_token_gallery.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   4: rynui.tooltip_component
+ 1/18 Test   #4: rynui.tooltip_component ..........   Passed    0.64 sec
+      Start  58: rynui.theme_runtime
+ 2/18 Test  #58: rynui.theme_runtime ..............   Passed    0.09 sec
+      Start  72: rynui.search_component
+ 3/18 Test  #72: rynui.search_component ...........   Passed    1.76 sec
+      Start  78: rynui.selection_component
+ 4/18 Test  #78: rynui.selection_component ........   Passed    0.56 sec
+      Start  83: rynui.radio_public_api
+ 5/18 Test  #83: rynui.radio_public_api ...........   Passed    0.03 sec
+      Start  85: rynui.radio_features
+ 6/18 Test  #85: rynui.radio_features .............   Passed    0.64 sec
+      Start  93: rynui.space_public_api
+ 7/18 Test  #93: rynui.space_public_api ...........   Passed    0.03 sec
+      Start  95: rynui.space_header_isolation
+ 8/18 Test  #95: rynui.space_header_isolation .....   Passed    0.03 sec
+      Start 121: rynui.input_component
+ 9/18 Test #121: rynui.input_component ............   Passed    1.88 sec
+      Start 122: rynui.password_component
+10/18 Test #122: rynui.password_component .........   Passed    0.14 sec
+      Start 139: rynui.button_component
+11/18 Test #139: rynui.button_component ...........   Passed    1.21 sec
+      Start 144: rynui.space_compact
+12/18 Test #144: rynui.space_compact ..............   Passed    1.05 sec
+      Start 145: rynui.space_features
+13/18 Test #145: rynui.space_features .............   Passed    0.20 sec
+      Start 148: rynui.space_component
+14/18 Test #148: rynui.space_component ............   Passed    0.10 sec
+      Start 151: rynui.token_gallery_frame
+15/18 Test #151: rynui.token_gallery_frame ........   Passed   23.07 sec
+      Start 205: rynui.pointer_route
+16/18 Test #205: rynui.pointer_route ..............   Passed    0.03 sec
+      Start 209: rynui.focus_order
+17/18 Test #209: rynui.focus_order ................   Passed    0.02 sec
+      Start 212: rynui.focus_lifecycle
+18/18 Test #212: rynui.focus_lifecycle ............   Passed    0.03 sec
+
+100% tests passed out of 18
+
+Total Test time (real) =  31.74 sec
+[0/2] Re-checking globbed directories...
+[1/46] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[2/46] Compiling glyph fragment shader to SPIRV
+[3/46] Compiling glyph vertex shader to SPIRV
+[4/46] Compiling rounded_effect fragment shader to SPIRV
+[5/46] Compiling rounded_effect vertex shader to SPIRV
+[6/46] Compiling glyph fragment shader to DXIL
+[7/46] Compiling glyph vertex shader to DXIL
+[8/46] Compiling quad fragment shader to DXIL
+[9/46] Compiling quad fragment shader to SPIRV
+[10/46] Reflecting glyph fragment shader resources
+[11/46] Compiling quad vertex shader to SPIRV
+[12/46] Compiling quad vertex shader to DXIL
+[13/46] Reflecting glyph vertex shader resources
+[14/46] Reflecting rounded_effect fragment shader resources
+[15/46] Reflecting rounded_effect vertex shader resources
+[16/46] Compiling rounded_effect vertex shader to DXIL
+[17/46] Compiling rounded_effect fragment shader to DXIL
+[18/46] Deploying shaders for rynui_token_gallery
+[19/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_compact.cpp.obj
+[20/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_addon.cpp.obj
+[21/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[22/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\search_component.cpp.obj
+[23/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+D:\code\RynUI\src\component\button_component.cpp(1710): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[24/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[25/46] Building CXX object tests\CMakeFiles\rynui_space_compact_tests.dir\Release\space_compact_tests.cpp.obj
+[26/46] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[27/46] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\space_acceptance.cpp.obj
+[28/46] Linking CXX static library src\Release\rynui_components.lib
+[29/46] Linking CXX executable tests\Release\rynui_space_header_isolation_tests.exe
+[30/46] Linking CXX executable tests\Release\rynui_space_public_api_tests.exe
+[31/46] Linking CXX executable tests\Release\rynui_radio_public_api_tests.exe
+[32/46] Linking CXX executable tests\Release\rynui_tooltip_component_tests.exe
+[33/46] Linking CXX executable tests\Release\rynui_search_component_tests.exe
+[34/46] Linking CXX executable tests\Release\rynui_input_component_tests.exe
+[35/46] Linking CXX executable tests\Release\rynui_selection_component_tests.exe
+[36/46] Linking CXX executable tests\Release\rynui_password_component_tests.exe
+[37/46] Linking CXX executable tests\Release\rynui_space_features_tests.exe
+[38/46] Linking CXX executable tests\Release\rynui_button_component_tests.exe
+[39/46] Linking CXX executable tests\Release\rynui_space_component_tests.exe
+[40/46] Linking CXX executable tests\Release\rynui_radio_features_tests.exe
+[41/46] Linking CXX executable tests\Release\rynui_space_compact_tests.exe
+[42/46] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\token_gallery_definition.cpp.obj
+[43/46] Linking CXX static library examples\Release\rynui_token_gallery_definition.lib
+[44/46] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[45/46] Linking CXX executable examples\Release\rynui_token_gallery.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   4: rynui.tooltip_component
+ 1/18 Test   #4: rynui.tooltip_component ..........   Passed    0.46 sec
+      Start  58: rynui.theme_runtime
+ 2/18 Test  #58: rynui.theme_runtime ..............   Passed    0.02 sec
+      Start  72: rynui.search_component
+ 3/18 Test  #72: rynui.search_component ...........   Passed    1.15 sec
+      Start  78: rynui.selection_component
+ 4/18 Test  #78: rynui.selection_component ........   Passed    0.38 sec
+      Start  83: rynui.radio_public_api
+ 5/18 Test  #83: rynui.radio_public_api ...........   Passed    0.03 sec
+      Start  85: rynui.radio_features
+ 6/18 Test  #85: rynui.radio_features .............   Passed    0.45 sec
+      Start  93: rynui.space_public_api
+ 7/18 Test  #93: rynui.space_public_api ...........   Passed    0.02 sec
+      Start  95: rynui.space_header_isolation
+ 8/18 Test  #95: rynui.space_header_isolation .....   Passed    0.02 sec
+      Start 121: rynui.input_component
+ 9/18 Test #121: rynui.input_component ............   Passed    1.26 sec
+      Start 122: rynui.password_component
+10/18 Test #122: rynui.password_component .........   Passed    0.11 sec
+      Start 139: rynui.button_component
+11/18 Test #139: rynui.button_component ...........   Passed    0.76 sec
+      Start 144: rynui.space_compact
+12/18 Test #144: rynui.space_compact ..............   Passed    0.74 sec
+      Start 145: rynui.space_features
+13/18 Test #145: rynui.space_features .............   Passed    0.17 sec
+      Start 148: rynui.space_component
+14/18 Test #148: rynui.space_component ............   Passed    0.05 sec
+      Start 151: rynui.token_gallery_frame
+15/18 Test #151: rynui.token_gallery_frame ........   Passed    5.70 sec
+      Start 205: rynui.pointer_route
+16/18 Test #205: rynui.pointer_route ..............   Passed    0.02 sec
+      Start 209: rynui.focus_order
+17/18 Test #209: rynui.focus_order ................   Passed    0.01 sec
+      Start 212: rynui.focus_lifecycle
+18/18 Test #212: rynui.focus_lifecycle ............   Passed    0.02 sec
+
+100% tests passed out of 18
+
+Total Test time (real) =  11.61 sec

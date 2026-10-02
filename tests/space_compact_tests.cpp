@@ -643,6 +643,30 @@ void compact_automatic_minimum_preserves_control_labels() {
                 a.height,
             "Compact control label wrapped outside its bounds");
 }
+
+void nested_compact_propagates_control_minimum() {
+    Fixture fixture;
+    fixture.buttons.mount(Content{[] {
+        SpaceCompact(SpaceCompactProps{}.block(true).layout(LayoutStyle{}.width(dp(240))), SpaceCompactContent{[] {
+                         SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[] {
+                                          Button(ButtonProps{}, [] { Text(u8"操作 A"); });
+                                          Button(ButtonProps{}, [] { Text(u8"虚线 B"); });
+                                      }});
+                         Input(
+                             InputProps{}.defaultValue(u8"可收缩").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                     }});
+        Button(ButtonProps{}, [] { Text(u8"操作 A"); });
+    }});
+    fixture.synchronize();
+    const auto buttons = fixture.buttons.mounted_buttons();
+    const auto a = fixture.nodes.require(buttons[0].node).bounds;
+    const auto b = fixture.nodes.require(buttons[1].node).bounds;
+    const auto standalone = fixture.nodes.require(buttons[2].node).bounds;
+    const auto input = fixture.nodes.require(fixture.inputs.mounted_inputs().front().node).bounds;
+    require(near(a.width, standalone.width) && near(a.width + b.width + input.width - 2, 240) && input.width > 0,
+            "nested Compact lost its Button minimum or input width distribution");
+    require(near(input.x, b.x + b.width - 1), "nested Compact overflowed its parent allocation");
+}
 } // namespace
 
 int main() {
@@ -658,6 +682,7 @@ int main() {
         addon_invalid_mount_and_reactive_recovery();
         mixed_compact_orientation_size_and_direction();
         compact_automatic_minimum_preserves_control_labels();
+        nested_compact_propagates_control_minimum();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

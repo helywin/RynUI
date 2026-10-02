@@ -110,11 +110,12 @@ void CompactContext::attach(runtime::ComponentId component, std::function<void(c
 
 void CompactContext::attach_many(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                                  std::function<std::vector<CompactBorder>()> borders,
-                                 component::RetainedSurfaceService* surfaces, bool intrinsic_minimum) {
+                                 component::RetainedSurfaceService* surfaces, bool intrinsic_minimum,
+                                 std::function<runtime::Size()> minimum_size) {
     if (members_.size() >= component::retained_content_visual_capacity / 4) {
         throw std::length_error("SpaceCompact exceeds 1024 supported members");
     }
-    members_.push_back({component, std::move(apply), std::move(borders), intrinsic_minimum});
+    members_.push_back({component, std::move(apply), std::move(borders), intrinsic_minimum, std::move(minimum_size)});
     if (surfaces) {
         surfaces_ = surfaces;
     }
@@ -240,6 +241,8 @@ runtime::Size CompactContext::measure(layout::LayoutEngine& engine, layout::Cons
     float main{};
     float cross{};
     float joined_extent{};
+    float minimum_main{};
+    float minimum_cross{};
     node.first_baseline.reset();
     std::optional<runtime::NodeId> previous;
     const layout::Constraints child_constraints{0, constraints.max_width, 0, constraints.max_height};
@@ -272,11 +275,32 @@ runtime::Size CompactContext::measure(layout::LayoutEngine& engine, layout::Cons
             joined_extent += joined;
         }
         const float extent = vertical ? size.height : size.width;
+        const auto member = std::find_if(members_.begin(), members_.end(),
+                                         [component](const auto& value) { return value.component == component; });
+        runtime::Size child_minimum;
+        if (member != members_.end()) {
+            child_minimum = member->minimum_size        ? member->minimum_size()
+                            : member->intrinsic_minimum ? size
+                                                        : runtime::Size{};
+        }
+        if (!(vertical ? style.min_height : style.min_width)) {
+            minimum = std::max(minimum, vertical ? child_minimum.height : child_minimum.width);
+        }
+        const float cross_margin =
+            vertical ? style.margin.left + style.margin.right : style.margin.top + style.margin.bottom;
+        const float cross_minimum =
+            (vertical ? style.min_width : style.min_height)
+                .value_or(std::max(0.0F, (vertical ? child_minimum.width : child_minimum.height) - cross_margin)) +
+            cross_margin;
+        minimum_main += minimum;
+        minimum_cross = std::max(minimum_cross, cross_minimum);
         items.push_back({child, extent, extent, minimum, maximum, style.flex_grow, style.flex_shrink});
         main += vertical ? size.height : size.width;
         cross = std::max(cross, vertical ? size.width : size.height);
         previous = child;
     }
+    minimum_main = std::max(0.0F, minimum_main - joined_extent);
+    minimum_size_ = vertical ? runtime::Size{minimum_cross, minimum_main} : runtime::Size{minimum_main, minimum_cross};
     runtime::Size result = vertical ? runtime::Size{cross, main} : runtime::Size{main, cross};
     if (block && std::isfinite(constraints.max_width)) {
         result.width = constraints.max_width;
@@ -527,7 +551,8 @@ void mount_space_compact(const SpaceCompactProps& props, const SpaceCompactConte
                     child->refresh(changed_size);
                 }
             },
-            [context] { return context->borders(); }, context->surfaces());
+            [context] { return context->borders(); }, context->surfaces(), false,
+            [context] { return context->minimum_size(); });
         build.on_resource_cleanup(component, [parent, component] { parent->detach(component); });
     }
 }

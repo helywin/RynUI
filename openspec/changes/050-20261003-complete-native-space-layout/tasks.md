@@ -24,7 +24,7 @@
 
 ### Windows
 
-- [ ] 6.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest 和 default-stack Gallery 真窗口 smoke；实际 D3D12/DXIL/system fonts 系统及 1/1.25/1.5/2 render scale 验证 separator、连接角/单一 seam/状态优先、mixed 控件/编辑、三尺寸/H/V/RTL/nested、resize/指针命中/有限 motion/idle/销毁。保存 EXE/PNG hashes、日志与复现脚本，检查后独立提交。
+- [x] 6.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest 和 default-stack Gallery 真窗口 smoke；实际 D3D12/DXIL/system fonts 系统及 1/1.25/1.5/2 render scale 验证 separator、连接角/单一 seam/状态优先、mixed 控件/编辑、三尺寸/H/V/RTL/nested、resize/指针命中/有限 motion/idle/销毁。保存 EXE/PNG hashes、日志与复现脚本，检查后独立提交。
 
 ### Linux
 

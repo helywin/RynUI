@@ -1337,19 +1337,24 @@ void add_space_samples(const std::shared_ptr<GalleryState>& state) {
                      Button(ButtonProps{}.danger(true), [] { Text(u8"下方危险操作"); });
                  }});
     Text(u8"gallery.space.compact.mixed · Input / Password / Search / Radio / nested");
-    SpaceCompact(
-        SpaceCompactProps{}.size(ControlSize::Small).block(true).layout(LayoutStyle{}.width(state->document_width)),
-        SpaceCompactContent{[] {
-            SpaceAddon(SpaceAddonProps{}, SpaceAddonContent{[] { Text(u8"https://"); }});
-            Input(InputProps{}.defaultValue(u8"输入").layout(LayoutStyle{}.width(dp(120))));
-            Password(PasswordProps{}.defaultValue(u8"秘密").layout(LayoutStyle{}.width(dp(100))));
-            Search(SearchProps{}.defaultValue(u8"搜索").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
-            RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选择"); }});
-            SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[] {
-                             Button(ButtonProps{}, [] { Text(u8"嵌套 A"); });
-                             Button(ButtonProps{}.disabled(true), [] { Text(u8"嵌套 B"); });
-                         }});
-        }});
+    SpaceCompact(SpaceCompactProps{}
+                     .size(ControlSize::Small)
+                     .orientation(bind([narrow = state->narrow_layout] {
+                         return narrow.get() ? SpaceOrientation::Vertical : SpaceOrientation::Horizontal;
+                     }))
+                     .block(true)
+                     .layout(LayoutStyle{}.width(state->document_width)),
+                 SpaceCompactContent{[] {
+                     SpaceAddon(SpaceAddonProps{}, SpaceAddonContent{[] { Text(u8"https://"); }});
+                     Input(InputProps{}.defaultValue(u8"输入").layout(LayoutStyle{}.width(dp(120))));
+                     Password(PasswordProps{}.defaultValue(u8"秘密").layout(LayoutStyle{}.width(dp(100))));
+                     Search(SearchProps{}.defaultValue(u8"搜索").layout(LayoutStyle{}.flex_grow(1).min_width(dp(0))));
+                     RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选择"); }});
+                     SpaceCompact(SpaceCompactProps{}, SpaceCompactContent{[] {
+                                      Button(ButtonProps{}, [] { Text(u8"嵌套 A"); });
+                                      Button(ButtonProps{}.disabled(true), [] { Text(u8"嵌套 B"); });
+                                  }});
+                 }});
     Text(u8"gallery.space.addon.variants · 四变体 / 错误与警告 / 禁用");
     Space(SpaceProps{}.wrap(true).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[] {
               for (const auto variant :

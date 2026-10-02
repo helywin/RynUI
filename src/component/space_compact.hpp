@@ -43,7 +43,8 @@ public:
                 bool intrinsic_minimum = false);
     void attach_many(runtime::ComponentId component, std::function<void(const CompactMetadata&)> apply,
                      std::function<std::vector<CompactBorder>()> borders,
-                     component::RetainedSurfaceService* surfaces = nullptr, bool intrinsic_minimum = false);
+                     component::RetainedSurfaceService* surfaces = nullptr, bool intrinsic_minimum = false,
+                     std::function<runtime::Size()> minimum_size = {});
 
     [[nodiscard]] component::RetainedSurfaceService* surfaces() const noexcept {
         return surfaces_;
@@ -51,6 +52,11 @@ public:
 
     [[nodiscard]] std::vector<CompactBorder> borders() const;
     [[nodiscard]] bool has_items() const;
+
+    [[nodiscard]] runtime::Size minimum_size() const noexcept {
+        return minimum_size_;
+    }
+
     void detach(runtime::ComponentId component);
     void refresh(bool measure = true);
     void publish_seams();
@@ -75,6 +81,7 @@ private:
         std::function<void(const CompactMetadata&)> apply;
         std::function<std::vector<CompactBorder>()> borders;
         bool intrinsic_minimum{};
+        std::function<runtime::Size()> minimum_size;
     };
 
     [[nodiscard]] runtime::ComponentId direct_child(runtime::ComponentId component) const;
@@ -92,6 +99,7 @@ private:
     std::vector<graphics::RoundedEffectInstance> seams_;
     bool active_{true};
     bool refreshing_{};
+    runtime::Size minimum_size_;
 };
 
 struct SpaceCompactState final {

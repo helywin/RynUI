@@ -187,6 +187,7 @@ add_executable(
     token_gallery/checkbox_acceptance.cpp
     token_gallery/radio_acceptance.cpp
     token_gallery/flex_acceptance.cpp
+    token_gallery/space_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(

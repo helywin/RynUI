@@ -1,0 +1,60 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_compact.cpp.obj
+[2/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\space_addon.cpp.obj
+[3/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\search_component.cpp.obj
+[4/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\window_component_services.cpp.obj
+[5/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\input_component.cpp.obj
+[6/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\button_component.cpp.obj
+D:\code\RynUI\src\component\button_component.cpp(1710): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[7/14] Building CXX object tests\portable\CMakeFiles\rynui_portable_space_compact.dir\Debug\__\space_compact_tests.cpp.obj
+[8/14] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\selection_component.cpp.obj
+[9/14] Linking CXX static library src\Debug\rynui_components.lib
+[10/14] Linking CXX executable tests\portable\Debug\rynui_portable_input_component.exe
+[11/14] Linking CXX executable tests\portable\Debug\rynui_portable_search_component.exe
+[12/14] Linking CXX executable tests\portable\Debug\rynui_portable_space_features.exe
+[13/14] Linking CXX executable tests\portable\Debug\rynui_portable_space_compact.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 21: rynui.portable.input_component
+1/4 Test #21: rynui.portable.input_component ....   Passed    1.88 sec
+    Start 26: rynui.portable.search_component
+2/4 Test #26: rynui.portable.search_component ...   Passed    1.77 sec
+    Start 64: rynui.portable.space_features
+3/4 Test #64: rynui.portable.space_features .....   Passed    0.20 sec
+    Start 65: rynui.portable.space_compact
+4/4 Test #65: rynui.portable.space_compact ......   Passed    1.08 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =   5.01 sec
+[0/2] Re-checking globbed directories...
+[1/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_compact.cpp.obj
+[2/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_addon.cpp.obj
+[3/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[4/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\search_component.cpp.obj
+[5/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+D:\code\RynUI\src\component\button_component.cpp(1710): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[6/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[7/14] Building CXX object tests\portable\CMakeFiles\rynui_portable_space_compact.dir\Release\__\space_compact_tests.cpp.obj
+[8/14] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[9/14] Linking CXX static library src\Release\rynui_components.lib
+[10/14] Linking CXX executable tests\portable\Release\rynui_portable_input_component.exe
+[11/14] Linking CXX executable tests\portable\Release\rynui_portable_space_features.exe
+[12/14] Linking CXX executable tests\portable\Release\rynui_portable_search_component.exe
+[13/14] Linking CXX executable tests\portable\Release\rynui_portable_space_compact.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 21: rynui.portable.input_component
+1/4 Test #21: rynui.portable.input_component ....   Passed    1.27 sec
+    Start 26: rynui.portable.search_component
+2/4 Test #26: rynui.portable.search_component ...   Passed    1.15 sec
+    Start 64: rynui.portable.space_features
+3/4 Test #64: rynui.portable.space_features .....   Passed    0.15 sec
+    Start 65: rynui.portable.space_compact
+4/4 Test #65: rynui.portable.space_compact ......   Passed    0.76 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =   3.42 sec
