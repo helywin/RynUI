@@ -475,6 +475,9 @@ void SliderComponentHost::mount_labels(runtime::ComponentId id, runtime::Compone
                 return;
             }
             const double value = s->marks[i].value;
+            if (!s->editable() && !s->nearest_enabled(value)) {
+                return;
+            }
             s->gesture = true;
             s->candidate = s->value;
             select_value(id, value);

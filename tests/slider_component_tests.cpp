@@ -517,11 +517,15 @@ void editable_and_disabled_contracts() {
     }
     Fixture pair;
     Fixture labels;
-    labels.services.mount(Content{[] {
+    Signal<SliderDisabledHandles> label_disabled{SliderDisabledHandles{}};
+    int label_completed{};
+    labels.services.mount(Content{[&] {
         MultiSlider(MultiSliderProps{}
                         .defaultValue({})
                         .marks(SliderMarks{{50, String{u8"中点"}}})
-                        .rangeOptions(SliderRangeOptions{false, true, 0, 2}));
+                        .rangeOptions(SliderRangeOptions{false, true, 0, 2})
+                        .handleDisabled(label_disabled)
+                        .onChangeComplete([&](SliderValues) { ++label_completed; }));
     }});
     labels.synchronize();
     const auto label_root = labels.services.slider().mounted()[0].component;
@@ -531,6 +535,11 @@ void editable_and_disabled_contracts() {
     pointer(labels, PointerAction::up, {label_rect.x + 2, label_rect.y + 2});
     check(labels.services.slider().snapshot(label_root).values == SliderValues{50},
           "mark label did not insert into empty slider");
+    label_disabled.set({true});
+    labels.synchronize();
+    pointer(labels, PointerAction::down, {label_rect.x + 2, label_rect.y + 2});
+    pointer(labels, PointerAction::up, {label_rect.x + 2, label_rect.y + 2});
+    check(label_completed == 1, "disabled-only label emitted completion");
     Fixture vertical;
     vertical.services.mount(Content{[] {
         MultiSlider(MultiSliderProps{}

@@ -9,10 +9,39 @@
 #include <ryn/rynui.hpp>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 
 namespace rynui::example {
 namespace {
 using namespace ryn;
+constexpr Uint64 fixture_timestamp = std::numeric_limits<Uint64>::max();
+
+class FixtureEventFilter final {
+public:
+    explicit FixtureEventFilter(bool enabled) : enabled_(enabled) {
+        if (enabled_) {
+            SDL_SetEventFilter(
+                [](void*, SDL_Event* event) {
+                    const auto type = event->type;
+                    const bool input = type == SDL_EVENT_KEY_DOWN || type == SDL_EVENT_KEY_UP ||
+                                       type == SDL_EVENT_MOUSE_MOTION || type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+                                       type == SDL_EVENT_MOUSE_BUTTON_UP || type == SDL_EVENT_WINDOW_FOCUS_LOST ||
+                                       type == SDL_EVENT_WINDOW_FOCUS_GAINED;
+                    return !input || event->common.timestamp == fixture_timestamp;
+                },
+                nullptr);
+        }
+    }
+
+    ~FixtureEventFilter() {
+        if (enabled_) {
+            SDL_SetEventFilter(nullptr, nullptr);
+        }
+    }
+
+private:
+    bool enabled_{};
+};
 
 void require(bool condition, const char* message) {
     if (!condition) {
@@ -25,10 +54,12 @@ int run_slider_acceptance(int argc, char** argv) {
     try {
         std::optional<float> requested_scale;
         bool with_marks{};
+        bool with_editing{};
         std::filesystem::path directory;
         for (int i = 1; i < argc; ++i) {
             const std::string_view arg = argv[i];
             with_marks = with_marks || arg == "--slider-marks-acceptance";
+            with_editing = with_editing || arg == "--slider-editing-acceptance";
             if (arg.starts_with("--acceptance-scale=")) {
                 requested_scale = std::stof(std::string{arg.substr(19)});
             }
@@ -37,14 +68,18 @@ int run_slider_acceptance(int argc, char** argv) {
             }
         }
         require(!directory.empty(), "Slider acceptance requires --evidence-dir");
+        with_marks = with_marks || with_editing;
         std::filesystem::create_directories(directory);
         detail::PlatformConfig config;
         config.title = "RynUI Slider Acceptance";
-        config.width = 1100;
-        config.height = with_marks ? 1020 : 850;
+        config.width = with_editing ? 1600 : 1100;
+        config.height = with_editing ? 1300 : (with_marks ? 1020 : 850);
         auto created = detail::PlatformState::create(config);
         require(bool(created), "Slider window creation failed");
         auto& platform = *created.state;
+        // Keep the scripted SDL adapter journey independent of live desktop
+        // pointer/keyboard/focus changes. Resize and renderer events remain real.
+        FixtureEventFilter fixture_filter{with_editing};
         auto metrics = platform.window_metrics();
         const float scale = requested_scale.value_or(metrics.display_scale);
         require(std::isfinite(scale) && scale > 0, "Slider scale invalid");
@@ -68,6 +103,10 @@ int run_slider_acceptance(int argc, char** argv) {
         detail::WindowComponentServices services{nodes, layout, dirty, scene, resolver, frames};
         Signal<double> value{30};
         Signal<SliderRange> range{SliderRange{20, 80}};
+        Signal<SliderRange> track_value{SliderRange{20, 80}};
+        Signal<SliderValues> edit_value{SliderValues{20, 50, 80}};
+        Signal<SliderDisabledHandles> edit_disabled{SliderDisabledHandles{}};
+        SliderRef edit_ref;
         Signal<bool> disabled{false};
         Signal<ThemeConfig> theme{ThemeConfig{}};
         Signal<SliderMarks> marks{
@@ -80,50 +119,92 @@ int run_slider_acceptance(int argc, char** argv) {
         services.mount(Content{[&] {
             ++runs;
             Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
-                      Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[&] {
-                               Text(u8"Slider · 单值 / Range / Reverse / Disabled / Vertical");
-                               Slider(SliderProps{}
-                                          .value(value)
-                                          .marks(mark_prop)
-                                          .disabled(disabled)
-                                          .onChange([&](double next) {
-                                              ++changes;
-                                              value.set(next);
-                                          })
-                                          .onChangeComplete([&](double) { ++completes; })
-                                          .layout(LayoutStyle{}.width(width)));
-                               RangeSlider(RangeSliderProps{}
-                                               .value(range)
-                                               .marks(with_marks ? SliderMarks{{20, String{u8"20"}},
-                                                                               {50, String{u8"50"}},
-                                                                               {80, String{u8"80"}}}
-                                                                 : SliderMarks{})
-                                               .marksOnly(with_marks)
-                                               .dots(with_marks)
-                                               .onChange([&](SliderRange next) {
-                                                   ++changes;
-                                                   range.set(next);
-                                               })
-                                               .onChangeComplete([&](SliderRange) { ++completes; })
-                                               .layout(LayoutStyle{}.width(width)));
-                               Slider(SliderProps{}
-                                          .defaultValue(35)
-                                          .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
-                                          .dots(with_marks)
-                                          .included(!with_marks)
-                                          .reverse(true)
-                                          .layout(LayoutStyle{}.width(width)));
-                               Slider(SliderProps{}.defaultValue(60).disabled(true).layout(LayoutStyle{}.width(width)));
-                               Slider(SliderProps{}
-                                          .defaultValue(40)
-                                          .orientation(SliderOrientation::Vertical)
-                                          .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
-                                          .marks(with_marks ? SliderMarks{{0, String{u8"低"}},
-                                                                          {50, String{u8"中"}},
-                                                                          {100, String{u8"高"}}}
-                                                            : SliderMarks{})
-                                          .dots(with_marks)
-                                          .layout(LayoutStyle{}.height(dp(160))));
+                      Flex(FlexProps{}.gap(dp(32)), FlexContent{[&] {
+                               Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[&] {
+                                        Text(u8"Slider · 单值 / Range / Reverse / Disabled / Vertical");
+                                        Slider(SliderProps{}
+                                                   .value(value)
+                                                   .marks(mark_prop)
+                                                   .disabled(disabled)
+                                                   .onChange([&](double next) {
+                                                       ++changes;
+                                                       value.set(next);
+                                                   })
+                                                   .onChangeComplete([&](double) { ++completes; })
+                                                   .layout(LayoutStyle{}.width(width)));
+                                        RangeSlider(RangeSliderProps{}
+                                                        .value(range)
+                                                        .marks(with_marks ? SliderMarks{{20, String{u8"20"}},
+                                                                                        {50, String{u8"50"}},
+                                                                                        {80, String{u8"80"}}}
+                                                                          : SliderMarks{})
+                                                        .marksOnly(with_marks)
+                                                        .dots(with_marks)
+                                                        .onChange([&](SliderRange next) {
+                                                            ++changes;
+                                                            range.set(next);
+                                                        })
+                                                        .onChangeComplete([&](SliderRange) { ++completes; })
+                                                        .layout(LayoutStyle{}.width(width)));
+                                        Slider(SliderProps{}
+                                                   .defaultValue(35)
+                                                   .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
+                                                   .dots(with_marks)
+                                                   .included(!with_marks)
+                                                   .reverse(true)
+                                                   .layout(LayoutStyle{}.width(width)));
+                                        Slider(SliderProps{}.defaultValue(60).disabled(true).layout(
+                                            LayoutStyle{}.width(width)));
+                                        Slider(SliderProps{}
+                                                   .defaultValue(40)
+                                                   .orientation(SliderOrientation::Vertical)
+                                                   .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
+                                                   .marks(with_marks ? SliderMarks{{0, String{u8"低"}},
+                                                                                   {50, String{u8"中"}},
+                                                                                   {100, String{u8"高"}}}
+                                                                     : SliderMarks{})
+                                                   .dots(with_marks)
+                                                   .layout(LayoutStyle{}.height(dp(160))));
+                                    }});
+                               if (with_editing) {
+                                   Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[&] {
+                                            Text(u8"整段轨道 · 保持快照 / 边界");
+                                            RangeSlider(RangeSliderProps{}
+                                                            .value(track_value)
+                                                            .draggableTrack(true)
+                                                            .onChange([&](SliderRange next) {
+                                                                ++changes;
+                                                                track_value.set(next);
+                                                            })
+                                                            .onChangeComplete([&](SliderRange) { ++completes; })
+                                                            .layout(LayoutStyle{}.width(width)));
+                                            Text(u8"MultiSlider · 插入 / Delete / 拖出删除");
+                                            MultiSlider(MultiSliderProps{}
+                                                            .value(edit_value)
+                                                            .ref(edit_ref)
+                                                            .autoFocus(true)
+                                                            .handleDisabled(edit_disabled)
+                                                            .rangeOptions(SliderRangeOptions{false, true, 0, 6})
+                                                            .onChange([&](SliderValues next) {
+                                                                ++changes;
+                                                                edit_value.set(std::move(next));
+                                                            })
+                                                            .onChangeComplete([&](SliderValues) { ++completes; })
+                                                            .layout(LayoutStyle{}.width(width)));
+                                            Text(u8"逐端点禁用 · 中间不可操作");
+                                            MultiSlider(MultiSliderProps{}
+                                                            .defaultValue({20, 50, 80})
+                                                            .handleDisabled(SliderDisabledHandles{false, true, false})
+                                                            .layout(LayoutStyle{}.width(width)));
+                                            Text(u8"纵向反向 MultiSlider · 拖出删除 / Right hint");
+                                            MultiSlider(MultiSliderProps{}
+                                                            .defaultValue({20, 80})
+                                                            .orientation(SliderOrientation::Vertical)
+                                                            .reverse(true)
+                                                            .rangeOptions(SliderRangeOptions{false, true, 1, 4})
+                                                            .layout(LayoutStyle{}.height(dp(160))));
+                                        }});
+                               }
                            }});
                   }});
         }});
@@ -157,7 +238,7 @@ int run_slider_acceptance(int argc, char** argv) {
         };
         draw("initial");
         auto& host = services.slider();
-        require(host.mounted().size() == 5, "Slider inventory wrong");
+        require(host.mounted().size() == (with_editing ? 9 : 5), "Slider inventory wrong");
         const auto single = host.mounted()[0];
         const auto dual = host.mounted()[1];
         const auto reverse = host.mounted()[2];
@@ -179,12 +260,20 @@ int run_slider_acceptance(int argc, char** argv) {
                     services.pointer().dispatch(value);
                     ++normalized;
                 }
+                if (const auto* window_event = std::get_if<input::WindowInputEvent>(&event)) {
+                    if (window_event->action == input::WindowInputAction::focus_lost) {
+                        services.set_window_active(false);
+                    } else if (window_event->action == input::WindowInputAction::focus_gained) {
+                        services.set_window_active(true);
+                    }
+                }
             }
         };
         const auto key = [&](SDL_Keycode code) {
             for (auto type : {SDL_EVENT_KEY_DOWN, SDL_EVENT_KEY_UP}) {
                 SDL_Event event{};
                 event.type = type;
+                event.common.timestamp = fixture_timestamp;
                 event.key.windowID = window_id;
                 event.key.key = code;
                 event.key.down = type == SDL_EVENT_KEY_DOWN;
@@ -228,6 +317,7 @@ int run_slider_acceptance(int argc, char** argv) {
         const auto pointer = [&](Uint32 type, runtime::Point p) {
             SDL_Event event{};
             event.type = type;
+            event.common.timestamp = fixture_timestamp;
             const float x = p.x * scale / metrics.pixel_density;
             const float y = p.y * scale / metrics.pixel_density;
             if (type == SDL_EVENT_MOUSE_MOTION) {
@@ -295,6 +385,84 @@ int run_slider_acceptance(int argc, char** argv) {
         require(completes == completed_before && !host.snapshot(single.component).dragging,
                 "disabled native capture completed");
         disabled.set(false);
+        if (with_editing) {
+            const auto track = host.mounted()[5];
+            const auto edit = host.mounted()[6];
+            const auto per_disabled = host.mounted()[7];
+            const auto multi_vertical = host.mounted()[8];
+            const auto original = edit.thumbs;
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(track, 0.35));
+            pointer(SDL_EVENT_MOUSE_MOTION, point(track, 0.45));
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(track, 0.45));
+            require(track_value.get() == SliderRange{30, 90}, "native whole track drag failed");
+            draw("track");
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(edit, 0.35));
+            pointer(SDL_EVENT_MOUSE_MOTION, point(edit, 0.4));
+            draw("insert-captured");
+            require(edit_value.get() == SliderValues{20, 40, 50, 80} && host.snapshot(edit.component).dragging,
+                    "native controlled insert echo lost capture");
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(edit, 0.4));
+            require(host.mounted()[6].thumbs[0] == original[0] && host.mounted()[6].thumbs[2] == original[1] &&
+                        host.mounted()[6].thumbs[3] == original[2],
+                    "native insertion replaced retained endpoints");
+            services.focus().request_focus(host.mounted()[6].thumbs[1], input::FocusModality::keyboard);
+            key(SDLK_DELETE);
+            require(edit_value.get() == SliderValues{20, 50, 80} && services.focus().state().focused == original[1],
+                    "native Delete or focus transfer failed");
+            draw("deleted-key");
+            auto outside = point(edit, 0.5);
+            outside.y += 131;
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(edit, 0.5));
+            pointer(SDL_EVENT_MOUSE_MOTION, outside);
+            draw("delete-preview");
+            require(host.snapshot(edit.component).delete_preview, "native delete preview missing");
+            const auto complete_before_loss = completes;
+            for (auto type : {SDL_EVENT_WINDOW_FOCUS_LOST, SDL_EVENT_WINDOW_FOCUS_GAINED}) {
+                SDL_Event event{};
+                event.type = type;
+                event.common.timestamp = fixture_timestamp;
+                event.window.windowID = window_id;
+                require(SDL_PushEvent(&event), "native window focus event injection failed");
+                poll();
+            }
+            require(!host.snapshot(edit.component).dragging && !host.snapshot(edit.component).delete_preview &&
+                        edit_value.get() == SliderValues{20, 50, 80} && completes == complete_before_loss,
+                    "native window loss committed deletion or retained capture");
+            draw("cancelled-delete");
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(edit, 0.5));
+            pointer(SDL_EVENT_MOUSE_MOTION, outside);
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, outside);
+            require(edit_value.get() == SliderValues{20, 80}, "native drag delete failed");
+            draw("deleted-drag");
+            require(edit_ref.focus() && services.focus().state().focused == original[0] && edit_ref.blur(),
+                    "native SliderRef focus/blur failed");
+            services.focus().request_focus(host.mounted()[6].thumbs.back(), input::FocusModality::keyboard);
+            key(SDLK_BACKSPACE);
+            require(edit_value.get() == SliderValues{20}, "native Backspace failed");
+            draw("backspace");
+            services.focus().request_focus(per_disabled.thumbs[0], input::FocusModality::keyboard);
+            key(SDLK_TAB);
+            require(services.focus().state().focused == per_disabled.thumbs[2],
+                    "native Tab did not skip disabled endpoint");
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(per_disabled, 0.5));
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(per_disabled, 0.6));
+            require(host.snapshot(per_disabled.component).values[1] == 50, "native disabled endpoint changed");
+            draw("per-disabled");
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(edit, 0.2));
+            const auto before = completes;
+            edit_disabled.set({true, false});
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(edit, 0.4));
+            require(!host.snapshot(edit.component).dragging && completes == before,
+                    "native disabled edit retained capture");
+            edit_disabled.set({});
+            auto vertical_outside = point(multi_vertical, 0.2);
+            vertical_outside.x += 131;
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(multi_vertical, 0.2));
+            pointer(SDL_EVENT_MOUSE_MOTION, vertical_outside);
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, vertical_outside);
+            require(host.snapshot(multi_vertical.component).values == SliderValues{80}, "native vertical edit failed");
+            draw("vertical-edit");
+        }
         ThemeConfig dark;
         dark.algorithms = {ThemeAlgorithm::Dark};
         theme.set(dark);
@@ -303,21 +471,23 @@ int run_slider_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        const int resized_height = with_marks ? 960 : 720;
-        require(SDL_SetWindowSize(window, 900, resized_height), "Slider native resize failed");
+        const int resized_height = with_editing ? 1180 : (with_marks ? 960 : 720);
+        const int resized_width = with_editing ? 1420 : 900;
+        require(SDL_SetWindowSize(window, resized_width, resized_height), "Slider native resize failed");
         platform.delay(100);
         metrics = platform.window_metrics();
         width.set(dp(280));
         draw("resized");
-        require(metrics.coordinate_width == 900 && metrics.coordinate_height == resized_height && runs == 1,
+        require(metrics.coordinate_width == resized_width && metrics.coordinate_height == resized_height && runs == 1,
                 "Slider resize rebuilt content or extent wrong");
-        std::cout << (with_marks ? "slider_marks_acceptance=passed gpu_driver="
-                                 : "slider_acceptance=passed gpu_driver=")
+        std::cout << (with_editing ? "slider_editing_acceptance=passed gpu_driver="
+                      : with_marks ? "slider_marks_acceptance=passed gpu_driver="
+                                   : "slider_acceptance=passed gpu_driver=")
                   << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
                   << " system_display_scale=" << metrics.display_scale << " render_scale=" << scale
                   << " normalized_events=" << normalized << " changes=" << changes << " completes=" << completes
-                  << " submits=" << renderer.counters().frame_submissions << " resize=900x" << resized_height
-                  << " content_runs=" << runs << " exit_code=0\n";
+                  << " submits=" << renderer.counters().frame_submissions << " resize=" << resized_width << "x"
+                  << resized_height << " content_runs=" << runs << " exit_code=0\n";
         services.dispose();
         return 0;
     } catch (const std::exception& e) {

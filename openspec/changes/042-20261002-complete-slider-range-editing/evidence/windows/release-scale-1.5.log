@@ -1,0 +1,1 @@
+slider_editing_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.5 normalized_events=50 changes=15 completes=12 submits=42 resize=1420x1180 content_runs=1 exit_code=0

@@ -22,7 +22,7 @@
 
 ## 6. Windows 原生验收
 
-- [ ] 6.1 windows-msvc Debug/Release build 和受影响平台 CTest；实际 D3D12/DXIL 多端/整段拖动/编辑/禁用/keyboard/capture/主题/resize/system fonts 和 scale=1/1.25/1.5/2；保存 GPU 图像、诊断、SHA256/退出码并独立提交。
+- [x] 6.1 windows-msvc Debug/Release build 和受影响平台 CTest；实际 D3D12/DXIL 多端/整段拖动/编辑/禁用/keyboard/capture/主题/resize/system fonts 和 scale=1/1.25/1.5/2；保存 GPU 图像、诊断、SHA256/退出码并独立提交。
 
 ## 7. Linux 原生验收
 
