@@ -1,0 +1,1 @@
+flex_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 normalized_events=3 clicks=1 submits=26 resize=1420x900 content_runs=1 label_runs=5 baselines=matched idle_polls=3 deadline=none disposed=1 exit_code=0

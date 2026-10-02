@@ -1,0 +1,12 @@
+debug-system: passed; 13 GPU readbacks
+debug-scale-1: passed; 13 GPU readbacks
+debug-scale-1.25: passed; 13 GPU readbacks
+debug-scale-1.5: passed; 13 GPU readbacks
+debug-scale-2: passed; 13 GPU readbacks
+release-system: passed; 13 GPU readbacks
+release-scale-1: passed; 13 GPU readbacks
+release-scale-1.25: passed; 13 GPU readbacks
+release-scale-1.5: passed; 13 GPU readbacks
+release-scale-2: passed; 13 GPU readbacks
+All saved EXE and readback identities match
+Validated 10 actual Windows runs and 130 GPU readbacks

@@ -16,7 +16,7 @@
 
 ### Windows
 
-- [ ] 4.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest 与 Gallery 真窗口 smoke；实际 D3D12/DXIL/system fonts 窗口验证系统及 1/1.25/1.5/2 render scale 的文字基线/控件、H/V/wrap-reverse/RTL、resize/指针命中、局部更新/idle/销毁，保存日志、PNG/hash/EXE hash 与复现脚本，检查后独立提交。
+- [x] 4.1 `windows-msvc` Debug/Release 构建、受影响原生 CTest 各 10/10（28.26s/9.51s）与默认栈 Gallery 真窗口 smoke 通过；实际 D3D12/DXIL/DefaultFontChain 系统字体的 D/R 系统及 1/1.25/1.5/2 render scale 共 10 次窗口、130 PNG/readback hashes 与 EXE hashes 全部通过。基线/控件、H/V/wrap-reverse/RTL、1420x900 resize、3 次规范化指针事件/1 click、纯 placement 的 measure/shape 稳定、3 idle polls 无 deadline、新帧或提交、销毁零资源通过；410 自有源格式与 OpenSpec/diff 校验通过，见 evidence/windows。
 
 ### Linux
 
