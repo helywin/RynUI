@@ -61,6 +61,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     std::size_t count = 0;
     const auto& before_alias = before.alias();
     const auto& after_alias = after.alias();
+    append_if_changed(before_alias.opacity_loading, after_alias.opacity_loading, TokenIdentity::alias_opacity_loading,
+                      changed, count);
     append_if_changed(before_alias.color_text, after_alias.color_text, TokenIdentity::alias_color_text, changed, count);
     append_if_changed(before_alias.color_text_secondary, after_alias.color_text_secondary,
                       TokenIdentity::alias_color_text_secondary, changed, count);
@@ -260,15 +262,25 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(false, input_shadows, TokenIdentity::input_shadows, changed, count);
     const auto& old_switch = before.switch_token();
     const auto& new_switch = after.switch_token();
-    append_if_changed(std::array{old_switch.track_height, old_switch.track_height_small, old_switch.track_min_width,
-                                 old_switch.track_min_width_small, old_switch.track_padding, old_switch.handle_size,
-                                 old_switch.handle_size_small},
-                      std::array{new_switch.track_height, new_switch.track_height_small, new_switch.track_min_width,
-                                 new_switch.track_min_width_small, new_switch.track_padding, new_switch.handle_size,
-                                 new_switch.handle_size_small},
-                      TokenIdentity::switch_geometry, changed, count);
-    append_if_changed(old_switch.handle_background, new_switch.handle_background, TokenIdentity::switch_colors, changed,
-                      count);
+    append_if_changed(
+        std::array{old_switch.track_height, old_switch.track_height_small, old_switch.track_min_width,
+                   old_switch.track_min_width_small, old_switch.track_padding, old_switch.handle_size,
+                   old_switch.handle_size_small, old_switch.inner_min_margin, old_switch.inner_max_margin,
+                   old_switch.inner_min_margin_small, old_switch.inner_max_margin_small, old_switch.content_font_size},
+        std::array{new_switch.track_height, new_switch.track_height_small, new_switch.track_min_width,
+                   new_switch.track_min_width_small, new_switch.track_padding, new_switch.handle_size,
+                   new_switch.handle_size_small, new_switch.inner_min_margin, new_switch.inner_max_margin,
+                   new_switch.inner_min_margin_small, new_switch.inner_max_margin_small, new_switch.content_font_size},
+        TokenIdentity::switch_geometry, changed, count);
+    const bool switch_colors_changed = old_switch.colors() != new_switch.colors() ||
+                                       old_switch.handle_background != new_switch.handle_background ||
+                                       old_switch.loading_opacity != new_switch.loading_opacity;
+    append_if_changed(false, switch_colors_changed, TokenIdentity::switch_colors, changed, count);
+    const bool switch_effects_changed =
+        old_switch.handle_shadow != new_switch.handle_shadow || old_switch.wave_spread != new_switch.wave_spread ||
+        old_switch.wave_width != new_switch.wave_width || old_switch.wave_opacity != new_switch.wave_opacity ||
+        old_switch.focus_width != new_switch.focus_width || old_switch.focus_offset != new_switch.focus_offset;
+    append_if_changed(false, switch_effects_changed, TokenIdentity::switch_effects, changed, count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
@@ -451,6 +463,7 @@ Subscription ThemeScope::capture(InvalidationCallback callback, const std::funct
 const ThemeAliasToken& ThemeScope::alias() const {
     ensure_owner_thread();
     constexpr std::array identities{
+        TokenIdentity::alias_opacity_loading,
         TokenIdentity::alias_color_text,
         TokenIdentity::alias_color_text_secondary,
         TokenIdentity::alias_color_text_disabled,
@@ -605,6 +618,12 @@ const SwitchThemeToken& ThemeScope::switch_geometry() const {
 const SwitchThemeToken& ThemeScope::switch_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::switch_colors);
+    return snapshot_->switch_token();
+}
+
+const SwitchThemeToken& ThemeScope::switch_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::switch_effects);
     return snapshot_->switch_token();
 }
 
@@ -993,6 +1012,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Tooltip.typography",
         "Tooltip.shadow",
         "Tooltip.order",
+        "alias.opacityLoading",
+        "Switch.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1031,6 +1052,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_colors:
     case TokenIdentity::input_colors:
     case TokenIdentity::switch_colors:
+    case TokenIdentity::alias_opacity_loading:
     case TokenIdentity::text_color:
     case TokenIdentity::typography_colors:
     case TokenIdentity::typography_inline_colors:
@@ -1050,6 +1072,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_border_radius:
     case TokenIdentity::button_border_width:
     case TokenIdentity::button_shadows:
+    case TokenIdentity::switch_effects:
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
         return DirtyPhase::geometry | DirtyPhase::paint_material;

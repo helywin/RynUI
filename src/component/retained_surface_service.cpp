@@ -49,6 +49,9 @@ RetainedSurfaceId RetainedSurfaceService::create_record(runtime::ComponentId com
         throw std::invalid_argument("retained surface requires live Component, root Node, and fragment identities");
     }
     validate_visuals(visuals);
+    if (effects.shadow_fill_offset > visuals.size()) {
+        throw std::invalid_argument("shadow fill offset exceeds surface visuals");
+    }
     const auto slot_index = acquire_slot();
     auto& slot = slots_[slot_index];
     const RetainedSurfaceId id{slot_index, slot.generation};
@@ -378,12 +381,16 @@ std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
 std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects) {
     ensure_owner_thread();
     auto& record = require(id);
+    if (effects.shadow_fill_offset > record.range.count) {
+        throw std::invalid_argument("shadow fill offset exceeds surface visuals");
+    }
     if (record.effects == effects) {
         return 0;
     }
 
-    bool topology_changed =
-        record.shadow_ids.size() != effects.shadows.size() || record.focus_id.valid() != effects.focus_enabled;
+    bool topology_changed = record.shadow_ids.size() != effects.shadows.size() ||
+                            record.focus_id.valid() != effects.focus_enabled ||
+                            record.effects.shadow_fill_offset != effects.shadow_fill_offset;
     if (!topology_changed) {
         for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
             const auto expected = effects.shadows[index].kind == ShadowKind::outer
@@ -405,8 +412,9 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
 
     std::size_t updates = 0;
     for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
-        auto candidate = graphics::make_shadow_effect(effects.shape, effects.shadows[index], effects.translation,
-                                                      effects.ancestor_clip);
+        auto candidate =
+            graphics::make_shadow_effect(effects.shadow_shape.value_or(effects.shape), effects.shadows[index],
+                                         effects.translation, effects.ancestor_clip);
         candidate.material.opacity = effects.shadow_opacity;
         const auto effect = record.shadow_ids[index];
         if (effect_scene_.store().update_geometry(effect, candidate.geometry)) {
@@ -562,14 +570,19 @@ std::uint32_t RetainedSurfaceService::acquire_slot() {
 }
 
 void RetainedSurfaceService::bind_fragment(const Record& record) {
+    const auto offset = record.effects.shadow_fill_offset;
     const graphics::SceneDrawCommand fill{
         graphics::SceneDrawKind::quad,
-        record.range.first,
-        record.range.count,
+        record.range.first + offset,
+        record.range.count - offset,
         graphics::invalid_glyph_atlas_page,
     };
     std::vector<graphics::SceneDrawCommand> commands;
     commands.reserve(record.shadow_ids.size() + 2);
+    if (offset > 0) {
+        commands.push_back(
+            {graphics::SceneDrawKind::quad, record.range.first, offset, graphics::invalid_glyph_atlas_page});
+    }
     effect_scene_.compose_surface(record.effect_primitive, fill, commands);
     composer_->set_fragment(record.fragment, commands, record.interaction);
 }
@@ -582,8 +595,9 @@ void RetainedSurfaceService::create_effects(Record& record) {
     record.effect_primitive.after_fill.reserve(record.effects.shadows.size());
     try {
         for (const auto& layer : record.effects.shadows.layers()) {
-            auto instance = graphics::make_shadow_effect(record.effects.shape, layer, record.effects.translation,
-                                                         record.effects.ancestor_clip);
+            auto instance =
+                graphics::make_shadow_effect(record.effects.shadow_shape.value_or(record.effects.shape), layer,
+                                             record.effects.translation, record.effects.ancestor_clip);
             instance.material.opacity = record.effects.shadow_opacity;
             const auto id = effect_scene_.store().add(std::move(instance));
             record.shadow_ids.push_back(id);

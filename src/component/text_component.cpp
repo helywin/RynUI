@@ -504,6 +504,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 text_scene_->set_phase_preserving_scroll_translation(mounted.scene, retained.translation);
             const auto sync_started =
                 sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+            static_cast<void>(text_scene_->set_content_opacity(mounted.scene, nodes_->content_opacity(node)));
             const bool synchronized = text_scene_->synchronize(
                 mounted.scene, {
                                    {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
@@ -511,7 +512,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                                    text_clip,
                                    phase_residual,
                                    {},
-                                   nodes_->content_opacity(node),
+                                   1.0F,
                                });
             if (sync_profiling_enabled_) {
                 ++sync_profile_.mounted_synchronized;
@@ -581,6 +582,7 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
     std::vector<graphics::QuadInstance> backgrounds;
     std::vector<graphics::QuadInstance> lines;
     std::vector<graphics::RoundedEffectInstance> borders;
+    const float opacity = text.material().opacity * nodes_->content_opacity(node.id);
     const auto append = [&](auto& destination, runtime::Rect rect, Color color, float radius = 0) {
         const float right = std::min(rect.x + rect.width, clip.x + clip.width);
         const float bottom = std::min(rect.y + rect.height, clip.y + clip.height);
@@ -592,7 +594,7 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
             return;
         }
         destination.push_back(
-            graphics::QuadInstance{{rect.x, rect.y, rect.width, rect.height}, channels(color), 1, radius, {}});
+            graphics::QuadInstance{{rect.x, rect.y, rect.width, rect.height}, channels(color), opacity, radius, {}});
     };
     const float size = state->resolved_typography.font_size;
     const auto foreground = text.material().color;
@@ -623,7 +625,7 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
                 borders.push_back(graphics::make_outline_effect(
                     {inner,
                      std::clamp(t.border_radius - t.border_width, 0.0F, std::min(inner.width, inner.height) / 2)},
-                    t.border_width, 0, t.border_color, 1, {}, graphics::EffectClip{1, clip}));
+                    t.border_width, 0, t.border_color, opacity, {}, graphics::EffectClip{1, clip}));
             }
             if (t.border_bottom_width > t.border_width) {
                 append(backgrounds,

@@ -90,6 +90,8 @@ struct SelectionTokens {
     float switch_width{};
     float handle_size{};
     float track_padding{};
+    float inner_min_margin{};
+    float inner_max_margin{};
     float checkbox_size{};
     float indicator_size{};
     float radio_size{};
@@ -121,6 +123,8 @@ SelectionTokens resolve_tokens(const ThemeSnapshot& theme, SwitchSize size) {
         size == SwitchSize::Small ? switch_token.track_min_width_small : switch_token.track_min_width,
         size == SwitchSize::Small ? switch_token.handle_size_small : switch_token.handle_size,
         switch_token.track_padding,
+        size == SwitchSize::Small ? switch_token.inner_min_margin_small : switch_token.inner_min_margin,
+        size == SwitchSize::Small ? switch_token.inner_max_margin_small : switch_token.inner_max_margin,
         map.control_height / 2.0F,
         map.font_size_large / 2.0F,
         map.font_size_large,
@@ -177,10 +181,20 @@ struct SelectionState final {
     float layout_width{-1.0F};
     float layout_height{-1.0F};
     float layout_gap{-1.0F};
+    float layout_inner_min{-1};
+    float layout_inner_max{-1};
     runtime::ComponentId checked_content;
     runtime::ComponentId unchecked_content;
     SwitchDirection direction{SwitchDirection::LeftToRight};
     std::shared_ptr<SwitchRefState> ref;
+    bool wave{true};
+    bool wave_active{};
+    float wave_progress{1};
+    Color wave_color;
+    animation::AnimationTargetId wave_target;
+    animation::AnimationId wave_animation;
+    runtime::SceneFragmentId wave_fragment;
+    component::RetainedSurfaceId wave_range;
     input::PressableBehavior press;
     input::FocusPresentation focus;
     std::function<void(bool)> on_change;
@@ -274,6 +288,12 @@ void SelectionComponentHost::synchronize_auxiliary_motion() {
             continue;
         }
         synchronize_spinner(*state);
+        if (state->wave_active &&
+            !animation::resolve_motion_policy(services_->components().theme_scope(item.component)->snapshot(),
+                                              services_->motion_preference())
+                 .enabled()) {
+            stop_wave(*state);
+        }
         const auto& theme = services_->components().theme_scope(item.component)->snapshot();
         if (state->handle_animation.valid() &&
             !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled()) {
@@ -300,8 +320,9 @@ SelectionSnapshot SelectionComponentHost::snapshot(runtime::ComponentId id) cons
     if (!state) {
         throw std::out_of_range("Selection component is stale or invalid");
     }
-    return {state->checkbox, state->checked,         state->indeterminate, state->disabled, state->loading,
-            state->hovered,  state->press.pressed(), state->focus,         state->size,     state->radio};
+    return {state->checkbox,    state->checked,         state->indeterminate, state->disabled, state->loading,
+            state->hovered,     state->press.pressed(), state->focus,         state->size,     state->radio,
+            state->wave_active, state->wave_progress,   state->wave_range};
 }
 
 std::optional<input::InteractionId> SelectionComponentHost::parent_interaction(runtime::ComponentId component) const {
@@ -353,6 +374,9 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
     }
+    if (state.wave_range.valid()) {
+        static_cast<void>(services_->surfaces().destroy_content_range(state.wave_range));
+    }
     services_->focus().cancel_interaction(state.interaction);
     static_cast<void>(services_->interactions().remove(state.interaction));
     static_cast<void>(services_->surfaces().destroy(state.surface));
@@ -387,6 +411,9 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         }
         update_visuals(*state);
     }
+    if (!state->checkbox && !state->radio) {
+        start_wave(*state);
+    }
     if (callback) {
         callback(next);
     }
@@ -401,7 +428,7 @@ void SelectionComponentHost::handle_pointer(runtime::ComponentId id, input::Poin
         return;
     }
     if (event.kind() == input::PointerEventKind::enter) {
-        if (!state->disabled && !state->hovered) {
+        if (!state->disabled && !state->loading && !state->hovered) {
             state->hovered = true;
             update_visuals(*state);
         }
@@ -576,6 +603,12 @@ void SelectionComponentHost::apply(animation::AnimationId, animation::AnimationT
             update_visuals(*state);
             return;
         }
+        if (state->wave_target == target) {
+            state->wave_progress = std::clamp(std::get<float>(value), 0.0F, 1.0F);
+            publish_wave(*state);
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+            return;
+        }
         if (state->handle_target != target) {
             continue;
         }
@@ -597,6 +630,13 @@ void SelectionComponentHost::completed(animation::AnimationId animation, animati
         if (state->spinner_target == target && state->spinner_animation == animation) {
             state->spinner_animation = {};
             synchronize_spinner(*state);
+            return;
+        }
+        if (state->wave_target == target && state->wave_animation == animation) {
+            state->wave_animation = {};
+            state->wave_active = false;
+            state->wave_progress = 1;
+            publish_wave(*state);
             return;
         }
         if (state->handle_target == target && state->handle_animation == animation) {
@@ -633,12 +673,18 @@ void SelectionComponentHost::apply_loading(runtime::ComponentId id, bool value) 
     }
     state->loading = value;
     if (value) {
+        state->hovered = false;
         static_cast<void>(state->press.reset());
         services_->pointer().cancel_pointer_interaction(state->interaction);
         state = find(id);
         if (!state) {
             return;
         }
+    }
+    services_->focus().synchronize();
+    state = find(id);
+    if (!state) {
+        return;
     }
     synchronize_spinner(*state);
     update_visuals(*state);
@@ -668,6 +714,80 @@ void SelectionComponentHost::apply_direction(runtime::ComponentId id, SwitchDire
     }
 }
 
+void SelectionComponentHost::apply_wave(runtime::ComponentId id, bool value) {
+    if (auto* state = find(id); state && state->wave != value) {
+        state->wave = value;
+        if (!value) {
+            stop_wave(*state);
+        }
+    }
+}
+
+void SelectionComponentHost::start_wave(SelectionState& state) {
+    const auto& theme = services_->components().theme_scope(state.component)->snapshot();
+    const auto& token = theme.switch_token();
+    const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
+    const auto spec = policy.transition(animation::MotionDurationToken::slow, animation::MotionEasingToken::ease_out);
+    if (!state.wave || state.disabled || state.loading || !services_->focus().state().window_active ||
+        !policy.enabled() || token.wave_width <= 0 || token.wave_opacity <= 0 ||
+        spec.duration.count_microseconds() == 0) {
+        return;
+    }
+    stop_wave(state);
+    state.wave_color = state.checked ? token.checked_background : token.unchecked_background;
+    state.wave_active = true;
+    state.wave_progress = 0;
+    state.wave_animation =
+        services_->animations().play(state.wave_target, 0.0F, 1.0F, spec, services_->animation_time());
+    publish_wave(state);
+    services_->dirty().invalidate(state.node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+}
+
+void SelectionComponentHost::stop_wave(SelectionState& state) {
+    if (services_->animations().contains(state.wave_animation)) {
+        static_cast<void>(services_->animations().cancel(state.wave_animation, services_->animation_time()));
+    }
+    state.wave_animation = {};
+    const bool active = state.wave_active;
+    state.wave_active = false;
+    state.wave_progress = 1;
+    publish_wave(state);
+    if (active) {
+        services_->dirty().invalidate(state.node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+    }
+}
+
+void SelectionComponentHost::publish_wave(SelectionState& state) {
+    if (!state.wave_active || state.wave_progress >= 1) {
+        if (state.wave_range.valid()) {
+            services_->surfaces().update_content_effects(state.wave_range, {});
+        }
+        return;
+    }
+    if (!state.wave_range.valid()) {
+        state.wave_fragment = services_->components().register_scene_fragment(
+            state.component, runtime::SceneFragmentPlacement::before_children);
+        state.wave_range = services_->surfaces().create_content_range(state.wave_fragment, {});
+    }
+    const auto& node = services_->nodes().require(state.node);
+    const auto& token = services_->components().theme_scope(state.component)->snapshot().switch_token();
+    const auto effect = graphics::make_outline_effect(
+        {node.bounds, std::min(node.bounds.width, node.bounds.height) / 2}, token.wave_width,
+        token.wave_spread * state.wave_progress, state.wave_color, token.wave_opacity * (1 - state.wave_progress),
+        node.translation, window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt);
+    services_->surfaces().update_content_effects(state.wave_range, std::span{&effect, 1});
+}
+
+void SelectionComponentHost::on_window_active(bool active) {
+    if (!active) {
+        for (const auto& item : mounted_) {
+            if (auto* state = find(item.component); state && !state->checkbox && !state->radio) {
+                stop_wave(*state);
+            }
+        }
+    }
+}
+
 void SelectionComponentHost::synchronize_switch_content(SelectionState& state) {
     if (state.checkbox || state.radio) {
         return;
@@ -689,8 +809,8 @@ void SelectionComponentHost::synchronize_switch_content(SelectionState& state) {
 void SelectionComponentHost::place_switch_content(SelectionState& state, layout::LayoutEngine& engine,
                                                   runtime::Rect bounds) {
     const auto token = resolve_tokens(services_->components().theme_scope(state.component)->snapshot(), state.size);
-    const float near = token.handle_size / 2;
-    const float far = token.handle_size + 3 * token.track_padding;
+    const float near = token.inner_min_margin;
+    const float far = token.inner_max_margin;
     for (const auto branch : {state.checked_content, state.unchecked_content}) {
         if (!branch.valid()) {
             continue;
@@ -699,7 +819,12 @@ void SelectionComponentHost::place_switch_content(SelectionState& state, layout:
         const bool rtl = state.direction == SwitchDirection::RightToLeft;
         const float left = std::min(bounds.width, checked != rtl ? near : far);
         const float width = std::max(0.0F, bounds.width - near - far);
-        const runtime::Rect content{bounds.x + left, bounds.y, width, bounds.height};
+        const bool active =
+            !state.disabled && !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
+        const float offset =
+            active ? (state.size == SwitchSize::Small ? token.track_padding : 2 * token.track_padding) : 0;
+        const float shift = (checked != rtl ? -1.0F : 1.0F) * std::min(offset, width);
+        const runtime::Rect content{bounds.x + left + shift, bounds.y, width, bounds.height};
         const auto node = services_->components().root(branch);
         const auto& retained = services_->nodes().require(node);
         if (retained.bounds != content || retained.translation != services_->nodes().require(state.node).translation) {
@@ -759,7 +884,8 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
         state.layout_height = size;
         state.layout_gap = token.label_gap;
     } else {
-        if (state.layout_width == token.switch_width && state.layout_height == token.switch_height) {
+        if (state.layout_width == token.switch_width && state.layout_height == token.switch_height &&
+            state.layout_inner_min == token.inner_min_margin && state.layout_inner_max == token.inner_max_margin) {
             return;
         }
         const auto id = state.component;
@@ -769,7 +895,7 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
                 [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
                     const auto& state = *find(id);
                     const auto token = resolve_tokens(services_->components().theme_scope(id)->snapshot(), state.size);
-                    const float margins = 1.5F * token.handle_size + 3 * token.track_padding;
+                    const float margins = token.inner_min_margin + token.inner_max_margin;
                     const layout::Constraints content_limits{0, std::max(0.0F, limits.max_width - margins), 0,
                                                              token.switch_height};
                     float width = 0;
@@ -787,6 +913,8 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
                 }});
         state.layout_width = token.switch_width;
         state.layout_height = token.switch_height;
+        state.layout_inner_min = token.inner_min_margin;
+        state.layout_inner_max = token.inner_max_margin;
     }
     services_->dirty().invalidate(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
@@ -795,16 +923,23 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
 void SelectionComponentHost::update_visuals(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto token = resolve_tokens(theme, state.size);
-    const bool active = state.press.pressed() || state.focus.keyboard_pressed;
     const bool faded = state.disabled || state.loading;
-    const float opacity = faded ? 0.65F : 1.0F;
+    const float opacity = faded ? theme.switch_token().loading_opacity : 1.0F;
     if (!state.checkbox && !state.radio) {
-        const Color track = state.checked ? (active          ? token.on_active
-                                             : state.hovered ? token.on_hover
-                                                             : token.on)
-                                          : (active          ? token.off_active
-                                             : state.hovered ? token.off_hover
-                                                             : token.off);
+        const auto& switch_token = theme.switch_token();
+        if (state.wave_active &&
+            (!state.wave || state.disabled || state.loading || !services_->focus().state().window_active ||
+             !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled() ||
+             switch_token.wave_width <= 0 || switch_token.wave_opacity <= 0)) {
+            stop_wave(state);
+        }
+        state.effects.shadows = switch_token.handle_shadow;
+        state.effects.shadow_fill_offset = 1;
+        state.effects.shadow_opacity = faded ? 0 : 1;
+        const Color track =
+            state.checked
+                ? (state.hovered ? switch_token.checked_hover_background : switch_token.checked_background)
+                : (state.hovered ? switch_token.unchecked_hover_background : switch_token.unchecked_background);
         set_material(state.visuals[0], track, opacity);
         set_material(state.visuals[1], token.handle, opacity);
         for (std::size_t segment = 0; segment < switch_loading_segments; ++segment) {
@@ -812,8 +947,14 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
                                 (static_cast<float>(segment) / static_cast<float>(switch_loading_segments) -
                                  (state.spinner_phase - std::floor(state.spinner_phase)));
             const float wave = 0.5F + 0.5F * std::cos(angle);
-            set_material(state.visuals[2 + segment], state.checked ? token.on : token.off,
-                         state.loading ? 0.18F + 0.82F * wave * wave : 0.0F);
+            set_material(state.visuals[2 + segment],
+                         state.checked ? switch_token.checked_background : Color(0, 0, 0, switch_token.loading_opacity),
+                         state.loading ? opacity * (0.18F + 0.82F * wave * wave) : 0.0F);
+        }
+        for (const auto branch : {state.checked_content, state.unchecked_content}) {
+            if (branch.valid()) {
+                services_->nodes().require(services_->components().root(branch)).content_opacity = opacity;
+            }
         }
     } else if (state.radio) {
         const Color border = state.disabled                   ? token.box_border
@@ -844,10 +985,12 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
         set_material(state.visuals[checkbox_indeterminate_layer], state.disabled ? token.disabled_foreground : token.on,
                      mixed ? 1.0F : 0.0F);
     }
-    state.effects.focus_color = token.focus;
-    state.effects.focus_opacity = state.focus.focus_visible && !state.disabled ? 1.0F : 0.0F;
-    state.effects.focus_width = 2.0F;
-    state.effects.focus_offset = state.checkbox || state.radio ? 0.0F : 2.0F;
+    const bool is_switch = !state.checkbox && !state.radio;
+    state.effects.focus_color = is_switch ? theme.switch_token().focus_color : token.focus;
+    state.effects.focus_opacity = state.focus.focus_visible && !state.disabled ? (is_switch ? opacity : 1.0F) : 0.0F;
+    state.effects.focus_width = is_switch ? theme.switch_token().focus_width : 2.0F;
+    state.effects.focus_enabled = !is_switch || state.effects.focus_width > 0;
+    state.effects.focus_offset = is_switch ? theme.switch_token().focus_offset : 0.0F;
     if (state.surface.valid()) {
         const auto visual_changes = services_->surfaces().update_surface(state.surface, state.visuals);
         const auto effect_changes = services_->surfaces().update_effects(state.surface, state.effects);
@@ -859,10 +1002,10 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
                              : state.disabled                ? token.disabled_foreground
                                                              : theme.alias().color_text;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
-    const bool is_switch = !state.checkbox && !state.radio;
-    static_cast<void>(state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
-                                                  is_switch ? theme.map().font_size_small : theme.text().font_size,
-                                                  is_switch ? token.switch_height : theme.text().line_height}));
+    static_cast<void>(
+        state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
+                                    is_switch ? theme.switch_token().content_font_size : theme.text().font_size,
+                                    is_switch ? token.switch_height : theme.text().line_height}));
     synchronize_switch_content(state);
 }
 
@@ -876,7 +1019,11 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         set_geometry(next[0], rect, viewport, std::min(rect.width, rect.height) / 2.0F, node.translation);
         const float checked = std::clamp(state.presented_checked, 0.0F, 1.0F);
         const float position = state.direction == SwitchDirection::RightToLeft ? 1 - checked : checked;
-        const float handle_size = std::min(token.handle_size, std::max(0.0F, rect.width - 2 * token.track_padding));
+        const bool active =
+            !state.disabled && !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
+        const float extra = active ? token.handle_size * 0.3F : 0;
+        const float handle_size =
+            std::min(token.handle_size + extra, std::max(0.0F, rect.width - 2 * token.track_padding));
         const float x = rect.x + std::min(token.track_padding, rect.width / 2) +
                         position * std::max(0.0F, rect.width - handle_size - 2 * token.track_padding);
         const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F, handle_size,
@@ -934,6 +1081,12 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         static_cast<void>(services_->surfaces().update_surface(state.surface, state.visuals));
     }
     auto effects = state.effects;
+    if (!state.checkbox && !state.radio) {
+        effects.shadow_shape = graphics::LogicalRoundedRect{{state.visuals[1].bounds[0], state.visuals[1].bounds[1],
+                                                             state.visuals[1].bounds[2], state.visuals[1].bounds[3]},
+                                                            state.visuals[1].corner_radius};
+        effects.ancestor_clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    }
     const float indicator_size = state.radio ? token.radio_size : token.checkbox_size;
     effects.shape = {
         state.checkbox || state.radio
@@ -947,10 +1100,14 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         state.effects = effects;
         static_cast<void>(services_->surfaces().update_effects(state.surface, state.effects));
     }
+    if (state.wave_active) {
+        publish_wave(state);
+    }
 }
 
-void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect) {
+void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     viewport_ = viewport;
+    window_clip_ = clip;
     for (const auto& item : mounted_) {
         if (auto* state = find(item.component)) {
             update_geometry(*state, viewport);
@@ -983,6 +1140,7 @@ struct SwitchPropsAccess {
         auto& state = build.state<SelectionState>(component);
         state.component = component;
         state.node = build.root(component);
+        host.services_->nodes().require(state.node).clip_content = true;
         state.controlled = props.checked_.has_value();
         state.checked = props.checked_ ? read_prop(*props.checked_) : props.default_checked_.value_or(false);
         state.presented_checked = state.checked ? 1.0F : 0.0F;
@@ -990,6 +1148,7 @@ struct SwitchPropsAccess {
         state.loading = read_prop(props.loading_);
         state.size = size;
         state.direction = direction;
+        state.wave = read_prop(props.wave_);
         state.ref = reference;
         state.visuals.resize(switch_layer_count);
         state.on_change = props.on_change_;
@@ -1052,6 +1211,9 @@ struct SwitchPropsAccess {
         state.spinner_target = host.services_->animations().register_target(
             state.animation_scope, host, animation::AnimationValueKind::scalar,
             animation::AnimationDirtyDomain::material | animation::AnimationDirtyDomain::animation);
+        state.wave_target = host.services_->animations().register_target(
+            state.animation_scope, host, animation::AnimationValueKind::scalar,
+            animation::AnimationDirtyDomain::geometry | animation::AnimationDirtyDomain::animation);
         host.synchronize_spinner(state);
         auto& scope = build.scope(component);
         if (props.checked_) {
@@ -1067,12 +1229,21 @@ struct SwitchPropsAccess {
         static_cast<void>(connect_prop(scope, props.direction_, [&host, component](SwitchDirection value) {
             host.apply_direction(component, value);
         }));
+        static_cast<void>(
+            connect_prop(scope, props.wave_, [&host, component](bool value) { host.apply_wave(component, value); }));
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
                 if (auto* current = host.find(component)) {
                     host.update_layout(*current);
                     host.update_visuals(*current);
+                    host.synchronize_spinner(*current);
+                    if (!animation::resolve_motion_policy(
+                             host.services_->components().theme_scope(component)->snapshot(),
+                             host.services_->motion_preference())
+                             .enabled()) {
+                        host.retarget_handle(*current);
+                    }
                 }
             },
             [theme] {
@@ -1080,6 +1251,7 @@ struct SwitchPropsAccess {
                 static_cast<void>(theme->alias());
                 static_cast<void>(theme->switch_geometry());
                 static_cast<void>(theme->switch_colors());
+                static_cast<void>(theme->switch_effects());
                 static_cast<void>(theme->text());
             });
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false});

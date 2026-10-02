@@ -66,6 +66,7 @@ public:
     [[nodiscard]] const detail::InputTokenSet& input_shadows() const;
     [[nodiscard]] const SwitchThemeToken& switch_geometry() const;
     [[nodiscard]] const SwitchThemeToken& switch_colors() const;
+    [[nodiscard]] const SwitchThemeToken& switch_effects() const;
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;

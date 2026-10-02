@@ -32,6 +32,10 @@ struct RetainedSurfaceEffects final {
     bool focus_enabled{true};
     runtime::Point translation;
     std::optional<graphics::EffectClip> ancestor_clip;
+    std::optional<graphics::LogicalRoundedRect> shadow_shape;
+    // Quads before this offset form the background behind a nested shape's
+    // shadow. Remaining quads cover the shadow's interior.
+    std::uint32_t shadow_fill_offset{};
 
     friend bool operator==(const RetainedSurfaceEffects&, const RetainedSurfaceEffects&) = default;
 };

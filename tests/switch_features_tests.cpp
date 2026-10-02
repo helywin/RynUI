@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -201,6 +202,238 @@ void invalid_content_and_reference() {
                 "Switch invalid mount did not roll back");
     }
 }
+
+void theme_and_handle_feedback() {
+    const auto defaults = resolve_theme();
+    const auto& token = defaults.switch_token();
+    require(near(token.inner_min_margin, 9) && near(token.inner_max_margin, 24) &&
+                near(token.inner_min_margin_small, 6) && near(token.inner_max_margin_small, 18) &&
+                token.handle_shadow.size() == 1 && token.handle_shadow[0].offset == LogicalOffset{0, 2} &&
+                near(token.handle_shadow[0].blur, 4) && near(token.loading_opacity, 0.65F),
+            "Switch defaults differ from locked content/shadow/opacity tokens");
+    ThemeConfig override;
+    override.alias.opacity_loading = 0.3F;
+    override.switch_.tokens.inner_min_margin = dp(12);
+    override.switch_.tokens.inner_max_margin = dp(30);
+    override.switch_.tokens.wave_width = dp(3);
+    const auto parent = resolve_theme(override);
+    const auto child = resolve_theme({}, &parent);
+    require(parent.switch_token() == child.switch_token() && near(child.alias().opacity_loading, 0.3F) &&
+                parent.identity() != defaults.identity() &&
+                parent.diagnostic_json().find("\"handleShadow\"") != std::string::npos,
+            "Switch tokens were not inherited/hashed/serialized");
+    for (const float invalid : {-1.0F, 1.1F, std::numeric_limits<float>::infinity()}) {
+        auto bad = override;
+        bad.alias.opacity_loading = invalid;
+        bool rejected{};
+        try {
+            static_cast<void>(resolve_theme(bad));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected, "Invalid opacityLoading was accepted");
+        bad = override;
+        bad.switch_.tokens.wave_opacity = invalid;
+        rejected = false;
+        try {
+            static_cast<void>(resolve_theme(bad));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected, "Invalid Switch wave opacity was accepted");
+    }
+    Fixture f;
+    detail::SelectionComponentHost host{f.services};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    Signal<bool> loading{false};
+    Signal<SwitchDirection> direction{SwitchDirection::LeftToRight};
+    int runs{};
+    f.buttons.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                  Switch(SwitchProps{}.loading(loading).direction(direction), SwitchSlots{SwitchCheckedContent{[&] {
+                                                                                              ++runs;
+                                                                                              Text(u8"开");
+                                                                                          }},
+                                                                                          SwitchUncheckedContent{[&] {
+                                                                                              ++runs;
+                                                                                              Text(u8"关");
+                                                                                          }}});
+              }});
+    }});
+    f.synchronize();
+    const auto sw = host.mounted().front();
+    const auto range = f.services.surfaces().visual_range(sw.surface);
+    const auto handle_width = f.services.surfaces().instances().at(range.first + 1).bounds[2];
+    const auto shadows = f.services.surfaces().shadow_effects(sw.surface);
+    require(shadows.size() == 1, "Switch did not create handle shadow");
+    const auto shadow_id = shadows[0];
+    const auto& effect = f.services.surfaces().effects().at(shadow_id);
+    require(near(effect.geometry.shape.rect.width, handle_width) && near(effect.geometry.shape.radius, 9),
+            "Switch shadow uses track shape instead of handle");
+    const auto commands = f.services.scene_composer().ordered_scene().commands();
+    require(commands.size() >= 3 && commands[0].kind == graphics::SceneDrawKind::quad &&
+                commands[0].instance_count == 1 && commands[1].kind == graphics::SceneDrawKind::rounded_effect &&
+                commands[2].kind == graphics::SceneDrawKind::quad && commands[2].instance_count == 9,
+            "Switch shadow is not between track and handle fill");
+    require(f.services.focus().request_focus(sw.interaction, input::FocusModality::keyboard),
+            "Switch press focus failed");
+    f.services.focus().dispatch({input::Key::space, input::KeyAction::down});
+    f.synchronize();
+    require(near(f.services.surfaces().instances().at(range.first + 1).bounds[2], handle_width * 1.3F),
+            "Switch keyboard press did not extend handle");
+    loading.set(true);
+    f.synchronize();
+    require(near(f.services.surfaces().instances().at(range.first + 1).bounds[2], handle_width) &&
+                f.services.focus().state().focused == sw.interaction &&
+                !host.snapshot(sw.component).focus.keyboard_pressed,
+            "Loading retained extension or lost focus");
+    const auto scene = f.services.text().mounted_texts().back().scene;
+    const auto shapes = f.scene.text_state(scene).counters().shape_count;
+    const auto measures = f.nodes.require(sw.node).measure_count;
+    f.dirty.clear();
+    auto config = theme.get();
+    config.alias.opacity_loading = 0.3F;
+    theme.set(config);
+    f.synchronize();
+    const auto glyph = f.scene.primitive(scene).instances;
+    require(near(f.services.surfaces().instances().at(range.first).opacity, 0.3F) && glyph.count > 0 &&
+                near(f.scene.glyph_scene().instances().at(glyph.first).translation_opacity[2], 0.3F) &&
+                near(f.services.surfaces().effects().at(shadow_id).material.opacity, 0) &&
+                f.nodes.require(sw.node).measure_count == measures &&
+                f.scene.text_state(scene).counters().shape_count == shapes && runs == 2,
+            "opacityLoading did not fade track/content/shadow locally");
+    f.dirty.clear();
+    config.switch_.tokens.handle_shadow = ShadowList{{ShadowKind::outer, {1, 3}, 6, 0, Color::rgba8(5, 6, 7, 70)}};
+    theme.set(config);
+    f.synchronize();
+    require(f.services.surfaces().shadow_effects(sw.surface)[0] == shadow_id &&
+                f.services.surfaces().effects().at(shadow_id).geometry.offset == LogicalOffset{1, 3} &&
+                f.nodes.require(sw.node).measure_count == measures,
+            "Switch shadow override remounted or measured content");
+    config.switch_.algorithm = true;
+    config.switch_.seed.color_primary = Color::rgba8(120, 40, 180);
+    theme.set(config);
+    f.synchronize();
+    const auto isolated = resolve_theme(config).switch_token();
+    auto reference_theme = ThemeConfig{};
+    reference_theme.seed.color_primary = *config.switch_.seed.color_primary;
+    require(isolated.checked_background == resolve_theme(reference_theme).map().color_primary &&
+                f.nodes.require(sw.node).measure_count == measures,
+            "Switch component algorithm ignored local primary color or measured content");
+    config.switch_.seed.focus_outline = false;
+    theme.set(config);
+    f.synchronize();
+    require(near(resolve_theme(config).switch_token().focus_width, 0) &&
+                f.services.surfaces().effects().live_count() == 1 && f.nodes.require(sw.node).measure_count == measures,
+            "Switch component focusOutline=false left a ring or measured content");
+    config.switch_.tokens.inner_min_margin = dp(20);
+    config.switch_.tokens.inner_max_margin = dp(40);
+    theme.set(config);
+    f.synchronize();
+    require(f.nodes.require(sw.node).bounds.width > 60 && runs == 2, "Switch content token did not update width");
+    loading.set(false);
+    require(
+        near(f.services.surfaces().effects().at(f.services.surfaces().shadow_effects(sw.surface)[0]).material.opacity,
+             1),
+        "Enabled Switch did not restore handle shadow");
+    direction.set(SwitchDirection::RightToLeft);
+    f.services.focus().dispatch({input::Key::space, input::KeyAction::down});
+    f.synchronize();
+    const auto handle = f.services.surfaces().instances().at(range.first + 1).bounds;
+    require(near(handle[0] + handle[2], f.nodes.require(sw.node).bounds.width - 2),
+            "RTL press extension moved fixed outer edge");
+    f.services.focus().clear_focus();
+    f.synchronize();
+    require(near(f.services.surfaces().instances().at(range.first + 1).bounds[2], handle_width),
+            "Blur retained Switch extension");
+}
+
+void wave_restarts_cancellation_and_idle() {
+    Fixture f;
+    detail::SelectionComponentHost host{f.services};
+    Signal<bool> disabled{false};
+    Signal<bool> loading{false};
+    Signal<bool> wave{true};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    int runs{};
+    f.buttons.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                  Switch(SwitchProps{}.disabled(disabled).loading(loading).wave(wave),
+                         SwitchSlots{SwitchCheckedContent{[&] {
+                                         ++runs;
+                                         Text(u8"开");
+                                     }},
+                                     SwitchUncheckedContent{[&] {
+                                         ++runs;
+                                         Text(u8"关");
+                                     }}});
+              }});
+    }});
+    f.synchronize();
+    const auto sw = host.mounted().front();
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    const auto effects = f.services.surfaces().effects().live_count();
+    const auto measures = f.nodes.require(sw.node).measure_count;
+    activate(f, sw.interaction);
+    require(host.snapshot(sw.component).wave_active && near(host.snapshot(sw.component).wave_progress, 0) &&
+                f.services.surfaces().effects().live_count() == effects + 1 && f.services.next_frame_deadline(),
+            "Switch wave did not start");
+    f.synchronize();
+    const auto range = host.snapshot(sw.component).wave_range;
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(100000)));
+    f.synchronize();
+    require(host.snapshot(sw.component).wave_progress > 0 && host.snapshot(sw.component).wave_progress < 1 &&
+                f.nodes.require(sw.node).measure_count == measures && runs == 2,
+            "Switch wave measured or reran content");
+    activate(f, sw.interaction);
+    require(host.snapshot(sw.component).wave_range == range && near(host.snapshot(sw.component).wave_progress, 0) &&
+                f.services.surfaces().effects().live_count() == effects + 1,
+            "Switch wave restart leaked range/effect");
+    static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(1000000)));
+    f.synchronize();
+    require(!host.snapshot(sw.component).wave_active && f.services.surfaces().effects().live_count() == effects &&
+                !f.services.next_frame_deadline(),
+            "Switch wave did not settle idle");
+    for (int cancel = 0; cancel < 5; ++cancel) {
+        activate(f, sw.interaction);
+        require(host.snapshot(sw.component).wave_active, "Switch cancellation fixture failed to start wave");
+        if (cancel == 0) {
+            disabled.set(true);
+            require(!host.snapshot(sw.component).wave_active, "Disabled did not cancel wave");
+            disabled.set(false);
+        } else if (cancel == 1) {
+            loading.set(true);
+            require(!host.snapshot(sw.component).wave_active, "Loading did not cancel wave");
+            loading.set(false);
+        } else if (cancel == 2) {
+            wave.set(false);
+            require(!host.snapshot(sw.component).wave_active, "Wave prop did not cancel wave");
+            wave.set(true);
+        } else if (cancel == 3) {
+            f.services.set_window_active(false);
+            require(!host.snapshot(sw.component).wave_active, "Inactive window did not cancel wave");
+            f.services.set_window_active(true);
+        } else {
+            auto config = theme.get();
+            config.seed.motion = false;
+            theme.set(config);
+            require(!host.snapshot(sw.component).wave_active && !f.services.next_frame_deadline(),
+                    "Theme motion=false left animation deadlines");
+            config.seed.motion = true;
+            theme.set(config);
+        }
+    }
+    activate(f, sw.interaction);
+    f.services.set_motion_preference(animation::MotionPreference::reduced);
+    require(!host.snapshot(sw.component).wave_active && !f.services.next_frame_deadline(),
+            "Reduced motion did not cancel finite animations");
+    f.services.set_motion_preference(animation::MotionPreference::normal);
+    activate(f, sw.interaction);
+    require(f.services.destroy(sw.component) && f.services.surfaces().size() == 0 &&
+                f.services.surfaces().effects().live_count() == 0 &&
+                f.services.animations().diagnostics().targets == 0 && !f.services.next_frame_deadline(),
+            "Switch wave destruction leaked resources");
+}
 } // namespace
 
 int main() {
@@ -208,6 +441,8 @@ int main() {
         retained_content_and_direction();
         reference_and_callback_lifecycle();
         invalid_content_and_reference();
+        theme_and_handle_feedback();
+        wave_restarts_cancellation_and_idle();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

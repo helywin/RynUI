@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：主题与有限反馈
 
-- [ ] 2.1 补齐 inner margins/handleShadow/wave tokens、opacityLoading、按压伸展和有限 wave，覆盖 motion/取消/idle/清理，更新 Theme identity/JSON/goldens 与 docs/switch.md；Windows windows-msvc-headless Debug/Release 运行 selection/animation/theme/token 合同测试并验证旧 golden 字段保留。
+- [x] 2.1 补齐 inner margins/handleShadow/wave tokens、opacityLoading、按压伸展和有限 wave，覆盖 motion/取消/idle/清理，更新 Theme identity/JSON/goldens 与 docs/switch.md；Windows windows-msvc-headless Debug/Release 运行 selection/animation/theme/token 合同测试并验证旧 golden 字段保留。
 
 ## 3. 平台通用：Gallery 与集成
 

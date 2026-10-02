@@ -49,6 +49,7 @@ struct TextSceneService::Record final {
     bool patchable_geometry_dirty{};
     bool material_dirty{};
     bool placement_rebuild_pending{};
+    float content_opacity{1};
 };
 
 struct TextSceneService::Slot final {
@@ -315,6 +316,22 @@ bool TextSceneService::set_opacity(TextSceneId id, float opacity) {
     return true;
 }
 
+bool TextSceneService::set_content_opacity(TextSceneId id, float opacity) {
+    ensure_owner_thread();
+    if (!std::isfinite(opacity) || opacity < 0 || opacity > 1) {
+        throw std::invalid_argument("Content opacity must be within [0, 1]");
+    }
+    auto& record = require_record(id);
+    if (record.content_opacity == opacity) {
+        return false;
+    }
+    record.content_opacity = opacity;
+    ++record.revisions.tone;
+    record.material_dirty = true;
+    frame_requests_->request_frame();
+    return true;
+}
+
 bool TextSceneService::set_placement(TextSceneId id, graphics::GlyphPlacement placement) {
     return update_placement(id, std::move(placement), true);
 }
@@ -435,7 +452,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
     const auto material = record.view ? record.view_material : record.state->material();
     placement.color = material.color;
-    placement.opacity = material.opacity;
+    placement.opacity = material.opacity * record.content_opacity;
     const auto old_range = record.primitive.instances;
     if (record.content_dirty || record.position_geometry_dirty) {
         const bool text_rebuild = record.content_dirty;
@@ -471,7 +488,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
 
     if (record.material_dirty) {
         const auto updated =
-            glyph_scene_.instances().update_material(record.primitive.instances, material.color, material.opacity);
+            glyph_scene_.instances().update_material(record.primitive.instances, material.color, placement.opacity);
         if (updated != 0) {
             ++record.counters.material_updates;
         }

@@ -19,4 +19,8 @@ checked/unchecked slots 支持 Text、Icon 和被动布局，分别挂载一次�
 
 有效激活先请求 onChange，再执行 onClick，两者报告同一目标布尔值。受控方不回写时展示仍服从 checked；onChange 销毁组件后 onClick 的回调副本仍可安全执行。外部 checked 更新不产生 onChange/onClick。
 
+Switch Theme token 支持四种 inner margin（普通/Small 的 min/max）、handle_shadow、wave_spread/wave_width/wave_opacity，以及原有 track/handle 大小与 handle_background。组件算法解析该组件的主色、尺寸、fontSizeSM 和 focus；`ThemeConfig.alias.opacity_loading` 在 [0, 1] 范围内控制 disabled/loading 的轨道、手柄、内容和 spinner 透明度，默认 0.65，同时抑制手柄阴影。无效 token 明确拒绝，不发布半完成主题。
+
+按压时手柄向轨道内部伸展 30%，cancel、blur、disabled/loading 后恢复。阴影与 focus 使用共同 RoundedEffect，手柄阴影插在轨道 fill 和手柄 fill 之间，保持原有十层 quad 的 identity。`wave(Prop<bool>)` 默认启用，只有用户有效激活产生有限反馈；外部 checked 更新不会产生 wave。重复激活复用一个 range，结束或 disabled/loading/窗口失活/motion=false/reduced motion/销毁后清空效果，稳态不请求下一帧。
+
 设计来源：[锁定 Ant Design 6.6.5 Switch](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/switch/index.tsx)。DOM/HTML/CSS、React ref 与 Web value/defaultValue 兼容别名不移植。046 的任务与证据分别记录原生功能、共同合同和各平台验收。

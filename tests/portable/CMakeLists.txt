@@ -16,10 +16,13 @@ foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logi
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources
         rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu
         rounded_effect_gpu_resources input_component input_gpu input_caret_blink text_component
-        button_component selection_component switch_features switch_public_api slider_component radio_component typography_component
+        button_component selection_component switch_features switch_public_api theme_algorithm theme_runtime slider_component radio_component typography_component
         typography_interaction divider_component divider_public_api text_component_frame frame_scheduler window_overlay tooltip_component interaction_registry pointer_route)
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()
+
+target_compile_definitions(rynui_portable_theme_algorithm PRIVATE
+    "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\"")
 
 rynui_portable_test(rounded_effect_allocation "rounded_effect_allocation_benchmark.cpp")
 rynui_portable_test(input_scene_allocation "input_scene_allocation_benchmark.cpp")

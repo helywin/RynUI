@@ -83,6 +83,7 @@ public:
     bool set_width_constraint(TextSceneId id, float width);
     bool set_color(TextSceneId id, std::array<float, 4> color);
     bool set_opacity(TextSceneId id, float opacity);
+    bool set_content_opacity(TextSceneId id, float opacity);
     bool set_placement(TextSceneId id, graphics::GlyphPlacement placement);
     // Post-rasterization scrolling; callers align the offset to physical pixels.
     // Unlike placement.translation_pixels, this never changes rasterization phase.

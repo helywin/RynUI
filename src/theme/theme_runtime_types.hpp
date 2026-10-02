@@ -98,6 +98,8 @@ enum class TokenIdentity : std::uint8_t {
     tooltip_typography,
     tooltip_shadow,
     tooltip_order,
+    alias_opacity_loading,
+    switch_effects,
     count,
 };
 

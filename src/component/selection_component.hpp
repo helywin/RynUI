@@ -32,6 +32,9 @@ struct SelectionSnapshot final {
     input::FocusPresentation focus;
     SwitchSize size{SwitchSize::Middle};
     bool radio{};
+    bool wave_active{};
+    float wave_progress{1};
+    component::RetainedSurfaceId wave_range;
 };
 
 // Selection controls borrow one window's retained resources and share
@@ -62,6 +65,7 @@ private:
     void on_dispose() noexcept override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     void synchronize_auxiliary_motion() override;
+    void on_window_active(bool) override;
     void position_window_layers(runtime::Size, runtime::Rect) override;
 
     [[nodiscard]] SelectionState* find(runtime::ComponentId) noexcept;
@@ -76,6 +80,10 @@ private:
     void place_switch_content(SelectionState&, layout::LayoutEngine&, runtime::Rect);
     void synchronize_switch_content(SelectionState&);
     void apply_direction(runtime::ComponentId, SwitchDirection);
+    void apply_wave(runtime::ComponentId, bool);
+    void start_wave(SelectionState&);
+    void stop_wave(SelectionState&);
+    void publish_wave(SelectionState&);
     void apply_checked(runtime::ComponentId, bool);
     void apply_radio_own_disabled(runtime::ComponentId, bool);
     void apply_group_value(runtime::ComponentId, std::optional<String>);
@@ -101,6 +109,7 @@ private:
     std::vector<MountedSelectionComponent> mounted_;
     std::vector<runtime::ComponentId> groups_;
     runtime::Size viewport_{};
+    std::optional<runtime::Rect> window_clip_;
 };
 
 } // namespace ryn::detail

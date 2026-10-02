@@ -413,6 +413,13 @@ void apply_compact(ThemeMapToken& map, const AntDesignDefaultSeed& seed) {
 }
 
 void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& override) {
+    if (override.opacity_loading) {
+        if (!detail::finite(*override.opacity_loading) || *override.opacity_loading < 0 ||
+            *override.opacity_loading > 1) {
+            throw std::invalid_argument("opacityLoading must be finite and in [0, 1]");
+        }
+        alias.opacity_loading = *override.opacity_loading;
+    }
     if (override.color_text) {
         alias.color_text = *override.color_text;
     }
@@ -899,7 +906,7 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
     return result;
 }
 
-[[nodiscard]] SwitchThemeToken derive_switch(const ThemeMapToken& map) {
+[[nodiscard]] SwitchThemeToken derive_switch(const ThemeMapToken& map, const ThemeAliasToken& alias) {
     constexpr float padding = 2.0F;
     const float height = map.font_size * map.line_height;
     const float small_height = map.control_height / 2.0F;
@@ -912,7 +919,24 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
             padding,
             Color::rgba8(255, 255, 255),
             handle,
-            small_handle};
+            small_handle,
+            handle / 2,
+            handle + 3 * padding,
+            small_handle / 2,
+            small_handle + 3 * padding,
+            ShadowList{{ShadowKind::outer, {0, 2}, 4, 0, Color::rgba8(0, 35, 11, 51)}},
+            map.font_size_small,
+            alias.opacity_loading,
+            6,
+            2,
+            0.2F,
+            map.color_primary,
+            map.color_primary_hover,
+            Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.25F),
+            Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.45F),
+            alias.color_focus_outline,
+            alias.line_width_focus,
+            alias.focus_outline_offset};
 }
 
 SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
@@ -1058,6 +1082,31 @@ void apply_slider_override(SliderThemeToken& token, const SliderTokenOverride& o
 }
 
 void apply_switch_override(SwitchThemeToken& token, const SwitchTokenOverride& override) {
+    token.inner_min_margin =
+        fixed_length(override.inner_min_margin, token.inner_min_margin, "Switch innerMinMargin must be non-negative");
+    token.inner_max_margin =
+        fixed_length(override.inner_max_margin, token.inner_max_margin, "Switch innerMaxMargin must be non-negative");
+    token.inner_min_margin_small = fixed_length(override.inner_min_margin_small, token.inner_min_margin_small,
+                                                "Switch innerMinMarginSM must be non-negative");
+    token.inner_max_margin_small = fixed_length(override.inner_max_margin_small, token.inner_max_margin_small,
+                                                "Switch innerMaxMarginSM must be non-negative");
+    token.wave_spread =
+        fixed_length(override.wave_spread, token.wave_spread, "Switch wave spread must be non-negative");
+    token.wave_width = fixed_length(override.wave_width, token.wave_width, "Switch wave width must be non-negative");
+    if (!detail::finite(token.inner_min_margin + token.inner_max_margin) ||
+        !detail::finite(token.inner_min_margin_small + token.inner_max_margin_small) ||
+        !detail::finite(token.wave_spread + token.wave_width)) {
+        throw std::invalid_argument("Switch visual extents must be finite");
+    }
+    if (override.handle_shadow) {
+        token.handle_shadow = *override.handle_shadow;
+    }
+    if (override.wave_opacity) {
+        if (!detail::finite(*override.wave_opacity) || *override.wave_opacity < 0 || *override.wave_opacity > 1) {
+            throw std::invalid_argument("Switch wave opacity must be finite and in [0, 1]");
+        }
+        token.wave_opacity = *override.wave_opacity;
+    }
     token.track_height =
         fixed_length(override.track_height, token.track_height, "Switch trackHeight must be positive", true);
     token.track_height_small = fixed_length(override.track_height_small, token.track_height_small,
@@ -1329,7 +1378,8 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, alias.color_split);
     stream << ",\"lineWidthFocus\":" << alias.line_width_focus
            << ",\"focusOutlineOffset\":" << alias.focus_outline_offset
-           << ",\"boxShadowLayers\":" << alias.box_shadow.size() << "},\"button\":{\"primaryBg\":";
+           << ",\"boxShadowLayers\":" << alias.box_shadow.size() << ",\"opacityLoading\":" << alias.opacity_loading
+           << "},\"button\":{\"primaryBg\":";
     append_color(stream, button.primary_background);
     stream << ",\"controlHeight\":" << button.control_height << ",\"paddingInline\":" << button.padding_inline
            << ",\"borderRadius\":" << button.border_radius << ",\"shadowLayers\":" << button.primary_shadow.size()
@@ -1378,6 +1428,33 @@ void append_color(std::ostringstream& stream, Color color) {
            << ",\"trackPadding\":" << switch_token.track_padding << ",\"handleBg\":";
     append_color(stream, switch_token.handle_background);
     stream << ",\"handleSize\":" << switch_token.handle_size << ",\"handleSizeSM\":" << switch_token.handle_size_small
+           << ",\"innerMinMargin\":" << switch_token.inner_min_margin
+           << ",\"innerMaxMargin\":" << switch_token.inner_max_margin
+           << ",\"innerMinMarginSM\":" << switch_token.inner_min_margin_small
+           << ",\"innerMaxMarginSM\":" << switch_token.inner_max_margin_small
+           << ",\"contentFontSize\":" << switch_token.content_font_size
+           << ",\"loadingOpacity\":" << switch_token.loading_opacity << ",\"waveSpread\":" << switch_token.wave_spread
+           << ",\"waveWidth\":" << switch_token.wave_width << ",\"waveOpacity\":" << switch_token.wave_opacity
+           << ",\"handleShadow\":[";
+    for (std::size_t index = 0; index < switch_token.handle_shadow.size(); ++index) {
+        if (index) {
+            stream << ',';
+        }
+        const auto& shadow = switch_token.handle_shadow[index];
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << "],\"colors\":[";
+    const auto switch_colors = switch_token.colors();
+    for (std::size_t index = 0; index < switch_colors.size(); ++index) {
+        if (index) {
+            stream << ',';
+        }
+        append_color(stream, switch_colors[index]);
+    }
+    stream << "],\"focusWidth\":" << switch_token.focus_width << ",\"focusOffset\":" << switch_token.focus_offset
            << "},\"slider\":{\"metrics\":[";
     const auto slider_metrics = slider.metrics.values();
     for (std::size_t i = 0; i < slider_metrics.size(); ++i) {
@@ -1700,6 +1777,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
     hash_float(hash, alias.line_width_focus);
     hash_float(hash, alias.focus_outline_offset);
+    hash_float(hash, alias.opacity_loading);
     hash_shadow(hash, alias.box_shadow);
     hash_shadow(hash, alias.box_shadow_secondary);
     hash_shadow(hash, alias.box_shadow_tertiary);
@@ -1778,10 +1856,18 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_float(hash, text.font_size);
     hash_float(hash, text.line_height);
     hash_color(hash, switch_token.handle_background);
-    for (const float value : {switch_token.track_height, switch_token.track_height_small, switch_token.track_min_width,
-                              switch_token.track_min_width_small, switch_token.track_padding, switch_token.handle_size,
-                              switch_token.handle_size_small}) {
+    for (const float value :
+         {switch_token.track_height, switch_token.track_height_small, switch_token.track_min_width,
+          switch_token.track_min_width_small, switch_token.track_padding, switch_token.handle_size,
+          switch_token.handle_size_small, switch_token.inner_min_margin, switch_token.inner_max_margin,
+          switch_token.inner_min_margin_small, switch_token.inner_max_margin_small, switch_token.content_font_size,
+          switch_token.loading_opacity, switch_token.wave_spread, switch_token.wave_width, switch_token.wave_opacity,
+          switch_token.focus_width, switch_token.focus_offset}) {
         hash_float(hash, value);
+    }
+    hash_shadow(hash, switch_token.handle_shadow);
+    for (const auto color : switch_token.colors()) {
+        hash_color(hash, color);
     }
     hash_typography(hash, typography);
     hash_divider(hash, divider);
@@ -1991,9 +2077,12 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     } else if (config.switch_.algorithm) {
         auto component_seed = seed;
         apply_seed_override(component_seed, config.switch_.seed);
-        switch_token = derive_switch(derive_map(component_seed, algorithms));
+        const auto component_map = derive_map(component_seed, algorithms);
+        auto component_alias = derive_alias(component_seed, component_map, algorithms);
+        component_alias.opacity_loading = alias.opacity_loading;
+        switch_token = derive_switch(component_map, component_alias);
     } else {
-        switch_token = derive_switch(map);
+        switch_token = derive_switch(map, alias);
     }
     apply_switch_override(switch_token, config.switch_.tokens);
     const bool inherit_parent_typography = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&

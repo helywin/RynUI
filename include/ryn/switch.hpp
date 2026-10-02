@@ -68,6 +68,11 @@ public:
         return *this;
     }
 
+    SwitchProps& wave(Prop<bool> value) {
+        wave_ = std::move(value);
+        return *this;
+    }
+
     SwitchProps& ref(SwitchRef value) {
         ref_ = std::move(value);
         return *this;
@@ -98,6 +103,7 @@ private:
     std::function<void(bool)> on_change_;
     std::function<void(bool)> on_click_;
     Prop<SwitchDirection> direction_{SwitchDirection::LeftToRight};
+    Prop<bool> wave_{true};
     std::optional<SwitchRef> ref_;
     bool auto_focus_{};
     LayoutStyle layout_;

@@ -66,6 +66,7 @@ struct AliasTokenOverride final {
     std::optional<ShadowList> box_shadow;
     std::optional<ShadowList> box_shadow_secondary;
     std::optional<ShadowList> box_shadow_tertiary;
+    std::optional<float> opacity_loading;
 
     friend bool operator==(const AliasTokenOverride&, const AliasTokenOverride&) = default;
 };
@@ -189,6 +190,14 @@ struct SwitchTokenOverride final {
     std::optional<Color> handle_background;
     std::optional<LogicalLength> handle_size;
     std::optional<LogicalLength> handle_size_small;
+    std::optional<LogicalLength> inner_min_margin;
+    std::optional<LogicalLength> inner_max_margin;
+    std::optional<LogicalLength> inner_min_margin_small;
+    std::optional<LogicalLength> inner_max_margin_small;
+    std::optional<ShadowList> handle_shadow;
+    std::optional<LogicalLength> wave_spread;
+    std::optional<LogicalLength> wave_width;
+    std::optional<float> wave_opacity;
     friend bool operator==(const SwitchTokenOverride&, const SwitchTokenOverride&) = default;
 };
 
@@ -463,6 +472,7 @@ struct ThemeAliasToken final {
     ShadowList box_shadow;
     ShadowList box_shadow_secondary;
     ShadowList box_shadow_tertiary;
+    float opacity_loading{0.65F};
 
     friend constexpr bool operator==(const ThemeAliasToken&, const ThemeAliasToken&) = default;
 };
@@ -587,6 +597,29 @@ struct SwitchThemeToken final {
     Color handle_background;
     float handle_size{};
     float handle_size_small{};
+    float inner_min_margin{};
+    float inner_max_margin{};
+    float inner_min_margin_small{};
+    float inner_max_margin_small{};
+    ShadowList handle_shadow;
+    float content_font_size{12};
+    float loading_opacity{0.65F};
+    float wave_spread{6};
+    float wave_width{2};
+    float wave_opacity{0.2F};
+    Color checked_background;
+    Color checked_hover_background;
+    Color unchecked_background;
+    Color unchecked_hover_background;
+    Color focus_color;
+    float focus_width{3};
+    float focus_offset{1};
+
+    [[nodiscard]] constexpr std::array<Color, 5> colors() const {
+        return {checked_background, checked_hover_background, unchecked_background, unchecked_hover_background,
+                focus_color};
+    }
+
     friend constexpr bool operator==(const SwitchThemeToken&, const SwitchThemeToken&) = default;
 };
 
