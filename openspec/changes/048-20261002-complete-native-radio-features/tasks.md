@@ -10,7 +10,7 @@
 
 ## 3. 集成（平台通用）
 
-- [ ] 3.1 增加 Gallery 原生样例、更新目录与收尾清单；运行生成器 self-test/check、HEADLESS Debug/Release 完整 CTest 与文档检查，记录实际 preset/结果后提交。
+- [x] 3.1 增加 Gallery 原生样例、更新目录与收尾清单；生成器 self-test/check、Windows `windows-msvc-headless` Debug/Release 完整 CTest 各 54/54（89.31s/15.56s）通过；98 stable IDs、114 live samples、58 Theme content runs、31 selection controls、4 RadioGroup。格式、OpenSpec 与 diff 检查通过后提交。
 
 ## 4. 平台集成
 

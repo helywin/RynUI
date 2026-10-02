@@ -273,6 +273,9 @@ def validate_overlay(
     checkbox = result["ant.component.checkbox"]
     if checkbox["status"] != "implemented" or "openspec:047-20261002-complete-native-checkbox-group" not in checkbox["evidence_identifiers"]:
         raise ValueError("native Checkbox completion requires its implementation change evidence")
+    radio = result["ant.component.radio"]
+    if radio["status"] != "implemented" or "openspec:048-20261002-complete-native-radio-features" not in radio["evidence_identifiers"]:
+        raise ValueError("native Radio completion requires its implementation change evidence")
     return result
 
 

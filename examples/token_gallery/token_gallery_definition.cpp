@@ -48,6 +48,10 @@ struct GalleryState final {
         {ryn::String{u8"a"}, ryn::String{u8"A"}}, {ryn::String{u8"b"}, ryn::String{u8"B"}}}};
     bool checkbox_options_expanded{};
     ryn::Signal<std::optional<ryn::String>> radio_selected{std::optional<ryn::String>{ryn::String{u8"a"}}};
+    ryn::Signal<std::vector<ryn::RadioOption>> radio_options{std::vector<ryn::RadioOption>{
+        {ryn::String{u8"a"}, ryn::String{u8"A"}}, {ryn::String{u8"b"}, ryn::String{u8"B"}}}};
+    bool radio_options_expanded{};
+    ryn::RadioRef radio_ref;
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<ryn::String> search_value{ryn::String{}};
@@ -125,6 +129,13 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.checkbox.rich-rtl-ref",
     "gallery.checkbox.component-theme",
     "gallery.checkbox.focus",
+    "gallery.radio.dynamic-outline",
+    "gallery.radio.options-update",
+    "gallery.radio.solid-large-block",
+    "gallery.radio.vertical-small-rtl",
+    "gallery.radio.component-theme",
+    "gallery.radio.ref",
+    "gallery.radio.focus",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
@@ -1119,6 +1130,67 @@ void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 6;
 }
 
+void add_radio_themed_sample(const std::shared_ptr<GalleryState>& state) {
+    ryn::ThemeConfig custom;
+    custom.radio.algorithm = true;
+    custom.radio.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+    ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
+                   ++state->telemetry.theme_content_runs;
+                   ryn::Text(u8"gallery.radio.component-theme / gallery.radio.ref");
+                   ryn::RadioButton(ryn::RadioProps{}.defaultChecked(true).ref(state->radio_ref),
+                                    ryn::RadioLabel{[] { ryn::Text(u8"独立紫色 / 富标签 / ref"); }});
+               }});
+}
+
+void add_radio_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(u8"Radio · 动态选项、键盘组导航、按钮连接边、三尺寸、block、RTL、ref 与独立主题");
+    ryn::Text(u8"gallery.radio.dynamic-outline · 按 value 保留 identity");
+    ryn::RadioGroup(ryn::RadioGroupProps{}
+                        .options(state->radio_options)
+                        .defaultValue(ryn::String{u8"a"})
+                        .optionType(ryn::RadioOptionType::Button));
+    ryn::Button(ryn::ButtonProps{}.onClick([state] {
+        state->radio_options_expanded = !state->radio_options_expanded;
+        if (state->radio_options_expanded) {
+            state->radio_options.set({{ryn::String{u8"b"}, ryn::String{u8"B · retained"}},
+                                      {ryn::String{u8"a"}, ryn::String{u8"A"}},
+                                      {2.0, ryn::String{u8"新增数字"}}});
+        } else {
+            state->radio_options.set(
+                {{ryn::String{u8"a"}, ryn::String{u8"A"}}, {ryn::String{u8"b"}, ryn::String{u8"B"}}});
+        }
+        ++state->telemetry.activations;
+    }),
+                [] { ryn::Text(u8"gallery.radio.options-update · 重排 / 增删"); });
+    ryn::Text(u8"gallery.radio.solid-large-block · 三类值 / 禁用");
+    ryn::RadioGroup(ryn::RadioGroupProps{}
+                        .options({{ryn::String{u8"desktop"}, ryn::String{u8"桌面"}},
+                                  {1.0, ryn::String{u8"数字"}},
+                                  {true, ryn::String{u8"禁用布尔"}, true}})
+                        .defaultValue(1.0)
+                        .optionType(ryn::RadioOptionType::Button)
+                        .buttonStyle(ryn::RadioButtonStyle::Solid)
+                        .size(ryn::RadioSize::Large)
+                        .block(true)
+                        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Text(u8"gallery.radio.vertical-small-rtl");
+    ryn::RadioGroup(
+        ryn::RadioGroupProps{}
+            .options({{false, ryn::String{u8"false"}}, {true, ryn::String{u8"true"}}, {3.0, ryn::String{u8"数字"}}})
+            .defaultValue(true)
+            .optionType(ryn::RadioOptionType::Button)
+            .size(ryn::RadioSize::Small)
+            .orientation(ryn::RadioGroupOrientation::Vertical)
+            .direction(ryn::RadioDirection::RightToLeft));
+    add_radio_themed_sample(state);
+    ryn::Button(ryn::ButtonProps{}.onClick([state] {
+        static_cast<void>(state->radio_ref.focus());
+        ++state->telemetry.activations;
+    }),
+                [] { ryn::Text(u8"gallery.radio.focus · 聚焦单选按钮"); });
+    state->telemetry.live_samples += 6;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1190,6 +1262,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_live_samples(state);
                                                         add_switch_samples(state);
                                                         add_checkbox_samples(state);
+                                                        add_radio_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

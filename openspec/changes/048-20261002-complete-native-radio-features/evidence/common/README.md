@@ -6,4 +6,6 @@
 
 `validate_goldens.py` 对比阶段 1 提交 d2132a9，五份 golden 仅增加 Radio 的 16 metrics / 5 effects / 21 colors 与新 identity，所有既有 JSON 字段保持一致。407 自有 C++/HLSL 的 clang-format 22.1.3 检查通过；OpenSpec doctor healthy，strict validation 48/48。
 
+集成阶段完整 CTest：Debug 54/54（89.31s）、Release 54/54（15.56s）。离线目录生成器 self-test/check 通过；Gallery 新增动态 outline、solid large block、vertical small RTL、独立主题与 ref 样例，98 stable IDs、114 live samples、58 Theme content runs、31 selection controls、4 RadioGroup。目录和原生收尾清单同步实现范围。
+
 这些是共同逻辑合同；真实窗口、系统字体、GPU、输入归一化与 DPI 的分平台结果单独记录。

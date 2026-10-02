@@ -1,0 +1,119 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+ninja: no work to do.
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.portable.prop
+ 1/54 Test  #1: rynui.portable.prop ............................   Passed    0.03 sec
+      Start  2: rynui.portable.glyph_texture_upload
+ 2/54 Test  #2: rynui.portable.glyph_texture_upload ............   Passed    0.02 sec
+      Start  3: rynui.portable.texture_upload_batch_layout
+ 3/54 Test  #3: rynui.portable.texture_upload_batch_layout .....   Passed    0.03 sec
+      Start  4: rynui.portable.logical_scene_packing
+ 4/54 Test  #4: rynui.portable.logical_scene_packing ...........   Passed    0.01 sec
+      Start  5: rynui.portable.quad_primitive
+ 5/54 Test  #5: rynui.portable.quad_primitive ..................   Passed    0.03 sec
+      Start  6: rynui.portable.binding_quad_integration
+ 6/54 Test  #6: rynui.portable.binding_quad_integration ........   Passed    0.03 sec
+      Start  7: rynui.portable.button_scene_service
+ 7/54 Test  #7: rynui.portable.button_scene_service ............   Passed    0.03 sec
+      Start  8: rynui.portable.font_runtime
+ 8/54 Test  #8: rynui.portable.font_runtime ....................   Passed    0.06 sec
+      Start  9: rynui.portable.text_engine
+ 9/54 Test  #9: rynui.portable.text_engine .....................   Passed    0.12 sec
+      Start 10: rynui.portable.text_state
+10/54 Test #10: rynui.portable.text_state ......................   Passed    0.08 sec
+      Start 11: rynui.portable.text_scene_service
+11/54 Test #11: rynui.portable.text_scene_service ..............   Passed    0.24 sec
+      Start 12: rynui.portable.text_render_integration
+12/54 Test #12: rynui.portable.text_render_integration .........   Passed    0.06 sec
+      Start 13: rynui.portable.glyph_atlas
+13/54 Test #13: rynui.portable.glyph_atlas .....................   Passed    0.05 sec
+      Start 14: rynui.portable.glyph_scene
+14/54 Test #14: rynui.portable.glyph_scene .....................   Passed    0.36 sec
+      Start 15: rynui.portable.glyph_gpu_resources
+15/54 Test #15: rynui.portable.glyph_gpu_resources .............   Passed    0.03 sec
+      Start 16: rynui.portable.rounded_effect_math
+16/54 Test #16: rynui.portable.rounded_effect_math .............   Passed    0.01 sec
+      Start 17: rynui.portable.rounded_effect_store
+17/54 Test #17: rynui.portable.rounded_effect_store ............   Passed    0.01 sec
+      Start 18: rynui.portable.rounded_effect_scene
+18/54 Test #18: rynui.portable.rounded_effect_scene ............   Passed    0.01 sec
+      Start 19: rynui.portable.rounded_effect_gpu
+19/54 Test #19: rynui.portable.rounded_effect_gpu ..............   Passed    0.02 sec
+      Start 20: rynui.portable.rounded_effect_gpu_resources
+20/54 Test #20: rynui.portable.rounded_effect_gpu_resources ....   Passed    0.01 sec
+      Start 21: rynui.portable.input_component
+21/54 Test #21: rynui.portable.input_component .................   Passed    1.86 sec
+      Start 22: rynui.portable.input_gpu
+22/54 Test #22: rynui.portable.input_gpu .......................   Passed    0.15 sec
+      Start 23: rynui.portable.input_caret_blink
+23/54 Test #23: rynui.portable.input_caret_blink ...............   Passed    0.08 sec
+      Start 24: rynui.portable.text_component
+24/54 Test #24: rynui.portable.text_component ..................   Passed    0.46 sec
+      Start 25: rynui.portable.button_component
+25/54 Test #25: rynui.portable.button_component ................   Passed    1.22 sec
+      Start 26: rynui.portable.selection_component
+26/54 Test #26: rynui.portable.selection_component .............   Passed    0.54 sec
+      Start 27: rynui.portable.selection_controls_public_api
+27/54 Test #27: rynui.portable.selection_controls_public_api ...   Passed    0.03 sec
+      Start 28: rynui.portable.switch_features
+28/54 Test #28: rynui.portable.switch_features .................   Passed    0.30 sec
+      Start 29: rynui.portable.switch_public_api
+29/54 Test #29: rynui.portable.switch_public_api ...............   Passed    0.04 sec
+      Start 30: rynui.portable.checkbox_group
+30/54 Test #30: rynui.portable.checkbox_group ..................   Passed    0.42 sec
+      Start 31: rynui.portable.checkbox_public_api
+31/54 Test #31: rynui.portable.checkbox_public_api .............   Passed    0.03 sec
+      Start 32: rynui.portable.theme_algorithm
+32/54 Test #32: rynui.portable.theme_algorithm .................   Passed    0.09 sec
+      Start 33: rynui.portable.theme_runtime
+33/54 Test #33: rynui.portable.theme_runtime ...................   Passed    0.09 sec
+      Start 34: rynui.portable.slider_component
+34/54 Test #34: rynui.portable.slider_component ................   Passed    1.33 sec
+      Start 35: rynui.portable.radio_component
+35/54 Test #35: rynui.portable.radio_component .................   Passed    0.51 sec
+      Start 36: rynui.portable.radio_features
+36/54 Test #36: rynui.portable.radio_features ..................   Passed    0.61 sec
+      Start 37: rynui.portable.radio_public_api
+37/54 Test #37: rynui.portable.radio_public_api ................   Passed    0.02 sec
+      Start 38: rynui.portable.focus_order
+38/54 Test #38: rynui.portable.focus_order .....................   Passed    0.03 sec
+      Start 39: rynui.portable.focus_state
+39/54 Test #39: rynui.portable.focus_state .....................   Passed    0.03 sec
+      Start 40: rynui.portable.focus_lifecycle
+40/54 Test #40: rynui.portable.focus_lifecycle .................   Passed    0.04 sec
+      Start 41: rynui.portable.typography_component
+41/54 Test #41: rynui.portable.typography_component ............   Passed    0.89 sec
+      Start 42: rynui.portable.typography_interaction
+42/54 Test #42: rynui.portable.typography_interaction ..........   Passed    0.28 sec
+      Start 43: rynui.portable.divider_component
+43/54 Test #43: rynui.portable.divider_component ...............   Passed    0.66 sec
+      Start 44: rynui.portable.divider_public_api
+44/54 Test #44: rynui.portable.divider_public_api ..............   Passed    0.03 sec
+      Start 45: rynui.portable.text_component_frame
+45/54 Test #45: rynui.portable.text_component_frame ............   Passed    0.07 sec
+      Start 46: rynui.portable.frame_scheduler
+46/54 Test #46: rynui.portable.frame_scheduler .................   Passed    0.03 sec
+      Start 47: rynui.portable.window_overlay
+47/54 Test #47: rynui.portable.window_overlay ..................   Passed    0.03 sec
+      Start 48: rynui.portable.tooltip_component
+48/54 Test #48: rynui.portable.tooltip_component ...............   Passed    0.64 sec
+      Start 49: rynui.portable.interaction_registry
+49/54 Test #49: rynui.portable.interaction_registry ............   Passed    0.04 sec
+      Start 50: rynui.portable.pointer_route
+50/54 Test #50: rynui.portable.pointer_route ...................   Passed    0.05 sec
+      Start 51: rynui.portable.rounded_effect_allocation
+51/54 Test #51: rynui.portable.rounded_effect_allocation .......   Passed    0.03 sec
+      Start 52: rynui.portable.input_scene_allocation
+52/54 Test #52: rynui.portable.input_scene_allocation ..........   Passed   75.05 sec
+      Start 53: rynui.portable.scene_backend
+53/54 Test #53: rynui.portable.scene_backend ...................   Passed    0.30 sec
+      Start 54: rynui.portable.backend_boundaries
+54/54 Test #54: rynui.portable.backend_boundaries ..............   Passed    1.47 sec
+
+100% tests passed out of 54
+
+Total Test time (real) =  89.31 sec

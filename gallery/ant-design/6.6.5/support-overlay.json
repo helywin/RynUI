@@ -484,16 +484,21 @@
     },
     {
       "identity": "ant.component.radio",
-      "status": "planned",
-      "summary": "单选框（Radio）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "implemented",
+      "summary": "原生 Radio / RadioButton / RadioGroup：动态类型值、键盘组导航、连接按钮、尺寸、block、RTL、ref、独立主题与有限反馈。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "受控/非受控三类值、最近 typed Group、reactive options、稳定身份与动态清理",
+        "单一 Tab 入口、方向键、ref/autoFocus/onClick 与有限 wave",
+        "RadioButton、outline/solid、三尺寸、block、水平/垂直/RTL 相邻边界与独立 Theme"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Web 专用 DOM/form/name/required、React 事件和 CSS 入口不移植；Linux 原生验收独立待完成"
       ],
       "evidence_identifiers": [
-        "source:components/radio/index.en-US.md"
+        "source:components/radio/index.en-US.md",
+        "openspec:048-20261002-complete-native-radio-features",
+        "test:tests/radio_features_tests.cpp",
+        "test:tests/radio_public_api_tests.cpp"
       ]
     },
     {
