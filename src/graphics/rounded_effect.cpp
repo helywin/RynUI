@@ -325,6 +325,30 @@ std::array<RoundedEffectInstance, 4> make_corner_fill_effects(LogicalRoundedRect
     return result;
 }
 
+std::array<RoundedEffectInstance, 4> make_corner_shadow_effects(LogicalRoundedRect shape,
+                                                                std::array<bool, 4> rounded_corners,
+                                                                const ShadowLayer& layer, runtime::Point translation,
+                                                                std::optional<EffectClip> ancestor_clip) {
+    std::array<RoundedEffectInstance, 4> result;
+    const float center_x = shape.rect.x + translation.x + layer.offset.x + shape.rect.width / 2;
+    const float center_y = shape.rect.y + translation.y + layer.offset.y + shape.rect.height / 2;
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        result[i] = make_shadow_effect({shape.rect, rounded_corners[i] ? shape.radius : 0}, layer, translation);
+        const auto bounds = rounded_effect_bounds(result[i]);
+        const bool right = i == 1 || i == 2;
+        const bool bottom = i >= 2;
+        runtime::Rect clip{right ? center_x : bounds.x, bottom ? center_y : bounds.y,
+                           std::max(0.0F, right ? bounds.x + bounds.width - center_x : center_x - bounds.x),
+                           std::max(0.0F, bottom ? bounds.y + bounds.height - center_y : center_y - bounds.y)};
+        if (ancestor_clip) {
+            clip = intersect_effect_bounds(clip, ancestor_clip->bounds);
+        }
+        result[i].geometry.ancestor_clip = EffectClip{static_cast<std::uint64_t>(i + 1), clip};
+        validate_rounded_effect(result[i]);
+    }
+    return result;
+}
+
 runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept {
     const float left = std::max(bounds.x, clip.x);
     const float top = std::max(bounds.y, clip.y);

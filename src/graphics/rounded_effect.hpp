@@ -86,6 +86,10 @@ make_corner_outline_effects(LogicalRoundedRect shape, std::array<bool, 4> rounde
 make_corner_fill_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded_corners, Color color, float opacity = 1,
                          runtime::Point translation = {}, std::optional<EffectClip> ancestor_clip = {});
 
+[[nodiscard]] std::array<RoundedEffectInstance, 4>
+make_corner_shadow_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded_corners, const ShadowLayer& layer,
+                           runtime::Point translation = {}, std::optional<EffectClip> ancestor_clip = {});
+
 [[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
 
 [[nodiscard]] float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance,

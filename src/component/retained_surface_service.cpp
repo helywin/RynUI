@@ -388,13 +388,14 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
         return 0;
     }
 
-    bool topology_changed = record.shadow_ids.size() != effects.shadows.size() ||
+    const std::size_t shadow_stride = effects.rounded_corners ? 4 : 1;
+    bool topology_changed = record.shadow_ids.size() != effects.shadows.size() * shadow_stride ||
                             record.focus_id.valid() != effects.focus_enabled ||
                             record.effects.rounded_corners.has_value() != effects.rounded_corners.has_value() ||
                             record.effects.shadow_fill_offset != effects.shadow_fill_offset;
     if (!topology_changed) {
         for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
-            const auto expected = effects.shadows[index].kind == ShadowKind::outer
+            const auto expected = effects.shadows[index / shadow_stride].kind == ShadowKind::outer
                                       ? graphics::RoundedEffectKind::outer_shadow
                                       : graphics::RoundedEffectKind::inset_shadow;
             if (effect_scene_.store().at(record.shadow_ids[index]).geometry.kind != expected) {
@@ -408,14 +409,19 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
         record.effects = effects;
         create_effects(record);
         ++diagnostics_.effect_topology_updates;
-        return effects.shadows.size() + (effects.focus_enabled ? effects.rounded_corners ? 4U : 1U : 0U);
+        return effects.shadows.size() * shadow_stride +
+               (effects.focus_enabled ? effects.rounded_corners ? 4U : 1U : 0U);
     }
 
     std::size_t updates = 0;
     for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
+        const auto shape = effects.shadow_shape.value_or(effects.shape);
+        const auto& layer = effects.shadows[index / shadow_stride];
         auto candidate =
-            graphics::make_shadow_effect(effects.shadow_shape.value_or(effects.shape), effects.shadows[index],
-                                         effects.translation, effects.ancestor_clip);
+            effects.rounded_corners
+                ? graphics::make_corner_shadow_effects(shape, *effects.rounded_corners, layer, effects.translation,
+                                                       effects.ancestor_clip)[index % shadow_stride]
+                : graphics::make_shadow_effect(shape, layer, effects.translation, effects.ancestor_clip);
         candidate.material.opacity = effects.shadow_opacity;
         const auto effect = record.shadow_ids[index];
         if (effect_scene_.store().update_geometry(effect, candidate.geometry)) {
@@ -602,22 +608,33 @@ void RetainedSurfaceService::bind_fragment(const Record& record) {
 void RetainedSurfaceService::create_effects(Record& record) {
     record.shadow_ids.clear();
     record.effect_primitive = {};
-    record.shadow_ids.reserve(record.effects.shadows.size());
-    record.effect_primitive.before_fill.reserve(record.effects.shadows.size() +
+    const std::size_t shadow_stride = record.effects.rounded_corners ? 4 : 1;
+    record.shadow_ids.reserve(record.effects.shadows.size() * shadow_stride);
+    record.effect_primitive.before_fill.reserve(record.effects.shadows.size() * shadow_stride +
                                                 (record.effects.rounded_corners ? 4 : 1));
-    record.effect_primitive.after_fill.reserve(record.effects.shadows.size());
+    record.effect_primitive.after_fill.reserve(record.effects.shadows.size() * shadow_stride);
     try {
         for (const auto& layer : record.effects.shadows.layers()) {
-            auto instance =
-                graphics::make_shadow_effect(record.effects.shadow_shape.value_or(record.effects.shape), layer,
-                                             record.effects.translation, record.effects.ancestor_clip);
-            instance.material.opacity = record.effects.shadow_opacity;
-            const auto id = effect_scene_.store().add(std::move(instance));
-            record.shadow_ids.push_back(id);
-            if (layer.kind == ShadowKind::outer) {
-                record.effect_primitive.before_fill.push_back(id);
+            const auto shape = record.effects.shadow_shape.value_or(record.effects.shape);
+            const auto append = [&](graphics::RoundedEffectInstance instance) {
+                instance.material.opacity = record.effects.shadow_opacity;
+                const auto id = effect_scene_.store().add(std::move(instance));
+                record.shadow_ids.push_back(id);
+                if (layer.kind == ShadowKind::outer) {
+                    record.effect_primitive.before_fill.push_back(id);
+                } else {
+                    record.effect_primitive.after_fill.push_back(id);
+                }
+            };
+            if (record.effects.rounded_corners) {
+                for (const auto& instance :
+                     graphics::make_corner_shadow_effects(shape, *record.effects.rounded_corners, layer,
+                                                          record.effects.translation, record.effects.ancestor_clip)) {
+                    append(instance);
+                }
             } else {
-                record.effect_primitive.after_fill.push_back(id);
+                append(graphics::make_shadow_effect(shape, layer, record.effects.translation,
+                                                    record.effects.ancestor_clip));
             }
         }
         if (record.effects.focus_enabled) {

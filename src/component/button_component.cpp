@@ -1,6 +1,7 @@
 #include "component/button_component.hpp"
 
 #include "animation/material_transition_channels.hpp"
+#include "component/space_compact.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -35,6 +36,10 @@ struct ButtonPropsAccess final {
 
     [[nodiscard]] static const Prop<ControlSize>& size(const ButtonProps& props) noexcept {
         return props.size_;
+    }
+
+    static bool explicit_size(const ButtonProps& props) noexcept {
+        return props.explicit_size_;
     }
 
     [[nodiscard]] static const std::optional<Prop<ButtonColor>>& color(const ButtonProps& props) noexcept {
@@ -161,6 +166,12 @@ struct ButtonComponentState final {
     component::RetainedSurfaceId decoration_range;
     std::vector<graphics::RoundedEffectInstance> decorations;
     std::optional<std::array<float, 14>> decoration_geometry;
+    std::optional<CompactMetadata> compact;
+    std::weak_ptr<CompactContext> compact_context;
+    component::RetainedSurfaceId compact_range;
+    runtime::SceneFragmentId compact_fragment;
+    component::RetainedSurfaceId compact_spinner_range;
+    runtime::SceneFragmentId compact_spinner_fragment;
 };
 
 namespace {
@@ -680,6 +691,14 @@ bool ButtonComponentHost::layout_and_synchronize(runtime::Size viewport, runtime
 void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     for (const auto& mounted : mounted_buttons_) {
         if (auto* state = find_state(mounted.component)) {
+            if (!components().branch_active(state->component)) {
+                stop_spinner(*state);
+                stop_wave(*state);
+                continue;
+            }
+            update_spinner(*state,
+                           animation::resolve_motion_policy(components().theme_scope(state->component)->snapshot(),
+                                                            services_->motion_preference()));
             synchronize_geometry(*state, viewport, clip);
         }
     }
@@ -792,6 +811,8 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         state->loading_icon,
         state->wave_active,
         state->wave_progress,
+        state->compact.has_value(),
+        state->compact ? state->compact->corners : std::array{true, true, true, true},
     };
 }
 
@@ -1160,11 +1181,20 @@ void ButtonComponentHost::publish_wave(ButtonComponentState& state) {
     }
     const auto& node = nodes_->require(state.node);
     const auto& token = components().theme_scope(state.component)->snapshot().button();
-    const auto effect = graphics::make_outline_effect(
-        {node.bounds, logical_radius(node.bounds, button_radius(state, node.bounds, token))}, token.wave_width,
-        token.wave_spread * state.wave_progress, state.wave_color, token.wave_opacity * (1.0F - state.wave_progress),
-        node.translation, state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt);
-    button_scene_.update_content_effects(state.wave_range, std::span{&effect, 1});
+    const graphics::LogicalRoundedRect shape{node.bounds,
+                                             logical_radius(node.bounds, button_radius(state, node.bounds, token))};
+    const auto clip = state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt;
+    if (state.compact) {
+        const auto effects = graphics::make_corner_outline_effects(
+            shape, state.compact->corners, token.wave_width, token.wave_spread * state.wave_progress, state.wave_color,
+            token.wave_opacity * (1.0F - state.wave_progress), node.translation, clip);
+        button_scene_.update_content_effects(state.wave_range, effects);
+    } else {
+        const auto effect = graphics::make_outline_effect(
+            shape, token.wave_width, token.wave_spread * state.wave_progress, state.wave_color,
+            token.wave_opacity * (1.0F - state.wave_progress), node.translation, clip);
+        button_scene_.update_content_effects(state.wave_range, std::span{&effect, 1});
+    }
 }
 
 void ButtonComponentHost::on_window_active(bool active) {
@@ -1213,10 +1243,12 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     const float layer_opacity = 1.0F + (button.loading_opacity - 1.0F) * loading_mix;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color = channels(state.presentation_border);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity = dashed(state) ? 0.0F : layer_opacity;
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity =
+        dashed(state) || state.compact ? 0.0F : layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].color =
         channels(state.presentation_background);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity = layer_opacity;
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity =
+        state.compact ? 0 : layer_opacity;
     for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         auto& indicator = next[component::button_loading_segment_index(segment)];
         indicator.color = channels(state.presentation_foreground);
@@ -1238,10 +1270,17 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     next_effects.focus_offset = alias.focus_outline_offset;
     next_effects.focus_color = alias.color_focus_outline;
     next_effects.focus_opacity = state.focus.focus_visible && !state.disabled ? 1.0F : 0.0F;
+    next_effects.rounded_corners = state.compact ? std::optional{state.compact->corners} : std::nullopt;
     const bool changed_effect = next_effects != state.effects;
     state.effects = std::move(next_effects);
     if (state.scene.valid()) {
-        static_cast<void>(button_scene_.update(state.scene, state.visuals));
+        auto published = state.visuals;
+        if (state.compact) {
+            for (std::size_t i = 2; i < published.size(); ++i) {
+                published[i].opacity = 0;
+            }
+        }
+        static_cast<void>(button_scene_.update(state.scene, published));
         if (changed_effect) {
             static_cast<void>(button_scene_.update_effects(state.scene, state.effects));
         }
@@ -1263,6 +1302,10 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     foreground[3] *= layer_opacity;
     static_cast<void>(state.foreground.set(foreground));
     update_decoration_material(state);
+    synchronize_compact(state);
+    if (const auto context = state.compact_context.lock()) {
+        context->publish_seams();
+    }
     if (state.wave_active) {
         publish_wave(state);
     }
@@ -1346,7 +1389,7 @@ void ButtonComponentHost::retarget_channel(ButtonComponentState& state, ButtonAn
 }
 
 void ButtonComponentHost::update_spinner(ButtonComponentState& state, const animation::MotionPolicy& policy) {
-    if (state.loading && !state.has_loading_icon && policy.enabled()) {
+    if (state.loading && !state.has_loading_icon && policy.enabled() && components().branch_active(state.component)) {
         start_spinner(state);
         return;
     }
@@ -1572,7 +1615,7 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
         const float period = token.dash_length + token.dash_gap;
         const double horizontal_count = std::ceil(static_cast<double>(node.bounds.width) / period);
         const double vertical_count = std::ceil(static_cast<double>(node.bounds.height - 2.0F * band) / period);
-        const double count = 2 * (horizontal_count + vertical_count);
+        const double count = 2 * (horizontal_count + vertical_count) * (state.compact ? 4 : 1);
         if (!std::isfinite(period) || !std::isfinite(count) || count > component::retained_content_visual_capacity) {
             throw std::length_error("Button dashed border exceeds 4096 effects");
         }
@@ -1593,9 +1636,16 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
             if (segment.width <= 0 || segment.height <= 0) {
                 return;
             }
-            effects.push_back(graphics::make_outline_effect(shape, width, 0, state.presentation_border, 1,
-                                                            node.translation,
-                                                            graphics::EffectClip{effects.size() + 1, segment}));
+            if (state.compact) {
+                const auto corners = graphics::make_corner_outline_effects(
+                    shape, state.compact->corners, width, 0, state.presentation_border, 1, node.translation,
+                    graphics::EffectClip{effects.size() + 1, segment});
+                effects.insert(effects.end(), corners.begin(), corners.end());
+            } else {
+                effects.push_back(graphics::make_outline_effect(shape, width, 0, state.presentation_border, 1,
+                                                                node.translation,
+                                                                graphics::EffectClip{effects.size() + 1, segment}));
+            }
         };
         for (std::size_t index = 0; index < static_cast<std::size_t>(horizontal_count); ++index) {
             const float offset = static_cast<float>(index) * period;
@@ -1620,6 +1670,44 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
     state.decorations = std::move(effects);
     state.decoration_geometry = key;
     update_decoration_material(state);
+}
+
+void ButtonComponentHost::synchronize_compact(ButtonComponentState& state) {
+    if (!state.compact) {
+        return;
+    }
+    const auto& node = nodes_->require(state.node);
+    const auto& button = components().theme_scope(state.component)->snapshot().button();
+    const float radius = logical_radius(node.bounds, button_radius(state, node.bounds, button));
+    const auto clip = state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt;
+    const float mix = std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    const float opacity = 1 + (button.loading_opacity - 1) * mix;
+    const auto border =
+        graphics::make_corner_fill_effects({node.bounds, radius}, state.compact->corners, state.presentation_border,
+                                           dashed(state) ? 0 : opacity, node.translation, clip);
+    const bool solid = solid_fills_border_box(state);
+    const float width = solid ? 0 : button.border_width;
+    const graphics::LogicalRoundedRect shape{{node.bounds.x + width, node.bounds.y + width,
+                                              std::max(0.0F, node.bounds.width - 2 * width),
+                                              std::max(0.0F, node.bounds.height - 2 * width)},
+                                             std::max(0.0F, radius - width)};
+    const auto background = graphics::make_corner_fill_effects(
+        shape, state.compact->corners, state.presentation_background, opacity, node.translation, clip);
+    std::array<graphics::RoundedEffectInstance, 8> effects;
+    std::copy(border.begin(), border.end(), effects.begin());
+    std::copy(background.begin(), background.end(), effects.begin() + 4);
+    if (!state.compact_range.valid()) {
+        state.compact_fragment =
+            components().register_scene_fragment(state.component, runtime::SceneFragmentPlacement::before_children);
+        state.compact_range = button_scene_.create_content_range(state.compact_fragment, {});
+    }
+    button_scene_.update_content_effects(state.compact_range, effects);
+    if (!state.compact_spinner_range.valid()) {
+        state.compact_spinner_fragment =
+            components().register_scene_fragment(state.component, runtime::SceneFragmentPlacement::before_children);
+        state.compact_spinner_range = button_scene_.create_content_range(state.compact_spinner_fragment, {});
+    }
+    button_scene_.update_content_range(state.compact_spinner_range, std::span{state.visuals}.subspan(2));
 }
 
 void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport,
@@ -1652,7 +1740,13 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
                                 0.5F * std::min(bounds.width, bounds.height), node.translation);
     }
     state.visuals = next;
-    static_cast<void>(button_scene_.update(state.scene, state.visuals));
+    auto published = state.visuals;
+    if (state.compact) {
+        for (std::size_t i = 2; i < published.size(); ++i) {
+            published[i].opacity = 0;
+        }
+    }
+    static_cast<void>(button_scene_.update(state.scene, published));
     auto effects = state.effects;
     effects.shape = {node.bounds, logical_radius(node.bounds, radius)};
     effects.translation = node.translation;
@@ -1661,6 +1755,10 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
         static_cast<void>(button_scene_.update_effects(state.scene, state.effects));
     }
     synchronize_decorations(state, clip);
+    synchronize_compact(state);
+    if (const auto context = state.compact_context.lock()) {
+        context->publish_seams();
+    }
     if (state.wave_active) {
         publish_wave(state);
     }
@@ -1672,8 +1770,11 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     }
     auto& host = *active_button_host;
     auto& build = runtime::require_component_build_context();
+    const auto compact = nearest_compact(build);
     const auto initial_type = read_prop(ButtonPropsAccess::type(props));
-    const auto initial_size = read_prop(ButtonPropsAccess::size(props));
+    const auto initial_size = compact && !ButtonPropsAccess::explicit_size(props)
+                                  ? compact->metadata.size
+                                  : read_prop(ButtonPropsAccess::size(props));
     const auto initial_shape = read_prop(ButtonPropsAccess::shape(props));
     const auto initial_placement = read_prop(ButtonPropsAccess::icon_placement(props));
     auto reference = ButtonPropsAccess::ref(props);
@@ -1787,6 +1888,12 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
         if (auto* current = host.find_state(component); current && current->wave_range.valid()) {
             host.button_scene_.destroy_content_range(current->wave_range);
         }
+        if (auto* current = host.find_state(component); current && current->compact_range.valid()) {
+            host.button_scene_.destroy_content_range(current->compact_range);
+        }
+        if (auto* current = host.find_state(component); current && current->compact_spinner_range.valid()) {
+            host.button_scene_.destroy_content_range(current->compact_spinner_range);
+        }
     });
     const auto parent_interaction = host.interaction_for(component);
     state.interaction = host.interactions_.create({
@@ -1847,8 +1954,10 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
                  [&host, component](bool value) { host.apply_danger(component, value); });
     connect_prop(scope, ButtonPropsAccess::ghost(props),
                  [&host, component](bool value) { host.apply_ghost(component, value); });
-    static_cast<void>(connect_prop(scope, ButtonPropsAccess::size(props),
-                                   [&host, component](ControlSize size) { host.apply_size(component, size); }));
+    if (!compact || ButtonPropsAccess::explicit_size(props)) {
+        static_cast<void>(connect_prop(scope, ButtonPropsAccess::size(props),
+                                       [&host, component](ControlSize size) { host.apply_size(component, size); }));
+    }
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::disabled(props),
                                    [&host, component](bool disabled) { host.apply_disabled(component, disabled); }));
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::loading(props),
@@ -1961,6 +2070,46 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     }
     if (ButtonPropsAccess::auto_focus(props)) {
         static_cast<void>(focus());
+    }
+    if (compact) {
+        state.compact_context = compact;
+        compact->attach(
+            component,
+            [&host, component, explicit_size = ButtonPropsAccess::explicit_size(props)](const CompactMetadata& value) {
+                if (auto* current = host.find_state(component)) {
+                    if (current->compact != value) {
+                        current->compact = value;
+                        current->decoration_geometry.reset();
+                        if (!explicit_size) {
+                            host.apply_size(component, value.size);
+                        }
+                        host.update_visuals(*current);
+                        host.dirty_->invalidate(current->node, runtime::DirtyFlags::Geometry);
+                    }
+                }
+            },
+            [&host, component] {
+                const auto& current = *host.find_state(component);
+                const auto& node = host.nodes_->require(current.node);
+                const auto& token = host.components().theme_scope(component)->snapshot().button();
+                return CompactBorder{
+                    .shape = {node.bounds, logical_radius(node.bounds, button_radius(current, node.bounds, token))},
+                    .corners = current.compact ? current.compact->corners : std::array{true, true, true, true},
+                    .color = current.presentation_border,
+                    .width = unbordered(current) ? 0 : token.border_width,
+                    .priority = current.disabled                                   ? 0
+                                : current.hovered                                  ? 4
+                                : current.focus.focused || current.press.pressed() ? 3
+                                                                                   : 2,
+                    .visible = !unbordered(current),
+                    .translation = node.translation,
+                    .clip =
+                        current.wave_clip ? std::optional{graphics::EffectClip{1, *current.wave_clip}} : std::nullopt,
+                    .dashed = dashed(current),
+                    .decorations = current.decorations};
+            },
+            &host.button_scene_);
+        build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
     }
 }
 

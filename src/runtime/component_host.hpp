@@ -114,6 +114,7 @@ public:
     [[nodiscard]] bool branch_active(ComponentId id) const;
     bool set_window_layer(ComponentId id, std::optional<int> priority);
     [[nodiscard]] bool in_window_layer(ComponentId id) const;
+    [[nodiscard]] bool is_window_layer_root(ComponentId id) const;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(ComponentId id) const;
@@ -247,6 +248,18 @@ public:
             throw std::out_of_range("Component state type does not match");
         }
         return *value;
+    }
+
+    template <typename State> [[nodiscard]] State* nearest_state(bool stop_at_window_layer = false) const {
+        for (auto current = parent_; current; current = host_->parent(*current)) {
+            if (auto* value = host_->state<State>(*current)) {
+                return value;
+            }
+            if (stop_at_window_layer && host_->is_window_layer_root(*current)) {
+                break;
+            }
+        }
+        return nullptr;
     }
 
 private:

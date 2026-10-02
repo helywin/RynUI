@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/control_size.hpp>
 #include <ryn/flex.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
@@ -12,6 +13,7 @@ namespace ryn {
 namespace detail {
 
 struct SpacePropsAccess;
+struct SpaceCompactPropsAccess;
 
 } // namespace detail
 
@@ -98,5 +100,49 @@ struct SpaceContentSlot final {};
 using SpaceContent = SlotContent<SpaceContentSlot>;
 
 void Space(SpaceProps props, SpaceContent content);
+
+class SpaceCompactProps final {
+public:
+    SpaceCompactProps& orientation(Prop<SpaceOrientation> value) {
+        orientation_ = std::move(value);
+        return *this;
+    }
+
+    SpaceCompactProps& direction(Prop<FlexDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    SpaceCompactProps& size(Prop<ControlSize> value) {
+        size_ = std::move(value);
+        explicit_size_ = true;
+        return *this;
+    }
+
+    SpaceCompactProps& block(Prop<bool> value) {
+        block_ = std::move(value);
+        return *this;
+    }
+
+    SpaceCompactProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend struct detail::SpaceCompactPropsAccess;
+    Prop<SpaceOrientation> orientation_{SpaceOrientation::Horizontal};
+    Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
+    Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
+    Prop<bool> block_{false};
+    LayoutStyle layout_;
+};
+
+struct SpaceCompactContentSlot final {};
+
+using SpaceCompactContent = SlotContent<SpaceCompactContentSlot>;
+
+void SpaceCompact(SpaceCompactProps props, SpaceCompactContent content);
 
 } // namespace ryn

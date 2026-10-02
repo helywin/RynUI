@@ -41,4 +41,12 @@ grow/shrink 为有限非负值；basis 为非负 logical length 或 auto。min/m
 
 `.separator(SpaceSeparator{[] { Text(u8"/"); }})` 在每两个直接内容项之间挂载一个独立分隔分支；`.split(...)` 为同一字段别名，最后设置优先。空/单项不调用分隔 slot，分隔支持多个富内容根项并继承 Space 的 Theme。共同布局、绘制与键盘顺序交错；wrap 可把分隔单独换行，RTL 只改位置。方向、gap、Theme 更新保留已挂载内容；删除主项清理多余或首项前的分隔，slot 抛错由 Host 回滚。
 
-Compact 按 050 的后续阶段实现。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。
+## SpaceCompact
+
+`SpaceCompact(SpaceCompactProps{}.size(ControlSize::Small).block(true), SpaceCompactContent{...})` 提供无 gap 的控件组合。typed orientation 支持 H/V，direction 支持 RTL；block 占满可用 inline 宽度，vertical 自动宽度项拉伸到组宽，显式宽度与 min/max 保留。共有边按相邻控件实际 border width 的较小值重叠；无边框项不制造边框。
+
+未显式调用 size 的控件继承最近 Compact；显式 Middle 也优先于组尺寸。嵌套组继承最近尺寸并交叉保留外角，空嵌套组不占首尾位置。方向/尺寸变化与删除项更新 retained 布局及四角 geometry，不重新执行内容。
+
+Button 六视觉变体已接入：共有边按 hover、focus/active、normal、disabled 优先，稳定 paint/Tab 顺序；嵌套组在外层共有边传递实际子控件状态。按角 fill、shadow、focus、wave 与虚线使用共同 logical effects；loading spinner 保持在背景之后，有限动画结束后无持续 deadline。每组支持最多 1024 个已接入控件，seam/虚线各自上限 4096 effects，超限显式拒绝并由挂载回滚清理。
+
+Input/Password/Search/RadioButton 与 SpaceAddon 按 050 的下一阶段接入。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。

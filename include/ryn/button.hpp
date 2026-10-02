@@ -41,6 +41,7 @@ public:
 
     ButtonProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -128,6 +129,7 @@ private:
     Prop<bool> danger_{false};
     Prop<bool> ghost_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
+    bool explicit_size_{};
     Prop<bool> disabled_{false};
     Prop<bool> loading_{false};
     Prop<Duration> loading_delay_{Duration{}};

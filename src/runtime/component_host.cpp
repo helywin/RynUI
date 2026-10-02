@@ -593,6 +593,11 @@ bool ComponentHost::in_window_layer(ComponentId id) const {
     return false;
 }
 
+bool ComponentHost::is_window_layer_root(ComponentId id) const {
+    ensure_owner_thread();
+    return require_record(id).window_layer.has_value();
+}
+
 void ComponentHost::append_paint_subtree(ComponentId id, bool layer_root) {
     if (!branch_active(id)) {
         return;

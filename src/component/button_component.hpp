@@ -58,6 +58,8 @@ struct ButtonComponentSnapshot final {
     runtime::ComponentId loading_icon;
     bool wave_active{};
     float wave_progress{1};
+    bool compact{};
+    std::array<bool, 4> compact_corners{true, true, true, true};
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
@@ -155,6 +157,7 @@ private:
     void update_variant(ButtonComponentState& state, bool previous_border_box, bool previous_dashed);
     void update_decoration_material(ButtonComponentState& state);
     void synchronize_decorations(ButtonComponentState& state, runtime::Rect clip);
+    void synchronize_compact(ButtonComponentState& state);
     void apply_size(runtime::ComponentId component, ControlSize size);
     void apply_disabled(runtime::ComponentId component, bool disabled);
     void apply_loading(runtime::ComponentId component, bool loading);

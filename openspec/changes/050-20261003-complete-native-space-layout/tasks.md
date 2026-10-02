@@ -10,7 +10,7 @@
 
 ## 3. Compact 与 Button（平台通用）
 
-- [ ] 3.1 实现 typed SpaceCompact H/V/RTL/size/block、最近上下文/explicit size 优先、nested/空单项与共同 retained 测量/连接 geometry；Button 六视觉变体、dash/外角/focus/有限 wave 与状态 seam 优先接入。HEADLESS D/R mixed size/nested/status/删除捕获/idle/零资源测试与文档/格式/OpenSpec/diff 通过后提交。
+- [x] 3.1 实现 typed SpaceCompact H/V/RTL/size/block、最近上下文/explicit size 优先、nested/空单项与共同 retained 测量/连接 geometry；Button 六视觉变体、dash/外角/focus/有限 wave 与状态 seam 优先接入。HEADLESS D/R mixed size/nested/status/删除捕获/idle/零资源测试与文档/格式/OpenSpec/diff 通过后提交。
 
 ## 4. 其它已有控件与 Addon（平台通用）
 

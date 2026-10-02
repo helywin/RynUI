@@ -202,6 +202,7 @@ add_library(rynui_components STATIC
     component/flex_component.cpp
     component/layout_component_context.cpp
     component/space_component.cpp
+    component/space_compact.cpp
     component/text_component.cpp
     component/typography_component.cpp
     component/divider_component.cpp
