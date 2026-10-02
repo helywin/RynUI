@@ -807,7 +807,7 @@ void test_token_gallery_frame_contract() {
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
     require(fixture.selections->mounted().size() == 12, "Token Gallery selection samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 68,
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 80,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 8,
@@ -822,7 +822,7 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 66,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 78,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();

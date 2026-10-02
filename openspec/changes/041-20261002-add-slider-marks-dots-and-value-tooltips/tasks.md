@@ -10,7 +10,7 @@
 
 ## 3. 标签、点与提示（平台通用）
 
-- [ ] 3.1 实现 retained Text label 布局/点击、点/轨道状态与 Tooltip 组合、Theme 与 staged invalidation；补动态 topology、controlled/reentrant/cancel/idle/scene/主题合同，更新 Gallery/文档，headless Debug/Release 完整 CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
+- [x] 3.1 实现 retained Text label 布局/点击、点/轨道状态与 Tooltip 组合、Theme 与 staged invalidation；补动态 topology、controlled/reentrant/cancel/idle/scene/主题合同，更新 Gallery/文档，headless Debug/Release 完整 CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
 
 ## 4. Windows 原生验收
 

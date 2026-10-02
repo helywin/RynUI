@@ -4,8 +4,8 @@
 
 | 组件 | 已观察到的原生功能缺口 | 执行依赖/收尾方式 |
 | --- | --- | --- |
-| Tooltip（新增共用基础） | 窗口浮层、文字提示输入/主题/定位 | change 040 先实施 |
-| Slider / RangeSlider | marks/dots、值 Tooltip、included/离散点、整段拖动；多端点与动态端点 | 紧接 040 的独立 change，沿用 retained scene 与独立焦点 |
+| Tooltip（新增共用基础） | 040 已实现窗口文字浮层、hover/focus/controlled/手动、Escape、主题和 12 种定位；rich content、click/context menu、arrow pointAtCenter 待扩展 | 平台通用与 Windows 原生证据已保存；Linux 原生独立待验 |
+| Slider / RangeSlider | 041 已实现 marks/dots、值 Tooltip、included/离散点；整段拖动、多端点与动态端点继续实施 | 保持 partial；沿用 retained scene 与独立焦点 |
 | Typography | 复制/编辑/省略的提示；多行编辑依赖 TextArea | Tooltip 后补提示，TextArea 后补多行编辑 |
 | Divider | 目录只因 Web API 标 partial，原生合同已有实现 | 核对原生覆盖与测试后更新状态；Linux 验收独立 pending |
 | Button | dashed/link/ghost、preset color、icon placement、wave | 独立变体/图标/交互 change |

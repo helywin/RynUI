@@ -239,6 +239,12 @@ void theme_and_geometry_updates() {
     f.synchronize();
     check(f.services.tooltip().snapshot(id).bounds.width <= 60 && f.nodes.require(node).measure_count > measures,
           "Tooltip maxWidth did not remeasure");
+    config.typography.tokens.font_weight = 700;
+    theme.set(config);
+    f.synchronize();
+    const auto popup_text = f.services.components().children(popup).front();
+    check(f.services.text().resolved_typography(popup_text).font_weight == 700,
+          "Tooltip ignored theme font weight update");
     const auto normal = resolve_theme({});
     check(normal.tooltip().max_width == 250 && normal.tooltip().z_index_popup == normal.seed().z_index_popup_base + 70,
           "Ant Tooltip defaults wrong");

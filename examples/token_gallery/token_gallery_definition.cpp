@@ -832,16 +832,28 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             }});
     });
     state->telemetry.live_samples += 2;
-    ryn::Text(u8"Slider · 单值、范围、反向、禁用、纵向（Tooltip / marks 待实现）");
+    ryn::Text(u8"Slider · marks / dots / 离散范围 / 值提示 / 反向 / 纵向");
     ryn::Slider(ryn::SliderProps{}
                     .value(state->slider_value)
+                    .marks(ryn::SliderMarks{
+                        {0, ryn::String{u8"低 Low"}}, {50, ryn::String{u8"中"}}, {100, ryn::String{u8"高 High"}}})
                     .onChange([state](double value) { state->slider_value.set(value); })
                     .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-    ryn::RangeSlider(ryn::RangeSliderProps{}
-                         .value(state->slider_range)
-                         .onChange([state](ryn::SliderRange value) { state->slider_range.set(value); })
-                         .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-    ryn::Slider(ryn::SliderProps{}.defaultValue(35).reverse(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::RangeSlider(
+        ryn::RangeSliderProps{}
+            .value(state->slider_range)
+            .marks(ryn::SliderMarks{{20, ryn::String{u8"20"}}, {50, ryn::String{u8"50"}}, {80, ryn::String{u8"80"}}})
+            .marksOnly(true)
+            .dots(true)
+            .onChange([state](ryn::SliderRange value) { state->slider_range.set(value); })
+            .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Slider(ryn::SliderProps{}
+                    .defaultValue(35)
+                    .limits(ryn::SliderLimits{0, 100, 10})
+                    .dots(true)
+                    .included(false)
+                    .reverse(true)
+                    .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     ryn::Slider(ryn::SliderProps{}.defaultValue(60).disabled(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
     ryn::Slider(ryn::SliderProps{}
                     .defaultValue(40)

@@ -276,6 +276,17 @@ struct DividerThemeConfig final {
 };
 
 struct SliderTokenOverride final {
+    std::optional<LogicalLength> dot_size;
+    std::optional<LogicalLength> dot_border_width;
+    std::optional<LogicalLength> mark_gap;
+    std::optional<LogicalLength> mark_font_size;
+    std::optional<LogicalLength> mark_line_height;
+    std::optional<Color> dot_border;
+    std::optional<Color> dot_active_border;
+    std::optional<Color> dot_background;
+    std::optional<Color> mark_text;
+    std::optional<Color> mark_active_text;
+    std::optional<Color> mark_disabled_text;
     std::optional<LogicalLength> rail_size;
     std::optional<LogicalLength> handle_size;
     std::optional<LogicalLength> handle_size_hover;
@@ -603,9 +614,15 @@ struct SliderMetricToken final {
     float handle_size_hover{12};
     float handle_line_width{2};
     float handle_line_width_hover{2.5F};
+    float dot_size{8};
+    float dot_border_width{2};
+    float mark_gap{8};
+    float mark_font_size{14};
+    float mark_line_height{22};
 
     [[nodiscard]] auto values() const noexcept {
-        return std::array{rail_size, handle_size, handle_size_hover, handle_line_width, handle_line_width_hover};
+        return std::array{rail_size, handle_size,      handle_size_hover, handle_line_width, handle_line_width_hover,
+                          dot_size,  dot_border_width, mark_gap,          mark_font_size,    mark_line_height};
     }
 
     friend constexpr bool operator==(const SliderMetricToken&, const SliderMetricToken&) = default;
@@ -622,10 +639,30 @@ struct SliderColorToken final {
     Color handle_outline;
     Color handle_disabled;
     Color handle_background;
+    Color dot_border;
+    Color dot_active_border;
+    Color dot_background;
+    Color mark_text;
+    Color mark_active_text;
+    Color mark_disabled_text;
 
     [[nodiscard]] auto values() const noexcept {
-        return std::array{rail,   rail_hover,    track,          track_hover,     track_disabled,
-                          handle, handle_active, handle_outline, handle_disabled, handle_background};
+        return std::array{rail,
+                          rail_hover,
+                          track,
+                          track_hover,
+                          track_disabled,
+                          handle,
+                          handle_active,
+                          handle_outline,
+                          handle_disabled,
+                          handle_background,
+                          dot_border,
+                          dot_active_border,
+                          dot_background,
+                          mark_text,
+                          mark_active_text,
+                          mark_disabled_text};
     }
 
     friend constexpr bool operator==(const SliderColorToken&, const SliderColorToken&) = default;

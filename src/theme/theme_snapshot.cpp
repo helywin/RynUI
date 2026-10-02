@@ -852,12 +852,14 @@ SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapT
                                           : palette_variant(seed.color_primary, 2, true));
     const auto disabled =
         mix(alias.color_background_container, alias.color_text_disabled, alias.color_text_disabled.alpha());
-    return {
-        {4, map.control_height_large / 4, map.control_height_small / 2, seed.line_width + 1, seed.line_width + 1.5F},
-        {with_alpha(map.color_text_base, dark ? 0.08F : 0.04F), with_alpha(map.color_text_base, dark ? 0.12F : 0.06F),
-         map.color_primary_border, border_hover, alias.color_background_container_disabled, map.color_primary_border,
-         map.color_primary, with_alpha(map.color_primary, 0.2F),
-         Color(disabled.red(), disabled.green(), disabled.blue(), 1), alias.color_background_elevated}};
+    return {{4, map.control_height_large / 4, map.control_height_small / 2, seed.line_width + 1, seed.line_width + 1.5F,
+             8, seed.line_width + 1, map.size_xs, map.font_size, map.font_size * map.line_height},
+            {with_alpha(map.color_text_base, dark ? 0.08F : 0.04F),
+             with_alpha(map.color_text_base, dark ? 0.12F : 0.06F), map.color_primary_border, border_hover,
+             alias.color_background_container_disabled, map.color_primary_border, map.color_primary,
+             with_alpha(map.color_primary, 0.2F), Color(disabled.red(), disabled.green(), disabled.blue(), 1),
+             alias.color_background_elevated, alias.color_border_secondary, map.color_primary_border,
+             alias.color_background_elevated, alias.color_text_secondary, alias.color_text, alias.color_text_disabled}};
 }
 
 TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
@@ -910,6 +912,30 @@ void apply_tooltip_override(TooltipThemeToken& token, const TooltipTokenOverride
 void apply_slider_override(SliderThemeToken& token, const SliderTokenOverride& o) {
     auto& m = token.metrics;
     auto& c = token.colors;
+    m.dot_size = fixed_length(o.dot_size, m.dot_size, "Slider dot size must be positive", true);
+    m.dot_border_width = fixed_length(o.dot_border_width, m.dot_border_width, "Slider dot border must be non-negative");
+    m.mark_gap = fixed_length(o.mark_gap, m.mark_gap, "Slider mark gap must be non-negative");
+    m.mark_font_size = fixed_length(o.mark_font_size, m.mark_font_size, "Slider mark font size must be positive", true);
+    m.mark_line_height =
+        fixed_length(o.mark_line_height, m.mark_line_height, "Slider mark line height must be positive", true);
+    if (o.dot_border) {
+        c.dot_border = *o.dot_border;
+    }
+    if (o.dot_active_border) {
+        c.dot_active_border = *o.dot_active_border;
+    }
+    if (o.dot_background) {
+        c.dot_background = *o.dot_background;
+    }
+    if (o.mark_text) {
+        c.mark_text = *o.mark_text;
+    }
+    if (o.mark_active_text) {
+        c.mark_active_text = *o.mark_active_text;
+    }
+    if (o.mark_disabled_text) {
+        c.mark_disabled_text = *o.mark_disabled_text;
+    }
     m.rail_size = fixed_length(o.rail_size, m.rail_size, "Slider rail size must be positive", true);
     m.handle_size = fixed_length(o.handle_size, m.handle_size, "Slider handle size must be positive", true);
     m.handle_size_hover =
@@ -949,8 +975,10 @@ void apply_slider_override(SliderThemeToken& token, const SliderTokenOverride& o
         c.handle_background = *o.handle_background;
     }
     if (!std::isfinite(m.handle_size + 2 * m.handle_line_width) ||
-        !std::isfinite(m.handle_size_hover + 2 * m.handle_line_width_hover)) {
-        throw std::invalid_argument("Slider handle extent must be finite");
+        !std::isfinite(m.handle_size_hover + 2 * m.handle_line_width_hover) ||
+        !std::isfinite(m.mark_gap + m.mark_line_height + std::max(32.0F, m.handle_size + 2 * m.handle_line_width)) ||
+        !std::isfinite(m.mark_gap + m.mark_line_height + m.handle_size_hover + 2 * m.handle_line_width_hover)) {
+        throw std::invalid_argument("Slider visual extents must be finite");
     }
 }
 

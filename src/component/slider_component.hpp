@@ -54,6 +54,9 @@ private:
     void cancel(runtime::ComponentId);
     void update(runtime::ComponentId, bool geometry);
     void place(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
+    void mount_labels(runtime::ComponentId, runtime::ComponentBuildContext&);
+    void synchronize_labels(runtime::ComponentId);
+    void update_hints(runtime::ComponentId);
     void change(runtime::ComponentId, std::size_t, double);
     void complete(runtime::ComponentId);
     void pointer(runtime::ComponentId, std::optional<std::size_t>, input::PointerDispatchContext&);

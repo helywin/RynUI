@@ -100,6 +100,7 @@ public:
     void detach_input_host(WindowComponentParticipant& participant) noexcept;
     void mount(const Content& content);
     bool destroy(runtime::ComponentId id);
+    void append_slot(runtime::ComponentId parent, const Content& content);
     void dispose() noexcept;
     void set_window_active(bool active);
 

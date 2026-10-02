@@ -266,6 +266,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(old_tooltip.font_size, new_tooltip.font_size, TokenIdentity::tooltip_typography, changed, count);
     append_if_changed(old_tooltip.line_height, new_tooltip.line_height, TokenIdentity::tooltip_typography, changed,
                       count);
+    append_if_changed(before.typography().font_family, after.typography().font_family,
+                      TokenIdentity::tooltip_typography, changed, count);
+    append_if_changed(before.typography().font_weight, after.typography().font_weight,
+                      TokenIdentity::tooltip_typography, changed, count);
     append_if_changed(old_tooltip.shadow, new_tooltip.shadow, TokenIdentity::tooltip_shadow, changed, count);
     append_if_changed(old_tooltip.z_index_popup, new_tooltip.z_index_popup, TokenIdentity::tooltip_order, changed,
                       count);

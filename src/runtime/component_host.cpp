@@ -100,6 +100,30 @@ void ComponentHost::mount(const Content& content) {
     }
 }
 
+void ComponentHost::append_slot(ComponentId parent, const Content& content) {
+    ensure_owner_thread();
+    if (!active_ || !mounted_ || mounting_) {
+        throw std::logic_error("Dynamic slots require a mounted host and cannot reenter mount");
+    }
+    const auto previous_children = require_record(parent).children.size();
+    const auto theme = require_record(parent).theme_scope;
+    mounting_ = true;
+    ComponentBuildContext context(*this, parent, std::nullopt, std::nullopt, theme);
+    try {
+        ActiveBuildContextGuard guard(context);
+        detail::SlotContentAccess::function(content)();
+        mounting_ = false;
+    } catch (...) {
+        mounting_ = false;
+        while (contains(parent) && require_record(parent).children.size() > previous_children) {
+            if (!destroy(require_record(parent).children.back())) {
+                break;
+            }
+        }
+        throw;
+    }
+}
+
 bool ComponentHost::destroy(ComponentId id) noexcept {
     if (std::this_thread::get_id() != owner_thread_) {
         return false;

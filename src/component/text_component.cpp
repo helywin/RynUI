@@ -394,6 +394,20 @@ void TextComponentHost::mount(const Content& content) {
     }
 }
 
+void TextComponentHost::append_slot(runtime::ComponentId parent, const Content& content) {
+    ActiveTextHostGuard guard(*this);
+    LayoutComponentServices services{*nodes_, *layout_, *dirty_};
+    ActiveLayoutComponentServices layout_services_guard(services);
+    try {
+        components_.append_slot(parent, content);
+    } catch (...) {
+        std::erase_if(mounted_texts_, [this](const auto& text) { return !components_.contains(text.component); });
+        layout_snapshot_valid_ = false;
+        throw;
+    }
+    layout_snapshot_valid_ = false;
+}
+
 bool TextComponentHost::destroy(runtime::ComponentId id) {
     if (!components_.destroy(id)) {
         return false;

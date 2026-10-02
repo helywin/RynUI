@@ -98,6 +98,7 @@ public:
     }
 
     [[nodiscard]] runtime::ComponentHost& components() noexcept;
+    void append_slot(runtime::ComponentId parent, const Content& content);
     [[nodiscard]] const runtime::ComponentHost& components() const noexcept;
     [[nodiscard]] TextSceneService& scene_service() noexcept;
     [[nodiscard]] const TextSceneService& scene_service() const noexcept;

@@ -97,6 +97,7 @@ public:
     ~ComponentHost();
 
     void mount(const Content& content);
+    void append_slot(ComponentId parent, const Content& content);
     bool destroy(ComponentId id) noexcept;
     void dispose() noexcept;
 

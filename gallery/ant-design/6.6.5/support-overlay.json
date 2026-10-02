@@ -511,18 +511,21 @@
     {
       "identity": "ant.component.slider",
       "status": "partial",
-      "summary": "RynUI 提供 typed 单值与双端范围 Slider、受控属性、步长、横纵向与反向、拖动和键盘交互；Tooltip、marks 与多端点尚未覆盖。",
+      "summary": "RynUI 提供 typed 单值与双端范围、step/marks 离散选择、标签点击、dots/included 和每个 thumb 的值提示；整段轨道拖动与多端点编辑继续收尾。",
       "supported_scope": [
         "Slider / RangeSlider typed values and atomic reactive limits",
         "mouse/touch capture, keyboard, independent thumb focus, disabled",
+        "reactive marks / label selection / marksOnly / dots / included",
+        "persistent thumb Tooltip: Auto / Always / Hidden, formatter and placement",
         "Theme Slider tokens and retained logical scene"
       ],
       "missing_scope": [
-        "Tooltip / marks / dots / draggable track / multiple editable handles"
+        "draggable track / multiple editable handles"
       ],
       "evidence_identifiers": [
         "source:components/slider/index.en-US.md",
         "openspec:039-20261002-add-single-and-range-slider#2.1",
+        "openspec:041-20261002-add-slider-marks-dots-and-value-tooltips#3.1",
         "test:rynui.slider_component",
         "runtime:src/component/slider_component.cpp",
         "api:include/ryn/slider.hpp"

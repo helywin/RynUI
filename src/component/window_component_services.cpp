@@ -151,6 +151,29 @@ void WindowComponentServices::mount(const Content& content) {
     }
 }
 
+void WindowComponentServices::append_slot(runtime::ComponentId parent, const Content& content) {
+    std::vector<std::pair<WindowComponentParticipant*, void*>> active;
+    active.reserve(participants_.size());
+    try {
+        for (auto* participant : participants_) {
+            active.emplace_back(participant, participant->begin_mount());
+        }
+        text_.append_slot(parent, content);
+        scene_structure_dirty_ = true;
+    } catch (...) {
+        for (auto* participant : participants_) {
+            participant->on_destroy();
+        }
+        for (auto it = active.rbegin(); it != active.rend(); ++it) {
+            it->first->end_mount(it->second);
+        }
+        throw;
+    }
+    for (auto it = active.rbegin(); it != active.rend(); ++it) {
+        it->first->end_mount(it->second);
+    }
+}
+
 bool WindowComponentServices::destroy(runtime::ComponentId id) {
     if (!text_.destroy(id)) {
         return false;

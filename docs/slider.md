@@ -21,8 +21,12 @@ controlled Slider 仅报告候选值，显示仍由 value 决定；拖动/按键
 
 每个 thumb 独立 Tab 焦点；方向键到下一个候选点，Home/End 到边界，PageUp/PageDown 移动十个候选点。没有 marks 时与十个 step 相同。纵向默认从下向上增加；reverse 反转位置及方向键，PageUp/PageDown 仍按数值增减。keyboard=false 阻止数值键操作，disabled 阻止全部输入并移出 Tab 顺序。数值键释放完成一次，repeat down 不重复完成。
 
-`marks(Prop<SliderMarks>)` 使用 `{value, String label}` 列表，最多 4096 项；会排序，要求 finite、唯一、在 limits 闭区间内。`marksOnly(true)` 只选择 min/max 和 marks（对应上游 step=null 的原生模式）；默认 step 与 marks 都是候选。marks/limits 更新先验证组合，再提交；缩小 limits 前可先清除越界 marks。`dots(true)` 的完整视觉候选集合最多 4096 点，超限明确拒绝；未开启 dots 时不枚举 dense step 网格。`included` 和 `hint` 已进入 typed 配置；标签/dots/提示的实际绘制将在 [041 阶段 3](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 完成交付，当前不宣称该阶段已完成。
+`marks(Prop<SliderMarks>)` 使用 `{value, String label}` 列表，最多 4096 项；会排序，要求 finite、唯一、在 limits 闭区间内。`marksOnly(true)` 只选择 min/max 和 marks（对应上游 step=null 的原生模式）；默认 step 与 marks 都是候选。marks/limits 更新先验证组合，再提交；缩小 limits 前可先清除越界 marks。`dots(true)` 的完整视觉候选集合最多 4096 点，超限明确拒绝；未开启 dots 时不枚举 dense step 网格。
 
-Slider token 按锁定 [Ant Design 6.6.5 API](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/index.en-US.md) 与 [style 源码](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/style/index.ts) 映射 rail、track、handle、hover、active、disabled；支持 Default/Dark/Compact、嵌套继承、组件 algorithm/seed 与显式覆盖。颜色 token 只失效 material，metrics 触发布局/geometry。组件通过共同 logical quads 和 rounded focus effects 工作，不含 SDL/GPU 类型。
+每个 mark 显示保留式圆点；非空 label 使用真实 Text，并在轨道下方（纵向为右方）预留空间。点击标签选择相应值并完成一次 gesture；范围模式调整最近的端点。`included(false)` 隐藏已选轨道，只把当前端点对应的 dot/label 显示为 active。动态增删 labels 保留 thumb、焦点、提示及未关联的组件，空 label 不占文字空间。
 
-本轮不含 Tooltip、marks/dots、整段轨道拖动、多端点、端点增删或动画插值。Gallery 明确标注 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)。
+`hint(Prop<SliderHintOptions>)` 默认 Auto：thumb hover、键盘可见焦点或拖动时显示独立 Tooltip；Always 持续显示，Hidden 隐藏，disabled 优先。options 还包含 TooltipPlacement。`hintFormatter(std::function<String(double)>)` 为静态格式化回调，默认输出与 locale 无关的 double。受控模式的提示显示 value，不显示未回写的候选值；同一值不会在 idle 重复格式化。Escape 关闭提示并保留 thumb 焦点，Auto 离开后可重新显示。所有提示从初次挂载起保留，经过共同窗口浮层排序与定位。
+
+Slider token 按锁定 [Ant Design 6.6.5 API](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/index.en-US.md) 与 [style 源码](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/style/index.ts) 映射 rail、track、handle、hover、active、disabled 及 dot/mark。新增 dot_size、dot_border_width、mark_gap、mark_font_size、mark_line_height 和 dot/mark 颜色；字体族/字重遵循 Typography Theme。支持 Default/Dark/Compact、嵌套继承、组件 algorithm/seed 与显式覆盖。颜色 token 只失效 material，metrics 触发布局/geometry。组件通过共同 logical quads 和 rounded focus effects 工作，不含 SDL/GPU 类型。
+
+整段轨道拖动、多端点与端点增删仍在桌面收尾范围内，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md) 和 [041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md)。

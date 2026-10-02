@@ -1,11 +1,15 @@
 #include "component/slider_component.hpp"
 #include "component/slider_value.hpp"
+#include "component/tooltip_component.hpp"
 #include "support/input_fixture.hpp"
 #include <ryn/rynui.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <type_traits>
+#if defined(_MSC_VER) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 
 namespace {
 using namespace ryn;
@@ -281,9 +285,214 @@ void range_focus_pointer_cancel_and_lifecycle() {
     f.services.set_window_active(true);
     pointer(f, PointerAction::down, at(f, m, 0.1));
     check(f.services.destroy(m.component), "Slider destroy failed");
-    check(f.services.slider().mounted().size() == 1 && f.services.interactions().size() == 2,
+    check(f.services.slider().mounted().size() == 1 && f.services.interactions().size() == 3 &&
+              f.services.tooltip().mounted().size() == 1,
           "range destroy damaged sibling or leaked interactions");
     check(changes > 1, "pointer candidates missing");
+}
+
+void labels_dots_hints_and_dynamic_slots() {
+    Fixture f;
+    Signal<SliderMarks> marks{SliderMarks{{0, String{u8"低 Low"}}, {50, String{u8"中"}}, {100, String{u8"高 High"}}}};
+    Signal<bool> included{true};
+    Signal<bool> disabled{false};
+    Signal<SliderHintOptions> hint{SliderHintOptions{SliderHintMode::Auto, TooltipPlacement::Top}};
+    int runs{};
+    int changes{};
+    int completed{};
+    int formatted{};
+    f.services.mount(Content{[&] {
+        ++runs;
+        Slider(SliderProps{}
+                   .defaultValue(50)
+                   .limits(SliderLimits{0, 100, 25})
+                   .marks(marks)
+                   .dots(true)
+                   .included(included)
+                   .disabled(disabled)
+                   .hint(hint)
+                   .hintFormatter([&](double v) {
+                       ++formatted;
+                       return v == 100 ? String{u8"最大 100"} : String{u8"数值"};
+                   })
+                   .onChange([&](double) { ++changes; })
+                   .onChangeComplete([&](double) { ++completed; })
+                   .layout(LayoutStyle{}.width(dp(280))));
+        Text(u8"sibling");
+    }});
+    f.synchronize();
+    const auto m = f.services.slider().mounted()[0];
+    const auto tooltip = f.services.tooltip().mounted()[0];
+    const auto thumb = m.thumbs[0];
+    const auto roots = f.services.components().children(m.component);
+    check(roots.size() == 4 && f.nodes.require(m.node).bounds.height > 32, "labels missing from slider layout");
+    const auto label_node = f.services.components().root(roots.back());
+    const auto label_bounds = f.nodes.require(label_node).bounds;
+    pointer(f, PointerAction::down, {label_bounds.x + 3, label_bounds.y + 3});
+    pointer(f, PointerAction::up, {label_bounds.x + 3, label_bounds.y + 3});
+    f.synchronize();
+    check(f.services.slider().snapshot(m.component).value.lower == 100 && changes == 1 && completed == 1,
+          "mark label click did not select and complete");
+    check(!f.services.tooltip().snapshot(tooltip).visible, "pointer focus incorrectly showed Auto hint");
+    check(f.services.focus().request_focus(thumb, FocusModality::keyboard), "marked Slider focus failed");
+    f.synchronize();
+    check(f.services.tooltip().snapshot(tooltip).visible, "keyboard focus did not show Auto hint");
+    key(f, Key::escape);
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(tooltip).visible && f.services.focus().state().focused == thumb,
+          "hint Escape did not preserve thumb focus");
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(tooltip).visible, "dismissed hint reopened during same focus");
+    f.services.focus().clear_focus();
+    f.services.focus().request_focus(thumb, FocusModality::keyboard);
+    f.synchronize();
+    check(f.services.tooltip().snapshot(tooltip).visible, "hint did not reopen for new focus");
+    const auto before = f.services.surfaces().diagnostics();
+    const auto measures = f.layout.generation();
+    const auto formatted_before = formatted;
+    f.synchronize();
+    check(f.layout.generation() == measures && formatted == formatted_before &&
+              f.services.surfaces().diagnostics().geometry_updates == before.geometry_updates &&
+              f.services.surfaces().diagnostics().material_updates == before.material_updates &&
+              !f.services.next_frame_deadline(),
+          "idle marked Slider updated retained resources");
+    included.set(false);
+    f.synchronize();
+    const auto range = f.services.surfaces().visual_range(m.surface);
+    check(f.services.surfaces().instances().instances()[range.first + 1].bounds[2] == 0,
+          "included=false retained selected track");
+    marks.set({{25, String{u8"四分之一"}}, {75, String{u8"四分之三"}}, {100, String{}}, {50, String{u8"二分之一"}}});
+    f.synchronize();
+    check(f.services.components().children(m.component).size() == 5 && runs == 1 &&
+              f.services.slider().mounted()[0].thumbs[0] == thumb && f.services.tooltip().mounted()[0] == tooltip &&
+              f.services.focus().state().focused == thumb && changes == 1,
+          "growing marks remounted thumb, hint or unrelated content");
+    marks.set({{0, String{u8"only"}}});
+    f.synchronize();
+    check(f.services.components().children(m.component).size() == 2 && f.services.focus().state().focused == thumb,
+          "shrinking marks damaged focused thumb");
+    const auto components = f.services.components().component_count();
+    const auto texts = f.scene.size();
+    const auto mounted_texts = f.services.text().mounted_texts().size();
+    const auto interactions = f.services.interactions().size();
+    bool failed{};
+    try {
+        f.services.append_slot(m.component, Content{[] {
+                                   Tooltip(TooltipProps{}.title(String{u8"rollback"}),
+                                           TooltipTrigger{[] { Text(u8"temporary"); }});
+                                   throw std::runtime_error("rollback");
+                               }});
+    } catch (const std::runtime_error&) {
+        failed = true;
+    }
+    check(failed && f.services.components().component_count() == components && f.scene.size() == texts &&
+              f.services.interactions().size() == interactions && f.services.tooltip().mounted().size() == 1 &&
+              f.services.text().mounted_texts().size() == mounted_texts,
+          "failed dynamic slot leaked subtree resources");
+    marks.set({});
+    f.synchronize();
+    check(f.nodes.require(m.node).bounds.height == 32 && f.services.components().children(m.component).size() == 1,
+          "empty marks retained labels or cross-axis reservation");
+    disabled.set(true);
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(tooltip).visible, "disabled Slider retained hint");
+    hint.set({SliderHintMode::Always, TooltipPlacement::Right});
+    disabled.set(false);
+    f.synchronize();
+    check(f.services.tooltip().snapshot(tooltip).visible, "Always hint missing");
+    hint.set({SliderHintMode::Hidden, TooltipPlacement::Right});
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(tooltip).visible, "Hidden hint still visible");
+    check(f.services.destroy(m.component), "marked Slider destroy failed");
+    f.synchronize();
+    check(f.scene.size() == 1 && f.services.interactions().size() == 0 && f.services.tooltip().mounted().empty(),
+          "marked Slider destroy leaked labels, hints or interactions");
+}
+
+void marked_theme_invalidation() {
+    Fixture f;
+    ThemeConfig config;
+    Signal<ThemeConfig> theme{config};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme),
+              ThemeContent{[] { Slider(SliderProps{}.marks(SliderMarks{{50, String{u8"中点"}}}).defaultValue(50)); }});
+    }});
+    f.synchronize();
+    const auto m = f.services.slider().mounted()[0];
+    const auto label = f.services.components().children(m.component).back();
+    const auto text = f.services.components().children(label).front();
+    const auto generation = f.layout.generation();
+    const auto before = f.services.surfaces().diagnostics();
+    config.slider.tokens.mark_active_text = Color::rgba8(250, 0, 0);
+    config.slider.tokens.dot_active_border = Color::rgba8(0, 255, 0);
+    theme.set(config);
+    f.synchronize();
+    check(f.layout.generation() == generation &&
+              f.services.surfaces().diagnostics().geometry_updates == before.geometry_updates,
+          "mark colors invalidated layout or geometry");
+    config.slider.tokens.mark_font_size = dp(20);
+    config.slider.tokens.mark_line_height = dp(30);
+    config.slider.tokens.mark_gap = dp(12);
+    theme.set(config);
+    f.synchronize();
+    check(f.layout.generation() > generation && f.nodes.require(m.node).bounds.height == 74 &&
+              f.services.text().resolved_typography(text).font_size == 20,
+          "mark metrics did not remeasure retained label");
+    config.typography.tokens.font_weight = 700;
+    theme.set(config);
+    f.synchronize();
+    check(f.services.text().resolved_typography(text).font_weight == 700, "label ignored theme font change");
+    rejects([] {
+        ThemeConfig invalid;
+        invalid.slider.tokens.dot_size = dp(0);
+        (void)resolve_theme(invalid);
+    });
+    rejects([] {
+        ThemeConfig invalid;
+        invalid.slider.tokens.mark_gap = dp(std::numeric_limits<float>::max());
+        invalid.slider.tokens.mark_line_height = dp(std::numeric_limits<float>::max());
+        (void)resolve_theme(invalid);
+    });
+}
+
+void controlled_hint_and_formatter_reentrancy() {
+    Fixture f;
+    Signal<double> value{25};
+    std::vector<double> formatted;
+    f.services.mount(Content{[&] {
+        Slider(SliderProps{}
+                   .value(value)
+                   .hint(SliderHintOptions{SliderHintMode::Always, TooltipPlacement::Top})
+                   .hintFormatter([&](double v) {
+                       formatted.push_back(v);
+                       return String{u8"hint"};
+                   }));
+    }});
+    f.synchronize();
+    const auto m = f.services.slider().mounted()[0];
+    f.services.focus().request_focus(m.thumbs[0], FocusModality::keyboard);
+    press_key(f, Key::right);
+    check(formatted == std::vector<double>{25}, "controlled hint formatted unacknowledged candidate");
+    value.set(26);
+    f.synchronize();
+    check(formatted == std::vector<double>({25, 26}), "controlled writeback did not update hint");
+    runtime::ComponentId dying;
+    Fixture self;
+    Signal<double> changing{10};
+    self.services.mount(Content{[&] {
+        Slider(SliderProps{}.value(changing).hintFormatter([&](double) {
+            if (dying.valid()) {
+                self.services.destroy(dying);
+            }
+            return String{u8"destroy"};
+        }));
+    }});
+    dying = self.services.slider().mounted()[0].component;
+    changing.set(20);
+    self.synchronize();
+    check(self.services.slider().mounted().empty() && self.services.tooltip().mounted().empty() &&
+              self.scene.size() == 0 && self.services.interactions().size() == 0,
+          "reentrant hint formatter destruction retained resources");
 }
 
 void geometry_theme_and_reentrancy() {
@@ -373,12 +582,20 @@ void geometry_theme_and_reentrancy() {
 } // namespace
 
 int main() {
+#if defined(_MSC_VER) && defined(_DEBUG)
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+    _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#endif
     try {
         marks_numeric_contracts();
         numeric_and_api();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();
         geometry_theme_and_reentrancy();
+        labels_dots_hints_and_dynamic_slots();
+        controlled_hint_and_formatter_reentrancy();
+        marked_theme_invalidation();
         std::cout << "Slider contracts passed\n";
         return 0;
     } catch (const std::exception& e) {

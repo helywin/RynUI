@@ -1,9 +1,12 @@
 #include "component/slider_component.hpp"
 #include "component/slider_value.hpp"
+#include "component/tooltip_component.hpp"
+#include "input/pressable_behavior.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include <algorithm>
 #include <cmath>
+#include <charconv>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -31,6 +34,16 @@ graphics::QuadInstance quad(runtime::Rect rect, Color color, float radius, runti
 }
 } // namespace
 
+struct SliderLabel final {
+    runtime::ComponentId component;
+    runtime::NodeId node;
+    input::InteractionId interaction;
+    input::PressableBehavior pressable;
+    Signal<String> text{String{}};
+    Signal<runtime::SemanticForeground> foreground{runtime::SemanticForeground{}};
+    Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
+};
+
 struct SliderState final {
     runtime::ComponentId component;
     runtime::NodeId node;
@@ -38,6 +51,20 @@ struct SliderState final {
     component::RetainedSurfaceId surface;
     std::array<runtime::ComponentId, 2> children;
     std::array<runtime::NodeId, 2> nodes;
+    std::array<runtime::NodeId, 2> wrappers;
+    std::array<Signal<String>, 2> hint_titles{Signal<String>{String{}}, Signal<String>{String{}}};
+    std::array<Signal<bool>, 2> hint_open{Signal<bool>{false}, Signal<bool>{false}};
+    std::array<Signal<TooltipPlacement>, 2> hint_placements{Signal<TooltipPlacement>{TooltipPlacement::Top},
+                                                            Signal<TooltipPlacement>{TooltipPlacement::Top}};
+    std::array<bool, 2> hint_dismissed{};
+    std::array<bool, 2> hint_active{};
+    std::array<std::optional<double>, 2> hinted_values;
+    bool formatting_hint{};
+    std::vector<SliderLabel> labels;
+    runtime::Rect rail_bounds;
+    float label_extent{};
+    bool has_labels{};
+    component::RetainedSurfaceId dot_surface;
     std::array<input::InteractionId, 2> thumbs;
     std::array<component::RetainedSurfaceId, 2> surfaces;
     std::array<input::FocusPresentation, 2> focus;
@@ -49,6 +76,7 @@ struct SliderState final {
     SliderLimits limits;
     SliderMarks marks;
     std::vector<double> points;
+    std::vector<graphics::QuadInstance> dot_quads;
     bool marks_only{};
     bool dots{};
     bool included{true};
@@ -73,6 +101,7 @@ struct SliderState final {
     std::function<void(SliderRange)> on_complete;
     theme_runtime::Subscription colors;
     theme_runtime::Subscription metrics;
+    theme_runtime::Subscription fonts;
 
     std::size_t count() const noexcept {
         return range ? 2 : 1;
@@ -141,7 +170,159 @@ void SliderComponentHost::release(SliderState& s) {
     services_->pointer().cancel_interaction(s.rail);
     services_->interactions().remove(s.rail);
     services_->surfaces().destroy(s.surface);
+    if (s.dot_surface.valid()) {
+        services_->surfaces().destroy_content_range(s.dot_surface);
+    }
     services_->layout().remove_layout(s.node);
+}
+
+void SliderComponentHost::mount_labels(runtime::ComponentId id, runtime::ComponentBuildContext& build) {
+    auto* s = find(id);
+    for (std::size_t i = s->labels.size(); i < s->marks.size(); ++i) {
+        s->labels.emplace_back();
+        auto& label = s->labels.back();
+        label.text.set(s->marks[i].label);
+        label.component = build.mount_component<int>(0);
+        label.node = build.root(label.component);
+        services_->layout().set_layout(label.node, layout::BoxLayout{});
+        label.interaction =
+            services_->interactions().create({label.component, label.node, s->rail, !s->disabled, false, {}, false});
+        const auto node = label.node;
+        const auto interaction = label.interaction;
+        build.on_resource_cleanup(label.component, [this, node, interaction] {
+            services_->pointer().cancel_interaction(interaction);
+            services_->interactions().remove(interaction);
+            services_->layout().remove_layout(node);
+        });
+        input::InteractionHandlers handlers;
+        handlers.target = [this, id, i](input::PointerDispatchContext& event) {
+            auto* s = find(id);
+            if (!s || i >= s->labels.size()) {
+                return;
+            }
+            auto& label = s->labels[i];
+            const auto result = label.pressable.dispatch(event, label.interaction, !s->disabled);
+            if (!result.activate) {
+                return;
+            }
+            const double value = s->marks[i].value;
+            if (s->range) {
+                if (std::abs(value - s->value.lower) < std::abs(value - s->value.upper)) {
+                    s->active = 0;
+                } else if (std::abs(value - s->value.lower) > std::abs(value - s->value.upper)) {
+                    s->active = 1;
+                }
+            }
+            s->gesture = true;
+            s->candidate = s->value;
+            const auto active = s->active;
+            static_cast<void>(services_->focus().request_focus(s->thumbs[active], input::FocusModality::pointer));
+            change(id, active, value);
+            complete(id);
+        };
+        services_->interactions().set_handlers(interaction, std::move(handlers));
+        const auto fragment =
+            build.register_scene_fragment(label.component, runtime::SceneFragmentPlacement::before_children);
+        services_->scene_composer().set_fragment(fragment, {}, interaction);
+        const auto content = label.text;
+        build.mount_slot_with_semantic_text_style(label.component,
+                                                  Content{[content] { Text(TextProps{}.content(content)); }},
+                                                  label.foreground, label.typography);
+        services_->components().set_branch_active(label.component, !s->marks[i].label.empty());
+    }
+}
+
+void SliderComponentHost::synchronize_labels(runtime::ComponentId id) {
+    auto* s = find(id);
+    std::vector<runtime::ComponentId> removed;
+    for (std::size_t i = s->marks.size(); i < s->labels.size(); ++i) {
+        removed.push_back(s->labels[i].component);
+    }
+    if (!removed.empty()) {
+        s->labels.resize(s->marks.size());
+    }
+    for (auto component : removed) {
+        services_->destroy(component);
+        s = find(id);
+        if (!s) {
+            return;
+        }
+    }
+    if (s->labels.size() < s->marks.size()) {
+        const auto previous = s->labels.size();
+        try {
+            services_->append_slot(
+                id, Content{[this, id] { mount_labels(id, runtime::require_component_build_context()); }});
+        } catch (...) {
+            if (auto* current = find(id)) {
+                current->labels.resize(previous);
+            }
+            throw;
+        }
+    }
+    s = find(id);
+    for (std::size_t i = 0; s && i < s->labels.size(); ++i) {
+        s->labels[i].text.set(s->marks[i].label);
+        if (services_->components().set_branch_active(s->labels[i].component, !s->marks[i].label.empty())) {
+            services_->mark_scene_structure_dirty();
+        }
+    }
+}
+
+void SliderComponentHost::update_hints(runtime::ComponentId id) {
+    auto* s = find(id);
+    if (!s || s->formatting_hint) {
+        return;
+    }
+    const auto count = s->count();
+    for (std::size_t i = 0; i < count; ++i) {
+        s = find(id);
+        if (!s) {
+            return;
+        }
+        const double value = i == 0 ? s->value.lower : s->value.upper;
+        if (s->hinted_values[i] != value) {
+            const auto formatter = s->hint_formatter;
+            String text;
+            s->formatting_hint = true;
+            try {
+                if (formatter) {
+                    text = formatter(value);
+                } else {
+                    std::array<char, 64> buffer;
+                    const auto converted = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+                    if (converted.ec != std::errc{}) {
+                        throw std::runtime_error("Slider value formatting failed");
+                    }
+                    text = String::from_utf8(
+                               std::string_view{buffer.data(), static_cast<std::size_t>(converted.ptr - buffer.data())})
+                               .value();
+                }
+            } catch (...) {
+                if (auto* current = find(id)) {
+                    current->formatting_hint = false;
+                }
+                throw;
+            }
+            s = find(id);
+            if (!s) {
+                return;
+            }
+            s->formatting_hint = false;
+            s->hinted_values[i] = value;
+            s->hint_titles[i].set(std::move(text));
+        }
+        const bool active =
+            !s->disabled && (s->hint.mode == SliderHintMode::Always ||
+                             (s->hint.mode == SliderHintMode::Auto &&
+                              (s->hover[i] || s->focus[i].focus_visible || (s->dragging && s->active == i))));
+        if (!active) {
+            s->hint_dismissed[i] = false;
+        }
+        s->hint_active[i] = active;
+        s->hint_placements[i].set(s->hint.placement);
+        s->hint_open[i].set(active && !s->hint_dismissed[i]);
+    }
 }
 
 void SliderComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect bounds) {
@@ -151,6 +332,14 @@ void SliderComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& e
     }
     const auto& token = services_->components().theme_scope(id)->snapshot().slider();
     const bool vertical = s->orientation == SliderOrientation::Vertical;
+    const float reserve = s->has_labels ? s->label_extent + token.metrics.mark_gap : 0;
+    s->rail_bounds = bounds;
+    if (vertical) {
+        s->rail_bounds.width = std::max(0.0F, bounds.width - reserve);
+    } else {
+        s->rail_bounds.height = std::max(0.0F, bounds.height - reserve);
+    }
+    const auto rail_bounds = s->rail_bounds;
     const float length = vertical ? bounds.height : bounds.width;
     const float inset = std::min(length / 2, handle_extent(token.metrics) / 2);
     const float travel = std::max(0.0F, length - 2 * inset);
@@ -161,12 +350,31 @@ void SliderComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& e
             ratio = 1 - ratio;
         }
         const float offset = inset + travel * static_cast<float>(ratio);
-        s->centers[i] = vertical ? runtime::Point{bounds.x + bounds.width / 2, bounds.y + offset}
-                                 : runtime::Point{bounds.x + offset, bounds.y + bounds.height / 2};
+        s->centers[i] = vertical ? runtime::Point{rail_bounds.x + rail_bounds.width / 2, bounds.y + offset}
+                                 : runtime::Point{bounds.x + offset, rail_bounds.y + rail_bounds.height / 2};
         const float hit =
-            std::min(vertical ? bounds.width : bounds.height, std::max(24.0F, handle_extent(token.metrics)));
-        engine.place_child(s->nodes[i], {s->centers[i].x - hit / 2, s->centers[i].y - hit / 2, hit, hit});
+            std::min(vertical ? rail_bounds.width : rail_bounds.height, std::max(24.0F, handle_extent(token.metrics)));
+        engine.place_child(s->wrappers[i], {s->centers[i].x - hit / 2, s->centers[i].y - hit / 2, hit, hit});
     }
+    for (std::size_t i = 0; i < s->labels.size(); ++i) {
+        const auto node = s->labels[i].node;
+        const auto size = services_->nodes().require(node).measured_size;
+        double ratio = (s->marks[i].value - s->limits.minimum) / (s->limits.maximum - s->limits.minimum);
+        if (slider_inverted(s->orientation, s->reverse)) {
+            ratio = 1 - ratio;
+        }
+        const float offset = inset + travel * static_cast<float>(ratio);
+        const auto rect = vertical ? runtime::Rect{rail_bounds.x + rail_bounds.width + token.metrics.mark_gap,
+                                                   std::clamp(bounds.y + offset - size.height / 2, bounds.y,
+                                                              bounds.y + std::max(0.0F, bounds.height - size.height)),
+                                                   size.width, size.height}
+                                   : runtime::Rect{std::clamp(bounds.x + offset - size.width / 2, bounds.x,
+                                                              bounds.x + std::max(0.0F, bounds.width - size.width)),
+                                                   rail_bounds.y + rail_bounds.height + token.metrics.mark_gap,
+                                                   size.width, size.height};
+        engine.place_child(node, rect);
+    }
+    update_hints(id);
 }
 
 void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
@@ -179,7 +387,7 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
     const auto& m = token.metrics;
     const auto& c = token.colors;
     const bool vertical = s->orientation == SliderOrientation::Vertical;
-    const auto bounds = node.bounds;
+    const auto bounds = s->rail_bounds;
     const float length = vertical ? bounds.height : bounds.width;
     const float inset = std::min(length / 2, handle_extent(m) / 2);
     const float travel = std::max(0.0F, length - 2 * inset);
@@ -195,8 +403,11 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
     const runtime::Rect rail =
         vertical ? runtime::Rect{bounds.x + (bounds.width - m.rail_size) / 2, start, m.rail_size, travel}
                  : runtime::Rect{start, bounds.y + (bounds.height - m.rail_size) / 2, travel, m.rail_size};
-    const runtime::Rect track =
+    runtime::Rect track =
         vertical ? runtime::Rect{rail.x, a, rail.width, b - a} : runtime::Rect{a, rail.y, b - a, rail.height};
+    if (!s->included) {
+        track.width = track.height = 0;
+    }
     const bool hover = !s->disabled && (s->rail_hover || s->dragging || s->hover[0] || s->hover[1]);
     const std::array visuals{quad(rail, hover ? c.rail_hover : c.rail, m.rail_size / 2, node.translation),
                              quad(track,
@@ -205,6 +416,50 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
                                               : c.track,
                                   m.rail_size / 2, node.translation)};
     std::size_t changes = s->surface.valid() ? services_->surfaces().update_surface(s->surface, visuals) : 0;
+    const auto selected = [s](double value) {
+        if (!s->included) {
+            return value == s->value.lower || (s->range && value == s->value.upper);
+        }
+        return value >= (s->range ? s->value.lower : s->limits.minimum) && value <= s->value.upper;
+    };
+    auto& dots = s->dot_quads;
+    dots.resize(s->points.size() * 2);
+    const float dot_line = std::min(m.dot_border_width, m.dot_size / 2);
+    const float dot_inner = m.dot_size - 2 * dot_line;
+    std::size_t dot_index{};
+    for (double value : s->points) {
+        double ratio = (value - s->limits.minimum) / (s->limits.maximum - s->limits.minimum);
+        if (slider_inverted(s->orientation, s->reverse)) {
+            ratio = 1 - ratio;
+        }
+        const float position = start + travel * static_cast<float>(ratio);
+        const auto center = vertical ? runtime::Point{bounds.x + bounds.width / 2, position}
+                                     : runtime::Point{position, bounds.y + bounds.height / 2};
+        dots[dot_index++] = quad({center.x - m.dot_size / 2, center.y - m.dot_size / 2, m.dot_size, m.dot_size},
+                                 s->disabled       ? c.handle_disabled
+                                 : selected(value) ? c.dot_active_border
+                                                   : c.dot_border,
+                                 m.dot_size / 2, node.translation);
+        dots[dot_index++] = quad({center.x - dot_inner / 2, center.y - dot_inner / 2, dot_inner, dot_inner},
+                                 c.dot_background, dot_inner / 2, node.translation);
+    }
+    if (s->dot_surface.valid()) {
+        const auto previous = services_->surfaces().visual_range(s->dot_surface).count;
+        changes += services_->surfaces().update_content_range(s->dot_surface, dots);
+        if (previous != dots.size()) {
+            services_->mark_scene_structure_dirty();
+        }
+    }
+    const auto& theme = services_->components().theme_scope(id)->snapshot();
+    for (std::size_t i = 0; i < s->labels.size(); ++i) {
+        const auto color = s->disabled                   ? c.mark_disabled_text
+                           : selected(s->marks[i].value) ? c.mark_active_text
+                                                         : c.mark_text;
+        s->labels[i].foreground.set({color.red(), color.green(), color.blue(), color.alpha()});
+        s->labels[i].typography.set({theme.typography().font_family, theme.typography().font_weight, false,
+                                     m.mark_font_size, m.mark_line_height});
+        services_->nodes().require(s->labels[i].node).translation = node.translation;
+    }
     for (std::size_t i = 0; i < s->count(); ++i) {
         services_->nodes().require(s->nodes[i]).translation = node.translation;
         const bool active = !s->disabled && (s->hover[i] || s->focus[i].focused || (s->dragging && s->active == i));
@@ -238,6 +493,7 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
     if (geometry) {
         services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
     }
+    update_hints(id);
 }
 
 void SliderComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) {
@@ -528,65 +784,88 @@ struct SliderPropsAccess {
         const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
         const std::array<graphics::QuadInstance, 2> empty{};
         s.surface = services.surfaces().create_surface(id, s.node, fragment, empty, {}, s.rail);
+        const auto dot_fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
+        s.dot_surface = services.surfaces().create_content_range(dot_fragment, {});
         build.mount_slot(id, Content{[&] {
                              auto& nested = runtime::require_component_build_context();
                              for (std::size_t i = 0; i < s.count(); ++i) {
-                                 s.children[i] = nested.mount_component<int>(0);
-                                 s.nodes[i] = nested.root(s.children[i]);
-                                 nested.on_resource_cleanup(s.children[i], [&host, id, i] {
-                                     auto* state = host.find(id);
-                                     if (!state) {
-                                         return;
-                                     }
-                                     state->disposing = true;
-                                     auto& services = *host.services_;
-                                     const auto interaction = state->thumbs[i];
-                                     if (interaction.valid()) {
-                                         services.pointer().cancel_interaction(interaction);
-                                         services.focus().cancel_interaction(interaction);
-                                         services.interactions().remove(interaction);
-                                     }
-                                     if (state->surfaces[i].valid()) {
-                                         services.surfaces().destroy(state->surfaces[i]);
-                                     }
-                                     services.layout().remove_layout(state->nodes[i]);
-                                 });
-                                 services.layout().set_layout(s.nodes[i], layout::LeafLayout{{24, 24}});
-                                 // The host selects the active thumb before assigning pointer focus,
-                                 // including when overlapping hit regions would prefer paint order.
-                                 s.thumbs[i] = services.interactions().create(
-                                     {s.children[i], s.nodes[i], s.rail, !s.disabled, true, {}, false});
-                                 input::InteractionHandlers handlers;
-                                 handlers.target = [&host, id, i](input::PointerDispatchContext& event) {
-                                     host.pointer(id, i, event);
-                                 };
-                                 services.interactions().set_handlers(s.thumbs[i], std::move(handlers));
-                                 input::FocusHandlers focus;
-                                 focus.state_changed = [&host, id, i](input::FocusPresentation value) {
-                                     if (auto* state = host.find(id)) {
-                                         if (state->focus[i].focused && !value.focused && state->key) {
-                                             host.cancel(id);
-                                         }
-                                         state = host.find(id);
-                                         if (!state) {
-                                             return;
-                                         }
-                                         state->focus[i] = value;
-                                         if (value.focused) {
-                                             state->active = i;
-                                         }
-                                         host.update(id, false);
-                                     }
-                                 };
-                                 focus.text_edit = [&host, id, i](const input::KeyboardInputEvent& e) {
-                                     return host.keyboard(id, i, e);
-                                 };
-                                 services.interactions().set_focus_handlers(s.thumbs[i], std::move(focus));
-                                 const auto thumb_fragment = nested.register_scene_fragment(
-                                     s.children[i], runtime::SceneFragmentPlacement::before_children);
-                                 s.surfaces[i] = services.surfaces().create_surface(
-                                     s.children[i], s.nodes[i], thumb_fragment, empty, {}, s.thumbs[i]);
+                                 Tooltip(TooltipProps{}
+                                             .title(s.hint_titles[i])
+                                             .open(s.hint_open[i])
+                                             .placement(s.hint_placements[i])
+                                             .trigger(TooltipTriggerMode::Manual)
+                                             .onOpenChange([&host, id, i](bool open) {
+                                                 if (auto* state = host.find(id); state && !open) {
+                                                     state->hint_dismissed[i] = true;
+                                                     state->hint_open[i].set(false);
+                                                 }
+                                             }),
+                                         TooltipTrigger{[&host, id, i] {
+                                             auto& services = *host.services_;
+                                             auto& nested = runtime::require_component_build_context();
+                                             auto& s = *host.find(id);
+                                             s.children[i] = nested.mount_component<int>(0);
+                                             s.nodes[i] = nested.root(s.children[i]);
+                                             nested.on_resource_cleanup(s.children[i], [&host, id, i] {
+                                                 auto* state = host.find(id);
+                                                 if (!state) {
+                                                     return;
+                                                 }
+                                                 state->disposing = true;
+                                                 auto& services = *host.services_;
+                                                 const auto interaction = state->thumbs[i];
+                                                 if (interaction.valid()) {
+                                                     services.pointer().cancel_interaction(interaction);
+                                                     services.focus().cancel_interaction(interaction);
+                                                     services.interactions().remove(interaction);
+                                                 }
+                                                 if (state->surfaces[i].valid()) {
+                                                     services.surfaces().destroy(state->surfaces[i]);
+                                                 }
+                                                 services.layout().remove_layout(state->nodes[i]);
+                                             });
+                                             services.layout().set_layout(s.nodes[i], layout::LeafLayout{{24, 24}});
+                                             // The host selects the active thumb before assigning pointer focus,
+                                             // including when overlapping hit regions would prefer paint order.
+                                             s.thumbs[i] = services.interactions().create(
+                                                 {s.children[i], s.nodes[i], s.rail, !s.disabled, true, {}, false});
+                                             input::InteractionHandlers handlers;
+                                             handlers.target = [&host, id, i](input::PointerDispatchContext& event) {
+                                                 host.pointer(id, i, event);
+                                             };
+                                             services.interactions().set_handlers(s.thumbs[i], std::move(handlers));
+                                             input::FocusHandlers focus;
+                                             focus.state_changed = [&host, id, i](input::FocusPresentation value) {
+                                                 if (auto* state = host.find(id)) {
+                                                     if (state->focus[i].focused && !value.focused && state->key) {
+                                                         host.cancel(id);
+                                                     }
+                                                     state = host.find(id);
+                                                     if (!state) {
+                                                         return;
+                                                     }
+                                                     state->focus[i] = value;
+                                                     if (value.focused) {
+                                                         state->active = i;
+                                                     }
+                                                     host.update(id, false);
+                                                 }
+                                             };
+                                             focus.text_edit = [&host, id, i](const input::KeyboardInputEvent& e) {
+                                                 return host.keyboard(id, i, e);
+                                             };
+                                             services.interactions().set_focus_handlers(s.thumbs[i], std::move(focus));
+                                             const auto thumb_fragment = nested.register_scene_fragment(
+                                                 s.children[i], runtime::SceneFragmentPlacement::before_children);
+                                             const std::array<graphics::QuadInstance, 2> thumb_empty{};
+                                             s.surfaces[i] = services.surfaces().create_surface(
+                                                 s.children[i], s.nodes[i], thumb_fragment, thumb_empty, {},
+                                                 s.thumbs[i]);
+                                         }});
+                                 const auto wrapper = services.tooltip().mounted().back();
+                                 s.wrappers[i] = services.components().root(wrapper);
                              }
+                             host.mount_labels(id, nested);
                          }});
         services.layout().set_layout(
             s.node,
@@ -595,12 +874,28 @@ struct SliderPropsAccess {
                     auto& state = *host.find(id);
                     const auto& metrics = host.services_->components().theme_scope(id)->snapshot().slider().metrics;
                     for (std::size_t i = 0; i < state.count(); ++i) {
-                        static_cast<void>(engine.measure_child(state.nodes[i], layout::Constraints::fixed(24, 24)));
+                        static_cast<void>(engine.measure_child(state.wrappers[i], layout::Constraints::fixed(24, 24)));
                     }
                     const float cross = std::max(32.0F, handle_extent(metrics));
+                    state.label_extent = 0;
+                    state.has_labels = false;
+                    for (std::size_t i = 0; i < state.labels.size(); ++i) {
+                        const bool visible = !state.marks[i].label.empty();
+                        const auto size = engine.measure_child(
+                            state.labels[i].node, visible
+                                                      ? layout::Constraints{0, limits.max_width, 0, limits.max_height}
+                                                      : layout::Constraints::fixed(0, 0));
+                        if (visible) {
+                            state.has_labels = true;
+                            state.label_extent =
+                                std::max(state.label_extent,
+                                         state.orientation == SliderOrientation::Vertical ? size.width : size.height);
+                        }
+                    }
+                    const float extent = cross + (state.has_labels ? metrics.mark_gap + state.label_extent : 0);
                     return limits.constrain(state.orientation == SliderOrientation::Vertical
-                                                ? runtime::Size{cross, 160}
-                                                : runtime::Size{160, cross});
+                                                ? runtime::Size{extent, 160}
+                                                : runtime::Size{160, extent});
                 },
                 [&host, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect rect) {
                     host.place(id, engine, rect);
@@ -647,6 +942,9 @@ struct SliderPropsAccess {
                 return;
             }
             marks = sorted_slider_marks(std::move(marks), state->limits);
+            if (marks == state->marks) {
+                return;
+            }
             auto points = slider_visual_points(state->limits, marks, state->marks_only, state->dots);
             const auto next = normalize_slider_range(state->raw_value, state->limits, marks, state->marks_only);
             host.cancel(id);
@@ -657,6 +955,7 @@ struct SliderPropsAccess {
             state->marks = std::move(marks);
             state->points = std::move(points);
             state->value = state->candidate = next;
+            host.synchronize_labels(id);
             host.services_->dirty().invalidate(state->node, runtime::DirtyFlags::Measure);
             host.update(id, true);
         });
@@ -716,6 +1015,13 @@ struct SliderPropsAccess {
                     host.services_->focus().cancel_interaction(state->thumbs[i]);
                 }
             }
+            for (auto& label : state->labels) {
+                host.services_->interactions().set_eligible(label.interaction, !disabled);
+                if (disabled) {
+                    host.services_->pointer().cancel_interaction(label.interaction);
+                    static_cast<void>(label.pressable.reset());
+                }
+            }
             host.update(id, false);
         });
         connect_prop(scope, props.keyboard_, [&host, id](bool value) {
@@ -753,6 +1059,8 @@ struct SliderPropsAccess {
                 host.update(id, true);
             },
             [theme] { static_cast<void>(theme->slider_metrics()); });
+        s.fonts = theme->capture([&host, id](theme_runtime::DirtyPhase) { host.update(id, false); },
+                                 [theme] { static_cast<void>(theme->typography_fonts()); });
         host.mounted_.push_back({id, s.node, s.thumbs, s.surface, range});
         host.update(id, true);
     }
