@@ -4,6 +4,7 @@
 #include "runtime/frame_scheduler.hpp"
 #include "runtime/node_store.hpp"
 #include "text/text_engine.hpp"
+#include <ryn/icon.hpp>
 
 #include <array>
 #include <cstddef>
@@ -69,6 +70,8 @@ public:
                                      std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
                                      text::TextLayoutConfig layout);
     [[nodiscard]] font::FontIdentity icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size);
+    [[nodiscard]] font::FontIdentity icon_font(const IconSource& source, font::FontIdentity reference,
+                                               std::uint32_t logical_pixel_size);
     bool destroy(TextSceneId id);
     // Independent retained draw range/material, shared shaping ownership.
     // A view keeps the shaped state alive if its source record is destroyed.
@@ -161,6 +164,15 @@ private:
     };
 
     std::vector<IconFontCache> icon_fonts_;
+
+    struct VectorFontCache final {
+        std::shared_ptr<const IconVectorData> source;
+        std::uint32_t logical_pixel_size{};
+        float display_scale{};
+        font::FontIdentity font;
+    };
+
+    std::vector<VectorFontCache> vector_fonts_;
     text::TextEngine* engine_;
     runtime::FrameRequestState* frame_requests_;
     std::thread::id owner_thread_;

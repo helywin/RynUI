@@ -35,11 +35,13 @@ target_include_directories(rynui_string PUBLIC
 
 add_library(rynui_font STATIC
     font/font_runtime.cpp
+    font/icon_vector_font.cpp
 )
 rynui_configure_cpp_target(rynui_font)
 target_include_directories(rynui_font PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+target_include_directories(rynui_font PRIVATE "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(rynui_font PRIVATE RynUI::FreeType RynUI::HarfBuzz)
 
 if(RYNUI_HAS_SDL_HOST)
@@ -192,6 +194,7 @@ add_library(rynui_components STATIC
     component/input_affix_action.cpp
     component/input_material_transition.cpp
     component/input_display.cpp
+    component/icon_vector.cpp
     component/selection_component.cpp
     component/slider_component.cpp
     component/tooltip_component.cpp

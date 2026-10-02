@@ -19,4 +19,19 @@ Icon(IconProps{}.name(IconName::WalletTwoTone)
 
 `spin(true)` 使用窗口 AnimationRuntime，默认一圈为十个 `motion_unit`（默认一秒）。显式角度与 spin 相加。reduced motion、Theme `motion=false`、`visible(false)`、失活 slot 或窗口失活停止动画并恢复显式角度；恢复有效状态后重新开始。卸载清理所有额外 scene、动画 scope/target，静止图标不保留下一帧 deadline。
 
-本页记录已实现的内置图标入口；typed 自定义向量与 Gallery/真实窗口验收由 change 051 的后续阶段补齐。平台通用测试见 `tests/icon_component_tests.cpp`，窗口/GPU 证据独立记录。
+自定义图标使用不可变 `IconVector`，同样通过 `source` 绑定：
+
+```cpp
+IconVector diamond{
+    IconViewBox{0, 0, 100, 100},
+    {IconPath{IconColorRole::Primary,
+              {IconMove{{50, 0}}, IconLine{{100, 50}}, IconLine{{50, 100}},
+               IconLine{{0, 50}}, IconClose{}}}}};
+Icon(IconProps{}.source(IconSource{diamond}));
+```
+
+命令坐标是 viewBox 内的绝对坐标，y 向下。支持 `IconQuadratic{control, to}` 和 `IconCubic{control1, control2, to}`；每个 contour 必须以 Move 开始、包含绘制段并以 Close 结束。填充使用 nonzero winding，孔洞由反向 contour 表达。非正方形 viewBox 保持比例并在 em 方框中居中。每个 path 的 primary/secondary 角色与 0–1 opacity 按原顺序绘制。
+
+构造时完整校验：1–64 paths、总计至多 4096 commands、有限正 viewBox、有限可表示坐标、合法轮廓/角色/透明度；生成字体至多 2 MiB。极端坐标超出 Type2 16.16 范围时抛出 `std::invalid_argument`。向量在构造后只读，复制共享来源身份；相同来源/字号/density 共享窗口字体缓存。内置/自定义 source 切换仍保留 Icon Component/root 与共同 layer 前缀；窗口 TextSceneService 销毁时释放缓存的字体 bytes、FreeType faces 和 shaping 资源。
+
+内存字体依据 [Adobe CFF](https://adobe-type-tools.github.io/font-tech-notes/pdfs/5176.CFF.pdf)、[Type2](https://adobe-type-tools.github.io/font-tech-notes/pdfs/5177.Type2.pdf) 和 [OpenType 字体表合同](https://learn.microsoft.com/en-us/typography/opentype/spec/otff) 构造，Quadratic 转换为 Cubic；运行时不依赖外部生成工具。平台通用测试见 `tests/icon_component_tests.cpp` 和 `tests/icon_vector_tests.cpp`；Gallery/真实窗口验收由 change 051 后续阶段独立记录。

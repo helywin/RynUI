@@ -14,7 +14,7 @@
 
 ## 4. Typed 自定义向量（平台通用）
 
-- [ ] 4.1 实现不可变 viewBox 与 Move/Line/Quadratic/Cubic/Close/color role 向量、确定性内存 CFF/OpenType 构造与共同 font cache/lifetime；校验 64 paths/layers、4096 commands、2 MiB 上限。加入真实 FreeType load/shape/raster、贝塞尔/holes、非法输入回滚、内置/自定义切换与 DPI/销毁测试，文档与 HEADLESS D/R/格式/OpenSpec/diff 通过后提交。
+- [x] 4.1 实现不可变 viewBox 与 Move/Line/Quadratic/Cubic/Close/color role 向量、确定性内存 CFF/OpenType 构造与共同 font cache/lifetime；校验 64 paths/layers、4096 commands、2 MiB 上限。加入真实 FreeType load/shape/raster、贝塞尔/holes、非法输入回滚、内置/自定义切换与 DPI/销毁测试，文档与 HEADLESS D/R/格式/OpenSpec/diff 通过后提交。
 
 ## 5. 集成（平台通用）
 

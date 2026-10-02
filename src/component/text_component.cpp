@@ -4,6 +4,7 @@
 #include "component/typography_component.hpp"
 #include "component/window_component_services.hpp"
 #include "icons/bundled_icon_catalog.hpp"
+#include "icons/icon_vector_data.hpp"
 #include "theme/semantic_background.hpp"
 #include "animation/motion_policy.hpp"
 #include "runtime/layout_style_adapter.hpp"
@@ -451,10 +452,11 @@ void TextComponentHost::set_icon_source(runtime::ComponentId component, IconSour
         return;
     }
     const auto name = source.bundled_name();
-    if (!name) {
-        throw std::invalid_argument("Icon source has no bundled name");
+    const auto& vector = IconSourceAccess::vector(source);
+    if (!name && !vector) {
+        throw std::invalid_argument("Icon source has no vector or bundled name");
     }
-    const auto layers = bundled_layers(*name);
+    const auto layers = name ? bundled_layers(*name) : std::span<const BundledIconLayer>{vector->layers};
     auto& icon = *state->icon;
     if (icon.source == source && !icon.layers.empty()) {
         return;
@@ -462,7 +464,7 @@ void TextComponentHost::set_icon_source(runtime::ComponentId component, IconSour
     const auto node = components_.root(component);
     auto chain = resolve_fonts(state->resolved_typography);
     const auto pixels = static_cast<std::uint32_t>(std::lround(state->resolved_typography.font_size));
-    chain = {text_scene_->icon_font(chain.front(), pixels)};
+    chain = {text_scene_->icon_font(source, chain.front(), pixels)};
     std::vector<IconLayerState> next;
     next.reserve(layers.size());
     std::vector<TextSceneId> created;
@@ -493,9 +495,11 @@ void TextComponentHost::set_icon_source(runtime::ComponentId component, IconSour
     }
     icon.source = std::move(source);
     icon.layers = std::move(next);
-    icon.two_tone = bundled_icon_entry(*name).name.ends_with("TwoTone");
+    icon.two_tone = name ? bundled_icon_entry(*name).name.ends_with("TwoTone")
+                         : std::ranges::any_of(layers, &BundledIconLayer::secondary);
     for (std::size_t index = 0; index < icon.layers.size(); ++index) {
         const auto& layer = icon.layers[index];
+        static_cast<void>(text_scene_->set_font_chain(layer.scene, chain));
         static_cast<void>(
             text_scene_->set_content(layer.scene, icon.visible ? icon_glyph_content(layer.layer.codepoint) : String{}));
         static_cast<void>(text_scene_->set_opacity(layer.scene, layer.layer.opacity));
@@ -1068,8 +1072,8 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
             throw std::runtime_error("Theme font resolver returned an empty chain");
         }
         if (state->icon_font) {
-            chain = {
-                text_scene_->icon_font(chain.front(), static_cast<std::uint32_t>(std::lround(typography.font_size)))};
+            chain = {text_scene_->icon_font(state->icon ? state->icon->source : IconSource{}, chain.front(),
+                                            static_cast<std::uint32_t>(std::lround(typography.font_size)))};
         }
         if (state->icon) {
             for (const auto& layer : state->icon->layers) {
@@ -1107,7 +1111,8 @@ bool TextComponentHost::apply_typography(runtime::ComponentId component, runtime
         throw std::runtime_error("Theme font resolver returned an empty chain");
     }
     if (state->icon_font) {
-        chain = {text_scene_->icon_font(chain.front(), static_cast<std::uint32_t>(std::lround(typography.font_size)))};
+        chain = {text_scene_->icon_font(state->icon ? state->icon->source : IconSource{}, chain.front(),
+                                        static_cast<std::uint32_t>(std::lround(typography.font_size)))};
     }
     const bool font_selection_changed = state->resolved_typography.font_family != typography.font_family ||
                                         state->resolved_typography.font_weight != typography.font_weight ||
@@ -1125,7 +1130,7 @@ bool TextComponentHost::apply_typography(runtime::ComponentId component, runtime
     if (state->icon) {
         auto icon_chain = resolve_fonts(typography);
         const auto pixels = static_cast<std::uint32_t>(std::lround(typography.font_size));
-        icon_chain = {text_scene_->icon_font(icon_chain.front(), pixels)};
+        icon_chain = {text_scene_->icon_font(state->icon->source, icon_chain.front(), pixels)};
         for (const auto& layer : state->icon->layers) {
             if (layer.scene != state->scene) {
                 static_cast<void>(text_scene_->set_font_chain(layer.scene, icon_chain));
@@ -1396,10 +1401,12 @@ void mount_icon_component(const IconProps& props) {
     auto& host = *active_text_host;
     const auto source = IconPropsAccess::source(props) ? read_prop(*IconPropsAccess::source(props))
                                                        : IconSource{read_prop(IconPropsAccess::name(props))};
-    if (!source.bundled_name()) {
+    if (!source.bundled_name() && !IconSourceAccess::vector(source)) {
         throw std::invalid_argument("Icon source is invalid");
     }
-    static_cast<void>(bundled_icon_entry(*source.bundled_name()));
+    if (source.bundled_name()) {
+        static_cast<void>(bundled_icon_entry(*source.bundled_name()));
+    }
     const auto angle = read_prop(IconPropsAccess::rotate(props));
     if (!std::isfinite(angle)) {
         throw std::invalid_argument("Icon rotation must be finite");

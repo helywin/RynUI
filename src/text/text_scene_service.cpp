@@ -1,6 +1,7 @@
 #include "text/text_scene_service.hpp"
 
 #include "icons/ant_design_icon_font.inc"
+#include "icons/icon_vector_data.hpp"
 #include "text/text_caret_map.hpp"
 
 #include <algorithm>
@@ -62,7 +63,54 @@ TextSceneService::TextSceneService(font::FontRuntime& fonts, text::TextEngine& e
                                    runtime::FrameRequestState& frame_requests) noexcept
     : fonts_(&fonts), engine_(&engine), frame_requests_(&frame_requests), owner_thread_(std::this_thread::get_id()) {}
 
-TextSceneService::~TextSceneService() = default;
+TextSceneService::~TextSceneService() {
+    // FontRuntime outlives this service; raster/cache resources belong to the
+    // window text service, including custom sources no longer mounted.
+    for (const auto& cached : vector_fonts_) {
+        static_cast<void>(fonts_->remove_font(cached.font));
+    }
+    for (const auto& cached : icon_fonts_) {
+        static_cast<void>(fonts_->remove_font(cached.font));
+    }
+}
+
+font::FontIdentity TextSceneService::icon_font(const IconSource& source, font::FontIdentity reference,
+                                               std::uint32_t logical_pixel_size) {
+    ensure_owner_thread();
+    if (source.bundled_name()) {
+        static_cast<void>(bundled_icon_entry(*source.bundled_name()));
+        return icon_font(reference, logical_pixel_size);
+    }
+    const auto& vector = IconSourceAccess::vector(source);
+    if (!vector || vector->font_bytes.empty() || logical_pixel_size == 0) {
+        throw std::invalid_argument("Icon vector source or pixel size is invalid");
+    }
+    const auto metrics = fonts_->metrics(reference);
+    if (!metrics) {
+        throw std::runtime_error("Icon vector reference font is invalid: " + metrics.error.diagnostic);
+    }
+    const auto scale = metrics.metrics.display_scale;
+    for (const auto& cached : vector_fonts_) {
+        if (cached.source == vector && cached.logical_pixel_size == logical_pixel_size &&
+            cached.display_scale == scale) {
+            return cached.font;
+        }
+    }
+    font::FontRasterConfig raster{logical_pixel_size, scale};
+    raster.policy.hinting = false;
+    raster.policy.embedded_bitmap = false;
+    const auto result = fonts_->load_font_bytes(vector->font_bytes, 0, raster);
+    if (!result) {
+        throw std::runtime_error("Cannot load typed Icon vector: " + result.error.diagnostic);
+    }
+    try {
+        vector_fonts_.push_back({vector, logical_pixel_size, scale, result.font});
+    } catch (...) {
+        static_cast<void>(fonts_->remove_font(result.font));
+        throw;
+    }
+    return result.font;
+}
 
 font::FontIdentity TextSceneService::icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size) {
     ensure_owner_thread();
@@ -89,7 +137,12 @@ font::FontIdentity TextSceneService::icon_font(font::FontIdentity reference, std
     if (!result) {
         throw std::runtime_error("Cannot load embedded Ant Design icons: " + result.error.diagnostic);
     }
-    icon_fonts_.push_back({logical_pixel_size, display_scale, result.font});
+    try {
+        icon_fonts_.push_back({logical_pixel_size, display_scale, result.font});
+    } catch (...) {
+        static_cast<void>(fonts_->remove_font(result.font));
+        throw;
+    }
     return result.font;
 }
 
