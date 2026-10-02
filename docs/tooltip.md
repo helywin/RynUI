@@ -20,4 +20,21 @@ ryn::Tooltip(ryn::TooltipProps{}
 
 视觉只使用 `ThemeConfig::tooltip`：background、text、max_width、padding_inline/block、min_height、border_radius、arrow_size、gap、shadow、z_index_popup。默认 max_width=250、zIndexPopupBase+70；支持 Default/Dark/Compact、继承、组件 seed/algorithm 和显式 token。纯颜色只更新 material，指标或字号改变才重新测量提示；极小窗口限制 padding、圆角和尺寸。
 
-本组件是基础文字提示。富内容 title slot、click/context-menu trigger、箭头 pointAtCenter 等扩展尚未提供；DOM、CSS、portal container 等 Web 专用 API 不移植。基线来自锁定 [Ant Design 6.6.5 Tooltip API](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/shared/sharedProps.en-US.md) 和 [style](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/style/index.ts)。实施及各平台实际验收见 [040 清单](../openspec/changes/040-20261002-add-tooltip-overlay-foundation/tasks.md)，现有组件的原生收尾范围见 [组件收尾](component-completion.md)。
+`Click` 在 trigger 同一后代完成 primary click 后切换提示，保留 Button 激活、focus 和 capture；拖到外部释放不切换。`ContextMenu` 在 trigger 内 secondary release 打开，锚点固定为该次指针位置。窗口外部控件或空白处 primary/secondary down 关闭动作提示；popup 内部不按外部处理。受控连续点击在未回写时仍可请求 true/false。Escape、失焦和 reactive trigger 配置改变清除动作锁存，保持原有子控件交互。
+
+`triggers(Prop<TooltipTriggers>)` 组合 `hover`、`focus`、`click`、`context_menu`（默认 struct 字段均 false，空组合手动），与显式 `trigger()` 互斥。组合中点击关闭后，仍在 hover/focus 时保持关闭，离开全部自动触发状态后再允许自动打开。
+
+富标题使用 `Tooltip(props, TooltipTrigger{...}, TooltipTitle{...})`，与显式 String `title()` 互斥。标题可组合 Text/Icon/Flex，继承提示 foreground/typography，挂载一次；内部 reactive 变化只调整自身浮层尺寸。`titleAvailable(Prop<bool>)` 默认 true，表示富标题是否有可显示内容；为 false 时取消显示和 deadline。关闭保留标题 state，销毁/挂载异常完整清理。
+
+```cpp
+ryn::Tooltip(ryn::TooltipProps{}.trigger(ryn::TooltipTriggerMode::Click),
+    ryn::TooltipTrigger{[] { ryn::Text(u8"查看说明"); }},
+    ryn::TooltipTitle{[] {
+        ryn::Flex(ryn::FlexProps{}.vertical(true), ryn::FlexContent{[] {
+            ryn::Text(u8"支持组合的原生标题");
+            ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined));
+        }});
+    }});
+```
+
+箭头 pointAtCenter/精确 glyph 在 043 下一阶段实现。DOM、CSS、portal container 等 Web 专用 API 不移植。基线来自锁定 [Ant Design 6.6.5 Tooltip API](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/shared/sharedProps.en-US.md) 和 [style](https://github.com/ant-design/ant-design/blob/6.6.5/components/tooltip/style/index.ts)。实际阶段与平台验收见 [040 清单](../openspec/changes/040-20261002-add-tooltip-overlay-foundation/tasks.md)、[043 清单](../openspec/changes/043-20261002-complete-native-tooltip-interactions/tasks.md)，已有组件的原生收尾范围见 [组件收尾](component-completion.md)。

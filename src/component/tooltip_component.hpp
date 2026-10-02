@@ -18,7 +18,7 @@ class TooltipComponentHost final : public WindowComponentParticipant {
 public:
     explicit TooltipComponentHost(WindowComponentServices& services);
     ~TooltipComponentHost();
-    void mount(const TooltipProps& props, const TooltipTrigger& trigger);
+    void mount(const TooltipProps& props, const TooltipTrigger& trigger, const TooltipTitle* title = nullptr);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -35,6 +35,8 @@ public:
 
     void on_window_active(bool active) override;
     bool on_keyboard_input(const input::KeyboardInputEvent& event) override;
+    void on_pointer_input(const input::PointerInputEvent& event, std::optional<input::InteractionId> hit,
+                          std::optional<input::InteractionId> origin) override;
     void position_window_layers(runtime::Size viewport, runtime::Rect clip) override;
     void synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) override;
     std::size_t tick_auxiliary(animation::AnimationTime time) override;

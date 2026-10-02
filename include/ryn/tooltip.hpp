@@ -29,16 +29,35 @@ enum class TooltipPlacement {
     RightBottom
 };
 
-enum class TooltipTriggerMode { Manual, Hover, Focus, HoverFocus };
+enum class TooltipTriggerMode { Manual, Hover, Focus, HoverFocus, Click, ContextMenu };
+
+struct TooltipTriggers final {
+    bool hover{};
+    bool focus{};
+    bool click{};
+    bool context_menu{};
+
+    friend bool operator==(const TooltipTriggers&, const TooltipTriggers&) = default;
+};
 
 struct TooltipTriggerSlot final {};
 
 using TooltipTrigger = SlotContent<TooltipTriggerSlot>;
 
+struct TooltipTitleSlot final {};
+
+using TooltipTitle = SlotContent<TooltipTitleSlot>;
+
 class TooltipProps final {
 public:
     TooltipProps& title(Prop<String> value) {
         title_ = std::move(value);
+        explicit_title_ = true;
+        return *this;
+    }
+
+    TooltipProps& titleAvailable(Prop<bool> value) {
+        available_ = std::move(value);
         return *this;
     }
 
@@ -64,6 +83,12 @@ public:
 
     TooltipProps& trigger(Prop<TooltipTriggerMode> value) {
         trigger_ = std::move(value);
+        explicit_trigger_ = true;
+        return *this;
+    }
+
+    TooltipProps& triggers(Prop<TooltipTriggers> value) {
+        triggers_ = std::move(value);
         return *this;
     }
 
@@ -100,11 +125,15 @@ public:
 private:
     friend class detail::TooltipComponentHost;
     Prop<String> title_{String{}};
+    bool explicit_title_{};
+    Prop<bool> available_{true};
     std::optional<Prop<bool>> open_;
     std::optional<bool> default_open_;
     Prop<bool> disabled_{false};
     Prop<TooltipPlacement> placement_{TooltipPlacement::Top};
     Prop<TooltipTriggerMode> trigger_{TooltipTriggerMode::HoverFocus};
+    bool explicit_trigger_{};
+    std::optional<Prop<TooltipTriggers>> triggers_;
     Prop<bool> arrow_{true};
     Prop<bool> adjust_{true};
     Prop<Duration> enter_{Duration::milliseconds(100)};
@@ -114,4 +143,5 @@ private:
 };
 
 void Tooltip(TooltipProps props, TooltipTrigger trigger);
+void Tooltip(TooltipProps props, TooltipTrigger trigger, TooltipTitle title);
 } // namespace ryn

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -89,11 +90,14 @@ struct PointerRouterDiagnostics final {
 
 class PointerRouter final {
 public:
+    using Observer =
+        std::function<void(const PointerInputEvent&, std::optional<InteractionId>, std::optional<InteractionId>)>;
     PointerRouter(InteractionRegistry& registry, HitTestSnapshot& hit_test,
                   runtime::FrameRequestState* frames = nullptr, FocusManager* focus = nullptr) noexcept;
 
     void reserve(std::size_t pointer_capacity, std::size_t route_capacity);
     void dispatch(const PointerInputEvent& event);
+    void set_observer(Observer observer);
     void cancel_all();
     void cancel_interaction(InteractionId interaction);
     void cancel_pointer_interaction(InteractionId interaction);
@@ -146,6 +150,7 @@ private:
     std::vector<InteractionId> previous_hover_scratch_;
     std::size_t route_capacity_{0};
     PointerRouterDiagnostics diagnostics_;
+    Observer observer_;
     bool dispatching_{false};
     bool frame_requested_during_dispatch_{false};
 };

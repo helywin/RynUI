@@ -100,10 +100,13 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
         pointer->position = {event.x, event.y};
         sanitize_before_dispatch(*pointer, event);
 
-        const auto actual_target = event.action == PointerAction::cancel ? std::optional<InteractionId>{}
-                                                                         : hit_test_->hit_test(pointer->position);
+        auto actual_target = event.action == PointerAction::cancel ? std::optional<InteractionId>{}
+                                                                   : hit_test_->hit_test(pointer->position);
         if (event.action != PointerAction::cancel) {
             update_hover(*pointer, actual_target, event);
+        }
+        if (actual_target && !registry_->find(*actual_target)) {
+            actual_target.reset();
         }
         const auto kind = event_kind(event.action);
 
@@ -126,6 +129,14 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
             dispatch_route(*pointer, event, kind, *route_target, actual_target);
         }
 
+        if (actual_target && !registry_->find(*actual_target)) {
+            actual_target.reset();
+        }
+        const auto observer = observer_;
+        if (observer) {
+            observer(event, actual_target, pointer->press_origin);
+        }
+
         if (event.action == PointerAction::up && event.button == PointerButton::primary) {
             clear_primary_state(*pointer, false);
             if (event.pointer.device == PointerDevice::touch) {
@@ -144,6 +155,13 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
         dispatching_ = false;
         throw;
     }
+}
+
+void PointerRouter::set_observer(Observer observer) {
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("PointerRouter observer can only be set on its owner thread");
+    }
+    observer_ = std::move(observer);
 }
 
 void PointerRouter::cancel_all() {

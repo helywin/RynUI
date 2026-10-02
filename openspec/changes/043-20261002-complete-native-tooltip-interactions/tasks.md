@@ -6,7 +6,7 @@
 
 ## 2. 富标题与指针动作（平台通用）
 
-- [ ] 2.1 实现 retained TooltipTitle/titleAvailable、Click/ContextMenu/组合 trigger 与共用 post-route observer，保持受控请求、外部关闭、capture/focus 和 destructive callbacks；补 mount rollback、rich reactive geometry、空白/嵌套/disabled/重复请求/重入合同与 API 文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录 evidence 并提交。
+- [x] 2.1 实现 retained TooltipTitle/titleAvailable、Click/ContextMenu/组合 trigger 与共用 post-route observer，保持受控请求、外部关闭、capture/focus 和 destructive callbacks；补 mount rollback、rich reactive geometry、空白/嵌套/disabled/重复请求/重入合同与 API 文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录 evidence 并提交。
 
 ## 3. 箭头合同（平台通用）
 

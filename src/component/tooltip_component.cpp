@@ -21,6 +21,8 @@ struct TooltipState final {
     Signal<runtime::SemanticForeground> foreground{{1, 1, 1, 1}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
     bool controlled{};
+    bool rich_title{};
+    bool available{true};
     bool open{};
     bool disabled{};
     bool hovered{};
@@ -28,6 +30,8 @@ struct TooltipState final {
     bool dismissed{};
     bool arrow{true};
     bool adjust{true};
+    bool action_open{};
+    std::optional<runtime::Point> context_anchor;
     bool needs_measure{true};
     std::optional<bool> requested;
     std::optional<animation::AnimationTime> deadline;
@@ -36,6 +40,7 @@ struct TooltipState final {
     Duration leave;
     TooltipPlacement placement{TooltipPlacement::Top};
     TooltipTriggerMode mode{TooltipTriggerMode::HoverFocus};
+    TooltipTriggers triggers{true, true, false, false};
     TooltipSnapshot geometry;
     runtime::Size viewport;
     runtime::Size popup_size;
@@ -54,9 +59,20 @@ void validate_placement(TooltipPlacement placement) {
 }
 
 void validate_mode(TooltipTriggerMode mode) {
-    if (mode < TooltipTriggerMode::Manual || mode > TooltipTriggerMode::HoverFocus) {
+    if (mode < TooltipTriggerMode::Manual || mode > TooltipTriggerMode::ContextMenu) {
         throw std::invalid_argument("Tooltip trigger mode is invalid");
     }
+}
+
+TooltipTriggers trigger_actions(TooltipTriggerMode mode) {
+    validate_mode(mode);
+    return {mode == TooltipTriggerMode::Hover || mode == TooltipTriggerMode::HoverFocus,
+            mode == TooltipTriggerMode::Focus || mode == TooltipTriggerMode::HoverFocus,
+            mode == TooltipTriggerMode::Click, mode == TooltipTriggerMode::ContextMenu};
+}
+
+bool has_title(const TooltipState& state) {
+    return state.available && (state.rich_title || !state.title.get().empty());
 }
 
 void validate_delay(Duration delay) {
@@ -66,6 +82,9 @@ void validate_delay(Duration delay) {
 }
 
 bool descendant(WindowComponentServices& services, runtime::ComponentId child, runtime::ComponentId ancestor) {
+    if (!services.components().contains(child) || !services.components().contains(ancestor)) {
+        return false;
+    }
     for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
         if (*current == ancestor) {
             return true;
@@ -180,7 +199,7 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
     if (!state) {
         return;
     }
-    const bool visible = state->open && !state->disabled && !state->title.get().empty() && window_active_;
+    const bool visible = state->open && !state->disabled && has_title(*state) && window_active_;
     if (state->geometry.visible != visible) {
         state->geometry.visible = visible;
         state->needs_measure = visible;
@@ -188,8 +207,10 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
         services_->mark_scene_structure_dirty();
         services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
     }
-    if (!window_active_ || state->disabled || state->title.get().empty()) {
+    if (!window_active_ || state->disabled || !has_title(*state)) {
         state->deadline.reset();
+        state->action_open = false;
+        state->context_anchor.reset();
     }
 }
 
@@ -225,16 +246,14 @@ void TooltipComponentHost::observe(runtime::ComponentId id, animation::Animation
     const bool keyboard_focus = focused && focus.modality == input::FocusModality::keyboard &&
                                 descendant(*services_, focused->component, state->component);
     const bool desire =
-        ((state->mode == TooltipTriggerMode::Hover || state->mode == TooltipTriggerMode::HoverFocus) &&
-         state->hovered) ||
-        ((state->mode == TooltipTriggerMode::Focus || state->mode == TooltipTriggerMode::HoverFocus) && keyboard_focus);
+        state->action_open || (state->triggers.hover && state->hovered) || (state->triggers.focus && keyboard_focus);
     if (!desire) {
         state->dismissed = false;
     }
     if (desire != state->observed) {
         state->observed = desire;
         state->deadline.reset();
-        if (!state->disabled && !state->title.get().empty() && window_active_ && !state->dismissed) {
+        if (!state->disabled && has_title(*state) && window_active_ && !state->dismissed) {
             const auto delay = desire && keyboard_focus ? Duration{} : desire ? state->enter : state->leave;
             const auto micros = static_cast<animation::AnimationTime::rep>(delay.count_milliseconds() * 1000.0);
             const auto now = time.count_microseconds();
@@ -292,6 +311,8 @@ void TooltipComponentHost::on_window_active(bool active) {
                 state->hovered = false;
                 state->dismissed = true;
                 state->observed = false;
+                state->action_open = false;
+                state->context_anchor.reset();
             }
             request_open(id, false);
         }
@@ -308,11 +329,64 @@ bool TooltipComponentHost::on_keyboard_input(const input::KeyboardInputEvent& ev
         if (state && (state->geometry.visible || (state->deadline && state->pending_open))) {
             const auto id = *it;
             state->dismissed = true;
+            state->action_open = false;
+            state->context_anchor.reset();
             request_open(id, false);
             return true;
         }
     }
     return false;
+}
+
+void TooltipComponentHost::on_pointer_input(const input::PointerInputEvent& event,
+                                            std::optional<input::InteractionId> hit,
+                                            std::optional<input::InteractionId> origin) {
+    if (event.action != input::PointerAction::down && event.action != input::PointerAction::up) {
+        return;
+    }
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        auto* state = services_->components().state<TooltipState>(id);
+        if (!state || state->disabled || !has_title(*state) || !window_active_ ||
+            (!state->triggers.click && !state->triggers.context_menu)) {
+            continue;
+        }
+        const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
+        const bool in_trigger = record && descendant(*services_, record->component, state->trigger);
+        const bool on_wrapper = hit == state->interaction;
+        const auto bounds = state->geometry.bounds;
+        const bool in_popup = state->geometry.visible && event.x >= bounds.x && event.y >= bounds.y &&
+                              event.x < bounds.x + bounds.width && event.y < bounds.y + bounds.height;
+        if (event.action == input::PointerAction::down &&
+            (event.button == input::PointerButton::primary || event.button == input::PointerButton::secondary) &&
+            !in_trigger && !on_wrapper && !in_popup) {
+            if (state->open || state->action_open || state->requested == true) {
+                state->action_open = false;
+                state->context_anchor.reset();
+                state->dismissed = true;
+                request_open(id, false);
+            }
+            continue;
+        }
+        if (event.action != input::PointerAction::up || (!in_trigger && !on_wrapper)) {
+            continue;
+        }
+        if (event.button == input::PointerButton::primary && state->triggers.click && hit && origin == hit) {
+            const bool next = !state->requested.value_or(state->open);
+            state->action_open = next;
+            state->observed = next;
+            state->dismissed = !next;
+            state->context_anchor.reset();
+            request_open(id, next);
+        } else if (event.button == input::PointerButton::secondary && state->triggers.context_menu) {
+            state->context_anchor = runtime::Point{event.x, event.y};
+            state->action_open = true;
+            state->observed = true;
+            state->dismissed = false;
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+            request_open(id, true);
+        }
+    }
 }
 
 void TooltipComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
@@ -334,9 +408,12 @@ void TooltipComponentHost::update_theme(runtime::ComponentId id, bool geometry) 
     services_->dirty().invalidate(state->node, runtime::DirtyFlags::Material);
 }
 
-void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger& trigger) {
+void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger& trigger, const TooltipTitle* title) {
     if (props.open_ && props.default_open_) {
         throw std::invalid_argument("Tooltip cannot combine open and defaultOpen");
+    }
+    if ((title && props.explicit_title_) || (props.triggers_ && props.explicit_trigger_)) {
+        throw std::invalid_argument("Tooltip title or trigger declarations conflict");
     }
     validate_placement(read_prop(props.placement_));
     validate_mode(read_prop(props.trigger_));
@@ -349,11 +426,14 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
     state.component = id;
     state.node = build.root(id);
     state.controlled = props.open_.has_value();
+    state.rich_title = title != nullptr;
+    state.available = read_prop(props.available_);
     state.open = props.open_ ? read_prop(*props.open_) : props.default_open_.value_or(false);
     state.disabled = read_prop(props.disabled_);
     state.title.set(read_prop(props.title_));
     state.placement = read_prop(props.placement_);
     state.mode = read_prop(props.trigger_);
+    state.triggers = props.triggers_ ? read_prop(*props.triggers_) : trigger_actions(state.mode);
     state.arrow = read_prop(props.arrow_);
     state.adjust = read_prop(props.adjust_);
     state.enter = read_prop(props.enter_);
@@ -395,6 +475,16 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
             services.layout().set_layout(popup_node, layout::BoxLayout{});
             services.components().set_window_layer(state.popup,
                                                    build.theme_scope()->snapshot().tooltip().z_index_popup);
+            const auto popup_interaction =
+                services.interactions().create({state.popup, popup_node, {}, true, false, {}, false});
+            const auto popup_hit =
+                children.register_scene_fragment(state.popup, runtime::SceneFragmentPlacement::before_children);
+            services.scene_composer().set_fragment(popup_hit, {}, popup_interaction);
+            children.on_resource_cleanup(state.popup, [&services, popup_hit, popup_interaction] {
+                services.pointer().cancel_interaction(popup_interaction);
+                services.interactions().remove(popup_interaction);
+                services.scene_composer().remove_fragment(popup_hit);
+            });
             const auto body =
                 children.register_scene_fragment(state.popup, runtime::SceneFragmentPlacement::before_children);
             graphics::QuadInstance initial;
@@ -412,10 +502,11 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
                                              services.surfaces().destroy_content_range(arrow_id);
                                              services.layout().remove_layout(popup_node);
                                          });
-            children.mount_slot_with_semantic_text_style(
-                state.popup, Content{[&state] { ryn::Text(TextProps{}.content(state.title)); }},
-                Prop<runtime::SemanticForeground>{state.foreground},
-                Prop<runtime::SemanticTypography>{state.typography});
+            const Content title_content = title ? Content{SlotContentAccess::function(*title)}
+                                                : Content{[&state] { ryn::Text(TextProps{}.content(state.title)); }};
+            children.mount_slot_with_semantic_text_style(state.popup, title_content,
+                                                         Prop<runtime::SemanticForeground>{state.foreground},
+                                                         Prop<runtime::SemanticTypography>{state.typography});
         }});
     services.components().set_branch_active(state.popup, false);
     services.layout().set_layout(
@@ -435,6 +526,13 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
         if (auto* state = services_->components().state<TooltipState>(id)) {
             state->title.set(std::move(value));
             state->needs_measure = true;
+            synchronize_visibility(id);
+        }
+    });
+    connect_prop(scope, props.available_, [this, id](bool value) {
+        if (auto* state = services_->components().state<TooltipState>(id)) {
+            state->available = value;
+            state->observed = false;
             synchronize_visibility(id);
         }
     });
@@ -461,15 +559,40 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
             services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
         }
     });
-    connect_prop(scope, props.trigger_, [this, id](TooltipTriggerMode value) {
-        validate_mode(value);
-        if (auto* state = services_->components().state<TooltipState>(id)) {
-            state->mode = value;
-            state->observed = false;
-            state->deadline.reset();
-            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
-        }
-    });
+    if (!props.triggers_) {
+        connect_prop(scope, props.trigger_, [this, id](TooltipTriggerMode value) {
+            validate_mode(value);
+            if (auto* state = services_->components().state<TooltipState>(id)) {
+                if (state->triggers == trigger_actions(value)) {
+                    return;
+                }
+                state->mode = value;
+                state->triggers = trigger_actions(value);
+                state->action_open = false;
+                state->context_anchor.reset();
+                state->observed = false;
+                state->deadline.reset();
+                services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+                request_open(id, false);
+            }
+        });
+    }
+    if (props.triggers_) {
+        connect_prop(scope, *props.triggers_, [this, id](TooltipTriggers value) {
+            if (auto* state = services_->components().state<TooltipState>(id)) {
+                if (state->triggers == value) {
+                    return;
+                }
+                state->triggers = value;
+                state->action_open = false;
+                state->context_anchor.reset();
+                state->observed = false;
+                state->deadline.reset();
+                services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+                request_open(id, false);
+            }
+        });
+    }
     connect_prop(scope, props.arrow_, [this, id](bool value) {
         if (auto* state = services_->components().state<TooltipState>(id)) {
             state->arrow = value;
@@ -547,6 +670,9 @@ void TooltipComponentHost::position_window_layers(runtime::Size viewport, runtim
         auto anchor = node.bounds;
         anchor.x += node.translation.x;
         anchor.y += node.translation.y;
+        if (state->context_anchor) {
+            anchor = {state->context_anchor->x, state->context_anchor->y, 0, 0};
+        }
         state->geometry = position_tooltip(anchor, state->popup_size, clip, state->placement,
                                            token.gap + (state->arrow ? token.arrow_size : 0), state->adjust);
         const auto& current = services_->nodes().require(popup);
@@ -631,5 +757,12 @@ void Tooltip(TooltipProps props, TooltipTrigger trigger) {
         throw std::logic_error("Tooltip requires window component services");
     }
     detail::active_tooltips->mount(props, trigger);
+}
+
+void Tooltip(TooltipProps props, TooltipTrigger trigger, TooltipTitle title) {
+    if (!detail::active_tooltips) {
+        throw std::logic_error("Tooltip requires window component services");
+    }
+    detail::active_tooltips->mount(props, trigger, &title);
 }
 } // namespace ryn

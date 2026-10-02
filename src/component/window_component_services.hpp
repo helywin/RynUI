@@ -45,6 +45,9 @@ public:
         return false;
     }
 
+    virtual void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
+                                  std::optional<input::InteractionId>) {}
+
     virtual void position_window_layers(runtime::Size, runtime::Rect) {}
 
     virtual void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) = 0;
@@ -253,6 +256,7 @@ private:
     animation::AnimationTime animation_time_;
     animation::MotionPreference motion_preference_{animation::MotionPreference::normal};
     std::vector<WindowComponentParticipant*> participants_;
+    std::vector<WindowComponentParticipant*> pointer_participants_scratch_;
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
     std::uint64_t hit_test_refresh_nanoseconds_{};

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -183,6 +184,61 @@ void test_empty_route_and_target_handler_are_not_duplicated() {
     require(target_calls == 1, "target handler executed more than once for one route");
 }
 
+void test_post_route_observer_and_failures() {
+    using namespace ryn::input;
+    Fixture f;
+    std::vector<std::string> log;
+    install_route_handlers(f, log, PointerPropagationPhase::target);
+    f.router.set_observer([&](const auto&, auto hit, auto origin) {
+        require(hit == f.target && !origin, "observer lost actual hit");
+        log.push_back("observer");
+    });
+    f.router.dispatch(move_at());
+    require(log == std::vector<std::string>({"root-capture", "parent-capture", "target", "observer"}),
+            "observer consumed or preceded routed handlers");
+    f.router.set_observer([&](const auto&, auto hit, auto origin) {
+        require(!hit && !origin, "blank observer received a target");
+        f.router.set_observer({});
+    });
+    f.router.dispatch(move_at(150, 150));
+    bool thread_rejected{};
+    std::thread worker([&] {
+        try {
+            f.router.set_observer({});
+        } catch (const std::logic_error&) {
+            thread_rejected = true;
+        }
+    });
+    worker.join();
+    require(thread_rejected, "observer setter accepted another thread");
+    f.router.set_observer([&](const auto&, auto hit, auto origin) {
+        require(hit == f.target && origin == f.target, "observer lost primary press origin");
+        f.router.dispatch(move_at());
+    });
+    bool reentry{};
+    try {
+        f.router.dispatch({PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, 20, 20});
+    } catch (const std::logic_error&) {
+        reentry = true;
+    }
+    const auto state = f.router.state(PointerIdentity::mouse());
+    require(reentry && state && !state->primary_down && !state->capture && !state->press_origin,
+            "observer exception failed to abort pointer state");
+    f.router.set_observer({});
+    f.router.dispatch(move_at());
+    InteractionHandlers removed;
+    removed.target = [&](PointerDispatchContext& context) {
+        if (context.kind() == PointerEventKind::down) {
+            f.registry.remove(f.target);
+        }
+    };
+    f.registry.set_handlers(f.target, std::move(removed));
+    f.router.set_observer([&](const auto&, auto hit, auto) { require(!hit, "observer retained stale hit"); });
+    f.router.dispatch({PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, 20, 20});
+    f.router.set_observer({});
+    f.router.cancel_all();
+}
+
 } // namespace
 
 int main() {
@@ -190,6 +246,7 @@ int main() {
         test_complete_capture_target_bubble_order();
         test_stop_propagation_at_each_phase();
         test_empty_route_and_target_handler_are_not_duplicated();
+        test_post_route_observer_and_failures();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

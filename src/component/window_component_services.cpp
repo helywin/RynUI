@@ -56,6 +56,15 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
       hit_test_(interactions_, nodes), scene_composer_(text_.components(), interactions_, hit_test_),
       surfaces_(text_.components(), nodes, scene_composer_), focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
+    pointer_.set_observer([this](const input::PointerInputEvent& event, auto hit, auto origin) {
+        pointer_participants_scratch_.assign(participants_.begin(), participants_.end());
+        for (std::size_t index = 0; index < pointer_participants_scratch_.size(); ++index) {
+            auto* participant = pointer_participants_scratch_[index];
+            if (std::find(participants_.begin(), participants_.end(), participant) != participants_.end()) {
+                participant->on_pointer_input(event, hit, origin);
+            }
+        }
+    });
     focus_.set_command_filter([this](const input::KeyboardInputEvent& event) {
         for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
             if ((*it)->on_keyboard_input(event)) {
@@ -82,6 +91,7 @@ void WindowComponentServices::attach(WindowComponentParticipant& participant) {
     if (std::find(participants_.begin(), participants_.end(), &participant) != participants_.end()) {
         throw std::logic_error("window component participant is already attached");
     }
+    pointer_participants_scratch_.reserve(participants_.size() + 1);
     participants_.push_back(&participant);
 }
 

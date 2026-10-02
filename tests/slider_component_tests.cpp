@@ -255,7 +255,7 @@ void multiple_values_and_retained_topology() {
     f.services.destroy(mounted.component);
     f.synchronize();
     check(f.services.slider().mounted().size() == 1 && f.services.tooltip().mounted().size() == 1 &&
-              f.services.interactions().size() == 3,
+              f.services.interactions().size() == 4,
           "multiple destroy leaked resources or damaged sibling");
     Fixture defaults;
     defaults.services.mount(Content{[] {
@@ -788,7 +788,7 @@ void range_focus_pointer_cancel_and_lifecycle() {
     f.services.set_window_active(true);
     pointer(f, PointerAction::down, at(f, m, 0.1));
     check(f.services.destroy(m.component), "Slider destroy failed");
-    check(f.services.slider().mounted().size() == 1 && f.services.interactions().size() == 3 &&
+    check(f.services.slider().mounted().size() == 1 && f.services.interactions().size() == 4 &&
               f.services.tooltip().mounted().size() == 1,
           "range destroy damaged sibling or leaked interactions");
     check(changes > 1, "pointer candidates missing");

@@ -35,6 +35,224 @@ void move(Fixture& f, float x, float y) {
     f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none, x, y});
 }
 
+void click(Fixture& f, runtime::Rect bounds, PointerButton button = PointerButton::primary) {
+    const float x = bounds.x + bounds.width / 2;
+    const float y = bounds.y + bounds.height / 2;
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::down, button, x, y});
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::up, button, x, y});
+    f.synchronize();
+}
+
+void rich_title_and_actions() {
+    Fixture f;
+    Signal<String> rich{String{u8"short"}};
+    Signal<bool> available{true};
+    int root_runs{};
+    int title_runs{};
+    int trigger_runs{};
+    int clicks{};
+    std::vector<bool> requests;
+    f.services.mount(Content{[&] {
+        ++root_runs;
+        Tooltip(
+            TooltipProps{}.trigger(TooltipTriggerMode::Click).titleAvailable(available).onOpenChange([&](bool value) {
+                requests.push_back(value);
+            }),
+            TooltipTrigger{[&] {
+                ++trigger_runs;
+                Button(ButtonProps{}.onClick([&] { ++clicks; }), ButtonContent{[] { Text(u8"Click title"); }});
+            }},
+            TooltipTitle{[&] {
+                ++title_runs;
+                Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                         Text(TextProps{}.content(rich));
+                         Icon(IconProps{}.name(IconName::CheckOutlined));
+                     }});
+            }});
+        Text(u8"sibling");
+    }});
+    f.synchronize();
+    const auto id = f.services.tooltip().mounted()[0];
+    const auto button = f.buttons.mounted_buttons()[0];
+    const auto bounds = f.nodes.require(button.node).bounds;
+    const auto popup = f.services.components().children(id)[1];
+    const auto popup_children = f.services.components().children(popup);
+    const std::vector<runtime::ComponentId> retained(popup_children.begin(), popup_children.end());
+    click(f, bounds);
+    check(clicks == 1 && f.services.tooltip().snapshot(id).visible && requests == std::vector<bool>{true},
+          "click did not preserve Button activation and open rich title");
+    const auto width = f.services.tooltip().snapshot(id).bounds.width;
+    rich.set(String{u8"Longer reactive rich title 内容"});
+    f.synchronize();
+    check(f.services.tooltip().snapshot(id).bounds.width > width && root_runs == 1 && trigger_runs == 1 &&
+              title_runs == 1,
+          "rich title failed to resize independently");
+    available.set(false);
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(id).visible && !f.services.next_frame_deadline(),
+          "unavailable rich title remained visible");
+    available.set(true);
+    f.synchronize();
+    check(f.services.tooltip().snapshot(id).visible, "rich title did not restore retained open");
+    click(f, bounds);
+    check(clicks == 2 && !f.services.tooltip().snapshot(id).visible && requests == std::vector<bool>({true, false}),
+          "click did not toggle closed");
+    click(f, bounds);
+    const auto popup_bounds = f.services.tooltip().snapshot(id).bounds;
+    click(f, popup_bounds);
+    check(f.services.tooltip().snapshot(id).visible, "popup click was classified as outside");
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, 310, 230});
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::up, PointerButton::primary, 310, 230});
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(id).visible, "blank window did not dismiss click title");
+    check(std::equal(retained.begin(), retained.end(), f.services.components().children(popup).begin()),
+          "rich title remounted on close");
+    f.services.pointer().dispatch(
+        {PointerIdentity::mouse(), PointerAction::down, PointerButton::primary, bounds.x + 5, bounds.y + 5});
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::up, PointerButton::primary, 310, 230});
+    f.synchronize();
+    check(!f.services.tooltip().snapshot(id).visible && clicks == 3, "drag outside was treated as click");
+    check(f.services.destroy(id), "rich title destroy failed");
+    f.synchronize();
+    check(f.services.text().scene_service().size() == 1 && f.services.interactions().size() == 0,
+          "rich title leaked retained children");
+    Fixture invalid;
+    rejects([&] {
+        invalid.services.mount(Content{[] {
+            Tooltip(TooltipProps{}.title(String{}), TooltipTrigger{[] { Text(u8"trigger"); }},
+                    TooltipTitle{[] { Text(u8"title"); }});
+        }});
+    });
+    Fixture trigger_invalid;
+    rejects([&] {
+        trigger_invalid.services.mount(Content{[] {
+            Tooltip(TooltipProps{}.trigger(TooltipTriggerMode::Click).triggers(TooltipTriggers{}),
+                    TooltipTrigger{[] { Text(u8"trigger"); }});
+        }});
+    });
+    Fixture rollback;
+    try {
+        rollback.services.mount(Content{[] {
+            Tooltip(TooltipProps{}, TooltipTrigger{[] { Text(u8"trigger"); }}, TooltipTitle{[] {
+                        Text(u8"partial title");
+                        throw std::runtime_error("title mount failed");
+                    }});
+        }});
+    } catch (const std::runtime_error&) {
+    }
+    check(rollback.services.tooltip().mounted().empty() && rollback.services.interactions().size() == 0 &&
+              rollback.services.surfaces().size() == 0 && rollback.scene.size() == 0,
+          "rich title rollback leaked resources");
+}
+
+void context_composition_and_controlled_click() {
+    Fixture f;
+    Signal<bool> open{false};
+    Signal<bool> disabled{false};
+    Signal<TooltipTriggers> actions{TooltipTriggers{true, true, true, true}};
+    std::vector<bool> requests;
+    f.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}
+                    .title(String{u8"actions"})
+                    .open(open)
+                    .disabled(disabled)
+                    .triggers(actions)
+                    .onOpenChange([&](bool value) { requests.push_back(value); }),
+                TooltipTrigger{[] { Button(ButtonProps{}, ButtonContent{[] { Text(u8"Actions"); }}); }});
+    }});
+    f.synchronize();
+    const auto id = f.services.tooltip().mounted()[0];
+    const auto button = f.buttons.mounted_buttons()[0];
+    const auto bounds = f.nodes.require(button.node).bounds;
+    click(f, bounds);
+    click(f, bounds);
+    check(requests == std::vector<bool>({true, false}) && !f.services.tooltip().snapshot(id).visible,
+          "controlled click failed to cancel unacknowledged request");
+    tick(f, 1000000);
+    tick(f, 2000000);
+    check(requests.size() == 2, "click dismissal reopened due to hover/focus");
+    click(f, bounds, PointerButton::secondary);
+    check(requests == std::vector<bool>({true, false, true}), "context menu did not request open");
+    open.set(true);
+    f.synchronize();
+    const auto geometry = f.services.tooltip().snapshot(id);
+    check(geometry.visible &&
+              geometry.anchor == runtime::Rect{bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, 0, 0},
+          "context menu did not anchor at pointer");
+    move(f, 310, 230);
+    tick(f, 3000000);
+    check(f.services.tooltip().snapshot(id).visible && f.services.tooltip().snapshot(id).anchor == geometry.anchor,
+          "context pointer latch moved or closed on hover leave");
+    f.services.focus().dispatch({Key::escape, KeyAction::down});
+    check(requests.back() == false, "Escape did not dismiss context menu");
+    open.set(false);
+    disabled.set(true);
+    const auto count = requests.size();
+    click(f, bounds);
+    click(f, bounds, PointerButton::secondary);
+    check(requests.size() == count, "disabled Tooltip requested an action");
+    disabled.set(false);
+    click(f, bounds);
+    actions.set(TooltipTriggers{});
+    f.synchronize();
+    check(requests.back() == false, "config update did not clear action latch");
+    Fixture destroyed;
+    runtime::ComponentId dying;
+    destroyed.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}.title(String{u8"destroy"}).trigger(TooltipTriggerMode::Click).onOpenChange([&](bool) {
+            destroyed.services.destroy(dying);
+        }),
+                TooltipTrigger{[] { Text(u8"trigger"); }});
+    }});
+    destroyed.synchronize();
+    dying = destroyed.services.tooltip().mounted()[0];
+    click(destroyed, destroyed.nodes.require(destroyed.services.components().root(dying)).bounds);
+    check(destroyed.services.tooltip().mounted().empty() && destroyed.services.interactions().size() == 0,
+          "destructive click callback retained resources");
+}
+
+void nested_and_destroyed_trigger_actions() {
+    Fixture f;
+    int activations{};
+    f.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}.title(String{u8"outer"}).trigger(TooltipTriggerMode::Click), TooltipTrigger{[&] {
+                    Tooltip(TooltipProps{}.title(String{u8"inner"}).trigger(TooltipTriggerMode::Click),
+                            TooltipTrigger{[&] {
+                                Button(ButtonProps{}.onClick([&] { ++activations; }),
+                                       ButtonContent{[] { Text(u8"nested"); }});
+                            }});
+                }});
+    }});
+    f.synchronize();
+    const auto button = f.buttons.mounted_buttons()[0];
+    click(f, f.nodes.require(button.node).bounds);
+    check(activations == 1 && f.services.tooltip().mounted().size() == 2, "nested triggers lost child activation");
+    for (auto id : f.services.tooltip().mounted()) {
+        check(f.services.tooltip().snapshot(id).visible, "nested action observer skipped ancestor");
+    }
+    click(f, {310, 230, 2, 2});
+    for (auto id : f.services.tooltip().mounted()) {
+        check(!f.services.tooltip().snapshot(id).visible, "nested outside dismissal skipped a title");
+    }
+    Fixture removed;
+    runtime::ComponentId dying;
+    int callbacks{};
+    removed.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}.title(String{u8"removed"}).trigger(TooltipTriggerMode::Click).onOpenChange([&](bool) {
+            ++callbacks;
+        }),
+                TooltipTrigger{[&] {
+                    Button(ButtonProps{}.onClick([&] { removed.services.destroy(dying); }),
+                           ButtonContent{[] { Text(u8"destroy in child"); }});
+                }});
+    }});
+    removed.synchronize();
+    dying = removed.services.tooltip().mounted()[0];
+    click(removed, removed.nodes.require(removed.buttons.mounted_buttons()[0].node).bounds);
+    check(callbacks == 0 && removed.services.tooltip().mounted().empty(),
+          "child destruction called stale tooltip observer");
+}
+
 void geometry_and_api() {
     static_assert(std::is_same_v<decltype(TooltipProps{}.title(String{u8"提示"}).open(true)), TooltipProps&>);
     const runtime::Rect viewport{0, 0, 320, 240};
@@ -279,6 +497,9 @@ int main() {
         delayed_hover_and_focus();
         controlled_disabled_and_reentrancy();
         theme_and_geometry_updates();
+        rich_title_and_actions();
+        context_composition_and_controlled_click();
+        nested_and_destroyed_trigger_actions();
         std::cout << "Tooltip contracts passed\n";
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
