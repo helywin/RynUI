@@ -270,6 +270,9 @@ def validate_overlay(
     switch = result["ant.component.switch"]
     if switch["status"] != "implemented" or "openspec:046-20261002-complete-native-switch-features" not in switch["evidence_identifiers"]:
         raise ValueError("native Switch completion requires its implementation change evidence")
+    checkbox = result["ant.component.checkbox"]
+    if checkbox["status"] != "implemented" or "openspec:047-20261002-complete-native-checkbox-group" not in checkbox["evidence_identifiers"]:
+        raise ValueError("native Checkbox completion requires its implementation change evidence")
     return result
 
 

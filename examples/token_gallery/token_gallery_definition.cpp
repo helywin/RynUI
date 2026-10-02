@@ -42,6 +42,11 @@ struct GalleryState final {
     ryn::Signal<bool> switch_checked{false};
     ryn::SwitchRef switch_ref;
     ryn::Signal<bool> checkbox_checked{false};
+    ryn::CheckboxRef checkbox_ref;
+    ryn::Signal<ryn::CheckboxValues> checkbox_values{ryn::CheckboxValues{ryn::String{u8"desktop"}}};
+    ryn::Signal<std::vector<ryn::CheckboxOption>> checkbox_options{std::vector<ryn::CheckboxOption>{
+        {ryn::String{u8"a"}, ryn::String{u8"A"}}, {ryn::String{u8"b"}, ryn::String{u8"B"}}}};
+    bool checkbox_options_expanded{};
     ryn::Signal<std::optional<ryn::String>> radio_selected{std::optional<ryn::String>{ryn::String{u8"a"}}};
     ryn::Signal<ryn::String> input_value{ryn::String{u8""}};
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
@@ -114,6 +119,12 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.switch.small-icon-rtl",
     "gallery.switch.component-theme",
     "gallery.switch.focus",
+    "gallery.checkbox.group-controlled",
+    "gallery.checkbox.group-dynamic",
+    "gallery.checkbox.options-update",
+    "gallery.checkbox.rich-rtl-ref",
+    "gallery.checkbox.component-theme",
+    "gallery.checkbox.focus",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
@@ -1044,6 +1055,57 @@ void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
 }
 
+void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(u8"Checkbox · 多选、动态保留选项、RTL、ref 与独立主题");
+    ryn::Text(u8"gallery.checkbox.group-controlled · 三类值");
+    ryn::CheckboxGroup(
+        ryn::CheckboxGroupProps{}
+            .options(std::vector<ryn::CheckboxOption>{{ryn::String{u8"desktop"}, ryn::String{u8"桌面"}},
+                                                      {1.0, ryn::String{u8"数字"}},
+                                                      {true, ryn::String{u8"禁用布尔"}, true}})
+            .value(state->checkbox_values)
+            .onChange([state](const ryn::CheckboxValues& values) { state->checkbox_values.set(values); }));
+    ryn::Text(u8"gallery.checkbox.group-dynamic · 按 value 保留 identity");
+    ryn::CheckboxGroup(ryn::CheckboxGroupProps{}.options(state->checkbox_options).defaultValue({ryn::String{u8"a"}}));
+    ryn::Button(ryn::ButtonProps{}.onClick([state] {
+        state->checkbox_options_expanded = !state->checkbox_options_expanded;
+        if (state->checkbox_options_expanded) {
+            state->checkbox_options.set({{ryn::String{u8"b"}, ryn::String{u8"B · retained"}},
+                                         {ryn::String{u8"a"}, ryn::String{u8"A"}},
+                                         {2.0, ryn::String{u8"新增数字"}}});
+        } else {
+            state->checkbox_options.set(
+                {{ryn::String{u8"a"}, ryn::String{u8"A"}}, {ryn::String{u8"b"}, ryn::String{u8"B"}}});
+        }
+        ++state->telemetry.activations;
+    }),
+                [] { ryn::Text(u8"gallery.checkbox.options-update · 重排 / 增删"); });
+    ryn::Checkbox(ryn::CheckboxProps{}
+                      .ref(state->checkbox_ref)
+                      .indeterminate(true)
+                      .direction(ryn::CheckboxDirection::RightToLeft),
+                  ryn::CheckboxLabel{[] {
+                      ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined));
+                      ryn::Text(u8"gallery.checkbox.rich-rtl-ref · 半选与富标签");
+                  }});
+    ryn::ThemeConfig custom;
+    custom.checkbox.algorithm = true;
+    custom.checkbox.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+    custom.checkbox.tokens.size = ryn::dp(20);
+    ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
+                   ++state->telemetry.theme_content_runs;
+                   ryn::Checkbox(ryn::CheckboxProps{}.defaultChecked(true), ryn::CheckboxLabel{[] {
+                                     ryn::Text(u8"gallery.checkbox.component-theme · 紫色 / 20 dp");
+                                 }});
+               }});
+    ryn::Button(ryn::ButtonProps{}.onClick([state] {
+        static_cast<void>(state->checkbox_ref.focus());
+        ++state->telemetry.activations;
+    }),
+                [] { ryn::Text(u8"gallery.checkbox.focus · 聚焦多选框"); });
+    state->telemetry.live_samples += 6;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1114,6 +1176,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         component_overview(state);
                                                         add_live_samples(state);
                                                         add_switch_samples(state);
+                                                        add_checkbox_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

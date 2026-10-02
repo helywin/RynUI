@@ -348,24 +348,30 @@
     },
     {
       "identity": "ant.component.checkbox",
-      "status": "partial",
-      "summary": "RynUI 已提供 typed Checkbox、受控/非受控选中、独立半选状态、标签 slot 和 pointer/Space/focus 交互；Checkbox.Group 与完整 Web API 尚未覆盖。",
+      "status": "implemented",
+      "summary": "RynUI 已补齐 Checkbox 原生桌面功能：三类 typed 值、多选 Group、动态保留选项、最近组与 skipGroup、RTL/ref/autoFocus/onClick、独立主题和有限 wave；平台验收独立记录。",
       "supported_scope": [
         "checked/defaultChecked and indeterminate",
         "disabled and onChange",
         "typed label slot with CJK/Latin text",
         "pointer/Space/focus-visible interaction",
-        "Theme token geometry and colors"
+        "typed String/double/bool Group values and reactive controlled/default selection",
+        "retained dynamic options, deletion/capture cleanup and layout/Tab ordering",
+        "nearest Group, skipGroup, disabled composition and callback destruction safety",
+        "CheckboxRef, autoFocus, ordered onClick and inherited reactive RTL",
+        "isolated component Theme algorithm, indicator/label/focus tokens and finite wave lifecycle"
       ],
       "missing_scope": [
-        "Checkbox.Group and option arrays",
-        "complete Ant Design Web API",
-        "Windows and Linux visual acceptance"
+        "DOM/HTML/CSS, form name/required and React-specific interfaces",
+        "Linux native acceptance remains an independent platform task"
       ],
       "evidence_identifiers": [
         "source:components/checkbox/index.en-US.md",
         "openspec:011-20260922-build-switch-and-checkbox-on-shared-control-runtime",
-        "test:rynui.selection_component"
+        "openspec:047-20261002-complete-native-checkbox-group",
+        "test:rynui.selection_component",
+        "test:rynui.checkbox_group",
+        "test:rynui.checkbox_public_api"
       ]
     },
     {

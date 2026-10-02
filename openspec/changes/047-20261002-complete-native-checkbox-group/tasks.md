@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：Gallery 与集成
 
-- [ ] 3.1 集成多选/动态 options、半选、RTL/ref/丰富标签/主题样例，更新生成原生 implemented 目录和收尾清单；Windows windows-msvc-headless Debug/Release 完整 build/CTest，native Gallery/catalog/font 合同；运行 generator self-test/check、clang-format 22/format-code.py --check、doctor、全量 strict 和 git diff --check。
+- [x] 3.1 集成多选/动态 options、半选、RTL/ref/丰富标签/主题样例，更新生成原生 implemented 目录和收尾清单；Windows windows-msvc-headless Debug/Release 完整 build/CTest，native Gallery/catalog/font 合同；运行 generator self-test/check、clang-format 22/format-code.py --check、doctor、全量 strict 和 git diff --check。完整 headless Debug 48/48（127.39s）、Release 48/48（14.01s）；native Gallery/catalog/font Debug 5/5（26.71s）、Release 5/5（6.01s）。Gallery 共 108 live samples、91 stable IDs、57 Theme content runs；保留 22 个 selection controls 与两个 Checkbox Group。
 
 ## 4. 原生平台验收
 
