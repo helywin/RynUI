@@ -180,6 +180,7 @@ add_executable(
     token_gallery/token_gallery_runtime.cpp
     token_gallery/typography_acceptance.cpp
     token_gallery/slider_acceptance.cpp
+    token_gallery/tooltip_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(

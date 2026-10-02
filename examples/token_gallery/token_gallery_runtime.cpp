@@ -897,6 +897,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     if (has_argument(argc, argv, "--slider-acceptance")) {
         return run_slider_acceptance(argc, argv);
     }
+    if (has_argument(argc, argv, "--tooltip-acceptance")) {
+        return run_tooltip_acceptance(argc, argv);
+    }
     try {
         std::optional<std::filesystem::path> snapshot_path;
         for (int index = 1; index < argc; ++index) {

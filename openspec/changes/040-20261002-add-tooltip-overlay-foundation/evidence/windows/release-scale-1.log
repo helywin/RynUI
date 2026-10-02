@@ -1,0 +1,1 @@
+tooltip_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1 normalized_events=11 requests=2 child_clicks=1 submits=24 resize=760x600 content_runs=1 exit_code=0

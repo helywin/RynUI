@@ -14,7 +14,7 @@
 
 ## 4. Windows 原生验收
 
-- [ ] 4.1 windows-msvc Debug/Release 构建及完整 CTest；实际 D3D12 Tooltip hover/focus/Escape/disabled child/受控/边缘/长 CJK/arrow/Default/Dark/Compact/resize/四档 scale 运行，保存截图、诊断、SHA256、退出码，doctor/strict/diff 后独立提交。
+- [x] 4.1 windows-msvc Debug/Release 构建及完整 CTest；实际 D3D12 Tooltip hover/focus/Escape/disabled child/受控/边缘/长 CJK/arrow/Default/Dark/Compact/resize/四档 scale 运行，保存截图、诊断、SHA256、退出码，doctor/strict/diff 后独立提交。
 
 ## 5. Linux 原生验收
 
