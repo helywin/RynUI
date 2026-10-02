@@ -47,6 +47,7 @@ enum class FlexAlignSelf {
     center,
     end,
     stretch,
+    baseline,
 };
 
 class LayoutStyle final {

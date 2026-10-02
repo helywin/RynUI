@@ -132,6 +132,28 @@ void validate_padding(const Padding& padding) {
     }
 }
 
+FlexAlign effective_align(FlexAlign parent, runtime::FlexItemAlign item) noexcept {
+    switch (item) {
+    case runtime::FlexItemAlign::automatic:
+        return parent;
+    case runtime::FlexItemAlign::start:
+        return FlexAlign::start;
+    case runtime::FlexItemAlign::center:
+        return FlexAlign::center;
+    case runtime::FlexItemAlign::end:
+        return FlexAlign::end;
+    case runtime::FlexItemAlign::stretch:
+        return FlexAlign::stretch;
+    case runtime::FlexItemAlign::baseline:
+        return FlexAlign::baseline;
+    }
+    return parent;
+}
+
+float outer_baseline(const runtime::Node& node) noexcept {
+    return node.external_layout.margin.top + node.first_baseline.value_or(node.measured_size.height);
+}
+
 void validate_flex_layout(const FlexLayout& layout) {
     validate_padding(layout.padding);
     static_cast<void>(non_negative_finite(layout.main_gap, "Flex main gap must be finite and non-negative"));
@@ -170,6 +192,7 @@ void validate_flex_layout(const FlexLayout& layout) {
     case FlexAlign::center:
     case FlexAlign::end:
     case FlexAlign::stretch:
+    case FlexAlign::baseline:
         break;
     default:
         throw std::invalid_argument("Flex align is invalid");
@@ -461,6 +484,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
         layouts_[id.index].horizontal_content_geometry.reset();
     }
     runtime::Size measured{};
+    node.first_baseline.reset();
 
     std::visit(
         [&](const auto& current) {
@@ -472,25 +496,33 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     }
                     if (intrinsic->cache.has_value() && intrinsic->cache->revision == intrinsic->revision &&
                         intrinsic->cache->constraints == content_constraint) {
-                        measured = intrinsic->cache->result;
+                        measured = intrinsic->cache->result.size;
+                        node.first_baseline = intrinsic->cache->result.first_baseline;
                     } else {
                         intrinsic->measuring = true;
+                        IntrinsicMeasurement result;
                         try {
-                            measured = intrinsic->measure(content_constraint);
+                            result = intrinsic->measure(content_constraint);
                         } catch (...) {
                             intrinsic->measuring = false;
                             throw;
                         }
                         intrinsic->measuring = false;
+                        measured = result.size;
                         if (measured.width < 0.0F || measured.height < 0.0F || !std::isfinite(measured.width) ||
                             !std::isfinite(measured.height)) {
                             throw std::invalid_argument("Intrinsic measure must return a finite non-negative size");
                         }
+                        if (result.first_baseline.has_value()) {
+                            static_cast<void>(non_negative_finite(
+                                *result.first_baseline, "Intrinsic baseline must be finite and non-negative"));
+                        }
                         measured = content_constraint.constrain(measured);
+                        node.first_baseline = result.first_baseline;
                         intrinsic->cache = IntrinsicCache{
                             intrinsic->revision,
                             content_constraint,
-                            measured,
+                            {measured, node.first_baseline},
                         };
                     }
                 } else {
@@ -511,6 +543,13 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 natural.width = filled_size(current.fill_width, content_constraint.max_width, natural.width);
                 natural.height = filled_size(current.fill_height, content_constraint.max_height, natural.height);
                 measured = content_constraint.constrain(natural);
+                for (const auto child : node.children) {
+                    const auto& child_node = nodes_->require(child);
+                    if (child_node.first_baseline.has_value()) {
+                        node.first_baseline = current.padding.top + outer_baseline(child_node);
+                        break;
+                    }
+                }
             } else if constexpr (std::is_same_v<Model, ComponentLayout>) {
                 measured = current.measure(*this, id, content_constraint);
                 if (!std::isfinite(measured.width) || !std::isfinite(measured.height) || measured.width < 0 ||
@@ -577,11 +616,33 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                         });
                 }
 
+                const auto update_line_cross = [&](FlexLine& value) {
+                    value.cross_size = 0;
+                    value.cross_baseline = 0;
+                    float descent = 0;
+                    for (std::size_t index = 0; index < value.item_count; ++index) {
+                        const auto& item = scratch.items[value.first_item + index];
+                        auto& child_node = nodes_->require(item.id);
+                        child_node.baseline_participant =
+                            current.direction == FlexDirection::horizontal &&
+                            effective_align(current.align, item.align_self) == FlexAlign::baseline;
+                        value.cross_size = std::max(value.cross_size, item.cross_size);
+                        if (child_node.baseline_participant) {
+                            const auto physical = outer_baseline(child_node);
+                            const auto baseline =
+                                current.wrap == FlexWrap::wrap_reverse ? item.cross_size - physical : physical;
+                            value.cross_baseline = std::max(value.cross_baseline, baseline);
+                            descent = std::max(descent, item.cross_size - baseline);
+                        }
+                    }
+                    value.cross_size = std::max(value.cross_size, value.cross_baseline + descent);
+                };
                 FlexLine line;
                 auto finish_line = [&] {
                     if (line.item_count == 0) {
                         return;
                     }
+                    update_line_cross(line);
                     scratch.lines.push_back(line);
                     line = FlexLine{scratch.items.size(), 0, 0.0F, 0.0F};
                 };
@@ -723,8 +784,103 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                         measured_line.main_size += item.main_size;
                         measured_line.cross_size = std::max(measured_line.cross_size, item.cross_size);
                     }
+                    update_line_cross(measured_line);
                 }
                 measured = natural_size();
+                // Stretch changes the available cross size of composite controls.
+                // Measure that size before exporting their centered text baseline.
+                const auto final_content = content_bounds({0, 0, measured.width, measured.height}, current.padding);
+                const auto final_cross = cross_extent(final_content, current.direction);
+                float stretch_cursor = 0;
+                for (auto& measured_line : scratch.lines) {
+                    const auto line_cross =
+                        scratch.lines.size() == 1
+                            ? final_cross
+                            : std::min(measured_line.cross_size, std::max(0.0F, final_cross - stretch_cursor));
+                    for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                        auto& item = scratch.items[measured_line.first_item + index];
+                        const auto& style = nodes_->require(item.id).external_layout;
+                        const bool horizontal = current.direction == FlexDirection::horizontal;
+                        const bool explicit_cross = horizontal ? style.height.has_value() : style.width.has_value();
+                        if (effective_align(current.align, item.align_self) != FlexAlign::stretch || explicit_cross) {
+                            continue;
+                        }
+                        const auto margin =
+                            horizontal ? vertical_margin(style.margin) : horizontal_margin(style.margin);
+                        const auto target = stretched_extent(subtract_extent(line_cross, margin),
+                                                             horizontal ? style.min_height : style.min_width,
+                                                             horizontal ? style.max_height : style.max_width) +
+                                            margin;
+                        if (std::abs(target - item.cross_size) > distribution_epsilon) {
+                            const auto size = horizontal
+                                                  ? measure_node(item.id, child_constraints, item.main_size, target)
+                                                  : measure_node(item.id, child_constraints, target, item.main_size);
+                            item.cross_size = cross_extent(size, current.direction);
+                        }
+                    }
+                    stretch_cursor += line_cross + current.cross_gap;
+                }
+                // Propagate the first real text baseline through nested Flex containers.
+                // Icon-only children keep their synthesized border-box baseline local.
+                const auto content = content_bounds({0, 0, measured.width, measured.height}, current.padding);
+                const float available_cross = cross_extent(content, current.direction);
+                const float available_main_final = main_extent(content, current.direction);
+                const bool reverse_cross = (current.wrap == FlexWrap::wrap_reverse) !=
+                                           (current.direction == FlexDirection::vertical && current.right_to_left);
+                float cross_cursor = 0;
+                for (const auto& measured_line : scratch.lines) {
+                    const auto line_cross =
+                        scratch.lines.size() == 1
+                            ? available_cross
+                            : std::min(measured_line.cross_size, std::max(0.0F, available_cross - cross_cursor));
+                    const auto physical_cross =
+                        reverse_cross ? available_cross - cross_cursor - line_cross : cross_cursor;
+                    const auto free_main = std::max(0.0F, available_main_final - measured_line.main_size);
+                    float main_cursor = 0;
+                    float gap = current.main_gap;
+                    if (current.justify == FlexJustify::center) {
+                        main_cursor = free_main * .5F;
+                    } else if (current.justify == FlexJustify::end) {
+                        main_cursor = free_main;
+                    } else if (current.justify == FlexJustify::space_between && measured_line.item_count > 1) {
+                        gap += free_main / static_cast<float>(measured_line.item_count - 1);
+                    } else if (current.justify == FlexJustify::space_around && measured_line.item_count > 0) {
+                        const float distributed = free_main / static_cast<float>(measured_line.item_count);
+                        main_cursor = distributed * .5F;
+                        gap += distributed;
+                    } else if (current.justify == FlexJustify::space_evenly && measured_line.item_count > 0) {
+                        const float distributed = free_main / static_cast<float>(measured_line.item_count + 1);
+                        main_cursor = distributed;
+                        gap += distributed;
+                    }
+                    for (std::size_t index = 0; index < measured_line.item_count; ++index) {
+                        const auto& item = scratch.items[measured_line.first_item + index];
+                        const auto& child_node = nodes_->require(item.id);
+                        if (child_node.first_baseline.has_value() && !node.first_baseline.has_value()) {
+                            float offset = main_cursor;
+                            if (current.direction == FlexDirection::horizontal) {
+                                const auto align = effective_align(current.align, item.align_self);
+                                const auto child_cross = std::min(item.cross_size, line_cross);
+                                const auto free_cross = std::max(0.0F, line_cross - child_cross);
+                                float leading = 0;
+                                if (align == FlexAlign::center) {
+                                    leading = free_cross * .5F;
+                                } else if (align == FlexAlign::end) {
+                                    leading = free_cross;
+                                } else if (align == FlexAlign::baseline) {
+                                    leading = measured_line.cross_baseline -
+                                              (reverse_cross ? child_cross - outer_baseline(child_node)
+                                                             : outer_baseline(child_node));
+                                }
+                                offset =
+                                    physical_cross + (reverse_cross ? line_cross - leading - child_cross : leading);
+                            }
+                            node.first_baseline = current.padding.top + offset + outer_baseline(child_node);
+                        }
+                        main_cursor += item.main_size + gap;
+                    }
+                    cross_cursor += line_cross + current.cross_gap;
+                }
                 scratch.measure_generation = generation_;
             } else if constexpr (std::is_same_v<Model, InputContentLayout>) {
                 if (node.children.size() != 3) {
@@ -748,6 +904,13 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     node.children[1], {std::isfinite(remaining) ? remaining : 0, remaining, 0, inner_height});
                 measured = content_constraint.constrain(
                     {prefix.width + editable.width + suffix.width + gaps + frame, current.control_height});
+                const auto& viewport = nodes_->require(node.children[1]);
+                if (viewport.first_baseline.has_value()) {
+                    const auto top = std::min(measured.height * .5F, current.border_width + current.padding_block);
+                    const auto inner = std::max(0.0F, measured.height - 2 * top);
+                    node.first_baseline =
+                        top + (inner - std::min(inner, viewport.layout_size.height)) * .5F + outer_baseline(viewport);
+                }
             } else {
                 const float frame_inline = 2.0F * (current.padding_inline + current.border_width);
                 const float indicator_inline = current.loading ? current.loading_indicator_size : 0.0F;
@@ -779,6 +942,20 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 };
                 natural.width = filled_size(current.fill_width, content_constraint.max_width, natural.width);
                 measured = content_constraint.constrain(natural);
+                const float content_height = std::max(0.0F, measured.height - 2 * current.border_width);
+                for (std::size_t index = 0; index < node.children.size(); ++index) {
+                    if (index == 0 && current.skip_first) {
+                        continue;
+                    }
+                    const auto& child_node = nodes_->require(node.children[index]);
+                    if (child_node.first_baseline.has_value()) {
+                        node.first_baseline =
+                            current.border_width +
+                            (content_height - std::min(content_height, child_node.layout_size.height)) * .5F +
+                            outer_baseline(child_node);
+                        break;
+                    }
+                }
             }
         },
         model);
@@ -885,23 +1062,7 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                     for (std::size_t line_item = 0; line_item < line.item_count; ++line_item) {
                         const auto& item = scratch.items[line.first_item + line_item];
                         const auto& child_style = nodes_->require(item.id).external_layout;
-                        FlexAlign item_align = current.align;
-                        switch (item.align_self) {
-                        case runtime::FlexItemAlign::automatic:
-                            break;
-                        case runtime::FlexItemAlign::start:
-                            item_align = FlexAlign::start;
-                            break;
-                        case runtime::FlexItemAlign::center:
-                            item_align = FlexAlign::center;
-                            break;
-                        case runtime::FlexItemAlign::end:
-                            item_align = FlexAlign::end;
-                            break;
-                        case runtime::FlexItemAlign::stretch:
-                            item_align = FlexAlign::stretch;
-                            break;
-                        }
+                        const auto item_align = effective_align(current.align, item.align_self);
                         const bool explicit_cross = current.direction == FlexDirection::horizontal
                                                         ? child_style.height.has_value()
                                                         : child_style.width.has_value();
@@ -914,6 +1075,10 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                             leading_cross = free_cross * 0.5F;
                         } else if (item_align == FlexAlign::end) {
                             leading_cross = free_cross;
+                        } else if (item_align == FlexAlign::baseline &&
+                                   current.direction == FlexDirection::horizontal) {
+                            const auto baseline = outer_baseline(nodes_->require(item.id));
+                            leading_cross = line.cross_baseline - (reverse_cross ? child_cross - baseline : baseline);
                         }
 
                         const float item_main =

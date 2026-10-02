@@ -39,6 +39,7 @@ enum class FlexItemAlign {
     center,
     end,
     stretch,
+    baseline,
 };
 
 struct ExternalLayoutStyle final {
@@ -67,6 +68,8 @@ struct Node {
     Point translation;
     Size requested_size;
     Size measured_size;
+    std::optional<float> first_baseline;
+    bool baseline_participant{};
     Size layout_size;
     Rect bounds;
     ExternalLayoutStyle external_layout;

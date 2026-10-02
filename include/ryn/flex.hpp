@@ -54,6 +54,7 @@ enum class FlexAlign {
     Center,
     End,
     Stretch,
+    Baseline,
     Normal = Stretch,
     FlexStart = Start,
     FlexEnd = End,
@@ -165,7 +166,7 @@ private:
     std::optional<Prop<FlexWrap>> typed_wrap_;
     Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
     Prop<FlexJustify> justify_{FlexJustify::Start};
-    Prop<FlexAlign> align_{FlexAlign::Start};
+    Prop<FlexAlign> align_{FlexAlign::Stretch};
     Prop<LayoutGap> gap_{LayoutGap{}};
     LayoutStyle layout_;
 };

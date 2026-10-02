@@ -398,18 +398,19 @@ struct InputPropsAccess {
         state.selected_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         state.placeholder_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         owner.update_text(component);
-        host.layout().set_intrinsic_measure(state.viewport, 1, [&owner, component](layout::Constraints) {
-            auto* current = owner.host_->components().state<InputState>(component);
-            if (!current) {
-                return runtime::Size{};
-            }
-            auto& scene = owner.host_->text().scene_service();
-            if (!scene.synchronize_measurement(current->text_scene, std::numeric_limits<float>::infinity())) {
-                throw std::runtime_error("Input intrinsic text measurement failed");
-            }
-            const auto& measurement = scene.text_state(current->text_scene).measurement();
-            return runtime::Size{measurement.width, measurement.height};
-        });
+        host.layout().set_intrinsic_measure(
+            state.viewport, 1, [&owner, component](layout::Constraints) -> layout::IntrinsicMeasurement {
+                auto* current = owner.host_->components().state<InputState>(component);
+                if (!current) {
+                    return runtime::Size{};
+                }
+                auto& scene = owner.host_->text().scene_service();
+                if (!scene.synchronize_measurement(current->text_scene, std::numeric_limits<float>::infinity())) {
+                    throw std::runtime_error("Input intrinsic text measurement failed");
+                }
+                const auto& measurement = scene.text_state(current->text_scene).measurement();
+                return {{measurement.width, measurement.height}, measurement.first_baseline};
+            });
         auto& scope = build.scope(component);
         runtime::connect_layout_style(scope, props.layout_, state.mounted.node, host.nodes(), host.dirty());
         const auto connect = [&]<typename T, typename Apply>(const Prop<T>& prop, Apply apply) {

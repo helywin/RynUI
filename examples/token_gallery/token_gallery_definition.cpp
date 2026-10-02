@@ -261,6 +261,7 @@ void section_surface(const std::shared_ptr<GalleryState>& state, const GalleryDo
 void source_section(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[0]);
     ryn::Flex(ryn::FlexProps{}
+                  .align(ryn::FlexAlign::Start)
                   .wrap(true)
                   .gap(ryn::dp(GalleryLayoutMetrics::card_gap))
                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
@@ -389,6 +390,7 @@ void design_values(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[2]);
     ryn::Flex(
         ryn::FlexProps{}
+            .align(ryn::FlexAlign::Start)
             .wrap(true)
             .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
             .layout(ryn::LayoutStyle{}.width(state->document_width)),
@@ -500,6 +502,7 @@ void add_shadow_cells(const std::shared_ptr<GalleryState>& state) {
 void foundation_tokens(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[3]);
     ryn::Flex(ryn::FlexProps{}
+                  .align(ryn::FlexAlign::Start)
                   .wrap(true)
                   .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
@@ -591,6 +594,7 @@ void component_overview(const std::shared_ptr<GalleryState>& state) {
     for (const auto& category : ant_design_reference_categories()) {
         document_text(utf8(gallery_category_title(category.category)), 18.0F, 28.0F, 500);
         ryn::Flex(ryn::FlexProps{}
+                      .align(ryn::FlexAlign::Start)
                       .wrap(true)
                       .gap(ryn::dp(GalleryLayoutMetrics::card_gap), ryn::dp(GalleryLayoutMetrics::card_gap))
                       .layout(ryn::LayoutStyle{}.width(state->document_width)),
@@ -897,7 +901,7 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
                          ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"点击 / 富标题"); }});
                      }},
                      ryn::TooltipTitle{[] {
-                         ryn::Flex(ryn::FlexProps{}.vertical(true), ryn::FlexContent{[] {
+                         ryn::Flex(ryn::FlexProps{}.align(ryn::FlexAlign::Start).vertical(true), ryn::FlexContent{[] {
                                        ryn::Text(u8"保留的原生内容 / Retained title");
                                        ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined));
                                    }});
@@ -1076,7 +1080,8 @@ void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
                     [] { ryn::Text(u8"gallery.switch.focus · 聚焦开关"); });
         state->telemetry.live_samples += 4;
     });
-    ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
+    ryn::Flex(ryn::FlexProps{}.align(ryn::FlexAlign::Start).layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
+              ryn::FlexContent{[] {}});
 }
 
 void add_checkbox_samples(const std::shared_ptr<GalleryState>& state) {
@@ -1226,11 +1231,13 @@ TokenGalleryDefinition make_token_gallery_definition() {
                     ++state->telemetry.theme_content_runs;
                     ryn::Flex(
                         ryn::FlexProps{}
+                            .align(ryn::FlexAlign::Start)
                             .vertical(true)
                             .gap(ryn::dp(0.0F))
                             .layout(ryn::LayoutStyle{}.width(state->gallery_width)),
                         [state] {
                             ryn::Flex(ryn::FlexProps{}
+                                          .align(ryn::FlexAlign::Start)
                                           .vertical(state->narrow_layout)
                                           .gap(ryn::dp(GalleryLayoutMetrics::column_gap))
                                           .layout(ryn::LayoutStyle{}
@@ -1239,6 +1246,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                       .order(1)),
                                       [state] {
                                           ryn::Flex(ryn::FlexProps{}
+                                                        .align(ryn::FlexAlign::Start)
                                                         .vertical(true)
                                                         .gap(ryn::dp(0.0F))
                                                         .layout(ryn::LayoutStyle{}.width(state->navigation_width)),
@@ -1250,6 +1258,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                                    }});
                                                     });
                                           ryn::Flex(ryn::FlexProps{}
+                                                        .align(ryn::FlexAlign::Start)
                                                         .vertical(true)
                                                         .gap(ryn::dp(16.0F))
                                                         .layout(ryn::LayoutStyle{}.width(state->document_width)),
@@ -1281,43 +1290,47 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                 .height(ryn::dp(GalleryLayoutMetrics::header_height))
                                                 .order(-1)),
                                 [state] {
-                                    ryn::Flex(ryn::FlexProps{}.gap(ryn::dp(24.0F)), [state] {
-                                        document_text(utf8("RynUI"), 20.0F, 28.0F, 600);
-                                        document_text(utf8("组件"), 14.0F, 28.0F, 500);
-                                        document_text(utf8("Design Tokens"), 14.0F, 28.0F, 400,
-                                                      ryn::TextTone::Secondary);
-                                        document_text(utf8("Ant Design 6.6.5"), 12.0F, 28.0F, 400,
-                                                      ryn::TextTone::Secondary);
-                                        ryn::Button(ryn::ButtonProps{}.size(ryn::ControlSize::Small).onClick([state] {
-                                            state->navigation_request = GalleryNavigationTarget::to_navigation();
-                                            ++state->telemetry.navigation_requests;
-                                        }),
-                                                    [] { ryn::Text(u8"目录"); });
-                                        ryn::Button(
-                                            ryn::ButtonProps{}
-                                                .type(ryn::ButtonType::Text)
-                                                .size(ryn::ControlSize::Small)
-                                                .onClick([state] {
-                                                    const auto config = state->theme.get();
-                                                    const bool dark =
-                                                        std::find(config.algorithms.begin(), config.algorithms.end(),
-                                                                  ryn::ThemeAlgorithm::Dark) != config.algorithms.end();
-                                                    state->set_theme(algorithm_config(dark
-                                                                                          ? ryn::ThemeAlgorithm::Default
-                                                                                          : ryn::ThemeAlgorithm::Dark));
+                                    ryn::Flex(
+                                        ryn::FlexProps{}.align(ryn::FlexAlign::Start).gap(ryn::dp(24.0F)), [state] {
+                                            document_text(utf8("RynUI"), 20.0F, 28.0F, 600);
+                                            document_text(utf8("组件"), 14.0F, 28.0F, 500);
+                                            document_text(utf8("Design Tokens"), 14.0F, 28.0F, 400,
+                                                          ryn::TextTone::Secondary);
+                                            document_text(utf8("Ant Design 6.6.5"), 12.0F, 28.0F, 400,
+                                                          ryn::TextTone::Secondary);
+                                            ryn::Button(
+                                                ryn::ButtonProps{}.size(ryn::ControlSize::Small).onClick([state] {
+                                                    state->navigation_request =
+                                                        GalleryNavigationTarget::to_navigation();
+                                                    ++state->telemetry.navigation_requests;
                                                 }),
-                                            [state] {
-                                                ryn::Icon(ryn::IconProps{}.name(ryn::bind([theme = state->theme] {
-                                                    const auto config = theme.get();
-                                                    return std::find(config.algorithms.begin(), config.algorithms.end(),
-                                                                     ryn::ThemeAlgorithm::Dark) !=
-                                                                   config.algorithms.end()
-                                                               ? ryn::IconName::SunOutlined
-                                                               : ryn::IconName::MoonOutlined;
-                                                })));
-                                                ryn::Text(u8"主题");
-                                            });
-                                    });
+                                                [] { ryn::Text(u8"目录"); });
+                                            ryn::Button(
+                                                ryn::ButtonProps{}
+                                                    .type(ryn::ButtonType::Text)
+                                                    .size(ryn::ControlSize::Small)
+                                                    .onClick([state] {
+                                                        const auto config = state->theme.get();
+                                                        const bool dark = std::find(config.algorithms.begin(),
+                                                                                    config.algorithms.end(),
+                                                                                    ryn::ThemeAlgorithm::Dark) !=
+                                                                          config.algorithms.end();
+                                                        state->set_theme(
+                                                            algorithm_config(dark ? ryn::ThemeAlgorithm::Default
+                                                                                  : ryn::ThemeAlgorithm::Dark));
+                                                    }),
+                                                [state] {
+                                                    ryn::Icon(ryn::IconProps{}.name(ryn::bind([theme = state->theme] {
+                                                        const auto config = theme.get();
+                                                        return std::find(
+                                                                   config.algorithms.begin(), config.algorithms.end(),
+                                                                   ryn::ThemeAlgorithm::Dark) != config.algorithms.end()
+                                                                   ? ryn::IconName::SunOutlined
+                                                                   : ryn::IconName::MoonOutlined;
+                                                    })));
+                                                    ryn::Text(u8"主题");
+                                                });
+                                        });
                                 });
                         });
                 }});

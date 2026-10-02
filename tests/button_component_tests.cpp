@@ -1531,13 +1531,18 @@ void test_button_shape_block_constraints_and_reactive_resize() {
     ryn::Signal<bool> block{true};
     int runs{};
     fixture.host->mount(ryn::Content{[&] {
-        ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::dp(10)).layout(ryn::LayoutStyle{}.width(width)), [&] {
-            ++runs;
-            ryn::Button(ryn::ButtonProps{}.shape(shape).block(block).type(ryn::ButtonType::Dashed),
-                        [] { ryn::Text(u8"Block"); });
-            ryn::Button(ryn::ButtonProps{}.block(true).layout(ryn::LayoutStyle{}.width(ryn::dp(90))),
-                        [] { ryn::Text(u8"Width"); });
-        });
+        ryn::Flex(ryn::FlexProps{}
+                      .align(ryn::FlexAlign::Start)
+                      .vertical(true)
+                      .gap(ryn::dp(10))
+                      .layout(ryn::LayoutStyle{}.width(width)),
+                  [&] {
+                      ++runs;
+                      ryn::Button(ryn::ButtonProps{}.shape(shape).block(block).type(ryn::ButtonType::Dashed),
+                                  [] { ryn::Text(u8"Block"); });
+                      ryn::Button(ryn::ButtonProps{}.block(true).layout(ryn::LayoutStyle{}.width(ryn::dp(90))),
+                                  [] { ryn::Text(u8"Width"); });
+                  });
     }});
     require(fixture.synchronize(), "Button block layout failed");
     require(near(fixture.bounds(0).width, 220) && near(fixture.bounds(1).width, 90) &&

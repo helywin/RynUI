@@ -71,6 +71,7 @@ enum class FlexAlign {
     center,
     end,
     stretch,
+    baseline,
 };
 
 enum class FlexItemPolicy {
@@ -141,6 +142,14 @@ struct InputContentLayout final {
 
 class LayoutEngine;
 
+struct IntrinsicMeasurement final {
+    IntrinsicMeasurement(runtime::Size dimensions = {}, std::optional<float> baseline = {})
+        : size(dimensions), first_baseline(baseline) {}
+
+    runtime::Size size;
+    std::optional<float> first_baseline;
+};
+
 // Internal component layouts measure and place persistent children in the same
 // engine generation, before any text scene publishes its glyph positions.
 struct ComponentLayout final {
@@ -153,7 +162,7 @@ using LayoutModel =
 
 class LayoutEngine final {
 public:
-    using IntrinsicMeasure = std::function<runtime::Size(Constraints)>;
+    using IntrinsicMeasure = std::function<IntrinsicMeasurement(Constraints)>;
 
     explicit LayoutEngine(runtime::NodeStore& nodes) noexcept;
 
@@ -204,6 +213,7 @@ private:
         std::size_t item_count{0};
         float main_size{0.0F};
         float cross_size{0.0F};
+        float cross_baseline{0.0F};
     };
 
     struct FlexScratch final {
@@ -222,7 +232,7 @@ private:
     struct IntrinsicCache final {
         std::uint64_t revision{0};
         Constraints constraints;
-        runtime::Size result;
+        IntrinsicMeasurement result;
     };
 
     struct IntrinsicSlot final {

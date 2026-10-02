@@ -449,8 +449,14 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
             const auto remaining_height = unbounded_root_height ? std::numeric_limits<float>::infinity()
                                                                 : std::max(0.0F, viewport.height - cursor_y);
-            const auto outer =
-                layout_->layout(node, {0.0F, remaining_width, 0.0F, remaining_height}, {origin.x, cursor_y});
+            runtime::Size outer;
+            if (!configuration_changed && dirty_->layout_roots().empty() &&
+                nodes_->require(node).measure_generation != 0) {
+                outer = nodes_->require(node).layout_size;
+                layout_->place_retained_child(node, {origin.x, cursor_y, outer.width, outer.height});
+            } else {
+                outer = layout_->layout(node, {0.0F, remaining_width, 0.0F, remaining_height}, {origin.x, cursor_y});
+            }
             cursor_y += outer.height + gap;
         }
         layout_viewport_ = viewport;
@@ -993,7 +999,10 @@ void mount_text_component(const TextProps& props, bool icon_font) {
                                                 throw std::runtime_error("Text intrinsic measurement failed");
                                             }
                                             const auto& measurement = text_scene->text_state(scene).measurement();
-                                            return runtime::Size{measurement.width, measurement.height};
+                                            return layout::IntrinsicMeasurement{
+                                                {measurement.width, measurement.height},
+                                                measurement.lines.empty() ? std::nullopt
+                                                                          : std::optional{measurement.first_baseline}};
                                         });
 
     auto& scope = build.scope(component);
@@ -1129,7 +1138,9 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
                 throw std::runtime_error("Typography intrinsic measurement failed");
             }
             const auto& measurement = text_scene->text_state(scene).measurement();
-            return runtime::Size{measurement.width + 2 * insets[0], measurement.height + insets[1] + insets[2]};
+            return layout::IntrinsicMeasurement{
+                {measurement.width + 2 * insets[0], measurement.height + insets[1] + insets[2]},
+                measurement.lines.empty() ? std::nullopt : std::optional{measurement.first_baseline + insets[1]}};
         });
 
     auto& scope = build.scope(component);

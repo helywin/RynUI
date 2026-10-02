@@ -6,7 +6,7 @@
 
 ## 2. 基线和默认值（平台通用）
 
-- [ ] 2.1 传递真实 Text/Typography/Input 基线、共同容器/控件内部偏移、line ascent/descent 和 align-self Baseline；修正默认 Stretch、迁移需要旧 Start 的调用。加入混合字号/多行/缓存/字体变更/margin/控件/零约束合同，HEADLESS Debug/Release 受影响布局/文本/组件测试通过；更新文档，格式/OpenSpec/diff 检查后提交。
+- [x] 2.1 传递真实 Text/Typography/Input 基线、共同容器/控件内部偏移、line ascent/descent 和 align-self Baseline；修正默认 Stretch、迁移需要旧 Start 的调用。混合字号/多行/缓存/字体变更/margin/控件/零约束与嵌套拉伸 Button 合同通过；`windows-msvc-headless` Debug/Release 受影响 CTest 各 22/22（7.64s/5.26s），Windows 原生 Flex/Gallery frame 2/2 与 Debug 真窗口 smoke 通过。文档、格式/OpenSpec/diff 检查见共同证据。
 
 ## 3. 集成（平台通用）
 

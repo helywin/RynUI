@@ -68,6 +68,7 @@ void validate_style(const ExternalLayoutStyle& style) {
     case FlexItemAlign::center:
     case FlexItemAlign::end:
     case FlexItemAlign::stretch:
+    case FlexItemAlign::baseline:
         break;
     default:
         throw std::invalid_argument("LayoutStyle align-self is invalid");
@@ -106,6 +107,8 @@ FlexItemAlign flex_item_align(FlexAlignSelf value) {
         return FlexItemAlign::end;
     case FlexAlignSelf::stretch:
         return FlexItemAlign::stretch;
+    case FlexAlignSelf::baseline:
+        return FlexItemAlign::baseline;
     }
     throw std::invalid_argument("LayoutStyle align-self is invalid");
 }
@@ -162,6 +165,15 @@ public:
         const bool margin_change = node.external_layout.margin != value.margin;
         const bool flex_measure_change = !flex_measure_equal(node.external_layout, value);
         const bool align_self_change = node.external_layout.align_self != value.align_self;
+        bool baseline_dependency = false;
+        for (auto* ancestor = &node; ancestor != nullptr;
+             ancestor = ancestor->parent ? nodes_->find(*ancestor->parent) : nullptr) {
+            baseline_dependency = baseline_dependency || ancestor->baseline_participant;
+        }
+        const bool baseline_change =
+            (align_self_change && (node.external_layout.align_self == FlexItemAlign::baseline ||
+                                   value.align_self == FlexItemAlign::baseline || baseline_dependency)) ||
+            (margin_change && baseline_dependency);
         const auto flex_root = node.parent.value_or(id);
         node.external_layout = std::move(value);
         if (margin_change) {
@@ -172,7 +184,7 @@ public:
         }
         if (dimension_change) {
             dirty_->invalidate(id, DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry);
-        } else if (flex_measure_change) {
+        } else if (flex_measure_change || baseline_change) {
             dirty_->invalidate_subtree(flex_root, DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry);
         } else if (margin_change) {
             dirty_->invalidate(id, DirtyFlags::Placement | DirtyFlags::Geometry);

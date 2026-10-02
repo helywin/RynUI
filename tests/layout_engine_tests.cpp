@@ -860,6 +860,67 @@ void test_static_loading_geometry_preserves_child_identity_and_cache() {
             "static loading removal changed child identity or intrinsic cache");
 }
 
+void test_baseline_lines_margins_reverse_and_cache() {
+    using namespace ryn::layout;
+    using namespace ryn::runtime;
+    NodeStore nodes;
+    const auto root = nodes.create_root();
+    const auto first = nodes.create_child(root);
+    const auto second = nodes.create_child(root);
+    const auto fallback = nodes.create_child(root);
+    LayoutEngine engine(nodes);
+    auto model = flex_layout(FlexDirection::horizontal, 0, FlexWrap::no_wrap, FlexJustify::start, FlexAlign::baseline);
+    engine.set_layout(root, model);
+    engine.set_layout(first, LeafLayout{});
+    engine.set_layout(second, LeafLayout{});
+    engine.set_layout(fallback, LeafLayout{{10, 6}});
+    int calls{};
+    engine.set_intrinsic_measure(first, 1, [&](Constraints) {
+        ++calls;
+        return IntrinsicMeasurement{{20, 20}, 18};
+    });
+    engine.set_intrinsic_measure(second, 1, [](Constraints) { return IntrinsicMeasurement{{20, 20}, 2}; });
+    nodes.require(first).external_layout.margin = {0, 3, 0, 4};
+    const auto baseline = [&](NodeId id) {
+        const auto& node = nodes.require(id);
+        return node.bounds.y + node.first_baseline.value_or(node.measured_size.height);
+    };
+    auto size = engine.layout(root, {0, 100, 0, 100});
+    require(near(size.height, 39) && near(baseline(first), 21) && near(baseline(second), 21) &&
+                near(baseline(fallback), 21),
+            "baseline line did not combine ascent, descent, margins and fallback");
+    static_cast<void>(engine.layout(root, {0, 100, 0, 100}));
+    require(calls == 1 && near(baseline(first), baseline(second)), "intrinsic cache lost its baseline");
+    model.wrap = FlexWrap::wrap_reverse;
+    engine.set_layout(root, model);
+    size = engine.layout(root, {0, 100, 0, 100});
+    require(near(size.height, 39) && near(baseline(first), baseline(second)) &&
+                near(baseline(first), baseline(fallback)),
+            "reverse cross flow failed to align physical baselines");
+    nodes.require(second).external_layout.align_self = FlexItemAlign::center;
+    static_cast<void>(engine.layout(root, {0, 100, 0, 100}));
+    require(!nodes.require(second).baseline_participant && near(nodes.require(second).bounds.y, 3.5F),
+            "align-self center still enlarged a baseline line");
+    engine.set_intrinsic_measure(first, 2, [](Constraints) { return IntrinsicMeasurement{{20, 20}, 10}; });
+    static_cast<void>(engine.layout(root, {0, 100, 0, 100}));
+    require(near(baseline(first), baseline(fallback)), "baseline revision did not refresh line metrics");
+    model.direction = FlexDirection::vertical;
+    engine.set_layout(root, model);
+    static_cast<void>(engine.layout(root, Constraints::fixed(100, 100)));
+    require(!nodes.require(first).baseline_participant, "vertical layout used a horizontal text baseline");
+    for (const float invalid : {-1.0F, std::numeric_limits<float>::quiet_NaN()}) {
+        engine.set_intrinsic_measure(first, 3,
+                                     [invalid](Constraints) { return IntrinsicMeasurement{{20, 20}, invalid}; });
+        bool rejected{};
+        try {
+            static_cast<void>(engine.layout(root, {0, 100, 0, 100}));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected, "invalid intrinsic baseline accepted");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -884,6 +945,7 @@ int main() {
         test_horizontal_content_centers_children_with_token_metrics();
         test_horizontal_content_sizes_empty_and_constrained_content();
         test_static_loading_geometry_preserves_child_identity_and_cache();
+        test_baseline_lines_margins_reverse_and_cache();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -107,6 +107,8 @@ namespace {
         return layout::FlexAlign::end;
     case FlexAlign::Stretch:
         return layout::FlexAlign::stretch;
+    case FlexAlign::Baseline:
+        return layout::FlexAlign::baseline;
     }
     throw std::invalid_argument("Flex align value is invalid");
 }
@@ -123,7 +125,14 @@ void apply_measure_model(FlexComponentState& state, layout::FlexLayout candidate
 }
 
 void apply_placement_model(FlexComponentState& state, layout::FlexLayout candidate, layout::LayoutEngine& layout,
-                           runtime::DirtyQueues& dirty) {
+                           runtime::DirtyQueues& dirty, const runtime::NodeStore& nodes) {
+    for (auto* node = nodes.find(state.node); node != nullptr;
+         node = node->parent ? nodes.find(*node->parent) : nullptr) {
+        if (node->baseline_participant) {
+            apply_measure_model(state, candidate, layout, dirty);
+            return;
+        }
+    }
     if (candidate == state.model) {
         return;
     }
@@ -187,6 +196,7 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
     auto& scope = build.scope(component);
     auto* layout = &services.layout;
     auto* dirty = &services.dirty;
+    auto* nodes = &services.nodes;
     subscribe_theme_gap(state, theme, *layout, *dirty);
     static_cast<void>(connect_prop(scope, FlexPropsAccess::vertical(props), [&state, layout, dirty](bool vertical) {
         auto candidate = state.model;
@@ -207,22 +217,27 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
         }));
     }
     static_cast<void>(
-        connect_prop(scope, FlexPropsAccess::direction(props), [&state, layout, dirty](FlexDirection value) {
+        connect_prop(scope, FlexPropsAccess::direction(props), [&state, layout, dirty, nodes](FlexDirection value) {
             auto candidate = state.model;
             candidate.right_to_left = right_to_left(value);
-            apply_placement_model(state, candidate, *layout, *dirty);
+            apply_placement_model(state, candidate, *layout, *dirty, *nodes);
         }));
     static_cast<void>(
-        connect_prop(scope, FlexPropsAccess::justify(props), [&state, layout, dirty](FlexJustify justify) {
+        connect_prop(scope, FlexPropsAccess::justify(props), [&state, layout, dirty, nodes](FlexJustify justify) {
             auto candidate = state.model;
             candidate.justify = flex_justify(justify);
-            apply_placement_model(state, candidate, *layout, *dirty);
+            apply_placement_model(state, candidate, *layout, *dirty, *nodes);
         }));
-    static_cast<void>(connect_prop(scope, FlexPropsAccess::align(props), [&state, layout, dirty](FlexAlign align) {
-        auto candidate = state.model;
-        candidate.align = flex_align(align);
-        apply_placement_model(state, candidate, *layout, *dirty);
-    }));
+    static_cast<void>(
+        connect_prop(scope, FlexPropsAccess::align(props), [&state, layout, dirty, nodes](FlexAlign align) {
+            auto candidate = state.model;
+            candidate.align = flex_align(align);
+            if (state.model.align == layout::FlexAlign::baseline || candidate.align == layout::FlexAlign::baseline) {
+                apply_measure_model(state, candidate, *layout, *dirty);
+            } else {
+                apply_placement_model(state, candidate, *layout, *dirty, *nodes);
+            }
+        }));
     static_cast<void>(
         connect_prop(scope, FlexPropsAccess::gap(props), [&state, layout, dirty, theme](const LayoutGap& value) {
             state.gap = value;
