@@ -1,0 +1,320 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 147: rynui.gallery_document_contract
+1/1 Test #147: rynui.gallery_document_contract ...   Passed    0.03 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.04 sec
+[0/2] Re-checking globbed directories...
+[1/191] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[2/191] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\ant_design_reference_catalog.cpp.obj
+[3/191] Compiling glyph fragment shader to SPIRV
+[4/191] Compiling glyph vertex shader to SPIRV
+[5/191] Building CXX object src\CMakeFiles\rynui_platform_sdl.dir\Release\platform\sdl\sdl_event_adapter.cpp.obj
+[6/191] Building CXX object tests\CMakeFiles\rynui_text_public_api_tests.dir\Release\text_public_api_tests.cpp.obj
+[7/191] Building CXX object src\CMakeFiles\rynui_text_scene.dir\Release\text\text_scene_service.cpp.obj
+[8/191] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\pointer_router.cpp.obj
+[9/191] Building CXX object tests\CMakeFiles\rynui_public_api_smoke.dir\Release\public_api_smoke.cpp.obj
+[10/191] Compiling rounded_effect fragment shader to SPIRV
+[11/191] Building CXX object tests\CMakeFiles\rynui_button_public_api_tests.dir\Release\button_public_api_tests.cpp.obj
+[12/191] Compiling rounded_effect vertex shader to SPIRV
+[13/191] Compiling glyph fragment shader to DXIL
+[14/191] Reflecting glyph fragment shader resources
+[15/191] Reflecting glyph vertex shader resources
+[16/191] Linking CXX static library src\Release\rynui_text_scene.lib
+[17/191] Linking CXX static library src\Release\rynui_interaction.lib
+[18/191] Compiling glyph vertex shader to DXIL
+[19/191] Compiling quad vertex shader to DXIL
+[20/191] Compiling quad fragment shader to SPIRV
+[21/191] Compiling quad fragment shader to DXIL
+[22/191] Reflecting rounded_effect fragment shader resources
+[23/191] Compiling quad vertex shader to SPIRV
+[24/191] Reflecting rounded_effect vertex shader resources
+[25/191] Compiling rounded_effect vertex shader to DXIL
+[26/191] Compiling rounded_effect fragment shader to DXIL
+[27/191] Linking CXX static library src\Release\rynui_platform_sdl.lib
+[28/191] Deploying shaders for rynui_minimal
+[29/191] Deploying shaders for rynui_text_demo
+[30/191] Deploying shaders for rynui_button_demo
+[31/191] Deploying shaders for rynui_layout_demo
+[32/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_affix_action.cpp.obj
+[33/191] Building CXX object examples\CMakeFiles\rynui_token_gallery_reference_surface.dir\Release\token_gallery\reference_surface.cpp.obj
+[34/191] Deploying shaders for rynui_token_gallery
+[35/191] Building CXX object tests\CMakeFiles\rynui_space_public_api_tests.dir\Release\space_public_api_tests.cpp.obj
+[36/191] Building CXX object tests\CMakeFiles\rynui_flex_public_api_tests.dir\Release\flex_public_api_tests.cpp.obj
+[37/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+[38/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[39/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\divider_component.cpp.obj
+D:\code\RynUI\src\component\divider_component.cpp(303): warning C4100: 'viewport': 未引用的参数
+[40/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\typography_component.cpp.obj
+D:\code\RynUI\src\component\typography_component.cpp(759): warning C4189: “theme”: 局部变量已初始化但不引用
+[41/191] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Release\layout\layout_demo_runtime.cpp.obj
+[42/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tooltip_component.cpp.obj
+[43/191] Building CXX object examples\CMakeFiles\rynui_minimal.dir\Release\minimal\main.cpp.obj
+[44/191] Building CXX object tests\CMakeFiles\rynui_tooltip_component_tests.dir\Release\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[45/191] Building CXX object tests\CMakeFiles\rynui_search_idle_benchmark.dir\Release\search_idle_benchmark.cpp.obj
+[46/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\text_component.cpp.obj
+D:\code\RynUI\src\component\text_component.cpp(567): warning C4100: 'viewport': 未引用的参数
+[47/191] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Release\layout\main.cpp.obj
+[48/191] Building CXX object examples\CMakeFiles\rynui_button_demo.dir\Release\button\main.cpp.obj
+[49/191] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Release\search_component_tests.cpp.obj
+[50/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[51/191] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Release\password_component_tests.cpp.obj
+[52/191] Building CXX object tests\CMakeFiles\rynui_selection_idle_benchmark.dir\Release\selection_idle_benchmark.cpp.obj
+[53/191] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\typography_acceptance.cpp.obj
+[54/191] Building CXX object tests\CMakeFiles\rynui_pressable_behavior_allocation_tests.dir\Release\pressable_behavior_allocation_tests.cpp.obj
+[55/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[56/191] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\tooltip_acceptance.cpp.obj
+[57/191] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\slider_acceptance.cpp.obj
+[58/191] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Release\input_gpu_tests.cpp.obj
+[59/191] Building CXX object tests\CMakeFiles\rynui_sdl_event_adapter_tests.dir\Release\sdl_event_adapter_tests.cpp.obj
+[60/191] Building CXX object tests\CMakeFiles\rynui_selection_component_tests.dir\Release\selection_component_tests.cpp.obj
+[61/191] Building CXX object tests\CMakeFiles\rynui_input_pointer_tests.dir\Release\input_pointer_tests.cpp.obj
+[62/191] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Release\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[63/191] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\token_gallery_runtime.cpp.obj
+[64/191] Building CXX object examples\CMakeFiles\rynui_text_demo.dir\Release\text\main.cpp.obj
+[65/191] Building CXX object tests\CMakeFiles\rynui_input_keyboard_tests.dir\Release\input_keyboard_tests.cpp.obj
+[66/191] Building CXX object tests\CMakeFiles\rynui_input_scene_allocation_benchmark.dir\Release\input_scene_allocation_benchmark.cpp.obj
+[67/191] Building CXX object tests\CMakeFiles\rynui_input_clear_component_tests.dir\Release\input_clear_component_tests.cpp.obj
+[68/191] Building CXX object tests\CMakeFiles\rynui_pointer_state_tests.dir\Release\pointer_state_tests.cpp.obj
+[69/191] Building CXX object tests\CMakeFiles\rynui_pointer_route_tests.dir\Release\pointer_route_tests.cpp.obj
+[70/191] Building CXX object tests\CMakeFiles\rynui_pointer_lifecycle_tests.dir\Release\pointer_lifecycle_tests.cpp.obj
+[71/191] Building CXX object tests\CMakeFiles\rynui_radio_component_tests.dir\Release\radio_component_tests.cpp.obj
+[72/191] Building CXX object tests\CMakeFiles\rynui_token_gallery_benchmark.dir\Release\token_gallery_benchmark.cpp.obj
+[73/191] Building CXX object tests\CMakeFiles\rynui_input_caret_blink_tests.dir\Release\input_caret_blink_tests.cpp.obj
+[74/191] Linking CXX executable tests\Release\rynui_text_input_focus_tests.exe
+[75/191] Linking CXX executable tests\Release\rynui_glyph_texture_upload_tests.exe
+[76/191] Linking CXX executable tests\Release\rynui_sdl_text_input_tests.exe
+[77/191] Linking CXX executable tests\Release\rynui_text_input_atomicity_tests.exe
+[78/191] Building CXX object tests\CMakeFiles\rynui_input_journey_tests.dir\Release\input_journey_tests.cpp.obj
+[79/191] Linking CXX executable tests\Release\rynui_pressable_behavior_allocation_tests.exe
+[80/191] Linking CXX executable tests\Release\rynui_text_clipboard_tests.exe
+[81/191] Linking CXX executable tests\Release\rynui_quad_primitive_tests.exe
+[82/191] Building CXX object tests\CMakeFiles\rynui_focus_state_tests.dir\Release\focus_state_tests.cpp.obj
+[83/191] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_tests.exe
+[84/191] Linking CXX executable tests\Release\rynui_logical_scene_packing_tests.exe
+[85/191] Linking CXX executable tests\Release\rynui_token_gallery_benchmark.exe
+[86/191] Building CXX object tests\CMakeFiles\rynui_slider_component_tests.dir\Release\slider_component_tests.cpp.obj
+[87/191] Linking CXX executable tests\Release\rynui_glyph_scene_tests.exe
+[88/191] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\slider_component.cpp.obj
+[89/191] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_resources_tests.exe
+[90/191] Linking CXX executable tests\Release\rynui_binding_quad_integration_tests.exe
+[91/191] Linking CXX executable tests\Release\rynui_sdl_event_adapter_tests.exe
+[92/191] Building CXX object tests\CMakeFiles\rynui_focus_lifecycle_tests.dir\Release\focus_lifecycle_tests.cpp.obj
+[93/191] Linking CXX executable tests\Release\rynui_hit_test_refresh_tests.exe
+[94/191] Linking CXX executable tests\Release\rynui_hit_test_tests.exe
+[95/191] Linking CXX executable tests\Release\rynui_platform_event_pump_tests.exe
+[96/191] Linking CXX executable tests\Release\rynui_hit_test_dirty_refresh_benchmark.exe
+[97/191] Linking CXX executable tests\Release\rynui_interaction_registry_tests.exe
+[98/191] Linking CXX executable tests\Release\rynui_hit_test_benchmark.exe
+[99/191] Linking CXX executable tests\Release\rynui_pointer_route_tests.exe
+[100/191] Linking CXX executable tests\Release\rynui_pointer_state_tests.exe
+[101/191] Building CXX object tests\CMakeFiles\rynui_flex_component_tests.dir\Release\flex_component_tests.cpp.obj
+[102/191] Linking CXX static library src\Release\rynui_components.lib
+[103/191] Linking CXX executable tests\Release\rynui_pointer_lifecycle_tests.exe
+[104/191] Linking CXX executable tests\Release\rynui_focus_order_tests.exe
+[105/191] Linking CXX executable tests\Release\rynui_focus_state_tests.exe
+[106/191] Building CXX object tests\CMakeFiles\rynui_pointer_allocation_tests.dir\Release\pointer_allocation_tests.cpp.obj
+[107/191] Linking CXX executable tests\Release\rynui_keyboard_activation_tests.exe
+[108/191] Linking CXX executable tests\Release\rynui_focus_allocation_tests.exe
+[109/191] Linking CXX executable tests\Release\rynui_focus_lifecycle_tests.exe
+[110/191] Linking CXX executable tests\Release\rynui_frame_renderer_tests.exe
+[111/191] Linking CXX executable tests\Release\rynui_platform_lifecycle_tests.exe
+[112/191] Linking CXX executable tests\Release\rynui_glyph_gpu_resources_tests.exe
+[113/191] Linking CXX executable tests\Release\rynui_text_render_integration_tests.exe
+[114/191] Linking CXX executable tests\Release\rynui_text_scene_service_tests.exe
+[115/191] Linking CXX executable examples\Release\rynui_minimal.exe
+[116/191] Linking CXX executable tests\Release\rynui_window_overlay_tests.exe
+[117/191] Linking CXX executable tests\Release\rynui_public_api_smoke.exe
+[118/191] Linking CXX executable tests\Release\rynui_theme_public_api_tests.exe
+[119/191] Linking CXX executable tests\Release\rynui_theme_scope_component_tests.exe
+[120/191] Linking CXX executable tests\Release\rynui_component_public_api_tests.exe
+[121/191] Linking CXX executable tests\Release\rynui_layout_style_public_api_tests.exe
+[122/191] Linking CXX executable tests\Release\rynui_prop_public_api_tests.exe
+[123/191] Linking CXX executable tests\Release\rynui_text_public_api_tests.exe
+[124/191] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\token_gallery_definition.cpp.obj
+[125/191] Linking CXX executable tests\Release\rynui_tooltip_component_tests.exe
+[126/191] Linking CXX executable tests\Release\rynui_slider_component_tests.exe
+[127/191] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Release\token_gallery_frame_tests.cpp.obj
+[128/191] Linking CXX executable tests\Release\rynui_selection_controls_public_api_tests.exe
+[129/191] Linking CXX static library examples\Release\rynui_token_gallery_definition.lib
+[130/191] Linking CXX executable tests\Release\rynui_button_public_api_tests.exe
+[131/191] Linking CXX executable tests\Release\rynui_radio_public_api_tests.exe
+[132/191] Linking CXX executable examples\Release\rynui_text_demo.exe
+[133/191] Linking CXX executable examples\Release\rynui_button_demo.exe
+[134/191] Linking CXX executable examples\Release\rynui_layout_demo.exe
+[135/191] Linking CXX executable tests\Release\rynui_input_public_api_tests.exe
+[136/191] Linking CXX static library examples\Release\rynui_token_gallery_reference_surface.lib
+[137/191] Linking CXX executable tests\Release\rynui_flex_public_api_tests.exe
+[138/191] Linking CXX executable tests\Release\rynui_search_public_api_tests.exe
+[139/191] Linking CXX executable tests\Release\rynui_space_public_api_tests.exe
+[140/191] Linking CXX executable tests\Release\rynui_search_component_tests.exe
+[141/191] Linking CXX executable tests\Release\rynui_search_idle_benchmark.exe
+[142/191] Linking CXX executable tests\Release\rynui_selection_component_tests.exe
+[143/191] Linking CXX executable tests\Release\rynui_flex_header_isolation_tests.exe
+[144/191] Linking CXX executable tests\Release\rynui_space_header_isolation_tests.exe
+[145/191] Linking CXX executable tests\Release\rynui_button_header_isolation_tests.exe
+[146/191] Linking CXX executable tests\Release\rynui_radio_component_tests.exe
+[147/191] Linking CXX executable tests\Release\rynui_input_display_tests.exe
+[148/191] Linking CXX executable tests\Release\rynui_component_scene_composer_tests.exe
+[149/191] Linking CXX executable tests\Release\rynui_button_scene_service_tests.exe
+[150/191] Linking CXX executable tests\Release\rynui_selection_idle_benchmark.exe
+[151/191] Linking CXX executable tests\Release\rynui_input_component_tests.exe
+[152/191] Linking CXX executable tests\Release\rynui_password_component_tests.exe
+[153/191] Linking CXX executable tests\Release\rynui_input_pointer_tests.exe
+[154/191] Linking CXX executable tests\Release\rynui_input_material_transition_tests.exe
+[155/191] Linking CXX executable tests\Release\rynui_input_clear_component_tests.exe
+[156/191] Linking CXX executable tests\Release\rynui_input_caret_blink_tests.exe
+[157/191] Linking CXX executable tests\Release\rynui_button_spinner_benchmark.exe
+[158/191] Linking CXX executable tests\Release\rynui_flex_component_tests.exe
+[159/191] Linking CXX executable tests\Release\rynui_ant_design_reference_catalog_tests.exe
+[160/191] Linking CXX executable tests\Release\rynui_gallery_document_model_tests.exe
+[161/191] Linking CXX executable tests\Release\rynui_input_gpu_tests.exe
+[162/191] Linking CXX executable tests\Release\rynui_input_keyboard_tests.exe
+[163/191] Linking CXX executable tests\Release\rynui_gallery_document_benchmark.exe
+[164/191] Linking CXX executable tests\Release\rynui_input_journey_tests.exe
+[165/191] Linking CXX executable tests\Release\rynui_gallery_document_viewport_tests.exe
+[166/191] Linking CXX executable tests\Release\rynui_pointer_allocation_tests.exe
+[167/191] Linking CXX executable tests\Release\rynui_input_scene_allocation_benchmark.exe
+[168/191] Linking CXX executable tests\Release\rynui_default_theme_tests.exe
+[169/191] Linking CXX executable examples\Release\rynui_token_gallery.exe
+[170/191] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[171/191] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Release\text_component_frame_tests.cpp.obj
+[172/191] Building CXX object tests\CMakeFiles\rynui_space_component_tests.dir\Release\space_component_tests.cpp.obj
+[173/191] Linking CXX executable tests\Release\rynui_text_component_frame_tests.exe
+[174/191] Building CXX object tests\CMakeFiles\rynui_reference_surface_tests.dir\Release\reference_surface_tests.cpp.obj
+[175/191] Linking CXX executable tests\Release\rynui_space_component_tests.exe
+[176/191] Linking CXX executable tests\Release\rynui_reference_surface_tests.exe
+[177/191] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Release\typography_interaction_tests.cpp.obj
+[178/191] Building CXX object tests\CMakeFiles\rynui_text_component_tests.dir\Release\text_component_tests.cpp.obj
+[179/191] Building CXX object tests\CMakeFiles\rynui_layout_demo_frame_tests.dir\Release\layout_demo_frame_tests.cpp.obj
+[180/191] Building CXX object tests\CMakeFiles\rynui_divider_component_tests.dir\Release\divider_component_tests.cpp.obj
+[181/191] Building CXX object tests\CMakeFiles\rynui_typography_component_tests.dir\Release\typography_component_tests.cpp.obj
+[182/191] Linking CXX executable tests\Release\rynui_typography_interaction_tests.exe
+[183/191] Linking CXX executable tests\Release\rynui_text_component_tests.exe
+[184/191] Building CXX object tests\CMakeFiles\rynui_button_demo_frame_tests.dir\Release\button_demo_frame_tests.cpp.obj
+[185/191] Linking CXX executable tests\Release\rynui_layout_demo_frame_tests.exe
+[186/191] Linking CXX executable tests\Release\rynui_divider_component_tests.exe
+[187/191] Linking CXX executable tests\Release\rynui_typography_component_tests.exe
+[188/191] Linking CXX executable tests\Release\rynui_button_demo_frame_tests.exe
+[189/191] Building CXX object tests\CMakeFiles\rynui_button_component_tests.dir\Release\button_component_tests.cpp.obj
+[190/191] Linking CXX executable tests\Release\rynui_button_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   1: rynui.glyph_texture_upload
+ 1/53 Test   #1: rynui.glyph_texture_upload .................................   Passed    0.03 sec
+      Start   2: rynui.slider_component
+ 2/53 Test   #2: rynui.slider_component .....................................   Passed    1.09 sec
+      Start   3: rynui.window_overlay
+ 3/53 Test   #3: rynui.window_overlay .......................................   Passed    0.04 sec
+      Start   4: rynui.tooltip_component
+ 4/53 Test   #4: rynui.tooltip_component ....................................   Passed    0.51 sec
+      Start   5: rynui.icon_asset_contract
+ 5/53 Test   #5: rynui.icon_asset_contract ..................................   Passed    0.08 sec
+      Start  35: rynui.ant_design_gallery_catalog_generator
+ 6/53 Test  #35: rynui.ant_design_gallery_catalog_generator .................   Passed    0.12 sec
+      Start  36: rynui.ant_design_gallery_catalog_contract
+ 7/53 Test  #36: rynui.ant_design_gallery_catalog_contract ..................   Passed    0.12 sec
+      Start  56: rynui.theme_algorithm
+ 8/53 Test  #56: rynui.theme_algorithm ......................................   Passed    0.04 sec
+      Start  57: rynui.theme_public_api
+ 9/53 Test  #57: rynui.theme_public_api .....................................   Passed    0.03 sec
+      Start  58: rynui.theme_runtime
+10/53 Test  #58: rynui.theme_runtime ........................................   Passed    0.04 sec
+      Start  63: rynui.theme_scope_component
+11/53 Test  #63: rynui.theme_scope_component ................................   Passed    0.03 sec
+      Start  64: rynui.theme_allocation
+12/53 Test  #64: rynui.theme_allocation .....................................   Passed    0.04 sec
+      Start  93: rynui.component_theme_contract
+13/53 Test  #93: rynui.component_theme_contract .............................   Passed    0.03 sec
+      Start 111: rynui.component_mount
+14/53 Test #111: rynui.component_mount ......................................   Passed    0.03 sec
+      Start 112: rynui.component_scene_traversal
+15/53 Test #112: rynui.component_scene_traversal ............................   Passed    0.03 sec
+      Start 113: rynui.component_scene_composer
+16/53 Test #113: rynui.component_scene_composer .............................   Passed    0.03 sec
+      Start 143: rynui.token_gallery_frame
+17/53 Test #143: rynui.token_gallery_frame ..................................   Passed    4.27 sec
+      Start 144: rynui.gallery_platform_generic_journey
+18/53 Test #144: rynui.gallery_platform_generic_journey .....................   Passed    4.19 sec
+      Start 146: rynui.gallery_document_model
+19/53 Test #146: rynui.gallery_document_model ...............................   Passed    0.04 sec
+      Start 147: rynui.gallery_document_contract
+20/53 Test #147: rynui.gallery_document_contract ............................   Passed    0.03 sec
+      Start 148: rynui.gallery_document_viewport
+21/53 Test #148: rynui.gallery_document_viewport ............................   Passed    0.03 sec
+      Start 149: rynui.gallery_document_viewport_contract
+22/53 Test #149: rynui.gallery_document_viewport_contract ...................   Passed    0.03 sec
+      Start 150: rynui.gallery_document_benchmark
+23/53 Test #150: rynui.gallery_document_benchmark ...........................   Passed    0.04 sec
+      Start 151: rynui.token_gallery_benchmark
+24/53 Test #151: rynui.token_gallery_benchmark ..............................   Passed    1.01 sec
+      Start 152: rynui.token_gallery_contract
+25/53 Test #152: rynui.token_gallery_contract ...............................   Passed    0.04 sec
+      Start 153: rynui.reference_gallery_evidence
+26/53 Test #153: rynui.reference_gallery_evidence ...........................   Passed    0.03 sec
+      Start 154: rynui.reference_gallery_evidence_cross_platform_rejected
+27/53 Test #154: rynui.reference_gallery_evidence_cross_platform_rejected ...   Passed    0.03 sec
+      Start 155: rynui.reference_gallery_evidence_planning_only_rejected
+28/53 Test #155: rynui.reference_gallery_evidence_planning_only_rejected ....   Passed    0.03 sec
+      Start 156: rynui.windows_reference_gallery_build_evidence
+29/53 Test #156: rynui.windows_reference_gallery_build_evidence .............   Passed    0.03 sec
+      Start 157: rynui.windows_gallery_acceptance_runner_contract
+30/53 Test #157: rynui.windows_gallery_acceptance_runner_contract ...........   Passed    0.03 sec
+      Start 158: rynui.token_gallery_evidence_schema
+31/53 Test #158: rynui.token_gallery_evidence_schema ........................   Passed    0.03 sec
+      Start 159: rynui.token_gallery_windows_evidence
+32/53 Test #159: rynui.token_gallery_windows_evidence .......................   Passed    0.03 sec
+      Start 160: rynui.token_gallery_evidence_cross_platform_rejected
+33/53 Test #160: rynui.token_gallery_evidence_cross_platform_rejected .......   Passed    0.02 sec
+      Start 161: rynui.token_gallery_generic_evidence
+34/53 Test #161: rynui.token_gallery_generic_evidence .......................   Passed    0.02 sec
+      Start 162: rynui.theme_architecture_contract
+35/53 Test #162: rynui.theme_architecture_contract ..........................   Passed    0.03 sec
+      Start 178: rynui.glyph_atlas
+36/53 Test #178: rynui.glyph_atlas ..........................................   Passed    0.04 sec
+      Start 179: rynui.glyph_scene
+37/53 Test #179: rynui.glyph_scene ..........................................   Passed    0.30 sec
+      Start 189: rynui.sdl_event_adapter
+38/53 Test #189: rynui.sdl_event_adapter ....................................   Passed    0.03 sec
+      Start 192: rynui.interaction_registry
+39/53 Test #192: rynui.interaction_registry .................................   Passed    0.03 sec
+      Start 197: rynui.pointer_route
+40/53 Test #197: rynui.pointer_route ........................................   Passed    0.03 sec
+      Start 198: rynui.pointer_state
+41/53 Test #198: rynui.pointer_state ........................................   Passed    0.03 sec
+      Start 199: rynui.pointer_lifecycle
+42/53 Test #199: rynui.pointer_lifecycle ....................................   Passed    0.03 sec
+      Start 200: rynui.pointer_allocation
+43/53 Test #200: rynui.pointer_allocation ...................................   Passed    0.03 sec
+      Start 201: rynui.focus_order
+44/53 Test #201: rynui.focus_order ..........................................   Passed    0.03 sec
+      Start 202: rynui.focus_state
+45/53 Test #202: rynui.focus_state ..........................................   Passed    0.03 sec
+      Start 204: rynui.focus_lifecycle
+46/53 Test #204: rynui.focus_lifecycle ......................................   Passed    0.03 sec
+      Start 205: rynui.focus_allocation
+47/53 Test #205: rynui.focus_allocation .....................................   Passed    0.03 sec
+      Start 208: rynui.glyph_gpu_resources
+48/53 Test #208: rynui.glyph_gpu_resources ..................................   Passed    0.03 sec
+      Start 211: rynui.default_theme
+49/53 Test #211: rynui.default_theme ........................................   Passed    0.03 sec
+      Start 212: rynui.text_component
+50/53 Test #212: rynui.text_component .......................................   Passed    0.36 sec
+      Start 216: rynui.text_component_frame
+51/53 Test #216: rynui.text_component_frame .................................   Passed    0.05 sec
+      Start 222: rynui.glyph_shader_contract
+52/53 Test #222: rynui.glyph_shader_contract ................................   Passed    0.03 sec
+      Start 228: rynui.theme_public_compile_fail
+53/53 Test #228: rynui.theme_public_compile_fail ............................   Passed    1.58 sec
+
+100% tests passed out of 53
+
+Total Test time (real) =  15.59 sec

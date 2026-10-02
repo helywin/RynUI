@@ -5,6 +5,7 @@
 #include "renderer/common/scene_resources.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
 #include "token_gallery_definition.hpp"
+#include "acceptance_events.hpp"
 #include <SDL3/SDL.h>
 #include <ryn/rynui.hpp>
 #include <filesystem>
@@ -13,6 +14,8 @@
 namespace rynui::example {
 namespace {
 using namespace ryn;
+using acceptance::fixture_timestamp;
+using acceptance::FixtureEventFilter;
 
 void require_tooltip(bool condition, const char* message) {
     if (!condition) {
@@ -24,9 +27,11 @@ void require_tooltip(bool condition, const char* message) {
 int run_tooltip_acceptance(int argc, char** argv) {
     try {
         std::optional<float> requested_scale;
+        bool with_content{};
         std::filesystem::path directory;
         for (int i = 1; i < argc; ++i) {
             const std::string_view arg = argv[i];
+            with_content = with_content || arg == "--tooltip-content-acceptance";
             if (arg.starts_with("--acceptance-scale=")) {
                 requested_scale = std::stof(std::string{arg.substr(19)});
             }
@@ -38,11 +43,12 @@ int run_tooltip_acceptance(int argc, char** argv) {
         std::filesystem::create_directories(directory);
         detail::PlatformConfig config;
         config.title = "RynUI Tooltip Acceptance";
-        config.width = 1000;
-        config.height = 800;
+        config.width = with_content ? 1600 : 1000;
+        config.height = with_content ? 1000 : 800;
         auto created = detail::PlatformState::create(config);
         require_tooltip(bool(created), "Tooltip window creation failed");
         auto& platform = *created.state;
+        FixtureEventFilter event_filter{with_content};
         auto metrics = platform.window_metrics();
         const float scale = requested_scale.value_or(metrics.display_scale);
         require_tooltip(std::isfinite(scale) && scale > 0, "Tooltip scale invalid");
@@ -68,40 +74,96 @@ int run_tooltip_acceptance(int argc, char** argv) {
         Signal<ThemeConfig> theme{ThemeConfig{}};
         Signal<bool> open{false};
         Signal<bool> arrow{true};
+        Signal<bool> centered{false};
+        Signal<bool> click_open{false};
+        Signal<bool> vector_open{false};
+        Signal<bool> title_available{true};
+        Signal<String> rich{String{u8"保留的富标题 / Rich title"}};
+        Signal<TooltipPlacement> direction{TooltipPlacement::BottomLeft};
+        int rich_runs{};
+        int rich_clicks{};
         int runs{};
         int requests{};
         int clicks{};
         services.mount(Content{[&] {
             ++runs;
             Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
-                      Flex(FlexProps{}.vertical(true).gap(dp(48)), FlexContent{[&] {
-                               Tooltip(
-                                   TooltipProps{}
-                                       .title(String{u8"长文字提示：中文与 English "
-                                                     u8"使用统一字体和窗口裁剪。悬停、Tab、Escape 后焦点仍在按钮。"})
-                                       .arrow(arrow),
-                                   TooltipTrigger{[&] {
-                                       Button(ButtonProps{}.onClick([&] { ++clicks; }),
-                                              ButtonContent{[] { Text(u8"Hover / Focus / Escape"); }});
-                                   }});
-                               Tooltip(TooltipProps{}
-                                           .title(String{u8"Disabled child remains a hover anchor / 禁用按钮说明"})
-                                           .placement(TooltipPlacement::Right),
-                                       TooltipTrigger{[] {
-                                           Button(ButtonProps{}.disabled(true),
-                                                  ButtonContent{[] { Text(u8"Disabled child"); }});
-                                       }});
-                               Tooltip(TooltipProps{}
-                                           .title(String{u8"Controlled open / 受控提示"})
-                                           .open(open)
-                                           .onOpenChange([&](bool next) {
-                                               ++requests;
-                                               open.set(next);
-                                           }),
-                                       TooltipTrigger{[] {
-                                           Button(ButtonProps{}, ButtonContent{[] { Text(u8"Controlled open"); }});
-                                       }});
-                               Text(u8"普通 sibling 在声明顺序较后，浮层仍绘制在最上方。");
+                      const auto legacy = [&] {
+                          Flex(FlexProps{}.vertical(true).gap(dp(48)).layout(with_content ? LayoutStyle{}.width(dp(300))
+                                                                                          : LayoutStyle{}),
+                               FlexContent{[&] {
+                                   Tooltip(TooltipProps{}
+                                               .title(String{
+                                                   u8"长文字提示：中文与 English "
+                                                   u8"使用统一字体和窗口裁剪。悬停、Tab、Escape 后焦点仍在按钮。"})
+                                               .arrow(arrow),
+                                           TooltipTrigger{[&] {
+                                               Button(ButtonProps{}.onClick([&] { ++clicks; }),
+                                                      ButtonContent{[] { Text(u8"Hover / Focus / Escape"); }});
+                                           }});
+                                   Tooltip(TooltipProps{}
+                                               .title(String{u8"Disabled child remains a hover anchor / 禁用按钮说明"})
+                                               .placement(TooltipPlacement::Right),
+                                           TooltipTrigger{[] {
+                                               Button(ButtonProps{}.disabled(true),
+                                                      ButtonContent{[] { Text(u8"Disabled child"); }});
+                                           }});
+                                   Tooltip(TooltipProps{}
+                                               .title(String{u8"Controlled open / 受控提示"})
+                                               .open(open)
+                                               .onOpenChange([&](bool next) {
+                                                   ++requests;
+                                                   open.set(next);
+                                               }),
+                                           TooltipTrigger{[] {
+                                               Button(ButtonProps{}, ButtonContent{[] { Text(u8"Controlled open"); }});
+                                           }});
+                                   Text(u8"普通 sibling 在声明顺序较后，浮层仍绘制在最上方。");
+                               }});
+                      };
+                      if (!with_content) {
+                          legacy();
+                          return;
+                      }
+                      Flex(FlexProps{}.gap(dp(80)), FlexContent{[&] {
+                               legacy();
+                               Flex(FlexProps{}.vertical(true).gap(dp(72)).layout(LayoutStyle{}.width(dp(300))),
+                                    FlexContent{[&] {
+                                        Tooltip(TooltipProps{}
+                                                    .triggers(TooltipTriggers{false, false, true, false})
+                                                    .open(click_open)
+                                                    .titleAvailable(title_available)
+                                                    .onOpenChange([&](bool next) { click_open.set(next); }),
+                                                TooltipTrigger{[&] {
+                                                    Button(ButtonProps{}.onClick([&] { ++rich_clicks; }),
+                                                           ButtonContent{[] { Text(u8"Click / 富标题"); }});
+                                                }},
+                                                TooltipTitle{[&] {
+                                                    ++rich_runs;
+                                                    Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                                                             Text(TextProps{}.content(rich));
+                                                             Icon(IconProps{}.name(IconName::CheckOutlined));
+                                                         }});
+                                                }});
+                                        Tooltip(TooltipProps{}
+                                                    .title(String{u8"右键锚定 / Pointer anchor"})
+                                                    .trigger(TooltipTriggerMode::ContextMenu),
+                                                TooltipTrigger{[] {
+                                                    Button(ButtonProps{},
+                                                           ButtonContent{[] { Text(u8"ContextMenu / 右键"); }});
+                                                }});
+                                        Tooltip(TooltipProps{}
+                                                    .title(String{u8"连续向量箭头 / Vector arrow"})
+                                                    .open(vector_open)
+                                                    .trigger(TooltipTriggerMode::Manual)
+                                                    .layout(LayoutStyle{}.width(dp(100)))
+                                                    .placement(direction)
+                                                    .pointAtCenter(centered)
+                                                    .autoAdjustOverflow(false),
+                                                TooltipTrigger{[] {
+                                                    Button(ButtonProps{}, ButtonContent{[] { Text(u8"Arrow"); }});
+                                                }});
+                                    }});
                            }});
                   }});
         }});
@@ -137,7 +199,9 @@ int run_tooltip_acceptance(int argc, char** argv) {
         };
         draw("initial");
         auto& host = services.tooltip();
-        require_tooltip(host.mounted().size() == 3 && buttons.mounted_buttons().size() == 3, "Tooltip inventory wrong");
+        require_tooltip(host.mounted().size() == (with_content ? 6 : 3) &&
+                            buttons.mounted_buttons().size() == (with_content ? 6 : 3),
+                        "Tooltip inventory wrong");
         const auto first = host.mounted()[0];
         const auto blocked = host.mounted()[1];
         const auto controlled = host.mounted()[2];
@@ -164,6 +228,7 @@ int run_tooltip_acceptance(int argc, char** argv) {
             for (auto type : {SDL_EVENT_KEY_DOWN, SDL_EVENT_KEY_UP}) {
                 SDL_Event event{};
                 event.type = type;
+                event.common.timestamp = fixture_timestamp;
                 event.key.windowID = window_id;
                 event.key.key = code;
                 event.key.down = type == SDL_EVENT_KEY_DOWN;
@@ -171,15 +236,35 @@ int run_tooltip_acceptance(int argc, char** argv) {
                 poll();
             }
         };
-        const auto hover = [&](runtime::ComponentId id) {
-            const auto b = nodes.require(services.components().root(id)).bounds;
+        const auto pointer = [&](Uint32 type, runtime::Point point, Uint8 mouse_button = SDL_BUTTON_LEFT) {
             SDL_Event event{};
-            event.type = SDL_EVENT_MOUSE_MOTION;
-            event.motion.windowID = window_id;
-            event.motion.x = (b.x + b.width / 2) * scale / metrics.pixel_density;
-            event.motion.y = (b.y + b.height / 2) * scale / metrics.pixel_density;
+            event.type = type;
+            event.common.timestamp = fixture_timestamp;
+            if (type == SDL_EVENT_MOUSE_MOTION) {
+                event.motion.windowID = window_id;
+                event.motion.x = point.x * scale / metrics.pixel_density;
+                event.motion.y = point.y * scale / metrics.pixel_density;
+            } else {
+                event.button.windowID = window_id;
+                event.button.button = mouse_button;
+                event.button.down = type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+                event.button.x = point.x * scale / metrics.pixel_density;
+                event.button.y = point.y * scale / metrics.pixel_density;
+            }
             require_tooltip(SDL_PushEvent(&event), "Tooltip pointer injection failed");
             poll();
+        };
+        const auto anchor_center = [&](runtime::ComponentId id) {
+            const auto b = nodes.require(services.components().root(id)).bounds;
+            return runtime::Point{b.x + b.width / 2, b.y + b.height / 2};
+        };
+        const auto hover = [&](runtime::ComponentId id) {
+            pointer(SDL_EVENT_MOUSE_MOTION, anchor_center(id));
+        };
+        const auto click = [&](runtime::Point point, Uint8 mouse_button = SDL_BUTTON_LEFT) {
+            pointer(SDL_EVENT_MOUSE_MOTION, point);
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point, mouse_button);
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, point, mouse_button);
         };
         hover(first);
         draw("hover-edge");
@@ -210,6 +295,75 @@ int run_tooltip_acceptance(int argc, char** argv) {
                         "Tooltip lost child focus/activation");
         services.focus().clear_focus();
         draw("dismissed");
+        if (with_content) {
+            const auto click_tip = host.mounted()[3];
+            const auto context_tip = host.mounted()[4];
+            const auto vector_tip = host.mounted()[5];
+            const runtime::Point blank{4, 4};
+            pointer(SDL_EVENT_MOUSE_MOTION, blank);
+            click(anchor_center(click_tip));
+            draw("rich-click");
+            require_tooltip(click_open.get() && host.snapshot(click_tip).visible && rich_clicks == 1,
+                            "Tooltip rich click failed");
+            const auto rich_bounds = host.snapshot(click_tip).bounds;
+            rich.set(String{u8"更新后的富标题保留节点并重新测量 / Updated rich title retains mounted content"});
+            draw("rich-updated");
+            require_tooltip(host.snapshot(click_tip).bounds != rich_bounds && rich_runs == 1 && runs == 1,
+                            "Tooltip rich content did not resize in place");
+            title_available.set(false);
+            draw("rich-unavailable");
+            require_tooltip(!host.snapshot(click_tip).visible, "Tooltip unavailable rich title stayed visible");
+            title_available.set(true);
+            draw("rich-restored");
+            const auto restored = host.snapshot(click_tip).bounds;
+            click({restored.x + restored.width / 2, restored.y + restored.height / 2});
+            draw("rich-inside");
+            require_tooltip(click_open.get() && host.snapshot(click_tip).visible && rich_clicks == 1,
+                            "Tooltip popup click propagated or closed");
+            click(anchor_center(click_tip));
+            draw("rich-toggled");
+            require_tooltip(!click_open.get() && !host.snapshot(click_tip).visible && rich_clicks == 2,
+                            "Tooltip second click did not toggle");
+            click(anchor_center(click_tip));
+            click(blank);
+            draw("rich-outside");
+            require_tooltip(!click_open.get() && !host.snapshot(click_tip).visible && rich_clicks == 3,
+                            "Tooltip blank outside click failed");
+            auto context_point = anchor_center(context_tip);
+            context_point.x -= 12;
+            click(context_point, SDL_BUTTON_RIGHT);
+            draw("context-menu");
+            require_tooltip(host.snapshot(context_tip).visible &&
+                                std::abs(host.snapshot(context_tip).anchor.x - context_point.x) < 0.01F &&
+                                std::abs(host.snapshot(context_tip).anchor.y - context_point.y) < 0.01F &&
+                                host.snapshot(context_tip).anchor.width == 0,
+                            "Tooltip context menu was not pointer anchored");
+            const auto fixed = host.snapshot(context_tip).anchor;
+            pointer(SDL_EVENT_MOUSE_MOTION, blank);
+            draw("context-fixed");
+            require_tooltip(host.snapshot(context_tip).visible && host.snapshot(context_tip).anchor == fixed,
+                            "Tooltip context anchor followed motion");
+            key(SDLK_ESCAPE);
+            draw("context-dismissed");
+            require_tooltip(!host.snapshot(context_tip).visible, "Tooltip context Escape failed");
+            vector_open.set(true);
+            draw("corner-edge");
+            const auto edge_x = host.snapshot(vector_tip).bounds.x;
+            centered.set(true);
+            draw("corner-center");
+            require_tooltip(host.snapshot(vector_tip).visible && host.snapshot(vector_tip).bounds.x != edge_x,
+                            "Tooltip pointAtCenter did not align corner");
+            centered.set(false);
+            direction.set(TooltipPlacement::Top);
+            draw("arrow-down");
+            direction.set(TooltipPlacement::Bottom);
+            draw("arrow-up");
+            direction.set(TooltipPlacement::Left);
+            draw("arrow-right");
+            direction.set(TooltipPlacement::Right);
+            draw("arrow-left");
+            require_tooltip(rich_runs == 1 && runs == 1, "Tooltip interactions reran retained content");
+        }
         require_tooltip(services.focus().request_focus(button.interaction, input::FocusModality::keyboard),
                         "Tooltip refocus failed");
         ThemeConfig dark;
@@ -222,20 +376,25 @@ int run_tooltip_acceptance(int argc, char** argv) {
         draw("compact");
         arrow.set(false);
         draw("no-arrow");
-        require_tooltip(SDL_SetWindowSize(window, 760, 600), "Tooltip resize failed");
+        const int resized_width = with_content ? 1420 : 760;
+        const int resized_height = with_content ? 900 : 600;
+        require_tooltip(SDL_SetWindowSize(window, resized_width, resized_height), "Tooltip resize failed");
         platform.delay(100);
         draw("resized");
-        require_tooltip(runs == 1 && host.snapshot(first).visible && metrics.coordinate_width == 760,
+        require_tooltip(runs == 1 && host.snapshot(first).visible && metrics.coordinate_width == resized_width,
                         "Tooltip resize rebuilt content");
         services.set_window_active(false);
         draw("inactive");
         require_tooltip(!host.snapshot(first).visible && !services.next_frame_deadline(),
                         "Tooltip inactive window leaked deadline");
-        std::cout << "tooltip_acceptance=passed gpu_driver=" << renderer.gpu_driver()
-                  << " shader_format=" << renderer.shader_format() << " system_display_scale=" << metrics.display_scale
-                  << " render_scale=" << scale << " normalized_events=" << normalized << " requests=" << requests
-                  << " child_clicks=" << clicks << " submits=" << renderer.counters().frame_submissions
-                  << " resize=760x600 content_runs=" << runs << " exit_code=0\n";
+        std::cout << (with_content ? "tooltip_content_acceptance=passed gpu_driver="
+                                   : "tooltip_acceptance=passed gpu_driver=")
+                  << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
+                  << " system_display_scale=" << metrics.display_scale << " render_scale=" << scale
+                  << " normalized_events=" << normalized << " requests=" << requests << " child_clicks=" << clicks
+                  << " submits=" << renderer.counters().frame_submissions << " resize=" << resized_width << 'x'
+                  << resized_height << " content_runs=" << runs << " rich_runs=" << rich_runs
+                  << " rich_clicks=" << rich_clicks << " exit_code=0\n";
         services.dispose();
         return 0;
     } catch (const std::exception& e) {

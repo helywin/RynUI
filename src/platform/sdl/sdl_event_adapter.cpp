@@ -300,16 +300,17 @@ static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindo
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        if (event.button.button == SDL_BUTTON_LEFT) {
+        if (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_RIGHT) {
             const auto action = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? PointerAction::down : PointerAction::up;
-            append_if_valid(result, PointerInputEvent{
-                                        PointerIdentity::mouse(),
-                                        action,
-                                        PointerButton::primary,
-                                        to_logical_coordinate(event.button.x, metrics),
-                                        to_logical_coordinate(event.button.y, metrics),
-                                        event.button.clicks,
-                                    });
+            append_if_valid(
+                result, PointerInputEvent{
+                            PointerIdentity::mouse(),
+                            action,
+                            event.button.button == SDL_BUTTON_LEFT ? PointerButton::primary : PointerButton::secondary,
+                            to_logical_coordinate(event.button.x, metrics),
+                            to_logical_coordinate(event.button.y, metrics),
+                            event.button.clicks,
+                        });
         }
         return;
     case SDL_EVENT_FINGER_DOWN:

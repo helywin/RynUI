@@ -18,7 +18,7 @@
 
 ## 5. Windows 原生验收
 
-- [ ] 5.1 windows-msvc Debug/Release 完整 build 与受影响平台 CTest，实际 D3D12/DXIL rich/click/contextMenu/四向箭头/Default/Dark/Compact/resize/fonts/system scale 与 scale=1/1.25/1.5/2；保存 GPU 图像、诊断、SHA256/退出码并独立提交。
+- [x] 5.1 windows-msvc Debug/Release 完整 build 与受影响平台 CTest，实际 D3D12/DXIL rich/click/contextMenu/四向箭头/Default/Dark/Compact/resize/fonts/system scale 与 scale=1/1.25/1.5/2；保存 GPU 图像、诊断、SHA256/退出码并独立提交。
 
 ## 6. Linux 原生验收
 

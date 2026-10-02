@@ -307,11 +307,32 @@ void test_quit_and_frame_summary_regression() {
     require(resize_result.frame_requested, "unhandled SDL event no longer requests a frame");
     require(resize_result.input.empty(), "unhandled SDL event leaked into normalized input");
 
-    PlatformEvents secondary_button_result;
-    SdlEventAdapter::merge(secondary_button_result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 0, SDL_BUTTON_RIGHT),
+    PlatformEvents unsupported_button_result;
+    SdlEventAdapter::merge(unsupported_button_result, mouse_button(SDL_EVENT_MOUSE_BUTTON_DOWN, 0, SDL_BUTTON_MIDDLE),
                            metrics);
-    require(secondary_button_result.frame_requested, "secondary mouse button no longer requests a frame");
-    require(secondary_button_result.input.empty(), "unsupported mouse button entered normalized input");
+    require(unsupported_button_result.frame_requested, "unsupported mouse button no longer requests a frame");
+    require(unsupported_button_result.input.empty(), "unsupported mouse button entered normalized input");
+}
+
+void test_secondary_button_preserves_coordinates_action_and_clicks() {
+    PlatformEvents result;
+    SdlWindowMetrics metrics{960, 720, 1920, 1440, 2.0F, 1.5F};
+    for (const auto type : {SDL_EVENT_MOUSE_BUTTON_DOWN, SDL_EVENT_MOUSE_BUTTON_UP}) {
+        SdlEventAdapter::merge(result, mouse_button(type, 3, SDL_BUTTON_RIGHT), metrics);
+    }
+    require(result.input.size() == 2 && result.frame_requested, "secondary button lost normalized sequence");
+    for (std::size_t index = 0; index < 2; ++index) {
+        const auto& event = std::get<PointerInputEvent>(result.input.events()[index]);
+        require(event.pointer == PointerIdentity::mouse() && event.button == PointerButton::secondary &&
+                    event.action == (index == 0 ? PointerAction::down : PointerAction::up) && event.click_count == 2 &&
+                    near(event.x, 32.0F * 4.0F / 3.0F) && near(event.y, 64.0F),
+                "secondary button mapping differs from primary DPI/action contract");
+    }
+    PlatformEvents compatibility;
+    SdlEventAdapter::merge(compatibility, mouse_button(SDL_EVENT_MOUSE_BUTTON_UP, SDL_TOUCH_MOUSEID, SDL_BUTTON_RIGHT),
+                           metrics);
+    require(compatibility.input.empty() && compatibility.suppressed_compatibility_mouse_events == 1,
+            "secondary compatibility mouse event was duplicated");
 }
 
 void test_expose_redraw_survives_a_mixed_input_batch() {
@@ -343,6 +364,7 @@ int main() {
         test_display_scale_maps_pixels_and_pointer_to_logical_coordinates();
         test_wheel_precision_direction_and_logical_position();
         test_quit_and_frame_summary_regression();
+        test_secondary_button_preserves_coordinates_action_and_clicks();
         test_expose_redraw_survives_a_mixed_input_batch();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

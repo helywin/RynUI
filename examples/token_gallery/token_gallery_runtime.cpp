@@ -898,7 +898,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         has_argument(argc, argv, "--slider-editing-acceptance")) {
         return run_slider_acceptance(argc, argv);
     }
-    if (has_argument(argc, argv, "--tooltip-acceptance")) {
+    if (has_argument(argc, argv, "--tooltip-acceptance") || has_argument(argc, argv, "--tooltip-content-acceptance")) {
         return run_tooltip_acceptance(argc, argv);
     }
     try {
