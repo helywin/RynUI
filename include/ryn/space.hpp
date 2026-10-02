@@ -6,6 +6,7 @@
 #include <ryn/prop.hpp>
 
 #include <utility>
+#include <optional>
 
 namespace ryn {
 namespace detail {
@@ -14,10 +15,23 @@ struct SpacePropsAccess;
 
 } // namespace detail
 
+enum class SpaceOrientation { Horizontal, Vertical };
+
 class SpaceProps final {
 public:
     SpaceProps& vertical(Prop<bool> value) {
+        orientation_.reset();
         vertical_ = std::move(value);
+        return *this;
+    }
+
+    SpaceProps& orientation(Prop<SpaceOrientation> value) {
+        orientation_ = std::move(value);
+        return *this;
+    }
+
+    SpaceProps& direction(Prop<FlexDirection> value) {
+        direction_ = std::move(value);
         return *this;
     }
 
@@ -57,8 +71,10 @@ private:
     friend struct detail::SpacePropsAccess;
 
     Prop<bool> vertical_{false};
+    std::optional<Prop<SpaceOrientation>> orientation_;
+    Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
     Prop<bool> wrap_{false};
-    Prop<SpaceAlign> align_{SpaceAlign::Start};
+    Prop<SpaceAlign> align_{SpaceAlign::Auto};
     Prop<LayoutGap> size_{LayoutGap{SpaceSize::Small}};
     LayoutStyle layout_;
 };

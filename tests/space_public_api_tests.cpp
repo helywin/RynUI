@@ -67,8 +67,12 @@ int main() {
         ryn::Signal<ryn::SpaceAlign> align{ryn::SpaceAlign::End};
         ryn::Signal<ryn::LayoutGap> size{ryn::LayoutGap{ryn::SpaceSize::Middle}};
         const auto bound_size = ryn::bind([] { return ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)}; });
+        ryn::Signal<ryn::SpaceOrientation> orientation{ryn::SpaceOrientation::Horizontal};
+        ryn::Signal<ryn::FlexDirection> direction{ryn::FlexDirection::RightToLeft};
 
         auto declarations = [&] {
+            ryn::Space(ryn::SpaceProps{}.orientation(orientation).direction(direction).align(ryn::SpaceAlign::Baseline),
+                       [] {});
             ryn::Space(ryn::SpaceProps{}.vertical(vertical).wrap(wrap).align(align).size(size).layout(
                            ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
                        [] { ryn::Text(u8"content"); });

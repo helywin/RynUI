@@ -2,7 +2,7 @@
 
 ## 1. Space 对齐与方向（平台通用）
 
-- [ ] 1.1 实现 Auto/Baseline、typed orientation/旧 vertical 最后配置优先、LTR/RTL；默认 H Center/V Stretch，迁移旧 Start 意图并更新 docs/flex-space.md。public API、H/V/RTL/真实字体基线、缓存/非法更新/销毁测试在 Windows `windows-msvc-headless` Debug/Release 通过，格式/OpenSpec/diff 检查后提交。
+- [x] 1.1 实现 Auto/Baseline、typed orientation/旧 vertical 最后配置优先、LTR/RTL；默认 H Center/V Stretch，迁移旧 Start 意图并更新 docs/flex-space.md。public API、H/V/RTL/真实字体基线、缓存/非法更新/销毁测试在 Windows `windows-msvc-headless` Debug/Release 通过，格式/OpenSpec/diff 检查后提交。
 
 ## 2. Separator（平台通用）
 

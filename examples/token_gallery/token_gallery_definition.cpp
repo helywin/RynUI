@@ -640,6 +640,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
     section_surface(state, gallery_document_sections()[5]);
     ryn::Space(
         ryn::SpaceProps{}
+            .align(ryn::SpaceAlign::Start)
             .wrap(true)
             .align(ryn::SpaceAlign::Center)
             .size(ryn::dp(8.0F), ryn::dp(8.0F))
@@ -677,7 +678,11 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Input / 单行输入 · partial");
     ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
     ryn::Text(u8"支持：allowClear 清空操作；TextArea 与更多组合能力仍待实现");
-    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+    ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
+                   .wrap(true)
+                   .size(ryn::dp(8.0F))
+                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
                [state] {
                    ryn::Theme(ryn::ThemeProps{}, ryn::ThemeContent{[state] {
                                   ++state->telemetry.theme_content_runs;
@@ -724,7 +729,11 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
     ryn::Text(u8"Search / 搜索 · partial：复用 Input、Button 与 Flex");
     ryn::Text(u8"支持：受控/非受控、Enter/按钮提交、loading/disabled；暂缺 clear、自定义图标与紧凑边角");
-    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+    ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
+                   .wrap(true)
+                   .size(ryn::dp(8.0F))
+                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
                [state] {
                    ryn::Search(ryn::SearchProps{}
                                    .value(state->search_value)
@@ -766,7 +775,11 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                });
     ryn::Text(ryn::TextProps{}.content(state->search_feedback));
     ryn::Text(u8"Password / 密码 · 复用 Input 编辑与窗口输入会话");
-    ryn::Space(ryn::SpaceProps{}.wrap(true).size(ryn::dp(8.0F)).layout(ryn::LayoutStyle{}.width(state->document_width)),
+    ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
+                   .wrap(true)
+                   .size(ryn::dp(8.0F))
+                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
                [state] {
                    ryn::Password(ryn::PasswordProps{}
                                      .defaultValue(u8"RynUI 密码")
@@ -781,6 +794,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                });
     ryn::Text(u8"Switch / 开关 · Middle、Small、disabled、loading");
     ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
                    .wrap(true)
                    .align(ryn::SpaceAlign::Center)
                    .size(ryn::dp(12.0F))
@@ -803,6 +817,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                });
     ryn::Text(u8"Checkbox / 多选框 · checked、indeterminate、disabled");
     ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
                    .wrap(true)
                    .align(ryn::SpaceAlign::Center)
                    .size(ryn::dp(12.0F))
@@ -825,6 +840,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                });
     ryn::Text(u8"Radio / 单选框 · 单独使用、互斥分组、disabled");
     ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
                    .wrap(true)
                    .align(ryn::SpaceAlign::Center)
                    .size(ryn::dp(12.0F))
@@ -888,7 +904,7 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
     });
     state->telemetry.live_samples += 5;
     ryn::Text(u8"Tooltip · 悬停 / 焦点 / 点击 / 右键 / 富标题 / 居中箭头");
-    ryn::Space(ryn::SpaceProps{}.wrap(true), [] {
+    ryn::Space(ryn::SpaceProps{}.align(ryn::SpaceAlign::Start).wrap(true), [] {
         ryn::Tooltip(ryn::TooltipProps{}.title(ryn::String{u8"悬停或 Tab 焦点显示，Escape 关闭"}),
                      ryn::TooltipTrigger{
                          [] { ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"提示"); }}); }});
@@ -900,7 +916,7 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
             }});
     });
     state->telemetry.live_samples += 2;
-    ryn::Space(ryn::SpaceProps{}.wrap(true), [] {
+    ryn::Space(ryn::SpaceProps{}.align(ryn::SpaceAlign::Start).wrap(true), [] {
         ryn::Tooltip(ryn::TooltipProps{}.trigger(ryn::TooltipTriggerMode::Click), ryn::TooltipTrigger{[] {
                          ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"点击 / 富标题"); }});
                      }},
@@ -969,58 +985,74 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
 
 void add_button_and_divider_variant_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Button · 原生颜色 / 六变体 / ghost / 图标 / shape / block / ref / loading delay / wave");
-    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
-        constexpr std::array colors{ryn::ButtonColor::Blue,    ryn::ButtonColor::Purple,   ryn::ButtonColor::Cyan,
-                                    ryn::ButtonColor::Green,   ryn::ButtonColor::Magenta,  ryn::ButtonColor::Pink,
-                                    ryn::ButtonColor::Red,     ryn::ButtonColor::Orange,   ryn::ButtonColor::Yellow,
-                                    ryn::ButtonColor::Volcano, ryn::ButtonColor::Geekblue, ryn::ButtonColor::Lime,
-                                    ryn::ButtonColor::Gold};
-        constexpr std::array<std::string_view, 13> names{"blue",     "purple", "cyan",   "green",  "magenta",
-                                                         "pink",     "red",    "orange", "yellow", "volcano",
-                                                         "geekblue", "lime",   "gold"};
-        for (std::size_t index = 0; index < colors.size(); ++index) {
-            const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
-            ryn::Button(ryn::ButtonProps{}.color(colors[index]).variant(ryn::ButtonVariant::Solid),
-                        [caption] { ryn::Text(caption); });
-        }
-        state->telemetry.live_samples += colors.size();
-    });
-    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
-        constexpr std::array variants{ryn::ButtonVariant::Outlined, ryn::ButtonVariant::Dashed,
-                                      ryn::ButtonVariant::Solid,    ryn::ButtonVariant::Filled,
-                                      ryn::ButtonVariant::Text,     ryn::ButtonVariant::Link};
-        constexpr std::array<std::string_view, 6> names{"outlined", "dashed", "solid", "filled", "text", "link"};
-        for (std::size_t index = 0; index < variants.size(); ++index) {
-            const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
-            ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(variants[index]),
-                        [caption] { ryn::Text(caption); });
-        }
-        state->telemetry.live_samples += variants.size();
-    });
-    ryn::Space(ryn::SpaceProps{}.wrap(true).layout(ryn::LayoutStyle{}.width(state->document_width)), [state] {
-        ryn::Button(ryn::ButtonProps{}
-                        .ref(state->button_ref)
-                        .loading(state->button_loading)
-                        .loadingDelay(ryn::Duration::milliseconds(150))
-                        .iconPlacement(ryn::ButtonIconPlacement::End),
-                    ryn::ButtonContent{[] { ryn::Text(u8"gallery.button.icon-end · End / Loading"); }},
-                    ryn::ButtonIcon{[] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
-                    ryn::ButtonLoadingIcon{[] { ryn::Text(u8"…"); }});
-        ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Circle),
-                    ryn::ButtonSlots{.icon = ryn::ButtonIcon{
-                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::SearchOutlined)); }}});
-        ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Square),
-                    [] { ryn::Text(u8"gallery.button.square · Square"); });
-        ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(ryn::ButtonVariant::Dashed).ghost(true),
-                    [] { ryn::Text(u8"gallery.button.ghost · Ghost dashed"); });
-        ryn::Button(ryn::ButtonProps{}.onClick([state] {
-            state->button_loading.set(!state->button_loading.get());
-            static_cast<void>(state->button_ref.focus());
-            ++state->telemetry.activations;
-        }),
-                    [] { ryn::Text(u8"gallery.button.loading-focus · 切换加载并聚焦"); });
-        state->telemetry.live_samples += 5;
-    });
+    ryn::Space(
+        ryn::SpaceProps{}
+            .align(ryn::SpaceAlign::Start)
+            .wrap(true)
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            constexpr std::array colors{ryn::ButtonColor::Blue,    ryn::ButtonColor::Purple,   ryn::ButtonColor::Cyan,
+                                        ryn::ButtonColor::Green,   ryn::ButtonColor::Magenta,  ryn::ButtonColor::Pink,
+                                        ryn::ButtonColor::Red,     ryn::ButtonColor::Orange,   ryn::ButtonColor::Yellow,
+                                        ryn::ButtonColor::Volcano, ryn::ButtonColor::Geekblue, ryn::ButtonColor::Lime,
+                                        ryn::ButtonColor::Gold};
+            constexpr std::array<std::string_view, 13> names{"blue",     "purple", "cyan",   "green",  "magenta",
+                                                             "pink",     "red",    "orange", "yellow", "volcano",
+                                                             "geekblue", "lime",   "gold"};
+            for (std::size_t index = 0; index < colors.size(); ++index) {
+                const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
+                ryn::Button(ryn::ButtonProps{}.color(colors[index]).variant(ryn::ButtonVariant::Solid),
+                            [caption] { ryn::Text(caption); });
+            }
+            state->telemetry.live_samples += colors.size();
+        });
+    ryn::Space(
+        ryn::SpaceProps{}
+            .align(ryn::SpaceAlign::Start)
+            .wrap(true)
+            .layout(ryn::LayoutStyle{}.width(state->document_width)),
+        [state] {
+            constexpr std::array variants{ryn::ButtonVariant::Outlined, ryn::ButtonVariant::Dashed,
+                                          ryn::ButtonVariant::Solid,    ryn::ButtonVariant::Filled,
+                                          ryn::ButtonVariant::Text,     ryn::ButtonVariant::Link};
+            constexpr std::array<std::string_view, 6> names{"outlined", "dashed", "solid", "filled", "text", "link"};
+            for (std::size_t index = 0; index < variants.size(); ++index) {
+                const auto caption = label(std::string{"gallery.button."} + std::string{names[index]}, names[index]);
+                ryn::Button(ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(variants[index]),
+                            [caption] { ryn::Text(caption); });
+            }
+            state->telemetry.live_samples += variants.size();
+        });
+    ryn::Space(ryn::SpaceProps{}
+                   .align(ryn::SpaceAlign::Start)
+                   .wrap(true)
+                   .layout(ryn::LayoutStyle{}.width(state->document_width)),
+               [state] {
+                   ryn::Button(ryn::ButtonProps{}
+                                   .ref(state->button_ref)
+                                   .loading(state->button_loading)
+                                   .loadingDelay(ryn::Duration::milliseconds(150))
+                                   .iconPlacement(ryn::ButtonIconPlacement::End),
+                               ryn::ButtonContent{[] { ryn::Text(u8"gallery.button.icon-end · End / Loading"); }},
+                               ryn::ButtonIcon{[] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
+                               ryn::ButtonLoadingIcon{[] { ryn::Text(u8"…"); }});
+                   ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Circle),
+                               ryn::ButtonSlots{.icon = ryn::ButtonIcon{[] {
+                                                    ryn::Icon(ryn::IconProps{}.name(ryn::IconName::SearchOutlined));
+                                                }}});
+                   ryn::Button(ryn::ButtonProps{}.shape(ryn::ButtonShape::Square),
+                               [] { ryn::Text(u8"gallery.button.square · Square"); });
+                   ryn::Button(
+                       ryn::ButtonProps{}.color(ryn::ButtonColor::Blue).variant(ryn::ButtonVariant::Dashed).ghost(true),
+                       [] { ryn::Text(u8"gallery.button.ghost · Ghost dashed"); });
+                   ryn::Button(ryn::ButtonProps{}.onClick([state] {
+                       state->button_loading.set(!state->button_loading.get());
+                       static_cast<void>(state->button_ref.focus());
+                       ++state->telemetry.activations;
+                   }),
+                               [] { ryn::Text(u8"gallery.button.loading-focus · 切换加载并聚焦"); });
+                   state->telemetry.live_samples += 5;
+               });
     ryn::Button(ryn::ButtonProps{}.block(true).shape(ryn::ButtonShape::Round),
                 [] { ryn::Text(u8"gallery.button.round-block · Round block / resize"); });
     ++state->telemetry.live_samples;
@@ -1053,37 +1085,40 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
 
 void add_switch_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Switch · retained 内容、图标、RTL、ref 与组件主题");
-    ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center).size(ryn::dp(12)), [state] {
-        ryn::Text(u8"gallery.switch.content-ref");
-        ryn::Switch(
-            ryn::SwitchProps{}.checked(state->switch_checked).ref(state->switch_ref).onChange([state](bool value) {
-                state->switch_checked.set(value);
+    ryn::Space(
+        ryn::SpaceProps{}.align(ryn::SpaceAlign::Start).wrap(true).align(ryn::SpaceAlign::Center).size(ryn::dp(12)),
+        [state] {
+            ryn::Text(u8"gallery.switch.content-ref");
+            ryn::Switch(
+                ryn::SwitchProps{}.checked(state->switch_checked).ref(state->switch_ref).onChange([state](bool value) {
+                    state->switch_checked.set(value);
+                }),
+                ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
+                                 ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
+            ryn::Text(u8"gallery.switch.small-icon-rtl");
+            ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).direction(ryn::SwitchDirection::RightToLeft),
+                        ryn::SwitchSlots{ryn::SwitchCheckedContent{
+                                             [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
+                                         ryn::SwitchUncheckedContent{[] {
+                                             ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseCircleFilled));
+                                         }}});
+            ryn::ThemeConfig custom;
+            custom.switch_.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
+            custom.switch_.algorithm = true;
+            ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
+                           ++state->telemetry.theme_content_runs;
+                           ryn::Text(u8"gallery.switch.component-theme");
+                           ryn::Switch(ryn::SwitchProps{}.defaultChecked(true),
+                                       ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"紫色"); }},
+                                                        ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关"); }}});
+                       }});
+            ryn::Button(ryn::ButtonProps{}.onClick([state] {
+                static_cast<void>(state->switch_ref.focus());
+                ++state->telemetry.activations;
             }),
-            ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"开启"); }},
-                             ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关闭"); }}});
-        ryn::Text(u8"gallery.switch.small-icon-rtl");
-        ryn::Switch(ryn::SwitchProps{}.size(ryn::SwitchSize::Small).direction(ryn::SwitchDirection::RightToLeft),
-                    ryn::SwitchSlots{ryn::SwitchCheckedContent{
-                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined)); }},
-                                     ryn::SwitchUncheckedContent{
-                                         [] { ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CloseCircleFilled)); }}});
-        ryn::ThemeConfig custom;
-        custom.switch_.seed.color_primary = ryn::Color::rgba8(114, 46, 209);
-        custom.switch_.algorithm = true;
-        ryn::Theme(ryn::ThemeProps{}.config(custom), ryn::ThemeContent{[state] {
-                       ++state->telemetry.theme_content_runs;
-                       ryn::Text(u8"gallery.switch.component-theme");
-                       ryn::Switch(ryn::SwitchProps{}.defaultChecked(true),
-                                   ryn::SwitchSlots{ryn::SwitchCheckedContent{[] { ryn::Text(u8"紫色"); }},
-                                                    ryn::SwitchUncheckedContent{[] { ryn::Text(u8"关"); }}});
-                   }});
-        ryn::Button(ryn::ButtonProps{}.onClick([state] {
-            static_cast<void>(state->switch_ref.focus());
-            ++state->telemetry.activations;
-        }),
-                    [] { ryn::Text(u8"gallery.switch.focus · 聚焦开关"); });
-        state->telemetry.live_samples += 4;
-    });
+                        [] { ryn::Text(u8"gallery.switch.focus · 聚焦开关"); });
+            state->telemetry.live_samples += 4;
+        });
     ryn::Flex(ryn::FlexProps{}.align(ryn::FlexAlign::Start).layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
               ryn::FlexContent{[] {}});
 }

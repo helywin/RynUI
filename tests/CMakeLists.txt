@@ -1066,6 +1066,13 @@ add_test(NAME rynui.button_spinner_benchmark COMMAND rynui_button_spinner_benchm
 
 add_executable(rynui_flex_component_tests flex_component_tests.cpp)
 add_executable(rynui_flex_features_tests flex_features_tests.cpp)
+add_executable(rynui_space_features_tests space_features_tests.cpp)
+rynui_configure_cpp_target(rynui_space_features_tests)
+target_link_libraries(rynui_space_features_tests PRIVATE rynui_components rynui_text_input_session)
+target_compile_definitions(rynui_space_features_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.space_features COMMAND rynui_space_features_tests)
 rynui_configure_cpp_target(rynui_flex_features_tests)
 target_link_libraries(rynui_flex_features_tests PRIVATE rynui_components rynui_text_input_session)
 target_compile_definitions(rynui_flex_features_tests PRIVATE

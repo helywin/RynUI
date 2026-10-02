@@ -12,6 +12,7 @@ struct SpaceComponentState final {
     runtime::NodeId node;
     layout::FlexLayout model;
     LayoutGap gap;
+    SpaceAlign requested_align{SpaceAlign::Auto};
     theme_runtime::Subscription theme_subscription;
 };
 

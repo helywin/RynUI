@@ -33,4 +33,10 @@ grow/shrink 为有限非负值；basis 为非负 logical length 或 auto。min/m
 
 基线切换、字体、margin 或内部对齐影响已参与基线的祖先时刷新测量；纯方向/justify 更新复用测量，仅更新 placement、glyph geometry 与命中区域，保留 content/scene/interaction 身份。销毁取消 reactive 订阅；没有布局动画或持续 deadline。
 
-Space 目前保留 H/V、wrap、typed Small/Middle/Large 和独立 main/cross gap；separator/Compact 将在后续独立收尾 change 增加。平台通用与 Windows/Linux 原生验收分别见 049 tasks/evidence。
+## Space 对齐与方向
+
+**BREAKING：050 起 `SpaceProps` 默认 align 为 Auto：horizontal Center、vertical Stretch。** 依赖旧顶部/左边对齐的调用必须显式 `.align(SpaceAlign::Start)`。Baseline 与 Flex 使用相同真实字体基线合同；Space 按内容顺序和 gap 排列，不读取子项的 flex grow/shrink/basis/order。
+
+`orientation(SpaceOrientation::Horizontal/Vertical)` 与旧 `vertical(bool/Prop<bool>)` 的最后配置决定方向及 reactive 订阅。`direction(FlexDirection::LeftToRight/RightToLeft)` 保留声明、绘制与键盘顺序，纯 RTL 更新复用测量。Space 保留 wrap、typed Small/Middle/Large 和独立 main/cross gap。
+
+Separator 与 Compact 按 050 的后续阶段实现。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。

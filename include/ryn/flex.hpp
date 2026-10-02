@@ -66,6 +66,8 @@ enum class SpaceAlign {
     Start,
     Center,
     End,
+    Auto,
+    Baseline,
 };
 
 class LayoutGap final {

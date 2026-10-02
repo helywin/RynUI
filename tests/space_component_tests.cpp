@@ -170,7 +170,7 @@ void test_mount_defaults_policy_and_lifecycle() {
     require(root_state != nullptr && nested_state != nullptr && empty_state != nullptr &&
                 root_state->model.direction == ryn::layout::FlexDirection::horizontal &&
                 root_state->model.wrap == ryn::layout::FlexWrap::no_wrap &&
-                root_state->model.align == ryn::layout::FlexAlign::start && root_state->model.main_gap == 8.0F &&
+                root_state->model.align == ryn::layout::FlexAlign::center && root_state->model.main_gap == 8.0F &&
                 root_state->model.cross_gap == 8.0F &&
                 root_state->model.item_policy == ryn::layout::FlexItemPolicy::sequential &&
                 nested_state->model.main_gap == 16.0F && empty_state->model.main_gap == 24.0F,
@@ -180,7 +180,7 @@ void test_mount_defaults_policy_and_lifecycle() {
     const auto first_node = fixture.components.root(first);
     const auto second_node = fixture.components.root(second);
     static_cast<void>(fixture.layout.layout(root_node, ryn::layout::Constraints::fixed(100.0F, 40.0F)));
-    require(fixture.nodes.require(first_node).bounds.x == 0.0F && fixture.nodes.require(first_node).bounds.y == 0.0F &&
+    require(fixture.nodes.require(first_node).bounds.x == 0.0F && fixture.nodes.require(first_node).bounds.y == 15.0F &&
                 fixture.nodes.require(first_node).bounds.width == 10.0F &&
                 fixture.nodes.require(second_node).bounds.x == 18.0F &&
                 fixture.nodes.require(second_node).bounds.width == 20.0F,

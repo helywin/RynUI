@@ -126,11 +126,16 @@ void apply_measure_model(FlexComponentState& state, layout::FlexLayout candidate
 
 void apply_placement_model(FlexComponentState& state, layout::FlexLayout candidate, layout::LayoutEngine& layout,
                            runtime::DirtyQueues& dirty, const runtime::NodeStore& nodes) {
-    for (auto* node = nodes.find(state.node); node != nullptr;
-         node = node->parent ? nodes.find(*node->parent) : nullptr) {
-        if (node->baseline_participant) {
-            apply_measure_model(state, candidate, layout, dirty);
-            return;
+    const bool baseline_offset_changed =
+        candidate.align != state.model.align ||
+        (candidate.direction == layout::FlexDirection::vertical && candidate.justify != state.model.justify);
+    if (baseline_offset_changed) {
+        for (auto* node = nodes.find(state.node); node != nullptr;
+             node = node->parent ? nodes.find(*node->parent) : nullptr) {
+            if (node->baseline_participant) {
+                apply_measure_model(state, candidate, layout, dirty);
+                return;
+            }
         }
     }
     if (candidate == state.model) {

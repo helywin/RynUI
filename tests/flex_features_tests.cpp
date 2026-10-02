@@ -125,9 +125,10 @@ void default_stretch_and_align_self() {
 
 void nested_stretched_control_exports_actual_baseline() {
     Fixture fixture;
+    Signal<FlexDirection> direction{FlexDirection::LeftToRight};
     fixture.buttons.mount(Content{[&] {
         Flex(FlexProps{}.align(FlexAlign::Baseline), FlexContent{[&] {
-                 Flex(FlexProps{}.layout(LayoutStyle{}.height(dp(70))), FlexContent{[] {
+                 Flex(FlexProps{}.direction(direction).layout(LayoutStyle{}.height(dp(70))), FlexContent{[] {
                           Button(ButtonProps{}, [] { Text(u8"拉伸按钮 Ag"); });
                           Text(u8"相邻 Ag");
                       }});
@@ -142,6 +143,11 @@ void nested_stretched_control_exports_actual_baseline() {
         fixture.nodes.require(first).bounds.y + fixture.scene.text_state(mounted[0].scene).measurement().first_baseline;
     require(near(real_button_baseline, baseline(fixture, last)),
             "nested stretched Button exported its old height baseline");
+    const auto measure_count = fixture.nodes.require(first).measure_count;
+    direction.set(FlexDirection::RightToLeft);
+    fixture.synchronize();
+    require(fixture.nodes.require(first).measure_count == measure_count,
+            "nested baseline RTL update repeated measurement");
 }
 } // namespace
 
