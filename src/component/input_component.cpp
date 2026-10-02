@@ -13,9 +13,24 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 
 namespace ryn::detail {
+struct InputRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    std::optional<runtime::ComponentId> binding;
+    std::function<bool(InputFocusOptions)> focus;
+    std::function<bool()> blur;
+    std::function<bool(std::size_t, std::size_t)> select;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("InputRef requires its owner thread");
+        }
+    }
+};
+
 namespace {
 thread_local InputComponentHost* active_input_host{};
 constexpr auto text_dirty = runtime::DirtyFlags::Text | runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
@@ -48,7 +63,11 @@ struct InputState {
     std::function<void()> on_internal_cancel;
     bool password{};
     bool visible{};
-    bool session_visible{};
+    std::optional<input::TextInputProperties> session_properties;
+    InputPurpose purpose{InputPurpose::Text};
+    InputCapitalization capitalization{InputCapitalization::None};
+    bool autocorrect{true};
+    std::shared_ptr<InputRefState> reference;
     bool allow_clear{};
     bool custom_suffix{};
     Signal<bool> clear_visible{false};
@@ -61,6 +80,8 @@ struct InputState {
     String placeholder;
     std::function<void(String)> on_change;
     std::function<void(String)> on_submit;
+    std::function<void()> on_focus;
+    std::function<void()> on_blur;
     runtime::NodeId viewport;
     TextSceneId text_scene;
     TextSceneId selected_scene;
@@ -106,6 +127,9 @@ struct InputVisuals {
 
 input::TextInputProperties input_properties(const InputState& state) noexcept {
     input::TextInputProperties result;
+    result.type = static_cast<input::TextInputType>(state.purpose);
+    result.capitalization = static_cast<input::TextCapitalization>(state.capitalization);
+    result.autocorrect = state.autocorrect;
     if (state.password) {
         result.type = state.visible ? input::TextInputType::password_visible : input::TextInputType::password_hidden;
         result.autocorrect = false;
@@ -208,26 +232,50 @@ void validate(InputStatus value) {
         throw std::invalid_argument("Invalid Input status");
     }
 }
+
+void validate(InputPurpose value) {
+    if (value < InputPurpose::Text || value > InputPurpose::Number) {
+        throw std::invalid_argument("Invalid Input purpose");
+    }
+}
+
+void validate(InputCapitalization value) {
+    if (value < InputCapitalization::None || value > InputCapitalization::Letters) {
+        throw std::invalid_argument("Invalid Input capitalization");
+    }
+}
 } // namespace
 
 struct InputPropsAccess {
     static void mount(InputComponentHost& owner, const InputProps& props, const std::optional<InputPrefix>& prefix,
                       const std::optional<InputSuffix>& suffix) {
         // Resolve and validate before allocating component, editor or interaction identities.
-        if (props.value_ && props.default_value_) {
+        if (props.common_.value_ && props.common_.default_value_) {
             throw std::invalid_argument("Input value and defaultValue are mutually exclusive");
         }
-        const auto initial = props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(String{});
+        const auto initial =
+            props.common_.value_ ? read_prop(*props.common_.value_) : props.common_.default_value_.value_or(String{});
         auto& build = runtime::require_component_build_context();
         const auto compact = nearest_compact(build);
-        const auto size = compact && !props.explicit_size_ ? compact->metadata.size : read_prop(props.size_);
-        const auto status = read_prop(props.status_);
+        const auto size =
+            compact && !props.common_.explicit_size_ ? compact->metadata.size : read_prop(props.common_.size_);
+        const auto status = read_prop(props.common_.status_);
         validate(size);
         validate(status);
-        const auto disabled = read_prop(props.disabled_);
-        const auto read_only = read_prop(props.read_only_);
-        const input::TextEditorLimits limits{props.max_length_ ? read_prop(*props.max_length_)
-                                                               : std::numeric_limits<std::size_t>::max()};
+        const auto purpose = read_prop(props.common_.purpose_);
+        const auto capitalization = read_prop(props.common_.capitalization_);
+        validate(purpose);
+        validate(capitalization);
+        if (props.common_.reference_) {
+            props.common_.reference_->ensure_owner();
+            if (props.common_.reference_->binding) {
+                throw std::invalid_argument("InputRef is already bound to a live Input");
+            }
+        }
+        const auto disabled = read_prop(props.common_.disabled_);
+        const auto read_only = read_prop(props.common_.read_only_);
+        const input::TextEditorLimits limits{props.common_.max_length_ ? read_prop(*props.common_.max_length_)
+                                                                       : std::numeric_limits<std::size_t>::max()};
         auto& host = *owner.host_;
         const auto component = build.mount_component<InputState>();
         auto& state = build.state<InputState>(component);
@@ -239,23 +287,36 @@ struct InputPropsAccess {
             state.compact_context = compact;
             build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
         }
-        state.controlled = props.value_.has_value();
+        state.controlled = props.common_.value_.has_value();
         state.size = size;
         state.status = status;
         state.disabled = disabled;
         state.read_only = read_only;
         state.password = props.password_visible_.has_value();
         state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
-        state.allow_clear = props.allow_clear_ && read_prop(*props.allow_clear_);
+        state.allow_clear = props.common_.allow_clear_ && read_prop(*props.common_.allow_clear_);
         state.custom_suffix = suffix.has_value();
         state.clear_visible.set(state.allow_clear && !initial.empty() && !disabled && !read_only);
         state.password_lifetime = props.password_lifetime_;
-        state.on_change = props.on_change_;
-        state.on_submit = props.on_submit_;
+        state.on_change = props.common_.on_change_;
+        state.on_submit = props.common_.on_submit_;
+        state.on_focus = props.common_.on_focus_;
+        state.on_blur = props.common_.on_blur_;
+        state.purpose = purpose;
+        state.capitalization = capitalization;
+        state.autocorrect = read_prop(props.common_.autocorrect_);
+        state.reference = props.common_.reference_;
         // Install cleanup before subsequent resource acquisition can fail.
         build.on_resource_cleanup(component, [&owner, component] {
             auto& host = *owner.host_;
             if (auto* current = host.components().state<InputState>(component)) {
+                if (const auto reference = current->reference; reference && reference->binding == component) {
+                    reference->binding.reset();
+                    reference->focus = {};
+                    reference->blur = {};
+                    reference->select = {};
+                }
+                std::erase(owner.auto_focus_requests_, component);
                 current->transition.reset();
                 const auto mounted = current->mounted;
                 host.focus().cancel_interaction(mounted.interaction);
@@ -277,6 +338,10 @@ struct InputPropsAccess {
                 std::erase_if(owner.mounted_, [component](const auto& item) { return item.component == component; });
             }
         });
+        if (state.reference) {
+            // Reserve before prefix/suffix content can reuse the same reference.
+            state.reference->binding = component;
+        }
         state.mounted.editor = owner.editors_.create(initial.bytes(), limits);
         owner.editors_.require(state.mounted.editor).set_eligibility(disabled, read_only);
         std::optional<input::InteractionId> parent;
@@ -320,16 +385,24 @@ struct InputPropsAccess {
                     current->hovering_pointers = 0;
                 }
                 if (focus.focused) {
-                    current->session_visible = current->visible;
-                    static_cast<void>(owner.sessions_.focus(current->mounted.editor, input_properties(*current)));
+                    current->session_properties = input_properties(*current);
+                    static_cast<void>(owner.sessions_.focus(current->mounted.editor, *current->session_properties));
                 } else if (was_focused) {
                     static_cast<void>(owner.sessions_.blur());
                 }
                 owner.invalidate(component, runtime::DirtyFlags::Material);
+                auto focus_callback = !was_focused && focus.focused ? current->on_focus : std::function<void()>{};
+                auto blur_callback = was_focused && !focus.focused ? current->on_blur : std::function<void()>{};
                 if (was_focused && !focus.focused && current->active && current->on_internal_blur) {
                     auto callback = current->on_internal_blur;
                     auto value = String::from_utf8(owner.editors_.require(current->mounted.editor).value()).value();
                     callback(std::move(value));
+                }
+                if (focus_callback) {
+                    focus_callback();
+                }
+                if (blur_callback) {
+                    blur_callback();
                 }
             }
         };
@@ -355,7 +428,7 @@ struct InputPropsAccess {
         state.overlay_surface =
             host.surfaces().create_surface(component, state.mounted.node, overlay_fragment, empty_overlays, no_effects);
         std::optional<InputSuffix> composed_suffix = suffix;
-        if (props.allow_clear_) {
+        if (props.common_.allow_clear_) {
             const auto clear_visible = state.clear_visible;
             composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix] {
                 mount_input_affix_action(
@@ -424,7 +497,7 @@ struct InputPropsAccess {
                 return {{measurement.width, measurement.height}, measurement.first_baseline};
             });
         auto& scope = build.scope(component);
-        runtime::connect_layout_style(scope, props.layout_, state.mounted.node, host.nodes(), host.dirty());
+        runtime::connect_layout_style(scope, props.common_.layout_, state.mounted.node, host.nodes(), host.dirty());
         const auto connect = [&]<typename T, typename Apply>(const Prop<T>& prop, Apply apply) {
             static_cast<void>(connect_prop(scope, prop, [&owner, component, apply](T value) {
                 if (auto* current = owner.host_->components().state<InputState>(component)) {
@@ -432,8 +505,8 @@ struct InputPropsAccess {
                 }
             }));
         };
-        if (props.value_) {
-            connect(*props.value_, [](auto& owner, auto& current, String value) {
+        if (props.common_.value_) {
+            connect(*props.common_.value_, [](auto& owner, auto& current, String value) {
                 const auto result = owner.editors_.require(current.mounted.editor).reconcile(value.bytes());
                 check(result.edit);
                 if (result.edit.value_changed) {
@@ -450,7 +523,7 @@ struct InputPropsAccess {
                 owner.update_text(current.mounted.component);
             });
         }
-        connect(props.placeholder_, [](auto& owner, auto& current, String value) {
+        connect(props.common_.placeholder_, [](auto& owner, auto& current, String value) {
             if (current.placeholder == value) {
                 return;
             }
@@ -459,8 +532,8 @@ struct InputPropsAccess {
                 owner.update_text(current.mounted.component);
             }
         });
-        if (!compact || props.explicit_size_) {
-            connect(props.size_, [](auto& owner, auto& current, ControlSize value) {
+        if (!compact || props.common_.explicit_size_) {
+            connect(props.common_.size_, [](auto& owner, auto& current, ControlSize value) {
                 validate(value);
                 if (current.size == value) {
                     return;
@@ -469,7 +542,7 @@ struct InputPropsAccess {
                 owner.update_theme(current.mounted.component);
             });
         }
-        connect(props.status_, [](auto& owner, auto& current, InputStatus value) {
+        connect(props.common_.status_, [](auto& owner, auto& current, InputStatus value) {
             validate(value);
             if (current.status == value) {
                 return;
@@ -478,11 +551,11 @@ struct InputPropsAccess {
             owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material);
         });
         const auto eligibility = [](auto& owner, auto& current) {
+            const auto component = current.mounted.component;
             if (current.disabled || current.read_only) {
                 current.caret_blink.stop();
             }
             if (current.disabled && current.focused) {
-                current.focused = false;
                 current.selecting_pointer.reset();
                 current.hovering_pointers = 0;
                 static_cast<void>(owner.sessions_.blur());
@@ -494,25 +567,45 @@ struct InputPropsAccess {
                 owner.host_->pointer().cancel_interaction(current.mounted.interaction);
             }
             owner.host_->focus().synchronize();
-            owner.update_clear_visibility(current.mounted.component);
-            owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
+            owner.update_clear_visibility(component);
+            owner.invalidate(component, runtime::DirtyFlags::Material | runtime::DirtyFlags::HitTest);
         };
-        connect(props.disabled_, [eligibility](auto& owner, auto& current, bool value) {
+        connect(props.common_.disabled_, [eligibility](auto& owner, auto& current, bool value) {
             if (current.disabled == value) {
                 return;
             }
             current.disabled = value;
             eligibility(owner, current);
         });
-        connect(props.read_only_, [eligibility](auto& owner, auto& current, bool value) {
+        connect(props.common_.read_only_, [eligibility](auto& owner, auto& current, bool value) {
             if (current.read_only == value) {
                 return;
             }
             current.read_only = value;
             eligibility(owner, current);
         });
-        if (props.allow_clear_) {
-            connect(*props.allow_clear_, [](auto& owner, auto& current, bool value) {
+        connect(props.common_.purpose_, [](auto& owner, auto& current, InputPurpose value) {
+            validate(value);
+            if (current.purpose != value) {
+                current.purpose = value;
+                owner.update_text(current.mounted.component, false);
+            }
+        });
+        connect(props.common_.capitalization_, [](auto& owner, auto& current, InputCapitalization value) {
+            validate(value);
+            if (current.capitalization != value) {
+                current.capitalization = value;
+                owner.update_text(current.mounted.component, false);
+            }
+        });
+        connect(props.common_.autocorrect_, [](auto& owner, auto& current, bool value) {
+            if (current.autocorrect != value) {
+                current.autocorrect = value;
+                owner.update_text(current.mounted.component, false);
+            }
+        });
+        if (props.common_.allow_clear_) {
+            connect(*props.common_.allow_clear_, [](auto& owner, auto& current, bool value) {
                 if (current.allow_clear == value) {
                     return;
                 }
@@ -520,8 +613,8 @@ struct InputPropsAccess {
                 owner.update_clear_visibility(current.mounted.component);
             });
         }
-        if (props.max_length_) {
-            connect(*props.max_length_, [](auto& owner, auto& current, std::size_t value) {
+        if (props.common_.max_length_) {
+            connect(*props.common_.max_length_, [](auto& owner, auto& current, std::size_t value) {
                 auto& editor = owner.editors_.require(current.mounted.editor);
                 if (editor.limits().max_scalars == value) {
                     return;
@@ -551,10 +644,25 @@ struct InputPropsAccess {
                                static_cast<void>(theme->motion_enabled());
                            });
         owner.mounted_.push_back(state.mounted);
+        if (state.reference) {
+            state.reference->binding = component;
+            state.reference->focus = [&owner, component](InputFocusOptions options) {
+                return owner.focus(component, options);
+            };
+            state.reference->blur = [&owner, component] {
+                return owner.blur(component);
+            };
+            state.reference->select = [&owner, component](std::size_t anchor, std::size_t caret) {
+                return owner.select(component, anchor, caret);
+            };
+        }
+        if (props.common_.auto_focus_) {
+            owner.auto_focus_requests_.push_back(component);
+        }
         if (compact) {
             compact->attach(
                 component,
-                [&owner, component, explicit_size = props.explicit_size_](const CompactMetadata& value) {
+                [&owner, component, explicit_size = props.common_.explicit_size_](const CompactMetadata& value) {
                     if (auto* current = owner.host_->components().state<InputState>(component);
                         current && current->compact != value) {
                         current->compact = value;
@@ -601,14 +709,14 @@ struct PasswordPropsAccess final {
         if (!active_input_host) {
             throw std::logic_error("Password requires an active InputComponentHost");
         }
-        if (props.value_ && props.default_value_) {
+        if (props.common_.value_ && props.common_.default_value_) {
             throw std::invalid_argument("Password value and defaultValue are mutually exclusive");
         }
         if (props.visible_ && props.default_visible_) {
             throw std::invalid_argument("Password visible and defaultVisible are mutually exclusive");
         }
-        validate(read_prop(props.size_));
-        validate(read_prop(props.status_));
+        validate(read_prop(props.common_.size_));
+        validate(read_prop(props.common_.status_));
         const bool controlled = props.visible_.has_value();
         auto bridge = std::make_shared<VisibilityBridge>(controlled ? read_prop(*props.visible_)
                                                                     : props.default_visible_.value_or(false));
@@ -621,46 +729,29 @@ struct PasswordPropsAccess final {
             }));
         }
         InputProps input;
-        if (props.value_) {
-            input.value(*props.value_);
-        } else if (props.default_value_) {
-            input.defaultValue(*props.default_value_);
-        }
-        input.placeholder(props.placeholder_)
-            .status(props.status_)
-            .disabled(props.disabled_)
-            .readOnly(props.read_only_)
-            .onChange(std::move(props.on_change_))
-            .onSubmit(std::move(props.on_submit_))
-            .layout(std::move(props.layout_));
-        if (props.explicit_size_) {
-            input.size(props.size_);
-        }
-        if (props.max_length_) {
-            input.maxLength(*props.max_length_);
-        }
+        input.common_ = std::move(props.common_);
         input.password_visible_ = bridge->visible;
         input.password_lifetime_ = bridge;
         std::optional<InputSuffix> suffix;
         if (props.visibility_toggle_) {
-            suffix = InputSuffix{
-                [bridge, controlled, disabled = props.disabled_, callback = std::move(props.on_visible_change_)] {
-                    mount_input_affix_action(*active_input_host->host_, bind([bridge] {
-                        return bridge->visible.get() ? IconName::EyeInvisibleOutlined : IconName::EyeOutlined;
-                    }),
-                                             disabled, [disabled, bridge, controlled, callback] {
-                                                 if (read_prop(disabled)) {
-                                                     return;
-                                                 }
-                                                 const bool next = !bridge->visible.get();
-                                                 if (!controlled) {
-                                                     bridge->visible.set(next);
-                                                 }
-                                                 if (callback) {
-                                                     callback(next);
-                                                 }
-                                             });
-                }};
+            suffix = InputSuffix{[bridge, controlled, disabled = input.common_.disabled_,
+                                  callback = std::move(props.on_visible_change_)] {
+                mount_input_affix_action(*active_input_host->host_, bind([bridge] {
+                    return bridge->visible.get() ? IconName::EyeInvisibleOutlined : IconName::EyeOutlined;
+                }),
+                                         disabled, [disabled, bridge, controlled, callback] {
+                                             if (read_prop(disabled)) {
+                                                 return;
+                                             }
+                                             const bool next = !bridge->visible.get();
+                                             if (!controlled) {
+                                                 bridge->visible.set(next);
+                                             }
+                                             if (callback) {
+                                                 callback(next);
+                                             }
+                                         });
+            }};
         }
         Input(std::move(input), {}, std::move(suffix));
     }
@@ -698,6 +789,64 @@ void InputComponentHost::on_destroy() noexcept {
 
 void InputComponentHost::on_dispose() noexcept {
     mounted_.clear();
+    auto_focus_requests_.clear();
+}
+
+bool InputComponentHost::focus(runtime::ComponentId component, InputFocusOptions options) {
+    if (options.cursor < InputFocusCursor::Keep || options.cursor > InputFocusCursor::All) {
+        throw std::invalid_argument("Invalid Input focus cursor");
+    }
+    auto* state = host_->components().state<InputState>(component);
+    if (!state || !state->active || state->disabled || !host_->components().branch_active(component) ||
+        !host_->focus().state().window_active) {
+        return false;
+    }
+    const auto interaction = state->mounted.interaction;
+    if (options.cursor != InputFocusCursor::Keep) {
+        auto& editor = editors_.require(state->mounted.editor);
+        if (editor.composition().active) {
+            static_cast<void>(sessions_.cancel_composition());
+        }
+        const auto result = options.cursor == InputFocusCursor::All     ? editor.select_all()
+                            : options.cursor == InputFocusCursor::Start ? editor.place(0)
+                                                                        : editor.place(editor.value().size());
+        if (!result) {
+            return false;
+        }
+        update_text(component, false);
+    }
+    // Safe from onFocus/onBlur handlers: the manager flushes generation-checked
+    // transfers after the enclosing focus transaction.
+    host_->focus().defer_focus(interaction, input::FocusModality::keyboard);
+    return host_->components().contains(component);
+}
+
+bool InputComponentHost::blur(runtime::ComponentId component) {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state || host_->focus().state().focused != state->mounted.interaction) {
+        return false;
+    }
+    host_->focus().defer_focus({}, input::FocusModality::keyboard);
+    return true;
+}
+
+bool InputComponentHost::select(runtime::ComponentId component, std::size_t anchor, std::size_t caret) {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state || !state->active || state->disabled || !host_->components().branch_active(component)) {
+        return false;
+    }
+    auto& editor = editors_.require(state->mounted.editor);
+    if (!editor.boundaries().is_boundary(anchor) || !editor.boundaries().is_boundary(caret)) {
+        return false;
+    }
+    if (editor.composition().active) {
+        static_cast<void>(sessions_.cancel_composition());
+    }
+    const auto result = editor.select({anchor, caret});
+    if (result) {
+        update_text(component, false);
+    }
+    return static_cast<bool>(result);
 }
 
 void InputComponentHost::dispose() noexcept {
@@ -1061,9 +1210,10 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
         invalidate(component,
                    runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
     }
-    if (state->password && state->focused && state->session_visible != state->visible && !editor.composition().active) {
-        state->session_visible = state->visible;
-        static_cast<void>(sessions_.focus(state->mounted.editor, input_properties(*state)));
+    const auto properties = input_properties(*state);
+    if (state->focused && state->session_properties != properties && !editor.composition().active) {
+        state->session_properties = properties;
+        static_cast<void>(sessions_.focus(state->mounted.editor, properties));
     }
 }
 
@@ -1211,6 +1361,10 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
 }
 
 void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
+    const auto autofocus = std::exchange(auto_focus_requests_, {});
+    for (const auto component : autofocus) {
+        static_cast<void>(focus(component, {}));
+    }
     const auto profile_started =
         sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     const auto record_phase = [this](auto started, std::uint64_t& total) {
@@ -1546,6 +1700,10 @@ void InputComponentHost::set_active(runtime::ComponentId component, bool active)
     if (!active) {
         host_->pointer().cancel_interaction(state->mounted.interaction);
         host_->focus().cancel_interaction(state->mounted.interaction);
+        state = host_->components().state<InputState>(component);
+        if (!state) {
+            return;
+        }
         if (sessions_.active().owner == state->mounted.editor) {
             static_cast<void>(sessions_.blur());
         }
@@ -1603,6 +1761,43 @@ void InputComponentHost::submit(runtime::ComponentId component) {
 } // namespace ryn::detail
 
 namespace ryn {
+InputRef::InputRef() : state_(std::make_shared<detail::InputRefState>()) {}
+
+bool InputRef::focus(InputFocusOptions options) const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback(options);
+}
+
+bool InputRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
+}
+
+bool InputRef::select(std::size_t anchor, std::size_t caret) const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->select;
+    return callback && callback(anchor, caret);
+}
+
+bool InputRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return state_->binding.has_value();
+}
+
 void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
     if (!detail::active_input_host) {
         throw std::logic_error("Input requires an active InputComponentHost");

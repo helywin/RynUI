@@ -16,40 +16,49 @@
 namespace ryn::detail {
 
 struct SearchPropsAccess final {
+    [[nodiscard]] static InputProps input(const SearchProps& props) {
+        InputProps result;
+        result.common_ = props.common_;
+        result.common_.value_.reset();
+        result.common_.default_value_.reset();
+        result.common_.layout_ = {};
+        return result;
+    }
+
     [[nodiscard]] static bool has_conflicting_value(const SearchProps& props) noexcept {
-        return props.value_.has_value() && props.default_value_.has_value();
+        return props.common_.value_.has_value() && props.common_.default_value_.has_value();
     }
 
     [[nodiscard]] static const std::optional<Prop<String>>& value(const SearchProps& props) noexcept {
-        return props.value_;
+        return props.common_.value_;
     }
 
     [[nodiscard]] static const std::optional<String>& default_value(const SearchProps& props) noexcept {
-        return props.default_value_;
+        return props.common_.default_value_;
     }
 
     [[nodiscard]] static const Prop<ControlSize>& size(const SearchProps& props) noexcept {
-        return props.size_;
+        return props.common_.size_;
     }
 
     [[nodiscard]] static bool explicit_size(const SearchProps& props) noexcept {
-        return props.explicit_size_;
+        return props.common_.explicit_size_;
     }
 
     [[nodiscard]] static const Prop<InputStatus>& status(const SearchProps& props) noexcept {
-        return props.status_;
+        return props.common_.status_;
     }
 
     [[nodiscard]] static const Prop<String>& placeholder(const SearchProps& props) noexcept {
-        return props.placeholder_;
+        return props.common_.placeholder_;
     }
 
     [[nodiscard]] static const Prop<bool>& disabled(const SearchProps& props) noexcept {
-        return props.disabled_;
+        return props.common_.disabled_;
     }
 
     [[nodiscard]] static const Prop<bool>& read_only(const SearchProps& props) noexcept {
-        return props.read_only_;
+        return props.common_.read_only_;
     }
 
     [[nodiscard]] static const Prop<bool>& loading(const SearchProps& props) noexcept {
@@ -61,11 +70,15 @@ struct SearchPropsAccess final {
     }
 
     [[nodiscard]] static const std::optional<Prop<std::size_t>>& max_length(const SearchProps& props) noexcept {
-        return props.max_length_;
+        return props.common_.max_length_;
     }
 
     [[nodiscard]] static const std::function<void(String)>& on_change(const SearchProps& props) noexcept {
-        return props.on_change_;
+        return props.common_.on_change_;
+    }
+
+    [[nodiscard]] static const std::function<void(String)>& on_submit(const SearchProps& props) noexcept {
+        return props.common_.on_submit_;
     }
 
     [[nodiscard]] static const std::function<void(String, SearchSource)>& on_search(const SearchProps& props) noexcept {
@@ -73,7 +86,7 @@ struct SearchPropsAccess final {
     }
 
     [[nodiscard]] static const LayoutStyle& layout(const SearchProps& props) noexcept {
-        return props.layout_;
+        return props.common_.layout_;
     }
 };
 
@@ -133,7 +146,7 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     auto on_change = detail::SearchPropsAccess::on_change(props);
     auto on_search = detail::SearchPropsAccess::on_search(props);
 
-    InputProps input;
+    InputProps input = detail::SearchPropsAccess::input(props);
     input.value(bridge->committed)
         .placeholder(detail::SearchPropsAccess::placeholder(props))
         .status(detail::SearchPropsAccess::status(props))
@@ -148,10 +161,15 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
                 on_change(std::move(next));
             }
         })
-        .onSubmit([bridge, can_submit, on_search](String) {
-            if (can_submit() && on_search) {
+        .onSubmit([bridge, can_submit, on_search, on_submit = detail::SearchPropsAccess::on_submit(props)](String) {
+            if (can_submit()) {
                 auto value = bridge->committed.get();
-                on_search(std::move(value), SearchSource::Input);
+                if (on_submit) {
+                    on_submit(value);
+                }
+                if (on_search) {
+                    on_search(std::move(value), SearchSource::Input);
+                }
             }
         });
     if (detail::SearchPropsAccess::max_length(props)) {

@@ -8,6 +8,7 @@
 #include <memory>
 #include <map>
 #include <stdexcept>
+#include <thread>
 
 namespace {
 using namespace ryn;
@@ -20,6 +21,215 @@ void require(bool value, const char* message) {
 }
 
 using Fixture = ryn_test::input_component::Fixture;
+
+void public_reference_and_properties() {
+    Fixture f;
+    InputRef reference;
+    require(!reference.bound() && !reference.focus() && !reference.blur() && !reference.select(0, 0),
+            "unbound InputRef operated");
+    Signal<InputPurpose> purpose{InputPurpose::Email};
+    Signal<InputCapitalization> capitalization{InputCapitalization::Words};
+    Signal<bool> autocorrect{false};
+    Signal<bool> disabled{false};
+    int focus_count{};
+    int blur_count{};
+    f.inputs.mount(Content{[&] {
+        Input(InputProps{}
+                  .defaultValue(u8"a👨‍👩‍👧‍👦中")
+                  .ref(reference)
+                  .autoFocus()
+                  .purpose(purpose)
+                  .capitalization(capitalization)
+                  .autocorrect(autocorrect)
+                  .disabled(disabled)
+                  .onFocus([&] { ++focus_count; })
+                  .onBlur([&] { ++blur_count; }));
+    }});
+    const auto mounted = f.inputs.mounted_inputs().front();
+    require(reference.bound() && !f.inputs.sessions().active().valid(), "autofocus ran before layout");
+    f.synchronize();
+    require(focus_count == 1 && f.inputs.sessions().active().valid() &&
+                f.platform.last_properties.type == TextInputType::email &&
+                f.platform.last_properties.capitalization == TextCapitalization::words &&
+                !f.platform.last_properties.autocorrect,
+            "autofocus or native properties failed");
+    auto& editor = f.inputs.editors().require(mounted.editor);
+    require(reference.focus({InputFocusCursor::All}) && editor.selection().begin() == 0 &&
+                editor.selection().end() == editor.value().size() && focus_count == 1,
+            "focus All lost selection or repeated notification");
+    require(!reference.select(1, 5) && reference.select(1, editor.value().size()),
+            "InputRef accepted an interior grapheme byte");
+    require(reference.focus({InputFocusCursor::End}) && editor.selection().caret == editor.value().size(),
+            "focus End failed");
+    require(reference.focus({InputFocusCursor::Start}) && editor.selection().caret == 0, "focus Start failed");
+    const auto stamp = f.inputs.sessions().active();
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"ni"}, {2, 0}, stamp})), "preedit failed");
+    const auto starts = f.platform.starts;
+    purpose.set(InputPurpose::Name);
+    capitalization.set(InputCapitalization::Letters);
+    autocorrect.set(true);
+    f.synchronize();
+    require(editor.composition().active && f.platform.starts == starts && f.inputs.sessions().active() == stamp,
+            "native properties cancelled preedit");
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"你"}, stamp})), "IME commit failed");
+    require(!editor.composition().active && f.platform.starts == starts + 1 &&
+                f.platform.last_properties.type == TextInputType::name &&
+                f.platform.last_properties.capitalization == TextCapitalization::letters &&
+                f.platform.last_properties.autocorrect && f.inputs.sessions().active() != stamp &&
+                !f.inputs.dispatch(TextCommitted{String{u8"stale"}, stamp}),
+            "properties did not refresh epoch after commit");
+    bool foreign_rejected{};
+    std::thread foreign([&] {
+        try {
+            static_cast<void>(reference.bound());
+        } catch (const std::logic_error&) {
+            foreign_rejected = true;
+        }
+    });
+    foreign.join();
+    require(foreign_rejected, "InputRef permitted foreign-thread access");
+    disabled.set(true);
+    require(blur_count == 1 && !reference.focus() && !reference.select(0, 0) && !f.inputs.sessions().active().valid(),
+            "disabled Input retained reference eligibility or omitted blur");
+    disabled.set(false);
+    f.synchronize();
+    require(!f.inputs.sessions().active().valid() && focus_count == 1, "autofocus unexpectedly retriggered");
+    require(reference.focus() && focus_count == 2, "refocus failed");
+    f.inputs.set_active(mounted.component, false);
+    require(!reference.focus() && !reference.select(0, 0) && blur_count == 2, "inactive branch accepted reference");
+    f.inputs.set_active(mounted.component, true);
+    require(reference.focus(), "reactivated Input did not focus");
+    require(reference.blur() && !reference.blur() && blur_count == 3, "reference blur notifications incorrect");
+    require(f.services.destroy(mounted.component) && !reference.bound() && !reference.focus(),
+            "destroy left reference binding");
+    Fixture rebound;
+    rebound.inputs.mount(Content{[&] { Input(InputProps{}.ref(reference)); }});
+    require(reference.bound() && reference.focus(), "reference could not rebind after teardown");
+}
+
+void reference_mount_rollback_and_callbacks() {
+    Fixture f;
+    InputRef reference;
+    bool duplicate{};
+    try {
+        f.inputs.mount(Content{[&] {
+            Input(InputProps{}.ref(reference));
+            Input(InputProps{}.ref(reference));
+        }});
+    } catch (const std::invalid_argument&) {
+        duplicate = true;
+    }
+    require(duplicate && !reference.bound() && f.inputs.editors().size() == 0,
+            "duplicate reference did not roll back mount");
+    Fixture self_fixture;
+    runtime::ComponentId self;
+    self_fixture.inputs.mount(Content{[&] {
+        Input(InputProps{}.ref(reference).onFocus(
+            [&] { require(self_fixture.services.destroy(self), "focus self-unmount failed"); }));
+    }});
+    self = self_fixture.inputs.mounted_inputs().front().component;
+    require(!reference.focus() && !reference.bound() && self_fixture.inputs.editors().size() == 0,
+            "focus callback retained destroyed owner");
+    InputRef first;
+    InputRef second;
+    bool redirect{true};
+    int second_focus{};
+    Fixture transfer;
+    transfer.inputs.mount(Content{[&] {
+        Input(InputProps{}.ref(first).onFocus([&] {
+            if (std::exchange(redirect, false)) {
+                require(second.focus({InputFocusCursor::All}), "reentrant focus request rejected");
+            }
+        }));
+        Input(InputProps{}.defaultValue(u8"target").ref(second).onFocus([&] { ++second_focus; }));
+    }});
+    require(first.focus() && second_focus == 1 &&
+                transfer.services.focus().state().focused == transfer.inputs.mounted_inputs().back().interaction &&
+                transfer.inputs.editors().require(transfer.inputs.mounted_inputs().back().editor).selection().end() ==
+                    6,
+            "deferred focus transfer did not settle");
+}
+
+void family_native_property_forwarding() {
+    Fixture f;
+    InputRef password;
+    InputRef search;
+    int submit_count{};
+    f.inputs.mount(Content{[&] {
+        Password(PasswordProps{}
+                     .ref(password)
+                     .purpose(InputPurpose::Email)
+                     .autocorrect(true)
+                     .capitalization(InputCapitalization::Sentences)
+                     .visibilityToggle(false));
+        Search(SearchProps{}
+                   .ref(search)
+                   .purpose(InputPurpose::Username)
+                   .capitalization(InputCapitalization::Words)
+                   .autocorrect(false)
+                   .onSubmit([&](String) { ++submit_count; }));
+    }});
+    require(password.focus() && f.platform.last_properties.type == TextInputType::password_hidden &&
+                !f.platform.last_properties.autocorrect &&
+                f.platform.last_properties.capitalization == TextCapitalization::sentences,
+            "Password did not override purpose/autocorrect while forwarding capitalization");
+    require(search.focus() && f.platform.last_properties.type == TextInputType::username &&
+                !f.platform.last_properties.autocorrect &&
+                f.platform.last_properties.capitalization == TextCapitalization::words,
+            "Search did not forward native properties");
+    f.inputs.submit(f.inputs.mounted_inputs().back().component);
+    require(submit_count == 1, "Search omitted forwarded onSubmit");
+}
+
+void reference_nested_rollback_and_blur_unmount() {
+    InputRef reference;
+    Fixture nested;
+    bool rejected{};
+    try {
+        nested.inputs.mount(Content{
+            [&] { Input(InputProps{}.ref(reference), InputPrefix{[&] { Input(InputProps{}.ref(reference)); }}); }});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected && !reference.bound() && nested.inputs.editors().size() == 0,
+            "nested slot reused a reference before its parent finished mounting");
+    for (const bool disable : {false, true}) {
+        Fixture f;
+        Signal<bool> disabled{false};
+        runtime::ComponentId id;
+        int blur_count{};
+        f.inputs.mount(Content{[&] {
+            Input(InputProps{}.ref(reference).disabled(disabled).onBlur([&] {
+                ++blur_count;
+                require(f.services.destroy(id), "blur self-unmount failed");
+            }));
+        }});
+        id = f.inputs.mounted_inputs().front().component;
+        require(reference.focus(), "blur fixture focus failed");
+        if (disable) {
+            disabled.set(true);
+        } else {
+            f.inputs.set_active(id, false);
+        }
+        require(blur_count == 1 && !reference.bound() && f.inputs.editors().size() == 0,
+                "eligibility callback retained a destroyed editor");
+    }
+    Fixture initial_disabled;
+    Signal<bool> disabled{true};
+    initial_disabled.inputs.mount(Content{[&] { Input(InputProps{}.ref(reference).autoFocus().disabled(disabled)); }});
+    initial_disabled.synchronize();
+    disabled.set(false);
+    initial_disabled.synchronize();
+    require(!initial_disabled.inputs.sessions().active().valid(), "initially disabled autofocus stole focus later");
+    require(reference.focus(), "enabled reference did not focus");
+    const auto mounted = initial_disabled.inputs.mounted_inputs().front();
+    const auto stamp = initial_disabled.inputs.sessions().active();
+    require(bool(initial_disabled.inputs.dispatch(CompositionChanged{String{u8"ni"}, {2, 0}, stamp})),
+            "reference preedit failed");
+    require(reference.select(0, 0) && !initial_disabled.inputs.editors().require(mounted.editor).composition().active &&
+                initial_disabled.platform.cancels == 1,
+            "selection did not cancel platform composition");
+}
 
 void input_without_button_host() {
     runtime::NodeStore nodes;
@@ -1010,6 +1220,10 @@ void composition_display() {
 int main() {
     try {
         input_without_button_host();
+        public_reference_and_properties();
+        reference_mount_rollback_and_callbacks();
+        family_native_property_forwarding();
+        reference_nested_rollback_and_blur_unmount();
         lifecycle();
         invalid_mount();
         self_destroy(false);

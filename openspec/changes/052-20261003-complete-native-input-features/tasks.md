@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：共用 API、焦点与系统提示
 
-- [ ] 1.1 提取兼容的 typed InputPropsBase，实现 InputRef、autoFocus、focus/blur 回调与 reactive 原生用途/大小写/autocorrect；补 docs/input.md 及引用/重入/分支/组合输入/旧 stamp 合同测试，在 Windows windows-msvc-headless Debug/Release 构建并运行 input_public_api、input_component、input_session、password、search、focus、typography_interaction 测试，format-code/doctor/strict validate/diff 通过后提交。
+- [x] 1.1 提取兼容的 typed InputPropsBase，实现 InputRef、autoFocus、focus/blur 回调与 reactive 原生用途/大小写/autocorrect；补 docs/input.md 及引用/重入/分支/组合输入/旧 stamp 合同测试，在 Windows windows-msvc-headless Debug/Release 构建并运行 input_public_api、input_component、input_session、password、search、focus、typography_interaction 测试，format-code/doctor/strict validate/diff 通过后提交。
 
 ## 2. 平台通用：四变体与 Theme
 

@@ -117,6 +117,9 @@ private:
     void notify_change(input::TextInputOwnerId);
     void clear(runtime::ComponentId);
     void update_clear_visibility(runtime::ComponentId);
+    bool focus(runtime::ComponentId, InputFocusOptions);
+    bool blur(runtime::ComponentId);
+    bool select(runtime::ComponentId, std::size_t anchor, std::size_t caret);
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
     void update_text(runtime::ComponentId, bool measure_layout = true);
     void update_theme(runtime::ComponentId);
@@ -143,6 +146,7 @@ private:
     input::TextInputSessionHost& sessions_;
     input::TextClipboardCommands& clipboard_;
     std::vector<MountedInputComponent> mounted_;
+    std::vector<runtime::ComponentId> auto_focus_requests_;
     float display_scale_{1.0F};
     bool sync_profiling_enabled_{};
     InputSyncProfile sync_profile_{};

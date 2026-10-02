@@ -1,4 +1,6 @@
 #include <ryn/input.hpp>
+#include <ryn/password.hpp>
+#include <ryn/search.hpp>
 #include <concepts>
 #include <stdexcept>
 #include <string>
@@ -11,6 +13,10 @@ static_assert(!NarrowValue<std::string>);
 static_assert(!NarrowCallback<std::function<void(std::string)>>);
 static_assert(!std::constructible_from<ryn::InputPrefix, ryn::InputSuffix>);
 static_assert(!std::constructible_from<ryn::InputPrefix, ryn::Content>);
+static_assert(std::same_as<decltype(ryn::PasswordProps{}.ref(std::declval<ryn::InputRef>()).disabled(true)),
+                           ryn::PasswordProps&>);
+static_assert(
+    std::same_as<decltype(ryn::SearchProps{}.purpose(ryn::InputPurpose::Email).loading(true)), ryn::SearchProps&>);
 
 int main() {
     ryn::Signal<ryn::String> value{ryn::String{u8"值"}};
@@ -18,9 +24,17 @@ int main() {
     ryn::Signal<ryn::ControlSize> size{ryn::ControlSize::Small};
     ryn::Signal<ryn::InputStatus> status{ryn::InputStatus::Warning};
     ryn::Signal<bool> disabled{false};
+    ryn::InputRef reference;
     auto declare = [&] {
         ryn::Input(ryn::InputProps{}
                        .value(value)
+                       .ref(reference)
+                       .autoFocus()
+                       .purpose(ryn::InputPurpose::Name)
+                       .capitalization(ryn::InputCapitalization::Words)
+                       .autocorrect(false)
+                       .onFocus([] {})
+                       .onBlur([] {})
                        .placeholder(u8"请输入")
                        .size(size)
                        .status(status)
