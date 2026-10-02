@@ -1,0 +1,5 @@
+debug-system: passed; 7 GPU readbacks
+debug-scale-2: passed; 7 GPU readbacks
+release-system: passed; 7 GPU readbacks
+release-scale-2: passed; 7 GPU readbacks
+Verified 4 actual runs, 28 PNG hashes and current Debug/Release executable hashes

@@ -10,7 +10,7 @@
 
 ## 3. Windows 原生验收
 
-- [ ] 3.1 使用 windows-msvc-debug/release 构建 native 目标，验证 SDL keys/scene/frame/组件合同，实际 Slider 单值/范围/vertical/reverse/disabled/键盘/拖动/scale/resize 窗口验收，记录 GPU、截图、运行结果及当前可执行文件 SHA256；doctor/strict/diff check 后独立提交。
+- [x] 3.1 使用 windows-msvc-debug/release 构建 native 目标，验证 SDL keys/scene/frame/组件合同，实际 Slider 单值/范围/vertical/reverse/disabled/键盘/拖动/scale/resize 窗口验收，记录 GPU、截图、运行结果及当前可执行文件 SHA256；doctor/strict/diff check 后独立提交。
 
 ## 4. Linux 原生验收
 

@@ -1,0 +1,37 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   2: rynui.slider_component
+ 1/16 Test   #2: rynui.slider_component .......................   Passed    0.16 sec
+      Start  33: rynui.ant_design_gallery_catalog_generator
+ 2/16 Test  #33: rynui.ant_design_gallery_catalog_generator ...   Passed    0.09 sec
+      Start  34: rynui.ant_design_gallery_catalog_contract
+ 3/16 Test  #34: rynui.ant_design_gallery_catalog_contract ....   Passed    0.09 sec
+      Start  54: rynui.theme_algorithm
+ 4/16 Test  #54: rynui.theme_algorithm ........................   Passed    0.01 sec
+      Start  55: rynui.theme_public_api
+ 5/16 Test  #55: rynui.theme_public_api .......................   Passed    0.03 sec
+      Start  56: rynui.theme_runtime
+ 6/16 Test  #56: rynui.theme_runtime ..........................   Passed    0.01 sec
+      Start  61: rynui.theme_scope_component
+ 7/16 Test  #61: rynui.theme_scope_component ..................   Passed    0.03 sec
+      Start  62: rynui.theme_allocation
+ 8/16 Test  #62: rynui.theme_allocation .......................   Passed    0.01 sec
+      Start  91: rynui.component_theme_contract
+ 9/16 Test  #91: rynui.component_theme_contract ...............   Passed    0.02 sec
+      Start 141: rynui.token_gallery_frame
+10/16 Test #141: rynui.token_gallery_frame ....................   Passed    3.96 sec
+      Start 160: rynui.theme_architecture_contract
+11/16 Test #160: rynui.theme_architecture_contract ............   Passed    0.02 sec
+      Start 187: rynui.sdl_event_adapter
+12/16 Test #187: rynui.sdl_event_adapter ......................   Passed    0.01 sec
+      Start 204: rynui.platform_lifecycle
+13/16 Test #204: rynui.platform_lifecycle .....................   Passed    0.01 sec
+      Start 205: rynui.frame_renderer
+14/16 Test #205: rynui.frame_renderer .........................   Passed    0.01 sec
+      Start 209: rynui.default_theme
+15/16 Test #209: rynui.default_theme ..........................   Passed    0.03 sec
+      Start 226: rynui.theme_public_compile_fail
+16/16 Test #226: rynui.theme_public_compile_fail ..............   Passed    1.25 sec
+
+100% tests passed out of 16
+
+Total Test time (real) =   5.94 sec

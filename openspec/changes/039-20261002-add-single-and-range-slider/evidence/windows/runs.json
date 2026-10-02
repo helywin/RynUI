@@ -1,0 +1,284 @@
+[
+  {
+    "configuration": "Debug",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--slider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\039-slider-windows\\debug-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "9d86919def556b66efd542c9b9f968de8c04811a8b51f379c10d566ae6ebac5d",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-system/compact.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "b5946e3ce1b3692c64c255f9f1a0813761e16948228cde55d0e0cef9a5702aa6"
+      },
+      {
+        "path": "debug-system/dark.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "46b69b1a9b7a2c3eb5a64f81448864b16b324772e7d2b793a2cb926f9c13e968"
+      },
+      {
+        "path": "debug-system/dragged.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "7429b78cbaca1e8619f77ab0ab49d91952015fed4ca1849909a6950df03fe9ea"
+      },
+      {
+        "path": "debug-system/initial.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "644781610b507becd4021c32fb6f1791b8faa5fcb3b210f8a7d53cd4170434aa"
+      },
+      {
+        "path": "debug-system/keyboard.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "e03a0aab9867a58ff0d8ba58660354f28e52dd9e8d3ea4d6521104ba99ec7afa"
+      },
+      {
+        "path": "debug-system/range.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "65ddabcfa99e199ed93c98a9a5d10337e68e48da2aa3e7aed3de5c2db7969d35"
+      },
+      {
+        "path": "debug-system/resized.png",
+        "size": [
+          900,
+          720
+        ],
+        "sha256": "30ebd9ed9d30e55263c4e1130229a4ccac43e9fbfde8bb0f7e58073cdb3db37c"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--slider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\039-slider-windows\\debug-scale-2",
+      "--acceptance-scale=2.0"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "9d86919def556b66efd542c9b9f968de8c04811a8b51f379c10d566ae6ebac5d",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-2/compact.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "7b37fd55a8e246b93aa11bbe3ce0e8456c6c8cf904e62fae31b8736110f73a96"
+      },
+      {
+        "path": "debug-scale-2/dark.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "5f80eab53598c1203c4e92528b4d4445f766a03d3907115c1464a63e85eee889"
+      },
+      {
+        "path": "debug-scale-2/dragged.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "89f9c88880e45c4a04d5022d82c9a27cc6b818cea53a081a362e32857b9b92ba"
+      },
+      {
+        "path": "debug-scale-2/initial.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "d1ec306e04db6149c1660077bb12b54e3d21df5085f20964c8eb94e1d53ac407"
+      },
+      {
+        "path": "debug-scale-2/keyboard.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "cb39c4a72b741f9243cb810da02eb256f997d1436b3855ed4fdeffec62192cf4"
+      },
+      {
+        "path": "debug-scale-2/range.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "66508571448f34907f8759ac1183772b94cf7f619198106f04e05c56b2a87707"
+      },
+      {
+        "path": "debug-scale-2/resized.png",
+        "size": [
+          900,
+          720
+        ],
+        "sha256": "db2698c1fc2eef24ce3014ca8b3b4930f042bc515fafa1bc719f39db84dfd61c"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--slider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\039-slider-windows\\release-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "b627b0cbbba778d6de804222108e2c0d61133f3f271393c7acbe82ebcb2a0c30",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-system/compact.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "b5946e3ce1b3692c64c255f9f1a0813761e16948228cde55d0e0cef9a5702aa6"
+      },
+      {
+        "path": "release-system/dark.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "46b69b1a9b7a2c3eb5a64f81448864b16b324772e7d2b793a2cb926f9c13e968"
+      },
+      {
+        "path": "release-system/dragged.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "7429b78cbaca1e8619f77ab0ab49d91952015fed4ca1849909a6950df03fe9ea"
+      },
+      {
+        "path": "release-system/initial.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "644781610b507becd4021c32fb6f1791b8faa5fcb3b210f8a7d53cd4170434aa"
+      },
+      {
+        "path": "release-system/keyboard.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "e03a0aab9867a58ff0d8ba58660354f28e52dd9e8d3ea4d6521104ba99ec7afa"
+      },
+      {
+        "path": "release-system/range.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "65ddabcfa99e199ed93c98a9a5d10337e68e48da2aa3e7aed3de5c2db7969d35"
+      },
+      {
+        "path": "release-system/resized.png",
+        "size": [
+          900,
+          720
+        ],
+        "sha256": "30ebd9ed9d30e55263c4e1130229a4ccac43e9fbfde8bb0f7e58073cdb3db37c"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--slider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\039-slider-windows\\release-scale-2",
+      "--acceptance-scale=2.0"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "b627b0cbbba778d6de804222108e2c0d61133f3f271393c7acbe82ebcb2a0c30",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-2/compact.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "7b37fd55a8e246b93aa11bbe3ce0e8456c6c8cf904e62fae31b8736110f73a96"
+      },
+      {
+        "path": "release-scale-2/dark.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "5f80eab53598c1203c4e92528b4d4445f766a03d3907115c1464a63e85eee889"
+      },
+      {
+        "path": "release-scale-2/dragged.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "89f9c88880e45c4a04d5022d82c9a27cc6b818cea53a081a362e32857b9b92ba"
+      },
+      {
+        "path": "release-scale-2/initial.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "d1ec306e04db6149c1660077bb12b54e3d21df5085f20964c8eb94e1d53ac407"
+      },
+      {
+        "path": "release-scale-2/keyboard.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "cb39c4a72b741f9243cb810da02eb256f997d1436b3855ed4fdeffec62192cf4"
+      },
+      {
+        "path": "release-scale-2/range.png",
+        "size": [
+          1100,
+          850
+        ],
+        "sha256": "66508571448f34907f8759ac1183772b94cf7f619198106f04e05c56b2a87707"
+      },
+      {
+        "path": "release-scale-2/resized.png",
+        "size": [
+          900,
+          720
+        ],
+        "sha256": "db2698c1fc2eef24ce3014ca8b3b4930f042bc515fafa1bc719f39db84dfd61c"
+      }
+    ]
+  }
+]
