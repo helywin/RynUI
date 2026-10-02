@@ -117,9 +117,10 @@ VisibleSceneStats ComponentSceneComposer::build_visible_scene(const runtime::Nod
         const auto& node = nodes.require(components_->root(entry.component));
         const float left = node.bounds.x + node.translation.x;
         const float top = node.bounds.y + node.translation.y;
-        const bool offscreen = node.bounds.width <= 0.0F || node.bounds.height <= 0.0F || left >= clip_right ||
-                               left + node.bounds.width <= clip_left || top >= clip_bottom ||
-                               top + node.bounds.height <= clip_top;
+        const bool offscreen =
+            !components_->in_window_layer(entry.component) &&
+            (node.bounds.width <= 0.0F || node.bounds.height <= 0.0F || left >= clip_right ||
+             left + node.bounds.width <= clip_left || top >= clip_bottom || top + node.bounds.height <= clip_top);
         if (!offscreen) {
             ++stats.fragments_visible;
         }

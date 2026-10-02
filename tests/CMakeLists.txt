@@ -18,6 +18,11 @@ target_compile_definitions(rynui_slider_component_tests PRIVATE
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.slider_component COMMAND rynui_slider_component_tests)
 
+add_executable(rynui_window_overlay_tests window_overlay_tests.cpp)
+rynui_configure_cpp_target(rynui_window_overlay_tests)
+target_link_libraries(rynui_window_overlay_tests PRIVATE rynui_components)
+add_test(NAME rynui.window_overlay COMMAND rynui_window_overlay_tests)
+
 add_test(
     NAME rynui.icon_asset_contract
     COMMAND "${Python3_EXECUTABLE}"

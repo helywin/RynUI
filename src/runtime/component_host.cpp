@@ -41,6 +41,7 @@ struct ComponentHost::Record final {
     std::vector<SceneFragmentId> after_children_fragments;
     std::size_t declaration_order{0};
     bool branch_active{true};
+    std::optional<int> window_layer;
 
     Record(std::optional<ComponentId> component_parent, NodeId component_root, std::shared_ptr<void> component_state,
            std::type_index component_state_type, std::size_t order,
@@ -278,6 +279,22 @@ std::span<const SceneFragmentPaintEntry> ComponentHost::paint_traversal() {
         if (contains(root)) {
             append_paint_subtree(root);
         }
+    }
+    std::vector<ComponentId> layers;
+    for (std::uint32_t index = 0; index < slots_.size(); ++index) {
+        const auto& slot = slots_[index];
+        if (slot.record && slot.record->window_layer) {
+            layers.push_back({index, slot.generation});
+        }
+    }
+    std::sort(layers.begin(), layers.end(), [this](ComponentId left, ComponentId right) {
+        const auto& a = require_record(left);
+        const auto& b = require_record(right);
+        return a.window_layer == b.window_layer ? a.declaration_order < b.declaration_order
+                                                : a.window_layer < b.window_layer;
+    });
+    for (const auto layer : layers) {
+        append_paint_subtree(layer, true);
     }
     paint_traversal_dirty_ = false;
     return paint_traversal_;
@@ -521,11 +538,35 @@ void ComponentHost::release_component_fragments(Record& record) noexcept {
     record.after_children_fragments.clear();
 }
 
-void ComponentHost::append_paint_subtree(ComponentId id) {
+bool ComponentHost::set_window_layer(ComponentId id, std::optional<int> priority) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.window_layer == priority) {
+        return false;
+    }
+    record.window_layer = priority;
+    paint_traversal_dirty_ = true;
+    return true;
+}
+
+bool ComponentHost::in_window_layer(ComponentId id) const {
+    ensure_owner_thread();
+    for (auto current = std::optional<ComponentId>{id}; current; current = require_record(*current).parent) {
+        if (require_record(*current).window_layer) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ComponentHost::append_paint_subtree(ComponentId id, bool layer_root) {
     if (!branch_active(id)) {
         return;
     }
     const auto& record = require_record(id);
+    if (record.window_layer && !layer_root) {
+        return;
+    }
     for (const auto fragment : record.before_children_fragments) {
         if (contains(fragment)) {
             paint_traversal_.push_back({

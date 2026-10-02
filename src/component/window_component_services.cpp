@@ -55,6 +55,14 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
       hit_test_(interactions_, nodes), scene_composer_(text_.components(), interactions_, hit_test_),
       surfaces_(text_.components(), nodes, scene_composer_), focus_(interactions_, &frame_requests),
       pointer_(interactions_, hit_test_, &frame_requests, &focus_) {
+    focus_.set_command_filter([this](const input::KeyboardInputEvent& event) {
+        for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
+            if ((*it)->on_keyboard_input(event)) {
+                return true;
+            }
+        }
+        return false;
+    });
     text_.attach_component_scene(scene_composer_);
     text_.attach_surfaces(surfaces_);
     animations_.reserve(256, 64, 256);
@@ -225,7 +233,11 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     }
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.text_nanoseconds);
-        if (!text_.layout_and_synchronize(viewport, clip, origin, gap, false, unbounded_root_height)) {
+        if (!text_.layout_and_synchronize(viewport, clip, origin, gap, false, unbounded_root_height, [this, viewport] {
+                for (auto* participant : participants_) {
+                    participant->position_window_layers(viewport, {0, 0, viewport.width, viewport.height});
+                }
+            })) {
             return false;
         }
     }

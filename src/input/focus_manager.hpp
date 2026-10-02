@@ -46,6 +46,7 @@ public:
 
     void reserve(std::size_t focus_capacity);
     void dispatch(const KeyboardInputEvent& event);
+    void set_command_filter(std::function<bool(const KeyboardInputEvent&)> filter);
     bool focus_from_pointer(std::optional<InteractionId> target);
     bool request_focus(InteractionId target, FocusModality modality);
     bool clear_focus();
@@ -93,6 +94,7 @@ private:
 
     std::optional<FocusRequest> pending_focus_;
     bool flushing_focus_{};
+    std::function<bool(const KeyboardInputEvent&)> command_filter_;
 };
 
 } // namespace ryn::input

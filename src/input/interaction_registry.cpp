@@ -45,6 +45,18 @@ void InteractionRegistry::reserve(std::size_t capacity) {
 
 InteractionId InteractionRegistry::create(InteractionRegistration registration) {
     ensure_owner_thread();
+    if (!registration.parent && components_->contains(registration.component)) {
+        for (auto ancestor = components_->parent(registration.component); ancestor && !registration.parent;
+             ancestor = components_->parent(*ancestor)) {
+            for (auto candidate : declaration_order_) {
+                const auto* record = find(candidate);
+                if (record && record->component == *ancestor) {
+                    registration.parent = candidate;
+                    break;
+                }
+            }
+        }
+    }
     validate_registration(registration);
     const auto slot_index = acquire_slot();
     auto& slot = slots_[slot_index];

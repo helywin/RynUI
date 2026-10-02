@@ -111,6 +111,8 @@ public:
     [[nodiscard]] std::span<const ComponentId> root_components() const noexcept;
     bool set_branch_active(ComponentId id, bool active);
     [[nodiscard]] bool branch_active(ComponentId id) const;
+    bool set_window_layer(ComponentId id, std::optional<int> priority);
+    [[nodiscard]] bool in_window_layer(ComponentId id) const;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(ComponentId id) const;
@@ -158,7 +160,7 @@ private:
     [[nodiscard]] std::uint32_t acquire_fragment_slot();
     void release_slot(ComponentId id) noexcept;
     void release_component_fragments(Record& record) noexcept;
-    void append_paint_subtree(ComponentId id);
+    void append_paint_subtree(ComponentId id, bool layer_root = false);
     void collect_subtree(ComponentId id, std::vector<ComponentId>& ids) const;
     void dispose_records(const std::vector<ComponentId>& ids, const std::vector<NodeId>& roots) noexcept;
     static void advance_generation(Slot& slot) noexcept;

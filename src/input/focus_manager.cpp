@@ -18,6 +18,13 @@ void FocusManager::reserve(std::size_t focus_capacity) {
     focus_order_.reserve(focus_capacity);
 }
 
+void FocusManager::set_command_filter(std::function<bool(const KeyboardInputEvent&)> filter) {
+    if (!registry_->is_owner_thread() || dispatching_) {
+        throw std::logic_error("Focus command filter requires an idle owner thread");
+    }
+    command_filter_ = std::move(filter);
+}
+
 void FocusManager::dispatch(const KeyboardInputEvent& event) {
     begin_operation();
     try {
@@ -28,6 +35,13 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
         sanitize_internal();
 
         if (!window_active_) {
+            end_operation();
+            return;
+        }
+
+        const auto filter = command_filter_;
+        if (filter && filter(event)) {
+            sanitize_internal();
             end_operation();
             return;
         }

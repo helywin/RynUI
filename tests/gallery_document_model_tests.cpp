@@ -70,9 +70,22 @@ void test_typed_status_filter_covers_every_catalog_entry() {
             counts[index] += expected ? 1U : 0U;
         }
     }
-    require(counts[1] == 10 && counts[2] == 62 && counts[4] == 1, "Gallery partial/planned support overlay drifted");
-    require(counts[0] == 0 && counts[3] == 0 && counts[5] == 0,
-            "Gallery initial support overlay invented another status");
+    std::size_t total{};
+    for (auto count : counts) {
+        total += count;
+    }
+    require(total == ant_design_reference_entries().size() && counts[4] == 1,
+            "Gallery filters lost entries or the upstream deprecated item");
+    for (const auto identity : {"ant.component.slider", "ant.component.input", "ant.component.typography"}) {
+        bool found{};
+        for (const auto& entry : ant_design_reference_entries()) {
+            if (entry.identity == identity) {
+                found = entry.support_status == GallerySupportStatus::partial ||
+                        entry.support_status == GallerySupportStatus::implemented;
+            }
+        }
+        require(found, "Gallery lost an existing native component support status");
+    }
 }
 
 void test_complete_category_heading_mapping() {

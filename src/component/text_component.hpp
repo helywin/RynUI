@@ -76,7 +76,8 @@ public:
 
     [[nodiscard]] bool layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin = {},
                                               float gap = 0.0F, bool clear_dirty = true,
-                                              bool unbounded_root_height = false);
+                                              bool unbounded_root_height = false,
+                                              const std::function<void()>& after_layout = {});
     void attach_component_scene(component::ComponentSceneComposer& composer) noexcept;
     void attach_surfaces(component::RetainedSurfaceService& surfaces) noexcept;
     bool set_font_resolver(ThemeFontResolver font_resolver);

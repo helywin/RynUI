@@ -410,7 +410,8 @@ void TextComponentHost::dispose() noexcept {
 }
 
 bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
-                                               float gap, bool clear_dirty, bool unbounded_root_height) {
+                                               float gap, bool clear_dirty, bool unbounded_root_height,
+                                               const std::function<void()>& after_layout) {
     if (!valid_viewport(viewport) || !std::isfinite(origin.x) || !std::isfinite(origin.y) || !std::isfinite(gap) ||
         gap < 0.0F) {
         throw std::invalid_argument("Text component viewport, origin, and gap must be finite and valid");
@@ -451,6 +452,9 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
         }
     }
 
+    if (after_layout) {
+        after_layout();
+    }
     const auto loop_started =
         sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     const auto synchronize_mounted = [&]() {
@@ -466,14 +470,17 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             const auto& retained = nodes_->require(node);
             const auto* state = components_.state<TextComponentState>(mounted.component);
             const auto insets = state == nullptr ? std::array<float, 3>{} : state->insets;
+            const auto text_clip = components_.in_window_layer(mounted.component)
+                                       ? runtime::Rect{0, 0, viewport.width, viewport.height}
+                                       : clip;
             constexpr float visual_overflow = 32.0F;
             const float left = retained.bounds.x + retained.translation.x;
             const float top = retained.bounds.y + retained.translation.y;
             if (retained.bounds.width <= 0.0F || retained.bounds.height <= 0.0F ||
-                left >= clip.x + clip.width + visual_overflow ||
-                left + retained.bounds.width <= clip.x - visual_overflow ||
-                top >= clip.y + clip.height + visual_overflow ||
-                top + retained.bounds.height <= clip.y - visual_overflow) {
+                left >= text_clip.x + text_clip.width + visual_overflow ||
+                left + retained.bounds.width <= text_clip.x - visual_overflow ||
+                top >= text_clip.y + text_clip.height + visual_overflow ||
+                top + retained.bounds.height <= text_clip.y - visual_overflow) {
                 if (sync_profiling_enabled_) {
                     ++sync_profile_.offscreen_skipped;
                 }
@@ -487,7 +494,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 mounted.scene, {
                                    {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
                                    viewport,
-                                   clip,
+                                   text_clip,
                                    phase_residual,
                                    {},
                                    1.0F,
@@ -502,7 +509,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             if (!synchronized) {
                 return false;
             }
-            synchronize_decorations(mounted.component, viewport, clip);
+            synchronize_decorations(mounted.component, viewport, text_clip);
         }
         return true;
     };

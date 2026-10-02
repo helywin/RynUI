@@ -40,6 +40,12 @@ public:
 
     virtual void on_window_active(bool) {}
 
+    virtual bool on_keyboard_input(const input::KeyboardInputEvent&) {
+        return false;
+    }
+
+    virtual void position_window_layers(runtime::Size, runtime::Rect) {}
+
     virtual void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) = 0;
 
     virtual bool synchronize_auxiliary_fragments() {
