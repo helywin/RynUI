@@ -1,0 +1,1 @@
+Verified 8 runs, 42 PNG SHA256 values and current Debug/Release executable SHA256 values

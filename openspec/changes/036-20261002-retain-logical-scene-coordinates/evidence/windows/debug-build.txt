@@ -1,0 +1,25 @@
+[0/2] Re-checking globbed directories...
+[1/25] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/25] Compiling glyph fragment shader to SPIRV
+[3/25] Compiling glyph vertex shader to SPIRV
+[4/25] Compiling rounded_effect fragment shader to SPIRV
+[5/25] Compiling rounded_effect vertex shader to SPIRV
+[6/25] Compiling glyph fragment shader to DXIL
+[7/25] Compiling glyph vertex shader to DXIL
+[8/25] Compiling quad fragment shader to SPIRV
+[9/25] Compiling quad fragment shader to DXIL
+[10/25] Reflecting glyph fragment shader resources
+[11/25] Reflecting glyph vertex shader resources
+[12/25] Compiling quad vertex shader to SPIRV
+[13/25] Reflecting rounded_effect fragment shader resources
+[14/25] Compiling quad vertex shader to DXIL
+[15/25] Reflecting rounded_effect vertex shader resources
+[16/25] Compiling rounded_effect vertex shader to DXIL
+[17/25] Compiling rounded_effect fragment shader to DXIL
+[18/25] Deploying shaders for rynui_minimal
+[19/25] Deploying shaders for rynui_button_demo
+[20/25] Deploying shaders for rynui_text_demo
+[21/25] Deploying shaders for rynui_layout_demo
+[22/25] Deploying shaders for rynui_token_gallery
+[23/25] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\token_gallery_runtime.cpp.obj
+[24/25] Linking CXX executable examples\Debug\rynui_token_gallery.exe

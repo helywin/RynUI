@@ -2,7 +2,7 @@
 
 调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 建立跨端框架基础，036 继续 logical scene 改造；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。036 的实际验收进度见 [tasks](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)。
 
-本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，本次采用的范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
+本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，框架实施范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)与 [036 change](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
 
 初始研究基线为 `6991a133720a55c567368556b1626b2460c27eca`；035 实施基线为 `1640127`。Astra xhigh 复核研究、规划及实现，发现的问题与修复见 [审查记录](../../openspec/changes/035-20261002-establish-portable-backend-foundation/evidence/astra-review.md)。上游资料仍是调研日快照；上游支持某个平台与 RynUI 已经通过该平台验收是两件事。
 

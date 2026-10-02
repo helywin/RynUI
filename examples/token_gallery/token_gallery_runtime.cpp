@@ -1425,12 +1425,38 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     ryn::input::KeyModifier::none, false});
                 ++automated_input_events;
             };
+            const auto click = [&](const ryn::detail::MountedSelectionComponent& item) {
+                const auto& node = nodes.require(item.node);
+                const ryn::runtime::Point center{
+                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                const auto& clip = scroll_presentation.document_lane;
+                if (center.x < clip.x || center.x >= clip.x + clip.width
+                    || center.y < clip.y || center.y >= clip.y + clip.height)
+                    throw std::logic_error("selection acceptance target is outside the viewport");
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
+                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
+                    center.x, center.y});
+                automated_input_events += 2;
+            };
             switch (stage) {
-            case 0:
+            case 0: {
+                float top = nodes.require(mounted.front().node).bounds.y;
+                float bottom = top;
+                for (const auto& item : mounted) {
+                    const auto& bounds = nodes.require(item.node).bounds;
+                    top = std::min(top, bounds.y);
+                    bottom = std::max(bottom, bounds.y + bounds.height);
+                }
+                const auto& clip = scroll_presentation.document_lane;
                 selection_scroll = document_viewport.scroll_to(
-                    document_viewport.snapshot().maximum_offset);
+                    (top + bottom) / 2.0F - clip.y - clip.height / 2.0F);
                 frame_requests.request_frame();
                 break;
+            }
             case 1:
                 if (!application.focus().request_focus(mounted[0].interaction,
                         ryn::input::FocusModality::keyboard))
@@ -1463,34 +1489,11 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     && application.focus().state().focused == mounted[5].interaction;
                 break;
             case 3: {
-                const auto& node = nodes.require(mounted[1].node);
-                const ryn::runtime::Point center{
-                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
-                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
-                    center.x, center.y});
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
-                    center.x, center.y});
-                automated_input_events += 2;
+                click(mounted[1]);
                 selection_pointer = !selections.snapshot(mounted[1].component).checked;
                 break;
             }
             case 4: {
-                const auto click = [&](const ryn::detail::MountedSelectionComponent& item) {
-                    const auto& node = nodes.require(item.node);
-                    const ryn::runtime::Point center{
-                        node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
-                        node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
-                    application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                        ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
-                        center.x, center.y});
-                    application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                        ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
-                        center.x, center.y});
-                    automated_input_events += 2;
-                };
                 click(mounted[2]);
                 click(mounted[3]);
                 click(mounted[7]);

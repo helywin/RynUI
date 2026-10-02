@@ -1,7 +1,7 @@
 # Logical scene 迁移验收
 
-scope: platform-generic  
-status: passed  
+scope: platform-generic
+status: passed
 环境：Windows，MSVC x64 14.51.36231，Ninja Multi-Config，2026-10-02。
 
 `windows-msvc-headless-debug` build/CTest exit 0，**27/27，6.64 秒**，原始记录 `common-debug-ctest.txt`。使用真实 Core、FreeType/HarfBuzz/utf8proc 与锁定字体，HEADLESS + RECORDING，无 SDL 或系统字体链接。

@@ -1,0 +1,17 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start  26: rynui.windows_libdecor_isolation
+1/6 Test  #26: rynui.windows_libdecor_isolation ...   Passed    0.03 sec
+    Start  96: rynui.default_font_chain
+2/6 Test  #96: rynui.default_font_chain ...........   Passed    0.34 sec
+    Start 202: rynui.platform_lifecycle
+3/6 Test #202: rynui.platform_lifecycle ...........   Passed    0.01 sec
+    Start 203: rynui.frame_renderer
+4/6 Test #203: rynui.frame_renderer ...............   Passed    0.01 sec
+    Start 216: rynui.generated_shaders
+5/6 Test #216: rynui.generated_shaders ............   Passed    0.02 sec
+    Start 217: rynui.deployed_shaders
+6/6 Test #217: rynui.deployed_shaders .............   Passed    0.02 sec
+
+100% tests passed out of 6
+
+Total Test time (real) =   0.45 sec

@@ -16,7 +16,7 @@
 
 ## 4. Windows 原生验收
 
-- [ ] 4.1 使用 `windows-msvc-debug`、`windows-msvc-release` 构建全部目标，分别运行真实 Gallery smoke resize 与 Typography acceptance（系统 scale 和 override 2.0），检查剪裁/字形/装饰/Selection 视觉与退出状态；运行受影响 Windows 平台/GPU/lifetime 集成测试，保存本 change 独立 evidence 后提交。
+- [x] 4.1 使用 `windows-msvc-debug`、`windows-msvc-release` 构建全部目标，分别运行真实 Gallery smoke resize 与 Typography acceptance（系统 scale 和 override 2.0），检查剪裁/字形/装饰/Selection 视觉与退出状态；运行受影响 Windows 平台/GPU/lifetime 集成测试，保存本 change 独立 evidence 后提交。
 
 ## 5. Linux 原生验收
 

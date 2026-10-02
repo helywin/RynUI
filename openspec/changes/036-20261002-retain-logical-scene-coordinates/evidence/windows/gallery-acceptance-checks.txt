@@ -1,0 +1,13 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start  57: rynui.selection_controls_source_contract
+1/4 Test  #57: rynui.selection_controls_source_contract ...   Passed    0.08 sec
+    Start 142: rynui.gallery_document_model
+2/4 Test #142: rynui.gallery_document_model ...............   Passed    0.01 sec
+    Start 145: rynui.gallery_document_viewport_contract
+3/4 Test #145: rynui.gallery_document_viewport_contract ...   Passed    0.02 sec
+    Start 148: rynui.token_gallery_contract
+4/4 Test #148: rynui.token_gallery_contract ...............   Passed    0.03 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =   0.16 sec
