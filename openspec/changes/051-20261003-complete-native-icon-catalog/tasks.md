@@ -2,7 +2,7 @@
 
 ## 1. 完整离线资源（平台通用）
 
-- [ ] 1.1 安全提取锁定 848 图标并生成 uint16_t typed 目录、逐层 CFF/codepoints/颜色角色/manifest；保留旧十四值与 Tooltip 箭头，更新资源文档。生成器 check、资产 verification、全部名称非空/三类数量/层序合同、HEADLESS D/R 受影响 CTest、格式/OpenSpec/diff 通过后提交，记录 Windows preset。
+- [x] 1.1 安全提取锁定 848 图标并生成 uint16_t typed 目录、逐层 CFF/codepoints/颜色角色/manifest；保留旧十四值与 Tooltip 箭头，更新资源文档。生成器 check、资产 verification、全部名称非空/三类数量/层序合同、HEADLESS D/R 受影响 CTest、格式/OpenSpec/diff 通过后提交，记录 Windows preset。
 
 ## 2. 共同保留旋转（平台通用）
 

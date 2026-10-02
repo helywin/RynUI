@@ -5,6 +5,7 @@
 #include <ryn/text.hpp>
 
 #include <cstdint>
+#include <cstddef>
 #include <optional>
 #include <utility>
 
@@ -13,26 +14,14 @@ namespace detail {
 struct IconPropsAccess;
 }
 
-enum class IconName : std::uint8_t {
-    EyeOutlined,
-    EyeInvisibleOutlined,
-    SearchOutlined,
-    CloseCircleFilled,
-    MenuOutlined,
-    SunOutlined,
-    MoonOutlined,
-    UserOutlined,
-    LockOutlined,
-    CopyOutlined,
-    CheckOutlined,
-    EditOutlined,
-    DownOutlined,
-    UpOutlined,
+enum class IconName : std::uint16_t {
+#include <ryn/generated/icon_names.inc>
 };
 
-// Bundled outlines are locked in third_party/ant-design-icons/manifest.json and
-// embedded in the same declaration order, so the enum value is the glyph index.
-inline constexpr IconName last_bundled_icon = IconName::UpOutlined;
+// Values 0-13 preserve the original API; all names and layers are generated
+// from third_party/ant-design-icons/manifest.json.
+inline constexpr IconName last_bundled_icon = static_cast<IconName>(847);
+inline constexpr std::size_t bundled_icon_count = 848;
 
 class IconProps final {
 public:
