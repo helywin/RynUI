@@ -5,7 +5,7 @@
 [0/2] Re-checking globbed directories...
 [1/2] Re-running CMake...
 -- Resolving FreeType 2.14.3 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_FREETYPE.
--- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE)
 -- Resolving HarfBuzz 14.3.1 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ.
 CMake Warning at out/build/windows-msvc/_deps/rynui_harfbuzz-src/CMakeLists.txt:4 (message):
   The main build system for HarfBuzz is Meson.  CMake build support is
