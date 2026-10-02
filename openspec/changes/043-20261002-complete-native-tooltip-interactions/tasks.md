@@ -14,7 +14,7 @@
 
 ## 4. 原生整合（平台通用）
 
-- [ ] 4.1 更新 Gallery 与支持清单，完整 headless Debug/Release CTest、renderer/Core 边界守卫、资产验证、格式/doctor/strict/diff 通过后保存实际平台/preset 和回归证据并提交。
+- [x] 4.1 更新 Gallery 与支持清单，完整 headless Debug/Release CTest、renderer/Core 边界守卫、资产验证、格式/doctor/strict/diff 通过后保存实际平台/preset 和回归证据并提交。
 
 ## 5. Windows 原生验收
 

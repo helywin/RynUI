@@ -866,22 +866,24 @@
     },
     {
       "identity": "ant.component.tooltip",
-      "status": "partial",
-      "summary": "RynUI 提供基础文字 Tooltip、窗口浮层、hover/focus/手动与受控显示、延迟/Escape、十二种位置/边缘调整、箭头及主题；富内容和扩展触发方式待补齐。",
+      "status": "implemented",
+      "summary": "RynUI 已实现原生 Tooltip 的 String/typed 富标题、hover/focus/click/context-menu/组合/手动与受控显示、延迟/Escape/外部关闭、十二种位置/pointAtCenter、向量箭头及主题；平台证据独立记录。",
       "supported_scope": [
         "typed reactive title, open and trigger slot",
         "hover/focus/manual with delay, Escape and disabled-child hover",
         "twelve placements, flip/shift, arrow and window clipping",
-        "retained scene and Theme component tokens/algorithms"
+        "retained scene and Theme component tokens/algorithms",
+        "persistent rich title slot and reactive title availability",
+        "click/context-menu/composed triggers and outside dismissal",
+        "pointAtCenter and continuous vector glyph arrows"
       ],
       "missing_scope": [
-        "rich content title slot",
-        "click/context-menu triggers and arrow pointAtCenter",
         "Web-only DOM/CSS/portal APIs are excluded from native scope"
       ],
       "evidence_identifiers": [
         "source:components/tooltip/index.en-US.md",
         "openspec:040-20261002-add-tooltip-overlay-foundation",
+        "openspec:043-20261002-complete-native-tooltip-interactions",
         "test:rynui.tooltip_component",
         "test:rynui.window_overlay"
       ]

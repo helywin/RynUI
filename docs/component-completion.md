@@ -4,7 +4,7 @@
 
 | 组件 | 已观察到的原生功能缺口 | 执行依赖/收尾方式 |
 | --- | --- | --- |
-| Tooltip（新增共用基础） | 040 已实现窗口文字浮层、hover/focus/controlled/手动、Escape、主题和 12 种定位；rich content、click/context menu、arrow pointAtCenter 待扩展 | 平台通用与 Windows 原生证据已保存；Linux 原生独立待验 |
+| Tooltip（新增共用基础） | 040/043 已实现文字/富标题、hover/focus/click/context menu/组合/controlled/手动、Escape/外部关闭、主题、12 方位、pointAtCenter 和向量箭头 | 原生功能 implemented；043 平台通用和 Windows/Linux 原生证据独立记录 |
 | Slider / RangeSlider / MultiSlider | 041/042 已补齐原生 marks/dots/提示、动态多端点、整段拖动/编辑、逐端点禁用与 ref | 原生功能 implemented；042 Windows/GPU 与 Linux 验收独立记录 |
 | Typography | 复制/编辑/省略的提示；多行编辑依赖 TextArea | Tooltip 后补提示，TextArea 后补多行编辑 |
 | Divider | 目录只因 Web API 标 partial，原生合同已有实现 | 核对原生覆盖与测试后更新状态；Linux 验收独立 pending |

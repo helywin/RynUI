@@ -819,7 +819,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ryn::Text(u8"文字");
     });
     state->telemetry.live_samples += 5;
-    ryn::Text(u8"Tooltip · 悬停 / 键盘焦点 / Escape / 边缘翻转 / 禁用触发项");
+    ryn::Text(u8"Tooltip · 悬停 / 焦点 / 点击 / 右键 / 富标题 / 居中箭头");
     ryn::Space(ryn::SpaceProps{}.wrap(true), [] {
         ryn::Tooltip(ryn::TooltipProps{}.title(ryn::String{u8"悬停或 Tab 焦点显示，Escape 关闭"}),
                      ryn::TooltipTrigger{
@@ -832,6 +832,32 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             }});
     });
     state->telemetry.live_samples += 2;
+    ryn::Space(ryn::SpaceProps{}.wrap(true), [] {
+        ryn::Tooltip(ryn::TooltipProps{}.trigger(ryn::TooltipTriggerMode::Click), ryn::TooltipTrigger{[] {
+                         ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"点击 / 富标题"); }});
+                     }},
+                     ryn::TooltipTitle{[] {
+                         ryn::Flex(ryn::FlexProps{}.vertical(true), ryn::FlexContent{[] {
+                                       ryn::Text(u8"保留的原生内容 / Retained title");
+                                       ryn::Icon(ryn::IconProps{}.name(ryn::IconName::CheckOutlined));
+                                   }});
+                     }});
+        ryn::Tooltip(ryn::TooltipProps{}
+                         .title(ryn::String{u8"指针位置 / Pointer anchor"})
+                         .trigger(ryn::TooltipTriggerMode::ContextMenu),
+                     ryn::TooltipTrigger{[] {
+                         ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"右键 / ContextMenu"); }});
+                     }});
+        ryn::Tooltip(ryn::TooltipProps{}
+                         .title(ryn::String{u8"居中角箭头 / Centered corner arrow"})
+                         .triggers(ryn::TooltipTriggers{true, true, true, false})
+                         .placement(ryn::TooltipPlacement::BottomLeft)
+                         .pointAtCenter(true),
+                     ryn::TooltipTrigger{[] {
+                         ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"组合触发 / 居中"); }});
+                     }});
+    });
+    state->telemetry.live_samples += 3;
     ryn::Text(u8"Slider · marks / dots / 离散范围 / 值提示 / 反向 / 纵向 / 整段拖动 / 编辑 / 逐端点禁用");
     ryn::Slider(ryn::SliderProps{}
                     .value(state->slider_value)
