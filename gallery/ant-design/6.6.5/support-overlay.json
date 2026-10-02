@@ -435,7 +435,7 @@
     {
       "identity": "ant.component.input",
       "status": "partial",
-      "summary": "RynUI 已提供 typed 单行 Input、Search 与 Password 组合、allowClear、Unicode 编辑、受控/非受控、IME 事件桥接与 retained scene；系统 IME 和视觉仍待分平台验收。",
+      "summary": "单行 Input、Password、Search 已补齐四变体、统计/软硬上限、焦点引用、系统提示与自定义图标操作；Input 家族仍待 TextArea、OTP 和双向文字视觉导航，平台证据独立记录。",
       "supported_scope": [
         "typed Props and prefix/suffix slots",
         "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
@@ -443,13 +443,19 @@
         "Theme/status/disabled/readOnly and retained caret deadline",
         "Search Input/Button composition with Enter/button submission and loading gate",
         "Password grapheme mask and visibility action",
-        "Input allowClear action with editor/session reuse"
+        "Input allowClear action with editor/session reuse",
+        "Outlined/Filled/Borderless/Underlined with Theme and Compact composition",
+        "scalar/grapheme/custom statistics, soft count max and atomic exceedFormatter",
+        "InputRef focus/blur/select, mount-only autoFocus and native input hints",
+        "clearDisabled/custom vector clearIcon/onClear",
+        "reactive Password visibility/toggle focusability, Hover and custom icon renderer",
+        "Search custom icon/content, Clear source and connected variant appearance"
       ],
       "missing_scope": [
-        "TextArea and OTP; Search icon and compact visual parity",
-        "native Windows/Wayland IME and visual acceptance",
-        "system placeholder/default text/max length properties",
-        "complete Ant Design Web API and visual bidi navigation"
+        "native TextArea and OTP",
+        "visual bidi/RTL caret navigation",
+        "native Windows/Wayland IME and visual acceptance remain separate tasks",
+        "DOM/CSS/React refs/events and HTML autofill APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "openspec:010-20260831-build-text-input-foundation#8.1",
@@ -467,7 +473,12 @@
         "openspec:014-20260925-compose-search-from-input-and-button#3.2",
         "api:include/ryn/search.hpp",
         "runtime:src/component/search_component.cpp",
-        "test:rynui.search_component"
+        "test:rynui.search_component",
+        "openspec:052-20261003-complete-native-input-features",
+        "test:rynui.input_variant",
+        "test:rynui.input_count",
+        "test:rynui.input_actions",
+        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/common/actions.md"
       ]
     },
     {

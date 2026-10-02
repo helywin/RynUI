@@ -57,6 +57,10 @@ struct GalleryState final {
     ryn::Signal<ryn::String> input_feedback{ryn::String{u8"Enter 提交；支持选择、剪贴板、撤销/重做"}};
     ryn::Signal<ryn::String> search_value{ryn::String{}};
     ryn::Signal<ryn::String> search_feedback{ryn::String{u8"Enter 或按钮提交搜索"}};
+    ryn::InputRef input_ref;
+    ryn::Signal<bool> input_clear_disabled{false};
+    ryn::Signal<bool> password_toggle{true};
+    ryn::Signal<bool> password_visible{false};
     ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
     ryn::Signal<double> slider_value{30};
@@ -155,6 +159,21 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.radio.focus",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
+    "gallery.input.outlined",
+    "gallery.input.filled",
+    "gallery.input.borderless",
+    "gallery.input.underlined",
+    "gallery.input.grapheme-count",
+    "gallery.input.exceed-formatter",
+    "gallery.input.focus-hints",
+    "gallery.input.clear-vector",
+    "gallery.password.hover-vector",
+    "gallery.password.controlled-toggle",
+    "gallery.search.filled-vector",
+    "gallery.search.underlined-small",
+    "gallery.input.focus-all",
+    "gallery.input.toggle-clear-disabled",
+    "gallery.password.toggle-action",
     "ant.map.colorPrimary",
     "ant.map.colorSuccess",
     "ant.map.colorWarning",
@@ -697,8 +716,8 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                           ryn::ControlSize::Middle, false, state->loading);
         });
     ryn::Text(u8"Input / 单行输入 · partial");
-    ryn::Text(u8"支持：受控/非受控、prefix/suffix、Unicode 编辑、IME 事件桥接、Theme/status");
-    ryn::Text(u8"支持：allowClear 清空操作；TextArea 与更多组合能力仍待实现");
+    ryn::Text(u8"支持：四变体、统计/上限、ref/系统提示、清空、Unicode 编辑与 IME");
+    ryn::Text(u8"单行家族已补齐；TextArea、OTP 与双向文字视觉导航继续收尾");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
                    .wrap(true)
@@ -748,8 +767,8 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
                               }});
                });
     ryn::Text(ryn::TextProps{}.content(state->input_feedback));
-    ryn::Text(u8"Search / 搜索 · partial：复用 Input、Button 与 Flex");
-    ryn::Text(u8"支持：受控/非受控、Enter/按钮提交、loading/disabled；暂缺 clear、自定义图标与紧凑边角");
+    ryn::Text(u8"Search / 搜索 · 原生单行功能：复用 Input、Button 与 Compact");
+    ryn::Text(u8"支持：四变体、全部共用属性、自定义图标、清空来源与连接外观");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
                    .wrap(true)
@@ -1426,6 +1445,120 @@ void add_icon_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 8;
 }
 
+void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
+    Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+          SpaceContent{[state] {
+              for (const auto variant :
+                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                  const String id = utf8(variant == InputVariant::Outlined     ? "gallery.input.outlined"
+                                         : variant == InputVariant::Filled     ? "gallery.input.filled"
+                                         : variant == InputVariant::Borderless ? "gallery.input.borderless"
+                                                                               : "gallery.input.underlined");
+                  Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
+                       FlexContent{[variant, id, state] {
+                           Text(id);
+                           Input(InputProps{}
+                                     .variant(variant)
+                                     .defaultValue(u8"中文 / RynUI 🙂")
+                                     .allowClear(true)
+                                     .showCount()
+                                     .count(InputCountOptions{20, InputCountUnit::Grapheme})
+                                     .layout(LayoutStyle{}.width(state->cell_width)));
+                       }});
+              }
+              Text(u8"gallery.input.grapheme-count · 原文超限只提示");
+              Input(InputProps{}
+                        .defaultValue(u8"é🙂中文")
+                        .showCount()
+                        .count(InputCountOptions{3, InputCountUnit::Grapheme})
+                        .layout(LayoutStyle{}.width(state->cell_width)));
+              Text(u8"gallery.input.exceed-formatter · 字节统计 / 去除空格");
+              Input(InputProps{}
+                        .defaultValue(u8"RynUI")
+                        .showCount()
+                        .count(InputCountOptions{8, InputCountUnit::Scalar})
+                        .countStrategy([](StringView value) { return value.bytes().size(); })
+                        .exceedFormatter([](String value, std::size_t) {
+                            auto bytes = std::string{value.bytes()};
+                            std::erase(bytes, ' ');
+                            return utf8(bytes);
+                        })
+                        .layout(LayoutStyle{}.width(state->cell_width)));
+              Text(u8"gallery.input.focus-hints · Email / 原生提示");
+              Input(InputProps{}
+                        .ref(state->input_ref)
+                        .defaultValue(u8"desktop@example.com")
+                        .purpose(InputPurpose::Email)
+                        .capitalization(InputCapitalization::None)
+                        .autocorrect(false)
+                        .onFocus([state] { state->input_feedback.set(String{u8"引用输入已聚焦"}); })
+                        .layout(LayoutStyle{}.width(state->cell_width)));
+              Text(u8"gallery.input.clear-vector · 禁用动作保留图标");
+              Input(InputProps{}
+                        .defaultValue(u8"自定义清空图标")
+                        .allowClear(true)
+                        .clearDisabled(state->input_clear_disabled)
+                        .clearIcon(icon_vector_sample())
+                        .onClear([state] { state->input_feedback.set(String{u8"onClear 已通知"}); })
+                        .layout(LayoutStyle{}.width(state->cell_width)));
+              Text(u8"gallery.password.hover-vector · 悬停 / prefix / count");
+              Password(PasswordProps{}
+                           .defaultValue(u8"秘密🙂")
+                           .action(PasswordAction::Hover)
+                           .allowClear(true)
+                           .showCount()
+                           .iconRender([](bool visible) {
+                               return visible ? icon_vector_sample() : IconSource{IconName::EyeInvisibleOutlined};
+                           })
+                           .layout(LayoutStyle{}.width(state->cell_width)),
+                       InputPrefix{[] { Icon(IconProps{}.name(IconName::LockOutlined)); }});
+              Text(u8"gallery.password.controlled-toggle · 受控 / 显隐动作开关");
+              Password(PasswordProps{}
+                           .defaultValue(u8"controlled")
+                           .visible(state->password_visible)
+                           .visibilityToggle(state->password_toggle)
+                           .onVisibleChange([state](bool value) { state->password_visible.set(value); })
+                           .layout(LayoutStyle{}.width(state->cell_width)));
+              ThemeConfig dark;
+              dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+              Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
+                        ++state->telemetry.theme_content_runs;
+                        Text(u8"gallery.search.filled-vector · Dark Compact / Clear 来源");
+                        Search(SearchProps{}
+                                   .variant(InputVariant::Filled)
+                                   .size(ControlSize::Small)
+                                   .defaultValue(u8"RynUI")
+                                   .searchIcon(icon_vector_sample())
+                                   .allowClear(true)
+                                   .showCount()
+                                   .onSearch([state](String value, SearchSource source) {
+                                       ++state->telemetry.search_submits;
+                                       state->search_feedback.set(source == SearchSource::Clear ? String{u8"Clear"}
+                                                                                                : std::move(value));
+                                   })
+                                   .layout(LayoutStyle{}.width(state->cell_width)));
+                    }});
+              Text(u8"gallery.search.underlined-small · 连接高度 / typed content");
+              Search(SearchProps{}
+                         .variant(InputVariant::Underlined)
+                         .size(ControlSize::Small)
+                         .defaultValue(u8"Search")
+                         .layout(LayoutStyle{}.width(state->cell_width)),
+                     SearchButtonContent{[] { Text(u8"查询"); }});
+              Button(ButtonProps{}.onClick(
+                         [state] { static_cast<void>(state->input_ref.focus({InputFocusCursor::All})); }),
+                     ButtonContent{[] { Text(u8"gallery.input.focus-all"); }});
+              Button(ButtonProps{}.onClick(
+                         [state] { state->input_clear_disabled.set(!state->input_clear_disabled.get()); }),
+                     ButtonContent{[] { Text(u8"gallery.input.toggle-clear-disabled"); }});
+              Button(ButtonProps{}.onClick([state] { state->password_toggle.set(!state->password_toggle.get()); }),
+                     ButtonContent{[] { Text(u8"gallery.password.toggle-action"); }});
+          }});
+    state->telemetry.live_samples += 15;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1505,6 +1638,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_flex_samples(state);
                                                         add_space_samples(state);
                                                         add_icon_samples(state);
+                                                        add_input_feature_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

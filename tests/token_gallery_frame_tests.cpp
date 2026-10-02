@@ -254,11 +254,11 @@ public:
         }
         if (quads_ == nullptr) {
             quads_ = std::make_unique<ryn::detail::QuadGpuBuffer>(*gpu_, host_->button_scene().instances(),
-                                                                  ryn::detail::SceneDeviceMetrics{1200, 30000, 1});
+                                                                  ryn::detail::SceneDeviceMetrics{1200, 40000, 1});
         } else {
-            quads_->synchronize(host_->button_scene().instances(), {1200, 30000, 1});
+            quads_->synchronize(host_->button_scene().instances(), {1200, 40000, 1});
         }
-        glyphs_.synchronize(text_scene_->atlas(), text_scene_->glyph_scene().instances(), {1200, 30000, 1});
+        glyphs_.synchronize(text_scene_->atlas(), text_scene_->glyph_scene().instances(), {1200, 40000, 1});
         effects_.synchronize(host_->rounded_effects(), {
                                                            static_cast<std::uint32_t>(viewport_.width),
                                                            static_cast<std::uint32_t>(viewport_.height),
@@ -276,7 +276,7 @@ private:
     ryn::detail::GlyphGpuResources glyphs_;
     ryn::detail::RoundedEffectGpuResources effects_;
     RecordingDrawApi* draw_;
-    ryn::runtime::Size viewport_{1200.0F, 30000.0F};
+    ryn::runtime::Size viewport_{1200.0F, 40000.0F};
     std::unique_ptr<ryn::detail::QuadGpuBuffer> quads_;
 };
 
@@ -527,8 +527,8 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    constexpr ryn::runtime::Size viewport{1200.0F, 30000.0F};
-    constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 30000.0F};
+    constexpr ryn::runtime::Size viewport{1200.0F, 40000.0F};
+    constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 40000.0F};
     require(fixture.host->layout_and_synchronize(viewport, clip, {24.0F, 20.0F}, 0.0F, true),
             "Gallery navigation fixture did not layout");
 
@@ -666,7 +666,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     const auto first_surface = fixture.surfaces->mounted_surfaces().front().component;
     const auto first_control = fixture.host->mounted_buttons().front().component;
 
-    require(fixture.host->layout_and_synchronize({1200.0F, 30000.0F}, {0.0F, 0.0F, 1200.0F, 30000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({1200.0F, 40000.0F}, {0.0F, 0.0F, 1200.0F, 40000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "wide responsive Gallery layout failed");
     const auto root_children = fixture.nodes.require(root).children;
@@ -722,7 +722,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
             "Gallery active section did not move the rendered navigation highlight");
 
     definition.set_viewport_width(560.0F);
-    require(fixture.host->layout_and_synchronize({560.0F, 30000.0F}, {0.0F, 0.0F, 560.0F, 30000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({560.0F, 40000.0F}, {0.0F, 0.0F, 560.0F, 40000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "narrow responsive Gallery layout failed");
     const auto narrow_children = fixture.nodes.require(body).children;
@@ -736,7 +736,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     require(shared_scroll.set_extents(600.0F, narrow_extent) &&
                 shared_scroll.scroll_to(shared_scroll.snapshot().maximum_offset) &&
                 shared_scroll.apply_subtree_translation(body, fixture.nodes, fixture.dirty) &&
-                fixture.host->layout_and_synchronize({560.0F, 30000.0F}, {0.0F, 0.0F, 560.0F, 30000.0F}, {24.0F, 20.0F},
+                fixture.host->layout_and_synchronize({560.0F, 40000.0F}, {0.0F, 0.0F, 560.0F, 40000.0F}, {24.0F, 20.0F},
                                                      0.0F, true) &&
                 fixture.nodes.require(narrow_children[0]).translation.y == -shared_scroll.snapshot().offset &&
                 fixture.nodes.require(narrow_children[1]).translation.y == -shared_scroll.snapshot().offset &&
@@ -768,7 +768,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     }
 
     definition.set_viewport_width(1200.0F);
-    require(fixture.host->layout_and_synchronize({1200.0F, 30000.0F}, {0.0F, 0.0F, 1200.0F, 30000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({1200.0F, 40000.0F}, {0.0F, 0.0F, 1200.0F, 40000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "wide Gallery restoration failed");
     const auto restored_navigation = fixture.nodes.require(wide_children[0]).bounds;
@@ -790,7 +790,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 118, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 133, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -803,7 +803,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 85,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 90,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -812,7 +812,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 216,
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 242,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -826,14 +826,14 @@ void test_token_gallery_frame_contract() {
     ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
-    require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 195,
+    require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 221,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 60 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 61 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 137,
+                initial.reference_content_runs == 126 && initial.live_samples == 152,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -867,12 +867,12 @@ void test_token_gallery_frame_contract() {
             "Token Gallery focus cell does not use a 1px gap and 3px hollow ring");
 
     definition.set_viewport_width(560.0F);
-    submitter.set_viewport({560.0F, 30000.0F});
+    submitter.set_viewport({560.0F, 40000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Token Gallery narrow frame was not submitted");
-    require_all_cells_reachable(fixture, {560.0F, 30000.0F});
+    require_all_cells_reachable(fixture, {560.0F, 40000.0F});
 
     definition.set_viewport_width(1200.0F);
-    submitter.set_viewport({1200.0F, 30000.0F});
+    submitter.set_viewport({1200.0F, 40000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Token Gallery wide restoration was not submitted");
     const auto component_count = fixture.host->components().component_count();
     const std::vector<ryn::detail::MountedButtonComponent> retained_buttons{fixture.host->mounted_buttons().begin(),
@@ -976,7 +976,20 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 15, "Gallery Input/Search/Password/Typography samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 27, "Gallery Input/Search/Password/Typography samples absent");
+    const auto samples = fixture.inputs->mounted_inputs();
+    const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
+                                     ryn::InputVariant::Borderless, ryn::InputVariant::Underlined};
+    for (std::size_t index = 0; index < variants.size(); ++index) {
+        require(fixture.inputs->variant(samples[15 + index].component) == variants[index],
+                "Gallery four Input variants did not mount");
+    }
+    require(fixture.inputs->count_value(samples[19].component) == 4 &&
+                fixture.inputs->status(samples[19].component) == ryn::InputStatus::Error &&
+                fixture.inputs->count_value(samples[20].component) == 5 &&
+                fixture.inputs->variant(samples[25].component) == ryn::InputVariant::Filled &&
+                fixture.inputs->variant(samples[26].component) == ryn::InputVariant::Underlined,
+            "Gallery statistics or connected Search feature sample differs");
     const auto controlled = fixture.inputs->mounted_inputs()[0];
     const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);
@@ -998,7 +1011,7 @@ void test_live_input_samples() {
                 definition.telemetry().input_changes == 1,
             "Gallery controlled echo failed");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery Input editing frame failed");
-    require(fixture.inputs->synchronize_input_area(1, 1200, 30000) && fixture.platform.areas > 0,
+    require(fixture.inputs->synchronize_input_area(1, 1200, 40000) && fixture.platform.areas > 0,
             "Gallery Input area failed");
     fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
     require(definition.telemetry().input_submits == 1, "Gallery Input submit callback absent");

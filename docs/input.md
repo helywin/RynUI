@@ -67,4 +67,4 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 ## 收尾进度
 
-052 正在补单行家族的变体、统计及操作配置，任务和验收记录位于对应 change。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。
+052 已实现单行家族的变体、统计及操作配置，平台通用和分平台任务及验收记录位于对应 change。Gallery 包含四变体、grapheme 超限、自定义裁剪、Email/ref、vector 清空、Hover Password、受控显隐以及 Dark Compact Filled/Small Underlined Search 的稳定 ID 样本。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

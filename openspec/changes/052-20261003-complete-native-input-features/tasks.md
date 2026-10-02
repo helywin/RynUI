@@ -18,7 +18,7 @@
 
 ## 5. 平台通用：Gallery 集成
 
-- [ ] 5.1 添加稳定 ID 的四变体、统计、焦点和动作样本，更新 README/组件收尾表并明确 TextArea/OTP/bidi 尚待下一 change；在 Windows common Debug/Release 跑完整 headless CTest 与 Gallery frame 合同，format-code/doctor/strict validate/diff 通过并记录 evidence 后提交。
+- [x] 5.1 添加稳定 ID 的四变体、统计、焦点和动作样本，更新 README/组件收尾表并明确 TextArea/OTP/bidi 尚待下一 change；在 Windows common Debug/Release 跑完整 headless CTest 与 Gallery frame 合同，format-code/doctor/strict validate/diff 通过并记录 evidence 后提交。
 
 ## 6. 原生分平台验收
 

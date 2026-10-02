@@ -26,13 +26,15 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Themes and interaction | Default, dark, compact, brand, and nested themes; pointer interaction, keyboard focus, disabled/loading states, and basic state animations |
 | Text | UTF-8 `ryn::String`/`StringView`, C++20 `u8"..."` literals, Latin/CJK shaping, font fallback, and high-DPI glyph rendering |
 | Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
-| Single-line editing | Controlled/uncontrolled values, placeholders, prefix/suffix slots, grapheme-safe selection, clipboard, undo/redo, IME composition events, and caret blinking |
+| Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
 | Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
 | Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
 The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, and multiline editing are not available yet.
+
+Existing components are being completed for native desktops; Web-specific APIs are outside scope. See the [052 checklist](openspec/changes/052-20261003-complete-native-input-features/tasks.md) for single-line features and platform evidence. The Input family remains partial until TextArea, OTP and visual bidi caret navigation are complete.
 
 Typography and Divider are implemented and have passed Windows Debug/Release builds and native D3D12/DXIL window validation at the system scale and four render scales. Native Linux Wayland validation remains open. Tooltip overlays, rich text, and multiline editing are outside this scope; see the [Typography / Divider checklist](openspec/changes/034-20261001-complete-typography-and-divider/tasks.md) and [Windows evidence](openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.md).
 
