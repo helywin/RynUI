@@ -392,6 +392,198 @@ void whole_track_drag_contracts() {
           "reentrant track callback retained component or capture");
 }
 
+void editable_and_disabled_contracts() {
+    Fixture f;
+    Signal<SliderRangeOptions> options{SliderRangeOptions{false, true, 1, 3}};
+    Signal<SliderDisabledHandles> disabled{SliderDisabledHandles{}};
+    int changes{};
+    int completed{};
+    f.services.mount(Content{[&] {
+        MultiSlider(MultiSliderProps{}
+                        .defaultValue({20, 80})
+                        .rangeOptions(options)
+                        .handleDisabled(disabled)
+                        .onChange([&](SliderValues) { ++changes; })
+                        .onChangeComplete([&](SliderValues) { ++completed; }));
+    }});
+    f.synchronize();
+    const auto m = f.services.slider().mounted()[0];
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    pointer(f, PointerAction::up, at(f, m, 0.5));
+    f.synchronize();
+    auto handles = f.services.slider().mounted()[0].thumbs;
+    check(f.services.slider().snapshot(m.component).values == SliderValues{20, 50, 80} && changes == 1 &&
+              completed == 1 && handles[0] == m.thumbs[0] && handles[2] == m.thumbs[1],
+          "editable rail did not insert retained endpoint");
+    pointer(f, PointerAction::down, at(f, m, 0.65));
+    pointer(f, PointerAction::up, at(f, m, 0.65));
+    f.synchronize();
+    check(f.services.slider().snapshot(m.component).values == SliderValues{20, 65, 80},
+          "maxCount did not fall back to nearest movement");
+    f.services.focus().request_focus(handles[1], FocusModality::keyboard);
+    key(f, Key::delete_forward);
+    f.synchronize();
+    check(f.services.slider().snapshot(m.component).values == SliderValues{20, 80} && completed == 3 &&
+              f.services.focus().state().focused == m.thumbs[1],
+          "Delete did not remove and transfer focus once");
+    key(f, Key::delete_forward, KeyAction::down, true);
+    check(f.services.slider().snapshot(m.component).values.size() == 2 && completed == 3,
+          "Delete repeat removed another handle");
+    press_key(f, Key::backspace);
+    check(f.services.slider().snapshot(m.component).values == SliderValues{20} && completed == 4, "Backspace missing");
+    press_key(f, Key::backspace);
+    check(f.services.slider().snapshot(m.component).values == SliderValues{20} && completed == 4, "minCount ignored");
+    options.set({false, true, 0, 3});
+    press_key(f, Key::delete_forward);
+    check(f.services.slider().mounted()[0].thumbs.empty() && completed == 5, "delete to empty retained fake handle");
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    pointer(f, PointerAction::up, at(f, m, 0.5));
+    f.synchronize();
+    const auto inserted = f.services.slider().mounted()[0].thumbs[0];
+    auto off = at(f, m, 0.5);
+    off.y += 131;
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    pointer(f, PointerAction::move, off);
+    check(f.services.slider().snapshot(m.component).delete_preview, "cross-axis deletion preview missing");
+    const auto before = completed;
+    pointer(f, PointerAction::cancel, off);
+    check(f.services.slider().snapshot(m.component).values == SliderValues{50} && completed == before &&
+              !f.services.slider().snapshot(m.component).delete_preview,
+          "cancel committed deletion");
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    pointer(f, PointerAction::move, off);
+    pointer(f, PointerAction::up, off);
+    f.synchronize();
+    check(f.services.slider().mounted()[0].thumbs.empty() && !f.services.interactions().contains(inserted) &&
+              completed == before + 1,
+          "drag release did not delete or leaked handle");
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    pointer(f, PointerAction::up, at(f, m, 0.5));
+    f.synchronize();
+    const auto single = f.services.slider().mounted()[0].thumbs[0];
+    f.services.focus().request_focus(single, FocusModality::keyboard);
+    disabled.set({true});
+    check(!f.services.focus().state().focused && !f.services.interactions().require(single).eligible,
+          "per-handle disabled retained focus or eligibility");
+    const auto changes_before = changes;
+    pointer(f, PointerAction::down, at(f, m, 0.25));
+    pointer(f, PointerAction::up, at(f, m, 0.25));
+    check(changes == changes_before && f.services.slider().snapshot(m.component).values == SliderValues{50},
+          "disabled handle allowed editor or rail operation");
+    rejects([&] { disabled.set(SliderDisabledHandles(65)); });
+    check(!f.services.interactions().require(single).eligible, "invalid disabled list changed eligibility");
+    disabled.set({false});
+    pointer(f, PointerAction::down, at(f, m, 0.5));
+    disabled.set({true});
+    check(!f.services.slider().snapshot(m.component).dragging &&
+              !f.services.pointer().state(PointerIdentity::mouse())->capture,
+          "disabled update did not cancel capture");
+
+    for (bool echo : {false, true}) {
+        Fixture controlled;
+        Signal<SliderValues> value{SliderValues{20, 80}};
+        SliderValues last;
+        int done{};
+        controlled.services.mount(Content{[&] {
+            MultiSlider(MultiSliderProps{}
+                            .value(value)
+                            .rangeOptions(SliderRangeOptions{false, true, 0, 4})
+                            .onChange([&](SliderValues next) {
+                                last = next;
+                                if (echo) {
+                                    value.set(next);
+                                }
+                            })
+                            .onChangeComplete([&](SliderValues next) {
+                                ++done;
+                                last = next;
+                            }));
+        }});
+        controlled.synchronize();
+        const auto own = controlled.services.slider().mounted()[0];
+        pointer(controlled, PointerAction::down, at(controlled, own, 0.5));
+        pointer(controlled, PointerAction::move, at(controlled, own, 0.6));
+        pointer(controlled, PointerAction::up, at(controlled, own, 0.6));
+        check(last == SliderValues{20, 60, 80} && done == 1 && value.get() == (echo ? last : SliderValues{20, 80}),
+              "controlled insertion echo cancelled drag or changed display without echo");
+        controlled.synchronize();
+        const auto target = controlled.services.slider().mounted()[0].thumbs[0];
+        controlled.services.focus().request_focus(target, FocusModality::keyboard);
+        press_key(controlled, Key::delete_forward);
+        check(done == 2 && last == (echo ? SliderValues{60, 80} : SliderValues{80}) &&
+                  value.get() == (echo ? last : SliderValues{20, 80}),
+              "controlled deletion lost completion or changed without echo");
+    }
+    Fixture pair;
+    Fixture labels;
+    labels.services.mount(Content{[] {
+        MultiSlider(MultiSliderProps{}
+                        .defaultValue({})
+                        .marks(SliderMarks{{50, String{u8"中点"}}})
+                        .rangeOptions(SliderRangeOptions{false, true, 0, 2}));
+    }});
+    labels.synchronize();
+    const auto label_root = labels.services.slider().mounted()[0].component;
+    const auto label_node = labels.services.components().root(labels.services.components().children(label_root).back());
+    const auto label_rect = labels.nodes.require(label_node).bounds;
+    pointer(labels, PointerAction::down, {label_rect.x + 2, label_rect.y + 2});
+    pointer(labels, PointerAction::up, {label_rect.x + 2, label_rect.y + 2});
+    check(labels.services.slider().snapshot(label_root).values == SliderValues{50},
+          "mark label did not insert into empty slider");
+    Fixture vertical;
+    vertical.services.mount(Content{[] {
+        MultiSlider(MultiSliderProps{}
+                        .defaultValue({20, 80})
+                        .orientation(SliderOrientation::Vertical)
+                        .reverse(true)
+                        .rangeOptions(SliderRangeOptions{false, true, 1, 3}));
+    }});
+    vertical.synchronize();
+    const auto vertical_m = vertical.services.slider().mounted()[0];
+    auto vertical_off = at(vertical, vertical_m, 0.2);
+    vertical_off.x += 131;
+    pointer(vertical, PointerAction::down, at(vertical, vertical_m, 0.2));
+    pointer(vertical, PointerAction::move, vertical_off);
+    pointer(vertical, PointerAction::up, vertical_off);
+    check(vertical.services.slider().snapshot(vertical_m.component).values == SliderValues{80},
+          "vertical reverse drag deletion failed");
+    vertical.synchronize();
+    vertical_off = at(vertical, vertical_m, 0.8);
+    vertical_off.x += 131;
+    pointer(vertical, PointerAction::down, at(vertical, vertical_m, 0.8));
+    pointer(vertical, PointerAction::move, vertical_off);
+    pointer(vertical, PointerAction::up, vertical_off);
+    check(vertical.services.slider().snapshot(vertical_m.component).values.size() == 1,
+          "drag deletion ignored minCount");
+    pair.services.mount(Content{[] {
+        RangeSlider(
+            RangeSliderProps{}.defaultValue({20, 80}).draggableTrack(true).handleDisabled(SliderDisabledHandles{true}));
+    }});
+    pair.synchronize();
+    const auto range = pair.services.slider().mounted()[0];
+    key(pair, Key::tab);
+    check(pair.services.focus().state().focused == range.thumbs[1], "disabled endpoint stayed in Tab order");
+    pointer(pair, PointerAction::down, at(pair, range, 0.5));
+    pointer(pair, PointerAction::up, at(pair, range, 0.6));
+    check(pair.services.slider().snapshot(range.component).value == SliderRange{20, 60},
+          "rail selected disabled endpoint or moved disabled track");
+    Fixture dying;
+    runtime::ComponentId id;
+    dying.services.mount(Content{[&] {
+        MultiSlider(MultiSliderProps{}
+                        .defaultValue({20, 80})
+                        .rangeOptions(SliderRangeOptions{false, true, 0, 4})
+                        .onChange([&](SliderValues) { dying.services.destroy(id); }));
+    }});
+    dying.synchronize();
+    const auto own = dying.services.slider().mounted()[0];
+    id = own.component;
+    dying.services.focus().request_focus(own.thumbs[0], FocusModality::keyboard);
+    key(dying, Key::delete_forward);
+    check(dying.services.slider().mounted().empty() && dying.services.tooltip().mounted().empty(),
+          "reentrant editor destruction leaked resources");
+}
+
 void controlled_keyboard_and_limits() {
     Fixture f;
     Signal<double> value{30};
@@ -809,6 +1001,7 @@ int main() {
         numeric_and_api();
         multiple_values_and_retained_topology();
         whole_track_drag_contracts();
+        editable_and_disabled_contracts();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();
         geometry_theme_and_reentrancy();

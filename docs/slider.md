@@ -33,4 +33,8 @@ Slider token 按锁定 [Ant Design 6.6.5 API](https://github.com/ant-design/ant-
 
 `RangeSliderProps::draggableTrack(true)` 或 MultiSlider range options 的 `draggable_track=true` 启用整段已选轨道拖动（included=true，至少两个端点）。按下不跳值，后续偏移基于按下快照；先对齐第一个端点，再限制整体偏移并分别归一化端点。规则网格保留间距，不规则 marks 可能改变间距。editable 与 draggable_track 互斥，marksOnly 不能启用 draggable_track，非法组合明确拒绝。配置更改或窗口失焦取消 capture，不触发完成。
 
-端点编辑正在 042 实施；editable 字段尚未完成交互，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。
+MultiSlider 的 `editable=true` 启用轨道/label 插入：新合法值不在列表且未到 max_count 时插入，到上限则调整最近端点。Delete/Backspace 非 repeat down 删除并立即完成一次；拖出轨道跨轴 130 logical px 显示删除预览，release 才删除，cancel 保留。min_count 阻止继续删除。空列表可插入首个端点。受控模式未回写不改变显示；自身插入回写保留 rail capture，其他外部数量变化取消旧拖动。删除后已回写拓扑的焦点转移至相邻端点。
+
+所有 Slider Props 的 `handleDisabled(Prop<SliderDisabledHandles>)` 最多 64 项，按端点索引设置，缺失项为 false；全局 disabled 优先。禁用端点不能 focus/drag/key，也不显示 hint；轨道/label 就近查找跳过禁用端点。任一实际端点被禁用时，editable 与整段拖动均不执行。禁用配置变化取消当前 gesture。
+
+Ref/autoFocus/hint 原生 API 与 Gallery 正在 042 收尾，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。

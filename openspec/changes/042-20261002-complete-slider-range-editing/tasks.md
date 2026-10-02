@@ -14,7 +14,7 @@
 
 ## 4. 编辑与禁用（平台通用）
 
-- [ ] 4.1 实现 editable 插入、Delete/Backspace、跨轴拖出删除预览、min/max count、逐端点 disabled 和焦点迁移；覆盖 empty/maxCount/minCount、repeat、controlled 不回写、配置取消、destroy/rollback/reentrant；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
+- [x] 4.1 实现 editable 插入、Delete/Backspace、跨轴拖出删除预览、min/max count、逐端点 disabled 和焦点迁移；覆盖 empty/maxCount/minCount、repeat、controlled 不回写、配置取消、destroy/rollback/reentrant；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
 
 ## 5. 原生 API 与整合（平台通用）
 

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <charconv>
 #include <memory>
+#include <numeric>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -59,6 +60,7 @@ struct SliderThumb final {
     std::optional<double> hinted_value;
     input::FocusPresentation focus;
     bool hover{};
+    bool disabled{};
     runtime::Point center;
 };
 
@@ -92,6 +94,7 @@ struct SliderState final {
     SliderRangeOptions options;
     bool controlled{};
     bool disabled{};
+    SliderDisabledHandles disabled_handles;
     bool keyboard_enabled{true};
     bool reverse{};
     bool rail_hover{};
@@ -99,6 +102,8 @@ struct SliderState final {
     bool dragging_track{};
     SliderValues drag_origin;
     float drag_start{};
+    bool delete_preview{};
+    bool editing_command{};
     bool gesture{};
     bool disposing{};
     SliderOrientation orientation{SliderOrientation::Horizontal};
@@ -115,6 +120,36 @@ struct SliderState final {
 
     std::size_t count() const noexcept {
         return handles.size();
+    }
+
+    bool handle_disabled(std::size_t index) const noexcept {
+        return disabled || (index < disabled_handles.size() && disabled_handles[index]);
+    }
+
+    bool any_disabled() const noexcept {
+        for (std::size_t i = 0; i < count(); ++i) {
+            if (handle_disabled(i)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool editable() const noexcept {
+        return multiple && options.editable && !disabled && !any_disabled();
+    }
+
+    std::optional<std::size_t> nearest_enabled(double target) const {
+        std::optional<std::size_t> nearest;
+        if (active < count() && !handle_disabled(active)) {
+            nearest = active;
+        }
+        for (std::size_t i = 0; i < count(); ++i) {
+            if (!handle_disabled(i) && (!nearest || std::abs(target - value[i]) < std::abs(target - value[*nearest]))) {
+                nearest = i;
+            }
+        }
+        return nearest;
     }
 };
 
@@ -156,6 +191,7 @@ SliderSnapshot SliderComponentHost::snapshot(runtime::ComponentId id) const {
     result.reverse = s->reverse;
     result.orientation = s->orientation;
     result.values = s->value;
+    result.delete_preview = s->delete_preview;
     for (const auto& thumb : s->handles) {
         result.centers.push_back(thumb->center);
         result.focus.push_back(thumb->focus);
@@ -171,6 +207,7 @@ void SliderComponentHost::cancel(runtime::ComponentId id) {
     const auto capture = s->capture;
     s->dragging = s->gesture = false;
     s->dragging_track = false;
+    s->delete_preview = false;
     s->key.reset();
     s->capture = {};
     s->candidate = s->value;
@@ -182,8 +219,12 @@ void SliderComponentHost::cancel(runtime::ComponentId id) {
 
 void SliderComponentHost::on_window_active(bool active) {
     if (!active) {
-        for (const auto& m : mounted_) {
-            cancel(m.component);
+        for (std::size_t i = 0; i < mounted_.size();) {
+            const auto id = mounted_[i].component;
+            cancel(id);
+            if (i < mounted_.size() && mounted_[i].component == id) {
+                ++i;
+            }
         }
     }
 }
@@ -244,7 +285,7 @@ void SliderComponentHost::mount_thumb(runtime::ComponentId id, SliderThumb& thum
                 });
                 services_->layout().set_layout(thumb.node, layout::LeafLayout{{24, 24}});
                 thumb.interaction = services_->interactions().create(
-                    {thumb.component, thumb.node, state->rail, !state->disabled, true, {}, false});
+                    {thumb.component, thumb.node, state->rail, !state->disabled && !thumb.disabled, true, {}, false});
                 const auto component = thumb.component;
                 input::InteractionHandlers handlers;
                 handlers.target = [this, id, component](input::PointerDispatchContext& event) {
@@ -323,6 +364,7 @@ void SliderComponentHost::set_values(runtime::ComponentId id, SliderValues value
     for (std::size_t i = 0; i < values.size(); ++i) {
         if (matched[i] == 64) {
             replacement[i] = std::make_unique<SliderThumb>();
+            replacement[i]->disabled = state->handle_disabled(i);
         }
     }
     const auto active =
@@ -364,6 +406,11 @@ void SliderComponentHost::set_values(runtime::ComponentId id, SliderValues value
         return;
     }
     state->reconciling = false;
+    synchronize_disabled(id);
+    state = find(id);
+    if (!state) {
+        return;
+    }
     for (auto& item : mounted_) {
         if (item.component == id) {
             item.thumbs.clear();
@@ -399,7 +446,7 @@ void SliderComponentHost::mount_labels(runtime::ComponentId id, runtime::Compone
         input::InteractionHandlers handlers;
         handlers.target = [this, id, i](input::PointerDispatchContext& event) {
             auto* s = find(id);
-            if (!s || i >= s->labels.size() || s->handles.empty()) {
+            if (!s || i >= s->labels.size()) {
                 return;
             }
             auto& label = s->labels[i];
@@ -408,17 +455,9 @@ void SliderComponentHost::mount_labels(runtime::ComponentId id, runtime::Compone
                 return;
             }
             const double value = s->marks[i].value;
-            for (std::size_t thumb = 0; thumb < s->count(); ++thumb) {
-                if (std::abs(value - s->value[thumb]) < std::abs(value - s->value[s->active])) {
-                    s->active = thumb;
-                }
-            }
             s->gesture = true;
             s->candidate = s->value;
-            const auto active = s->active;
-            static_cast<void>(
-                services_->focus().request_focus(s->handles[active]->interaction, input::FocusModality::pointer));
-            change(id, active, value);
+            select_value(id, value);
             complete(id);
         };
         services_->interactions().set_handlers(interaction, std::move(handlers));
@@ -519,7 +558,7 @@ void SliderComponentHost::update_hints(runtime::ComponentId id) {
             s->handles[i]->hint_title.set(std::move(text));
         }
         const bool active =
-            !s->disabled &&
+            !s->handle_disabled(i) && !(s->delete_preview && s->active == i) &&
             (s->hint.mode == SliderHintMode::Always ||
              (s->hint.mode == SliderHintMode::Auto && (s->handles[i]->hover || s->handles[i]->focus.focus_visible ||
                                                        (s->dragging && (s->dragging_track || s->active == i)))));
@@ -675,16 +714,17 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
     }
     for (std::size_t i = 0; i < s->count(); ++i) {
         services_->nodes().require(s->handles[i]->node).translation = node.translation;
+        const bool disabled = s->handle_disabled(i) || (s->delete_preview && s->active == i);
         const bool active =
-            !s->disabled && (s->handles[i]->hover || s->handles[i]->focus.focused || (s->dragging && s->active == i));
+            !disabled && (s->handles[i]->hover || s->handles[i]->focus.focused || (s->dragging && s->active == i));
         const float size = active ? m.handle_size_hover : m.handle_size;
         const float line = active ? m.handle_line_width_hover : m.handle_line_width;
         const auto center = s->handles[i]->center;
         const float outer = size + 2 * line;
         const std::array thumb{quad({center.x - outer / 2, center.y - outer / 2, outer, outer},
-                                    s->disabled ? c.handle_disabled
-                                    : active    ? c.handle_active
-                                                : c.handle,
+                                    disabled ? c.handle_disabled
+                                    : active ? c.handle_active
+                                             : c.handle,
                                     outer / 2, node.translation),
                                quad({center.x - size / 2, center.y - size / 2, size, size}, c.handle_background,
                                     size / 2, node.translation)};
@@ -711,9 +751,93 @@ void SliderComponentHost::update(runtime::ComponentId id, bool geometry) {
 }
 
 void SliderComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) {
-    for (const auto& m : mounted_) {
-        update(m.component, false);
+    for (std::size_t i = 0; i < mounted_.size();) {
+        const auto id = mounted_[i].component;
+        update(id, false);
+        if (i < mounted_.size() && mounted_[i].component == id) {
+            ++i;
+        }
     }
+}
+
+void SliderComponentHost::synchronize_disabled(runtime::ComponentId id) {
+    auto* state = find(id);
+    for (std::size_t i = 0; state && i < state->count(); ++i) {
+        auto& thumb = *state->handles[i];
+        thumb.disabled = state->handle_disabled(i);
+        services_->interactions().set_eligible(thumb.interaction, !thumb.disabled);
+        if (thumb.disabled) {
+            services_->focus().cancel_interaction(thumb.interaction);
+        }
+        state = find(id);
+    }
+}
+
+std::optional<std::size_t> SliderComponentHost::select_value(runtime::ComponentId id, double value) {
+    auto* s = find(id);
+    if (!s || s->disabled) {
+        return {};
+    }
+    value = normalize_slider_value(value, s->limits, s->marks, s->marks_only);
+    auto next = s->gesture ? s->candidate : s->value;
+    if (s->editable() && next.size() < s->options.max_count && std::ranges::find(next, value) == next.end()) {
+        const auto position = std::ranges::lower_bound(next, value);
+        const auto index = static_cast<std::size_t>(position - next.begin());
+        next.insert(position, value);
+        s->active = index;
+        change_values(id, std::move(next));
+        if (auto* current = find(id)) {
+            current->active = index;
+            if (current->value == current->candidate && index < current->count()) {
+                services_->focus().request_focus(current->handles[index]->interaction, input::FocusModality::pointer);
+            }
+        }
+        return index;
+    }
+    const auto nearest = s->nearest_enabled(value);
+    if (nearest) {
+        s->active = *nearest;
+        services_->focus().request_focus(s->handles[*nearest]->interaction, input::FocusModality::pointer);
+        change(id, *nearest, value);
+    }
+    return nearest;
+}
+
+void SliderComponentHost::delete_handle(runtime::ComponentId id, std::size_t index) {
+    auto* s = find(id);
+    if (!s || !s->editable()) {
+        return;
+    }
+    auto next = s->gesture ? s->candidate : s->value;
+    if (index >= next.size() || next.size() <= s->options.min_count) {
+        return;
+    }
+    const auto previous_count = s->count();
+    s->gesture = true;
+    s->candidate = next;
+    s->editing_command = true;
+    s->key.reset();
+    s->capture = {};
+    next.erase(next.begin() + index);
+    try {
+        change_values(id, std::move(next));
+    } catch (...) {
+        if (auto* current = find(id)) {
+            current->editing_command = false;
+        }
+        throw;
+    }
+    s = find(id);
+    if (!s) {
+        return;
+    }
+    s->editing_command = false;
+    if (s->count() != previous_count && !s->handles.empty()) {
+        const auto next_index = std::min(index, s->count() - 1);
+        s->active = next_index;
+        services_->focus().defer_focus(s->handles[next_index]->interaction, input::FocusModality::keyboard);
+    }
+    complete(id);
 }
 
 void SliderComponentHost::change(runtime::ComponentId id, std::size_t thumb, double value) {
@@ -737,6 +861,7 @@ void SliderComponentHost::change_values(runtime::ComponentId id, SliderValues ne
     if (!s || s->disabled) {
         return;
     }
+    validate_slider_range_options(s->options, s->marks_only, next.size());
     if (next == (s->gesture ? s->candidate : s->value)) {
         return;
     }
@@ -761,6 +886,7 @@ void SliderComponentHost::complete(runtime::ComponentId id) {
     auto callback = s->on_complete;
     s->gesture = s->dragging = false;
     s->dragging_track = false;
+    s->delete_preview = false;
     s->key.reset();
     s->capture = {};
     update(id, false);
@@ -791,7 +917,8 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
         }
         return;
     }
-    if (s->disabled || s->handles.empty()) {
+    if (s->disabled || (thumb && s->handle_disabled(*thumb)) ||
+        (s->handles.empty() && !s->editable() && !s->dragging)) {
         return;
     }
     const auto& e = event.event();
@@ -802,16 +929,24 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
     const auto& n = services_->nodes().require(s->node);
     const float pos = vertical ? e.y - n.translation.y : e.x - n.translation.x;
     if (event.kind() == input::PointerEventKind::down) {
-        if (s->dragging || e.button != input::PointerButton::primary || !event.capture_pointer()) {
+        const double midpoint = std::midpoint(s->limits.minimum, s->limits.maximum);
+        if ((!thumb && !s->editable() && !s->nearest_enabled(midpoint)) || s->dragging ||
+            e.button != input::PointerButton::primary || !event.capture_pointer()) {
             return;
         }
-        const bool overlap =
-            thumb && s->active < s->count() && s->handles[*thumb]->center == s->handles[s->active]->center;
+        const bool overlap = thumb && s->active < s->count() && !s->handle_disabled(s->active) &&
+                             s->handles[*thumb]->center == s->handles[s->active]->center;
         if (!overlap) {
             s->active = thumb.value_or(s->active);
         }
-        if (!thumb) {
+        if (!thumb && !s->handles.empty()) {
+            if (s->active >= s->count() || s->handle_disabled(s->active)) {
+                s->active = *s->nearest_enabled(midpoint);
+            }
             for (std::size_t i = 0; i < s->count(); ++i) {
+                if (s->handle_disabled(i)) {
+                    continue;
+                }
                 const float candidate = vertical ? s->handles[i]->center.y : s->handles[i]->center.x;
                 const float active = vertical ? s->handles[s->active]->center.y : s->handles[s->active]->center.x;
                 if (std::abs(pos - candidate) < std::abs(pos - active)) {
@@ -824,8 +959,8 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
         const float cross = vertical ? e.x - n.translation.x : e.y - n.translation.y;
         const float rail_cross =
             vertical ? s->rail_bounds.x + s->rail_bounds.width / 2 : s->rail_bounds.y + s->rail_bounds.height / 2;
-        s->dragging_track = !thumb && s->included && s->options.draggable_track && s->count() > 1 &&
-                            std::abs(cross - rail_cross) <= 4 &&
+        s->dragging_track = !thumb && s->included && !s->any_disabled() && s->options.draggable_track &&
+                            s->count() > 1 && std::abs(cross - rail_cross) <= 4 &&
                             pos > std::min(vertical ? s->handles.front()->center.y : s->handles.front()->center.x,
                                            vertical ? s->handles.back()->center.y : s->handles.back()->center.x) &&
                             pos < std::max(vertical ? s->handles.front()->center.y : s->handles.front()->center.x,
@@ -836,8 +971,10 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
         s->pointer = e.pointer;
         s->capture = event.current_target();
         s->pointer_offset = thumb ? pos - (vertical ? s->handles[*thumb]->center.y : s->handles[*thumb]->center.x) : 0;
-        static_cast<void>(
-            services_->focus().request_focus(s->handles[s->active]->interaction, input::FocusModality::pointer));
+        if (s->active < s->count()) {
+            static_cast<void>(
+                services_->focus().request_focus(s->handles[s->active]->interaction, input::FocusModality::pointer));
+        }
         s = find(id);
         if (!s || !s->dragging) {
             return;
@@ -868,12 +1005,24 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
             }
             change_values(id, std::move(next));
         } else {
+            const float cross = vertical ? e.x - n.translation.x : e.y - n.translation.y;
+            const float rail_cross =
+                vertical ? s->rail_bounds.x + s->rail_bounds.width / 2 : s->rail_bounds.y + s->rail_bounds.height / 2;
+            s->delete_preview =
+                s->editable() && s->candidate.size() > s->options.min_count && std::abs(cross - rail_cross) > 130;
             double ratio = std::clamp((pos - s->pointer_offset - (vertical ? n.bounds.y : n.bounds.x) - inset) / travel,
                                       0.0F, 1.0F);
             if (slider_inverted(s->orientation, s->reverse)) {
                 ratio = 1 - ratio;
             }
-            change(id, s->active, std::lerp(s->limits.minimum, s->limits.maximum, ratio));
+            if (!s->delete_preview) {
+                const double value = std::lerp(s->limits.minimum, s->limits.maximum, ratio);
+                if (event.kind() == input::PointerEventKind::down && !thumb) {
+                    select_value(id, value);
+                } else {
+                    change(id, s->active, value);
+                }
+            }
         }
     }
     s = find(id);
@@ -882,6 +1031,10 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
     }
     if (event.kind() == input::PointerEventKind::up && e.button == input::PointerButton::primary) {
         static_cast<void>(event.release_pointer_capture());
+        if (s->delete_preview) {
+            delete_handle(id, s->active);
+            return;
+        }
         complete(id);
     } else {
         update(id, false);
@@ -891,6 +1044,15 @@ void SliderComponentHost::pointer(runtime::ComponentId id, std::optional<std::si
 bool SliderComponentHost::keyboard(runtime::ComponentId id, std::size_t thumb, const input::KeyboardInputEvent& event) {
     using input::Key;
     using input::KeyAction;
+    if (event.key == Key::delete_forward || event.key == Key::backspace) {
+        if (event.action == KeyAction::down && !event.repeat && event.modifiers == input::KeyModifier::none) {
+            if (auto* s = find(id);
+                s && s->keyboard_enabled && !s->dragging && s->editable() && !s->handle_disabled(thumb)) {
+                delete_handle(id, thumb);
+            }
+        }
+        return true;
+    }
     const bool command = event.key == Key::left || event.key == Key::right || event.key == Key::up ||
                          event.key == Key::down || event.key == Key::home || event.key == Key::end ||
                          event.key == Key::page_up || event.key == Key::page_down;
@@ -898,7 +1060,7 @@ bool SliderComponentHost::keyboard(runtime::ComponentId id, std::size_t thumb, c
         return false;
     }
     auto* s = find(id);
-    if (!s || s->disabled || !s->keyboard_enabled || s->dragging || thumb >= s->count()) {
+    if (!s || s->handle_disabled(thumb) || !s->keyboard_enabled || s->dragging || thumb >= s->count()) {
         return true;
     }
     if (event.action == KeyAction::up) {
@@ -1007,6 +1169,10 @@ struct SliderPropsAccess {
         s.orientation = orientation;
         s.reverse = read_prop(props.reverse_);
         s.disabled = read_prop(props.disabled_);
+        s.disabled_handles = read_prop(props.handle_disabled_);
+        if (s.disabled_handles.size() > 64) {
+            throw std::invalid_argument("Slider disabled handle list exceeds 64");
+        }
         s.keyboard_enabled = read_prop(props.keyboard_);
         const auto callback = [](const std::function<void(Value)>& fn) -> std::function<void(SliderValues)> {
             if (!fn) {
@@ -1055,6 +1221,7 @@ struct SliderPropsAccess {
                              auto& nested = runtime::require_component_build_context();
                              for (std::size_t i = 0; i < s.value.size(); ++i) {
                                  s.handles.push_back(std::make_unique<SliderThumb>());
+                                 s.handles.back()->disabled = s.handle_disabled(i);
                                  host.mount_thumb(id, *s.handles.back(), nested);
                              }
                              host.mount_labels(id, nested);
@@ -1136,7 +1303,9 @@ struct SliderPropsAccess {
                 const auto next =
                     normalize_slider_values(as_range(value), state->limits, state->marks, state->marks_only);
                 validate_slider_range_options(state->options, state->marks_only, next.size());
-                if (next.size() != state->value.size()) {
+                if (next.size() != state->value.size() &&
+                    !(state->gesture && next == state->candidate &&
+                      (state->capture == state->rail || state->editing_command))) {
                     host.cancel(id);
                     state = host.find(id);
                     if (!state) {
@@ -1248,11 +1417,10 @@ struct SliderPropsAccess {
             }
             state->disabled = disabled;
             host.services_->interactions().set_eligible(state->rail, !disabled);
-            for (std::size_t i = 0; i < state->count(); ++i) {
-                host.services_->interactions().set_eligible(state->handles[i]->interaction, !disabled);
-                if (disabled) {
-                    host.services_->focus().cancel_interaction(state->handles[i]->interaction);
-                }
+            host.synchronize_disabled(id);
+            state = host.find(id);
+            if (!state) {
+                return;
             }
             for (auto& label : state->labels) {
                 host.services_->interactions().set_eligible(label.interaction, !disabled);
@@ -1262,6 +1430,21 @@ struct SliderPropsAccess {
                 }
             }
             host.update(id, false);
+        });
+        connect_prop(scope, props.handle_disabled_, [&host, id](SliderDisabledHandles value) {
+            if (value.size() > 64) {
+                throw std::invalid_argument("Slider disabled handle list exceeds 64");
+            }
+            auto* state = host.find(id);
+            if (!state || state->disabled_handles == value) {
+                return;
+            }
+            host.cancel(id);
+            if (auto* current = host.find(id)) {
+                current->disabled_handles = std::move(value);
+                host.synchronize_disabled(id);
+                host.update(id, false);
+            }
         });
         connect_prop(scope, props.keyboard_, [&host, id](bool value) {
             host.cancel(id);

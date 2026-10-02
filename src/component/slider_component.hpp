@@ -26,6 +26,7 @@ struct SliderSnapshot final {
     std::vector<runtime::Point> centers;
     std::vector<input::FocusPresentation> focus;
     SliderValues values;
+    bool delete_preview{};
 };
 
 class SliderComponentHost final : private WindowComponentParticipant {
@@ -64,6 +65,9 @@ private:
     std::optional<std::size_t> thumb_index(runtime::ComponentId, runtime::ComponentId) const;
     void change(runtime::ComponentId, std::size_t, double);
     void change_values(runtime::ComponentId, SliderValues);
+    std::optional<std::size_t> select_value(runtime::ComponentId, double);
+    void delete_handle(runtime::ComponentId, std::size_t);
+    void synchronize_disabled(runtime::ComponentId);
     void complete(runtime::ComponentId);
     void pointer(runtime::ComponentId, std::optional<std::size_t>, input::PointerDispatchContext&);
     bool keyboard(runtime::ComponentId, std::size_t, const input::KeyboardInputEvent&);

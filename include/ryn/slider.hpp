@@ -31,6 +31,7 @@ struct SliderRange final {
 };
 
 using SliderValues = std::vector<double>;
+using SliderDisabledHandles = std::vector<bool>;
 
 struct SliderRangeOptions final {
     bool draggable_track{};
@@ -75,6 +76,11 @@ public:
 
     Derived& disabled(Prop<bool> value) {
         disabled_ = std::move(value);
+        return self();
+    }
+
+    Derived& handleDisabled(Prop<SliderDisabledHandles> value) {
+        handle_disabled_ = std::move(value);
         return self();
     }
 
@@ -150,6 +156,7 @@ private:
     std::optional<Value> default_value_;
     Prop<SliderLimits> limits_{SliderLimits{}};
     Prop<bool> disabled_{false};
+    Prop<SliderDisabledHandles> handle_disabled_{SliderDisabledHandles{}};
     Prop<bool> keyboard_{true};
     Prop<bool> reverse_{false};
     Prop<SliderOrientation> orientation_{SliderOrientation::Horizontal};
