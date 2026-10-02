@@ -3,6 +3,7 @@
 #include "graphics/glyph_atlas.hpp"
 #include "graphics/glyph_scene.hpp"
 #include "renderer/common/scene_packing.hpp"
+#include "renderer/common/glyph_texture_upload.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,19 +17,9 @@ using GlyphGpuTextureHandle = void*;
 using GlyphGpuSamplerHandle = void*;
 using GlyphGpuBufferHandle = void*;
 
-struct GlyphTextureUpload {
-    std::uint32_t page{};
-    graphics::GlyphAtlasRect rectangle{};
-    std::uint32_t transfer_offset{};
-    std::uint32_t pixels_per_row{};
-    std::uint32_t rows_per_layer{};
-    std::span<const std::byte> bytes;
-};
-
 class GlyphGpuApi {
 public:
     virtual ~GlyphGpuApi() = default;
-    [[nodiscard]] virtual std::uint32_t glyph_texture_row_alignment_bytes() const noexcept { return 1; }
 
     virtual GlyphGpuSamplerHandle create_glyph_sampler() = 0;
     virtual GlyphGpuTextureHandle create_glyph_texture(

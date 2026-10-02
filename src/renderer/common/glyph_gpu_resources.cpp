@@ -1,7 +1,6 @@
 #include "renderer/common/glyph_gpu_resources.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -15,17 +14,6 @@ namespace {
     const char* error = api.glyph_gpu_error();
     return std::runtime_error(
         error != nullptr && error[0] != '\0' ? error : fallback);
-}
-
-[[nodiscard]] std::uint32_t align_up(
-    std::uint32_t value,
-    std::uint32_t alignment) {
-    const std::uint64_t aligned =
-        (static_cast<std::uint64_t>(value) + alignment - 1U) / alignment * alignment;
-    if (aligned > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::length_error("Glyph texture row pitch exceeds uint32_t");
-    }
-    return static_cast<std::uint32_t>(aligned);
 }
 
 void dirty_ranges(const graphics::GlyphInstanceStore& instances,
@@ -194,37 +182,12 @@ bool GlyphGpuResources::ensure_instance_buffer(
 }
 
 void GlyphGpuResources::upload_atlas(graphics::GlyphAtlas& atlas) {
-    const auto alignment = api_->glyph_texture_row_alignment_bytes();
-    if (!alignment || (alignment & (alignment - 1)) != 0)
-        throw std::invalid_argument("Glyph texture row alignment must be a positive power of two");
     for (const graphics::GlyphAtlasUploadPlan& plan : atlas.dirty_regions()) {
-        const std::uint32_t row_pitch = align_up(
-            plan.rectangle.width,
-            alignment);
-        const std::uint64_t transfer_size =
-            static_cast<std::uint64_t>(row_pitch) * plan.rectangle.height;
-        if (transfer_size > std::numeric_limits<std::size_t>::max()) {
-            throw std::length_error("Glyph texture upload exceeds size_t");
-        }
-        std::vector<std::byte> staging(static_cast<std::size_t>(transfer_size));
-        const auto page = atlas.page_bytes(plan.page);
-        for (std::uint32_t row = 0; row < plan.rectangle.height; ++row) {
-            const std::size_t source = plan.source_offset
-                + static_cast<std::size_t>(row) * plan.source_row_pitch;
-            const std::size_t destination = static_cast<std::size_t>(row) * row_pitch;
-            std::memcpy(
-                staging.data() + destination,
-                page.data() + source,
-                plan.rectangle.width);
-        }
         const GlyphTextureUpload upload{
-            plan.page,
-            plan.rectangle,
-            0,
-            row_pitch,
-            plan.rectangle.height,
-            staging,
+            plan.page, plan.rectangle, plan.source_offset, plan.source_row_pitch,
+            std::as_bytes(atlas.page_bytes(plan.page)),
         };
+        validate_glyph_texture_upload(upload, atlas.config().page_width, atlas.config().page_height);
         if (!api_->upload_glyph_texture(texture(plan.page), upload)) {
             throw gpu_failure(*api_, "Failed to upload Glyph atlas texture");
         }

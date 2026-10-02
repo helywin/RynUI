@@ -102,7 +102,7 @@ public:
     bool upload_glyph_texture(
         void*, const ryn::detail::GlyphTextureUpload& upload) override {
         ++glyph_texture_uploads;
-        glyph_bytes += upload.bytes.size();
+        glyph_bytes += std::uint64_t(upload.rectangle.width) * upload.rectangle.height;
         return true;
     }
     bool upload_glyph_buffer(

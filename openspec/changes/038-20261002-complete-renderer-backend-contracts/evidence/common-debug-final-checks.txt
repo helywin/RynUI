@@ -1,0 +1,15 @@
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start  1: rynui.portable.glyph_texture_upload
+1/5 Test  #1: rynui.portable.glyph_texture_upload ..........   Passed    0.01 sec
+    Start  2: rynui.portable.texture_upload_batch_layout
+2/5 Test  #2: rynui.portable.texture_upload_batch_layout ...   Passed    0.01 sec
+    Start 14: rynui.portable.glyph_gpu_resources
+3/5 Test #14: rynui.portable.glyph_gpu_resources ...........   Passed    0.01 sec
+    Start 34: rynui.portable.scene_backend
+4/5 Test #34: rynui.portable.scene_backend .................   Passed    0.27 sec
+    Start 35: rynui.portable.backend_boundaries
+5/5 Test #35: rynui.portable.backend_boundaries ............   Passed    1.22 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   1.55 sec

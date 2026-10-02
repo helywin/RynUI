@@ -224,6 +224,9 @@ void test_resources_retired_before_binding_rebuild() {
 class BindingSceneApi final : public ryn::detail::SceneBackend {
 public:
     BindingSceneApi(SdlGpuBinding& binding, FakePlatformApi& api) : binding_(&binding), api_(&api) {}
+    ryn::detail::SceneBackendCapabilities capabilities() const noexcept override {
+        return ryn::detail::baseline_scene_capabilities();
+    }
     std::uint64_t device_epoch() const noexcept override { return binding_->epoch(); }
     bool begin_upload_batch() override { return api_->device_live; }
     bool finish_upload_batch() override { return api_->device_live; }

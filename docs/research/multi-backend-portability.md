@@ -1,6 +1,6 @@
 # RynUI 多 backend 与桌面、移动端、Web 可移植性调研
 
-调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 建立跨端框架基础，036 迁移 Quad/Glyph logical scene，037 继续隔离 Effect packing 与 Core 依赖；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。当前实际验收进度见 [037 tasks](../../openspec/changes/037-20261002-isolate-effect-packing-from-core/tasks.md)。
+调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035–037 建立共同场景、调度及 Core 边界，038 集中收口纹理上传、必需能力与资源输入限制，随后继续组件开发；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。当前实际验收进度见 [038 tasks](../../openspec/changes/038-20261002-complete-renderer-backend-contracts/tasks.md)。
 
 本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，框架实施范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)与 [036 change](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
 
@@ -38,6 +38,8 @@
 | [构建入口](../../CMakeLists.txt)、[模块](../../src/CMakeLists.txt)、[presets](../../CMakePresets.json) | 显式 SDL/HEADLESS 与 SDL_GPU/RECORDING 组合；HEADLESS 实际编译且无 SDL/shader/default-font 解析 | Core include/传递依赖和实际构建图守卫；交叉编译与新平台打包仍需独立路径 |
 
 本文后续的完整 `PlatformHost`、`RenderSurfaceBinding`、`RenderCapabilities` 与浏览器异步 provider 是未来建议；当前具体实现名称以本节链接为准。正式合同没有把建议能力自动转成支持承诺。
+
+038 的 [SceneBackendCapabilities](../../src/renderer/common/scene_capabilities.hpp) 明确现有必需能力/版本和软件输入限制；[纹理源视图](../../src/renderer/common/glyph_texture_upload.hpp) 与后端 transfer layout 分离。当前 framework 的组件接入合同见 [renderer 合同](../renderer-contract.md)，不要求新组件添加 SDL 私有上传。这里的能力声明不代表完整未来 RenderCapabilities 或新平台支持。
 
 ## 3. 上游支持边界
 

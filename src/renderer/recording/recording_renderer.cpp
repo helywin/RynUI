@@ -101,6 +101,13 @@ void RecordingRenderer::cancel_upload_batch() noexcept {
 void *RecordingRenderer::create(Kind kind, std::size_t size, std::uint32_t width,
                                 std::uint32_t height) {
     require_owner();
+    if ((kind == Kind::texture && (width > capabilities_.maximum_texture_width ||
+                                  height > capabilities_.maximum_texture_height)) ||
+        (kind != Kind::texture && kind != Kind::sampler &&
+         (!size || size > capabilities_.maximum_buffer_bytes))) {
+        error_ = "Recording resource exceeds renderer input limit";
+        return nullptr;
+    }
     if (inject(RecordingFailure::create))
         return nullptr;
     auto resource = std::make_unique<Resource>();
@@ -213,25 +220,18 @@ bool RecordingRenderer::upload_glyph_texture(void *handle, const GlyphTextureUpl
     try {
         auto &resource = require(handle, Kind::texture);
         const auto rectangle = source.rectangle;
-        const auto needed =
-            std::uint64_t(source.transfer_offset) +
-            std::uint64_t(rectangle.height ? rectangle.height - 1 : 0) * source.pixels_per_row +
-            rectangle.width;
-        if (!batch_ || !rectangle.width || !rectangle.height ||
-            std::uint64_t(rectangle.x) + rectangle.width > resource.width ||
-            std::uint64_t(rectangle.y) + rectangle.height > resource.height ||
-            source.pixels_per_row < rectangle.width || source.rows_per_layer < rectangle.height ||
-            needed > source.bytes.size())
-            throw std::out_of_range("Recording texture upload range invalid");
+        if (!batch_) throw std::out_of_range("Recording texture upload batch absent");
+        validate_glyph_texture_upload(source, resource.width, resource.height);
         if (inject(RecordingFailure::upload_exception))
             throw std::runtime_error("Injected upload exception");
         if (inject(RecordingFailure::upload))
             return false;
-        pending_.push_back({&resource,
-                            source.transfer_offset,
-                            rectangle,
-                            source.pixels_per_row,
-                            {source.bytes.begin(), source.bytes.end()}});
+        std::vector<std::byte> pixels(std::size_t(rectangle.width) * rectangle.height);
+        for (std::uint32_t row = 0; row < rectangle.height; ++row)
+            std::memcpy(pixels.data() + std::size_t(row) * rectangle.width,
+                        source.bytes.data() + source.source_offset + std::size_t(row) * source.source_row_pitch,
+                        rectangle.width);
+        pending_.push_back({&resource, 0, rectangle, rectangle.width, std::move(pixels)});
         ++counters_.uploads;
         counters_.uploaded_bytes += std::uint64_t(rectangle.width) * rectangle.height;
         return true;

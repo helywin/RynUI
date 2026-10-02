@@ -26,12 +26,11 @@ struct RecordingCounters final {
 // This is a data/ordering backend, not a rasterizer or a GPU performance model.
 class RecordingRenderer final : public SceneBackend {
   public:
-    RecordingRenderer() = default;
+    explicit RecordingRenderer(SceneBackendCapabilities capabilities = baseline_scene_capabilities())
+        : capabilities_(capabilities) {}
     ~RecordingRenderer() override;
     [[nodiscard]] std::uint64_t device_epoch() const noexcept override { return epoch_; }
-    [[nodiscard]] std::uint32_t glyph_texture_row_alignment_bytes() const noexcept override {
-        return 1;
-    }
+    [[nodiscard]] SceneBackendCapabilities capabilities() const noexcept override { return capabilities_; }
     void fail_next(RecordingFailure failure, std::size_t after = 0) noexcept;
     void reset_device();
     void set_surface_available(bool value) noexcept { surface_available_ = value; }
@@ -97,6 +96,7 @@ class RecordingRenderer final : public SceneBackend {
                 std::uint32_t page = graphics::invalid_glyph_atlas_page, void *texture = nullptr);
 
     std::thread::id owner_{std::this_thread::get_id()};
+    const SceneBackendCapabilities capabilities_;
     std::uint64_t epoch_{1};
     bool batch_{}, surface_available_{true}, drawing_{};
     RecordingFailure failure_{RecordingFailure::none};

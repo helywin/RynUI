@@ -6,6 +6,11 @@ if(NOT RYNUI_HAS_SDL_GPU)
     return()
 endif()
 
+add_executable(rynui_glyph_texture_upload_tests glyph_texture_upload_tests.cpp)
+rynui_configure_cpp_target(rynui_glyph_texture_upload_tests)
+target_link_libraries(rynui_glyph_texture_upload_tests PRIVATE rynui_renderer_common)
+add_test(NAME rynui.glyph_texture_upload COMMAND rynui_glyph_texture_upload_tests)
+
 add_test(
     NAME rynui.icon_asset_contract
     COMMAND "${Python3_EXECUTABLE}"

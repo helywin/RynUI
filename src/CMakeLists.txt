@@ -224,6 +224,7 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/scene_capabilities.cpp
     renderer/common/scene_metrics.cpp
     renderer/common/scene_packing.cpp
     renderer/common/rounded_effect_packing.cpp

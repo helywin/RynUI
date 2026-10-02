@@ -361,6 +361,8 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 
 GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；binding 必须在 host/window 销毁前清理。显式重建顺序是失效附件 → 旧 device 活着时释放资源/pipeline → release claim/destroy device → 创建新 binding/renderer → 从保留 CPU scene 上传。不能把旧 handle 交给新 device 释放；实际设备已消失时只丢弃其代际记录。现有 SDL 路径不承诺自动 device-loss 检测/恢复。
 
+纹理上传共同层只传 atlas R8 源 byte view、offset、row stride 与目标 rectangle；backend 在返回成功前拥有有效 pixels，自行完成 transfer 对齐/padding，不能把 SDK transfer layout 返回到 Core/common。backend 显式声明 scene/ABI 版本、三类 primitive、R8 sampling、ordered draws/partial uploads 与资源输入上限；SceneResources 在创建资源前检查必需能力，在 begin upload 前检查所需容量/atlas extent。声明上限是输入约束，不保证设备内存分配成功。新组件使用同一 logical scene，无 backend 分支；新 backend 遵循 [renderer 合同](renderer-contract.md) 的适配清单。
+
 ### 10.1 Primitive
 
 普通 UI 首先映射为少量 Primitive：

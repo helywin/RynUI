@@ -1,6 +1,6 @@
 # Renderer 合同
 
-035 建立共同 renderer 边界，036 分离 Quad/Glyph logical CPU scene 与 GPU 打包，037 完成 Effect packing 与 Core 的依赖隔离；实现与验收状态以各 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
+035 建立共同 renderer 边界，036 分离 Quad/Glyph logical CPU scene 与 GPU 打包，037 完成 Effect packing 与 Core 的依赖隔离，038 集中收口纹理源视图、必需能力与资源输入限制；实现与验收状态以各 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
 
 ## Logical CPU scene v2
 
@@ -36,8 +36,21 @@ Core 的所有 source area 不 include renderer（包括相对路径）；其 li
 
 `SceneResources` 绑定唯一 SceneBackend owner 和设备 epoch，拥有 Quad/Glyph/Effect resources。调用 `synchronize(SceneCpuData)` 执行 begin → 共同资源同步 → commit；任何失败/异常都 cancel、恢复 CPU dirty 状态并失效附件，成功 commit 后才能 `attach`/呈现。低层同步清理的 dirty ranges 只在共同事务成功后有效；示例不得绕过共同事务。CPU OrderedScene 借用至提交完成，期间不得改变/销毁；附件 weak stamp 防止资源销毁、失败或 epoch 改变后访问旧资源。
 
-backend 在上传方法返回成功前复制/拥有源 bytes；调用者的 temporary staging 可立即释放。commit 仅表示接受命令，不表示 GPU 已完成。纹理行对齐由 GlyphGpuApi capability 提供：SDL GPU 为 256，Recording 为 1，传输偏移对齐由具体 backend 校验。UI Core 与 atlas 不包含 SDL transfer packing。
+backend 在上传方法返回成功前复制/拥有所需源 bytes；调用者之后可修改/释放借用数据。commit 仅表示接受命令，不表示 GPU 已完成。GlyphTextureUpload 为 R8 源 view：bytes、相对 bytes 的 source_offset、source_row_pitch 与目标 rectangle/page；源 offset 与目标 x/y 独立，最后一行只要求 width 有效 pixels。统一 validator 在复制前检查源/目标范围、stride 与溢出。common 直接借用 atlas page/dirty plan，不创建 backend padding/staging；SDL 在 mapped transfer 中逐行复制并填零 padding（row 256、batch offset 512），Recording 保存紧凑 owned pixels，取消/失败不提交。transfer offset、pixels_per_row、rows_per_layer 只存在于 SDL adapter。
 
 显式 retire 在旧 device 存活时释放资源并使所有附件失效；backend epoch 已改变时，仅 abandon 旧代际 handle、容量、count 与 metrics，再从 CPU scene 新建 buffer 并全量重建，不能经新 device release。staging capacity 可复用。backend 必须比 SceneResources 活得更久。SDL 重建采用销毁资源/renderer 后构造新 renderer，未添加自动 device-loss 恢复。
 
 Recording 实际复制 buffer/texture 数据、校验范围和类型、保持 handle tombstone、记录 draw 消费的 instance bytes。失败注入覆盖 begin/create/upload/commit/exception；reset 显式增加设备 epoch。该实现不栅格化，不作为 GPU 性能或视觉等价证据。
+
+## 必需能力与资源输入限制
+
+SceneBackend 必须显式提供 SceneBackendCapabilities：logical scene v2、packed ABI v1，Quad/Glyph/RoundedEffect、R8 sampling、ordered draws、partial uploads 与正的 maximum_buffer_bytes/texture width/height。缺任一必需能力或版本不匹配，SceneResources 在创建 sampler/buffer/texture 前给出原因；组件不静默忽略阴影、文字或顺序。SDL 实际查询 device 的 R8 sampling support；其他声明由当前 pipelines/上传实现提供。
+
+资源限制是 backend 接受输入的上限，不是可用显存或硬件能力保证。SDL buffer limit 为 API uint32 上限，texture extent 只约束可表示输入；实际 GPU create 仍可能失败。共同 preflight 在 begin 前检查 Quad 的实际增长容量（共享 helper，初次精确 count、后续 max(required, old_capacity×2)）、Glyph 精确 count 与 live Effect 的保守 power-of-two 容量；epoch 改变不带入旧 Quad capacity。Effect budget 用 live count，可能高于 cull 后的可见 count。有 page 才检查 atlas extent，空 atlas config 不导致错误。超限使附件失效并保留 retry/dirty 数据，修正输入后可重试。
+
+## 后续组件与 backend 的接入清单
+
+- 组件：typed Props/slots、Prop<T> 与 Theme/Component Token；只发布 logical scene 和最小 dirty 范围，通过共同 SceneResources/SceneBackend 上传呈现；不得读取 GPU capability 或设置 transfer layout。
+- backend：显式声明必需能力/版本与输入限制，实现源数据复制、opaque handle 的 kind/owner/epoch、begin/commit/cancel、ordered draws 与 submitted/deferred/failed；保持成功 upload 后 caller memory 可立即释放。
+- 恢复：从同一 CPU scene/atlas 重建，保留组件/editor 身份；旧代际附件不可提交，不能通过新 device 释放旧 handle。
+- 验证：以 Recording 检查真实 bytes、范围、顺序、失败与 epoch；每个真实 GPU/OS 另留 shader、字体、输入/DPI、窗口与生命周期证据。第二真实 backend、新平台宿主及自动 device-loss 等在各自 change 中实现。

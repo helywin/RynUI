@@ -39,7 +39,7 @@ void owned_bytes_and_ranges() {
     const auto original = bytes;
     check(backend.begin_upload_batch(), "batch begin failed");
     check(backend.upload(buffer, 0, bytes), "buffer copy failed");
-    check(backend.upload_glyph_texture(texture, {0, {0, 0, 3, 2}, 0, 4, 2, bytes}),
+    check(backend.upload_glyph_texture(texture, {0, {0, 0, 3, 2}, 0, 4, bytes}),
           "texture copy failed");
     bytes.fill(std::byte{99});
     check(backend.finish_upload_batch(), "batch commit failed");
@@ -52,7 +52,7 @@ void owned_bytes_and_ranges() {
     check(!backend.upload(buffer, std::numeric_limits<std::size_t>::max(), bytes),
           "overflow range accepted");
     check(!backend.upload_glyph_buffer(buffer, 0, bytes), "wrong-kind handle accepted");
-    check(!backend.upload_glyph_texture(texture, {0, {2, 1, 3, 2}, 0, 4, 2, bytes}),
+    check(!backend.upload_glyph_texture(texture, {0, {2, 1, 3, 2}, 0, 4, bytes}),
           "texture range accepted");
     check(other.begin_upload_batch(), "foreign batch begin failed");
     check(!other.upload(buffer, 0, bytes), "foreign handle accepted");
@@ -63,6 +63,151 @@ void owned_bytes_and_ranges() {
     check(backend.begin_upload_batch(), "reset batch begin failed");
     check(!backend.upload(buffer, 0, bytes), "old epoch upload accepted");
     backend.cancel_upload_batch();
+}
+
+void texture_source_lifetime_cancel_and_invalid_ranges() {
+    RecordingRenderer backend;
+    auto* texture = backend.create_glyph_texture(5, 3);
+    std::array<std::byte, 15> initial;
+    initial.fill(std::byte{40});
+    check(backend.begin_upload_batch(), "texture initial begin failed");
+    check(backend.upload_glyph_texture(texture, {0, {0, 0, 5, 3}, 0, 5, initial}), "initial texture upload failed");
+    check(backend.finish_upload_batch(), "initial texture commit failed");
+    std::array source{std::byte{99}, std::byte{98}, std::byte{1}, std::byte{2}, std::byte{3},
+                     std::byte{97}, std::byte{96}, std::byte{4}, std::byte{5}, std::byte{6}};
+    const GlyphTextureUpload valid{0, {1, 1, 3, 2}, 2, 5, source};
+    check(backend.begin_upload_batch(), "texture range begin failed");
+    backend.fail_next(RecordingFailure::upload);
+    for (int mode = 0; mode < 7; ++mode) {
+        auto invalid = valid;
+        switch (mode) {
+        case 0: invalid.source_offset = std::numeric_limits<std::size_t>::max(); break;
+        case 1: invalid.source_row_pitch = 2; break;
+        case 2: invalid.bytes = std::span(source).first(9); break;
+        case 3: invalid.rectangle.width = 0; break;
+        case 4: invalid.rectangle.x = std::numeric_limits<std::uint32_t>::max(); break;
+        case 5: invalid.rectangle.y = 2; break;
+        case 6: invalid.source_row_pitch = std::numeric_limits<std::uint32_t>::max(); break;
+        }
+        check(!backend.upload_glyph_texture(texture, invalid), "invalid texture source accepted");
+    }
+    check(!backend.upload_glyph_texture(texture, valid), "invalid source consumed failure injection");
+    check(same(backend.texture_bytes(texture), initial), "rejected uploads changed pixels");
+    check(backend.upload_glyph_texture(texture, valid), "valid nonzero source failed");
+    source.fill(std::byte{70});
+    check(backend.finish_upload_batch(), "owned texture commit failed");
+    auto expected = initial;
+    expected[6] = std::byte{1}; expected[7] = std::byte{2}; expected[8] = std::byte{3};
+    expected[11] = std::byte{4}; expected[12] = std::byte{5}; expected[13] = std::byte{6};
+    check(same(backend.texture_bytes(texture), expected), "source lifetime/stride or untouched pixels changed");
+    check(backend.begin_upload_batch(), "cancel fixture begin failed");
+    check(backend.upload_glyph_texture(texture, {0, {0, 0, 1, 1}, 0, 1, source}), "cancel fixture upload failed");
+    backend.cancel_upload_batch();
+    check(same(backend.texture_bytes(texture), expected), "cancel committed texture pixels");
+    check(backend.begin_upload_batch(), "commit failure begin failed");
+    check(backend.upload_glyph_texture(texture, {0, {0, 0, 1, 1}, 0, 1, source}), "commit failure upload failed");
+    backend.fail_next(RecordingFailure::commit);
+    check(!backend.finish_upload_batch(), "injected commit failure succeeded");
+    check(same(backend.texture_bytes(texture), expected), "failed commit changed texture pixels");
+    backend.cancel_upload_batch();
+}
+
+void required_capabilities_and_scene_limits() {
+    for (int mode = 0; mode < 11; ++mode) {
+        auto caps = baseline_scene_capabilities();
+        switch (mode) {
+        case 0: ++caps.logical_scene_version; break;
+        case 1: ++caps.packed_abi_version; break;
+        case 2: caps.quads = false; break;
+        case 3: caps.glyphs = false; break;
+        case 4: caps.rounded_effects = false; break;
+        case 5: caps.r8_sampling = false; break;
+        case 6: caps.ordered_draws = false; break;
+        case 7: caps.partial_uploads = false; break;
+        case 8: caps.maximum_buffer_bytes = 0; break;
+        case 9: caps.maximum_texture_width = 0; break;
+        case 10: caps.maximum_texture_height = 0; break;
+        }
+        RecordingRenderer backend(caps);
+        backend.fail_next(RecordingFailure::create);
+        bool rejected = false;
+        try { SceneResources resources(backend); }
+        catch (const std::invalid_argument& error) {
+            rejected = std::string_view(error.what()).find("Renderer") != std::string_view::npos;
+        }
+        check(rejected && backend.live_resources() == 0, "unsupported capabilities created resources");
+        check(backend.create_glyph_sampler() == nullptr, "capability validation consumed create injection");
+    }
+    for (int mode = 0; mode < 4; ++mode) {
+        auto caps = baseline_scene_capabilities();
+        caps.maximum_buffer_bytes = 128;
+        caps.maximum_texture_width = caps.maximum_texture_height = 4;
+        RecordingRenderer backend(caps);
+        SceneResources resources(backend);
+        graphics::QuadInstanceStore quads, empty_quads;
+        graphics::GlyphInstanceStore glyphs, empty_glyphs;
+        graphics::RoundedEffectStore effects, empty_effects;
+        graphics::GlyphAtlas atlas({10, 10, 1}), empty_atlas({4, 4, 1});
+        const SceneDeviceMetrics metrics{100, 100, 1};
+        graphics::OrderedScene order;
+        check(resources.synchronize({&quads, atlas, glyphs, &effects, metrics}), "empty atlas config was over-rejected");
+        const auto old = resources.attach(order);
+        check(backend.valid_attachment(old), "initial empty scene attachment failed");
+        if (mode == 0) {
+            const std::array<graphics::QuadInstance, 3> values{};
+            static_cast<void>(quads.append(values));
+        } else if (mode == 1) {
+            const std::array<graphics::GlyphInstance, 2> values{};
+            static_cast<void>(glyphs.append(values));
+        } else if (mode == 2) {
+            const auto effect = graphics::make_shadow_effect({{1, 1, 10, 10}, 2},
+                {ShadowKind::outer, {}, 2, 0, Color::rgba8(0, 0, 0, 80)});
+            static_cast<void>(effects.add(effect)); static_cast<void>(effects.add(effect));
+        } else {
+            font::GlyphBitmap bitmap; bitmap.width = bitmap.height = bitmap.row_stride = 1;
+            bitmap.coverage = {255};
+            check(bool(atlas.insert({{0, 1}, 1, 14}, bitmap)), "atlas limit fixture failed");
+        }
+        const auto uploads = backend.counters().uploads;
+        backend.fail_next(RecordingFailure::begin);
+        rejects([&] { resources.synchronize({&quads, atlas, glyphs, &effects, metrics}); });
+        check(backend.counters().uploads == uploads && !backend.valid_attachment(old),
+              "limit preflight uploaded or retained ready attachment");
+        check((mode != 0 || !quads.geometry_dirty_ranges().empty())
+                  && (mode != 1 || !glyphs.geometry_dirty_ranges().empty())
+                  && (mode != 3 || !atlas.dirty_regions().empty()), "preflight lost CPU dirty data");
+        check(!resources.synchronize({&empty_quads, empty_atlas, empty_glyphs, &empty_effects, metrics}),
+              "over-limit scene consumed begin failure");
+        check(resources.synchronize({&empty_quads, empty_atlas, empty_glyphs, &empty_effects, metrics}),
+              "corrected scene could not retry");
+        check(backend.valid_attachment(resources.attach(order)), "retry attachment failed");
+    }
+    auto caps = baseline_scene_capabilities();
+    for (const auto stride : {sizeof(QuadGpuInstance), sizeof(GlyphGpuInstance), sizeof(RoundedEffectGpuInstance)}) {
+        caps.maximum_buffer_bytes = 4 * stride;
+        validate_scene_buffer_requirement(caps, 3, stride, true);
+        validate_scene_buffer_requirement(caps, 4, stride, false);
+        rejects([&] { validate_scene_buffer_requirement(caps, 5, stride, true); });
+        rejects([&] { validate_scene_buffer_requirement(caps, std::numeric_limits<std::size_t>::max(), stride, true); });
+    }
+    // Quad growth doubles an existing arbitrary capacity, not a power of two.
+    caps.maximum_buffer_bytes = 8 * sizeof(QuadGpuInstance);
+    RecordingRenderer backend(caps);
+    SceneResources resources(backend);
+    graphics::QuadInstanceStore quads;
+    const std::array<graphics::QuadInstance, 6> initial{};
+    static_cast<void>(quads.append(initial));
+    graphics::GlyphInstanceStore glyphs;
+    graphics::GlyphAtlas atlas;
+    graphics::RoundedEffectStore effects;
+    const SceneDeviceMetrics metrics{100, 100, 1};
+    check(resources.synchronize({&quads, atlas, glyphs, &effects, metrics}), "exact initial Quad budget rejected");
+    check(resources.quads()->capacity() == 6, "preflight changed initial Quad allocation policy");
+    const std::array<graphics::QuadInstance, 1> more{};
+    static_cast<void>(quads.append(more));
+    backend.fail_next(RecordingFailure::begin);
+    rejects([&] { resources.synchronize({&quads, atlas, glyphs, &effects, metrics}); });
+    check(!backend.begin_upload_batch(), "Quad growth preflight underestimated doubled capacity");
 }
 
 struct Fixture final {
@@ -484,6 +629,8 @@ void upload_exceptions_release_temporary_resources() {
 int main() {
     try {
         owned_bytes_and_ranges();
+        texture_source_lifetime_cancel_and_invalid_ranges();
+        required_capabilities_and_scene_limits();
         real_scene_transaction_and_epoch();
         logical_resize_and_recovery();
         deferred_surface_retains_uploads();

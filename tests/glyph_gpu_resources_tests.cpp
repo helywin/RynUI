@@ -22,10 +22,10 @@ struct TextureRecord {
     std::uintptr_t texture{};
     std::uint32_t page{};
     ryn::graphics::GlyphAtlasRect rectangle{};
-    std::uint32_t offset{};
+    std::size_t offset{};
     std::uint32_t row_pitch{};
-    std::uint32_t rows{};
     std::vector<std::byte> bytes;
+    const std::byte* source{};
 };
 
 struct BufferRecord {
@@ -36,8 +36,6 @@ struct BufferRecord {
 
 class RecordingGpuApi final : public ryn::detail::GlyphGpuApi {
 public:
-    static constexpr std::uint32_t row_alignment = 256;
-    [[nodiscard]] std::uint32_t glyph_texture_row_alignment_bytes() const noexcept override { return row_alignment; }
     enum class Failure {
         none,
         sampler,
@@ -87,8 +85,9 @@ public:
         events.emplace_back("upload_texture");
         TextureRecord record{
             value(texture), upload.page, upload.rectangle,
-            upload.transfer_offset, upload.pixels_per_row, upload.rows_per_layer,
+            upload.source_offset, upload.source_row_pitch,
             {upload.bytes.begin(), upload.bytes.end()},
+            upload.bytes.data(),
         };
         textures.push_back(std::move(record));
         return failure_ != Failure::texture_upload;
@@ -174,7 +173,7 @@ ryn::graphics::GlyphInstance instance(float marker) {
     return result;
 }
 
-void test_aligned_dirty_texture_and_sparse_buffer_uploads() {
+void test_borrowed_atlas_source_and_sparse_buffer_uploads() {
     RecordingGpuApi api;
     {
         ryn::detail::GlyphGpuResources resources(api);
@@ -187,25 +186,22 @@ void test_aligned_dirty_texture_and_sparse_buffer_uploads() {
         const std::array initial{instance(1.0F), instance(2.0F), instance(3.0F)};
         static_cast<void>(instances.append(initial));
 
+        const std::vector plans(atlas.dirty_regions().begin(), atlas.dirty_regions().end());
+        const auto page = std::as_bytes(atlas.page_bytes(0));
+        const std::vector original_page(page.begin(), page.end());
+
         resources.synchronize(atlas, instances, {100, 100, 1});
         require(api.textures.size() == 2, "dirty atlas rectangles were not uploaded exactly");
-        for (const auto& upload : api.textures) {
-            require(upload.offset == 0
-                        && upload.row_pitch % RecordingGpuApi::row_alignment == 0,
-                    "texture staging alignment contract was not preserved");
-            require(upload.row_pitch == 256
-                        && upload.bytes.size()
-                            == static_cast<std::size_t>(256) * upload.rectangle.height,
-                    "texture staging pitch or allocation differs");
-            for (std::uint32_t row = 0; row < upload.rectangle.height; ++row) {
-                for (std::uint32_t column = upload.rectangle.width;
-                        column < upload.row_pitch; ++column) {
-                    require(upload.bytes[static_cast<std::size_t>(row) * upload.row_pitch + column]
-                                == std::byte{},
-                            "texture row padding was not zero initialized");
-                }
-            }
+        for (std::size_t index = 0; index < api.textures.size(); ++index) {
+            const auto& upload = api.textures[index];
+            require(upload.rectangle == plans[index].rectangle
+                        && upload.offset == plans[index].source_offset
+                        && upload.row_pitch == 10 && upload.source == page.data()
+                        && upload.bytes == original_page,
+                    "common resources did not borrow the original atlas source plan/page");
         }
+        require(api.textures.back().offset != 0, "atlas fixture omitted nonzero source offset");
+        require(std::ranges::equal(page, original_page), "upload mutated CPU atlas bytes");
         require(atlas.dirty_regions().empty(), "successful atlas upload did not clear dirty state");
         require(api.buffers.size() == 1 && api.buffers.front().offset == 0
                     && api.buffers.front().bytes.size() == 3 * sizeof(ryn::detail::GlyphGpuInstance),
@@ -350,7 +346,7 @@ void test_zero_effect_scene_does_not_dispatch_effect_pipeline() {
 
 int main() {
     try {
-        test_aligned_dirty_texture_and_sparse_buffer_uploads();
+        test_borrowed_atlas_source_and_sparse_buffer_uploads();
         test_failure_paths_keep_dirty_state_and_release_resources();
         test_bounded_sparse_upload_coalescing();
         test_recording_backend_preserves_order_and_page_switches();

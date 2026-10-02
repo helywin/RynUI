@@ -11,7 +11,7 @@ function(rynui_portable_test name source)
     add_test(NAME rynui.portable.${name} COMMAND rynui_portable_${name})
 endfunction()
 
-foreach(name IN ITEMS logical_scene_packing quad_primitive binding_quad_integration button_scene_service
+foreach(name IN ITEMS glyph_texture_upload texture_upload_batch_layout logical_scene_packing quad_primitive binding_quad_integration button_scene_service
         font_runtime text_engine text_state text_scene_service
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources
         rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu

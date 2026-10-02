@@ -1,4 +1,5 @@
 #include "renderer/common/quad_gpu_resources.hpp"
+#include "renderer/common/scene_buffer_capacity.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -52,10 +53,7 @@ void QuadGpuBuffer::synchronize(graphics::QuadInstanceStore &store, SceneDeviceM
         for (auto range : dirty_.ranges())
             convert_range(store, range, metrics);
         if (growth) {
-            const auto requested =
-                std::max<std::uint64_t>(store.size(), std::uint64_t(capacity_) * 2);
-            target_capacity = static_cast<std::uint32_t>(
-                std::min<std::uint64_t>(requested, std::numeric_limits<std::uint32_t>::max()));
+            target_capacity = quad_buffer_capacity(store.size(), capacity_);
             target =
                 api_->create_vertex_buffer(std::size_t(target_capacity) * sizeof(QuadGpuInstance));
             if (!target)

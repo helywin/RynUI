@@ -28,7 +28,7 @@ Recording 在接受时仅复制 width×height 的有效 pixels 到紧凑 owned v
 
 新增 renderer/common SceneBackendCapabilities：版本、三类 primitive、R8、ordered draws、partial uploads，以及非零 maximum_buffer_bytes/texture width/height。baseline factory 明确提供当前合同；SceneBackend 的 capabilities 是纯虚方法，backend 必须显式报告。
 
-SceneResources 构造前先验证能力，再创建低层资源。每次同步在 begin 前验证限制：Quad 与 live Effect 用现有 power-of-two growth 的保守容量估算（高于 2^31 时使用精确 count），Glyph 使用精确 count。Effect 的 preflight 不为了计算限制而修改 compact/store；live count 估算可能比实际可见 GPU count 大，这是明确的输入预算。已有资源容量由先前相同限制下的创建保证。
+SceneResources 构造前先验证能力，再创建低层资源。每次同步在 begin 前验证限制：Quad 与资源同步共用 `max(required, old_capacity×2)` 的容量 helper（初次为精确 count），epoch 改变不计旧容量；live Effect 按既有 power-of-two growth 保守估算（高于 2^31 时使用精确 count），Glyph 使用精确 count。Effect 的 preflight 不为了计算限制而修改 compact/store；live count 估算可能比实际可见 GPU count 大，这是明确的输入预算。已有资源容量由先前相同限制下的创建保证。特别测试 Quad 从非二次幂容量增长时，preflight 不低估实际申请。
 
 SDL 从实际 device 查询 R8 sampling，其他能力由现有 pipelines/API 保证；buffer limit 采用 SDL uint32 接口上限，texture extent 上限只约束可表示输入，不声称 SDL 暴露了完整硬件限制。实际 create 仍可能失败并走共同恢复。Recording 构造参数提供 capabilities fixture，保持 owner/epoch/handle 校验。
 

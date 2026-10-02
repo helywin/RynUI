@@ -1,4 +1,5 @@
 #include "renderer/sdl/scene_renderer.hpp"
+#include "renderer/sdl/glyph_texture_upload_layout.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -14,9 +15,6 @@
 
 namespace ryn::detail {
 namespace {
-
-constexpr std::uint32_t glyph_texture_row_alignment = 256;
-constexpr std::uint32_t glyph_texture_offset_alignment = 512;
 
 struct ShaderSelection {
     SDL_GPUShaderFormat format;
@@ -133,6 +131,10 @@ SdlSceneRenderer::SdlSceneRenderer(
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
+    capabilities_ = baseline_scene_capabilities();
+    capabilities_.r8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
+        SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    validate_scene_capabilities(capabilities_);
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
 
@@ -309,7 +311,11 @@ GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
 GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
     std::uint32_t width,
     std::uint32_t height) {
-    if (!platform_->is_owner_thread() || !width || !height) return nullptr;
+    if (!platform_->is_owner_thread() || !width || !height
+        || width > capabilities_.maximum_texture_width || height > capabilities_.maximum_texture_height) {
+        last_error_ = "Glyph texture extent exceeds renderer input limit";
+        return nullptr;
+    }
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
     info.format = SDL_GPU_TEXTUREFORMAT_R8_UNORM;
@@ -349,35 +355,28 @@ bool SdlSceneRenderer::upload_glyph_texture(
     GlyphGpuTextureHandle texture,
     const GlyphTextureUpload& upload) {
     const auto* owned = resource(texture, ResourceKind::texture);
-    const auto rect = upload.rectangle;
-    const auto needed = std::uint64_t(rect.height ? rect.height - 1 : 0) * upload.pixels_per_row + rect.width;
-    if (!platform_->is_owner_thread() || !owned || upload.bytes.empty()
-            || !rect.width || !rect.height
-            || std::uint64_t(rect.x) + rect.width > (owned ? owned->width : 0)
-            || std::uint64_t(rect.y) + rect.height > (owned ? owned->height : 0)
-            || upload.pixels_per_row < rect.width || upload.rows_per_layer < rect.height
-            || needed > upload.bytes.size()
-            || upload.transfer_offset % glyph_texture_offset_alignment != 0
-            || upload.pixels_per_row % glyph_texture_row_alignment != 0) {
-        last_error_ = "Glyph texture upload violates owner, handle, or alignment contract";
+    if (!platform_->is_owner_thread() || !owned) {
+        last_error_ = "Glyph texture upload violates owner or handle contract";
+        return false;
+    }
+    SdlGlyphTextureLayout layout;
+    try {
+        validate_glyph_texture_upload(upload, owned->width, owned->height);
+        layout = sdl_glyph_texture_layout(upload);
+    } catch (const std::exception& error) {
+        last_error_ = error.what();
         return false;
     }
     texture = owned->native;
-    if (upload.bytes.size()
-            > std::numeric_limits<Uint32>::max() - upload.transfer_offset) {
-        last_error_ = "Glyph texture transfer buffer exceeds uint32_t";
-        return false;
-    }
     if (upload_batch_active_) {
         if (!flush_buffer_upload_chunk()) {
             cancel_upload_batch();
             return false;
         }
         if (active_texture_transfer_ == nullptr
-                || !texture_layout_.can_fit(upload.bytes.size())) {
+                || !texture_layout_.can_fit(layout.byte_count)) {
             if (!flush_texture_upload_chunk()
-                    || !begin_texture_upload_chunk(
-                        static_cast<Uint32>(upload.bytes.size()))) {
+                    || !begin_texture_upload_chunk(layout.byte_count)) {
                 cancel_upload_batch();
                 return false;
             }
@@ -385,18 +384,17 @@ bool SdlSceneRenderer::upload_glyph_texture(
         const auto source_offset = texture_layout_.append(
             texture,
             upload.rectangle,
-            upload.pixels_per_row,
-            upload.rows_per_layer,
-            static_cast<Uint32>(upload.bytes.size()));
-        std::memcpy(
-            static_cast<std::byte*>(active_texture_mapped_) + source_offset,
-            upload.bytes.data(), upload.bytes.size());
+            layout.pixels_per_row,
+            layout.rows_per_layer,
+            layout.byte_count);
+        pack_sdl_glyph_texture_rows(upload,
+            {static_cast<std::byte*>(active_texture_mapped_) + source_offset, layout.byte_count});
         return true;
     }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     const SDL_GPUTransferBufferCreateInfo transfer_info{
         SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
-        static_cast<Uint32>(upload.transfer_offset + upload.bytes.size()),
+        layout.byte_count,
         0,
     };
     auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
@@ -412,15 +410,14 @@ bool SdlSceneRenderer::upload_glyph_texture(
         return false;
     }
     ++counters_.texture_transfer_maps;
-    std::memcpy(static_cast<std::byte*>(mapped) + upload.transfer_offset,
-        upload.bytes.data(), upload.bytes.size());
+    pack_sdl_glyph_texture_rows(upload, {static_cast<std::byte*>(mapped), layout.byte_count});
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
     const SDL_GPUTextureTransferInfo source{
         transfer,
-        upload.transfer_offset,
-        upload.pixels_per_row,
-        upload.rows_per_layer,
+        0,
+        layout.pixels_per_row,
+        layout.rows_per_layer,
     };
     const auto& rectangle = upload.rectangle;
     const SDL_GPUTextureRegion destination{
@@ -456,7 +453,7 @@ bool SdlSceneRenderer::upload_glyph_texture(
     }
     SDL_ReleaseGPUTransferBuffer(device, transfer);
     ++counters_.upload_submissions;
-    counters_.uploaded_bytes += upload.bytes.size();
+    counters_.uploaded_bytes += layout.byte_count;
     return true;
 }
 

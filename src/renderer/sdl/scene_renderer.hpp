@@ -54,7 +54,7 @@ public:
 
     bool attach_scene(const SceneAttachment& attachment) noexcept override;
     [[nodiscard]] std::uint64_t device_epoch() const noexcept override { return binding_.epoch(); }
-    [[nodiscard]] std::uint32_t glyph_texture_row_alignment_bytes() const noexcept override { return 256; }
+    [[nodiscard]] SceneBackendCapabilities capabilities() const noexcept override { return capabilities_; }
     bool resize_window(int width, int height);
     void set_clear_color(Color value) noexcept { clear_color_ = value; }
 
@@ -140,6 +140,7 @@ private:
 
     PlatformState* platform_;
     SdlGpuBinding binding_;
+    SceneBackendCapabilities capabilities_;
     void* quad_pipeline_{nullptr};
     void* glyph_pipeline_{nullptr};
     void* effect_pipeline_{nullptr};

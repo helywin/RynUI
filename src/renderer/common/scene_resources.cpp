@@ -1,4 +1,5 @@
 #include "renderer/common/scene_resources.hpp"
+#include "renderer/common/scene_buffer_capacity.hpp"
 
 #include <atomic>
 #include <limits>
@@ -56,9 +57,10 @@ bool SceneBackend::attach_scene(const SceneAttachment &value) noexcept {
 }
 
 SceneResources::SceneResources(SceneBackend &backend)
-    : backend_(&backend), state_(std::make_shared<SceneResourceState>()),
-      glyphs_(std::make_unique<GlyphGpuResources>(backend)),
-      effects_(std::make_unique<RoundedEffectGpuResources>(backend)) {
+    : backend_(&backend), state_(std::make_shared<SceneResourceState>()) {
+    validate_scene_capabilities(backend.capabilities());
+    glyphs_ = std::make_unique<GlyphGpuResources>(backend);
+    effects_ = std::make_unique<RoundedEffectGpuResources>(backend);
     state_->owner = backend.owner_id();
     state_->epoch = backend.device_epoch();
 }
@@ -111,6 +113,21 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming *timing) {
     bool active = false;
     try {
         validate_scene_device_metrics(data.metrics);
+        const auto capabilities = backend_->capabilities();
+        validate_scene_capabilities(capabilities);
+        const auto quad_capacity = quads_ && state_->epoch == backend_->device_epoch()
+            ? quads_->capacity() : 0;
+        validate_scene_buffer_requirement(capabilities,
+            quad_buffer_capacity(data.quads ? data.quads->size() : 0, quad_capacity),
+            sizeof(QuadGpuInstance), false);
+        validate_scene_buffer_requirement(capabilities, data.glyphs.size(),
+                                          sizeof(GlyphGpuInstance), false);
+        validate_scene_buffer_requirement(capabilities, data.effects ? data.effects->live_count() : 0,
+                                          sizeof(RoundedEffectGpuInstance), true);
+        if (data.atlas.page_count() &&
+            (data.atlas.config().page_width > capabilities.maximum_texture_width ||
+             data.atlas.config().page_height > capabilities.maximum_texture_height))
+            throw std::length_error("Scene atlas extent exceeds renderer input limit");
         if (state_->epoch != backend_->device_epoch() || !glyphs_ || !effects_) {
             abandon_stale_device();
             quads_.reset();

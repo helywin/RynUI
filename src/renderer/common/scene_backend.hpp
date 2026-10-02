@@ -3,6 +3,7 @@
 #include "renderer/common/quad_gpu_resources.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
+#include "renderer/common/scene_capabilities.hpp"
 #include "runtime/frame_scheduler.hpp"
 
 #include <memory>
@@ -54,6 +55,7 @@ class SceneBackend : public detail::QuadUploadApi,
     SceneBackend(const SceneBackend &) = delete;
     SceneBackend &operator=(const SceneBackend &) = delete;
     [[nodiscard]] std::uint64_t owner_id() const noexcept { return owner_id_; }
+    [[nodiscard]] virtual SceneBackendCapabilities capabilities() const noexcept = 0;
     [[nodiscard]] virtual std::uint64_t device_epoch() const noexcept = 0;
     virtual bool begin_upload_batch() = 0;
     virtual bool finish_upload_batch() = 0;
