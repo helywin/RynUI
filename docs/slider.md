@@ -37,4 +37,6 @@ MultiSlider 的 `editable=true` 启用轨道/label 插入：新合法值不在�
 
 所有 Slider Props 的 `handleDisabled(Prop<SliderDisabledHandles>)` 最多 64 项，按端点索引设置，缺失项为 false；全局 disabled 优先。禁用端点不能 focus/drag/key，也不显示 hint；轨道/label 就近查找跳过禁用端点。任一实际端点被禁用时，editable 与整段拖动均不执行。禁用配置变化取消当前 gesture。
 
-Ref/autoFocus/hint 原生 API 与 Gallery 正在 042 收尾，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。
+`SliderRef` 是共享的安全引用，`.ref(ref)` 绑定一个组件，`ref.focus()` 聚焦首个启用端点，`ref.blur()` 只清除自身端点焦点；返回是否请求操作。未绑定/销毁/空列表/全禁用返回 false，owner thread 外调用抛 logic_error，同时绑定第二个组件明确拒绝，解绑后可复用。键盘回调中操作使用 deferred focus。`.autoFocus(true)` 只在挂载完成后执行一次。
+
+`SliderHintOptions::placement` 为 optional，默认横向 Top、纵向 Right；显式指定优先。`auto_adjust_overflow` 默认 true，可以关闭翻转/移动。Gallery 提供整段、编辑与逐端点禁用示例，Slider 的原生功能范围已实现；平台验收结果单独记录。Web DOM/CSS/portal 和兼容别名不移植。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。

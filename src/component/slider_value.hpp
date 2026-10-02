@@ -8,7 +8,8 @@
 namespace ryn::detail {
 inline void validate_slider_hint(const SliderHintOptions& hint) {
     if (hint.mode < SliderHintMode::Auto || hint.mode > SliderHintMode::Hidden ||
-        hint.placement < TooltipPlacement::Top || hint.placement > TooltipPlacement::RightBottom) {
+        (hint.placement &&
+         (*hint.placement < TooltipPlacement::Top || *hint.placement > TooltipPlacement::RightBottom))) {
         throw std::invalid_argument("Slider hint options are invalid");
     }
 }

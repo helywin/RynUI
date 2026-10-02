@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 #include <type_traits>
+#include <thread>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -584,6 +585,90 @@ void editable_and_disabled_contracts() {
           "reentrant editor destruction leaked resources");
 }
 
+void native_refs_and_hint_options() {
+    SliderRef ref;
+    check(!ref.bound() && !ref.focus() && !ref.blur(), "unbound ref performed an operation");
+    Fixture f;
+    Signal<bool> disabled{false};
+    Signal<SliderValues> values{SliderValues{20, 80}};
+    f.services.mount(Content{[&] {
+        MultiSlider(MultiSliderProps{}.value(values).ref(ref).autoFocus(true).disabled(disabled).handleDisabled(
+            SliderDisabledHandles{true, false}));
+        Slider(SliderProps{});
+    }});
+    f.synchronize();
+    const auto m = f.services.slider().mounted()[0];
+    const auto sibling = f.services.slider().mounted()[1];
+    check(ref.bound() && f.services.focus().state().focused == m.thumbs[1],
+          "autoFocus did not choose first enabled handle");
+    check(ref.blur() && !f.services.focus().state().focused && ref.focus(), "bound focus/blur failed");
+    values.set({30, 70});
+    check(f.services.focus().state().focused == m.thumbs[1], "reactive value reran autoFocus");
+    f.services.focus().request_focus(sibling.thumbs[0], FocusModality::keyboard);
+    check(!ref.blur() && f.services.focus().state().focused == sibling.thumbs[0], "blur cleared unrelated focus");
+    disabled.set(true);
+    check(!ref.focus(), "ref focused globally disabled slider");
+    disabled.set(false);
+    bool rejected{};
+    std::thread worker([&] {
+        try {
+            static_cast<void>(ref.focus());
+        } catch (const std::logic_error&) {
+            rejected = true;
+        }
+    });
+    worker.join();
+    check(rejected, "SliderRef accepted wrong owner thread");
+    Fixture duplicate;
+    rejects([&] { duplicate.services.mount(Content{[&] { Slider(SliderProps{}.ref(ref)); }}); });
+    check(duplicate.services.interactions().size() == 0 && ref.bound(),
+          "duplicate ref binding leaked or unbound original");
+    f.services.destroy(m.component);
+    check(!ref.bound() && !ref.focus() && !ref.blur(), "destroyed generation kept callable ref");
+    Fixture reuse;
+    reuse.services.mount(Content{[&] { Slider(SliderProps{}.ref(ref)); }});
+    reuse.synchronize();
+    check(ref.focus() && reuse.services.focus().state().focused == reuse.services.slider().mounted()[0].thumbs[0],
+          "unbound ref could not be reused");
+    SliderRef failed_ref;
+    Fixture rollback;
+    try {
+        rollback.services.mount(Content{[&] {
+            Slider(SliderProps{}.ref(failed_ref));
+            throw std::runtime_error("rollback");
+        }});
+    } catch (const std::runtime_error&) {
+    }
+    check(!failed_ref.bound(), "failed mount retained ref binding");
+    SliderRef empty_ref;
+    Fixture empty;
+    empty.services.mount(
+        Content{[&] { MultiSlider(MultiSliderProps{}.defaultValue({}).ref(empty_ref).autoFocus(true)); }});
+    check(empty_ref.bound() && !empty_ref.focus() && !empty.services.focus().state().focused,
+          "empty slider focused fake handle");
+    Fixture hints;
+    Signal<SliderHintOptions> hint{SliderHintOptions{SliderHintMode::Always, {}, false}};
+    Signal<SliderOrientation> orientation{SliderOrientation::Vertical};
+    hints.services.mount(Content{[&] {
+        Slider(SliderProps{}.defaultValue(50).hint(hint).orientation(orientation).hintFormatter([](double) {
+            return String{u8"long value hint 中文提示"};
+        }));
+    }});
+    hints.synchronize();
+    const auto tooltip = hints.services.tooltip().mounted()[0];
+    check(hints.services.tooltip().snapshot(tooltip).placement == TooltipPlacement::Right,
+          "default vertical hint did not use Right");
+    orientation.set(SliderOrientation::Horizontal);
+    hints.synchronize();
+    const auto unchecked = hints.services.tooltip().snapshot(tooltip);
+    check(unchecked.placement == TooltipPlacement::Top && unchecked.bounds.y < 0,
+          "horizontal default or overflow=false lost");
+    hint.set({SliderHintMode::Always, {}, true});
+    hints.synchronize();
+    check(hints.services.tooltip().snapshot(tooltip).bounds.y >= 0, "hint overflow=true did not adjust window bounds");
+    rejects([&] { hint.set({SliderHintMode::Always, static_cast<TooltipPlacement>(99), true}); });
+}
+
 void controlled_keyboard_and_limits() {
     Fixture f;
     Signal<double> value{30};
@@ -1002,6 +1087,7 @@ int main() {
         multiple_values_and_retained_topology();
         whole_track_drag_contracts();
         editable_and_disabled_contracts();
+        native_refs_and_hint_options();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();
         geometry_theme_and_reentrancy();

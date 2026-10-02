@@ -18,7 +18,7 @@
 
 ## 5. 原生 API 与整合（平台通用）
 
-- [ ] 5.1 实现安全 SliderRef focus/blur/autoFocus 与 hint overflow/默认纵向位置，补寿命/owner thread/复用/配置合同；更新 Gallery、API 文档与原生支持范围；headless Debug/Release 完整 CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
+- [x] 5.1 实现安全 SliderRef focus/blur/autoFocus 与 hint overflow/默认纵向位置，补寿命/owner thread/复用/配置合同；更新 Gallery、API 文档与原生支持范围；headless Debug/Release 完整 CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
 
 ## 6. Windows 原生验收
 

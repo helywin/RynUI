@@ -832,7 +832,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
             }});
     });
     state->telemetry.live_samples += 2;
-    ryn::Text(u8"Slider · marks / dots / 离散范围 / 值提示 / 反向 / 纵向");
+    ryn::Text(u8"Slider · marks / dots / 离散范围 / 值提示 / 反向 / 纵向 / 整段拖动 / 编辑 / 逐端点禁用");
     ryn::Slider(ryn::SliderProps{}
                     .value(state->slider_value)
                     .marks(ryn::SliderMarks{
@@ -860,6 +860,17 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                     .orientation(ryn::SliderOrientation::Vertical)
                     .layout(ryn::LayoutStyle{}.height(ryn::dp(120))));
     state->telemetry.live_samples += 5;
+    ryn::RangeSlider(ryn::RangeSliderProps{}.defaultValue({20, 80}).draggableTrack(true).layout(
+        ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::MultiSlider(ryn::MultiSliderProps{}
+                         .defaultValue({20, 50, 80})
+                         .rangeOptions(ryn::SliderRangeOptions{false, true, 0, 6})
+                         .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::MultiSlider(ryn::MultiSliderProps{}
+                         .defaultValue({20, 50, 80})
+                         .handleDisabled(ryn::SliderDisabledHandles{false, true, false})
+                         .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    state->telemetry.live_samples += 3;
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
 }
 

@@ -9,6 +9,7 @@
 #include <charconv>
 #include <memory>
 #include <numeric>
+#include <thread>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -36,6 +37,18 @@ graphics::QuadInstance quad(runtime::Rect rect, Color color, float radius, runti
 }
 } // namespace
 
+struct SliderRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("SliderRef requires its owner thread");
+        }
+    }
+};
+
 struct SliderLabel final {
     runtime::ComponentId component;
     runtime::NodeId node;
@@ -56,6 +69,7 @@ struct SliderThumb final {
     Signal<String> hint_title{String{}};
     Signal<bool> hint_open{false};
     Signal<TooltipPlacement> hint_placement{TooltipPlacement::Top};
+    Signal<bool> hint_adjust{true};
     bool hint_dismissed{};
     std::optional<double> hinted_value;
     input::FocusPresentation focus;
@@ -88,6 +102,7 @@ struct SliderState final {
     bool included{true};
     SliderHintOptions hint;
     std::function<String(double)> hint_formatter;
+    std::shared_ptr<SliderRefState> ref;
     bool range{};
     bool multiple{};
     bool reconciling{};
@@ -231,6 +246,10 @@ void SliderComponentHost::on_window_active(bool active) {
 
 void SliderComponentHost::release(SliderState& s) {
     s.disposing = true;
+    if (s.ref) {
+        s.ref->focus = {};
+        s.ref->blur = {};
+    }
     s.dragging = s.gesture = false;
     s.key.reset();
     services_->pointer().cancel_interaction(s.rail);
@@ -260,6 +279,7 @@ void SliderComponentHost::mount_thumb(runtime::ComponentId id, SliderThumb& thum
                 .title(thumb.hint_title)
                 .open(thumb.hint_open)
                 .placement(thumb.hint_placement)
+                .autoAdjustOverflow(thumb.hint_adjust)
                 .trigger(TooltipTriggerMode::Manual)
                 .onOpenChange([this, id, &thumb](bool open) {
                     if (auto* state = find(id); state && !open && thumb_index(id, thumb.component)) {
@@ -565,7 +585,9 @@ void SliderComponentHost::update_hints(runtime::ComponentId id) {
         if (!active) {
             s->handles[i]->hint_dismissed = false;
         }
-        s->handles[i]->hint_placement.set(s->hint.placement);
+        s->handles[i]->hint_placement.set(s->hint.placement.value_or(
+            s->orientation == SliderOrientation::Vertical ? TooltipPlacement::Right : TooltipPlacement::Top));
+        s->handles[i]->hint_adjust.set(s->hint.auto_adjust_overflow);
         s->handles[i]->hint_open.set(active && !s->handles[i]->hint_dismissed);
     }
 }
@@ -1111,6 +1133,15 @@ struct SliderPropsAccess {
         }
         auto& host = *active_slider;
         auto& services = *host.services_;
+        if (props.ref_) {
+            if (!props.ref_->state_) {
+                throw std::invalid_argument("SliderRef is moved from");
+            }
+            props.ref_->state_->ensure_owner();
+            if (props.ref_->bound()) {
+                throw std::invalid_argument("SliderRef is already bound");
+            }
+        }
         constexpr bool multiple = std::is_same_v<Value, SliderValues>;
         constexpr bool range = !std::is_same_v<Value, double>;
         if (props.value_ && props.default_value_) {
@@ -1488,12 +1519,74 @@ struct SliderPropsAccess {
             thumbs.push_back(thumb->interaction);
         }
         host.mounted_.push_back({id, s.node, std::move(thumbs), s.surface, range});
+        const auto focus = [&host, id] {
+            auto* state = host.find(id);
+            if (!state || state->disposing || !host.services_->focus().state().window_active) {
+                return false;
+            }
+            for (std::size_t i = 0; i < state->count(); ++i) {
+                if (!state->handle_disabled(i)) {
+                    host.services_->focus().defer_focus(state->handles[i]->interaction, input::FocusModality::keyboard);
+                    return true;
+                }
+            }
+            return false;
+        };
+        if (props.ref_) {
+            s.ref = props.ref_->state_;
+            s.ref->focus = focus;
+            s.ref->blur = [&host, id] {
+                const auto* state = host.find(id);
+                if (!state || state->disposing) {
+                    return false;
+                }
+                const auto focused = host.services_->focus().state().focused;
+                for (const auto& thumb : state->handles) {
+                    if (focused == thumb->interaction) {
+                        host.services_->focus().defer_focus({}, input::FocusModality::keyboard);
+                        return true;
+                    }
+                }
+                return false;
+            };
+        }
         host.update(id, true);
+        if (props.auto_focus_) {
+            static_cast<void>(focus());
+        }
     }
 };
 } // namespace ryn::detail
 
 namespace ryn {
+SliderRef::SliderRef() : state_(std::make_shared<detail::SliderRefState>()) {}
+
+bool SliderRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool SliderRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
+}
+
+bool SliderRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return bool(state_->focus);
+}
+
 void Slider(SliderProps props) {
     detail::SliderPropsAccess::mount(props);
 }

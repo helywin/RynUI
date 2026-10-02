@@ -6,6 +6,7 @@
 #include <ryn/tooltip.hpp>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -13,7 +14,8 @@
 namespace ryn {
 namespace detail {
 struct SliderPropsAccess;
-}
+struct SliderRefState;
+} // namespace detail
 
 enum class SliderOrientation { Horizontal, Vertical };
 
@@ -53,8 +55,21 @@ enum class SliderHintMode { Auto, Always, Hidden };
 
 struct SliderHintOptions final {
     SliderHintMode mode{SliderHintMode::Auto};
-    TooltipPlacement placement{TooltipPlacement::Top};
+    std::optional<TooltipPlacement> placement;
+    bool auto_adjust_overflow{true};
     friend bool operator==(const SliderHintOptions&, const SliderHintOptions&) = default;
+};
+
+class SliderRef final {
+public:
+    SliderRef();
+    [[nodiscard]] bool focus() const;
+    [[nodiscard]] bool blur() const;
+    [[nodiscard]] bool bound() const;
+
+private:
+    friend struct detail::SliderPropsAccess;
+    std::shared_ptr<detail::SliderRefState> state_;
 };
 
 template <class Value, class Derived> class SliderPropsBase {
@@ -129,6 +144,16 @@ public:
         return self();
     }
 
+    Derived& ref(SliderRef value) {
+        ref_ = std::move(value);
+        return self();
+    }
+
+    Derived& autoFocus(bool value) {
+        auto_focus_ = value;
+        return self();
+    }
+
     Derived& onChange(std::function<void(Value)> callback) {
         on_change_ = std::move(callback);
         return self();
@@ -168,6 +193,8 @@ private:
     Prop<SliderRangeOptions> range_options_{SliderRangeOptions{}};
     Prop<bool> draggable_track_{false};
     std::function<String(double)> hint_formatter_;
+    std::optional<SliderRef> ref_;
+    bool auto_focus_{};
     std::function<void(Value)> on_change_;
     std::function<void(Value)> on_complete_;
     LayoutStyle layout_;
