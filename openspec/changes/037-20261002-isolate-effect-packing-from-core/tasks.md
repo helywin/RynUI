@@ -12,7 +12,7 @@
 
 ## 3. Windows 原生验收
 
-- [ ] 3.1 使用 windows-msvc-debug/release 构建全部 native 目标；运行受影响 Effect、packing、SceneBackend、组件/资源/allocation、shader/font/lifetime tests，并执行两种配置的真实 Gallery resize、Typography（系统 scale 和 2.0）与 Selection acceptance；检查截图、退出状态与最终二进制哈希，记录独立 Windows evidence、doctor/strict/diff check 后提交。
+- [x] 3.1 使用 windows-msvc-debug/release 构建全部 native 目标；运行受影响 Effect、packing、SceneBackend、组件/资源/allocation、shader/font/lifetime tests，并执行两种配置的真实 Gallery resize、Typography（系统 scale 和 2.0）与 Selection acceptance；检查截图、退出状态与最终二进制哈希，记录独立 Windows evidence、doctor/strict/diff check 后提交。
 
 ## 4. Linux 原生验收
 

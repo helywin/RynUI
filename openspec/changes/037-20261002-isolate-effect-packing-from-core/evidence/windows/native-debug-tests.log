@@ -1,0 +1,47 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start  96: rynui.default_font_chain
+ 1/21 Test  #96: rynui.default_font_chain ....................   Passed    0.42 sec
+      Start 110: rynui.button_scene_service
+ 2/21 Test #110: rynui.button_scene_service ..................   Passed    0.03 sec
+      Start 112: rynui.input_component
+ 3/21 Test #112: rynui.input_component .......................   Passed    1.67 sec
+      Start 119: rynui.input_gpu
+ 4/21 Test #119: rynui.input_gpu .............................   Passed    0.14 sec
+      Start 121: rynui.input_scene_allocation
+ 5/21 Test #121: rynui.input_scene_allocation ................   Passed   73.38 sec
+      Start 130: rynui.button_component
+ 6/21 Test #130: rynui.button_component ......................   Passed    0.46 sec
+      Start 134: rynui.button_spinner_benchmark
+ 7/21 Test #134: rynui.button_spinner_benchmark ..............   Passed    0.10 sec
+      Start 169: rynui.logical_scene_packing
+ 8/21 Test #169: rynui.logical_scene_packing .................   Passed    0.02 sec
+      Start 173: rynui.rendering_locality
+ 9/21 Test #173: rynui.rendering_locality ....................   Passed    0.15 sec
+      Start 176: rynui.rounded_effect_math
+10/21 Test #176: rynui.rounded_effect_math ...................   Passed    0.02 sec
+      Start 177: rynui.rounded_effect_store
+11/21 Test #177: rynui.rounded_effect_store ..................   Passed    0.03 sec
+      Start 178: rynui.rounded_effect_scene
+12/21 Test #178: rynui.rounded_effect_scene ..................   Passed    0.02 sec
+      Start 179: rynui.rounded_effect_allocation_benchmark
+13/21 Test #179: rynui.rounded_effect_allocation_benchmark ...   Passed    0.03 sec
+      Start 180: rynui.rounded_effect_gpu
+14/21 Test #180: rynui.rounded_effect_gpu ....................   Passed    0.02 sec
+      Start 181: rynui.rounded_effect_gpu_resources
+15/21 Test #181: rynui.rounded_effect_gpu_resources ..........   Passed    0.03 sec
+      Start 202: rynui.platform_lifecycle
+16/21 Test #202: rynui.platform_lifecycle ....................   Passed    0.03 sec
+      Start 203: rynui.frame_renderer
+17/21 Test #203: rynui.frame_renderer ........................   Passed    0.03 sec
+      Start 204: rynui.glyph_gpu_resources
+18/21 Test #204: rynui.glyph_gpu_resources ...................   Passed    0.03 sec
+      Start 216: rynui.generated_shaders
+19/21 Test #216: rynui.generated_shaders .....................   Passed    0.02 sec
+      Start 217: rynui.deployed_shaders
+20/21 Test #217: rynui.deployed_shaders ......................   Passed    0.02 sec
+      Start 220: rynui.rounded_effect_shader_contract
+21/21 Test #220: rynui.rounded_effect_shader_contract ........   Passed    0.02 sec
+
+100% tests passed out of 21
+
+Total Test time (real) =  77.04 sec
