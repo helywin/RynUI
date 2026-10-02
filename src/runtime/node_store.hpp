@@ -70,6 +70,9 @@ struct Node {
     Size layout_size;
     Rect bounds;
     ExternalLayoutStyle external_layout;
+    // Internal passive content viewports, resolved in logical window space.
+    bool clip_content{};
+    float content_opacity{1.0F};
     std::uint64_t measure_count{0};
     std::uint64_t place_count{0};
     std::uint64_t measure_generation{0};
@@ -85,6 +88,8 @@ public:
     [[nodiscard]] const Node* find(NodeId id) const noexcept;
     [[nodiscard]] Node& require(NodeId id);
     [[nodiscard]] const Node& require(NodeId id) const;
+    [[nodiscard]] Rect content_clip(NodeId id, Rect window_clip) const;
+    [[nodiscard]] float content_opacity(NodeId id) const;
 
     bool destroy(NodeId id) noexcept;
 

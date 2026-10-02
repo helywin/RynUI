@@ -10,9 +10,23 @@
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 
 namespace ryn::detail {
+
+struct SwitchRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    bool binding{};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("SwitchRef requires its owner thread");
+        }
+    }
+};
 
 namespace {
 thread_local SelectionComponentHost* active_selection_host{};
@@ -53,6 +67,21 @@ void set_material(graphics::QuadInstance& quad, Color color, float opacity = 1.0
 void validate(SwitchSize size) {
     if (size != SwitchSize::Middle && size != SwitchSize::Small) {
         throw std::invalid_argument("Switch size must be Middle or Small");
+    }
+}
+
+void validate(SwitchDirection direction) {
+    if (direction != SwitchDirection::LeftToRight && direction != SwitchDirection::RightToLeft) {
+        throw std::invalid_argument("Switch direction is invalid");
+    }
+}
+
+void translate_content(runtime::NodeStore& nodes, runtime::NodeId id, runtime::Point delta) {
+    auto& node = nodes.require(id);
+    node.translation.x += delta.x;
+    node.translation.y += delta.y;
+    for (const auto child : node.children) {
+        translate_content(nodes, child, delta);
     }
 }
 
@@ -148,9 +177,14 @@ struct SelectionState final {
     float layout_width{-1.0F};
     float layout_height{-1.0F};
     float layout_gap{-1.0F};
+    runtime::ComponentId checked_content;
+    runtime::ComponentId unchecked_content;
+    SwitchDirection direction{SwitchDirection::LeftToRight};
+    std::shared_ptr<SwitchRefState> ref;
     input::PressableBehavior press;
     input::FocusPresentation focus;
     std::function<void(bool)> on_change;
+    std::function<void(bool)> on_click;
     Signal<runtime::SemanticForeground> label_foreground{{0.0F, 0.0F, 0.0F, 1.0F}};
     Signal<runtime::SemanticTypography> label_typography{runtime::SemanticTypography{}};
     theme_runtime::Subscription theme_subscription;
@@ -310,6 +344,11 @@ void SelectionComponentHost::attach_interaction(SelectionState& state) {
 }
 
 void SelectionComponentHost::release_selection(SelectionState& state) {
+    if (state.ref) {
+        state.ref->binding = false;
+        state.ref->focus = {};
+        state.ref->blur = {};
+    }
     services_->pointer().cancel_interaction(state.interaction);
     if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
@@ -340,6 +379,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
     }
     const bool next = state->radio ? true : !state->checked;
     auto callback = state->on_change;
+    auto click = state->on_click;
     if (!state->controlled) {
         state->checked = next;
         if (!state->checkbox && !state->radio) {
@@ -349,6 +389,9 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
     }
     if (callback) {
         callback(next);
+    }
+    if (click) {
+        click(next);
     }
 }
 
@@ -617,6 +660,70 @@ void SelectionComponentHost::apply_size(runtime::ComponentId id, SwitchSize valu
     }
 }
 
+void SelectionComponentHost::apply_direction(runtime::ComponentId id, SwitchDirection value) {
+    validate(value);
+    if (auto* state = find(id); state && state->direction != value) {
+        state->direction = value;
+        services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+    }
+}
+
+void SelectionComponentHost::synchronize_switch_content(SelectionState& state) {
+    if (state.checkbox || state.radio) {
+        return;
+    }
+    bool changed = false;
+    for (const auto branch : {state.checked_content, state.unchecked_content}) {
+        if (branch.valid()) {
+            const auto& bounds = services_->nodes().require(services_->components().root(branch)).bounds;
+            const bool selected = branch == (state.checked ? state.checked_content : state.unchecked_content);
+            changed |=
+                services_->components().set_branch_active(branch, selected && bounds.width > 0 && bounds.height > 0);
+        }
+    }
+    if (changed) {
+        services_->mark_scene_structure_dirty();
+    }
+}
+
+void SelectionComponentHost::place_switch_content(SelectionState& state, layout::LayoutEngine& engine,
+                                                  runtime::Rect bounds) {
+    const auto token = resolve_tokens(services_->components().theme_scope(state.component)->snapshot(), state.size);
+    const float near = token.handle_size / 2;
+    const float far = token.handle_size + 3 * token.track_padding;
+    for (const auto branch : {state.checked_content, state.unchecked_content}) {
+        if (!branch.valid()) {
+            continue;
+        }
+        const bool checked = branch == state.checked_content;
+        const bool rtl = state.direction == SwitchDirection::RightToLeft;
+        const float left = std::min(bounds.width, checked != rtl ? near : far);
+        const float width = std::max(0.0F, bounds.width - near - far);
+        const runtime::Rect content{bounds.x + left, bounds.y, width, bounds.height};
+        const auto node = services_->components().root(branch);
+        const auto& retained = services_->nodes().require(node);
+        if (retained.bounds != content || retained.translation != services_->nodes().require(state.node).translation) {
+            if (retained.measure_generation == engine.generation()) {
+                engine.place_child(node, content, true, true);
+            } else {
+                engine.place_retained_child(node, content);
+            }
+            const auto translation = services_->nodes().require(state.node).translation;
+            const auto current = services_->nodes().require(node).translation;
+            translate_content(services_->nodes(), node, {translation.x - current.x, translation.y - current.y});
+        }
+    }
+    synchronize_switch_content(state);
+}
+
+void SelectionComponentHost::position_window_layers(runtime::Size, runtime::Rect) {
+    for (const auto& item : mounted_) {
+        if (auto* state = find(item.component); state && !state->checkbox && !state->radio) {
+            place_switch_content(*state, services_->layout(), services_->nodes().require(state->node).bounds);
+        }
+    }
+}
+
 void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPresentation value) {
     auto* state = find(id);
     if (!state || state->focus == value) {
@@ -655,7 +762,29 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
         if (state.layout_width == token.switch_width && state.layout_height == token.switch_height) {
             return;
         }
-        services_->layout().set_layout(state.node, layout::LeafLayout{{token.switch_width, token.switch_height}});
+        const auto id = state.component;
+        services_->layout().set_layout(
+            state.node,
+            layout::ComponentLayout{
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                    const auto& state = *find(id);
+                    const auto token = resolve_tokens(services_->components().theme_scope(id)->snapshot(), state.size);
+                    const float margins = 1.5F * token.handle_size + 3 * token.track_padding;
+                    const layout::Constraints content_limits{0, std::max(0.0F, limits.max_width - margins), 0,
+                                                             token.switch_height};
+                    float width = 0;
+                    for (const auto branch : {state.checked_content, state.unchecked_content}) {
+                        if (branch.valid()) {
+                            width = std::max(
+                                width,
+                                engine.measure_child(services_->components().root(branch), content_limits).width);
+                        }
+                    }
+                    return limits.constrain({std::max(token.switch_width, width + margins), token.switch_height});
+                },
+                [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
+                    place_switch_content(*find(id), engine, bounds);
+                }});
         state.layout_width = token.switch_width;
         state.layout_height = token.switch_height;
     }
@@ -726,10 +855,15 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
             services_->dirty().invalidate(state.node, runtime::DirtyFlags::Material);
         }
     }
-    const auto label_color = state.disabled ? token.disabled_foreground : theme.alias().color_text;
+    const auto label_color = !state.checkbox && !state.radio ? Color::rgba8(255, 255, 255)
+                             : state.disabled                ? token.disabled_foreground
+                                                             : theme.alias().color_text;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
-    static_cast<void>(state.label_typography.set(
-        {theme.text().font_family, theme.text().font_weight, false, theme.text().font_size, theme.text().line_height}));
+    const bool is_switch = !state.checkbox && !state.radio;
+    static_cast<void>(state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
+                                                  is_switch ? theme.map().font_size_small : theme.text().font_size,
+                                                  is_switch ? token.switch_height : theme.text().line_height}));
+    synchronize_switch_content(state);
 }
 
 void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Size viewport) {
@@ -739,13 +873,15 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
     const auto rect = node.bounds;
     auto next = state.visuals;
     if (!state.checkbox && !state.radio) {
-        set_geometry(next[0], rect, viewport, rect.height / 2.0F, node.translation);
-        const float x = rect.x + token.track_padding +
-                        std::clamp(state.presented_checked, 0.0F, 1.0F) *
-                            (rect.width - token.handle_size - 2.0F * token.track_padding);
-        const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F, token.handle_size,
+        set_geometry(next[0], rect, viewport, std::min(rect.width, rect.height) / 2.0F, node.translation);
+        const float checked = std::clamp(state.presented_checked, 0.0F, 1.0F);
+        const float position = state.direction == SwitchDirection::RightToLeft ? 1 - checked : checked;
+        const float handle_size = std::min(token.handle_size, std::max(0.0F, rect.width - 2 * token.track_padding));
+        const float x = rect.x + std::min(token.track_padding, rect.width / 2) +
+                        position * std::max(0.0F, rect.width - handle_size - 2 * token.track_padding);
+        const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F, handle_size,
                                    token.handle_size};
-        set_geometry(next[1], handle, viewport, token.handle_size / 2.0F, node.translation);
+        set_geometry(next[1], handle, viewport, std::min(handle.width, handle.height) / 2.0F, node.translation);
         const float dot = std::max(1.0F, token.handle_size * 0.13F);
         const float orbit = token.handle_size * 0.27F;
         const float center_x = x + token.handle_size / 2.0F;
@@ -805,7 +941,7 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
             : rect,
         state.checkbox ? theme.map().border_radius_small
         : state.radio  ? indicator_size / 2.0F
-                       : rect.height / 2.0F};
+                       : std::min(rect.width, rect.height) / 2.0F};
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = effects;
@@ -823,7 +959,7 @@ void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpo
 }
 
 struct SwitchPropsAccess {
-    static void mount(const SwitchProps& props) {
+    static void mount(const SwitchProps& props, const SwitchSlots& slots) {
         if (!active_selection_host) {
             throw std::logic_error("Switch requires an active SelectionComponentHost");
         }
@@ -833,6 +969,15 @@ struct SwitchPropsAccess {
         }
         const auto size = read_prop(props.size_);
         validate(size);
+        const auto direction = read_prop(props.direction_);
+        validate(direction);
+        const auto reference = props.ref_ ? props.ref_->state_ : nullptr;
+        if (reference) {
+            reference->ensure_owner();
+            if (reference->binding) {
+                throw std::invalid_argument("SwitchRef is already bound");
+            }
+        }
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<SelectionState>();
         auto& state = build.state<SelectionState>(component);
@@ -844,19 +989,60 @@ struct SwitchPropsAccess {
         state.disabled = read_prop(props.disabled_);
         state.loading = read_prop(props.loading_);
         state.size = size;
+        state.direction = direction;
+        state.ref = reference;
         state.visuals.resize(switch_layer_count);
         state.on_change = props.on_change_;
+        state.on_click = props.on_click_;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
                 host.release_selection(*current);
             }
         });
+        if (reference) {
+            reference->binding = true;
+        }
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
                                       host.services_->dirty());
         state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.attach_interaction(state);
         host.update_visuals(state);
+        auto mount_branch = [&](const auto& slot, runtime::ComponentId& branch) {
+            if (!slot) {
+                return;
+            }
+            build.mount_slot(component, Content{[&] {
+                                 auto& nested = runtime::require_component_build_context();
+                                 branch = nested.mount_component<int>(0);
+                                 const auto node = nested.root(branch);
+                                 auto model = layout::FlexLayout{};
+                                 model.justify = layout::FlexJustify::center;
+                                 model.align = layout::FlexAlign::center;
+                                 host.services_->layout().set_layout(node, model);
+                                 host.services_->nodes().require(node).clip_content = true;
+                                 nested.on_resource_cleanup(branch, [layout = &host.services_->layout(), node] {
+                                     static_cast<void>(layout->remove_layout(node));
+                                 });
+                                 nested.mount_slot_with_semantic_text_style(
+                                     branch, *slot, Prop<runtime::SemanticForeground>{state.label_foreground},
+                                     Prop<runtime::SemanticTypography>{state.label_typography});
+                             }});
+        };
+        mount_branch(slots.checked, state.checked_content);
+        mount_branch(slots.unchecked, state.unchecked_content);
+        for (const auto interaction : host.services_->interactions().declaration_order()) {
+            const auto* record = host.services_->interactions().find(interaction);
+            if (!record || record->component == component) {
+                continue;
+            }
+            for (auto parent = host.services_->components().parent(record->component); parent;
+                 parent = host.services_->components().parent(*parent)) {
+                if (*parent == component) {
+                    throw std::invalid_argument("Switch content must be passive");
+                }
+            }
+        }
         state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
                                                                   state.effects, state.interaction);
         state.animation_scope = host.services_->animations().create_scope();
@@ -878,6 +1064,9 @@ struct SwitchPropsAccess {
                                        [&host, component](bool value) { host.apply_loading(component, value); }));
         static_cast<void>(connect_prop(scope, props.size_,
                                        [&host, component](SwitchSize value) { host.apply_size(component, value); }));
+        static_cast<void>(connect_prop(scope, props.direction_, [&host, component](SwitchDirection value) {
+            host.apply_direction(component, value);
+        }));
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
@@ -891,8 +1080,31 @@ struct SwitchPropsAccess {
                 static_cast<void>(theme->alias());
                 static_cast<void>(theme->switch_geometry());
                 static_cast<void>(theme->switch_colors());
+                static_cast<void>(theme->text());
             });
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false});
+        const auto focus = [&host, component] {
+            const auto* state = host.find(component);
+            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+                return false;
+            }
+            host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);
+            return true;
+        };
+        if (reference) {
+            reference->focus = focus;
+            reference->blur = [&host, component] {
+                const auto* state = host.find(component);
+                if (!state || host.services_->focus().state().focused != state->interaction) {
+                    return false;
+                }
+                host.services_->focus().defer_focus({}, input::FocusModality::keyboard);
+                return true;
+            };
+        }
+        if (props.auto_focus_) {
+            static_cast<void>(focus());
+        }
     }
 };
 
@@ -1110,7 +1322,39 @@ struct RadioGroupPropsAccess {
 
 namespace ryn {
 void Switch(SwitchProps props) {
-    detail::SwitchPropsAccess::mount(props);
+    detail::SwitchPropsAccess::mount(props, {});
+}
+
+void Switch(SwitchProps props, SwitchSlots slots) {
+    detail::SwitchPropsAccess::mount(props, slots);
+}
+
+SwitchRef::SwitchRef() : state_(std::make_shared<detail::SwitchRefState>()) {}
+
+bool SwitchRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return bool(state_->focus);
+}
+
+bool SwitchRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool SwitchRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
 }
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {

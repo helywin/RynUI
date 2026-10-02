@@ -62,6 +62,7 @@ private:
     void on_dispose() noexcept override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     void synchronize_auxiliary_motion() override;
+    void position_window_layers(runtime::Size, runtime::Rect) override;
 
     [[nodiscard]] SelectionState* find(runtime::ComponentId) noexcept;
     [[nodiscard]] const SelectionState* find(runtime::ComponentId) const noexcept;
@@ -72,6 +73,9 @@ private:
     void update_visuals(SelectionState&);
     void update_geometry(SelectionState&, runtime::Size);
     void update_layout(SelectionState&);
+    void place_switch_content(SelectionState&, layout::LayoutEngine&, runtime::Rect);
+    void synchronize_switch_content(SelectionState&);
+    void apply_direction(runtime::ComponentId, SwitchDirection);
     void apply_checked(runtime::ComponentId, bool);
     void apply_radio_own_disabled(runtime::ComponentId, bool);
     void apply_group_value(runtime::ComponentId, std::optional<String>);

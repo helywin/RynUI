@@ -582,6 +582,18 @@ target_compile_definitions(rynui_selection_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.selection_component COMMAND rynui_selection_component_tests)
+add_executable(rynui_switch_features_tests switch_features_tests.cpp)
+rynui_configure_cpp_target(rynui_switch_features_tests)
+target_include_directories(rynui_switch_features_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_switch_features_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_switch_features_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.switch_features COMMAND rynui_switch_features_tests)
+add_executable(rynui_switch_public_api_tests switch_public_api_tests.cpp)
+rynui_configure_cpp_target(rynui_switch_public_api_tests)
+target_link_libraries(rynui_switch_public_api_tests PRIVATE RynUI::RynUI)
+add_test(NAME rynui.switch_public_api COMMAND rynui_switch_public_api_tests)
 add_executable(rynui_radio_public_api_tests radio_public_api_tests.cpp)
 rynui_configure_cpp_target(rynui_radio_public_api_tests)
 target_link_libraries(rynui_radio_public_api_tests PRIVATE RynUI::RynUI)

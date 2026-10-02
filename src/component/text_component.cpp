@@ -484,9 +484,9 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             const auto& retained = nodes_->require(node);
             const auto* state = components_.state<TextComponentState>(mounted.component);
             const auto insets = state == nullptr ? std::array<float, 3>{} : state->insets;
-            const auto text_clip = components_.in_window_layer(mounted.component)
-                                       ? runtime::Rect{0, 0, viewport.width, viewport.height}
-                                       : clip;
+            const auto text_clip = nodes_->content_clip(node, components_.in_window_layer(mounted.component)
+                                                                  ? runtime::Rect{0, 0, viewport.width, viewport.height}
+                                                                  : clip);
             constexpr float visual_overflow = 32.0F;
             const float left = retained.bounds.x + retained.translation.x;
             const float top = retained.bounds.y + retained.translation.y;
@@ -511,7 +511,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                                    text_clip,
                                    phase_residual,
                                    {},
-                                   1.0F,
+                                   nodes_->content_opacity(node),
                                });
             if (sync_profiling_enabled_) {
                 ++sync_profile_.mounted_synchronized;

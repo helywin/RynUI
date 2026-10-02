@@ -1030,4 +1030,20 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
         require_layout(id));
 }
 
+void LayoutEngine::place_retained_child(runtime::NodeId child, runtime::Rect bounds) {
+    const auto measured_generation = nodes_->require(child).measure_generation;
+    if (measured_generation == 0) {
+        throw std::logic_error("Retained child must be measured before placement");
+    }
+    const auto previous = generation_;
+    generation_ = measured_generation;
+    try {
+        place_node(child, bounds, true, true);
+    } catch (...) {
+        generation_ = previous;
+        throw;
+    }
+    generation_ = previous;
+}
+
 } // namespace ryn::layout

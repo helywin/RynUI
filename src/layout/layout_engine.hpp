@@ -164,9 +164,14 @@ public:
         return measure_node(child, constraints);
     }
 
-    void place_child(runtime::NodeId child, runtime::Rect bounds) {
-        place_node(child, bounds);
+    void place_child(runtime::NodeId child, runtime::Rect bounds, bool stretch_width = false,
+                     bool stretch_height = false) {
+        place_node(child, bounds, stretch_width, stretch_height);
     }
+
+    // Reposition an already measured passive subtree between normal layout
+    // passes, retaining its matching child and flex scratch generation.
+    void place_retained_child(runtime::NodeId child, runtime::Rect bounds);
 
     void place(runtime::NodeId root, runtime::Point origin = {});
     [[nodiscard]] runtime::Size layout(runtime::NodeId root, Constraints constraints, runtime::Point origin = {});

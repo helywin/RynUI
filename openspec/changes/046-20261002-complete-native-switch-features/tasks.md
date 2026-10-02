@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：状态内容与焦点 API
 
-- [ ] 1.1 实现 checked/unchecked retained slots、稳定内容宽度、文字/图标裁剪、direction、SwitchRef/autoFocus/onClick 和被动内容回滚；同步 docs/switch.md；在 Windows windows-msvc-headless Debug/Release 运行 selection、Switch public API 与组件合同测试，覆盖控制模式、回调销毁、ref 生命周期/跨线程、内容/方向/窄约束且 Checkbox/Radio 不回退。
+- [x] 1.1 实现 checked/unchecked retained slots、稳定内容宽度、文字/图标裁剪、direction、SwitchRef/autoFocus/onClick 和被动内容回滚；同步 docs/switch.md；在 Windows windows-msvc-headless Debug/Release 运行 selection、Switch public API 与组件合同测试，覆盖控制模式、回调销毁、ref 生命周期/跨线程、内容/方向/窄约束且 Checkbox/Radio 不回退。
 
 ## 2. 平台通用：主题与有限反馈
 
