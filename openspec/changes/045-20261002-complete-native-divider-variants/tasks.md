@@ -14,7 +14,7 @@
 
 ## 4. Windows 原生验收
 
-- [ ] 4.1 windows-msvc Debug/Release build/受影响平台 CTest，实际 D3D12/DXIL、系统字体、三主题、系统/1/1.25/1.5/2 scale、水平/垂直圆点与虚线、size/方向/Length、resize；保存图像/诊断/EXE和PNG SHA256/退出码，格式/doctor/full strict/diff 后独立提交。
+- [x] 4.1 windows-msvc Debug/Release build/受影响平台 CTest，实际 D3D12/DXIL、系统字体、三主题、系统/1/1.25/1.5/2 scale、水平/垂直圆点与虚线、size/方向/Length、resize；保存图像/诊断/EXE和PNG SHA256/退出码，格式/doctor/full strict/diff 后独立提交。
 
 ## 5. Linux 原生验收
 

@@ -1,0 +1,1510 @@
+[
+  {
+    "configuration": "Debug",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\debug-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "991b86dd9fa14bf6d8cf88e18120231d1a8e627eecdb0a2e4b847c0a38a71fe3",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-system/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a21703bfc24fa3e7100aca414f06101c88d2d31a2b064063a454d6e751802c46"
+      },
+      {
+        "path": "debug-system/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "60e072eacccc7ce00458109a5aa94a1174bcf19088fd8e904fbb85509bdf6e67"
+      },
+      {
+        "path": "debug-system/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "73f9ae2d4e78ae33c5bcc1536b11b9436a8d60e9333dcb6306da41abb5bd21d4"
+      },
+      {
+        "path": "debug-system/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-system/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "debug-system/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6563f10d75d0c9e506199e5019079ea8594a4e038147edb26abb577cd73a3138"
+      },
+      {
+        "path": "debug-system/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "dff898e13add0fa98efc283860052db245e2b450bc0c9826cecc8f837b192f8b"
+      },
+      {
+        "path": "debug-system/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-system/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c2326b20de548873f653e7a9a588adc8e8b2a752417c0df04d3ea91c23db201b"
+      },
+      {
+        "path": "debug-system/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "debug-system/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "468ffbfce2d8a44324a743829774f8f68933b2dd70c619cbfe451de698c6ee54"
+      },
+      {
+        "path": "debug-system/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "debug-system/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-system/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0001551dea3cc64db5ee68abff4bfe5c00458a5db16b98b11052b36988b6192a"
+      },
+      {
+        "path": "debug-system/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "debug-system/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "34256418a0e8149951820c35023a817b6fe4d340fef8bba7cfbc5c29ab41877f"
+      },
+      {
+        "path": "debug-system/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\debug-scale-1",
+      "--acceptance-scale=1"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "991b86dd9fa14bf6d8cf88e18120231d1a8e627eecdb0a2e4b847c0a38a71fe3",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "01b5d9b5babaeb12df46e41711efb2f96cdbec8b29aa1f2a973da70c8a6b8e0c"
+      },
+      {
+        "path": "debug-scale-1/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ffca03619df787d43c8d997a8b8f354eb76ac17cc980f6e069ccd207b312ea0"
+      },
+      {
+        "path": "debug-scale-1/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3e32a4d0dbf04c19a81877ee5749ae78cb7653b97acd5de02ca18e539976016f"
+      },
+      {
+        "path": "debug-scale-1/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "debug-scale-1/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "9025819b3fc5cca3ea7b16234fda0bb93dd16bad4bdc54bea0b4cfe587a58fc8"
+      },
+      {
+        "path": "debug-scale-1/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5ce7f5420e7fc668cfa3ff00c1e8ac4e8247ba5ce1c05d2d1b7f2d079552ba3c"
+      },
+      {
+        "path": "debug-scale-1/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2342a61e24cb023053d7377a912cb789abdb6665c5dffe854cfec53a609c0f8a"
+      },
+      {
+        "path": "debug-scale-1/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "debug-scale-1/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f3ac7f2eec943d2a52649b2e47e5c42c87110fc23f3229247fd2e3cb95a33684"
+      },
+      {
+        "path": "debug-scale-1/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      },
+      {
+        "path": "debug-scale-1/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c1c3bc5d26d5dc779ee9f7db41852dff742ed9264c0c2f897a9c11bee26a1514"
+      },
+      {
+        "path": "debug-scale-1/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "9025819b3fc5cca3ea7b16234fda0bb93dd16bad4bdc54bea0b4cfe587a58fc8"
+      },
+      {
+        "path": "debug-scale-1/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "debug-scale-1/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aee72d0fa7f74654ddcf78bb30c4f9e169557c7f308eb7a43f79ad8265e41ea9"
+      },
+      {
+        "path": "debug-scale-1/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      },
+      {
+        "path": "debug-scale-1/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d9a32e5940d89104798d68d0e7068f5c400e6d006c26e6db17744c8fdcdae086"
+      },
+      {
+        "path": "debug-scale-1/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1.25",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\debug-scale-1.25",
+      "--acceptance-scale=1.25"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "991b86dd9fa14bf6d8cf88e18120231d1a8e627eecdb0a2e4b847c0a38a71fe3",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1.25/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a21703bfc24fa3e7100aca414f06101c88d2d31a2b064063a454d6e751802c46"
+      },
+      {
+        "path": "debug-scale-1.25/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "60e072eacccc7ce00458109a5aa94a1174bcf19088fd8e904fbb85509bdf6e67"
+      },
+      {
+        "path": "debug-scale-1.25/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "73f9ae2d4e78ae33c5bcc1536b11b9436a8d60e9333dcb6306da41abb5bd21d4"
+      },
+      {
+        "path": "debug-scale-1.25/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-scale-1.25/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "debug-scale-1.25/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6563f10d75d0c9e506199e5019079ea8594a4e038147edb26abb577cd73a3138"
+      },
+      {
+        "path": "debug-scale-1.25/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "dff898e13add0fa98efc283860052db245e2b450bc0c9826cecc8f837b192f8b"
+      },
+      {
+        "path": "debug-scale-1.25/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-scale-1.25/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c2326b20de548873f653e7a9a588adc8e8b2a752417c0df04d3ea91c23db201b"
+      },
+      {
+        "path": "debug-scale-1.25/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "debug-scale-1.25/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "468ffbfce2d8a44324a743829774f8f68933b2dd70c619cbfe451de698c6ee54"
+      },
+      {
+        "path": "debug-scale-1.25/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "debug-scale-1.25/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "debug-scale-1.25/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0001551dea3cc64db5ee68abff4bfe5c00458a5db16b98b11052b36988b6192a"
+      },
+      {
+        "path": "debug-scale-1.25/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "debug-scale-1.25/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "34256418a0e8149951820c35023a817b6fe4d340fef8bba7cfbc5c29ab41877f"
+      },
+      {
+        "path": "debug-scale-1.25/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1.5",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\debug-scale-1.5",
+      "--acceptance-scale=1.5"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "991b86dd9fa14bf6d8cf88e18120231d1a8e627eecdb0a2e4b847c0a38a71fe3",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1.5/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7a21e0dbb848450f70240d33d3f9db1f817742343da36bc349e5ee69f0dc9996"
+      },
+      {
+        "path": "debug-scale-1.5/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "fad1a6ccaa14b7cf66181db7138d17970f11bcb36bc18a058fbc210fe50a0da1"
+      },
+      {
+        "path": "debug-scale-1.5/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b11610f0ec3510b16619d0e29fc2dbc69c23e7720852000612014120ebf6b259"
+      },
+      {
+        "path": "debug-scale-1.5/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "debug-scale-1.5/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3cf625ee8c71e11a34c9e46b59bd6283d0c14879c0f102943acdba46c6731eb9"
+      },
+      {
+        "path": "debug-scale-1.5/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "43efd7fe9147c59c30e6e324dffddebd6a978291d14ea199d880799493e0f4e5"
+      },
+      {
+        "path": "debug-scale-1.5/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6064ef3d327f7eeb5322f8fa6bcc6f92bf82634cfb9eb63352c283a0fe0de9b8"
+      },
+      {
+        "path": "debug-scale-1.5/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "debug-scale-1.5/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ae5d4401edd11df0f6cc24c1b8f3b842c0036906aa651058558116aa92778b93"
+      },
+      {
+        "path": "debug-scale-1.5/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      },
+      {
+        "path": "debug-scale-1.5/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c0c061f689f91135269bef186b62c32fd1b1d25890e950b69f884ca2bf11f7b9"
+      },
+      {
+        "path": "debug-scale-1.5/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3cf625ee8c71e11a34c9e46b59bd6283d0c14879c0f102943acdba46c6731eb9"
+      },
+      {
+        "path": "debug-scale-1.5/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "debug-scale-1.5/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "47d5394971b5773e9c7e91b3320ae49dcd1db2bc35d76d9a907a79ff9b3b6a0a"
+      },
+      {
+        "path": "debug-scale-1.5/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      },
+      {
+        "path": "debug-scale-1.5/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "1e2776b0d16abfdd0cb106f4656ceeac2af1aaeed0315df3d100a2bb86606df1"
+      },
+      {
+        "path": "debug-scale-1.5/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\debug-scale-2",
+      "--acceptance-scale=2"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "991b86dd9fa14bf6d8cf88e18120231d1a8e627eecdb0a2e4b847c0a38a71fe3",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-2/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "264aa31b01a3fae3ed11307a02127450b17d3a95ce44d0aa5150c9933330484e"
+      },
+      {
+        "path": "debug-scale-2/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c1207b618b411b0eedd2fa43c4ce599b6d1add8e6a06132932f723f8762bedba"
+      },
+      {
+        "path": "debug-scale-2/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8b308f42f7f3ae4e66b97848ba14edc9d970acbcd662670e650be6b6d787c948"
+      },
+      {
+        "path": "debug-scale-2/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "debug-scale-2/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "600c90d3e1bbce0ba71e629f83a6f085d23cbaf3264f1ed7edfbd319385942d5"
+      },
+      {
+        "path": "debug-scale-2/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6b2d21602e9b014b9b91b413243e62cf23e6b54f1b3aa0e7f8bc29984b2862cd"
+      },
+      {
+        "path": "debug-scale-2/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2e72bc3683d1cc4e22729373a2a496e3a23e83e7f8d5a41a25abf69eb7c8f3bd"
+      },
+      {
+        "path": "debug-scale-2/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "debug-scale-2/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e430e1dcbb375b64ae98ccb571fc73f2572502e4f489a05a6e33b1a3a67403fb"
+      },
+      {
+        "path": "debug-scale-2/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      },
+      {
+        "path": "debug-scale-2/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "007af248fe598ff9e76aa4a79eb6c3449d6322b66f926917c9697aefe846fdff"
+      },
+      {
+        "path": "debug-scale-2/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "600c90d3e1bbce0ba71e629f83a6f085d23cbaf3264f1ed7edfbd319385942d5"
+      },
+      {
+        "path": "debug-scale-2/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "debug-scale-2/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "4aa2fd9a33e389f2ccec26b177c99ba8c4c8d07092261046af097dbabd95dd59"
+      },
+      {
+        "path": "debug-scale-2/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      },
+      {
+        "path": "debug-scale-2/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "499d9145bb24e2cd28e88bdfd642a66797c0ac9feeb72527b65513d1e49581c2"
+      },
+      {
+        "path": "debug-scale-2/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\release-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "0a427996d2fc875928ff92dac1461c25c7ad05d837a779e938b8c7413bacde35",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-system/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a21703bfc24fa3e7100aca414f06101c88d2d31a2b064063a454d6e751802c46"
+      },
+      {
+        "path": "release-system/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "60e072eacccc7ce00458109a5aa94a1174bcf19088fd8e904fbb85509bdf6e67"
+      },
+      {
+        "path": "release-system/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "73f9ae2d4e78ae33c5bcc1536b11b9436a8d60e9333dcb6306da41abb5bd21d4"
+      },
+      {
+        "path": "release-system/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-system/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "release-system/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6563f10d75d0c9e506199e5019079ea8594a4e038147edb26abb577cd73a3138"
+      },
+      {
+        "path": "release-system/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "dff898e13add0fa98efc283860052db245e2b450bc0c9826cecc8f837b192f8b"
+      },
+      {
+        "path": "release-system/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-system/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c2326b20de548873f653e7a9a588adc8e8b2a752417c0df04d3ea91c23db201b"
+      },
+      {
+        "path": "release-system/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "release-system/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "468ffbfce2d8a44324a743829774f8f68933b2dd70c619cbfe451de698c6ee54"
+      },
+      {
+        "path": "release-system/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "release-system/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-system/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0001551dea3cc64db5ee68abff4bfe5c00458a5db16b98b11052b36988b6192a"
+      },
+      {
+        "path": "release-system/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "release-system/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "34256418a0e8149951820c35023a817b6fe4d340fef8bba7cfbc5c29ab41877f"
+      },
+      {
+        "path": "release-system/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\release-scale-1",
+      "--acceptance-scale=1"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "0a427996d2fc875928ff92dac1461c25c7ad05d837a779e938b8c7413bacde35",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "01b5d9b5babaeb12df46e41711efb2f96cdbec8b29aa1f2a973da70c8a6b8e0c"
+      },
+      {
+        "path": "release-scale-1/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ffca03619df787d43c8d997a8b8f354eb76ac17cc980f6e069ccd207b312ea0"
+      },
+      {
+        "path": "release-scale-1/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3e32a4d0dbf04c19a81877ee5749ae78cb7653b97acd5de02ca18e539976016f"
+      },
+      {
+        "path": "release-scale-1/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "release-scale-1/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "9025819b3fc5cca3ea7b16234fda0bb93dd16bad4bdc54bea0b4cfe587a58fc8"
+      },
+      {
+        "path": "release-scale-1/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5ce7f5420e7fc668cfa3ff00c1e8ac4e8247ba5ce1c05d2d1b7f2d079552ba3c"
+      },
+      {
+        "path": "release-scale-1/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2342a61e24cb023053d7377a912cb789abdb6665c5dffe854cfec53a609c0f8a"
+      },
+      {
+        "path": "release-scale-1/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "release-scale-1/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f3ac7f2eec943d2a52649b2e47e5c42c87110fc23f3229247fd2e3cb95a33684"
+      },
+      {
+        "path": "release-scale-1/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      },
+      {
+        "path": "release-scale-1/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c1c3bc5d26d5dc779ee9f7db41852dff742ed9264c0c2f897a9c11bee26a1514"
+      },
+      {
+        "path": "release-scale-1/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "9025819b3fc5cca3ea7b16234fda0bb93dd16bad4bdc54bea0b4cfe587a58fc8"
+      },
+      {
+        "path": "release-scale-1/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "12fd552eea369c967267705e94ff822c801a8d69e7703ba4e3196d883c12da7f"
+      },
+      {
+        "path": "release-scale-1/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aee72d0fa7f74654ddcf78bb30c4f9e169557c7f308eb7a43f79ad8265e41ea9"
+      },
+      {
+        "path": "release-scale-1/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      },
+      {
+        "path": "release-scale-1/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d9a32e5940d89104798d68d0e7068f5c400e6d006c26e6db17744c8fdcdae086"
+      },
+      {
+        "path": "release-scale-1/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "52e34b5d5d027f61c7eeaeabb9d9575748c963c43b6803f3dc41fe224d17dabb"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1.25",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\release-scale-1.25",
+      "--acceptance-scale=1.25"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "0a427996d2fc875928ff92dac1461c25c7ad05d837a779e938b8c7413bacde35",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1.25/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a21703bfc24fa3e7100aca414f06101c88d2d31a2b064063a454d6e751802c46"
+      },
+      {
+        "path": "release-scale-1.25/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "60e072eacccc7ce00458109a5aa94a1174bcf19088fd8e904fbb85509bdf6e67"
+      },
+      {
+        "path": "release-scale-1.25/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "73f9ae2d4e78ae33c5bcc1536b11b9436a8d60e9333dcb6306da41abb5bd21d4"
+      },
+      {
+        "path": "release-scale-1.25/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-scale-1.25/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "release-scale-1.25/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6563f10d75d0c9e506199e5019079ea8594a4e038147edb26abb577cd73a3138"
+      },
+      {
+        "path": "release-scale-1.25/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "dff898e13add0fa98efc283860052db245e2b450bc0c9826cecc8f837b192f8b"
+      },
+      {
+        "path": "release-scale-1.25/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-scale-1.25/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c2326b20de548873f653e7a9a588adc8e8b2a752417c0df04d3ea91c23db201b"
+      },
+      {
+        "path": "release-scale-1.25/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "release-scale-1.25/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "468ffbfce2d8a44324a743829774f8f68933b2dd70c619cbfe451de698c6ee54"
+      },
+      {
+        "path": "release-scale-1.25/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4cc5e9d5d57f882556152b04001fe01cf702da0d4f4ab910bc813ac016d9a701"
+      },
+      {
+        "path": "release-scale-1.25/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9a694e300ff23cfd08a4d5ada897e4f9e070fbe901ce46fa3197176c68c5eb50"
+      },
+      {
+        "path": "release-scale-1.25/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0001551dea3cc64db5ee68abff4bfe5c00458a5db16b98b11052b36988b6192a"
+      },
+      {
+        "path": "release-scale-1.25/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      },
+      {
+        "path": "release-scale-1.25/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "34256418a0e8149951820c35023a817b6fe4d340fef8bba7cfbc5c29ab41877f"
+      },
+      {
+        "path": "release-scale-1.25/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aac81aebb0b350a29f320f5296c23a1d2ff7bf6ba8add2c8f00639bf54f79183"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1.5",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\release-scale-1.5",
+      "--acceptance-scale=1.5"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "0a427996d2fc875928ff92dac1461c25c7ad05d837a779e938b8c7413bacde35",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1.5/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7a21e0dbb848450f70240d33d3f9db1f817742343da36bc349e5ee69f0dc9996"
+      },
+      {
+        "path": "release-scale-1.5/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "fad1a6ccaa14b7cf66181db7138d17970f11bcb36bc18a058fbc210fe50a0da1"
+      },
+      {
+        "path": "release-scale-1.5/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b11610f0ec3510b16619d0e29fc2dbc69c23e7720852000612014120ebf6b259"
+      },
+      {
+        "path": "release-scale-1.5/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "release-scale-1.5/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3cf625ee8c71e11a34c9e46b59bd6283d0c14879c0f102943acdba46c6731eb9"
+      },
+      {
+        "path": "release-scale-1.5/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "43efd7fe9147c59c30e6e324dffddebd6a978291d14ea199d880799493e0f4e5"
+      },
+      {
+        "path": "release-scale-1.5/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6064ef3d327f7eeb5322f8fa6bcc6f92bf82634cfb9eb63352c283a0fe0de9b8"
+      },
+      {
+        "path": "release-scale-1.5/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "release-scale-1.5/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ae5d4401edd11df0f6cc24c1b8f3b842c0036906aa651058558116aa92778b93"
+      },
+      {
+        "path": "release-scale-1.5/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      },
+      {
+        "path": "release-scale-1.5/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c0c061f689f91135269bef186b62c32fd1b1d25890e950b69f884ca2bf11f7b9"
+      },
+      {
+        "path": "release-scale-1.5/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3cf625ee8c71e11a34c9e46b59bd6283d0c14879c0f102943acdba46c6731eb9"
+      },
+      {
+        "path": "release-scale-1.5/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f9f81516d3b4f135655817205869210ada11a716faed0e17be6e979d1a1b4159"
+      },
+      {
+        "path": "release-scale-1.5/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "47d5394971b5773e9c7e91b3320ae49dcd1db2bc35d76d9a907a79ff9b3b6a0a"
+      },
+      {
+        "path": "release-scale-1.5/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      },
+      {
+        "path": "release-scale-1.5/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "1e2776b0d16abfdd0cb106f4656ceeac2af1aaeed0315df3d100a2bb86606df1"
+      },
+      {
+        "path": "release-scale-1.5/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "aa997ed534560ab0464855371e4a03bfa4149a7c641a20c6a3e7ca3f65ea0a06"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--divider-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\045-divider-windows\\release-scale-2",
+      "--acceptance-scale=2"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "0a427996d2fc875928ff92dac1461c25c7ad05d837a779e938b8c7413bacde35",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-2/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "264aa31b01a3fae3ed11307a02127450b17d3a95ce44d0aa5150c9933330484e"
+      },
+      {
+        "path": "release-scale-2/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c1207b618b411b0eedd2fa43c4ce599b6d1add8e6a06132932f723f8762bedba"
+      },
+      {
+        "path": "release-scale-2/dashed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8b308f42f7f3ae4e66b97848ba14edc9d970acbcd662670e650be6b6d787c948"
+      },
+      {
+        "path": "release-scale-2/dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "release-scale-2/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "600c90d3e1bbce0ba71e629f83a6f085d23cbaf3264f1ed7edfbd319385942d5"
+      },
+      {
+        "path": "release-scale-2/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6b2d21602e9b014b9b91b413243e62cf23e6b54f1b3aa0e7f8bc29984b2862cd"
+      },
+      {
+        "path": "release-scale-2/large.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2e72bc3683d1cc4e22729373a2a496e3a23e83e7f8d5a41a25abf69eb7c8f3bd"
+      },
+      {
+        "path": "release-scale-2/length-20.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "release-scale-2/length-zero.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e430e1dcbb375b64ae98ccb571fc73f2572502e4f489a05a6e33b1a3a67403fb"
+      },
+      {
+        "path": "release-scale-2/ltr-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      },
+      {
+        "path": "release-scale-2/middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "007af248fe598ff9e76aa4a79eb6c3449d6322b66f926917c9697aefe846fdff"
+      },
+      {
+        "path": "release-scale-2/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "600c90d3e1bbce0ba71e629f83a6f085d23cbaf3264f1ed7edfbd319385942d5"
+      },
+      {
+        "path": "release-scale-2/rtl-end.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ded1f1daac1da4a36433723febf1ca063d204a3654c9f1d856e0c32075df0fb0"
+      },
+      {
+        "path": "release-scale-2/rtl-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "4aa2fd9a33e389f2ccec26b177c99ba8c4c8d07092261046af097dbabd95dd59"
+      },
+      {
+        "path": "release-scale-2/small.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      },
+      {
+        "path": "release-scale-2/solid.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "499d9145bb24e2cd28e88bdfd642a66797c0ac9feeb72527b65513d1e49581c2"
+      },
+      {
+        "path": "release-scale-2/thick-dotted.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "11919c6ed85c1e8cb5484ee0fd883fd78da50898604abb21ada8ac112d80ce6a"
+      }
+    ]
+  }
+]

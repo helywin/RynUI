@@ -1,0 +1,1 @@
+divider_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 submits=34 resize=1420x900 content_runs=1 title_runs=1 interactions=0 exit_code=0

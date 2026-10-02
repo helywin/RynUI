@@ -182,6 +182,7 @@ add_executable(
     token_gallery/slider_acceptance.cpp
     token_gallery/tooltip_acceptance.cpp
     token_gallery/button_acceptance.cpp
+    token_gallery/divider_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(
