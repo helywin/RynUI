@@ -254,6 +254,7 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     }
     append_if_changed(false, input_layout, TokenIdentity::input_layout_metrics, changed, count);
     append_if_changed(false, input_typography, TokenIdentity::input_typography, changed, count);
+    input_radius = input_radius || old_input.focus_width != new_input.focus_width;
     append_if_changed(false, input_radius, TokenIdentity::input_border_radius, changed, count);
     append_if_changed(old_input.colors, new_input.colors, TokenIdentity::input_colors, changed, count);
     const bool input_shadows = old_input.active_shadow != new_input.active_shadow ||

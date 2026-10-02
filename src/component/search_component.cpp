@@ -49,6 +49,10 @@ struct SearchPropsAccess final {
         return props.common_.status_;
     }
 
+    [[nodiscard]] static const Prop<InputVariant>& variant(const SearchProps& props) noexcept {
+        return props.common_.variant_;
+    }
+
     [[nodiscard]] static const Prop<String>& placeholder(const SearchProps& props) noexcept {
         return props.common_.placeholder_;
     }
@@ -181,6 +185,13 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
         .type(bind([enter = detail::SearchPropsAccess::enter_button(props)] {
             return detail::read_prop(enter) ? ButtonType::Primary : ButtonType::Default;
         }))
+        .variant(bind([enter = detail::SearchPropsAccess::enter_button(props),
+                       variant = detail::SearchPropsAccess::variant(props)] {
+            if (detail::read_prop(variant) != InputVariant::Outlined) {
+                return ButtonVariant::Text;
+            }
+            return detail::read_prop(enter) ? ButtonVariant::Solid : ButtonVariant::Outlined;
+        }))
         .disabled(bind([disabled = detail::SearchPropsAccess::disabled(props),
                         read_only = detail::SearchPropsAccess::read_only(props)] {
             return detail::read_prop(disabled) || detail::read_prop(read_only);
@@ -209,13 +220,8 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
                    }
                }});
     };
-    if (detail::nearest_compact(runtime::require_component_build_context())) {
-        SpaceCompact(SpaceCompactProps{}.layout(detail::SearchPropsAccess::layout(props)),
-                     SpaceCompactContent{std::move(content)});
-    } else {
-        Flex(FlexProps{}.gap(dp(0.0F)).align(FlexAlign::Center).layout(detail::SearchPropsAccess::layout(props)),
-             FlexContent{std::move(content)});
-    }
+    SpaceCompact(SpaceCompactProps{}.layout(detail::SearchPropsAccess::layout(props)),
+                 SpaceCompactContent{std::move(content)});
 }
 
 } // namespace ryn

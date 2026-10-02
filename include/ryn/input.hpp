@@ -27,6 +27,7 @@ struct InputPropsData final {
     Prop<ControlSize> size_{ControlSize::Middle};
     bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
+    Prop<InputVariant> variant_{InputVariant::Outlined};
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
     std::optional<Prop<bool>> allow_clear_;
@@ -95,6 +96,11 @@ public:
 
     Derived& status(Prop<InputStatus> value) {
         common_.status_ = std::move(value);
+        return self();
+    }
+
+    Derived& variant(Prop<InputVariant> value) {
+        common_.variant_ = std::move(value);
         return self();
     }
 

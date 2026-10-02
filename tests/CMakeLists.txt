@@ -917,6 +917,13 @@ add_test(NAME rynui.button_scene_service COMMAND rynui_button_scene_service_test
 
 add_executable(rynui_button_component_tests button_component_tests.cpp)
 add_executable(rynui_input_component_tests input_component_tests.cpp)
+add_executable(rynui_input_variant_tests input_variant_tests.cpp)
+rynui_configure_cpp_target(rynui_input_variant_tests)
+target_link_libraries(rynui_input_variant_tests PRIVATE rynui_components rynui_text_input_session)
+target_compile_definitions(rynui_input_variant_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.input_variant COMMAND rynui_input_variant_tests)
 add_executable(rynui_input_display_tests input_display_tests.cpp)
 rynui_configure_cpp_target(rynui_input_display_tests)
 target_link_libraries(rynui_input_display_tests PRIVATE rynui_components rynui_text_editor rynui_text_boundary rynui_text)

@@ -510,7 +510,18 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
         alias.color_text,
         error.active,
         warning.active,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.08F : 0.04F),
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.12F : 0.06F),
+        error.background,
+        dark ? mix(surface, palette_variant(seed.color_error, 1, false), 0.25F)
+             : palette_variant(seed.color_error, 4, true),
+        warning.background,
+        dark ? mix(surface, palette_variant(seed.color_warning, 1, false), 0.25F)
+             : palette_variant(seed.color_warning, 4, true),
+        map.color_error_text,
+        map.color_warning_text,
     };
+    input.focus_width = alias.line_width_focus;
     input.active_shadow = shadow(primary.background);
     input.error_active_shadow = shadow(error.background);
     input.warning_active_shadow = shadow(warning.background);
@@ -1802,7 +1813,7 @@ void append_color(std::ostringstream& stream, Color color) {
                << ",\"paddingBlock\":" << size.padding_block << ",\"borderRadius\":" << size.border_radius << '}';
     }
     stream << "],\"borderWidth\":" << input.border_width << ",\"affixPadding\":" << input.affix_padding
-           << ",\"colors\":[";
+           << ",\"focusWidth\":" << input.focus_width << ",\"colors\":[";
     const auto input_colors = input.colors.values();
     for (std::size_t i = 0; i < input_colors.size(); ++i) {
         if (i) {
@@ -2217,6 +2228,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
     hash_float(hash, input.border_width);
     hash_float(hash, input.affix_padding);
+    hash_float(hash, input.focus_width);
     for (const bool explicit_padding : input.padding_block_explicit) {
         hash_integer(hash, explicit_padding);
     }

@@ -94,6 +94,7 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     }
     next.sizes[1].border_radius = length(overrides.border_radius, next.sizes[1].border_radius);
     next.affix_padding = length(overrides.affix_padding, next.affix_padding);
+    next.focus_width = length(overrides.focus_width, next.focus_width);
     const auto color = [](Color& target, const std::optional<Color>& value) {
         if (value) {
             target = *value;
@@ -107,6 +108,14 @@ void apply_input_override(InputTokenSet& tokens, const InputTokenOverride& overr
     color(next.colors.active_border, overrides.active_border_color);
     color(next.colors.hover_background, overrides.hover_background);
     color(next.colors.active_background, overrides.active_background);
+    color(next.colors.filled_background, overrides.filled_background);
+    color(next.colors.filled_hover_background, overrides.filled_hover_background);
+    color(next.colors.error_background, overrides.error_background);
+    color(next.colors.error_hover_background, overrides.error_hover_background);
+    color(next.colors.warning_background, overrides.warning_background);
+    color(next.colors.warning_hover_background, overrides.warning_hover_background);
+    color(next.colors.error_foreground, overrides.error_color);
+    color(next.colors.warning_foreground, overrides.warning_color);
     color(next.colors.selection_background, overrides.selection_background);
     color(next.colors.selection_foreground, overrides.selection_color);
     color(next.colors.caret, overrides.caret_color);

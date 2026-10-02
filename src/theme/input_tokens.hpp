@@ -38,6 +38,14 @@ struct InputColorTokens final {
     Color caret;
     Color error_caret;
     Color warning_caret;
+    Color filled_background;
+    Color filled_hover_background;
+    Color error_background;
+    Color error_hover_background;
+    Color warning_background;
+    Color warning_hover_background;
+    Color error_foreground;
+    Color warning_foreground;
 
     [[nodiscard]] constexpr auto values() const noexcept {
         return std::array{foreground,           placeholder,
@@ -49,7 +57,11 @@ struct InputColorTokens final {
                           error_hover_border,   warning_border,
                           warning_hover_border, selection_background,
                           selection_foreground, caret,
-                          error_caret,          warning_caret};
+                          error_caret,          warning_caret,
+                          filled_background,    filled_hover_background,
+                          error_background,     error_hover_background,
+                          warning_background,   warning_hover_background,
+                          error_foreground,     warning_foreground};
     }
 
     friend constexpr bool operator==(const InputColorTokens&, const InputColorTokens&) = default;
@@ -60,6 +72,7 @@ struct InputTokenSet final {
     std::array<InputSizeTokens, 3> sizes;
     float border_width{};
     float affix_padding{};
+    float focus_width{};
     // Keep explicit inherited padding when a nested scope changes typography.
     std::array<bool, 3> padding_block_explicit{};
     bool small_font_explicit{};

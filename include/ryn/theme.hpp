@@ -155,6 +155,15 @@ struct InputTokenOverride final {
     std::optional<Color> active_border_color;
     std::optional<Color> hover_background;
     std::optional<Color> active_background;
+    std::optional<Color> filled_background;
+    std::optional<Color> filled_hover_background;
+    std::optional<Color> error_background;
+    std::optional<Color> error_hover_background;
+    std::optional<Color> warning_background;
+    std::optional<Color> warning_hover_background;
+    std::optional<Color> error_color;
+    std::optional<Color> warning_color;
+    std::optional<LogicalLength> focus_width;
     std::optional<Color> selection_background;
     std::optional<Color> selection_color;
     std::optional<Color> caret_color;

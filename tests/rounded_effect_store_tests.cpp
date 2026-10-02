@@ -120,6 +120,46 @@ void test_transparent_material_retains_packed_topology() {
             "transparent material update rebuilt packed topology");
 }
 
+void test_culled_material_is_retained_without_repacking() {
+    ryn::graphics::RoundedEffectStore store;
+    const auto outside = store.add(effect(500, ryn::Color::rgba8(10, 20, 30)));
+    auto clipped_value = effect(20, ryn::Color::rgba8(10, 20, 30));
+    clipped_value.geometry.ancestor_clip = ryn::graphics::EffectClip{1, {300, 300, 10, 10}};
+    const auto clipped = store.add(clipped_value);
+    auto hidden_value = effect(30, ryn::Color::rgba8(10, 20, 30));
+    hidden_value.material.visible = false;
+    const auto hidden = store.add(hidden_value);
+    const ryn::runtime::Rect clip{0, 0, 100, 100};
+    require(store.compact(clip) && store.packed_instances().empty(), "culled fixture was packed");
+    store.clear_dirty_ranges();
+    const auto color = ryn::Color::rgba8(70, 80, 90, 120);
+    for (const auto id : {outside, clipped, hidden}) {
+        auto material = store.at(id).material;
+        material.color = color;
+        material.opacity = .5F;
+        require(store.update_material(id, material), "culled material was not updated");
+    }
+    require(!store.compact(clip) && store.material_dirty_ranges().empty(),
+            "culled material change rebuilt packed topology");
+    auto geometry = store.at(outside).geometry;
+    geometry.translation.x = -490;
+    require(store.update_geometry(outside, geometry) && store.compact(clip) &&
+                store.packed_instances().front().material.color == color,
+            "moving a culled effect lost retained material");
+    geometry = store.at(clipped).geometry;
+    geometry.ancestor_clip.reset();
+    require(store.update_geometry(clipped, geometry) && store.compact(clip),
+            "ancestor clip restoration did not repack");
+    auto material = store.at(hidden).material;
+    material.visible = true;
+    require(store.update_material(hidden, material) && store.compact(clip) && store.packed_instances().size() == 3,
+            "explicit visibility restoration did not repack");
+    for (const auto& value : store.packed_instances()) {
+        require(value.material.color == color && value.material.opacity == .5F,
+                "culling restoration reverted a retained material");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -128,6 +168,7 @@ int main() {
         test_culling_atomic_validation_and_identity_reuse();
         test_capacity_reuse_and_idle_compaction();
         test_transparent_material_retains_packed_topology();
+        test_culled_material_is_retained_without_repacking();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

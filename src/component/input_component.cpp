@@ -47,6 +47,10 @@ struct InputContainerPresentation {
     std::array<Color, input_shadow_layer_capacity> shadow_colors;
     float shadow_opacity{};
     std::array<bool, 4> corners{true, true, true, true};
+    InputVariant variant{InputVariant::Outlined};
+    Color focus_color;
+    float focus_width{};
+    bool focus_visible{};
     friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
 };
 
@@ -56,6 +60,7 @@ struct InputState {
     bool disabled{};
     bool read_only{};
     bool focused{};
+    bool focus_visible{};
     bool active{true};
     std::optional<runtime::SemanticTypography> inherited_typography;
     std::function<void(String)> on_internal_commit;
@@ -77,6 +82,7 @@ struct InputState {
     runtime::Point last_selection_position;
     ControlSize size{ControlSize::Middle};
     InputStatus status{InputStatus::Default};
+    InputVariant variant{InputVariant::Outlined};
     String placeholder;
     std::function<void(String)> on_change;
     std::function<void(String)> on_submit;
@@ -147,7 +153,7 @@ InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& token
                                          : colors.hover_border;
     const Color active_border = error || warning ? status_color : colors.active_border;
     const Color foreground = state.disabled ? colors.disabled_foreground : colors.foreground;
-    return {
+    InputVisuals result{
         state.disabled            ? colors.disabled_background
         : state.focused           ? colors.active_background
         : state.hovering_pointers ? colors.hover_background
@@ -168,6 +174,33 @@ InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& token
                   : &tokens.active_shadow,
         state.focused && !state.disabled,
     };
+    const Color transparent{0, 0, 0, 0};
+    if (state.variant == InputVariant::Borderless) {
+        result.background = transparent;
+        result.foreground = error || warning ? status_color : foreground;
+        result.affix = result.foreground;
+        result.shadow_visible = false;
+    } else if (state.variant == InputVariant::Filled) {
+        result.background =
+            state.disabled  ? colors.disabled_background
+            : state.focused ? colors.active_background
+            : error         ? (state.hovering_pointers ? colors.error_hover_background : colors.error_background)
+            : warning       ? (state.hovering_pointers ? colors.warning_hover_background : colors.warning_background)
+            : state.hovering_pointers ? colors.filled_hover_background
+                                      : colors.filled_background;
+        result.border = state.disabled ? colors.disabled_border : state.focused ? active_border : transparent;
+        result.foreground = state.disabled ? colors.disabled_foreground
+                            : error        ? colors.error_foreground
+                            : warning      ? colors.warning_foreground
+                                           : foreground;
+        result.shadow_visible = false;
+    } else if (state.variant == InputVariant::Underlined) {
+        if (state.disabled) {
+            result.background = colors.background;
+        }
+        result.shadow_visible = false;
+    }
+    return result;
 }
 
 std::array<float, 4> channels(Color color) {
@@ -244,6 +277,12 @@ void validate(InputCapitalization value) {
         throw std::invalid_argument("Invalid Input capitalization");
     }
 }
+
+void validate(InputVariant value) {
+    if (value < InputVariant::Outlined || value > InputVariant::Underlined) {
+        throw std::invalid_argument("Invalid Input variant");
+    }
+}
 } // namespace
 
 struct InputPropsAccess {
@@ -260,8 +299,10 @@ struct InputPropsAccess {
         const auto size =
             compact && !props.common_.explicit_size_ ? compact->metadata.size : read_prop(props.common_.size_);
         const auto status = read_prop(props.common_.status_);
+        const auto variant = read_prop(props.common_.variant_);
         validate(size);
         validate(status);
+        validate(variant);
         const auto purpose = read_prop(props.common_.purpose_);
         const auto capitalization = read_prop(props.common_.capitalization_);
         validate(purpose);
@@ -290,6 +331,7 @@ struct InputPropsAccess {
         state.controlled = props.common_.value_.has_value();
         state.size = size;
         state.status = status;
+        state.variant = variant;
         state.disabled = disabled;
         state.read_only = read_only;
         state.password = props.password_visible_.has_value();
@@ -378,6 +420,7 @@ struct InputPropsAccess {
             if (auto* current = owner.host_->components().state<InputState>(component)) {
                 const bool was_focused = current->focused;
                 current->focused = focus.focused;
+                current->focus_visible = focus.focus_visible;
                 if (!focus.focused) {
                     current->caret_blink.stop();
                     current->selecting_pointer.reset();
@@ -550,6 +593,16 @@ struct InputPropsAccess {
             current.status = value;
             owner.invalidate(current.mounted.component, runtime::DirtyFlags::Material);
         });
+        connect(props.common_.variant_, [](auto& owner, auto& current, InputVariant value) {
+            validate(value);
+            if (current.variant != value) {
+                current.variant = value;
+                owner.update_theme(current.mounted.component);
+                if (const auto compact = current.compact_context.lock()) {
+                    compact->refresh();
+                }
+            }
+        });
         const auto eligibility = [](auto& owner, auto& current) {
             const auto component = current.mounted.component;
             if (current.disabled || current.read_only) {
@@ -678,18 +731,20 @@ struct InputPropsAccess {
                     const auto& theme = owner.host_->components().theme_scope(component)->snapshot();
                     const auto bounds = translated_bounds(owner.host_->nodes(), current.mounted.node);
                     const auto& tokens = derive_input_tokens(theme);
-                    return CompactBorder{.shape = {bounds, std::clamp(tokens.size(current.size).border_radius, 0.0F,
-                                                                      0.5F * std::min(bounds.width, bounds.height))},
-                                         .corners = current.compact->corners,
-                                         .color = current.transition->value().colors[1],
-                                         .width = current.layout.border_width,
-                                         .priority = current.disabled            ? 0
-                                                     : current.hovering_pointers ? 4
-                                                     : current.focused           ? 3
-                                                                                 : 2,
-                                         .clip = current.container_clip
-                                                     ? std::optional{graphics::EffectClip{1, *current.container_clip}}
-                                                     : std::nullopt};
+                    return CompactBorder{
+                        .shape = {bounds, std::clamp(tokens.size(current.size).border_radius, 0.0F,
+                                                     0.5F * std::min(bounds.width, bounds.height))},
+                        .corners = current.compact->corners,
+                        .color = current.transition->value().colors[1],
+                        .width = current.variant == InputVariant::Outlined || current.variant == InputVariant::Filled
+                                     ? current.layout.border_width
+                                     : 0.0F,
+                        .priority = current.disabled            ? 0
+                                    : current.hovering_pointers ? 4
+                                    : current.focused           ? 3
+                                                                : 2,
+                        .clip = current.container_clip ? std::optional{graphics::EffectClip{1, *current.container_clip}}
+                                                       : std::nullopt};
                 },
                 &host.surfaces());
         }
@@ -1153,6 +1208,10 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     model.border_width = tokens.border_width;
     model.padding_inline = size_tokens.padding_inline;
     model.padding_block = size_tokens.padding_block;
+    if (state->variant == InputVariant::Borderless || state->variant == InputVariant::Underlined) {
+        model.border_width = 0;
+        model.padding_block += tokens.border_width;
+    }
     model.gap = tokens.affix_padding;
     runtime::SemanticTypography typography = state->inherited_typography.value_or(runtime::SemanticTypography{
         theme.text().font_family, theme.text().font_weight, false, size_tokens.font_size, size_tokens.line_height});
@@ -1313,6 +1372,14 @@ std::optional<std::array<bool, 4>> InputComponentHost::compact_corners(runtime::
     return state->compact ? std::optional{state->compact->corners} : std::nullopt;
 }
 
+InputVariant InputComponentHost::variant(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->variant;
+}
+
 const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId component) const {
     const auto* state = host_->components().state<InputState>(component);
     if (!state) {
@@ -1435,12 +1502,11 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         const auto& theme = host_->components().theme_scope(mounted.component)->snapshot();
         const auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
         state->next_container_clip = clip;
-        const float border =
-            std::min(state->layout.border_width, 0.5F * std::min(root_bounds.width, root_bounds.height));
         const auto theme_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         const auto& tokens = derive_input_tokens(theme);
-        const float radius = tokens.size(state->size).border_radius;
+        const float border = std::min(tokens.border_width, 0.5F * std::min(root_bounds.width, root_bounds.height));
+        const float radius = state->variant == InputVariant::Underlined ? 0.0F : tokens.size(state->size).border_radius;
         const auto visual = resolve_visuals(*state, tokens);
         record_phase(theme_started, sync_profile_.theme_nanoseconds);
         const auto& presentation = state->transition->value();
@@ -1456,7 +1522,11 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                                                         shadow_colors,
                                                         presentation.shadow_opacity,
                                                         state->compact ? state->compact->corners
-                                                                       : std::array{true, true, true, true}};
+                                                                       : std::array{true, true, true, true},
+                                                        state->variant,
+                                                        visual.border,
+                                                        tokens.focus_width,
+                                                        state->focus_visible && !state->disabled};
         if (state->container_presentation != next_container) {
             const std::size_t stride = state->compact ? 4 : 1;
             for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
@@ -1474,6 +1544,29 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 effect.geometry.ancestor_clip = graphics::EffectClip{1, clip};
                 effect.material = {layer == input_background_layer ? presentation.colors[0] : presentation.colors[1],
                                    layer == input_border_layer || layer == input_background_layer ? 1.0F : 0.0F, true};
+                if (layer == input_border_layer && state->variant == InputVariant::Borderless) {
+                    effect.material.opacity = 0;
+                }
+                if (layer == input_background_layer && state->variant != InputVariant::Outlined) {
+                    effect.geometry.shape = {
+                        root_bounds, std::clamp(radius, 0.0F, 0.5F * std::min(root_bounds.width, root_bounds.height))};
+                    if (state->variant == InputVariant::Underlined) {
+                        effect.geometry.shape.rect.height = std::max(0.0F, root_bounds.height - border);
+                    }
+                }
+                if (layer == input_border_layer && state->variant == InputVariant::Underlined) {
+                    effect.geometry.shape = {
+                        {root_bounds.x, root_bounds.y + root_bounds.height - border, root_bounds.width, border}, 0};
+                } else if (layer == input_border_layer && state->variant == InputVariant::Filled) {
+                    effect.geometry.shape = {
+                        {root_bounds.x + border, root_bounds.y + border, root_bounds.width - 2 * border,
+                         root_bounds.height - 2 * border},
+                        std::clamp(radius - border, 0.0F,
+                                   0.5F * std::min(root_bounds.width - 2 * border, root_bounds.height - 2 * border))};
+                    effect.geometry.kind = graphics::RoundedEffectKind::outline;
+                    effect.geometry.outline_width = std::max(0.001F, border);
+                    effect.material.opacity = border > 0 ? 1.0F : 0.0F;
+                }
                 if (outer || inner) {
                     const auto slot = outer ? layer : layer - input_inset_shadow_layer;
                     const auto source = input_shadow_layer_capacity - 1 - slot;
@@ -1487,11 +1580,23 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                         }
                     }
                 } else if (layer == input_focus_layer) {
-                    // Outlined Input uses activeShadow for either focus modality;
-                    // outline: 0 in pinned variants.ts. Keep the reserved layer hidden.
+                    // A -lineWidth CSS outline offset is an inset shape whose
+                    // positive outline reaches lineWidthFocus outside that shape.
+                    const float focus_inset = state->variant == InputVariant::Borderless ? border : 0.0F;
+                    effect.geometry.shape = {{root_bounds.x + focus_inset, root_bounds.y + focus_inset,
+                                              root_bounds.width - 2 * focus_inset,
+                                              root_bounds.height - 2 * focus_inset},
+                                             std::clamp(radius - focus_inset, 0.0F,
+                                                        0.5F * std::min(root_bounds.width - 2 * focus_inset,
+                                                                        root_bounds.height - 2 * focus_inset))};
                     effect.geometry.kind = graphics::RoundedEffectKind::outline;
-                    effect.geometry.outline_width = std::max(0.001F, 3 * tokens.border_width);
-                    effect.geometry.outline_offset = 1;
+                    effect.geometry.outline_width = std::max(0.001F, tokens.focus_width);
+                    effect.geometry.outline_offset = 0;
+                    effect.material.color = visual.border;
+                    effect.material.opacity = state->variant == InputVariant::Borderless && state->focus_visible &&
+                                                      !state->disabled && tokens.focus_width > 0
+                                                  ? 1.0F
+                                                  : 0.0F;
                 }
                 std::array<graphics::RoundedEffectInstance, 4> corners;
                 if (state->compact) {
@@ -1506,7 +1611,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                         for (auto& corner : corners) {
                             corner.material = effect.material;
                         }
-                    } else if (layer == input_focus_layer) {
+                    } else if (effect.geometry.kind == graphics::RoundedEffectKind::outline) {
                         corners = graphics::make_corner_outline_effects(
                             effect.geometry.shape, state->compact->corners, effect.geometry.outline_width,
                             effect.geometry.outline_offset, effect.material.color, effect.material.opacity, {},
@@ -1595,9 +1700,17 @@ bool InputComponentHost::synchronize_auxiliary_fragments() {
         }
         std::array<graphics::SceneDrawCommand, input_effect_layer_count * 4> container;
         std::size_t count{};
-        for (const auto effect : state->container_effects) {
-            if (const auto index = host_->rounded_effects().packed_index(effect)) {
-                container[count++] = {graphics::SceneDrawKind::rounded_effect, *index, 1};
+        const auto stride = state->compact ? 4U : 1U;
+        for (std::size_t layer = 0; layer < input_effect_layer_count; ++layer) {
+            const auto paint_layer =
+                state->variant == InputVariant::Filled && layer == input_border_layer       ? input_background_layer
+                : state->variant == InputVariant::Filled && layer == input_background_layer ? input_border_layer
+                                                                                            : layer;
+            for (std::size_t corner = 0; corner < stride; ++corner) {
+                const auto effect = state->container_effects[paint_layer * stride + corner];
+                if (const auto index = host_->rounded_effects().packed_index(effect)) {
+                    container[count++] = {graphics::SceneDrawKind::rounded_effect, *index, 1};
+                }
             }
         }
         const auto commands = std::span{container}.first(count);

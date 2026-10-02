@@ -26,6 +26,14 @@ purpose 支持 Text、Name、Email、Username、Number；capitalization 支持 N
 
 系统输入端口是否提供对应键盘/纠正 UI 取决于实际平台；端口合同测试不能替代真实 OS 输入证据。
 
+## 变体与主题
+
+三个单行组件的 `.variant(Prop<InputVariant>)` 支持 Outlined、Filled、Borderless、Underlined，默认 Outlined。三个尺寸保持等高；Underlined 只画底边，Borderless 在键盘焦点时显示 outline。Filled 使用独立背景与边框，半透明背景不会重复混色。disabled 与显式 Error/Warning 状态通过同一 Theme 推导。
+
+InputTokenOverride 可覆盖 Filled 普通/hover 背景、Error/Warning 背景和文字色以及 focus_width。颜色更新只修改 retained material；变体更新保持 editor、选择、IME 会话、scene slot 与内容挂载身份。Compact 在两侧都有边框时合并接缝，无边框变体不产生虚假接缝。
+
+Password 透传变体。Search 使用 Compact 连接输入框与 action，非 Outlined 变体使用 Text action；Filled action 背景和 Underlined action 底边在操作阶段继续补齐。
+
 ## 收尾进度
 
 052 正在补单行家族的变体、统计及操作配置，任务和验收记录位于对应 change。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

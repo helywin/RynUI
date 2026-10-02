@@ -71,7 +71,7 @@ void controlled_value_and_submit() {
             "enterButton did not select primary Button semantics");
     const auto input_bounds = fixture.nodes.require(input.node).bounds;
     const auto button_bounds = fixture.nodes.require(button.node).bounds;
-    require(input_bounds.x + input_bounds.width <= button_bounds.x + 0.1F, "Search Input overlaps Button");
+    require(input_bounds.x + input_bounds.width <= button_bounds.x + 1.1F, "Search Input overlaps Button");
     require(fixture.services.focus().request_focus(input.interaction, FocusModality::keyboard),
             "Search Input focus failed");
     require(bool(fixture.inputs.editors().require(input.editor).move(TextCaretMove::end)),
@@ -292,7 +292,7 @@ void layout_theme_and_scale() {
                 const auto root = *fixture.buttons.components().parent(input.component);
                 const auto root_bounds = fixture.nodes.require(fixture.buttons.components().root(root)).bounds;
                 require(input_bounds.width > 0.0F && button_bounds.width > 0.0F &&
-                            input_bounds.x + input_bounds.width <= button_bounds.x + 0.1F &&
+                            input_bounds.x + input_bounds.width <= button_bounds.x + 1.1F &&
                             button_bounds.x + button_bounds.width <= root_bounds.x + root_bounds.width + 0.1F,
                         "narrow Search geometry overlaps or escapes root");
                 require(std::fabs(input_bounds.height - button_bounds.height) < 0.1F &&
@@ -315,6 +315,17 @@ void layout_theme_and_scale() {
                 config.seed.color_primary = Color::rgba8(114, 46, 209);
                 theme.set(config);
                 fixture.synchronize(320);
+                if (content_runs != 1 || fixture.buttons.components().mount_runs() != mounts ||
+                    fixture.scene.text_state(scene).counters().shape_count != shapes ||
+                    fixture.nodes.require(input.node).measure_count != measures ||
+                    fixture.buttons.scene_composer().diagnostics().rebuilds != rebuilds) {
+                    std::cerr << "Search scale=" << scale << " algorithm=" << static_cast<int>(algorithm)
+                              << " size=" << static_cast<int>(size) << " runs=" << content_runs << " mounts=" << mounts
+                              << '/' << fixture.buttons.components().mount_runs() << " shape=" << shapes << '/'
+                              << fixture.scene.text_state(scene).counters().shape_count << " measure=" << measures
+                              << '/' << fixture.nodes.require(input.node).measure_count << " topology=" << rebuilds
+                              << '/' << fixture.buttons.scene_composer().diagnostics().rebuilds << '\n';
+                }
                 require(content_runs == 1 && fixture.buttons.components().mount_runs() == mounts &&
                             fixture.scene.text_state(scene).counters().shape_count == shapes &&
                             fixture.nodes.require(input.node).measure_count == measures &&

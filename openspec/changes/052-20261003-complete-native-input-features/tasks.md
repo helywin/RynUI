@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：四变体与 Theme
 
-- [ ] 2.1 实现四变体及对应 Token/override/dirty dependency、focus-visible、Underlined 底边和 Compact 接缝，Password/Search 透传；补 Token/retained geometry/不重建/尺寸/Theme/status 合同测试与文档，在上述 common preset Debug/Release 运行 input/theme/space_compact/search 相关 CTest，格式及规格校验通过后提交。
+- [x] 2.1 实现四变体及对应 Token/override/dirty dependency、focus-visible、Underlined 底边和 Compact 接缝，Password/Search 透传；补 Token/retained geometry/不重建/尺寸/Theme/status 合同测试与文档，在上述 common preset Debug/Release 运行 input/theme/space_compact/search 相关 CTest，格式及规格校验通过后提交。
 
 ## 3. 平台通用：统计与单次编辑裁剪
 

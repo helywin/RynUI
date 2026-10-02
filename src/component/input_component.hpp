@@ -105,6 +105,7 @@ public:
     [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
     [[nodiscard]] InputStatus status(runtime::ComponentId) const;
     [[nodiscard]] ControlSize size(runtime::ComponentId) const;
+    [[nodiscard]] InputVariant variant(runtime::ComponentId) const;
     [[nodiscard]] std::optional<std::array<bool, 4>> compact_corners(runtime::ComponentId) const;
     [[nodiscard]] const text::TextCaretMap& caret_map(runtime::ComponentId) const;
     // Internal deadline injection seam for controlled-clock/lifecycle tests.

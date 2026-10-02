@@ -404,7 +404,7 @@ void CompactContext::publish_seams() {
                     continue;
                 }
                 const auto& winner = a.priority > b.priority ? a : b;
-                if (!winner.visible || winner.width <= 0) {
+                if (!winner.visible || a.width <= 0 || b.width <= 0) {
                     continue;
                 }
                 if (winner.dashed) {

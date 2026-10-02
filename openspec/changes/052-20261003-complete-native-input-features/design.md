@@ -14,11 +14,13 @@
 
 ### 1. 共用 typed 属性与版本固定的变体 Token
 
-提取 CRTP InputPropsBase，InputProps、PasswordProps、SearchProps 返回各自类型的 fluent API，保留原方法和默认值。新增 InputVariant 及 InputCountOptions 等值类型；静态 formatter 单独存储，reactive 配置保持可比较。InputRef 使用共享引用状态及 owner-thread 检查，宿主安装带 component generation 的函数并在 cleanup 清空。
+提取 CRTP InputPropsBase，InputProps、PasswordProps、SearchProps 返回各自类型的 fluent API，保留原方法和默认值。复用现有 InputVariant，新增 InputCountOptions 等值类型；静态 formatter 单独存储，reactive 配置保持可比较。InputRef 使用共享引用状态及 owner-thread 检查，宿主安装带 component generation 的函数并在 cleanup 清空。
 
 变体颜色在 theme/input_tokens 与 ThemeSnapshot 推导处集中计算，公开 InputTokenOverride 提供必要的 Filled/状态/焦点值；新字段加入 Theme dirty 捕获。保留现有 RoundedEffect 容量，Underlined 底边走同一逻辑 effect，Borderless keyboard outline 使用保留 focus layer。不同变体保留等高 padding，Compact seam 只发布实际可见边框，Search 默认组成 Compact 并将 variant 投影到 action Button，遵循固定 6.6.5 variants/Search 样式。不使用组件私有 GPU 通道。
 
 备选：按变体重建组件会失去选择/IME；在组件直接读取全局 Ant seed 会绕过局部 Token，所以均不采用。
+
+实施发现：Compact 的裁剪角落可能没有 packed effect index。RoundedEffectStore 对此类 effect 的纯 material 更新只保留最新值，不请求 compact；后续 geometry/clip/visible 变化负责重打包。否则 Search 的主题色变更会错误触发全场景 topology 更新。独立 store 合同覆盖三类不可见 effect 的 material 保留与重新出现。
 
 ### 2. 统计内容与编辑事务分离
 

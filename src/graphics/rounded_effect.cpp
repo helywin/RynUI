@@ -460,9 +460,9 @@ bool RoundedEffectStore::update_material(RoundedEffectId id, RoundedEffectMateri
     const bool visibility_changed = drawable(*slot.instance) != drawable(candidate);
     slot.instance->material = material;
     ++diagnostics_.material_updates;
-    if (visibility_changed || !slot.packed_index.has_value()) {
+    if (visibility_changed) {
         compact_dirty_ = true;
-    } else {
+    } else if (slot.packed_index.has_value()) {
         packed_instances_[*slot.packed_index].material = material;
         mark_dirty(material_dirty_ranges_, {*slot.packed_index, 1});
     }
