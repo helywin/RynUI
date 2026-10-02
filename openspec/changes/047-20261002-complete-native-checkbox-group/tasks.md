@@ -16,7 +16,7 @@
 
 ### Windows
 
-- [ ] 4.1 windows-msvc Debug/Release 完整 build 与受影响 CTest，实际 SDL/D3D12/DXIL、系统字体与 pointer/Space/Tab/ref/动态选项/controlled/disabled/RTL/主题/wave/resize/失活/销毁验收；系统 DPI 和 1/1.25/1.5/2 render scale，保存 GPU readback PNG、日志与 EXE/截图哈希核验，无动画 deadline 或闲置持续提交。
+- [x] 4.1 windows-msvc Debug/Release 完整 build 与受影响 CTest，实际 SDL/D3D12/DXIL、系统字体与 pointer/Space/Tab/ref/动态选项/controlled/disabled/RTL/主题/wave/resize/失活/销毁验收；系统 DPI 和 1/1.25/1.5/2 render scale，保存 GPU readback PNG、日志与 EXE/截图哈希核验，无动画 deadline 或闲置持续提交。受影响 CTest 各 15/15（Debug 28.45s、Release 7.16s）；实际十次窗口运行、210 张 readback、每次 14 个规范化输入、42 次显式 capture 提交和三个零请求/零提交 idle polls 均通过。修复完整 Gallery Debug 栈压力后重新完成构建、Gallery 回归和 Debug/Release 真窗口 smoke，再用最终 EXE 重跑十次验收并核验哈希。见 evidence/windows/README.md 与 runs.json。
 
 ### Linux
 

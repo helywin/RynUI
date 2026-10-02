@@ -1,0 +1,328 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/56] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_texture_upload.exe
+[2/56] Linking CXX executable tests\portable\Debug\rynui_portable_prop.exe
+[3/56] Linking CXX executable tests\portable\Debug\rynui_portable_quad_primitive.exe
+[4/56] Linking CXX executable tests\portable\Debug\rynui_portable_texture_upload_batch_layout.exe
+[5/56] Linking CXX executable tests\portable\Debug\rynui_portable_logical_scene_packing.exe
+[6/56] Linking CXX executable tests\portable\Debug\rynui_portable_text_engine.exe
+[7/56] Linking CXX executable tests\portable\Debug\rynui_portable_font_runtime.exe
+[8/56] Linking CXX executable tests\portable\Debug\rynui_portable_text_state.exe
+[9/56] Linking CXX executable tests\portable\Debug\rynui_portable_text_scene_service.exe
+[10/56] Linking CXX executable tests\portable\Debug\rynui_portable_text_render_integration.exe
+[11/56] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_atlas.exe
+[12/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_math.exe
+[13/56] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_gpu_resources.exe
+[14/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_store.exe
+[15/56] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_scene.exe
+[16/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_gpu_resources.exe
+[17/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_gpu.exe
+[18/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_scene.exe
+[19/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_interaction_registry.dir\Debug\__\interaction_registry_tests.cpp.obj
+[20/56] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_allocation.exe
+[21/56] Linking CXX executable tests\portable\Debug\rynui_portable_divider_public_api.exe
+[22/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_pointer_route.dir\Debug\__\pointer_route_tests.cpp.obj
+[23/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_binding_quad_integration.dir\Debug\__\binding_quad_integration_tests.cpp.obj
+[24/56] Linking CXX executable tests\portable\Debug\rynui_portable_interaction_registry.exe
+[25/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_window_overlay.dir\Debug\__\window_overlay_tests.cpp.obj
+D:\code\RynUI\tests\window_overlay_tests.cpp(71): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[26/56] Linking CXX executable tests\portable\Debug\rynui_portable_binding_quad_integration.exe
+[27/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_scene_service.dir\Debug\__\button_scene_service_tests.cpp.obj
+[28/56] Linking CXX executable tests\portable\Debug\rynui_portable_pointer_route.exe
+[29/56] Linking CXX executable tests\portable\Debug\rynui_portable_switch_public_api.exe
+[30/56] Linking CXX executable tests\portable\Debug\rynui_portable_window_overlay.exe
+[31/56] Linking CXX executable tests\portable\Debug\rynui_portable_button_scene_service.exe
+[32/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component_frame.dir\Debug\__\text_component_frame_tests.cpp.obj
+[33/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_gpu.dir\Debug\__\input_gpu_tests.cpp.obj
+[34/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_scene_allocation.dir\Debug\__\input_scene_allocation_benchmark.cpp.obj
+[35/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_interaction.dir\Debug\__\typography_interaction_tests.cpp.obj
+[36/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_caret_blink.dir\Debug\__\input_caret_blink_tests.cpp.obj
+[37/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_divider_component.dir\Debug\__\divider_component_tests.cpp.obj
+[38/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_component.dir\Debug\__\typography_component_tests.cpp.obj
+[39/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_component.dir\Debug\__\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[40/56] Linking CXX executable tests\portable\Debug\rynui_portable_text_component_frame.exe
+[41/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_tooltip_component.dir\Debug\__\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[42/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_scene_backend.dir\Debug\__\scene_backend_tests.cpp.obj
+[43/56] Linking CXX executable tests\portable\Debug\rynui_portable_input_gpu.exe
+[44/56] Linking CXX executable tests\portable\Debug\rynui_portable_input_scene_allocation.exe
+[45/56] Linking CXX executable tests\portable\Debug\rynui_portable_typography_interaction.exe
+[46/56] Linking CXX executable tests\portable\Debug\rynui_portable_input_caret_blink.exe
+[47/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_slider_component.dir\Debug\__\slider_component_tests.cpp.obj
+[48/56] Linking CXX executable tests\portable\Debug\rynui_portable_typography_component.exe
+[49/56] Linking CXX executable tests\portable\Debug\rynui_portable_divider_component.exe
+[50/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_component.dir\Debug\__\button_component_tests.cpp.obj
+[51/56] Linking CXX executable tests\portable\Debug\rynui_portable_input_component.exe
+[52/56] Linking CXX executable tests\portable\Debug\rynui_portable_tooltip_component.exe
+[53/56] Linking CXX executable tests\portable\Debug\rynui_portable_scene_backend.exe
+[54/56] Linking CXX executable tests\portable\Debug\rynui_portable_slider_component.exe
+[55/56] Linking CXX executable tests\portable\Debug\rynui_portable_button_component.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.portable.prop
+ 1/48 Test  #1: rynui.portable.prop ...........................   Passed    0.01 sec
+      Start  2: rynui.portable.glyph_texture_upload
+ 2/48 Test  #2: rynui.portable.glyph_texture_upload ...........   Passed    0.01 sec
+      Start  3: rynui.portable.texture_upload_batch_layout
+ 3/48 Test  #3: rynui.portable.texture_upload_batch_layout ....   Passed    0.01 sec
+      Start  4: rynui.portable.logical_scene_packing
+ 4/48 Test  #4: rynui.portable.logical_scene_packing ..........   Passed    0.01 sec
+      Start  5: rynui.portable.quad_primitive
+ 5/48 Test  #5: rynui.portable.quad_primitive .................   Passed    0.02 sec
+      Start  6: rynui.portable.binding_quad_integration
+ 6/48 Test  #6: rynui.portable.binding_quad_integration .......   Passed    0.01 sec
+      Start  7: rynui.portable.button_scene_service
+ 7/48 Test  #7: rynui.portable.button_scene_service ...........   Passed    0.02 sec
+      Start  8: rynui.portable.font_runtime
+ 8/48 Test  #8: rynui.portable.font_runtime ...................   Passed    0.05 sec
+      Start  9: rynui.portable.text_engine
+ 9/48 Test  #9: rynui.portable.text_engine ....................   Passed    0.12 sec
+      Start 10: rynui.portable.text_state
+10/48 Test #10: rynui.portable.text_state .....................   Passed    0.07 sec
+      Start 11: rynui.portable.text_scene_service
+11/48 Test #11: rynui.portable.text_scene_service .............   Passed    0.24 sec
+      Start 12: rynui.portable.text_render_integration
+12/48 Test #12: rynui.portable.text_render_integration ........   Passed    0.05 sec
+      Start 13: rynui.portable.glyph_atlas
+13/48 Test #13: rynui.portable.glyph_atlas ....................   Passed    0.03 sec
+      Start 14: rynui.portable.glyph_scene
+14/48 Test #14: rynui.portable.glyph_scene ....................   Passed    0.36 sec
+      Start 15: rynui.portable.glyph_gpu_resources
+15/48 Test #15: rynui.portable.glyph_gpu_resources ............   Passed    0.01 sec
+      Start 16: rynui.portable.rounded_effect_math
+16/48 Test #16: rynui.portable.rounded_effect_math ............   Passed    0.02 sec
+      Start 17: rynui.portable.rounded_effect_store
+17/48 Test #17: rynui.portable.rounded_effect_store ...........   Passed    0.01 sec
+      Start 18: rynui.portable.rounded_effect_scene
+18/48 Test #18: rynui.portable.rounded_effect_scene ...........   Passed    0.01 sec
+      Start 19: rynui.portable.rounded_effect_gpu
+19/48 Test #19: rynui.portable.rounded_effect_gpu .............   Passed    0.01 sec
+      Start 20: rynui.portable.rounded_effect_gpu_resources
+20/48 Test #20: rynui.portable.rounded_effect_gpu_resources ...   Passed    0.01 sec
+      Start 21: rynui.portable.input_component
+21/48 Test #21: rynui.portable.input_component ................   Passed    2.06 sec
+      Start 22: rynui.portable.input_gpu
+22/48 Test #22: rynui.portable.input_gpu ......................   Passed    0.15 sec
+      Start 23: rynui.portable.input_caret_blink
+23/48 Test #23: rynui.portable.input_caret_blink ..............   Passed    0.06 sec
+      Start 24: rynui.portable.text_component
+24/48 Test #24: rynui.portable.text_component .................   Passed    0.49 sec
+      Start 25: rynui.portable.button_component
+25/48 Test #25: rynui.portable.button_component ...............   Passed    1.30 sec
+      Start 26: rynui.portable.selection_component
+26/48 Test #26: rynui.portable.selection_component ............   Passed    0.60 sec
+      Start 27: rynui.portable.switch_features
+27/48 Test #27: rynui.portable.switch_features ................   Passed    0.32 sec
+      Start 28: rynui.portable.switch_public_api
+28/48 Test #28: rynui.portable.switch_public_api ..............   Passed    0.02 sec
+      Start 29: rynui.portable.checkbox_group
+29/48 Test #29: rynui.portable.checkbox_group .................   Passed    0.46 sec
+      Start 30: rynui.portable.checkbox_public_api
+30/48 Test #30: rynui.portable.checkbox_public_api ............   Passed    0.01 sec
+      Start 31: rynui.portable.theme_algorithm
+31/48 Test #31: rynui.portable.theme_algorithm ................   Passed    0.10 sec
+      Start 32: rynui.portable.theme_runtime
+32/48 Test #32: rynui.portable.theme_runtime ..................   Passed    0.09 sec
+      Start 33: rynui.portable.slider_component
+33/48 Test #33: rynui.portable.slider_component ...............   Passed    1.49 sec
+      Start 34: rynui.portable.radio_component
+34/48 Test #34: rynui.portable.radio_component ................   Passed    0.55 sec
+      Start 35: rynui.portable.typography_component
+35/48 Test #35: rynui.portable.typography_component ...........   Passed    0.92 sec
+      Start 36: rynui.portable.typography_interaction
+36/48 Test #36: rynui.portable.typography_interaction .........   Passed    0.24 sec
+      Start 37: rynui.portable.divider_component
+37/48 Test #37: rynui.portable.divider_component ..............   Passed    0.69 sec
+      Start 38: rynui.portable.divider_public_api
+38/48 Test #38: rynui.portable.divider_public_api .............   Passed    0.01 sec
+      Start 39: rynui.portable.text_component_frame
+39/48 Test #39: rynui.portable.text_component_frame ...........   Passed    0.06 sec
+      Start 40: rynui.portable.frame_scheduler
+40/48 Test #40: rynui.portable.frame_scheduler ................   Passed    0.01 sec
+      Start 41: rynui.portable.window_overlay
+41/48 Test #41: rynui.portable.window_overlay .................   Passed    0.02 sec
+      Start 42: rynui.portable.tooltip_component
+42/48 Test #42: rynui.portable.tooltip_component ..............   Passed    0.65 sec
+      Start 43: rynui.portable.interaction_registry
+43/48 Test #43: rynui.portable.interaction_registry ...........   Passed    0.03 sec
+      Start 44: rynui.portable.pointer_route
+44/48 Test #44: rynui.portable.pointer_route ..................   Passed    0.03 sec
+      Start 45: rynui.portable.rounded_effect_allocation
+45/48 Test #45: rynui.portable.rounded_effect_allocation ......   Passed    0.01 sec
+      Start 46: rynui.portable.input_scene_allocation
+46/48 Test #46: rynui.portable.input_scene_allocation .........   Passed  114.20 sec
+      Start 47: rynui.portable.scene_backend
+47/48 Test #47: rynui.portable.scene_backend ..................   Passed    0.33 sec
+      Start 48: rynui.portable.backend_boundaries
+48/48 Test #48: rynui.portable.backend_boundaries .............   Passed    1.34 sec
+
+100% tests passed out of 48
+
+Total Test time (real) = 127.39 sec
+[0/2] Re-checking globbed directories...
+[1/56] Linking CXX executable tests\portable\Release\rynui_portable_logical_scene_packing.exe
+[2/56] Linking CXX executable tests\portable\Release\rynui_portable_prop.exe
+[3/56] Linking CXX executable tests\portable\Release\rynui_portable_glyph_texture_upload.exe
+[4/56] Linking CXX executable tests\portable\Release\rynui_portable_texture_upload_batch_layout.exe
+[5/56] Linking CXX executable tests\portable\Release\rynui_portable_quad_primitive.exe
+[6/56] Linking CXX executable tests\portable\Release\rynui_portable_text_state.exe
+[7/56] Linking CXX executable tests\portable\Release\rynui_portable_font_runtime.exe
+[8/56] Linking CXX executable tests\portable\Release\rynui_portable_text_scene_service.exe
+[9/56] Linking CXX executable tests\portable\Release\rynui_portable_text_engine.exe
+[10/56] Linking CXX executable tests\portable\Release\rynui_portable_glyph_atlas.exe
+[11/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_store.exe
+[12/56] Linking CXX executable tests\portable\Release\rynui_portable_text_render_integration.exe
+[13/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_scene.exe
+[14/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_math.exe
+[15/56] Linking CXX executable tests\portable\Release\rynui_portable_glyph_scene.exe
+[16/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu.exe
+[17/56] Linking CXX executable tests\portable\Release\rynui_portable_glyph_gpu_resources.exe
+[18/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu_resources.exe
+[19/56] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_allocation.exe
+[20/56] Linking CXX executable tests\portable\Release\rynui_portable_divider_public_api.exe
+[21/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_interaction_registry.dir\Release\__\interaction_registry_tests.cpp.obj
+[22/56] Linking CXX executable tests\portable\Release\rynui_portable_switch_public_api.exe
+[23/56] Linking CXX executable tests\portable\Release\rynui_portable_interaction_registry.exe
+[24/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_pointer_route.dir\Release\__\pointer_route_tests.cpp.obj
+[25/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_binding_quad_integration.dir\Release\__\binding_quad_integration_tests.cpp.obj
+[26/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_window_overlay.dir\Release\__\window_overlay_tests.cpp.obj
+D:\code\RynUI\tests\window_overlay_tests.cpp(71): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[27/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_scene_service.dir\Release\__\button_scene_service_tests.cpp.obj
+[28/56] Linking CXX executable tests\portable\Release\rynui_portable_binding_quad_integration.exe
+[29/56] Linking CXX executable tests\portable\Release\rynui_portable_pointer_route.exe
+[30/56] Linking CXX executable tests\portable\Release\rynui_portable_window_overlay.exe
+[31/56] Linking CXX executable tests\portable\Release\rynui_portable_button_scene_service.exe
+[32/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component_frame.dir\Release\__\text_component_frame_tests.cpp.obj
+[33/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_gpu.dir\Release\__\input_gpu_tests.cpp.obj
+[34/56] Linking CXX executable tests\portable\Release\rynui_portable_text_component_frame.exe
+[35/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_scene_allocation.dir\Release\__\input_scene_allocation_benchmark.cpp.obj
+[36/56] Linking CXX executable tests\portable\Release\rynui_portable_input_gpu.exe
+[37/56] Linking CXX executable tests\portable\Release\rynui_portable_input_scene_allocation.exe
+[38/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_divider_component.dir\Release\__\divider_component_tests.cpp.obj
+[39/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_interaction.dir\Release\__\typography_interaction_tests.cpp.obj
+[40/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_component.dir\Release\__\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[41/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_caret_blink.dir\Release\__\input_caret_blink_tests.cpp.obj
+[42/56] Linking CXX executable tests\portable\Release\rynui_portable_divider_component.exe
+[43/56] Linking CXX executable tests\portable\Release\rynui_portable_typography_interaction.exe
+[44/56] Linking CXX executable tests\portable\Release\rynui_portable_input_caret_blink.exe
+[45/56] Linking CXX executable tests\portable\Release\rynui_portable_input_component.exe
+[46/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_scene_backend.dir\Release\__\scene_backend_tests.cpp.obj
+[47/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_tooltip_component.dir\Release\__\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[48/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_component.dir\Release\__\typography_component_tests.cpp.obj
+[49/56] Linking CXX executable tests\portable\Release\rynui_portable_scene_backend.exe
+[50/56] Linking CXX executable tests\portable\Release\rynui_portable_tooltip_component.exe
+[51/56] Linking CXX executable tests\portable\Release\rynui_portable_typography_component.exe
+[52/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_slider_component.dir\Release\__\slider_component_tests.cpp.obj
+[53/56] Linking CXX executable tests\portable\Release\rynui_portable_slider_component.exe
+[54/56] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_component.dir\Release\__\button_component_tests.cpp.obj
+[55/56] Linking CXX executable tests\portable\Release\rynui_portable_button_component.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.portable.prop
+ 1/48 Test  #1: rynui.portable.prop ...........................   Passed    0.01 sec
+      Start  2: rynui.portable.glyph_texture_upload
+ 2/48 Test  #2: rynui.portable.glyph_texture_upload ...........   Passed    0.01 sec
+      Start  3: rynui.portable.texture_upload_batch_layout
+ 3/48 Test  #3: rynui.portable.texture_upload_batch_layout ....   Passed    0.01 sec
+      Start  4: rynui.portable.logical_scene_packing
+ 4/48 Test  #4: rynui.portable.logical_scene_packing ..........   Passed    0.01 sec
+      Start  5: rynui.portable.quad_primitive
+ 5/48 Test  #5: rynui.portable.quad_primitive .................   Passed    0.01 sec
+      Start  6: rynui.portable.binding_quad_integration
+ 6/48 Test  #6: rynui.portable.binding_quad_integration .......   Passed    0.01 sec
+      Start  7: rynui.portable.button_scene_service
+ 7/48 Test  #7: rynui.portable.button_scene_service ...........   Passed    0.02 sec
+      Start  8: rynui.portable.font_runtime
+ 8/48 Test  #8: rynui.portable.font_runtime ...................   Passed    0.04 sec
+      Start  9: rynui.portable.text_engine
+ 9/48 Test  #9: rynui.portable.text_engine ....................   Passed    0.09 sec
+      Start 10: rynui.portable.text_state
+10/48 Test #10: rynui.portable.text_state .....................   Passed    0.05 sec
+      Start 11: rynui.portable.text_scene_service
+11/48 Test #11: rynui.portable.text_scene_service .............   Passed    0.15 sec
+      Start 12: rynui.portable.text_render_integration
+12/48 Test #12: rynui.portable.text_render_integration ........   Passed    0.03 sec
+      Start 13: rynui.portable.glyph_atlas
+13/48 Test #13: rynui.portable.glyph_atlas ....................   Passed    0.02 sec
+      Start 14: rynui.portable.glyph_scene
+14/48 Test #14: rynui.portable.glyph_scene ....................   Passed    0.27 sec
+      Start 15: rynui.portable.glyph_gpu_resources
+15/48 Test #15: rynui.portable.glyph_gpu_resources ............   Passed    0.02 sec
+      Start 16: rynui.portable.rounded_effect_math
+16/48 Test #16: rynui.portable.rounded_effect_math ............   Passed    0.01 sec
+      Start 17: rynui.portable.rounded_effect_store
+17/48 Test #17: rynui.portable.rounded_effect_store ...........   Passed    0.01 sec
+      Start 18: rynui.portable.rounded_effect_scene
+18/48 Test #18: rynui.portable.rounded_effect_scene ...........   Passed    0.01 sec
+      Start 19: rynui.portable.rounded_effect_gpu
+19/48 Test #19: rynui.portable.rounded_effect_gpu .............   Passed    0.01 sec
+      Start 20: rynui.portable.rounded_effect_gpu_resources
+20/48 Test #20: rynui.portable.rounded_effect_gpu_resources ...   Passed    0.01 sec
+      Start 21: rynui.portable.input_component
+21/48 Test #21: rynui.portable.input_component ................   Passed    1.32 sec
+      Start 22: rynui.portable.input_gpu
+22/48 Test #22: rynui.portable.input_gpu ......................   Passed    0.10 sec
+      Start 23: rynui.portable.input_caret_blink
+23/48 Test #23: rynui.portable.input_caret_blink ..............   Passed    0.04 sec
+      Start 24: rynui.portable.text_component
+24/48 Test #24: rynui.portable.text_component .................   Passed    0.33 sec
+      Start 25: rynui.portable.button_component
+25/48 Test #25: rynui.portable.button_component ...............   Passed    0.80 sec
+      Start 26: rynui.portable.selection_component
+26/48 Test #26: rynui.portable.selection_component ............   Passed    0.37 sec
+      Start 27: rynui.portable.switch_features
+27/48 Test #27: rynui.portable.switch_features ................   Passed    0.21 sec
+      Start 28: rynui.portable.switch_public_api
+28/48 Test #28: rynui.portable.switch_public_api ..............   Passed    0.01 sec
+      Start 29: rynui.portable.checkbox_group
+29/48 Test #29: rynui.portable.checkbox_group .................   Passed    0.31 sec
+      Start 30: rynui.portable.checkbox_public_api
+30/48 Test #30: rynui.portable.checkbox_public_api ............   Passed    0.02 sec
+      Start 31: rynui.portable.theme_algorithm
+31/48 Test #31: rynui.portable.theme_algorithm ................   Passed    0.03 sec
+      Start 32: rynui.portable.theme_runtime
+32/48 Test #32: rynui.portable.theme_runtime ..................   Passed    0.03 sec
+      Start 33: rynui.portable.slider_component
+33/48 Test #33: rynui.portable.slider_component ...............   Passed    0.99 sec
+      Start 34: rynui.portable.radio_component
+34/48 Test #34: rynui.portable.radio_component ................   Passed    0.36 sec
+      Start 35: rynui.portable.typography_component
+35/48 Test #35: rynui.portable.typography_component ...........   Passed    0.62 sec
+      Start 36: rynui.portable.typography_interaction
+36/48 Test #36: rynui.portable.typography_interaction .........   Passed    0.15 sec
+      Start 37: rynui.portable.divider_component
+37/48 Test #37: rynui.portable.divider_component ..............   Passed    0.35 sec
+      Start 38: rynui.portable.divider_public_api
+38/48 Test #38: rynui.portable.divider_public_api .............   Passed    0.02 sec
+      Start 39: rynui.portable.text_component_frame
+39/48 Test #39: rynui.portable.text_component_frame ...........   Passed    0.04 sec
+      Start 40: rynui.portable.frame_scheduler
+40/48 Test #40: rynui.portable.frame_scheduler ................   Passed    0.01 sec
+      Start 41: rynui.portable.window_overlay
+41/48 Test #41: rynui.portable.window_overlay .................   Passed    0.01 sec
+      Start 42: rynui.portable.tooltip_component
+42/48 Test #42: rynui.portable.tooltip_component ..............   Passed    0.45 sec
+      Start 43: rynui.portable.interaction_registry
+43/48 Test #43: rynui.portable.interaction_registry ...........   Passed    0.01 sec
+      Start 44: rynui.portable.pointer_route
+44/48 Test #44: rynui.portable.pointer_route ..................   Passed    0.01 sec
+      Start 45: rynui.portable.rounded_effect_allocation
+45/48 Test #45: rynui.portable.rounded_effect_allocation ......   Passed    0.01 sec
+      Start 46: rynui.portable.input_scene_allocation
+46/48 Test #46: rynui.portable.input_scene_allocation .........   Passed    4.98 sec
+      Start 47: rynui.portable.scene_backend
+47/48 Test #47: rynui.portable.scene_backend ..................   Passed    0.24 sec
+      Start 48: rynui.portable.backend_boundaries
+48/48 Test #48: rynui.portable.backend_boundaries .............   Passed    1.35 sec
+
+100% tests passed out of 48
+
+Total Test time (real) =  14.01 sec

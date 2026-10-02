@@ -1,0 +1,1148 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/2] Re-running CMake...
+-- Resolving SDL3 3.4.14 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_SDL3 to prepared source.
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE)
+-- Could NOT find LibUSB (missing: LibUSB_LIBRARY LibUSB_INCLUDE_PATH) (found version "LibUSB_VERSION-NOTFOUND")
+--
+-- SDL3 was configured with the following options:
+--
+-- Platform: Windows-10.0.26300
+-- 64-bit:   TRUE
+-- Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+-- Revision: SDL-release-3.4.14-0-g147a8ee32
+-- Vendor:
+--
+-- Subsystems:
+--   Audio:    ON
+--   Video:    ON
+--   GPU:      ON
+--   Render:   ON
+--   Camera:   ON
+--   Joystick: ON
+--   Haptic:   ON
+--   Hidapi:   ON
+--   Power:    ON
+--   Sensor:   ON
+--   Dialog:   ON
+--   Tray:     ON
+--
+-- Options:
+--   SDL_ALSA                    (Wanted: OFF): OFF
+--   SDL_ALSA_SHARED             (Wanted: OFF): OFF
+--   SDL_ALTIVEC                 (Wanted: OFF): OFF
+--   SDL_ARMNEON                 (Wanted: OFF): OFF
+--   SDL_ASAN                    (Wanted: OFF): OFF
+--   SDL_ASSEMBLY                (Wanted: ON): ON
+--   SDL_ASSERTIONS              (Wanted: auto): auto
+--   SDL_AVX                     (Wanted: ON): ON
+--   SDL_AVX2                    (Wanted: ON): ON
+--   SDL_AVX512F                 (Wanted: ON): ON
+--   SDL_BACKGROUNDING_SIGNAL    (Wanted: OFF): OFF
+--   SDL_CCACHE                  (Wanted: OFF): OFF
+--   SDL_CLANG_TIDY              (Wanted: OFF): OFF
+--   SDL_CLOCK_GETTIME           (Wanted: OFF): OFF
+--   SDL_COCOA                   (Wanted: OFF): OFF
+--   SDL_DBUS                    (Wanted: OFF): OFF
+--   SDL_DEPS_SHARED             (Wanted: ON): OFF
+--   SDL_DIRECTX                 (Wanted: ON): ON
+--   SDL_DISKAUDIO               (Wanted: ON): ON
+--   SDL_DLOPEN_NOTES            (Wanted: OFF): OFF
+--   SDL_DUMMYAUDIO              (Wanted: ON): ON
+--   SDL_DUMMYCAMERA             (Wanted: ON): ON
+--   SDL_DUMMYVIDEO              (Wanted: ON): ON
+--   SDL_EXAMPLES                (Wanted: OFF): OFF
+--   SDL_EXAMPLES_LINK_SHARED    (Wanted: OFF): OFF
+--   SDL_FOREGROUNDING_SIGNAL    (Wanted: OFF): OFF
+--   SDL_FRIBIDI                 (Wanted: OFF): OFF
+--   SDL_FRIBIDI_SHARED          (Wanted: OFF): OFF
+--   SDL_GCC_ATOMICS             (Wanted: OFF): OFF
+--   SDL_HIDAPI                  (Wanted: ON): ON
+--   SDL_HIDAPI_JOYSTICK         (Wanted: ON): ON
+--   SDL_HIDAPI_LIBUSB           (Wanted: ON): OFF
+--   SDL_HIDAPI_LIBUSB_SHARED    (Wanted: ON): OFF
+--   SDL_IBUS                    (Wanted: OFF): OFF
+--   SDL_INSTALL                 (Wanted: OFF): OFF
+--   SDL_INSTALL_TESTS           (Wanted: OFF): OFF
+--   SDL_JACK                    (Wanted: OFF): OFF
+--   SDL_JACK_SHARED             (Wanted: OFF): OFF
+--   SDL_KMSDRM                  (Wanted: OFF): OFF
+--   SDL_KMSDRM_SHARED           (Wanted: OFF): OFF
+--   SDL_LASX                    (Wanted: OFF): OFF
+--   SDL_LIBC                    (Wanted: ON): ON
+--   SDL_LIBICONV                (Wanted: OFF): OFF
+--   SDL_LIBTHAI                 (Wanted: OFF): OFF
+--   SDL_LIBTHAI_SHARED          (Wanted: OFF): OFF
+--   SDL_LIBUDEV                 (Wanted: ON): OFF
+--   SDL_LIBURING                (Wanted: OFF): OFF
+--   SDL_LSX                     (Wanted: OFF): OFF
+--   SDL_METAL                   (Wanted: OFF): OFF
+--   SDL_MMX                     (Wanted: ON): OFF
+--   SDL_OFFSCREEN               (Wanted: ON): ON
+--   SDL_OPENGL                  (Wanted: ON): ON
+--   SDL_OPENGLES                (Wanted: ON): ON
+--   SDL_OPENVR                  (Wanted: OFF): OFF
+--   SDL_OSS                     (Wanted: OFF): OFF
+--   SDL_PIPEWIRE                (Wanted: OFF): OFF
+--   SDL_PIPEWIRE_SHARED         (Wanted: OFF): OFF
+--   SDL_PTHREADS                (Wanted: OFF): OFF
+--   SDL_PTHREADS_SEM            (Wanted: OFF): OFF
+--   SDL_PULSEAUDIO              (Wanted: OFF): OFF
+--   SDL_PULSEAUDIO_SHARED       (Wanted: OFF): OFF
+--   SDL_RENDER_D3D              (Wanted: ON): ON
+--   SDL_RENDER_D3D11            (Wanted: ON): ON
+--   SDL_RENDER_D3D12            (Wanted: ON): ON
+--   SDL_RENDER_GPU              (Wanted: ON): ON
+--   SDL_RENDER_METAL            (Wanted: OFF): OFF
+--   SDL_RENDER_VULKAN           (Wanted: ON): ON
+--   SDL_ROCKCHIP                (Wanted: OFF): OFF
+--   SDL_RPATH                   (Wanted: OFF): OFF
+--   SDL_RPI                     (Wanted: OFF): OFF
+--   SDL_SNDIO                   (Wanted: OFF): OFF
+--   SDL_SNDIO_SHARED            (Wanted: OFF): OFF
+--   SDL_SSE                     (Wanted: ON): ON
+--   SDL_SSE2                    (Wanted: ON): ON
+--   SDL_SSE3                    (Wanted: ON): ON
+--   SDL_SSE4_1                  (Wanted: ON): ON
+--   SDL_SSE4_2                  (Wanted: ON): ON
+--   SDL_SYSTEM_ICONV            (Wanted: OFF): OFF
+--   SDL_TESTS                   (Wanted: OFF): OFF
+--   SDL_TESTS_LINK_SHARED       (Wanted: OFF): OFF
+--   SDL_UNINSTALL               (Wanted: OFF): OFF
+--   SDL_VIRTUAL_JOYSTICK        (Wanted: ON): ON
+--   SDL_VIVANTE                 (Wanted: OFF): OFF
+--   SDL_VULKAN                  (Wanted: ON): ON
+--   SDL_WASAPI                  (Wanted: ON): ON
+--   SDL_WAYLAND                 (Wanted: OFF): OFF
+--   SDL_WAYLAND_LIBDECOR        (Wanted: OFF): OFF
+--   SDL_WAYLAND_LIBDECOR_SHARED (Wanted: OFF): OFF
+--   SDL_WAYLAND_SHARED          (Wanted: OFF): OFF
+--   SDL_X11                     (Wanted: OFF): OFF
+--   SDL_X11_SHARED              (Wanted: OFF): OFF
+--   SDL_X11_XCURSOR             (Wanted: OFF): OFF
+--   SDL_X11_XDBE                (Wanted: OFF): OFF
+--   SDL_X11_XFIXES              (Wanted: OFF): OFF
+--   SDL_X11_XINPUT              (Wanted: OFF): OFF
+--   SDL_X11_XRANDR              (Wanted: OFF): OFF
+--   SDL_X11_XSCRNSAVER          (Wanted: OFF): OFF
+--   SDL_X11_XSHAPE              (Wanted: OFF): OFF
+--   SDL_X11_XSYNC               (Wanted: OFF): OFF
+--   SDL_X11_XTEST               (Wanted: OFF): OFF
+--   SDL_XINPUT                  (Wanted: ON): ON
+--
+--  Build Shared Library: OFF
+--  Build Static Library: ON
+--
+-- Enabled backends:
+--   Video drivers: dummy offscreen windows
+--   Render drivers: d3d d3d11 d3d12 gpu ogl ogl_es2 vulkan
+--   GPU drivers: d3d12 vulkan
+--   Audio drivers: disk dsound dummy wasapi
+--   Joystick drivers: dinput gameinput hidapi rawinput virtual wgi xinput
+--   Camera drivers: dummy mediafoundation
+--
+-- Resolving DirectXShaderCompiler 1.8.2502 host binaries from the locked archive.
+-- Resolving SPIRV-Cross 1a6169566c73d3da552748fc372fe2bbb856e46e from the locked archive.
+-- SPIRV-Cross: Finding Git version for SPIRV-Cross.
+-- SPIRV-Cross: Git hash: 66da0df+
+-- Resolving SDL_shadercross e55cf5e31ced6f3d1be5cc6d0c50e99384f9f4ba CLI sources from the locked archive.
+-- Resolving FreeType 2.14.3 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_FREETYPE.
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE)
+-- Resolving HarfBuzz 14.3.1 from the locked archive. For offline builds, set FETCHCONTENT_SOURCE_DIR_RYNUI_HARFBUZZ.
+CMake Warning at out/build/windows-msvc/_deps/rynui_harfbuzz-src/CMakeLists.txt:4 (message):
+  The main build system for HarfBuzz is Meson.  CMake build support is
+  community-maintained and is not actively supported by HarfBuzz developers.
+
+
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python313/python.exe (found version "3.13.14") found components: Interpreter
+Building introspection files on Windows requires BUILD_SHARED_LIBS to be enabled.
+-- Found Python3: C:/Users/jiang/AppData/Local/Programs/Python/Python313/python.exe (found suitable version "3.13.14", minimum required is "3.10") found components: Interpreter
+-- Configuring done (3.1s)
+-- Generating done (0.5s)
+-- Build files have been written to: D:/code/RynUI/out/build/windows-msvc
+[0/4] Re-checking globbed directories...
+[1/639] Building C object CMakeFiles\shadercross.dir\Debug\_deps\rynui_sdl_shadercross-src\src\cli.c.obj
+[2/639] Building C object CMakeFiles\rynui_shadercross_library.dir\Debug\_deps\rynui_sdl_shadercross-src\src\SDL_shadercross.c.obj
+[3/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\dynapi\SDL_dynapi.c.obj
+[4/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\cmake_pch.c.obj
+[5/639] Building CXX object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\cmake_pch.cxx.obj
+[6/639] Building CXX object src\CMakeFiles\rynui_platform_sdl.dir\Debug\platform\sdl\platform_state.cpp.obj
+[7/639] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Debug\renderer\sdl\frame_renderer.cpp.obj
+[8/639] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Debug\renderer\sdl\gpu_binding.cpp.obj
+[9/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-util.dir\Debug\spirv_cross_util.cpp.obj
+[10/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-core.dir\Debug\spirv_cfg.cpp.obj
+[11/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-core.dir\Debug\spirv_cross_parsed_ir.cpp.obj
+[12/639] Building CXX object src\CMakeFiles\rynui_platform_sdl.dir\Debug\platform\sdl\sdl_event_adapter.cpp.obj
+[13/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-core.dir\Debug\spirv_parser.cpp.obj
+[14/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_error.c.obj
+[15/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_guid.c.obj
+[16/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_hashtable.c.obj
+[17/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_list.c.obj
+[18/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_hints.c.obj
+[19/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_properties.c.obj
+[20/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_assert.c.obj
+[21/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\atomic\SDL_atomic.c.obj
+[22/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_utils.c.obj
+[23/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-reflect.dir\Debug\spirv_reflect.cpp.obj
+[24/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL.c.obj
+[25/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audiodev.c.obj
+[26/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-c.dir\Debug\spirv_cross_c.cpp.obj
+[27/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\SDL_log.c.obj
+[28/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\atomic\SDL_spinlock.c.obj
+[29/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audio.c.obj
+[30/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audiotypecvt.c.obj
+[31/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_mixer.c.obj
+[32/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-cpp.dir\Debug\spirv_cpp.cpp.obj
+[33/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audioqueue.c.obj
+[34/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\SDL_core_unsupported.c.obj
+[35/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audiocvt.c.obj
+[36/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_categories.c.obj
+[37/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_audioresample.c.obj
+[38/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_clipboardevents.c.obj
+[39/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\SDL_wave.c.obj
+[40/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-core.dir\Debug\spirv_cross.cpp.obj
+[41/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_dropevents.c.obj
+[42/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\camera\SDL_camera.c.obj
+[43/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_displayevents.c.obj
+[44/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\cpuinfo\SDL_cpuinfo.c.obj
+[45/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_keysym_to_keycode.c.obj
+[46/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_keysym_to_scancode.c.obj
+[47/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_eventwatch.c.obj
+[48/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_keyboard.c.obj
+[49/639] Building CXX object tests\CMakeFiles\rynui_text_input_event_tests.dir\Debug\text_input_event_tests.cpp.obj
+[50/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_scancode_tables.c.obj
+[51/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_keymap.c.obj
+[52/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_quit.c.obj
+[53/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_pen.c.obj
+[54/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\imKStoUCS.c.obj
+[55/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_touch.c.obj
+[56/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_events.c.obj
+[57/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_windowevents.c.obj
+[58/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\haptic\SDL_haptic.c.obj
+[59/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\filesystem\SDL_filesystem.c.obj
+[60/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\io\SDL_asyncio.c.obj
+[61/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\events\SDL_mouse.c.obj
+[62/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\gpu\SDL_gpu.c.obj
+[63/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\io\generic\SDL_asyncio_generic.c.obj
+[64/639] Building CXX object tests\CMakeFiles\rynui_glyph_texture_upload_tests.dir\Debug\glyph_texture_upload_tests.cpp.obj
+D:\code\RynUI\tests\glyph_texture_upload_tests.cpp(61): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[65/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-cored.lib
+[66/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\io\SDL_iostream.c.obj
+[67/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\main\SDL_main_callbacks.c.obj
+[68/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\controller_type.c.obj
+[69/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\hidapi\SDL_hidapi.c.obj
+[70/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\locale\SDL_locale.c.obj
+[71/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\misc\SDL_libusb.c.obj
+[72/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\power\SDL_power.c.obj
+[73/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\SDL_render_unsupported.c.obj
+[74/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-hlsl.dir\Debug\spirv_hlsl.cpp.obj
+[75/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\misc\SDL_url.c.obj
+[76/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\main\SDL_runapp.c.obj
+[77/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\SDL_joystick.c.obj
+[78/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\SDL_render.c.obj
+[79/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\SDL_yuv_sw.c.obj
+[80/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\SDL_steam_virtual_gamepad.c.obj
+[81/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\SDL_gamepad.c.obj
+[82/639] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Debug\renderer\sdl\quad_renderer.cpp.obj
+[83/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\ngage\SDL_render_ngage.c.obj
+[84/639] Building CXX object tests\CMakeFiles\rynui_text_input_session_tests.dir\Debug\text_input_session_tests.cpp.obj
+[85/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\gpu\SDL_pipeline_gpu.c.obj
+[86/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\opengles2\SDL_shaders_gles2.c.obj
+[87/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d11\SDL_shaders_d3d11.c.obj
+[88/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d\SDL_render_d3d.c.obj
+[89/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\gpu\SDL_render_gpu.c.obj
+[90/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d\SDL_shaders_d3d.c.obj
+[91/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\ps2\SDL_render_ps2.c.obj
+[92/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\opengles2\SDL_render_gles2.c.obj
+[93/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\gpu\SDL_shaders_gpu.c.obj
+[94/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\psp\SDL_render_psp.c.obj
+[95/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_drawpoint.c.obj
+[96/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\vitagxm\SDL_render_vita_gxm_memory.c.obj
+[97/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_blendpoint.c.obj
+[98/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\vitagxm\SDL_render_vita_gxm.c.obj
+[99/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\vitagxm\SDL_render_vita_gxm_tools.c.obj
+[100/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_drawline.c.obj
+[101/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_render_sw.c.obj
+[102/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d12\SDL_render_d3d12.c.obj
+[103/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\opengl\SDL_render_gl.c.obj
+[104/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\vulkan\SDL_shaders_vulkan.c.obj
+[105/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d11\SDL_render_d3d11.c.obj
+[106/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_triangle.c.obj
+[107/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_crc16.c.obj
+[108/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_blendline.c.obj
+[109/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\software\SDL_blendfillrect.c.obj
+[110/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_crc32.c.obj
+[111/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_iconv.c.obj
+[112/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_memcpy.c.obj
+[113/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_malloc.c.obj
+[114/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_memmove.c.obj
+[115/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_mslibc.c.obj
+[116/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_murmur3.c.obj
+[117/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_memset.c.obj
+[118/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_strtokr.c.obj
+[119/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_qsort.c.obj
+[120/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_random.c.obj
+[121/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_string.c.obj
+[122/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_stdlib.c.obj
+[123/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\sensor\SDL_sensor.c.obj
+[124/639] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Debug\renderer\sdl\scene_renderer.cpp.obj
+[125/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\storage\SDL_storage.c.obj
+[126/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\time\SDL_time.c.obj
+[127/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\opengl\SDL_shaders_gl.c.obj
+[128/639] Building CXX object tests\CMakeFiles\rynui_window_overlay_tests.dir\Debug\window_overlay_tests.cpp.obj
+D:\code\RynUI\tests\window_overlay_tests.cpp(71): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[129/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit.c.obj
+[130/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_slow.c.obj
+[131/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_N.c.obj
+[132/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_bmp.c.obj
+[133/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\direct3d12\SDL_shaders_d3d12.c.obj
+[134/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_RLEaccel.c.obj
+[135/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_1.c.obj
+[136/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_0.c.obj
+[137/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_A.c.obj
+[138/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_copy.c.obj
+[139/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_blit_auto.c.obj
+[140/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_rect.c.obj
+[141/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\stdlib\SDL_getenv.c.obj
+[142/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_stretch.c.obj
+[143/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_clipboard.c.obj
+[144/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_rotate.c.obj
+[145/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_pixels.c.obj
+[146/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_fillrect.c.obj
+[147/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_stb.c.obj
+[148/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_surface.c.obj
+[149/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\timer\SDL_timer.c.obj
+[150/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\SDL_thread.c.obj
+[151/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\render\vulkan\SDL_render_vulkan.c.obj
+[152/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\yuv2rgb\yuv_rgb_lsx.c.obj
+[153/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_video_unsupported.c.obj
+[154/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_atan2.c.obj
+[155/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\yuv2rgb\yuv_rgb_std.c.obj
+[156/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_pow.c.obj
+[157/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_exp.c.obj
+[158/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_log10.c.obj
+[159/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_fmod.c.obj
+[160/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\yuv2rgb\yuv_rgb_sse.c.obj
+[161/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_log.c.obj
+[162/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_rem_pio2.c.obj
+[163/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\e_sqrt.c.obj
+[164/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\k_cos.c.obj
+[165/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_egl.c.obj
+[166/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_yuv.c.obj
+[167/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_video.c.obj
+[168/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\k_tan.c.obj
+[169/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_isinf.c.obj
+[170/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_atan.c.obj
+[171/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_cos.c.obj
+[172/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\k_rem_pio2.c.obj
+[173/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_floor.c.obj
+[174/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_fabs.c.obj
+[175/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\k_sin.c.obj
+[176/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_isnanf.c.obj
+[177/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_copysign.c.obj
+[178/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_isnan.c.obj
+[179/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-glsl.dir\Debug\spirv_glsl.cpp.obj
+[180/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_sin.c.obj
+[181/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_isinff.c.obj
+[182/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\disk\SDL_diskaudio.c.obj
+[183/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_scalbn.c.obj
+[184/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\dummy\SDL_nullevents.c.obj
+[185/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_tan.c.obj
+[186/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\virtual\SDL_virtualjoystick.c.obj
+[187/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\pch.c.obj
+[188/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\libm\s_modf.c.obj
+[189/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\dummy\SDL_dummyaudio.c.obj
+[190/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\camera\dummy\SDL_camera_dummy.c.obj
+[191/639] Building CXX object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\pch_cpp.cpp.obj
+[192/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\dummy\SDL_nullframebuffer.c.obj
+[193/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-glsld.lib
+[194/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\dummy\SDL_nullvideo.c.obj
+[195/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\SDL_vulkan_utils.c.obj
+[196/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\io\windows\SDL_asyncio_windows_ioring.c.obj
+[197/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\misc\windows\SDL_sysurl.c.obj
+[198/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\main\windows\SDL_sysmain_runapp.c.obj
+[199/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\SDL_immdevice.c.obj
+[200/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\SDL_xinput.c.obj
+[201/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\SDL_hid.c.obj
+[202/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\SDL_windows.c.obj
+[203/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsclipboard.c.obj
+[204/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowskeyboard.c.obj
+[205/639] Building CXX object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\core\windows\SDL_gameinput.cpp.obj
+[206/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\directsound\SDL_directsound.c.obj
+[207/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\audio\wasapi\SDL_wasapi.c.obj
+[208/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsframebuffer.c.obj
+[209/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsmessagebox.c.obj
+[210/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\generic\SDL_syscond.c.obj
+[211/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsmodes.c.obj
+[212/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsevents.c.obj
+[213/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\generic\SDL_sysrwlock.c.obj
+[214/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsmouse.c.obj
+[215/639] Building CXX object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsgameinput.cpp.obj
+[216/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsrawinput.c.obj
+[217/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_sysrwlock_srw.c.obj
+[218/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\power\windows\SDL_syspower.c.obj
+[219/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_syscond_cv.c.obj
+[220/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsshape.c.obj
+[221/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsopengles.c.obj
+[222/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_syssem.c.obj
+[223/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_systls.c.obj
+[224/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_systhread.c.obj
+[225/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsopengl.c.obj
+[226/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\thread\windows\SDL_sysmutex.c.obj
+[227/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\locale\windows\SDL_syslocale.c.obj
+[228/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\storage\generic\SDL_genericstorage.c.obj
+[229/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\filesystem\windows\SDL_sysfsops.c.obj
+[230/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsvideo.c.obj
+[231/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\storage\steam\SDL_steamstorage.c.obj
+[232/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_8bitdo.c.obj
+[233/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowsvulkan.c.obj
+[234/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_combined.c.obj
+[235/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_ps4.c.obj
+[236/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\timer\windows\SDL_systimer.c.obj
+[237/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_gamecube.c.obj
+[238/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_flydigi.c.obj
+[239/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_ps3.c.obj
+[240/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_lg4ff.c.obj
+[241/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_luna.c.obj
+[242/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\time\windows\SDL_systime.c.obj
+[243/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_gip.c.obj
+[244/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\loadso\windows\SDL_sysloadso.c.obj
+[245/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\tray\windows\SDL_tray.c.obj
+[246/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\sensor\windows\SDL_windowssensor.c.obj
+[247/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_ps5.c.obj
+[248/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\windows\SDL_windowswindow.c.obj
+[249/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_switch2.c.obj
+[250/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_steam_triton.c.obj
+[251/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_sinput.c.obj
+[252/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_steam.c.obj
+[253/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_shield.c.obj
+[254/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_stadia.c.obj
+[255/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_steam_hori.c.obj
+[256/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_steamdeck.c.obj
+[257/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\filesystem\windows\SDL_sysfilesystem.c.obj
+[258/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_switch.c.obj
+[259/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_wii.c.obj
+[260/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\haptic\hidapi\SDL_hidapihaptic_lg4ff.c.obj
+[261/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_zuiki.c.obj
+[262/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_xbox360w.c.obj
+[263/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_xboxone.c.obj
+[264/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\haptic\hidapi\SDL_hidapihaptic.c.obj
+[265/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_xbox360.c.obj
+[266/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_report_descriptor.c.obj
+[267/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapi_rumble.c.obj
+[268/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenevents.c.obj
+[269/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\hidapi\SDL_hidapijoystick.c.obj
+[270/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\dialog\SDL_dialog_utils.c.obj
+[271/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\process\SDL_process.c.obj
+[272/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\dialog\SDL_dialog.c.obj
+[273/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenframebuffer.c.obj
+[274/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\tray\SDL_tray_utils.c.obj
+[275/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\windows\SDL_xinputjoystick.c.obj
+[276/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\windows\SDL_windowsjoystick.c.obj
+[277/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\haptic\windows\SDL_dinputhaptic.c.obj
+[278/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\windows\SDL_dinputjoystick.c.obj
+[279/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\haptic\windows\SDL_windowshaptic.c.obj
+[280/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\process\windows\SDL_windowsprocess.c.obj
+[281/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenopengles.c.obj
+[282/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenwindow.c.obj
+[283/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenvideo.c.obj
+[284/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-cppd.lib
+[285/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-reflectd.lib
+[286/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-hlsld.lib
+[287/639] Building CXX object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\gdk\SDL_gameinputjoystick.cpp.obj
+[288/639] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-msl.dir\Debug\spirv_msl.cpp.obj
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_spirv_cross-src\spirv_msl.cpp(10021): warning C5051: 属性 [[fallthrough]] 至少需要“/std:c++17”；已忽略
+[289/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\main\generic\SDL_sysmain_callbacks.c.obj
+[290/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\video\offscreen\SDL_offscreenvulkan.c.obj
+[291/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\dialog\windows\SDL_windowsdialog.c.obj
+[292/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\camera\mediafoundation\SDL_camera_mediafoundation.c.obj
+[293/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\gpu\vulkan\SDL_gpu_vulkan.c.obj
+[294/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-msld.lib
+[295/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\gpu\d3d12\SDL_gpu_d3d12.c.obj
+[296/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\windows\SDL_rawinputjoystick.c.obj
+[297/639] Building C object _deps\sdl3-build\CMakeFiles\SDL3-static.dir\Debug\src\joystick\windows\SDL_windows_gaming_input.c.obj
+[298/639] Building CXX object tests\CMakeFiles\rynui_animation_value_tests.dir\Debug\animation_value_tests.cpp.obj
+[299/639] Building CXX object tests\CMakeFiles\rynui_animation_easing_tests.dir\Debug\animation_easing_tests.cpp.obj
+[300/639] Building CXX object tests\CMakeFiles\rynui_design_token_tests.dir\Debug\design_token_tests.cpp.obj
+[301/639] Building CXX object tests\CMakeFiles\rynui_text_boundary_tests.dir\Debug\text_boundary_tests.cpp.obj
+[302/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-cd.lib
+[303/639] Building CXX object tests\CMakeFiles\rynui_text_editor_tests.dir\Debug\text_editor_tests.cpp.obj
+[304/639] Building CXX object tests\CMakeFiles\rynui_sdl_text_input_tests.dir\Debug\sdl_text_input_tests.cpp.obj
+[305/639] Building CXX object tests\CMakeFiles\rynui_text_history_tests.dir\Debug\text_history_tests.cpp.obj
+[306/639] Building CXX object tests\CMakeFiles\rynui_text_clipboard_command_tests.dir\Debug\text_clipboard_command_tests.cpp.obj
+[307/639] Building CXX object tests\CMakeFiles\rynui_text_clipboard_tests.dir\Debug\text_clipboard_tests.cpp.obj
+[308/639] Building CXX object tests\CMakeFiles\rynui_text_reconcile_tests.dir\Debug\text_reconcile_tests.cpp.obj
+[309/639] Linking CXX static library _deps\sdl3-build\Debug\SDL3-static.lib
+[310/639] Building CXX object tests\CMakeFiles\rynui_text_input_atomicity_tests.dir\Debug\text_input_atomicity_tests.cpp.obj
+[311/639] Building CXX object tests\CMakeFiles\rynui_animation_time_tests.dir\Debug\animation_time_tests.cpp.obj
+[312/639] Building CXX object tests\CMakeFiles\rynui_design_token_header_isolation_tests.dir\Debug\design_token_header_isolation_tests.cpp.obj
+[313/639] Building CXX object tests\CMakeFiles\rynui_component_public_api_tests.dir\Debug\component_public_api_tests.cpp.obj
+[314/639] Building CXX object tests\CMakeFiles\rynui_animation_deadline_tests.dir\Debug\animation_deadline_tests.cpp.obj
+[315/639] Building CXX object tests\CMakeFiles\rynui_text_editor_allocation_benchmark.dir\Debug\text_editor_allocation_benchmark.cpp.obj
+[316/639] Building CXX object tests\CMakeFiles\rynui_material_transition_channels_tests.dir\Debug\material_transition_channels_tests.cpp.obj
+[317/639] Linking CXX static library Debug\rynui_shadercross_library.lib
+[318/639] Linking CXX static library src\Debug\rynui_platform_sdl.lib
+[319/639] Building CXX object tests\CMakeFiles\rynui_prop_public_api_tests.dir\Debug\prop_public_api_tests.cpp.obj
+[320/639] Building CXX object tests\CMakeFiles\rynui_text_input_focus_tests.dir\Debug\text_input_focus_tests.cpp.obj
+[321/639] Building CXX object tests\CMakeFiles\rynui_animation_runtime_tests.dir\Debug\animation_runtime_tests.cpp.obj
+[322/639] Building CXX object tests\CMakeFiles\rynui_layout_style_public_api_tests.dir\Debug\layout_style_public_api_tests.cpp.obj
+[323/639] Building CXX object tests\CMakeFiles\rynui_animation_runtime_allocation_benchmark.dir\Debug\animation_runtime_allocation_benchmark.cpp.obj
+[324/639] Linking CXX static library src\Debug\rynui_renderer_sdl.lib
+[325/639] Building CXX object tests\CMakeFiles\rynui_theme_public_api_tests.dir\Debug\theme_public_api_tests.cpp.obj
+[326/639] Building CXX object tests\CMakeFiles\rynui_ant_design_button_source_contract_tests.dir\Debug\ant_design_button_source_contract_tests.cpp.obj
+[327/639] Building CXX object tests\CMakeFiles\rynui_motion_policy_tests.dir\Debug\motion_policy_tests.cpp.obj
+[328/639] Building CXX object tests\CMakeFiles\rynui_ant_design_input_source_contract_tests.dir\Debug\ant_design_input_source_contract_tests.cpp.obj
+[329/639] Building CXX object tests\CMakeFiles\rynui_theme_algorithm_tests.dir\Debug\theme_algorithm_tests.cpp.obj
+[330/639] Building CXX object tests\CMakeFiles\rynui_theme_scope_component_tests.dir\Debug\theme_scope_component_tests.cpp.obj
+[331/639] Building CXX object tests\CMakeFiles\rynui_theme_allocation_benchmark.dir\Debug\theme_allocation_benchmark.cpp.obj
+[332/639] Building CXX object tests\CMakeFiles\rynui_public_api_smoke.dir\Debug\public_api_smoke.cpp.obj
+[333/639] Building CXX object tests\CMakeFiles\rynui_input_public_api_tests.dir\Debug\input_public_api_tests.cpp.obj
+[334/639] Building CXX object tests\CMakeFiles\rynui_selection_controls_public_api_tests.dir\Debug\selection_controls_public_api_tests.cpp.obj
+[335/639] Building CXX object tests\CMakeFiles\rynui_theme_runtime_tests.dir\Debug\theme_runtime_tests.cpp.obj
+[336/639] Building CXX object tests\CMakeFiles\rynui_slider_component_tests.dir\Debug\slider_component_tests.cpp.obj
+[337/639] Building CXX object tests\CMakeFiles\rynui_switch_public_api_tests.dir\Debug\switch_public_api_tests.cpp.obj
+[338/639] Building CXX object tests\CMakeFiles\rynui_search_public_api_tests.dir\Debug\search_public_api_tests.cpp.obj
+[339/639] Building CXX object tests\CMakeFiles\rynui_tooltip_component_tests.dir\Debug\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[340/639] Building CXX object tests\CMakeFiles\rynui_checkbox_public_api_tests.dir\Debug\checkbox_public_api_tests.cpp.obj
+[341/639] Building CXX object tests\CMakeFiles\rynui_radio_public_api_tests.dir\Debug\radio_public_api_tests.cpp.obj
+[342/639] Building CXX object tests\CMakeFiles\rynui_string_tests.dir\Debug\string_tests.cpp.obj
+[343/639] Building CXX object tests\CMakeFiles\rynui_text_public_api_tests.dir\Debug\text_public_api_tests.cpp.obj
+[344/639] Building CXX object tests\CMakeFiles\rynui_space_header_isolation_tests.dir\Debug\space_header_isolation_tests.cpp.obj
+[345/639] Building CXX object tests\CMakeFiles\rynui_flex_header_isolation_tests.dir\Debug\flex_header_isolation_tests.cpp.obj
+[346/639] Building CXX object tests\CMakeFiles\rynui_font_dependency_contract_tests.dir\Debug\font_dependency_contract_tests.cpp.obj
+[347/639] Linking CXX executable Debug\shadercross.exe
+[348/639] Building CXX object tests\CMakeFiles\rynui_button_header_isolation_tests.dir\Debug\button_header_isolation_tests.cpp.obj
+[349/639] Building CXX object tests\CMakeFiles\rynui_button_public_api_tests.dir\Debug\button_public_api_tests.cpp.obj
+[350/639] Building CXX object tests\CMakeFiles\rynui_signal_tests.dir\Debug\signal_tests.cpp.obj
+[351/639] Building CXX object tests\CMakeFiles\rynui_memo_tests.dir\Debug\memo_tests.cpp.obj
+[352/639] Building CXX object tests\CMakeFiles\rynui_batch_tests.dir\Debug\batch_tests.cpp.obj
+[353/639] Building CXX object tests\CMakeFiles\rynui_node_store_tests.dir\Debug\node_store_tests.cpp.obj
+[354/639] Building CXX object tests\CMakeFiles\rynui_scope_effect_tests.dir\Debug\scope_effect_tests.cpp.obj
+[355/639] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[356/639] Building CXX object tests\CMakeFiles\rynui_font_runtime_tests.dir\Debug\font_runtime_tests.cpp.obj
+[357/639] Building CXX object tests\CMakeFiles\rynui_text_caret_map_tests.dir\Debug\text_caret_map_tests.cpp.obj
+[358/639] Building CXX object tests\CMakeFiles\rynui_prop_tests.dir\Debug\prop_tests.cpp.obj
+[359/639] Building CXX object tests\CMakeFiles\rynui_reactive_allocation_benchmark.dir\Debug\reactive_allocation_benchmark.cpp.obj
+[360/639] Building CXX object tests\CMakeFiles\rynui_component_scene_traversal_tests.dir\Debug\component_scene_traversal_tests.cpp.obj
+[361/639] Compiling glyph vertex shader to SPIRV
+[362/639] Compiling glyph fragment shader to SPIRV
+[363/639] Compiling rounded_effect fragment shader to SPIRV
+[364/639] Compiling rounded_effect vertex shader to SPIRV
+[365/639] Building CXX object tests\CMakeFiles\rynui_text_engine_tests.dir\Debug\text_engine_tests.cpp.obj
+[366/639] Building CXX object tests\CMakeFiles\rynui_flex_public_api_tests.dir\Debug\flex_public_api_tests.cpp.obj
+[367/639] Reflecting glyph vertex shader resources
+[368/639] Compiling glyph fragment shader to DXIL
+[369/639] Reflecting glyph fragment shader resources
+[370/639] Building CXX object tests\CMakeFiles\rynui_component_mount_tests.dir\Debug\component_mount_tests.cpp.obj
+[371/639] Compiling glyph vertex shader to DXIL
+[372/639] Building CXX object tests\CMakeFiles\rynui_text_state_tests.dir\Debug\text_state_tests.cpp.obj
+[373/639] Compiling quad fragment shader to SPIRV
+[374/639] Compiling quad fragment shader to DXIL
+[375/639] Reflecting rounded_effect vertex shader resources
+[376/639] Reflecting rounded_effect fragment shader resources
+[377/639] Compiling quad vertex shader to SPIRV
+[378/639] Compiling quad vertex shader to DXIL
+[379/639] Compiling rounded_effect vertex shader to DXIL
+[380/639] Building CXX object tests\CMakeFiles\rynui_space_public_api_tests.dir\Debug\space_public_api_tests.cpp.obj
+[381/639] Compiling rounded_effect fragment shader to DXIL
+[382/639] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Debug\token_gallery\token_gallery_definition.cpp.obj
+[383/639] Building CXX object tests\CMakeFiles\rynui_button_scene_service_tests.dir\Debug\button_scene_service_tests.cpp.obj
+[384/639] Linking CXX static library examples\Debug\rynui_token_gallery_definition.lib
+[385/639] Deploying shaders for rynui_minimal
+[386/639] Building CXX object tests\CMakeFiles\rynui_component_scene_composer_tests.dir\Debug\component_scene_composer_tests.cpp.obj
+[387/639] Building CXX object tests\CMakeFiles\rynui_input_display_tests.dir\Debug\input_display_tests.cpp.obj
+[388/639] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Debug\search_component_tests.cpp.obj
+[389/639] Building CXX object tests\CMakeFiles\rynui_search_idle_benchmark.dir\Debug\search_idle_benchmark.cpp.obj
+[390/639] Deploying shaders for rynui_text_demo
+[391/639] Deploying shaders for rynui_button_demo
+[392/639] Deploying shaders for rynui_layout_demo
+[393/639] Building CXX object tests\CMakeFiles\rynui_input_material_transition_tests.dir\Debug\input_material_transition_tests.cpp.obj
+D:\code\RynUI\tests\input_material_transition_tests.cpp(35): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_material_transition_tests.cpp(43): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_material_transition_tests.cpp(70): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[394/639] Deploying shaders for rynui_token_gallery
+[395/639] Building CXX object tests\CMakeFiles\rynui_pressable_behavior_allocation_tests.dir\Debug\pressable_behavior_allocation_tests.cpp.obj
+[396/639] Building CXX object tests\CMakeFiles\rynui_selection_idle_benchmark.dir\Debug\selection_idle_benchmark.cpp.obj
+[397/639] Building CXX object tests\CMakeFiles\rynui_switch_features_tests.dir\Debug\switch_features_tests.cpp.obj
+[398/639] Building CXX object tests\CMakeFiles\rynui_radio_component_tests.dir\Debug\radio_component_tests.cpp.obj
+[399/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\main.cpp.obj
+[400/639] Building CXX object tests\CMakeFiles\rynui_button_spinner_benchmark.dir\Debug\button_spinner_benchmark.cpp.obj
+[401/639] Building CXX object tests\CMakeFiles\rynui_checkbox_group_tests.dir\Debug\checkbox_group_tests.cpp.obj
+[402/639] Building CXX object tests\CMakeFiles\rynui_selection_component_tests.dir\Debug\selection_component_tests.cpp.obj
+[403/639] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Debug\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[404/639] Building CXX object tests\CMakeFiles\rynui_input_clear_component_tests.dir\Debug\input_clear_component_tests.cpp.obj
+[405/639] Building CXX object tests\CMakeFiles\rynui_input_pointer_tests.dir\Debug\input_pointer_tests.cpp.obj
+[406/639] Building CXX object tests\CMakeFiles\rynui_input_keyboard_tests.dir\Debug\input_keyboard_tests.cpp.obj
+[407/639] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Debug\password_component_tests.cpp.obj
+[408/639] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Debug\input_gpu_tests.cpp.obj
+[409/639] Building CXX object tests\CMakeFiles\rynui_button_component_tests.dir\Debug\button_component_tests.cpp.obj
+[410/639] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Debug\layout\main.cpp.obj
+[411/639] Building CXX object tests\CMakeFiles\rynui_flex_component_tests.dir\Debug\flex_component_tests.cpp.obj
+[412/639] Building CXX object tests\CMakeFiles\rynui_input_caret_blink_tests.dir\Debug\input_caret_blink_tests.cpp.obj
+[413/639] Building CXX object tests\CMakeFiles\rynui_gallery_document_model_tests.dir\Debug\gallery_document_model_tests.cpp.obj
+[414/639] Building CXX object tests\CMakeFiles\rynui_input_journey_tests.dir\Debug\input_journey_tests.cpp.obj
+[415/639] Building CXX object examples\CMakeFiles\rynui_minimal.dir\Debug\minimal\main.cpp.obj
+[416/639] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Debug\layout\layout_demo_runtime.cpp.obj
+[417/639] Building CXX object tests\CMakeFiles\rynui_input_scene_allocation_benchmark.dir\Debug\input_scene_allocation_benchmark.cpp.obj
+[418/639] Building CXX object tests\CMakeFiles\rynui_layout_engine_tests.dir\Debug\layout_engine_tests.cpp.obj
+[419/639] Building CXX object tests\CMakeFiles\rynui_layout_allocation_tests.dir\Debug\layout_allocation_tests.cpp.obj
+[420/639] Building CXX object tests\CMakeFiles\rynui_gallery_document_viewport_tests.dir\Debug\gallery_document_viewport_tests.cpp.obj
+[421/639] Building CXX object tests\CMakeFiles\rynui_gallery_document_benchmark.dir\Debug\gallery_document_benchmark.cpp.obj
+[422/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\token_gallery_runtime.cpp.obj
+[423/639] Building CXX object tests\CMakeFiles\rynui_dirty_queue_tests.dir\Debug\dirty_queue_tests.cpp.obj
+[424/639] Building CXX object tests\CMakeFiles\rynui_reference_surface_tests.dir\Debug\reference_surface_tests.cpp.obj
+[425/639] Building CXX object tests\CMakeFiles\rynui_buffer_upload_batch_layout_tests.dir\Debug\buffer_upload_batch_layout_tests.cpp.obj
+D:\code\RynUI\tests\buffer_upload_batch_layout_tests.cpp(36): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+D:\code\RynUI\tests\buffer_upload_batch_layout_tests.cpp(38): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+D:\code\RynUI\tests\buffer_upload_batch_layout_tests.cpp(40): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+[426/639] Building CXX object examples\CMakeFiles\rynui_text_demo.dir\Debug\text\main.cpp.obj
+[427/639] Building CXX object examples\CMakeFiles\rynui_button_demo.dir\Debug\button\main.cpp.obj
+[428/639] Building CXX object tests\CMakeFiles\rynui_logical_scene_packing_tests.dir\Debug\logical_scene_packing_tests.cpp.obj
+[429/639] Building CXX object tests\CMakeFiles\rynui_layout_style_tests.dir\Debug\layout_style_tests.cpp.obj
+[430/639] Building CXX object tests\CMakeFiles\rynui_space_component_tests.dir\Debug\space_component_tests.cpp.obj
+[431/639] Building CXX object tests\CMakeFiles\rynui_texture_upload_batch_layout_tests.dir\Debug\texture_upload_batch_layout_tests.cpp.obj
+D:\code\RynUI\tests\texture_upload_batch_layout_tests.cpp(37): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+D:\code\RynUI\tests\texture_upload_batch_layout_tests.cpp(39): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+[432/639] Building CXX object tests\CMakeFiles\rynui_quad_primitive_tests.dir\Debug\quad_primitive_tests.cpp.obj
+[433/639] Building CXX object tests\CMakeFiles\rynui_glyph_atlas_tests.dir\Debug\glyph_atlas_tests.cpp.obj
+[434/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\tooltip_acceptance.cpp.obj
+[435/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\divider_acceptance.cpp.obj
+[436/639] Building CXX object tests\CMakeFiles\rynui_rendering_locality_benchmark.dir\Debug\rendering_locality_benchmark.cpp.obj
+[437/639] Building CXX object tests\CMakeFiles\rynui_glyph_scene_tests.dir\Debug\glyph_scene_tests.cpp.obj
+D:\code\RynUI\tests\glyph_scene_tests.cpp(118): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+D:\code\RynUI\tests\glyph_scene_tests.cpp(119): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+[438/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_math_tests.dir\Debug\rounded_effect_math_tests.cpp.obj
+[439/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\typography_acceptance.cpp.obj
+[440/639] Building CXX object tests\CMakeFiles\rynui_platform_input_tests.dir\Debug\platform_input_tests.cpp.obj
+[441/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_store_tests.dir\Debug\rounded_effect_store_tests.cpp.obj
+[442/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\slider_acceptance.cpp.obj
+[443/639] Building CXX object tests\CMakeFiles\rynui_sdl_event_adapter_tests.dir\Debug\sdl_event_adapter_tests.cpp.obj
+[444/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_scene_tests.dir\Debug\rounded_effect_scene_tests.cpp.obj
+[445/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_gpu_tests.dir\Debug\rounded_effect_gpu_tests.cpp.obj
+[446/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\button_acceptance.cpp.obj
+[447/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\checkbox_acceptance.cpp.obj
+[448/639] Building CXX object tests\CMakeFiles\rynui_platform_event_pump_tests.dir\Debug\platform_event_pump_tests.cpp.obj
+[449/639] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\switch_acceptance.cpp.obj
+[450/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_allocation_benchmark_tests.dir\Debug\rounded_effect_allocation_benchmark.cpp.obj
+[451/639] Building CXX object tests\CMakeFiles\rynui_token_gallery_benchmark.dir\Debug\token_gallery_benchmark.cpp.obj
+[452/639] Building CXX object tests\CMakeFiles\rynui_layout_demo_frame_tests.dir\Debug\layout_demo_frame_tests.cpp.obj
+[453/639] Building CXX object tests\CMakeFiles\rynui_rounded_effect_gpu_resources_tests.dir\Debug\rounded_effect_gpu_resources_tests.cpp.obj
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(888): warning C4389: '==': 有符号/无符号不匹配
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(888): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\tests\rounded_effect_gpu_resources_tests.cpp(290): note: 查看对正在编译的函数 模板 实例化“bool std::operator ==<uint32_t,int,0>(const std::optional<uint32_t> &,const _Ty2 &) noexcept(<expr>)”的引用
+        with
+        [
+            _Ty2=int
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(890): warning C4389: '==': 有符号/无符号不匹配
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(890): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\tests\rounded_effect_gpu_resources_tests.cpp(290): note: 查看对正在编译的函数 模板 实例化“bool std::operator ==<uint32_t,int,0>(const std::optional<uint32_t> &,const _Ty2 &) noexcept”的引用
+        with
+        [
+            _Ty2=int
+        ]
+[454/639] Building CXX object tests\CMakeFiles\rynui_button_demo_frame_tests.dir\Debug\button_demo_frame_tests.cpp.obj
+[455/639] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Debug\token_gallery_frame_tests.cpp.obj
+[456/639] Building CXX object tests\CMakeFiles\rynui_frame_scheduler_tests.dir\Debug\frame_scheduler_tests.cpp.obj
+[457/639] Building CXX object tests\CMakeFiles\rynui_hit_test_tests.dir\Debug\hit_test_tests.cpp.obj
+[458/639] Building CXX object tests\CMakeFiles\rynui_interaction_registry_tests.dir\Debug\interaction_registry_tests.cpp.obj
+[459/639] Building CXX object tests\CMakeFiles\rynui_binding_quad_integration_tests.dir\Debug\binding_quad_integration_tests.cpp.obj
+[460/639] Building CXX object tests\CMakeFiles\rynui_hit_test_refresh_tests.dir\Debug\hit_test_refresh_tests.cpp.obj
+[461/639] Building CXX object tests\CMakeFiles\rynui_frame_renderer_tests.dir\Debug\frame_renderer_tests.cpp.obj
+[462/639] Building CXX object tests\CMakeFiles\rynui_default_theme_tests.dir\Debug\default_theme_tests.cpp.obj
+[463/639] Building CXX object tests\CMakeFiles\rynui_hit_test_dirty_refresh_benchmark.dir\Debug\hit_test_dirty_refresh_benchmark.cpp.obj
+[464/639] Linking CXX static library _deps\rynui_spirv_cross-build\Debug\spirv-cross-utild.lib
+[465/639] Building CXX object tests\CMakeFiles\rynui_pointer_state_tests.dir\Debug\pointer_state_tests.cpp.obj
+[466/639] Building CXX object tests\CMakeFiles\rynui_pointer_route_tests.dir\Debug\pointer_route_tests.cpp.obj
+[467/639] Building CXX object tests\CMakeFiles\rynui_divider_public_api_tests.dir\Debug\divider_public_api_tests.cpp.obj
+[468/639] Building CXX object tests\CMakeFiles\rynui_hit_test_benchmark.dir\Debug\hit_test_benchmark.cpp.obj
+[469/639] Building CXX object tests\CMakeFiles\rynui_keyboard_activation_tests.dir\Debug\keyboard_activation_tests.cpp.obj
+[470/639] Building CXX object tests\CMakeFiles\rynui_pointer_allocation_tests.dir\Debug\pointer_allocation_tests.cpp.obj
+[471/639] Building CXX object tests\CMakeFiles\rynui_pointer_lifecycle_tests.dir\Debug\pointer_lifecycle_tests.cpp.obj
+[472/639] Building CXX object tests\CMakeFiles\rynui_focus_allocation_tests.dir\Debug\focus_allocation_tests.cpp.obj
+[473/639] Building CXX object tests\CMakeFiles\rynui_focus_order_tests.dir\Debug\focus_order_tests.cpp.obj
+[474/639] Building CXX object tests\CMakeFiles\rynui_focus_state_tests.dir\Debug\focus_state_tests.cpp.obj
+[475/639] Building CXX object tests\CMakeFiles\rynui_focus_lifecycle_tests.dir\Debug\focus_lifecycle_tests.cpp.obj
+[476/639] Building CXX object tests\CMakeFiles\rynui_text_render_integration_tests.dir\Debug\text_render_integration_tests.cpp.obj
+[477/639] Linking CXX executable examples\Debug\rynui_minimal.exe
+[478/639] Building CXX object tests\CMakeFiles\rynui_platform_lifecycle_tests.dir\Debug\platform_lifecycle_tests.cpp.obj
+[479/639] Building CXX object tests\CMakeFiles\rynui_glyph_gpu_resources_tests.dir\Debug\glyph_gpu_resources_tests.cpp.obj
+[480/639] Linking CXX executable tests\Debug\rynui_glyph_texture_upload_tests.exe
+[481/639] Linking CXX executable tests\Debug\rynui_text_input_event_tests.exe
+[482/639] Building CXX object tests\CMakeFiles\rynui_text_scene_service_tests.dir\Debug\text_scene_service_tests.cpp.obj
+[483/639] Linking CXX executable tests\Debug\rynui_text_input_session_tests.exe
+[484/639] Linking CXX executable tests\Debug\rynui_sdl_text_input_tests.exe
+[485/639] Linking CXX executable tests\Debug\rynui_text_input_atomicity_tests.exe
+[486/639] Linking CXX executable tests\Debug\rynui_text_input_focus_tests.exe
+[487/639] Linking CXX executable tests\Debug\rynui_text_clipboard_command_tests.exe
+[488/639] Linking CXX executable tests\Debug\rynui_text_reconcile_tests.exe
+[489/639] Linking CXX executable tests\Debug\rynui_text_editor_tests.exe
+[490/639] Linking CXX executable tests\Debug\rynui_text_history_tests.exe
+[491/639] Linking CXX executable tests\Debug\rynui_design_token_tests.exe
+[492/639] Linking CXX executable tests\Debug\rynui_text_editor_allocation_benchmark.exe
+[493/639] Linking CXX executable tests\Debug\rynui_window_overlay_tests.exe
+[494/639] Linking CXX executable tests\Debug\rynui_text_clipboard_tests.exe
+[495/639] Linking CXX executable tests\Debug\rynui_text_boundary_tests.exe
+[496/639] Linking CXX executable tests\Debug\rynui_animation_value_tests.exe
+[497/639] Linking CXX executable tests\Debug\rynui_animation_time_tests.exe
+[498/639] Linking CXX executable tests\Debug\rynui_public_api_smoke.exe
+[499/639] Linking CXX executable tests\Debug\rynui_animation_easing_tests.exe
+[500/639] Linking CXX executable examples\Debug\rynui_button_demo.exe
+[501/639] Linking CXX executable tests\Debug\rynui_animation_runtime_tests.exe
+[502/639] Linking CXX executable examples\Debug\rynui_text_demo.exe
+[503/639] Linking CXX executable tests\Debug\rynui_animation_runtime_allocation_benchmark.exe
+[504/639] Linking CXX executable tests\Debug\rynui_animation_deadline_tests.exe
+[505/639] Linking CXX executable tests\Debug\rynui_material_transition_channels_tests.exe
+[506/639] Linking CXX executable tests\Debug\rynui_tooltip_component_tests.exe
+[507/639] Linking CXX executable tests\Debug\rynui_slider_component_tests.exe
+[508/639] Linking CXX executable tests\Debug\rynui_theme_public_api_tests.exe
+[509/639] Linking CXX executable tests\Debug\rynui_theme_algorithm_tests.exe
+[510/639] Linking CXX executable tests\Debug\rynui_design_token_header_isolation_tests.exe
+[511/639] Linking CXX executable tests\Debug\rynui_theme_runtime_tests.exe
+[512/639] Linking CXX executable tests\Debug\rynui_motion_policy_tests.exe
+[513/639] Linking CXX executable tests\Debug\rynui_theme_scope_component_tests.exe
+[514/639] Linking CXX executable tests\Debug\rynui_component_public_api_tests.exe
+[515/639] Linking CXX executable tests\Debug\rynui_theme_allocation_benchmark.exe
+[516/639] Linking CXX executable tests\Debug\rynui_ant_design_button_source_contract_tests.exe
+[517/639] Linking CXX executable tests\Debug\rynui_prop_public_api_tests.exe
+[518/639] Linking CXX executable examples\Debug\rynui_layout_demo.exe
+[519/639] Linking CXX executable tests\Debug\rynui_ant_design_input_source_contract_tests.exe
+[520/639] Linking CXX executable tests\Debug\rynui_layout_style_public_api_tests.exe
+[521/639] Linking CXX executable tests\Debug\rynui_text_public_api_tests.exe
+[522/639] Linking CXX executable tests\Debug\rynui_radio_public_api_tests.exe
+[523/639] Linking CXX executable tests\Debug\rynui_selection_controls_public_api_tests.exe
+[524/639] Linking CXX executable tests\Debug\rynui_space_header_isolation_tests.exe
+[525/639] Linking CXX executable examples\Debug\rynui_token_gallery.exe
+[526/639] Linking CXX executable tests\Debug\rynui_flex_header_isolation_tests.exe
+[527/639] Linking CXX executable tests\Debug\rynui_flex_public_api_tests.exe
+[528/639] Linking CXX executable tests\Debug\rynui_string_tests.exe
+[529/639] Linking CXX executable tests\Debug\rynui_space_public_api_tests.exe
+[530/639] Linking CXX executable tests\Debug\rynui_button_header_isolation_tests.exe
+[531/639] Linking CXX executable tests\Debug\rynui_search_public_api_tests.exe
+[532/639] Linking CXX executable tests\Debug\rynui_input_public_api_tests.exe
+[533/639] Linking CXX executable tests\Debug\rynui_search_component_tests.exe
+[534/639] Linking CXX executable tests\Debug\rynui_search_idle_benchmark.exe
+[535/639] Linking CXX executable tests\Debug\rynui_button_public_api_tests.exe
+[536/639] Linking CXX executable tests\Debug\rynui_switch_public_api_tests.exe
+[537/639] Linking CXX executable tests\Debug\rynui_selection_component_tests.exe
+[538/639] Linking CXX executable tests\Debug\rynui_switch_features_tests.exe
+[539/639] Linking CXX executable tests\Debug\rynui_signal_tests.exe
+[540/639] Linking CXX executable tests\Debug\rynui_selection_idle_benchmark.exe
+[541/639] Linking CXX executable tests\Debug\rynui_scope_effect_tests.exe
+[542/639] Linking CXX executable tests\Debug\rynui_memo_tests.exe
+[543/639] Linking CXX executable tests\Debug\rynui_radio_component_tests.exe
+[544/639] Linking CXX executable tests\Debug\rynui_batch_tests.exe
+[545/639] Linking CXX executable tests\Debug\rynui_reactive_allocation_benchmark.exe
+[546/639] Linking CXX executable tests\Debug\rynui_node_store_tests.exe
+[547/639] Linking CXX executable tests\Debug\rynui_font_runtime_tests.exe
+[548/639] Linking CXX executable tests\Debug\rynui_prop_tests.exe
+[549/639] Linking CXX executable tests\Debug\rynui_component_scene_traversal_tests.exe
+[550/639] Linking CXX executable tests\Debug\rynui_text_state_tests.exe
+[551/639] Linking CXX executable tests\Debug\rynui_text_caret_map_tests.exe
+[552/639] Linking CXX executable tests\Debug\rynui_font_dependency_contract_tests.exe
+[553/639] Linking CXX executable tests\Debug\rynui_text_engine_tests.exe
+[554/639] Linking CXX executable tests\Debug\rynui_input_display_tests.exe
+[555/639] Linking CXX executable tests\Debug\rynui_component_mount_tests.exe
+[556/639] Linking CXX executable tests\Debug\rynui_input_material_transition_tests.exe
+[557/639] Linking CXX executable tests\Debug\rynui_button_scene_service_tests.exe
+[558/639] Linking CXX executable tests\Debug\rynui_pressable_behavior_allocation_tests.exe
+[559/639] Linking CXX executable tests\Debug\rynui_checkbox_public_api_tests.exe
+[560/639] Linking CXX executable tests\Debug\rynui_checkbox_group_tests.exe
+[561/639] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Debug\text_component_frame_tests.cpp.obj
+[562/639] Linking CXX executable tests\Debug\rynui_flex_component_tests.exe
+[563/639] Linking CXX executable tests\Debug\rynui_input_pointer_tests.exe
+[564/639] Linking CXX executable tests\Debug\rynui_password_component_tests.exe
+[565/639] Linking CXX executable tests\Debug\rynui_button_spinner_benchmark.exe
+[566/639] Linking CXX executable tests\Debug\rynui_input_keyboard_tests.exe
+[567/639] Linking CXX executable tests\Debug\rynui_input_component_tests.exe
+[568/639] Linking CXX executable tests\Debug\rynui_input_caret_blink_tests.exe
+[569/639] Linking CXX executable tests\Debug\rynui_input_gpu_tests.exe
+[570/639] Linking CXX executable tests\Debug\rynui_button_component_tests.exe
+[571/639] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Debug\typography_interaction_tests.cpp.obj
+[572/639] Linking CXX executable tests\Debug\rynui_input_clear_component_tests.exe
+[573/639] Linking CXX executable tests\Debug\rynui_component_scene_composer_tests.exe
+[574/639] Linking CXX executable tests\Debug\rynui_ant_design_reference_catalog_tests.exe
+[575/639] Linking CXX executable tests\Debug\rynui_input_journey_tests.exe
+[576/639] Building CXX object tests\CMakeFiles\rynui_text_component_tests.dir\Debug\text_component_tests.cpp.obj
+[577/639] Linking CXX executable tests\Debug\rynui_input_scene_allocation_benchmark.exe
+[578/639] Linking CXX executable tests\Debug\rynui_gallery_document_model_tests.exe
+[579/639] Linking CXX executable tests\Debug\rynui_gallery_document_viewport_tests.exe
+[580/639] Linking CXX executable tests\Debug\rynui_gallery_document_benchmark.exe
+[581/639] Linking CXX executable tests\Debug\rynui_layout_engine_tests.exe
+[582/639] Building CXX object tests\CMakeFiles\rynui_divider_component_tests.dir\Debug\divider_component_tests.cpp.obj
+[583/639] Linking CXX executable tests\Debug\rynui_buffer_upload_batch_layout_tests.exe
+[584/639] Linking CXX executable tests\Debug\rynui_dirty_queue_tests.exe
+[585/639] Linking CXX executable tests\Debug\rynui_quad_primitive_tests.exe
+[586/639] Linking CXX executable tests\Debug\rynui_logical_scene_packing_tests.exe
+[587/639] Linking CXX executable tests\Debug\rynui_layout_allocation_tests.exe
+[588/639] Linking CXX executable tests\Debug\rynui_space_component_tests.exe
+[589/639] Linking CXX executable tests\Debug\rynui_reference_surface_tests.exe
+[590/639] Linking CXX executable tests\Debug\rynui_layout_style_tests.exe
+[591/639] Linking CXX executable tests\Debug\rynui_texture_upload_batch_layout_tests.exe
+[592/639] Building CXX object tests\CMakeFiles\rynui_typography_component_tests.dir\Debug\typography_component_tests.cpp.obj
+[593/639] Linking CXX executable tests\Debug\rynui_rounded_effect_allocation_benchmark_tests.exe
+[594/639] Linking CXX executable tests\Debug\rynui_rounded_effect_math_tests.exe
+[595/639] Linking CXX executable tests\Debug\rynui_token_gallery_benchmark.exe
+[596/639] Linking CXX executable tests\Debug\rynui_rounded_effect_store_tests.exe
+[597/639] Linking CXX executable tests\Debug\rynui_rounded_effect_scene_tests.exe
+[598/639] Linking CXX executable tests\Debug\rynui_button_demo_frame_tests.exe
+[599/639] Linking CXX executable tests\Debug\rynui_rounded_effect_gpu_resources_tests.exe
+[600/639] Linking CXX executable tests\Debug\rynui_rounded_effect_gpu_tests.exe
+[601/639] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[602/639] Linking CXX executable tests\Debug\rynui_platform_input_tests.exe
+[603/639] Linking CXX executable tests\Debug\rynui_binding_quad_integration_tests.exe
+[604/639] Linking CXX executable tests\Debug\rynui_frame_scheduler_tests.exe
+[605/639] Linking CXX executable tests\Debug\rynui_sdl_event_adapter_tests.exe
+[606/639] Linking CXX executable tests\Debug\rynui_hit_test_refresh_tests.exe
+[607/639] Linking CXX executable tests\Debug\rynui_glyph_atlas_tests.exe
+[608/639] Linking CXX executable tests\Debug\rynui_rendering_locality_benchmark.exe
+[609/639] Linking CXX executable tests\Debug\rynui_hit_test_dirty_refresh_benchmark.exe
+[610/639] Linking CXX executable tests\Debug\rynui_hit_test_benchmark.exe
+[611/639] Linking CXX executable tests\Debug\rynui_pointer_state_tests.exe
+[612/639] Linking CXX executable tests\Debug\rynui_glyph_scene_tests.exe
+[613/639] Linking CXX executable tests\Debug\rynui_pointer_allocation_tests.exe
+[614/639] Linking CXX executable tests\Debug\rynui_layout_demo_frame_tests.exe
+[615/639] Linking CXX executable tests\Debug\rynui_focus_order_tests.exe
+[616/639] Linking CXX executable tests\Debug\rynui_interaction_registry_tests.exe
+[617/639] Linking CXX executable tests\Debug\rynui_pointer_route_tests.exe
+[618/639] Linking CXX executable tests\Debug\rynui_focus_allocation_tests.exe
+[619/639] Linking CXX executable tests\Debug\rynui_keyboard_activation_tests.exe
+[620/639] Linking CXX executable tests\Debug\rynui_hit_test_tests.exe
+[621/639] Linking CXX executable tests\Debug\rynui_pointer_lifecycle_tests.exe
+[622/639] Linking CXX executable tests\Debug\rynui_focus_lifecycle_tests.exe
+[623/639] Linking CXX executable tests\Debug\rynui_platform_event_pump_tests.exe
+[624/639] Linking CXX executable tests\Debug\rynui_focus_state_tests.exe
+[625/639] Linking CXX executable tests\Debug\rynui_frame_renderer_tests.exe
+[626/639] Linking CXX executable tests\Debug\rynui_divider_public_api_tests.exe
+[627/639] Linking CXX executable tests\Debug\rynui_default_theme_tests.exe
+[628/639] Linking CXX executable tests\Debug\rynui_glyph_gpu_resources_tests.exe
+[629/639] Linking CXX executable tests\Debug\rynui_text_scene_service_tests.exe
+[630/639] Linking CXX executable tests\Debug\rynui_text_render_integration_tests.exe
+[631/639] Linking CXX executable tests\Debug\rynui_platform_lifecycle_tests.exe
+[632/639] Linking CXX executable tests\Debug\rynui_text_component_tests.exe
+[633/639] Linking CXX executable tests\Debug\rynui_typography_interaction_tests.exe
+[634/639] Linking CXX executable tests\Debug\rynui_typography_component_tests.exe
+[635/639] Linking CXX executable tests\Debug\rynui_text_component_frame_tests.exe
+[636/639] Linking CXX executable tests\Debug\rynui_divider_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start  56: rynui.theme_algorithm
+ 1/15 Test  #56: rynui.theme_algorithm .................   Passed    0.09 sec
+      Start  58: rynui.theme_runtime
+ 2/15 Test  #58: rynui.theme_runtime ...................   Passed    0.09 sec
+      Start  63: rynui.theme_scope_component
+ 3/15 Test  #63: rynui.theme_scope_component ...........   Passed    0.05 sec
+      Start  64: rynui.theme_allocation
+ 4/15 Test  #64: rynui.theme_allocation ................   Passed    0.04 sec
+      Start  77: rynui.selection_controls_public_api
+ 5/15 Test  #77: rynui.selection_controls_public_api ...   Passed    0.01 sec
+      Start  78: rynui.selection_component
+ 6/15 Test  #78: rynui.selection_component .............   Passed    0.56 sec
+      Start  79: rynui.switch_features
+ 7/15 Test  #79: rynui.switch_features .................   Passed    0.30 sec
+      Start  81: rynui.checkbox_group
+ 8/15 Test  #81: rynui.checkbox_group ..................   Passed    0.43 sec
+      Start  82: rynui.checkbox_public_api
+ 9/15 Test  #82: rynui.checkbox_public_api .............   Passed    0.01 sec
+      Start  84: rynui.radio_component
+10/15 Test  #84: rynui.radio_component .................   Passed    0.49 sec
+      Start 104: rynui.default_font_chain
+11/15 Test #104: rynui.default_font_chain ..............   Passed    0.41 sec
+      Start 118: rynui.button_scene_service
+12/15 Test #118: rynui.button_scene_service ............   Passed    0.02 sec
+      Start 147: rynui.token_gallery_frame
+13/15 Test #147: rynui.token_gallery_frame .............   Passed   25.49 sec
+      Start 191: rynui.frame_scheduler
+14/15 Test #191: rynui.frame_scheduler .................   Passed    0.01 sec
+      Start 216: rynui.text_component
+15/15 Test #216: rynui.text_component ..................   Passed    0.44 sec
+
+100% tests passed out of 15
+
+Total Test time (real) =  28.45 sec
+[0/2] Re-checking globbed directories...
+[1/237] Building CXX object tests\CMakeFiles\rynui_selection_controls_public_api_tests.dir\Release\selection_controls_public_api_tests.cpp.obj
+[2/237] Building CXX object tests\CMakeFiles\rynui_ant_design_button_source_contract_tests.dir\Release\ant_design_button_source_contract_tests.cpp.obj
+[3/237] Building CXX object tests\CMakeFiles\rynui_theme_public_api_tests.dir\Release\theme_public_api_tests.cpp.obj
+[4/237] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-c.dir\Release\spirv_cross_c.cpp.obj
+[5/237] Building CXX object tests\CMakeFiles\rynui_checkbox_public_api_tests.dir\Release\checkbox_public_api_tests.cpp.obj
+[6/237] Building CXX object tests\CMakeFiles\rynui_theme_scope_component_tests.dir\Release\theme_scope_component_tests.cpp.obj
+[7/237] Building CXX object tests\CMakeFiles\rynui_theme_allocation_benchmark.dir\Release\theme_allocation_benchmark.cpp.obj
+[8/237] Building CXX object tests\CMakeFiles\rynui_theme_runtime_tests.dir\Release\theme_runtime_tests.cpp.obj
+[9/237] Building CXX object tests\CMakeFiles\rynui_motion_policy_tests.dir\Release\motion_policy_tests.cpp.obj
+[10/237] Building CXX object tests\CMakeFiles\rynui_ant_design_input_source_contract_tests.dir\Release\ant_design_input_source_contract_tests.cpp.obj
+[11/237] Building CXX object tests\CMakeFiles\rynui_theme_algorithm_tests.dir\Release\theme_algorithm_tests.cpp.obj
+[12/237] Building CXX object tests\CMakeFiles\rynui_text_input_focus_tests.dir\Release\text_input_focus_tests.cpp.obj
+[13/237] Linking CXX static library _deps\rynui_spirv_cross-build\Release\spirv-cross-c.lib
+[14/237] Building CXX object tests\CMakeFiles\rynui_public_api_smoke.dir\Release\public_api_smoke.cpp.obj
+[15/237] Building CXX object tests\CMakeFiles\rynui_button_public_api_tests.dir\Release\button_public_api_tests.cpp.obj
+[16/237] Building CXX object tests\CMakeFiles\rynui_text_public_api_tests.dir\Release\text_public_api_tests.cpp.obj
+[17/237] Building CXX object tests\CMakeFiles\rynui_window_overlay_tests.dir\Release\window_overlay_tests.cpp.obj
+D:\code\RynUI\tests\window_overlay_tests.cpp(71): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[18/237] Building CXX object tests\CMakeFiles\rynui_component_mount_tests.dir\Release\component_mount_tests.cpp.obj
+[19/237] Building CXX object tests\CMakeFiles\rynui_component_scene_traversal_tests.dir\Release\component_scene_traversal_tests.cpp.obj
+[20/237] Linking CXX executable Release\shadercross.exe
+[21/237] Building CXX object tests\CMakeFiles\rynui_component_scene_composer_tests.dir\Release\component_scene_composer_tests.cpp.obj
+[22/237] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[23/237] Building CXX object tests\CMakeFiles\rynui_flex_public_api_tests.dir\Release\flex_public_api_tests.cpp.obj
+[24/237] Building CXX object tests\CMakeFiles\rynui_space_public_api_tests.dir\Release\space_public_api_tests.cpp.obj
+[25/237] Compiling glyph vertex shader to SPIRV
+[26/237] Compiling rounded_effect fragment shader to SPIRV
+[27/237] Compiling glyph fragment shader to SPIRV
+[28/237] Building CXX object tests\CMakeFiles\rynui_button_scene_service_tests.dir\Release\button_scene_service_tests.cpp.obj
+[29/237] Reflecting glyph fragment shader resources
+[30/237] Compiling glyph fragment shader to DXIL
+[31/237] Compiling rounded_effect vertex shader to SPIRV
+[32/237] Reflecting glyph vertex shader resources
+[33/237] Compiling glyph vertex shader to DXIL
+[34/237] Building CXX object tests\CMakeFiles\rynui_input_material_transition_tests.dir\Release\input_material_transition_tests.cpp.obj
+D:\code\RynUI\tests\input_material_transition_tests.cpp(35): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_material_transition_tests.cpp(43): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_material_transition_tests.cpp(70): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[35/237] Compiling quad fragment shader to SPIRV
+[36/237] Compiling quad fragment shader to DXIL
+[37/237] Compiling quad vertex shader to DXIL
+[38/237] Compiling quad vertex shader to SPIRV
+[39/237] Reflecting rounded_effect fragment shader resources
+[40/237] Reflecting rounded_effect vertex shader resources
+[41/237] Compiling rounded_effect fragment shader to DXIL
+[42/237] Compiling rounded_effect vertex shader to DXIL
+[43/237] Building CXX object tests\CMakeFiles\rynui_pressable_behavior_allocation_tests.dir\Release\pressable_behavior_allocation_tests.cpp.obj
+[44/237] Deploying shaders for rynui_minimal
+[45/237] Building CXX object tests\CMakeFiles\rynui_selection_idle_benchmark.dir\Release\selection_idle_benchmark.cpp.obj
+[46/237] Building CXX object tests\CMakeFiles\rynui_radio_component_tests.dir\Release\radio_component_tests.cpp.obj
+[47/237] Building CXX object tests\CMakeFiles\rynui_search_idle_benchmark.dir\Release\search_idle_benchmark.cpp.obj
+[48/237] Deploying shaders for rynui_text_demo
+[49/237] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Release\search_component_tests.cpp.obj
+[50/237] Deploying shaders for rynui_button_demo
+[51/237] Deploying shaders for rynui_layout_demo
+[52/237] Deploying shaders for rynui_token_gallery
+[53/237] Building CXX object tests\CMakeFiles\rynui_selection_component_tests.dir\Release\selection_component_tests.cpp.obj
+[54/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\main.cpp.obj
+[55/237] Building CXX object tests\CMakeFiles\rynui_button_spinner_benchmark.dir\Release\button_spinner_benchmark.cpp.obj
+[56/237] Building CXX object tests\CMakeFiles\rynui_input_clear_component_tests.dir\Release\input_clear_component_tests.cpp.obj
+[57/237] Building CXX object tests\CMakeFiles\rynui_switch_features_tests.dir\Release\switch_features_tests.cpp.obj
+[58/237] Building CXX object tests\CMakeFiles\rynui_input_caret_blink_tests.dir\Release\input_caret_blink_tests.cpp.obj
+[59/237] Building CXX object tests\CMakeFiles\rynui_input_keyboard_tests.dir\Release\input_keyboard_tests.cpp.obj
+[60/237] Building CXX object tests\CMakeFiles\rynui_input_pointer_tests.dir\Release\input_pointer_tests.cpp.obj
+[61/237] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Release\password_component_tests.cpp.obj
+[62/237] Building CXX object tests\CMakeFiles\rynui_tooltip_component_tests.dir\Release\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[63/237] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Release\input_gpu_tests.cpp.obj
+[64/237] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Release\layout\main.cpp.obj
+[65/237] Building CXX object tests\CMakeFiles\rynui_input_scene_allocation_benchmark.dir\Release\input_scene_allocation_benchmark.cpp.obj
+[66/237] Building CXX object examples\CMakeFiles\rynui_minimal.dir\Release\minimal\main.cpp.obj
+[67/237] Building CXX object tests\CMakeFiles\rynui_gallery_document_viewport_tests.dir\Release\gallery_document_viewport_tests.cpp.obj
+[68/237] Building CXX object tests\CMakeFiles\rynui_gallery_document_benchmark.dir\Release\gallery_document_benchmark.cpp.obj
+[69/237] Building CXX object tests\CMakeFiles\rynui_flex_component_tests.dir\Release\flex_component_tests.cpp.obj
+[70/237] Building CXX object tests\CMakeFiles\rynui_dirty_queue_tests.dir\Release\dirty_queue_tests.cpp.obj
+[71/237] Building CXX object tests\CMakeFiles\rynui_space_component_tests.dir\Release\space_component_tests.cpp.obj
+[72/237] Building CXX object examples\CMakeFiles\rynui_button_demo.dir\Release\button\main.cpp.obj
+[73/237] Building CXX object tests\CMakeFiles\rynui_reference_surface_tests.dir\Release\reference_surface_tests.cpp.obj
+[74/237] Building CXX object tests\CMakeFiles\rynui_checkbox_group_tests.dir\Release\checkbox_group_tests.cpp.obj
+[75/237] Building CXX object tests\CMakeFiles\rynui_layout_style_tests.dir\Release\layout_style_tests.cpp.obj
+[76/237] Building CXX object tests\CMakeFiles\rynui_rendering_locality_benchmark.dir\Release\rendering_locality_benchmark.cpp.obj
+[77/237] Building CXX object tests\CMakeFiles\rynui_input_journey_tests.dir\Release\input_journey_tests.cpp.obj
+[78/237] Building CXX object tests\CMakeFiles\rynui_interaction_registry_tests.dir\Release\interaction_registry_tests.cpp.obj
+[79/237] Building CXX object tests\CMakeFiles\rynui_frame_scheduler_tests.dir\Release\frame_scheduler_tests.cpp.obj
+[80/237] Building CXX object tests\CMakeFiles\rynui_binding_quad_integration_tests.dir\Release\binding_quad_integration_tests.cpp.obj
+[81/237] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Release\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[82/237] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Release\layout\layout_demo_runtime.cpp.obj
+[83/237] Building CXX object tests\CMakeFiles\rynui_hit_test_tests.dir\Release\hit_test_tests.cpp.obj
+[84/237] Building CXX object tests\CMakeFiles\rynui_hit_test_refresh_tests.dir\Release\hit_test_refresh_tests.cpp.obj
+[85/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\typography_acceptance.cpp.obj
+[86/237] Building CXX object tests\CMakeFiles\rynui_hit_test_benchmark.dir\Release\hit_test_benchmark.cpp.obj
+[87/237] Building CXX object tests\CMakeFiles\rynui_hit_test_dirty_refresh_benchmark.dir\Release\hit_test_dirty_refresh_benchmark.cpp.obj
+[88/237] Building CXX object tests\CMakeFiles\rynui_pointer_state_tests.dir\Release\pointer_state_tests.cpp.obj
+[89/237] Building CXX object tests\CMakeFiles\rynui_button_demo_frame_tests.dir\Release\button_demo_frame_tests.cpp.obj
+[90/237] Building CXX object tests\CMakeFiles\rynui_focus_order_tests.dir\Release\focus_order_tests.cpp.obj
+[91/237] Building CXX object tests\CMakeFiles\rynui_pointer_route_tests.dir\Release\pointer_route_tests.cpp.obj
+[92/237] Building CXX object tests\CMakeFiles\rynui_pointer_lifecycle_tests.dir\Release\pointer_lifecycle_tests.cpp.obj
+[93/237] Building CXX object tests\CMakeFiles\rynui_pointer_allocation_tests.dir\Release\pointer_allocation_tests.cpp.obj
+[94/237] Building CXX object tests\CMakeFiles\rynui_focus_state_tests.dir\Release\focus_state_tests.cpp.obj
+[95/237] Building CXX object tests\CMakeFiles\rynui_keyboard_activation_tests.dir\Release\keyboard_activation_tests.cpp.obj
+[96/237] Building CXX object tests\CMakeFiles\rynui_focus_lifecycle_tests.dir\Release\focus_lifecycle_tests.cpp.obj
+[97/237] Linking CXX executable examples\Release\rynui_minimal.exe
+[98/237] Linking CXX executable tests\Release\rynui_glyph_texture_upload_tests.exe
+[99/237] Building CXX object tests\CMakeFiles\rynui_focus_allocation_tests.dir\Release\focus_allocation_tests.cpp.obj
+[100/237] Building CXX object tests\CMakeFiles\rynui_token_gallery_benchmark.dir\Release\token_gallery_benchmark.cpp.obj
+[101/237] Building CXX object tests\CMakeFiles\rynui_default_theme_tests.dir\Release\default_theme_tests.cpp.obj
+[102/237] Linking CXX executable tests\Release\rynui_window_overlay_tests.exe
+[103/237] Linking CXX executable tests\Release\rynui_text_input_focus_tests.exe
+[104/237] Linking CXX executable tests\Release\rynui_public_api_smoke.exe
+[105/237] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Release\token_gallery_frame_tests.cpp.obj
+[106/237] Linking CXX executable tests\Release\rynui_design_token_tests.exe
+[107/237] Linking CXX executable tests\Release\rynui_motion_policy_tests.exe
+[108/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\divider_acceptance.cpp.obj
+[109/237] Building CXX object examples\CMakeFiles\rynui_text_demo.dir\Release\text\main.cpp.obj
+[110/237] Linking CXX executable tests\Release\rynui_theme_algorithm_tests.exe
+[111/237] Linking CXX executable tests\Release\rynui_theme_runtime_tests.exe
+[112/237] Linking CXX executable tests\Release\rynui_ant_design_input_source_contract_tests.exe
+[113/237] Linking CXX executable tests\Release\rynui_tooltip_component_tests.exe
+[114/237] Linking CXX executable examples\Release\rynui_layout_demo.exe
+[115/237] Linking CXX executable tests\Release\rynui_ant_design_button_source_contract_tests.exe
+[116/237] Linking CXX executable tests\Release\rynui_theme_public_api_tests.exe
+[117/237] Linking CXX executable examples\Release\rynui_button_demo.exe
+[118/237] Building CXX object tests\CMakeFiles\rynui_slider_component_tests.dir\Release\slider_component_tests.cpp.obj
+[119/237] Linking CXX executable tests\Release\rynui_theme_allocation_benchmark.exe
+[120/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\switch_acceptance.cpp.obj
+[121/237] Linking CXX executable tests\Release\rynui_theme_scope_component_tests.exe
+[122/237] Linking CXX executable tests\Release\rynui_design_token_header_isolation_tests.exe
+[123/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\slider_acceptance.cpp.obj
+[124/237] Linking CXX executable tests\Release\rynui_text_public_api_tests.exe
+[125/237] Linking CXX executable tests\Release\rynui_component_public_api_tests.exe
+[126/237] Linking CXX executable tests\Release\rynui_layout_style_public_api_tests.exe
+[127/237] Linking CXX executable tests\Release\rynui_prop_public_api_tests.exe
+[128/237] Building CXX object tests\CMakeFiles\rynui_layout_demo_frame_tests.dir\Release\layout_demo_frame_tests.cpp.obj
+[129/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\tooltip_acceptance.cpp.obj
+[130/237] Linking CXX executable tests\Release\rynui_selection_controls_public_api_tests.exe
+[131/237] Linking CXX executable tests\Release\rynui_button_public_api_tests.exe
+[132/237] Linking CXX executable tests\Release\rynui_input_public_api_tests.exe
+[133/237] Linking CXX executable tests\Release\rynui_search_public_api_tests.exe
+[134/237] Linking CXX executable tests\Release\rynui_radio_public_api_tests.exe
+[135/237] Linking CXX executable tests\Release\rynui_slider_component_tests.exe
+[136/237] Linking CXX executable tests\Release\rynui_flex_public_api_tests.exe
+[137/237] Linking CXX executable tests\Release\rynui_search_component_tests.exe
+[138/237] Linking CXX executable tests\Release\rynui_selection_component_tests.exe
+[139/237] Linking CXX executable tests\Release\rynui_search_idle_benchmark.exe
+[140/237] Linking CXX executable examples\Release\rynui_text_demo.exe
+[141/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\checkbox_acceptance.cpp.obj
+[142/237] Linking CXX executable tests\Release\rynui_flex_header_isolation_tests.exe
+[143/237] Linking CXX executable tests\Release\rynui_switch_public_api_tests.exe
+[144/237] Linking CXX executable tests\Release\rynui_space_public_api_tests.exe
+[145/237] Linking CXX executable tests\Release\rynui_button_header_isolation_tests.exe
+[146/237] Linking CXX executable tests\Release\rynui_switch_features_tests.exe
+[147/237] Linking CXX executable tests\Release\rynui_space_header_isolation_tests.exe
+[148/237] Linking CXX executable tests\Release\rynui_checkbox_public_api_tests.exe
+[149/237] Linking CXX executable tests\Release\rynui_checkbox_group_tests.exe
+[150/237] Linking CXX executable tests\Release\rynui_node_store_tests.exe
+[151/237] Linking CXX executable tests\Release\rynui_component_mount_tests.exe
+[152/237] Linking CXX executable tests\Release\rynui_component_scene_traversal_tests.exe
+[153/237] Linking CXX executable tests\Release\rynui_radio_component_tests.exe
+[154/237] Linking CXX executable tests\Release\rynui_text_state_tests.exe
+[155/237] Linking CXX executable tests\Release\rynui_input_display_tests.exe
+[156/237] Linking CXX executable tests\Release\rynui_selection_idle_benchmark.exe
+[157/237] Linking CXX executable tests\Release\rynui_component_scene_composer_tests.exe
+[158/237] Linking CXX executable tests\Release\rynui_button_scene_service_tests.exe
+[159/237] Linking CXX executable tests\Release\rynui_input_material_transition_tests.exe
+[160/237] Linking CXX executable tests\Release\rynui_pressable_behavior_allocation_tests.exe
+[161/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\token_gallery_runtime.cpp.obj
+[162/237] Linking CXX executable tests\Release\rynui_flex_component_tests.exe
+[163/237] Linking CXX executable tests\Release\rynui_button_spinner_benchmark.exe
+[164/237] Linking CXX executable tests\Release\rynui_token_gallery_benchmark.exe
+[165/237] Linking CXX executable tests\Release\rynui_layout_engine_tests.exe
+[166/237] Linking CXX executable tests\Release\rynui_password_component_tests.exe
+[167/237] Linking CXX executable tests\Release\rynui_input_component_tests.exe
+[168/237] Linking CXX executable tests\Release\rynui_input_caret_blink_tests.exe
+[169/237] Linking CXX executable tests\Release\rynui_input_clear_component_tests.exe
+[170/237] Linking CXX executable tests\Release\rynui_layout_allocation_tests.exe
+[171/237] Linking CXX executable tests\Release\rynui_input_keyboard_tests.exe
+[172/237] Linking CXX executable tests\Release\rynui_input_pointer_tests.exe
+[173/237] Linking CXX executable tests\Release\rynui_input_gpu_tests.exe
+[174/237] Linking CXX executable tests\Release\rynui_input_journey_tests.exe
+[175/237] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\button_acceptance.cpp.obj
+[176/237] Linking CXX executable tests\Release\rynui_dirty_queue_tests.exe
+[177/237] Linking CXX executable tests\Release\rynui_quad_primitive_tests.exe
+[178/237] Linking CXX executable tests\Release\rynui_layout_style_tests.exe
+[179/237] Linking CXX executable tests\Release\rynui_logical_scene_packing_tests.exe
+[180/237] Linking CXX executable tests\Release\rynui_input_scene_allocation_benchmark.exe
+[181/237] Linking CXX executable tests\Release\rynui_rounded_effect_allocation_benchmark_tests.exe
+[182/237] Linking CXX executable tests\Release\rynui_rounded_effect_store_tests.exe
+[183/237] Linking CXX executable tests\Release\rynui_rounded_effect_math_tests.exe
+[184/237] Linking CXX executable tests\Release\rynui_rounded_effect_scene_tests.exe
+[185/237] Linking CXX executable tests\Release\rynui_space_component_tests.exe
+[186/237] Linking CXX executable tests\Release\rynui_button_demo_frame_tests.exe
+[187/237] Linking CXX executable tests\Release\rynui_glyph_atlas_tests.exe
+[188/237] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_tests.exe
+[189/237] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_resources_tests.exe
+[190/237] Linking CXX executable tests\Release\rynui_rendering_locality_benchmark.exe
+[191/237] Linking CXX executable tests\Release\rynui_glyph_scene_tests.exe
+[192/237] Linking CXX executable tests\Release\rynui_layout_demo_frame_tests.exe
+[193/237] Linking CXX executable tests\Release\rynui_frame_scheduler_tests.exe
+[194/237] Linking CXX executable tests\Release\rynui_interaction_registry_tests.exe
+[195/237] Linking CXX executable tests\Release\rynui_binding_quad_integration_tests.exe
+[196/237] Linking CXX executable tests\Release\rynui_hit_test_tests.exe
+[197/237] Linking CXX executable tests\Release\rynui_hit_test_benchmark.exe
+[198/237] Linking CXX executable tests\Release\rynui_hit_test_refresh_tests.exe
+[199/237] Linking CXX executable tests\Release\rynui_hit_test_dirty_refresh_benchmark.exe
+[200/237] Linking CXX executable tests\Release\rynui_pointer_lifecycle_tests.exe
+[201/237] Linking CXX executable tests\Release\rynui_pointer_route_tests.exe
+[202/237] Linking CXX executable tests\Release\rynui_pointer_state_tests.exe
+[203/237] Linking CXX executable tests\Release\rynui_pointer_allocation_tests.exe
+[204/237] Linking CXX executable tests\Release\rynui_focus_order_tests.exe
+[205/237] Linking CXX executable tests\Release\rynui_focus_state_tests.exe
+[206/237] Linking CXX executable tests\Release\rynui_focus_allocation_tests.exe
+[207/237] Linking CXX executable tests\Release\rynui_keyboard_activation_tests.exe
+[208/237] Linking CXX executable tests\Release\rynui_focus_lifecycle_tests.exe
+[209/237] Linking CXX executable tests\Release\rynui_default_theme_tests.exe
+[210/237] Linking CXX executable tests\Release\rynui_frame_renderer_tests.exe
+[211/237] Linking CXX executable tests\Release\rynui_glyph_gpu_resources_tests.exe
+[212/237] Linking CXX executable tests\Release\rynui_divider_public_api_tests.exe
+[213/237] Linking CXX executable tests\Release\rynui_text_render_integration_tests.exe
+[214/237] Linking CXX executable tests\Release\rynui_platform_lifecycle_tests.exe
+[215/237] Linking CXX executable tests\Release\rynui_text_scene_service_tests.exe
+[216/237] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Release\text_component_frame_tests.cpp.obj
+[217/237] Linking CXX executable tests\Release\rynui_text_component_frame_tests.exe
+[218/237] Building CXX object tests\CMakeFiles\rynui_text_component_tests.dir\Release\text_component_tests.cpp.obj
+[219/237] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Release\typography_interaction_tests.cpp.obj
+[220/237] Linking CXX executable tests\Release\rynui_text_component_tests.exe
+[221/237] Linking CXX executable tests\Release\rynui_typography_interaction_tests.exe
+[222/237] Building CXX object tests\CMakeFiles\rynui_divider_component_tests.dir\Release\divider_component_tests.cpp.obj
+[223/237] Building CXX object tests\CMakeFiles\rynui_typography_component_tests.dir\Release\typography_component_tests.cpp.obj
+[224/237] Linking CXX executable tests\Release\rynui_divider_component_tests.exe
+[225/237] Linking CXX executable tests\Release\rynui_typography_component_tests.exe
+[226/237] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\token_gallery_definition.cpp.obj
+[227/237] Linking CXX static library examples\Release\rynui_token_gallery_definition.lib
+[228/237] Linking CXX executable tests\Release\rynui_ant_design_reference_catalog_tests.exe
+[229/237] Linking CXX executable tests\Release\rynui_gallery_document_model_tests.exe
+[230/237] Linking CXX executable tests\Release\rynui_gallery_document_benchmark.exe
+[231/237] Linking CXX executable tests\Release\rynui_gallery_document_viewport_tests.exe
+[232/237] Linking CXX executable tests\Release\rynui_reference_surface_tests.exe
+[233/237] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[234/237] Linking CXX executable examples\Release\rynui_token_gallery.exe
+[235/237] Building CXX object tests\CMakeFiles\rynui_button_component_tests.dir\Release\button_component_tests.cpp.obj
+[236/237] Linking CXX executable tests\Release\rynui_button_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start  56: rynui.theme_algorithm
+ 1/15 Test  #56: rynui.theme_algorithm .................   Passed    0.02 sec
+      Start  58: rynui.theme_runtime
+ 2/15 Test  #58: rynui.theme_runtime ...................   Passed    0.02 sec
+      Start  63: rynui.theme_scope_component
+ 3/15 Test  #63: rynui.theme_scope_component ...........   Passed    0.02 sec
+      Start  64: rynui.theme_allocation
+ 4/15 Test  #64: rynui.theme_allocation ................   Passed    0.01 sec
+      Start  77: rynui.selection_controls_public_api
+ 5/15 Test  #77: rynui.selection_controls_public_api ...   Passed    0.01 sec
+      Start  78: rynui.selection_component
+ 6/15 Test  #78: rynui.selection_component .............   Passed    0.35 sec
+      Start  79: rynui.switch_features
+ 7/15 Test  #79: rynui.switch_features .................   Passed    0.21 sec
+      Start  81: rynui.checkbox_group
+ 8/15 Test  #81: rynui.checkbox_group ..................   Passed    0.29 sec
+      Start  82: rynui.checkbox_public_api
+ 9/15 Test  #82: rynui.checkbox_public_api .............   Passed    0.01 sec
+      Start  84: rynui.radio_component
+10/15 Test  #84: rynui.radio_component .................   Passed    0.34 sec
+      Start 104: rynui.default_font_chain
+11/15 Test #104: rynui.default_font_chain ..............   Passed    0.34 sec
+      Start 118: rynui.button_scene_service
+12/15 Test #118: rynui.button_scene_service ............   Passed    0.01 sec
+      Start 147: rynui.token_gallery_frame
+13/15 Test #147: rynui.token_gallery_frame .............   Passed    5.18 sec
+      Start 191: rynui.frame_scheduler
+14/15 Test #191: rynui.frame_scheduler .................   Passed    0.01 sec
+      Start 216: rynui.text_component
+15/15 Test #216: rynui.text_component ..................   Passed    0.33 sec
+
+100% tests passed out of 15
+
+Total Test time (real) =   7.16 sec

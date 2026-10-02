@@ -1,0 +1,1 @@
+checkbox_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1 normalized_events=14 changes=2 clicks=2 candidates=1 group_candidates=1 submits=42 resize=1420x900 content_runs=1 label_runs=5 idle_polls=3 deadline=none disposed=1 exit_code=0

@@ -1,0 +1,64 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/23] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/23] Compiling glyph fragment shader to SPIRV
+[3/23] Compiling glyph vertex shader to SPIRV
+[4/23] Compiling rounded_effect vertex shader to SPIRV
+[5/23] Compiling rounded_effect fragment shader to SPIRV
+[6/23] Compiling glyph fragment shader to DXIL
+[7/23] Compiling quad fragment shader to SPIRV
+[8/23] Compiling quad fragment shader to DXIL
+[9/23] Compiling glyph vertex shader to DXIL
+[10/23] Compiling quad vertex shader to SPIRV
+[11/23] Compiling quad vertex shader to DXIL
+[12/23] Reflecting glyph fragment shader resources
+[13/23] Reflecting glyph vertex shader resources
+[14/23] Reflecting rounded_effect vertex shader resources
+[15/23] Reflecting rounded_effect fragment shader resources
+[16/23] Compiling rounded_effect vertex shader to DXIL
+[17/23] Compiling rounded_effect fragment shader to DXIL
+[18/23] Deploying shaders for rynui_token_gallery
+[19/23] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Debug\token_gallery\token_gallery_definition.cpp.obj
+[20/23] Linking CXX static library examples\Debug\rynui_token_gallery_definition.lib
+[21/23] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[22/23] Linking CXX executable examples\Debug\rynui_token_gallery.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 147: rynui.token_gallery_frame
+1/1 Test #147: rynui.token_gallery_frame ........   Passed   25.77 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =  25.77 sec
+[0/2] Re-checking globbed directories...
+[1/23] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[2/23] Compiling glyph vertex shader to SPIRV
+[3/23] Compiling glyph fragment shader to SPIRV
+[4/23] Compiling rounded_effect vertex shader to SPIRV
+[5/23] Compiling rounded_effect fragment shader to SPIRV
+[6/23] Compiling glyph fragment shader to DXIL
+[7/23] Compiling quad fragment shader to SPIRV
+[8/23] Compiling quad fragment shader to DXIL
+[9/23] Compiling glyph vertex shader to DXIL
+[10/23] Reflecting glyph vertex shader resources
+[11/23] Compiling quad vertex shader to DXIL
+[12/23] Compiling quad vertex shader to SPIRV
+[13/23] Reflecting glyph fragment shader resources
+[14/23] Reflecting rounded_effect vertex shader resources
+[15/23] Compiling rounded_effect vertex shader to DXIL
+[16/23] Reflecting rounded_effect fragment shader resources
+[17/23] Compiling rounded_effect fragment shader to DXIL
+[18/23] Deploying shaders for rynui_token_gallery
+[19/23] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\token_gallery_definition.cpp.obj
+[20/23] Linking CXX static library examples\Release\rynui_token_gallery_definition.lib
+[21/23] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[22/23] Linking CXX executable examples\Release\rynui_token_gallery.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 147: rynui.token_gallery_frame
+1/1 Test #147: rynui.token_gallery_frame ........   Passed    5.12 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   5.13 sec

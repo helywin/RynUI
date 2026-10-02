@@ -28,3 +28,5 @@ Checkbox 与 Group 的 `direction(Prop<CheckboxDirection>)` 支持 LeftToRight/R
 `ThemeConfig.checkbox` 支持独立 seed/algorithm、尺寸/半选尺寸/线宽/勾线宽度/圆角/标签间距/字体与行高、状态色/标签色/focus，以及 focus 与 wave 的几何和透明度。无效或超出 indicator 的几何会拒绝。颜色更新不重新测量或塑形标签。锁定 [Ant Design 6.6.5 Checkbox 样式](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/checkbox/style/index.ts) 的 ComponentToken 为空；这里的 typed token 是公共 map/alias 样式值的原生适配。
 
 `wave(Prop<bool>)` 默认启用，只有有效用户激活产生有限反馈；外部状态更新不会触发。重复激活复用保留 range，结束、禁用、wave=false、窗口失活、motion=false、reduced motion 或销毁后清理效果，稳态没有下一帧 deadline。
+
+共同实现与完整 headless Debug/Release 各 48/48 已通过；Windows 真窗口十次缩放运行与 210 张 GPU readback 见 [Windows 证据](../openspec/changes/047-20261002-complete-native-checkbox-group/evidence/windows/README.md)。Linux 原生验收独立待完成。
