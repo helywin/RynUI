@@ -100,6 +100,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [Button](docs/button.md)：颜色与变体、原生内容/交互和阶段验收。
 - [Divider](docs/divider.md)：线条变体、尺寸、逻辑标题方位与间距合同。
 - [Switch](docs/switch.md)：保留状态内容、RTL、焦点、主题与有限反馈。
+- [Flex / Space](docs/flex-space.md)：原生换行、方向、对齐和弹性外部布局映射。
 - [Slider / RangeSlider](docs/slider.md)：数值、交互、主题、支持范围与验收入口。
 - [Tooltip](docs/tooltip.md)：窗口提示层、触发与受控显示、主题及分平台验收。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。

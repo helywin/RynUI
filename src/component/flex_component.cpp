@@ -18,6 +18,14 @@ struct FlexPropsAccess final {
         return props.wrap_;
     }
 
+    [[nodiscard]] static const std::optional<Prop<FlexWrap>>& typed_wrap(const FlexProps& props) noexcept {
+        return props.typed_wrap_;
+    }
+
+    [[nodiscard]] static const Prop<FlexDirection>& direction(const FlexProps& props) noexcept {
+        return props.direction_;
+    }
+
     [[nodiscard]] static const Prop<FlexJustify>& justify(const FlexProps& props) noexcept {
         return props.justify_;
     }
@@ -45,6 +53,28 @@ namespace {
     return wrap ? layout::FlexWrap::wrap : layout::FlexWrap::no_wrap;
 }
 
+[[nodiscard]] layout::FlexWrap flex_wrap(FlexWrap wrap) {
+    switch (wrap) {
+    case FlexWrap::NoWrap:
+        return layout::FlexWrap::no_wrap;
+    case FlexWrap::Wrap:
+        return layout::FlexWrap::wrap;
+    case FlexWrap::WrapReverse:
+        return layout::FlexWrap::wrap_reverse;
+    }
+    throw std::invalid_argument("Flex wrap value is invalid");
+}
+
+[[nodiscard]] bool right_to_left(FlexDirection direction) {
+    switch (direction) {
+    case FlexDirection::LeftToRight:
+        return false;
+    case FlexDirection::RightToLeft:
+        return true;
+    }
+    throw std::invalid_argument("Flex direction value is invalid");
+}
+
 [[nodiscard]] layout::FlexJustify flex_justify(FlexJustify justify) {
     switch (justify) {
     case FlexJustify::Start:
@@ -59,6 +89,10 @@ namespace {
         return layout::FlexJustify::space_around;
     case FlexJustify::SpaceEvenly:
         return layout::FlexJustify::space_evenly;
+    case FlexJustify::Left:
+        return layout::FlexJustify::left;
+    case FlexJustify::Right:
+        return layout::FlexJustify::right;
     }
     throw std::invalid_argument("Flex justify value is invalid");
 }
@@ -130,10 +164,12 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
         .padding = {},
         .fill_width = false,
         .fill_height = false,
-        .wrap = flex_wrap(read_prop(FlexPropsAccess::wrap(props))),
+        .wrap = FlexPropsAccess::typed_wrap(props) ? flex_wrap(read_prop(*FlexPropsAccess::typed_wrap(props)))
+                                                   : flex_wrap(read_prop(FlexPropsAccess::wrap(props))),
         .justify = flex_justify(read_prop(FlexPropsAccess::justify(props))),
         .align = flex_align(read_prop(FlexPropsAccess::align(props))),
         .cross_gap = gap.cross,
+        .right_to_left = right_to_left(read_prop(FlexPropsAccess::direction(props))),
     };
 
     const auto component = build.mount_component<FlexComponentState>();
@@ -157,11 +193,25 @@ void mount_flex_component(const FlexProps& props, const FlexContent& content) {
         candidate.direction = flex_direction(vertical);
         apply_measure_model(state, candidate, *layout, *dirty);
     }));
-    static_cast<void>(connect_prop(scope, FlexPropsAccess::wrap(props), [&state, layout, dirty](bool wrap) {
-        auto candidate = state.model;
-        candidate.wrap = flex_wrap(wrap);
-        apply_measure_model(state, candidate, *layout, *dirty);
-    }));
+    if (const auto& wrap = FlexPropsAccess::typed_wrap(props)) {
+        static_cast<void>(connect_prop(scope, *wrap, [&state, layout, dirty](FlexWrap value) {
+            auto candidate = state.model;
+            candidate.wrap = flex_wrap(value);
+            apply_measure_model(state, candidate, *layout, *dirty);
+        }));
+    } else {
+        static_cast<void>(connect_prop(scope, FlexPropsAccess::wrap(props), [&state, layout, dirty](bool value) {
+            auto candidate = state.model;
+            candidate.wrap = flex_wrap(value);
+            apply_measure_model(state, candidate, *layout, *dirty);
+        }));
+    }
+    static_cast<void>(
+        connect_prop(scope, FlexPropsAccess::direction(props), [&state, layout, dirty](FlexDirection value) {
+            auto candidate = state.model;
+            candidate.right_to_left = right_to_left(value);
+            apply_placement_model(state, candidate, *layout, *dirty);
+        }));
     static_cast<void>(
         connect_prop(scope, FlexPropsAccess::justify(props), [&state, layout, dirty](FlexJustify justify) {
             auto candidate = state.model;

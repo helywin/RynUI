@@ -52,6 +52,7 @@ enum class FlexDirection {
 enum class FlexWrap {
     no_wrap,
     wrap,
+    wrap_reverse,
 };
 
 enum class FlexJustify {
@@ -61,6 +62,8 @@ enum class FlexJustify {
     space_between,
     space_around,
     space_evenly,
+    left,
+    right,
 };
 
 enum class FlexAlign {
@@ -86,6 +89,7 @@ struct FlexLayout {
     FlexAlign align{FlexAlign::start};
     float cross_gap{0.0F};
     FlexItemPolicy item_policy{FlexItemPolicy::flex};
+    bool right_to_left{};
 
     friend constexpr bool operator==(FlexLayout, FlexLayout) = default;
 };

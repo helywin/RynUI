@@ -30,6 +30,23 @@ enum class FlexJustify {
     SpaceBetween,
     SpaceAround,
     SpaceEvenly,
+    Left,
+    Right,
+    FlexStart = Start,
+    FlexEnd = End,
+    Normal = Start,
+    Stretch = Start,
+};
+
+enum class FlexWrap {
+    NoWrap,
+    Wrap,
+    WrapReverse,
+};
+
+enum class FlexDirection {
+    LeftToRight,
+    RightToLeft,
 };
 
 enum class FlexAlign {
@@ -37,6 +54,11 @@ enum class FlexAlign {
     Center,
     End,
     Stretch,
+    Normal = Stretch,
+    FlexStart = Start,
+    FlexEnd = End,
+    SelfStart = Start,
+    SelfEnd = End,
 };
 
 enum class SpaceAlign {
@@ -89,6 +111,17 @@ public:
 
     FlexProps& wrap(Prop<bool> value) {
         wrap_ = std::move(value);
+        typed_wrap_.reset();
+        return *this;
+    }
+
+    FlexProps& wrap(Prop<FlexWrap> value) {
+        typed_wrap_ = std::move(value);
+        return *this;
+    }
+
+    FlexProps& direction(Prop<FlexDirection> value) {
+        direction_ = std::move(value);
         return *this;
     }
 
@@ -129,6 +162,8 @@ private:
 
     Prop<bool> vertical_{false};
     Prop<bool> wrap_{false};
+    std::optional<Prop<FlexWrap>> typed_wrap_;
+    Prop<FlexDirection> direction_{FlexDirection::LeftToRight};
     Prop<FlexJustify> justify_{FlexJustify::Start};
     Prop<FlexAlign> align_{FlexAlign::Start};
     Prop<LayoutGap> gap_{LayoutGap{}};

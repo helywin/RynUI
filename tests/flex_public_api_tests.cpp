@@ -68,6 +68,8 @@ int main() {
     try {
         ryn::Signal<bool> vertical{false};
         ryn::Signal<bool> wrap{true};
+        ryn::Signal<ryn::FlexWrap> typed_wrap{ryn::FlexWrap::WrapReverse};
+        ryn::Signal<ryn::FlexDirection> direction{ryn::FlexDirection::RightToLeft};
         ryn::Signal<ryn::FlexJustify> justify{ryn::FlexJustify::Center};
         ryn::Signal<ryn::FlexAlign> align{ryn::FlexAlign::Stretch};
         ryn::Signal<ryn::SpaceAlign> space_align{ryn::SpaceAlign::End};
@@ -79,6 +81,10 @@ int main() {
                           ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
                       [] { ryn::Text(u8"content"); });
             ryn::Flex(ryn::FlexProps{}
+                          .wrap(typed_wrap)
+                          .direction(direction)
+                          .justify(ryn::FlexJustify::Left)
+                          .align(ryn::FlexAlign::Normal)
                           .gap(ryn::SpaceSize::Small)
                           .gap(ryn::dp(4.0F))
                           .gap(ryn::dp(4.0F), ryn::dp(6.0F))
@@ -87,6 +93,8 @@ int main() {
         };
         static_cast<void>(declarations);
         static_cast<void>(space_align);
+        static_assert(ryn::FlexAlign::SelfStart == ryn::FlexAlign::Start);
+        static_assert(ryn::FlexJustify::Stretch == ryn::FlexJustify::Start);
 
         require(ryn::LayoutGap{} == ryn::LayoutGap{ryn::dp(0.0F)}, "zero LayoutGap equality is inconsistent");
         require(ryn::LayoutGap{ryn::SpaceSize::Small} == ryn::LayoutGap{ryn::SpaceSize::Small} &&

@@ -147,6 +147,7 @@ void validate_flex_layout(const FlexLayout& layout) {
     switch (layout.wrap) {
     case FlexWrap::no_wrap:
     case FlexWrap::wrap:
+    case FlexWrap::wrap_reverse:
         break;
     default:
         throw std::invalid_argument("Flex wrap is invalid");
@@ -158,6 +159,8 @@ void validate_flex_layout(const FlexLayout& layout) {
     case FlexJustify::space_between:
     case FlexJustify::space_around:
     case FlexJustify::space_evenly:
+    case FlexJustify::left:
+    case FlexJustify::right:
         break;
     default:
         throw std::invalid_argument("Flex justify is invalid");
@@ -590,7 +593,7 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     }
                     const float candidate_main =
                         line.main_size + (line.item_count == 0 ? 0.0F : current.main_gap) + item.main_size;
-                    if (current.wrap == FlexWrap::wrap && std::isfinite(available_main) && line.item_count > 0 &&
+                    if (current.wrap != FlexWrap::no_wrap && std::isfinite(available_main) && line.item_count > 0 &&
                         candidate_main > available_main) {
                         finish_line();
                         line.first_item = index;
@@ -826,6 +829,9 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                 const float main_start = main_origin(content, current.direction);
                 const float cross_start = cross_origin(content, current.direction);
                 const float cross_end = cross_start + available_cross;
+                const bool reverse_main = current.direction == FlexDirection::horizontal && current.right_to_left;
+                const bool reverse_cross = (current.wrap == FlexWrap::wrap_reverse) !=
+                                           (current.direction == FlexDirection::vertical && current.right_to_left);
                 float line_cross_cursor = cross_start;
 
                 for (std::size_t line_index = 0; line_index < scratch.lines.size(); ++line_index) {
@@ -833,6 +839,8 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                     const float remaining_cross = std::max(0.0F, cross_end - line_cross_cursor);
                     const float line_cross =
                         scratch.lines.size() == 1 ? remaining_cross : std::min(line.cross_size, remaining_cross);
+                    const float physical_cross_start =
+                        reverse_cross ? cross_end - (line_cross_cursor - cross_start) - line_cross : line_cross_cursor;
                     const float free_main = std::max(0.0F, available_main - line.main_size);
                     float leading_main = 0.0F;
                     float between_items = current.main_gap;
@@ -845,6 +853,12 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                         break;
                     case FlexJustify::end:
                         leading_main = free_main;
+                        break;
+                    case FlexJustify::left:
+                        leading_main = reverse_main ? free_main : 0;
+                        break;
+                    case FlexJustify::right:
+                        leading_main = current.direction == FlexDirection::horizontal && !reverse_main ? free_main : 0;
                         break;
                     case FlexJustify::space_between:
                         if (line.item_count > 1) {
@@ -902,11 +916,17 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                             leading_cross = free_cross;
                         }
 
+                        const float item_main =
+                            reverse_main ? main_start + available_main - (item_cursor - main_start) - child_main
+                                         : item_cursor;
+                        const float item_cross =
+                            physical_cross_start +
+                            (reverse_cross ? line_cross - leading_cross - child_cross : leading_cross);
                         if (current.direction == FlexDirection::horizontal) {
                             place_node(item.id,
                                        {
-                                           item_cursor,
-                                           line_cross_cursor + leading_cross,
+                                           item_main,
+                                           item_cross,
                                            child_main,
                                            child_cross,
                                        },
@@ -914,8 +934,8 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                         } else {
                             place_node(item.id,
                                        {
-                                           line_cross_cursor + leading_cross,
-                                           item_cursor,
+                                           item_cross,
+                                           item_main,
                                            child_cross,
                                            child_main,
                                        },

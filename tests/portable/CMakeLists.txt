@@ -21,6 +21,11 @@ foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logi
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()
 
+foreach(name IN ITEMS layout_engine layout_style layout_style_public_api layout_allocation
+        flex_component flex_public_api flex_header_isolation space_component space_public_api space_header_isolation)
+    rynui_portable_test(${name} "${name}_tests.cpp")
+endforeach()
+
 target_compile_definitions(rynui_portable_theme_algorithm PRIVATE
     "RYNUI_THEME_GOLDEN_DIRECTORY=\"${PROJECT_SOURCE_DIR}/design-tokens/ant-design/6.6.5/golden\"")
 

@@ -2,7 +2,7 @@
 
 ## 1. 换行和方向（平台通用）
 
-- [ ] 1.1 实现兼容 bool 的 typed WrapReverse、LTR/RTL、物理 Left/Right justify 与原生等价值映射，保留声明/focus 顺序和局部 placement；加入 docs/flex-space.md 与 public API、H/V/RTL/反向换行、非法值、retained/销毁合同。Windows `windows-msvc-headless` Debug/Release 构建并通过 LayoutEngine/LayoutStyle/Flex/Space/public API 的受影响 CTest；格式、OpenSpec 与 diff 检查后提交。
+- [x] 1.1 实现兼容 bool 的 typed WrapReverse、LTR/RTL、物理 Left/Right justify 与原生等价值映射，保留声明/focus 顺序和局部 placement；加入 docs/flex-space.md 与 public API、H/V/RTL/反向换行、非法值、retained/销毁合同。Windows `windows-msvc-headless` Debug/Release 的 LayoutEngine/LayoutStyle/Flex/Space/public API CTest 各 10/10（0.59s/0.46s）；408 自有源格式、OpenSpec doctor/strict 49/49 与 diff 检查通过。
 
 ## 2. 基线和默认值（平台通用）
 

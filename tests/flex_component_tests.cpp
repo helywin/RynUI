@@ -298,6 +298,99 @@ void test_theme_preset_gap_updates_only_subscribed_flex() {
             "unrelated Theme color notified Flex gap subscribers");
 }
 
+void test_reverse_wrap_and_direction() {
+    for (const bool vertical : {false, true}) {
+        Fixture fixture;
+        ryn::Signal<ryn::FlexWrap> wrap{ryn::FlexWrap::WrapReverse};
+        ryn::Signal<ryn::FlexDirection> direction{ryn::FlexDirection::LeftToRight};
+        ryn::Signal<ryn::FlexJustify> justify{ryn::FlexJustify::Start};
+        int runs{};
+        std::vector<ryn::runtime::NodeId> children;
+        fixture.mount([&] {
+            ryn::Flex(ryn::FlexProps{}.vertical(vertical).wrap(wrap).direction(direction).justify(justify).gap(
+                          ryn::dp(5), ryn::dp(10)),
+                      [&] {
+                          ++runs;
+                          for (int i = 0; i < 4; ++i) {
+                              const auto child = Leaf<FirstLeafState>(vertical ? ryn::runtime::Size{20, 50}
+                                                                               : ryn::runtime::Size{50, 20});
+                              children.push_back(fixture.components.root(child));
+                          }
+                      });
+        });
+        const auto component = fixture.components.root_components().front();
+        const auto root = fixture.components.root(component);
+        const auto constraints =
+            ryn::layout::Constraints::fixed(vertical ? 100.0F : 110.0F, vertical ? 110.0F : 100.0F);
+        static_cast<void>(fixture.layout.layout(root, constraints));
+        auto first = fixture.nodes.require(children[0]).bounds;
+        auto last = fixture.nodes.require(children[3]).bounds;
+        require(vertical ? first.x == 80 && last.x == 50 : first.y == 80 && last.y == 50,
+                "reverse wrap did not stack from cross-end");
+        const auto measures = fixture.nodes.require(children[0]).measure_count;
+        fixture.clear();
+        direction.set(ryn::FlexDirection::RightToLeft);
+        require(fixture.dirty.layout_roots().empty() && fixture.dirty.placement_roots() == std::vector{root},
+                "RTL update did not stay placement-only");
+        fixture.layout.place(root);
+        first = fixture.nodes.require(children[0]).bounds;
+        last = fixture.nodes.require(children[3]).bounds;
+        require(vertical ? first.x == 0 && last.x == 30 : first.x == 60 && last.x == 5,
+                "RTL and reverse wrap axis mapping failed");
+        require(fixture.nodes.require(children[0]).measure_count == measures && runs == 1 &&
+                    fixture.nodes.require(root).children == children,
+                "direction changed retained order or measured content");
+        wrap.set(ryn::FlexWrap::Wrap);
+        static_cast<void>(fixture.layout.layout(root, constraints));
+        first = fixture.nodes.require(children[0]).bounds;
+        last = fixture.nodes.require(children[3]).bounds;
+        require(vertical ? first.x == 80 && last.x == 50 : first.y == 0 && last.y == 30,
+                "normal wrap did not restore logical cross-start");
+        if (!vertical) {
+            justify.set(ryn::FlexJustify::Left);
+            fixture.layout.place(root);
+            require(fixture.nodes.require(children[1]).bounds.x == 0, "RTL physical Left mapped to Start");
+            justify.set(ryn::FlexJustify::Right);
+            fixture.layout.place(root);
+            require(fixture.nodes.require(children[0]).bounds.x + fixture.nodes.require(children[0]).bounds.width ==
+                        110,
+                    "RTL physical Right did not anchor physical edge");
+        }
+        const auto model = fixture.components.state<ryn::detail::FlexComponentState>(component)->model;
+        bool rejected{};
+        try {
+            wrap.set(static_cast<ryn::FlexWrap>(255));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected && fixture.components.state<ryn::detail::FlexComponentState>(component)->model == model,
+                "invalid typed wrap changed committed model");
+        rejected = false;
+        try {
+            direction.set(static_cast<ryn::FlexDirection>(255));
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected && fixture.components.state<ryn::detail::FlexComponentState>(component)->model == model,
+                "invalid direction changed committed model");
+        require(fixture.components.destroy(component), "Flex destruction failed");
+        fixture.clear();
+        wrap.set(ryn::FlexWrap::NoWrap);
+        direction.set(ryn::FlexDirection::LeftToRight);
+        require(!fixture.frames.pending() && fixture.nodes.size() == 0, "destroyed Flex retained subscriptions");
+    }
+    Fixture legacy;
+    ryn::Signal<bool> enabled{true};
+    legacy.mount([&] { ryn::Flex(ryn::FlexProps{}.wrap(ryn::FlexWrap::WrapReverse).wrap(enabled), [] {}); });
+    const auto root = legacy.components.root_components().front();
+    require(legacy.components.state<ryn::detail::FlexComponentState>(root)->model.wrap == ryn::layout::FlexWrap::wrap,
+            "legacy bool wrap did not supersede typed wrap");
+    enabled.set(false);
+    require(legacy.components.state<ryn::detail::FlexComponentState>(root)->model.wrap ==
+                ryn::layout::FlexWrap::no_wrap,
+            "legacy wrap Signal stopped updating");
+}
+
 } // namespace
 
 int main() {
@@ -305,6 +398,7 @@ int main() {
         test_mount_topology_and_lifecycle();
         test_reactive_phases_identity_and_cleanup();
         test_theme_preset_gap_updates_only_subscribed_flex();
+        test_reverse_wrap_and_direction();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
