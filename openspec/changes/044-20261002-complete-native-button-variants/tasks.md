@@ -10,7 +10,7 @@
 
 ## 3. 内容与原生入口（平台通用）
 
-- [ ] 3.1 实现 retained icon/loading slots、start/end、icon-only、shape/block、ButtonRef/autoFocus 与 loading delay；补 position/替换/gap、resize、父约束、focus代际/owner thread/rollback、延迟取消/idle/销毁合同与文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
+- [x] 3.1 实现 retained icon/loading slots、start/end、icon-only、shape/block、ButtonRef/autoFocus 与 loading delay；补 position/替换/gap、resize、父约束、focus代际/owner thread/rollback、延迟取消/idle/销毁合同与文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
 
 ## 4. Wave（平台通用）
 

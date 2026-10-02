@@ -1330,7 +1330,7 @@ void test_ghost_dashed_gaps_and_material_only_theme_updates() {
 }
 
 void test_button_variant_invalid_inputs_and_effect_limit() {
-    for (int field = 0; field < 2; ++field) {
+    for (int field = 0; field < 4; ++field) {
         Fixture fixture;
         bool rejected{};
         try {
@@ -1338,8 +1338,12 @@ void test_button_variant_invalid_inputs_and_effect_limit() {
                 auto props = ryn::ButtonProps{};
                 if (field == 0) {
                     props.color(static_cast<ryn::ButtonColor>(255));
-                } else {
+                } else if (field == 1) {
                     props.variant(static_cast<ryn::ButtonVariant>(255));
+                } else if (field == 2) {
+                    props.shape(static_cast<ryn::ButtonShape>(255));
+                } else {
+                    props.iconPlacement(static_cast<ryn::ButtonIconPlacement>(255));
                 }
                 ryn::Button(props, [] { ryn::Text(u8"Invalid"); });
             }});
@@ -1414,6 +1418,296 @@ void test_button_palette_phase_identity_and_destructive_dash_activation() {
             "Destructive dashed activation leaked lazy fragment/effects");
 }
 
+void test_retained_icon_loading_slots_and_end_placement() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<bool> loading{false};
+    ryn::Signal<ryn::ButtonIconPlacement> placement{ryn::ButtonIconPlacement::Start};
+    ryn::Signal<ryn::String> label{ryn::String{u8"Label"}};
+    ryn::Signal<ryn::String> icon{ryn::String{u8"I"}};
+    int content_runs{};
+    int icon_runs{};
+    int loading_runs{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.loading(loading).iconPlacement(placement), ryn::ButtonContent{[&] {
+                        ++content_runs;
+                        ryn::Text(ryn::TextProps{}.content(label));
+                    }},
+                    ryn::ButtonIcon{[&] {
+                        ++icon_runs;
+                        ryn::Text(ryn::TextProps{}.content(icon));
+                    }},
+                    ryn::ButtonLoadingIcon{[&] {
+                        ++loading_runs;
+                        ryn::Text(u8"Loading");
+                    }});
+    }});
+    require(fixture.synchronize(), "Button icon composition initial layout failed");
+    const auto mounted = fixture.host->mounted_buttons()[0];
+    const auto original = fixture.host->snapshot(mounted.component);
+    const auto content_node = fixture.host->components().root(fixture.host->text().mounted_texts()[2].component);
+    const auto icon_node = fixture.host->components().root(original.icon);
+    const auto loading_node = fixture.host->components().root(original.loading_icon);
+    const auto gap = ryn::resolve_theme().button().icon_gap;
+    auto content = fixture.nodes.require(content_node).bounds;
+    auto image = fixture.nodes.require(icon_node).bounds;
+    require(near(content.x - image.x - image.width, gap) && fixture.host->components().branch_active(original.icon) &&
+                !fixture.host->components().branch_active(original.loading_icon),
+            "Button start icon lost the single gap or loading branch visibility");
+    placement.set(ryn::ButtonIconPlacement::End);
+    require(fixture.synchronize(), "Button end icon layout failed");
+    content = fixture.nodes.require(content_node).bounds;
+    image = fixture.nodes.require(icon_node).bounds;
+    require(near(image.x - content.x - content.width, gap), "Button end icon is before content or has two gaps");
+    loading.set(true);
+    require(fixture.synchronize(), "Button loading slot replacement failed");
+    content = fixture.nodes.require(content_node).bounds;
+    image = fixture.nodes.require(loading_node).bounds;
+    require(near(image.x - content.x - content.width, gap) &&
+                !fixture.host->components().branch_active(original.icon) &&
+                fixture.host->components().branch_active(original.loading_icon) &&
+                !fixture.layout.horizontal_content_geometry(mounted.node).loading_indicator_bounds &&
+                !fixture.host->snapshot(mounted.component).spinner_running,
+            "Button custom loading duplicated icon/spinner/gap or moved before content");
+    label.set(ryn::String{u8"Updated label"});
+    icon.set(ryn::String{u8"II"});
+    loading.set(false);
+    require(fixture.synchronize(), "Button icon restoration failed");
+    const auto restored = fixture.host->snapshot(mounted.component);
+    content = fixture.nodes.require(content_node).bounds;
+    image = fixture.nodes.require(icon_node).bounds;
+    require(restored.icon == original.icon && restored.loading_icon == original.loading_icon &&
+                near(image.x - content.x - content.width, gap) && content_runs == 1 && icon_runs == 1 &&
+                loading_runs == 1,
+            "Button reactive content/icon/loading remounted slots or lost end placement");
+    fixture.host->dispose();
+    require(fixture.nodes.size() == 0 && fixture.host->button_scene().size() == 0 &&
+                fixture.text_scene.glyph_scene().instances().size() == 0 && !fixture.host->next_deadline(),
+            "Button icon composition leaked resources or deadlines");
+}
+
+void test_builtin_loading_at_end_without_reordering_content_and_icon_only() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<bool> loading{false};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.iconPlacement(ryn::ButtonIconPlacement::End).loading(loading), [] {
+            ryn::Text(u8"First");
+            ryn::Text(u8"Second");
+        });
+        ryn::Button(ryn::ButtonProps{}, ryn::ButtonSlots{.icon = ryn::ButtonIcon{[] { ryn::Text(u8"I"); }}});
+        ryn::Button(ryn::ButtonProps{}.size(ryn::ControlSize::Small).shape(ryn::ButtonShape::Circle),
+                    ryn::ButtonSlots{.icon = ryn::ButtonIcon{[] { ryn::Text(u8"I"); }}});
+    }});
+    require(fixture.synchronize(), "Button icon-only layout failed");
+    require(near(fixture.bounds(1).width, fixture.bounds(1).height) && near(fixture.bounds(1).width, 32) &&
+                near(fixture.bounds(2).width, 24) && near(fixture.bounds(2).height, 24) &&
+                near(fixture.layer(2, ryn::component::ButtonVisualLayer::border).corner_radius, 12),
+            "Button icon-only defaults or small circle dimensions/radius differ");
+    loading.set(true);
+    require(fixture.synchronize(), "Button end builtin spinner layout failed");
+    const auto first =
+        fixture.nodes.require(fixture.host->components().root(fixture.host->text().mounted_texts()[0].component))
+            .bounds;
+    const auto second =
+        fixture.nodes.require(fixture.host->components().root(fixture.host->text().mounted_texts()[1].component))
+            .bounds;
+    const auto indicator =
+        fixture.layout.horizontal_content_geometry(fixture.host->mounted_buttons()[0].node).loading_indicator_bounds;
+    require(first.x < second.x && indicator &&
+                near(indicator->x - second.x - second.width, ryn::resolve_theme().button().icon_gap),
+            "Button end builtin spinner reordered content or lost its final gap");
+}
+
+void test_button_shape_block_constraints_and_reactive_resize() {
+    Fixture fixture;
+    ryn::Signal<ryn::LogicalLength> width{ryn::dp(220)};
+    ryn::Signal<ryn::ButtonShape> shape{ryn::ButtonShape::Round};
+    ryn::Signal<bool> block{true};
+    int runs{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::dp(10)).layout(ryn::LayoutStyle{}.width(width)), [&] {
+            ++runs;
+            ryn::Button(ryn::ButtonProps{}.shape(shape).block(block).type(ryn::ButtonType::Dashed),
+                        [] { ryn::Text(u8"Block"); });
+            ryn::Button(ryn::ButtonProps{}.block(true).layout(ryn::LayoutStyle{}.width(ryn::dp(90))),
+                        [] { ryn::Text(u8"Width"); });
+        });
+    }});
+    require(fixture.synchronize(), "Button block layout failed");
+    require(near(fixture.bounds(0).width, 220) && near(fixture.bounds(1).width, 90) &&
+                near(fixture.layer(0, ryn::component::ButtonVisualLayer::border).corner_radius, 16),
+            "Button block/explicit width priority or round radius differs");
+    width.set(ryn::dp(340));
+    require(fixture.synchronize() && near(fixture.bounds(0).width, 340) && near(fixture.bounds(1).width, 90) &&
+                runs == 1 &&
+                fixture.host->hit_test().hit_test(fixture.center(0)) == fixture.host->mounted_buttons()[0].interaction,
+            "Button block resize missed bounds/hit range or reran parent");
+    shape.set(ryn::ButtonShape::Square);
+    require(fixture.synchronize() && fixture.layer(0, ryn::component::ButtonVisualLayer::border).corner_radius == 0,
+            "Button square retained a rounded border");
+    block.set(false);
+    require(fixture.synchronize() && fixture.bounds(0).width < 340 && runs == 1,
+            "Button block false retained fill width");
+    Fixture unbounded;
+    unbounded.host->mount(
+        ryn::Content{[] { ryn::Button(ryn::ButtonProps{}.block(true), [] { ryn::Text(u8"Natural"); }); }});
+    const auto node = unbounded.host->mounted_buttons()[0].node;
+    const auto measured = unbounded.layout.measure(node, {0, std::numeric_limits<float>::infinity(), 0, 100});
+    require(std::isfinite(measured.width) && measured.width > 32, "Button block created infinite unconstrained width");
+}
+
+void test_button_ref_thread_generation_autofocus_and_mount_rollback() {
+    Fixture fixture;
+    ryn::ButtonRef reference;
+    ryn::ButtonRef disabled_reference;
+    ryn::Signal<bool> disabled{false};
+    require(!reference.bound() && !reference.focus() && !reference.blur(), "Unbound ButtonRef is live");
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Flex(ryn::FlexProps{}, [&] {
+            ryn::Button(ryn::ButtonProps{}.ref(reference).autoFocus(true).disabled(disabled),
+                        [] { ryn::Text(u8"Focus"); });
+            ryn::Button(ryn::ButtonProps{}.ref(disabled_reference).autoFocus(true).disabled(true),
+                        [] { ryn::Text(u8"Disabled"); });
+        });
+    }});
+    require(fixture.synchronize(), "Button ref initial layout failed");
+    const auto old = fixture.host->mounted_buttons()[0];
+    require(reference.bound() && fixture.host->focus().state().focused == old.interaction &&
+                fixture.host->focus().state().focus_visible && !disabled_reference.focus() && reference.blur() &&
+                !fixture.host->focus().state().focused && reference.focus(),
+            "Button autoFocus/ref/disabled semantics differ");
+    disabled.set(true);
+    require(!reference.focus() && !fixture.host->focus().state().focused, "Disabled ButtonRef focused a disabled node");
+    disabled.set(false);
+    require(!fixture.host->focus().state().focused, "Button autoFocus ran again after a reactive update");
+    bool wrong_thread{};
+    std::thread thread([&] {
+        try {
+            static_cast<void>(reference.focus());
+        } catch (const std::logic_error&) {
+            wrong_thread = true;
+        }
+    });
+    thread.join();
+    require(wrong_thread, "ButtonRef accepted foreign thread access");
+    require(fixture.host->destroy(old.component) && !reference.bound() && !reference.focus() && !reference.blur(),
+            "Destroyed ButtonRef still drives its owner");
+    fixture.host->services().append_slot(
+        fixture.host->components().root_components()[0],
+        ryn::Content{[&] { ryn::Button(ryn::ButtonProps{}.ref(reference), [] { ryn::Text(u8"Reused"); }); }});
+    require(fixture.synchronize() && reference.focus() &&
+                fixture.host->focus().state().focused == fixture.host->mounted_buttons()[1].interaction &&
+                fixture.host->mounted_buttons()[1].component != old.component,
+            "Reused ButtonRef drove a stale component generation");
+    Fixture duplicate;
+    ryn::ButtonRef same;
+    bool rejected{};
+    try {
+        duplicate.host->mount(ryn::Content{[&] {
+            ryn::Button(ryn::ButtonProps{}.ref(same),
+                        [&] { ryn::Button(ryn::ButtonProps{}.ref(same), [] { ryn::Text(u8"Duplicate"); }); });
+        }});
+    } catch (const std::logic_error&) {
+        rejected = true;
+    }
+    require(rejected && !same.bound() && duplicate.nodes.size() == 0 && duplicate.host->button_scene().size() == 0 &&
+                duplicate.host->interactions().size() == 0 && duplicate.host->animations().diagnostics().targets == 0,
+            "Duplicate nested ButtonRef was accepted or rollback leaked resources");
+    Fixture recovered;
+    recovered.host->mount(
+        ryn::Content{[&] { ryn::Button(ryn::ButtonProps{}.ref(same), [] { ryn::Text(u8"Recovered"); }); }});
+    require(recovered.synchronize() && same.focus(), "Failed ButtonRef reservation prevented later reuse");
+    Fixture thrown;
+    ryn::ButtonRef failed;
+    bool slot_failed{};
+    try {
+        thrown.host->mount(ryn::Content{[&] {
+            ryn::Button(ryn::ButtonProps{}.ref(failed).loading(true).loadingDelay(ryn::Duration::seconds(1)),
+                        ryn::ButtonSlots{.icon = ryn::ButtonIcon{[] { throw std::runtime_error("slot failed"); }}});
+        }});
+    } catch (const std::runtime_error&) {
+        slot_failed = true;
+    }
+    require(slot_failed && !failed.bound() && thrown.nodes.size() == 0 && thrown.host->button_scene().size() == 0 &&
+                thrown.host->animations().diagnostics().targets == 0 && !thrown.host->next_deadline(),
+            "Button failed icon slot leaked ref reservation/resources/deadline");
+    Fixture destructive;
+    ryn::ButtonRef destroyed;
+    ryn::runtime::ComponentId destroy_id;
+    destructive.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.ref(destroyed).onClick([&] {
+            require(destructive.host->destroy(destroy_id), "ButtonRef destructive callback failed");
+            require(!destroyed.focus(), "ButtonRef remained live inside its destruction callback");
+        }),
+                    [] { ryn::Text(u8"Destroy"); });
+    }});
+    require(destructive.synchronize(), "ButtonRef destructive fixture failed layout");
+    destroy_id = destructive.host->mounted_buttons()[0].component;
+    require(destroyed.focus(), "ButtonRef destructive fixture failed focus");
+    destructive.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::down));
+    destructive.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::up));
+    require(!destroyed.bound() && destructive.nodes.size() == 0 &&
+                destructive.host->animations().diagnostics().targets == 0,
+            "ButtonRef destructive activation retained targets/ref");
+}
+
+void test_button_loading_delay_cancellation_reconfiguration_and_idle() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<bool> loading{true};
+    ryn::Signal<ryn::Duration> delay{ryn::Duration::milliseconds(100)};
+    int runs{};
+    int clicks{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.loading(loading).loadingDelay(delay).onClick([&] { ++clicks; }), [&] {
+            ++runs;
+            ryn::Text(u8"Delayed");
+        });
+    }});
+    require(fixture.synchronize(), "Button delayed loading initial layout failed");
+    const auto mounted = fixture.host->mounted_buttons()[0];
+    require(!fixture.host->snapshot(mounted.component).loading &&
+                fixture.host->snapshot(mounted.component).loading_pending &&
+                fixture.host->next_deadline() == ryn::animation::AnimationTime::microseconds(100000),
+            "Button initial loading delay started early or missed deadline");
+    const auto point = fixture.center(0);
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+    require(clicks == 1 && fixture.tick(99999) == 0, "Button pending loading suppressed activation or ticked early");
+    loading.set(false);
+    require(!fixture.host->next_deadline() && !fixture.host->snapshot(mounted.component).loading_pending &&
+                fixture.tick(100000) == 0,
+            "Cancelled loading retained deadline or flickered");
+    loading.set(true);
+    require(fixture.host->next_deadline() == ryn::animation::AnimationTime::microseconds(200000),
+            "Button restarted delay at wrong time");
+    fixture.host->set_animation_time(ryn::animation::AnimationTime::microseconds(120000));
+    delay.set(ryn::Duration::milliseconds(50));
+    require(fixture.host->next_deadline() == ryn::animation::AnimationTime::microseconds(170000) &&
+                fixture.tick(169999) == 0 && fixture.tick(170000) > 0 &&
+                fixture.host->snapshot(mounted.component).loading &&
+                !fixture.host->snapshot(mounted.component).loading_pending && !fixture.host->next_deadline(),
+            "Button reconfigured delay missed exact cutoff or kept idle request under reduced motion");
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+    require(clicks == 1, "Button actual loading activated");
+    loading.set(false);
+    loading.set(true);
+    delay.set(ryn::Duration{});
+    require(fixture.host->snapshot(mounted.component).loading && !fixture.host->next_deadline() && runs == 1,
+            "Button zero delay failed immediate loading or remounted content");
+    loading.set(false);
+    delay.set(ryn::Duration::milliseconds(50));
+    loading.set(true);
+    require(fixture.host->destroy(mounted.component) && !fixture.host->next_deadline() && fixture.tick(300000) == 0,
+            "Button destruction retained delayed loading request");
+}
+
 } // namespace
 
 int main() {
@@ -1435,6 +1729,11 @@ int main() {
         test_ghost_dashed_gaps_and_material_only_theme_updates();
         test_button_variant_invalid_inputs_and_effect_limit();
         test_button_palette_phase_identity_and_destructive_dash_activation();
+        test_retained_icon_loading_slots_and_end_placement();
+        test_builtin_loading_at_end_without_reordering_content_and_icon_only();
+        test_button_shape_block_constraints_and_reactive_resize();
+        test_button_ref_thread_generation_autofocus_and_mount_rollback();
+        test_button_loading_delay_cancellation_reconfiguration_and_idle();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

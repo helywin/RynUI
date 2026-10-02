@@ -50,6 +50,12 @@ struct ButtonComponentSnapshot final {
     ButtonVariant variant{ButtonVariant::Outlined};
     bool ghost{};
     std::size_t dashed_effects{};
+    ButtonShape shape{ButtonShape::Default};
+    ButtonIconPlacement icon_placement{ButtonIconPlacement::Start};
+    bool block{};
+    bool loading_pending{};
+    runtime::ComponentId icon;
+    runtime::ComponentId loading_icon;
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
@@ -132,7 +138,7 @@ public:
 
 private:
     explicit ButtonComponentHost(std::unique_ptr<WindowComponentServices> services);
-    friend void mount_button_component(const ButtonProps& props, const ButtonContent& content);
+    friend void mount_button_component(const ButtonProps& props, const ButtonSlots& slots);
 
     void record_mounted_button(MountedButtonComponent mounted);
     [[nodiscard]] ButtonComponentState* find_state(runtime::ComponentId component) noexcept;
@@ -149,6 +155,12 @@ private:
     void apply_size(runtime::ComponentId component, ControlSize size);
     void apply_disabled(runtime::ComponentId component, bool disabled);
     void apply_loading(runtime::ComponentId component, bool loading);
+    void apply_loading_delay(runtime::ComponentId component, Duration delay);
+    void set_loading(ButtonComponentState& state, bool loading);
+    void apply_shape(runtime::ComponentId component, ButtonShape shape);
+    void apply_block(runtime::ComponentId component, bool block);
+    void apply_icon_placement(runtime::ComponentId component, ButtonIconPlacement placement);
+    void update_icon_branch(ButtonComponentState& state);
     void apply_focus(runtime::ComponentId component, input::FocusPresentation focus);
     void handle_pointer(runtime::ComponentId component, input::PointerDispatchContext& event);
     [[nodiscard]] bool activation_allowed(runtime::ComponentId component) const noexcept;
@@ -175,6 +187,8 @@ private:
     void on_dispose() noexcept override;
     void synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) override;
     void synchronize_auxiliary_motion() override;
+    std::size_t tick_auxiliary(animation::AnimationTime time) override;
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 
     std::unique_ptr<WindowComponentServices> owned_services_;
     WindowComponentServices* services_;
@@ -193,6 +207,6 @@ private:
     std::vector<MountedButtonComponent> mounted_buttons_;
 };
 
-void mount_button_component(const ButtonProps& props, const ButtonContent& content);
+void mount_button_component(const ButtonProps& props, const ButtonSlots& slots);
 
 } // namespace ryn::detail

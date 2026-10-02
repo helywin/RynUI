@@ -106,6 +106,11 @@ struct HorizontalContentLayout final {
     float gap{8.0F};
     bool loading{false};
     float loading_indicator_size{14.0F};
+    bool end_icon{};
+    bool skip_first{};
+    bool first_is_icon{};
+    float minimum_width{};
+    bool fill_width{};
 
     friend constexpr bool operator==(HorizontalContentLayout, HorizontalContentLayout) = default;
 };

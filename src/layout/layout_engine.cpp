@@ -38,7 +38,7 @@ float non_negative_finite(float value, const char* message) {
 }
 
 std::size_t horizontal_item_count(const runtime::Node& node, const HorizontalContentLayout& layout) noexcept {
-    return node.children.size() + (layout.loading ? 1U : 0U);
+    return node.children.size() - (layout.skip_first && !node.children.empty() ? 1U : 0U) + (layout.loading ? 1U : 0U);
 }
 
 float horizontal_gap_extent(const runtime::Node& node, const HorizontalContentLayout& layout) noexcept {
@@ -290,6 +290,8 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
                 if constexpr (std::is_same_v<Model, HorizontalContentLayout>) {
                     static_cast<void>(non_negative_finite(
                         model.loading_indicator_size, "Horizontal loading indicator must be finite and non-negative"));
+                    static_cast<void>(non_negative_finite(model.minimum_width,
+                                                          "Horizontal minimum width must be finite and non-negative"));
                 }
             }
         },
@@ -752,7 +754,12 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 const float child_max_height = std::max(0.0F, current.control_height - 2.0F * current.border_width);
                 float children_width = 0.0F;
                 float children_height = 0.0F;
-                for (const auto child : node.children) {
+                for (std::size_t index = 0; index < node.children.size(); ++index) {
+                    const auto child = node.children[index];
+                    if (index == 0 && current.skip_first) {
+                        static_cast<void>(measure_node(child, Constraints::fixed(0, 0)));
+                        continue;
+                    }
                     const auto child_size = measure_node(child, {
                                                                     0.0F,
                                                                     remaining_width,
@@ -763,10 +770,11 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     children_height = std::max(children_height, child_size.height);
                     remaining_width = subtract_extent(remaining_width, child_size.width);
                 }
-                const runtime::Size natural{
-                    frame_inline + indicator_inline + gaps + children_width,
+                runtime::Size natural{
+                    std::max(current.minimum_width, frame_inline + indicator_inline + gaps + children_width),
                     std::max(current.control_height, children_height + 2.0F * current.border_width),
                 };
+                natural.width = filled_size(current.fill_width, content_constraint.max_width, natural.width);
                 measured = content_constraint.constrain(natural);
             }
         },
@@ -955,13 +963,26 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                 };
                 float occupied = current.loading ? current.loading_indicator_size : 0.0F;
                 occupied += horizontal_gap_extent(node, current);
-                for (const auto child : node.children) {
-                    occupied += nodes_->require(child).layout_size.width;
+                for (std::size_t index = 0; index < node.children.size(); ++index) {
+                    if (index != 0 || !current.skip_first) {
+                        occupied += nodes_->require(node.children[index]).layout_size.width;
+                    }
                 }
                 float cursor = content.x + std::max(0.0F, (content.width - occupied) * 0.5F);
 
                 HorizontalContentGeometry geometry{content, std::nullopt};
-                if (current.loading) {
+                const float end = content.x + content.width;
+                std::size_t remaining = horizontal_item_count(node, current);
+                const auto advance = [&](float width) {
+                    cursor += width;
+                    if (--remaining > 0) {
+                        cursor = std::min(end, cursor + current.gap);
+                    }
+                };
+                const auto place_indicator = [&] {
+                    if (!current.loading) {
+                        return;
+                    }
                     const float size =
                         std::min(current.loading_indicator_size, std::min(content.width, content.height));
                     geometry.loading_indicator_bounds = runtime::Rect{
@@ -970,15 +991,14 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                         size,
                         size,
                     };
-                    cursor += size;
-                    if (!node.children.empty()) {
-                        cursor = std::min(content.x + content.width, cursor + current.gap);
-                    }
-                }
-
-                const float end = content.x + content.width;
-                for (std::size_t index = 0; index < node.children.size(); ++index) {
+                    advance(size);
+                };
+                const auto place_content = [&](std::size_t index) {
                     const auto child = node.children[index];
+                    if (index == 0 && current.skip_first) {
+                        place_node(child, {cursor, content.y, 0, 0});
+                        return;
+                    }
                     const auto child_size = nodes_->require(child).layout_size;
                     const float width = std::min(child_size.width, std::max(0.0F, end - cursor));
                     const float height = std::min(child_size.height, content.height);
@@ -988,10 +1008,21 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
                                           width,
                                           height,
                                       });
-                    cursor += width;
-                    if (index + 1 < node.children.size()) {
-                        cursor = std::min(end, cursor + current.gap);
+                    advance(width);
+                };
+                if (!current.end_icon) {
+                    place_indicator();
+                    for (std::size_t index = 0; index < node.children.size(); ++index) {
+                        place_content(index);
                     }
+                } else {
+                    for (std::size_t index = current.first_is_icon ? 1 : 0; index < node.children.size(); ++index) {
+                        place_content(index);
+                    }
+                    if (current.first_is_icon && !node.children.empty()) {
+                        place_content(0);
+                    }
+                    place_indicator();
                 }
                 layouts_[id.index].horizontal_content_geometry = geometry;
             }

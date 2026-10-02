@@ -10,9 +10,23 @@
 #include <limits>
 #include <numbers>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 
 namespace ryn::detail {
+
+struct ButtonRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    bool binding{};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("ButtonRef requires its owner thread");
+        }
+    }
+};
 
 struct ButtonPropsAccess final {
     [[nodiscard]] static const Prop<ButtonType>& type(const ButtonProps& props) noexcept {
@@ -47,6 +61,30 @@ struct ButtonPropsAccess final {
         return props.loading_;
     }
 
+    static const Prop<Duration>& loading_delay(const ButtonProps& props) noexcept {
+        return props.loading_delay_;
+    }
+
+    static const Prop<ButtonShape>& shape(const ButtonProps& props) noexcept {
+        return props.shape_;
+    }
+
+    static const Prop<bool>& block(const ButtonProps& props) noexcept {
+        return props.block_;
+    }
+
+    static const Prop<ButtonIconPlacement>& icon_placement(const ButtonProps& props) noexcept {
+        return props.icon_placement_;
+    }
+
+    static std::shared_ptr<ButtonRefState> ref(const ButtonProps& props) noexcept {
+        return props.ref_ ? props.ref_->state_ : nullptr;
+    }
+
+    static bool auto_focus(const ButtonProps& props) noexcept {
+        return props.auto_focus_;
+    }
+
     [[nodiscard]] static const std::function<void()>& on_click(const ButtonProps& props) noexcept {
         return props.on_click_;
     }
@@ -73,6 +111,19 @@ struct ButtonComponentState final {
     ControlSize size{ControlSize::Middle};
     bool disabled{false};
     bool loading{false};
+    bool loading_requested{};
+    Duration loading_delay;
+    std::optional<animation::AnimationTime> loading_deadline;
+    ButtonShape shape{ButtonShape::Default};
+    ButtonIconPlacement icon_placement{ButtonIconPlacement::Start};
+    bool block{};
+    bool icon_only{};
+    bool has_icon{};
+    bool has_loading_icon{};
+    runtime::ComponentId icon_wrapper;
+    runtime::ComponentId icon;
+    runtime::ComponentId loading_icon;
+    std::shared_ptr<ButtonRefState> ref;
     bool hovered{false};
     input::PressableBehavior press;
     input::FocusPresentation focus;
@@ -155,6 +206,26 @@ void validate(ButtonType type) {
         return;
     }
     throw std::invalid_argument("ButtonType value is invalid");
+}
+
+void validate(ButtonShape shape) {
+    switch (shape) {
+    case ButtonShape::Default:
+    case ButtonShape::Circle:
+    case ButtonShape::Round:
+    case ButtonShape::Square:
+        return;
+    }
+    throw std::invalid_argument("ButtonShape value is invalid");
+}
+
+void validate(ButtonIconPlacement placement) {
+    switch (placement) {
+    case ButtonIconPlacement::Start:
+    case ButtonIconPlacement::End:
+        return;
+    }
+    throw std::invalid_argument("ButtonIconPlacement value is invalid");
 }
 
 void validate(ButtonColor color) {
@@ -414,10 +485,34 @@ runtime::SemanticForeground content_foreground(const ButtonThemeToken& button, c
 
 layout::HorizontalContentLayout content_layout(const ButtonThemeToken& button, const ButtonComponentState& state) {
     const auto& size = size_token(button, state.size);
+    const bool builtin_loading = state.loading && !state.has_loading_icon;
+    const bool visible_icon = state.loading ? state.has_loading_icon : state.has_icon;
     return {
-        size.control_height, size.padding_inline, unbordered(state) ? 0.0F : button.border_width,
-        button.icon_gap,     state.loading,       button.loading_indicator_size,
+        size.control_height,
+        state.icon_only || state.shape == ButtonShape::Circle ? 0.0F : size.padding_inline,
+        unbordered(state) ? 0.0F : button.border_width,
+        button.icon_gap,
+        builtin_loading,
+        button.loading_indicator_size,
+        state.icon_placement == ButtonIconPlacement::End,
+        state.icon_wrapper.valid() && !visible_icon,
+        state.icon_wrapper.valid(),
+        state.icon_only || state.shape == ButtonShape::Circle ? size.control_height : 0.0F,
+        state.block,
     };
+}
+
+float button_radius(const ButtonComponentState& state, runtime::Rect bounds, const ButtonThemeToken& token) {
+    switch (state.shape) {
+    case ButtonShape::Circle:
+    case ButtonShape::Round:
+        return 0.5F * std::min(bounds.width, bounds.height);
+    case ButtonShape::Square:
+        return 0;
+    case ButtonShape::Default:
+        return size_token(token, state.size).border_radius;
+    }
+    throw std::invalid_argument("ButtonShape value is invalid");
 }
 
 runtime::SemanticTypography content_typography(const ThemeSnapshot& theme, const ButtonComponentState& state) {
@@ -675,6 +770,12 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         resolved_variant(*state).variant,
         state->ghost,
         state->decorations.size(),
+        state->shape,
+        state->icon_placement,
+        state->block,
+        state->loading_deadline.has_value(),
+        state->icon,
+        state->loading_icon,
     };
 }
 
@@ -797,9 +898,45 @@ void ButtonComponentHost::apply_disabled(runtime::ComponentId component, bool di
 
 void ButtonComponentHost::apply_loading(runtime::ComponentId component, bool loading) {
     auto* state = find_state(component);
-    if (state == nullptr || state->loading == loading) {
+    if (state == nullptr || state->loading_requested == loading) {
         return;
     }
+    const auto deadline =
+        loading && !state->loading && state->loading_delay.count_milliseconds() > 0
+            ? std::optional{services_->animation_time() +
+                            animation::AnimationDuration::milliseconds(state->loading_delay.count_milliseconds())}
+            : std::nullopt;
+    state->loading_requested = loading;
+    state->loading_deadline = deadline;
+    dirty_->invalidate(state->node, runtime::DirtyFlags::Animation);
+    if (!deadline) {
+        set_loading(*state, loading);
+    }
+}
+
+void ButtonComponentHost::apply_loading_delay(runtime::ComponentId component, Duration delay) {
+    auto* state = find_state(component);
+    if (!state || state->loading_delay == delay) {
+        return;
+    }
+    const auto deadline = state->loading_requested && !state->loading && delay.count_milliseconds() > 0
+                              ? std::optional{services_->animation_time() +
+                                              animation::AnimationDuration::milliseconds(delay.count_milliseconds())}
+                              : std::nullopt;
+    state->loading_delay = delay;
+    state->loading_deadline = deadline;
+    dirty_->invalidate(state->node, runtime::DirtyFlags::Animation);
+    if (state->loading_requested && !deadline) {
+        set_loading(*state, true);
+    }
+}
+
+void ButtonComponentHost::set_loading(ButtonComponentState& value, bool loading) {
+    if (value.loading == loading) {
+        return;
+    }
+    const auto component = value.component;
+    auto* state = &value;
     state->loading = loading;
     if (loading) {
         static_cast<void>(state->press.reset());
@@ -809,8 +946,74 @@ void ButtonComponentHost::apply_loading(runtime::ComponentId component, bool loa
             return;
         }
     }
+    update_icon_branch(*state);
     update_layout(*state);
     update_visuals(*state);
+}
+
+void ButtonComponentHost::apply_shape(runtime::ComponentId component, ButtonShape shape) {
+    validate(shape);
+    if (auto* state = find_state(component); state && state->shape != shape) {
+        state->shape = shape;
+        state->decoration_geometry.reset();
+        dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
+        update_layout(*state);
+    }
+}
+
+void ButtonComponentHost::apply_block(runtime::ComponentId component, bool block) {
+    if (auto* state = find_state(component); state && state->block != block) {
+        state->block = block;
+        update_layout(*state);
+    }
+}
+
+void ButtonComponentHost::apply_icon_placement(runtime::ComponentId component, ButtonIconPlacement placement) {
+    validate(placement);
+    if (auto* state = find_state(component); state && state->icon_placement != placement) {
+        state->icon_placement = placement;
+        update_layout(*state);
+    }
+}
+
+void ButtonComponentHost::update_icon_branch(ButtonComponentState& state) {
+    if (!state.icon_wrapper.valid()) {
+        return;
+    }
+    if (state.icon.valid()) {
+        components().set_branch_active(state.icon, !state.loading);
+    }
+    if (state.loading_icon.valid()) {
+        components().set_branch_active(state.loading_icon, state.loading);
+    }
+    services_->mark_scene_structure_dirty();
+    dirty_->invalidate(components().root(state.icon_wrapper),
+                       runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout);
+}
+
+std::size_t ButtonComponentHost::tick_auxiliary(animation::AnimationTime time) {
+    std::size_t changed{};
+    const auto buttons = mounted_buttons_;
+    for (const auto& mounted : buttons) {
+        if (auto* state = find_state(mounted.component);
+            state && state->loading_deadline && time >= *state->loading_deadline) {
+            state->loading_deadline.reset();
+            set_loading(*state, state->loading_requested);
+            ++changed;
+        }
+    }
+    return changed;
+}
+
+std::optional<animation::AnimationTime> ButtonComponentHost::next_auxiliary_deadline() const {
+    std::optional<animation::AnimationTime> result;
+    for (const auto& mounted : mounted_buttons_) {
+        if (const auto* state = find_state(mounted.component);
+            state && state->loading_deadline && (!result || *state->loading_deadline < *result)) {
+            result = state->loading_deadline;
+        }
+    }
+    return result;
 }
 
 void ButtonComponentHost::apply_focus(runtime::ComponentId component, input::FocusPresentation focus) {
@@ -1035,7 +1238,7 @@ void ButtonComponentHost::retarget_channel(ButtonComponentState& state, ButtonAn
 }
 
 void ButtonComponentHost::update_spinner(ButtonComponentState& state, const animation::MotionPolicy& policy) {
-    if (state.loading && policy.enabled()) {
+    if (state.loading && !state.has_loading_icon && policy.enabled()) {
         start_spinner(state);
         return;
     }
@@ -1112,7 +1315,7 @@ void ButtonComponentHost::completed(animation::AnimationId animation, animation:
             if (binding->channel == ButtonAnimationChannel::spinner_phase) {
                 const auto& theme = components().theme_scope(state->component)->snapshot();
                 const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
-                if (state->loading && policy.enabled()) {
+                if (state->loading && !state->has_loading_icon && policy.enabled()) {
                     start_spinner(*state);
                 }
             }
@@ -1226,7 +1429,7 @@ void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, r
     }
     const auto& token = components().theme_scope(state.component)->snapshot().button();
     const auto& node = nodes_->require(state.node);
-    const float radius = logical_radius(node.bounds, size_token(token, state.size).border_radius);
+    const float radius = logical_radius(node.bounds, button_radius(state, node.bounds, token));
     const std::array key{node.bounds.x,
                          node.bounds.y,
                          node.bounds.width,
@@ -1305,8 +1508,8 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
                                                runtime::Rect clip) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
-    const auto size = size_token(button, state.size);
     const auto& node = nodes_->require(state.node);
+    const float radius = button_radius(state, node.bounds, button);
     const auto& content = layout_->horizontal_content_geometry(state.node);
     const runtime::Rect inset_background_bounds{
         node.bounds.x + button.border_width,
@@ -1318,11 +1521,10 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     const auto background_bounds = border_box_fill ? node.bounds : inset_background_bounds;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
-        make_quad(node.bounds, viewport, next[0].color, next[0].opacity, size.border_radius, node.translation);
+        make_quad(node.bounds, viewport, next[0].color, next[0].opacity, radius, node.translation);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)] =
         make_quad(background_bounds, viewport, next[1].color, next[1].opacity,
-                  border_box_fill ? size.border_radius : std::max(0.0F, size.border_radius - button.border_width),
-                  node.translation);
+                  border_box_fill ? radius : std::max(0.0F, radius - button.border_width), node.translation);
     const auto indicator_bounds = content.loading_indicator_bounds.value_or(runtime::Rect{});
     for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         const auto index = component::button_loading_segment_index(segment);
@@ -1333,7 +1535,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     state.visuals = next;
     static_cast<void>(button_scene_.update(state.scene, state.visuals));
     auto effects = state.effects;
-    effects.shape = {node.bounds, logical_radius(node.bounds, size.border_radius)};
+    effects.shape = {node.bounds, logical_radius(node.bounds, radius)};
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = std::move(effects);
@@ -1342,7 +1544,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     synchronize_decorations(state, clip);
 }
 
-void mount_button_component(const ButtonProps& props, const ButtonContent& content) {
+void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) {
     if (active_button_host == nullptr) {
         throw std::logic_error("ryn::Button can only be declared inside an active ButtonComponentHost");
     }
@@ -1350,12 +1552,31 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     auto& build = runtime::require_component_build_context();
     const auto initial_type = read_prop(ButtonPropsAccess::type(props));
     const auto initial_size = read_prop(ButtonPropsAccess::size(props));
+    const auto initial_shape = read_prop(ButtonPropsAccess::shape(props));
+    const auto initial_placement = read_prop(ButtonPropsAccess::icon_placement(props));
+    auto reference = ButtonPropsAccess::ref(props);
+    if (reference) {
+        reference->ensure_owner();
+        if (reference->binding) {
+            throw std::logic_error("ButtonRef is already bound");
+        }
+    }
+    if (!slots.content && !slots.icon && !slots.loading) {
+        throw std::invalid_argument("Button requires a content or icon slot");
+    }
+    if ((slots.content && !SlotContentAccess::function(*slots.content)) ||
+        (slots.icon && !SlotContentAccess::function(*slots.icon)) ||
+        (slots.loading && !SlotContentAccess::function(*slots.loading))) {
+        throw std::invalid_argument("Button slots require a callable");
+    }
     const auto initial_color =
         ButtonPropsAccess::color(props) ? std::optional{read_prop(*ButtonPropsAccess::color(props))} : std::nullopt;
     const auto initial_variant =
         ButtonPropsAccess::variant(props) ? std::optional{read_prop(*ButtonPropsAccess::variant(props))} : std::nullopt;
     validate(initial_type);
     validate(initial_size);
+    validate(initial_shape);
+    validate(initial_placement);
     if (initial_color) {
         validate(*initial_color);
     }
@@ -1363,7 +1584,14 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
         validate(*initial_variant);
     }
     const bool initial_disabled = read_prop(ButtonPropsAccess::disabled(props));
-    const bool initial_loading = read_prop(ButtonPropsAccess::loading(props));
+    const bool initial_requested = read_prop(ButtonPropsAccess::loading(props));
+    const auto initial_delay = read_prop(ButtonPropsAccess::loading_delay(props));
+    const bool initial_loading = initial_requested && initial_delay.count_milliseconds() == 0;
+    const auto initial_deadline =
+        initial_requested && !initial_loading
+            ? std::optional{host.animation_time() +
+                            animation::AnimationDuration::milliseconds(initial_delay.count_milliseconds())}
+            : std::nullopt;
     const auto theme_scope = build.theme_scope();
     const auto& theme = theme_scope->snapshot();
     ButtonComponentState initial_state{channels(theme.button().default_color),
@@ -1382,12 +1610,29 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     initial_state.size = initial_size;
     initial_state.disabled = initial_disabled;
     initial_state.loading = initial_loading;
+    initial_state.shape = initial_shape;
+    initial_state.icon_placement = initial_placement;
+    initial_state.block = read_prop(ButtonPropsAccess::block(props));
+    initial_state.icon_only = !slots.content;
+    initial_state.has_icon = slots.icon.has_value();
+    initial_state.has_loading_icon = slots.loading.has_value();
     initial_state.on_click = ButtonPropsAccess::on_click(props);
     const auto component = build.mount_component<ButtonComponentState>(
         content_foreground(theme.button(), initial_state), content_typography(theme, initial_state));
     auto& state = build.state<ButtonComponentState>(component);
     state.component = component;
     state.node = build.root(component);
+    if (reference) {
+        state.ref = reference;
+        reference->binding = true;
+        build.on_resource_cleanup(component, [&host, component] {
+            if (auto* state = host.find_state(component); state && state->ref) {
+                state->ref->binding = false;
+                state->ref->focus = {};
+                state->ref->blur = {};
+            }
+        });
+    }
     state.type = initial_type;
     state.color = initial_color;
     state.variant = initial_variant;
@@ -1396,6 +1641,15 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     state.size = initial_size;
     state.disabled = initial_disabled;
     state.loading = initial_loading;
+    state.loading_requested = initial_requested;
+    state.loading_delay = initial_delay;
+    state.loading_deadline = initial_deadline;
+    state.shape = initial_shape;
+    state.icon_placement = initial_placement;
+    state.block = initial_state.block;
+    state.icon_only = initial_state.icon_only;
+    state.has_icon = initial_state.has_icon;
+    state.has_loading_icon = initial_state.has_loading_icon;
     state.on_click = ButtonPropsAccess::on_click(props);
     state.layout_model = content_layout(theme.button(), state);
     host.layout_->set_layout(state.node, state.layout_model);
@@ -1473,10 +1727,81 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
                                    [&host, component](bool disabled) { host.apply_disabled(component, disabled); }));
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::loading(props),
                                    [&host, component](bool loading) { host.apply_loading(component, loading); }));
+    connect_prop(scope, ButtonPropsAccess::loading_delay(props),
+                 [&host, component](Duration delay) { host.apply_loading_delay(component, delay); });
+    connect_prop(scope, ButtonPropsAccess::shape(props),
+                 [&host, component](ButtonShape shape) { host.apply_shape(component, shape); });
+    connect_prop(scope, ButtonPropsAccess::block(props),
+                 [&host, component](bool block) { host.apply_block(component, block); });
+    connect_prop(scope, ButtonPropsAccess::icon_placement(props), [&host, component](ButtonIconPlacement placement) {
+        host.apply_icon_placement(component, placement);
+    });
 
     host.subscribe_theme(state);
-    build.mount_slot_with_semantic_text_style(component, content, Prop<runtime::SemanticForeground>{state.foreground},
-                                              Prop<runtime::SemanticTypography>{state.typography});
+    if (slots.icon || slots.loading) {
+        build.mount_slot_with_semantic_text_style(
+            component, Content{[&] {
+                auto& nested = runtime::require_component_build_context();
+                state.icon_wrapper = nested.mount_component<int>(0);
+                const auto wrapper = nested.root(state.icon_wrapper);
+                host.layout_->set_layout(
+                    wrapper,
+                    layout::ComponentLayout{
+                        [&host, component](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                            const auto& state = *host.find_state(component);
+                            const auto selected = state.loading ? state.loading_icon : state.icon;
+                            runtime::Size result{};
+                            for (auto branch : {state.icon, state.loading_icon}) {
+                                if (branch.valid()) {
+                                    const auto measured = engine.measure_child(
+                                        host.components().root(branch),
+                                        branch == selected ? limits : layout::Constraints::fixed(0, 0));
+                                    if (branch == selected) {
+                                        result = measured;
+                                    }
+                                }
+                            }
+                            return result;
+                        },
+                        [&host, component](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
+                            const auto& state = *host.find_state(component);
+                            const auto selected = state.loading ? state.loading_icon : state.icon;
+                            for (auto branch : {state.icon, state.loading_icon}) {
+                                if (branch.valid()) {
+                                    engine.place_child(host.components().root(branch),
+                                                       branch == selected ? bounds
+                                                                          : runtime::Rect{bounds.x, bounds.y, 0, 0});
+                                }
+                            }
+                        }});
+                nested.on_resource_cleanup(state.icon_wrapper,
+                                           [&host, wrapper] { host.layout_->remove_layout(wrapper); });
+                nested.mount_slot(state.icon_wrapper, Content{[&] {
+                                      const auto mount_branch = [&](const auto& slot, runtime::ComponentId& branch) {
+                                          if (!slot) {
+                                              return;
+                                          }
+                                          auto& children = runtime::require_component_build_context();
+                                          branch = children.mount_component<int>(0);
+                                          const auto node = children.root(branch);
+                                          host.layout_->set_layout(node, layout::BoxLayout{});
+                                          children.on_resource_cleanup(
+                                              branch, [&host, node] { host.layout_->remove_layout(node); });
+                                          children.mount_slot(branch, Content{SlotContentAccess::function(*slot)});
+                                      };
+                                      mount_branch(slots.icon, state.icon);
+                                      mount_branch(slots.loading, state.loading_icon);
+                                  }});
+            }},
+            Prop<runtime::SemanticForeground>{state.foreground}, Prop<runtime::SemanticTypography>{state.typography});
+        host.update_icon_branch(state);
+        host.update_layout(state);
+    }
+    if (slots.content) {
+        build.mount_slot_with_semantic_text_style(component, *slots.content,
+                                                  Prop<runtime::SemanticForeground>{state.foreground},
+                                                  Prop<runtime::SemanticTypography>{state.typography});
+    }
     host.dirty_->invalidate(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                             runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material |
                                             runtime::DirtyFlags::HitTest);
@@ -1487,6 +1812,28 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
         state.scene,
         state.fragment,
     });
+    const auto focus = [&host, component] {
+        const auto* state = host.find_state(component);
+        if (!state || state->disabled || !host.focus_.state().window_active) {
+            return false;
+        }
+        host.focus_.defer_focus(state->interaction, input::FocusModality::keyboard);
+        return true;
+    };
+    if (reference) {
+        reference->focus = focus;
+        reference->blur = [&host, component] {
+            const auto* state = host.find_state(component);
+            if (!state || host.focus_.state().focused != state->interaction) {
+                return false;
+            }
+            host.focus_.defer_focus({}, input::FocusModality::keyboard);
+            return true;
+        };
+    }
+    if (ButtonPropsAccess::auto_focus(props)) {
+        static_cast<void>(focus());
+    }
 }
 
 } // namespace ryn::detail
@@ -1494,7 +1841,48 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
 namespace ryn {
 
 void Button(ButtonProps props, ButtonContent content) {
-    detail::mount_button_component(props, content);
+    detail::mount_button_component(props, ButtonSlots{.content = std::move(content)});
+}
+
+void Button(ButtonProps props, ButtonSlots slots) {
+    detail::mount_button_component(props, slots);
+}
+
+void Button(ButtonProps props, ButtonContent content, ButtonIcon icon) {
+    detail::mount_button_component(props, ButtonSlots{.content = std::move(content), .icon = std::move(icon)});
+}
+
+void Button(ButtonProps props, ButtonContent content, ButtonIcon icon, ButtonLoadingIcon loading) {
+    detail::mount_button_component(
+        props, ButtonSlots{.content = std::move(content), .icon = std::move(icon), .loading = std::move(loading)});
+}
+
+ButtonRef::ButtonRef() : state_(std::make_shared<detail::ButtonRefState>()) {}
+
+bool ButtonRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool ButtonRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
+}
+
+bool ButtonRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return bool(state_->focus);
 }
 
 } // namespace ryn
