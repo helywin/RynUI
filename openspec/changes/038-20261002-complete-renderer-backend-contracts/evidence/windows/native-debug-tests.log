@@ -1,0 +1,29 @@
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   1: rynui.glyph_texture_upload
+ 1/12 Test   #1: rynui.glyph_texture_upload ..........   Passed    0.02 sec
+      Start  97: rynui.default_font_chain
+ 2/12 Test  #97: rynui.default_font_chain ............   Passed    0.43 sec
+      Start 122: rynui.input_scene_allocation
+ 3/12 Test #122: rynui.input_scene_allocation ........   Passed  105.78 sec
+      Start 138: rynui.button_demo_frame
+ 4/12 Test #138: rynui.button_demo_frame .............   Passed    0.06 sec
+      Start 140: rynui.token_gallery_frame
+ 5/12 Test #140: rynui.token_gallery_frame ...........   Passed   14.21 sec
+      Start 173: rynui.texture_upload_batch_layout
+ 6/12 Test #173: rynui.texture_upload_batch_layout ...   Passed    0.01 sec
+      Start 203: rynui.platform_lifecycle
+ 7/12 Test #203: rynui.platform_lifecycle ............   Passed    0.03 sec
+      Start 204: rynui.frame_renderer
+ 8/12 Test #204: rynui.frame_renderer ................   Passed    0.03 sec
+      Start 205: rynui.glyph_gpu_resources
+ 9/12 Test #205: rynui.glyph_gpu_resources ...........   Passed    0.02 sec
+      Start 206: rynui.text_render_integration
+10/12 Test #206: rynui.text_render_integration .......   Passed    0.05 sec
+      Start 217: rynui.generated_shaders
+11/12 Test #217: rynui.generated_shaders .............   Passed    0.02 sec
+      Start 218: rynui.deployed_shaders
+12/12 Test #218: rynui.deployed_shaders ..............   Passed    0.02 sec
+
+100% tests passed out of 12
+
+Total Test time (real) = 120.86 sec

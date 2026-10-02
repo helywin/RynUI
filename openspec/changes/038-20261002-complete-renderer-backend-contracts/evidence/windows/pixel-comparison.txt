@@ -1,0 +1,1 @@
+Compared 36 fixed Typography GPU readbacks with change 037: identical pixel dimensions and RGBA bytes

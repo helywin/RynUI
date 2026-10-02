@@ -1,0 +1,272 @@
+[
+  {
+    "configuration": "Debug",
+    "mode": "selection-scale-2",
+    "exit_code": 0,
+    "executable_sha256": "59838383ce57cec037e5c7961051b9257848d38ed138ca5517cdfeff7a2dddae",
+    "captures": [
+      {
+        "path": "debug-selection-scale-2.png",
+        "sha256": "7904859e0bcb6dd41e53c212fcbc6f61f731bf1296c8ef7a9091b3b3adefc230"
+      }
+    ],
+    "log": "selection_acceptance_stage=0\nselection_acceptance_stage=1\nselection_acceptance_stage=2\nselection_acceptance_stage=3\nselection_acceptance_stage=4\ncatalog_hash=495e5030bde03e0a91b04063170ac7464c749b9efdd1910f4935938091f4e382 gpu_driver=direct3d12 shader_format=DXIL display_scale=2 host_display_scale=1.25 scale_source=acceptance pixel_density=1 window_system=win32 window_size=1280x900 pixel_size=1280x900 viewport=640x450 font_source=system font_families=Segoe_UI_Variable_Text,Microsoft_YaHei_UI font_rendering=aa=gray,hint=default,rgba=unknown,lcd=unknown,bitmap=on;aa=gray,hint=default,rgba=unknown,lcd=unknown,bitmap=on stable_test_ids=53 snapshot_identity=18273699830100505451 snapshot={\"source\":{\"version\":\"6.6.5\",\"commit\":\"4a39f54842eade4e565ab336ef6097cd7e723cdd\"},\"impactMetadata\":\"catalog-invalidation-domain-v1\",\"algorithms\":[\"Default\"],\"identity\":\"fd99392d6141b36b\",\"seed\":{\"colorPrimary\":[0.086275,0.466667,1.000000,1.000000],\"focusOutline\":true,\"fontSize\":14,\"sizeUnit\":4.000000,\"sizeStep\":4.000000,\"controlHeight\":32.000000},\"map\":{\"colorPrimary\":[0.086275,0.466667,1.000000,1.000000],\"colorPrimaryHover\":[0.250980,0.588235,1.000000,1.000000],\"colorPrimaryActive\":[0.035294,0.345098,0.850980,1.000000],\"colorError\":[1.000000,0.301961,0.309804,1.000000],\"colorErrorHover\":[1.000000,0.470588,0.458824,1.000000],\"colorErrorActive\":[0.850980,0.211765,0.243137,1.000000],\"colorSuccessText\":[0.074510,0.321569,0.000000,1.000000],\"colorWarningText\":[0.529412,0.301961,0.000000,1.000000],\"colorErrorText\":[0.549020,0.082353,0.137255,1.000000],\"colorLink\":[0.090196,0.470588,1.000000,1.000000],\"colorLinkHover\":[0.000000,0.243137,0.701961,1.000000],\"colorLinkActive\":[0.000000,0.113725,0.400000,1.000000],\"fontSizeSM\":12.000000,\"fontSize\":14.000000,\"fontSizeLG\":16.000000,\"sizeXS\":8.000000,\"sizeSM\":12.000000,\"size\":16.000000,\"sizeLG\":24.000000,\"controlHeightSM\":24.000000,\"controlHeight\":32.000000,\"controlHeightLG\":40.000000,\"motionUnitMs\":100.000000,\"motionBaseMs\":0.000000,\"motion\":true},\"alias\":{\"colorText\":[0.000000,0.000000,0.000000,0.880000],\"colorBgContainer\":[1.000000,1.000000,1.000000,1.000000],\"colorBorder\":[0.850980,0.850980,0.850980,1.000000],\"colorSplit\":[0.019608,0.019608,0.019608,0.060000],\"lineWidthFocus\":3.000000,\"focusOutlineOffset\":1.000000,\"boxShadowLayers\":3},\"button\":{\"primaryBg\":[0.086275,0.466667,1.000000,1.000000],\"controlHeight\":32.000000,\"paddingInline\":15.000000,\"borderRadius\":6.000000,\"shadowLayers\":1},\"switch\":{\"trackHeight\":22.000000,\"trackHeightSM\":16.000000,\"trackMinWidth\":44.000000,\"trackMinWidthSM\":28.000000,\"trackPadding\":2.000000,\"handleBg\":[1.000000,1.000000,1.000000,1.000000],\"handleSize\":18.000000,\"handleSizeSM\":12.000000},\"text\":{\"color\":[0.000000,0.000000,0.000000,0.880000],\"fontFamily\":0,\"fontWeight\":400,\"fontSize\":14.000000,\"lineHeight\":22.000000},\"input\":{\"sizes\":[{\"controlHeight\":24.000000,\"fontSize\":14.000000,\"lineHeight\":22.000000,\"paddingInline\":7.000000,\"paddingBlock\":0.000000,\"borderRadius\":4.000000},{\"controlHeight\":32.000000,\"fontSize\":14.000000,\"lineHeight\":22.000000,\"paddingInline\":11.000000,\"paddingBlock\":4.000000,\"borderRadius\":6.000000},{\"controlHeight\":40.000000,\"fontSize\":16.000000,\"lineHeight\":24.000000,\"paddingInline\":11.000000,\"paddingBlock\":7.000000,\"borderRadius\":8.000000}],\"borderWidth\":1.000000,\"affixPadding\":4.000000,\"colors\":[[0.000000,0.000000,0.000000,0.880000],[0.000000,0.000000,0.000000,0.250000],[1.000000,1.000000,1.000000,1.000000],[0.850980,0.850980,0.850980,1.000000],[0.000000,0.000000,0.000000,0.250000],[0.000000,0.000000,0.000000,0.040000],[0.850980,0.850980,0.850980,1.000000],[0.250980,0.588235,1.000000,1.000000],[0.086275,0.466667,1.000000,1.000000],[1.000000,1.000000,1.000000,1.000000],[1.000000,1.000000,1.000000,1.000000],[1.000000,0.301961,0.309804,1.000000],[1.000000,0.639216,0.619608,1.000000],[0.980392,0.678431,0.078431,1.000000],[1.000000,0.839216,0.400000,1.000000],[0.086275,0.466667,1.000000,0.250000],[0.000000,0.000000,0.000000,0.880000],[0.000000,0.000000,0.000000,0.880000],[1.000000,0.301961,0.309804,1.000000],[0.980392,0.678431,0.078431,1.000000]],\"activeShadowLayers\":1,\"errorActiveShadowLayers\":1,\"warningActiveShadowLayers\":1},\"typography\":{\"headings\":[{\"fontSize\":38.000000,\"lineHeight\":53.200001},{\"fontSize\":30.000000,\"lineHeight\":40.500000},{\"fontSize\":24.000000,\"lineHeight\":31.199999},{\"fontSize\":20.000000,\"lineHeight\":25.000000},{\"fontSize\":16.000000,\"lineHeight\":19.200001}],\"fontFamily\":0,\"fontFamilyCode\":1,\"fontWeight\":400,\"fontWeightStrong\":600,\"baseFontSize\":14.000000,\"baseLineHeight\":22.000000,\"titleMarginTopEm\":1.200000,\"titleMarginBottomEm\":0.500000,\"colors\":{\"text\":[0.000000,0.000000,0.000000,0.880000],\"description\":[0.000000,0.000000,0.000000,0.650000],\"success\":[0.074510,0.321569,0.000000,1.000000],\"warning\":[0.529412,0.301961,0.000000,1.000000],\"error\":[0.549020,0.082353,0.137255,1.000000],\"errorTextHover\":[1.000000,0.470588,0.458824,1.000000],\"errorTextActive\":[0.850980,0.211765,0.243137,1.000000],\"disabled\":[0.000000,0.000000,0.000000,0.250000],\"link\":[0.090196,0.470588,1.000000,1.000000],\"markBackground\":[1.000000,0.898039,0.560784,1.000000]},\"code\":{\"background\":[0.588000,0.588000,0.588000,0.100000],\"borderColor\":[0.392000,0.392000,0.392000,0.200000],\"fontScale\":0.850000,\"paddingInlineEm\":0.400000,\"paddingBlockStartEm\":0.200000,\"paddingBlockEndEm\":0.100000,\"borderWidth\":1.000000,\"borderRadius\":3.000000},\"keyboard\":{\"background\":[0.588000,0.588000,0.588000,0.060000],\"borderColor\":[0.392000,0.392000,0.392000,0.200000],\"fontScale\":0.900000,\"paddingInlineEm\":0.400000,\"paddingBlockStartEm\":0.150000,\"paddingBlockEndEm\":0.100000,\"borderWidth\":1.000000,\"borderRadius\":3.000000,\"borderBottomWidth\":2.000000}},\"divider\":{\"colors\":{\"line\":[0.019608,0.019608,0.019608,0.060000],\"text\":[0.000000,0.000000,0.000000,0.880000],\"plainText\":[0.000000,0.000000,0.000000,0.880000]},\"metrics\":{\"lineWidth\":1.000000,\"orientationMargin\":0.050000,\"textPaddingInline\":16.000000,\"verticalMarginInline\":8.000000,\"horizontalMargin\":24.000000,\"horizontalWithTextMargin\":16.000000},\"typography\":{\"textFontSize\":16.000000,\"textFontWeight\":500,\"plainFontSize\":14.000000,\"plainFontWeight\":400}}}\n content_runs=1 theme_content_runs=55 theme_updates=0 brand_updates=0 motion_updates=0 viewport_updates=5 state_updates=0 activations=0 document_sections=6 component_entries=73 reference_surfaces=126 reference_content_runs=126 live_samples=57 input_changes=0 input_submits=0 search_submits=0 navigation_controls=93 navigation_requests=0 filter_updates=0 reference_interactions=0 document_content_extent=19331 document_viewport_extent=334 document_offset=18309.6 document_maximum_offset=18997 navigation_offset=0 navigation_maximum_offset=3084 scrollbar_geometry=passed scrollbar_draw=passed document_section=gallery.document.live-samples document_anchor_generation=4 scroll_events=0 document_extent_updates=1 document_scroll_updates=2 document_anchor_updates=3 document_navigation_jumps=0 document_translation_passes=3 document_translated_nodes=3015 document_reconciliation_syncs=1 draw_fragments_considered=397 draw_fragments_visible=74 frame_samples=346 first_frame_cpu_us=253685 first_frame_resource_us=3795 first_frame_glyph_us=1328 first_frame_upload_finish_us=957 first_frame_upload_submissions=1 first_frame_texture_transfers=1 first_frame_buffer_transfers=2 first_frame_glyph_texture_uploads=1 frame_average_us=4143 frame_max_us=253685 frame_p95_us=4292 frame_scene_sync_us=2458 frame_translation_us=84 frame_layout_us=2181 frame_hit_refresh_us=1 frame_text_host_us=0 frame_text_layout_us=0 frame_text_mounted_loop_us=0 frame_text_scene_us=0 frame_aux_geometry_us=0 frame_button_geometry_us=0 frame_reference_geometry_us=0 frame_input_geometry_us=0 frame_selection_geometry_us=0 frame_input_update_text_us=0 frame_input_theme_us=0 frame_input_text_scene_us=0 input_mounted_visited=0 input_text_scene_calls=0 input_geometry_rebuilds=27 input_geometry_patches=27 input_instance_rebuilds=27 ordered_scene_rebuilds=4 sync_participant_count=0 frame_effect_compact_us=0 frame_text_fragments_us=0 frame_aux_fragments_us=0 frame_composer_us=0 frame_focus_sync_us=0 sync_calls=0 text_layout_calls=0 text_mounted_visited=0 text_mounted_synchronized=0 text_offscreen_skipped=0 frame_anchor_input_us=191 frame_resource_sync_us=562 frame_quad_sync_us=392 frame_glyph_sync_us=14 frame_effect_sync_us=5 frame_upload_finish_us=147 frame_cull_us=64 frame_submit_us=1057 font_rasterizations=369 scroll_rasterizations=369 input_events=5 pointer_input_events=14 pointer_routes=8 hover_enters=4 hover_leaves=4 captures_started=3 captures_released=3 keyboard_events=17 focus_traversals=3 focus_changes=14 keyboard_activations=3 component_count=1021 node_count=1021 interaction_count=146 layout_passes=2667 scene_rebuilds=3 effect_layers=420 outer_layers=38 inset_layers=0 focus_layers=19 button_material_updates=9192 button_geometry_updates=4706 quad_uploads=1198 quad_uploaded_bytes=625968 glyph_uploads=113 glyph_buffer_uploads=3 glyph_buffer_coalesces=1 glyph_buffer_capacity=1048 glyph_uploaded_bytes=1262559 effect_uploads=8 effect_uploaded_bytes=8400 gpu_upload_submissions=346 scroll_buffer_upload_regions=1209 scroll_buffer_transfer_creations=348 scroll_buffer_transfer_maps=348 scroll_texture_transfer_creations=2 scroll_texture_transfer_maps=2 quad_draws=8639 glyph_draws=8639 effect_draws=6560 submits=346 idle_waits=8100 animation_frames=321 idle_after_animation=0 animation_acceptance=false input_acceptance=false selection_acceptance=true selection_theme=default search_acceptance=false search_keyboard=false search_pointer=false search_blocked=false search_text=false search_scroll=false password_acceptance=false password_hidden=false password_pointer=false password_keyboard=false password_disabled=false password_scroll=false input_clear_acceptance=false input_clear_scroll=false input_clear_pointer=false input_clear_keyboard=false input_clear_disabled=false selection_keyboard=true selection_pointer=true selection_blocked=true scroll_acceptance=false scrollbar_acceptance=false scrollbar_stage=0 continuous_drag=passed header_navigation=failed navigation_wheel=not-run navigation_drag=not-run document_track=not-run document_drag=not-run scroll_acceptance_steps=0 scroll_sequence_ms=0 input_latin=not-run input_selection=not-run input_clipboard=not-run input_undo=not-run input_redo=not-run input_theme_status=not-run input_caret_idle=not-run automated_input_events=31 motion_mode=normal exit_code=0\n"
+  },
+  {
+    "configuration": "Debug",
+    "mode": "system",
+    "exit_code": 0,
+    "executable_sha256": "59838383ce57cec037e5c7961051b9257848d38ed138ca5517cdfeff7a2dddae",
+    "captures": [
+      {
+        "path": "debug-system/committed.png",
+        "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+      },
+      {
+        "path": "debug-system/copied.png",
+        "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+      },
+      {
+        "path": "debug-system/dividers.png",
+        "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+      },
+      {
+        "path": "debug-system/editing.png",
+        "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+      },
+      {
+        "path": "debug-system/expanded.png",
+        "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+      },
+      {
+        "path": "debug-system/headings.png",
+        "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+      },
+      {
+        "path": "debug-system/link-focus.png",
+        "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+      },
+      {
+        "path": "debug-system/multiline-expanded.png",
+        "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+      },
+      {
+        "path": "debug-system/semantics.png",
+        "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "exit_code": 0,
+    "executable_sha256": "59838383ce57cec037e5c7961051b9257848d38ed138ca5517cdfeff7a2dddae",
+    "captures": [
+      {
+        "path": "debug-scale-2/committed.png",
+        "sha256": "e184523a91bd09b5aab09cb13fd048603192d54693ea8abfccd24b0c9c93f4c0"
+      },
+      {
+        "path": "debug-scale-2/copied.png",
+        "sha256": "e9ec20e9e3b80aecd5fe1a0ee59aa4cbc1e236a41fbfb0836956e4403cfc5247"
+      },
+      {
+        "path": "debug-scale-2/dividers.png",
+        "sha256": "7075c3792a0167675a99054e640e01d6a51ff23e44d28e00dc27519aa54fa589"
+      },
+      {
+        "path": "debug-scale-2/editing.png",
+        "sha256": "b7e48cf6a49e2f8e60085e992e6b3dab2d018d441dc41b0568628395e3144bd0"
+      },
+      {
+        "path": "debug-scale-2/expanded.png",
+        "sha256": "f4ced7ce898ed0f33eac57ef94b79fb89408e0dd42c30b1e5311c2f26f2d6a30"
+      },
+      {
+        "path": "debug-scale-2/headings.png",
+        "sha256": "ffd2f283d8bc7de0507b4b1a21867b361d7eaf28bda51f6b0bbb1550f0e1285a"
+      },
+      {
+        "path": "debug-scale-2/link-focus.png",
+        "sha256": "0f18865a0165f9a5f5cd4f569341d2f6c735432b64a5faeb0780826357abcc48"
+      },
+      {
+        "path": "debug-scale-2/multiline-expanded.png",
+        "sha256": "555746105ff3d79b362ac8b9fd7ee8e78028bf71d52da326c4ae430a7f8a27e5"
+      },
+      {
+        "path": "debug-scale-2/semantics.png",
+        "sha256": "d4da5c6bae25bdda3ebfd2b37c4701d44ffab5f93aa57ebe1ed9e7b875cd32ca"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Debug",
+    "mode": "native-resize",
+    "exit_code": 0,
+    "executable_sha256": "59838383ce57cec037e5c7961051b9257848d38ed138ca5517cdfeff7a2dddae",
+    "sizes": [
+      {
+        "outer_size": [
+          1200,
+          840
+        ],
+        "client_size": [
+          1182,
+          793
+        ],
+        "capture": "debug-resize-wide.png",
+        "sha256": "d289684068f4205cf259a9d89eea4c3221cb3506e8727ec65fe31e2f25f7655b"
+      },
+      {
+        "outer_size": [
+          900,
+          700
+        ],
+        "client_size": [
+          882,
+          653
+        ],
+        "capture": "debug-resize-narrow.png",
+        "sha256": "f86cb4cfd7ff5d588337fd64c33e820a7c36428a9be7f3b28c71b7672679e5c7"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "selection-scale-2",
+    "exit_code": 0,
+    "executable_sha256": "55eaea330c9b3edf3a6d206a2d553a07de108b71fe330fc03daf8f3787fe5e8e",
+    "captures": [
+      {
+        "path": "release-selection-scale-2.png",
+        "sha256": "dc60a39ea4b47d4acca7eba463bfaa9f5b5d8e2f2c7f5abab1a96d539d6d31a8"
+      }
+    ],
+    "log": "selection_acceptance_stage=0\nselection_acceptance_stage=1\nselection_acceptance_stage=2\nselection_acceptance_stage=3\nselection_acceptance_stage=4\ncatalog_hash=495e5030bde03e0a91b04063170ac7464c749b9efdd1910f4935938091f4e382 gpu_driver=direct3d12 shader_format=DXIL display_scale=2 host_display_scale=1.25 scale_source=acceptance pixel_density=1 window_system=win32 window_size=1280x900 pixel_size=1280x900 viewport=640x450 font_source=system font_families=Segoe_UI_Variable_Text,Microsoft_YaHei_UI font_rendering=aa=gray,hint=default,rgba=unknown,lcd=unknown,bitmap=on;aa=gray,hint=default,rgba=unknown,lcd=unknown,bitmap=on stable_test_ids=53 snapshot_identity=18273699830100505451 snapshot={\"source\":{\"version\":\"6.6.5\",\"commit\":\"4a39f54842eade4e565ab336ef6097cd7e723cdd\"},\"impactMetadata\":\"catalog-invalidation-domain-v1\",\"algorithms\":[\"Default\"],\"identity\":\"fd99392d6141b36b\",\"seed\":{\"colorPrimary\":[0.086275,0.466667,1.000000,1.000000],\"focusOutline\":true,\"fontSize\":14,\"sizeUnit\":4.000000,\"sizeStep\":4.000000,\"controlHeight\":32.000000},\"map\":{\"colorPrimary\":[0.086275,0.466667,1.000000,1.000000],\"colorPrimaryHover\":[0.250980,0.588235,1.000000,1.000000],\"colorPrimaryActive\":[0.035294,0.345098,0.850980,1.000000],\"colorError\":[1.000000,0.301961,0.309804,1.000000],\"colorErrorHover\":[1.000000,0.470588,0.458824,1.000000],\"colorErrorActive\":[0.850980,0.211765,0.243137,1.000000],\"colorSuccessText\":[0.074510,0.321569,0.000000,1.000000],\"colorWarningText\":[0.529412,0.301961,0.000000,1.000000],\"colorErrorText\":[0.549020,0.082353,0.137255,1.000000],\"colorLink\":[0.090196,0.470588,1.000000,1.000000],\"colorLinkHover\":[0.000000,0.243137,0.701961,1.000000],\"colorLinkActive\":[0.000000,0.113725,0.400000,1.000000],\"fontSizeSM\":12.000000,\"fontSize\":14.000000,\"fontSizeLG\":16.000000,\"sizeXS\":8.000000,\"sizeSM\":12.000000,\"size\":16.000000,\"sizeLG\":24.000000,\"controlHeightSM\":24.000000,\"controlHeight\":32.000000,\"controlHeightLG\":40.000000,\"motionUnitMs\":100.000000,\"motionBaseMs\":0.000000,\"motion\":true},\"alias\":{\"colorText\":[0.000000,0.000000,0.000000,0.880000],\"colorBgContainer\":[1.000000,1.000000,1.000000,1.000000],\"colorBorder\":[0.850980,0.850980,0.850980,1.000000],\"colorSplit\":[0.019608,0.019608,0.019608,0.060000],\"lineWidthFocus\":3.000000,\"focusOutlineOffset\":1.000000,\"boxShadowLayers\":3},\"button\":{\"primaryBg\":[0.086275,0.466667,1.000000,1.000000],\"controlHeight\":32.000000,\"paddingInline\":15.000000,\"borderRadius\":6.000000,\"shadowLayers\":1},\"switch\":{\"trackHeight\":22.000000,\"trackHeightSM\":16.000000,\"trackMinWidth\":44.000000,\"trackMinWidthSM\":28.000000,\"trackPadding\":2.000000,\"handleBg\":[1.000000,1.000000,1.000000,1.000000],\"handleSize\":18.000000,\"handleSizeSM\":12.000000},\"text\":{\"color\":[0.000000,0.000000,0.000000,0.880000],\"fontFamily\":0,\"fontWeight\":400,\"fontSize\":14.000000,\"lineHeight\":22.000000},\"input\":{\"sizes\":[{\"controlHeight\":24.000000,\"fontSize\":14.000000,\"lineHeight\":22.000000,\"paddingInline\":7.000000,\"paddingBlock\":0.000000,\"borderRadius\":4.000000},{\"controlHeight\":32.000000,\"fontSize\":14.000000,\"lineHeight\":22.000000,\"paddingInline\":11.000000,\"paddingBlock\":4.000000,\"borderRadius\":6.000000},{\"controlHeight\":40.000000,\"fontSize\":16.000000,\"lineHeight\":24.000000,\"paddingInline\":11.000000,\"paddingBlock\":7.000000,\"borderRadius\":8.000000}],\"borderWidth\":1.000000,\"affixPadding\":4.000000,\"colors\":[[0.000000,0.000000,0.000000,0.880000],[0.000000,0.000000,0.000000,0.250000],[1.000000,1.000000,1.000000,1.000000],[0.850980,0.850980,0.850980,1.000000],[0.000000,0.000000,0.000000,0.250000],[0.000000,0.000000,0.000000,0.040000],[0.850980,0.850980,0.850980,1.000000],[0.250980,0.588235,1.000000,1.000000],[0.086275,0.466667,1.000000,1.000000],[1.000000,1.000000,1.000000,1.000000],[1.000000,1.000000,1.000000,1.000000],[1.000000,0.301961,0.309804,1.000000],[1.000000,0.639216,0.619608,1.000000],[0.980392,0.678431,0.078431,1.000000],[1.000000,0.839216,0.400000,1.000000],[0.086275,0.466667,1.000000,0.250000],[0.000000,0.000000,0.000000,0.880000],[0.000000,0.000000,0.000000,0.880000],[1.000000,0.301961,0.309804,1.000000],[0.980392,0.678431,0.078431,1.000000]],\"activeShadowLayers\":1,\"errorActiveShadowLayers\":1,\"warningActiveShadowLayers\":1},\"typography\":{\"headings\":[{\"fontSize\":38.000000,\"lineHeight\":53.200001},{\"fontSize\":30.000000,\"lineHeight\":40.500000},{\"fontSize\":24.000000,\"lineHeight\":31.199999},{\"fontSize\":20.000000,\"lineHeight\":25.000000},{\"fontSize\":16.000000,\"lineHeight\":19.200001}],\"fontFamily\":0,\"fontFamilyCode\":1,\"fontWeight\":400,\"fontWeightStrong\":600,\"baseFontSize\":14.000000,\"baseLineHeight\":22.000000,\"titleMarginTopEm\":1.200000,\"titleMarginBottomEm\":0.500000,\"colors\":{\"text\":[0.000000,0.000000,0.000000,0.880000],\"description\":[0.000000,0.000000,0.000000,0.650000],\"success\":[0.074510,0.321569,0.000000,1.000000],\"warning\":[0.529412,0.301961,0.000000,1.000000],\"error\":[0.549020,0.082353,0.137255,1.000000],\"errorTextHover\":[1.000000,0.470588,0.458824,1.000000],\"errorTextActive\":[0.850980,0.211765,0.243137,1.000000],\"disabled\":[0.000000,0.000000,0.000000,0.250000],\"link\":[0.090196,0.470588,1.000000,1.000000],\"markBackground\":[1.000000,0.898039,0.560784,1.000000]},\"code\":{\"background\":[0.588000,0.588000,0.588000,0.100000],\"borderColor\":[0.392000,0.392000,0.392000,0.200000],\"fontScale\":0.850000,\"paddingInlineEm\":0.400000,\"paddingBlockStartEm\":0.200000,\"paddingBlockEndEm\":0.100000,\"borderWidth\":1.000000,\"borderRadius\":3.000000},\"keyboard\":{\"background\":[0.588000,0.588000,0.588000,0.060000],\"borderColor\":[0.392000,0.392000,0.392000,0.200000],\"fontScale\":0.900000,\"paddingInlineEm\":0.400000,\"paddingBlockStartEm\":0.150000,\"paddingBlockEndEm\":0.100000,\"borderWidth\":1.000000,\"borderRadius\":3.000000,\"borderBottomWidth\":2.000000}},\"divider\":{\"colors\":{\"line\":[0.019608,0.019608,0.019608,0.060000],\"text\":[0.000000,0.000000,0.000000,0.880000],\"plainText\":[0.000000,0.000000,0.000000,0.880000]},\"metrics\":{\"lineWidth\":1.000000,\"orientationMargin\":0.050000,\"textPaddingInline\":16.000000,\"verticalMarginInline\":8.000000,\"horizontalMargin\":24.000000,\"horizontalWithTextMargin\":16.000000},\"typography\":{\"textFontSize\":16.000000,\"textFontWeight\":500,\"plainFontSize\":14.000000,\"plainFontWeight\":400}}}\n content_runs=1 theme_content_runs=55 theme_updates=0 brand_updates=0 motion_updates=0 viewport_updates=5 state_updates=0 activations=0 document_sections=6 component_entries=73 reference_surfaces=126 reference_content_runs=126 live_samples=57 input_changes=0 input_submits=0 search_submits=0 navigation_controls=93 navigation_requests=0 filter_updates=0 reference_interactions=0 document_content_extent=19331 document_viewport_extent=334 document_offset=18309.6 document_maximum_offset=18997 navigation_offset=0 navigation_maximum_offset=3084 scrollbar_geometry=passed scrollbar_draw=passed document_section=gallery.document.live-samples document_anchor_generation=4 scroll_events=0 document_extent_updates=1 document_scroll_updates=2 document_anchor_updates=3 document_navigation_jumps=0 document_translation_passes=3 document_translated_nodes=3015 document_reconciliation_syncs=1 draw_fragments_considered=397 draw_fragments_visible=74 frame_samples=366 first_frame_cpu_us=69671 first_frame_resource_us=3106 first_frame_glyph_us=1168 first_frame_upload_finish_us=896 first_frame_upload_submissions=1 first_frame_texture_transfers=1 first_frame_buffer_transfers=2 first_frame_glyph_texture_uploads=1 frame_average_us=1926 frame_max_us=69671 frame_p95_us=4224 frame_scene_sync_us=440 frame_translation_us=17 frame_layout_us=379 frame_hit_refresh_us=0 frame_text_host_us=0 frame_text_layout_us=0 frame_text_mounted_loop_us=0 frame_text_scene_us=0 frame_aux_geometry_us=0 frame_button_geometry_us=0 frame_reference_geometry_us=0 frame_input_geometry_us=0 frame_selection_geometry_us=0 frame_input_update_text_us=0 frame_input_theme_us=0 frame_input_text_scene_us=0 input_mounted_visited=0 input_text_scene_calls=0 input_geometry_rebuilds=27 input_geometry_patches=27 input_instance_rebuilds=27 ordered_scene_rebuilds=3 sync_participant_count=0 frame_effect_compact_us=0 frame_text_fragments_us=0 frame_aux_fragments_us=0 frame_composer_us=0 frame_focus_sync_us=0 sync_calls=0 text_layout_calls=0 text_mounted_visited=0 text_mounted_synchronized=0 text_offscreen_skipped=0 frame_anchor_input_us=42 frame_resource_sync_us=454 frame_quad_sync_us=324 frame_glyph_sync_us=5 frame_effect_sync_us=2 frame_upload_finish_us=120 frame_cull_us=20 frame_submit_us=1009 font_rasterizations=369 scroll_rasterizations=369 input_events=2 pointer_input_events=14 pointer_routes=8 hover_enters=4 hover_leaves=3 captures_started=3 captures_released=3 keyboard_events=17 focus_traversals=3 focus_changes=14 keyboard_activations=3 component_count=1021 node_count=1021 interaction_count=146 layout_passes=1778 scene_rebuilds=3 effect_layers=420 outer_layers=38 inset_layers=0 focus_layers=19 button_material_updates=9779 button_geometry_updates=4706 quad_uploads=1283 quad_uploaded_bytes=654144 glyph_uploads=112 glyph_buffer_uploads=2 glyph_buffer_coalesces=0 glyph_buffer_capacity=1048 glyph_uploaded_bytes=1258319 effect_uploads=8 effect_uploaded_bytes=8400 gpu_upload_submissions=366 scroll_buffer_upload_regions=1293 scroll_buffer_transfer_creations=368 scroll_buffer_transfer_maps=368 scroll_texture_transfer_creations=2 scroll_texture_transfer_maps=2 quad_draws=9007 glyph_draws=9007 effect_draws=6772 submits=366 idle_waits=19419 animation_frames=334 idle_after_animation=0 animation_acceptance=false input_acceptance=false selection_acceptance=true selection_theme=default search_acceptance=false search_keyboard=false search_pointer=false search_blocked=false search_text=false search_scroll=false password_acceptance=false password_hidden=false password_pointer=false password_keyboard=false password_disabled=false password_scroll=false input_clear_acceptance=false input_clear_scroll=false input_clear_pointer=false input_clear_keyboard=false input_clear_disabled=false selection_keyboard=true selection_pointer=true selection_blocked=true scroll_acceptance=false scrollbar_acceptance=false scrollbar_stage=0 continuous_drag=passed header_navigation=failed navigation_wheel=not-run navigation_drag=not-run document_track=not-run document_drag=not-run scroll_acceptance_steps=0 scroll_sequence_ms=0 input_latin=not-run input_selection=not-run input_clipboard=not-run input_undo=not-run input_redo=not-run input_theme_status=not-run input_caret_idle=not-run automated_input_events=31 motion_mode=normal exit_code=0\n"
+  },
+  {
+    "configuration": "Release",
+    "mode": "system",
+    "exit_code": 0,
+    "executable_sha256": "55eaea330c9b3edf3a6d206a2d553a07de108b71fe330fc03daf8f3787fe5e8e",
+    "captures": [
+      {
+        "path": "release-system/committed.png",
+        "sha256": "21d901de24bc758e3452033fec22067fa3fc81190088c60dbabbd03b83daf2b0"
+      },
+      {
+        "path": "release-system/copied.png",
+        "sha256": "4d854aac3bac6f1fbe5ee4ce7a3dca9b7043194a91415fd28c95881442ecbe7c"
+      },
+      {
+        "path": "release-system/dividers.png",
+        "sha256": "7d79ee59832379f2245b9e1713508ebf58faea86d4825f5c52f7c427842bf39d"
+      },
+      {
+        "path": "release-system/editing.png",
+        "sha256": "9f1dce1d2c45d758b55fa6ad99ed3553186af81b358506b085134dd3366121cf"
+      },
+      {
+        "path": "release-system/expanded.png",
+        "sha256": "8074485db41d9e457db5afb2a3617689d504dd61606c9d755dd497bc8eb37bd0"
+      },
+      {
+        "path": "release-system/headings.png",
+        "sha256": "0512bf58101097ff41c9ba3c659a67ab5a52afd452929279642991723a9e163d"
+      },
+      {
+        "path": "release-system/link-focus.png",
+        "sha256": "9cd8528cfbfc922b06ffccdea1f498895b1a057497d5b5a286a158744e42d1ce"
+      },
+      {
+        "path": "release-system/multiline-expanded.png",
+        "sha256": "ccd6a936f5c137f1536cf9a8a5ef41f13ee7c8a771d00fbbdfa2015c6156074e"
+      },
+      {
+        "path": "release-system/semantics.png",
+        "sha256": "59beaba276a5aa965e7f66d05ad6d20717f4766f253966c307629a403b99b8f0"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.25 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=370\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-2",
+    "exit_code": 0,
+    "executable_sha256": "55eaea330c9b3edf3a6d206a2d553a07de108b71fe330fc03daf8f3787fe5e8e",
+    "captures": [
+      {
+        "path": "release-scale-2/committed.png",
+        "sha256": "e184523a91bd09b5aab09cb13fd048603192d54693ea8abfccd24b0c9c93f4c0"
+      },
+      {
+        "path": "release-scale-2/copied.png",
+        "sha256": "e9ec20e9e3b80aecd5fe1a0ee59aa4cbc1e236a41fbfb0836956e4403cfc5247"
+      },
+      {
+        "path": "release-scale-2/dividers.png",
+        "sha256": "7075c3792a0167675a99054e640e01d6a51ff23e44d28e00dc27519aa54fa589"
+      },
+      {
+        "path": "release-scale-2/editing.png",
+        "sha256": "b7e48cf6a49e2f8e60085e992e6b3dab2d018d441dc41b0568628395e3144bd0"
+      },
+      {
+        "path": "release-scale-2/expanded.png",
+        "sha256": "f4ced7ce898ed0f33eac57ef94b79fb89408e0dd42c30b1e5311c2f26f2d6a30"
+      },
+      {
+        "path": "release-scale-2/headings.png",
+        "sha256": "ffd2f283d8bc7de0507b4b1a21867b361d7eaf28bda51f6b0bbb1550f0e1285a"
+      },
+      {
+        "path": "release-scale-2/link-focus.png",
+        "sha256": "0f18865a0165f9a5f5cd4f569341d2f6c735432b64a5faeb0780826357abcc48"
+      },
+      {
+        "path": "release-scale-2/multiline-expanded.png",
+        "sha256": "555746105ff3d79b362ac8b9fd7ee8e78028bf71d52da326c4ae430a7f8a27e5"
+      },
+      {
+        "path": "release-scale-2/semantics.png",
+        "sha256": "d4da5c6bae25bdda3ebfd2b37c4701d44ffab5f93aa57ebe1ed9e7b875cd32ca"
+      }
+    ],
+    "log": "typography_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 copy_only=false theme=light clipboard=passed ellipsis=passed edit=passed link=passed divider=passed submits=18 quad_draws=195 glyph_draws=213 effect_draws=120 components=67 rasterizations=283\nfont=regular family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0 weight=400 italic=0\nfont=strong family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0 weight=600 italic=0\nfont=italic family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGOEUII.TTF face_index=0 weight=400 italic=1\nfont=monospace family=Cascadia Mono path=C:\\WINDOWS\\FONTS\\CASCADIAMONO.TTF face_index=0 weight=400 italic=0\nfont_fallback=requested weight 500 could not be resolved; using the regular face\nexit_code=0\n"
+  },
+  {
+    "configuration": "Release",
+    "mode": "native-resize",
+    "exit_code": 0,
+    "executable_sha256": "55eaea330c9b3edf3a6d206a2d553a07de108b71fe330fc03daf8f3787fe5e8e",
+    "sizes": [
+      {
+        "outer_size": [
+          1200,
+          840
+        ],
+        "client_size": [
+          1182,
+          793
+        ],
+        "capture": "release-resize-wide.png",
+        "sha256": "c94d68c92fa8043f19d28d799e01432786573af0a05acf28b5fece14b931ba06"
+      },
+      {
+        "outer_size": [
+          900,
+          700
+        ],
+        "client_size": [
+          882,
+          653
+        ],
+        "capture": "release-resize-narrow.png",
+        "sha256": "ce69a3c344a4b113cb6e6c52b9c70029764560bc819945335abe84bb6aaf6c78"
+      }
+    ]
+  }
+]

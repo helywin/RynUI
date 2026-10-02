@@ -1,0 +1,7 @@
+[0/2] Re-checking globbed directories...
+[1/7] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/7] Deploying shaders for rynui_minimal
+[3/7] Deploying shaders for rynui_text_demo
+[4/7] Deploying shaders for rynui_button_demo
+[5/7] Deploying shaders for rynui_layout_demo
+[6/7] Deploying shaders for rynui_token_gallery

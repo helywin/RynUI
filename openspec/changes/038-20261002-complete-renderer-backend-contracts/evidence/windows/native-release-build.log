@@ -1,0 +1,77 @@
+[0/2] Re-checking globbed directories...
+[1/76] Building CXX object tests\CMakeFiles\rynui_glyph_texture_upload_tests.dir\Release\glyph_texture_upload_tests.cpp.obj
+D:\code\RynUI\tests\glyph_texture_upload_tests.cpp(48): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[2/76] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-c.dir\Release\spirv_cross_c.cpp.obj
+[3/76] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_capabilities.cpp.obj
+[4/76] Linking CXX static library _deps\rynui_spirv_cross-build\Release\spirv-cross-c.lib
+[5/76] Building CXX object tests\CMakeFiles\rynui_text_render_integration_tests.dir\Release\text_render_integration_tests.cpp.obj
+[6/76] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_resources.cpp.obj
+[7/76] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\glyph_gpu_resources.cpp.obj
+[8/76] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\quad_gpu_resources.cpp.obj
+[9/76] Linking CXX static library src\Release\rynui_renderer_common.lib
+[10/76] Building CXX object tests\CMakeFiles\rynui_glyph_gpu_resources_tests.dir\Release\glyph_gpu_resources_tests.cpp.obj
+[11/76] Building CXX object tests\CMakeFiles\rynui_text_scene_service_tests.dir\Release\text_scene_service_tests.cpp.obj
+[12/76] Building CXX object tests\CMakeFiles\rynui_platform_lifecycle_tests.dir\Release\platform_lifecycle_tests.cpp.obj
+[13/76] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Release\renderer\sdl\scene_renderer.cpp.obj
+[14/76] Linking CXX executable tests\Release\rynui_glyph_texture_upload_tests.exe
+[15/76] Linking CXX executable tests\Release\rynui_quad_primitive_tests.exe
+[16/76] Linking CXX executable tests\Release\rynui_logical_scene_packing_tests.exe
+[17/76] Linking CXX static library src\Release\rynui_renderer_sdl.lib
+[18/76] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_resources_tests.exe
+[19/76] Linking CXX executable tests\Release\rynui_rounded_effect_gpu_tests.exe
+[20/76] Linking CXX executable tests\Release\rynui_binding_quad_integration_tests.exe
+[21/76] Linking CXX executable Release\shadercross.exe
+[22/76] Linking CXX executable tests\Release\rynui_button_scene_service_tests.exe
+[23/76] Linking CXX executable tests\Release\rynui_glyph_scene_tests.exe
+[24/76] Linking CXX executable tests\Release\rynui_glyph_gpu_resources_tests.exe
+[25/76] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[26/76] Linking CXX executable tests\Release\rynui_text_render_integration_tests.exe
+[27/76] Linking CXX executable tests\Release\rynui_text_scene_service_tests.exe
+[28/76] Compiling rounded_effect vertex shader to SPIRV
+[29/76] Linking CXX executable tests\Release\rynui_frame_renderer_tests.exe
+[30/76] Compiling glyph fragment shader to SPIRV
+[31/76] Compiling glyph vertex shader to SPIRV
+[32/76] Compiling glyph fragment shader to DXIL
+[33/76] Compiling quad fragment shader to DXIL
+[34/76] Compiling rounded_effect fragment shader to SPIRV
+[35/76] Compiling glyph vertex shader to DXIL
+[36/76] Compiling quad fragment shader to SPIRV
+[37/76] Compiling quad vertex shader to SPIRV
+[38/76] Compiling quad vertex shader to DXIL
+[39/76] Reflecting glyph fragment shader resources
+[40/76] Reflecting rounded_effect vertex shader resources
+[41/76] Compiling rounded_effect vertex shader to DXIL
+[42/76] Reflecting glyph vertex shader resources
+[43/76] Reflecting rounded_effect fragment shader resources
+[44/76] Compiling rounded_effect fragment shader to DXIL
+[45/76] Linking CXX executable tests\Release\rynui_button_component_tests.exe
+[46/76] Linking CXX executable tests\Release\rynui_platform_lifecycle_tests.exe
+[47/76] Deploying shaders for rynui_minimal
+[48/76] Deploying shaders for rynui_text_demo
+[49/76] Deploying shaders for rynui_button_demo
+[50/76] Deploying shaders for rynui_layout_demo
+[51/76] Deploying shaders for rynui_token_gallery
+[52/76] Linking CXX executable examples\Release\rynui_minimal.exe
+[53/76] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Release\text_component_frame_tests.cpp.obj
+[54/76] Building CXX object tests\CMakeFiles\rynui_input_scene_allocation_benchmark.dir\Release\input_scene_allocation_benchmark.cpp.obj
+[55/76] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Release\input_gpu_tests.cpp.obj
+[56/76] Linking CXX executable tests\Release\rynui_text_component_frame_tests.exe
+[57/76] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Release\token_gallery_frame_tests.cpp.obj
+[58/76] Linking CXX executable tests\Release\rynui_input_scene_allocation_benchmark.exe
+[59/76] Linking CXX executable tests\Release\rynui_input_gpu_tests.exe
+[60/76] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[61/76] Building CXX object tests\CMakeFiles\rynui_input_caret_blink_tests.dir\Release\input_caret_blink_tests.cpp.obj
+[62/76] Building CXX object tests\CMakeFiles\rynui_input_journey_tests.dir\Release\input_journey_tests.cpp.obj
+[63/76] Linking CXX executable tests\Release\rynui_input_caret_blink_tests.exe
+[64/76] Building CXX object tests\CMakeFiles\rynui_button_demo_frame_tests.dir\Release\button_demo_frame_tests.cpp.obj
+[65/76] Linking CXX executable tests\Release\rynui_input_journey_tests.exe
+[66/76] Building CXX object examples\CMakeFiles\rynui_layout_demo.dir\Release\layout\layout_demo_runtime.cpp.obj
+[67/76] Linking CXX executable tests\Release\rynui_button_demo_frame_tests.exe
+[68/76] Building CXX object examples\CMakeFiles\rynui_text_demo.dir\Release\text\main.cpp.obj
+[69/76] Linking CXX executable examples\Release\rynui_layout_demo.exe
+[70/76] Linking CXX executable examples\Release\rynui_text_demo.exe
+[71/76] Building CXX object examples\CMakeFiles\rynui_button_demo.dir\Release\button\main.cpp.obj
+[72/76] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\token_gallery_runtime.cpp.obj
+[73/76] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\typography_acceptance.cpp.obj
+[74/76] Linking CXX executable examples\Release\rynui_button_demo.exe
+[75/76] Linking CXX executable examples\Release\rynui_token_gallery.exe

@@ -11,7 +11,7 @@
 
 ## 3. Windows 原生验收
 
-- [ ] 3.1 使用 windows-msvc-debug/release 构建全部 native 目标并运行受影响 Glyph/texture batch/scene/frame/组件/allocation/shader/font/lifetime tests；两种配置实际 Gallery resize、Typography 系统 scale/2.0、Selection acceptance，检查截图、退出码和最终二进制 SHA256，保存独立 Windows 证据，doctor/strict/diff check 后提交。
+- [x] 3.1 使用 windows-msvc-debug/release 构建全部 native 目标并运行受影响 Glyph/texture batch/scene/frame/组件/allocation/shader/font/lifetime tests；两种配置实际 Gallery resize、Typography 系统 scale/2.0、Selection acceptance，检查截图、退出码和最终二进制 SHA256，保存独立 Windows 证据，doctor/strict/diff check 后提交。
 
 ## 4. Linux 原生验收
 
