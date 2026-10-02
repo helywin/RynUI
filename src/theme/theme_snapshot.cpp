@@ -91,6 +91,9 @@ void apply_seed_override(AntDesignDefaultSeed& seed, const SeedTokenOverride& ov
     if (override.motion) {
         seed.motion = *override.motion;
     }
+    if (override.wireframe) {
+        seed.wireframe = *override.wireframe;
+    }
 }
 
 [[nodiscard]] constexpr float rounded_channel(float value) noexcept {
@@ -1029,6 +1032,165 @@ void apply_checkbox_override(CheckboxThemeToken& token, const CheckboxTokenOverr
     }
 }
 
+RadioThemeToken derive_radio(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                             std::span<const ThemeAlgorithm> algorithms) {
+    RadioThemeToken token;
+    token.size = map.font_size_large;
+    token.dot_size = std::max(0.0F, map.font_size_large - 2 * ((seed.wireframe ? 4 : 4 + seed.line_width)));
+    token.line_width = seed.line_width;
+    token.label_gap = map.size_xs;
+    token.wrapper_margin_inline_end = map.size_xs;
+    token.font_size = map.font_size;
+    token.line_height = map.font_size * map.line_height;
+    token.button_height = map.control_height;
+    token.button_height_small = map.control_height_small;
+    token.button_height_large = map.control_height_large;
+    token.button_padding_inline = std::max(0.0F, map.size - seed.line_width);
+    token.button_padding_inline_small = std::max(0.0F, map.size_xs - seed.line_width);
+    token.button_font_size_large = map.font_size_large;
+    token.button_radius = map.border_radius;
+    token.button_radius_small = map.border_radius_small;
+    token.button_radius_large = map.border_radius_large;
+    token.focus_width = alias.line_width_focus;
+    token.focus_offset = alias.focus_outline_offset;
+    token.wave_spread = 6;
+    token.wave_width = 2;
+    token.wave_opacity = 0.2F;
+    token.primary = map.color_primary;
+    token.primary_hover = map.color_primary_hover;
+    token.primary_active = map.color_primary_active;
+    token.background = alias.color_background_container;
+    token.border = alias.color_border;
+    token.disabled_background = alias.color_background_container_disabled;
+    token.disabled_foreground = alias.color_text_disabled;
+    token.dot = seed.wireframe ? map.color_primary : Color::rgba8(255, 255, 255);
+    token.dot_disabled = alias.color_text_disabled;
+    token.checked_background = seed.wireframe ? alias.color_background_container : map.color_primary;
+    token.label = alias.color_text;
+    token.focus = alias.color_focus_outline;
+    token.button_background = alias.color_background_container;
+    token.button_checked_background = alias.color_background_container;
+    token.button_color = alias.color_text;
+    const bool dark = std::ranges::find(algorithms, ThemeAlgorithm::Dark) != algorithms.end();
+    token.button_checked_background_disabled =
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.18F : 0.15F);
+    token.button_checked_color_disabled = alias.color_text_disabled;
+    token.button_solid_checked_color = Color::rgba8(255, 255, 255);
+    token.button_solid_checked_background = map.color_primary;
+    token.button_solid_checked_hover_background = map.color_primary_hover;
+    token.button_solid_checked_active_background = map.color_primary_active;
+    return token;
+}
+
+void apply_radio_override(RadioThemeToken& token, const RadioTokenOverride& override) {
+    token.size = fixed_length(override.size, token.size, "Radio size is invalid", true);
+    token.dot_size = fixed_length(override.dot_size, token.dot_size, "Radio dot_size is invalid");
+    token.line_width = fixed_length(override.line_width, token.line_width, "Radio line_width is invalid");
+    token.label_gap = fixed_length(override.label_gap, token.label_gap, "Radio label_gap is invalid");
+    token.wrapper_margin_inline_end = fixed_length(override.wrapper_margin_inline_end, token.wrapper_margin_inline_end,
+                                                   "Radio wrapper_margin_inline_end is invalid");
+    token.font_size = fixed_length(override.font_size, token.font_size, "Radio font_size is invalid", true);
+    token.line_height = fixed_length(override.line_height, token.line_height, "Radio line_height is invalid", true);
+    token.button_height =
+        fixed_length(override.button_height, token.button_height, "Radio button_height is invalid", true);
+    token.button_height_small = fixed_length(override.button_height_small, token.button_height_small,
+                                             "Radio button_height_small is invalid", true);
+    token.button_height_large = fixed_length(override.button_height_large, token.button_height_large,
+                                             "Radio button_height_large is invalid", true);
+    token.button_padding_inline = fixed_length(override.button_padding_inline, token.button_padding_inline,
+                                               "Radio button_padding_inline is invalid");
+    token.button_padding_inline_small =
+        fixed_length(override.button_padding_inline_small, token.button_padding_inline_small,
+                     "Radio button_padding_inline_small is invalid");
+    token.button_font_size_large = fixed_length(override.button_font_size_large, token.button_font_size_large,
+                                                "Radio button_font_size_large is invalid", true);
+    token.button_radius = fixed_length(override.button_radius, token.button_radius, "Radio button_radius is invalid");
+    token.button_radius_small =
+        fixed_length(override.button_radius_small, token.button_radius_small, "Radio button_radius_small is invalid");
+    token.button_radius_large =
+        fixed_length(override.button_radius_large, token.button_radius_large, "Radio button_radius_large is invalid");
+    token.focus_width = fixed_length(override.focus_width, token.focus_width, "Radio focus_width is invalid");
+    token.focus_offset = fixed_length(override.focus_offset, token.focus_offset, "Radio focus_offset is invalid");
+    token.wave_spread = fixed_length(override.wave_spread, token.wave_spread, "Radio wave_spread is invalid");
+    token.wave_width = fixed_length(override.wave_width, token.wave_width, "Radio wave_width is invalid");
+    if (override.wave_opacity) {
+        if (!detail::finite(*override.wave_opacity) || *override.wave_opacity < 0 || *override.wave_opacity > 1) {
+            throw std::invalid_argument("Radio wave opacity must be finite and in [0, 1]");
+        }
+        token.wave_opacity = *override.wave_opacity;
+    }
+    if (token.dot_size > token.size || 2 * token.line_width > token.size ||
+        2 * token.line_width > std::min({token.button_height, token.button_height_small, token.button_height_large}) ||
+        !detail::finite(token.wave_spread + token.wave_width + token.focus_width + token.focus_offset) ||
+        !detail::finite(token.size + token.label_gap + token.line_height + token.button_height_large +
+                        2 * token.button_padding_inline)) {
+        throw std::invalid_argument("Radio geometry exceeds its indicator or finite extents");
+    }
+    if (override.primary) {
+        token.primary = *override.primary;
+    }
+    if (override.primary_hover) {
+        token.primary_hover = *override.primary_hover;
+    }
+    if (override.primary_active) {
+        token.primary_active = *override.primary_active;
+    }
+    if (override.background) {
+        token.background = *override.background;
+    }
+    if (override.border) {
+        token.border = *override.border;
+    }
+    if (override.disabled_background) {
+        token.disabled_background = *override.disabled_background;
+    }
+    if (override.disabled_foreground) {
+        token.disabled_foreground = *override.disabled_foreground;
+    }
+    if (override.dot) {
+        token.dot = *override.dot;
+    }
+    if (override.dot_disabled) {
+        token.dot_disabled = *override.dot_disabled;
+    }
+    if (override.checked_background) {
+        token.checked_background = *override.checked_background;
+    }
+    if (override.label) {
+        token.label = *override.label;
+    }
+    if (override.focus) {
+        token.focus = *override.focus;
+    }
+    if (override.button_background) {
+        token.button_background = *override.button_background;
+    }
+    if (override.button_checked_background) {
+        token.button_checked_background = *override.button_checked_background;
+    }
+    if (override.button_color) {
+        token.button_color = *override.button_color;
+    }
+    if (override.button_checked_background_disabled) {
+        token.button_checked_background_disabled = *override.button_checked_background_disabled;
+    }
+    if (override.button_checked_color_disabled) {
+        token.button_checked_color_disabled = *override.button_checked_color_disabled;
+    }
+    if (override.button_solid_checked_color) {
+        token.button_solid_checked_color = *override.button_solid_checked_color;
+    }
+    if (override.button_solid_checked_background) {
+        token.button_solid_checked_background = *override.button_solid_checked_background;
+    }
+    if (override.button_solid_checked_hover_background) {
+        token.button_solid_checked_hover_background = *override.button_solid_checked_hover_background;
+    }
+    if (override.button_solid_checked_active_background) {
+        token.button_solid_checked_active_background = *override.button_solid_checked_active_background;
+    }
+}
+
 SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
                                std::span<const ThemeAlgorithm> algorithms) {
     const bool dark = std::find(algorithms.begin(), algorithms.end(), ThemeAlgorithm::Dark) != algorithms.end();
@@ -1407,9 +1569,10 @@ void append_color(std::ostringstream& stream, Color color) {
 [[nodiscard]] std::string serialize_snapshot(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                                             const CheckboxThemeToken& checkbox, const TypographyThemeToken& typography,
-                                             const DividerThemeToken& divider, const SliderThemeToken& slider,
-                                             const TooltipThemeToken& tooltip, const detail::InputTokenSet& input,
+                                             const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
+                                             const TypographyThemeToken& typography, const DividerThemeToken& divider,
+                                             const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                                             const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -1568,6 +1731,30 @@ void append_color(std::ostringstream& stream, Color color) {
             stream << ',';
         }
         append_color(stream, checkbox_colors[i]);
+    }
+    stream << "]},\"radio\":{\"metrics\":[";
+    const auto radio_metrics = radio.metrics();
+    for (std::size_t i = 0; i < radio_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << radio_metrics[i];
+    }
+    stream << "],\"effects\":[";
+    const auto radio_effects = radio.effects();
+    for (std::size_t i = 0; i < radio_effects.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << radio_effects[i];
+    }
+    stream << "],\"colors\":[";
+    const auto radio_colors = radio.colors();
+    for (std::size_t i = 0; i < radio_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, radio_colors[i]);
     }
     stream << "]},\"slider\":{\"metrics\":[";
     const auto slider_metrics = slider.metrics.values();
@@ -1803,12 +1990,14 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
 }
 
-[[nodiscard]] std::uint64_t
-snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
-                  const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                  const CheckboxThemeToken& checkbox, const TypographyThemeToken& typography,
-                  const DividerThemeToken& divider, const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
+[[nodiscard]] std::uint64_t snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
+                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
+                                              const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
+                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
+                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                                              const detail::InputTokenSet& input,
+                                              std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -1991,6 +2180,15 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     for (const auto value : checkbox.colors()) {
         hash_color(hash, value);
     }
+    for (const auto value : radio.metrics()) {
+        hash_float(hash, value);
+    }
+    for (const auto value : radio.effects()) {
+        hash_float(hash, value);
+    }
+    for (const auto value : radio.colors()) {
+        hash_color(hash, value);
+    }
     hash_typography(hash, typography);
     hash_divider(hash, divider);
     for (auto value : slider.metrics.values()) {
@@ -2038,17 +2236,18 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
 
 ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
-                             CheckboxThemeToken checkbox, TypographyThemeToken typography, DividerThemeToken divider,
-                             SliderThemeToken slider, TooltipThemeToken tooltip,
+                             CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
+                             DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
-      typography_(std::move(typography)), divider_(std::move(divider)), slider_(std::move(slider)),
-      tooltip_(std::move(tooltip)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, typography_, divider_,
-                                  slider_, tooltip_, *input_, algorithms_);
-    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, typography_,
-                                          divider_, slider_, tooltip_, *input_, algorithms_, identity_);
+      radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
+      slider_(std::move(slider)), tooltip_(std::move(tooltip)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
+    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
+                                  divider_, slider_, tooltip_, *input_, algorithms_);
+    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
+                                          typography_, divider_, slider_, tooltip_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -2077,6 +2276,10 @@ const SwitchThemeToken& ThemeSnapshot::switch_token() const noexcept {
 
 const CheckboxThemeToken& ThemeSnapshot::checkbox() const noexcept {
     return checkbox_;
+}
+
+const RadioThemeToken& ThemeSnapshot::radio() const noexcept {
+    return radio_;
 }
 
 const TypographyThemeToken& ThemeSnapshot::typography() const noexcept {
@@ -2118,7 +2321,7 @@ const std::string& ThemeSnapshot::diagnostic_json() const noexcept {
 bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_ && left.alias_ == right.alias_ &&
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
-           left.checkbox_ == right.checkbox_ && left.typography_ == right.typography_ &&
+           left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
@@ -2228,6 +2431,22 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         checkbox = derive_checkbox(seed, map, alias);
     }
     apply_checkbox_override(checkbox, config.checkbox.tokens);
+    RadioThemeToken radio;
+    const bool inherit_radio = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                               !config.radio.algorithm && config.radio.seed == SeedTokenOverride{};
+    if (inherit_radio) {
+        radio = parent->radio();
+    } else if (config.radio.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.radio.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        radio = derive_radio(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                             algorithms);
+    } else {
+        radio = derive_radio(seed, map, alias, algorithms);
+    }
+    apply_radio_override(radio, config.radio.tokens);
     const bool inherit_parent_typography = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.typography.algorithm &&
@@ -2294,8 +2513,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     }
     apply_tooltip_override(tooltip, config.tooltip.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-                         std::move(switch_token), std::move(checkbox), std::move(typography), std::move(divider),
-                         std::move(slider), std::move(tooltip),
+                         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
+                         std::move(divider), std::move(slider), std::move(tooltip),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 

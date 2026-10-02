@@ -102,6 +102,24 @@ void validate(SwitchDirection direction) {
     }
 }
 
+void validate(RadioSize value) {
+    if (value != RadioSize::Small && value != RadioSize::Middle && value != RadioSize::Large) {
+        throw std::invalid_argument("Radio size is invalid");
+    }
+}
+
+void validate(RadioOptionType value) {
+    if (value != RadioOptionType::Default && value != RadioOptionType::Button) {
+        throw std::invalid_argument("Radio option type is invalid");
+    }
+}
+
+void validate(RadioButtonStyle value) {
+    if (value != RadioButtonStyle::Outline && value != RadioButtonStyle::Solid) {
+        throw std::invalid_argument("Radio button style is invalid");
+    }
+}
+
 SwitchDirection selection_direction(CheckboxDirection direction) {
     if (direction != CheckboxDirection::LeftToRight && direction != CheckboxDirection::RightToLeft) {
         throw std::invalid_argument("Checkbox direction is invalid");
@@ -201,6 +219,18 @@ struct SelectionState final {
     component::RetainedSurfaceEffects effects;
     bool checkbox{};
     bool radio{};
+    bool own_radio_button{};
+    bool radio_button{};
+    RadioSize radio_size{RadioSize::Middle};
+    RadioButtonStyle button_style{RadioButtonStyle::Outline};
+    bool block{};
+    bool joined_vertical{};
+    std::array<bool, 4> rounded_corners{true, true, true, true};
+    runtime::SceneFragmentId button_fragment;
+    component::RetainedSurfaceId button_range;
+    Color button_fill;
+    Color button_border;
+    Color button_label;
     bool own_disabled{};
     runtime::ComponentId group;
     RadioSelection value;
@@ -272,8 +302,18 @@ struct RadioGroupState final {
     bool reconciling{};
     RadioGroupOrientation orientation{RadioGroupOrientation::Horizontal};
     RadioDirection direction{RadioDirection::LeftToRight};
+    RadioSize size{RadioSize::Middle};
+    RadioOptionType option_type{RadioOptionType::Default};
+    RadioButtonStyle button_style{RadioButtonStyle::Outline};
+    bool block{};
+    bool joined{};
+    bool needs_refresh{};
+    std::vector<runtime::Size> measured_options;
     float layout_gap{-1.0F};
     RadioGroupOrientation layout_orientation{RadioGroupOrientation::Vertical};
+    bool layout_joined{};
+    bool layout_block{};
+    RadioDirection layout_direction{RadioDirection::LeftToRight};
     std::function<void(const RadioValue&)> on_change;
     theme_runtime::Subscription theme_subscription;
 };
@@ -410,6 +450,17 @@ void SelectionComponentHost::on_destroy() noexcept {
     std::erase_if(groups_, [this](const auto id) { return !services_->components().contains(id); });
     std::erase_if(checkbox_groups_,
                   [this](const auto& item) { return !services_->components().contains(item.component); });
+    for (const auto id : groups_) {
+        if (auto* group = services_->components().state<RadioGroupState>(id); group && group->needs_refresh) {
+            try {
+                refresh_radio_group(*group);
+                group->needs_refresh = false;
+            } catch (...) {
+                // Destruction stays noexcept; a later synchronization retries
+                // the surviving group's geometry after allocation failure.
+            }
+        }
+    }
 }
 
 void SelectionComponentHost::on_dispose() noexcept {
@@ -419,12 +470,18 @@ void SelectionComponentHost::on_dispose() noexcept {
 }
 
 void SelectionComponentHost::synchronize_auxiliary_motion() {
+    for (const auto id : groups_) {
+        if (auto* group = services_->components().state<RadioGroupState>(id); group && group->needs_refresh) {
+            refresh_radio_group(*group);
+            group->needs_refresh = false;
+        }
+    }
     for (const auto& item : mounted_) {
         auto* state = find(item.component);
-        if (!state || state->radio) {
+        if (!state) {
             continue;
         }
-        if (!state->checkbox) {
+        if (!state->checkbox && !state->radio) {
             synchronize_spinner(*state);
         }
         if (state->wave_active &&
@@ -459,9 +516,11 @@ SelectionSnapshot SelectionComponentHost::snapshot(runtime::ComponentId id) cons
     if (!state) {
         throw std::out_of_range("Selection component is stale or invalid");
     }
-    return {state->checkbox,    state->checked,         state->indeterminate, state->disabled, state->loading,
-            state->hovered,     state->press.pressed(), state->focus,         state->size,     state->radio,
-            state->wave_active, state->wave_progress,   state->wave_range};
+    return {state->checkbox,    state->checked,      state->indeterminate,   state->disabled,
+            state->loading,     state->hovered,      state->press.pressed(), state->focus,
+            state->size,        state->radio,        state->wave_active,     state->wave_progress,
+            state->wave_range,  state->radio_button, state->radio_size,      state->rounded_corners,
+            state->button_range};
 }
 
 std::optional<input::InteractionId> SelectionComponentHost::parent_interaction(runtime::ComponentId component) const {
@@ -510,6 +569,7 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     if (state.radio && state.group.valid()) {
         if (auto* group = services_->components().state<RadioGroupState>(state.group); group && !group->reconciling) {
             std::erase(group->options, state.component);
+            group->needs_refresh = true;
             if (!group->controlled && state.value == group->value) {
                 group->value.reset();
             }
@@ -540,14 +600,21 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
         state.radio_ref->focus = {};
         state.radio_ref->blur = {};
     }
+    state.disabled = true;
+    stop_wave(state);
     services_->pointer().cancel_interaction(state.interaction);
+    services_->focus().cancel_interaction(state.interaction);
     if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
     }
     if (state.wave_range.valid()) {
         static_cast<void>(services_->surfaces().destroy_content_range(state.wave_range));
+        state.wave_range = {};
     }
-    services_->focus().cancel_interaction(state.interaction);
+    if (state.button_range.valid()) {
+        services_->surfaces().destroy_content_range(state.button_range);
+        state.button_range = {};
+    }
     static_cast<void>(services_->interactions().remove(state.interaction));
     static_cast<void>(services_->surfaces().destroy(state.surface));
     static_cast<void>(services_->layout().remove_layout(state.node));
@@ -565,6 +632,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
     }
     if (state->radio && state->checked) {
         const auto click = state->on_click;
+        start_wave(*state);
         if (click) {
             click(true);
         }
@@ -581,6 +649,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         const auto group_callback = group->on_change;
         const auto click = state->on_click;
         const bool changed = group->value != state->value;
+        start_wave(*state);
         if (!group->controlled) {
             apply_group_value(group_id, candidate);
         }
@@ -643,9 +712,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         }
         update_visuals(*state);
     }
-    if (!state->radio) {
-        start_wave(*state);
-    }
+    start_wave(*state);
     if (callback) {
         callback(next);
     }
@@ -842,6 +909,11 @@ void SelectionComponentHost::apply_group_value(runtime::ComponentId id, RadioSel
         }
     }
     update_radio_tab_stops(*group);
+    for (const auto option : options) {
+        if (auto* state = find(option); state && state->radio_button) {
+            publish_radio_button(*state);
+        }
+    }
 }
 
 void SelectionComponentHost::apply_group_disabled(runtime::ComponentId id, bool value) {
@@ -868,7 +940,7 @@ void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id, Ra
         return;
     }
     group->orientation = value;
-    update_group_layout(*group);
+    refresh_radio_group(*group);
 }
 
 void SelectionComponentHost::apply_group_direction(runtime::ComponentId id, RadioDirection value) {
@@ -880,6 +952,7 @@ void SelectionComponentHost::apply_group_direction(runtime::ComponentId id, Radi
                 apply_direction(option, direction);
             }
         }
+        refresh_radio_group(*group);
     }
 }
 
@@ -943,20 +1016,162 @@ bool SelectionComponentHost::handle_radio_key(runtime::ComponentId id, const inp
 
 void SelectionComponentHost::update_group_layout(RadioGroupState& group) {
     const auto& theme = services_->components().theme_scope(group.component)->snapshot();
-    const float gap = theme.map().size_xs;
-    if (group.layout_gap == gap && group.layout_orientation == group.orientation) {
+    const float gap = group.joined ? 0 : theme.radio().wrapper_margin_inline_end;
+    if (group.layout_gap == gap && group.layout_orientation == group.orientation &&
+        group.layout_joined == group.joined && group.layout_block == group.block &&
+        group.layout_direction == group.direction) {
         return;
     }
-    layout::FlexLayout model;
-    model.direction = group.orientation == RadioGroupOrientation::Vertical ? layout::FlexDirection::vertical
-                                                                           : layout::FlexDirection::horizontal;
-    model.main_gap = gap;
-    model.align = layout::FlexAlign::center;
-    services_->layout().set_layout(group.node, model);
+    if (group.joined) {
+        const auto id = group.component;
+        services_->layout().set_layout(
+            group.node, layout::ComponentLayout{
+                            [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                                return measure_radio_group(id, engine, limits);
+                            },
+                            [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
+                                place_radio_group(id, engine, bounds);
+                            }});
+    } else {
+        layout::FlexLayout model;
+        model.direction = group.orientation == RadioGroupOrientation::Vertical ? layout::FlexDirection::vertical
+                                                                               : layout::FlexDirection::horizontal;
+        model.main_gap = gap;
+        model.align = layout::FlexAlign::center;
+        model.fill_width = group.block;
+        services_->layout().set_layout(group.node, model);
+    }
     group.layout_gap = gap;
     group.layout_orientation = group.orientation;
+    group.layout_joined = group.joined;
+    group.layout_block = group.block;
+    group.layout_direction = group.direction;
     services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+}
+
+runtime::Size SelectionComponentHost::measure_radio_group(runtime::ComponentId id, layout::LayoutEngine& engine,
+                                                          layout::Constraints limits) {
+    auto& group = *services_->components().state<RadioGroupState>(id);
+    group.measured_options.clear();
+    const bool vertical = group.orientation == RadioGroupOrientation::Vertical;
+    const float stroke = services_->components().theme_scope(id)->snapshot().radio().line_width;
+    float main = 0;
+    float cross = 0;
+    for (const auto option : group.options) {
+        const auto size = engine.measure_child(find(option)->node, {0, limits.max_width, 0, limits.max_height});
+        group.measured_options.push_back(size);
+        main += vertical ? size.height : size.width;
+        cross = std::max(cross, vertical ? size.width : size.height);
+    }
+    if (!group.options.empty()) {
+        main -= stroke * static_cast<float>(group.options.size() - 1);
+    }
+    runtime::Size result = vertical ? runtime::Size{cross, main} : runtime::Size{main, cross};
+    if (group.block && std::isfinite(limits.max_width)) {
+        result.width = limits.max_width;
+    }
+    return limits.constrain(result);
+}
+
+void SelectionComponentHost::place_radio_group(runtime::ComponentId id, layout::LayoutEngine& engine,
+                                               runtime::Rect bounds) {
+    auto& group = *services_->components().state<RadioGroupState>(id);
+    const bool vertical = group.orientation == RadioGroupOrientation::Vertical;
+    const bool rtl = group.direction == RadioDirection::RightToLeft;
+    const float stroke = services_->components().theme_scope(id)->snapshot().radio().line_width;
+    float cursor = vertical ? bounds.y : rtl ? bounds.x + bounds.width : bounds.x;
+    for (std::size_t i = 0; i < group.options.size(); ++i) {
+        auto* state = find(group.options[i]);
+        const auto size = group.measured_options[i];
+        const float width = group.block && !vertical
+                                ? (bounds.width + stroke * static_cast<float>(group.options.size() - 1)) /
+                                      static_cast<float>(group.options.size())
+                            : vertical ? bounds.width
+                                       : size.width;
+        const runtime::Rect rect{vertical ? bounds.x
+                                 : rtl    ? cursor - width
+                                          : cursor,
+                                 vertical ? cursor : bounds.y + (bounds.height - size.height) / 2, width, size.height};
+        engine.place_child(state->node, rect, true, false);
+        cursor += vertical ? size.height - stroke : rtl ? -(width - stroke) : width - stroke;
+    }
+}
+
+void SelectionComponentHost::refresh_radio_group(RadioGroupState& group) {
+    group.joined =
+        !group.options.empty() && services_->nodes().require(group.node).children.size() == group.options.size();
+    for (const auto option : group.options) {
+        const auto* state = find(option);
+        if (!state || !(state->own_radio_button || group.option_type == RadioOptionType::Button) ||
+            services_->nodes().require(state->node).parent != group.node) {
+            group.joined = false;
+        }
+    }
+    const bool vertical = group.orientation == RadioGroupOrientation::Vertical;
+    const bool rtl = group.direction == RadioDirection::RightToLeft;
+    for (std::size_t i = 0; i < group.options.size(); ++i) {
+        if (auto* state = find(group.options[i])) {
+            state->radio_button = state->own_radio_button || group.option_type == RadioOptionType::Button;
+            state->radio_size = group.size;
+            state->button_style = group.button_style;
+            state->block = group.block;
+            state->joined_vertical = vertical;
+            state->rounded_corners = {true, true, true, true};
+            if (group.joined) {
+                const bool first = i == 0;
+                const bool last = i + 1 == group.options.size();
+                state->rounded_corners = vertical ? std::array{first, first, last, last}
+                                         : rtl    ? std::array{last, first, first, last}
+                                                  : std::array{first, last, last, first};
+            }
+            auto& style = services_->nodes().require(state->node).external_layout;
+            style.order = !vertical && rtl ? -static_cast<int>(i) : static_cast<int>(i);
+            style.flex_grow = group.block && !vertical && !group.joined ? 1.0F : 0.0F;
+            style.flex_basis = group.block && !vertical && !group.joined ? std::optional{0.0F} : std::nullopt;
+            update_layout(*state);
+            update_visuals(*state);
+        }
+    }
+    update_group_layout(group);
+    services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                  runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+}
+
+void SelectionComponentHost::apply_group_size(runtime::ComponentId id, RadioSize value) {
+    validate(value);
+    if (auto* group = services_->components().state<RadioGroupState>(id); group && group->size != value) {
+        group->size = value;
+        refresh_radio_group(*group);
+    }
+}
+
+void SelectionComponentHost::apply_group_option_type(runtime::ComponentId id, RadioOptionType value) {
+    validate(value);
+    if (auto* group = services_->components().state<RadioGroupState>(id); group && group->option_type != value) {
+        group->option_type = value;
+        refresh_radio_group(*group);
+    }
+}
+
+void SelectionComponentHost::apply_group_button_style(runtime::ComponentId id, RadioButtonStyle value) {
+    validate(value);
+    if (auto* group = services_->components().state<RadioGroupState>(id); group && group->button_style != value) {
+        group->button_style = value;
+        for (const auto option : group->options) {
+            if (auto* state = find(option)) {
+                state->button_style = value;
+                update_visuals(*state);
+            }
+        }
+    }
+}
+
+void SelectionComponentHost::apply_group_block(runtime::ComponentId id, bool value) {
+    if (auto* group = services_->components().state<RadioGroupState>(id); group && group->block != value) {
+        group->block = value;
+        refresh_radio_group(*group);
+    }
 }
 
 void SelectionComponentHost::retarget_handle(SelectionState& state) {
@@ -1145,8 +1360,12 @@ void SelectionComponentHost::apply_wave(runtime::ComponentId id, bool value) {
 
 void SelectionComponentHost::start_wave(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
-    const float width = state.checkbox ? theme.checkbox().wave_width : theme.switch_token().wave_width;
-    const float opacity = state.checkbox ? theme.checkbox().wave_opacity : theme.switch_token().wave_opacity;
+    const float width = state.checkbox ? theme.checkbox().wave_width
+                        : state.radio  ? theme.radio().wave_width
+                                       : theme.switch_token().wave_width;
+    const float opacity = state.checkbox ? theme.checkbox().wave_opacity
+                          : state.radio  ? theme.radio().wave_opacity
+                                         : theme.switch_token().wave_opacity;
     const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
     const auto spec = policy.transition(animation::MotionDurationToken::slow, animation::MotionEasingToken::ease_out);
     if (!state.wave || state.disabled || state.loading || !services_->focus().state().window_active ||
@@ -1155,6 +1374,7 @@ void SelectionComponentHost::start_wave(SelectionState& state) {
     }
     stop_wave(state);
     state.wave_color = state.checkbox  ? theme.checkbox().primary
+                       : state.radio   ? theme.radio().primary
                        : state.checked ? theme.switch_token().checked_background
                                        : theme.switch_token().unchecked_background;
     state.wave_active = true;
@@ -1195,21 +1415,36 @@ void SelectionComponentHost::publish_wave(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto& checkbox = theme.checkbox();
     const auto& token = theme.switch_token();
+    const auto& radio = theme.radio();
     const auto shape =
-        state.checkbox ? state.effects.shape
-                       : graphics::LogicalRoundedRect{node.bounds, std::min(node.bounds.width, node.bounds.height) / 2};
-    const auto effect = graphics::make_outline_effect(
-        shape, state.checkbox ? checkbox.wave_width : token.wave_width,
-        (state.checkbox ? checkbox.wave_spread : token.wave_spread) * state.wave_progress, state.wave_color,
-        (state.checkbox ? checkbox.wave_opacity : token.wave_opacity) * (1 - state.wave_progress), node.translation,
-        window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt);
-    services_->surfaces().update_content_effects(state.wave_range, std::span{&effect, 1});
+        state.checkbox || state.radio
+            ? state.effects.shape
+            : graphics::LogicalRoundedRect{node.bounds, std::min(node.bounds.width, node.bounds.height) / 2};
+    const float width = state.checkbox ? checkbox.wave_width : state.radio ? radio.wave_width : token.wave_width;
+    const float spread = (state.checkbox ? checkbox.wave_spread
+                          : state.radio  ? radio.wave_spread
+                                         : token.wave_spread) *
+                         state.wave_progress;
+    const float opacity = (state.checkbox ? checkbox.wave_opacity
+                           : state.radio  ? radio.wave_opacity
+                                          : token.wave_opacity) *
+                          (1 - state.wave_progress);
+    const auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    if (state.radio && state.radio_button) {
+        const auto effects = graphics::make_corner_outline_effects(shape, state.rounded_corners, width, spread,
+                                                                   state.wave_color, opacity, node.translation, clip);
+        services_->surfaces().update_content_effects(state.wave_range, effects);
+    } else {
+        const auto effect =
+            graphics::make_outline_effect(shape, width, spread, state.wave_color, opacity, node.translation, clip);
+        services_->surfaces().update_content_effects(state.wave_range, std::span{&effect, 1});
+    }
 }
 
 void SelectionComponentHost::on_window_active(bool active) {
     if (!active) {
         for (const auto& item : mounted_) {
-            if (auto* state = find(item.component); state && !state->radio) {
+            if (auto* state = find(item.component)) {
                 stop_wave(*state);
             }
         }
@@ -1301,22 +1536,48 @@ void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPr
 void SelectionComponentHost::update_layout(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto token = resolve_tokens(theme, state.size);
-    if (state.checkbox || state.radio) {
-        const float size = state.radio ? token.radio_size : theme.checkbox().size;
-        const float gap = state.checkbox ? theme.checkbox().label_gap : token.label_gap;
-        if (state.layout_height == size && state.layout_gap == gap) {
+    if (state.radio && state.radio_button) {
+        const auto& radio = theme.radio();
+        const float height = state.radio_size == RadioSize::Small   ? radio.button_height_small
+                             : state.radio_size == RadioSize::Large ? radio.button_height_large
+                                                                    : radio.button_height;
+        const float padding =
+            state.radio_size == RadioSize::Small ? radio.button_padding_inline_small : radio.button_padding_inline;
+        if (state.layout_height == height && state.layout_width == padding && state.layout_gap == radio.line_width) {
+            return;
+        }
+        layout::HorizontalContentLayout model;
+        model.control_height = height;
+        model.padding_inline = padding;
+        model.border_width = radio.line_width;
+        model.gap = radio.label_gap;
+        model.skip_first = true;
+        services_->layout().set_layout(state.node, model);
+        services_->nodes().require(state.node).clip_content = true;
+        state.layout_width = padding;
+        state.layout_height = height;
+        state.layout_gap = radio.line_width;
+    } else if (state.checkbox || state.radio) {
+        const float size = state.radio ? theme.radio().size : theme.checkbox().size;
+        const float gap = state.checkbox ? theme.checkbox().label_gap : theme.radio().label_gap;
+        if (state.layout_height == size && state.layout_gap == gap && state.layout_width == -1) {
             return;
         }
         layout::FlexLayout model;
         model.direction = layout::FlexDirection::horizontal;
         model.main_gap = gap;
         model.align = layout::FlexAlign::center;
+        if (state.radio && state.block) {
+            model.justify = layout::FlexJustify::center;
+        }
         services_->layout().set_layout(state.node, model);
+        services_->nodes().require(state.node).clip_content = false;
         if (state.spacer.valid()) {
             services_->layout().set_layout(state.spacer, layout::LeafLayout{{size, size}});
         }
         state.layout_height = size;
         state.layout_gap = gap;
+        state.layout_width = -1;
     } else {
         if (state.layout_width == token.switch_width && state.layout_height == token.switch_height &&
             state.layout_inner_min == token.inner_min_margin && state.layout_inner_max == token.inner_max_margin) {
@@ -1391,16 +1652,48 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
             }
         }
     } else if (state.radio) {
-        const Color border = state.disabled                   ? token.box_border
-                             : state.checked || state.hovered ? token.on
-                                                              : token.box_border;
-        const Color fill = state.disabled  ? token.disabled_background
-                           : state.checked ? (state.hovered ? token.on_hover : token.on)
-                                           : token.box_background;
+        const auto& radio = theme.radio();
+        if (state.wave_active && (!state.wave || state.disabled || !services_->focus().state().window_active ||
+                                  !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled() ||
+                                  radio.wave_width <= 0 || radio.wave_opacity <= 0)) {
+            stop_wave(state);
+        }
+        const bool pressed = state.press.pressed() || state.focus.keyboard_pressed;
+        const Color active = pressed ? radio.primary_active : state.hovered ? radio.primary_hover : radio.primary;
+        const Color border = state.disabled             ? radio.border
+                             : state.checked            ? active
+                             : state.hovered || pressed ? radio.primary
+                                                        : radio.border;
+        const Color fill = state.disabled  ? radio.disabled_background
+                           : state.checked ? (state.hovered ? radio.primary_hover : radio.checked_background)
+                                           : radio.background;
         set_material(state.visuals[0], border);
         set_material(state.visuals[1], fill);
-        set_material(state.visuals[2], state.disabled ? token.disabled_foreground : token.radio_dot,
-                     state.checked ? 1.0F : 0.0F);
+        set_material(state.visuals[2], state.disabled ? radio.dot_disabled : radio.dot, state.checked ? 1.0F : 0.0F);
+        if (state.radio_button) {
+            const bool solid = state.button_style == RadioButtonStyle::Solid && state.checked && !state.disabled;
+            state.button_border = state.disabled ? radio.border : state.checked ? active : radio.border;
+            state.button_fill =
+                state.disabled  ? (state.checked ? radio.button_checked_background_disabled : radio.disabled_background)
+                : solid         ? (pressed         ? radio.button_solid_checked_active_background
+                                   : state.hovered ? radio.button_solid_checked_hover_background
+                                                   : radio.button_solid_checked_background)
+                : state.checked ? radio.button_checked_background
+                                : radio.button_background;
+            if (solid) {
+                state.button_border = state.button_fill;
+            }
+            state.button_label = state.disabled
+                                     ? (state.checked ? radio.button_checked_color_disabled : radio.disabled_foreground)
+                                 : solid                                     ? radio.button_solid_checked_color
+                                 : state.checked || state.hovered || pressed ? active
+                                                                             : radio.button_color;
+            for (auto& visual : state.visuals) {
+                visual.opacity = 0;
+            }
+        } else if (state.button_range.valid()) {
+            services_->surfaces().update_content_effects(state.button_range, {});
+        }
     } else {
         const auto& checkbox = theme.checkbox();
         if (state.wave_active && (!state.wave || state.disabled || !services_->focus().state().window_active ||
@@ -1432,15 +1725,17 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
     const bool is_switch = !state.checkbox && !state.radio;
     state.effects.focus_color = is_switch        ? theme.switch_token().focus_color
                                 : state.checkbox ? theme.checkbox().focus
-                                                 : token.focus;
+                                                 : theme.radio().focus;
     state.effects.focus_opacity = state.focus.focus_visible && !state.disabled ? (is_switch ? opacity : 1.0F) : 0.0F;
     state.effects.focus_width = is_switch        ? theme.switch_token().focus_width
                                 : state.checkbox ? theme.checkbox().focus_width
-                                                 : 2.0F;
+                                                 : theme.radio().focus_width;
     state.effects.focus_enabled = state.effects.focus_width > 0;
     state.effects.focus_offset = is_switch        ? theme.switch_token().focus_offset
                                  : state.checkbox ? theme.checkbox().focus_offset
-                                                  : 0.0F;
+                                                  : theme.radio().focus_offset;
+    state.effects.rounded_corners =
+        state.radio && state.radio_button ? std::optional{state.rounded_corners} : std::nullopt;
     if (state.surface.valid()) {
         const auto visual_changes = services_->surfaces().update_surface(state.surface, state.visuals);
         const auto effect_changes = services_->surfaces().update_effects(state.surface, state.effects);
@@ -1450,17 +1745,32 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
     }
     const auto label_color = state.checkbox
                                  ? (state.disabled ? theme.checkbox().disabled_foreground : theme.checkbox().label)
-                             : !state.radio   ? Color::rgba8(255, 255, 255)
-                             : state.disabled ? token.disabled_foreground
-                                              : theme.alias().color_text;
+                             : !state.radio       ? Color::rgba8(255, 255, 255)
+                             : state.radio_button ? state.button_label
+                             : state.disabled     ? theme.radio().disabled_foreground
+                                                  : theme.radio().label;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
     static_cast<void>(state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
                                                   is_switch        ? theme.switch_token().content_font_size
                                                   : state.checkbox ? theme.checkbox().font_size
-                                                                   : theme.text().font_size,
-                                                  is_switch        ? token.switch_height
-                                                  : state.checkbox ? theme.checkbox().line_height
-                                                                   : theme.text().line_height}));
+                                                  : state.radio_button && state.radio_size == RadioSize::Large
+                                                      ? theme.radio().button_font_size_large
+                                                      : theme.radio().font_size,
+                                                  is_switch            ? token.switch_height
+                                                  : state.checkbox     ? theme.checkbox().line_height
+                                                  : state.radio_button ? state.layout_height
+                                                                       : theme.radio().line_height}));
+    if (state.radio && state.radio_button && state.surface.valid()) {
+        publish_radio_button(state);
+        if (auto* group = services_->components().state<RadioGroupState>(state.group); group && group->joined) {
+            const auto found = std::ranges::find(group->options, state.component);
+            if (found != group->options.end() && std::next(found) != group->options.end()) {
+                if (auto* next = find(*std::next(found)); next && next->surface.valid()) {
+                    publish_radio_button(*next);
+                }
+            }
+        }
+    }
     synchronize_switch_content(state);
 }
 
@@ -1497,15 +1807,15 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                          viewport, dot / 2.0F, node.translation);
         }
     } else if (state.radio) {
+        const auto& radio = theme.radio();
         const auto spacer = services_->nodes().require(state.spacer).bounds;
-        const runtime::Rect ring{spacer.x, rect.y + (rect.height - token.radio_size) / 2.0F, token.radio_size,
-                                 token.radio_size};
+        const runtime::Rect ring{spacer.x, rect.y + (rect.height - radio.size) / 2.0F, radio.size, radio.size};
         set_geometry(next[0], ring, viewport, ring.width / 2.0F, node.translation);
-        const float stroke = token.line_width;
+        const float stroke = radio.line_width;
         const runtime::Rect inner{ring.x + stroke, ring.y + stroke, std::max(0.0F, ring.width - 2.0F * stroke),
                                   std::max(0.0F, ring.height - 2.0F * stroke)};
         set_geometry(next[1], inner, viewport, inner.width / 2.0F, node.translation);
-        const float dot = token.radio_dot_size;
+        const float dot = radio.dot_size;
         set_geometry(next[2], {ring.x + (ring.width - dot) / 2.0F, ring.y + (ring.height - dot) / 2.0F, dot, dot},
                      viewport, dot / 2.0F, node.translation);
     } else {
@@ -1546,16 +1856,19 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                                                             state.visuals[1].corner_radius};
         effects.ancestor_clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
     }
-    const float indicator_size = state.radio ? token.radio_size : theme.checkbox().size;
+    const float indicator_size = state.radio ? theme.radio().size : theme.checkbox().size;
     const float indicator_x =
         state.checkbox || state.radio ? services_->nodes().require(state.spacer).bounds.x : rect.x;
     effects.shape = {
-        state.checkbox || state.radio
+        state.checkbox || (state.radio && !state.radio_button)
             ? runtime::Rect{indicator_x, rect.y + (rect.height - indicator_size) / 2.0F, indicator_size, indicator_size}
             : rect,
-        state.checkbox ? theme.checkbox().border_radius
-        : state.radio  ? indicator_size / 2.0F
-                       : std::min(rect.width, rect.height) / 2.0F};
+        state.checkbox                       ? theme.checkbox().border_radius
+        : state.radio && !state.radio_button ? indicator_size / 2.0F
+        : state.radio ? (state.radio_size == RadioSize::Small   ? theme.radio().button_radius_small
+                         : state.radio_size == RadioSize::Large ? theme.radio().button_radius_large
+                                                                : theme.radio().button_radius)
+                      : std::min(rect.width, rect.height) / 2.0F};
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = effects;
@@ -1564,6 +1877,53 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
     if (state.wave_active) {
         publish_wave(state);
     }
+    if (state.radio && state.radio_button) {
+        publish_radio_button(state);
+    }
+}
+
+void SelectionComponentHost::publish_radio_button(SelectionState& state) {
+    if (!state.button_range.valid()) {
+        state.button_range = services_->surfaces().create_content_range(state.button_fragment, {});
+    }
+    const auto& radio = services_->components().theme_scope(state.component)->snapshot().radio();
+    const auto shape = state.effects.shape;
+    const auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    const float stroke = std::min(radio.line_width, std::min(shape.rect.width, shape.rect.height) / 2);
+    const graphics::LogicalRoundedRect inner{{shape.rect.x + stroke, shape.rect.y + stroke,
+                                              std::max(0.0F, shape.rect.width - 2 * stroke),
+                                              std::max(0.0F, shape.rect.height - 2 * stroke)},
+                                             std::max(0.0F, shape.radius - stroke)};
+    std::array<graphics::RoundedEffectInstance, 9> effects;
+    const auto fill = graphics::make_corner_fill_effects(inner, state.rounded_corners, state.button_fill, 1,
+                                                         state.effects.translation, clip);
+    const auto border = graphics::make_corner_outline_effects(inner, state.rounded_corners, stroke, 0,
+                                                              state.button_border, 1, state.effects.translation, clip);
+    std::copy(fill.begin(), fill.end(), effects.begin());
+    std::copy(border.begin(), border.end(), effects.begin() + 4);
+    runtime::Rect seam{shape.rect.x, shape.rect.y, 0, 0};
+    Color seam_color = state.button_border;
+    float seam_opacity = 0;
+    if (const auto* group = services_->components().state<RadioGroupState>(state.group); group && group->joined) {
+        const auto found = std::ranges::find(group->options, state.component);
+        if (found != group->options.end() && found != group->options.begin()) {
+            const auto* previous = find(*std::prev(found));
+            if (previous && previous->checked && !state.checked) {
+                seam_color = previous->button_border;
+                seam_opacity = 1;
+                const bool vertical = group->orientation == RadioGroupOrientation::Vertical;
+                const bool rtl = group->direction == RadioDirection::RightToLeft;
+                seam = vertical ? runtime::Rect{shape.rect.x, shape.rect.y, shape.rect.width, stroke}
+                                : runtime::Rect{rtl ? shape.rect.x + shape.rect.width - stroke : shape.rect.x,
+                                                shape.rect.y, stroke, shape.rect.height};
+            }
+        }
+    }
+    ShadowLayer seam_layer;
+    seam_layer.color = seam_color;
+    effects[8] = graphics::make_shadow_effect({seam, 0}, seam_layer, state.effects.translation, clip);
+    effects[8].material.opacity = seam_opacity;
+    services_->surfaces().update_content_effects(state.button_range, effects);
 }
 
 void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
@@ -2086,7 +2446,8 @@ void SelectionComponentHost::apply_checkbox_options(runtime::ComponentId id, std
 }
 
 struct RadioPropsAccess {
-    static runtime::ComponentId mount(const RadioProps& props, const std::optional<RadioLabel>& label) {
+    static runtime::ComponentId mount(const RadioProps& props, const std::optional<RadioLabel>& label,
+                                      bool button = false) {
         if (!active_selection_host) {
             throw std::logic_error("Radio requires an active SelectionComponentHost");
         }
@@ -2131,6 +2492,12 @@ struct RadioPropsAccess {
         state.component = component;
         state.node = build.root(component);
         state.radio = true;
+        state.own_radio_button = button;
+        state.radio_button = button || (group && group->option_type == RadioOptionType::Button);
+        state.radio_size = group ? group->size : RadioSize::Middle;
+        state.button_style = group ? group->button_style : RadioButtonStyle::Outline;
+        state.block = group && group->block;
+        state.wave = read_prop(props.wave_);
         state.group = group_id;
         state.value = props.value_;
         state.visuals.resize(radio_layer_count);
@@ -2156,11 +2523,17 @@ struct RadioPropsAccess {
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
                                       host.services_->dirty());
+        state.button_fragment =
+            build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.attach_interaction(state);
         host.update_visuals(state);
         state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
                                                                   state.effects, state.interaction);
+        state.animation_scope = host.services_->animations().create_scope();
+        state.wave_target = host.services_->animations().register_target(
+            state.animation_scope, host, animation::AnimationValueKind::scalar,
+            animation::AnimationDirtyDomain::geometry | animation::AnimationDirtyDomain::animation);
         auto& scope = build.scope(component);
         if (props.checked_) {
             static_cast<void>(connect_prop(scope, *props.checked_,
@@ -2169,6 +2542,8 @@ struct RadioPropsAccess {
         static_cast<void>(connect_prop(scope, props.disabled_, [&host, component](bool value) {
             host.apply_radio_own_disabled(component, value);
         }));
+        static_cast<void>(
+            connect_prop(scope, props.wave_, [&host, component](bool value) { host.apply_wave(component, value); }));
         if (props.direction_) {
             static_cast<void>(connect_prop(scope, *props.direction_, [&host, component](RadioDirection value) {
                 host.apply_direction(component, selection_direction(value));
@@ -2183,13 +2558,14 @@ struct RadioPropsAccess {
                 }
             },
             [theme] {
-                static_cast<void>(theme->map());
-                static_cast<void>(theme->alias());
+                static_cast<void>(theme->radio_metrics());
+                static_cast<void>(theme->radio_colors());
+                static_cast<void>(theme->radio_effects());
+                static_cast<void>(theme->motion_enabled());
                 static_cast<void>(theme->text());
-                static_cast<void>(theme->line_width());
             });
         mount_selection_label(build, *host.services_, state, component, label,
-                              host.services_->components().theme_scope(component)->snapshot().map().font_size_large);
+                              host.services_->components().theme_scope(component)->snapshot().radio().size);
         host.services_->nodes().require(state.spacer).external_layout.order =
             state.direction == SwitchDirection::RightToLeft ? 1 : 0;
         for (const auto interaction : host.services_->interactions().declaration_order()) {
@@ -2261,6 +2637,12 @@ struct RadioGroupPropsAccess {
         }
         const auto direction = read_prop(props.direction_);
         static_cast<void>(selection_direction(direction));
+        const auto size = read_prop(props.size_);
+        validate(size);
+        const auto option_type = read_prop(props.option_type_);
+        validate(option_type);
+        const auto button_style = read_prop(props.button_style_);
+        validate(button_style);
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<RadioGroupState>();
         auto& state = build.state<RadioGroupState>(component);
@@ -2271,6 +2653,10 @@ struct RadioGroupPropsAccess {
         state.disabled = read_prop(props.disabled_);
         state.orientation = orientation;
         state.direction = direction;
+        state.size = size;
+        state.option_type = option_type;
+        state.button_style = button_style;
+        state.block = read_prop(props.block_);
         state.on_change = [legacy = props.on_change_, typed = props.on_value_change_](const RadioValue& value) {
             if (legacy) {
                 if (const auto* string = std::get_if<String>(&value)) {
@@ -2313,6 +2699,7 @@ struct RadioGroupPropsAccess {
                              }});
         }
         state.source_options = options;
+        host.refresh_radio_group(state);
         auto& scope = build.scope(component);
         if (props.value_) {
             static_cast<void>(
@@ -2333,6 +2720,16 @@ struct RadioGroupPropsAccess {
         static_cast<void>(connect_prop(scope, props.direction_, [&host, component](RadioDirection value) {
             host.apply_group_direction(component, value);
         }));
+        static_cast<void>(connect_prop(
+            scope, props.size_, [&host, component](RadioSize value) { host.apply_group_size(component, value); }));
+        static_cast<void>(connect_prop(scope, props.option_type_, [&host, component](RadioOptionType value) {
+            host.apply_group_option_type(component, value);
+        }));
+        static_cast<void>(connect_prop(scope, props.button_style_, [&host, component](RadioButtonStyle value) {
+            host.apply_group_button_style(component, value);
+        }));
+        static_cast<void>(connect_prop(scope, props.block_,
+                                       [&host, component](bool value) { host.apply_group_block(component, value); }));
         if (props.options_) {
             static_cast<void>(
                 connect_prop(scope, *props.options_, [&host, component](const std::vector<RadioOption>& value) {
@@ -2343,10 +2740,10 @@ struct RadioGroupPropsAccess {
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
                 if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
-                    host.update_group_layout(*current);
+                    host.refresh_radio_group(*current);
                 }
             },
-            [theme] { static_cast<void>(theme->map()); });
+            [theme] { static_cast<void>(theme->radio_metrics()); });
         host.groups_.push_back(component);
     }
 };
@@ -2433,6 +2830,7 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     }
     update_radio_tab_stops(*group);
     services_->interactions().reorder_after(group->anchor, order);
+    refresh_radio_group(*group);
     services_->dirty().invalidate(group->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                    runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     services_->mark_scene_structure_dirty();
@@ -2515,6 +2913,10 @@ void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent>
 
 void Radio(RadioProps props, std::optional<RadioLabel> label) {
     static_cast<void>(detail::RadioPropsAccess::mount(props, label));
+}
+
+void RadioButton(RadioProps props, std::optional<RadioLabel> label) {
+    static_cast<void>(detail::RadioPropsAccess::mount(props, label, true));
 }
 
 RadioRef::RadioRef() : state_(std::make_shared<detail::RadioRefState>()) {}

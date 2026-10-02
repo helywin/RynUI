@@ -17,6 +17,7 @@ Non-Goals：DOM/nativeElement、form/name/required、React 事件与 CSS 入口�
 3. Interaction 单独记录 Tab 资格，不改变 pointer/programmatic focus 资格。组选中可用项为入口，无可用选中时以首项为入口；方向键使用复制目标与候选，deferred focus 避免嵌套 dispatch，Space 不允许取消选择。
 4. RadioButton 保持选择逻辑并使用共同 logical 表面；CPU 形状表达外侧角与直边，组件不修改 packed GPU ABI、不分支 backend。组合布局管理逻辑顺序、共用边界、等宽 block、H/V/RTL，富标签只挂一次。
 5. 新增 Radio Component Token：上游公开 token 与内部 radioColor/radioBgColor 适配，原生 focus/wave 和字体/几何补充字段明确记录。按 colors/metrics/effects 身份订阅，保留 resolver/hash/JSON 和旧 token 值；新 golden 只增加 Radio 与身份段。
+   同时开放已存在的 seed `wireframe` 覆盖，使上游空心选中样式与 8dp dot 可达。相邻按钮用四象限裁剪的共同填充/轮廓以及共享边优先级，沿用普通 rounded effect 实例，不增加 renderer GPU ABI。
 6. 验证采用 MSVC Ninja Multi-Config：平台通用 `windows-msvc-headless` Debug/Release，原生 `windows-msvc` Debug/Release；真实 D3D12 窗口系统和 1/1.25/1.5/2 缩放、readback、idle/deadline 独立记录。Linux 仅在实际机器验证。
 
 ## Risks / Trade-offs

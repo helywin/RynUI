@@ -38,4 +38,14 @@ Group 具有一个 Tab 入口：当前聚焦可用项、可用选中项或第一
 
 direction 可在 Group 继承或成员覆盖；富标签只挂一次，标签内仅允许被动内容。视觉只能通过 Theme 控制，LayoutStyle 只控制外部布局。
 
-048 后续阶段还将补按钮形态、独立 Theme 和 wave；当前文档的实现与平台证据以 [tasks](../openspec/changes/048-20261002-complete-native-radio-features/tasks.md) 为准。Web DOM/form/name/required/CSS/React 事件不移植。
+## 按钮、主题与反馈
+
+`RadioButton` 使用相同 Props/Label；Group 的 `optionType(RadioOptionType::Button)` 可将普通成员切换为按钮形态，保留原标签与组件身份。显式 RadioButton 始终保持按钮。Group 支持 `buttonStyle(Outline|Solid)`、`size(Small|Middle|Large)`、`block(bool)`、横纵和 RTL。直接相邻按钮共用一条边，仅组外侧角圆角；block 横向等宽、纵向填宽。被动包装内的成员保持包装布局。
+
+ThemeConfig.radio 支持 tokens/seed/algorithm，继承方式与其他组件相同。上游公开 token 的原生字段包括 size/dot_size/dot_disabled、button_background/button_checked_background/button_color/button_padding_inline、button_checked_background_disabled/button_checked_color_disabled、button_solid_checked_color/background/hover/active_background、wrapper_margin_inline_end；dot/checked_background 适配内部 radioColor/radioBgColor。line_width、label_gap、字体/行高、按钮高度/圆角/Small 间距、focus 和 wave 为原生共同样式适配。上游不变：默认 16/6 圆点、40/32/24 按钮高度、15/7 间距；`seed.wireframe` 映射空心选中背景和 8 圆点。
+
+颜色、metrics、effects 独立发布并进入 hash/JSON；Radio token 不影响 Switch，颜色变化不重排或重塑标签。尺寸/波纹参数必须有限且合法，圆点和线宽不得超过控件范围，wave opacity 必须在 [0,1]。
+
+`wave(Prop<bool>)` 默认打开，采用有限动画；圆形反馈仅覆盖指示器，按钮反馈保留连接角，重启复用范围。结束、禁用、wave=false、motion=false、reduced motion、窗口失活与销毁均取消 deadline。先停止反馈并取消焦点/capture，再释放背景/表面，允许通知安全完成。
+
+按钮背景与边界使用共同 logical rounded effects 的四个分区，保持 renderer packed GPU ABI。实现与平台证据以 [tasks](../openspec/changes/048-20261002-complete-native-radio-features/tasks.md) 为准。Web DOM/form/name/required/CSS/React 事件不移植。

@@ -36,6 +36,7 @@ struct RetainedSurfaceEffects final {
     // Quads before this offset form the background behind a nested shape's
     // shadow. Remaining quads cover the shadow's interior.
     std::uint32_t shadow_fill_offset{};
+    std::optional<std::array<bool, 4>> rounded_corners;
 
     friend bool operator==(const RetainedSurfaceEffects&, const RetainedSurfaceEffects&) = default;
 };
@@ -124,6 +125,7 @@ private:
         std::vector<graphics::RoundedEffectId> shadow_ids;
         graphics::RoundedEffectId focus_id;
         graphics::RoundedEffectPrimitive effect_primitive;
+        std::vector<graphics::RoundedEffectId> corner_focus_ids;
     };
 
     // A content range is owned by a caller-provided fragment instead of a

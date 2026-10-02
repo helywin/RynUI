@@ -1,14 +1,9 @@
-# 平台通用证据
+# Radio 平台通用合同
 
-## 阶段 1
+2026-10-03，Windows MSVC / Ninja Multi-Config，`windows-msvc-headless` Debug/Release。阶段 1 的动态值、最近组、键盘与 ref 合同各 8/8（1.59s/1.08s）。阶段 2 的 Radio、Theme、共同表面、rounded effect 与 renderer 合同各 17/17（5.24s/3.92s）。构建及测试原始输出保存在同目录日志中。
 
-2026-10-02，Windows MSVC 14.51，Ninja Multi-Config，`windows-msvc-headless`；使用 VS Developer Environment 与 UTF-8 console。
+新增测试验证 outline/solid、三尺寸、block、H/V/RTL 的相邻圆角与共享选中边颜色；动态删除及手动销毁恢复外侧圆角、保留身份、空组释放全部效果；重着色不重新 mount/measure/shape，不污染 Switch 材质；独立算法/继承/wireframe/非法 token；共同象限裁剪 CPU coverage；有限 wave 的重启复用、取消、reduced motion、失活和销毁归零 deadline。
 
-```text
-cmake --build --preset windows-msvc-headless-debug --target rynui_portable_radio_component rynui_portable_radio_features rynui_portable_radio_public_api rynui_portable_selection_component rynui_portable_selection_controls_public_api rynui_portable_focus_order rynui_portable_focus_state rynui_portable_focus_lifecycle
-ctest --preset windows-msvc-headless-debug -R "rynui.portable.(radio_component|radio_features|radio_public_api|selection_component|selection_controls_public_api|focus_order|focus_state|focus_lifecycle)$" --output-on-failure
-```
+`validate_goldens.py` 对比阶段 1 提交 d2132a9，五份 golden 仅增加 Radio 的 16 metrics / 5 effects / 21 colors 与新 identity，所有既有 JSON 字段保持一致。407 自有 C++/HLSL 的 clang-format 22.1.3 检查通过；OpenSpec doctor healthy，strict validation 48/48。
 
-Release 使用同名 release preset。Debug 8/8（1.59s），Release 8/8（1.08s）；类型值、受控等待回写、最近组、回调复制/销毁、动态重排/删除/capture/空集恢复、ref 线程/禁用/解绑复用与旧用法通过。Focus 合同确认非 Tab 项仍允许程序焦点。
-
-clang-format 22.1.3：407 自有源，0 failures；OpenSpec doctor healthy，严格校验 48/48，diff check 通过。按钮/独立 Radio token/反馈属于阶段 2；此证据不代替真实窗口或其他平台证据。
+这些是共同逻辑合同；真实窗口、系统字体、GPU、输入归一化与 DPI 的分平台结果单独记录。

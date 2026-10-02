@@ -1,0 +1,100 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/57] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_features.dir\Debug\__\radio_features_tests.cpp.obj
+[2/57] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\selection_component.cpp.obj
+[3/57] Linking CXX static library src\Debug\rynui_components.lib
+[4/57] Linking CXX executable tests\portable\Debug\rynui_portable_prop.exe
+[5/57] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_texture_upload.exe
+[6/57] Linking CXX executable tests\portable\Debug\rynui_portable_texture_upload_batch_layout.exe
+[7/57] Linking CXX executable tests\portable\Debug\rynui_portable_logical_scene_packing.exe
+[8/57] Linking CXX executable tests\portable\Debug\rynui_portable_quad_primitive.exe
+[9/57] Linking CXX executable tests\portable\Debug\rynui_portable_binding_quad_integration.exe
+[10/57] Linking CXX executable tests\portable\Debug\rynui_portable_button_scene_service.exe
+[11/57] Linking CXX executable tests\portable\Debug\rynui_portable_font_runtime.exe
+[12/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_store.exe
+[13/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_engine.exe
+[14/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_math.exe
+[15/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_scene_service.exe
+[16/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_state.exe
+[17/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_scene.exe
+[18/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_render_integration.exe
+[19/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_gpu.exe
+[20/57] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_gpu_resources.exe
+[21/57] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_atlas.exe
+[22/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_gpu_resources.exe
+[23/57] Linking CXX executable tests\portable\Debug\rynui_portable_glyph_scene.exe
+[24/57] Linking CXX executable tests\portable\Debug\rynui_portable_selection_controls_public_api.exe
+[25/57] Linking CXX executable tests\portable\Debug\rynui_portable_theme_algorithm.exe
+[26/57] Linking CXX executable tests\portable\Debug\rynui_portable_theme_runtime.exe
+[27/57] Linking CXX executable tests\portable\Debug\rynui_portable_input_gpu.exe
+[28/57] Linking CXX executable tests\portable\Debug\rynui_portable_input_caret_blink.exe
+[29/57] Linking CXX executable tests\portable\Debug\rynui_portable_focus_order.exe
+[30/57] Linking CXX executable tests\portable\Debug\rynui_portable_input_component.exe
+[31/57] Linking CXX executable tests\portable\Debug\rynui_portable_focus_lifecycle.exe
+[32/57] Linking CXX executable tests\portable\Debug\rynui_portable_focus_state.exe
+[33/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_component.exe
+[34/57] Linking CXX executable tests\portable\Debug\rynui_portable_divider_public_api.exe
+[35/57] Linking CXX executable tests\portable\Debug\rynui_portable_button_component.exe
+[36/57] Linking CXX executable tests\portable\Debug\rynui_portable_slider_component.exe
+[37/57] Linking CXX executable tests\portable\Debug\rynui_portable_frame_scheduler.exe
+[38/57] Linking CXX executable tests\portable\Debug\rynui_portable_typography_component.exe
+[39/57] Linking CXX executable tests\portable\Debug\rynui_portable_divider_component.exe
+[40/57] Linking CXX executable tests\portable\Debug\rynui_portable_text_component_frame.exe
+[41/57] Linking CXX executable tests\portable\Debug\rynui_portable_typography_interaction.exe
+[42/57] Linking CXX executable tests\portable\Debug\rynui_portable_interaction_registry.exe
+[43/57] Linking CXX executable tests\portable\Debug\rynui_portable_pointer_route.exe
+[44/57] Linking CXX executable tests\portable\Debug\rynui_portable_rounded_effect_allocation.exe
+[45/57] Linking CXX executable tests\portable\Debug\rynui_portable_window_overlay.exe
+[46/57] Linking CXX executable tests\portable\Debug\rynui_portable_checkbox_group.exe
+[47/57] Linking CXX executable tests\portable\Debug\rynui_portable_selection_component.exe
+[48/57] Linking CXX executable tests\portable\Debug\rynui_portable_switch_features.exe
+[49/57] Linking CXX executable tests\portable\Debug\rynui_portable_switch_public_api.exe
+[50/57] Linking CXX executable tests\portable\Debug\rynui_portable_checkbox_public_api.exe
+[51/57] Linking CXX executable tests\portable\Debug\rynui_portable_radio_component.exe
+[52/57] Linking CXX executable tests\portable\Debug\rynui_portable_tooltip_component.exe
+[53/57] Linking CXX executable tests\portable\Debug\rynui_portable_input_scene_allocation.exe
+[54/57] Linking CXX executable tests\portable\Debug\rynui_portable_scene_backend.exe
+[55/57] Linking CXX executable tests\portable\Debug\rynui_portable_radio_public_api.exe
+[56/57] Linking CXX executable tests\portable\Debug\rynui_portable_radio_features.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  4: rynui.portable.logical_scene_packing
+ 1/17 Test  #4: rynui.portable.logical_scene_packing ..........   Passed    0.03 sec
+      Start  7: rynui.portable.button_scene_service
+ 2/17 Test  #7: rynui.portable.button_scene_service ...........   Passed    0.04 sec
+      Start 16: rynui.portable.rounded_effect_math
+ 3/17 Test #16: rynui.portable.rounded_effect_math ............   Passed    0.03 sec
+      Start 17: rynui.portable.rounded_effect_store
+ 4/17 Test #17: rynui.portable.rounded_effect_store ...........   Passed    0.03 sec
+      Start 18: rynui.portable.rounded_effect_scene
+ 5/17 Test #18: rynui.portable.rounded_effect_scene ...........   Passed    0.03 sec
+      Start 19: rynui.portable.rounded_effect_gpu
+ 6/17 Test #19: rynui.portable.rounded_effect_gpu .............   Passed    0.03 sec
+      Start 20: rynui.portable.rounded_effect_gpu_resources
+ 7/17 Test #20: rynui.portable.rounded_effect_gpu_resources ...   Passed    0.03 sec
+      Start 26: rynui.portable.selection_component
+ 8/17 Test #26: rynui.portable.selection_component ............   Passed    0.57 sec
+      Start 28: rynui.portable.switch_features
+ 9/17 Test #28: rynui.portable.switch_features ................   Passed    0.32 sec
+      Start 30: rynui.portable.checkbox_group
+10/17 Test #30: rynui.portable.checkbox_group .................   Passed    0.44 sec
+      Start 32: rynui.portable.theme_algorithm
+11/17 Test #32: rynui.portable.theme_algorithm ................   Passed    0.13 sec
+      Start 33: rynui.portable.theme_runtime
+12/17 Test #33: rynui.portable.theme_runtime ..................   Passed    0.10 sec
+      Start 35: rynui.portable.radio_component
+13/17 Test #35: rynui.portable.radio_component ................   Passed    0.52 sec
+      Start 36: rynui.portable.radio_features
+14/17 Test #36: rynui.portable.radio_features .................   Passed    0.63 sec
+      Start 37: rynui.portable.radio_public_api
+15/17 Test #37: rynui.portable.radio_public_api ...............   Passed    0.03 sec
+      Start 53: rynui.portable.scene_backend
+16/17 Test #53: rynui.portable.scene_backend ..................   Passed    0.31 sec
+      Start 54: rynui.portable.backend_boundaries
+17/17 Test #54: rynui.portable.backend_boundaries .............   Passed    1.67 sec
+
+100% tests passed out of 17
+
+Total Test time (real) =   5.24 sec

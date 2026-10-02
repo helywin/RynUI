@@ -282,6 +282,49 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
     return bounds;
 }
 
+std::array<RoundedEffectInstance, 4> make_corner_outline_effects(LogicalRoundedRect shape,
+                                                                 std::array<bool, 4> rounded_corners, float width,
+                                                                 float offset, Color color, float opacity,
+                                                                 runtime::Point translation,
+                                                                 std::optional<EffectClip> ancestor_clip) {
+    std::array<RoundedEffectInstance, 4> result;
+    if (!finite(width) || width < 0 || !finite(opacity) || opacity < 0 || opacity > 1) {
+        throw std::invalid_argument("Corner outline width/opacity is invalid");
+    }
+    const float center_x = shape.rect.x + translation.x + shape.rect.width / 2;
+    const float center_y = shape.rect.y + translation.y + shape.rect.height / 2;
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        result[i] = make_outline_effect({shape.rect, rounded_corners[i] ? shape.radius : 0}, width == 0 ? 1 : width,
+                                        offset, color, width == 0 ? 0 : opacity, translation);
+        const auto bounds = rounded_effect_bounds(result[i]);
+        const bool right = i == 1 || i == 2;
+        const bool bottom = i >= 2;
+        runtime::Rect clip{right ? center_x : bounds.x, bottom ? center_y : bounds.y,
+                           right ? bounds.x + bounds.width - center_x : center_x - bounds.x,
+                           bottom ? bounds.y + bounds.height - center_y : center_y - bounds.y};
+        if (ancestor_clip) {
+            clip = intersect_effect_bounds(clip, ancestor_clip->bounds);
+        }
+        result[i].geometry.ancestor_clip = EffectClip{static_cast<std::uint64_t>(i + 1), clip};
+        validate_rounded_effect(result[i]);
+    }
+    return result;
+}
+
+std::array<RoundedEffectInstance, 4> make_corner_fill_effects(LogicalRoundedRect shape,
+                                                              std::array<bool, 4> rounded_corners, Color color,
+                                                              float opacity, runtime::Point translation,
+                                                              std::optional<EffectClip> ancestor_clip) {
+    auto result = make_corner_outline_effects(shape, rounded_corners, 1, 0, color, opacity, translation, ancestor_clip);
+    for (auto& instance : result) {
+        // Zero-blur outer coverage is the filled rounded rectangle. Quadrant
+        // clips make its corners independent without adding a GPU shape kind.
+        instance.geometry.kind = RoundedEffectKind::outer_shadow;
+        instance.geometry.outline_width = 0;
+    }
+    return result;
+}
+
 runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept {
     const float left = std::max(bounds.x, clip.x);
     const float top = std::max(bounds.y, clip.y);

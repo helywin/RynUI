@@ -30,10 +30,16 @@ int main() {
                             .options(options)
                             .selection(typed)
                             .direction(ryn::RadioDirection::RightToLeft)
+                            .optionType(ryn::RadioOptionType::Button)
+                            .buttonStyle(ryn::RadioButtonStyle::Solid)
+                            .size(ryn::RadioSize::Large)
+                            .block(true)
                             .onValueChange([](const ryn::RadioValue&) {}));
         ryn::RadioGroup(ryn::RadioGroupProps{}, ryn::RadioGroupContent{[&] {
                             ryn::Radio(
                                 ryn::RadioProps{}.value(3.0).ref(reference).autoFocus(true).onClick([](bool) {}));
+                            ryn::RadioButton(ryn::RadioProps{}.value(false).wave(false),
+                                             ryn::RadioLabel{[] { ryn::Text(u8"Button"); }});
                         }});
     };
     static_cast<void>(declare);

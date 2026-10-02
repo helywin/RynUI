@@ -25,6 +25,12 @@ using RadioSelection = std::optional<RadioValue>;
 
 enum class RadioDirection { LeftToRight, RightToLeft };
 
+enum class RadioSize { Small, Middle, Large };
+
+enum class RadioOptionType { Default, Button };
+
+enum class RadioButtonStyle { Outline, Solid };
+
 class RadioRef final {
 public:
     RadioRef();
@@ -84,6 +90,11 @@ public:
         return *this;
     }
 
+    RadioProps& wave(Prop<bool> value) {
+        wave_ = std::move(value);
+        return *this;
+    }
+
     RadioProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -100,6 +111,7 @@ private:
     std::optional<RadioRef> ref_;
     bool auto_focus_{};
     std::function<void(bool)> on_click_;
+    Prop<bool> wave_{true};
     LayoutStyle layout_;
 };
 
@@ -108,6 +120,8 @@ struct RadioLabelSlot final {};
 using RadioLabel = SlotContent<RadioLabelSlot>;
 
 void Radio(RadioProps props, std::optional<RadioLabel> label = {});
+
+void RadioButton(RadioProps props, std::optional<RadioLabel> label = {});
 
 struct RadioOption final {
     RadioValue value;
@@ -170,6 +184,26 @@ public:
         return *this;
     }
 
+    RadioGroupProps& size(Prop<RadioSize> value) {
+        size_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& optionType(Prop<RadioOptionType> value) {
+        option_type_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& buttonStyle(Prop<RadioButtonStyle> value) {
+        button_style_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& block(Prop<bool> value) {
+        block_ = std::move(value);
+        return *this;
+    }
+
     RadioGroupProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -186,6 +220,10 @@ private:
     std::function<void(const String&)> on_change_;
     std::function<void(const RadioValue&)> on_value_change_;
     Prop<RadioDirection> direction_{RadioDirection::LeftToRight};
+    Prop<RadioSize> size_{RadioSize::Middle};
+    Prop<RadioOptionType> option_type_{RadioOptionType::Default};
+    Prop<RadioButtonStyle> button_style_{RadioButtonStyle::Outline};
+    Prop<bool> block_{false};
     LayoutStyle layout_;
 };
 

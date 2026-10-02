@@ -390,6 +390,7 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
 
     bool topology_changed = record.shadow_ids.size() != effects.shadows.size() ||
                             record.focus_id.valid() != effects.focus_enabled ||
+                            record.effects.rounded_corners.has_value() != effects.rounded_corners.has_value() ||
                             record.effects.shadow_fill_offset != effects.shadow_fill_offset;
     if (!topology_changed) {
         for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
@@ -407,7 +408,7 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
         record.effects = effects;
         create_effects(record);
         ++diagnostics_.effect_topology_updates;
-        return effects.shadows.size() + (effects.focus_enabled ? 1U : 0U);
+        return effects.shadows.size() + (effects.focus_enabled ? effects.rounded_corners ? 4U : 1U : 0U);
     }
 
     std::size_t updates = 0;
@@ -427,16 +428,27 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
         }
     }
     if (effects.focus_enabled) {
-        auto focus =
-            graphics::make_outline_effect(effects.shape, effects.focus_width, effects.focus_offset, effects.focus_color,
-                                          effects.focus_opacity, effects.translation, effects.ancestor_clip);
-        if (effect_scene_.store().update_geometry(record.focus_id, focus.geometry)) {
-            ++diagnostics_.effect_geometry_updates;
-            ++updates;
-        }
-        if (effect_scene_.store().update_material(record.focus_id, focus.material)) {
-            ++diagnostics_.effect_material_updates;
-            ++updates;
+        const auto publish = [&](graphics::RoundedEffectId id, const graphics::RoundedEffectInstance& focus) {
+            if (effect_scene_.store().update_geometry(id, focus.geometry)) {
+                ++diagnostics_.effect_geometry_updates;
+                ++updates;
+            }
+            if (effect_scene_.store().update_material(id, focus.material)) {
+                ++diagnostics_.effect_material_updates;
+                ++updates;
+            }
+        };
+        if (effects.rounded_corners) {
+            const auto corners = graphics::make_corner_outline_effects(
+                effects.shape, *effects.rounded_corners, effects.focus_width, effects.focus_offset, effects.focus_color,
+                effects.focus_opacity, effects.translation, effects.ancestor_clip);
+            for (std::size_t i = 0; i < corners.size(); ++i) {
+                publish(record.corner_focus_ids[i], corners[i]);
+            }
+        } else {
+            publish(record.focus_id, graphics::make_outline_effect(
+                                         effects.shape, effects.focus_width, effects.focus_offset, effects.focus_color,
+                                         effects.focus_opacity, effects.translation, effects.ancestor_clip));
         }
     }
     record.effects = effects;
@@ -591,7 +603,8 @@ void RetainedSurfaceService::create_effects(Record& record) {
     record.shadow_ids.clear();
     record.effect_primitive = {};
     record.shadow_ids.reserve(record.effects.shadows.size());
-    record.effect_primitive.before_fill.reserve(record.effects.shadows.size() + 1);
+    record.effect_primitive.before_fill.reserve(record.effects.shadows.size() +
+                                                (record.effects.rounded_corners ? 4 : 1));
     record.effect_primitive.after_fill.reserve(record.effects.shadows.size());
     try {
         for (const auto& layer : record.effects.shadows.layers()) {
@@ -608,12 +621,26 @@ void RetainedSurfaceService::create_effects(Record& record) {
             }
         }
         if (record.effects.focus_enabled) {
-            auto outline = graphics::make_outline_effect(record.effects.shape, record.effects.focus_width,
-                                                         record.effects.focus_offset, record.effects.focus_color,
-                                                         record.effects.focus_opacity, record.effects.translation,
-                                                         record.effects.ancestor_clip);
-            record.focus_id = effect_scene_.store().add(std::move(outline));
-            record.effect_primitive.before_fill.push_back(record.focus_id);
+            if (record.effects.rounded_corners) {
+                const auto corners = graphics::make_corner_outline_effects(
+                    record.effects.shape, *record.effects.rounded_corners, record.effects.focus_width,
+                    record.effects.focus_offset, record.effects.focus_color, record.effects.focus_opacity,
+                    record.effects.translation, record.effects.ancestor_clip);
+                record.corner_focus_ids.reserve(4);
+                for (const auto& corner : corners) {
+                    const auto id = effect_scene_.store().add(corner);
+                    record.corner_focus_ids.push_back(id);
+                    record.effect_primitive.before_fill.push_back(id);
+                }
+                record.focus_id = record.corner_focus_ids.front();
+            } else {
+                auto outline = graphics::make_outline_effect(record.effects.shape, record.effects.focus_width,
+                                                             record.effects.focus_offset, record.effects.focus_color,
+                                                             record.effects.focus_opacity, record.effects.translation,
+                                                             record.effects.ancestor_clip);
+                record.focus_id = effect_scene_.store().add(std::move(outline));
+                record.effect_primitive.before_fill.push_back(record.focus_id);
+            }
         }
     } catch (...) {
         remove_effects(record);
@@ -628,6 +655,7 @@ void RetainedSurfaceService::remove_effects(Record& record) noexcept {
     }
     record.shadow_ids.clear();
     record.focus_id = {};
+    record.corner_focus_ids.clear();
     record.effect_primitive = {};
 }
 

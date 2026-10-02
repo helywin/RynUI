@@ -6,6 +6,7 @@
 #include <ryn/design_token.hpp>
 
 #include <cstddef>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -73,6 +74,17 @@ struct RoundedEffectInstance final {
                                                         std::optional<EffectClip> ancestor_clip = std::nullopt);
 
 void validate_rounded_effect(const RoundedEffectInstance& instance);
+
+// Corner order: top-left, top-right, bottom-right, bottom-left. Each quadrant
+// clips a regular rounded outline; renderer GPU ABI stays unchanged.
+[[nodiscard]] std::array<RoundedEffectInstance, 4>
+make_corner_outline_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded_corners, float width, float offset,
+                            Color color, float opacity = 1, runtime::Point translation = {},
+                            std::optional<EffectClip> ancestor_clip = {});
+
+[[nodiscard]] std::array<RoundedEffectInstance, 4>
+make_corner_fill_effects(LogicalRoundedRect shape, std::array<bool, 4> rounded_corners, Color color, float opacity = 1,
+                         runtime::Point translation = {}, std::optional<EffectClip> ancestor_clip = {});
 
 [[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
 

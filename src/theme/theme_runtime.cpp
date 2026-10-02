@@ -287,6 +287,9 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.checkbox().effects(), after.checkbox().effects(), TokenIdentity::checkbox_effects, changed,
                       count);
+    append_if_changed(before.radio().metrics(), after.radio().metrics(), TokenIdentity::radio_metrics, changed, count);
+    append_if_changed(before.radio().colors(), after.radio().colors(), TokenIdentity::radio_colors, changed, count);
+    append_if_changed(before.radio().effects(), after.radio().effects(), TokenIdentity::radio_effects, changed, count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
@@ -631,6 +634,24 @@ const CheckboxThemeToken& ThemeScope::checkbox_effects() const {
     ensure_owner_thread();
     record(TokenIdentity::checkbox_effects);
     return snapshot_->checkbox();
+}
+
+const RadioThemeToken& ThemeScope::radio_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::radio_metrics);
+    return snapshot_->radio();
+}
+
+const RadioThemeToken& ThemeScope::radio_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::radio_colors);
+    return snapshot_->radio();
+}
+
+const RadioThemeToken& ThemeScope::radio_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::radio_effects);
+    return snapshot_->radio();
 }
 
 const SwitchThemeToken& ThemeScope::switch_geometry() const {
@@ -1041,6 +1062,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Checkbox.metrics",
         "Checkbox.colors",
         "Checkbox.effects",
+        "Radio.metrics",
+        "Radio.colors",
+        "Radio.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1080,6 +1104,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_colors:
     case TokenIdentity::switch_colors:
     case TokenIdentity::checkbox_colors:
+    case TokenIdentity::radio_colors:
     case TokenIdentity::alias_opacity_loading:
     case TokenIdentity::text_color:
     case TokenIdentity::typography_colors:
@@ -1102,6 +1127,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_shadows:
     case TokenIdentity::switch_effects:
     case TokenIdentity::checkbox_effects:
+    case TokenIdentity::radio_effects:
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
@@ -1135,6 +1161,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_layout_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
+    case TokenIdentity::radio_metrics:
     case TokenIdentity::button_padding_inline:
     case TokenIdentity::button_icon_gap:
     case TokenIdentity::typography_metrics:

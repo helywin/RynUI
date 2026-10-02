@@ -103,6 +103,9 @@ enum class TokenIdentity : std::uint8_t {
     checkbox_metrics,
     checkbox_colors,
     checkbox_effects,
+    radio_metrics,
+    radio_colors,
+    radio_effects,
     count,
 };
 

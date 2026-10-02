@@ -36,6 +36,10 @@ struct SelectionSnapshot final {
     bool wave_active{};
     float wave_progress{1};
     component::RetainedSurfaceId wave_range;
+    bool radio_button{};
+    RadioSize radio_size{RadioSize::Middle};
+    std::array<bool, 4> rounded_corners{true, true, true, true};
+    component::RetainedSurfaceId button_range;
 };
 
 struct MountedCheckboxGroup final {
@@ -123,6 +127,14 @@ private:
     void update_radio_tab_stops(RadioGroupState&);
     bool handle_radio_key(runtime::ComponentId, const input::KeyboardInputEvent&);
     void update_group_layout(RadioGroupState&);
+    void refresh_radio_group(RadioGroupState&);
+    void apply_group_size(runtime::ComponentId, RadioSize);
+    void apply_group_option_type(runtime::ComponentId, RadioOptionType);
+    void apply_group_button_style(runtime::ComponentId, RadioButtonStyle);
+    void apply_group_block(runtime::ComponentId, bool);
+    void publish_radio_button(SelectionState&);
+    [[nodiscard]] runtime::Size measure_radio_group(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
+    void place_radio_group(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void retarget_handle(SelectionState&);
     void synchronize_spinner(SelectionState&);
     void apply(animation::AnimationId, animation::AnimationTargetId, const animation::AnimationValue&,

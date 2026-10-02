@@ -6,7 +6,7 @@
 
 ## 2. 按钮、主题与反馈（平台通用）
 
-- [ ] 2.1 实现 RadioButton/optionType、outline/solid/三尺寸/block/H/V/RTL、共同相邻形状、独立 Radio Theme 与有限 wave；补相邻角/边界/焦点、主题局部更新/golden 和空闲 deadline 合同与文档。HEADLESS Debug/Release 通过受影响 Radio/Theme/共同表面/rounded_effect/renderer contract；格式、OpenSpec 与 diff 检查后提交。
+- [x] 2.1 实现 RadioButton/optionType、outline/solid/三尺寸/block/H/V/RTL、共同相邻形状、独立 Radio Theme 与有限 wave；补相邻角/边界/焦点、主题局部更新/golden 和空闲 deadline 合同与文档。Windows `windows-msvc-headless` Debug/Release 受影响合同各 17/17（5.24s/3.92s）；五份 golden 的既有字段保持不变；407 自有源格式、OpenSpec doctor/strict 48/48 与 diff 检查通过。
 
 ## 3. 集成（平台通用）
 

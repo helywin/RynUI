@@ -51,6 +51,7 @@ struct SeedTokenOverride final {
     std::optional<Duration> motion_base;
     std::optional<bool> focus_outline;
     std::optional<bool> motion;
+    std::optional<bool> wireframe;
 
     friend bool operator==(const SeedTokenOverride&, const SeedTokenOverride&) = default;
 };
@@ -242,6 +243,60 @@ struct CheckboxThemeConfig final {
     SeedTokenOverride seed;
     bool algorithm{};
     friend bool operator==(const CheckboxThemeConfig&, const CheckboxThemeConfig&) = default;
+};
+
+// Locked Radio Component Token plus native geometry/focus/wave adaptation.
+struct RadioTokenOverride final {
+    std::optional<LogicalLength> size;
+    std::optional<LogicalLength> dot_size;
+    std::optional<LogicalLength> line_width;
+    std::optional<LogicalLength> label_gap;
+    std::optional<LogicalLength> wrapper_margin_inline_end;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> button_height;
+    std::optional<LogicalLength> button_height_small;
+    std::optional<LogicalLength> button_height_large;
+    std::optional<LogicalLength> button_padding_inline;
+    std::optional<LogicalLength> button_padding_inline_small;
+    std::optional<LogicalLength> button_font_size_large;
+    std::optional<LogicalLength> button_radius;
+    std::optional<LogicalLength> button_radius_small;
+    std::optional<LogicalLength> button_radius_large;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    std::optional<LogicalLength> wave_spread;
+    std::optional<LogicalLength> wave_width;
+    std::optional<float> wave_opacity;
+    std::optional<Color> primary;
+    std::optional<Color> primary_hover;
+    std::optional<Color> primary_active;
+    std::optional<Color> background;
+    std::optional<Color> border;
+    std::optional<Color> disabled_background;
+    std::optional<Color> disabled_foreground;
+    std::optional<Color> dot;
+    std::optional<Color> dot_disabled;
+    std::optional<Color> checked_background;
+    std::optional<Color> label;
+    std::optional<Color> focus;
+    std::optional<Color> button_background;
+    std::optional<Color> button_checked_background;
+    std::optional<Color> button_color;
+    std::optional<Color> button_checked_background_disabled;
+    std::optional<Color> button_checked_color_disabled;
+    std::optional<Color> button_solid_checked_color;
+    std::optional<Color> button_solid_checked_background;
+    std::optional<Color> button_solid_checked_hover_background;
+    std::optional<Color> button_solid_checked_active_background;
+    friend bool operator==(const RadioTokenOverride&, const RadioTokenOverride&) = default;
+};
+
+struct RadioThemeConfig final {
+    RadioTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const RadioThemeConfig&, const RadioThemeConfig&) = default;
 };
 
 enum class TypographyLevel : std::uint8_t {
@@ -441,6 +496,7 @@ struct ThemeConfig final {
     InputThemeConfig input;
     SwitchThemeConfig switch_;
     CheckboxThemeConfig checkbox;
+    RadioThemeConfig radio;
     TypographyThemeConfig typography;
     DividerThemeConfig divider;
     SliderThemeConfig slider;
@@ -701,6 +757,100 @@ struct CheckboxThemeToken final {
     friend constexpr bool operator==(const CheckboxThemeToken&, const CheckboxThemeToken&) = default;
 };
 
+struct RadioThemeToken final {
+    float size{};
+    float dot_size{};
+    float line_width{};
+    float label_gap{};
+    float wrapper_margin_inline_end{};
+    float font_size{};
+    float line_height{};
+    float button_height{};
+    float button_height_small{};
+    float button_height_large{};
+    float button_padding_inline{};
+    float button_padding_inline_small{};
+    float button_font_size_large{};
+    float button_radius{};
+    float button_radius_small{};
+    float button_radius_large{};
+    float focus_width{};
+    float focus_offset{};
+    float wave_spread{};
+    float wave_width{};
+    float wave_opacity{};
+    Color primary;
+    Color primary_hover;
+    Color primary_active;
+    Color background;
+    Color border;
+    Color disabled_background;
+    Color disabled_foreground;
+    Color dot;
+    Color dot_disabled;
+    Color checked_background;
+    Color label;
+    Color focus;
+    Color button_background;
+    Color button_checked_background;
+    Color button_color;
+    Color button_checked_background_disabled;
+    Color button_checked_color_disabled;
+    Color button_solid_checked_color;
+    Color button_solid_checked_background;
+    Color button_solid_checked_hover_background;
+    Color button_solid_checked_active_background;
+
+    [[nodiscard]] constexpr std::array<float, 16> metrics() const {
+        return {size,
+                dot_size,
+                line_width,
+                label_gap,
+                wrapper_margin_inline_end,
+                font_size,
+                line_height,
+                button_height,
+                button_height_small,
+                button_height_large,
+                button_padding_inline,
+                button_padding_inline_small,
+                button_font_size_large,
+                button_radius,
+                button_radius_small,
+                button_radius_large};
+    }
+
+    [[nodiscard]] constexpr std::array<float, 5> effects() const {
+        return {focus_width, focus_offset, wave_spread, wave_width, wave_opacity};
+    }
+
+    [[nodiscard]] constexpr std::array<Color, 21> colors() const {
+        return {primary,
+                primary_hover,
+                primary_active,
+                background,
+                border,
+                disabled_background,
+                disabled_foreground,
+                dot,
+                dot_disabled,
+                checked_background,
+                label,
+                focus,
+                button_background,
+                button_checked_background,
+                button_color,
+                button_checked_background_disabled,
+                button_checked_color_disabled,
+                button_solid_checked_color,
+                button_solid_checked_background,
+                button_solid_checked_hover_background,
+                button_solid_checked_active_background};
+    }
+
+    friend constexpr bool operator==(const RadioThemeToken&, const RadioThemeToken&) = default;
+};
+
 // Inline `code` / `kbd` appearance. Sizes stay as ratios of the resolved font
 // size so padding tracks the surrounding typography. These have no upstream
 // Component Token; they are a RynUI typed adaptation of the locked reference
@@ -886,6 +1036,7 @@ public:
     [[nodiscard]] const TextThemeToken& text() const noexcept;
     [[nodiscard]] const SwitchThemeToken& switch_token() const noexcept;
     [[nodiscard]] const CheckboxThemeToken& checkbox() const noexcept;
+    [[nodiscard]] const RadioThemeToken& radio() const noexcept;
     [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
@@ -904,9 +1055,9 @@ private:
 
     ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
-                  TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-                  TooltipThemeToken tooltip, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms);
+                  RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
+                  SliderThemeToken slider, TooltipThemeToken tooltip,
+                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -915,6 +1066,7 @@ private:
     TextThemeToken text_;
     SwitchThemeToken switch_token_;
     CheckboxThemeToken checkbox_;
+    RadioThemeToken radio_;
     TypographyThemeToken typography_;
     DividerThemeToken divider_;
     SliderThemeToken slider_;

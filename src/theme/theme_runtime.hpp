@@ -71,6 +71,9 @@ public:
     [[nodiscard]] const CheckboxThemeToken& checkbox_metrics() const;
     [[nodiscard]] const CheckboxThemeToken& checkbox_colors() const;
     [[nodiscard]] const CheckboxThemeToken& checkbox_effects() const;
+    [[nodiscard]] const RadioThemeToken& radio_metrics() const;
+    [[nodiscard]] const RadioThemeToken& radio_colors() const;
+    [[nodiscard]] const RadioThemeToken& radio_effects() const;
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
