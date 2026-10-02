@@ -98,6 +98,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：已实施的框架基础与未来桌面、移动端、Web 路线和验收范围。
 - [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
 - [Button](docs/button.md)：颜色与变体、原生内容/交互和阶段验收。
+- [Divider](docs/divider.md)：线条变体、尺寸、逻辑标题方位与间距合同。
 - [Slider / RangeSlider](docs/slider.md)：数值、交互、主题、支持范围与验收入口。
 - [Tooltip](docs/tooltip.md)：窗口提示层、触发与受控显示、主题及分平台验收。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。

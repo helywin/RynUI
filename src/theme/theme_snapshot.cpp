@@ -715,6 +715,8 @@ void apply_typography_override(TypographyThemeToken& token, const TypographyToke
         .vertical_margin_inline = map.size_xs,
         .horizontal_margin = map.size_large,
         .horizontal_with_text_margin = map.size,
+        .small_horizontal_margin = map.size_xs,
+        .middle_horizontal_margin = map.size,
     };
     token.typography = {
         .text_font_size = map.font_size_large,
@@ -754,6 +756,12 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
     token.metrics.horizontal_with_text_margin =
         fixed_length(override_.horizontal_with_text_margin, token.metrics.horizontal_with_text_margin,
                      "Divider horizontal margin with text must be non-negative");
+    token.metrics.small_horizontal_margin =
+        fixed_length(override_.small_horizontal_margin, token.metrics.small_horizontal_margin,
+                     "Divider small horizontal margin must be non-negative");
+    token.metrics.middle_horizontal_margin =
+        fixed_length(override_.middle_horizontal_margin, token.metrics.middle_horizontal_margin,
+                     "Divider middle horizontal margin must be non-negative");
     token.typography.text_font_size = fixed_length(override_.text_font_size, token.typography.text_font_size,
                                                    "Divider text font size must be positive", true);
     token.typography.plain_font_size = fixed_length(override_.plain_font_size, token.typography.plain_font_size,
@@ -1491,6 +1499,8 @@ void append_color(std::ostringstream& stream, Color color) {
            << ",\"verticalMarginInline\":" << divider.metrics.vertical_margin_inline
            << ",\"horizontalMargin\":" << divider.metrics.horizontal_margin
            << ",\"horizontalWithTextMargin\":" << divider.metrics.horizontal_with_text_margin
+           << ",\"smallHorizontalMargin\":" << divider.metrics.small_horizontal_margin
+           << ",\"middleHorizontalMargin\":" << divider.metrics.middle_horizontal_margin
            << "},\"typography\":{\"textFontSize\":" << divider.typography.text_font_size
            << ",\"textFontWeight\":" << divider.typography.text_font_weight
            << ",\"plainFontSize\":" << divider.typography.plain_font_size
@@ -1579,10 +1589,11 @@ void hash_divider(std::uint64_t& hash, const DividerThemeToken& token) noexcept 
     hash_color(hash, token.colors.line);
     hash_color(hash, token.colors.text);
     hash_color(hash, token.colors.plain_text);
-    for (const float value : {token.metrics.line_width, token.metrics.orientation_margin,
-                              token.metrics.text_padding_inline, token.metrics.vertical_margin_inline,
-                              token.metrics.horizontal_margin, token.metrics.horizontal_with_text_margin,
-                              token.typography.text_font_size, token.typography.plain_font_size}) {
+    for (const float value :
+         {token.metrics.line_width, token.metrics.orientation_margin, token.metrics.text_padding_inline,
+          token.metrics.vertical_margin_inline, token.metrics.horizontal_margin,
+          token.metrics.horizontal_with_text_margin, token.metrics.small_horizontal_margin,
+          token.metrics.middle_horizontal_margin, token.typography.text_font_size, token.typography.plain_font_size}) {
         hash_float(hash, value);
     }
     hash_integer(hash, token.typography.text_font_weight);

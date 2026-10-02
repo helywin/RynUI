@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 #include <ryn/component.hpp>
+#include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/string.hpp>
 
@@ -9,12 +10,17 @@ namespace detail {
 class DividerComponentHost;
 }
 enum class DividerType { Horizontal, Vertical };
-enum class DividerOrientation { Left, Center, Right };
+enum class DividerOrientation { Left, Center, Right, Start, End };
+
+enum class DividerVariant { Solid, Dashed, Dotted };
+
+enum class DividerDirection { LeftToRight, RightToLeft };
 
 struct DividerOrientationMargin final {
-    enum class Source { Theme, None, Ratio };
+    enum class Source { Theme, None, Ratio, Length };
     Source source{Source::Theme};
     float ratio{};
+    float logical_length{};
 
     static constexpr DividerOrientationMargin theme() {
         return {};
@@ -26,6 +32,13 @@ struct DividerOrientationMargin final {
 
     static constexpr DividerOrientationMargin fraction(float ratio) {
         return {Source::Ratio, ratio};
+    }
+
+    static DividerOrientationMargin length(LogicalLength value) {
+        if (value.is_auto() || !detail::finite(value.value()) || value.value() < 0) {
+            throw std::invalid_argument("Divider margin length must be finite and non-negative");
+        }
+        return {Source::Length, 0, value.value()};
     }
 
     friend bool operator==(const DividerOrientationMargin&, const DividerOrientationMargin&) = default;
@@ -57,6 +70,21 @@ public:
         return *this;
     }
 
+    DividerProps& variant(Prop<DividerVariant> value) {
+        variant_ = std::move(value);
+        return *this;
+    }
+
+    DividerProps& size(Prop<ControlSize> value) {
+        size_ = std::move(value);
+        return *this;
+    }
+
+    DividerProps& direction(Prop<DividerDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
     DividerProps& plain(Prop<bool> value) {
         plain_ = std::move(value);
         return *this;
@@ -82,6 +110,9 @@ private:
     Prop<DividerOrientation> orientation_{DividerOrientation::Center};
     Prop<DividerOrientationMargin> margin_{DividerOrientationMargin{}};
     Prop<bool> dashed_{false};
+    Prop<DividerVariant> variant_{DividerVariant::Solid};
+    std::optional<Prop<ControlSize>> size_;
+    Prop<DividerDirection> direction_{DividerDirection::LeftToRight};
     Prop<bool> plain_{false};
     Prop<String> content_{String{}};
     LayoutStyle layout_;

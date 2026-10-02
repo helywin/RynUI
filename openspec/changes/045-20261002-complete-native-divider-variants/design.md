@@ -16,7 +16,7 @@
 2. 扩展现有 `DividerOrientation` 的 Start/End，新增 scoped `DividerDirection` LTR/RTL Prop。Left/Right 保持旧物理含义；逻辑方向在 measure 中归约为物理侧，不把 CSS 字符串或方向状态泄漏到 renderer。全局 Theme direction 属于后续 Theme/文字收尾，当前不引入跨组件未实现承诺。
 3. `DividerOrientationMargin` 增加 Length source 与 `length(dp(...))` 构造；保留现有字段顺序和 ratio 规则。长度模式近侧 rail 为零、近侧标题 padding 为零、远侧保留 Theme text padding，长度作为近侧标题外间距；父约束不足时夹紧长度/远侧 padding/label 测量预算。None 保持现有两侧 padding 都零的兼容语义。全部输入在挂载前/更新时验证。
 4. Solid/Dashed 保留 Quad 路径；Dotted 输出零 blur RoundedEffect 实心圆，每个 diameter 为 line_width、间隙为相同宽度。末端保留完整圆形但以 rail/window clip 裁剪；应用 node translation/opacity。每次先计算有限段数，组件总计不得超过 4096；整数索引循环避免小浮点步长不前进。range 继续保留，切换变体清空另一类 primitive，销毁走现有 owner cleanup。
-5. 共同逻辑使用 Windows MSVC `windows-msvc-headless` Debug/Release Ninja Multi-Config CTest（补 portable Divider target）；新值、旧回归、彩色材质、圆点 reference coverage、裁剪/移动/资源清理与公开编译都验证。整合后完整 headless、configure guard、golden 增量校验。Windows native `windows-msvc` Debug/Release build/受影响 CTest 加真实 D3D12/DXIL、系统字体、三主题和系统/1/1.25/1.5/2 scale/resize。Linux GCC/Clang Vulkan/SPIR-V/Fontconfig/Wayland 必须实际 Linux 机器，独立 checkbox 保持待验证。
+5. 共同逻辑使用 Windows MSVC `windows-msvc-headless` Debug/Release Ninja Multi-Config CTest（现有 portable Divider target）；新值、旧回归、彩色材质、圆点 reference coverage、裁剪/移动/资源清理与公开编译都验证。整合后完整 headless、configure guard、golden 增量校验。Windows native `windows-msvc` Debug/Release build/受影响 CTest 加真实 D3D12/DXIL、系统字体、三主题和系统/1/1.25/1.5/2 scale/resize。Linux GCC/Clang Vulkan/SPIR-V/Fontconfig/Wayland 必须实际 Linux 机器，独立 checkbox 保持待验证。
 
 ## Risks / Trade-offs
 

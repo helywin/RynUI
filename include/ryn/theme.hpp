@@ -291,6 +291,8 @@ struct DividerTokenOverride final {
     std::optional<LogicalLength> vertical_margin_inline;
     std::optional<LogicalLength> horizontal_margin;
     std::optional<LogicalLength> horizontal_with_text_margin;
+    std::optional<LogicalLength> small_horizontal_margin;
+    std::optional<LogicalLength> middle_horizontal_margin;
     std::optional<LogicalLength> text_font_size;
     std::optional<std::uint32_t> text_font_weight;
     std::optional<LogicalLength> plain_font_size;
@@ -669,6 +671,8 @@ struct DividerMetricToken final {
     float vertical_margin_inline{};
     float horizontal_margin{};
     float horizontal_with_text_margin{};
+    float small_horizontal_margin{};
+    float middle_horizontal_margin{};
 
     friend constexpr bool operator==(const DividerMetricToken&, const DividerMetricToken&) = default;
 };

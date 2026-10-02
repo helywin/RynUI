@@ -6,7 +6,7 @@
 
 ## 2. 原生合同（平台通用）
 
-- [ ] 2.1 实现 variant/dotted、size/Theme、逻辑标题方位与 Length 间距，保留旧行为并补旧 API/全部方位尺寸/优先级/窄约束/非法输入/有限 primitive/圆点 reference/clip/translation/Material locality/订阅与销毁测试；同步公开文档，在 Windows MSVC headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录实际 preset/evidence 并提交。
+- [x] 2.1 实现 variant/dotted、size/Theme、逻辑标题方位与 Length 间距，保留旧行为并补旧 API/全部方位尺寸/优先级/窄约束/非法输入/有限 primitive/圆点 reference/clip/translation/Material locality/订阅与销毁测试；同步公开文档，在 Windows MSVC headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录实际 preset/evidence 并提交。
 
 ## 3. 整合（平台通用）
 

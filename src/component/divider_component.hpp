@@ -13,6 +13,10 @@ struct DividerSnapshot {
     bool has_label{};
     bool dashed{};
     bool plain{};
+    DividerVariant variant{DividerVariant::Solid};
+    ControlSize size{ControlSize::Large};
+    DividerOrientation orientation{DividerOrientation::Center};
+    DividerDirection direction{DividerDirection::LeftToRight};
 };
 
 class DividerComponentHost final : public WindowComponentParticipant {
