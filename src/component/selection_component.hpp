@@ -11,6 +11,7 @@ namespace ryn::detail {
 
 struct SelectionState;
 struct RadioGroupState;
+struct CheckboxGroupState;
 
 struct MountedSelectionComponent final {
     runtime::ComponentId component;
@@ -37,6 +38,12 @@ struct SelectionSnapshot final {
     component::RetainedSurfaceId wave_range;
 };
 
+struct MountedCheckboxGroup final {
+    runtime::ComponentId component;
+    runtime::NodeId node;
+    input::InteractionId interaction;
+};
+
 // Selection controls borrow one window's retained resources and share
 // pointer/focus lifecycle. Their checked and visual policies stay private.
 class SelectionComponentHost final : private WindowComponentParticipant, private animation::AnimationTargetSink {
@@ -54,11 +61,18 @@ public:
 
     [[nodiscard]] SelectionSnapshot snapshot(runtime::ComponentId component) const;
 
+    [[nodiscard]] std::span<const MountedCheckboxGroup> checkbox_groups() const noexcept {
+        return checkbox_groups_;
+    }
+
+    [[nodiscard]] CheckboxValues checkbox_group_value(runtime::ComponentId component) const;
+
 private:
     friend struct SwitchPropsAccess;
     friend struct CheckboxPropsAccess;
     friend struct RadioPropsAccess;
     friend struct RadioGroupPropsAccess;
+    friend struct CheckboxGroupPropsAccess;
     void* begin_mount() noexcept override;
     void end_mount(void* previous) noexcept override;
     void on_destroy() noexcept override;
@@ -86,6 +100,13 @@ private:
     void publish_wave(SelectionState&);
     void apply_checked(runtime::ComponentId, bool);
     void apply_radio_own_disabled(runtime::ComponentId, bool);
+    void apply_checkbox_own_disabled(runtime::ComponentId, bool);
+    void apply_checkbox_group_value(runtime::ComponentId, CheckboxValues);
+    void apply_checkbox_group_disabled(runtime::ComponentId, bool);
+    void apply_checkbox_group_orientation(runtime::ComponentId, CheckboxGroupOrientation);
+    void apply_checkbox_options(runtime::ComponentId, std::vector<CheckboxOption>);
+    void update_checkbox_group_layout(CheckboxGroupState&);
+    [[nodiscard]] runtime::ComponentId parent_checkbox_group(runtime::ComponentId) const;
     void apply_group_value(runtime::ComponentId, std::optional<String>);
     void apply_group_disabled(runtime::ComponentId, bool);
     void apply_group_orientation(runtime::ComponentId, RadioGroupOrientation);
@@ -108,6 +129,7 @@ private:
     WindowComponentServices* services_;
     std::vector<MountedSelectionComponent> mounted_;
     std::vector<runtime::ComponentId> groups_;
+    std::vector<MountedCheckboxGroup> checkbox_groups_;
     runtime::Size viewport_{};
     std::optional<runtime::Rect> window_clip_;
 };

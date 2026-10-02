@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：多选状态与保留选项
 
-- [ ] 1.1 实现 CheckboxValue/Values、Group props/content、受控/默认多选、group disabled/skipGroup、动态 options 保留/删除/重排/失败回滚，更新 docs/checkbox.md；Windows windows-msvc-headless Debug/Release 验证 public header、Checkbox Group、selection/Radio/Switch 合同，覆盖三类值/无效输入/键盘顺序/焦点和捕获清理/富内容/回调销毁。
+- [x] 1.1 实现 CheckboxValue/Values、Group props/content、受控/默认多选、group disabled/skipGroup、动态 options 保留/删除/重排/失败回滚，更新 docs/checkbox.md；Windows windows-msvc-headless Debug/Release 验证 public header、Checkbox Group、selection/Radio/Switch 合同，覆盖三类值/无效输入/键盘顺序/焦点和捕获清理/富内容/回调销毁。实际使用 Windows MSVC headless；五项合同 Debug 5/5（1.57s）、Release 5/5（1.09s），格式检查 405 文件、doctor、47/47 strict 与 diff 检查通过。
 
 ## 2. 平台通用：焦点、主题与有限反馈
 

@@ -164,6 +164,7 @@ struct SelectionState final {
     bool own_disabled{};
     runtime::ComponentId group;
     std::optional<String> value;
+    std::optional<CheckboxValue> checkbox_value;
     bool controlled{};
     bool checked{};
     bool indeterminate{};
@@ -218,6 +219,63 @@ struct RadioGroupState final {
     theme_runtime::Subscription theme_subscription;
 };
 
+struct GeneratedCheckboxOption final {
+    CheckboxValue value;
+    Signal<String> label;
+    Signal<bool> disabled;
+    runtime::ComponentId component;
+
+    explicit GeneratedCheckboxOption(const CheckboxOption& option)
+        : value(option.value), label(option.label), disabled(option.disabled) {}
+};
+
+struct CheckboxGroupState final {
+    runtime::ComponentId component;
+    runtime::NodeId node;
+    input::InteractionId anchor;
+    runtime::SceneFragmentId fragment;
+    std::vector<runtime::ComponentId> options;
+    std::vector<std::unique_ptr<GeneratedCheckboxOption>> generated;
+    std::vector<CheckboxOption> source_options;
+    CheckboxValues value;
+    bool controlled{};
+    bool disabled{};
+    bool reconciling{};
+    CheckboxGroupOrientation orientation{CheckboxGroupOrientation::Horizontal};
+    std::optional<CheckboxGroupOrientation> layout_orientation;
+    float layout_gap{-1};
+    std::function<void(const CheckboxValues&)> on_change;
+    theme_runtime::Subscription theme_subscription;
+};
+
+namespace {
+void validate_checkbox_value(const CheckboxValue& value) {
+    if (const auto* number = std::get_if<double>(&value); number && !std::isfinite(*number)) {
+        throw std::invalid_argument("Checkbox numeric value must be finite");
+    }
+}
+
+void validate_checkbox_values(const CheckboxValues& values) {
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        validate_checkbox_value(values[i]);
+        if (std::find(values.begin(), values.begin() + i, values[i]) != values.begin() + i) {
+            throw std::invalid_argument("Checkbox selected values must be unique");
+        }
+    }
+}
+
+void validate_checkbox_options(const std::vector<CheckboxOption>& options) {
+    if (options.size() > 1024) {
+        throw std::invalid_argument("CheckboxGroup supports at most 1024 options");
+    }
+    CheckboxValues values;
+    for (const auto& option : options) {
+        values.push_back(option.value);
+    }
+    validate_checkbox_values(values);
+}
+} // namespace
+
 template <class Label>
 void mount_selection_label(runtime::ComponentBuildContext& build, WindowComponentServices& services,
                            SelectionState& state, runtime::ComponentId component, const std::optional<Label>& label,
@@ -244,6 +302,11 @@ SelectionComponentHost::SelectionComponentHost(WindowComponentServices& services
 }
 
 SelectionComponentHost::~SelectionComponentHost() {
+    while (!checkbox_groups_.empty()) {
+        if (!services_->destroy(checkbox_groups_.back().component)) {
+            checkbox_groups_.pop_back();
+        }
+    }
     while (!groups_.empty()) {
         const auto id = groups_.back();
         if (!services_->destroy(id)) {
@@ -274,11 +337,14 @@ void SelectionComponentHost::end_mount(void* previous) noexcept {
 void SelectionComponentHost::on_destroy() noexcept {
     std::erase_if(mounted_, [this](const auto& item) { return !services_->components().contains(item.component); });
     std::erase_if(groups_, [this](const auto id) { return !services_->components().contains(id); });
+    std::erase_if(checkbox_groups_,
+                  [this](const auto& item) { return !services_->components().contains(item.component); });
 }
 
 void SelectionComponentHost::on_dispose() noexcept {
     mounted_.clear();
     groups_.clear();
+    checkbox_groups_.clear();
 }
 
 void SelectionComponentHost::synchronize_auxiliary_motion() {
@@ -365,6 +431,15 @@ void SelectionComponentHost::attach_interaction(SelectionState& state) {
 }
 
 void SelectionComponentHost::release_selection(SelectionState& state) {
+    if (state.checkbox && state.group.valid() && state.checkbox_value) {
+        if (auto* group = services_->components().state<CheckboxGroupState>(state.group);
+            group && !group->reconciling) {
+            std::erase(group->options, state.component);
+            if (!group->controlled) {
+                std::erase(group->value, *state.checkbox_value);
+            }
+        }
+    }
     if (state.ref) {
         state.ref->binding = false;
         state.ref->focus = {};
@@ -399,6 +474,43 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
     if (state->radio && state->group.valid() && state->value) {
         const String value = *state->value;
         select_group_option(state->group, value);
+        return;
+    }
+    if (state->checkbox && state->group.valid() && state->checkbox_value) {
+        const auto group_id = state->group;
+        const auto* group = services_->components().state<CheckboxGroupState>(group_id);
+        if (!group || group->disabled) {
+            return;
+        }
+        const bool next = !state->checked;
+        auto selected = group->value;
+        if (next) {
+            selected.push_back(*state->checkbox_value);
+        } else {
+            std::erase(selected, *state->checkbox_value);
+        }
+        CheckboxValues candidate;
+        for (const auto option : group->options) {
+            const auto* item = find(option);
+            if (item && item->checkbox_value && std::ranges::find(selected, *item->checkbox_value) != selected.end()) {
+                candidate.push_back(*item->checkbox_value);
+            }
+        }
+        const auto own_callback = state->on_change;
+        const auto group_callback = group->on_change;
+        const auto click = state->on_click;
+        if (!group->controlled) {
+            apply_checkbox_group_value(group_id, candidate);
+        }
+        if (own_callback) {
+            own_callback(next);
+        }
+        if (group_callback) {
+            group_callback(candidate);
+        }
+        if (click) {
+            click(next);
+        }
         return;
     }
     const bool next = state->radio ? true : !state->checked;
@@ -472,6 +584,93 @@ void SelectionComponentHost::apply_radio_own_disabled(runtime::ComponentId id, b
     state->own_disabled = value;
     const auto* group = state->group.valid() ? services_->components().state<RadioGroupState>(state->group) : nullptr;
     apply_disabled(id, value || (group && group->disabled));
+}
+
+runtime::ComponentId SelectionComponentHost::parent_checkbox_group(runtime::ComponentId id) const {
+    for (auto parent = services_->components().parent(id); parent; parent = services_->components().parent(*parent)) {
+        if (services_->components().state<CheckboxGroupState>(*parent)) {
+            return *parent;
+        }
+    }
+    return {};
+}
+
+CheckboxValues SelectionComponentHost::checkbox_group_value(runtime::ComponentId id) const {
+    const auto* group = services_->components().state<CheckboxGroupState>(id);
+    if (!group) {
+        throw std::out_of_range("CheckboxGroup is stale or invalid");
+    }
+    return group->value;
+}
+
+void SelectionComponentHost::apply_checkbox_own_disabled(runtime::ComponentId id, bool value) {
+    auto* state = find(id);
+    if (!state || !state->checkbox) {
+        return;
+    }
+    state->own_disabled = value;
+    const auto* group = services_->components().state<CheckboxGroupState>(state->group);
+    apply_disabled(id, value || (group && group->disabled));
+}
+
+void SelectionComponentHost::apply_checkbox_group_value(runtime::ComponentId id, CheckboxValues value) {
+    validate_checkbox_values(value);
+    auto* group = services_->components().state<CheckboxGroupState>(id);
+    if (!group || group->value == value) {
+        return;
+    }
+    group->value = std::move(value);
+    const auto options = group->options;
+    for (const auto option : options) {
+        const auto* state = find(option);
+        if (state && state->checkbox_value) {
+            apply_checked(option, std::ranges::find(group->value, *state->checkbox_value) != group->value.end());
+        }
+    }
+}
+
+void SelectionComponentHost::apply_checkbox_group_disabled(runtime::ComponentId id, bool value) {
+    auto* group = services_->components().state<CheckboxGroupState>(id);
+    if (!group || group->disabled == value) {
+        return;
+    }
+    group->disabled = value;
+    const auto options = group->options;
+    for (const auto option : options) {
+        if (const auto* state = find(option)) {
+            apply_disabled(option, state->own_disabled || value);
+        }
+    }
+}
+
+void SelectionComponentHost::apply_checkbox_group_orientation(runtime::ComponentId id, CheckboxGroupOrientation value) {
+    if (value != CheckboxGroupOrientation::Horizontal && value != CheckboxGroupOrientation::Vertical) {
+        throw std::invalid_argument("CheckboxGroup orientation is invalid");
+    }
+    if (auto* group = services_->components().state<CheckboxGroupState>(id); group && group->orientation != value) {
+        group->orientation = value;
+        update_checkbox_group_layout(*group);
+    }
+}
+
+void SelectionComponentHost::update_checkbox_group_layout(CheckboxGroupState& group) {
+    const float gap = services_->components().theme_scope(group.component)->snapshot().map().size_xs;
+    if (group.layout_gap == gap && group.layout_orientation == group.orientation) {
+        return;
+    }
+    layout::FlexLayout model;
+    model.direction = group.orientation == CheckboxGroupOrientation::Vertical ? layout::FlexDirection::vertical
+                                                                              : layout::FlexDirection::horizontal;
+    model.main_gap = gap;
+    model.cross_gap = gap;
+    model.wrap =
+        group.orientation == CheckboxGroupOrientation::Horizontal ? layout::FlexWrap::wrap : layout::FlexWrap::no_wrap;
+    model.align = layout::FlexAlign::center;
+    services_->layout().set_layout(group.node, model);
+    group.layout_gap = gap;
+    group.layout_orientation = group.orientation;
+    services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                  runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
 }
 
 void SelectionComponentHost::apply_group_value(runtime::ComponentId id, std::optional<String> value) {
@@ -1281,7 +1480,7 @@ struct SwitchPropsAccess {
 };
 
 struct CheckboxPropsAccess {
-    static void mount(const CheckboxProps& props, const std::optional<CheckboxLabel>& label) {
+    static runtime::ComponentId mount(const CheckboxProps& props, const std::optional<CheckboxLabel>& label) {
         if (!active_selection_host) {
             throw std::logic_error("Checkbox requires an active SelectionComponentHost");
         }
@@ -1295,11 +1494,34 @@ struct CheckboxPropsAccess {
         state.component = component;
         state.node = build.root(component);
         state.checkbox = true;
+        state.group = props.skip_group_ ? runtime::ComponentId{} : host.parent_checkbox_group(component);
+        auto* group = host.services_->components().state<CheckboxGroupState>(state.group);
+        if (props.value_) {
+            validate_checkbox_value(*props.value_);
+        }
+        if (group) {
+            if (props.checked_ || props.default_checked_ || !props.value_) {
+                throw std::invalid_argument("Grouped Checkbox requires value without checked props");
+            }
+            if (!group->reconciling && group->options.size() >= 1024) {
+                throw std::invalid_argument("CheckboxGroup supports at most 1024 options");
+            }
+            for (const auto option : group->options) {
+                const auto* existing = host.find(option);
+                if (existing && existing->checkbox_value == props.value_) {
+                    throw std::invalid_argument("CheckboxGroup option values must be unique");
+                }
+            }
+        }
+        state.checkbox_value = props.value_;
         state.visuals.resize(checkbox_layer_count);
-        state.controlled = props.checked_.has_value();
-        state.checked = props.checked_ ? read_prop(*props.checked_) : props.default_checked_.value_or(false);
+        state.controlled = group || props.checked_.has_value();
+        state.checked = group            ? std::ranges::find(group->value, *props.value_) != group->value.end()
+                        : props.checked_ ? read_prop(*props.checked_)
+                                         : props.default_checked_.value_or(false);
         state.indeterminate = read_prop(props.indeterminate_);
-        state.disabled = read_prop(props.disabled_);
+        state.own_disabled = read_prop(props.disabled_);
+        state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
@@ -1319,8 +1541,9 @@ struct CheckboxPropsAccess {
             static_cast<void>(connect_prop(scope, *props.checked_,
                                            [&host, component](bool value) { host.apply_checked(component, value); }));
         }
-        static_cast<void>(connect_prop(scope, props.disabled_,
-                                       [&host, component](bool value) { host.apply_disabled(component, value); }));
+        static_cast<void>(connect_prop(scope, props.disabled_, [&host, component](bool value) {
+            host.apply_checkbox_own_disabled(component, value);
+        }));
         static_cast<void>(connect_prop(scope, props.indeterminate_,
                                        [&host, component](bool value) { host.apply_indeterminate(component, value); }));
         const auto theme = host.services_->components().theme_scope(component);
@@ -1339,9 +1562,203 @@ struct CheckboxPropsAccess {
         mount_selection_label(build, *host.services_, state, component, label,
                               host.services_->components().theme_scope(component)->snapshot().map().control_height /
                                   2.0F);
+        for (const auto interaction : host.services_->interactions().declaration_order()) {
+            const auto* record = host.services_->interactions().find(interaction);
+            if (!record || record->component == component) {
+                continue;
+            }
+            for (auto parent = host.services_->components().parent(record->component); parent;
+                 parent = host.services_->components().parent(*parent)) {
+                if (*parent == component) {
+                    throw std::invalid_argument("CheckboxLabel accepts passive content only");
+                }
+            }
+        }
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, true});
+        if (group) {
+            group->options.push_back(component);
+        }
+        return component;
     }
 };
+
+struct CheckboxGroupPropsAccess {
+    static void mount(const CheckboxGroupProps& props, const std::optional<CheckboxGroupContent>& content) {
+        if (!active_selection_host) {
+            throw std::logic_error("CheckboxGroup requires an active SelectionComponentHost");
+        }
+        auto& host = *active_selection_host;
+        if ((props.value_ && props.default_value_) || (props.options_ && content)) {
+            throw std::invalid_argument("CheckboxGroup value/defaultValue and options/content are exclusive");
+        }
+        const auto options = props.options_ ? read_prop(*props.options_) : std::vector<CheckboxOption>{};
+        validate_checkbox_options(options);
+        const auto initial_value =
+            props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(CheckboxValues{});
+        validate_checkbox_values(initial_value);
+        const auto orientation = read_prop(props.orientation_);
+        if (orientation != CheckboxGroupOrientation::Horizontal && orientation != CheckboxGroupOrientation::Vertical) {
+            throw std::invalid_argument("CheckboxGroup orientation is invalid");
+        }
+        auto& build = runtime::require_component_build_context();
+        const auto component = build.mount_component<CheckboxGroupState>();
+        auto& state = build.state<CheckboxGroupState>(component);
+        state.component = component;
+        state.node = build.root(component);
+        state.controlled = props.value_.has_value();
+        state.value = initial_value;
+        state.disabled = read_prop(props.disabled_);
+        state.orientation = orientation;
+        state.on_change = props.on_change_;
+        build.on_resource_cleanup(component, [&host, component] {
+            if (auto* current = host.services_->components().state<CheckboxGroupState>(component)) {
+                host.services_->pointer().cancel_interaction(current->anchor);
+                host.services_->focus().cancel_interaction(current->anchor);
+                static_cast<void>(host.services_->interactions().remove(current->anchor));
+                static_cast<void>(host.services_->layout().remove_layout(current->node));
+            }
+        });
+        host.update_checkbox_group_layout(state);
+        runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
+                                      host.services_->dirty());
+        state.anchor = host.services_->interactions().create(
+            {component, state.node, host.parent_interaction(component), true, false, {}});
+        state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
+        host.services_->scene_composer().set_fragment(state.fragment, {}, state.anchor);
+        if (content) {
+            build.mount_slot(component, *content);
+        } else {
+            build.mount_slot(component, Content{[&] {
+                                 for (const auto& option : options) {
+                                     auto generated = std::make_unique<GeneratedCheckboxOption>(option);
+                                     CheckboxProps child;
+                                     child.value(option.value).disabled(generated->disabled);
+                                     generated->component =
+                                         CheckboxPropsAccess::mount(child, CheckboxLabel{[caption = generated->label] {
+                                                                        Text(TextProps{}.content(caption));
+                                                                    }});
+                                     state.generated.push_back(std::move(generated));
+                                 }
+                             }});
+        }
+        state.source_options = options;
+        auto& scope = build.scope(component);
+        if (props.value_) {
+            static_cast<void>(connect_prop(scope, *props.value_, [&host, component](const CheckboxValues& value) {
+                host.apply_checkbox_group_value(component, value);
+            }));
+        }
+        static_cast<void>(connect_prop(scope, props.disabled_, [&host, component](bool value) {
+            host.apply_checkbox_group_disabled(component, value);
+        }));
+        static_cast<void>(connect_prop(scope, props.orientation_, [&host, component](CheckboxGroupOrientation value) {
+            host.apply_checkbox_group_orientation(component, value);
+        }));
+        if (props.options_) {
+            static_cast<void>(
+                connect_prop(scope, *props.options_, [&host, component](const std::vector<CheckboxOption>& value) {
+                    host.apply_checkbox_options(component, value);
+                }));
+        }
+        const auto theme = host.services_->components().theme_scope(component);
+        state.theme_subscription = theme->capture(
+            [&host, component](theme_runtime::DirtyPhase) {
+                if (auto* group = host.services_->components().state<CheckboxGroupState>(component)) {
+                    host.update_checkbox_group_layout(*group);
+                }
+            },
+            [theme] { static_cast<void>(theme->map()); });
+        host.checkbox_groups_.push_back({component, state.node, state.anchor});
+    }
+};
+
+void SelectionComponentHost::apply_checkbox_options(runtime::ComponentId id, std::vector<CheckboxOption> options) {
+    validate_checkbox_options(options);
+    auto* group = services_->components().state<CheckboxGroupState>(id);
+    if (!group || group->source_options == options) {
+        return;
+    }
+    std::vector<std::size_t> matched(options.size(), group->generated.size());
+    std::vector<std::unique_ptr<GeneratedCheckboxOption>> replacement(options.size());
+    for (std::size_t i = 0; i < options.size(); ++i) {
+        for (std::size_t previous = 0; previous < group->generated.size(); ++previous) {
+            if (group->generated[previous]->value == options[i].value) {
+                matched[i] = previous;
+                break;
+            }
+        }
+        if (matched[i] == group->generated.size()) {
+            replacement[i] = std::make_unique<GeneratedCheckboxOption>(options[i]);
+        }
+    }
+    const auto original_options = group->options;
+    group->reconciling = true;
+    try {
+        if (std::ranges::any_of(replacement, [](const auto& option) { return bool(option); })) {
+            services_->append_slot(id, Content{[&] {
+                                       for (auto& option : replacement) {
+                                           if (option) {
+                                               CheckboxProps child;
+                                               child.value(option->value).disabled(option->disabled);
+                                               option->component = CheckboxPropsAccess::mount(
+                                                   child, CheckboxLabel{[caption = option->label] {
+                                                       Text(TextProps{}.content(caption));
+                                                   }});
+                                           }
+                                       }
+                                   }});
+        }
+    } catch (...) {
+        if (auto* live = services_->components().state<CheckboxGroupState>(id)) {
+            live->options = original_options;
+            live->reconciling = false;
+        }
+        throw;
+    }
+    auto removed = std::move(group->generated);
+    for (std::size_t i = 0; i < replacement.size(); ++i) {
+        if (matched[i] < removed.size()) {
+            replacement[i] = std::move(removed[matched[i]]);
+        }
+    }
+    group->generated = std::move(replacement);
+    group->source_options = options;
+    group->options.clear();
+    std::vector<input::InteractionId> order;
+    CheckboxValues retained_value;
+    for (std::size_t i = 0; i < group->generated.size(); ++i) {
+        const auto& option = group->generated[i];
+        group->options.push_back(option->component);
+        auto* state = find(option->component);
+        if (!state) {
+            throw std::logic_error("CheckboxGroup retained option is stale");
+        }
+        services_->nodes().require(state->node).external_layout.order = static_cast<int>(i);
+        order.push_back(state->interaction);
+        option->label.set(options[i].label);
+        option->disabled.set(options[i].disabled);
+        if (std::ranges::find(group->value, option->value) != group->value.end()) {
+            retained_value.push_back(option->value);
+        }
+    }
+    for (const auto& option : removed) {
+        if (option) {
+            services_->destroy(option->component);
+        }
+    }
+    group = services_->components().state<CheckboxGroupState>(id);
+    if (!group) {
+        return;
+    }
+    group->reconciling = false;
+    if (!group->controlled) {
+        apply_checkbox_group_value(id, std::move(retained_value));
+    }
+    services_->interactions().reorder_after(group->anchor, order);
+    services_->dirty().invalidate(group->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    services_->mark_scene_structure_dirty();
+}
 
 struct RadioPropsAccess {
     static void mount(const RadioProps& props, const std::optional<RadioLabel>& label,
@@ -1530,7 +1947,11 @@ bool SwitchRef::blur() const {
 }
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {
-    detail::CheckboxPropsAccess::mount(props, label);
+    static_cast<void>(detail::CheckboxPropsAccess::mount(props, label));
+}
+
+void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent> content) {
+    detail::CheckboxGroupPropsAccess::mount(props, content);
 }
 
 void Radio(RadioProps props, std::optional<RadioLabel> label) {

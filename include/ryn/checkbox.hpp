@@ -3,15 +3,32 @@
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
+#include <ryn/string.hpp>
 
 #include <functional>
 #include <optional>
 #include <utility>
+#include <variant>
+#include <vector>
 
 namespace ryn {
 namespace detail {
 struct CheckboxPropsAccess;
-}
+struct CheckboxGroupPropsAccess;
+} // namespace detail
+
+using CheckboxValue = std::variant<String, double, bool>;
+using CheckboxValues = std::vector<CheckboxValue>;
+
+struct CheckboxOption final {
+    CheckboxValue value;
+    String label;
+    bool disabled{};
+
+    friend bool operator==(const CheckboxOption&, const CheckboxOption&) = default;
+};
+
+enum class CheckboxGroupOrientation { Horizontal, Vertical };
 
 class CheckboxProps final {
 public:
@@ -40,6 +57,16 @@ public:
         return *this;
     }
 
+    CheckboxProps& value(CheckboxValue value) {
+        value_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxProps& skipGroup(bool value) {
+        skip_group_ = value;
+        return *this;
+    }
+
     CheckboxProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -52,6 +79,8 @@ private:
     Prop<bool> indeterminate_{false};
     Prop<bool> disabled_{false};
     std::function<void(bool)> on_change_;
+    std::optional<CheckboxValue> value_;
+    bool skip_group_{};
     LayoutStyle layout_;
 };
 
@@ -60,5 +89,59 @@ struct CheckboxLabelSlot final {};
 using CheckboxLabel = SlotContent<CheckboxLabelSlot>;
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label = {});
+
+class CheckboxGroupProps final {
+public:
+    CheckboxGroupProps& options(Prop<std::vector<CheckboxOption>> value) {
+        options_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxGroupProps& value(Prop<CheckboxValues> value) {
+        value_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxGroupProps& defaultValue(CheckboxValues value) {
+        default_value_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxGroupProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxGroupProps& orientation(Prop<CheckboxGroupOrientation> value) {
+        orientation_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxGroupProps& onChange(std::function<void(const CheckboxValues&)> callback) {
+        on_change_ = std::move(callback);
+        return *this;
+    }
+
+    CheckboxGroupProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend struct detail::CheckboxGroupPropsAccess;
+    std::optional<Prop<std::vector<CheckboxOption>>> options_;
+    std::optional<Prop<CheckboxValues>> value_;
+    std::optional<CheckboxValues> default_value_;
+    Prop<bool> disabled_{false};
+    Prop<CheckboxGroupOrientation> orientation_{CheckboxGroupOrientation::Horizontal};
+    std::function<void(const CheckboxValues&)> on_change_;
+    LayoutStyle layout_;
+};
+
+struct CheckboxGroupContentSlot final {};
+
+using CheckboxGroupContent = SlotContent<CheckboxGroupContentSlot>;
+
+void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent> content = {});
 
 } // namespace ryn
