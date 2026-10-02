@@ -1,0 +1,1750 @@
+[
+  {
+    "configuration": "Debug",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\debug-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "8291a55b7514e275a46fbe87bd2fa7235b60c6f49d3101113d7fd4d890bd43e6",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-system/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b6c4cbbd5009e6f1e2db9606830bc59f51ee6efa3b906bc58d58928c37a5c011"
+      },
+      {
+        "path": "debug-system/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0eda4e1ffa8fcaa3af424b8049e8e3aa6657e260a8f314013f02e49788a53d7c"
+      },
+      {
+        "path": "debug-system/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ac15134ff60836a17718d34a7839f38c7e0d3be8c82cdf0197aa50c43e256977"
+      },
+      {
+        "path": "debug-system/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75237ada0d428f44e607dc186625a6ebab0105726177cd44a0fae8f6f43a1df3"
+      },
+      {
+        "path": "debug-system/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "72d61e574da66738a83284578f335bb3eb1106dae6d26eeb09c5dc06f9b8625d"
+      },
+      {
+        "path": "debug-system/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "37ecdee61f6f311a5303e5d259eb63a676ffdd34f5aec0d5f2037904efdcf732"
+      },
+      {
+        "path": "debug-system/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e1d914aeae4392849d68ce03fca317eb52dd562f62427ee318d70bb4d282a946"
+      },
+      {
+        "path": "debug-system/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cc74b65369e3c0958e36d9cf9272249ba18ff253a25fa66acbba940873e7de1d"
+      },
+      {
+        "path": "debug-system/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a00da203fa61c6dacc6b8572e04adfb933e4660d627f8f6e9596eb101e1bd492"
+      },
+      {
+        "path": "debug-system/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8f40efd28e1ad04ed1c0ea2f8325c61e741079a4429536b90d334d09812a734f"
+      },
+      {
+        "path": "debug-system/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "707b64063a507fcb776c9f26cf0decb1fc5c1ca7ecea2dc988e900caaf62e5ad"
+      },
+      {
+        "path": "debug-system/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f1cda0cf33fd6592b60af4b4faa422c89e483d917cf31aa20076e15b62643ebb"
+      },
+      {
+        "path": "debug-system/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d33a26b97a5933cab7dca99912fb83c0679600de81411324a4dcccc0d8ba7af8"
+      },
+      {
+        "path": "debug-system/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "debug-system/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ff8092c37b7ee21f992e82b1ce379e0cd9ea19cd4a081069b154853f1738062"
+      },
+      {
+        "path": "debug-system/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "b938fe58d61c3dbc05a899a946665e197d8ccf932b0eac3422d374100d6bf432"
+      },
+      {
+        "path": "debug-system/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "debug-system/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "37a76911f14c54d24f4a1d4827f1b634b31f44f2c354e2ec6658e5f9bf0d52dc"
+      },
+      {
+        "path": "debug-system/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "befc22e3e67f6d7a2e9a5dd67d09aa392a30b30a0c9210d581f91b072bd180a7"
+      },
+      {
+        "path": "debug-system/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "08c8d0f144fbf42700c8baca0e583fcb16d30ba90013c18d1cbcfa41c0bdf8ae"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\debug-scale-1",
+      "--acceptance-scale=1"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "8291a55b7514e275a46fbe87bd2fa7235b60c6f49d3101113d7fd4d890bd43e6",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8517b5b2e4d2b0e269755b75ec24ed1588778f4c3f45e0733e741492ef256118"
+      },
+      {
+        "path": "debug-scale-1/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ae25fb9f7f5d8130aa53a3cbf9ef5df0b55ca30a32bdc6eb34eec7b9d4d33f0a"
+      },
+      {
+        "path": "debug-scale-1/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca9c76f4a28da93ac6f4c3d4c15d3cd97387e960beb2cecb9617b8a452e82ed"
+      },
+      {
+        "path": "debug-scale-1/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b85c81361d1b50e34f4a7a00108d4b25adf1fc24a30632ac1bbe3738ce9a7c26"
+      },
+      {
+        "path": "debug-scale-1/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3a8ef8d8e6d03ec305bc3d879699a0acee62807f39c92764faf8ff1741bfafb5"
+      },
+      {
+        "path": "debug-scale-1/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3c5546427278b5bce96d2dce7e64fb31160aa2b676fa3a0b5f7f4dc076709f64"
+      },
+      {
+        "path": "debug-scale-1/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "673032234eb486ae7e87e2dce856263fef3c71837d6768b7a3b87565fa6183de"
+      },
+      {
+        "path": "debug-scale-1/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "684b65762e6f7f6d9237c1f1e1c096c5acdc17bfe7256f6c4fa2087f5a2162ee"
+      },
+      {
+        "path": "debug-scale-1/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75c3fac25c2d6daedc52076a73c08060cf3e8c0dac211503b6a6b5a59cc025f8"
+      },
+      {
+        "path": "debug-scale-1/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "534f4c256c94bae0083cd3379b60c29bbc67407cb4d60292530f0b5a697f0af5"
+      },
+      {
+        "path": "debug-scale-1/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3b890cb2d5f23c789186b33748f5225b7e4fb0cd17089e2f6b0d5d6ff6098a25"
+      },
+      {
+        "path": "debug-scale-1/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "79efca901465f7a466defd5d30e876483eff96eb941dac8fe561c5449f84b5cd"
+      },
+      {
+        "path": "debug-scale-1/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "efadc154fb69774f26b8e8277ea5bd04fe3cf491759262371ca2642e211c35e5"
+      },
+      {
+        "path": "debug-scale-1/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca54b623d7e6e3bd10fa937926de0f2c314fd472f59d4271fba125fd1315b79"
+      },
+      {
+        "path": "debug-scale-1/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cb41a33b58f6713374d885e5931ef21ea0318643df0479bad3eb6e9c211487eb"
+      },
+      {
+        "path": "debug-scale-1/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4607946c1f19f83cc50799c8e87a1d6da236faa508001445cab6f7b25186c371"
+      },
+      {
+        "path": "debug-scale-1/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca54b623d7e6e3bd10fa937926de0f2c314fd472f59d4271fba125fd1315b79"
+      },
+      {
+        "path": "debug-scale-1/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d84524946aaa64352e5b2ff6ea963e3c89601d1868f3e0984af8c3a63a48a62d"
+      },
+      {
+        "path": "debug-scale-1/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "10f6a5cd8d28b002a98863e3f478aec0451a384a300b9dd119869e1de9c124b4"
+      },
+      {
+        "path": "debug-scale-1/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2dafd5ce28c10531accb22997fca951df25fdcc4151c7e4eb0fee9b1b8f31cfa"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1.25",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\debug-scale-1.25",
+      "--acceptance-scale=1.25"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "8291a55b7514e275a46fbe87bd2fa7235b60c6f49d3101113d7fd4d890bd43e6",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1.25/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b6c4cbbd5009e6f1e2db9606830bc59f51ee6efa3b906bc58d58928c37a5c011"
+      },
+      {
+        "path": "debug-scale-1.25/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0eda4e1ffa8fcaa3af424b8049e8e3aa6657e260a8f314013f02e49788a53d7c"
+      },
+      {
+        "path": "debug-scale-1.25/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ac15134ff60836a17718d34a7839f38c7e0d3be8c82cdf0197aa50c43e256977"
+      },
+      {
+        "path": "debug-scale-1.25/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75237ada0d428f44e607dc186625a6ebab0105726177cd44a0fae8f6f43a1df3"
+      },
+      {
+        "path": "debug-scale-1.25/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "72d61e574da66738a83284578f335bb3eb1106dae6d26eeb09c5dc06f9b8625d"
+      },
+      {
+        "path": "debug-scale-1.25/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "37ecdee61f6f311a5303e5d259eb63a676ffdd34f5aec0d5f2037904efdcf732"
+      },
+      {
+        "path": "debug-scale-1.25/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e1d914aeae4392849d68ce03fca317eb52dd562f62427ee318d70bb4d282a946"
+      },
+      {
+        "path": "debug-scale-1.25/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cc74b65369e3c0958e36d9cf9272249ba18ff253a25fa66acbba940873e7de1d"
+      },
+      {
+        "path": "debug-scale-1.25/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a00da203fa61c6dacc6b8572e04adfb933e4660d627f8f6e9596eb101e1bd492"
+      },
+      {
+        "path": "debug-scale-1.25/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8f40efd28e1ad04ed1c0ea2f8325c61e741079a4429536b90d334d09812a734f"
+      },
+      {
+        "path": "debug-scale-1.25/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "707b64063a507fcb776c9f26cf0decb1fc5c1ca7ecea2dc988e900caaf62e5ad"
+      },
+      {
+        "path": "debug-scale-1.25/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f1cda0cf33fd6592b60af4b4faa422c89e483d917cf31aa20076e15b62643ebb"
+      },
+      {
+        "path": "debug-scale-1.25/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d33a26b97a5933cab7dca99912fb83c0679600de81411324a4dcccc0d8ba7af8"
+      },
+      {
+        "path": "debug-scale-1.25/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "debug-scale-1.25/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ff8092c37b7ee21f992e82b1ce379e0cd9ea19cd4a081069b154853f1738062"
+      },
+      {
+        "path": "debug-scale-1.25/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "b938fe58d61c3dbc05a899a946665e197d8ccf932b0eac3422d374100d6bf432"
+      },
+      {
+        "path": "debug-scale-1.25/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "debug-scale-1.25/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "37a76911f14c54d24f4a1d4827f1b634b31f44f2c354e2ec6658e5f9bf0d52dc"
+      },
+      {
+        "path": "debug-scale-1.25/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "befc22e3e67f6d7a2e9a5dd67d09aa392a30b30a0c9210d581f91b072bd180a7"
+      },
+      {
+        "path": "debug-scale-1.25/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "08c8d0f144fbf42700c8baca0e583fcb16d30ba90013c18d1cbcfa41c0bdf8ae"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-1.5",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\debug-scale-1.5",
+      "--acceptance-scale=1.5"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "8291a55b7514e275a46fbe87bd2fa7235b60c6f49d3101113d7fd4d890bd43e6",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-1.5/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e6529075794321549ce78186d948d5298fb6e9cfe0e7c93b4c4ef885e03aa27a"
+      },
+      {
+        "path": "debug-scale-1.5/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "4f5179c58aeed4e7d17a43acd9e19e43a461083189fcfed9f46223e776c04a2b"
+      },
+      {
+        "path": "debug-scale-1.5/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9cd401a10814314584ac5963f37337530e6f94ec2c0e7075fa8326ce97e3120f"
+      },
+      {
+        "path": "debug-scale-1.5/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7e82698a0ebe860c0587791697e8185e8f29acfd7146d3aa7f437d00a89df7ec"
+      },
+      {
+        "path": "debug-scale-1.5/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8628fd629112249eb6d97a3c7e7d89231afbcdc6f65e0620ad7dde4fbc6bd9ca"
+      },
+      {
+        "path": "debug-scale-1.5/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "0c8d3acf39c6e331a8aedf540152f5c26b7135cfa5604417001c844ebb7152a8"
+      },
+      {
+        "path": "debug-scale-1.5/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b50741009a9402ef54512c0555f941ab0901acaeb1b1c139df1989d307247954"
+      },
+      {
+        "path": "debug-scale-1.5/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "58b7c94ad75ed3cd7100828a1753aa55505feb9aafeb9c019524a99856c717ec"
+      },
+      {
+        "path": "debug-scale-1.5/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c724c93216e665f90441d2cb5b14b08b7d80fd964f959d8ebd2751e42be4cafc"
+      },
+      {
+        "path": "debug-scale-1.5/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d4e821a77288fc934a9cd9088fd34e8dd9405f674754320eaead66ff4f376c4c"
+      },
+      {
+        "path": "debug-scale-1.5/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d332ae02a112104f84fe73ab67876062984a1d7e5078e77103805e5f8f8162ca"
+      },
+      {
+        "path": "debug-scale-1.5/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9907a19f3774dbeffb2512c80dcb42b9339ea16cd7f602344d6406f414975453"
+      },
+      {
+        "path": "debug-scale-1.5/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5b91bafdc1a3955795b4950daaf810532b2469b3ad19aa496efae53ea79ac310"
+      },
+      {
+        "path": "debug-scale-1.5/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9813a7ea718f1662837d42ccdc9054ee990dc7e8c66cd58ae8452776e28edff5"
+      },
+      {
+        "path": "debug-scale-1.5/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "408bda6b6f25d1349914aeed880a33e963236f87a225529d2edbb831ce3f6f76"
+      },
+      {
+        "path": "debug-scale-1.5/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "ad446eb77cd0dd1c4d13f756c414566b2d6813ea33df0037c71fb842ebbf326a"
+      },
+      {
+        "path": "debug-scale-1.5/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9813a7ea718f1662837d42ccdc9054ee990dc7e8c66cd58ae8452776e28edff5"
+      },
+      {
+        "path": "debug-scale-1.5/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "545ef4a10a5ca267b9d48a02375db18da8b1ac5538a0b4f710a5194df08b2b75"
+      },
+      {
+        "path": "debug-scale-1.5/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9bf278c0ebd8bc6ab261fb6bb747d07829dc121116de6bcd0480983ab8b870f8"
+      },
+      {
+        "path": "debug-scale-1.5/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "93fed588ec3001896e0da69ac5ebde198d71e45e48c09acef75aeee11b93a031"
+      }
+    ]
+  },
+  {
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Debug\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\debug-scale-2",
+      "--acceptance-scale=2"
+    ],
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+    "executable_sha256": "8291a55b7514e275a46fbe87bd2fa7235b60c6f49d3101113d7fd4d890bd43e6",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "debug-scale-2/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7b9ad4963107c1cbc48325ca1259420afa73c70630e09cd11ba0d6a0e197749c"
+      },
+      {
+        "path": "debug-scale-2/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "de4107a7ac25882ecfe96fa77413e4bb009b97f3de4b91e53d59daebfa3ba2e2"
+      },
+      {
+        "path": "debug-scale-2/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2248512ab292185b5cf72470724aea8b16cb3d576a3a43301f232ba98f9952d0"
+      },
+      {
+        "path": "debug-scale-2/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f5f1c47fca7318c7af5ea13be9c905d0d58568612587a39b6121c5dfed0ce195"
+      },
+      {
+        "path": "debug-scale-2/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5d6b38b6ddf7c6e7cb03af1d18a984b9d802c7bdda1863a5fe4a99bebc79a65f"
+      },
+      {
+        "path": "debug-scale-2/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "bff91bf088bc5a6a408d7ddac9c911791406580f2ef4050742bf3c3553bbc3d2"
+      },
+      {
+        "path": "debug-scale-2/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "86c5dc08ff3126ef52fba6531559df175c158bdfaccb0693f10011b2f68e0d65"
+      },
+      {
+        "path": "debug-scale-2/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d0f634ef1629fcc4eece123991ef03741a44217ac5012309b47b6b668fb3d64a"
+      },
+      {
+        "path": "debug-scale-2/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a42dffeacdfe277f49a61b0560f339fac4708ffd76e3db16eafbb33fdb07a227"
+      },
+      {
+        "path": "debug-scale-2/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6c8544821bed4776ce15aae08baef18eb341bd176589181af2c9222902e88544"
+      },
+      {
+        "path": "debug-scale-2/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a3a2e99978b225f10c2423eeaf704119c66a78252a6a58d34e28ad2660192478"
+      },
+      {
+        "path": "debug-scale-2/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8c634fb75f65d211d8efdd1b26f030b00369a8c3e59a99b083828763703ff8ce"
+      },
+      {
+        "path": "debug-scale-2/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6bd5d01a00208da28b751cb27ffc9920c8cede77e7af119521accd31c2bc05ae"
+      },
+      {
+        "path": "debug-scale-2/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9ff55ba07cd297b07718e23c76ea9c45e64e1d3c95904ee57f7557d5edf5904a"
+      },
+      {
+        "path": "debug-scale-2/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "fcc1045ea1f2e63ae6c5fc52c072d21ca059493a1a04211b6f394c74b43a954f"
+      },
+      {
+        "path": "debug-scale-2/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "7992fb4b074dc3e39ca88e6346659070dc33ecbe1ac3739c74c42815d0a0ff9b"
+      },
+      {
+        "path": "debug-scale-2/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9ff55ba07cd297b07718e23c76ea9c45e64e1d3c95904ee57f7557d5edf5904a"
+      },
+      {
+        "path": "debug-scale-2/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b8e05dd54a8d9e81e0dc6dd5cec73e663504d48240e53ff79768f248394bd186"
+      },
+      {
+        "path": "debug-scale-2/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2c5f15029a1811bf21e6473e41333c878a2ff462ab4c99620e6d7f2f207f3ee7"
+      },
+      {
+        "path": "debug-scale-2/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9269b24f065383bbb95b5bb6215d94a36bc1c7547547d9b2c100de04f775b452"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "system",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\release-system"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "75f1206f3e0caf147bf6f154505c108aee51eb73d1dd1f36567e1eb7deddcbfa",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-system/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b6c4cbbd5009e6f1e2db9606830bc59f51ee6efa3b906bc58d58928c37a5c011"
+      },
+      {
+        "path": "release-system/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0eda4e1ffa8fcaa3af424b8049e8e3aa6657e260a8f314013f02e49788a53d7c"
+      },
+      {
+        "path": "release-system/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ac15134ff60836a17718d34a7839f38c7e0d3be8c82cdf0197aa50c43e256977"
+      },
+      {
+        "path": "release-system/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75237ada0d428f44e607dc186625a6ebab0105726177cd44a0fae8f6f43a1df3"
+      },
+      {
+        "path": "release-system/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "72d61e574da66738a83284578f335bb3eb1106dae6d26eeb09c5dc06f9b8625d"
+      },
+      {
+        "path": "release-system/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "37ecdee61f6f311a5303e5d259eb63a676ffdd34f5aec0d5f2037904efdcf732"
+      },
+      {
+        "path": "release-system/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e1d914aeae4392849d68ce03fca317eb52dd562f62427ee318d70bb4d282a946"
+      },
+      {
+        "path": "release-system/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cc74b65369e3c0958e36d9cf9272249ba18ff253a25fa66acbba940873e7de1d"
+      },
+      {
+        "path": "release-system/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a00da203fa61c6dacc6b8572e04adfb933e4660d627f8f6e9596eb101e1bd492"
+      },
+      {
+        "path": "release-system/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8f40efd28e1ad04ed1c0ea2f8325c61e741079a4429536b90d334d09812a734f"
+      },
+      {
+        "path": "release-system/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "707b64063a507fcb776c9f26cf0decb1fc5c1ca7ecea2dc988e900caaf62e5ad"
+      },
+      {
+        "path": "release-system/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f1cda0cf33fd6592b60af4b4faa422c89e483d917cf31aa20076e15b62643ebb"
+      },
+      {
+        "path": "release-system/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d33a26b97a5933cab7dca99912fb83c0679600de81411324a4dcccc0d8ba7af8"
+      },
+      {
+        "path": "release-system/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "release-system/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ff8092c37b7ee21f992e82b1ce379e0cd9ea19cd4a081069b154853f1738062"
+      },
+      {
+        "path": "release-system/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "b938fe58d61c3dbc05a899a946665e197d8ccf932b0eac3422d374100d6bf432"
+      },
+      {
+        "path": "release-system/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "release-system/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "37a76911f14c54d24f4a1d4827f1b634b31f44f2c354e2ec6658e5f9bf0d52dc"
+      },
+      {
+        "path": "release-system/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "befc22e3e67f6d7a2e9a5dd67d09aa392a30b30a0c9210d581f91b072bd180a7"
+      },
+      {
+        "path": "release-system/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "08c8d0f144fbf42700c8baca0e583fcb16d30ba90013c18d1cbcfa41c0bdf8ae"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\release-scale-1",
+      "--acceptance-scale=1"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "75f1206f3e0caf147bf6f154505c108aee51eb73d1dd1f36567e1eb7deddcbfa",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8517b5b2e4d2b0e269755b75ec24ed1588778f4c3f45e0733e741492ef256118"
+      },
+      {
+        "path": "release-scale-1/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ae25fb9f7f5d8130aa53a3cbf9ef5df0b55ca30a32bdc6eb34eec7b9d4d33f0a"
+      },
+      {
+        "path": "release-scale-1/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca9c76f4a28da93ac6f4c3d4c15d3cd97387e960beb2cecb9617b8a452e82ed"
+      },
+      {
+        "path": "release-scale-1/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b85c81361d1b50e34f4a7a00108d4b25adf1fc24a30632ac1bbe3738ce9a7c26"
+      },
+      {
+        "path": "release-scale-1/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3a8ef8d8e6d03ec305bc3d879699a0acee62807f39c92764faf8ff1741bfafb5"
+      },
+      {
+        "path": "release-scale-1/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "3c5546427278b5bce96d2dce7e64fb31160aa2b676fa3a0b5f7f4dc076709f64"
+      },
+      {
+        "path": "release-scale-1/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "673032234eb486ae7e87e2dce856263fef3c71837d6768b7a3b87565fa6183de"
+      },
+      {
+        "path": "release-scale-1/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "684b65762e6f7f6d9237c1f1e1c096c5acdc17bfe7256f6c4fa2087f5a2162ee"
+      },
+      {
+        "path": "release-scale-1/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75c3fac25c2d6daedc52076a73c08060cf3e8c0dac211503b6a6b5a59cc025f8"
+      },
+      {
+        "path": "release-scale-1/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "534f4c256c94bae0083cd3379b60c29bbc67407cb4d60292530f0b5a697f0af5"
+      },
+      {
+        "path": "release-scale-1/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "3b890cb2d5f23c789186b33748f5225b7e4fb0cd17089e2f6b0d5d6ff6098a25"
+      },
+      {
+        "path": "release-scale-1/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "79efca901465f7a466defd5d30e876483eff96eb941dac8fe561c5449f84b5cd"
+      },
+      {
+        "path": "release-scale-1/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "efadc154fb69774f26b8e8277ea5bd04fe3cf491759262371ca2642e211c35e5"
+      },
+      {
+        "path": "release-scale-1/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca54b623d7e6e3bd10fa937926de0f2c314fd472f59d4271fba125fd1315b79"
+      },
+      {
+        "path": "release-scale-1/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cb41a33b58f6713374d885e5931ef21ea0318643df0479bad3eb6e9c211487eb"
+      },
+      {
+        "path": "release-scale-1/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "4607946c1f19f83cc50799c8e87a1d6da236faa508001445cab6f7b25186c371"
+      },
+      {
+        "path": "release-scale-1/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7ca54b623d7e6e3bd10fa937926de0f2c314fd472f59d4271fba125fd1315b79"
+      },
+      {
+        "path": "release-scale-1/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d84524946aaa64352e5b2ff6ea963e3c89601d1868f3e0984af8c3a63a48a62d"
+      },
+      {
+        "path": "release-scale-1/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "10f6a5cd8d28b002a98863e3f478aec0451a384a300b9dd119869e1de9c124b4"
+      },
+      {
+        "path": "release-scale-1/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2dafd5ce28c10531accb22997fca951df25fdcc4151c7e4eb0fee9b1b8f31cfa"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1.25",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\release-scale-1.25",
+      "--acceptance-scale=1.25"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "75f1206f3e0caf147bf6f154505c108aee51eb73d1dd1f36567e1eb7deddcbfa",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1.25/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b6c4cbbd5009e6f1e2db9606830bc59f51ee6efa3b906bc58d58928c37a5c011"
+      },
+      {
+        "path": "release-scale-1.25/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "0eda4e1ffa8fcaa3af424b8049e8e3aa6657e260a8f314013f02e49788a53d7c"
+      },
+      {
+        "path": "release-scale-1.25/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "ac15134ff60836a17718d34a7839f38c7e0d3be8c82cdf0197aa50c43e256977"
+      },
+      {
+        "path": "release-scale-1.25/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "75237ada0d428f44e607dc186625a6ebab0105726177cd44a0fae8f6f43a1df3"
+      },
+      {
+        "path": "release-scale-1.25/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "72d61e574da66738a83284578f335bb3eb1106dae6d26eeb09c5dc06f9b8625d"
+      },
+      {
+        "path": "release-scale-1.25/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "37ecdee61f6f311a5303e5d259eb63a676ffdd34f5aec0d5f2037904efdcf732"
+      },
+      {
+        "path": "release-scale-1.25/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e1d914aeae4392849d68ce03fca317eb52dd562f62427ee318d70bb4d282a946"
+      },
+      {
+        "path": "release-scale-1.25/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "cc74b65369e3c0958e36d9cf9272249ba18ff253a25fa66acbba940873e7de1d"
+      },
+      {
+        "path": "release-scale-1.25/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a00da203fa61c6dacc6b8572e04adfb933e4660d627f8f6e9596eb101e1bd492"
+      },
+      {
+        "path": "release-scale-1.25/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8f40efd28e1ad04ed1c0ea2f8325c61e741079a4429536b90d334d09812a734f"
+      },
+      {
+        "path": "release-scale-1.25/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "707b64063a507fcb776c9f26cf0decb1fc5c1ca7ecea2dc988e900caaf62e5ad"
+      },
+      {
+        "path": "release-scale-1.25/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f1cda0cf33fd6592b60af4b4faa422c89e483d917cf31aa20076e15b62643ebb"
+      },
+      {
+        "path": "release-scale-1.25/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d33a26b97a5933cab7dca99912fb83c0679600de81411324a4dcccc0d8ba7af8"
+      },
+      {
+        "path": "release-scale-1.25/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "release-scale-1.25/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2ff8092c37b7ee21f992e82b1ce379e0cd9ea19cd4a081069b154853f1738062"
+      },
+      {
+        "path": "release-scale-1.25/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "b938fe58d61c3dbc05a899a946665e197d8ccf932b0eac3422d374100d6bf432"
+      },
+      {
+        "path": "release-scale-1.25/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7c860fa9b0e9b339b133e8224ee923fca8b38bf297dd2902b9fa769352cd1dab"
+      },
+      {
+        "path": "release-scale-1.25/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "37a76911f14c54d24f4a1d4827f1b634b31f44f2c354e2ec6658e5f9bf0d52dc"
+      },
+      {
+        "path": "release-scale-1.25/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "befc22e3e67f6d7a2e9a5dd67d09aa392a30b30a0c9210d581f91b072bd180a7"
+      },
+      {
+        "path": "release-scale-1.25/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "08c8d0f144fbf42700c8baca0e583fcb16d30ba90013c18d1cbcfa41c0bdf8ae"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-1.5",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\release-scale-1.5",
+      "--acceptance-scale=1.5"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "75f1206f3e0caf147bf6f154505c108aee51eb73d1dd1f36567e1eb7deddcbfa",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-1.5/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "e6529075794321549ce78186d948d5298fb6e9cfe0e7c93b4c4ef885e03aa27a"
+      },
+      {
+        "path": "release-scale-1.5/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "4f5179c58aeed4e7d17a43acd9e19e43a461083189fcfed9f46223e776c04a2b"
+      },
+      {
+        "path": "release-scale-1.5/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9cd401a10814314584ac5963f37337530e6f94ec2c0e7075fa8326ce97e3120f"
+      },
+      {
+        "path": "release-scale-1.5/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7e82698a0ebe860c0587791697e8185e8f29acfd7146d3aa7f437d00a89df7ec"
+      },
+      {
+        "path": "release-scale-1.5/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8628fd629112249eb6d97a3c7e7d89231afbcdc6f65e0620ad7dde4fbc6bd9ca"
+      },
+      {
+        "path": "release-scale-1.5/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "0c8d3acf39c6e331a8aedf540152f5c26b7135cfa5604417001c844ebb7152a8"
+      },
+      {
+        "path": "release-scale-1.5/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b50741009a9402ef54512c0555f941ab0901acaeb1b1c139df1989d307247954"
+      },
+      {
+        "path": "release-scale-1.5/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "58b7c94ad75ed3cd7100828a1753aa55505feb9aafeb9c019524a99856c717ec"
+      },
+      {
+        "path": "release-scale-1.5/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "c724c93216e665f90441d2cb5b14b08b7d80fd964f959d8ebd2751e42be4cafc"
+      },
+      {
+        "path": "release-scale-1.5/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d4e821a77288fc934a9cd9088fd34e8dd9405f674754320eaead66ff4f376c4c"
+      },
+      {
+        "path": "release-scale-1.5/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d332ae02a112104f84fe73ab67876062984a1d7e5078e77103805e5f8f8162ca"
+      },
+      {
+        "path": "release-scale-1.5/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9907a19f3774dbeffb2512c80dcb42b9339ea16cd7f602344d6406f414975453"
+      },
+      {
+        "path": "release-scale-1.5/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5b91bafdc1a3955795b4950daaf810532b2469b3ad19aa496efae53ea79ac310"
+      },
+      {
+        "path": "release-scale-1.5/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9813a7ea718f1662837d42ccdc9054ee990dc7e8c66cd58ae8452776e28edff5"
+      },
+      {
+        "path": "release-scale-1.5/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "408bda6b6f25d1349914aeed880a33e963236f87a225529d2edbb831ce3f6f76"
+      },
+      {
+        "path": "release-scale-1.5/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "ad446eb77cd0dd1c4d13f756c414566b2d6813ea33df0037c71fb842ebbf326a"
+      },
+      {
+        "path": "release-scale-1.5/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9813a7ea718f1662837d42ccdc9054ee990dc7e8c66cd58ae8452776e28edff5"
+      },
+      {
+        "path": "release-scale-1.5/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "545ef4a10a5ca267b9d48a02375db18da8b1ac5538a0b4f710a5194df08b2b75"
+      },
+      {
+        "path": "release-scale-1.5/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9bf278c0ebd8bc6ab261fb6bb747d07829dc121116de6bcd0480983ab8b870f8"
+      },
+      {
+        "path": "release-scale-1.5/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "93fed588ec3001896e0da69ac5ebde198d71e45e48c09acef75aeee11b93a031"
+      }
+    ]
+  },
+  {
+    "configuration": "Release",
+    "mode": "scale-2",
+    "arguments": [
+      "D:\\code\\RynUI\\out\\build\\windows-msvc\\examples\\Release\\rynui_token_gallery.exe",
+      "--switch-acceptance",
+      "--evidence-dir=D:\\code\\RynUI\\out\\046-switch-windows\\release-scale-2",
+      "--acceptance-scale=2"
+    ],
+    "executable": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+    "executable_sha256": "75f1206f3e0caf147bf6f154505c108aee51eb73d1dd1f36567e1eb7deddcbfa",
+    "exit_code": 0,
+    "captures": [
+      {
+        "path": "release-scale-2/compact.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "7b9ad4963107c1cbc48325ca1259420afa73c70630e09cd11ba0d6a0e197749c"
+      },
+      {
+        "path": "release-scale-2/controlled-no-echo.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "de4107a7ac25882ecfe96fa77413e4bb009b97f3de4b91e53d59daebfa3ba2e2"
+      },
+      {
+        "path": "release-scale-2/dark.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2248512ab292185b5cf72470724aea8b16cb3d576a3a43301f232ba98f9952d0"
+      },
+      {
+        "path": "release-scale-2/disabled-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "f5f1c47fca7318c7af5ea13be9c905d0d58568612587a39b6121c5dfed0ce195"
+      },
+      {
+        "path": "release-scale-2/hover.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "5d6b38b6ddf7c6e7cb03af1d18a984b9d802c7bdda1863a5fe4a99bebc79a65f"
+      },
+      {
+        "path": "release-scale-2/inactive.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "bff91bf088bc5a6a408d7ddac9c911791406580f2ef4050742bf3c3553bbc3d2"
+      },
+      {
+        "path": "release-scale-2/initial.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "86c5dc08ff3126ef52fba6531559df175c158bdfaccb0693f10011b2f68e0d65"
+      },
+      {
+        "path": "release-scale-2/keyboard-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "d0f634ef1629fcc4eece123991ef03741a44217ac5012309b47b6b668fb3d64a"
+      },
+      {
+        "path": "release-scale-2/keyboard-settled.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a42dffeacdfe277f49a61b0560f339fac4708ffd76e3db16eafbb33fdb07a227"
+      },
+      {
+        "path": "release-scale-2/keyboard-wave.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6c8544821bed4776ce15aae08baef18eb341bd176589181af2c9222902e88544"
+      },
+      {
+        "path": "release-scale-2/loading-cancel.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "a3a2e99978b225f10c2423eeaf704119c66a78252a6a58d34e28ad2660192478"
+      },
+      {
+        "path": "release-scale-2/narrow-10.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "8c634fb75f65d211d8efdd1b26f030b00369a8c3e59a99b083828763703ff8ce"
+      },
+      {
+        "path": "release-scale-2/narrow-40.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "6bd5d01a00208da28b751cb27ffc9920c8cede77e7af119521accd31c2bc05ae"
+      },
+      {
+        "path": "release-scale-2/narrow-recovered.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9ff55ba07cd297b07718e23c76ea9c45e64e1d3c95904ee57f7557d5edf5904a"
+      },
+      {
+        "path": "release-scale-2/pointer-pressed.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "fcc1045ea1f2e63ae6c5fc52c072d21ca059493a1a04211b6f394c74b43a954f"
+      },
+      {
+        "path": "release-scale-2/resized.png",
+        "size": [
+          1420,
+          900
+        ],
+        "sha256": "7992fb4b074dc3e39ca88e6346659070dc33ecbe1ac3739c74c42815d0a0ff9b"
+      },
+      {
+        "path": "release-scale-2/rtl-small-icon.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9ff55ba07cd297b07718e23c76ea9c45e64e1d3c95904ee57f7557d5edf5904a"
+      },
+      {
+        "path": "release-scale-2/wave-finished.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "b8e05dd54a8d9e81e0dc6dd5cec73e663504d48240e53ff79768f248394bd186"
+      },
+      {
+        "path": "release-scale-2/wave-middle.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "2c5f15029a1811bf21e6473e41333c878a2ff462ab4c99620e6d7f2f207f3ee7"
+      },
+      {
+        "path": "release-scale-2/wave-start.png",
+        "size": [
+          1600,
+          1000
+        ],
+        "sha256": "9269b24f065383bbb95b5bb6215d94a36bc1c7547547d9b2c100de04f775b452"
+      }
+    ]
+  }
+]

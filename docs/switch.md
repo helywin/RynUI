@@ -24,3 +24,5 @@ Switch Theme token 支持四种 inner margin（普通/Small 的 min/max）、han
 按压时手柄向轨道内部伸展 30%，cancel、blur、disabled/loading 后恢复。阴影与 focus 使用共同 RoundedEffect，手柄阴影插在轨道 fill 和手柄 fill 之间，保持原有十层 quad 的 identity。`wave(Prop<bool>)` 默认启用，只有用户有效激活产生有限反馈；外部 checked 更新不会产生 wave。重复激活复用一个 range，结束或 disabled/loading/窗口失活/motion=false/reduced motion/销毁后清空效果，稳态不请求下一帧。
 
 设计来源：[锁定 Ant Design 6.6.5 Switch](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/switch/index.tsx)。DOM/HTML/CSS、React ref 与 Web value/defaultValue 兼容别名不移植。046 的任务与证据分别记录原生功能、共同合同和各平台验收。
+
+共同合同已通过 Windows MSVC headless Debug/Release；Windows 真窗口 D3D12/DXIL 十次缩放运行与 200 张 readback 见 [Windows 证据](../openspec/changes/046-20261002-complete-native-switch-features/evidence/windows/README.md)。Linux 原生验收独立待完成。

@@ -891,6 +891,9 @@ private:
 } // namespace
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
+    if (has_argument(argc, argv, "--switch-acceptance")) {
+        return run_switch_acceptance(argc, argv);
+    }
     if (has_argument(argc, argv, "--divider-acceptance")) {
         return run_divider_acceptance(argc, argv);
     }

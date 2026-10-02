@@ -16,7 +16,7 @@
 
 ### Windows
 
-- [ ] 4.1 windows-msvc Debug/Release build/受影响 CTest，运行真实 SDL/D3D12/DXIL 窗口的内容/图标/RTL/Space/pointer/ref/loading/disabled/wave/resize/失活与销毁验收；系统 DPI 和 1/1.25/1.5/2 render scale，保存 GPU readback PNG、日志与机器可核验结果；检查静止后没有 deadline/持续提交。
+- [x] 4.1 windows-msvc Debug/Release build/受影响 CTest，运行真实 SDL/D3D12/DXIL 窗口的内容/图标/RTL/Space/pointer/ref/loading/disabled/wave/resize/失活与销毁验收；系统 DPI 和 1/1.25/1.5/2 render scale，保存 GPU readback PNG、日志与机器可核验结果；检查静止后没有 deadline/持续提交。
 
 ### Linux
 
