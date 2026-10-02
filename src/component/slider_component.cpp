@@ -47,6 +47,13 @@ struct SliderState final {
     SliderRange candidate;
     SliderRange raw_value;
     SliderLimits limits;
+    SliderMarks marks;
+    std::vector<double> points;
+    bool marks_only{};
+    bool dots{};
+    bool included{true};
+    SliderHintOptions hint;
+    std::function<String(double)> hint_formatter;
     bool range{};
     bool controlled{};
     bool disabled{};
@@ -245,7 +252,7 @@ void SliderComponentHost::change(runtime::ComponentId id, std::size_t thumb, dou
         return;
     }
     auto next = s->gesture ? s->candidate : s->value;
-    value = normalize_slider_value(value, s->limits);
+    value = normalize_slider_value(value, s->limits, s->marks, s->marks_only);
     if (s->range) {
         if (thumb == 0) {
             next.lower = std::min(value, next.upper);
@@ -407,19 +414,15 @@ bool SliderComponentHost::keyboard(runtime::ComponentId id, std::size_t thumb, c
     } else if (event.key == Key::end) {
         value = s->limits.maximum;
     } else {
-        double direction = event.key == Key::right || event.key == Key::up || event.key == Key::page_up ? 1 : -1;
+        int direction = event.key == Key::right || event.key == Key::up || event.key == Key::page_up ? 1 : -1;
         if (s->reverse && event.key != Key::page_up && event.key != Key::page_down) {
             direction = -direction;
         }
-        const double steps = event.key == Key::page_up || event.key == Key::page_down ? 10 : 1;
-        value = std::clamp(value + direction * steps * s->limits.step, s->limits.minimum, s->limits.maximum);
-        // At an extra maximum endpoint, one decrement returns to the last grid point.
-        if (direction < 0 && before == s->limits.maximum) {
-            value = std::fma(std::ceil((before - s->limits.minimum) / s->limits.step) - steps, s->limits.step,
-                             s->limits.minimum);
-        }
+        const int steps = event.key == Key::page_up || event.key == Key::page_down ? 10 : 1;
+        value = advance_slider_value(value, s->limits, s->marks, s->marks_only, direction, steps);
     }
-    value = normalize_slider_value(std::clamp(value, s->limits.minimum, s->limits.maximum), s->limits);
+    value = normalize_slider_value(std::clamp(value, s->limits.minimum, s->limits.maximum), s->limits, s->marks,
+                                   s->marks_only);
     if (s->range) {
         value = thumb == 0 ? std::min(value, current.upper) : std::max(value, current.lower);
     }
@@ -450,6 +453,12 @@ struct SliderPropsAccess {
         validate_slider_limits(limits);
         const auto orientation = read_prop(props.orientation_);
         validate_orientation(orientation);
+        auto marks = sorted_slider_marks(read_prop(props.marks_), limits);
+        const bool marks_only = read_prop(props.marks_only_);
+        const bool dots = read_prop(props.dots_);
+        auto points = slider_visual_points(limits, marks, marks_only, dots);
+        const auto hint = read_prop(props.hint_);
+        validate_slider_hint(hint);
         const auto raw = props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(Value{});
         const auto as_range = [](Value value) {
             if constexpr (std::is_same_v<Value, SliderRange>) {
@@ -458,7 +467,7 @@ struct SliderPropsAccess {
                 return SliderRange{value, value};
             }
         };
-        const auto initial = normalize_slider_range(as_range(raw), limits);
+        const auto initial = normalize_slider_range(as_range(raw), limits, marks, marks_only);
         auto& build = runtime::require_component_build_context();
         const auto id = build.mount_component<SliderState>();
         auto& s = build.state<SliderState>(id);
@@ -467,6 +476,13 @@ struct SliderPropsAccess {
         s.range = range;
         s.controlled = props.value_.has_value();
         s.limits = limits;
+        s.marks = std::move(marks);
+        s.marks_only = marks_only;
+        s.dots = dots;
+        s.points = std::move(points);
+        s.included = read_prop(props.included_);
+        s.hint = hint;
+        s.hint_formatter = props.hint_formatter_;
         s.raw_value = as_range(raw);
         s.value = s.candidate = initial;
         s.orientation = orientation;
@@ -596,7 +612,8 @@ struct SliderPropsAccess {
                 if (!state) {
                     return;
                 }
-                const auto next = normalize_slider_range(as_range(value), state->limits);
+                const auto next =
+                    normalize_slider_range(as_range(value), state->limits, state->marks, state->marks_only);
                 state->raw_value = as_range(value);
                 state->value = next;
                 if (!state->gesture) {
@@ -611,15 +628,75 @@ struct SliderPropsAccess {
             if (!state) {
                 return;
             }
-            const auto next = normalize_slider_range(state->raw_value, limits);
+            validate_slider_marks(state->marks, limits);
+            auto points = slider_visual_points(limits, state->marks, state->marks_only, state->dots);
+            const auto next = normalize_slider_range(state->raw_value, limits, state->marks, state->marks_only);
             host.cancel(id);
             state = host.find(id);
             if (!state) {
                 return;
             }
             state->limits = limits;
+            state->points = std::move(points);
             state->value = state->candidate = next;
             host.update(id, true);
+        });
+        connect_prop(scope, props.marks_, [&host, id](SliderMarks marks) {
+            auto* state = host.find(id);
+            if (!state) {
+                return;
+            }
+            marks = sorted_slider_marks(std::move(marks), state->limits);
+            auto points = slider_visual_points(state->limits, marks, state->marks_only, state->dots);
+            const auto next = normalize_slider_range(state->raw_value, state->limits, marks, state->marks_only);
+            host.cancel(id);
+            state = host.find(id);
+            if (!state) {
+                return;
+            }
+            state->marks = std::move(marks);
+            state->points = std::move(points);
+            state->value = state->candidate = next;
+            host.services_->dirty().invalidate(state->node, runtime::DirtyFlags::Measure);
+            host.update(id, true);
+        });
+        connect_prop(scope, props.marks_only_, [&host, id](bool value) {
+            auto* state = host.find(id);
+            if (!state) {
+                return;
+            }
+            auto points = slider_visual_points(state->limits, state->marks, value, state->dots);
+            const auto next = normalize_slider_range(state->raw_value, state->limits, state->marks, value);
+            host.cancel(id);
+            state = host.find(id);
+            if (!state) {
+                return;
+            }
+            state->marks_only = value;
+            state->points = std::move(points);
+            state->value = state->candidate = next;
+            host.update(id, true);
+        });
+        connect_prop(scope, props.dots_, [&host, id](bool value) {
+            if (auto* state = host.find(id)) {
+                auto points = slider_visual_points(state->limits, state->marks, state->marks_only, value);
+                state->dots = value;
+                state->points = std::move(points);
+                host.update(id, true);
+            }
+        });
+        connect_prop(scope, props.included_, [&host, id](bool value) {
+            if (auto* state = host.find(id)) {
+                state->included = value;
+                host.update(id, false);
+            }
+        });
+        connect_prop(scope, props.hint_, [&host, id](SliderHintOptions value) {
+            validate_slider_hint(value);
+            if (auto* state = host.find(id)) {
+                state->hint = std::move(value);
+                host.update(id, false);
+            }
         });
         connect_prop(scope, props.disabled_, [&host, id](bool disabled) {
             auto* state = host.find(id);

@@ -13,7 +13,7 @@ Goals：共享候选值算法，真实 Text 标签、独立 thumb 值提示和�
 1. 保持 SliderLimits 的数值 step 和旧聚合初始化兼容，新增 marksOnly 属性表达 Web step=null 的原生语义。marks 使用 vector<SliderMark>{double value,String label}；一次验证完整 vector 后排序、提交。不加入 CSS 样式，mark/dot 外观通过 Slider Theme token。
 2. 归一化用当前 step 候选加 marks/min/max 比较，二分找邻近 mark；dense step 不枚举。marksOnly 仅遍历/二分排序后的有限点。dots 开启时限制完整视觉点集为 4096，超限抛异常；默认不开启 dots，不影响旧输入网格上限。
 3. marks 标签为 child component 的 Text，加独立点击 interaction；Slider 自有布局分别测量标签并预留文字区域，rail/thumb 位置只使用轨道区域。动态 marks 只重建 label 子树，thumb、scope 和 value hint identity 保留。空 label 保留点且不占文字空间。
-4. thumb 外包 Tooltip，内部 trigger child 保持原有 hit/focus/scene。hint title/open 用 Signal；默认 Auto，hover/keyboard focus/drag 更新，禁用优先；formatter 默认用 locale-independent double 字符串。Tooltip 的 Escape latch 支持受控提示，通过 onOpenChange 收到关闭后锁存至 Auto 退出。
+4. thumb 外包 Tooltip，内部 trigger child 保持原有 hit/focus/scene。hint title/open 用 Signal；默认 Auto，hover/keyboard focus/drag 更新，禁用优先；mode/placement 组成可比较 reactive options，hintFormatter 为独立静态 callback，默认用 locale-independent double 字符串。Tooltip 的 Escape latch 支持受控提示，通过 onOpenChange 收到关闭后锁存至 Auto 退出。
 5. included=false 令 track 使用零尺寸 retained quad，避免纯切换重建 topology；dot 的 active 条件随 included 改变。新 metrics/colors 进入既有 Slider phase token，JSON/hash/继承/algorithm 和主题 golden 同步。
 
 ## Risks / Trade-offs

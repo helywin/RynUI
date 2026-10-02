@@ -61,6 +61,79 @@ runtime::Point at(Fixture& f, const detail::MountedSliderComponent& m, double ra
                     : runtime::Point{b.x + pos + node.translation.x, b.y + b.height / 2 + node.translation.y};
 }
 
+void marks_numeric_contracts() {
+    static_assert(std::is_same_v<decltype(SliderProps{}
+                                              .marks(SliderMarks{})
+                                              .marksOnly(true)
+                                              .dots(true)
+                                              .included(false)
+                                              .hint(SliderHintOptions{})),
+                                 SliderProps&>);
+    const SliderLimits limits{0, 100, 10};
+    const auto marks = detail::sorted_slider_marks({{37, String{u8"中文"}}, {20, String{u8"twenty"}}}, limits);
+    check(marks.front().value == 20 && marks.back().value == 37, "marks were not sorted");
+    check(detail::normalize_slider_value(37, limits, marks) == 37, "mark lost to step grid");
+    check(detail::normalize_slider_value(35, limits, marks) == 37, "closest mark was ignored");
+    check(detail::normalize_slider_value(10, limits, marks, true) == 20, "marks-only tie did not select larger value");
+    check(detail::normalize_slider_value(-1, limits, marks, true) == 0 &&
+              detail::normalize_slider_value(200, limits, marks, true) == 100,
+          "marks-only boundaries absent");
+    check(detail::advance_slider_value(20, limits, marks, true, 1, 1) == 37 &&
+              detail::advance_slider_value(37, limits, marks, true, -1, 1) == 20,
+          "discrete arrows skipped a mark");
+    check(detail::advance_slider_value(30, limits, marks, false, 1, 1) == 37 &&
+              detail::advance_slider_value(37, limits, marks, false, -1, 1) == 30,
+          "step/marks union skipped nearest point");
+    check(detail::advance_slider_value(37, limits, marks, true, 1, 10) == 100, "discrete Page clamp failed");
+    check(near(detail::advance_slider_value(1, {0, 1, 0.3}, {}, false, -1, 1), 0.9),
+          "extra maximum decrement lost final step");
+    check(detail::slider_visual_points(limits, marks, true, true) == std::vector<double>{0, 20, 37, 100},
+          "marks-only dots wrong");
+    check(detail::slider_visual_points(limits, marks, false, true).size() == 12, "union dots duplicated mark on grid");
+    rejects([&] { (void)detail::sorted_slider_marks({{20, {}}, {20, {}}}, limits); });
+    rejects([&] { (void)detail::sorted_slider_marks({{NAN, {}}}, limits); });
+    rejects([&] { (void)detail::sorted_slider_marks({{101, {}}}, limits); });
+    rejects([&] { (void)detail::slider_visual_points({0, 100, 0.001}, {}, false, true); });
+    check(detail::slider_visual_points({0, 100, 0.001}, {}, false, false).empty(),
+          "dense grid without dots allocated visual points");
+    check(detail::slider_visual_points({0, 4095, 1}, {}, false, true).size() == 4096, "dots boundary rejected");
+    rejects([&] { (void)detail::sorted_slider_marks(SliderMarks(4097), limits); });
+    Fixture f;
+    Signal<SliderMarks> reactive{marks};
+    Signal<SliderLimits> dynamic_limits{limits};
+    Signal<double> value{20};
+    int changes{};
+    int completes{};
+    f.services.mount(Content{[&] {
+        Slider(SliderProps{}
+                   .value(value)
+                   .marks(reactive)
+                   .marksOnly(true)
+                   .limits(dynamic_limits)
+                   .onChange([&](double next) {
+                       ++changes;
+                       value.set(next);
+                   })
+                   .onChangeComplete([&](double) { ++completes; }));
+    }});
+    f.synchronize();
+    const auto mounted = f.services.slider().mounted()[0];
+    check(f.services.focus().request_focus(mounted.thumbs[0], FocusModality::keyboard), "discrete focus failed");
+    press_key(f, Key::right);
+    check(value.get() == 37 && changes == 1 && completes == 1, "discrete mounted keyboard failed");
+    const auto previous = f.services.slider().snapshot(mounted.component).value;
+    rejects([&] { reactive.set(SliderMarks{{200, {}}}); });
+    check(f.services.slider().snapshot(mounted.component).value == previous, "invalid marks changed value");
+    reactive.set(marks);
+    rejects([&] { dynamic_limits.set({0, 30, 10}); });
+    check(f.services.slider().snapshot(mounted.component).limits == limits, "invalid limits discarded marks");
+    dynamic_limits.set(limits);
+    reactive.set(SliderMarks{{50, String{u8"half"}}});
+    f.synchronize();
+    check(f.services.slider().snapshot(mounted.component).value.lower == 50 && changes == 1,
+          "dynamic marks normalization fired change or chose wrong point");
+}
+
 void numeric_and_api() {
     static_assert(std::is_same_v<decltype(SliderProps{}.value(1.0).limits(SliderLimits{})), SliderProps&>);
     static_assert(std::is_same_v<decltype(RangeSliderProps{}.value(SliderRange{}).reverse(true)), RangeSliderProps&>);
@@ -301,6 +374,7 @@ void geometry_theme_and_reentrancy() {
 
 int main() {
     try {
+        marks_numeric_contracts();
         numeric_and_api();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();

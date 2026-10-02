@@ -6,7 +6,7 @@
 
 ## 2. 标记数值（平台通用）
 
-- [ ] 2.1 实现 typed marks/marksOnly/dots/included/hint 配置与共享候选计算、配置原子拒绝；补边界/等距/离散键盘/dense 上限合同，Windows/MSVC headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 API 文档和 evidence 并提交。
+- [x] 2.1 实现 typed marks/marksOnly/dots/included/hint 配置与共享候选计算、配置原子拒绝；补边界/等距/离散键盘/dense 上限合同，Windows/MSVC headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 API 文档和 evidence 并提交。
 
 ## 3. 标签、点与提示（平台通用）
 
