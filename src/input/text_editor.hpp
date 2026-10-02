@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -28,6 +29,7 @@ enum class TextEditError {
     revision_exhausted,
     stale_owner,
     revision_conflict,
+    formatter_failure,
 };
 
 struct TextEditResult final {
@@ -84,9 +86,9 @@ struct TextCompositionView {
     bool active{};
 };
 
-// Owned by TextEditorStore. Never retain a reference across destroy; delayed
-// work resolves TextInputOwnerId again through the store before dispatching.
-class TextEditorState final {
+// Store lookup is authoritative. User-edit callbacks temporarily pin the state;
+// destroying its owner retires it immediately and rejects pending publication.
+class TextEditorState final : public std::enable_shared_from_this<TextEditorState> {
 public:
     TextEditorState(const TextEditorState&) = delete;
     TextEditorState& operator=(const TextEditorState&) = delete;
@@ -124,6 +126,8 @@ public:
     // same normalization/limits/atomic publication as a committed edit.
     [[nodiscard]] TextEditResult set_value(std::string_view text);
     [[nodiscard]] TextEditResult set_limits(TextEditorLimits limits);
+    using EditTransform = std::function<std::string(std::string_view)>;
+    void set_edit_transform(EditTransform transform);
     [[nodiscard]] TextEditResult replace_selection(std::string_view text);
     [[nodiscard]] TextEditResult replace_range(TextSelection range, std::string_view text);
     [[nodiscard]] TextEditResult erase_backward();
@@ -177,6 +181,10 @@ private:
     std::uint64_t revision_{};
     bool disabled_{};
     bool read_only_{};
+    EditTransform edit_transform_;
+    std::uint64_t transaction_generation_{};
+    bool transforming_{};
+    bool retired_{};
 };
 
 class TextEditorStore final {
@@ -203,7 +211,7 @@ private:
     void ensure_owner_thread() const;
 
     struct Slot final {
-        std::unique_ptr<TextEditorState> state;
+        std::shared_ptr<TextEditorState> state;
         std::uint32_t generation{1};
     };
 

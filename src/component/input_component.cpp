@@ -7,6 +7,7 @@
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
 #include <ryn/password.hpp>
+#include <ryn/text.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -76,6 +77,20 @@ struct InputState {
     bool allow_clear{};
     bool custom_suffix{};
     Signal<bool> clear_visible{false};
+    bool show_count{};
+    InputCountOptions count_options;
+    std::optional<std::size_t> hard_max;
+    std::function<std::size_t(StringView)> count_strategy;
+    std::function<String(InputCountInfo)> count_formatter;
+    std::function<String(String, std::size_t)> exceed_formatter;
+    Signal<String> count_text{String{}};
+    runtime::NodeId count_node;
+    std::size_t count_value{};
+    bool count_exceeded{};
+    std::optional<std::uint64_t> count_revision;
+    std::uint64_t count_generation{};
+    bool counting{};
+    bool count_ready{};
     std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
@@ -145,7 +160,8 @@ input::TextInputProperties input_properties(const InputState& state) noexcept {
 
 InputVisuals resolve_visuals(const InputState& state, const InputTokenSet& tokens) {
     const auto& colors = tokens.colors;
-    const bool error = state.status == InputStatus::Error;
+    const bool error =
+        state.status == InputStatus::Error || (state.status == InputStatus::Default && state.count_exceeded);
     const bool warning = state.status == InputStatus::Warning;
     const Color status_color = error ? colors.error_border : warning ? colors.warning_border : colors.border;
     const Color hover_border = error     ? colors.error_hover_border
@@ -283,6 +299,23 @@ void validate(InputVariant value) {
         throw std::invalid_argument("Invalid Input variant");
     }
 }
+
+void validate(InputCountOptions value) {
+    if (value.unit < InputCountUnit::Scalar || value.unit > InputCountUnit::Grapheme) {
+        throw std::invalid_argument("Invalid Input count unit");
+    }
+}
+
+std::size_t count_value(StringView value, InputCountUnit unit, const std::function<std::size_t(StringView)>& strategy) {
+    if (strategy) {
+        return strategy(value);
+    }
+    input::TextBoundaryMap boundaries;
+    if (!boundaries.assign(value.bytes())) {
+        throw std::invalid_argument("Invalid Input count value");
+    }
+    return unit == InputCountUnit::Grapheme ? boundaries.grapheme_count() : boundaries.scalar_count();
+}
 } // namespace
 
 struct InputPropsAccess {
@@ -303,6 +336,8 @@ struct InputPropsAccess {
         validate(size);
         validate(status);
         validate(variant);
+        const auto count_options = read_prop(props.common_.count_);
+        validate(count_options);
         const auto purpose = read_prop(props.common_.purpose_);
         const auto capitalization = read_prop(props.common_.capitalization_);
         validate(purpose);
@@ -338,6 +373,13 @@ struct InputPropsAccess {
         state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
         state.allow_clear = props.common_.allow_clear_ && read_prop(*props.common_.allow_clear_);
         state.custom_suffix = suffix.has_value();
+        state.show_count = props.common_.show_count_ && read_prop(*props.common_.show_count_);
+        state.count_options = count_options;
+        state.hard_max =
+            props.common_.max_length_ ? std::optional{read_prop(*props.common_.max_length_)} : std::nullopt;
+        state.count_strategy = props.common_.count_strategy_;
+        state.count_formatter = props.common_.count_formatter_;
+        state.exceed_formatter = props.common_.exceed_formatter_;
         state.clear_visible.set(state.allow_clear && !initial.empty() && !disabled && !read_only);
         state.password_lifetime = props.password_lifetime_;
         state.on_change = props.common_.on_change_;
@@ -470,16 +512,35 @@ struct InputPropsAccess {
         const std::array<graphics::QuadInstance, 2> empty_overlays{};
         state.overlay_surface =
             host.surfaces().create_surface(component, state.mounted.node, overlay_fragment, empty_overlays, no_effects);
+        const auto count_text = state.count_text;
         std::optional<InputSuffix> composed_suffix = suffix;
-        if (props.common_.allow_clear_) {
+        if (props.common_.allow_clear_ || props.common_.show_count_) {
             const auto clear_visible = state.clear_visible;
-            composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix] {
-                mount_input_affix_action(
-                    *owner.host_, IconName::CloseCircleFilled, false, [&owner, component] { owner.clear(component); },
-                    clear_visible);
+            const bool has_clear = props.common_.allow_clear_.has_value();
+            const bool has_count = props.common_.show_count_.has_value();
+            composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix, count_text, has_clear, has_count] {
+                if (has_clear) {
+                    mount_input_affix_action(
+                        *owner.host_, IconName::CloseCircleFilled, false,
+                        [&owner, component] { owner.clear(component); }, clear_visible);
+                }
                 if (suffix) {
                     SlotContentAccess::function (*suffix)();
                 }
+                if (!has_count) {
+                    return;
+                }
+                auto& build = runtime::require_component_build_context();
+                const auto counter = build.mount_component<InputSlotState>();
+                const auto node = build.root(counter);
+                owner.host_->components().state<InputState>(component)->count_node = node;
+                owner.host_->layout().set_layout(node, layout::BoxLayout{});
+                owner.host_->nodes().require(node).clip_content = true;
+                owner.host_->nodes().require(node).external_layout.width = 0.0F;
+                owner.host_->nodes().require(node).external_layout.height = 0.0F;
+                build.on_resource_cleanup(
+                    counter, [host = owner.host_, node] { static_cast<void>(host->layout().remove_layout(node)); });
+                build.mount_slot(counter, Content{[count_text] { Text(TextProps{}.content(count_text)); }});
             }};
         }
         state.layout.prefix = prefix.has_value();
@@ -512,6 +573,10 @@ struct InputPropsAccess {
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 host.layout().set_layout(state.viewport, layout::LeafLayout{});
                 const auto suffix_component = make_slot();
+                layout::FlexLayout suffix_layout;
+                suffix_layout.align = layout::FlexAlign::center;
+                suffix_layout.item_policy = layout::FlexItemPolicy::sequential;
+                host.layout().set_layout(slots.root(suffix_component), suffix_layout);
                 if (composed_suffix) {
                     slots.mount_slot_with_semantic_text_style(suffix_component, *composed_suffix,
                                                               Prop<runtime::SemanticForeground>{state.slot_foreground},
@@ -525,6 +590,7 @@ struct InputPropsAccess {
             [&owner, component] { owner.apply_material_transition(component); });
         state.selected_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
         state.placeholder_scene = host.text().scene_service().create_view(state.text_scene, state.viewport);
+        owner.configure_count_transform(component);
         owner.update_text(component);
         host.layout().set_intrinsic_measure(
             state.viewport, 1, [&owner, component](layout::Constraints) -> layout::IntrinsicMeasurement {
@@ -674,13 +740,35 @@ struct InputPropsAccess {
                 }
                 auto limits = editor.limits();
                 limits.max_scalars = value;
+                current.hard_max = value;
+                ++current.count_generation;
+                current.count_revision.reset();
                 const auto result = editor.set_limits(limits);
                 check(result);
-                if (result.value_changed) {
-                    owner.update_text(current.mounted.component);
+                owner.configure_count_transform(current.mounted.component);
+                owner.update_text(current.mounted.component);
+            });
+        }
+        if (props.common_.show_count_) {
+            connect(*props.common_.show_count_, [](auto& owner, auto& current, bool value) {
+                if (current.show_count != value) {
+                    current.show_count = value;
+                    ++current.count_generation;
+                    current.count_revision.reset();
+                    owner.update_text(current.mounted.component, false);
                 }
             });
         }
+        connect(props.common_.count_, [](auto& owner, auto& current, InputCountOptions value) {
+            validate(value);
+            if (current.count_options != value) {
+                current.count_options = value;
+                ++current.count_generation;
+                current.count_revision.reset();
+                owner.configure_count_transform(current.mounted.component);
+                owner.update_text(current.mounted.component, false);
+            }
+        });
         const auto theme = build.theme_scope();
         state.theme_subscription =
             theme->capture([&owner, component](theme_runtime::DirtyPhase) { owner.update_theme(component); },
@@ -749,6 +837,7 @@ struct InputPropsAccess {
                 &host.surfaces());
         }
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+        state.count_ready = true;
     }
 };
 
@@ -1244,9 +1333,16 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     invalidate(component, runtime::DirtyFlags::Material);
 }
 
-void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout) {
+void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout, bool refresh_count) {
     auto* state = host_->components().state<InputState>(component);
     if (!state || !state->text_scene.valid()) {
+        return;
+    }
+    if (refresh_count && !update_count(component)) {
+        return;
+    }
+    state = host_->components().state<InputState>(component);
+    if (!state) {
         return;
     }
     const auto& editor = editors_.require(state->mounted.editor);
@@ -1287,13 +1383,164 @@ void InputComponentHost::update_clear_visibility(runtime::ComponentId component)
         return;
     }
     state->clear_visible.set(visible);
-    const bool suffix = state->custom_suffix || visible;
+    update_suffix_layout(component);
+}
+
+void InputComponentHost::prepare_auxiliary_layout() {
+    std::optional<std::vector<runtime::ComponentId>> pending;
+    for (const auto& mounted : mounted_) {
+        const auto* state = host_->components().state<InputState>(mounted.component);
+        const auto* editor = editors_.find(mounted.editor);
+        if (state && editor && state->count_revision != editor->revision()) {
+            if (!pending) {
+                pending.emplace();
+            }
+            pending->push_back(mounted.component);
+        }
+    }
+    // Callback-owned snapshots remain valid if a formatter removes any sibling.
+    if (pending) {
+        for (const auto component : *pending) {
+            static_cast<void>(update_count(component));
+        }
+    }
+}
+
+void InputComponentHost::update_suffix_layout(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        return;
+    }
+    const bool suffix =
+        state->custom_suffix || state->clear_visible.get() || (state->show_count && !state->count_text.get().empty());
     if (state->layout.suffix != suffix) {
         state->layout.suffix = suffix;
         host_->layout().set_layout(state->mounted.node, state->layout);
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
+}
+
+void InputComponentHost::configure_count_transform(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        return;
+    }
+    input::TextEditorState::EditTransform transform;
+    if (state->exceed_formatter) {
+        transform = [this, component](std::string_view candidate) {
+            const auto* state = host_->components().state<InputState>(component);
+            if (!state) {
+                throw std::runtime_error("Retired Input formatter");
+            }
+            const auto maximum = state->count_options.max ? state->count_options.max : state->hard_max;
+            const auto unit = state->count_options.unit;
+            auto strategy = state->count_strategy;
+            auto formatter = state->exceed_formatter;
+            auto value = String::from_utf8(candidate).value();
+            if (maximum && detail::count_value(value.view(), unit, strategy) > *maximum) {
+                return std::string(formatter(std::move(value), *maximum).bytes());
+            }
+            return std::string(value.bytes());
+        };
+    }
+    editors_.require(state->mounted.editor).set_edit_transform(std::move(transform));
+}
+
+bool InputComponentHost::update_count(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        return false;
+    }
+    if (!state->count_ready) {
+        return true;
+    }
+    auto* editor = editors_.find(state->mounted.editor);
+    if (!editor) {
+        return false;
+    }
+    if (state->count_revision == editor->revision()) {
+        return true;
+    }
+    if (state->counting) {
+        return false;
+    }
+    const auto editor_id = editor->id();
+    const auto revision = editor->revision();
+    const auto generation = state->count_generation;
+    const auto options = state->count_options;
+    const auto maximum = options.max ? options.max : state->hard_max;
+    const bool show = state->show_count;
+    auto strategy = state->count_strategy;
+    auto formatter = state->count_formatter;
+    const bool needed = show || options.max.has_value();
+    auto value = needed ? String::from_utf8(editor->value()).value() : String{};
+    state->counting = true;
+    std::size_t count{};
+    String label;
+    try {
+        count = needed ? detail::count_value(value.view(), options.unit, strategy) : 0;
+        if (show) {
+            if (formatter) {
+                try {
+                    label = formatter({std::move(value), count, maximum, maximum && count > *maximum});
+                } catch (...) {
+                    if (const auto* current = host_->components().state<InputState>(component)) {
+                        label = current->count_text.get();
+                    }
+                }
+            } else {
+                auto text = std::to_string(count);
+                if (maximum) {
+                    text += " / " + std::to_string(*maximum);
+                }
+                label = String::from_utf8(text).value();
+            }
+        }
+    } catch (...) {
+        // A display formatter is presentation only. Retain the preceding label
+        // and avoid retrying a throwing callback on every frame.
+        if (auto* current = host_->components().state<InputState>(component)) {
+            current->counting = false;
+            if (current->count_generation == generation && editors_.find(editor_id) &&
+                editors_.require(editor_id).revision() == revision) {
+                current->count_revision = revision;
+            }
+        }
+        return host_->components().state<InputState>(component) != nullptr;
+    }
+    state = host_->components().state<InputState>(component);
+    editor = editors_.find(editor_id);
+    if (!state) {
+        return false;
+    }
+    state->counting = false;
+    if (!editor || editor->revision() != revision || state->count_generation != generation) {
+        invalidate(component, text_dirty);
+        return false;
+    }
+    state->count_revision = revision;
+    state->count_value = count;
+    const bool exceeded = options.max && count > *options.max;
+    if (state->count_exceeded != exceeded) {
+        state->count_exceeded = exceeded;
+        invalidate(component, runtime::DirtyFlags::Material);
+    }
+    const bool was_present = !state->count_text.get().empty();
+    const bool present = !label.empty();
+    if (state->count_node.valid() && was_present != present) {
+        auto& node = host_->nodes().require(state->count_node);
+        node.external_layout.width = present ? std::nullopt : std::optional{0.0F};
+        node.external_layout.height = present ? std::nullopt : std::optional{0.0F};
+        layout::BoxLayout box;
+        box.padding.left = present ? 4.0F : 0.0F;
+        host_->layout().set_layout(state->count_node, box);
+        host_->dirty().invalidate(state->count_node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                         runtime::DirtyFlags::Geometry);
+    }
+    state->count_text.set(std::move(label));
+    update_suffix_layout(component);
+    return host_->components().state<InputState>(component) != nullptr;
 }
 
 void InputComponentHost::clear(runtime::ComponentId component) {
@@ -1353,7 +1600,7 @@ InputStatus InputComponentHost::status(runtime::ComponentId component) const {
     if (!state) {
         throw std::out_of_range("Input component is stale");
     }
-    return state->status;
+    return state->status == InputStatus::Default && state->count_exceeded ? InputStatus::Error : state->status;
 }
 
 ControlSize InputComponentHost::size(runtime::ComponentId component) const {
@@ -1378,6 +1625,22 @@ InputVariant InputComponentHost::variant(runtime::ComponentId component) const {
         throw std::out_of_range("Input component is stale");
     }
     return state->variant;
+}
+
+String InputComponentHost::count_text(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->count_text.get();
+}
+
+std::size_t InputComponentHost::count_value(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input component is stale");
+    }
+    return state->count_value;
 }
 
 const text::TextCaretMap& InputComponentHost::caret_map(runtime::ComponentId component) const {
@@ -1428,9 +1691,11 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
 }
 
 void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
-    const auto autofocus = std::exchange(auto_focus_requests_, {});
-    for (const auto component : autofocus) {
-        static_cast<void>(focus(component, {}));
+    if (!auto_focus_requests_.empty()) {
+        const auto autofocus = std::exchange(auto_focus_requests_, {});
+        for (const auto component : autofocus) {
+            static_cast<void>(focus(component, {}));
+        }
     }
     const auto profile_started =
         sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
@@ -1451,7 +1716,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         }
         const auto update_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
-        update_text(mounted.component, false);
+        update_text(mounted.component, false, false);
         record_phase(update_started, sync_profile_.update_text_nanoseconds);
         auto& text_scene = host_->text().scene_service();
         if (state->carets.revision() != text_scene.text_state(state->text_scene).revision() &&
@@ -1752,15 +2017,14 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     if (!state || !editor) {
         return;
     }
-    update_text(component);
     // Own both callback and value across synchronous Signal echoes or self-unmount.
     auto callback = state->on_change;
-    if (!callback) {
-        return;
-    }
     auto value = String::from_utf8(editor->value()).value();
     check(editor->note_emitted_value());
-    callback(std::move(value));
+    update_text(component);
+    if (callback && host_->components().state<InputState>(component) && editors_.find(editor_id)) {
+        callback(std::move(value));
+    }
 }
 
 input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& event) {

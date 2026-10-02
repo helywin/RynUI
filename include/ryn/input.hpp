@@ -32,6 +32,11 @@ struct InputPropsData final {
     Prop<bool> read_only_{false};
     std::optional<Prop<bool>> allow_clear_;
     std::optional<Prop<std::size_t>> max_length_;
+    std::optional<Prop<bool>> show_count_;
+    Prop<InputCountOptions> count_{InputCountOptions{}};
+    std::function<std::size_t(StringView)> count_strategy_;
+    std::function<String(InputCountInfo)> count_formatter_;
+    std::function<String(String, std::size_t)> exceed_formatter_;
     std::function<void(String)> on_change_;
     std::function<void(String)> on_submit_;
     std::function<void()> on_focus_;
@@ -126,6 +131,31 @@ public:
 
     Derived& onChange(std::function<void(String)> callback) {
         common_.on_change_ = std::move(callback);
+        return self();
+    }
+
+    Derived& showCount(Prop<bool> value = true) {
+        common_.show_count_ = std::move(value);
+        return self();
+    }
+
+    Derived& count(Prop<InputCountOptions> value) {
+        common_.count_ = std::move(value);
+        return self();
+    }
+
+    Derived& countStrategy(std::function<std::size_t(StringView)> callback) {
+        common_.count_strategy_ = std::move(callback);
+        return self();
+    }
+
+    Derived& countFormatter(std::function<String(InputCountInfo)> callback) {
+        common_.count_formatter_ = std::move(callback);
+        return self();
+    }
+
+    Derived& exceedFormatter(std::function<String(String, std::size_t)> callback) {
+        common_.exceed_formatter_ = std::move(callback);
         return self();
     }
 

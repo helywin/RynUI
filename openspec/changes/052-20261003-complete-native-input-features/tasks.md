@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：统计与单次编辑裁剪
 
-- [ ] 3.1 实现 showCount、scalar/grapheme/custom 统计、formatter、软 max、exceedFormatter 及退休/重入安全的单次编辑事务，补清空/统计/自定义 suffix 明确布局；测试 Unicode、IME、粘贴、硬/软限制、controlled、undo/redo、异常/卸载/重入和无关组件不执行，补文档，在 common Debug/Release 运行 text_editor/input/history/clipboard/display/typography 相关 CTest，格式及规格校验通过后提交。
+- [x] 3.1 实现 showCount、scalar/grapheme/custom 统计、formatter、软 max、exceedFormatter 及退休/重入安全的单次编辑事务，补清空/统计/自定义 suffix 明确布局；测试 Unicode、IME、粘贴、硬/软限制、controlled、undo/redo、异常/卸载/重入和无关组件不执行，补文档，在 common Debug/Release 运行 text_editor/input/history/clipboard/display/typography 相关 CTest，格式及规格校验通过后提交。
 
 ## 4. 平台通用：清空、Password、Search 操作
 

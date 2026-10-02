@@ -69,6 +69,7 @@ void TextEditorState::set_eligibility(bool disabled, bool read_only) {
     }
     disabled_ = disabled;
     read_only_ = read_only;
+    ++transaction_generation_;
     if (disabled_ || read_only_) {
         cancel_composition();
     }
@@ -116,6 +117,7 @@ TextEditResult TextEditorState::publish_selection(TextSelection selection) {
     selection_ = selection;
     if (changed) {
         ++diagnostics_.selections;
+        ++transaction_generation_;
     }
     return {TextEditError::none, false, changed};
 }
@@ -123,6 +125,12 @@ TextEditResult TextEditorState::publish_selection(TextSelection selection) {
 TextEditResult TextEditorState::replace(TextSelection range, std::string_view text, bool authoritative,
                                         bool merge_typing, std::optional<TextSelection> history_selection) {
     ensure_owner_thread();
+    if (retired_) {
+        return reject(TextEditError::stale_owner);
+    }
+    if (!authoritative && transforming_) {
+        return reject(TextEditError::revision_conflict);
+    }
     if (!authoritative && disabled_) {
         return reject(TextEditError::disabled);
     }
@@ -152,17 +160,65 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
                                                                 *boundaries_.byte_to_scalar(range.begin()));
         const auto available = limits_.max_scalars > kept_scalars ? limits_.max_scalars - kept_scalars : 0;
         std::size_t accepted = normalized_.size();
-        if (inserted_boundaries_.scalar_count() > available) {
+        const bool transform_edit = !authoritative && static_cast<bool>(edit_transform_);
+        if (!transform_edit && inserted_boundaries_.scalar_count() > available) {
             accepted = inserted_boundaries_.floor(*inserted_boundaries_.scalar_to_byte(available));
         }
-        const bool truncated = accepted != normalized_.size();
+        bool truncated = accepted != normalized_.size();
         const auto kept_bytes = value_.size() - (range.end() - range.begin());
-        if (kept_bytes > limits_.max_bytes || accepted > limits_.max_bytes - kept_bytes) {
+        if (!transform_edit && (kept_bytes > limits_.max_bytes || accepted > limits_.max_bytes - kept_bytes)) {
             return reject(TextEditError::capacity_exceeded);
         }
         pending_value_.assign(value_, 0, range.begin());
         pending_value_.append(normalized_, 0, accepted);
         pending_value_.append(value_, range.end(), std::string::npos);
+        if (transform_edit) {
+            // Own the candidate and callback across reentry, which may overwrite
+            // scratch buffers, replace configuration or retire this store slot.
+            const auto lifetime = shared_from_this();
+            auto candidate = pending_value_;
+            auto transform = edit_transform_;
+            const auto generation = transaction_generation_;
+            transforming_ = true;
+
+            struct TransformGuard final {
+                bool& active;
+
+                ~TransformGuard() {
+                    active = false;
+                }
+            } guard{transforming_};
+
+            auto formatted = transform(candidate);
+            if (retired_) {
+                return reject(TextEditError::stale_owner);
+            }
+            if (generation != transaction_generation_) {
+                return reject(TextEditError::revision_conflict);
+            }
+            std::string normalized_result;
+            Utf8ScalarIterator result_iterator(formatted);
+            while (const auto scalar = result_iterator.next()) {
+                if (scalar->value != U'\r' && scalar->value != U'\n') {
+                    normalized_result.append(formatted, scalar->byte_begin, scalar->byte_end - scalar->byte_begin);
+                }
+            }
+            if (!result_iterator.valid() || !pending_boundaries_.assign(normalized_result)) {
+                return reject(TextEditError::invalid_utf8);
+            }
+            if (pending_boundaries_.scalar_count() > limits_.max_scalars) {
+                normalized_result.resize(
+                    pending_boundaries_.floor(*pending_boundaries_.scalar_to_byte(limits_.max_scalars)));
+                truncated = true;
+            }
+            if (normalized_result.size() > limits_.max_bytes) {
+                return reject(TextEditError::capacity_exceeded);
+            }
+            if (normalized_result != candidate) {
+                truncated = true;
+            }
+            pending_value_ = std::move(normalized_result);
+        }
         if (!pending_boundaries_.assign(pending_value_)) {
             return reject(TextEditError::invalid_utf8);
         }
@@ -175,8 +231,9 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
             next_selection = {pending_boundaries_.floor(selection_.anchor),
                               pending_boundaries_.floor(selection_.caret)};
         } else {
-            const auto caret = accepted == 0 ? pending_boundaries_.floor(range.begin())
-                                             : pending_boundaries_.ceil(range.begin() + accepted);
+            const auto caret =
+                accepted == 0 ? pending_boundaries_.floor(range.begin())
+                              : pending_boundaries_.ceil(std::min(range.begin() + accepted, pending_value_.size()));
             next_selection = {caret, caret};
         }
         if (changed && !authoritative) {
@@ -189,6 +246,7 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
         auto result = publish_selection(next_selection);
         if (changed) {
             ++revision_;
+            ++transaction_generation_;
             ++diagnostics_.mutations;
         }
         if (changed && !authoritative) {
@@ -207,6 +265,8 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
         return reject(TextEditError::allocation_failure);
     } catch (const std::length_error&) {
         return reject(TextEditError::capacity_exceeded);
+    } catch (...) {
+        return reject(TextEditError::formatter_failure);
     }
 }
 
@@ -226,6 +286,9 @@ TextEditResult TextEditorState::set_value(std::string_view text) {
 TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
     ensure_owner_thread();
     const auto previous = limits_;
+    if (previous.max_scalars != limits.max_scalars || previous.max_bytes != limits.max_bytes) {
+        ++transaction_generation_;
+    }
     limits_ = limits;
     const auto result = set_value(value_);
     if (!result) {
@@ -237,6 +300,13 @@ TextEditResult TextEditorState::set_limits(TextEditorLimits limits) {
     return result;
 }
 
+void TextEditorState::set_edit_transform(EditTransform transform) {
+    ensure_owner_thread();
+    edit_transform_ = std::move(transform);
+    ++transaction_generation_;
+    break_history_merge();
+}
+
 TextEditResult TextEditorState::replace_selection(std::string_view text) {
     ensure_owner_thread();
     return replace_range(selection_, text);
@@ -244,6 +314,7 @@ TextEditResult TextEditorState::replace_selection(std::string_view text) {
 
 TextEditResult TextEditorState::replace_range(TextSelection range, std::string_view text) {
     ensure_owner_thread();
+    const auto lifetime = shared_from_this();
     const auto result = replace(range, text, false, false, range);
     if (result) {
         cancel_composition();
@@ -253,6 +324,7 @@ TextEditResult TextEditorState::replace_range(TextSelection range, std::string_v
 
 TextEditResult TextEditorState::erase_backward() {
     ensure_owner_thread();
+    const auto lifetime = shared_from_this();
     auto range = selection_;
     if (range.empty()) {
         range.anchor = boundaries_.previous(range.caret);
@@ -266,6 +338,7 @@ TextEditResult TextEditorState::erase_backward() {
 
 TextEditResult TextEditorState::erase_forward() {
     ensure_owner_thread();
+    const auto lifetime = shared_from_this();
     auto range = selection_;
     if (range.empty()) {
         range.caret = boundaries_.next(range.caret);
@@ -375,7 +448,7 @@ TextInputOwnerId TextEditorStore::create(std::string_view initial, TextEditorLim
         throw std::length_error("Text editor slots exhausted");
     }
     const TextInputOwnerId id{static_cast<std::uint32_t>(index), index < slots_.size() ? slots_[index].generation : 1};
-    auto state = std::unique_ptr<TextEditorState>(new TextEditorState(id, initial, limits));
+    auto state = std::shared_ptr<TextEditorState>(new TextEditorState(id, initial, limits));
     if (index == slots_.size()) {
         slots_.emplace_back();
     }
@@ -394,6 +467,8 @@ bool TextEditorStore::destroy(TextInputOwnerId id) {
         observer_->before_destroy(id);
     }
     auto& slot = slots_[id.index];
+    slot.state->retired_ = true;
+    slot.state->observer_ = nullptr;
     slot.state.reset();
     ++slot.generation; // zero permanently retires an exhausted generation.
     --size_;
@@ -465,6 +540,7 @@ TextCompositionView TextEditorState::composition() const {
 void TextEditorState::cancel_composition() {
     ensure_owner_thread();
     if (composing_ || !candidates_.empty()) {
+        ++transaction_generation_;
         break_history_merge();
     }
     composition_text_.clear();
@@ -500,6 +576,7 @@ TextEditResult TextEditorState::update_composition(const CompositionChanged& eve
             break_history_merge();
         }
         composing_ = true;
+        ++transaction_generation_;
         return {};
     } catch (const std::bad_alloc&) {
         return reject(TextEditError::allocation_failure);
@@ -534,6 +611,7 @@ TextEditResult TextEditorState::update_candidates(const CandidatesChanged& event
 
 TextEditResult TextEditorState::commit_text(std::string_view text) {
     ensure_owner_thread();
+    const auto lifetime = shared_from_this();
     // An empty platform commit is a cancellation, not deletion of selected text.
     if (disabled_) {
         return reject(TextEditError::disabled);

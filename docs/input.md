@@ -34,6 +34,21 @@ InputTokenOverride 可覆盖 Filled 普通/hover 背景、Error/Warning 背景�
 
 Password 透传变体。Search 使用 Compact 连接输入框与 action，非 Outlined 变体使用 Text action；Filled action 背景和 Underlined action 底边在操作阶段继续补齐。
 
+## 统计与上限
+
+`.showCount(Prop<bool>)` 控制 retained 计数标签；`.count(Prop<InputCountOptions>)` 设置软 max 和 Scalar/Grapheme 单位。默认 Scalar 与 maxLength 的原生 Unicode scalar 合同一致；例如 `e + combining acute` 是两个 scalar、一个 grapheme。countStrategy 可定义统计单位，countFormatter 接收 InputCountInfo 并返回 String。默认标签只显示数字及上限，Password 不显示原文。
+
+```cpp
+ryn::Input(ryn::InputProps{}.showCount()
+               .count(ryn::InputCountOptions{20, ryn::InputCountUnit::Grapheme}));
+```
+
+软 max 只提示超限，不截断值；未设显式 status 时超限显示 Error，显式 Warning/Error 优先。统计显示上限优先使用 count.max，否则使用 maxLength。maxLength 始终是 scalar 硬限制，且不切开 grapheme。clear、自定义 suffix、counter 从左至右布局，隐藏 counter 不占尺寸；窄宽度下编辑区可以收缩到零。
+
+exceedFormatter 接收用户候选和统计上限，只有超限时调用；其结果先去除 CR/LF、验证 UTF-8，再应用硬限制，然后作为一次历史事务发布。IME preedit 不统计或裁剪；提交、粘贴和删除使用同一入口。controlled authoritative 回写与 undo/redo 不经过该函数。formatter 可以重入或同步卸载；退休 owner 或被改写的事务不发布旧候选，异常保留原值/历史。自定义 formatter 不保证其返回值满足软上限，仍按返回值显示超限状态。
+
+计数策略和标签只在 committed 值或配置变化时计算，空闲帧不重复调用。countFormatter 的异常保留上一个标签，统计与输入值继续更新；countStrategy 的显示异常保留上次统计，不在每帧重试。下次值/配置变化会重新计算。明确设置的自定义函数可读取原值，包括 Password，应自行决定显示内容。
+
 ## 收尾进度
 
 052 正在补单行家族的变体、统计及操作配置，任务和验收记录位于对应 change。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

@@ -259,6 +259,9 @@ std::optional<animation::AnimationTime> WindowComponentServices::next_frame_dead
 bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
                                                      float gap, bool unbounded_root_height) {
     auto& text_scene = text_.scene_service();
+    for (auto* participant : participants_) {
+        participant->prepare_auxiliary_layout();
+    }
 
     struct SceneBatch {
         TextSceneService& scene;

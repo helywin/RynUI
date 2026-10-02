@@ -106,6 +106,8 @@ public:
     [[nodiscard]] InputStatus status(runtime::ComponentId) const;
     [[nodiscard]] ControlSize size(runtime::ComponentId) const;
     [[nodiscard]] InputVariant variant(runtime::ComponentId) const;
+    [[nodiscard]] String count_text(runtime::ComponentId) const;
+    [[nodiscard]] std::size_t count_value(runtime::ComponentId) const;
     [[nodiscard]] std::optional<std::array<bool, 4>> compact_corners(runtime::ComponentId) const;
     [[nodiscard]] const text::TextCaretMap& caret_map(runtime::ComponentId) const;
     // Internal deadline injection seam for controlled-clock/lifecycle tests.
@@ -118,11 +120,14 @@ private:
     void notify_change(input::TextInputOwnerId);
     void clear(runtime::ComponentId);
     void update_clear_visibility(runtime::ComponentId);
+    bool update_count(runtime::ComponentId);
+    void update_suffix_layout(runtime::ComponentId);
+    void configure_count_transform(runtime::ComponentId);
     bool focus(runtime::ComponentId, InputFocusOptions);
     bool blur(runtime::ComponentId);
     bool select(runtime::ComponentId, std::size_t anchor, std::size_t caret);
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
-    void update_text(runtime::ComponentId, bool measure_layout = true);
+    void update_text(runtime::ComponentId, bool measure_layout = true, bool refresh_count = true);
     void update_theme(runtime::ComponentId);
     void apply_material_transition(runtime::ComponentId);
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
@@ -132,6 +137,7 @@ private:
     void on_destroy() noexcept override;
     void on_dispose() noexcept override;
     void synchronize_auxiliary_motion() override;
+    void prepare_auxiliary_layout() override;
     void update_caret(runtime::ComponentId, bool reset = false);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
 

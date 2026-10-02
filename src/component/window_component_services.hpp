@@ -51,6 +51,8 @@ public:
 
     virtual void position_window_layers(runtime::Size, runtime::Rect) {}
 
+    virtual void prepare_auxiliary_layout() {}
+
     virtual void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) = 0;
 
     virtual bool synchronize_auxiliary_fragments() {
