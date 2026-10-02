@@ -6,9 +6,7 @@
 namespace {
 
 template <typename Value>
-concept ThemeConfigValue = requires(ryn::ThemeProps props, Value value) {
-    props.config(value);
-};
+concept ThemeConfigValue = requires(ryn::ThemeProps props, Value value) { props.config(value); };
 
 static_assert(ThemeConfigValue<ryn::ThemeConfig>);
 static_assert(ThemeConfigValue<ryn::Prop<ryn::ThemeConfig>>);
@@ -19,8 +17,7 @@ static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.pad
 static_assert(!std::is_assignable_v<decltype(ryn::ThemeConfig{}.input.tokens.input_font_size)&, const char*>);
 static_assert(!std::constructible_from<ryn::ThemeContent, ryn::Content>);
 static_assert(!std::constructible_from<ryn::Content, ryn::ThemeContent>);
-static_assert(std::is_same_v<decltype(&ryn::Theme),
-    void (*)(ryn::ThemeProps, ryn::ThemeContent)>);
+static_assert(std::is_same_v<decltype(&ryn::Theme), void (*)(ryn::ThemeProps, ryn::ThemeContent)>);
 
 } // namespace
 

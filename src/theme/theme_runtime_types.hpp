@@ -106,18 +106,12 @@ enum class DirtyPhase : std::uint32_t {
     animation = 1U << 5U,
 };
 
-[[nodiscard]] constexpr DirtyPhase operator|(
-    DirtyPhase left,
-    DirtyPhase right) noexcept {
-    return static_cast<DirtyPhase>(
-        static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
+[[nodiscard]] constexpr DirtyPhase operator|(DirtyPhase left, DirtyPhase right) noexcept {
+    return static_cast<DirtyPhase>(static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
 }
 
-[[nodiscard]] constexpr DirtyPhase operator&(
-    DirtyPhase left,
-    DirtyPhase right) noexcept {
-    return static_cast<DirtyPhase>(
-        static_cast<std::uint32_t>(left) & static_cast<std::uint32_t>(right));
+[[nodiscard]] constexpr DirtyPhase operator&(DirtyPhase left, DirtyPhase right) noexcept {
+    return static_cast<DirtyPhase>(static_cast<std::uint32_t>(left) & static_cast<std::uint32_t>(right));
 }
 
 constexpr DirtyPhase& operator|=(DirtyPhase& left, DirtyPhase right) noexcept {
@@ -125,9 +119,7 @@ constexpr DirtyPhase& operator|=(DirtyPhase& left, DirtyPhase right) noexcept {
     return left;
 }
 
-[[nodiscard]] constexpr bool has_any(
-    DirtyPhase value,
-    DirtyPhase mask) noexcept {
+[[nodiscard]] constexpr bool has_any(DirtyPhase value, DirtyPhase mask) noexcept {
     return static_cast<std::uint32_t>(value & mask) != 0U;
 }
 

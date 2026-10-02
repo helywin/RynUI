@@ -61,8 +61,7 @@ public:
 
     explicit LayoutGap(LogicalLength value) : LayoutGap(value, value) {}
 
-    LayoutGap(LogicalLength main, LogicalLength cross)
-        : main_(validate(main)), cross_(validate(cross)) {}
+    LayoutGap(LogicalLength main, LogicalLength cross) : main_(validate(main)), cross_(validate(cross)) {}
 
     friend constexpr bool operator==(LayoutGap, LayoutGap) = default;
 
@@ -71,8 +70,7 @@ private:
 
     [[nodiscard]] static float validate(LogicalLength value) {
         if (value.is_auto() || !std::isfinite(value.value()) || value.value() < 0.0F) {
-            throw std::invalid_argument(
-                "LayoutGap values must be finite, non-negative logical lengths");
+            throw std::invalid_argument("LayoutGap values must be finite, non-negative logical lengths");
         }
         return value.value();
     }
@@ -138,6 +136,7 @@ private:
 };
 
 struct FlexContentSlot final {};
+
 using FlexContent = SlotContent<FlexContentSlot>;
 
 void Flex(FlexProps props, FlexContent content);

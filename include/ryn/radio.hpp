@@ -11,16 +11,42 @@
 #include <vector>
 
 namespace ryn {
-namespace detail { struct RadioPropsAccess; struct RadioGroupPropsAccess; }
+namespace detail {
+struct RadioPropsAccess;
+struct RadioGroupPropsAccess;
+} // namespace detail
 
 class RadioProps final {
 public:
-    RadioProps& checked(Prop<bool> value) { checked_ = std::move(value); return *this; }
-    RadioProps& defaultChecked(bool value) { default_checked_ = value; return *this; }
-    RadioProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
-    RadioProps& value(String value) { value_ = std::move(value); return *this; }
-    RadioProps& onChange(std::function<void(bool)> callback) { on_change_ = std::move(callback); return *this; }
-    RadioProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
+    RadioProps& checked(Prop<bool> value) {
+        checked_ = std::move(value);
+        return *this;
+    }
+
+    RadioProps& defaultChecked(bool value) {
+        default_checked_ = value;
+        return *this;
+    }
+
+    RadioProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    RadioProps& value(String value) {
+        value_ = std::move(value);
+        return *this;
+    }
+
+    RadioProps& onChange(std::function<void(bool)> callback) {
+        on_change_ = std::move(callback);
+        return *this;
+    }
+
+    RadioProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
 
 private:
     friend struct detail::RadioPropsAccess;
@@ -33,6 +59,7 @@ private:
 };
 
 struct RadioLabelSlot final {};
+
 using RadioLabel = SlotContent<RadioLabelSlot>;
 
 void Radio(RadioProps props, std::optional<RadioLabel> label = {});
@@ -47,13 +74,40 @@ enum class RadioGroupOrientation { Horizontal, Vertical };
 
 class RadioGroupProps final {
 public:
-    RadioGroupProps& options(std::vector<RadioOption> value) { options_ = std::move(value); return *this; }
-    RadioGroupProps& value(Prop<std::optional<String>> value) { value_ = std::move(value); return *this; }
-    RadioGroupProps& defaultValue(String value) { default_value_ = std::move(value); return *this; }
-    RadioGroupProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
-    RadioGroupProps& orientation(Prop<RadioGroupOrientation> value) { orientation_ = std::move(value); return *this; }
-    RadioGroupProps& onChange(std::function<void(const String&)> callback) { on_change_ = std::move(callback); return *this; }
-    RadioGroupProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
+    RadioGroupProps& options(std::vector<RadioOption> value) {
+        options_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& value(Prop<std::optional<String>> value) {
+        value_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& defaultValue(String value) {
+        default_value_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& orientation(Prop<RadioGroupOrientation> value) {
+        orientation_ = std::move(value);
+        return *this;
+    }
+
+    RadioGroupProps& onChange(std::function<void(const String&)> callback) {
+        on_change_ = std::move(callback);
+        return *this;
+    }
+
+    RadioGroupProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
 
 private:
     friend struct detail::RadioGroupPropsAccess;

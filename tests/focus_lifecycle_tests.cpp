@@ -13,7 +13,9 @@
 namespace {
 
 struct TestState final {};
+
 struct ChildrenSlot final {};
+
 using Children = ryn::SlotContent<ChildrenSlot>;
 
 void require(bool condition, const char* message) {
@@ -54,23 +56,21 @@ struct Fixture final {
                 static_cast<void>(registry.remove(interaction));
             });
             build.mount_slot(root_component, Children{[&] {
-                auto& child_build = ryn::runtime::require_component_build_context();
-                target_component = child_build.mount_component<TestState>();
-                target = registry.create({
-                    target_component,
-                    child_build.root(target_component),
-                    root,
-                    true,
-                    true,
-                    {},
-                });
-                child_build.on_resource_cleanup(
-                    target_component,
-                    [this, interaction = target] {
-                        pointer.cancel_interaction(interaction);
-                        static_cast<void>(registry.remove(interaction));
-                    });
-            }});
+                                 auto& child_build = ryn::runtime::require_component_build_context();
+                                 target_component = child_build.mount_component<TestState>();
+                                 target = registry.create({
+                                     target_component,
+                                     child_build.root(target_component),
+                                     root,
+                                     true,
+                                     true,
+                                     {},
+                                 });
+                                 child_build.on_resource_cleanup(target_component, [this, interaction = target] {
+                                     pointer.cancel_interaction(interaction);
+                                     static_cast<void>(registry.remove(interaction));
+                                 });
+                             }});
         }});
         commit(components.root(root_component), {0.0F, 0.0F, 100.0F, 100.0F});
         commit(components.root(target_component), {10.0F, 10.0F, 80.0F, 80.0F});
@@ -92,7 +92,9 @@ struct Fixture final {
         };
         registry.set_handlers(target, std::move(pointer_handlers));
         ryn::input::FocusHandlers focus_handlers;
-        focus_handlers.activate = [&] { ++keyboard_activations; };
+        focus_handlers.activate = [&] {
+            ++keyboard_activations;
+        };
         registry.set_focus_handlers(target, std::move(focus_handlers));
     }
 
@@ -128,42 +130,34 @@ ryn::input::KeyboardInputEvent space_down() {
 
 void test_scope_cleanup_cancels_pending_space_activation() {
     Fixture fixture;
-    fixture.focus.request_focus(
-        fixture.target, ryn::input::FocusModality::keyboard);
+    fixture.focus.request_focus(fixture.target, ryn::input::FocusModality::keyboard);
     fixture.focus.dispatch(space_down());
-    require(fixture.focus.state().keyboard_pressed,
-            "Scope cleanup setup did not enter keyboard pressed state");
-    require(fixture.components.destroy(fixture.target_component),
-            "keyboard pressed target destroy failed");
+    require(fixture.focus.state().keyboard_pressed, "Scope cleanup setup did not enter keyboard pressed state");
+    require(fixture.components.destroy(fixture.target_component), "keyboard pressed target destroy failed");
     fixture.focus.dispatch({
         ryn::input::Key::space,
         ryn::input::KeyAction::up,
         ryn::input::KeyModifier::none,
         false,
     });
-    require(!fixture.focus.state().focused.has_value()
-                && !fixture.focus.state().keyboard_pressed
-                && fixture.keyboard_activations == 0,
+    require(!fixture.focus.state().focused.has_value() && !fixture.focus.state().keyboard_pressed &&
+                fixture.keyboard_activations == 0,
             "destroyed Space target retained state or activated");
 }
 
 void test_scope_cleanup_releases_pointer_and_focus_before_slot_reuse() {
     Fixture fixture;
     fixture.pointer.dispatch(pointer_down());
-    require(fixture.focus.state().focused == fixture.target
-                && fixture.pointer.state(ryn::input::PointerIdentity::mouse())
-                    ->capture == fixture.target,
+    require(fixture.focus.state().focused == fixture.target &&
+                fixture.pointer.state(ryn::input::PointerIdentity::mouse())->capture == fixture.target,
             "shared lifecycle setup did not establish focus and capture");
 
-    require(fixture.components.destroy(fixture.target_component),
-            "focused/captured target destroy failed");
-    require(!fixture.focus.state().focused.has_value()
-                && !fixture.pointer.state(ryn::input::PointerIdentity::mouse())
-                    ->capture.has_value()
-                && fixture.pointer_cancels == 1,
+    require(fixture.components.destroy(fixture.target_component), "focused/captured target destroy failed");
+    require(!fixture.focus.state().focused.has_value() &&
+                !fixture.pointer.state(ryn::input::PointerIdentity::mouse())->capture.has_value() &&
+                fixture.pointer_cancels == 1,
             "Scope cleanup retained focus/capture or skipped pointer cancel");
-    require(!fixture.registry.contains(fixture.target),
-            "Scope cleanup retained interaction registration");
+    require(!fixture.registry.contains(fixture.target), "Scope cleanup retained interaction registration");
 
     const auto replacement = fixture.registry.create({
         fixture.root_component,
@@ -173,9 +167,8 @@ void test_scope_cleanup_releases_pointer_and_focus_before_slot_reuse() {
         true,
         {},
     });
-    require(replacement.index == fixture.target.index
-                && replacement.generation != fixture.target.generation
-                && !fixture.focus.state().focused.has_value(),
+    require(replacement.index == fixture.target.index && replacement.generation != fixture.target.generation &&
+                !fixture.focus.state().focused.has_value(),
             "reused interaction slot inherited stale focus");
     fixture.focus.cancel_interaction(replacement);
     static_cast<void>(fixture.registry.remove(replacement));
@@ -193,8 +186,7 @@ void test_wrong_thread_reentry_and_callback_exception_fail_safely() {
             }
         });
         worker.join();
-        require(rejected.load(std::memory_order_relaxed)
-                    && fixture.focus.diagnostics().keyboard_events == 0,
+        require(rejected.load(std::memory_order_relaxed) && fixture.focus.diagnostics().keyboard_events == 0,
                 "wrong-thread keyboard dispatch mutated FocusManager");
     }
     {
@@ -216,12 +208,11 @@ void test_wrong_thread_reentry_and_callback_exception_fail_safely() {
                 reentry_rejected = true;
             }
         };
-        handlers.activate = [] {};
+        handlers.activate = [] {
+        };
         fixture.registry.set_focus_handlers(fixture.target, std::move(handlers));
-        fixture.focus.request_focus(
-            fixture.target, ryn::input::FocusModality::keyboard);
-        require(reentry_rejected
-                    && fixture.focus.diagnostics().reentrant_rejections == 1,
+        fixture.focus.request_focus(fixture.target, ryn::input::FocusModality::keyboard);
+        require(reentry_rejected && fixture.focus.diagnostics().reentrant_rejections == 1,
                 "reentrant FocusManager dispatch did not fail fast");
     }
     {
@@ -232,10 +223,10 @@ void test_wrong_thread_reentry_and_callback_exception_fail_safely() {
                 throw std::runtime_error("focus callback failure");
             }
         };
-        handlers.activate = [] {};
+        handlers.activate = [] {
+        };
         fixture.registry.set_focus_handlers(fixture.target, std::move(handlers));
-        fixture.focus.request_focus(
-            fixture.target, ryn::input::FocusModality::keyboard);
+        fixture.focus.request_focus(fixture.target, ryn::input::FocusModality::keyboard);
         bool observed = false;
         try {
             fixture.focus.dispatch(space_down());

@@ -51,8 +51,7 @@ struct PlatformWindowMetrics {
         return valid_scale(pixel_density) / valid_scale(display_scale);
     }
 
-    friend bool operator==(const PlatformWindowMetrics&, const PlatformWindowMetrics&) =
-        default;
+    friend bool operator==(const PlatformWindowMetrics&, const PlatformWindowMetrics&) = default;
 
 private:
     [[nodiscard]] static float valid_scale(float value) noexcept {
@@ -63,9 +62,7 @@ private:
         if (pixels > 0) {
             return static_cast<float>(pixels) / valid_scale(display_scale);
         }
-        return coordinates > 0
-            ? static_cast<float>(coordinates) * coordinate_to_logical_scale()
-            : 0.0F;
+        return coordinates > 0 ? static_cast<float>(coordinates) * coordinate_to_logical_scale() : 0.0F;
     }
 };
 
@@ -103,45 +100,62 @@ struct PlatformEventDiagnostics {
     std::uint64_t frame_requested_pumps{0};
     std::uint64_t quit_requested_pumps{0};
 
-    friend bool operator==(
-        const PlatformEventDiagnostics&,
-        const PlatformEventDiagnostics&) = default;
+    friend bool operator==(const PlatformEventDiagnostics&, const PlatformEventDiagnostics&) = default;
 };
 
 class PlatformApi {
 public:
     virtual ~PlatformApi() = default;
-    virtual std::uint32_t window_id(PlatformWindowHandle) const noexcept { return 0; }
-    virtual std::uint64_t ticks_ns() const noexcept { return 0; }
-    virtual bool has_clipboard_text() const noexcept { return false; }
-    virtual char* clipboard_text() noexcept { return nullptr; }
+
+    virtual std::uint32_t window_id(PlatformWindowHandle) const noexcept {
+        return 0;
+    }
+
+    virtual std::uint64_t ticks_ns() const noexcept {
+        return 0;
+    }
+
+    virtual bool has_clipboard_text() const noexcept {
+        return false;
+    }
+
+    virtual char* clipboard_text() noexcept {
+        return nullptr;
+    }
+
     virtual void free_clipboard_text(char*) noexcept {}
-    virtual bool set_clipboard_text(const char*) noexcept { return false; }
-    virtual bool start_text_input(PlatformWindowHandle, const input::TextInputProperties&) noexcept { return false; }
-    virtual bool stop_text_input(PlatformWindowHandle) noexcept { return false; }
-    virtual bool cancel_composition(PlatformWindowHandle) noexcept { return false; }
-    virtual bool set_text_input_area(PlatformWindowHandle, const input::WindowTextInputArea&) noexcept { return false; }
+
+    virtual bool set_clipboard_text(const char*) noexcept {
+        return false;
+    }
+
+    virtual bool start_text_input(PlatformWindowHandle, const input::TextInputProperties&) noexcept {
+        return false;
+    }
+
+    virtual bool stop_text_input(PlatformWindowHandle) noexcept {
+        return false;
+    }
+
+    virtual bool cancel_composition(PlatformWindowHandle) noexcept {
+        return false;
+    }
+
+    virtual bool set_text_input_area(PlatformWindowHandle, const input::WindowTextInputArea&) noexcept {
+        return false;
+    }
 
     virtual bool init_video() = 0;
     virtual void quit() noexcept = 0;
-    virtual PlatformWindowHandle create_window(
-        const char* title,
-        int width,
-        int height,
-        bool high_pixel_density) = 0;
+    virtual PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density) = 0;
     virtual void destroy_window(PlatformWindowHandle window) noexcept = 0;
     [[nodiscard]] virtual const char* last_error() const noexcept = 0;
-    [[nodiscard]] virtual PlatformWindowMetrics window_metrics(
-        PlatformWindowHandle window) const noexcept = 0;
+    [[nodiscard]] virtual PlatformWindowMetrics window_metrics(PlatformWindowHandle window) const noexcept = 0;
     virtual void delay(std::uint32_t milliseconds) noexcept = 0;
-    virtual void poll_events(
-        PlatformWindowHandle,
-        PlatformEvents&) {
-    }
-    virtual void wait_events(
-        PlatformWindowHandle window,
-        std::uint32_t timeout_milliseconds,
-        PlatformEvents& result) {
+
+    virtual void poll_events(PlatformWindowHandle, PlatformEvents&) {}
+
+    virtual void wait_events(PlatformWindowHandle window, std::uint32_t timeout_milliseconds, PlatformEvents& result) {
         delay(timeout_milliseconds);
         poll_events(window, result);
     }
@@ -165,9 +179,7 @@ public:
     ~PlatformState();
 
     [[nodiscard]] static PlatformCreateResult create(const PlatformConfig& config);
-    [[nodiscard]] static PlatformCreateResult create(
-        PlatformApi& api,
-        const PlatformConfig& config);
+    [[nodiscard]] static PlatformCreateResult create(PlatformApi& api, const PlatformConfig& config);
 
     [[nodiscard]] PlatformWindowHandle window() const noexcept;
     [[nodiscard]] PlatformWindowMetrics window_metrics() const noexcept;

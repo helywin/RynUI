@@ -9,38 +9,37 @@
 namespace ryn::input {
 TextWordClass text_word_class(char32_t scalar) noexcept {
     const auto category = utf8proc_category(static_cast<utf8proc_int32_t>(scalar));
-    if((scalar >= U'\t' && scalar <= U'\r') || scalar == U'\u0085'
-            || category == UTF8PROC_CATEGORY_ZS || category == UTF8PROC_CATEGORY_ZL
-            || category == UTF8PROC_CATEGORY_ZP) {
+    if ((scalar >= U'\t' && scalar <= U'\r') || scalar == U'\u0085' || category == UTF8PROC_CATEGORY_ZS ||
+        category == UTF8PROC_CATEGORY_ZL || category == UTF8PROC_CATEGORY_ZP) {
         return TextWordClass::whitespace;
     }
-    if(category >= UTF8PROC_CATEGORY_LU && category <= UTF8PROC_CATEGORY_PC) {
+    if (category >= UTF8PROC_CATEGORY_LU && category <= UTF8PROC_CATEGORY_PC) {
         return TextWordClass::word;
     }
-    if(category >= UTF8PROC_CATEGORY_PD && category <= UTF8PROC_CATEGORY_PO) {
+    if (category >= UTF8PROC_CATEGORY_PD && category <= UTF8PROC_CATEGORY_PO) {
         return TextWordClass::punctuation;
     }
     return TextWordClass::symbol;
 }
+
 namespace {
 constexpr std::size_t empty_boundary = 0;
+
 std::span<const std::size_t> offsets(const std::vector<std::size_t>& values) noexcept {
-    return values.empty() ? std::span<const std::size_t>(&empty_boundary, 1)
-                          : std::span<const std::size_t>(values);
+    return values.empty() ? std::span<const std::size_t>(&empty_boundary, 1) : std::span<const std::size_t>(values);
 }
-}
+} // namespace
 
 std::optional<TextScalar> Utf8ScalarIterator::next() noexcept {
-    if(!valid_ || offset_ == bytes_.size()) {
+    if (!valid_ || offset_ == bytes_.size()) {
         return std::nullopt;
     }
     utf8proc_int32_t scalar{};
     // Decode at most four bytes, avoiding size_t -> signed-length overflow.
-    const auto count = utf8proc_iterate(
-        reinterpret_cast<const utf8proc_uint8_t*>(bytes_.data() + offset_),
-        static_cast<utf8proc_ssize_t>(std::min<std::size_t>(bytes_.size() - offset_, 4)),
-        &scalar);
-    if(count <= 0) {
+    const auto count =
+        utf8proc_iterate(reinterpret_cast<const utf8proc_uint8_t*>(bytes_.data() + offset_),
+                         static_cast<utf8proc_ssize_t>(std::min<std::size_t>(bytes_.size() - offset_, 4)), &scalar);
+    if (count <= 0) {
         valid_ = false;
         return std::nullopt;
     }
@@ -56,19 +55,19 @@ bool TextBoundaryMap::assign(std::string_view bytes) {
     Utf8ScalarIterator iterator(bytes);
     utf8proc_int32_t state = 0;
     utf8proc_int32_t previous_scalar = 0;
-    while(const auto scalar = iterator.next()) {
-        if(scalar->byte_begin != 0 && utf8proc_grapheme_break_stateful(
-               previous_scalar, static_cast<utf8proc_int32_t>(scalar->value), &state)) {
+    while (const auto scalar = iterator.next()) {
+        if (scalar->byte_begin != 0 &&
+            utf8proc_grapheme_break_stateful(previous_scalar, static_cast<utf8proc_int32_t>(scalar->value), &state)) {
             pending_graphemes_.push_back(scalar->byte_begin);
         }
         pending_scalars_.push_back(scalar->byte_begin);
         previous_scalar = static_cast<utf8proc_int32_t>(scalar->value);
     }
-    if(!iterator.valid()) {
+    if (!iterator.valid()) {
         return false;
     }
     pending_scalars_.push_back(bytes.size());
-    if(!bytes.empty()) {
+    if (!bytes.empty()) {
         pending_graphemes_.push_back(bytes.size());
     }
     scalars_.swap(pending_scalars_);
@@ -77,7 +76,7 @@ bool TextBoundaryMap::assign(std::string_view bytes) {
 }
 
 void TextBoundaryMap::reserve(std::size_t scalar_capacity) {
-    if(scalar_capacity == std::numeric_limits<std::size_t>::max()) {
+    if (scalar_capacity == std::numeric_limits<std::size_t>::max()) {
         throw std::length_error("Text boundary capacity overflow");
     }
     const auto size = scalar_capacity + 1;
@@ -99,53 +98,75 @@ void TextBoundaryMap::swap(TextBoundaryMap& other) noexcept {
 std::span<const std::size_t> TextBoundaryMap::grapheme_bytes() const noexcept {
     return offsets(graphemes_);
 }
+
 std::span<const std::size_t> TextBoundaryMap::scalar_bytes() const noexcept {
     return offsets(scalars_);
 }
-std::size_t TextBoundaryMap::size_bytes() const noexcept { return scalar_bytes().back(); }
-std::size_t TextBoundaryMap::scalar_count() const noexcept { return scalar_bytes().size() - 1; }
-std::size_t TextBoundaryMap::grapheme_count() const noexcept { return grapheme_bytes().size() - 1; }
+
+std::size_t TextBoundaryMap::size_bytes() const noexcept {
+    return scalar_bytes().back();
+}
+
+std::size_t TextBoundaryMap::scalar_count() const noexcept {
+    return scalar_bytes().size() - 1;
+}
+
+std::size_t TextBoundaryMap::grapheme_count() const noexcept {
+    return grapheme_bytes().size() - 1;
+}
+
 std::size_t TextBoundaryMap::retained_capacity() const noexcept {
-    return scalars_.capacity() + graphemes_.capacity()
-        + pending_scalars_.capacity() + pending_graphemes_.capacity();
+    return scalars_.capacity() + graphemes_.capacity() + pending_scalars_.capacity() + pending_graphemes_.capacity();
 }
 
 std::optional<std::size_t> TextBoundaryMap::byte_to_scalar(std::size_t byte) const noexcept {
     const auto values = scalar_bytes();
     const auto found = std::lower_bound(values.begin(), values.end(), byte);
-    if(found == values.end() || *found != byte) {
+    if (found == values.end() || *found != byte) {
         return std::nullopt;
     }
     return static_cast<std::size_t>(found - values.begin());
 }
+
 std::optional<std::size_t> TextBoundaryMap::scalar_to_byte(std::size_t scalar) const noexcept {
     const auto values = scalar_bytes();
     return scalar < values.size() ? std::optional(values[scalar]) : std::nullopt;
 }
+
 bool TextBoundaryMap::is_boundary(std::size_t byte) const noexcept {
     const auto values = grapheme_bytes();
     return std::binary_search(values.begin(), values.end(), byte);
 }
+
 std::size_t TextBoundaryMap::floor(std::size_t byte) const noexcept {
     const auto values = grapheme_bytes();
     return *std::prev(std::upper_bound(values.begin(), values.end(), byte));
 }
+
 std::size_t TextBoundaryMap::ceil(std::size_t byte) const noexcept {
     const auto values = grapheme_bytes();
     const auto found = std::lower_bound(values.begin(), values.end(), byte);
     return found == values.end() ? values.back() : *found;
 }
+
 std::size_t TextBoundaryMap::previous(std::size_t byte) const noexcept {
     const auto values = grapheme_bytes();
     const auto found = std::lower_bound(values.begin(), values.end(), byte);
     return found == values.begin() ? 0 : *std::prev(found);
 }
+
 std::size_t TextBoundaryMap::next(std::size_t byte) const noexcept {
     const auto values = grapheme_bytes();
     const auto found = std::upper_bound(values.begin(), values.end(), byte);
     return found == values.end() ? values.back() : *found;
 }
-std::string_view TextBoundaryMap::unicode_version() noexcept { return utf8proc_unicode_version(); }
-std::string_view TextBoundaryMap::dependency_version() noexcept { return utf8proc_version(); }
+
+std::string_view TextBoundaryMap::unicode_version() noexcept {
+    return utf8proc_unicode_version();
+}
+
+std::string_view TextBoundaryMap::dependency_version() noexcept {
+    return utf8proc_version();
+}
 
 } // namespace ryn::input

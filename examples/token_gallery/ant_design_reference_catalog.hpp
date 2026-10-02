@@ -58,22 +58,17 @@ struct AntDesignReferenceEntry final {
     std::string_view evidence_identifiers;
 };
 
-[[nodiscard]] std::span<const AntDesignReferenceSource>
-ant_design_reference_sources() noexcept;
+[[nodiscard]] std::span<const AntDesignReferenceSource> ant_design_reference_sources() noexcept;
 
-[[nodiscard]] std::span<const AntDesignReferenceCategory>
-ant_design_reference_categories() noexcept;
+[[nodiscard]] std::span<const AntDesignReferenceCategory> ant_design_reference_categories() noexcept;
 
-[[nodiscard]] std::span<const AntDesignReferenceEntry>
-ant_design_reference_entries() noexcept;
+[[nodiscard]] std::span<const AntDesignReferenceEntry> ant_design_reference_entries() noexcept;
 
-[[nodiscard]] const AntDesignReferenceEntry*
-find_ant_design_reference_entry(std::string_view identity) noexcept;
+[[nodiscard]] const AntDesignReferenceEntry* find_ant_design_reference_entry(std::string_view identity) noexcept;
 
 [[nodiscard]] std::string_view ant_design_reference_catalog_hash() noexcept;
 [[nodiscard]] std::string_view ant_design_reference_version() noexcept;
 [[nodiscard]] std::string_view ant_design_reference_commit() noexcept;
-[[nodiscard]] std::string_view gallery_support_status_name(
-    GallerySupportStatus status) noexcept;
+[[nodiscard]] std::string_view gallery_support_status_name(GallerySupportStatus status) noexcept;
 
 } // namespace rynui::example

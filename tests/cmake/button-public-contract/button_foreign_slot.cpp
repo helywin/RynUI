@@ -3,7 +3,5 @@
 struct ForeignSlot final {};
 
 void declare_invalid_slot() {
-    ryn::Button(
-        ryn::ButtonProps{},
-        ryn::SlotContent<ForeignSlot>{[] {}});
+    ryn::Button(ryn::ButtonProps{}, ryn::SlotContent<ForeignSlot>{[] {}});
 }

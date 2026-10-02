@@ -37,8 +37,7 @@ struct RetainedSurfaceEffects final {
 };
 
 struct RetainedSurfaceId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -66,61 +65,42 @@ struct RetainedSurfaceDiagnostics final {
 
 class RetainedSurfaceService final {
 public:
-    RetainedSurfaceService(
-        runtime::ComponentHost& components,
-        runtime::NodeStore& nodes,
-        ComponentSceneComposer& composer) noexcept;
+    RetainedSurfaceService(runtime::ComponentHost& components, runtime::NodeStore& nodes,
+                           ComponentSceneComposer& composer) noexcept;
 
     void reserve(std::size_t surface_capacity, std::size_t visual_capacity);
-    [[nodiscard]] RetainedSurfaceId create(
-        runtime::ComponentId component,
-        runtime::NodeId node,
-        runtime::SceneFragmentId fragment,
-        std::optional<input::InteractionId> interaction,
-        std::span<const graphics::QuadInstance> visuals,
-        const RetainedSurfaceEffects& effects = RetainedSurfaceEffects{});
-    [[nodiscard]] RetainedSurfaceId create_surface(
-        runtime::ComponentId component,
-        runtime::NodeId node,
-        runtime::SceneFragmentId fragment,
-        std::span<const graphics::QuadInstance> visuals,
-        const RetainedSurfaceEffects& effects = RetainedSurfaceEffects{},
-        std::optional<input::InteractionId> interaction = std::nullopt);
+    [[nodiscard]] RetainedSurfaceId create(runtime::ComponentId component, runtime::NodeId node,
+                                           runtime::SceneFragmentId fragment,
+                                           std::optional<input::InteractionId> interaction,
+                                           std::span<const graphics::QuadInstance> visuals,
+                                           const RetainedSurfaceEffects& effects = RetainedSurfaceEffects{});
+    [[nodiscard]] RetainedSurfaceId create_surface(runtime::ComponentId component, runtime::NodeId node,
+                                                   runtime::SceneFragmentId fragment,
+                                                   std::span<const graphics::QuadInstance> visuals,
+                                                   const RetainedSurfaceEffects& effects = RetainedSurfaceEffects{},
+                                                   std::optional<input::InteractionId> interaction = std::nullopt);
     bool destroy(RetainedSurfaceId id);
-    [[nodiscard]] std::size_t update(
-        RetainedSurfaceId id,
-        std::span<const graphics::QuadInstance> visuals);
-    [[nodiscard]] std::size_t update_surface(
-        RetainedSurfaceId id,
-        std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t update(RetainedSurfaceId id, std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t update_surface(RetainedSurfaceId id, std::span<const graphics::QuadInstance> visuals);
     // Content ranges back a caller-owned fragment (a text decoration layer, for
     // example) with a variable number of quads. `set_content_range` creates or
     // re-targets the range, `update_content_range` re-publishes it, and both
     // reallocate the range when the count changes so the owning component can add
     // or drop decoration quads on reflow.
-    [[nodiscard]] RetainedSurfaceId create_content_range(
-        runtime::SceneFragmentId fragment,
-        std::span<const graphics::QuadInstance> visuals);
-    [[nodiscard]] std::size_t set_content_range(
-        RetainedSurfaceId id,
-        runtime::SceneFragmentId fragment,
-        std::span<const graphics::QuadInstance> visuals);
-    [[nodiscard]] std::size_t update_content_range(
-        RetainedSurfaceId id,
-        std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] RetainedSurfaceId create_content_range(runtime::SceneFragmentId fragment,
+                                                         std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t set_content_range(RetainedSurfaceId id, runtime::SceneFragmentId fragment,
+                                                std::span<const graphics::QuadInstance> visuals);
+    [[nodiscard]] std::size_t update_content_range(RetainedSurfaceId id,
+                                                   std::span<const graphics::QuadInstance> visuals);
     bool destroy_content_range(RetainedSurfaceId id);
-    std::size_t update_content_effects(RetainedSurfaceId id,
-        std::span<const graphics::RoundedEffectInstance> effects);
-    [[nodiscard]] std::size_t update_effects(
-        RetainedSurfaceId id,
-        const RetainedSurfaceEffects& effects);
+    std::size_t update_content_effects(RetainedSurfaceId id, std::span<const graphics::RoundedEffectInstance> effects);
+    [[nodiscard]] std::size_t update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects);
     [[nodiscard]] bool compact_effects(runtime::Rect window_clip);
 
     [[nodiscard]] graphics::QuadInstanceRange visual_range(RetainedSurfaceId id) const;
-    [[nodiscard]] const graphics::RoundedEffectInstance& focus_effect(
-        RetainedSurfaceId id) const;
-    [[nodiscard]] std::span<const graphics::RoundedEffectId> shadow_effects(
-        RetainedSurfaceId id) const;
+    [[nodiscard]] const graphics::RoundedEffectInstance& focus_effect(RetainedSurfaceId id) const;
+    [[nodiscard]] std::span<const graphics::RoundedEffectId> shadow_effects(RetainedSurfaceId id) const;
     [[nodiscard]] graphics::QuadInstanceStore& instances() noexcept;
     [[nodiscard]] const graphics::QuadInstanceStore& instances() const noexcept;
     [[nodiscard]] graphics::RoundedEffectStore& effects() noexcept;
@@ -165,33 +145,27 @@ private:
     [[nodiscard]] const Record* find(RetainedSurfaceId id) const noexcept;
     [[nodiscard]] Record& require(RetainedSurfaceId id);
     [[nodiscard]] const Record& require(RetainedSurfaceId id) const;
-    [[nodiscard]] RetainedSurfaceId create_record(
-        runtime::ComponentId component,
-        runtime::NodeId node,
-        runtime::SceneFragmentId fragment,
-        std::optional<input::InteractionId> interaction,
-        std::span<const graphics::QuadInstance> visuals,
-        const RetainedSurfaceEffects& effects);
+    [[nodiscard]] RetainedSurfaceId create_record(runtime::ComponentId component, runtime::NodeId node,
+                                                  runtime::SceneFragmentId fragment,
+                                                  std::optional<input::InteractionId> interaction,
+                                                  std::span<const graphics::QuadInstance> visuals,
+                                                  const RetainedSurfaceEffects& effects);
     [[nodiscard]] std::uint32_t acquire_slot();
     [[nodiscard]] std::uint32_t acquire_content_slot();
     [[nodiscard]] ContentRecord* find_content(RetainedSurfaceId id) noexcept;
     [[nodiscard]] ContentRecord& require_content(RetainedSurfaceId id);
     void publish_content(ContentRecord& record);
-    void remap_after_replace(graphics::QuadInstanceRange old_range,
-        std::uint32_t new_count, const graphics::QuadInstanceRange* owner);
-    [[nodiscard]] std::size_t republish_range(
-        graphics::QuadInstanceRange& range,
-        std::span<const graphics::QuadInstance> visuals);
+    void remap_after_replace(graphics::QuadInstanceRange old_range, std::uint32_t new_count,
+                             const graphics::QuadInstanceRange* owner);
+    [[nodiscard]] std::size_t republish_range(graphics::QuadInstanceRange& range,
+                                              std::span<const graphics::QuadInstance> visuals);
     void bind_fragment(const Record& record);
     void create_effects(Record& record);
     void remove_effects(Record& record) noexcept;
     void ensure_owner_thread() const;
-    static void validate_visuals(
-        std::span<const graphics::QuadInstance> visuals);
-    static void validate_content_visuals(
-        std::span<const graphics::QuadInstance> visuals);
-    static void validate_finite_visuals(
-        std::span<const graphics::QuadInstance> visuals);
+    static void validate_visuals(std::span<const graphics::QuadInstance> visuals);
+    static void validate_content_visuals(std::span<const graphics::QuadInstance> visuals);
+    static void validate_finite_visuals(std::span<const graphics::QuadInstance> visuals);
     static void advance_generation(Slot& slot) noexcept;
 
     runtime::ComponentHost* components_;

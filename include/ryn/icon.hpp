@@ -9,7 +9,9 @@
 #include <utility>
 
 namespace ryn {
-namespace detail { struct IconPropsAccess; }
+namespace detail {
+struct IconPropsAccess;
+}
 
 enum class IconName : std::uint8_t {
     EyeOutlined,
@@ -38,14 +40,17 @@ public:
         name_ = std::move(value);
         return *this;
     }
+
     IconProps& tone(Prop<TextTone> value) {
         tone_ = std::move(value);
         return *this;
     }
+
     IconProps& visible(Prop<bool> value) {
         visible_ = std::move(value);
         return *this;
     }
+
     IconProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;

@@ -19,9 +19,7 @@ static_assert(!std::is_convertible_v<const char8_t*, ryn::String>);
 static_assert(std::is_trivially_copyable_v<ryn::StringView>);
 
 template <typename Value>
-concept HasSubscript = requires(const Value& value) {
-    value[std::size_t{}];
-};
+concept HasSubscript = requires(const Value& value) { value[std::size_t{}]; };
 
 static_assert(!HasSubscript<ryn::String>);
 static_assert(!HasSubscript<ryn::StringView>);
@@ -41,16 +39,12 @@ std::string bytes(std::initializer_list<unsigned int> values) {
     return result;
 }
 
-void require_error(
-    std::string_view input,
-    ryn::Utf8ErrorKind expected_kind,
-    std::size_t expected_offset,
-    const char* message) {
+void require_error(std::string_view input, ryn::Utf8ErrorKind expected_kind, std::size_t expected_offset,
+                   const char* message) {
     const auto parsed = ryn::String::from_utf8(input);
     require(!parsed, message);
     require(parsed.error().kind == expected_kind, "unexpected UTF-8 error kind");
-    require(parsed.error().byte_offset == expected_offset,
-            "unexpected UTF-8 error offset");
+    require(parsed.error().byte_offset == expected_offset, "unexpected UTF-8 error offset");
 }
 
 void test_valid_values_and_views() {
@@ -83,49 +77,27 @@ void test_valid_values_and_views() {
 }
 
 void test_strict_errors() {
-    require_error(bytes({0xE2, 0x82}),
-                  ryn::Utf8ErrorKind::truncated_sequence,
-                  0,
-                  "truncated sequence was accepted");
-    require_error(bytes({0xE2, 0x28, 0xA1}),
-                  ryn::Utf8ErrorKind::invalid_continuation,
-                  1,
+    require_error(bytes({0xE2, 0x82}), ryn::Utf8ErrorKind::truncated_sequence, 0, "truncated sequence was accepted");
+    require_error(bytes({0xE2, 0x28, 0xA1}), ryn::Utf8ErrorKind::invalid_continuation, 1,
                   "invalid continuation was accepted");
-    require_error(bytes({0x80}),
-                  ryn::Utf8ErrorKind::unexpected_continuation,
-                  0,
+    require_error(bytes({0x80}), ryn::Utf8ErrorKind::unexpected_continuation, 0,
                   "unexpected continuation was accepted");
-    require_error(bytes({0xC0, 0xAF}),
-                  ryn::Utf8ErrorKind::overlong_sequence,
-                  0,
-                  "overlong sequence was accepted");
-    require_error(bytes({0xED, 0xA0, 0x80}),
-                  ryn::Utf8ErrorKind::surrogate,
-                  0,
-                  "UTF-8 surrogate was accepted");
-    require_error(bytes({0xF4, 0x90, 0x80, 0x80}),
-                  ryn::Utf8ErrorKind::code_point_out_of_range,
-                  0,
+    require_error(bytes({0xC0, 0xAF}), ryn::Utf8ErrorKind::overlong_sequence, 0, "overlong sequence was accepted");
+    require_error(bytes({0xED, 0xA0, 0x80}), ryn::Utf8ErrorKind::surrogate, 0, "UTF-8 surrogate was accepted");
+    require_error(bytes({0xF4, 0x90, 0x80, 0x80}), ryn::Utf8ErrorKind::code_point_out_of_range, 0,
                   "out-of-range code point was accepted");
-    require_error(bytes({0xFF}),
-                  ryn::Utf8ErrorKind::invalid_leading_byte,
-                  0,
-                  "invalid leading byte was accepted");
+    require_error(bytes({0xFF}), ryn::Utf8ErrorKind::invalid_leading_byte, 0, "invalid leading byte was accepted");
 }
 
 void test_lossy_repairs() {
     const std::string malformed = bytes({0xE2, 0x28, 0xA1});
     const auto repaired = ryn::String::from_utf8_lossy(malformed);
-    require(repaired.replacement_count == 2,
-            "lossy repair returned the wrong replacement count");
-    require(repaired.value.utf8() == u8"�(�",
-            "lossy repair returned the wrong normalized UTF-8");
+    require(repaired.replacement_count == 2, "lossy repair returned the wrong replacement count");
+    require(repaired.value.utf8() == u8"�(�", "lossy repair returned the wrong normalized UTF-8");
 
     const auto truncated = ryn::String::from_utf8_lossy(bytes({0xE2, 0x82}));
-    require(truncated.replacement_count == 1,
-            "truncated sequence was not repaired as one invalid subsequence");
-    require(truncated.value.utf8() == u8"�",
-            "truncated sequence repair returned unexpected bytes");
+    require(truncated.replacement_count == 1, "truncated sequence was not repaired as one invalid subsequence");
+    require(truncated.value.utf8() == u8"�", "truncated sequence repair returned unexpected bytes");
 
     const auto valid = ryn::String::from_utf8_lossy(std::u8string_view{u8"abc中文"});
     require(valid.replacement_count == 0, "valid UTF-8 was reported as repaired");

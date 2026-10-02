@@ -26,9 +26,7 @@ struct PointerIdentity {
         return {PointerDevice::mouse, 0, 0};
     }
 
-    [[nodiscard]] static constexpr PointerIdentity touch(
-        std::uint64_t device,
-        std::uint64_t pointer) noexcept {
+    [[nodiscard]] static constexpr PointerIdentity touch(std::uint64_t device, std::uint64_t pointer) noexcept {
         return {PointerDevice::touch, device, pointer};
     }
 
@@ -79,9 +77,23 @@ enum class Key : std::uint8_t {
     tab,
     enter,
     space,
-    left, right, home, end, backspace, delete_forward, escape,
-    a, c, x, v, z, y,
-    up, down, page_up, page_down,
+    left,
+    right,
+    home,
+    end,
+    backspace,
+    delete_forward,
+    escape,
+    a,
+    c,
+    x,
+    v,
+    z,
+    y,
+    up,
+    down,
+    page_up,
+    page_down,
 };
 
 enum class KeyAction : std::uint8_t {
@@ -98,18 +110,12 @@ enum class KeyModifier : std::uint8_t {
     meta = 1U << 3U,
 };
 
-[[nodiscard]] constexpr KeyModifier operator|(
-    KeyModifier lhs,
-    KeyModifier rhs) noexcept {
-    return static_cast<KeyModifier>(
-        static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs));
+[[nodiscard]] constexpr KeyModifier operator|(KeyModifier lhs, KeyModifier rhs) noexcept {
+    return static_cast<KeyModifier>(static_cast<std::uint8_t>(lhs) | static_cast<std::uint8_t>(rhs));
 }
 
-[[nodiscard]] constexpr bool has_modifier(
-    KeyModifier modifiers,
-    KeyModifier modifier) noexcept {
-    return (static_cast<std::uint8_t>(modifiers)
-            & static_cast<std::uint8_t>(modifier)) != 0;
+[[nodiscard]] constexpr bool has_modifier(KeyModifier modifiers, KeyModifier modifier) noexcept {
+    return (static_cast<std::uint8_t>(modifiers) & static_cast<std::uint8_t>(modifier)) != 0;
 }
 
 struct KeyboardInputEvent {
@@ -138,15 +144,8 @@ struct WindowInputEvent {
     friend bool operator==(const WindowInputEvent&, const WindowInputEvent&) = default;
 };
 
-using PlatformInputEvent = std::variant<
-    PointerInputEvent,
-    ScrollInputEvent,
-    KeyboardInputEvent,
-    WindowInputEvent,
-    TextCommitted,
-    CompositionChanged,
-    CandidatesChanged,
-    ClipboardChanged>;
+using PlatformInputEvent = std::variant<PointerInputEvent, ScrollInputEvent, KeyboardInputEvent, WindowInputEvent,
+                                        TextCommitted, CompositionChanged, CandidatesChanged, ClipboardChanged>;
 
 [[nodiscard]] bool is_valid(const PointerIdentity& identity) noexcept;
 [[nodiscard]] bool is_valid(const PointerInputEvent& event) noexcept;
@@ -158,7 +157,7 @@ using PlatformInputEvent = std::variant<
 class PlatformInputBatch final {
 public:
     explicit PlatformInputBatch(std::size_t max_events = 4096,
-        std::size_t max_payload_bytes = 4 * text_event_max_bytes) noexcept;
+                                std::size_t max_payload_bytes = 4 * text_event_max_bytes) noexcept;
     void reserve(std::size_t capacity);
 
     // Returns false when a consecutive move for the same pointer replaces the

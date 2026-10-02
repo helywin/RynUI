@@ -48,8 +48,7 @@ public:
 
     ryn::animation::AnimationTime now() const noexcept override {
         return ryn::animation::AnimationTime::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - started_).count());
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started_).count());
     }
 
     bool poll_frame_event() noexcept override {
@@ -77,27 +76,16 @@ private:
 
 class SceneSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    SceneSubmitter(
-        ryn::runtime::DirtyQueues& dirty,
-        ryn::layout::LayoutEngine& layout,
-        ryn::graphics::QuadScene& scene,
-        ryn::detail::QuadGpuBuffer& gpu_buffer,
-        ryn::detail::SdlQuadRenderer& renderer,
-        ryn::runtime::Size viewport,
-        ryn::detail::SceneDeviceMetrics metrics) noexcept
-        : dirty_(&dirty),
-          layout_(&layout),
-          scene_(&scene),
-          gpu_buffer_(&gpu_buffer),
-          renderer_(&renderer),
+    SceneSubmitter(ryn::runtime::DirtyQueues& dirty, ryn::layout::LayoutEngine& layout, ryn::graphics::QuadScene& scene,
+                   ryn::detail::QuadGpuBuffer& gpu_buffer, ryn::detail::SdlQuadRenderer& renderer,
+                   ryn::runtime::Size viewport, ryn::detail::SceneDeviceMetrics metrics) noexcept
+        : dirty_(&dirty), layout_(&layout), scene_(&scene), gpu_buffer_(&gpu_buffer), renderer_(&renderer),
           viewport_(viewport), metrics_(metrics) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime frame_time) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         for (const auto root : dirty_->layout_roots()) {
-            static_cast<void>(layout_->layout(
-                root,
-                ryn::layout::Constraints::fixed(viewport_.width, viewport_.height)));
+            static_cast<void>(
+                layout_->layout(root, ryn::layout::Constraints::fixed(viewport_.width, viewport_.height)));
         }
         static_cast<void>(scene_->sync_dirty(*dirty_));
         gpu_buffer_->synchronize(scene_->instances(), metrics_);
@@ -127,8 +115,7 @@ int main(int argc, char** argv) {
         const bool smoke_mode = has_argument(argc, argv, "--smoke");
         constexpr ryn::runtime::Size requested_window{960.0F, 640.0F};
         const auto current = ryn::version();
-        std::cout << "RynUI " << current.major << '.' << current.minor << '.'
-                  << current.patch << '\n';
+        std::cout << "RynUI " << current.major << '.' << current.minor << '.' << current.patch << '\n';
 
         ryn::detail::PlatformConfig config;
         config.title = "RynUI Reactive Quad";
@@ -137,8 +124,8 @@ int main(int argc, char** argv) {
 
         auto created = ryn::detail::PlatformState::create(config);
         if (!created) {
-            std::cerr << "platform_stage=" << stage_name(created.error->stage)
-                      << " error=" << created.error->message << '\n';
+            std::cerr << "platform_stage=" << stage_name(created.error->stage) << " error=" << created.error->message
+                      << '\n';
             return 1;
         }
         auto& platform = *created.state;
@@ -164,83 +151,59 @@ int main(int argc, char** argv) {
         ryn::runtime::NodeId root;
         ryn::runtime::NodeId quad_node;
 
-        ryn::runtime::ComponentInstance component(
-            nodes,
-            [&](ryn::runtime::MountContext& context) {
-                root = context.create_root();
-                quad_node = context.create_child(root);
-                static_cast<void>(ryn::connect_binding(
-                    context.scope(),
-                    ryn::bind([&] { return color.get(); }),
-                    [&](ryn::runtime::Color value) {
-                        ++example_counters.observer_executions;
-                        static_cast<void>(properties.set_color(quad_node, value));
-                    }));
-                static_cast<void>(ryn::connect_binding(
-                    context.scope(),
-                    ryn::bind([&] { return opacity.get(); }),
-                    [&](float value) {
-                        ++example_counters.observer_executions;
-                        static_cast<void>(properties.set_opacity(quad_node, value));
-                    }));
-                static_cast<void>(ryn::connect_binding(
-                    context.scope(),
-                    ryn::bind([&] { return translation.get(); }),
-                    [&](ryn::runtime::Point value) {
-                        ++example_counters.observer_executions;
-                        static_cast<void>(properties.set_translation(quad_node, value));
-                    }));
-                static_cast<void>(ryn::connect_binding(
-                    context.scope(),
-                    ryn::bind([&] { return size.get(); }),
-                    [&](ryn::runtime::Size value) {
-                        ++example_counters.observer_executions;
-                        static_cast<void>(properties.set_size(quad_node, value));
-                    }));
-            });
+        ryn::runtime::ComponentInstance component(nodes, [&](ryn::runtime::MountContext& context) {
+            root = context.create_root();
+            quad_node = context.create_child(root);
+            static_cast<void>(ryn::connect_binding(context.scope(), ryn::bind([&] { return color.get(); }),
+                                                   [&](ryn::runtime::Color value) {
+                                                       ++example_counters.observer_executions;
+                                                       static_cast<void>(properties.set_color(quad_node, value));
+                                                   }));
+            static_cast<void>(
+                ryn::connect_binding(context.scope(), ryn::bind([&] { return opacity.get(); }), [&](float value) {
+                    ++example_counters.observer_executions;
+                    static_cast<void>(properties.set_opacity(quad_node, value));
+                }));
+            static_cast<void>(ryn::connect_binding(context.scope(), ryn::bind([&] { return translation.get(); }),
+                                                   [&](ryn::runtime::Point value) {
+                                                       ++example_counters.observer_executions;
+                                                       static_cast<void>(properties.set_translation(quad_node, value));
+                                                   }));
+            static_cast<void>(ryn::connect_binding(context.scope(), ryn::bind([&] { return size.get(); }),
+                                                   [&](ryn::runtime::Size value) {
+                                                       ++example_counters.observer_executions;
+                                                       static_cast<void>(properties.set_size(quad_node, value));
+                                                   }));
+        });
 
         ryn::layout::LayoutEngine layout(nodes);
         layout.set_layout(root, ryn::layout::BoxLayout{
-            {260.0F, 190.0F, 0.0F, 0.0F},
-            true,
-            true,
-        });
+                                    {260.0F, 190.0F, 0.0F, 0.0F},
+                                    true,
+                                    true,
+                                });
         layout.set_layout(quad_node, ryn::layout::LeafLayout{size.get()});
-        static_cast<void>(layout.layout(
-            root,
-            ryn::layout::Constraints::fixed(viewport.width, viewport.height)));
+        static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(viewport.width, viewport.height)));
 
         ryn::graphics::QuadScene scene(nodes);
         static_cast<void>(scene.add_quad(quad_node, 28.0F));
-        ryn::detail::SdlQuadRenderer renderer(
-            platform,
-            executable_directory(argv[0]) / "shaders");
+        ryn::detail::SdlQuadRenderer renderer(platform, executable_directory(argv[0]) / "shaders");
         ryn::detail::QuadGpuBuffer gpu_buffer(renderer, scene.instances(),
-            {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
-             static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
-             initial_window_metrics.display_scale});
+                                              {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
+                                               static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
+                                               initial_window_metrics.display_scale});
         renderer.attach_scene(gpu_buffer, static_cast<std::uint32_t>(scene.instances().size()));
         dirty.clear();
         if (!frame_requests.pending()) {
             frame_requests.request_frame();
         }
 
-        SceneSubmitter submitter(
-            dirty,
-            layout,
-            scene,
-            gpu_buffer,
-            renderer,
-            viewport,
-            {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
-             static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
-             initial_window_metrics.display_scale});
+        SceneSubmitter submitter(dirty, layout, scene, gpu_buffer, renderer, viewport,
+                                 {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
+                                  static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
+                                  initial_window_metrics.display_scale});
         PlatformFrameEvents events(platform);
-        ryn::runtime::OnDemandFrameLoop frame_loop(
-            frame_requests,
-            events,
-            submitter,
-            10);
+        ryn::runtime::OnDemandFrameLoop frame_loop(frame_requests, events, submitter, 10);
 
         int update_stage = 0;
         while (!events.quit_requested()) {
@@ -267,10 +230,7 @@ int main(int argc, char** argv) {
                 std::cerr << "frame_error=" << renderer.last_error() << '\n';
                 return 2;
             }
-            if (smoke_mode
-                    && update_stage == 3
-                    && elapsed >= 1'300
-                    && frame_loop.counters().idle_waits >= 20) {
+            if (smoke_mode && update_stage == 3 && elapsed >= 1'300 && frame_loop.counters().idle_waits >= 20) {
                 break;
             }
         }
@@ -282,30 +242,22 @@ int main(int argc, char** argv) {
         const auto& renderer_counters = renderer.counters();
         const auto& loop_counters = frame_loop.counters();
         const auto window_metrics = platform.window_metrics();
-        std::cout
-            << "gpu_driver=" << renderer.gpu_driver()
-            << " shader_format=" << renderer.shader_format()
-            << " display_scale=" << window_metrics.display_scale
-            << " pixel_density=" << window_metrics.pixel_density
-            << " window_size=" << window_metrics.coordinate_width << 'x'
-            << window_metrics.coordinate_height
-            << " pixel_size=" << window_metrics.pixel_width << 'x'
-            << window_metrics.pixel_height
-            << " viewport=" << viewport.width << 'x' << viewport.height
-            << " component_runs=" << component.mount_runs()
-            << " signal_writes=" << example_counters.signal_writes
-            << " observer_executions=" << example_counters.observer_executions
-            << " measure=" << root_node.measure_count + quad.measure_count
-            << " layout=" << root_node.place_count + quad.place_count
-            << " primitive_rebuilds=" << scene_counters.primitive_rebuilds
-            << " instance_updates=" << scene_counters.instance_updates
-            << " gpu_uploads="
-            << upload_counters.initial_uploads + upload_counters.range_uploads
-            << " gpu_uploaded_bytes=" << upload_counters.uploaded_bytes
-            << " submits=" << renderer_counters.frame_submissions
-            << " idle_wakes=" << loop_counters.event_wakes
-            << " idle_waits=" << loop_counters.idle_waits
-            << '\n';
+        std::cout << "gpu_driver=" << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
+                  << " display_scale=" << window_metrics.display_scale
+                  << " pixel_density=" << window_metrics.pixel_density
+                  << " window_size=" << window_metrics.coordinate_width << 'x' << window_metrics.coordinate_height
+                  << " pixel_size=" << window_metrics.pixel_width << 'x' << window_metrics.pixel_height
+                  << " viewport=" << viewport.width << 'x' << viewport.height
+                  << " component_runs=" << component.mount_runs() << " signal_writes=" << example_counters.signal_writes
+                  << " observer_executions=" << example_counters.observer_executions
+                  << " measure=" << root_node.measure_count + quad.measure_count
+                  << " layout=" << root_node.place_count + quad.place_count
+                  << " primitive_rebuilds=" << scene_counters.primitive_rebuilds
+                  << " instance_updates=" << scene_counters.instance_updates
+                  << " gpu_uploads=" << upload_counters.initial_uploads + upload_counters.range_uploads
+                  << " gpu_uploaded_bytes=" << upload_counters.uploaded_bytes
+                  << " submits=" << renderer_counters.frame_submissions << " idle_wakes=" << loop_counters.event_wakes
+                  << " idle_waits=" << loop_counters.idle_waits << '\n';
         return renderer_counters.frame_submissions >= 4 ? 0 : 3;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';

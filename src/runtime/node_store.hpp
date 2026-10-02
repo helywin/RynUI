@@ -12,8 +12,7 @@
 namespace ryn::runtime {
 
 struct NodeId {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -56,9 +55,7 @@ struct ExternalLayoutStyle final {
     FlexItemAlign align_self{FlexItemAlign::automatic};
     int order{0};
 
-    friend bool operator==(
-        const ExternalLayoutStyle&,
-        const ExternalLayoutStyle&) = default;
+    friend bool operator==(const ExternalLayoutStyle&, const ExternalLayoutStyle&) = default;
 };
 
 struct Node {

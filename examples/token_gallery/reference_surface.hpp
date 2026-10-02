@@ -17,14 +17,16 @@
 #include <utility>
 #include <vector>
 
-namespace ryn::detail { class InputComponentHost; }
+namespace ryn::detail {
+class InputComponentHost;
+}
 
 namespace rynui::example {
 
 namespace detail {
 struct ReferenceSurfacePropsAccess;
 struct ReferenceSurfaceComponentState;
-}
+} // namespace detail
 
 inline constexpr std::size_t reference_surface_visual_layer_count = 4;
 
@@ -61,8 +63,7 @@ public:
         return *this;
     }
 
-    ReferenceSurfaceProps& swatch(
-        ryn::Prop<std::optional<ryn::Color>> value) {
+    ReferenceSurfaceProps& swatch(ryn::Prop<std::optional<ryn::Color>> value) {
         swatch_ = std::move(value);
         return *this;
     }
@@ -99,11 +100,10 @@ private:
 };
 
 struct ReferenceSurfaceContentSlot final {};
+
 using ReferenceSurfaceContent = ryn::SlotContent<ReferenceSurfaceContentSlot>;
 
-using ReferenceSurfaceVisualData = std::array<
-    ryn::graphics::QuadInstance,
-    reference_surface_visual_layer_count>;
+using ReferenceSurfaceVisualData = std::array<ryn::graphics::QuadInstance, reference_surface_visual_layer_count>;
 
 struct MountedReferenceSurface final {
     ryn::runtime::ComponentId component;
@@ -124,50 +124,35 @@ struct ReferenceSurfaceSnapshot final {
     GalleryScrollbarVisualState scrollbar_visual;
 };
 
-class ReferenceSurfaceHost final
-    : private ryn::detail::AuxiliaryComponentSynchronizer {
+class ReferenceSurfaceHost final : private ryn::detail::AuxiliaryComponentSynchronizer {
 public:
-    explicit ReferenceSurfaceHost(
-        ryn::detail::ButtonComponentHost& application);
+    explicit ReferenceSurfaceHost(ryn::detail::ButtonComponentHost& application);
     ReferenceSurfaceHost(const ReferenceSurfaceHost&) = delete;
     ReferenceSurfaceHost& operator=(const ReferenceSurfaceHost&) = delete;
     ~ReferenceSurfaceHost() override;
 
     void mount(const ryn::Content& content, ryn::detail::InputComponentHost* inputs = nullptr);
     bool destroy(ryn::runtime::ComponentId component);
-    [[nodiscard]] bool layout_and_synchronize(
-        ryn::runtime::Size viewport,
-        ryn::runtime::Rect clip,
-        ryn::runtime::Point origin = {},
-        float gap = 0.0F);
-    [[nodiscard]] std::span<const MountedReferenceSurface>
-        mounted_surfaces() const noexcept;
-    [[nodiscard]] ReferenceSurfaceSnapshot snapshot(
-        ryn::runtime::ComponentId component) const;
-    bool set_scrollbar_visual_state(ryn::runtime::ComponentId component,
-        GalleryScrollbarVisualState visual);
+    [[nodiscard]] bool layout_and_synchronize(ryn::runtime::Size viewport, ryn::runtime::Rect clip,
+                                              ryn::runtime::Point origin = {}, float gap = 0.0F);
+    [[nodiscard]] std::span<const MountedReferenceSurface> mounted_surfaces() const noexcept;
+    [[nodiscard]] ReferenceSurfaceSnapshot snapshot(ryn::runtime::ComponentId component) const;
+    bool set_scrollbar_visual_state(ryn::runtime::ComponentId component, GalleryScrollbarVisualState visual);
     [[nodiscard]] ryn::detail::ButtonComponentHost& application() noexcept;
-    [[nodiscard]] detail::ReferenceSurfaceComponentState* find_state(
-        ryn::runtime::ComponentId component) noexcept;
-    [[nodiscard]] const detail::ReferenceSurfaceComponentState* find_state(
-        ryn::runtime::ComponentId component) const noexcept;
+    [[nodiscard]] detail::ReferenceSurfaceComponentState* find_state(ryn::runtime::ComponentId component) noexcept;
+    [[nodiscard]] const detail::ReferenceSurfaceComponentState*
+    find_state(ryn::runtime::ComponentId component) const noexcept;
 
 private:
-    friend void ReferenceSurface(
-        ReferenceSurfaceProps props,
-        ReferenceSurfaceContent content);
+    friend void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent content);
 
-    void synchronize_auxiliary_geometry(
-        ryn::runtime::Size viewport,
-        ryn::runtime::Rect clip) override;
+    void synchronize_auxiliary_geometry(ryn::runtime::Size viewport, ryn::runtime::Rect clip) override;
     void record_mounted(MountedReferenceSurface mounted);
 
     ryn::detail::ButtonComponentHost* application_;
     std::vector<MountedReferenceSurface> mounted_;
 };
 
-void ReferenceSurface(
-    ReferenceSurfaceProps props,
-    ReferenceSurfaceContent content);
+void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent content);
 
 } // namespace rynui::example

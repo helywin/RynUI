@@ -6,24 +6,41 @@ namespace ryn::input {
 
 enum class TextInputType : std::uint8_t { text, name, email, username, number, password_hidden, password_visible };
 enum class TextCapitalization : std::uint8_t { none, sentences, words, letters };
+
 struct TextInputProperties {
     TextInputType type{TextInputType::text};
     TextCapitalization capitalization{TextCapitalization::none};
     bool autocorrect{true};
     friend bool operator==(const TextInputProperties&, const TextInputProperties&) = default;
 };
+
 struct WindowTextInputArea {
-    int x{}, y{}, width{}, height{}, cursor{};
+    int x{};
+    int y{};
+    int width{};
+    int height{};
+    int cursor{};
     friend bool operator==(const WindowTextInputArea&, const WindowTextInputArea&) = default;
 };
-struct TextInputRect { double x{}, y{}, width{}, height{}; };
+
+struct TextInputRect {
+    double x{};
+    double y{};
+    double width{};
+    double height{};
+};
+
 struct TextInputAreaGeometry {
     TextInputRect bounds;
     TextInputRect clip;
-    double translation_x{}, translation_y{}, caret_x{};
+    double translation_x{};
+    double translation_y{};
+    double caret_x{};
     double logical_to_window_scale{1};
-    int window_width{}, window_height{};
+    int window_width{};
+    int window_height{};
 };
+
 [[nodiscard]] std::optional<WindowTextInputArea> map_text_input_area(const TextInputAreaGeometry&) noexcept;
 
 // One port instance represents one window. Implementations report failure, do
@@ -39,6 +56,7 @@ public:
     virtual bool stop() noexcept = 0;
     virtual bool cancel() noexcept = 0;
     virtual bool set_area(const WindowTextInputArea&) noexcept = 0;
+
 private:
     friend class TextInputSessionHost;
     const void* session_host_{};

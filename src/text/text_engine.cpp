@@ -17,28 +17,22 @@ namespace {
 }
 
 [[nodiscard]] bool is_cjk(char32_t value) noexcept {
-    return (value >= 0x3400 && value <= 0x4DBF)
-        || (value >= 0x4E00 && value <= 0x9FFF)
-        || (value >= 0xF900 && value <= 0xFAFF)
-        || (value >= 0x20000 && value <= 0x2FA1F);
+    return (value >= 0x3400 && value <= 0x4DBF) || (value >= 0x4E00 && value <= 0x9FFF) ||
+           (value >= 0xF900 && value <= 0xFAFF) || (value >= 0x20000 && value <= 0x2FA1F);
 }
 
 [[nodiscard]] bool is_rtl_strong(char32_t value) noexcept {
-    return (value >= 0x0590 && value <= 0x08FF)
-        || (value >= 0xFB1D && value <= 0xFDFF)
-        || (value >= 0xFE70 && value <= 0xFEFF);
+    return (value >= 0x0590 && value <= 0x08FF) || (value >= 0xFB1D && value <= 0xFDFF) ||
+           (value >= 0xFE70 && value <= 0xFEFF);
 }
 
 [[nodiscard]] bool is_ltr_strong(char32_t value) noexcept {
-    return (value >= U'A' && value <= U'Z')
-        || (value >= U'a' && value <= U'z')
-        || is_cjk(value);
+    return (value >= U'A' && value <= U'Z') || (value >= U'a' && value <= U'z') || is_cjk(value);
 }
 
 [[nodiscard]] TextError font_error(font::FontError error) {
-    const TextErrorKind kind = error.stage == font::FontErrorStage::shaping
-        ? TextErrorKind::shaping_failure
-        : TextErrorKind::font_failure;
+    const TextErrorKind kind =
+        error.stage == font::FontErrorStage::shaping ? TextErrorKind::shaping_failure : TextErrorKind::font_failure;
     return {kind, 0, std::move(error)};
 }
 
@@ -69,14 +63,10 @@ namespace {
     };
 }
 
-[[nodiscard]] const Utf8Scalar* scalar_at_cluster(
-    const ShapedText& text,
-    std::size_t cluster) noexcept {
-    const auto found = std::lower_bound(
-        text.scalars.begin(), text.scalars.end(), cluster,
-        [](const Utf8Scalar& scalar, std::size_t offset) {
-            return scalar.byte_start < offset;
-        });
+[[nodiscard]] const Utf8Scalar* scalar_at_cluster(const ShapedText& text, std::size_t cluster) noexcept {
+    const auto found =
+        std::lower_bound(text.scalars.begin(), text.scalars.end(), cluster,
+                         [](const Utf8Scalar& scalar, std::size_t offset) { return scalar.byte_start < offset; });
     if (found != text.scalars.end() && found->byte_start == cluster) {
         return &*found;
     }
@@ -92,9 +82,7 @@ struct ClusterUnit {
     bool legal_break_after{};
 };
 
-[[nodiscard]] std::vector<ClusterUnit> make_cluster_units(
-    const ShapedText& text,
-    const ShapedParagraph& paragraph) {
+[[nodiscard]] std::vector<ClusterUnit> make_cluster_units(const ShapedText& text, const ShapedParagraph& paragraph) {
     std::vector<ClusterUnit> units;
     const std::size_t glyph_end = paragraph.glyph_begin + paragraph.glyph_count;
     std::vector<std::size_t> logical_clusters;
@@ -115,11 +103,8 @@ struct ClusterUnit {
             advance += std::abs(text.glyphs[glyph].advance_x);
             ++glyph;
         }
-        const auto next_cluster = std::upper_bound(
-            logical_clusters.begin(), logical_clusters.end(), cluster);
-        const std::size_t byte_end = next_cluster == logical_clusters.end()
-            ? paragraph.byte_end
-            : *next_cluster;
+        const auto next_cluster = std::upper_bound(logical_clusters.begin(), logical_clusters.end(), cluster);
+        const std::size_t byte_end = next_cluster == logical_clusters.end() ? paragraph.byte_end : *next_cluster;
         const Utf8Scalar* scalar = scalar_at_cluster(text, cluster);
         units.push_back({
             begin,
@@ -173,9 +158,7 @@ std::vector<Utf8Scalar> decode_utf8(StringView text) {
 
 TextEngine::TextEngine(font::FontRuntime& fonts) noexcept : fonts_(&fonts) {}
 
-TextShapeResult TextEngine::shape(
-    StringView text,
-    std::span<const font::FontIdentity> fallback_chain) const {
+TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIdentity> fallback_chain) const {
     if (fallback_chain.empty()) {
         return {{}, {TextErrorKind::empty_font_chain, 0, {}}};
     }
@@ -214,25 +197,17 @@ TextShapeResult TextEngine::shape(
     std::size_t paragraph_start = 0;
     std::size_t paragraph_glyph_start = 0;
 
-    const auto append_shaped = [&](
-        font::FontIdentity selected_font,
-        std::string_view shaping_text,
-        std::size_t shaping_offset,
-        std::size_t shaping_length,
-        std::size_t output_byte_start,
-        std::size_t output_byte_end,
-        bool remap_clusters,
-        ShapedText& shaped) -> TextError {
-        const auto font_shape = fonts_->shape_utf8_segment(
-            selected_font, shaping_text, shaping_offset, shaping_length);
+    const auto append_shaped = [&](font::FontIdentity selected_font, std::string_view shaping_text,
+                                   std::size_t shaping_offset, std::size_t shaping_length,
+                                   std::size_t output_byte_start, std::size_t output_byte_end, bool remap_clusters,
+                                   ShapedText& shaped) -> TextError {
+        const auto font_shape = fonts_->shape_utf8_segment(selected_font, shaping_text, shaping_offset, shaping_length);
         if (!font_shape) {
             return font_error(font_shape.error);
         }
         const std::size_t glyph_begin = shaped.glyphs.size();
         for (const font::FontShapedGlyph& glyph : font_shape.glyphs) {
-            const std::size_t cluster = remap_clusters
-                ? output_byte_start
-                : glyph.cluster;
+            const std::size_t cluster = remap_clusters ? output_byte_start : glyph.cluster;
             if (cluster < output_byte_start || cluster >= output_byte_end) {
                 return {
                     TextErrorKind::shaping_failure,
@@ -269,15 +244,8 @@ TextShapeResult TextEngine::shape(
         if (!run_font) {
             return {};
         }
-        const TextError error = append_shaped(
-            *run_font,
-            text.bytes(),
-            run_start,
-            run_end - run_start,
-            run_start,
-            run_end,
-            false,
-            shaped);
+        const TextError error =
+            append_shaped(*run_font, text.bytes(), run_start, run_end - run_start, run_start, run_end, false, shaped);
         run_font.reset();
         return error;
     };
@@ -308,17 +276,9 @@ TextShapeResult TextEngine::shape(
             if (TextError error = flush_run(output)) {
                 return {{}, std::move(error)};
             }
-            const std::u8string replacement = encode_utf8(
-                selection.glyph.resolved_codepoint);
-            if (TextError error = append_shaped(
-                    selection.glyph.font,
-                    bytes(replacement),
-                    0,
-                    replacement.size(),
-                    scalar.byte_start,
-                    scalar.byte_end,
-                    true,
-                    output)) {
+            const std::u8string replacement = encode_utf8(selection.glyph.resolved_codepoint);
+            if (TextError error = append_shaped(selection.glyph.font, bytes(replacement), 0, replacement.size(),
+                                                scalar.byte_start, scalar.byte_end, true, output)) {
                 return {{}, std::move(error)};
             }
             continue;
@@ -345,9 +305,8 @@ TextShapeResult TextEngine::shape(
     return {std::move(output), {}};
 }
 
-TextShapeResult TextEngine::shape_utf8_lossy(
-    std::string_view raw_bytes,
-    std::span<const font::FontIdentity> fallback_chain) const {
+TextShapeResult TextEngine::shape_utf8_lossy(std::string_view raw_bytes,
+                                             std::span<const font::FontIdentity> fallback_chain) const {
     Utf8RepairResult repaired = String::from_utf8_lossy(raw_bytes);
     TextShapeResult result = shape(repaired.value.view(), fallback_chain);
     result.text.replacement_count = repaired.replacement_count;
@@ -355,9 +314,7 @@ TextShapeResult TextEngine::shape_utf8_lossy(
     return result;
 }
 
-TextMeasureResult TextEngine::measure(
-    const ShapedText& text,
-    TextLayoutConfig config) const {
+TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig config) const {
     if (!std::isfinite(config.line_height) || config.line_height <= 0.0F) {
         return {{}, {TextErrorKind::invalid_line_height, 0, {}}};
     }
@@ -369,21 +326,11 @@ TextMeasureResult TextEngine::measure(
     bool has_visible_bounds = false;
     float line_top = 0.0F;
 
-    const auto emit_line = [&](
-        const ShapedParagraph& paragraph,
-        const std::vector<ClusterUnit>& units,
-        std::size_t unit_begin,
-        std::size_t unit_end,
-        bool overflow,
-        TextMeasurement& result,
-        float& top,
-        bool& has_bounds) -> TextError {
-        const std::size_t glyph_begin = unit_begin < unit_end
-            ? units[unit_begin].glyph_begin
-            : paragraph.glyph_begin;
-        const std::size_t glyph_end = unit_begin < unit_end
-            ? units[unit_end - 1].glyph_end
-            : paragraph.glyph_begin;
+    const auto emit_line = [&](const ShapedParagraph& paragraph, const std::vector<ClusterUnit>& units,
+                               std::size_t unit_begin, std::size_t unit_end, bool overflow, TextMeasurement& result,
+                               float& top, bool& has_bounds) -> TextError {
+        const std::size_t glyph_begin = unit_begin < unit_end ? units[unit_begin].glyph_begin : paragraph.glyph_begin;
+        const std::size_t glyph_end = unit_begin < unit_end ? units[unit_end - 1].glyph_end : paragraph.glyph_begin;
         std::size_t byte_start = paragraph.byte_start;
         std::size_t byte_end = paragraph.byte_end;
         if (unit_begin < unit_end) {
@@ -410,9 +357,7 @@ TextMeasureResult TextEngine::measure(
             descent = std::max(descent, -metrics.metrics.descent);
         }
         const float content_height = ascent + descent;
-        const float baseline = top
-            + std::max(0.0F, (config.line_height - content_height) * 0.5F)
-            + ascent;
+        const float baseline = top + std::max(0.0F, (config.line_height - content_height) * 0.5F) + ascent;
 
         float pen_x = 0.0F;
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {
@@ -457,18 +402,15 @@ TextMeasureResult TextEngine::measure(
     for (const ShapedParagraph& paragraph : text.paragraphs) {
         const std::vector<ClusterUnit> units = make_cluster_units(text, paragraph);
         if (units.empty()) {
-            if (TextError error = emit_line(
-                    paragraph, units, 0, 0, false,
-                    measurement, line_top, has_visible_bounds)) {
+            if (TextError error = emit_line(paragraph, units, 0, 0, false, measurement, line_top, has_visible_bounds)) {
                 return {{}, std::move(error)};
             }
             continue;
         }
 
         if (std::isinf(config.max_width)) {
-            if (TextError error = emit_line(
-                    paragraph, units, 0, units.size(), false,
-                    measurement, line_top, has_visible_bounds)) {
+            if (TextError error =
+                    emit_line(paragraph, units, 0, units.size(), false, measurement, line_top, has_visible_bounds)) {
                 return {{}, std::move(error)};
             }
             continue;
@@ -492,17 +434,15 @@ TextMeasureResult TextEngine::measure(
             }
 
             if (unit == units.size()) {
-                if (TextError error = emit_line(
-                        paragraph, units, line_begin, unit, false,
-                        measurement, line_top, has_visible_bounds)) {
+                if (TextError error = emit_line(paragraph, units, line_begin, unit, false, measurement, line_top,
+                                                has_visible_bounds)) {
                     return {{}, std::move(error)};
                 }
                 break;
             }
             if (unit == line_begin) {
-                if (TextError error = emit_line(
-                        paragraph, units, line_begin, line_begin + 1, true,
-                        measurement, line_top, has_visible_bounds)) {
+                if (TextError error = emit_line(paragraph, units, line_begin, line_begin + 1, true, measurement,
+                                                line_top, has_visible_bounds)) {
                     return {{}, std::move(error)};
                 }
                 ++line_begin;
@@ -510,9 +450,8 @@ TextMeasureResult TextEngine::measure(
             }
 
             const std::size_t line_end = last_legal_break.value_or(unit);
-            if (TextError error = emit_line(
-                    paragraph, units, line_begin, line_end, false,
-                    measurement, line_top, has_visible_bounds)) {
+            if (TextError error = emit_line(paragraph, units, line_begin, line_end, false, measurement, line_top,
+                                            has_visible_bounds)) {
                 return {{}, std::move(error)};
             }
             line_begin = line_end;
@@ -526,19 +465,10 @@ TextMeasureResult TextEngine::measure(
     return {std::move(measurement), {}};
 }
 
-TextState::TextState(
-    TextEngine& engine,
-    String content,
-    std::vector<font::FontIdentity> fallback_chain,
-    std::uint32_t pixel_size,
-    TextLayoutConfig layout,
-    std::function<void()> request_frame)
-    : engine_(&engine),
-      content_(std::move(content)),
-      fallback_chain_(std::move(fallback_chain)),
-      pixel_size_(pixel_size),
-      layout_(layout),
-      request_frame_callback_(std::move(request_frame)) {}
+TextState::TextState(TextEngine& engine, String content, std::vector<font::FontIdentity> fallback_chain,
+                     std::uint32_t pixel_size, TextLayoutConfig layout, std::function<void()> request_frame)
+    : engine_(&engine), content_(std::move(content)), fallback_chain_(std::move(fallback_chain)),
+      pixel_size_(pixel_size), layout_(layout), request_frame_callback_(std::move(request_frame)) {}
 
 bool TextState::set_content(String content) {
     if (content_ == content) {
@@ -612,95 +542,141 @@ bool TextState::set_opacity(float opacity) {
     return true;
 }
 
-bool TextEngine::has_exact_glyphs(StringView text,
-    std::span<const font::FontIdentity> fallback_chain) const {
+bool TextEngine::has_exact_glyphs(StringView text, std::span<const font::FontIdentity> fallback_chain) const {
     input::Utf8ScalarIterator scalars(text.bytes());
     while (const auto scalar = scalars.next()) {
-        if (!fonts_->find_glyph(fallback_chain, scalar->value, std::nullopt)) return false;
+        if (!fonts_->find_glyph(fallback_chain, scalar->value, std::nullopt)) {
+            return false;
+        }
     }
     return scalars.valid();
 }
 
 bool TextState::set_ellipsis(TextEllipsisConfig config, bool request_frame) {
-    if (!std::isfinite(config.reserved_inline) || config.reserved_inline < 0)
+    if (!std::isfinite(config.reserved_inline) || config.reserved_inline < 0) {
         throw std::invalid_argument("ellipsis reserved width must be finite and non-negative");
-    if (config == ellipsis_) return false;
+    }
+    if (config == ellipsis_) {
+        return false;
+    }
     const bool mode_changed = config.rows.has_value() != ellipsis_.rows.has_value();
     ellipsis_ = std::move(config);
-    if (mode_changed) invalidate_shape(request_frame); else invalidate_layout(request_frame);
+    if (mode_changed) {
+        invalidate_shape(request_frame);
+    } else {
+        invalidate_layout(request_frame);
+    }
     return true;
 }
 
 bool TextState::synchronize_ellipsis() {
     ++counters_.measure_count;
     auto natural = engine_->measure(natural_shaped_, layout_);
-    if (!natural) { last_error_ = std::move(natural.error); return false; }
+    if (!natural) {
+        last_error_ = std::move(natural.error);
+        return false;
+    }
     truncated_ = false;
     suffix_available_ = engine_->has_exact_glyphs(ellipsis_.suffix.view(), fallback_chain_);
     const auto rows = *ellipsis_.rows;
     if (!ellipsis_.expanded && (rows == 0 || layout_.max_width <= 0)) {
-        shaped_ = {}; measurement_ = {}; displayed_ = String{};
+        shaped_ = {};
+        measurement_ = {};
+        displayed_ = String{};
         truncated_ = !content_.empty();
         return true;
     }
-    if (ellipsis_.expanded || (natural.measurement.lines.size() <= rows
-            && !natural.measurement.overflow
-            && (natural.measurement.lines.empty()
-                || natural.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width))) {
-        shaped_ = natural_shaped_; measurement_ = std::move(natural.measurement);
+    if (ellipsis_.expanded ||
+        (natural.measurement.lines.size() <= rows && !natural.measurement.overflow &&
+         (natural.measurement.lines.empty() ||
+          natural.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width))) {
+        shaped_ = natural_shaped_;
+        measurement_ = std::move(natural.measurement);
         displayed_ = content_;
         return true;
     }
     truncated_ = true;
     ++counters_.ellipsis_searches;
     input::TextBoundaryMap boundaries;
-    if (!boundaries.assign(content_.bytes())) throw std::logic_error("validated String lost its UTF-8 boundaries");
+    if (!boundaries.assign(content_.bytes())) {
+        throw std::logic_error("validated String lost its UTF-8 boundaries");
+    }
     const auto graphemes = boundaries.grapheme_bytes();
     // Suffixes are atomic. An absent glyph or a suffix wider than the final
     // line selects the prefix-only path; replacement glyphs never stand in.
     bool use_suffix = suffix_available_ && !ellipsis_.suffix.empty();
     if (use_suffix) {
-        ++counters_.shape_count; ++counters_.ellipsis_shapes;
+        ++counters_.shape_count;
+        ++counters_.ellipsis_shapes;
         auto suffix = engine_->shape(ellipsis_.suffix.view(), fallback_chain_);
         ++counters_.measure_count;
-        auto measured = suffix ? engine_->measure(suffix.text, {layout_.line_height,
-            std::numeric_limits<float>::infinity()}) : TextMeasureResult{};
-        use_suffix = suffix && measured && measured.measurement.lines.size() == 1
-            && measured.measurement.width + ellipsis_.reserved_inline <= layout_.max_width;
+        auto measured =
+            suffix ? engine_->measure(suffix.text, {layout_.line_height, std::numeric_limits<float>::infinity()})
+                   : TextMeasureResult{};
+        use_suffix = suffix && measured && measured.measurement.lines.size() == 1 &&
+                     measured.measurement.width + ellipsis_.reserved_inline <= layout_.max_width;
     }
-    struct Candidate { String content; ShapedText shaped; TextMeasurement measurement; bool fits{}; };
+
+    struct Candidate {
+        String content;
+        ShapedText shaped;
+        TextMeasurement measurement;
+        bool fits{};
+    };
+
     std::map<std::size_t, Candidate> cache;
     const auto candidate = [&](std::size_t index) -> Candidate& {
-        if (const auto found = cache.find(index); found != cache.end()) return found->second;
+        if (const auto found = cache.find(index); found != cache.end()) {
+            return found->second;
+        }
         auto bytes = std::string(content_.bytes().substr(0, graphemes[index]));
-        if (use_suffix) bytes += ellipsis_.suffix.bytes();
+        if (use_suffix) {
+            bytes += ellipsis_.suffix.bytes();
+        }
         Candidate value;
         value.content = std::move(String::from_utf8(bytes)).value();
-        ++counters_.shape_count; ++counters_.ellipsis_shapes;
+        ++counters_.shape_count;
+        ++counters_.ellipsis_shapes;
         auto shape = engine_->shape(value.content.view(), fallback_chain_);
-        if (!shape) { last_error_ = std::move(shape.error); return cache.emplace(index, std::move(value)).first->second; }
+        if (!shape) {
+            last_error_ = std::move(shape.error);
+            return cache.emplace(index, std::move(value)).first->second;
+        }
         value.shaped = std::move(shape.text);
         ++counters_.measure_count;
         auto measure = engine_->measure(value.shaped, layout_);
-        if (!measure) { last_error_ = std::move(measure.error); return cache.emplace(index, std::move(value)).first->second; }
+        if (!measure) {
+            last_error_ = std::move(measure.error);
+            return cache.emplace(index, std::move(value)).first->second;
+        }
         value.measurement = std::move(measure.measurement);
-        value.fits = value.measurement.lines.size() <= rows && !value.measurement.overflow
-            && (value.measurement.lines.empty()
-                || value.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width);
+        value.fits = value.measurement.lines.size() <= rows && !value.measurement.overflow &&
+                     (value.measurement.lines.empty() ||
+                      value.measurement.lines.back().width + ellipsis_.reserved_inline <= layout_.max_width);
         return cache.emplace(index, std::move(value)).first->second;
     };
-    std::size_t low = 0, high = graphemes.size() - 1;
+    std::size_t low = 0;
+    std::size_t high = graphemes.size() - 1;
     while (low < high) {
         const auto mid = low + (high - low + 1) / 2;
-        if (candidate(mid).fits) low = mid; else high = mid - 1;
+        if (candidate(mid).fits) {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
     }
     // HarfBuzz does not guarantee monotone prefix widths. Confirm every longer
     // prefix before accepting the binary-search result; cache avoids repeats.
     for (auto index = graphemes.size() - 1; index > low; --index) {
-        if (candidate(index).fits) { low = index; break; }
+        if (candidate(index).fits) {
+            low = index;
+            break;
+        }
     }
     auto& selected = candidate(low);
-    if (last_error_) return false;
+    if (last_error_) {
+        return false;
+    }
     displayed_ = std::move(selected.content);
     shaped_ = std::move(selected.shaped);
     measurement_ = std::move(selected.measurement);
@@ -710,7 +686,9 @@ bool TextState::synchronize_ellipsis() {
 bool TextState::synchronize() {
     // An empty diagnostic contains an MSVC Debug string iterator proxy.
     // Do not recreate that allocation on every successful retained sync.
-    if(last_error_) last_error_ = {};
+    if (last_error_) {
+        last_error_ = {};
+    }
     if (shape_dirty_) {
         ++counters_.shape_count;
         TextShapeResult result = engine_->shape(content_.view(), fallback_chain_);
@@ -719,22 +697,26 @@ bool TextState::synchronize() {
             return false;
         }
         shaped_ = std::move(result.text);
-        if (ellipsis_.rows) natural_shaped_ = shaped_;
+        if (ellipsis_.rows) {
+            natural_shaped_ = shaped_;
+        }
         shape_dirty_ = false;
         layout_dirty_ = true;
     }
     if (layout_dirty_) {
         if (ellipsis_.rows) {
-            if (!synchronize_ellipsis()) return false;
+            if (!synchronize_ellipsis()) {
+                return false;
+            }
         } else {
-        ++counters_.measure_count;
-        TextMeasureResult result = engine_->measure(shaped_, layout_);
-        if (!result) {
-            last_error_ = std::move(result.error);
-            return false;
-        }
-        measurement_ = std::move(result.measurement);
-        truncated_ = false;
+            ++counters_.measure_count;
+            TextMeasureResult result = engine_->measure(shaped_, layout_);
+            if (!result) {
+                last_error_ = std::move(result.error);
+                return false;
+            }
+            measurement_ = std::move(result.measurement);
+            truncated_ = false;
         }
         ++counters_.layout_count;
         layout_dirty_ = false;
@@ -767,15 +749,21 @@ const TextError& TextState::last_error() const noexcept {
 }
 
 void TextState::invalidate_shape(bool request_frame) {
-    if(revision_ == std::numeric_limits<std::uint64_t>::max()) throw std::overflow_error("Text revision exhausted");
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::overflow_error("Text revision exhausted");
+    }
     ++revision_;
     shape_dirty_ = true;
     layout_dirty_ = true;
-    if (request_frame) this->request_frame();
+    if (request_frame) {
+        this->request_frame();
+    }
 }
 
 void TextState::invalidate_layout(bool request_frame) {
-    if(revision_ == std::numeric_limits<std::uint64_t>::max()) throw std::overflow_error("Text revision exhausted");
+    if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+        throw std::overflow_error("Text revision exhausted");
+    }
     ++revision_;
     layout_dirty_ = true;
     if (request_frame) {

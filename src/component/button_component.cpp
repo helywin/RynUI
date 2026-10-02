@@ -15,43 +15,34 @@
 namespace ryn::detail {
 
 struct ButtonPropsAccess final {
-    [[nodiscard]] static const Prop<ButtonType>& type(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const Prop<ButtonType>& type(const ButtonProps& props) noexcept {
         return props.type_;
     }
 
-    [[nodiscard]] static const Prop<ControlSize>& size(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const Prop<ControlSize>& size(const ButtonProps& props) noexcept {
         return props.size_;
     }
 
-    [[nodiscard]] static const Prop<bool>& disabled(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const Prop<bool>& disabled(const ButtonProps& props) noexcept {
         return props.disabled_;
     }
 
-    [[nodiscard]] static const Prop<bool>& loading(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const Prop<bool>& loading(const ButtonProps& props) noexcept {
         return props.loading_;
     }
 
-    [[nodiscard]] static const std::function<void()>& on_click(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const std::function<void()>& on_click(const ButtonProps& props) noexcept {
         return props.on_click_;
     }
 
-    [[nodiscard]] static const LayoutStyle& layout(
-        const ButtonProps& props) noexcept {
+    [[nodiscard]] static const LayoutStyle& layout(const ButtonProps& props) noexcept {
         return props.layout_;
     }
 };
 
 struct ButtonComponentState final {
-    ButtonComponentState(
-        runtime::SemanticForeground initial_foreground,
-        runtime::SemanticTypography initial_typography)
-        : foreground(std::move(initial_foreground)),
-          typography(initial_typography) {}
+    ButtonComponentState(runtime::SemanticForeground initial_foreground, runtime::SemanticTypography initial_typography)
+        : foreground(std::move(initial_foreground)), typography(initial_typography) {}
 
     runtime::ComponentId component;
     runtime::NodeId node;
@@ -75,10 +66,8 @@ struct ButtonComponentState final {
     Color presentation_foreground;
     float presentation_loading_mix{0.0F};
     float spinner_phase{0.0F};
-    std::unique_ptr<animation::MaterialTransitionTargets<button_animation_channel_count>>
-        material_targets;
-    std::array<animation::AnimationTargetId, button_animation_channel_count>
-        animation_targets;
+    std::unique_ptr<animation::MaterialTransitionTargets<button_animation_channel_count>> material_targets;
+    std::array<animation::AnimationTargetId, button_animation_channel_count> animation_targets;
     std::array<animation::AnimationId, button_animation_channel_count> animations;
     layout::HorizontalContentLayout layout_model;
     theme_runtime::Subscription color_subscription;
@@ -92,13 +81,11 @@ namespace {
 
 thread_local ButtonComponentHost* active_button_host = nullptr;
 
-constexpr std::size_t animation_channel_index(
-    ButtonAnimationChannel channel) noexcept {
+constexpr std::size_t animation_channel_index(ButtonAnimationChannel channel) noexcept {
     return static_cast<std::size_t>(channel);
 }
 
-constexpr animation::AnimationDuration spinner_period =
-    animation::AnimationDuration::microseconds(800'000);
+constexpr animation::AnimationDuration spinner_period = animation::AnimationDuration::microseconds(800'000);
 
 float normalized_spinner_phase(float phase) noexcept {
     const float wrapped = phase - std::floor(phase);
@@ -106,31 +93,25 @@ float normalized_spinner_phase(float phase) noexcept {
 }
 
 float spinner_segment_strength(float phase, std::size_t segment) noexcept {
-    const float angle = 2.0F * std::numbers::pi_v<float>
-        * (static_cast<float>(segment)
-               / static_cast<float>(component::button_loading_segment_count)
-            - normalized_spinner_phase(phase));
+    const float angle = 2.0F * std::numbers::pi_v<float> *
+                        (static_cast<float>(segment) / static_cast<float>(component::button_loading_segment_count) -
+                         normalized_spinner_phase(phase));
     const float wave = 0.5F + 0.5F * std::cos(angle);
     return 0.18F + 0.82F * wave * wave;
 }
 
-runtime::Rect spinner_segment_bounds(
-    runtime::Rect indicator,
-    std::size_t segment) noexcept {
+runtime::Rect spinner_segment_bounds(runtime::Rect indicator, std::size_t segment) noexcept {
     const float size = std::min(indicator.width, indicator.height);
     if (size <= 0.0F) {
         return {};
     }
     const float extent = size * 0.22F;
     const float orbit = 0.5F * (size - extent);
-    const float angle = -0.5F * std::numbers::pi_v<float>
-        + 2.0F * std::numbers::pi_v<float>
-            * static_cast<float>(segment)
-            / static_cast<float>(component::button_loading_segment_count);
-    const float center_x = indicator.x + 0.5F * indicator.width
-        + std::cos(angle) * orbit;
-    const float center_y = indicator.y + 0.5F * indicator.height
-        + std::sin(angle) * orbit;
+    const float angle =
+        -0.5F * std::numbers::pi_v<float> + 2.0F * std::numbers::pi_v<float> * static_cast<float>(segment) /
+                                                static_cast<float>(component::button_loading_segment_count);
+    const float center_x = indicator.x + 0.5F * indicator.width + std::cos(angle) * orbit;
+    const float center_y = indicator.y + 0.5F * indicator.height + std::sin(angle) * orbit;
     return {
         center_x - 0.5F * extent,
         center_y - 0.5F * extent,
@@ -168,34 +149,23 @@ struct ResolvedButtonSizeToken final {
     float content_line_height{};
 };
 
-ResolvedButtonSizeToken size_token(
-    const ButtonThemeToken& button,
-    ControlSize size) {
+ResolvedButtonSizeToken size_token(const ButtonThemeToken& button, ControlSize size) {
     validate(size);
     switch (size) {
     case ControlSize::Small:
         return {
-            button.control_height_small,
-            button.padding_inline_small,
-            button.border_radius_small,
-            button.content_font_size_small,
-            button.content_line_height_small,
+            button.control_height_small,    button.padding_inline_small,      button.border_radius_small,
+            button.content_font_size_small, button.content_line_height_small,
         };
     case ControlSize::Middle:
         return {
-            button.control_height,
-            button.padding_inline,
-            button.border_radius,
-            button.content_font_size,
-            button.content_line_height,
+            button.control_height,    button.padding_inline,      button.border_radius,
+            button.content_font_size, button.content_line_height,
         };
     case ControlSize::Large:
         return {
-            button.control_height_large,
-            button.padding_inline_large,
-            button.border_radius_large,
-            button.content_font_size_large,
-            button.content_line_height_large,
+            button.control_height_large,    button.padding_inline_large,      button.border_radius_large,
+            button.content_font_size_large, button.content_line_height_large,
         };
     }
     throw std::invalid_argument("ControlSize value is invalid");
@@ -208,14 +178,11 @@ struct ResolvedButtonVisualState final {
     ShadowList shadow;
 };
 
-[[nodiscard]] bool solid_fills_border_box(
-    const ButtonComponentState& state) noexcept {
+[[nodiscard]] bool solid_fills_border_box(const ButtonComponentState& state) noexcept {
     return !state.disabled && state.type != ButtonType::Default;
 }
 
-ResolvedButtonVisualState visual_token(
-    const ButtonThemeToken& button,
-    const ButtonComponentState& state) {
+ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const ButtonComponentState& state) {
     const Color transparent = Color::rgba8(0, 0, 0, 0);
     if (state.disabled) {
         if (state.type == ButtonType::Text) {
@@ -234,46 +201,47 @@ ResolvedButtonVisualState visual_token(
             *shadow,
         };
     }
-    const bool active = !state.loading
-        && (state.press.pressed() || state.focus.keyboard_pressed);
+    const bool active = !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
     const bool hovered = !state.loading && !active && state.hovered;
     switch (state.type) {
     case ButtonType::Default:
         return {
             button.default_background,
-            active ? button.default_active_color
-                   : hovered ? button.default_hover_color
-                             : button.default_border_color,
-            active ? button.default_active_color
-                   : hovered ? button.default_hover_color
-                             : button.default_color,
+            active    ? button.default_active_color
+            : hovered ? button.default_hover_color
+                      : button.default_border_color,
+            active    ? button.default_active_color
+            : hovered ? button.default_hover_color
+                      : button.default_color,
             button.default_shadow,
         };
     case ButtonType::Primary:
         return {
-            active ? button.primary_active_background
-                   : hovered ? button.primary_hover_background
-                             : button.primary_background,
+            active    ? button.primary_active_background
+            : hovered ? button.primary_hover_background
+                      : button.primary_background,
             transparent,
             button.primary_color,
             button.primary_shadow,
         };
     case ButtonType::Danger:
         return {
-            active ? button.danger_active_background
-                   : hovered ? button.danger_hover_background
-                             : button.danger_background,
+            active    ? button.danger_active_background
+            : hovered ? button.danger_hover_background
+                      : button.danger_background,
             transparent,
             button.danger_color,
             button.danger_shadow,
         };
     case ButtonType::Text:
         return {
-            active ? button.text_active_background
-                   : hovered ? button.text_hover_background : button.text_background,
+            active    ? button.text_active_background
+            : hovered ? button.text_hover_background
+                      : button.text_background,
             transparent,
-            active ? button.text_active_color
-                   : hovered ? button.text_hover_color : button.text_color,
+            active    ? button.text_active_color
+            : hovered ? button.text_hover_color
+                      : button.text_color,
             {},
         };
     }
@@ -284,9 +252,7 @@ ResolvedButtonVisualState visual_token(
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
 
-runtime::SemanticForeground content_foreground(
-    const ButtonThemeToken& button,
-    const ButtonComponentState& state) {
+runtime::SemanticForeground content_foreground(const ButtonThemeToken& button, const ButtonComponentState& state) {
     auto foreground = channels(visual_token(button, state).foreground);
     if (state.loading) {
         foreground[3] *= button.loading_opacity;
@@ -294,138 +260,91 @@ runtime::SemanticForeground content_foreground(
     return foreground;
 }
 
-layout::HorizontalContentLayout content_layout(
-    const ButtonThemeToken& button,
-    const ButtonComponentState& state) {
+layout::HorizontalContentLayout content_layout(const ButtonThemeToken& button, const ButtonComponentState& state) {
     const auto& size = size_token(button, state.size);
     return {
-        size.control_height,
-        size.padding_inline,
-        state.type == ButtonType::Text ? 0.0F : button.border_width,
-        button.icon_gap,
-        state.loading,
-        button.loading_indicator_size,
+        size.control_height, size.padding_inline, state.type == ButtonType::Text ? 0.0F : button.border_width,
+        button.icon_gap,     state.loading,       button.loading_indicator_size,
     };
 }
 
-runtime::SemanticTypography content_typography(
-    const ThemeSnapshot& theme,
-    const ButtonComponentState& state) {
+runtime::SemanticTypography content_typography(const ThemeSnapshot& theme, const ButtonComponentState& state) {
     const auto size = size_token(theme.button(), state.size);
     return {
-        theme.text().font_family,
-        theme.text().font_weight,
-        false,
-        size.content_font_size,
-        size.content_line_height,
+        theme.text().font_family, theme.text().font_weight, false, size.content_font_size, size.content_line_height,
     };
 }
 
-bool material_changed(
-    const graphics::QuadInstance& left,
-    const graphics::QuadInstance& right) noexcept {
+bool material_changed(const graphics::QuadInstance& left, const graphics::QuadInstance& right) noexcept {
     return left.color != right.color || left.opacity != right.opacity;
 }
 
-bool geometry_changed(
-    const graphics::QuadInstance& left,
-    const graphics::QuadInstance& right) noexcept {
-    return left.bounds != right.bounds
-        || left.corner_radius != right.corner_radius
-        || left.translation != right.translation;
+bool geometry_changed(const graphics::QuadInstance& left, const graphics::QuadInstance& right) noexcept {
+    return left.bounds != right.bounds || left.corner_radius != right.corner_radius ||
+           left.translation != right.translation;
 }
 
-std::array<float, 4> logical_bounds(
-    runtime::Rect pixels,
-    runtime::Size viewport) {
-    if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height)
-            || viewport.width <= 0.0F || viewport.height <= 0.0F) {
+std::array<float, 4> logical_bounds(runtime::Rect pixels, runtime::Size viewport) {
+    if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height) || viewport.width <= 0.0F ||
+        viewport.height <= 0.0F) {
         throw std::invalid_argument("Button viewport must be finite and positive");
     }
     return {
-        pixels.x, pixels.y, pixels.width, pixels.height,
+        pixels.x,
+        pixels.y,
+        pixels.width,
+        pixels.height,
     };
 }
 
 float logical_radius(runtime::Rect bounds, float radius) noexcept {
-    return std::clamp(
-        radius,
-        0.0F,
-        0.5F * std::min(bounds.width, bounds.height));
+    return std::clamp(radius, 0.0F, 0.5F * std::min(bounds.width, bounds.height));
 }
 
-graphics::QuadInstance make_quad(
-    runtime::Rect bounds,
-    runtime::Size viewport,
-    std::array<float, 4> color,
-    float opacity,
-    float radius,
-    runtime::Point translation) {
+graphics::QuadInstance make_quad(runtime::Rect bounds, runtime::Size viewport, std::array<float, 4> color,
+                                 float opacity, float radius, runtime::Point translation) {
     return {
         logical_bounds(bounds, viewport),
         color,
         opacity,
         radius,
         {
-            translation.x, translation.y,
+            translation.x,
+            translation.y,
         },
     };
 }
 
 } // namespace
 
-ButtonComponentHost::ButtonComponentHost(
-    runtime::NodeStore& nodes,
-    layout::LayoutEngine& layout,
-    runtime::DirtyQueues& dirty,
-    TextSceneService& text_scene,
-    std::vector<font::FontIdentity> default_font_chain,
-    runtime::FrameRequestState& frame_requests)
-    : ButtonComponentHost(std::make_unique<WindowComponentServices>(
-          nodes, layout, dirty, text_scene, std::move(default_font_chain), frame_requests)) {}
+ButtonComponentHost::ButtonComponentHost(runtime::NodeStore& nodes, layout::LayoutEngine& layout,
+                                         runtime::DirtyQueues& dirty, TextSceneService& text_scene,
+                                         std::vector<font::FontIdentity> default_font_chain,
+                                         runtime::FrameRequestState& frame_requests)
+    : ButtonComponentHost(std::make_unique<WindowComponentServices>(nodes, layout, dirty, text_scene,
+                                                                    std::move(default_font_chain), frame_requests)) {}
 
-ButtonComponentHost::ButtonComponentHost(
-    runtime::NodeStore& nodes,
-    layout::LayoutEngine& layout,
-    runtime::DirtyQueues& dirty,
-    TextSceneService& text_scene,
-    ThemeFontResolver font_resolver,
-    runtime::FrameRequestState& frame_requests)
-    : ButtonComponentHost(std::make_unique<WindowComponentServices>(
-          nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests)) {}
+ButtonComponentHost::ButtonComponentHost(runtime::NodeStore& nodes, layout::LayoutEngine& layout,
+                                         runtime::DirtyQueues& dirty, TextSceneService& text_scene,
+                                         ThemeFontResolver font_resolver, runtime::FrameRequestState& frame_requests)
+    : ButtonComponentHost(std::make_unique<WindowComponentServices>(nodes, layout, dirty, text_scene,
+                                                                    std::move(font_resolver), frame_requests)) {}
 
-ButtonComponentHost::ButtonComponentHost(
-    std::unique_ptr<WindowComponentServices> services)
-    : owned_services_(std::move(services)),
-      services_(owned_services_.get()),
-      nodes_(&services_->nodes()),
-      layout_(&services_->layout()),
-      dirty_(&services_->dirty()),
-      text_(services_->text()),
-      interactions_(services_->interactions()),
-      hit_test_(services_->hit_test()),
-      scene_composer_(services_->scene_composer()),
-      button_scene_(services_->surfaces()),
-      focus_(services_->focus()),
-      pointer_(services_->pointer()),
-      animations_(services_->animations()) {
+ButtonComponentHost::ButtonComponentHost(std::unique_ptr<WindowComponentServices> services)
+    : owned_services_(std::move(services)), services_(owned_services_.get()), nodes_(&services_->nodes()),
+      layout_(&services_->layout()), dirty_(&services_->dirty()), text_(services_->text()),
+      interactions_(services_->interactions()), hit_test_(services_->hit_test()),
+      scene_composer_(services_->scene_composer()), button_scene_(services_->surfaces()), focus_(services_->focus()),
+      pointer_(services_->pointer()), animations_(services_->animations()) {
     animation_bindings_.reserve(256);
     services_->attach(*this);
 }
 
 ButtonComponentHost::ButtonComponentHost(WindowComponentServices& services)
-    : services_(&services),
-      nodes_(&services.nodes()),
-      layout_(&services.layout()),
-      dirty_(&services.dirty()),
-      text_(services.text()),
-      interactions_(services.interactions()),
-      hit_test_(services.hit_test()),
-      scene_composer_(services.scene_composer()),
-      button_scene_(services.surfaces()),
-      focus_(services.focus()),
-      pointer_(services.pointer()),
-      animations_(services.animations()) {
+    : services_(&services), nodes_(&services.nodes()), layout_(&services.layout()), dirty_(&services.dirty()),
+      text_(services.text()), interactions_(services.interactions()), hit_test_(services.hit_test()),
+      scene_composer_(services.scene_composer()), button_scene_(services.surfaces()), focus_(services.focus()),
+      pointer_(services.pointer()), animations_(services.animations()) {
     animation_bindings_.reserve(256);
     services_->attach(*this);
 }
@@ -456,9 +375,7 @@ void ButtonComponentHost::end_mount(void* previous) noexcept {
 }
 
 void ButtonComponentHost::on_destroy() noexcept {
-    std::erase_if(mounted_buttons_, [this](const auto& mounted) {
-        return !components().contains(mounted.component);
-    });
+    std::erase_if(mounted_buttons_, [this](const auto& mounted) { return !components().contains(mounted.component); });
 }
 
 void ButtonComponentHost::on_dispose() noexcept {
@@ -470,13 +387,11 @@ void ButtonComponentHost::set_window_active(bool active) {
     services_->set_window_active(active);
 }
 
-void ButtonComponentHost::set_animation_time(
-    animation::AnimationTime time) noexcept {
+void ButtonComponentHost::set_animation_time(animation::AnimationTime time) noexcept {
     services_->set_animation_time(time);
 }
 
-void ButtonComponentHost::set_motion_preference(
-    animation::MotionPreference preference) {
+void ButtonComponentHost::set_motion_preference(animation::MotionPreference preference) {
     services_->set_motion_preference(preference);
 }
 
@@ -488,8 +403,7 @@ void ButtonComponentHost::synchronize_auxiliary_motion() {
     }
 }
 
-std::size_t ButtonComponentHost::tick_animations(
-    animation::AnimationTime frame_time) {
+std::size_t ButtonComponentHost::tick_animations(animation::AnimationTime frame_time) {
     return services_->tick_animations(frame_time);
 }
 
@@ -497,18 +411,12 @@ std::optional<animation::AnimationTime> ButtonComponentHost::next_deadline() con
     return services_->next_frame_deadline();
 }
 
-bool ButtonComponentHost::layout_and_synchronize(
-    runtime::Size viewport,
-    runtime::Rect clip,
-    runtime::Point origin,
-    float gap,
-    bool unbounded_root_height) {
-    return services_->layout_and_synchronize(
-        viewport, clip, origin, gap, unbounded_root_height);
+bool ButtonComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin,
+                                                 float gap, bool unbounded_root_height) {
+    return services_->layout_and_synchronize(viewport, clip, origin, gap, unbounded_root_height);
 }
 
-void ButtonComponentHost::synchronize_auxiliary_geometry(
-    runtime::Size viewport, runtime::Rect) {
+void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect) {
     for (const auto& mounted : mounted_buttons_) {
         if (auto* state = find_state(mounted.component)) {
             synchronize_geometry(*state, viewport);
@@ -548,8 +456,7 @@ input::PointerRouter& ButtonComponentHost::pointer() noexcept {
     return pointer_;
 }
 
-component::ComponentSceneComposer&
-ButtonComponentHost::scene_composer() noexcept {
+component::ComponentSceneComposer& ButtonComponentHost::scene_composer() noexcept {
     return scene_composer_;
 }
 
@@ -573,13 +480,11 @@ runtime::DirtyQueues& ButtonComponentHost::dirty() noexcept {
     return *dirty_;
 }
 
-void ButtonComponentHost::attach_auxiliary(
-    AuxiliaryComponentSynchronizer& auxiliary) {
+void ButtonComponentHost::attach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary) {
     services_->attach(auxiliary);
 }
 
-void ButtonComponentHost::detach_auxiliary(
-    AuxiliaryComponentSynchronizer& auxiliary) noexcept {
+void ButtonComponentHost::detach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary) noexcept {
     services_->detach(auxiliary);
 }
 
@@ -591,13 +496,11 @@ const animation::AnimationRuntime& ButtonComponentHost::animations() const noexc
     return animations_;
 }
 
-std::span<const MountedButtonComponent>
-ButtonComponentHost::mounted_buttons() const noexcept {
+std::span<const MountedButtonComponent> ButtonComponentHost::mounted_buttons() const noexcept {
     return mounted_buttons_;
 }
 
-ButtonComponentSnapshot ButtonComponentHost::snapshot(
-    runtime::ComponentId component) const {
+ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId component) const {
     const auto* state = find_state(component);
     if (state == nullptr) {
         throw std::out_of_range("Button component is stale or invalid");
@@ -615,29 +518,24 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(
         state->presentation_foreground,
         state->presentation_loading_mix,
         state->spinner_phase,
-        animations_.contains(state->animations[animation_channel_index(
-            ButtonAnimationChannel::spinner_phase)]),
+        animations_.contains(state->animations[animation_channel_index(ButtonAnimationChannel::spinner_phase)]),
     };
 }
 
-void ButtonComponentHost::record_mounted_button(
-    MountedButtonComponent mounted) {
+void ButtonComponentHost::record_mounted_button(MountedButtonComponent mounted) {
     mounted_buttons_.push_back(std::move(mounted));
     services_->mark_scene_structure_dirty();
 }
 
-ButtonComponentState* ButtonComponentHost::find_state(
-    runtime::ComponentId component) noexcept {
+ButtonComponentState* ButtonComponentHost::find_state(runtime::ComponentId component) noexcept {
     return components().state<ButtonComponentState>(component);
 }
 
-const ButtonComponentState* ButtonComponentHost::find_state(
-    runtime::ComponentId component) const noexcept {
+const ButtonComponentState* ButtonComponentHost::find_state(runtime::ComponentId component) const noexcept {
     return components().state<ButtonComponentState>(component);
 }
 
-std::optional<input::InteractionId> ButtonComponentHost::interaction_for(
-    runtime::ComponentId component) const {
+std::optional<input::InteractionId> ButtonComponentHost::interaction_for(runtime::ComponentId component) const {
     auto current = std::optional<runtime::ComponentId>{component};
     while (current.has_value()) {
         if (const auto* state = find_state(*current)) {
@@ -650,9 +548,7 @@ std::optional<input::InteractionId> ButtonComponentHost::interaction_for(
     return std::nullopt;
 }
 
-void ButtonComponentHost::apply_type(
-    runtime::ComponentId component,
-    ButtonType type) {
+void ButtonComponentHost::apply_type(runtime::ComponentId component, ButtonType type) {
     validate(type);
     auto* state = find_state(component);
     if (state == nullptr || state->type == type) {
@@ -667,9 +563,7 @@ void ButtonComponentHost::apply_type(
     update_visuals(*state);
 }
 
-void ButtonComponentHost::apply_size(
-    runtime::ComponentId component,
-    ControlSize size) {
+void ButtonComponentHost::apply_size(runtime::ComponentId component, ControlSize size) {
     validate(size);
     auto* state = find_state(component);
     if (state == nullptr || state->size == size) {
@@ -681,9 +575,7 @@ void ButtonComponentHost::apply_size(
     update_visuals(*state);
 }
 
-void ButtonComponentHost::apply_disabled(
-    runtime::ComponentId component,
-    bool disabled) {
+void ButtonComponentHost::apply_disabled(runtime::ComponentId component, bool disabled) {
     auto* state = find_state(component);
     if (state == nullptr || state->disabled == disabled) {
         return;
@@ -695,9 +587,7 @@ void ButtonComponentHost::apply_disabled(
         static_cast<void>(state->press.reset());
         pointer_.cancel_interaction(state->interaction);
     }
-    static_cast<void>(interactions_.set_eligible(
-        state->interaction,
-        !disabled));
+    static_cast<void>(interactions_.set_eligible(state->interaction, !disabled));
     focus_.synchronize();
     if (previous_border_box != solid_fills_border_box(*state)) {
         dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
@@ -705,9 +595,7 @@ void ButtonComponentHost::apply_disabled(
     update_visuals(*state);
 }
 
-void ButtonComponentHost::apply_loading(
-    runtime::ComponentId component,
-    bool loading) {
+void ButtonComponentHost::apply_loading(runtime::ComponentId component, bool loading) {
     auto* state = find_state(component);
     if (state == nullptr || state->loading == loading) {
         return;
@@ -725,9 +613,7 @@ void ButtonComponentHost::apply_loading(
     update_visuals(*state);
 }
 
-void ButtonComponentHost::apply_focus(
-    runtime::ComponentId component,
-    input::FocusPresentation focus) {
+void ButtonComponentHost::apply_focus(runtime::ComponentId component, input::FocusPresentation focus) {
     auto* state = find_state(component);
     if (state == nullptr || state->focus == focus) {
         return;
@@ -736,9 +622,7 @@ void ButtonComponentHost::apply_focus(
     update_visuals(*state);
 }
 
-void ButtonComponentHost::handle_pointer(
-    runtime::ComponentId component,
-    input::PointerDispatchContext& event) {
+void ButtonComponentHost::handle_pointer(runtime::ComponentId component, input::PointerDispatchContext& event) {
     auto* state = find_state(component);
     if (state == nullptr) {
         return;
@@ -759,12 +643,17 @@ void ButtonComponentHost::handle_pointer(
     case input::PointerEventKind::down:
     case input::PointerEventKind::up:
     case input::PointerEventKind::cancel: {
-        const auto result = state->press.dispatch(
-            event, state->interaction, activation_allowed(component));
+        const auto result = state->press.dispatch(event, state->interaction, activation_allowed(component));
         state = find_state(component);
-        if (state == nullptr) return;
-        if (result.pressed_changed) update_visuals(*state);
-        if (result.activate) activate(component);
+        if (state == nullptr) {
+            return;
+        }
+        if (result.pressed_changed) {
+            update_visuals(*state);
+        }
+        if (result.activate) {
+            activate(component);
+        }
         return;
     }
     case input::PointerEventKind::move:
@@ -772,8 +661,7 @@ void ButtonComponentHost::handle_pointer(
     }
 }
 
-bool ButtonComponentHost::activation_allowed(
-    runtime::ComponentId component) const noexcept {
+bool ButtonComponentHost::activation_allowed(runtime::ComponentId component) const noexcept {
     const auto* state = find_state(component);
     return state != nullptr && !state->disabled && !state->loading;
 }
@@ -793,11 +681,8 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto& visual = visual_token(button, state);
-    const auto policy = animation::resolve_motion_policy(
-        theme, services_->motion_preference());
-    const auto spec = policy.transition(
-        animation::MotionDurationToken::mid,
-        animation::MotionEasingToken::ease_in_out);
+    const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
+    const auto spec = policy.transition(animation::MotionDurationToken::mid, animation::MotionEasingToken::ease_in_out);
 
     if (!state.material_targets) {
         state.presentation_background = visual.background;
@@ -805,67 +690,40 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
         state.presentation_foreground = visual.foreground;
         state.presentation_loading_mix = state.loading ? 1.0F : 0.0F;
     } else {
-        retarget_channel(
-            state,
-            ButtonAnimationChannel::background,
-            visual.background,
-            spec);
-        retarget_channel(
-            state,
-            ButtonAnimationChannel::border,
-            visual.border,
-            spec);
-        retarget_channel(
-            state,
-            ButtonAnimationChannel::foreground,
-            visual.foreground,
-            spec);
-        retarget_channel(
-            state,
-            ButtonAnimationChannel::loading_mix,
-            state.loading ? 1.0F : 0.0F,
-            spec);
+        retarget_channel(state, ButtonAnimationChannel::background, visual.background, spec);
+        retarget_channel(state, ButtonAnimationChannel::border, visual.border, spec);
+        retarget_channel(state, ButtonAnimationChannel::foreground, visual.foreground, spec);
+        retarget_channel(state, ButtonAnimationChannel::loading_mix, state.loading ? 1.0F : 0.0F, spec);
         update_spinner(state, policy);
     }
     apply_presentation(state);
 }
 
-void ButtonComponentHost::apply_presentation(
-    ButtonComponentState& state,
-    bool animation_update) {
+void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool animation_update) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto& alias = theme.alias();
     const auto& visual = visual_token(button, state);
-    const float loading_mix = std::clamp(
-        state.presentation_loading_mix, 0.0F, 1.0F);
-    const float layer_opacity = 1.0F
-        + (button.loading_opacity - 1.0F) * loading_mix;
+    const float loading_mix = std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    const float layer_opacity = 1.0F + (button.loading_opacity - 1.0F) * loading_mix;
     auto next = state.visuals;
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color =
-        channels(state.presentation_border);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity =
-        layer_opacity;
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color = channels(state.presentation_border);
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity = layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].color =
         channels(state.presentation_background);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity =
-        layer_opacity;
-    for (std::size_t segment = 0;
-         segment < component::button_loading_segment_count;
-         ++segment) {
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity = layer_opacity;
+    for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         auto& indicator = next[component::button_loading_segment_index(segment)];
         indicator.color = channels(state.presentation_foreground);
-        indicator.opacity = button.loading_opacity * loading_mix
-            * spinner_segment_strength(state.spinner_phase, segment);
+        indicator.opacity =
+            button.loading_opacity * loading_mix * spinner_segment_strength(state.spinner_phase, segment);
     }
 
     bool changed_material = false;
     bool changed_geometry = false;
     for (std::size_t index = 0; index < next.size(); ++index) {
-        changed_material = changed_material
-            || material_changed(state.visuals[index], next[index]);
-        changed_geometry = changed_geometry
-            || geometry_changed(state.visuals[index], next[index]);
+        changed_material = changed_material || material_changed(state.visuals[index], next[index]);
+        changed_geometry = changed_geometry || geometry_changed(state.visuals[index], next[index]);
     }
     state.visuals = next;
     auto next_effects = state.effects;
@@ -874,8 +732,7 @@ void ButtonComponentHost::apply_presentation(
     next_effects.focus_width = alias.line_width_focus;
     next_effects.focus_offset = alias.focus_outline_offset;
     next_effects.focus_color = alias.color_focus_outline;
-    next_effects.focus_opacity = state.focus.focus_visible && !state.disabled
-        ? 1.0F : 0.0F;
+    next_effects.focus_opacity = state.focus.focus_visible && !state.disabled ? 1.0F : 0.0F;
     const bool changed_effect = next_effects != state.effects;
     state.effects = std::move(next_effects);
     if (state.scene.valid()) {
@@ -895,38 +752,27 @@ void ButtonComponentHost::apply_presentation(
         dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry);
     }
     if (changed_effect) {
-        dirty_->invalidate(
-            state.node,
-            runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material);
+        dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material);
     }
     auto foreground = channels(state.presentation_foreground);
     foreground[3] *= layer_opacity;
     static_cast<void>(state.foreground.set(foreground));
 }
 
-void ButtonComponentHost::register_animation_targets(
-    ButtonComponentState& state) {
-    constexpr auto dirty = animation::AnimationDirtyDomain::material
-        | animation::AnimationDirtyDomain::animation;
+void ButtonComponentHost::register_animation_targets(ButtonComponentState& state) {
+    constexpr auto dirty = animation::AnimationDirtyDomain::material | animation::AnimationDirtyDomain::animation;
     constexpr std::array kinds{
-        animation::AnimationValueKind::color,
-        animation::AnimationValueKind::color,
-        animation::AnimationValueKind::color,
-        animation::AnimationValueKind::scalar,
+        animation::AnimationValueKind::color,  animation::AnimationValueKind::color,
+        animation::AnimationValueKind::color,  animation::AnimationValueKind::scalar,
         animation::AnimationValueKind::scalar,
     };
-    auto targets = std::make_unique<animation::MaterialTransitionTargets<
-        button_animation_channel_count>>(
-            animations_, static_cast<animation::AnimationTargetSink&>(*this),
-            kinds, dirty);
+    auto targets = std::make_unique<animation::MaterialTransitionTargets<button_animation_channel_count>>(
+        animations_, static_cast<animation::AnimationTargetSink&>(*this), kinds, dirty);
     try {
         state.animation_targets = targets->targets();
-        for (const auto channel : {
-                ButtonAnimationChannel::background,
-                ButtonAnimationChannel::border,
-                ButtonAnimationChannel::foreground,
-                ButtonAnimationChannel::loading_mix,
-                ButtonAnimationChannel::spinner_phase}) {
+        for (const auto channel :
+             {ButtonAnimationChannel::background, ButtonAnimationChannel::border, ButtonAnimationChannel::foreground,
+              ButtonAnimationChannel::loading_mix, ButtonAnimationChannel::spinner_phase}) {
             animation_bindings_.push_back({
                 state.animation_targets[animation_channel_index(channel)],
                 state.component,
@@ -936,26 +782,22 @@ void ButtonComponentHost::register_animation_targets(
         state.material_targets = std::move(targets);
     } catch (...) {
         targets.reset();
-        std::erase_if(animation_bindings_, [this](const auto& binding) {
-            return !animations_.contains(binding.target);
-        });
+        std::erase_if(animation_bindings_,
+                      [this](const auto& binding) { return !animations_.contains(binding.target); });
         state.animation_targets = {};
         throw;
     }
 }
 
-void ButtonComponentHost::unregister_animation_targets(
-    ButtonComponentState& state) noexcept {
+void ButtonComponentHost::unregister_animation_targets(ButtonComponentState& state) noexcept {
     if (!state.material_targets) {
         return;
     }
     try {
         state.material_targets.reset();
         std::erase_if(animation_bindings_, [&state](const auto& binding) {
-            return std::find(
-                state.animation_targets.begin(),
-                state.animation_targets.end(),
-                binding.target) != state.animation_targets.end();
+            return std::find(state.animation_targets.begin(), state.animation_targets.end(), binding.target) !=
+                   state.animation_targets.end();
         });
     } catch (...) {
     }
@@ -963,11 +805,9 @@ void ButtonComponentHost::unregister_animation_targets(
     state.animations = {};
 }
 
-void ButtonComponentHost::retarget_channel(
-    ButtonComponentState& state,
-    ButtonAnimationChannel channel,
-    const animation::AnimationValue& target,
-    const animation::AnimationSpec& spec) {
+void ButtonComponentHost::retarget_channel(ButtonComponentState& state, ButtonAnimationChannel channel,
+                                           const animation::AnimationValue& target,
+                                           const animation::AnimationSpec& spec) {
     const auto index = animation_channel_index(channel);
     animation::AnimationValue current;
     switch (channel) {
@@ -989,14 +829,11 @@ void ButtonComponentHost::retarget_channel(
     }
 
     auto& active = state.animations[index];
-    animation::retarget_material_channel(animations_, active,
-        state.animation_targets[index], std::move(current), target,
-        spec, services_->animation_time());
+    animation::retarget_material_channel(animations_, active, state.animation_targets[index], std::move(current),
+                                         target, spec, services_->animation_time());
 }
 
-void ButtonComponentHost::update_spinner(
-    ButtonComponentState& state,
-    const animation::MotionPolicy& policy) {
+void ButtonComponentHost::update_spinner(ButtonComponentState& state, const animation::MotionPolicy& policy) {
     if (state.loading && policy.enabled()) {
         start_spinner(state);
         return;
@@ -1005,25 +842,19 @@ void ButtonComponentHost::update_spinner(
 }
 
 void ButtonComponentHost::start_spinner(ButtonComponentState& state) {
-    const auto index = animation_channel_index(
-        ButtonAnimationChannel::spinner_phase);
+    const auto index = animation_channel_index(ButtonAnimationChannel::spinner_phase);
     auto& active = state.animations[index];
     if (animations_.contains(active)) {
         return;
     }
     const float phase = normalized_spinner_phase(state.spinner_phase);
     state.spinner_phase = phase;
-    active = animations_.play(
-        state.animation_targets[index],
-        phase,
-        phase + 1.0F,
-        {{}, spinner_period, animation::Easing::linear()},
-        services_->animation_time());
+    active = animations_.play(state.animation_targets[index], phase, phase + 1.0F,
+                              {{}, spinner_period, animation::Easing::linear()}, services_->animation_time());
 }
 
 void ButtonComponentHost::stop_spinner(ButtonComponentState& state) {
-    const auto index = animation_channel_index(
-        ButtonAnimationChannel::spinner_phase);
+    const auto index = animation_channel_index(ButtonAnimationChannel::spinner_phase);
     auto& active = state.animations[index];
     if (animations_.contains(active)) {
         static_cast<void>(animations_.cancel(active, services_->animation_time()));
@@ -1032,24 +863,14 @@ void ButtonComponentHost::stop_spinner(ButtonComponentState& state) {
     state.spinner_phase = 0.0F;
 }
 
-void ButtonComponentHost::apply(
-    animation::AnimationId,
-    animation::AnimationTargetId target,
-    const animation::AnimationValue& value,
-    animation::AnimationDirtyDomain dirty_domain) {
-    if (!animation::has_any(
-            dirty_domain,
-            animation::AnimationDirtyDomain::material)
-            || !animation::has_any(
-                dirty_domain,
-                animation::AnimationDirtyDomain::animation)) {
-        throw std::logic_error(
-            "Button animation target lost Material/Animation dirty domains");
+void ButtonComponentHost::apply(animation::AnimationId, animation::AnimationTargetId target,
+                                const animation::AnimationValue& value, animation::AnimationDirtyDomain dirty_domain) {
+    if (!animation::has_any(dirty_domain, animation::AnimationDirtyDomain::material) ||
+        !animation::has_any(dirty_domain, animation::AnimationDirtyDomain::animation)) {
+        throw std::logic_error("Button animation target lost Material/Animation dirty domains");
     }
-    const auto binding = std::find_if(
-        animation_bindings_.begin(),
-        animation_bindings_.end(),
-        [target](const auto& candidate) { return candidate.target == target; });
+    const auto binding = std::find_if(animation_bindings_.begin(), animation_bindings_.end(),
+                                      [target](const auto& candidate) { return candidate.target == target; });
     if (binding == animation_bindings_.end()) {
         throw std::out_of_range("Button animation target binding is stale");
     }
@@ -1077,13 +898,9 @@ void ButtonComponentHost::apply(
     apply_presentation(*state, true);
 }
 
-void ButtonComponentHost::completed(
-    animation::AnimationId animation,
-    animation::AnimationTargetId target) {
-    const auto binding = std::find_if(
-        animation_bindings_.begin(),
-        animation_bindings_.end(),
-        [target](const auto& candidate) { return candidate.target == target; });
+void ButtonComponentHost::completed(animation::AnimationId animation, animation::AnimationTargetId target) {
+    const auto binding = std::find_if(animation_bindings_.begin(), animation_bindings_.end(),
+                                      [target](const auto& candidate) { return candidate.target == target; });
     if (binding == animation_bindings_.end()) {
         return;
     }
@@ -1092,11 +909,8 @@ void ButtonComponentHost::completed(
         if (active == animation) {
             active = {};
             if (binding->channel == ButtonAnimationChannel::spinner_phase) {
-                const auto& theme = components()
-                    .theme_scope(state->component)
-                    ->snapshot();
-                const auto policy = animation::resolve_motion_policy(
-                    theme, services_->motion_preference());
+                const auto& theme = components().theme_scope(state->component)->snapshot();
+                const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
                 if (state->loading && policy.enabled()) {
                     start_spinner(*state);
                 }
@@ -1118,12 +932,8 @@ void ButtonComponentHost::update_layout(ButtonComponentState& state) {
     }
     state.layout_model = candidate;
     layout_->set_layout(state.node, candidate);
-    dirty_->invalidate(
-        state.node,
-        runtime::DirtyFlags::Measure
-            | runtime::DirtyFlags::Layout
-            | runtime::DirtyFlags::Geometry
-            | runtime::DirtyFlags::HitTest);
+    dirty_->invalidate(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                       runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
 }
 
 void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
@@ -1189,9 +999,7 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
         });
 }
 
-void ButtonComponentHost::synchronize_geometry(
-    ButtonComponentState& state,
-    runtime::Size viewport) {
+void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto size = size_token(button, state.size);
@@ -1204,41 +1012,20 @@ void ButtonComponentHost::synchronize_geometry(
         std::max(0.0F, node.bounds.height - 2.0F * button.border_width),
     };
     const bool border_box_fill = solid_fills_border_box(state);
-    const auto background_bounds = border_box_fill
-        ? node.bounds : inset_background_bounds;
+    const auto background_bounds = border_box_fill ? node.bounds : inset_background_bounds;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)] =
-        make_quad(
-            node.bounds,
-            viewport,
-            next[0].color,
-            next[0].opacity,
-            size.border_radius,
-            node.translation);
+        make_quad(node.bounds, viewport, next[0].color, next[0].opacity, size.border_radius, node.translation);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)] =
-        make_quad(
-            background_bounds,
-            viewport,
-            next[1].color,
-            next[1].opacity,
-            border_box_fill
-                ? size.border_radius
-                : std::max(0.0F, size.border_radius - button.border_width),
-            node.translation);
-    const auto indicator_bounds = content.loading_indicator_bounds.value_or(
-        runtime::Rect{});
-    for (std::size_t segment = 0;
-         segment < component::button_loading_segment_count;
-         ++segment) {
+        make_quad(background_bounds, viewport, next[1].color, next[1].opacity,
+                  border_box_fill ? size.border_radius : std::max(0.0F, size.border_radius - button.border_width),
+                  node.translation);
+    const auto indicator_bounds = content.loading_indicator_bounds.value_or(runtime::Rect{});
+    for (std::size_t segment = 0; segment < component::button_loading_segment_count; ++segment) {
         const auto index = component::button_loading_segment_index(segment);
         const auto bounds = spinner_segment_bounds(indicator_bounds, segment);
-        next[index] = make_quad(
-            bounds,
-            viewport,
-            next[index].color,
-            next[index].opacity,
-            0.5F * std::min(bounds.width, bounds.height),
-            node.translation);
+        next[index] = make_quad(bounds, viewport, next[index].color, next[index].opacity,
+                                0.5F * std::min(bounds.width, bounds.height), node.translation);
     }
     state.visuals = next;
     static_cast<void>(button_scene_.update(state.scene, state.visuals));
@@ -1251,12 +1038,9 @@ void ButtonComponentHost::synchronize_geometry(
     }
 }
 
-void mount_button_component(
-    const ButtonProps& props,
-    const ButtonContent& content) {
+void mount_button_component(const ButtonProps& props, const ButtonContent& content) {
     if (active_button_host == nullptr) {
-        throw std::logic_error(
-            "ryn::Button can only be declared inside an active ButtonComponentHost");
+        throw std::logic_error("ryn::Button can only be declared inside an active ButtonComponentHost");
     }
     auto& host = *active_button_host;
     auto& build = runtime::require_component_build_context();
@@ -1268,23 +1052,21 @@ void mount_button_component(
     const bool initial_loading = read_prop(ButtonPropsAccess::loading(props));
     const auto theme_scope = build.theme_scope();
     const auto& theme = theme_scope->snapshot();
-    ButtonComponentState initial_state{
-        channels(theme.button().default_color),
-        {
-            theme.text().font_family,
-            theme.text().font_weight,
-            false,
-            theme.text().font_size,
-            theme.text().line_height,
-        }};
+    ButtonComponentState initial_state{channels(theme.button().default_color),
+                                       {
+                                           theme.text().font_family,
+                                           theme.text().font_weight,
+                                           false,
+                                           theme.text().font_size,
+                                           theme.text().line_height,
+                                       }};
     initial_state.type = initial_type;
     initial_state.size = initial_size;
     initial_state.disabled = initial_disabled;
     initial_state.loading = initial_loading;
     initial_state.on_click = ButtonPropsAccess::on_click(props);
     const auto component = build.mount_component<ButtonComponentState>(
-        content_foreground(theme.button(), initial_state),
-        content_typography(theme, initial_state));
+        content_foreground(theme.button(), initial_state), content_typography(theme, initial_state));
     auto& state = build.state<ButtonComponentState>(component);
     state.component = component;
     state.node = build.root(component);
@@ -1295,16 +1077,10 @@ void mount_button_component(
     state.on_click = ButtonPropsAccess::on_click(props);
     state.layout_model = content_layout(theme.button(), state);
     host.layout_->set_layout(state.node, state.layout_model);
-    runtime::connect_layout_style(
-        build.scope(component),
-        ButtonPropsAccess::layout(props),
-        state.node,
-        *host.nodes_,
-        *host.dirty_);
+    runtime::connect_layout_style(build.scope(component), ButtonPropsAccess::layout(props), state.node, *host.nodes_,
+                                  *host.dirty_);
 
-    state.fragment = build.register_scene_fragment(
-        component,
-        runtime::SceneFragmentPlacement::before_children);
+    state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
     const auto parent_interaction = host.interaction_for(component);
     state.interaction = host.interactions_.create({
         component,
@@ -1315,16 +1091,12 @@ void mount_button_component(
         {},
     });
     input::InteractionHandlers pointer_handlers;
-    pointer_handlers.target = [&host, component](
-        input::PointerDispatchContext& event) {
+    pointer_handlers.target = [&host, component](input::PointerDispatchContext& event) {
         host.handle_pointer(component, event);
     };
-    static_cast<void>(host.interactions_.set_handlers(
-        state.interaction,
-        std::move(pointer_handlers)));
+    static_cast<void>(host.interactions_.set_handlers(state.interaction, std::move(pointer_handlers)));
     input::FocusHandlers focus_handlers;
-    focus_handlers.state_changed = [&host, component](
-        input::FocusPresentation focus) {
+    focus_handlers.state_changed = [&host, component](input::FocusPresentation focus) {
         host.apply_focus(component, focus);
     };
     focus_handlers.activation_allowed = [&host, component] {
@@ -1333,79 +1105,43 @@ void mount_button_component(
     focus_handlers.activate = [&host, component] {
         host.activate(component);
     };
-    static_cast<void>(host.interactions_.set_focus_handlers(
-        state.interaction,
-        std::move(focus_handlers)));
+    static_cast<void>(host.interactions_.set_focus_handlers(state.interaction, std::move(focus_handlers)));
 
     host.update_visuals(state);
-    state.scene = host.button_scene_.create(
-        component,
-        state.node,
-        state.fragment,
-        state.interaction,
-        state.visuals,
-        state.effects);
-    build.on_resource_cleanup(component, [
-        buttons = &host.button_scene_,
-        scene = state.scene] {
+    state.scene = host.button_scene_.create(component, state.node, state.fragment, state.interaction, state.visuals,
+                                            state.effects);
+    build.on_resource_cleanup(component, [buttons = &host.button_scene_, scene = state.scene] {
         static_cast<void>(buttons->destroy(scene));
     });
-    build.on_resource_cleanup(component, [
-        pointer = &host.pointer_,
-        interactions = &host.interactions_,
-        interaction = state.interaction] {
-        pointer->cancel_interaction(interaction);
-        static_cast<void>(interactions->remove(interaction));
-    });
+    build.on_resource_cleanup(
+        component, [pointer = &host.pointer_, interactions = &host.interactions_, interaction = state.interaction] {
+            pointer->cancel_interaction(interaction);
+            static_cast<void>(interactions->remove(interaction));
+        });
     host.register_animation_targets(state);
     host.update_visuals(state);
-    build.on_resource_cleanup(component, [
-        buttons = &host,
-        component] {
+    build.on_resource_cleanup(component, [buttons = &host, component] {
         if (auto* current = buttons->find_state(component)) {
             buttons->unregister_animation_targets(*current);
         }
     });
 
     auto& scope = build.scope(component);
-    static_cast<void>(connect_prop(
-        scope,
-        ButtonPropsAccess::type(props),
-        [&host, component](ButtonType type) {
-            host.apply_type(component, type);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        ButtonPropsAccess::size(props),
-        [&host, component](ControlSize size) {
-            host.apply_size(component, size);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        ButtonPropsAccess::disabled(props),
-        [&host, component](bool disabled) {
-            host.apply_disabled(component, disabled);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        ButtonPropsAccess::loading(props),
-        [&host, component](bool loading) {
-            host.apply_loading(component, loading);
-        }));
+    static_cast<void>(connect_prop(scope, ButtonPropsAccess::type(props),
+                                   [&host, component](ButtonType type) { host.apply_type(component, type); }));
+    static_cast<void>(connect_prop(scope, ButtonPropsAccess::size(props),
+                                   [&host, component](ControlSize size) { host.apply_size(component, size); }));
+    static_cast<void>(connect_prop(scope, ButtonPropsAccess::disabled(props),
+                                   [&host, component](bool disabled) { host.apply_disabled(component, disabled); }));
+    static_cast<void>(connect_prop(scope, ButtonPropsAccess::loading(props),
+                                   [&host, component](bool loading) { host.apply_loading(component, loading); }));
 
     host.subscribe_theme(state);
-    build.mount_slot_with_semantic_text_style(
-        component,
-        content,
-        Prop<runtime::SemanticForeground>{state.foreground},
-        Prop<runtime::SemanticTypography>{state.typography});
-    host.dirty_->invalidate(
-        state.node,
-        runtime::DirtyFlags::Measure
-            | runtime::DirtyFlags::Layout
-            | runtime::DirtyFlags::Geometry
-            | runtime::DirtyFlags::Material
-            | runtime::DirtyFlags::HitTest);
+    build.mount_slot_with_semantic_text_style(component, content, Prop<runtime::SemanticForeground>{state.foreground},
+                                              Prop<runtime::SemanticTypography>{state.typography});
+    host.dirty_->invalidate(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                            runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Material |
+                                            runtime::DirtyFlags::HitTest);
     host.record_mounted_button({
         component,
         state.node,

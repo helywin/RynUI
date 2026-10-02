@@ -42,8 +42,7 @@ std::filesystem::path executable_directory(char* executable) {
 }
 
 ryn::String click_label(std::uint64_t clicks) {
-    auto parsed = ryn::String::from_utf8(
-        "Clicks / 点击次数: " + std::to_string(clicks));
+    auto parsed = ryn::String::from_utf8("Clicks / 点击次数: " + std::to_string(clicks));
     if (!parsed) {
         throw std::logic_error("Button click label is not valid UTF-8");
     }
@@ -52,21 +51,14 @@ ryn::String click_label(std::uint64_t clicks) {
 
 class ButtonPlatformEvents final : public ryn::runtime::FrameEventSource {
 public:
-    ButtonPlatformEvents(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::runtime::FrameRequestState& frame_requests,
-        ryn::runtime::Size& viewport) noexcept
-        : platform_(&platform),
-          application_(&application),
-          frame_requests_(&frame_requests),
-          viewport_(&viewport),
+    ButtonPlatformEvents(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                         ryn::runtime::FrameRequestState& frame_requests, ryn::runtime::Size& viewport) noexcept
+        : platform_(&platform), application_(&application), frame_requests_(&frame_requests), viewport_(&viewport),
           started_(std::chrono::steady_clock::now()) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
         return ryn::animation::AnimationTime::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - started_).count());
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started_).count());
     }
 
     bool poll_frame_event() noexcept override {
@@ -91,18 +83,15 @@ private:
         quit_requested_ = quit_requested_ || events.quit_requested;
         try {
             for (const auto& event : events.input.events()) {
-                std::visit([this](const auto& value) {
-                    dispatch(value);
-                }, event);
+                std::visit([this](const auto& value) { dispatch(value); }, event);
             }
         } catch (const std::exception& error) {
             last_error_ = error.what();
             quit_requested_ = true;
             return true;
         }
-        return frame_requests_->pending()
-            || events.redraw_requested
-            || (events.frame_requested && events.input.empty());
+        return frame_requests_->pending() || events.redraw_requested ||
+               (events.frame_requested && events.input.empty());
     }
 
     void dispatch(const ryn::input::PointerInputEvent& event) {
@@ -113,8 +102,11 @@ private:
 
     // These samples have no text input owner yet.
     void dispatch(const ryn::input::TextCommitted&) {}
+
     void dispatch(const ryn::input::CompositionChanged&) {}
+
     void dispatch(const ryn::input::CandidatesChanged&) {}
+
     void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -154,22 +146,13 @@ private:
 
 class ButtonComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    ButtonComponentSubmitter(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::detail::TextSceneService& text_scene,
-        ryn::detail::SceneResources& resources,
-        ryn::detail::SdlSceneRenderer& renderer,
-        ryn::runtime::Size& viewport) noexcept
-        : platform_(&platform),
-          application_(&application),
-          text_scene_(&text_scene),
-          resources_(&resources),
-          renderer_(&renderer),
-          viewport_(&viewport) {}
+    ButtonComponentSubmitter(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                             ryn::detail::TextSceneService& text_scene, ryn::detail::SceneResources& resources,
+                             ryn::detail::SdlSceneRenderer& renderer, ryn::runtime::Size& viewport) noexcept
+        : platform_(&platform), application_(&application), text_scene_(&text_scene), resources_(&resources),
+          renderer_(&renderer), viewport_(&viewport) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime frame_time) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         try {
             static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
@@ -178,22 +161,26 @@ public:
                 std::max(0.0F, viewport_->width - 64.0F),
                 std::max(0.0F, viewport_->height - 48.0F),
             };
-            if (!application_->layout_and_synchronize(
-                    *viewport_, clip, {48.0F, 36.0F}, 10.0F)) {
+            if (!application_->layout_and_synchronize(*viewport_, clip, {48.0F, 36.0F}, 10.0F)) {
                 last_error_ = "Button application layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto metrics = platform_->window_metrics();
-            if (!resources_->synchronize({
-                &application_->button_scene().instances(), text_scene_->atlas(),
-                text_scene_->glyph_scene().instances(), &application_->rounded_effects(), {
-                    static_cast<std::uint32_t>(metrics.pixel_width),
-                    static_cast<std::uint32_t>(metrics.pixel_height),
-                    metrics.display_scale,
-                }})) throw std::runtime_error(renderer_->last_error());
+            if (!resources_->synchronize({&application_->button_scene().instances(),
+                                          text_scene_->atlas(),
+                                          text_scene_->glyph_scene().instances(),
+                                          &application_->rounded_effects(),
+                                          {
+                                              static_cast<std::uint32_t>(metrics.pixel_width),
+                                              static_cast<std::uint32_t>(metrics.pixel_height),
+                                              metrics.display_scale,
+                                          }})) {
+                throw std::runtime_error(renderer_->last_error());
+            }
             quad_buffer_ = resources_->quads();
-            if (!renderer_->attach_scene(resources_->attach(application_->scene_composer().ordered_scene())))
+            if (!renderer_->attach_scene(resources_->attach(application_->scene_composer().ordered_scene()))) {
                 throw std::runtime_error("Button scene attachment invalid");
+            }
             const auto result = renderer_->submit_frame(frame_time);
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -209,16 +196,14 @@ public:
         return last_error_;
     }
 
-    [[nodiscard]] const ryn::detail::QuadUploadCounters&
-    quad_upload_counters() const {
+    [[nodiscard]] const ryn::detail::QuadUploadCounters& quad_upload_counters() const {
         if (quad_buffer_ == nullptr) {
             throw std::logic_error("Button Quad GPU buffer was not created");
         }
         return quad_buffer_->counters();
     }
 
-    [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters&
-    effect_upload_counters() const noexcept {
+    [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters& effect_upload_counters() const noexcept {
         return resources_->effects().counters();
     }
 
@@ -277,8 +262,7 @@ int main(int argc, char** argv) {
         font_request.raster = font_raster;
         font_request.fallback_latin = executable / "fonts/latin.ttf";
         font_request.fallback_cjk = executable / "fonts/cjk.otf";
-        auto font_chain =
-            ryn::detail::load_default_ui_font_chain(*fonts, font_request);
+        auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
             return 3;
@@ -288,25 +272,17 @@ int main(int argc, char** argv) {
             std::cerr << "font_error=font metrics could not be queried\n";
             return 3;
         }
-        auto font_resolver = ryn::detail::make_default_ui_font_resolver(
-            *fonts,
-            font_chain,
-            initial_window_metrics.display_scale);
+        auto font_resolver =
+            ryn::detail::make_default_ui_font_resolver(*fonts, font_chain, initial_window_metrics.display_scale);
 
         ryn::runtime::NodeStore nodes;
         ryn::layout::LayoutEngine layout(nodes);
         ryn::runtime::FrameRequestState frame_requests;
         ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
         ryn::text::TextEngine text_engine(*fonts);
-        ryn::detail::TextSceneService text_scene(
-            *fonts, text_engine, frame_requests);
-        ryn::detail::ButtonComponentHost application(
-            nodes,
-            layout,
-            dirty,
-            text_scene,
-            std::move(font_resolver),
-            frame_requests);
+        ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
+        ryn::detail::ButtonComponentHost application(nodes, layout, dirty, text_scene, std::move(font_resolver),
+                                                     frame_requests);
 
         ryn::Signal<ryn::ButtonType> reactive_type{ryn::ButtonType::Default};
         ryn::Signal<ryn::ControlSize> reactive_size{ryn::ControlSize::Middle};
@@ -320,44 +296,22 @@ int main(int argc, char** argv) {
             observed_clicks.set(click_label(click_count));
         };
         application.mount(ryn::Content{[&] {
-            ryn::Text(
-                ryn::TextProps{}
-                    .content(u8"RynUI Button / Latin + 中文按钮")
-                    .tone(ryn::TextTone::Primary));
+            ryn::Text(ryn::TextProps{}.content(u8"RynUI Button / Latin + 中文按钮").tone(ryn::TextTone::Primary));
             ryn::Button(
-                ryn::ButtonProps{}
-                    .type(ryn::ButtonType::Default)
-                    .size(ryn::ControlSize::Middle)
-                    .onClick(record_click),
+                ryn::ButtonProps{}.type(ryn::ButtonType::Default).size(ryn::ControlSize::Middle).onClick(record_click),
                 [] { ryn::Text(u8"Default / 默认按钮"); });
             ryn::Button(
-                ryn::ButtonProps{}
-                    .type(ryn::ButtonType::Primary)
-                    .size(ryn::ControlSize::Middle)
-                    .onClick(record_click),
+                ryn::ButtonProps{}.type(ryn::ButtonType::Primary).size(ryn::ControlSize::Middle).onClick(record_click),
                 [] { ryn::Text(u8"Primary / 主要按钮"); });
             ryn::Button(
-                ryn::ButtonProps{}
-                    .type(ryn::ButtonType::Danger)
-                    .size(ryn::ControlSize::Middle)
-                    .onClick(record_click),
+                ryn::ButtonProps{}.type(ryn::ButtonType::Danger).size(ryn::ControlSize::Middle).onClick(record_click),
                 [] { ryn::Text(u8"Danger / 危险按钮"); });
-            ryn::Button(
-                ryn::ButtonProps{}
-                    .size(ryn::ControlSize::Small)
-                    .onClick(record_click),
-                [] { ryn::Text(u8"Small / 小按钮"); });
-            ryn::Button(
-                ryn::ButtonProps{}
-                    .size(ryn::ControlSize::Large)
-                    .onClick(record_click),
-                [] { ryn::Text(u8"Large / 大按钮"); });
-            ryn::Button(
-                ryn::ButtonProps{}.disabled(true),
-                [] { ryn::Text(u8"Disabled / 禁用"); });
-            ryn::Button(
-                ryn::ButtonProps{}.loading(true),
-                [] { ryn::Text(u8"Loading / 加载中"); });
+            ryn::Button(ryn::ButtonProps{}.size(ryn::ControlSize::Small).onClick(record_click),
+                        [] { ryn::Text(u8"Small / 小按钮"); });
+            ryn::Button(ryn::ButtonProps{}.size(ryn::ControlSize::Large).onClick(record_click),
+                        [] { ryn::Text(u8"Large / 大按钮"); });
+            ryn::Button(ryn::ButtonProps{}.disabled(true), [] { ryn::Text(u8"Disabled / 禁用"); });
+            ryn::Button(ryn::ButtonProps{}.loading(true), [] { ryn::Text(u8"Loading / 加载中"); });
             ryn::Button(
                 ryn::ButtonProps{}
                     .type(reactive_type)
@@ -366,32 +320,22 @@ int main(int argc, char** argv) {
                     .loading(reactive_loading)
                     .onClick([&] {
                         record_click();
-                        reactive_type.set(
-                            reactive_type.get() == ryn::ButtonType::Default
-                                ? ryn::ButtonType::Primary
-                                : ryn::ButtonType::Default);
-                        reactive_size.set(
-                            reactive_size.get() == ryn::ControlSize::Large
-                                ? ryn::ControlSize::Small
-                                : ryn::ControlSize::Large);
+                        reactive_type.set(reactive_type.get() == ryn::ButtonType::Default ? ryn::ButtonType::Primary
+                                                                                          : ryn::ButtonType::Default);
+                        reactive_size.set(reactive_size.get() == ryn::ControlSize::Large ? ryn::ControlSize::Small
+                                                                                         : ryn::ControlSize::Large);
                         ++prop_updates;
                     }),
                 [] { ryn::Text(u8"Reactive / 响应式按钮"); });
-            ryn::Text(
-                ryn::TextProps{}
-                    .content(observed_clicks)
-                    .tone(ryn::TextTone::Secondary));
+            ryn::Text(ryn::TextProps{}.content(observed_clicks).tone(ryn::TextTone::Secondary));
         }});
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::SceneResources scene_resources(renderer);
-        ButtonComponentSubmitter submitter(
-            platform, application, text_scene, scene_resources, renderer, viewport);
-        ButtonPlatformEvents events(
-            platform, application, frame_requests, viewport);
+        ButtonComponentSubmitter submitter(platform, application, text_scene, scene_resources, renderer, viewport);
+        ButtonPlatformEvents events(platform, application, frame_requests, viewport);
         auto& animation_deadlines = application;
-        ryn::runtime::OnDemandFrameLoop loop(
-            frame_requests, events, submitter, animation_deadlines, 10);
+        ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, animation_deadlines, 10);
 
         int smoke_stage = 0;
         while (!events.quit_requested()) {
@@ -429,8 +373,7 @@ int main(int argc, char** argv) {
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            if (smoke_mode && smoke_stage == 5 && elapsed >= 1'800
-                    && loop.counters().idle_waits >= 20) {
+            if (smoke_mode && smoke_stage == 5 && elapsed >= 1'800 && loop.counters().idle_waits >= 20) {
                 break;
             }
         }
@@ -440,15 +383,13 @@ int main(int argc, char** argv) {
             layout_passes += nodes.require(mounted.node).place_count;
         }
         for (const auto& mounted : application.text().mounted_texts()) {
-            layout_passes +=
-                nodes.require(text_scene.node(mounted.scene)).place_count;
+            layout_passes += nodes.require(text_scene.node(mounted.scene)).place_count;
         }
         const auto platform_diagnostics = platform.event_diagnostics();
         const auto& hit_test_diagnostics = application.hit_test().diagnostics();
         const auto& pointer_diagnostics = application.pointer().diagnostics();
         const auto& focus_diagnostics = application.focus().diagnostics();
-        const auto& scene_diagnostics =
-            application.scene_composer().diagnostics();
+        const auto& scene_diagnostics = application.scene_composer().diagnostics();
         const auto& button_diagnostics = application.button_scene().diagnostics();
         const auto& quad_uploads = submitter.quad_upload_counters();
         const auto& glyph_uploads = scene_resources.glyphs().counters();
@@ -456,52 +397,38 @@ int main(int argc, char** argv) {
         const auto& renderer_counters = renderer.counters();
         const auto& loop_counters = loop.counters();
         const auto window_metrics = platform.window_metrics();
-        std::cout
-            << "gpu_driver=" << renderer.gpu_driver()
-            << " shader_format=" << renderer.shader_format()
-            << " display_scale=" << platform.display_scale()
-            << " pixel_density=" << window_metrics.pixel_density
-            << " window_size=" << window_metrics.coordinate_width << 'x'
-            << window_metrics.coordinate_height
-            << " pixel_size=" << window_metrics.pixel_width << 'x'
-            << window_metrics.pixel_height
-            << " viewport=" << viewport.width << 'x' << viewport.height
-            << " font_logical_pixel_size=" << font_metrics.metrics.logical_pixel_size
-            << " font_raster_pixel_size=" << font_metrics.metrics.raster_pixel_size
-            << " font_raster_scale=" << font_metrics.metrics.raster_scale
-            << " font_source=" << font_chain.telemetry_source()
-            << " font_families=" << font_chain.telemetry_families()
-            << " input_events=" << platform_diagnostics.normalized_input_events
-            << " hit_test_queries=" << hit_test_diagnostics.queries
-            << " routes_dispatched=" << pointer_diagnostics.routes_dispatched
-            << " captures_started=" << pointer_diagnostics.captures_started
-            << " captures_released=" << pointer_diagnostics.captures_released
-            << " focus_changes=" << focus_diagnostics.focus_changes
-            << " clicks=" << click_count
-            << " prop_updates=" << prop_updates
-            << " layout_passes=" << layout_passes
-            << " scene_rebuilds=" << scene_diagnostics.rebuilds
-            << " button_material_updates=" << button_diagnostics.material_updates
-            << " button_geometry_updates=" << button_diagnostics.geometry_updates
-            << " quad_uploads="
-            << quad_uploads.initial_uploads + quad_uploads.range_uploads
-            << " quad_uploaded_bytes=" << quad_uploads.uploaded_bytes
-            << " glyph_uploads="
-            << glyph_uploads.texture_uploads + glyph_uploads.buffer_uploads
-            << " glyph_uploaded_bytes="
-            << glyph_uploads.texture_uploaded_bytes
-                + glyph_uploads.buffer_uploaded_bytes
-            << " effect_uploads=" << effect_uploads.buffer_uploads
-            << " effect_uploaded_bytes=" << effect_uploads.uploaded_bytes
-            << " quad_draws=" << renderer_counters.quad_draws
-            << " glyph_draws=" << renderer_counters.glyph_draws
-            << " effect_draws=" << renderer_counters.effect_draws
-            << " submits=" << renderer_counters.frame_submissions
-            << " idle_waits=" << loop_counters.idle_waits
-            << " exit_code=0\n";
-        return smoke_mode && (smoke_stage != 5 || prop_updates != 6)
-            ? 6
-            : 0;
+        std::cout << "gpu_driver=" << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
+                  << " display_scale=" << platform.display_scale() << " pixel_density=" << window_metrics.pixel_density
+                  << " window_size=" << window_metrics.coordinate_width << 'x' << window_metrics.coordinate_height
+                  << " pixel_size=" << window_metrics.pixel_width << 'x' << window_metrics.pixel_height
+                  << " viewport=" << viewport.width << 'x' << viewport.height
+                  << " font_logical_pixel_size=" << font_metrics.metrics.logical_pixel_size
+                  << " font_raster_pixel_size=" << font_metrics.metrics.raster_pixel_size
+                  << " font_raster_scale=" << font_metrics.metrics.raster_scale
+                  << " font_source=" << font_chain.telemetry_source()
+                  << " font_families=" << font_chain.telemetry_families()
+                  << " input_events=" << platform_diagnostics.normalized_input_events
+                  << " hit_test_queries=" << hit_test_diagnostics.queries
+                  << " routes_dispatched=" << pointer_diagnostics.routes_dispatched
+                  << " captures_started=" << pointer_diagnostics.captures_started
+                  << " captures_released=" << pointer_diagnostics.captures_released
+                  << " focus_changes=" << focus_diagnostics.focus_changes << " clicks=" << click_count
+                  << " prop_updates=" << prop_updates << " layout_passes=" << layout_passes
+                  << " scene_rebuilds=" << scene_diagnostics.rebuilds
+                  << " button_material_updates=" << button_diagnostics.material_updates
+                  << " button_geometry_updates=" << button_diagnostics.geometry_updates
+                  << " quad_uploads=" << quad_uploads.initial_uploads + quad_uploads.range_uploads
+                  << " quad_uploaded_bytes=" << quad_uploads.uploaded_bytes
+                  << " glyph_uploads=" << glyph_uploads.texture_uploads + glyph_uploads.buffer_uploads
+                  << " glyph_uploaded_bytes="
+                  << glyph_uploads.texture_uploaded_bytes + glyph_uploads.buffer_uploaded_bytes
+                  << " effect_uploads=" << effect_uploads.buffer_uploads
+                  << " effect_uploaded_bytes=" << effect_uploads.uploaded_bytes
+                  << " quad_draws=" << renderer_counters.quad_draws << " glyph_draws=" << renderer_counters.glyph_draws
+                  << " effect_draws=" << renderer_counters.effect_draws
+                  << " submits=" << renderer_counters.frame_submissions << " idle_waits=" << loop_counters.idle_waits
+                  << " exit_code=0\n";
+        return smoke_mode && (smoke_stage != 5 || prop_updates != 6) ? 6 : 0;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';
         return 7;

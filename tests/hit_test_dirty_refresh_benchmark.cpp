@@ -15,8 +15,7 @@ namespace {
 struct BenchmarkState final {};
 
 ryn::runtime::ComponentId mount_root() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<BenchmarkState>();
+    return ryn::runtime::require_component_build_context().mount_component<BenchmarkState>();
 }
 
 struct Case final {
@@ -49,14 +48,12 @@ void run_case(const Case& test_case) {
     entries.reserve(test_case.interactions);
     const auto stride = test_case.nodes / test_case.interactions;
     for (std::size_t index = 0; index < test_case.interactions; ++index) {
-        const auto interaction = registry.create({
-            component, node_ids[index * stride], std::nullopt, true, false, {}});
+        const auto interaction = registry.create({component, node_ids[index * stride], std::nullopt, true, false, {}});
         entries.push_back({interaction, std::nullopt});
     }
 
     ryn::input::HitTestSnapshot snapshot(registry, nodes);
-    snapshot.rebuild(entries, {0.0F, 0.0F,
-        static_cast<float>(test_case.nodes), 2.0F});
+    snapshot.rebuild(entries, {0.0F, 0.0F, static_cast<float>(test_case.nodes), 2.0F});
 
     // 4051 is odd, so this visits distinct slots for each power-of-two case.
     std::vector<ryn::runtime::NodeId> dirty;
@@ -85,10 +82,9 @@ void run_case(const Case& test_case) {
     }
     const auto elapsed = std::chrono::steady_clock::now() - started;
     const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
-    std::cout << test_case.nodes << ',' << test_case.interactions << ','
-              << test_case.dirty << ',' << test_case.iterations << ','
-              << expected << ',' << nanos / static_cast<std::int64_t>(test_case.iterations)
-              << '\n';
+    std::cout << test_case.nodes << ',' << test_case.interactions << ',' << test_case.dirty << ','
+              << test_case.iterations << ',' << expected << ','
+              << nanos / static_cast<std::int64_t>(test_case.iterations) << '\n';
 }
 
 } // namespace

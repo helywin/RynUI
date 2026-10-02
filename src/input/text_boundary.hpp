@@ -22,9 +22,17 @@ struct TextScalar {
 class Utf8ScalarIterator final {
 public:
     explicit Utf8ScalarIterator(std::string_view bytes) noexcept : bytes_(bytes) {}
+
     [[nodiscard]] std::optional<TextScalar> next() noexcept;
-    [[nodiscard]] bool valid() const noexcept { return valid_; }
-    [[nodiscard]] std::size_t offset() const noexcept { return offset_; }
+
+    [[nodiscard]] bool valid() const noexcept {
+        return valid_;
+    }
+
+    [[nodiscard]] std::size_t offset() const noexcept {
+        return offset_;
+    }
+
 private:
     std::string_view bytes_;
     std::size_t offset_{};
@@ -53,6 +61,7 @@ public:
     [[nodiscard]] std::size_t next(std::size_t byte) const noexcept;
     [[nodiscard]] static std::string_view unicode_version() noexcept;
     [[nodiscard]] static std::string_view dependency_version() noexcept;
+
 private:
     // Sentinel-only default map represents empty text without allocating.
     std::vector<std::size_t> scalars_;

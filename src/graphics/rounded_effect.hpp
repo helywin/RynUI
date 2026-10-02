@@ -24,9 +24,7 @@ struct LogicalRoundedRect final {
     runtime::Rect rect;
     float radius{};
 
-    friend constexpr bool operator==(
-        LogicalRoundedRect,
-        LogicalRoundedRect) = default;
+    friend constexpr bool operator==(LogicalRoundedRect, LogicalRoundedRect) = default;
 };
 
 struct EffectClip final {
@@ -47,9 +45,7 @@ struct RoundedEffectGeometry final {
     runtime::Point translation;
     std::optional<EffectClip> ancestor_clip;
 
-    friend bool operator==(
-        const RoundedEffectGeometry&,
-        const RoundedEffectGeometry&) = default;
+    friend bool operator==(const RoundedEffectGeometry&, const RoundedEffectGeometry&) = default;
 };
 
 struct RoundedEffectMaterial final {
@@ -57,57 +53,38 @@ struct RoundedEffectMaterial final {
     float opacity{1.0F};
     bool visible{true};
 
-    friend constexpr bool operator==(
-        RoundedEffectMaterial,
-        RoundedEffectMaterial) = default;
+    friend constexpr bool operator==(RoundedEffectMaterial, RoundedEffectMaterial) = default;
 };
 
 struct RoundedEffectInstance final {
     RoundedEffectGeometry geometry;
     RoundedEffectMaterial material;
 
-    friend bool operator==(
-        const RoundedEffectInstance&,
-        const RoundedEffectInstance&) = default;
+    friend bool operator==(const RoundedEffectInstance&, const RoundedEffectInstance&) = default;
 };
 
-[[nodiscard]] RoundedEffectInstance make_shadow_effect(
-    LogicalRoundedRect shape,
-    const ShadowLayer& layer,
-    runtime::Point translation = {},
-    std::optional<EffectClip> ancestor_clip = std::nullopt);
+[[nodiscard]] RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer,
+                                                       runtime::Point translation = {},
+                                                       std::optional<EffectClip> ancestor_clip = std::nullopt);
 
-[[nodiscard]] RoundedEffectInstance make_outline_effect(
-    LogicalRoundedRect shape,
-    float width,
-    float offset,
-    Color color,
-    float opacity = 1.0F,
-    runtime::Point translation = {},
-    std::optional<EffectClip> ancestor_clip = std::nullopt);
+[[nodiscard]] RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width, float offset,
+                                                        Color color, float opacity = 1.0F,
+                                                        runtime::Point translation = {},
+                                                        std::optional<EffectClip> ancestor_clip = std::nullopt);
 
 void validate_rounded_effect(const RoundedEffectInstance& instance);
 
-[[nodiscard]] float rounded_rect_signed_distance(
-    runtime::Point point,
-    LogicalRoundedRect shape) noexcept;
+[[nodiscard]] float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept;
 
-[[nodiscard]] float rounded_effect_coverage(
-    runtime::Point point,
-    const RoundedEffectInstance& instance,
-    float antialias_width = 1.0F);
+[[nodiscard]] float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance,
+                                            float antialias_width = 1.0F);
 
-[[nodiscard]] runtime::Rect rounded_effect_bounds(
-    const RoundedEffectInstance& instance,
-    float antialias_guard = 1.0F);
+[[nodiscard]] runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float antialias_guard = 1.0F);
 
-[[nodiscard]] runtime::Rect intersect_effect_bounds(
-    runtime::Rect bounds,
-    runtime::Rect clip) noexcept;
+[[nodiscard]] runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept;
 
 struct RoundedEffectId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{};
@@ -116,18 +93,14 @@ struct RoundedEffectId final {
         return index != invalid_index && generation != 0;
     }
 
-    friend constexpr bool operator==(
-        RoundedEffectId,
-        RoundedEffectId) = default;
+    friend constexpr bool operator==(RoundedEffectId, RoundedEffectId) = default;
 };
 
 struct RoundedEffectInstanceRange final {
     std::uint32_t first{};
     std::uint32_t count{};
 
-    friend constexpr bool operator==(
-        RoundedEffectInstanceRange,
-        RoundedEffectInstanceRange) = default;
+    friend constexpr bool operator==(RoundedEffectInstanceRange, RoundedEffectInstanceRange) = default;
 };
 
 struct RoundedEffectStoreDiagnostics final {
@@ -155,31 +128,21 @@ public:
 
     void reserve(std::size_t capacity);
     [[nodiscard]] RoundedEffectId add(RoundedEffectInstance instance);
-    [[nodiscard]] std::vector<RoundedEffectId> add_batch(
-        std::span<const RoundedEffectInstance> instances);
+    [[nodiscard]] std::vector<RoundedEffectId> add_batch(std::span<const RoundedEffectInstance> instances);
     bool remove(RoundedEffectId id);
     [[nodiscard]] bool contains(RoundedEffectId id) const noexcept;
 
     [[nodiscard]] const RoundedEffectInstance& at(RoundedEffectId id) const;
-    [[nodiscard]] bool update_material(
-        RoundedEffectId id,
-        RoundedEffectMaterial material);
-    [[nodiscard]] bool update_geometry(
-        RoundedEffectId id,
-        RoundedEffectGeometry geometry);
+    [[nodiscard]] bool update_material(RoundedEffectId id, RoundedEffectMaterial material);
+    [[nodiscard]] bool update_geometry(RoundedEffectId id, RoundedEffectGeometry geometry);
 
     [[nodiscard]] bool compact(runtime::Rect window_clip);
-    [[nodiscard]] std::optional<std::uint32_t> packed_index(
-        RoundedEffectId id) const;
-    [[nodiscard]] std::span<const RoundedEffectInstance>
-        packed_instances() const noexcept;
-    [[nodiscard]] std::span<const std::byte> bytes(
-        RoundedEffectInstanceRange range) const;
+    [[nodiscard]] std::optional<std::uint32_t> packed_index(RoundedEffectId id) const;
+    [[nodiscard]] std::span<const RoundedEffectInstance> packed_instances() const noexcept;
+    [[nodiscard]] std::span<const std::byte> bytes(RoundedEffectInstanceRange range) const;
 
-    [[nodiscard]] std::span<const RoundedEffectInstanceRange>
-        material_dirty_ranges() const noexcept;
-    [[nodiscard]] std::span<const RoundedEffectInstanceRange>
-        geometry_dirty_ranges() const noexcept;
+    [[nodiscard]] std::span<const RoundedEffectInstanceRange> material_dirty_ranges() const noexcept;
+    [[nodiscard]] std::span<const RoundedEffectInstanceRange> geometry_dirty_ranges() const noexcept;
     void clear_dirty_ranges() noexcept;
 
     [[nodiscard]] std::size_t live_count() const noexcept;
@@ -194,14 +157,9 @@ private:
     [[nodiscard]] Slot& require_slot(RoundedEffectId id);
     [[nodiscard]] const Slot& require_slot(RoundedEffectId id) const;
     static void advance_generation(Slot& slot) noexcept;
-    static void mark_dirty(
-        std::vector<RoundedEffectInstanceRange>& ranges,
-        RoundedEffectInstanceRange range);
+    static void mark_dirty(std::vector<RoundedEffectInstanceRange>& ranges, RoundedEffectInstanceRange range);
     static void validate_clip(runtime::Rect clip);
-    void note_capacity_growth(
-        std::size_t slots_before,
-        std::size_t order_before,
-        std::size_t packed_before) noexcept;
+    void note_capacity_growth(std::size_t slots_before, std::size_t order_before, std::size_t packed_before) noexcept;
 
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
@@ -221,33 +179,23 @@ struct RoundedEffectPrimitive final {
 
 class RoundedEffectScene final {
 public:
-    [[nodiscard]] RoundedEffectPrimitive append_shadow_list(
-        LogicalRoundedRect shape,
-        const ShadowList& shadows,
-        runtime::Point translation = {},
-        std::optional<EffectClip> ancestor_clip = std::nullopt);
-    [[nodiscard]] RoundedEffectPrimitive append_outline(
-        LogicalRoundedRect shape,
-        float width,
-        float offset,
-        Color color,
-        float opacity = 1.0F,
-        runtime::Point translation = {},
-        std::optional<EffectClip> ancestor_clip = std::nullopt);
+    [[nodiscard]] RoundedEffectPrimitive append_shadow_list(LogicalRoundedRect shape, const ShadowList& shadows,
+                                                            runtime::Point translation = {},
+                                                            std::optional<EffectClip> ancestor_clip = std::nullopt);
+    [[nodiscard]] RoundedEffectPrimitive append_outline(LogicalRoundedRect shape, float width, float offset,
+                                                        Color color, float opacity = 1.0F,
+                                                        runtime::Point translation = {},
+                                                        std::optional<EffectClip> ancestor_clip = std::nullopt);
     bool remove(const RoundedEffectPrimitive& primitive);
 
-    void compose_surface(
-        const RoundedEffectPrimitive& primitive,
-        SceneDrawCommand fill,
-        std::vector<SceneDrawCommand>& output) const;
+    void compose_surface(const RoundedEffectPrimitive& primitive, SceneDrawCommand fill,
+                         std::vector<SceneDrawCommand>& output) const;
 
     [[nodiscard]] RoundedEffectStore& store() noexcept;
     [[nodiscard]] const RoundedEffectStore& store() const noexcept;
 
 private:
-    void append_effect_commands(
-        std::span<const RoundedEffectId> effects,
-        std::vector<SceneDrawCommand>& output) const;
+    void append_effect_commands(std::span<const RoundedEffectId> effects, std::vector<SceneDrawCommand>& output) const;
 
     RoundedEffectStore store_;
 };

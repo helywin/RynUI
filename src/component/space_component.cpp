@@ -53,43 +53,29 @@ namespace {
     throw std::invalid_argument("Space align value is invalid");
 }
 
-void apply_measure_model(
-    SpaceComponentState& state,
-    layout::FlexLayout candidate,
-    layout::LayoutEngine& layout,
-    runtime::DirtyQueues& dirty) {
+void apply_measure_model(SpaceComponentState& state, layout::FlexLayout candidate, layout::LayoutEngine& layout,
+                         runtime::DirtyQueues& dirty) {
     if (candidate == state.model) {
         return;
     }
     layout.set_layout(state.node, candidate);
     state.model = candidate;
-    dirty.invalidate_subtree(
-        state.node,
-        runtime::DirtyFlags::Measure |
-            runtime::DirtyFlags::Layout |
-            runtime::DirtyFlags::Geometry);
+    dirty.invalidate_subtree(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                             runtime::DirtyFlags::Geometry);
 }
 
-void apply_placement_model(
-    SpaceComponentState& state,
-    layout::FlexLayout candidate,
-    layout::LayoutEngine& layout,
-    runtime::DirtyQueues& dirty) {
+void apply_placement_model(SpaceComponentState& state, layout::FlexLayout candidate, layout::LayoutEngine& layout,
+                           runtime::DirtyQueues& dirty) {
     if (candidate == state.model) {
         return;
     }
     layout.set_layout(state.node, candidate);
     state.model = candidate;
-    dirty.invalidate_subtree(
-        state.node,
-        runtime::DirtyFlags::Placement | runtime::DirtyFlags::Geometry);
+    dirty.invalidate_subtree(state.node, runtime::DirtyFlags::Placement | runtime::DirtyFlags::Geometry);
 }
 
-void subscribe_theme_gap(
-    SpaceComponentState& state,
-    const std::shared_ptr<theme_runtime::ThemeScope>& theme,
-    layout::LayoutEngine& layout,
-    runtime::DirtyQueues& dirty) {
+void subscribe_theme_gap(SpaceComponentState& state, const std::shared_ptr<theme_runtime::ThemeScope>& theme,
+                         layout::LayoutEngine& layout, runtime::DirtyQueues& dirty) {
     state.theme_subscription.reset();
     if (!LayoutGapAccess::preset(state.gap).has_value()) {
         return;
@@ -102,9 +88,7 @@ void subscribe_theme_gap(
             candidate.cross_gap = resolved.cross;
             apply_measure_model(state, candidate, layout, dirty);
         },
-        [&state, theme] {
-            static_cast<void>(resolve_layout_gap(state.gap, *theme));
-        });
+        [&state, theme] { static_cast<void>(resolve_layout_gap(state.gap, *theme)); });
 }
 
 } // namespace
@@ -136,48 +120,32 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
     state.model = initial;
     state.gap = initial_gap;
     services.layout.set_layout(state.node, initial);
-    build.on_resource_cleanup(component, [layout = &services.layout, node = state.node] {
-        static_cast<void>(layout->remove_layout(node));
-    });
-    runtime::connect_layout_style(
-        build.scope(component),
-        SpacePropsAccess::layout(props),
-        state.node,
-        services.nodes,
-        services.dirty);
+    build.on_resource_cleanup(
+        component, [layout = &services.layout, node = state.node] { static_cast<void>(layout->remove_layout(node)); });
+    runtime::connect_layout_style(build.scope(component), SpacePropsAccess::layout(props), state.node, services.nodes,
+                                  services.dirty);
 
     auto& scope = build.scope(component);
     auto* layout = &services.layout;
     auto* dirty = &services.dirty;
     subscribe_theme_gap(state, theme, *layout, *dirty);
-    static_cast<void>(connect_prop(
-        scope,
-        SpacePropsAccess::vertical(props),
-        [&state, layout, dirty](bool vertical) {
-            auto candidate = state.model;
-            candidate.direction = space_direction(vertical);
-            apply_measure_model(state, candidate, *layout, *dirty);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        SpacePropsAccess::wrap(props),
-        [&state, layout, dirty](bool wrap) {
-            auto candidate = state.model;
-            candidate.wrap = space_wrap(wrap);
-            apply_measure_model(state, candidate, *layout, *dirty);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        SpacePropsAccess::align(props),
-        [&state, layout, dirty](SpaceAlign align) {
-            auto candidate = state.model;
-            candidate.align = space_align(align);
-            apply_placement_model(state, candidate, *layout, *dirty);
-        }));
-    static_cast<void>(connect_prop(
-        scope,
-        SpacePropsAccess::size(props),
-        [&state, layout, dirty, theme](const LayoutGap& value) {
+    static_cast<void>(connect_prop(scope, SpacePropsAccess::vertical(props), [&state, layout, dirty](bool vertical) {
+        auto candidate = state.model;
+        candidate.direction = space_direction(vertical);
+        apply_measure_model(state, candidate, *layout, *dirty);
+    }));
+    static_cast<void>(connect_prop(scope, SpacePropsAccess::wrap(props), [&state, layout, dirty](bool wrap) {
+        auto candidate = state.model;
+        candidate.wrap = space_wrap(wrap);
+        apply_measure_model(state, candidate, *layout, *dirty);
+    }));
+    static_cast<void>(connect_prop(scope, SpacePropsAccess::align(props), [&state, layout, dirty](SpaceAlign align) {
+        auto candidate = state.model;
+        candidate.align = space_align(align);
+        apply_placement_model(state, candidate, *layout, *dirty);
+    }));
+    static_cast<void>(
+        connect_prop(scope, SpacePropsAccess::size(props), [&state, layout, dirty, theme](const LayoutGap& value) {
             state.gap = value;
             const auto resolved = resolve_layout_gap(value, *theme);
             auto candidate = state.model;
@@ -188,11 +156,8 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
         }));
 
     build.mount_slot(component, content);
-    services.dirty.invalidate_subtree(
-        state.node,
-        runtime::DirtyFlags::Measure |
-            runtime::DirtyFlags::Layout |
-            runtime::DirtyFlags::Geometry);
+    services.dirty.invalidate_subtree(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                      runtime::DirtyFlags::Geometry);
 }
 
 } // namespace ryn::detail

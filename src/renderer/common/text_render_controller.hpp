@@ -12,14 +12,9 @@ using TextRenderControllerCounters = TextSceneRecordCounters;
 
 class TextRenderController final {
 public:
-    TextRenderController(
-        font::FontRuntime& fonts,
-        text::TextEngine& engine,
-        runtime::FrameRequestState& frame_requests,
-        String content,
-        std::vector<font::FontIdentity> fallback_chain,
-        std::uint32_t pixel_size,
-        text::TextLayoutConfig layout);
+    TextRenderController(font::FontRuntime& fonts, text::TextEngine& engine, runtime::FrameRequestState& frame_requests,
+                         String content, std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
+                         text::TextLayoutConfig layout);
 
     bool set_content(String content);
     bool set_width_constraint(float width);

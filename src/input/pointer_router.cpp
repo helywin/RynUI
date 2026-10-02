@@ -7,20 +7,12 @@
 
 namespace ryn::input {
 
-PointerDispatchContext::PointerDispatchContext(
-    PointerRouter& router,
-    const PointerInputEvent& event,
-    PointerEventKind kind,
-    InteractionId dispatch_target,
-    std::optional<InteractionId> actual_hit_target,
-    std::optional<InteractionId> press_origin) noexcept
-    : router_(&router),
-      event_(&event),
-      kind_(kind),
-      current_target_(dispatch_target),
-      dispatch_target_(dispatch_target),
-      actual_hit_target_(actual_hit_target),
-      press_origin_(press_origin) {}
+PointerDispatchContext::PointerDispatchContext(PointerRouter& router, const PointerInputEvent& event,
+                                               PointerEventKind kind, InteractionId dispatch_target,
+                                               std::optional<InteractionId> actual_hit_target,
+                                               std::optional<InteractionId> press_origin) noexcept
+    : router_(&router), event_(&event), kind_(kind), current_target_(dispatch_target),
+      dispatch_target_(dispatch_target), actual_hit_target_(actual_hit_target), press_origin_(press_origin) {}
 
 const PointerInputEvent& PointerDispatchContext::event() const noexcept {
     return *event_;
@@ -66,16 +58,11 @@ bool PointerDispatchContext::release_pointer_capture() {
     return router_->release_capture(*this);
 }
 
-PointerRouter::PointerRouter(
-    InteractionRegistry& registry,
-    HitTestSnapshot& hit_test,
-    runtime::FrameRequestState* frames,
-    FocusManager* focus) noexcept
+PointerRouter::PointerRouter(InteractionRegistry& registry, HitTestSnapshot& hit_test,
+                             runtime::FrameRequestState* frames, FocusManager* focus) noexcept
     : registry_(&registry), hit_test_(&hit_test), frames_(frames), focus_(focus) {}
 
-void PointerRouter::reserve(
-    std::size_t pointer_capacity,
-    std::size_t route_capacity) {
+void PointerRouter::reserve(std::size_t pointer_capacity, std::size_t route_capacity) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
     }
@@ -113,22 +100,18 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
         pointer->position = {event.x, event.y};
         sanitize_before_dispatch(*pointer, event);
 
-        const auto actual_target = event.action == PointerAction::cancel
-            ? std::optional<InteractionId>{}
-            : hit_test_->hit_test(pointer->position);
+        const auto actual_target = event.action == PointerAction::cancel ? std::optional<InteractionId>{}
+                                                                         : hit_test_->hit_test(pointer->position);
         if (event.action != PointerAction::cancel) {
             update_hover(*pointer, actual_target, event);
         }
         const auto kind = event_kind(event.action);
 
-        if (event.action == PointerAction::down
-                && event.button == PointerButton::primary) {
-            if (focus_ != nullptr && (!actual_target ||
-                    registry_->require(*actual_target).focus_on_pointer)) {
+        if (event.action == PointerAction::down && event.button == PointerButton::primary) {
+            if (focus_ != nullptr && (!actual_target || registry_->require(*actual_target).focus_on_pointer)) {
                 static_cast<void>(focus_->focus_from_pointer(actual_target));
             }
-            if (pointer->primary_down || pointer->capture.has_value()
-                    || pointer->press_origin.has_value()) {
+            if (pointer->primary_down || pointer->capture.has_value() || pointer->press_origin.has_value()) {
                 clear_primary_state(*pointer, true);
             }
             pointer->primary_down = true;
@@ -138,20 +121,12 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
             }
         }
 
-        const auto route_target = pointer->capture.has_value()
-            ? pointer->capture
-            : actual_target;
+        const auto route_target = pointer->capture.has_value() ? pointer->capture : actual_target;
         if (route_target.has_value()) {
-            dispatch_route(
-                *pointer,
-                event,
-                kind,
-                *route_target,
-                actual_target);
+            dispatch_route(*pointer, event, kind, *route_target, actual_target);
         }
 
-        if (event.action == PointerAction::up
-                && event.button == PointerButton::primary) {
+        if (event.action == PointerAction::up && event.button == PointerButton::primary) {
             clear_primary_state(*pointer, false);
             if (event.pointer.device == PointerDevice::touch) {
                 clear_hover(*pointer, event);
@@ -183,23 +158,11 @@ void PointerRouter::cancel_all() {
     try {
         for (auto& pointer : states_) {
             const PointerInputEvent cancel{
-                pointer.pointer,
-                PointerAction::cancel,
-                PointerButton::none,
-                pointer.position.x,
-                pointer.position.y,
+                pointer.pointer, PointerAction::cancel, PointerButton::none, pointer.position.x, pointer.position.y,
             };
-            const auto target = pointer.capture.has_value()
-                ? pointer.capture
-                : pointer.press_origin;
-            if (invoke_handlers && target.has_value()
-                    && registry_->find(*target) != nullptr) {
-                dispatch_route(
-                    pointer,
-                    cancel,
-                    PointerEventKind::cancel,
-                    *target,
-                    std::nullopt);
+            const auto target = pointer.capture.has_value() ? pointer.capture : pointer.press_origin;
+            if (invoke_handlers && target.has_value() && registry_->find(*target) != nullptr) {
+                dispatch_route(pointer, cancel, PointerEventKind::cancel, *target, std::nullopt);
             }
             clear_primary_state(pointer, true);
             if (invoke_handlers) {
@@ -232,9 +195,7 @@ void PointerRouter::cancel_pointer_interaction(InteractionId interaction) {
     cancel_interaction_internal(interaction, false);
 }
 
-void PointerRouter::cancel_interaction_internal(
-    InteractionId interaction,
-    bool cancel_focus) {
+void PointerRouter::cancel_interaction_internal(InteractionId interaction, bool cancel_focus) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
     }
@@ -248,30 +209,17 @@ void PointerRouter::cancel_interaction_internal(
     }
     try {
         for (auto& pointer : states_) {
-            const bool owns_primary = pointer.capture == interaction
-                || pointer.press_origin == interaction;
-            const bool in_hover = std::find(
-                pointer.hover_path.begin(),
-                pointer.hover_path.end(),
-                interaction) != pointer.hover_path.end();
+            const bool owns_primary = pointer.capture == interaction || pointer.press_origin == interaction;
+            const bool in_hover = std::find(pointer.hover_path.begin(), pointer.hover_path.end(), interaction) !=
+                                  pointer.hover_path.end();
             if (!owns_primary && !in_hover) {
                 continue;
             }
             const PointerInputEvent cancel{
-                pointer.pointer,
-                PointerAction::cancel,
-                PointerButton::none,
-                pointer.position.x,
-                pointer.position.y,
+                pointer.pointer, PointerAction::cancel, PointerButton::none, pointer.position.x, pointer.position.y,
             };
-            if (invoke_handlers && owns_primary
-                    && registry_->find(interaction) != nullptr) {
-                dispatch_route(
-                    pointer,
-                    cancel,
-                    PointerEventKind::cancel,
-                    interaction,
-                    std::nullopt);
+            if (invoke_handlers && owns_primary && registry_->find(interaction) != nullptr) {
+                dispatch_route(pointer, cancel, PointerEventKind::cancel, interaction, std::nullopt);
             }
             if (owns_primary) {
                 clear_primary_state(pointer, true);
@@ -298,8 +246,7 @@ void PointerRouter::cancel_interaction_internal(
     }
 }
 
-std::optional<PointerStateSnapshot> PointerRouter::state(
-    PointerIdentity pointer) const {
+std::optional<PointerStateSnapshot> PointerRouter::state(PointerIdentity pointer) const {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("PointerRouter can only be used on its owner thread");
     }
@@ -311,9 +258,7 @@ std::optional<PointerStateSnapshot> PointerRouter::state(
         current->pointer,
         current->position,
         current->primary_down,
-        current->hover_path.empty()
-            ? std::nullopt
-            : std::optional<InteractionId>{current->hover_path.back()},
+        current->hover_path.empty() ? std::nullopt : std::optional<InteractionId>{current->hover_path.back()},
         current->capture,
         current->press_origin,
     };
@@ -330,21 +275,15 @@ const PointerRouterDiagnostics& PointerRouter::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-PointerRouter::PointerState* PointerRouter::find_state(
-    PointerIdentity pointer) noexcept {
-    const auto found = std::find_if(
-        states_.begin(),
-        states_.end(),
-        [&](const auto& current) { return current.pointer == pointer; });
+PointerRouter::PointerState* PointerRouter::find_state(PointerIdentity pointer) noexcept {
+    const auto found =
+        std::find_if(states_.begin(), states_.end(), [&](const auto& current) { return current.pointer == pointer; });
     return found == states_.end() ? nullptr : &*found;
 }
 
-const PointerRouter::PointerState* PointerRouter::find_state(
-    PointerIdentity pointer) const noexcept {
-    const auto found = std::find_if(
-        states_.begin(),
-        states_.end(),
-        [&](const auto& current) { return current.pointer == pointer; });
+const PointerRouter::PointerState* PointerRouter::find_state(PointerIdentity pointer) const noexcept {
+    const auto found =
+        std::find_if(states_.begin(), states_.end(), [&](const auto& current) { return current.pointer == pointer; });
     return found == states_.end() ? nullptr : &*found;
 }
 
@@ -359,9 +298,7 @@ PointerRouter::PointerState& PointerRouter::state_for(PointerIdentity pointer) {
     return states_.back();
 }
 
-bool PointerRouter::build_route(
-    InteractionId target,
-    std::vector<InteractionId>& route) {
+bool PointerRouter::build_route(InteractionId target, std::vector<InteractionId>& route) {
     route.clear();
     auto current = std::optional<InteractionId>{target};
     while (current.has_value()) {
@@ -378,10 +315,8 @@ bool PointerRouter::build_route(
     return !route.empty();
 }
 
-void PointerRouter::update_hover(
-    PointerState& state,
-    std::optional<InteractionId> actual_target,
-    const PointerInputEvent& event) {
+void PointerRouter::update_hover(PointerState& state, std::optional<InteractionId> actual_target,
+                                 const PointerInputEvent& event) {
     next_hover_scratch_.clear();
     if (actual_target.has_value()) {
         static_cast<void>(build_route(*actual_target, next_hover_scratch_));
@@ -390,147 +325,81 @@ void PointerRouter::update_hover(
         return;
     }
 
-    previous_hover_scratch_.assign(
-        state.hover_path.begin(),
-        state.hover_path.end());
+    previous_hover_scratch_.assign(state.hover_path.begin(), state.hover_path.end());
     std::size_t common = 0;
-    while (common < previous_hover_scratch_.size()
-            && common < next_hover_scratch_.size()
-            && previous_hover_scratch_[common] == next_hover_scratch_[common]) {
+    while (common < previous_hover_scratch_.size() && common < next_hover_scratch_.size() &&
+           previous_hover_scratch_[common] == next_hover_scratch_[common]) {
         ++common;
     }
-    state.hover_path.assign(
-        next_hover_scratch_.begin(),
-        next_hover_scratch_.end());
+    state.hover_path.assign(next_hover_scratch_.begin(), next_hover_scratch_.end());
     request_frame();
 
     for (std::size_t index = previous_hover_scratch_.size(); index > common; --index) {
         ++diagnostics_.hover_leaves;
-        invoke_direct(
-            state,
-            event,
-            PointerEventKind::leave,
-            previous_hover_scratch_[index - 1],
-            actual_target);
+        invoke_direct(state, event, PointerEventKind::leave, previous_hover_scratch_[index - 1], actual_target);
     }
     for (std::size_t index = common; index < next_hover_scratch_.size(); ++index) {
         ++diagnostics_.hover_enters;
-        invoke_direct(
-            state,
-            event,
-            PointerEventKind::enter,
-            next_hover_scratch_[index],
-            actual_target);
+        invoke_direct(state, event, PointerEventKind::enter, next_hover_scratch_[index], actual_target);
     }
 }
 
-void PointerRouter::clear_hover(
-    PointerState& state,
-    const PointerInputEvent& event) {
+void PointerRouter::clear_hover(PointerState& state, const PointerInputEvent& event) {
     if (state.hover_path.empty()) {
         return;
     }
-    previous_hover_scratch_.assign(
-        state.hover_path.begin(),
-        state.hover_path.end());
+    previous_hover_scratch_.assign(state.hover_path.begin(), state.hover_path.end());
     state.hover_path.clear();
     request_frame();
-    for (auto iterator = previous_hover_scratch_.rbegin();
-         iterator != previous_hover_scratch_.rend();
-         ++iterator) {
+    for (auto iterator = previous_hover_scratch_.rbegin(); iterator != previous_hover_scratch_.rend(); ++iterator) {
         ++diagnostics_.hover_leaves;
-        invoke_direct(
-            state,
-            event,
-            PointerEventKind::leave,
-            *iterator,
-            std::nullopt);
+        invoke_direct(state, event, PointerEventKind::leave, *iterator, std::nullopt);
     }
 }
 
-void PointerRouter::dispatch_route(
-    PointerState& state,
-    const PointerInputEvent& event,
-    PointerEventKind kind,
-    InteractionId target,
-    std::optional<InteractionId> actual_target) {
+void PointerRouter::dispatch_route(PointerState& state, const PointerInputEvent& event, PointerEventKind kind,
+                                   InteractionId target, std::optional<InteractionId> actual_target) {
     if (!build_route(target, route_scratch_)) {
         return;
     }
     ++diagnostics_.routes_dispatched;
     diagnostics_.route_entries += route_scratch_.size();
-    PointerDispatchContext context(
-        *this,
-        event,
-        kind,
-        target,
-        actual_target,
-        state.press_origin);
+    PointerDispatchContext context(*this, event, kind, target, actual_target, state.press_origin);
 
     if (route_scratch_.size() > 1) {
         for (std::size_t index = 0; index + 1 < route_scratch_.size(); ++index) {
-            if (invoke_handler(
-                    state,
-                    context,
-                    route_scratch_[index],
-                    PointerPropagationPhase::capture)) {
+            if (invoke_handler(state, context, route_scratch_[index], PointerPropagationPhase::capture)) {
                 return;
             }
         }
     }
-    if (invoke_handler(
-            state,
-            context,
-            route_scratch_.back(),
-            PointerPropagationPhase::target)) {
+    if (invoke_handler(state, context, route_scratch_.back(), PointerPropagationPhase::target)) {
         return;
     }
     if (route_scratch_.size() > 1) {
         for (std::size_t index = route_scratch_.size() - 1; index > 0; --index) {
-            if (invoke_handler(
-                    state,
-                    context,
-                    route_scratch_[index - 1],
-                    PointerPropagationPhase::bubble)) {
+            if (invoke_handler(state, context, route_scratch_[index - 1], PointerPropagationPhase::bubble)) {
                 return;
             }
         }
     }
 }
 
-void PointerRouter::invoke_direct(
-    PointerState& state,
-    const PointerInputEvent& event,
-    PointerEventKind kind,
-    InteractionId target,
-    std::optional<InteractionId> actual_target) {
-    PointerDispatchContext context(
-        *this,
-        event,
-        kind,
-        target,
-        actual_target,
-        state.press_origin);
-    static_cast<void>(invoke_handler(
-        state,
-        context,
-        target,
-        PointerPropagationPhase::target));
+void PointerRouter::invoke_direct(PointerState& state, const PointerInputEvent& event, PointerEventKind kind,
+                                  InteractionId target, std::optional<InteractionId> actual_target) {
+    PointerDispatchContext context(*this, event, kind, target, actual_target, state.press_origin);
+    static_cast<void>(invoke_handler(state, context, target, PointerPropagationPhase::target));
 }
 
-bool PointerRouter::invoke_handler(
-    PointerState& state,
-    PointerDispatchContext& context,
-    InteractionId current,
-    PointerPropagationPhase phase) {
+bool PointerRouter::invoke_handler(PointerState& state, PointerDispatchContext& context, InteractionId current,
+                                   PointerPropagationPhase phase) {
     const auto* record = registry_->find(current);
     if (record == nullptr) {
         ++diagnostics_.stale_skips;
         prune_invalid_state(state);
         return context.propagation_stopped_;
     }
-    const bool cleanup_event = context.kind_ == PointerEventKind::cancel
-        || context.kind_ == PointerEventKind::leave;
+    const bool cleanup_event = context.kind_ == PointerEventKind::cancel || context.kind_ == PointerEventKind::leave;
     if (!record->eligible && !cleanup_event) {
         ++diagnostics_.stale_skips;
         prune_invalid_state(state);
@@ -565,26 +434,21 @@ bool PointerRouter::invoke_handler(
     return context.propagation_stopped_;
 }
 
-void PointerRouter::sanitize_before_dispatch(
-    PointerState& state,
-    const PointerInputEvent& event) {
+void PointerRouter::sanitize_before_dispatch(PointerState& state, const PointerInputEvent& event) {
     if (state.capture.has_value()) {
         const auto* capture = registry_->find(*state.capture);
         if (capture == nullptr || !capture->eligible) {
             const auto stale_capture = state.capture;
             if (capture != nullptr) {
-                dispatch_route(
-                    state,
-                    PointerInputEvent{
-                        state.pointer,
-                        PointerAction::cancel,
-                        PointerButton::none,
-                        event.x,
-                        event.y,
-                    },
-                    PointerEventKind::cancel,
-                    *stale_capture,
-                    std::nullopt);
+                dispatch_route(state,
+                               PointerInputEvent{
+                                   state.pointer,
+                                   PointerAction::cancel,
+                                   PointerButton::none,
+                                   event.x,
+                                   event.y,
+                               },
+                               PointerEventKind::cancel, *stale_capture, std::nullopt);
             }
             clear_primary_state(state, true);
         }
@@ -612,12 +476,8 @@ void PointerRouter::prune_invalid_state(PointerState& state) {
     }
 }
 
-void PointerRouter::clear_primary_state(
-    PointerState& state,
-    bool count_cancel) {
-    const bool had_primary = state.primary_down
-        || state.capture.has_value()
-        || state.press_origin.has_value();
+void PointerRouter::clear_primary_state(PointerState& state, bool count_cancel) {
+    const bool had_primary = state.primary_down || state.capture.has_value() || state.press_origin.has_value();
     if (state.capture.has_value()) {
         state.capture.reset();
         ++diagnostics_.captures_released;
@@ -647,19 +507,14 @@ void PointerRouter::request_frame() noexcept {
     }
 }
 
-bool PointerRouter::request_capture(
-    const PointerDispatchContext& context) {
-    if (!dispatching_
-            || context.phase_ != PointerPropagationPhase::target
-            || context.kind_ != PointerEventKind::down
-            || context.current_target_ != context.dispatch_target_
-            || context.event_->action != PointerAction::down
-            || context.event_->button != PointerButton::primary) {
+bool PointerRouter::request_capture(const PointerDispatchContext& context) {
+    if (!dispatching_ || context.phase_ != PointerPropagationPhase::target || context.kind_ != PointerEventKind::down ||
+        context.current_target_ != context.dispatch_target_ || context.event_->action != PointerAction::down ||
+        context.event_->button != PointerButton::primary) {
         return false;
     }
     auto* state = find_state(context.event_->pointer);
-    if (state == nullptr || !state->primary_down
-            || registry_->find(context.current_target_) == nullptr) {
+    if (state == nullptr || !state->primary_down || registry_->find(context.current_target_) == nullptr) {
         return false;
     }
     if (state->capture == context.current_target_) {
@@ -674,8 +529,7 @@ bool PointerRouter::request_capture(
     return true;
 }
 
-bool PointerRouter::release_capture(
-    const PointerDispatchContext& context) {
+bool PointerRouter::release_capture(const PointerDispatchContext& context) {
     auto* state = find_state(context.event_->pointer);
     if (state == nullptr || state->capture != context.current_target_) {
         return false;

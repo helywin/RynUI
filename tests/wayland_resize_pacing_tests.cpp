@@ -82,8 +82,7 @@ struct ResizePacer {
         ++exposures;
     }
 
-    void focus_changed(bool) {
-    }
+    void focus_changed(bool) {}
 
     void destroy() {
         release_pending();
@@ -91,8 +90,7 @@ struct ResizePacer {
 
 private:
     void ack(const Configuration& configuration) {
-        acked.push_back({configuration.serial, configuration.state,
-                         configuration.width, configuration.height});
+        acked.push_back({configuration.serial, configuration.state, configuration.width, configuration.height});
     }
 
     void release_pending() {
@@ -105,8 +103,7 @@ private:
     }
 };
 
-void deliver_configure(ResizePacer& pacer, Configuration& configuration,
-                       bool resizing) {
+void deliver_configure(ResizePacer& pacer, Configuration& configuration, bool resizing) {
     pacer.configure(configuration, resizing);
     configuration.unref(); // libdecor releases its callback-owned reference.
 }
@@ -156,8 +153,7 @@ void test_serials_advance_on_frames_without_focus_events() {
     deliver_configure(pacer, second, true);
     pacer.frame_callback();
 
-    assert((pacer.acked == std::vector<Ack>{
-        {30, 0x100, 920, 720}, {31, 0x100, 930, 730}}));
+    assert((pacer.acked == std::vector<Ack>{{30, 0x100, 920, 720}, {31, 0x100, 930, 730}}));
 }
 
 void test_resize_end_releases_pending_and_commits_final_state() {

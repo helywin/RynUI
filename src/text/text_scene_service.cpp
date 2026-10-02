@@ -13,19 +13,17 @@ font::FontMetricsResult TextSceneService::font_metrics(font::FontIdentity font) 
     ensure_owner_thread();
     return fonts_->metrics(font);
 }
+
 namespace {
 
-[[nodiscard]] bool same_position_geometry(
-    const graphics::GlyphPlacement& left,
-    const graphics::GlyphPlacement& right) noexcept {
-    return left.origin_pixels == right.origin_pixels
-        && left.viewport_pixels == right.viewport_pixels
-        && left.translation_pixels == right.translation_pixels;
+[[nodiscard]] bool same_position_geometry(const graphics::GlyphPlacement& left,
+                                          const graphics::GlyphPlacement& right) noexcept {
+    return left.origin_pixels == right.origin_pixels && left.viewport_pixels == right.viewport_pixels &&
+           left.translation_pixels == right.translation_pixels;
 }
 
-[[nodiscard]] bool same_patchable_geometry(
-    const graphics::GlyphPlacement& left,
-    const graphics::GlyphPlacement& right) noexcept {
+[[nodiscard]] bool same_patchable_geometry(const graphics::GlyphPlacement& left,
+                                           const graphics::GlyphPlacement& right) noexcept {
     return left.clip_pixels == right.clip_pixels;
 }
 
@@ -58,32 +56,24 @@ struct TextSceneService::Slot final {
     std::uint32_t generation{1};
 };
 
-TextSceneService::TextSceneService(
-    font::FontRuntime& fonts,
-    text::TextEngine& engine,
-    runtime::FrameRequestState& frame_requests) noexcept
-    : fonts_(&fonts),
-      engine_(&engine),
-      frame_requests_(&frame_requests),
-      owner_thread_(std::this_thread::get_id()) {}
+TextSceneService::TextSceneService(font::FontRuntime& fonts, text::TextEngine& engine,
+                                   runtime::FrameRequestState& frame_requests) noexcept
+    : fonts_(&fonts), engine_(&engine), frame_requests_(&frame_requests), owner_thread_(std::this_thread::get_id()) {}
 
 TextSceneService::~TextSceneService() = default;
 
-font::FontIdentity TextSceneService::icon_font(
-    font::FontIdentity reference, std::uint32_t logical_pixel_size) {
+font::FontIdentity TextSceneService::icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size) {
     ensure_owner_thread();
     if (logical_pixel_size == 0) {
         throw std::invalid_argument("Icon pixel size must be positive");
     }
     const auto reference_metrics = fonts_->metrics(reference);
     if (!reference_metrics) {
-        throw std::runtime_error("Icon reference font is invalid: "
-            + reference_metrics.error.diagnostic);
+        throw std::runtime_error("Icon reference font is invalid: " + reference_metrics.error.diagnostic);
     }
     const float display_scale = reference_metrics.metrics.display_scale;
     for (const auto& cached : icon_fonts_) {
-        if (cached.logical_pixel_size == logical_pixel_size
-                && cached.display_scale == display_scale) {
+        if (cached.logical_pixel_size == logical_pixel_size && cached.display_scale == display_scale) {
             return cached.font;
         }
     }
@@ -93,22 +83,17 @@ font::FontIdentity TextSceneService::icon_font(
     raster.policy.hinting = false;
     raster.policy.embedded_bitmap = false;
     const auto* first = reinterpret_cast<const std::byte*>(ant_design_icon_font_bytes);
-    const auto result = fonts_->load_font_bytes(
-        {first, sizeof(ant_design_icon_font_bytes)}, 0, raster);
+    const auto result = fonts_->load_font_bytes({first, sizeof(ant_design_icon_font_bytes)}, 0, raster);
     if (!result) {
-        throw std::runtime_error("Cannot load embedded Ant Design icons: "
-            + result.error.diagnostic);
+        throw std::runtime_error("Cannot load embedded Ant Design icons: " + result.error.diagnostic);
     }
     icon_fonts_.push_back({logical_pixel_size, display_scale, result.font});
     return result.font;
 }
 
-TextSceneId TextSceneService::create(
-    runtime::NodeId node,
-    String content,
-    std::vector<font::FontIdentity> fallback_chain,
-    std::uint32_t pixel_size,
-    text::TextLayoutConfig layout) {
+TextSceneId TextSceneService::create(runtime::NodeId node, String content,
+                                     std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
+                                     text::TextLayoutConfig layout) {
     ensure_owner_thread();
     if (!node.valid()) {
         throw std::invalid_argument("Text scene record requires a valid NodeId");
@@ -120,13 +105,9 @@ TextSceneId TextSceneService::create(
         auto record = std::make_unique<Record>();
         record->node = node;
         record->declaration_order = next_declaration_order_++;
-        record->state = std::make_shared<text::TextState>(
-            *engine_,
-            std::move(content),
-            std::move(fallback_chain),
-            pixel_size,
-            layout,
-            [this] { frame_requests_->request_frame(); });
+        record->state =
+            std::make_shared<text::TextState>(*engine_, std::move(content), std::move(fallback_chain), pixel_size,
+                                              layout, [this] { frame_requests_->request_frame(); });
         record->primitive.instances = {
             static_cast<std::uint32_t>(glyph_scene_.instances().size()),
             0,
@@ -149,7 +130,9 @@ TextSceneId TextSceneService::create(
 
 TextSceneId TextSceneService::create_view(TextSceneId source, runtime::NodeId node) {
     ensure_owner_thread();
-    if(!node.valid()) throw std::invalid_argument("Text view requires a valid node");
+    if (!node.valid()) {
+        throw std::invalid_argument("Text view requires a valid node");
+    }
     const auto& original = require_record(source);
     auto state = original.state;
     const auto material = original.view ? original.view_material : original.state->material();
@@ -157,15 +140,24 @@ TextSceneId TextSceneService::create_view(TextSceneId source, runtime::NodeId no
     const TextSceneId id{index, slots_[index].generation};
     try {
         auto record = std::make_unique<Record>();
-        record->node = node; record->declaration_order = next_declaration_order_++;
-        record->state = std::move(state); record->view = true; record->view_material = material;
+        record->node = node;
+        record->declaration_order = next_declaration_order_++;
+        record->state = std::move(state);
+        record->view = true;
+        record->view_material = material;
         record->primitive.instances = {static_cast<std::uint32_t>(glyph_scene_.instances().size()), 0};
-        slots_[index].record = std::move(record); ordered_ids_.push_back(id);
-        ++live_records_; ++counters_.creates; frame_requests_->request_frame();
+        slots_[index].record = std::move(record);
+        ordered_ids_.push_back(id);
+        ++live_records_;
+        ++counters_.creates;
+        frame_requests_->request_frame();
         return id;
-    } catch(...) {
+    } catch (...) {
         slots_[index].record.reset();
-        try { free_slots_.push_back(index); } catch(...) {}
+        try {
+            free_slots_.push_back(index);
+        } catch (...) {
+        }
         throw;
     }
 }
@@ -193,7 +185,9 @@ bool TextSceneService::destroy(TextSceneId id) {
 bool TextSceneService::set_content(TextSceneId id, String content) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared content");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared content");
+    }
     if (!record.state->set_content(std::move(content))) {
         return false;
     }
@@ -202,12 +196,12 @@ bool TextSceneService::set_content(TextSceneId id, String content) {
     return true;
 }
 
-bool TextSceneService::set_font_chain(
-    TextSceneId id,
-    std::vector<font::FontIdentity> fallback_chain) {
+bool TextSceneService::set_font_chain(TextSceneId id, std::vector<font::FontIdentity> fallback_chain) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared fonts");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared fonts");
+    }
     if (!record.state->set_font_chain(std::move(fallback_chain))) {
         return false;
     }
@@ -216,12 +210,12 @@ bool TextSceneService::set_font_chain(
     return true;
 }
 
-bool TextSceneService::set_pixel_size(
-    TextSceneId id,
-    std::uint32_t pixel_size) {
+bool TextSceneService::set_pixel_size(TextSceneId id, std::uint32_t pixel_size) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared font size");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared font size");
+    }
     if (!record.state->set_pixel_size(pixel_size)) {
         return false;
     }
@@ -233,7 +227,9 @@ bool TextSceneService::set_pixel_size(
 bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared line height");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared line height");
+    }
     if (!record.state->set_line_height(line_height)) {
         return false;
     }
@@ -245,8 +241,12 @@ bool TextSceneService::set_line_height(TextSceneId id, float line_height) {
 bool TextSceneService::set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if (record.view) throw std::logic_error("Text views cannot replace ellipsis configuration");
-    if (!record.state->set_ellipsis(std::move(config), request_frame)) return false;
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace ellipsis configuration");
+    }
+    if (!record.state->set_ellipsis(std::move(config), request_frame)) {
+        return false;
+    }
     ++record.revisions.layout;
     record.content_dirty = true;
     record.placement_rebuild_pending = true;
@@ -256,7 +256,9 @@ bool TextSceneService::set_ellipsis(TextSceneId id, text::TextEllipsisConfig con
 void TextSceneService::request_reshape(TextSceneId id) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot reshape shared content");
+    if (record.view) {
+        throw std::logic_error("Text views cannot reshape shared content");
+    }
     record.state->request_reshape();
     ++record.revisions.content;
     record.content_dirty = true;
@@ -265,7 +267,9 @@ void TextSceneService::request_reshape(TextSceneId id) {
 bool TextSceneService::set_width_constraint(TextSceneId id, float width) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared width");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared width");
+    }
     if (!record.state->set_width_constraint(width)) {
         return false;
     }
@@ -274,15 +278,18 @@ bool TextSceneService::set_width_constraint(TextSceneId id, float width) {
     return true;
 }
 
-bool TextSceneService::set_color(
-    TextSceneId id,
-    std::array<float, 4> color) {
+bool TextSceneService::set_color(TextSceneId id, std::array<float, 4> color) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) {
-        if(record.view_material.color == color) return false;
-        record.view_material.color = color; frame_requests_->request_frame();
-    } else if(!record.state->set_color(color)) return false;
+    if (record.view) {
+        if (record.view_material.color == color) {
+            return false;
+        }
+        record.view_material.color = color;
+        frame_requests_->request_frame();
+    } else if (!record.state->set_color(color)) {
+        return false;
+    }
     ++record.revisions.tone;
     record.material_dirty = true;
     return true;
@@ -291,19 +298,24 @@ bool TextSceneService::set_color(
 bool TextSceneService::set_opacity(TextSceneId id, float opacity) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) {
-        if(!std::isfinite(opacity) || opacity < 0 || opacity > 1) throw std::invalid_argument("Text opacity must be within [0, 1]");
-        if(record.view_material.opacity == opacity) return false;
-        record.view_material.opacity = opacity; frame_requests_->request_frame();
-    } else if(!record.state->set_opacity(opacity)) return false;
+    if (record.view) {
+        if (!std::isfinite(opacity) || opacity < 0 || opacity > 1) {
+            throw std::invalid_argument("Text opacity must be within [0, 1]");
+        }
+        if (record.view_material.opacity == opacity) {
+            return false;
+        }
+        record.view_material.opacity = opacity;
+        frame_requests_->request_frame();
+    } else if (!record.state->set_opacity(opacity)) {
+        return false;
+    }
     ++record.revisions.tone;
     record.material_dirty = true;
     return true;
 }
 
-bool TextSceneService::set_placement(
-    TextSceneId id,
-    graphics::GlyphPlacement placement) {
+bool TextSceneService::set_placement(TextSceneId id, graphics::GlyphPlacement placement) {
     return update_placement(id, std::move(placement), true);
 }
 
@@ -313,7 +325,9 @@ bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pix
     if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)) {
         throw std::invalid_argument("Text scroll translation must be finite");
     }
-    if (record.scroll_translation == pixels) return false;
+    if (record.scroll_translation == pixels) {
+        return false;
+    }
     record.scroll_translation = pixels;
     record.patchable_geometry_dirty = true;
     ++record.revisions.placement;
@@ -321,12 +335,11 @@ bool TextSceneService::set_scroll_translation(TextSceneId id, runtime::Point pix
     return true;
 }
 
-runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
-    TextSceneId id, runtime::Point pixels, runtime::Point aligned_offset) {
+runtime::Point TextSceneService::set_phase_preserving_scroll_translation(TextSceneId id, runtime::Point pixels,
+                                                                         runtime::Point aligned_offset) {
     ensure_owner_thread();
-    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y)
-            || !std::isfinite(aligned_offset.x)
-            || !std::isfinite(aligned_offset.y)) {
+    if (!std::isfinite(pixels.x) || !std::isfinite(pixels.y) || !std::isfinite(aligned_offset.x) ||
+        !std::isfinite(aligned_offset.y)) {
         throw std::invalid_argument("Text translation must be finite");
     }
     auto& record = require_record(id);
@@ -355,33 +368,33 @@ runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
         std::round(pixels.y * record.scroll_scale) / record.scroll_scale,
     };
     static_cast<void>(set_scroll_translation(id, {
-        snapped.x + aligned_offset.x,
-        snapped.y + aligned_offset.y,
-    }));
+                                                     snapped.x + aligned_offset.x,
+                                                     snapped.y + aligned_offset.y,
+                                                 }));
     return {pixels.x - snapped.x, pixels.y - snapped.y};
 }
 
-std::size_t TextSceneService::patch_geometry(
-    Record& record, const graphics::GlyphPlacement& placement) {
+std::size_t TextSceneService::patch_geometry(Record& record, const graphics::GlyphPlacement& placement) {
     const auto clip = placement.clip_pixels;
-    return glyph_scene_.instances().update_geometry(record.primitive.instances, {
-        clip.x, clip.y, clip.x + clip.width, clip.y + clip.height,
-    }, {
-        record.scroll_translation.x, record.scroll_translation.y,
-    });
+    return glyph_scene_.instances().update_geometry(record.primitive.instances,
+                                                    {
+                                                        clip.x,
+                                                        clip.y,
+                                                        clip.x + clip.width,
+                                                        clip.y + clip.height,
+                                                    },
+                                                    {
+                                                        record.scroll_translation.x,
+                                                        record.scroll_translation.y,
+                                                    });
 }
 
-bool TextSceneService::update_placement(
-    TextSceneId id,
-    graphics::GlyphPlacement placement,
-    bool request_frame) {
+bool TextSceneService::update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame) {
     ensure_owner_thread();
     auto& record = require_record(id);
     const bool had_placement = record.placement.has_value();
-    const bool position_changed = !had_placement
-        || !same_position_geometry(*record.placement, placement);
-    const bool patchable_changed = !had_placement
-        || !same_patchable_geometry(*record.placement, placement);
+    const bool position_changed = !had_placement || !same_position_geometry(*record.placement, placement);
+    const bool patchable_changed = !had_placement || !same_patchable_geometry(*record.placement, placement);
     const bool layout_requires_geometry = record.placement_rebuild_pending;
     if (!position_changed && !patchable_changed && !layout_requires_geometry) {
         return false;
@@ -390,8 +403,7 @@ bool TextSceneService::update_placement(
     if (position_changed || layout_requires_geometry) {
         record.position_geometry_dirty = true;
     } else if (patchable_changed) {
-        record.patchable_geometry_dirty =
-            true;
+        record.patchable_geometry_dirty = true;
     }
     record.placement_rebuild_pending = false;
     record.placement = std::move(placement);
@@ -416,7 +428,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
 
     auto placement = *record.placement;
-    if(record.view && record.observed_text_revision != record.state->revision()) {
+    if (record.view && record.observed_text_revision != record.state->revision()) {
         record.observed_text_revision = record.state->revision();
         record.content_dirty = true;
         ++record.revisions.content;
@@ -427,20 +439,13 @@ bool TextSceneService::synchronize(TextSceneId id) {
     const auto old_range = record.primitive.instances;
     if (record.content_dirty || record.position_geometry_dirty) {
         const bool text_rebuild = record.content_dirty;
-        auto result = glyph_scene_.replace_text(
-            old_range,
-            *fonts_,
-            atlas_,
-            record.state->shaped(),
-            record.state->measurement(),
-            placement);
+        auto result = glyph_scene_.replace_text(old_range, *fonts_, atlas_, record.state->shaped(),
+                                                record.state->measurement(), placement);
         if (!result) {
             record.last_error = std::move(result.error);
             return false;
         }
-        const std::int64_t offset =
-            static_cast<std::int64_t>(result.primitive.instances.count)
-            - old_range.count;
+        const std::int64_t offset = static_cast<std::int64_t>(result.primitive.instances.count) - old_range.count;
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
         if (record.scroll_translation != runtime::Point{}) {
@@ -465,10 +470,8 @@ bool TextSceneService::synchronize(TextSceneId id) {
     }
 
     if (record.material_dirty) {
-        const auto updated = glyph_scene_.instances().update_material(
-            record.primitive.instances,
-            material.color,
-            material.opacity);
+        const auto updated =
+            glyph_scene_.instances().update_material(record.primitive.instances, material.color, material.opacity);
         if (updated != 0) {
             ++record.counters.material_updates;
         }
@@ -516,24 +519,28 @@ bool TextSceneService::synchronize_measurement(TextSceneId id) {
     ensure_owner_thread();
     auto& record = require_record(id);
     ++record.counters.measurement_synchronizations;
-    if(record.last_error) record.last_error = {};
+    if (record.last_error) {
+        record.last_error = {};
+    }
     return record.state->synchronize();
 }
 
 bool TextSceneService::synchronize_caret_map(TextSceneId id, text::TextCaretMap& output) {
     ensure_owner_thread();
     auto& state = *require_record(id).state;
-    if(!state.synchronize()) return false;
-    return engine_->map_carets(state.shaped(), state.content(), state.revision(),
-        state.measurement().first_baseline, output);
+    if (!state.synchronize()) {
+        return false;
+    }
+    return engine_->map_carets(state.shaped(), state.content(), state.revision(), state.measurement().first_baseline,
+                               output);
 }
 
-bool TextSceneService::synchronize_measurement(
-    TextSceneId id,
-    float width_constraint) {
+bool TextSceneService::synchronize_measurement(TextSceneId id, float width_constraint) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if(record.view) throw std::logic_error("Text views cannot replace shared width");
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared width");
+    }
     if (record.state->set_width_constraint(width_constraint, false)) {
         ++record.revisions.layout;
         record.placement_rebuild_pending = true;
@@ -541,9 +548,7 @@ bool TextSceneService::synchronize_measurement(
     return synchronize_measurement(id);
 }
 
-bool TextSceneService::synchronize(
-    TextSceneId id,
-    graphics::GlyphPlacement placement) {
+bool TextSceneService::synchronize(TextSceneId id, graphics::GlyphPlacement placement) {
     static_cast<void>(update_placement(id, std::move(placement), false));
     return synchronize(id);
 }
@@ -578,7 +583,9 @@ std::size_t TextSceneService::declaration_order(TextSceneId id) const {
 
 text::TextState& TextSceneService::text_state(TextSceneId id) {
     ensure_owner_thread();
-    if(require_record(id).view) throw std::logic_error("Text views expose only const shared state");
+    if (require_record(id).view) {
+        throw std::logic_error("Text views expose only const shared state");
+    }
     return *require_record(id).state;
 }
 
@@ -597,14 +604,12 @@ const TextSceneRevisions& TextSceneService::revisions(TextSceneId id) const {
     return require_record(id).revisions;
 }
 
-const TextSceneRecordCounters& TextSceneService::record_counters(
-    TextSceneId id) const {
+const TextSceneRecordCounters& TextSceneService::record_counters(TextSceneId id) const {
     ensure_owner_thread();
     return require_record(id).counters;
 }
 
-const graphics::GlyphAtlasError& TextSceneService::last_error(
-    TextSceneId id) const {
+const graphics::GlyphAtlasError& TextSceneService::last_error(TextSceneId id) const {
     ensure_owner_thread();
     return require_record(id).last_error;
 }
@@ -644,8 +649,7 @@ TextSceneService::Record* TextSceneService::find_record(TextSceneId id) noexcept
     return slot.record.get();
 }
 
-const TextSceneService::Record* TextSceneService::find_record(
-    TextSceneId id) const noexcept {
+const TextSceneService::Record* TextSceneService::find_record(TextSceneId id) const noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -663,8 +667,7 @@ TextSceneService::Record& TextSceneService::require_record(TextSceneId id) {
     throw std::out_of_range("TextSceneId is stale or invalid");
 }
 
-const TextSceneService::Record& TextSceneService::require_record(
-    TextSceneId id) const {
+const TextSceneService::Record& TextSceneService::require_record(TextSceneId id) const {
     if (const auto* record = find_record(id)) {
         return *record;
     }
@@ -730,13 +733,10 @@ void TextSceneService::rebuild_ordered_scene() {
     ordered_scene_pending_ = false;
 }
 
-void TextSceneService::shift_primitive(
-    graphics::GlyphPrimitive& primitive,
-    std::int64_t offset) {
+void TextSceneService::shift_primitive(graphics::GlyphPrimitive& primitive, std::int64_t offset) {
     const auto shift = [offset](std::uint32_t first) {
         const std::int64_t shifted = static_cast<std::int64_t>(first) + offset;
-        if (shifted < 0
-                || shifted > std::numeric_limits<std::uint32_t>::max()) {
+        if (shifted < 0 || shifted > std::numeric_limits<std::uint32_t>::max()) {
             throw std::logic_error("Text scene range remap exceeded uint32_t");
         }
         return static_cast<std::uint32_t>(shifted);

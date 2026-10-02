@@ -24,15 +24,12 @@ public:
         return value_;
     }
 
-    friend constexpr bool operator==(
-        LogicalLength,
-        LogicalLength) = default;
+    friend constexpr bool operator==(LogicalLength, LogicalLength) = default;
 
 private:
     friend constexpr LogicalLength dp(float value) noexcept;
 
-    constexpr LogicalLength(bool automatic, float value) noexcept
-        : automatic_(automatic), value_(value) {}
+    constexpr LogicalLength(bool automatic, float value) noexcept : automatic_(automatic), value_(value) {}
 
     bool automatic_{true};
     float value_{0.0F};

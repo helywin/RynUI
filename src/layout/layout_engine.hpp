@@ -96,9 +96,7 @@ struct FlexLayoutDiagnostics final {
     std::size_t item_capacity{0};
     std::size_t line_capacity{0};
 
-    friend constexpr bool operator==(
-        FlexLayoutDiagnostics,
-        FlexLayoutDiagnostics) = default;
+    friend constexpr bool operator==(FlexLayoutDiagnostics, FlexLayoutDiagnostics) = default;
 };
 
 struct HorizontalContentLayout final {
@@ -109,18 +107,14 @@ struct HorizontalContentLayout final {
     bool loading{false};
     float loading_indicator_size{14.0F};
 
-    friend constexpr bool operator==(
-        HorizontalContentLayout,
-        HorizontalContentLayout) = default;
+    friend constexpr bool operator==(HorizontalContentLayout, HorizontalContentLayout) = default;
 };
 
 struct HorizontalContentGeometry final {
     runtime::Rect content_bounds;
     std::optional<runtime::Rect> loading_indicator_bounds;
 
-    friend constexpr bool operator==(
-        HorizontalContentGeometry,
-        HorizontalContentGeometry) = default;
+    friend constexpr bool operator==(HorizontalContentGeometry, HorizontalContentGeometry) = default;
 };
 
 // Exactly three children: prefix wrapper, editable viewport, suffix wrapper.
@@ -131,11 +125,13 @@ struct InputContentLayout final {
     float padding_block{4.0F};
     float border_width{1.0F};
     float gap{4.0F};
-    bool prefix{}, suffix{};
+    bool prefix{};
+    bool suffix{};
     friend constexpr bool operator==(InputContentLayout, InputContentLayout) = default;
 };
 
 class LayoutEngine;
+
 // Internal component layouts measure and place persistent children in the same
 // engine generation, before any text scene publishes its glyph positions.
 struct ComponentLayout final {
@@ -143,8 +139,8 @@ struct ComponentLayout final {
     std::function<void(LayoutEngine&, runtime::NodeId, runtime::Rect)> place;
 };
 
-using LayoutModel = std::variant<LeafLayout, BoxLayout, FlexLayout,
-    HorizontalContentLayout, InputContentLayout, ComponentLayout>;
+using LayoutModel =
+    std::variant<LeafLayout, BoxLayout, FlexLayout, HorizontalContentLayout, InputContentLayout, ComponentLayout>;
 
 class LayoutEngine final {
 public:
@@ -154,28 +150,25 @@ public:
 
     void set_layout(runtime::NodeId id, LayoutModel layout);
     bool remove_layout(runtime::NodeId id) noexcept;
-    void set_intrinsic_measure(
-        runtime::NodeId id,
-        std::uint64_t revision,
-        IntrinsicMeasure measure);
+    void set_intrinsic_measure(runtime::NodeId id, std::uint64_t revision, IntrinsicMeasure measure);
     bool set_intrinsic_revision(runtime::NodeId id, std::uint64_t revision);
     bool remove_intrinsic_measure(runtime::NodeId id) noexcept;
     [[nodiscard]] runtime::Size measure(runtime::NodeId root, Constraints constraints);
+
     [[nodiscard]] runtime::Size measure_child(runtime::NodeId child, Constraints constraints) {
         return measure_node(child, constraints);
     }
-    void place_child(runtime::NodeId child, runtime::Rect bounds) { place_node(child, bounds); }
+
+    void place_child(runtime::NodeId child, runtime::Rect bounds) {
+        place_node(child, bounds);
+    }
+
     void place(runtime::NodeId root, runtime::Point origin = {});
-    [[nodiscard]] runtime::Size layout(
-        runtime::NodeId root,
-        Constraints constraints,
-        runtime::Point origin = {});
+    [[nodiscard]] runtime::Size layout(runtime::NodeId root, Constraints constraints, runtime::Point origin = {});
 
     [[nodiscard]] std::uint64_t generation() const noexcept;
-    [[nodiscard]] const HorizontalContentGeometry& horizontal_content_geometry(
-        runtime::NodeId id) const;
-    [[nodiscard]] FlexLayoutDiagnostics flex_layout_diagnostics(
-        runtime::NodeId id) const;
+    [[nodiscard]] const HorizontalContentGeometry& horizontal_content_geometry(runtime::NodeId id) const;
+    [[nodiscard]] FlexLayoutDiagnostics flex_layout_diagnostics(runtime::NodeId id) const;
 
 private:
     struct FlexItem final {
@@ -228,15 +221,10 @@ private:
 
     [[nodiscard]] const LayoutModel& require_layout(runtime::NodeId id) const;
     [[nodiscard]] IntrinsicSlot* find_intrinsic(runtime::NodeId id) noexcept;
-    [[nodiscard]] runtime::Size
-    measure_node(runtime::NodeId id, Constraints constraints,
-                 std::optional<float> forced_outer_width = std::nullopt,
-                 std::optional<float> forced_outer_height = std::nullopt);
-    void place_node(
-        runtime::NodeId id,
-        runtime::Rect bounds,
-        bool stretch_width = false,
-        bool stretch_height = false);
+    [[nodiscard]] runtime::Size measure_node(runtime::NodeId id, Constraints constraints,
+                                             std::optional<float> forced_outer_width = std::nullopt,
+                                             std::optional<float> forced_outer_height = std::nullopt);
+    void place_node(runtime::NodeId id, runtime::Rect bounds, bool stretch_width = false, bool stretch_height = false);
 
     runtime::NodeStore* nodes_;
     std::vector<LayoutSlot> layouts_;

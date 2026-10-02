@@ -73,19 +73,15 @@ constexpr std::array values{
 
 } // namespace
 
-std::span<const GalleryDocumentSection>
-gallery_document_sections() noexcept {
+std::span<const GalleryDocumentSection> gallery_document_sections() noexcept {
     return sections;
 }
 
-std::span<const GalleryDesignValue>
-gallery_design_values() noexcept {
+std::span<const GalleryDesignValue> gallery_design_values() noexcept {
     return values;
 }
 
-bool gallery_support_filter_matches(
-    GallerySupportFilter filter,
-    GallerySupportStatus status) noexcept {
+bool gallery_support_filter_matches(GallerySupportFilter filter, GallerySupportStatus status) noexcept {
     switch (filter) {
     case GallerySupportFilter::all:
         return true;
@@ -105,8 +101,7 @@ bool gallery_support_filter_matches(
     return false;
 }
 
-std::string_view gallery_category_title(
-    AntDesignGalleryCategory category) noexcept {
+std::string_view gallery_category_title(AntDesignGalleryCategory category) noexcept {
     switch (category) {
     case AntDesignGalleryCategory::general:
         return "General / 通用";

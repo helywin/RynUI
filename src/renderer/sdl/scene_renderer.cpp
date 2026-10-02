@@ -33,9 +33,7 @@ struct ShaderSelection {
     }
     std::vector<Uint8> bytes(static_cast<std::size_t>(size));
     stream.seekg(0);
-    stream.read(
-        reinterpret_cast<char*>(bytes.data()),
-        static_cast<std::streamsize>(size));
+    stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(size));
     if (!stream) {
         throw std::runtime_error("Unable to read shader: " + path.string());
     }
@@ -58,12 +56,8 @@ struct ShaderSelection {
     return error != nullptr && error[0] != '\0' ? error : fallback;
 }
 
-[[nodiscard]] SDL_GPUShader* create_shader(
-    SDL_GPUDevice* device,
-    const std::filesystem::path& path,
-    SDL_GPUShaderFormat format,
-    SDL_GPUShaderStage stage,
-    Uint32 sampler_count) {
+[[nodiscard]] SDL_GPUShader* create_shader(SDL_GPUDevice* device, const std::filesystem::path& path,
+                                           SDL_GPUShaderFormat format, SDL_GPUShaderStage stage, Uint32 sampler_count) {
     const auto code = read_shader(path);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
@@ -75,9 +69,7 @@ struct ShaderSelection {
     return SDL_CreateGPUShader(device, &info);
 }
 
-[[nodiscard]] SDL_GPUColorTargetDescription color_target(
-    SDL_GPUDevice* device,
-    SDL_Window* window) {
+[[nodiscard]] SDL_GPUColorTargetDescription color_target(SDL_GPUDevice* device, SDL_Window* window) {
     SDL_GPUColorTargetDescription target{};
     target.format = SDL_GetGPUSwapchainTextureFormat(device, window);
     target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
@@ -87,21 +79,16 @@ struct ShaderSelection {
     target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
     target.blend_state.color_write_mask = static_cast<SDL_GPUColorComponentFlags>(
-        SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G
-        | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A);
+        SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A);
     target.blend_state.enable_blend = true;
     target.blend_state.enable_color_write_mask = true;
     return target;
 }
 
 template <std::size_t AttributeCount>
-[[nodiscard]] SDL_GPUGraphicsPipeline* create_pipeline(
-    SDL_GPUDevice* device,
-    SDL_Window* window,
-    SDL_GPUShader* vertex,
-    SDL_GPUShader* fragment,
-    Uint32 pitch,
-    const std::array<SDL_GPUVertexAttribute, AttributeCount>& attributes) {
+[[nodiscard]] SDL_GPUGraphicsPipeline*
+create_pipeline(SDL_GPUDevice* device, SDL_Window* window, SDL_GPUShader* vertex, SDL_GPUShader* fragment, Uint32 pitch,
+                const std::array<SDL_GPUVertexAttribute, AttributeCount>& attributes) {
     const SDL_GPUVertexBufferDescription buffer_description{
         0,
         pitch,
@@ -125,45 +112,33 @@ template <std::size_t AttributeCount>
 
 } // namespace
 
-SdlSceneRenderer::SdlSceneRenderer(
-    PlatformState& platform,
-    const std::filesystem::path& shader_directory, bool debug_mode)
+SdlSceneRenderer::SdlSceneRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
+                                   bool debug_mode)
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     capabilities_ = baseline_scene_capabilities();
     capabilities_.r8_sampling = SDL_GPUTextureSupportsFormat(device, SDL_GPU_TEXTUREFORMAT_R8_UNORM,
-        SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+                                                             SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREUSAGE_SAMPLER);
     validate_scene_capabilities(capabilities_);
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
 
-    auto build_pipeline = [&](
-        const char* name,
-        Uint32 pitch,
-        const auto& attributes,
-        Uint32 fragment_samplers) -> void* {
-        auto* vertex = create_shader(
-            device,
-            shader_directory / (std::string(name) + ".vertex." + selection.extension),
-            selection.format,
-            SDL_GPU_SHADERSTAGE_VERTEX,
-            0);
+    auto build_pipeline = [&](const char* name, Uint32 pitch, const auto& attributes,
+                              Uint32 fragment_samplers) -> void* {
+        auto* vertex = create_shader(device, shader_directory / (std::string(name) + ".vertex." + selection.extension),
+                                     selection.format, SDL_GPU_SHADERSTAGE_VERTEX, 0);
         if (vertex == nullptr) {
             throw std::runtime_error(sdl_error("Failed to create vertex shader"));
         }
-        auto* fragment = create_shader(
-            device,
-            shader_directory / (std::string(name) + ".fragment." + selection.extension),
-            selection.format,
-            SDL_GPU_SHADERSTAGE_FRAGMENT,
-            fragment_samplers);
+        auto* fragment =
+            create_shader(device, shader_directory / (std::string(name) + ".fragment." + selection.extension),
+                          selection.format, SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers);
         if (fragment == nullptr) {
             SDL_ReleaseGPUShader(device, vertex);
             throw std::runtime_error(sdl_error("Failed to create fragment shader"));
         }
-        auto* pipeline = create_pipeline(
-            device, window, vertex, fragment, pitch, attributes);
+        auto* pipeline = create_pipeline(device, window, vertex, fragment, pitch, attributes);
         SDL_ReleaseGPUShader(device, vertex);
         SDL_ReleaseGPUShader(device, fragment);
         if (pipeline == nullptr) {
@@ -179,8 +154,7 @@ SdlSceneRenderer::SdlSceneRenderer(
         SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT, 36},
         SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40},
     };
-    quad_pipeline_ = build_pipeline(
-        "quad", sizeof(QuadGpuInstance), quad_attributes, 0);
+    quad_pipeline_ = build_pipeline("quad", sizeof(QuadGpuInstance), quad_attributes, 0);
     try {
         const std::array glyph_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
@@ -189,8 +163,7 @@ SdlSceneRenderer::SdlSceneRenderer(
             SDL_GPUVertexAttribute{3, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
             SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
         };
-        glyph_pipeline_ = build_pipeline(
-            "glyph", sizeof(GlyphGpuInstance), glyph_attributes, 1);
+        glyph_pipeline_ = build_pipeline("glyph", sizeof(GlyphGpuInstance), glyph_attributes, 1);
         const std::array effect_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
             SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
@@ -200,21 +173,14 @@ SdlSceneRenderer::SdlSceneRenderer(
             SDL_GPUVertexAttribute{5, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 80},
             SDL_GPUVertexAttribute{6, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 96},
         };
-        effect_pipeline_ = build_pipeline(
-            "rounded_effect",
-            sizeof(detail::RoundedEffectGpuInstance),
-            effect_attributes,
-            0);
+        effect_pipeline_ =
+            build_pipeline("rounded_effect", sizeof(detail::RoundedEffectGpuInstance), effect_attributes, 0);
     } catch (...) {
         if (glyph_pipeline_ != nullptr) {
-            SDL_ReleaseGPUGraphicsPipeline(
-                device,
-                static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+            SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
             glyph_pipeline_ = nullptr;
         }
-        SDL_ReleaseGPUGraphicsPipeline(
-            device,
-            static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
         quad_pipeline_ = nullptr;
         throw;
     }
@@ -224,16 +190,13 @@ SdlSceneRenderer::~SdlSceneRenderer() {
     cancel_upload_batch();
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (effect_pipeline_ != nullptr) {
-        SDL_ReleaseGPUGraphicsPipeline(
-            device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
     }
     if (glyph_pipeline_ != nullptr) {
-        SDL_ReleaseGPUGraphicsPipeline(
-            device, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
     }
     if (quad_pipeline_ != nullptr) {
-        SDL_ReleaseGPUGraphicsPipeline(
-            device, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
+        SDL_ReleaseGPUGraphicsPipeline(device, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
     }
 }
 
@@ -257,8 +220,7 @@ bool SdlSceneRenderer::resize_window(int width, int height) {
         last_error_ = "Window dimensions must be positive";
         return false;
     }
-    if (!SDL_SetWindowSize(
-            static_cast<SDL_Window*>(platform_->window()), width, height)) {
+    if (!SDL_SetWindowSize(static_cast<SDL_Window*>(platform_->window()), width, height)) {
         last_error_ = sdl_error("Failed to resize the window");
         return false;
     }
@@ -267,7 +229,9 @@ bool SdlSceneRenderer::resize_window(int width, int height) {
 
 detail::QuadGpuBufferHandle SdlSceneRenderer::create_vertex_buffer(std::size_t size) {
     auto* handle = create_glyph_buffer(size);
-    if (handle) resources_.at(handle)->kind = ResourceKind::quad;
+    if (handle) {
+        resources_.at(handle)->kind = ResourceKind::quad;
+    }
     return handle;
 }
 
@@ -275,10 +239,8 @@ void SdlSceneRenderer::release_buffer(detail::QuadGpuBufferHandle buffer) noexce
     release_resource(buffer, ResourceKind::quad);
 }
 
-bool SdlSceneRenderer::upload(
-    detail::QuadGpuBufferHandle buffer,
-    std::size_t offset,
-    std::span<const std::byte> bytes) {
+bool SdlSceneRenderer::upload(detail::QuadGpuBufferHandle buffer, std::size_t offset,
+                              std::span<const std::byte> bytes) {
     auto* owned = resource(buffer, ResourceKind::quad);
     if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
         last_error_ = "Foreign, stale or out-of-range Quad buffer";
@@ -292,7 +254,9 @@ const char* SdlSceneRenderer::last_error() const noexcept {
 }
 
 GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
-    if (!platform_->is_owner_thread()) return nullptr;
+    if (!platform_->is_owner_thread()) {
+        return nullptr;
+    }
     SDL_GPUSamplerCreateInfo info{};
     info.min_filter = SDL_GPU_FILTER_LINEAR;
     info.mag_filter = SDL_GPU_FILTER_LINEAR;
@@ -300,19 +264,16 @@ GlyphGpuSamplerHandle SdlSceneRenderer::create_glyph_sampler() {
     info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
-    auto* sampler = SDL_CreateGPUSampler(
-        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    auto* sampler = SDL_CreateGPUSampler(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (sampler == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph sampler");
     }
     return track_resource(sampler, ResourceKind::sampler);
 }
 
-GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
-    std::uint32_t width,
-    std::uint32_t height) {
-    if (!platform_->is_owner_thread() || !width || !height
-        || width > capabilities_.maximum_texture_width || height > capabilities_.maximum_texture_height) {
+GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(std::uint32_t width, std::uint32_t height) {
+    if (!platform_->is_owner_thread() || !width || !height || width > capabilities_.maximum_texture_width ||
+        height > capabilities_.maximum_texture_height) {
         last_error_ = "Glyph texture extent exceeds renderer input limit";
         return nullptr;
     }
@@ -325,8 +286,7 @@ GlyphGpuTextureHandle SdlSceneRenderer::create_glyph_texture(
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    auto* texture = SDL_CreateGPUTexture(
-        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    auto* texture = SDL_CreateGPUTexture(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (texture == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph atlas texture");
     }
@@ -343,17 +303,14 @@ GlyphGpuBufferHandle SdlSceneRenderer::create_glyph_buffer(std::size_t size) {
         static_cast<Uint32>(size),
         0,
     };
-    auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    auto* buffer = SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create Glyph vertex buffer");
     }
     return track_resource(buffer, ResourceKind::glyph, size);
 }
 
-bool SdlSceneRenderer::upload_glyph_texture(
-    GlyphGpuTextureHandle texture,
-    const GlyphTextureUpload& upload) {
+bool SdlSceneRenderer::upload_glyph_texture(GlyphGpuTextureHandle texture, const GlyphTextureUpload& upload) {
     const auto* owned = resource(texture, ResourceKind::texture);
     if (!platform_->is_owner_thread() || !owned) {
         last_error_ = "Glyph texture upload violates owner or handle contract";
@@ -373,22 +330,16 @@ bool SdlSceneRenderer::upload_glyph_texture(
             cancel_upload_batch();
             return false;
         }
-        if (active_texture_transfer_ == nullptr
-                || !texture_layout_.can_fit(layout.byte_count)) {
-            if (!flush_texture_upload_chunk()
-                    || !begin_texture_upload_chunk(layout.byte_count)) {
+        if (active_texture_transfer_ == nullptr || !texture_layout_.can_fit(layout.byte_count)) {
+            if (!flush_texture_upload_chunk() || !begin_texture_upload_chunk(layout.byte_count)) {
                 cancel_upload_batch();
                 return false;
             }
         }
-        const auto source_offset = texture_layout_.append(
-            texture,
-            upload.rectangle,
-            layout.pixels_per_row,
-            layout.rows_per_layer,
-            layout.byte_count);
-        pack_sdl_glyph_texture_rows(upload,
-            {static_cast<std::byte*>(active_texture_mapped_) + source_offset, layout.byte_count});
+        const auto source_offset = texture_layout_.append(texture, upload.rectangle, layout.pixels_per_row,
+                                                          layout.rows_per_layer, layout.byte_count);
+        pack_sdl_glyph_texture_rows(
+            upload, {static_cast<std::byte*>(active_texture_mapped_) + source_offset, layout.byte_count});
         return true;
     }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
@@ -421,15 +372,7 @@ bool SdlSceneRenderer::upload_glyph_texture(
     };
     const auto& rectangle = upload.rectangle;
     const SDL_GPUTextureRegion destination{
-        static_cast<SDL_GPUTexture*>(texture),
-        0,
-        0,
-        rectangle.x,
-        rectangle.y,
-        0,
-        rectangle.width,
-        rectangle.height,
-        1,
+        static_cast<SDL_GPUTexture*>(texture), 0, 0, rectangle.x, rectangle.y, 0, rectangle.width, rectangle.height, 1,
     };
     auto* command = SDL_AcquireGPUCommandBuffer(device);
     if (command == nullptr) {
@@ -457,10 +400,8 @@ bool SdlSceneRenderer::upload_glyph_texture(
     return true;
 }
 
-bool SdlSceneRenderer::upload_glyph_buffer(
-    GlyphGpuBufferHandle buffer,
-    std::size_t offset,
-    std::span<const std::byte> bytes) {
+bool SdlSceneRenderer::upload_glyph_buffer(GlyphGpuBufferHandle buffer, std::size_t offset,
+                                           std::span<const std::byte> bytes) {
     auto* owned = resource(buffer, ResourceKind::glyph);
     if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
         last_error_ = "Foreign, stale or out-of-range Glyph buffer";
@@ -485,8 +426,7 @@ const char* SdlSceneRenderer::glyph_gpu_error() const noexcept {
     return last_error();
 }
 
-RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
-    std::size_t size) {
+RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(std::size_t size) {
     if (!platform_->is_owner_thread() || size == 0 || size > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Rounded effect vertex buffer size is invalid";
         return nullptr;
@@ -496,18 +436,15 @@ RoundedEffectGpuBufferHandle SdlSceneRenderer::create_effect_buffer(
         static_cast<Uint32>(size),
         0,
     };
-    auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(binding_.device()), &info);
+    auto* buffer = SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create rounded-effect vertex buffer");
     }
     return track_resource(buffer, ResourceKind::effect, size);
 }
 
-bool SdlSceneRenderer::upload_effect_buffer(
-    RoundedEffectGpuBufferHandle buffer,
-    std::size_t offset,
-    std::span<const std::byte> bytes) {
+bool SdlSceneRenderer::upload_effect_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                                            std::span<const std::byte> bytes) {
     auto* owned = resource(buffer, ResourceKind::effect);
     if (!owned || offset > owned->size || bytes.size() > owned->size - offset) {
         last_error_ = "Foreign, stale or out-of-range effect buffer";
@@ -516,8 +453,7 @@ bool SdlSceneRenderer::upload_effect_buffer(
     return upload_buffer(owned->native, offset, bytes, "Rounded effect");
 }
 
-void SdlSceneRenderer::release_effect_buffer(
-    RoundedEffectGpuBufferHandle buffer) noexcept {
+void SdlSceneRenderer::release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept {
     release_resource(buffer, ResourceKind::effect);
 }
 
@@ -525,22 +461,34 @@ const char* SdlSceneRenderer::effect_gpu_error() const noexcept {
     return last_error();
 }
 
-SdlSceneRenderer::Resource::~Resource() { release(); }
+SdlSceneRenderer::Resource::~Resource() {
+    release();
+}
 
 void SdlSceneRenderer::Resource::release() noexcept {
-    if (!native) return;
+    if (!native) {
+        return;
+    }
     auto* gpu = static_cast<SDL_GPUDevice*>(device);
     switch (kind) {
-    case ResourceKind::sampler: SDL_ReleaseGPUSampler(gpu, static_cast<SDL_GPUSampler*>(native)); break;
-    case ResourceKind::texture: SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native)); break;
-    default: SDL_ReleaseGPUBuffer(gpu, static_cast<SDL_GPUBuffer*>(native)); break;
+    case ResourceKind::sampler:
+        SDL_ReleaseGPUSampler(gpu, static_cast<SDL_GPUSampler*>(native));
+        break;
+    case ResourceKind::texture:
+        SDL_ReleaseGPUTexture(gpu, static_cast<SDL_GPUTexture*>(native));
+        break;
+    default:
+        SDL_ReleaseGPUBuffer(gpu, static_cast<SDL_GPUBuffer*>(native));
+        break;
     }
     native = nullptr;
 }
 
-void* SdlSceneRenderer::track_resource(void* native, ResourceKind kind, std::size_t size,
-    std::uint32_t width, std::uint32_t height) {
-    if (!native) return nullptr;
+void* SdlSceneRenderer::track_resource(void* native, ResourceKind kind, std::size_t size, std::uint32_t width,
+                                       std::uint32_t height) {
+    if (!native) {
+        return nullptr;
+    }
     Resource pending{native, binding_.device(), kind, size, width, height};
     auto owned = std::make_unique<Resource>();
     owned->device = pending.device;
@@ -556,19 +504,27 @@ void* SdlSceneRenderer::track_resource(void* native, ResourceKind kind, std::siz
 
 SdlSceneRenderer::Resource* SdlSceneRenderer::resource(void* handle, ResourceKind kind) const noexcept {
     const auto found = resources_.find(handle);
-    if (found == resources_.end() || !found->second->native || found->second->kind != kind
-        || found->second->device != binding_.device()) return nullptr;
+    if (found == resources_.end() || !found->second->native || found->second->kind != kind ||
+        found->second->device != binding_.device()) {
+        return nullptr;
+    }
     return found->second.get();
 }
 
 void SdlSceneRenderer::release_resource(void* handle, ResourceKind kind) noexcept {
-    if (!platform_->is_owner_thread()) return;
-    if (auto* owned = resource(handle, kind)) owned->release();
+    if (!platform_->is_owner_thread()) {
+        return;
+    }
+    if (auto* owned = resource(handle, kind)) {
+        owned->release();
+    }
 }
 
 void* SdlSceneRenderer::native_resource(void* handle, ResourceKind kind) const {
     const auto* owned = resource(handle, kind);
-    if (!owned) throw std::invalid_argument("Foreign, stale or wrong-kind SDL GPU resource");
+    if (!owned) {
+        throw std::invalid_argument("Foreign, stale or wrong-kind SDL GPU resource");
+    }
     return owned->native;
 }
 
@@ -577,8 +533,7 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
         throw std::logic_error("Quad draw resources are not attached");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(
-        pass, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
+    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
     const SDL_GPUBufferBinding binding{
         static_cast<SDL_GPUBuffer*>(native_resource(quad_buffer_, ResourceKind::quad)),
         first * static_cast<Uint32>(sizeof(QuadGpuInstance)),
@@ -588,17 +543,13 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
     ++counters_.quad_draws;
 }
 
-void SdlSceneRenderer::draw_glyph(
-    std::uint32_t atlas_page,
-    std::uint32_t first,
-    std::uint32_t count) {
-    if (active_render_pass_ == nullptr || glyph_resources_ == nullptr
-            || glyph_resources_->instance_buffer() == nullptr) {
+void SdlSceneRenderer::draw_glyph(std::uint32_t atlas_page, std::uint32_t first, std::uint32_t count) {
+    if (active_render_pass_ == nullptr || glyph_resources_ == nullptr ||
+        glyph_resources_->instance_buffer() == nullptr) {
         throw std::logic_error("Glyph draw resources are not attached");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(
-        pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
+    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
     const SDL_GPUBufferBinding vertex_binding{
         static_cast<SDL_GPUBuffer*>(native_resource(glyph_resources_->instance_buffer(), ResourceKind::glyph)),
         first * static_cast<Uint32>(sizeof(GlyphGpuInstance)),
@@ -614,23 +565,18 @@ void SdlSceneRenderer::draw_glyph(
     ++counters_.glyph_draws;
 }
 
-void SdlSceneRenderer::draw_rounded_effect(
-    std::uint32_t first,
-    std::uint32_t count) {
+void SdlSceneRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t count) {
     const auto end = static_cast<std::uint64_t>(first) + count;
-    if (active_render_pass_ == nullptr || effect_resources_ == nullptr
-            || effect_resources_->buffer() == nullptr
-            || end > effect_resources_->instance_count()) {
+    if (active_render_pass_ == nullptr || effect_resources_ == nullptr || effect_resources_->buffer() == nullptr ||
+        end > effect_resources_->instance_count()) {
         throw std::logic_error("Rounded effect draw resources are not attached");
     }
-    const auto byte_offset = static_cast<std::uint64_t>(first)
-        * sizeof(detail::RoundedEffectGpuInstance);
+    const auto byte_offset = static_cast<std::uint64_t>(first) * sizeof(detail::RoundedEffectGpuInstance);
     if (byte_offset > std::numeric_limits<Uint32>::max()) {
         throw std::length_error("Rounded effect draw offset exceeds uint32_t");
     }
     auto* pass = static_cast<SDL_GPURenderPass*>(active_render_pass_);
-    SDL_BindGPUGraphicsPipeline(
-        pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
+    SDL_BindGPUGraphicsPipeline(pass, static_cast<SDL_GPUGraphicsPipeline*>(effect_pipeline_));
     const SDL_GPUBufferBinding binding{
         static_cast<SDL_GPUBuffer*>(native_resource(effect_resources_->buffer(), ResourceKind::effect)),
         static_cast<Uint32>(byte_offset),
@@ -641,8 +587,7 @@ void SdlSceneRenderer::draw_rounded_effect(
     counters_.effect_instances += count;
 }
 
-runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
-    animation::AnimationTime) {
+runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(animation::AnimationTime) {
     if (!platform_->is_owner_thread()) {
         last_error_ = "GPU frame work must run on the Window owner thread";
         return runtime::FrameSubmissionResult::failed;
@@ -661,12 +606,8 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
     SDL_GPUTexture* swapchain = nullptr;
     Uint32 width = 0;
     Uint32 height = 0;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-            command,
-            static_cast<SDL_Window*>(platform_->window()),
-            &swapchain,
-            &width,
-            &height)) {
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(command, static_cast<SDL_Window*>(platform_->window()), &swapchain,
+                                               &width, &height)) {
         last_error_ = sdl_error("Failed to acquire Scene swapchain texture");
         SDL_CancelGPUCommandBuffer(command);
         return runtime::FrameSubmissionResult::failed;
@@ -682,8 +623,8 @@ runtime::FrameSubmissionResult SdlSceneRenderer::submit_frame(
     }
     SDL_GPUColorTargetInfo target{};
     target.texture = swapchain;
-    target.clear_color = SDL_FColor{clear_color_.red(), clear_color_.green(),
-        clear_color_.blue(), clear_color_.alpha()};
+    target.clear_color =
+        SDL_FColor{clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
     target.load_op = SDL_GPU_LOADOP_CLEAR;
     target.store_op = SDL_GPU_STOREOP_STORE;
     auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
@@ -722,11 +663,9 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     const auto metrics = platform_->window_metrics();
     const auto width = static_cast<Uint32>(metrics.pixel_width);
     const auto height = static_cast<Uint32>(metrics.pixel_height);
-    const auto format = SDL_GetGPUSwapchainTextureFormat(
-        device, static_cast<SDL_Window*>(platform_->window()));
-    if (width == 0 || height == 0 || width > 16384 || height > 16384
-            || (format != SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
-                && format != SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM)) {
+    const auto format = SDL_GetGPUSwapchainTextureFormat(device, static_cast<SDL_Window*>(platform_->window()));
+    if (width == 0 || height == 0 || width > 16384 || height > 16384 ||
+        (format != SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM && format != SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM)) {
         last_error_ = "Frame export requires an SDR RGBA8 or BGRA8 target of valid size";
         return false;
     }
@@ -741,16 +680,23 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     auto* texture = SDL_CreateGPUTexture(device, &texture_info);
     const Uint32 pitch = (width * 4U + 255U) & ~255U;
-    const SDL_GPUTransferBufferCreateInfo transfer_info{
-        SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
+    const SDL_GPUTransferBufferCreateInfo transfer_info{SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, pitch * height, 0};
     auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
     SDL_GPUCommandBuffer* command = nullptr;
     SDL_GPUFence* fence = nullptr;
     const auto cleanup = [&] {
-        if (command) SDL_CancelGPUCommandBuffer(command);
-        if (fence) SDL_ReleaseGPUFence(device, fence);
-        if (transfer) SDL_ReleaseGPUTransferBuffer(device, transfer);
-        if (texture) SDL_ReleaseGPUTexture(device, texture);
+        if (command) {
+            SDL_CancelGPUCommandBuffer(command);
+        }
+        if (fence) {
+            SDL_ReleaseGPUFence(device, fence);
+        }
+        if (transfer) {
+            SDL_ReleaseGPUTransferBuffer(device, transfer);
+        }
+        if (texture) {
+            SDL_ReleaseGPUTexture(device, texture);
+        }
     };
     if (!texture || !transfer || !(command = SDL_AcquireGPUCommandBuffer(device))) {
         last_error_ = sdl_error("Failed to allocate frame export resources");
@@ -759,8 +705,7 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     }
     SDL_GPUColorTargetInfo target{};
     target.texture = texture;
-    target.clear_color = {clear_color_.red(), clear_color_.green(),
-        clear_color_.blue(), clear_color_.alpha()};
+    target.clear_color = {clear_color_.red(), clear_color_.green(), clear_color_.blue(), clear_color_.alpha()};
     target.load_op = SDL_GPU_LOADOP_CLEAR;
     target.store_op = SDL_GPU_STOREOP_STORE;
     auto* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
@@ -802,16 +747,18 @@ bool SdlSceneRenderer::save_frame_bmp(const std::filesystem::path& path) {
     bool saved = false;
     if (pixels) {
         auto* surface = SDL_CreateSurfaceFrom(width, height,
-            format == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
-                ? SDL_PIXELFORMAT_RGBA32 : SDL_PIXELFORMAT_BGRA32,
-            pixels, pitch);
+                                              format == SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM ? SDL_PIXELFORMAT_RGBA32
+                                                                                             : SDL_PIXELFORMAT_BGRA32,
+                                              pixels, pitch);
         if (surface) {
             saved = SDL_SaveBMP(surface, path.string().c_str());
             SDL_DestroySurface(surface);
         }
         SDL_UnmapGPUTransferBuffer(device, transfer);
     }
-    if (!saved) last_error_ = sdl_error("Failed to save exported frame");
+    if (!saved) {
+        last_error_ = sdl_error("Failed to save exported frame");
+    }
     cleanup();
     return saved;
 }
@@ -851,8 +798,7 @@ bool SdlSceneRenderer::finish_upload_batch() {
     }
     bool submitted = true;
     if (upload_command_ != nullptr) {
-        submitted = SDL_SubmitGPUCommandBuffer(
-            static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+        submitted = SDL_SubmitGPUCommandBuffer(static_cast<SDL_GPUCommandBuffer*>(upload_command_));
         if (submitted) {
             ++counters_.upload_submissions;
         } else {
@@ -871,23 +817,19 @@ bool SdlSceneRenderer::finish_upload_batch() {
 void SdlSceneRenderer::cancel_upload_batch() noexcept {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     if (active_texture_mapped_ != nullptr) {
-        SDL_UnmapGPUTransferBuffer(
-            device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
+        SDL_UnmapGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
         active_texture_mapped_ = nullptr;
     }
     if (active_texture_transfer_ != nullptr) {
-        SDL_ReleaseGPUTransferBuffer(
-            device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
+        SDL_ReleaseGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(active_texture_transfer_));
         active_texture_transfer_ = nullptr;
     }
     if (active_upload_mapped_ != nullptr) {
-        SDL_UnmapGPUTransferBuffer(
-            device, static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_));
+        SDL_UnmapGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_));
         active_upload_mapped_ = nullptr;
     }
     if (active_upload_transfer_ != nullptr) {
-        SDL_ReleaseGPUTransferBuffer(
-            device, static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_));
+        SDL_ReleaseGPUTransferBuffer(device, static_cast<SDL_GPUTransferBuffer*>(active_upload_transfer_));
         active_upload_transfer_ = nullptr;
     }
     if (upload_pass_ != nullptr) {
@@ -909,10 +851,11 @@ void SdlSceneRenderer::cancel_upload_batch() noexcept {
 
 bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
-    const auto capacity = std::max(
-        BufferUploadBatchLayout::default_capacity, minimum_capacity);
+    const auto capacity = std::max(BufferUploadBatchLayout::default_capacity, minimum_capacity);
     const SDL_GPUTransferBufferCreateInfo transfer_info{
-        SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, capacity, 0,
+        SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        capacity,
+        0,
     };
     auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
     if (transfer == nullptr) {
@@ -935,10 +878,11 @@ bool SdlSceneRenderer::begin_buffer_upload_chunk(std::uint32_t minimum_capacity)
 
 bool SdlSceneRenderer::begin_texture_upload_chunk(std::uint32_t minimum_capacity) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
-    const auto capacity = std::max(
-        TextureUploadBatchLayout::default_capacity, minimum_capacity);
+    const auto capacity = std::max(TextureUploadBatchLayout::default_capacity, minimum_capacity);
     const SDL_GPUTransferBufferCreateInfo transfer_info{
-        SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD, capacity, 0,
+        SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        capacity,
+        0,
     };
     auto* transfer = SDL_CreateGPUTransferBuffer(device, &transfer_info);
     if (transfer == nullptr) {
@@ -969,8 +913,7 @@ bool SdlSceneRenderer::ensure_upload_copy_pass() {
         last_error_ = sdl_error("Failed to acquire upload batch command buffer");
         return false;
     }
-    upload_pass_ = SDL_BeginGPUCopyPass(
-        static_cast<SDL_GPUCommandBuffer*>(upload_command_));
+    upload_pass_ = SDL_BeginGPUCopyPass(static_cast<SDL_GPUCommandBuffer*>(upload_command_));
     if (upload_pass_ == nullptr) {
         last_error_ = sdl_error("Failed to begin upload batch copy pass");
         return false;
@@ -1003,8 +946,7 @@ bool SdlSceneRenderer::flush_buffer_upload_chunk() {
             region.target_offset,
             region.byte_count,
         };
-        SDL_UploadToGPUBuffer(
-            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        SDL_UploadToGPUBuffer(static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
         ++counters_.buffer_upload_regions;
         counters_.uploaded_bytes += region.byte_count;
     }
@@ -1049,23 +991,18 @@ bool SdlSceneRenderer::flush_texture_upload_chunk() {
             rectangle.height,
             1,
         };
-        SDL_UploadToGPUTexture(
-            static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
+        SDL_UploadToGPUTexture(static_cast<SDL_GPUCopyPass*>(upload_pass_), &source, &destination, false);
         counters_.uploaded_bytes += region.byte_count;
     }
     texture_layout_.reset();
     return true;
 }
 
-bool SdlSceneRenderer::upload_buffer(
-    void* buffer,
-    std::size_t offset,
-    std::span<const std::byte> bytes,
-    const char* label) {
-    if (!platform_->is_owner_thread() || buffer == nullptr || bytes.empty()
-            || offset > std::numeric_limits<Uint32>::max()
-            || bytes.size() > std::numeric_limits<Uint32>::max()
-            || bytes.size() > std::numeric_limits<Uint32>::max() - offset) {
+bool SdlSceneRenderer::upload_buffer(void* buffer, std::size_t offset, std::span<const std::byte> bytes,
+                                     const char* label) {
+    if (!platform_->is_owner_thread() || buffer == nullptr || bytes.empty() ||
+        offset > std::numeric_limits<Uint32>::max() || bytes.size() > std::numeric_limits<Uint32>::max() ||
+        bytes.size() > std::numeric_limits<Uint32>::max() - offset) {
         last_error_ = std::string(label) + " buffer upload range is invalid";
         return false;
     }
@@ -1075,17 +1012,14 @@ bool SdlSceneRenderer::upload_buffer(
             return false;
         }
         if (active_upload_transfer_ == nullptr || !upload_layout_.can_fit(bytes.size())) {
-            if (!flush_buffer_upload_chunk()
-                    || !begin_buffer_upload_chunk(static_cast<Uint32>(bytes.size()))) {
+            if (!flush_buffer_upload_chunk() || !begin_buffer_upload_chunk(static_cast<Uint32>(bytes.size()))) {
                 cancel_upload_batch();
                 return false;
             }
         }
-        const auto source_offset = upload_layout_.append(
-            buffer, static_cast<Uint32>(offset), static_cast<Uint32>(bytes.size()));
-        std::memcpy(
-            static_cast<std::byte*>(active_upload_mapped_) + source_offset,
-            bytes.data(), bytes.size());
+        const auto source_offset =
+            upload_layout_.append(buffer, static_cast<Uint32>(offset), static_cast<Uint32>(bytes.size()));
+        std::memcpy(static_cast<std::byte*>(active_upload_mapped_) + source_offset, bytes.data(), bytes.size());
         return true;
     }
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());

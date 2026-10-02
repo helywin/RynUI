@@ -6,7 +6,12 @@
 namespace ryn::input {
 
 struct TextInputSessionDiagnostics {
-    std::uint64_t starts{}, stops{}, cancels{}, areas{}, stale_events{}, failures{};
+    std::uint64_t starts{};
+    std::uint64_t stops{};
+    std::uint64_t cancels{};
+    std::uint64_t areas{};
+    std::uint64_t stale_events{};
+    std::uint64_t failures{};
 };
 
 class TextInputSessionHost final : private TextEditorObserver {
@@ -26,6 +31,7 @@ public:
     [[nodiscard]] TextEditResult dispatch(const CandidatesChanged&);
     [[nodiscard]] TextInputSessionStamp active() const;
     [[nodiscard]] const TextInputSessionDiagnostics& diagnostics() const;
+
 private:
     void ensure_thread() const;
     bool synchronize_impl() noexcept;
@@ -36,8 +42,10 @@ private:
     TextInputPlatform* platform_;
     TextInputOwnerId focused_;
     TextInputSessionStamp active_;
-    TextInputProperties properties_, started_properties_;
-    std::optional<WindowTextInputArea> requested_area_, applied_area_;
+    TextInputProperties properties_;
+    TextInputProperties started_properties_;
+    std::optional<WindowTextInputArea> requested_area_;
+    std::optional<WindowTextInputArea> applied_area_;
     TextInputSessionDiagnostics diagnostics_;
     std::uint64_t epoch_{};
     bool window_active_{true};

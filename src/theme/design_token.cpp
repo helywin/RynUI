@@ -10,21 +10,11 @@ namespace {
     return Color(0.0F, 0.0F, 0.0F, alpha);
 }
 
-[[nodiscard]] constexpr ShadowLayer outer(
-    float x,
-    float y,
-    float blur,
-    float spread,
-    Color color) {
+[[nodiscard]] constexpr ShadowLayer outer(float x, float y, float blur, float spread, Color color) {
     return {ShadowKind::outer, {x, y}, blur, spread, color};
 }
 
-[[nodiscard]] constexpr ShadowLayer inset(
-    float x,
-    float y,
-    float blur,
-    float spread,
-    Color color) {
+[[nodiscard]] constexpr ShadowLayer inset(float x, float y, float blur, float spread, Color color) {
     return {ShadowKind::inset, {x, y}, blur, spread, color};
 }
 
@@ -115,11 +105,9 @@ std::span<const TokenMetadata> ant_design_token_metadata() noexcept {
 }
 
 const TokenMetadata* find_ant_design_token(std::string_view identity) noexcept {
-    const auto found = std::lower_bound(
-        metadata.begin(), metadata.end(), identity,
-        [](const TokenMetadata& entry, std::string_view value) {
-            return entry.identity < value;
-        });
+    const auto found =
+        std::lower_bound(metadata.begin(), metadata.end(), identity,
+                         [](const TokenMetadata& entry, std::string_view value) { return entry.identity < value; });
     return found != metadata.end() && found->identity == identity ? &*found : nullptr;
 }
 

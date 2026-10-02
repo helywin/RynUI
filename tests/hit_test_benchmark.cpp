@@ -112,8 +112,7 @@ namespace {
 struct TestState final {};
 
 ryn::runtime::ComponentId mount_leaf() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<TestState>();
+    return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
 void require(bool condition, const char* message) {
@@ -166,37 +165,28 @@ int main() {
 
         ryn::input::HitTestSnapshot snapshot(registry, nodes);
         snapshot.reserve(record_count);
-        snapshot.rebuild(
-            paint_entries,
-            {0.0F, 0.0F, 2'000.0F, 2'000.0F});
+        snapshot.rebuild(paint_entries, {0.0F, 0.0F, 2'000.0F, 2'000.0F});
         const auto stable_capacity = snapshot.capacity();
 
         allocation_probe::count.store(0, std::memory_order_relaxed);
         const auto started = std::chrono::steady_clock::now();
         allocation_probe::tracking.store(true, std::memory_order_relaxed);
         for (std::size_t index = 0; index < query_count; ++index) {
-            require(!snapshot.hit_test({1.0F, 1.0F}).has_value(),
-                    "benchmark query unexpectedly hit a record");
+            require(!snapshot.hit_test({1.0F, 1.0F}).has_value(), "benchmark query unexpectedly hit a record");
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         const auto elapsed = std::chrono::steady_clock::now() - started;
 
         const auto allocations = allocation_probe::count.load(std::memory_order_relaxed);
-        const auto elapsed_microseconds =
-            std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+        const auto elapsed_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
         require(allocations == 0, "steady-state HitTest query allocated");
-        require(snapshot.capacity() == stable_capacity,
-                "steady-state HitTest query changed snapshot capacity");
+        require(snapshot.capacity() == stable_capacity, "steady-state HitTest query changed snapshot capacity");
         require(snapshot.diagnostics().records_examined == record_count * query_count,
                 "dense HitTest benchmark did not scan the expected records");
 
-        std::cout
-            << "hit_test_records=" << record_count
-            << " queries=" << query_count
-            << " records_examined=" << snapshot.diagnostics().records_examined
-            << " allocations=" << allocations
-            << " elapsed_us=" << elapsed_microseconds
-            << '\n';
+        std::cout << "hit_test_records=" << record_count << " queries=" << query_count
+                  << " records_examined=" << snapshot.diagnostics().records_examined << " allocations=" << allocations
+                  << " elapsed_us=" << elapsed_microseconds << '\n';
     } catch (const std::exception& error) {
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         std::cerr << error.what() << '\n';

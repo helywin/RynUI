@@ -18,13 +18,10 @@ struct AnimationFrameSubmitterCounters final {
 
 class AnimationFrameSubmitter final : public FrameSubmitter {
 public:
-    AnimationFrameSubmitter(
-        animation::AnimationRuntime& animations,
-        FrameSubmitter& downstream) noexcept
+    AnimationFrameSubmitter(animation::AnimationRuntime& animations, FrameSubmitter& downstream) noexcept
         : animations_(&animations), downstream_(&downstream) {}
 
-    FrameSubmissionResult submit_frame(
-        animation::AnimationTime frame_time) override {
+    FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) override {
         ++counters_.animation_ticks;
         counters_.animation_updates += animations_->tick(frame_time);
         const auto result = downstream_->submit_frame(frame_time);

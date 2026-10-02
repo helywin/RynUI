@@ -9,51 +9,34 @@
 namespace {
 
 template <typename T>
-concept HasColor = requires(T props) {
-    props.color(0x1677FF);
-};
+concept HasColor = requires(T props) { props.color(0x1677FF); };
 
 template <typename T>
-concept HasFont = requires(T props) {
-    props.font(14);
-};
+concept HasFont = requires(T props) { props.font(14); };
 
 template <typename T>
-concept HasBorder = requires(T props) {
-    props.border(1);
-};
+concept HasBorder = requires(T props) { props.border(1); };
 
 template <typename T>
-concept HasRadius = requires(T props) {
-    props.radius(6);
-};
+concept HasRadius = requires(T props) { props.radius(6); };
 
 template <typename T>
-concept HasShader = requires(T props) {
-    props.shader("button");
-};
+concept HasShader = requires(T props) { props.shader("button"); };
 
 template <typename T>
-concept HasPrefix = requires(T props) {
-    props.prefix([] {});
-};
+concept HasPrefix = requires(T props) { props.prefix([] {}); };
 
 template <typename T>
-concept HasSuffix = requires(T props) {
-    props.suffix([] {});
-};
+concept HasSuffix = requires(T props) { props.suffix([] {}); };
 
 template <typename T>
-concept HasFooter = requires(T props) {
-    props.footer([] {});
-};
+concept HasFooter = requires(T props) { props.footer([] {}); };
 
 template <typename Callback>
-concept AcceptsClick = requires(ryn::ButtonProps props, Callback callback) {
-    props.onClick(callback);
-};
+concept AcceptsClick = requires(ryn::ButtonProps props, Callback callback) { props.onClick(callback); };
 
 struct ForeignContentSlot final {};
+
 using ForeignContent = ryn::SlotContent<ForeignContentSlot>;
 
 static_assert(!HasColor<ryn::ButtonProps>);
@@ -80,20 +63,15 @@ int main() {
     int clicks = 0;
 
     auto declarations = [&] {
-        ryn::Button(
-            ryn::ButtonProps{}
-                .type(type)
-                .size(size)
-                .disabled(disabled)
-                .loading(loading)
-                .onClick([&] { ++clicks; })
-                .layout(ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
-            [] { ryn::Text(u8"确定"); });
-        ryn::Button(
-            ryn::ButtonProps{}
-                .type(bound_type)
-                .size(ryn::ControlSize::Small),
-            [] {});
+        ryn::Button(ryn::ButtonProps{}
+                        .type(type)
+                        .size(size)
+                        .disabled(disabled)
+                        .loading(loading)
+                        .onClick([&] { ++clicks; })
+                        .layout(ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
+                    [] { ryn::Text(u8"确定"); });
+        ryn::Button(ryn::ButtonProps{}.type(bound_type).size(ryn::ControlSize::Small), [] {});
     };
     static_cast<void>(declarations);
 

@@ -11,54 +11,100 @@ namespace {
 
 class SdlPlatformApi final : public PlatformApi {
 public:
-    bool has_clipboard_text() const noexcept override { return SDL_HasClipboardText(); }
-    char* clipboard_text() noexcept override { return SDL_GetClipboardText(); }
-    void free_clipboard_text(char* value) noexcept override { SDL_free(value); }
-    bool set_clipboard_text(const char* value) noexcept override { return SDL_SetClipboardText(value); }
-    std::uint64_t ticks_ns() const noexcept override { return SDL_GetTicksNS(); }
+    bool has_clipboard_text() const noexcept override {
+        return SDL_HasClipboardText();
+    }
+
+    char* clipboard_text() noexcept override {
+        return SDL_GetClipboardText();
+    }
+
+    void free_clipboard_text(char* value) noexcept override {
+        SDL_free(value);
+    }
+
+    bool set_clipboard_text(const char* value) noexcept override {
+        return SDL_SetClipboardText(value);
+    }
+
+    std::uint64_t ticks_ns() const noexcept override {
+        return SDL_GetTicksNS();
+    }
+
     std::uint32_t window_id(PlatformWindowHandle window) const noexcept override {
         return SDL_GetWindowID(static_cast<SDL_Window*>(window));
     }
+
     bool start_text_input(PlatformWindowHandle window, const input::TextInputProperties& value) noexcept override {
         SDL_TextInputType type;
-        switch(value.type) {
-        case input::TextInputType::text: type = SDL_TEXTINPUT_TYPE_TEXT; break;
-        case input::TextInputType::name: type = SDL_TEXTINPUT_TYPE_TEXT_NAME; break;
-        case input::TextInputType::email: type = SDL_TEXTINPUT_TYPE_TEXT_EMAIL; break;
-        case input::TextInputType::username: type = SDL_TEXTINPUT_TYPE_TEXT_USERNAME; break;
-        case input::TextInputType::number: type = SDL_TEXTINPUT_TYPE_NUMBER; break;
-        case input::TextInputType::password_hidden: type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN; break;
-        case input::TextInputType::password_visible: type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_VISIBLE; break;
-        default: return false;
+        switch (value.type) {
+        case input::TextInputType::text:
+            type = SDL_TEXTINPUT_TYPE_TEXT;
+            break;
+        case input::TextInputType::name:
+            type = SDL_TEXTINPUT_TYPE_TEXT_NAME;
+            break;
+        case input::TextInputType::email:
+            type = SDL_TEXTINPUT_TYPE_TEXT_EMAIL;
+            break;
+        case input::TextInputType::username:
+            type = SDL_TEXTINPUT_TYPE_TEXT_USERNAME;
+            break;
+        case input::TextInputType::number:
+            type = SDL_TEXTINPUT_TYPE_NUMBER;
+            break;
+        case input::TextInputType::password_hidden:
+            type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN;
+            break;
+        case input::TextInputType::password_visible:
+            type = SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_VISIBLE;
+            break;
+        default:
+            return false;
         }
         SDL_Capitalization capitalization;
-        switch(value.capitalization) {
-        case input::TextCapitalization::none: capitalization = SDL_CAPITALIZE_NONE; break;
-        case input::TextCapitalization::sentences: capitalization = SDL_CAPITALIZE_SENTENCES; break;
-        case input::TextCapitalization::words: capitalization = SDL_CAPITALIZE_WORDS; break;
-        case input::TextCapitalization::letters: capitalization = SDL_CAPITALIZE_LETTERS; break;
-        default: return false;
+        switch (value.capitalization) {
+        case input::TextCapitalization::none:
+            capitalization = SDL_CAPITALIZE_NONE;
+            break;
+        case input::TextCapitalization::sentences:
+            capitalization = SDL_CAPITALIZE_SENTENCES;
+            break;
+        case input::TextCapitalization::words:
+            capitalization = SDL_CAPITALIZE_WORDS;
+            break;
+        case input::TextCapitalization::letters:
+            capitalization = SDL_CAPITALIZE_LETTERS;
+            break;
+        default:
+            return false;
         }
         const auto props = SDL_CreateProperties();
-        if(!props) return false;
-        const bool result = SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, type)
-            && SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, capitalization)
-            && SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, value.autocorrect)
-            && SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false)
-            && SDL_StartTextInputWithProperties(static_cast<SDL_Window*>(window), props);
+        if (!props) {
+            return false;
+        }
+        const bool result = SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, type) &&
+                            SDL_SetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, capitalization) &&
+                            SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, value.autocorrect) &&
+                            SDL_SetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, false) &&
+                            SDL_StartTextInputWithProperties(static_cast<SDL_Window*>(window), props);
         SDL_DestroyProperties(props);
         return result;
     }
+
     bool stop_text_input(PlatformWindowHandle window) noexcept override {
         return SDL_StopTextInput(static_cast<SDL_Window*>(window));
     }
+
     bool cancel_composition(PlatformWindowHandle window) noexcept override {
         return SDL_ClearComposition(static_cast<SDL_Window*>(window));
     }
+
     bool set_text_input_area(PlatformWindowHandle window, const input::WindowTextInputArea& value) noexcept override {
         const SDL_Rect rect{value.x, value.y, value.width, value.height};
         return SDL_SetTextInputArea(static_cast<SDL_Window*>(window), &rect, value.cursor);
     }
+
     bool init_video() override {
         return SDL_Init(SDL_INIT_VIDEO);
     }
@@ -67,11 +113,7 @@ public:
         SDL_Quit();
     }
 
-    PlatformWindowHandle create_window(
-        const char* title,
-        int width,
-        int height,
-        bool high_pixel_density) override {
+    PlatformWindowHandle create_window(const char* title, int width, int height, bool high_pixel_density) override {
         SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
         if (high_pixel_density) {
             flags = static_cast<SDL_WindowFlags>(flags | SDL_WINDOW_HIGH_PIXEL_DENSITY);
@@ -87,14 +129,11 @@ public:
         return SDL_GetError();
     }
 
-    [[nodiscard]] PlatformWindowMetrics window_metrics(
-        PlatformWindowHandle window) const noexcept override {
+    [[nodiscard]] PlatformWindowMetrics window_metrics(PlatformWindowHandle window) const noexcept override {
         return query_window_metrics(window);
     }
 
-    void poll_events(
-        PlatformWindowHandle window,
-        PlatformEvents& result) override {
+    void poll_events(PlatformWindowHandle window, PlatformEvents& result) override {
         auto metrics = window_metrics(window);
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
@@ -107,10 +146,7 @@ public:
         SDL_Delay(milliseconds);
     }
 
-    void wait_events(
-        PlatformWindowHandle window,
-        std::uint32_t timeout_milliseconds,
-        PlatformEvents& result) override {
+    void wait_events(PlatformWindowHandle window, std::uint32_t timeout_milliseconds, PlatformEvents& result) override {
         auto metrics = window_metrics(window);
         SDL_Event event{};
         if (SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout_milliseconds))) {
@@ -125,42 +161,29 @@ public:
     }
 
 private:
-    static PlatformWindowMetrics query_window_metrics(
-        PlatformWindowHandle window) noexcept {
+    static PlatformWindowMetrics query_window_metrics(PlatformWindowHandle window) noexcept {
         PlatformWindowMetrics metrics;
         if (window != nullptr) {
-            static_cast<void>(SDL_GetWindowSize(
-                static_cast<SDL_Window*>(window),
-                &metrics.coordinate_width,
-                &metrics.coordinate_height));
-            static_cast<void>(SDL_GetWindowSizeInPixels(
-                static_cast<SDL_Window*>(window),
-                &metrics.pixel_width,
-                &metrics.pixel_height));
-            metrics.pixel_density = SDL_GetWindowPixelDensity(
-                static_cast<SDL_Window*>(window));
-            metrics.display_scale = SDL_GetWindowDisplayScale(
-                static_cast<SDL_Window*>(window));
+            static_cast<void>(SDL_GetWindowSize(static_cast<SDL_Window*>(window), &metrics.coordinate_width,
+                                                &metrics.coordinate_height));
+            static_cast<void>(SDL_GetWindowSizeInPixels(static_cast<SDL_Window*>(window), &metrics.pixel_width,
+                                                        &metrics.pixel_height));
+            metrics.pixel_density = SDL_GetWindowPixelDensity(static_cast<SDL_Window*>(window));
+            metrics.display_scale = SDL_GetWindowDisplayScale(static_cast<SDL_Window*>(window));
         }
         return metrics;
     }
 
-    static void refresh_window_metrics(
-        PlatformWindowHandle window,
-        const SDL_Event& event,
-        PlatformWindowMetrics& metrics) noexcept {
-        if (event.type == SDL_EVENT_WINDOW_RESIZED
-                || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
-                || event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
+    static void refresh_window_metrics(PlatformWindowHandle window, const SDL_Event& event,
+                                       PlatformWindowMetrics& metrics) noexcept {
+        if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ||
+            event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
             metrics = query_window_metrics(window);
         }
     }
 };
 
-PlatformCreateResult failed_create(
-    std::unique_ptr<PlatformState> state,
-    PlatformApi& api,
-    PlatformStage stage) {
+PlatformCreateResult failed_create(std::unique_ptr<PlatformState> state, PlatformApi& api, PlatformStage stage) {
     const char* error = api.last_error();
     PlatformError failure{
         stage,
@@ -177,13 +200,14 @@ PlatformApi& real_platform_api() {
 
 } // namespace
 
-PlatformState::PlatformState(PlatformApi& api)
-    : api_(&api), owner_thread_(std::this_thread::get_id()) {
+PlatformState::PlatformState(PlatformApi& api) : api_(&api), owner_thread_(std::this_thread::get_id()) {
     events_.input.reserve(64);
 }
 
 PlatformState::~PlatformState() {
-    if(text_session_.valid() || text_stop_pending_) static_cast<void>(stop());
+    if (text_session_.valid() || text_stop_pending_) {
+        static_cast<void>(stop());
+    }
     if (window_ != nullptr) {
         api_->destroy_window(window_);
     }
@@ -196,9 +220,7 @@ PlatformCreateResult PlatformState::create(const PlatformConfig& config) {
     return create(real_platform_api(), config);
 }
 
-PlatformCreateResult PlatformState::create(
-    PlatformApi& api,
-    const PlatformConfig& config) {
+PlatformCreateResult PlatformState::create(PlatformApi& api, const PlatformConfig& config) {
     auto state = std::unique_ptr<PlatformState>(new PlatformState(api));
 
     if (!api.init_video()) {
@@ -206,11 +228,7 @@ PlatformCreateResult PlatformState::create(
     }
     state->sdl_initialized_ = true;
 
-    state->window_ = api.create_window(
-        config.title.c_str(),
-        config.width,
-        config.height,
-        config.high_pixel_density);
+    state->window_ = api.create_window(config.title.c_str(), config.width, config.height, config.high_pixel_density);
     if (state->window_ == nullptr) {
         return failed_create(std::move(state), api, PlatformStage::window);
     }
@@ -245,8 +263,12 @@ const PlatformEvents& PlatformState::poll_events() {
     events_.text_started_at = text_started_at_;
     events_.window_id = api_->window_id(window_);
     ++event_diagnostics_.poll_calls;
-    try { api_->poll_events(window_, events_); }
-    catch(...) { record_event_pump(); throw; }
+    try {
+        api_->poll_events(window_, events_);
+    } catch (...) {
+        record_event_pump();
+        throw;
+    }
     record_event_pump();
     return events_;
 }
@@ -258,8 +280,12 @@ const PlatformEvents& PlatformState::wait_events(std::uint32_t timeout_milliseco
     events_.text_started_at = text_started_at_;
     events_.window_id = api_->window_id(window_);
     ++event_diagnostics_.wait_calls;
-    try { api_->wait_events(window_, timeout_milliseconds, events_); }
-    catch(...) { record_event_pump(); throw; }
+    try {
+        api_->wait_events(window_, timeout_milliseconds, events_);
+    } catch (...) {
+        record_event_pump();
+        throw;
+    }
     record_event_pump();
     return events_;
 }
@@ -274,9 +300,11 @@ void PlatformState::delay(std::uint32_t milliseconds) noexcept {
 }
 
 bool PlatformState::start(input::TextInputSessionStamp stamp, const input::TextInputProperties& props) noexcept {
-    if(!is_owner_thread() || !stamp.valid() || text_session_.valid() || text_stop_pending_) return false;
+    if (!is_owner_thread() || !stamp.valid() || text_session_.valid() || text_stop_pending_) {
+        return false;
+    }
     const auto started_at = api_->ticks_ns();
-    if(!api_->start_text_input(window_, props)) {
+    if (!api_->start_text_input(window_, props)) {
         text_stop_pending_ = !api_->stop_text_input(window_);
         return false;
     }
@@ -284,56 +312,98 @@ bool PlatformState::start(input::TextInputSessionStamp stamp, const input::TextI
     text_started_at_ = started_at;
     return true;
 }
+
 bool PlatformState::stop() noexcept {
-    if(!is_owner_thread()) return false;
-    if(!text_session_.valid() && !text_stop_pending_) return true;
+    if (!is_owner_thread()) {
+        return false;
+    }
+    if (!text_session_.valid() && !text_stop_pending_) {
+        return true;
+    }
     text_session_ = {};
     text_stop_pending_ = !api_->stop_text_input(window_);
     return !text_stop_pending_;
 }
+
 bool PlatformState::cancel() noexcept {
     return is_owner_thread() && api_->cancel_composition(window_);
 }
+
 bool PlatformState::set_area(const input::WindowTextInputArea& area) noexcept {
-    if(!is_owner_thread() || !text_session_.valid() || area.x < 0 || area.y < 0
-        || area.width < 0 || area.height < 0 || area.cursor < 0 || area.cursor > area.width) return false;
+    if (!is_owner_thread() || !text_session_.valid() || area.x < 0 || area.y < 0 || area.width < 0 || area.height < 0 ||
+        area.cursor < 0 || area.cursor > area.width) {
+        return false;
+    }
     return api_->set_text_input_area(window_, area);
 }
 
 input::ClipboardReadResult PlatformState::read_text() {
     using input::ClipboardError;
-    if(!is_owner_thread()) return {ClipboardError::wrong_thread, {}};
-    if(!api_->has_clipboard_text()) return {ClipboardError::no_text, {}};
+    if (!is_owner_thread()) {
+        return {ClipboardError::wrong_thread, {}};
+    }
+    if (!api_->has_clipboard_text()) {
+        return {ClipboardError::no_text, {}};
+    }
     char* text = api_->clipboard_text();
-    if(!text) return {ClipboardError::platform_failure, {}};
+    if (!text) {
+        return {ClipboardError::platform_failure, {}};
+    }
+
     struct Release {
         PlatformApi* api;
         char* text;
-        ~Release() { api->free_clipboard_text(text); }
+
+        ~Release() {
+            api->free_clipboard_text(text);
+        }
     } release{api_, text};
+
     std::size_t size = 0;
-    while(size <= input::clipboard_max_bytes && text[size] != '\0') ++size;
-    if(size > input::clipboard_max_bytes) return {ClipboardError::capacity_exceeded, {}};
+    while (size <= input::clipboard_max_bytes && text[size] != '\0') {
+        ++size;
+    }
+    if (size > input::clipboard_max_bytes) {
+        return {ClipboardError::capacity_exceeded, {}};
+    }
     try {
         auto parsed = String::from_utf8(std::string_view(text, size));
-        if(!parsed) return {ClipboardError::invalid_utf8, {}};
+        if (!parsed) {
+            return {ClipboardError::invalid_utf8, {}};
+        }
         return {ClipboardError::none, std::move(parsed).value()};
-    } catch(const std::bad_alloc&) { return {ClipboardError::allocation_failure, {}}; }
-    catch(const std::length_error&) { return {ClipboardError::capacity_exceeded, {}}; }
+    } catch (const std::bad_alloc&) {
+        return {ClipboardError::allocation_failure, {}};
+    } catch (const std::length_error&) {
+        return {ClipboardError::capacity_exceeded, {}};
+    }
 }
+
 input::ClipboardError PlatformState::write_text(StringView text) {
     using input::ClipboardError;
-    if(!is_owner_thread()) return ClipboardError::wrong_thread;
-    if(text.size_bytes() > input::clipboard_max_bytes) return ClipboardError::capacity_exceeded;
-    if(text.bytes().find('\0') != std::string_view::npos) return ClipboardError::embedded_null;
+    if (!is_owner_thread()) {
+        return ClipboardError::wrong_thread;
+    }
+    if (text.size_bytes() > input::clipboard_max_bytes) {
+        return ClipboardError::capacity_exceeded;
+    }
+    if (text.bytes().find('\0') != std::string_view::npos) {
+        return ClipboardError::embedded_null;
+    }
     try {
         const std::string terminated(text.bytes());
         return api_->set_clipboard_text(terminated.c_str()) ? ClipboardError::none : ClipboardError::platform_failure;
-    } catch(const std::bad_alloc&) { return ClipboardError::allocation_failure; }
-    catch(const std::length_error&) { return ClipboardError::capacity_exceeded; }
+    } catch (const std::bad_alloc&) {
+        return ClipboardError::allocation_failure;
+    } catch (const std::length_error&) {
+        return ClipboardError::capacity_exceeded;
+    }
 }
+
 input::ClipboardAvailability PlatformState::has_text() const noexcept {
-    if(!is_owner_thread()) return {input::ClipboardError::wrong_thread, false};
+    if (!is_owner_thread()) {
+        return {input::ClipboardError::wrong_thread, false};
+    }
     return {input::ClipboardError::none, api_->has_clipboard_text()};
 }
 
@@ -345,11 +415,9 @@ void PlatformState::require_owner_thread() const {
 
 void PlatformState::record_event_pump() {
     event_diagnostics_.rejected_text_events += events_.rejected_text_events;
-    event_diagnostics_.normalized_input_events +=
-        events_.input.size() + events_.input.coalesced_move_count();
+    event_diagnostics_.normalized_input_events += events_.input.size() + events_.input.coalesced_move_count();
     event_diagnostics_.coalesced_pointer_moves += events_.input.coalesced_move_count();
-    event_diagnostics_.suppressed_compatibility_mouse_events +=
-        events_.suppressed_compatibility_mouse_events;
+    event_diagnostics_.suppressed_compatibility_mouse_events += events_.suppressed_compatibility_mouse_events;
     if (events_.frame_requested) {
         ++event_diagnostics_.frame_requested_pumps;
     }

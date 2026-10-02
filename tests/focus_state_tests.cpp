@@ -12,12 +12,13 @@
 namespace {
 
 struct TestState final {};
+
 struct ChildrenSlot final {};
+
 using Children = ryn::SlotContent<ChildrenSlot>;
 
 ryn::runtime::ComponentId mount_leaf() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<TestState>();
+    return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
 ryn::runtime::ComponentId mount_parent(const Children& children) {
@@ -38,11 +39,8 @@ void test_pointer_keyboard_modality_and_window_restoration() {
     ryn::runtime::ComponentHost components(nodes);
     ryn::runtime::ComponentId parent_component;
     ryn::runtime::ComponentId child_component;
-    components.mount(ryn::Content{[&] {
-        parent_component = mount_parent(Children{[&] {
-            child_component = mount_leaf();
-        }});
-    }});
+    components.mount(
+        ryn::Content{[&] { parent_component = mount_parent(Children{[&] { child_component = mount_leaf(); }}); }});
     auto commit = [&](ryn::runtime::NodeId node, ryn::runtime::Rect bounds) {
         auto& record = nodes.require(node);
         record.bounds = bounds;
@@ -95,12 +93,9 @@ void test_pointer_keyboard_modality_and_window_restoration() {
         20.0F,
     });
     auto state = focus.state();
-    require(state.focused == parent
-                && state.modality == ryn::input::FocusModality::pointer
-                && !state.focus_visible,
+    require(state.focused == parent && state.modality == ryn::input::FocusModality::pointer && !state.focus_visible,
             "nested pointer target did not focus its focusable ancestor");
-    require(!presentations.empty()
-                && presentations.back() == ryn::input::FocusPresentation{true, false, false},
+    require(!presentations.empty() && presentations.back() == ryn::input::FocusPresentation{true, false, false},
             "pointer focus presentation differs");
 
     focus.dispatch({
@@ -110,26 +105,21 @@ void test_pointer_keyboard_modality_and_window_restoration() {
         false,
     });
     state = focus.state();
-    require(state.focused == parent
-                && state.modality == ryn::input::FocusModality::keyboard
-                && state.focus_visible,
+    require(state.focused == parent && state.modality == ryn::input::FocusModality::keyboard && state.focus_visible,
             "keyboard traversal did not expose focus-visible");
 
     focus.set_window_active(false);
     state = focus.state();
-    require(state.focused == parent && !state.window_active
-                && !state.focus_visible,
+    require(state.focused == parent && !state.window_active && !state.focus_visible,
             "window blur did not preserve identity while hiding focus-visible");
     focus.set_window_active(true);
     state = focus.state();
-    require(state.focused == parent && state.window_active
-                && state.focus_visible,
+    require(state.focused == parent && state.window_active && state.focus_visible,
             "window focus gain did not restore valid keyboard focus-visible");
 
     registry.set_eligible(parent, false);
     focus.synchronize();
-    require(!focus.state().focused.has_value(),
-            "disabled focused target was not cleared");
+    require(!focus.state().focused.has_value(), "disabled focused target was not cleared");
     require(frames.pending(), "focus transitions did not request a frame");
 }
 

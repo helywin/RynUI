@@ -6,19 +6,14 @@
 namespace ryn::animation {
 namespace {
 
-AnimationDuration duration_from_theme(
-    Duration base,
-    Duration unit,
-    double multiplier) {
-    return AnimationDuration::milliseconds(
-        static_cast<double>(base.count_milliseconds())
-        + static_cast<double>(unit.count_milliseconds()) * multiplier);
+AnimationDuration duration_from_theme(Duration base, Duration unit, double multiplier) {
+    return AnimationDuration::milliseconds(static_cast<double>(base.count_milliseconds()) +
+                                           static_cast<double>(unit.count_milliseconds()) * multiplier);
 }
 
 } // namespace
 
-AnimationDuration MotionTokenSet::duration(
-    MotionDurationToken token) const {
+AnimationDuration MotionTokenSet::duration(MotionDurationToken token) const {
     switch (token) {
     case MotionDurationToken::fast:
         return fast;
@@ -40,10 +35,8 @@ Easing MotionTokenSet::easing(MotionEasingToken token) const {
 
 MotionTokenSet resolve_motion_tokens(const ThemeSnapshot& theme) {
     const auto& map = theme.map();
-    const auto unit = AnimationDuration::milliseconds(
-        map.motion_unit.count_milliseconds());
-    const auto base = AnimationDuration::milliseconds(
-        map.motion_base.count_milliseconds());
+    const auto unit = AnimationDuration::milliseconds(map.motion_unit.count_milliseconds());
+    const auto base = AnimationDuration::milliseconds(map.motion_base.count_milliseconds());
     return {
         unit,
         base,
@@ -64,14 +57,11 @@ MotionTokenSet resolve_motion_tokens(const ThemeSnapshot& theme) {
     };
 }
 
-MotionPolicy::MotionPolicy(
-    MotionTokenSet tokens,
-    MotionPreference preference) noexcept
+MotionPolicy::MotionPolicy(MotionTokenSet tokens, MotionPreference preference) noexcept
     : tokens_(std::move(tokens)), preference_(preference) {}
 
 bool MotionPolicy::enabled() const noexcept {
-    return tokens_.theme_motion_enabled
-        && preference_ == MotionPreference::normal;
+    return tokens_.theme_motion_enabled && preference_ == MotionPreference::normal;
 }
 
 bool MotionPolicy::reduced() const noexcept {
@@ -86,25 +76,18 @@ const MotionTokenSet& MotionPolicy::tokens() const noexcept {
     return tokens_;
 }
 
-AnimationSpec MotionPolicy::transition(
-    MotionDurationToken duration_token,
-    MotionEasingToken easing_token,
-    AnimationDuration delay) const {
+AnimationSpec MotionPolicy::transition(MotionDurationToken duration_token, MotionEasingToken easing_token,
+                                       AnimationDuration delay) const {
     const auto easing_value = tokens_.easing(easing_token);
-    return enabled()
-        ? AnimationSpec{delay, tokens_.duration(duration_token), easing_value}
-        : AnimationSpec{{}, {}, easing_value};
+    return enabled() ? AnimationSpec{delay, tokens_.duration(duration_token), easing_value}
+                     : AnimationSpec{{}, {}, easing_value};
 }
 
-MotionPolicy resolve_motion_policy(
-    const ThemeSnapshot& theme,
-    MotionPreference preference) {
+MotionPolicy resolve_motion_policy(const ThemeSnapshot& theme, MotionPreference preference) {
     return MotionPolicy(resolve_motion_tokens(theme), preference);
 }
 
-MotionPolicyController::MotionPolicyController(
-    AnimationRuntime& runtime,
-    MotionPolicy policy) noexcept
+MotionPolicyController::MotionPolicyController(AnimationRuntime& runtime, MotionPolicy policy) noexcept
     : runtime_(&runtime), policy_(std::move(policy)) {}
 
 bool MotionPolicyController::update(MotionPolicy policy) {

@@ -14,7 +14,11 @@ namespace ryn::input {
 struct TextInputSessionStamp {
     TextInputOwnerId owner;
     std::uint64_t epoch{};
-    [[nodiscard]] bool valid() const noexcept { return owner.valid() && epoch != 0; }
+
+    [[nodiscard]] bool valid() const noexcept {
+        return owner.valid() && epoch != 0;
+    }
+
     friend bool operator==(const TextInputSessionStamp&, const TextInputSessionStamp&) = default;
 };
 
@@ -50,19 +54,22 @@ struct CandidatesChanged {
     // despite noexcept. Use its throwing count constructor then swap, allowing
     // allocation failure to propagate out of event preparation, not terminate.
     CandidatesChanged() : candidates(std::size_t{0}) {}
+
     CandidatesChanged(std::vector<String> values, std::optional<std::size_t> selected_value = {},
-        CandidateOrientation direction = CandidateOrientation::vertical,
-        TextInputSessionStamp stamp = {})
+                      CandidateOrientation direction = CandidateOrientation::vertical, TextInputSessionStamp stamp = {})
         : candidates(std::size_t{0}), selected(selected_value), orientation(direction), session(stamp) {
         candidates.swap(values);
     }
+
     CandidatesChanged(const CandidatesChanged&) = default;
     CandidatesChanged& operator=(const CandidatesChanged&) = default;
+
     CandidatesChanged(CandidatesChanged&& other)
         : candidates(std::size_t{0}), selected(other.selected), orientation(other.orientation), session(other.session) {
         candidates.swap(other.candidates);
         other.selected.reset();
     }
+
     CandidatesChanged& operator=(CandidatesChanged&& other) noexcept {
         candidates.swap(other.candidates);
         std::swap(selected, other.selected);
@@ -70,6 +77,7 @@ struct CandidatesChanged {
         std::swap(session, other.session);
         return *this;
     }
+
     std::vector<String> candidates;
     std::optional<std::size_t> selected;
     CandidateOrientation orientation{CandidateOrientation::vertical};

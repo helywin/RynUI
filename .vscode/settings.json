@@ -3,6 +3,8 @@
   // 背景与验证方式见 docs/development/vscode.md。
   "C_Cpp.default.cStandard": "c17",
   "C_Cpp.default.cppStandard": "c++20",
+  "C_Cpp.clang_format_style": "file",
+  "editor.rulers": [120],
 
   // 着色器源码使用 HLSL。
   "files.associations": {

@@ -6,7 +6,9 @@
 namespace {
 
 struct PanelContentSlot final {};
+
 struct PanelPrefixSlot final {};
+
 struct PanelFooterSlot final {};
 
 using PanelContent = ryn::SlotContent<PanelContentSlot>;

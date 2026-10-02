@@ -31,6 +31,14 @@
 - 正式构建统一通过 `CMakePresets.json` 驱动并使用 `Ninja Multi-Config`；Windows 必须使用 MSVC，不得用 MinGW 结果代替 Windows 验收。
 - 第三方依赖只允许显式 `BUNDLED|SYSTEM` 模式；版本、source SHA256 和 license 必须集中锁定，不使用 Git submodule 或隐式 system-first fallback。
 
+## 代码格式
+
+- 自有 C++ 与 HLSL 使用根目录 `.clang-format`，通过 clang-format 22.x 格式化，行宽 120、四空格缩进。
+- `if`、`else`、`for`、`while`、`do` 的语句体必须使用大括号；`else if` 保留正常链式写法。
+- 每条变量声明只声明一个变量，包含局部变量、成员和全局变量；不拆分结构化绑定、模板参数或函数参数。
+- 相邻的 struct、class、enum 和函数定义之间保留一个空行，不把多个语句压在同一行。
+- 完成 C++ 或 HLSL 修改后运行 `python scripts/format-code.py --check`；格式化和工具路径说明见 `docs/development/formatting.md`。第三方、fixture 和生成资产不参与批量格式化。
+
 ## OpenSpec 工作流
 
 - 执行 OpenSpec 工作前，先读取当前操作对应的 `.agents/skills/openspec-*/SKILL.md`。

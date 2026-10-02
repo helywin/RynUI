@@ -12,6 +12,7 @@ using graphics::intersect_effect_bounds;
 using graphics::rounded_effect_bounds;
 using graphics::rounded_rect_signed_distance;
 using graphics::validate_rounded_effect;
+
 namespace {
 
 [[nodiscard]] runtime::Rect scale_rect(runtime::Rect rect, float scale) noexcept {
@@ -40,48 +41,49 @@ namespace {
     const float sign = value < 0.0F ? -1.0F : 1.0F;
     const float absolute = std::abs(value);
     const float t = 1.0F / (1.0F + 0.3275911F * absolute);
-    const float polynomial = (((((1.061405429F * t - 1.453152027F) * t)
-        + 1.421413741F) * t - 0.284496736F) * t + 0.254829592F) * t;
-    const float approximate_erf = sign
-        * (1.0F - polynomial * std::exp(-absolute * absolute));
-    return std::clamp(
-        0.5F * (1.0F - approximate_erf),
-        0.0F,
-        1.0F);
+    const float polynomial =
+        (((((1.061405429F * t - 1.453152027F) * t) + 1.421413741F) * t - 0.284496736F) * t + 0.254829592F) * t;
+    const float approximate_erf = sign * (1.0F - polynomial * std::exp(-absolute * absolute));
+    return std::clamp(0.5F * (1.0F - approximate_erf), 0.0F, 1.0F);
 }
 
 [[nodiscard]] RoundedEffectKind decode_kind(float encoded) {
-    if (encoded == 0.0F) return RoundedEffectKind::outer_shadow;
-    if (encoded == 1.0F) return RoundedEffectKind::inset_shadow;
-    if (encoded == 2.0F) return RoundedEffectKind::outline;
+    if (encoded == 0.0F) {
+        return RoundedEffectKind::outer_shadow;
+    }
+    if (encoded == 1.0F) {
+        return RoundedEffectKind::inset_shadow;
+    }
+    if (encoded == 2.0F) {
+        return RoundedEffectKind::outline;
+    }
     throw std::invalid_argument("Rounded effect GPU kind is invalid");
 }
 
 [[nodiscard]] float encode_kind(RoundedEffectKind kind) {
     switch (kind) {
-    case RoundedEffectKind::outer_shadow: return 0.0F;
-    case RoundedEffectKind::inset_shadow: return 1.0F;
-    case RoundedEffectKind::outline: return 2.0F;
+    case RoundedEffectKind::outer_shadow:
+        return 0.0F;
+    case RoundedEffectKind::inset_shadow:
+        return 1.0F;
+    case RoundedEffectKind::outline:
+        return 2.0F;
     }
     throw std::invalid_argument("Rounded effect kind is invalid");
 }
 
 [[nodiscard]] bool contains(runtime::Rect rect, runtime::Point point) noexcept {
-    return point.x >= rect.x && point.y >= rect.y
-        && point.x <= rect.x + rect.width && point.y <= rect.y + rect.height;
+    return point.x >= rect.x && point.y >= rect.y && point.x <= rect.x + rect.width && point.y <= rect.y + rect.height;
 }
 
 } // namespace
 
-RoundedEffectGpuInstance pack_rounded_effect_instance(
-    const RoundedEffectInstance& instance,
-    SceneDeviceMetrics metrics) {
+RoundedEffectGpuInstance pack_rounded_effect_instance(const RoundedEffectInstance& instance,
+                                                      SceneDeviceMetrics metrics) {
     validate_rounded_effect(instance);
     const auto viewport = scene_logical_viewport(metrics);
     const float scale = metrics.display_scale;
-    const auto logical_bounds = intersect_effect_bounds(
-        rounded_effect_bounds(instance, 1.0F / scale),
-        viewport);
+    const auto logical_bounds = intersect_effect_bounds(rounded_effect_bounds(instance, 1.0F / scale), viewport);
     if (logical_bounds.width <= 0.0F || logical_bounds.height <= 0.0F) {
         // The retained store culls with a conservative logical AA guard. At
         // fractional DPI its bound may overlap the clip while the one-pixel
@@ -102,9 +104,7 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(
         static_cast<float>(metrics.pixel_height),
     };
     if (instance.geometry.ancestor_clip.has_value()) {
-        pixel_clip = intersect_effect_bounds(
-            pixel_clip,
-            scale_rect(instance.geometry.ancestor_clip->bounds, scale));
+        pixel_clip = intersect_effect_bounds(pixel_clip, scale_rect(instance.geometry.ancestor_clip->bounds, scale));
     }
 
     const auto& color = instance.material.color;
@@ -116,8 +116,7 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(
             -2.0F * pixel_bounds.height / metrics.pixel_height,
         },
         {pixel_shape.x, pixel_shape.y, pixel_shape.width, pixel_shape.height},
-        {pixel_clip.x, pixel_clip.y,
-         pixel_clip.x + pixel_clip.width, pixel_clip.y + pixel_clip.height},
+        {pixel_clip.x, pixel_clip.y, pixel_clip.x + pixel_clip.width, pixel_clip.y + pixel_clip.height},
         {color.red(), color.green(), color.blue(), color.alpha()},
         {
             instance.geometry.shape.radius * scale,
@@ -135,9 +134,7 @@ RoundedEffectGpuInstance pack_rounded_effect_instance(
     };
 }
 
-float rounded_effect_gpu_coverage_reference(
-    runtime::Point point_pixels,
-    const RoundedEffectGpuInstance& instance) {
+float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const RoundedEffectGpuInstance& instance) {
     const runtime::Rect clip{
         instance.clip_bounds[0],
         instance.clip_bounds[1],
@@ -148,8 +145,7 @@ float rounded_effect_gpu_coverage_reference(
         return 0.0F;
     }
     LogicalRoundedRect shape{
-        {instance.shape_rect[0], instance.shape_rect[1],
-         instance.shape_rect[2], instance.shape_rect[3]},
+        {instance.shape_rect[0], instance.shape_rect[1], instance.shape_rect[2], instance.shape_rect[3]},
         instance.shadow_params[0],
     };
     const float offset_x = instance.shadow_params[1];
@@ -166,44 +162,35 @@ float rounded_effect_gpu_coverage_reference(
         shape.rect.y -= spread;
         shape.rect.width = std::max(0.0F, shape.rect.width + 2.0F * spread);
         shape.rect.height = std::max(0.0F, shape.rect.height + 2.0F * spread);
-        if (shape.rect.width <= 0.0F || shape.rect.height <= 0.0F) return 0.0F;
-        shape.radius = std::clamp(
-            shape.radius + spread,
-            0.0F,
-            0.5F * std::min(shape.rect.width, shape.rect.height));
+        if (shape.rect.width <= 0.0F || shape.rect.height <= 0.0F) {
+            return 0.0F;
+        }
+        shape.radius = std::clamp(shape.radius + spread, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        return gaussian_edge(
-            rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F);
+        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F);
     case RoundedEffectKind::inset_shadow:
-        if (rounded_rect_signed_distance(point_pixels, shape) > 0.0F) return 0.0F;
+        if (rounded_rect_signed_distance(point_pixels, shape) > 0.0F) {
+            return 0.0F;
+        }
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        return gaussian_edge(
-            -rounded_rect_signed_distance(point_pixels, shape) - spread,
-            blur * 0.5F);
+        return gaussian_edge(-rounded_rect_signed_distance(point_pixels, shape) - spread, blur * 0.5F);
     case RoundedEffectKind::outline: {
         const float distance = rounded_rect_signed_distance(point_pixels, shape);
         const float half_aa = antialias_width * 0.5F;
-        const float inner = smoothstep(
-            outline_offset - half_aa,
-            outline_offset + half_aa,
-            distance);
-        const float outer = 1.0F - smoothstep(
-            outline_offset + outline_width - half_aa,
-            outline_offset + outline_width + half_aa,
-            distance);
+        const float inner = smoothstep(outline_offset - half_aa, outline_offset + half_aa, distance);
+        const float outer = 1.0F - smoothstep(outline_offset + outline_width - half_aa,
+                                              outline_offset + outline_width + half_aa, distance);
         return std::clamp(inner * outer, 0.0F, 1.0F);
     }
     }
     return 0.0F;
 }
 
-std::array<float, 4> rounded_effect_gpu_fragment_reference(
-    runtime::Point point_pixels,
-    const RoundedEffectGpuInstance& instance) {
-    const float coverage = rounded_effect_gpu_coverage_reference(
-        point_pixels, instance);
+std::array<float, 4> rounded_effect_gpu_fragment_reference(runtime::Point point_pixels,
+                                                           const RoundedEffectGpuInstance& instance) {
+    const float coverage = rounded_effect_gpu_coverage_reference(point_pixels, instance);
     return {
         instance.color[0],
         instance.color[1],

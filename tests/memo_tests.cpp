@@ -32,12 +32,10 @@ void test_cache_and_dynamic_dependencies() {
 
     int downstream_runs = 0;
     int downstream_value = 0;
-    const auto downstream = ryn::detail::observe(
-        ryn::detail::ObserverPhase::binding,
-        [&] {
-            ++downstream_runs;
-            downstream_value = selected.get();
-        });
+    const auto downstream = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        ++downstream_runs;
+        downstream_value = selected.get();
+    });
     require(downstream_runs == 1, "memo downstream observer did not start");
 
     left.set(11);

@@ -13,6 +13,7 @@
 namespace ryn::graphics {
 
 inline constexpr std::uint32_t logical_scene_version = 2;
+
 // Logical x/y/width/height, radius and translation. Not a shader byte layout.
 struct QuadInstance {
     std::array<float, 4> bounds{};
@@ -23,7 +24,6 @@ struct QuadInstance {
 
     friend constexpr bool operator==(const QuadInstance&, const QuadInstance&) = default;
 };
-
 
 struct QuadPrimitive {
     runtime::NodeId node;
@@ -54,33 +54,21 @@ struct QuadGeometry final {
 
 class QuadInstanceStore final {
 public:
-    void reserve(
-        std::size_t instance_capacity,
-        std::size_t dirty_range_capacity = 0);
+    void reserve(std::size_t instance_capacity, std::size_t dirty_range_capacity = 0);
     [[nodiscard]] QuadPrimitive add(runtime::NodeId node, QuadInstance instance);
     [[nodiscard]] QuadInstanceRange append(std::span<const QuadInstance> instances);
-    [[nodiscard]] QuadInstanceRange replace(
-        QuadInstanceRange range,
-        std::span<const QuadInstance> instances);
+    [[nodiscard]] QuadInstanceRange replace(QuadInstanceRange range, std::span<const QuadInstance> instances);
     [[nodiscard]] const QuadInstance& at(std::uint32_t index) const;
     [[nodiscard]] QuadInstance& at(std::uint32_t index);
     [[nodiscard]] std::span<const QuadInstance> instances() const noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
     [[nodiscard]] std::size_t capacity() const noexcept;
-    [[nodiscard]] std::span<const std::byte> bytes(
-        std::uint32_t first,
-        std::uint32_t count) const;
+    [[nodiscard]] std::span<const std::byte> bytes(std::uint32_t first, std::uint32_t count) const;
     [[nodiscard]] std::span<const std::byte> bytes(QuadInstanceRange range) const;
-    [[nodiscard]] std::size_t update_material(
-        QuadInstanceRange range,
-        std::span<const QuadMaterial> materials);
-    [[nodiscard]] std::size_t update_geometry(
-        QuadInstanceRange range,
-        std::span<const QuadGeometry> geometry);
-    [[nodiscard]] std::span<const QuadInstanceRange>
-        material_dirty_ranges() const noexcept;
-    [[nodiscard]] std::span<const QuadInstanceRange>
-        geometry_dirty_ranges() const noexcept;
+    [[nodiscard]] std::size_t update_material(QuadInstanceRange range, std::span<const QuadMaterial> materials);
+    [[nodiscard]] std::size_t update_geometry(QuadInstanceRange range, std::span<const QuadGeometry> geometry);
+    [[nodiscard]] std::span<const QuadInstanceRange> material_dirty_ranges() const noexcept;
+    [[nodiscard]] std::span<const QuadInstanceRange> geometry_dirty_ranges() const noexcept;
     void clear_dirty_ranges() noexcept;
     void mark_all_dirty();
 

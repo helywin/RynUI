@@ -9,14 +9,13 @@ static_assert(std::is_move_constructible_v<ryn::ButtonContent>);
 
 int main() {
     auto declaration = [] {
-        ryn::Button(
-            ryn::ButtonProps{}
-                .type(ryn::ButtonType::Primary)
-                .size(ryn::ControlSize::Large)
-                .disabled(false)
-                .loading(false)
-                .onClick([] {}),
-            [] {});
+        ryn::Button(ryn::ButtonProps{}
+                        .type(ryn::ButtonType::Primary)
+                        .size(ryn::ControlSize::Large)
+                        .disabled(false)
+                        .loading(false)
+                        .onClick([] {}),
+                    [] {});
     };
     static_cast<void>(declaration);
     return 0;

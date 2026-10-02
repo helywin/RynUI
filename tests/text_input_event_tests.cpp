@@ -7,13 +7,22 @@
 namespace {
 using namespace ryn::input;
 using ryn::String;
+
 void require(bool value, const char* message) {
-    if (!value) throw std::runtime_error(message);
+    if (!value) {
+        throw std::runtime_error(message);
+    }
 }
-template<class E, class F> void rejects(F action) {
-    try { action(); } catch (const E&) { return; }
+
+template <class E, class F> void rejects(F action) {
+    try {
+        action();
+    } catch (const E&) {
+        return;
+    }
     throw std::runtime_error("Expected rejection");
 }
+
 void events() {
     require(!String::from_utf8(std::string_view("\xC0\xAF", 2)), "invalid UTF8 accepted");
     CompositionChanged composition{String(u8"中😀e\u0301"), {1, 2}};
@@ -27,8 +36,7 @@ void events() {
     require(is_valid(CompositionChanged{}), "empty cancellation rejected");
     require(is_valid(CompositionChanged{{}, {0, 0, false}}), "unknown range rejected");
     require(!is_valid(CompositionChanged{{}, {1, 0, false}}), "noncanonical unknown range");
-    CandidatesChanged candidates{{String(u8"你好"), String(u8"你好吗")}, 1,
-        CandidateOrientation::horizontal};
+    CandidatesChanged candidates{{String(u8"你好"), String(u8"你好吗")}, 1, CandidateOrientation::horizontal};
     require(is_valid(candidates), "candidate snapshot rejected");
     candidates.selected = 2;
     require(!is_valid(candidates), "out of range candidate");
@@ -41,6 +49,7 @@ void events() {
     auto large = String::from_utf8(std::string(text_event_max_bytes + 1, 'a'));
     require(!is_valid(TextCommitted{std::move(large).value()}), "unbounded text bytes");
 }
+
 void batches() {
     PlatformInputBatch batch(5, 20);
     batch.reserve(5);
@@ -72,11 +81,18 @@ void batches() {
     rejects<std::length_error>([&] { zero.append(TextCommitted{}); });
     PlatformInputBatch moves(1, 0);
     moves.append(PointerInputEvent{PointerIdentity::mouse(), PointerAction::move});
-    require(!moves.append(PointerInputEvent{PointerIdentity::mouse(), PointerAction::move,
-        PointerButton::none, 5, 7}), "bounded queue lost move coalescing");
+    require(!moves.append(PointerInputEvent{PointerIdentity::mouse(), PointerAction::move, PointerButton::none, 5, 7}),
+            "bounded queue lost move coalescing");
 }
-}
+} // namespace
+
 int main() {
-    try { events(); batches(); std::cout << "Text event ownership, range, order and capacity passed\n"; }
-    catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+    try {
+        events();
+        batches();
+        std::cout << "Text event ownership, range, order and capacity passed\n";
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 1;
+    }
 }

@@ -46,21 +46,14 @@ std::filesystem::path executable_directory(char* executable) {
 
 class LayoutPlatformEvents final : public ryn::runtime::FrameEventSource {
 public:
-    LayoutPlatformEvents(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::runtime::FrameRequestState& frame_requests,
-        ryn::runtime::Size& viewport) noexcept
-        : platform_(&platform),
-          application_(&application),
-          frame_requests_(&frame_requests),
-          viewport_(&viewport),
+    LayoutPlatformEvents(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                         ryn::runtime::FrameRequestState& frame_requests, ryn::runtime::Size& viewport) noexcept
+        : platform_(&platform), application_(&application), frame_requests_(&frame_requests), viewport_(&viewport),
           started_(std::chrono::steady_clock::now()) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
         return ryn::animation::AnimationTime::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - started_).count());
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started_).count());
     }
 
     bool poll_frame_event() noexcept override {
@@ -71,8 +64,13 @@ public:
         return consume(platform_->wait_events(timeout_milliseconds));
     }
 
-    [[nodiscard]] bool quit_requested() const noexcept { return quit_requested_; }
-    [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] bool quit_requested() const noexcept {
+        return quit_requested_;
+    }
+
+    [[nodiscard]] const std::string& last_error() const noexcept {
+        return last_error_;
+    }
 
 private:
     bool consume(const ryn::detail::PlatformEvents& events) noexcept {
@@ -87,9 +85,8 @@ private:
             quit_requested_ = true;
             return true;
         }
-        return frame_requests_->pending()
-            || events.redraw_requested
-            || (events.frame_requested && events.input.empty());
+        return frame_requests_->pending() || events.redraw_requested ||
+               (events.frame_requested && events.input.empty());
     }
 
     void dispatch(const ryn::input::PointerInputEvent& event) {
@@ -100,8 +97,11 @@ private:
 
     // These samples have no text input owner yet.
     void dispatch(const ryn::input::TextCommitted&) {}
+
     void dispatch(const ryn::input::CompositionChanged&) {}
+
     void dispatch(const ryn::input::CandidatesChanged&) {}
+
     void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -141,22 +141,13 @@ private:
 
 class LayoutComponentSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    LayoutComponentSubmitter(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::detail::TextSceneService& text_scene,
-        ryn::detail::SceneResources& resources,
-        ryn::detail::SdlSceneRenderer& renderer,
-        ryn::runtime::Size& viewport) noexcept
-        : platform_(&platform),
-          application_(&application),
-          text_scene_(&text_scene),
-          resources_(&resources),
-          renderer_(&renderer),
-          viewport_(&viewport) {}
+    LayoutComponentSubmitter(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                             ryn::detail::TextSceneService& text_scene, ryn::detail::SceneResources& resources,
+                             ryn::detail::SdlSceneRenderer& renderer, ryn::runtime::Size& viewport) noexcept
+        : platform_(&platform), application_(&application), text_scene_(&text_scene), resources_(&resources),
+          renderer_(&renderer), viewport_(&viewport) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime frame_time) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         try {
             static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
@@ -165,21 +156,25 @@ public:
                 std::max(0.0F, viewport_->width - 48.0F),
                 std::max(0.0F, viewport_->height - 40.0F),
             };
-            if (!application_->layout_and_synchronize(
-                    *viewport_, clip, {24.0F, 28.0F}, 0.0F)) {
+            if (!application_->layout_and_synchronize(*viewport_, clip, {24.0F, 28.0F}, 0.0F)) {
                 last_error_ = "Layout demo layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto metrics = platform_->window_metrics();
-            if (!resources_->synchronize({
-                &application_->button_scene().instances(), text_scene_->atlas(),
-                text_scene_->glyph_scene().instances(), &application_->rounded_effects(), {
-                    static_cast<std::uint32_t>(metrics.pixel_width),
-                    static_cast<std::uint32_t>(metrics.pixel_height),
-                    metrics.display_scale,
-                }})) throw std::runtime_error(renderer_->last_error());
-            if (!renderer_->attach_scene(resources_->attach(application_->scene_composer().ordered_scene())))
+            if (!resources_->synchronize({&application_->button_scene().instances(),
+                                          text_scene_->atlas(),
+                                          text_scene_->glyph_scene().instances(),
+                                          &application_->rounded_effects(),
+                                          {
+                                              static_cast<std::uint32_t>(metrics.pixel_width),
+                                              static_cast<std::uint32_t>(metrics.pixel_height),
+                                              metrics.display_scale,
+                                          }})) {
+                throw std::runtime_error(renderer_->last_error());
+            }
+            if (!renderer_->attach_scene(resources_->attach(application_->scene_composer().ordered_scene()))) {
                 throw std::runtime_error("Layout scene attachment invalid");
+            }
             const auto result = renderer_->submit_frame(frame_time);
             if (result == ryn::runtime::FrameSubmissionResult::failed) {
                 last_error_ = renderer_->last_error();
@@ -191,7 +186,9 @@ public:
         }
     }
 
-    [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] const std::string& last_error() const noexcept {
+        return last_error_;
+    }
 
 private:
     ryn::detail::PlatformState* platform_;
@@ -208,16 +205,13 @@ struct LayoutDiagnostics final {
     std::size_t line_count{};
 };
 
-void collect_layout_diagnostics(
-    const ryn::runtime::ComponentHost& components,
-    const ryn::runtime::NodeStore& nodes,
-    const ryn::layout::LayoutEngine& layout,
-    ryn::runtime::ComponentId component,
-    LayoutDiagnostics& result) {
+void collect_layout_diagnostics(const ryn::runtime::ComponentHost& components, const ryn::runtime::NodeStore& nodes,
+                                const ryn::layout::LayoutEngine& layout, ryn::runtime::ComponentId component,
+                                LayoutDiagnostics& result) {
     const auto node = components.root(component);
     result.layout_passes += nodes.require(node).place_count;
-    if (components.state<ryn::detail::FlexComponentState>(component) != nullptr
-            || components.state<ryn::detail::SpaceComponentState>(component) != nullptr) {
+    if (components.state<ryn::detail::FlexComponentState>(component) != nullptr ||
+        components.state<ryn::detail::SpaceComponentState>(component) != nullptr) {
         result.line_count += layout.flex_layout_diagnostics(node).line_count;
     }
     for (const auto child : components.children(component)) {
@@ -269,8 +263,7 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         font_request.raster = font_raster;
         font_request.fallback_latin = executable / "fonts/latin.ttf";
         font_request.fallback_cjk = executable / "fonts/cjk.otf";
-        auto font_chain =
-            ryn::detail::load_default_ui_font_chain(*fonts, font_request);
+        auto font_chain = ryn::detail::load_default_ui_font_chain(*fonts, font_request);
         if (!font_chain) {
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
             return 3;
@@ -280,10 +273,8 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
             std::cerr << "font_error=font metrics could not be queried\n";
             return 3;
         }
-        auto font_resolver = ryn::detail::make_default_ui_font_resolver(
-            *fonts,
-            font_chain,
-            initial_window_metrics.display_scale);
+        auto font_resolver =
+            ryn::detail::make_default_ui_font_resolver(*fonts, font_chain, initial_window_metrics.display_scale);
 
         ryn::runtime::NodeStore nodes;
         ryn::layout::LayoutEngine layout(nodes);
@@ -291,30 +282,22 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
         ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
         ryn::text::TextEngine text_engine(*fonts);
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
-        ryn::detail::ButtonComponentHost application(
-            nodes,
-            layout,
-            dirty,
-            text_scene,
-            std::move(font_resolver),
-            frame_requests);
+        ryn::detail::ButtonComponentHost application(nodes, layout, dirty, text_scene, std::move(font_resolver),
+                                                     frame_requests);
         application.mount(definition.content);
 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::SceneResources scene_resources(renderer);
-        LayoutComponentSubmitter submitter(
-            platform, application, text_scene, scene_resources, renderer, viewport);
+        LayoutComponentSubmitter submitter(platform, application, text_scene, scene_resources, renderer, viewport);
         LayoutPlatformEvents events(platform, application, frame_requests, viewport);
         auto& animation_deadlines = application;
-        ryn::runtime::OnDemandFrameLoop loop(
-            frame_requests, events, submitter, animation_deadlines, 10);
+        ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, animation_deadlines, 10);
 
         std::size_t smoke_stage = 0;
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            if (smoke_mode && smoke_stage < 3
-                    && elapsed >= 250 * (smoke_stage + 1)) {
+            if (smoke_mode && smoke_stage < 3 && elapsed >= 250 * (smoke_stage + 1)) {
                 definition.smoke_step(smoke_stage);
                 ++smoke_stage;
             }
@@ -328,52 +311,40 @@ int run_layout_demo(int argc, char** argv, LayoutDemoDefinition definition) {
                 std::cerr << "frame_error=" << submitter.last_error() << '\n';
                 return 5;
             }
-            if (smoke_mode && smoke_stage == 3 && elapsed >= 1'400
-                    && loop.counters().idle_waits >= 20) {
+            if (smoke_mode && smoke_stage == 3 && elapsed >= 1'400 && loop.counters().idle_waits >= 20) {
                 break;
             }
         }
 
         LayoutDiagnostics layout_diagnostics;
         for (const auto root : application.components().root_components()) {
-            collect_layout_diagnostics(
-                application.components(), nodes, layout, root, layout_diagnostics);
+            collect_layout_diagnostics(application.components(), nodes, layout, root, layout_diagnostics);
         }
         const auto telemetry = definition.telemetry();
         const auto scene = application.scene_composer().diagnostics();
         const auto renderer_counters = renderer.counters();
         const auto loop_counters = loop.counters();
         const auto window_metrics = platform.window_metrics();
-        std::cout
-            << "gpu_driver=" << renderer.gpu_driver()
-            << " shader_format=" << renderer.shader_format()
-            << " display_scale=" << platform.display_scale()
-            << " pixel_density=" << window_metrics.pixel_density
-            << " window_size=" << window_metrics.coordinate_width << 'x'
-            << window_metrics.coordinate_height
-            << " pixel_size=" << window_metrics.pixel_width << 'x'
-            << window_metrics.pixel_height
-            << " viewport=" << viewport.width << 'x' << viewport.height
-            << " font_logical_pixel_size=" << font_metrics.metrics.logical_pixel_size
-            << " font_raster_pixel_size=" << font_metrics.metrics.raster_pixel_size
-            << " font_raster_scale=" << font_metrics.metrics.raster_scale
-            << " font_source=" << font_chain.telemetry_source()
-            << " font_families=" << font_chain.telemetry_families()
-            << " line_count=" << layout_diagnostics.line_count
-            << " content_runs=" << telemetry.content_runs
-            << " component_count=" << application.components().component_count()
-            << " prop_updates=" << telemetry.prop_updates
-            << " activations=" << telemetry.activations
-            << " layout_passes=" << layout_diagnostics.layout_passes
-            << " scene_rebuilds=" << scene.rebuilds
-            << " submits=" << renderer_counters.frame_submissions
-            << " idle_waits=" << loop_counters.idle_waits
-            << " exit_code=0\n";
-        return smoke_mode
-                && (smoke_stage != 3 || telemetry.content_runs != 1
-                    || telemetry.prop_updates != 21 || telemetry.activations != 3)
-            ? 6
-            : 0;
+        std::cout << "gpu_driver=" << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
+                  << " display_scale=" << platform.display_scale() << " pixel_density=" << window_metrics.pixel_density
+                  << " window_size=" << window_metrics.coordinate_width << 'x' << window_metrics.coordinate_height
+                  << " pixel_size=" << window_metrics.pixel_width << 'x' << window_metrics.pixel_height
+                  << " viewport=" << viewport.width << 'x' << viewport.height
+                  << " font_logical_pixel_size=" << font_metrics.metrics.logical_pixel_size
+                  << " font_raster_pixel_size=" << font_metrics.metrics.raster_pixel_size
+                  << " font_raster_scale=" << font_metrics.metrics.raster_scale
+                  << " font_source=" << font_chain.telemetry_source()
+                  << " font_families=" << font_chain.telemetry_families()
+                  << " line_count=" << layout_diagnostics.line_count << " content_runs=" << telemetry.content_runs
+                  << " component_count=" << application.components().component_count()
+                  << " prop_updates=" << telemetry.prop_updates << " activations=" << telemetry.activations
+                  << " layout_passes=" << layout_diagnostics.layout_passes << " scene_rebuilds=" << scene.rebuilds
+                  << " submits=" << renderer_counters.frame_submissions << " idle_waits=" << loop_counters.idle_waits
+                  << " exit_code=0\n";
+        return smoke_mode && (smoke_stage != 3 || telemetry.content_runs != 1 || telemetry.prop_updates != 21 ||
+                              telemetry.activations != 3)
+                   ? 6
+                   : 0;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';
         return 7;

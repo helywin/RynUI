@@ -42,9 +42,7 @@ struct FocusManagerDiagnostics final {
 
 class FocusManager final {
 public:
-    explicit FocusManager(
-        InteractionRegistry& registry,
-        runtime::FrameRequestState* frames = nullptr) noexcept;
+    explicit FocusManager(InteractionRegistry& registry, runtime::FrameRequestState* frames = nullptr) noexcept;
 
     void reserve(std::size_t focus_capacity);
     void dispatch(const KeyboardInputEvent& event);
@@ -66,11 +64,8 @@ private:
     void end_operation();
     void rebuild_focus_order();
     [[nodiscard]] bool can_focus(InteractionId target) const;
-    [[nodiscard]] std::optional<InteractionId> focus_candidate(
-        std::optional<InteractionId> target) const;
-    [[nodiscard]] bool set_focus_internal(
-        std::optional<InteractionId> target,
-        FocusModality modality);
+    [[nodiscard]] std::optional<InteractionId> focus_candidate(std::optional<InteractionId> target) const;
+    [[nodiscard]] bool set_focus_internal(std::optional<InteractionId> target, FocusModality modality);
     [[nodiscard]] bool clear_focus_internal(bool stale);
     [[nodiscard]] bool cancel_keyboard_press_internal(bool notify);
     void sanitize_internal();
@@ -78,8 +73,7 @@ private:
     void activate(InteractionId target);
     void notify_state(InteractionId target, FocusPresentation presentation);
     void request_frame() noexcept;
-    [[nodiscard]] FocusPresentation presentation_for(
-        InteractionId target) const noexcept;
+    [[nodiscard]] FocusPresentation presentation_for(InteractionId target) const noexcept;
 
     InteractionRegistry* registry_;
     runtime::FrameRequestState* frames_;
@@ -91,7 +85,12 @@ private:
     FocusManagerDiagnostics diagnostics_;
     bool dispatching_{false};
     bool frame_requested_during_dispatch_{false};
-    struct FocusRequest { std::optional<InteractionId> target; FocusModality modality; };
+
+    struct FocusRequest {
+        std::optional<InteractionId> target;
+        FocusModality modality;
+    };
+
     std::optional<FocusRequest> pending_focus_;
     bool flushing_focus_{};
 };

@@ -36,8 +36,7 @@ struct SelectionSnapshot final {
 
 // Selection controls borrow one window's retained resources and share
 // pointer/focus lifecycle. Their checked and visual policies stay private.
-class SelectionComponentHost final : private WindowComponentParticipant,
-    private animation::AnimationTargetSink {
+class SelectionComponentHost final : private WindowComponentParticipant, private animation::AnimationTargetSink {
 public:
     explicit SelectionComponentHost(WindowComponentServices& services);
     ~SelectionComponentHost();
@@ -45,7 +44,11 @@ public:
     SelectionComponentHost& operator=(const SelectionComponentHost&) = delete;
 
     void mount(const Content& content);
-    [[nodiscard]] std::span<const MountedSelectionComponent> mounted() const noexcept { return mounted_; }
+
+    [[nodiscard]] std::span<const MountedSelectionComponent> mounted() const noexcept {
+        return mounted_;
+    }
+
     [[nodiscard]] SelectionSnapshot snapshot(runtime::ComponentId component) const;
 
 private:
@@ -78,10 +81,9 @@ private:
     void update_group_layout(RadioGroupState&);
     void retarget_handle(SelectionState&);
     void synchronize_spinner(SelectionState&);
-    void apply(animation::AnimationId, animation::AnimationTargetId,
-        const animation::AnimationValue&, animation::AnimationDirtyDomain) override;
-    void completed(animation::AnimationId,
-        animation::AnimationTargetId) override;
+    void apply(animation::AnimationId, animation::AnimationTargetId, const animation::AnimationValue&,
+               animation::AnimationDirtyDomain) override;
+    void completed(animation::AnimationId, animation::AnimationTargetId) override;
     void apply_disabled(runtime::ComponentId, bool);
     void apply_loading(runtime::ComponentId, bool);
     void apply_indeterminate(runtime::ComponentId, bool);

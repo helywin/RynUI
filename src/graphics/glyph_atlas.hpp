@@ -15,8 +15,7 @@ namespace ryn::graphics {
 inline constexpr std::uint32_t glyph_atlas_default_extent = 1024;
 inline constexpr std::uint32_t glyph_atlas_default_max_pages = 8;
 inline constexpr std::uint32_t glyph_atlas_padding = 1;
-inline constexpr std::uint32_t invalid_glyph_atlas_page =
-    std::numeric_limits<std::uint32_t>::max();
+inline constexpr std::uint32_t invalid_glyph_atlas_page = std::numeric_limits<std::uint32_t>::max();
 
 enum class GlyphAtlasFormat : std::uint8_t {
     r8_unorm,
@@ -126,22 +125,14 @@ public:
     GlyphAtlas& operator=(GlyphAtlas&&) = delete;
     ~GlyphAtlas();
 
-    [[nodiscard]] GlyphAtlasResult ensure(
-        font::FontRuntime& fonts,
-        font::FontIdentity font,
-        std::uint32_t glyph_id,
-        font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
+    [[nodiscard]] GlyphAtlasResult ensure(font::FontRuntime& fonts, font::FontIdentity font, std::uint32_t glyph_id,
+                                          font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
 
-    [[nodiscard]] GlyphAtlasResult ensure(
-        font::FontRuntime& fonts,
-        font::FontIdentity font,
-        std::uint32_t glyph_id,
-        font::GlyphRasterPhase phase,
-        font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
+    [[nodiscard]] GlyphAtlasResult ensure(font::FontRuntime& fonts, font::FontIdentity font, std::uint32_t glyph_id,
+                                          font::GlyphRasterPhase phase,
+                                          font::GlyphRasterMode mode = font::GlyphRasterMode::grayscale);
 
-    [[nodiscard]] GlyphAtlasResult insert(
-        GlyphAtlasKey key,
-        const font::GlyphBitmap& glyph);
+    [[nodiscard]] GlyphAtlasResult insert(GlyphAtlasKey key, const font::GlyphBitmap& glyph);
 
     [[nodiscard]] const GlyphAtlasConfig& config() const noexcept;
     [[nodiscard]] std::size_t page_count() const noexcept;
@@ -154,14 +145,13 @@ public:
 
 private:
     struct Page;
+
     struct KeyHash final {
         [[nodiscard]] std::size_t operator()(const GlyphAtlasKey& key) const noexcept;
     };
 
     [[nodiscard]] const GlyphAtlasEntry* find(GlyphAtlasKey key) const noexcept;
-    [[nodiscard]] GlyphAtlasResult allocate(
-        GlyphAtlasKey key,
-        const font::GlyphBitmap& glyph);
+    [[nodiscard]] GlyphAtlasResult allocate(GlyphAtlasKey key, const font::GlyphBitmap& glyph);
 
     GlyphAtlasConfig config_;
     std::vector<Page> pages_;

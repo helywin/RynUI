@@ -49,11 +49,8 @@ struct LoadedDefaultFontFace {
 // CSS/DirectWrite scale and `italic` requests a slanted face. A weight or slant
 // the platform cannot provide falls back to the regular face of the same chain
 // and is recorded in `DefaultFontChainResult::diagnostic_fallbacks`.
-using DefaultUiFontResolver = std::function<std::vector<font::FontIdentity>(
-    SystemFontFamily,
-    std::uint32_t,
-    bool,
-    std::uint32_t)>;
+using DefaultUiFontResolver =
+    std::function<std::vector<font::FontIdentity>(SystemFontFamily, std::uint32_t, bool, std::uint32_t)>;
 
 struct DefaultFontChainResult {
     std::vector<LoadedDefaultFontFace> faces;
@@ -79,22 +76,17 @@ struct DefaultFontChainResult {
     [[nodiscard]] std::string telemetry_rendering() const;
 };
 
-[[nodiscard]] DefaultFontChainResult load_default_ui_font_chain(
-    font::FontRuntime& fonts,
-    const DefaultFontChainRequest& request);
+[[nodiscard]] DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts,
+                                                                const DefaultFontChainRequest& request);
 
 // Resolves one platform face for a family, weight (CSS/DirectWrite scale) and
 // slant. Returns `std::nullopt` when the platform has no such face, which lets
 // the resolver fall back to the regular face explicitly instead of silently
 // returning something else.
-[[nodiscard]] std::optional<LoadedDefaultFontFace> resolve_platform_face(
-    SystemFontFamily family,
-    std::uint32_t weight,
-    bool italic);
+[[nodiscard]] std::optional<LoadedDefaultFontFace> resolve_platform_face(SystemFontFamily family, std::uint32_t weight,
+                                                                         bool italic);
 
-[[nodiscard]] DefaultUiFontResolver make_default_ui_font_resolver(
-    font::FontRuntime& fonts,
-    DefaultFontChainResult& initial_chain,
-    float display_scale);
+[[nodiscard]] DefaultUiFontResolver
+make_default_ui_font_resolver(font::FontRuntime& fonts, DefaultFontChainResult& initial_chain, float display_scale);
 
 } // namespace ryn::detail

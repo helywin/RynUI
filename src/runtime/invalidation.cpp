@@ -9,15 +9,16 @@
 
 namespace ryn::runtime {
 
-DirtyQueues::DirtyQueues(NodeStore& nodes, FrameRequestState* frames) noexcept
-    : nodes_(&nodes), frames_(frames) {}
+DirtyQueues::DirtyQueues(NodeStore& nodes, FrameRequestState* frames) noexcept : nodes_(&nodes), frames_(frames) {}
 
 void DirtyQueues::invalidate(NodeId id, DirtyFlags flags) {
     invalidate_impl(id, flags, true);
 }
+
 void DirtyQueues::invalidate_in_frame(NodeId id, DirtyFlags flags) {
     invalidate_impl(id, flags, false);
 }
+
 void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame) {
     static_cast<void>(nodes_->require(id));
     if (request_frame && flags != DirtyFlags::None && frames_ != nullptr) {
@@ -44,21 +45,12 @@ void DirtyQueues::invalidate_impl(NodeId id, DirtyFlags flags, bool request_fram
     if (has_any(flags, DirtyFlags::Animation)) {
         enqueue_unique(animation_nodes_, id, Domain::animation);
     }
-    if (has_any(
-            flags,
-            DirtyFlags::HitTest
-                | DirtyFlags::Structure
-                | DirtyFlags::Measure
-                | DirtyFlags::Layout
-                | DirtyFlags::Placement)) {
-        const auto hit_test_root = has_any(
-            flags,
-            DirtyFlags::Structure
-                | DirtyFlags::Measure
-                | DirtyFlags::Layout
-                | DirtyFlags::Placement)
-            ? layout_root_for(id)
-            : id;
+    if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure | DirtyFlags::Layout |
+                           DirtyFlags::Placement)) {
+        const auto hit_test_root =
+            has_any(flags, DirtyFlags::Structure | DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Placement)
+                ? layout_root_for(id)
+                : id;
         enqueue_unique(hit_test_nodes_, hit_test_root, Domain::hit_test);
     }
 }
@@ -89,8 +81,8 @@ void DirtyQueues::invalidate_subtree(NodeId root, DirtyFlags flags) {
     if (has_any(flags, DirtyFlags::Animation)) {
         enqueue_unique(animation_nodes_, root, Domain::animation);
     }
-    if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure |
-                           DirtyFlags::Layout | DirtyFlags::Placement)) {
+    if (has_any(flags, DirtyFlags::HitTest | DirtyFlags::Structure | DirtyFlags::Measure | DirtyFlags::Layout |
+                           DirtyFlags::Placement)) {
         enqueue_unique(hit_test_nodes_, root, Domain::hit_test);
     }
 }
@@ -157,8 +149,7 @@ NodeId DirtyQueues::layout_root_for(NodeId id) const {
     return root;
 }
 
-void DirtyQueues::enqueue_unique(
-    std::vector<NodeId>& queue, NodeId id, Domain domain) {
+void DirtyQueues::enqueue_unique(std::vector<NodeId>& queue, NodeId id, Domain domain) {
     const auto domain_index = static_cast<std::size_t>(domain);
     auto& stamps = stamps_[domain_index];
     constexpr std::size_t small_queue_limit = 256;
@@ -175,8 +166,7 @@ void DirtyQueues::enqueue_unique(
         return;
     }
     if (stamps.empty()) {
-        stamps.resize(std::max(
-            static_cast<std::size_t>(id.index) + 1, nodes_->slot_capacity()));
+        stamps.resize(std::max(static_cast<std::size_t>(id.index) + 1, nodes_->slot_capacity()));
         for (const NodeId queued : queue) {
             if (nodes_->find(queued) != nullptr) {
                 stamps[queued.index] = {queued.generation, epoch_};
@@ -201,8 +191,7 @@ void DirtyQueues::enqueue_unique(
     stamp = {id.generation, epoch_};
 }
 
-const std::vector<NodeId>& DirtyQueues::live_queue(
-    std::vector<NodeId>& queue, Domain domain) const noexcept {
+const std::vector<NodeId>& DirtyQueues::live_queue(std::vector<NodeId>& queue, Domain domain) const noexcept {
     const auto domain_index = static_cast<std::size_t>(domain);
     const auto revision = nodes_->topology_revision();
     if (checked_topology_revisions_[domain_index] != revision) {
@@ -252,8 +241,7 @@ bool NodePropertyWriter::set_translation(NodeId id, Point translation) {
 }
 
 bool NodePropertyWriter::set_size(NodeId id, Size size) {
-    if (size.width < 0.0F || size.height < 0.0F
-            || std::isnan(size.width) || std::isnan(size.height)) {
+    if (size.width < 0.0F || size.height < 0.0F || std::isnan(size.width) || std::isnan(size.height)) {
         throw std::invalid_argument("Node size must be non-negative");
     }
     auto& node = nodes_->require(id);

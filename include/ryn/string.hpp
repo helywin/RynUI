@@ -63,18 +63,22 @@ private:
 class String final {
 public:
     String() : value_(std::size_t{0}, u8'\0') {}
+
     String(const String&) = default;
     String& operator=(const String&) = default;
+
     // A Debug standard library may allocate iterator bookkeeping while moving
     // a string. Prepare a throwing empty value, then transfer storage by swap.
-    String(String&& other) : String() { value_.swap(other.value_); }
+    String(String&& other) : String() {
+        value_.swap(other.value_);
+    }
+
     String& operator=(String&& other) noexcept {
         value_.swap(other.value_);
         return *this;
     }
 
-    template <std::size_t N>
-    String(const char8_t (&literal)[N]) : value_(copy_literal(literal, N)) {
+    template <std::size_t N> String(const char8_t (&literal)[N]) : value_(copy_literal(literal, N)) {
         static_assert(N > 0);
     }
 
@@ -111,9 +115,7 @@ private:
         value_.swap(value);
     }
 
-    [[nodiscard]] static std::u8string copy_literal(
-        const char8_t* literal,
-        std::size_t extent);
+    [[nodiscard]] static std::u8string copy_literal(const char8_t* literal, std::size_t extent);
 
     std::u8string value_;
 };

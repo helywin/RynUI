@@ -48,13 +48,9 @@ public:
 private:
     friend class PointerRouter;
 
-    PointerDispatchContext(
-        PointerRouter& router,
-        const PointerInputEvent& event,
-        PointerEventKind kind,
-        InteractionId dispatch_target,
-        std::optional<InteractionId> actual_hit_target,
-        std::optional<InteractionId> press_origin) noexcept;
+    PointerDispatchContext(PointerRouter& router, const PointerInputEvent& event, PointerEventKind kind,
+                           InteractionId dispatch_target, std::optional<InteractionId> actual_hit_target,
+                           std::optional<InteractionId> press_origin) noexcept;
 
     PointerRouter* router_;
     const PointerInputEvent* event_;
@@ -93,11 +89,8 @@ struct PointerRouterDiagnostics final {
 
 class PointerRouter final {
 public:
-    PointerRouter(
-        InteractionRegistry& registry,
-        HitTestSnapshot& hit_test,
-        runtime::FrameRequestState* frames = nullptr,
-        FocusManager* focus = nullptr) noexcept;
+    PointerRouter(InteractionRegistry& registry, HitTestSnapshot& hit_test,
+                  runtime::FrameRequestState* frames = nullptr, FocusManager* focus = nullptr) noexcept;
 
     void reserve(std::size_t pointer_capacity, std::size_t route_capacity);
     void dispatch(const PointerInputEvent& event);
@@ -105,8 +98,7 @@ public:
     void cancel_interaction(InteractionId interaction);
     void cancel_pointer_interaction(InteractionId interaction);
 
-    [[nodiscard]] std::optional<PointerStateSnapshot> state(
-        PointerIdentity pointer) const;
+    [[nodiscard]] std::optional<PointerStateSnapshot> state(PointerIdentity pointer) const;
     [[nodiscard]] std::size_t pointer_count() const;
     [[nodiscard]] const PointerRouterDiagnostics& diagnostics() const noexcept;
 
@@ -125,45 +117,23 @@ private:
     [[nodiscard]] PointerState* find_state(PointerIdentity pointer) noexcept;
     [[nodiscard]] const PointerState* find_state(PointerIdentity pointer) const noexcept;
     [[nodiscard]] PointerState& state_for(PointerIdentity pointer);
-    [[nodiscard]] bool build_route(
-        InteractionId target,
-        std::vector<InteractionId>& route);
-    void update_hover(
-        PointerState& state,
-        std::optional<InteractionId> actual_target,
-        const PointerInputEvent& event);
+    [[nodiscard]] bool build_route(InteractionId target, std::vector<InteractionId>& route);
+    void update_hover(PointerState& state, std::optional<InteractionId> actual_target, const PointerInputEvent& event);
     void clear_hover(PointerState& state, const PointerInputEvent& event);
-    void dispatch_route(
-        PointerState& state,
-        const PointerInputEvent& event,
-        PointerEventKind kind,
-        InteractionId target,
-        std::optional<InteractionId> actual_target);
-    void invoke_direct(
-        PointerState& state,
-        const PointerInputEvent& event,
-        PointerEventKind kind,
-        InteractionId target,
-        std::optional<InteractionId> actual_target);
-    bool invoke_handler(
-        PointerState& state,
-        PointerDispatchContext& context,
-        InteractionId current,
-        PointerPropagationPhase phase);
-    void sanitize_before_dispatch(
-        PointerState& state,
-        const PointerInputEvent& event);
+    void dispatch_route(PointerState& state, const PointerInputEvent& event, PointerEventKind kind,
+                        InteractionId target, std::optional<InteractionId> actual_target);
+    void invoke_direct(PointerState& state, const PointerInputEvent& event, PointerEventKind kind, InteractionId target,
+                       std::optional<InteractionId> actual_target);
+    bool invoke_handler(PointerState& state, PointerDispatchContext& context, InteractionId current,
+                        PointerPropagationPhase phase);
+    void sanitize_before_dispatch(PointerState& state, const PointerInputEvent& event);
     void prune_invalid_state(PointerState& state);
     void clear_primary_state(PointerState& state, bool count_cancel);
     void abort_pointer(PointerState& state) noexcept;
-    void cancel_interaction_internal(
-        InteractionId interaction,
-        bool cancel_focus);
+    void cancel_interaction_internal(InteractionId interaction, bool cancel_focus);
     void request_frame() noexcept;
-    [[nodiscard]] bool request_capture(
-        const PointerDispatchContext& context);
-    [[nodiscard]] bool release_capture(
-        const PointerDispatchContext& context);
+    [[nodiscard]] bool request_capture(const PointerDispatchContext& context);
+    [[nodiscard]] bool release_capture(const PointerDispatchContext& context);
     [[nodiscard]] static PointerEventKind event_kind(PointerAction action);
 
     InteractionRegistry* registry_;

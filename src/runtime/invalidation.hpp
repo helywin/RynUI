@@ -27,13 +27,11 @@ enum class DirtyFlags : std::uint32_t {
 };
 
 constexpr DirtyFlags operator|(DirtyFlags left, DirtyFlags right) noexcept {
-    return static_cast<DirtyFlags>(
-        static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
+    return static_cast<DirtyFlags>(static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
 }
 
 constexpr DirtyFlags operator&(DirtyFlags left, DirtyFlags right) noexcept {
-    return static_cast<DirtyFlags>(
-        static_cast<std::uint32_t>(left) & static_cast<std::uint32_t>(right));
+    return static_cast<DirtyFlags>(static_cast<std::uint32_t>(left) & static_cast<std::uint32_t>(right));
 }
 
 constexpr bool has_any(DirtyFlags value, DirtyFlags mask) noexcept {
@@ -57,20 +55,14 @@ enum class NodeProperty {
         return DirtyFlags::Transform | DirtyFlags::HitTest;
     case NodeProperty::size:
     case NodeProperty::padding:
-        return DirtyFlags::Measure
-            | DirtyFlags::Layout
-            | DirtyFlags::Geometry
-            | DirtyFlags::HitTest;
+        return DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry | DirtyFlags::HitTest;
     }
     return DirtyFlags::None;
 }
 
-[[nodiscard]] constexpr DirtyFlags dirty_flags_for_theme(
-    theme_runtime::DirtyPhase phase) noexcept {
+[[nodiscard]] constexpr DirtyFlags dirty_flags_for_theme(theme_runtime::DirtyPhase phase) noexcept {
     DirtyFlags flags = DirtyFlags::None;
-    if (theme_runtime::has_any(
-            phase,
-            theme_runtime::DirtyPhase::paint_material)) {
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::paint_material)) {
         flags = flags | DirtyFlags::Material;
     }
     if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::geometry)) {
@@ -79,9 +71,7 @@ enum class NodeProperty {
     if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::text)) {
         flags = flags | DirtyFlags::Text;
     }
-    if (theme_runtime::has_any(
-            phase,
-            theme_runtime::DirtyPhase::measure_layout)) {
+    if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::measure_layout)) {
         flags = flags | DirtyFlags::Measure | DirtyFlags::Layout;
     }
     if (theme_runtime::has_any(phase, theme_runtime::DirtyPhase::hit_test)) {
@@ -125,6 +115,7 @@ private:
         animation,
         count,
     };
+
     struct QueueStamp final {
         std::uint32_t generation{};
         std::uint64_t epoch{};
@@ -133,8 +124,7 @@ private:
     void invalidate_impl(NodeId id, DirtyFlags flags, bool request_frame);
     [[nodiscard]] NodeId layout_root_for(NodeId id) const;
     void enqueue_unique(std::vector<NodeId>& queue, NodeId id, Domain domain);
-    [[nodiscard]] const std::vector<NodeId>& live_queue(
-        std::vector<NodeId>& queue, Domain domain) const noexcept;
+    [[nodiscard]] const std::vector<NodeId>& live_queue(std::vector<NodeId>& queue, Domain domain) const noexcept;
 
     NodeStore* nodes_;
     FrameRequestState* frames_;
@@ -147,8 +137,7 @@ private:
     mutable std::vector<NodeId> text_nodes_;
     mutable std::vector<NodeId> animation_nodes_;
     std::array<std::vector<QueueStamp>, static_cast<std::size_t>(Domain::count)> stamps_;
-    mutable std::array<std::uint64_t, static_cast<std::size_t>(Domain::count)>
-        checked_topology_revisions_{};
+    mutable std::array<std::uint64_t, static_cast<std::size_t>(Domain::count)> checked_topology_revisions_{};
     std::uint64_t epoch_{1};
 };
 

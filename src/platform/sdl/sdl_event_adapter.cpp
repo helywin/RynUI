@@ -32,22 +32,30 @@ void append_if_valid(PlatformEvents& result, PlatformInputEvent event) {
 }
 
 std::string_view bounded_text(const char* text) {
-    if(!text) throw std::invalid_argument("Null text event payload");
+    if (!text) {
+        throw std::invalid_argument("Null text event payload");
+    }
     std::size_t bytes = 0;
-    while(bytes <= input::text_event_max_bytes && text[bytes] != '\0') ++bytes;
-    if(bytes > input::text_event_max_bytes) throw std::length_error("Text event exceeds payload limit");
+    while (bytes <= input::text_event_max_bytes && text[bytes] != '\0') {
+        ++bytes;
+    }
+    if (bytes > input::text_event_max_bytes) {
+        throw std::length_error("Text event exceeds payload limit");
+    }
     return {text, bytes};
 }
 
 String owned_text(const char* text) {
     auto parsed = String::from_utf8(bounded_text(text));
-    if(!parsed) throw std::invalid_argument("Text event contains invalid UTF-8");
+    if (!parsed) {
+        throw std::invalid_argument("Text event contains invalid UTF-8");
+    }
     return std::move(parsed).value();
 }
 
 bool text_window_matches(const PlatformEvents& result, Uint32 window, Uint64 timestamp) noexcept {
-    return (result.window_id == 0 || result.window_id == window)
-        && (timestamp == 0 || timestamp >= result.text_started_at);
+    return (result.window_id == 0 || result.window_id == window) &&
+           (timestamp == 0 || timestamp >= result.text_started_at);
 }
 
 std::optional<Key> map_key(SDL_Keycode key) noexcept {
@@ -60,23 +68,40 @@ std::optional<Key> map_key(SDL_Keycode key) noexcept {
         return Key::enter;
     case SDLK_SPACE:
         return Key::space;
-    case SDLK_LEFT: return Key::left;
-    case SDLK_UP: return Key::up;
-    case SDLK_DOWN: return Key::down;
-    case SDLK_PAGEUP: return Key::page_up;
-    case SDLK_PAGEDOWN: return Key::page_down;
-    case SDLK_RIGHT: return Key::right;
-    case SDLK_HOME: return Key::home;
-    case SDLK_END: return Key::end;
-    case SDLK_BACKSPACE: return Key::backspace;
-    case SDLK_DELETE: return Key::delete_forward;
-    case SDLK_ESCAPE: return Key::escape;
-    case SDLK_A: return Key::a;
-    case SDLK_C: return Key::c;
-    case SDLK_X: return Key::x;
-    case SDLK_V: return Key::v;
-    case SDLK_Z: return Key::z;
-    case SDLK_Y: return Key::y;
+    case SDLK_LEFT:
+        return Key::left;
+    case SDLK_UP:
+        return Key::up;
+    case SDLK_DOWN:
+        return Key::down;
+    case SDLK_PAGEUP:
+        return Key::page_up;
+    case SDLK_PAGEDOWN:
+        return Key::page_down;
+    case SDLK_RIGHT:
+        return Key::right;
+    case SDLK_HOME:
+        return Key::home;
+    case SDLK_END:
+        return Key::end;
+    case SDLK_BACKSPACE:
+        return Key::backspace;
+    case SDLK_DELETE:
+        return Key::delete_forward;
+    case SDLK_ESCAPE:
+        return Key::escape;
+    case SDLK_A:
+        return Key::a;
+    case SDLK_C:
+        return Key::c;
+    case SDLK_X:
+        return Key::x;
+    case SDLK_V:
+        return Key::v;
+    case SDLK_Z:
+        return Key::z;
+    case SDLK_Y:
+        return Key::y;
     default:
         return std::nullopt;
     }
@@ -115,17 +140,14 @@ std::optional<PointerAction> map_touch_action(Uint32 type) noexcept {
 }
 
 PointerButton button_for(PointerAction action) noexcept {
-    return action == PointerAction::down || action == PointerAction::up
-        ? PointerButton::primary
-        : PointerButton::none;
+    return action == PointerAction::down || action == PointerAction::up ? PointerButton::primary : PointerButton::none;
 }
 
 bool is_compatibility_mouse(const SDL_Event& event) noexcept {
     if (event.type == SDL_EVENT_MOUSE_MOTION) {
         return event.motion.which == SDL_TOUCH_MOUSEID;
     }
-    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN
-            || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
         return event.button.which == SDL_TOUCH_MOUSEID;
     }
     return false;
@@ -135,8 +157,7 @@ bool is_pen_mouse(const SDL_Event& event) noexcept {
     if (event.type == SDL_EVENT_MOUSE_MOTION) {
         return event.motion.which == SDL_PEN_MOUSEID;
     }
-    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN
-            || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
         return event.button.which == SDL_PEN_MOUSEID;
     }
     return false;
@@ -150,8 +171,7 @@ int rounded_logical_extent(float value) noexcept {
     return std::max(1, static_cast<int>(std::lround(value)));
 }
 
-std::optional<float> wheel_direction_sign(
-    SDL_MouseWheelDirection direction) noexcept {
+std::optional<float> wheel_direction_sign(SDL_MouseWheelDirection direction) noexcept {
     switch (direction) {
     case SDL_MOUSEWHEEL_NORMAL:
         return 1.0F;
@@ -162,28 +182,22 @@ std::optional<float> wheel_direction_sign(
     }
 }
 
-void append_logical_resize(
-    PlatformEvents& result,
-    const SdlWindowMetrics& metrics) {
+void append_logical_resize(PlatformEvents& result, const SdlWindowMetrics& metrics) {
     const float width = metrics.logical_width();
     const float height = metrics.logical_height();
     if (width > 0.0F && height > 0.0F) {
         append_if_valid(result, WindowInputEvent{
-            WindowInputAction::resized,
-            rounded_logical_extent(width),
-            rounded_logical_extent(height),
-        });
+                                    WindowInputAction::resized,
+                                    rounded_logical_extent(width),
+                                    rounded_logical_extent(height),
+                                });
     }
 }
 
 } // namespace
 
-static void merge_event(
-    PlatformEvents& result,
-    const SDL_Event& event,
-    SdlWindowMetrics& metrics) {
-    if (event.type == SDL_EVENT_QUIT
-            || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+static void merge_event(PlatformEvents& result, const SDL_Event& event, SdlWindowMetrics& metrics) {
+    if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         result.quit_requested = true;
         return;
     }
@@ -203,49 +217,63 @@ static void merge_event(
 
     switch (event.type) {
     case SDL_EVENT_CLIPBOARD_UPDATE:
-        if(event.clipboard.num_mime_types < 0 || event.clipboard.num_mime_types > 256)
+        if (event.clipboard.num_mime_types < 0 || event.clipboard.num_mime_types > 256) {
             throw std::invalid_argument("Invalid clipboard format count");
-        result.input.append(input::ClipboardChanged{event.clipboard.owner,
-            static_cast<std::uint32_t>(event.clipboard.num_mime_types)});
+        }
+        result.input.append(
+            input::ClipboardChanged{event.clipboard.owner, static_cast<std::uint32_t>(event.clipboard.num_mime_types)});
         return;
     case SDL_EVENT_TEXT_INPUT: {
-        if(!text_window_matches(result, event.text.windowID, event.text.timestamp)) return;
+        if (!text_window_matches(result, event.text.windowID, event.text.timestamp)) {
+            return;
+        }
         result.input.append(input::TextCommitted{owned_text(event.text.text), result.text_session});
         return;
     }
     case SDL_EVENT_TEXT_EDITING: {
-        if(!text_window_matches(result, event.edit.windowID, event.edit.timestamp)) return;
-        if(event.edit.start < -1 || event.edit.length < -1)
+        if (!text_window_matches(result, event.edit.windowID, event.edit.timestamp)) {
+            return;
+        }
+        if (event.edit.start < -1 || event.edit.length < -1) {
             throw std::invalid_argument("Invalid composition character range");
+        }
         const auto range = event.edit.start == -1 || event.edit.length == -1
-            ? input::TextScalarRange{0, 0, false}
-            : input::TextScalarRange{static_cast<std::size_t>(event.edit.start),
-                static_cast<std::size_t>(event.edit.length), true};
+                               ? input::TextScalarRange{0, 0, false}
+                               : input::TextScalarRange{static_cast<std::size_t>(event.edit.start),
+                                                        static_cast<std::size_t>(event.edit.length), true};
         result.input.append(input::CompositionChanged{owned_text(event.edit.text), range, result.text_session});
         return;
     }
     case SDL_EVENT_TEXT_EDITING_CANDIDATES: {
-        if(!text_window_matches(result, event.edit_candidates.windowID, event.edit_candidates.timestamp)) return;
+        if (!text_window_matches(result, event.edit_candidates.windowID, event.edit_candidates.timestamp)) {
+            return;
+        }
         const auto& source = event.edit_candidates;
-        if(source.num_candidates < 0 || source.num_candidates > static_cast<Sint32>(input::text_event_max_candidates)
-            || (source.num_candidates != 0 && !source.candidates)
-            || source.selected_candidate < -1 || source.selected_candidate >= source.num_candidates)
+        if (source.num_candidates < 0 ||
+            source.num_candidates > static_cast<Sint32>(input::text_event_max_candidates) ||
+            (source.num_candidates != 0 && !source.candidates) || source.selected_candidate < -1 ||
+            source.selected_candidate >= source.num_candidates) {
             throw std::invalid_argument("Invalid candidate snapshot");
+        }
         std::size_t bytes = 0;
-        for(Sint32 index = 0; index < source.num_candidates; ++index) {
+        for (Sint32 index = 0; index < source.num_candidates; ++index) {
             const auto size = bounded_text(source.candidates[index]).size();
-            if(size > input::text_event_max_bytes - bytes)
+            if (size > input::text_event_max_bytes - bytes) {
                 throw std::length_error("Candidate snapshot exceeds payload limit");
+            }
             bytes += size;
         }
         input::CandidatesChanged target;
         target.session = result.text_session;
-        target.orientation = source.horizontal ? input::CandidateOrientation::horizontal
-                                               : input::CandidateOrientation::vertical;
-        if(source.selected_candidate >= 0) target.selected = static_cast<std::size_t>(source.selected_candidate);
+        target.orientation =
+            source.horizontal ? input::CandidateOrientation::horizontal : input::CandidateOrientation::vertical;
+        if (source.selected_candidate >= 0) {
+            target.selected = static_cast<std::size_t>(source.selected_candidate);
+        }
         target.candidates.reserve(static_cast<std::size_t>(source.num_candidates));
-        for(Sint32 index = 0; index < source.num_candidates; ++index)
+        for (Sint32 index = 0; index < source.num_candidates; ++index) {
             target.candidates.push_back(owned_text(source.candidates[index]));
+        }
         result.input.append(std::move(target));
         return;
     }
@@ -253,37 +281,35 @@ static void merge_event(
         const auto direction = wheel_direction_sign(event.wheel.direction);
         if (direction.has_value()) {
             append_if_valid(result, ScrollInputEvent{
-                event.wheel.x * *direction,
-                event.wheel.y * *direction,
-                to_logical_coordinate(event.wheel.mouse_x, metrics),
-                to_logical_coordinate(event.wheel.mouse_y, metrics),
-            });
+                                        event.wheel.x * *direction,
+                                        event.wheel.y * *direction,
+                                        to_logical_coordinate(event.wheel.mouse_x, metrics),
+                                        to_logical_coordinate(event.wheel.mouse_y, metrics),
+                                    });
         }
         return;
     }
     case SDL_EVENT_MOUSE_MOTION:
         append_if_valid(result, PointerInputEvent{
-            PointerIdentity::mouse(),
-            PointerAction::move,
-            PointerButton::none,
-            to_logical_coordinate(event.motion.x, metrics),
-            to_logical_coordinate(event.motion.y, metrics),
-        });
+                                    PointerIdentity::mouse(),
+                                    PointerAction::move,
+                                    PointerButton::none,
+                                    to_logical_coordinate(event.motion.x, metrics),
+                                    to_logical_coordinate(event.motion.y, metrics),
+                                });
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
         if (event.button.button == SDL_BUTTON_LEFT) {
-            const auto action = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN
-                ? PointerAction::down
-                : PointerAction::up;
+            const auto action = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? PointerAction::down : PointerAction::up;
             append_if_valid(result, PointerInputEvent{
-                PointerIdentity::mouse(),
-                action,
-                PointerButton::primary,
-                to_logical_coordinate(event.button.x, metrics),
-                to_logical_coordinate(event.button.y, metrics),
-                event.button.clicks,
-            });
+                                        PointerIdentity::mouse(),
+                                        action,
+                                        PointerButton::primary,
+                                        to_logical_coordinate(event.button.x, metrics),
+                                        to_logical_coordinate(event.button.y, metrics),
+                                        event.button.clicks,
+                                    });
         }
         return;
     case SDL_EVENT_FINGER_DOWN:
@@ -291,16 +317,14 @@ static void merge_event(
     case SDL_EVENT_FINGER_MOTION:
     case SDL_EVENT_FINGER_CANCELED: {
         const auto action = map_touch_action(event.type);
-        if (action.has_value()
-                && metrics.logical_width() > 0.0F
-                && metrics.logical_height() > 0.0F) {
+        if (action.has_value() && metrics.logical_width() > 0.0F && metrics.logical_height() > 0.0F) {
             append_if_valid(result, PointerInputEvent{
-                PointerIdentity::touch(event.tfinger.touchID, event.tfinger.fingerID),
-                *action,
-                button_for(*action),
-                event.tfinger.x * metrics.logical_width(),
-                event.tfinger.y * metrics.logical_height(),
-            });
+                                        PointerIdentity::touch(event.tfinger.touchID, event.tfinger.fingerID),
+                                        *action,
+                                        button_for(*action),
+                                        event.tfinger.x * metrics.logical_width(),
+                                        event.tfinger.y * metrics.logical_height(),
+                                    });
         }
         return;
     }
@@ -309,16 +333,16 @@ static void merge_event(
         const auto key = map_key(event.key.key);
         if (key.has_value()) {
             append_if_valid(result, KeyboardInputEvent{
-                *key,
-                event.type == SDL_EVENT_KEY_DOWN ? KeyAction::down : KeyAction::up,
-                map_modifiers(event.key.mod),
-                event.key.repeat,
+                                        *key,
+                                        event.type == SDL_EVENT_KEY_DOWN ? KeyAction::down : KeyAction::up,
+                                        map_modifiers(event.key.mod),
+                                        event.key.repeat,
 #ifdef SDL_PLATFORM_MACOS
-                KeyModifier::meta,
+                                        KeyModifier::meta,
 #else
-                KeyModifier::control,
+                                        KeyModifier::control,
 #endif
-            });
+                                    });
         }
         return;
     }
@@ -351,10 +375,13 @@ static void merge_event(
 }
 
 void SdlEventAdapter::merge(PlatformEvents& result, const SDL_Event& event, SdlWindowMetrics& metrics) {
-    try { merge_event(result, event, metrics); }
-    catch(...) {
-        if(event.type == SDL_EVENT_TEXT_INPUT || event.type == SDL_EVENT_TEXT_EDITING
-            || event.type == SDL_EVENT_TEXT_EDITING_CANDIDATES) ++result.rejected_text_events;
+    try {
+        merge_event(result, event, metrics);
+    } catch (...) {
+        if (event.type == SDL_EVENT_TEXT_INPUT || event.type == SDL_EVENT_TEXT_EDITING ||
+            event.type == SDL_EVENT_TEXT_EDITING_CANDIDATES) {
+            ++result.rejected_text_events;
+        }
         throw;
     }
 }

@@ -64,6 +64,7 @@ private:
 };
 
 struct SpaceContentSlot final {};
+
 using SpaceContent = SlotContent<SpaceContentSlot>;
 
 void Space(SpaceProps props, SpaceContent content);

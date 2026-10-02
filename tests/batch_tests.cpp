@@ -15,12 +15,10 @@ void test_same_signal_is_queued_once() {
     ryn::Signal<int> value{0};
     int executions = 0;
     int observed = -1;
-    const auto observer = ryn::detail::observe(
-        ryn::detail::ObserverPhase::binding,
-        [&] {
-            ++executions;
-            observed = value.get();
-        });
+    const auto observer = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        ++executions;
+        observed = value.get();
+    });
 
     const auto epoch_before = ryn::detail::Scheduler::current().epoch();
     ryn::batch([&] {
@@ -32,9 +30,7 @@ void test_same_signal_is_queued_once() {
 
     require(executions == 2, "observer was not deduplicated within batch");
     require(observed == 3, "observer did not see final batch value");
-    require(
-        ryn::detail::Scheduler::current().epoch() == epoch_before + 1,
-        "single batch did not settle in one epoch");
+    require(ryn::detail::Scheduler::current().epoch() == epoch_before + 1, "single batch did not settle in one epoch");
     observer->deactivate();
 }
 
@@ -49,12 +45,10 @@ void test_multiple_signals_stabilize_one_memo() {
 
     int binding_executions = 0;
     int observed_sum = 0;
-    const auto observer = ryn::detail::observe(
-        ryn::detail::ObserverPhase::binding,
-        [&] {
-            ++binding_executions;
-            observed_sum = sum.get();
-        });
+    const auto observer = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        ++binding_executions;
+        observed_sum = sum.get();
+    });
 
     ryn::batch([&] {
         left.set(10);
@@ -70,12 +64,10 @@ void test_multiple_signals_stabilize_one_memo() {
 void test_nested_batches_flush_at_outer_boundary() {
     ryn::Signal<int> value{0};
     int executions = 0;
-    const auto observer = ryn::detail::observe(
-        ryn::detail::ObserverPhase::binding,
-        [&] {
-            static_cast<void>(value.get());
-            ++executions;
-        });
+    const auto observer = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        static_cast<void>(value.get());
+        ++executions;
+    });
 
     ryn::batch([&] {
         value.set(1);

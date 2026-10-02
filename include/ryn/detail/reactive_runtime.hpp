@@ -87,10 +87,8 @@ private:
     bool flushing_{false};
 };
 
-[[nodiscard]] std::shared_ptr<ObserverNode> observe(
-    ObserverPhase phase,
-    std::function<void()> callback,
-    bool run_immediately = true);
+[[nodiscard]] std::shared_ptr<ObserverNode> observe(ObserverPhase phase, std::function<void()> callback,
+                                                    bool run_immediately = true);
 
 void record_dependency(ReactiveSource& source);
 

@@ -16,8 +16,7 @@ public:
 
     [[nodiscard]] static constexpr AnimationDuration microseconds(rep value) {
         if (value < 0) {
-            throw std::invalid_argument(
-                "animation duration must be non-negative");
+            throw std::invalid_argument("animation duration must be non-negative");
         }
         return AnimationDuration(value);
     }
@@ -28,13 +27,10 @@ public:
         return microseconds_;
     }
 
-    friend constexpr auto operator<=>(
-        AnimationDuration,
-        AnimationDuration) = default;
+    friend constexpr auto operator<=>(AnimationDuration, AnimationDuration) = default;
 
 private:
-    explicit constexpr AnimationDuration(rep value) noexcept
-        : microseconds_(value) {}
+    explicit constexpr AnimationDuration(rep value) noexcept : microseconds_(value) {}
 
     rep microseconds_{0};
 };
@@ -64,12 +60,8 @@ private:
     rep microseconds_{0};
 };
 
-[[nodiscard]] AnimationTime operator+(
-    AnimationTime time,
-    AnimationDuration duration);
-[[nodiscard]] AnimationDuration operator-(
-    AnimationTime later,
-    AnimationTime earlier);
+[[nodiscard]] AnimationTime operator+(AnimationTime time, AnimationDuration duration);
+[[nodiscard]] AnimationDuration operator-(AnimationTime later, AnimationTime earlier);
 
 class AnimationClock {
 public:
@@ -88,9 +80,7 @@ private:
 
 class ControlledAnimationClock final : public AnimationClock {
 public:
-    explicit constexpr ControlledAnimationClock(
-        AnimationTime initial = {}) noexcept
-        : current_(initial) {}
+    explicit constexpr ControlledAnimationClock(AnimationTime initial = {}) noexcept : current_(initial) {}
 
     [[nodiscard]] AnimationTime now() const noexcept override;
     void set(AnimationTime value) noexcept;
@@ -126,15 +116,10 @@ struct AnimationIntervalSample final {
     AnimationIntervalPhase phase{AnimationIntervalPhase::delayed};
     float progress{0.0F};
 
-    friend constexpr bool operator==(
-        AnimationIntervalSample,
-        AnimationIntervalSample) = default;
+    friend constexpr bool operator==(AnimationIntervalSample, AnimationIntervalSample) = default;
 };
 
-[[nodiscard]] AnimationIntervalSample sample_animation_interval(
-    AnimationTime sample_time,
-    AnimationTime start_time,
-    AnimationDuration delay,
-    AnimationDuration duration);
+[[nodiscard]] AnimationIntervalSample sample_animation_interval(AnimationTime sample_time, AnimationTime start_time,
+                                                                AnimationDuration delay, AnimationDuration duration);
 
 } // namespace ryn::animation

@@ -56,9 +56,7 @@ public:
         return handle(1);
     }
 
-    ryn::detail::GlyphGpuTextureHandle create_glyph_texture(
-        std::uint32_t width,
-        std::uint32_t height) override {
+    ryn::detail::GlyphGpuTextureHandle create_glyph_texture(std::uint32_t width, std::uint32_t height) override {
         events.emplace_back("create_texture");
         require(width == 10 && height == 10, "atlas texture dimensions differ");
         if (failure_ == Failure::texture) {
@@ -79,24 +77,21 @@ public:
         return handle(2);
     }
 
-    bool upload_glyph_texture(
-        ryn::detail::GlyphGpuTextureHandle texture,
-        const ryn::detail::GlyphTextureUpload& upload) override {
+    bool upload_glyph_texture(ryn::detail::GlyphGpuTextureHandle texture,
+                              const ryn::detail::GlyphTextureUpload& upload) override {
         events.emplace_back("upload_texture");
         TextureRecord record{
-            value(texture), upload.page, upload.rectangle,
-            upload.source_offset, upload.source_row_pitch,
-            {upload.bytes.begin(), upload.bytes.end()},
+            value(texture),          upload.page,
+            upload.rectangle,        upload.source_offset,
+            upload.source_row_pitch, {upload.bytes.begin(), upload.bytes.end()},
             upload.bytes.data(),
         };
         textures.push_back(std::move(record));
         return failure_ != Failure::texture_upload;
     }
 
-    bool upload_glyph_buffer(
-        ryn::detail::GlyphGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override {
+    bool upload_glyph_buffer(ryn::detail::GlyphGpuBufferHandle buffer, std::size_t offset,
+                             std::span<const std::byte> bytes) override {
         events.emplace_back("upload_buffer");
         buffers.push_back({value(buffer), offset, {bytes.begin(), bytes.end()}});
         return failure_ != Failure::buffer_upload;
@@ -142,10 +137,7 @@ public:
     std::vector<BufferRecord> buffers;
 };
 
-ryn::font::GlyphBitmap bitmap(
-    std::uint32_t width,
-    std::uint32_t height,
-    std::uint8_t seed) {
+ryn::font::GlyphBitmap bitmap(std::uint32_t width, std::uint32_t height, std::uint8_t seed) {
     ryn::font::GlyphBitmap result;
     result.width = width;
     result.height = height;
@@ -159,11 +151,7 @@ ryn::font::GlyphBitmap bitmap(
 
 ryn::graphics::GlyphAtlasKey key(std::uint32_t glyph) {
     return {
-        {0, 1},
-        glyph,
-        14,
-        ryn::font::GlyphRasterPhase::zero,
-        ryn::font::GlyphRasterMode::grayscale,
+        {0, 1}, glyph, 14, ryn::font::GlyphRasterPhase::zero, ryn::font::GlyphRasterMode::grayscale,
     };
 }
 
@@ -178,10 +166,8 @@ void test_borrowed_atlas_source_and_sparse_buffer_uploads() {
     {
         ryn::detail::GlyphGpuResources resources(api);
         ryn::graphics::GlyphAtlas atlas({10, 10, 2});
-        require(static_cast<bool>(atlas.insert(key(1), bitmap(3, 2, 10))),
-                "first glyph insert failed");
-        require(static_cast<bool>(atlas.insert(key(2), bitmap(3, 2, 30))),
-                "second glyph insert failed");
+        require(static_cast<bool>(atlas.insert(key(1), bitmap(3, 2, 10))), "first glyph insert failed");
+        require(static_cast<bool>(atlas.insert(key(2), bitmap(3, 2, 30))), "second glyph insert failed");
         ryn::graphics::GlyphInstanceStore instances;
         const std::array initial{instance(1.0F), instance(2.0F), instance(3.0F)};
         static_cast<void>(instances.append(initial));
@@ -194,49 +180,38 @@ void test_borrowed_atlas_source_and_sparse_buffer_uploads() {
         require(api.textures.size() == 2, "dirty atlas rectangles were not uploaded exactly");
         for (std::size_t index = 0; index < api.textures.size(); ++index) {
             const auto& upload = api.textures[index];
-            require(upload.rectangle == plans[index].rectangle
-                        && upload.offset == plans[index].source_offset
-                        && upload.row_pitch == 10 && upload.source == page.data()
-                        && upload.bytes == original_page,
+            require(upload.rectangle == plans[index].rectangle && upload.offset == plans[index].source_offset &&
+                        upload.row_pitch == 10 && upload.source == page.data() && upload.bytes == original_page,
                     "common resources did not borrow the original atlas source plan/page");
         }
         require(api.textures.back().offset != 0, "atlas fixture omitted nonzero source offset");
         require(std::ranges::equal(page, original_page), "upload mutated CPU atlas bytes");
         require(atlas.dirty_regions().empty(), "successful atlas upload did not clear dirty state");
-        require(api.buffers.size() == 1 && api.buffers.front().offset == 0
-                    && api.buffers.front().bytes.size() == 3 * sizeof(ryn::detail::GlyphGpuInstance),
+        require(api.buffers.size() == 1 && api.buffers.front().offset == 0 &&
+                    api.buffers.front().bytes.size() == 3 * sizeof(ryn::detail::GlyphGpuInstance),
                 "initial Glyph instance upload differs");
 
         const std::size_t texture_uploads = api.textures.size();
-        static_cast<void>(instances.update_material(
-            {1, 1}, {0.2F, 0.4F, 0.6F, 0.65F}, 1.0F));
+        static_cast<void>(instances.update_material({1, 1}, {0.2F, 0.4F, 0.6F, 0.65F}, 1.0F));
         resources.synchronize(atlas, instances, {100, 100, 1});
-        require(api.textures.size() == texture_uploads,
-                "Material-only update re-uploaded atlas pixels");
-        require(api.buffers.size() == 2
-                    && api.buffers.back().offset == sizeof(ryn::detail::GlyphGpuInstance)
-                    && api.buffers.back().bytes.size() == sizeof(ryn::detail::GlyphGpuInstance),
+        require(api.textures.size() == texture_uploads, "Material-only update re-uploaded atlas pixels");
+        require(api.buffers.size() == 2 && api.buffers.back().offset == sizeof(ryn::detail::GlyphGpuInstance) &&
+                    api.buffers.back().bytes.size() == sizeof(ryn::detail::GlyphGpuInstance),
                 "Material-only update did not remain a sparse instance upload");
     }
     require(api.no_leaks(), "Glyph resources leaked after normal teardown");
-    require(api.events.size() >= 3
-                && api.events[api.events.size() - 3] == "release_texture"
-                && api.events[api.events.size() - 2] == "release_buffer"
-                && api.events.back() == "release_sampler",
+    require(api.events.size() >= 3 && api.events[api.events.size() - 3] == "release_texture" &&
+                api.events[api.events.size() - 2] == "release_buffer" && api.events.back() == "release_sampler",
             "Glyph resources were not released in reverse dependency order");
 }
 
 void test_failure_paths_keep_dirty_state_and_release_resources() {
-    for (const auto failure : {
-             RecordingGpuApi::Failure::sampler,
-             RecordingGpuApi::Failure::texture,
-             RecordingGpuApi::Failure::buffer,
-             RecordingGpuApi::Failure::texture_upload,
-             RecordingGpuApi::Failure::buffer_upload}) {
+    for (const auto failure :
+         {RecordingGpuApi::Failure::sampler, RecordingGpuApi::Failure::texture, RecordingGpuApi::Failure::buffer,
+          RecordingGpuApi::Failure::texture_upload, RecordingGpuApi::Failure::buffer_upload}) {
         RecordingGpuApi api(failure);
         ryn::graphics::GlyphAtlas atlas({10, 10, 1});
-        require(static_cast<bool>(atlas.insert(key(8), bitmap(2, 2, 4))),
-                "failure fixture insert failed");
+        require(static_cast<bool>(atlas.insert(key(8), bitmap(2, 2, 4))), "failure fixture insert failed");
         ryn::graphics::GlyphInstanceStore instances;
         const std::array initial{instance(8.0F)};
         static_cast<void>(instances.append(initial));
@@ -249,16 +224,14 @@ void test_failure_paths_keep_dirty_state_and_release_resources() {
         }
         require(failed, "injected Glyph GPU failure unexpectedly succeeded");
         require(api.no_leaks(), "injected Glyph GPU failure leaked resources");
-        require(!atlas.dirty_regions().empty(),
-                "failed Glyph GPU upload discarded atlas dirty state");
+        require(!atlas.dirty_regions().empty(), "failed Glyph GPU upload discarded atlas dirty state");
     }
 }
 
 void test_bounded_sparse_upload_coalescing() {
     RecordingGpuApi api;
     ryn::detail::GlyphGpuResources resources(api);
-    resources.set_sparse_upload_coalescing_limit(
-        16 * sizeof(ryn::detail::GlyphGpuInstance));
+    resources.set_sparse_upload_coalescing_limit(16 * sizeof(ryn::detail::GlyphGpuInstance));
     ryn::graphics::GlyphAtlas atlas({10, 10, 1});
     ryn::graphics::GlyphInstanceStore instances;
     std::array<ryn::graphics::GlyphInstance, 16> initial{};
@@ -268,39 +241,30 @@ void test_bounded_sparse_upload_coalescing() {
     static_cast<void>(instances.update_geometry({0, 1}, clip, {1.0F, 0.0F}));
     static_cast<void>(instances.update_geometry({5, 1}, clip, {1.0F, 0.0F}));
     resources.synchronize(atlas, instances, {100, 100, 1});
-    require(api.buffers.size() == 2 && api.buffers.back().offset == 0
-                && api.buffers.back().bytes.size()
-                    == 6 * sizeof(ryn::detail::GlyphGpuInstance)
-                && resources.counters().buffer_upload_coalesces == 1,
+    require(api.buffers.size() == 2 && api.buffers.back().offset == 0 &&
+                api.buffers.back().bytes.size() == 6 * sizeof(ryn::detail::GlyphGpuInstance) &&
+                resources.counters().buffer_upload_coalesces == 1,
             "bounded nearby Glyph ranges were not coalesced");
     static_cast<void>(instances.update_geometry({0, 1}, clip, {2.0F, 0.0F}));
     static_cast<void>(instances.update_geometry({15, 1}, clip, {2.0F, 0.0F}));
     resources.synchronize(atlas, instances, {100, 100, 1});
-    require(api.buffers.size() == 4
-                && api.buffers[2].offset == 0
-                && api.buffers[3].offset
-                    == 15 * sizeof(ryn::detail::GlyphGpuInstance)
-                && resources.counters().buffer_upload_coalesces == 1,
+    require(api.buffers.size() == 4 && api.buffers[2].offset == 0 &&
+                api.buffers[3].offset == 15 * sizeof(ryn::detail::GlyphGpuInstance) &&
+                resources.counters().buffer_upload_coalesces == 1,
             "distant Glyph ranges uploaded unrelated instance storage");
 }
 
 class RecordingDrawApi final : public ryn::detail::SceneDrawApi {
 public:
     void draw_quad(std::uint32_t first, std::uint32_t count) override {
-        calls.push_back({ryn::graphics::SceneDrawKind::quad, first, count,
-                         ryn::graphics::invalid_glyph_atlas_page});
+        calls.push_back({ryn::graphics::SceneDrawKind::quad, first, count, ryn::graphics::invalid_glyph_atlas_page});
     }
 
-    void draw_glyph(
-        std::uint32_t page,
-        std::uint32_t first,
-        std::uint32_t count) override {
+    void draw_glyph(std::uint32_t page, std::uint32_t first, std::uint32_t count) override {
         calls.push_back({ryn::graphics::SceneDrawKind::glyph, first, count, page});
     }
 
-    void draw_rounded_effect(
-        std::uint32_t first,
-        std::uint32_t count) override {
+    void draw_rounded_effect(std::uint32_t first, std::uint32_t count) override {
         calls.push_back({
             ryn::graphics::SceneDrawKind::rounded_effect,
             first,
@@ -337,9 +301,10 @@ void test_zero_effect_scene_does_not_dispatch_effect_pipeline() {
     scene.append_glyph({0, {0, 1}});
     RecordingDrawApi api;
     ryn::detail::draw_ordered_scene(scene, api);
-    require(std::ranges::none_of(api.calls, [](const auto& command) {
-        return command.kind == ryn::graphics::SceneDrawKind::rounded_effect;
-    }), "zero-effect Scene dispatched the rounded-effect pipeline");
+    require(std::ranges::none_of(
+                api.calls,
+                [](const auto& command) { return command.kind == ryn::graphics::SceneDrawKind::rounded_effect; }),
+            "zero-effect Scene dispatched the rounded-effect pipeline");
 }
 
 } // namespace

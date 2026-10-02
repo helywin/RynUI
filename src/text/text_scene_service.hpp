@@ -17,8 +17,7 @@
 namespace ryn::detail {
 
 struct TextSceneId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -36,9 +35,7 @@ struct TextSceneRevisions final {
     std::uint64_t layout{1};
     std::uint64_t placement{0};
 
-    friend constexpr bool operator==(
-        TextSceneRevisions,
-        TextSceneRevisions) = default;
+    friend constexpr bool operator==(TextSceneRevisions, TextSceneRevisions) = default;
 };
 
 struct TextSceneRecordCounters final {
@@ -60,33 +57,25 @@ struct TextSceneServiceCounters final {
 
 class TextSceneService final {
 public:
-    TextSceneService(
-        font::FontRuntime& fonts,
-        text::TextEngine& engine,
-        runtime::FrameRequestState& frame_requests) noexcept;
+    TextSceneService(font::FontRuntime& fonts, text::TextEngine& engine,
+                     runtime::FrameRequestState& frame_requests) noexcept;
     TextSceneService(const TextSceneService&) = delete;
     TextSceneService& operator=(const TextSceneService&) = delete;
     TextSceneService(TextSceneService&&) = delete;
     TextSceneService& operator=(TextSceneService&&) = delete;
     ~TextSceneService();
 
-    [[nodiscard]] TextSceneId create(
-        runtime::NodeId node,
-        String content,
-        std::vector<font::FontIdentity> fallback_chain,
-        std::uint32_t pixel_size,
-        text::TextLayoutConfig layout);
-    [[nodiscard]] font::FontIdentity icon_font(
-        font::FontIdentity reference, std::uint32_t logical_pixel_size);
+    [[nodiscard]] TextSceneId create(runtime::NodeId node, String content,
+                                     std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
+                                     text::TextLayoutConfig layout);
+    [[nodiscard]] font::FontIdentity icon_font(font::FontIdentity reference, std::uint32_t logical_pixel_size);
     bool destroy(TextSceneId id);
     // Independent retained draw range/material, shared shaping ownership.
     // A view keeps the shaped state alive if its source record is destroyed.
     [[nodiscard]] TextSceneId create_view(TextSceneId source, runtime::NodeId node);
 
     bool set_content(TextSceneId id, String content);
-    bool set_font_chain(
-        TextSceneId id,
-        std::vector<font::FontIdentity> fallback_chain);
+    bool set_font_chain(TextSceneId id, std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
     bool set_line_height(TextSceneId id, float line_height);
     bool set_ellipsis(TextSceneId id, text::TextEllipsisConfig config, bool request_frame = true);
@@ -100,24 +89,23 @@ public:
     bool set_scroll_translation(TextSceneId id, runtime::Point pixels);
     // Splits a requested translation into an aligned scroll patch and the
     // residual that must retain normal raster-phase placement semantics.
-    [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(
-        TextSceneId id, runtime::Point pixels,
-        runtime::Point aligned_offset = {});
+    [[nodiscard]] runtime::Point set_phase_preserving_scroll_translation(TextSceneId id, runtime::Point pixels,
+                                                                         runtime::Point aligned_offset = {});
 
     [[nodiscard]] bool synchronize(TextSceneId id);
     [[nodiscard]] bool synchronize_measurement(TextSceneId id);
     [[nodiscard]] bool synchronize_caret_map(TextSceneId id, text::TextCaretMap& output);
-    [[nodiscard]] bool synchronize_measurement(
-        TextSceneId id,
-        float width_constraint);
-    [[nodiscard]] bool synchronize(
-        TextSceneId id,
-        graphics::GlyphPlacement placement);
+    [[nodiscard]] bool synchronize_measurement(TextSceneId id, float width_constraint);
+    [[nodiscard]] bool synchronize(TextSceneId id, graphics::GlyphPlacement placement);
     [[nodiscard]] bool synchronize_all();
     // Only the owner-thread host synchronization loop may defer rebuilding.
     // Read ordered_scene() after finish, never inside an active batch.
     void begin_ordered_scene_batch();
-    [[nodiscard]] bool ordered_scene_batch_active() const noexcept { return ordered_scene_batch_active_; }
+
+    [[nodiscard]] bool ordered_scene_batch_active() const noexcept {
+        return ordered_scene_batch_active_;
+    }
+
     void finish_ordered_scene_batch();
     void cancel_ordered_scene_batch() noexcept;
 
@@ -129,10 +117,8 @@ public:
     [[nodiscard]] const text::TextState& text_state(TextSceneId id) const;
     [[nodiscard]] const graphics::GlyphPrimitive& primitive(TextSceneId id) const;
     [[nodiscard]] const TextSceneRevisions& revisions(TextSceneId id) const;
-    [[nodiscard]] const TextSceneRecordCounters& record_counters(
-        TextSceneId id) const;
-    [[nodiscard]] const graphics::GlyphAtlasError& last_error(
-        TextSceneId id) const;
+    [[nodiscard]] const TextSceneRecordCounters& record_counters(TextSceneId id) const;
+    [[nodiscard]] const graphics::GlyphAtlasError& last_error(TextSceneId id) const;
 
     [[nodiscard]] graphics::GlyphAtlas& atlas() noexcept;
     [[nodiscard]] const graphics::GlyphAtlas& atlas() const noexcept;
@@ -153,25 +139,22 @@ private:
     [[nodiscard]] std::uint32_t acquire_slot();
     void release_slot(TextSceneId id) noexcept;
     void ensure_owner_thread() const;
-    bool update_placement(
-        TextSceneId id,
-        graphics::GlyphPlacement placement,
-        bool request_frame);
+    bool update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame);
     void remap_following(TextSceneId id, std::int64_t offset);
     std::size_t patch_geometry(Record& record, const graphics::GlyphPlacement& placement);
     void invalidate_ordered_scene();
     void rebuild_ordered_scene();
-    static void shift_primitive(
-        graphics::GlyphPrimitive& primitive,
-        std::int64_t offset);
+    static void shift_primitive(graphics::GlyphPrimitive& primitive, std::int64_t offset);
     static void advance_generation(Slot& slot) noexcept;
 
     font::FontRuntime* fonts_;
+
     struct IconFontCache final {
         std::uint32_t logical_pixel_size{};
         float display_scale{};
         font::FontIdentity font;
     };
+
     std::vector<IconFontCache> icon_fonts_;
     text::TextEngine* engine_;
     runtime::FrameRequestState* frame_requests_;

@@ -11,6 +11,7 @@ namespace ryn::detail {
 // Background, border, foreground, affix, caret, placeholder, selection background,
 // selection foreground, then the eight typed shadow colors.
 inline constexpr std::size_t input_material_color_count = 8 + ShadowList::capacity;
+
 struct InputMaterialValues final {
     std::array<Color, input_material_color_count> colors;
     float shadow_opacity{};
@@ -24,15 +25,21 @@ public:
     InputMaterialTransition(const InputMaterialTransition&) = delete;
     InputMaterialTransition& operator=(const InputMaterialTransition&) = delete;
     void retarget(const InputMaterialValues&, const animation::AnimationSpec&, animation::AnimationTime);
-    [[nodiscard]] const InputMaterialValues& value() const noexcept { return current_; }
+
+    [[nodiscard]] const InputMaterialValues& value() const noexcept {
+        return current_;
+    }
+
     [[nodiscard]] std::size_t active_count() const;
+
 private:
     void apply(animation::AnimationId, animation::AnimationTargetId, const animation::AnimationValue&,
-        animation::AnimationDirtyDomain) override;
+               animation::AnimationDirtyDomain) override;
     animation::AnimationRuntime* runtime_;
     animation::MaterialTransitionTargets<input_material_color_count + 1> targets_;
     std::array<animation::AnimationId, input_material_color_count + 1> animations_;
-    InputMaterialValues current_, destination_;
+    InputMaterialValues current_;
+    InputMaterialValues destination_;
     std::optional<animation::AnimationSpec> spec_;
     std::function<void()> changed_;
 };

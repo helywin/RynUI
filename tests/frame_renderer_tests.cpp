@@ -14,24 +14,42 @@ using namespace ryn::detail;
 
 class FakePlatformApi final : public PlatformApi, public GpuBindingApi {
 public:
-    bool init_video() override { return true; }
+    bool init_video() override {
+        return true;
+    }
+
     void quit() noexcept override {}
+
     PlatformWindowHandle create_window(const char*, int, int, bool) override {
         return &window_;
     }
+
     void destroy_window(PlatformWindowHandle) noexcept override {}
-    GpuDeviceHandle create_gpu_device(bool) override { return &device_; }
+
+    GpuDeviceHandle create_gpu_device(bool) override {
+        return &device_;
+    }
+
     void destroy_gpu_device(GpuDeviceHandle) noexcept override {}
-    bool claim_window(GpuDeviceHandle, PlatformWindowHandle) override { return true; }
+
+    bool claim_window(GpuDeviceHandle, PlatformWindowHandle) override {
+        return true;
+    }
+
     void release_window(GpuDeviceHandle, PlatformWindowHandle) noexcept override {}
-    [[nodiscard]] const char* last_error() const noexcept override { return "platform error"; }
+
+    [[nodiscard]] const char* last_error() const noexcept override {
+        return "platform error";
+    }
+
     [[nodiscard]] const char* gpu_driver(GpuDeviceHandle) const noexcept override {
         return "fake-gpu";
     }
-    [[nodiscard]] PlatformWindowMetrics window_metrics(
-        PlatformWindowHandle) const noexcept override {
+
+    [[nodiscard]] PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override {
         return {960, 640, 960, 640, 1.0F, 1.0F};
     }
+
     void delay(std::uint32_t) noexcept override {}
 
 private:
@@ -55,12 +73,8 @@ public:
         return mode_ == Mode::command_failure ? nullptr : &command_buffer_;
     }
 
-    bool wait_and_acquire_swapchain(
-        GpuCommandBufferHandle,
-        PlatformWindowHandle,
-        GpuTextureHandle& texture,
-        std::uint32_t& width,
-        std::uint32_t& height) override {
+    bool wait_and_acquire_swapchain(GpuCommandBufferHandle, PlatformWindowHandle, GpuTextureHandle& texture,
+                                    std::uint32_t& width, std::uint32_t& height) override {
         calls.emplace_back("acquire_swapchain");
         if (mode_ == Mode::swapchain_failure) {
             return false;
@@ -71,10 +85,7 @@ public:
         return true;
     }
 
-    GpuRenderPassHandle begin_clear_pass(
-        GpuCommandBufferHandle,
-        GpuTextureHandle,
-        ClearColor) override {
+    GpuRenderPassHandle begin_clear_pass(GpuCommandBufferHandle, GpuTextureHandle, ClearColor) override {
         calls.emplace_back("begin_render_pass");
         return &render_pass_;
     }
@@ -112,9 +123,7 @@ void require(bool condition, const char* message) {
     }
 }
 
-void require_calls(
-    const std::vector<std::string>& actual,
-    const std::vector<std::string>& expected) {
+void require_calls(const std::vector<std::string>& actual, const std::vector<std::string>& expected) {
     require(actual == expected, "frame call order differs");
 }
 
@@ -133,13 +142,8 @@ void test_submitted_frame() {
 
     const auto result = renderer.clear_and_present();
     require(result.status == FrameStatus::submitted, "frame was not submitted");
-    require_calls(
-        frame_api.calls,
-        {"acquire_command_buffer",
-         "acquire_swapchain",
-         "begin_render_pass",
-         "end_render_pass",
-         "submit"});
+    require_calls(frame_api.calls,
+                  {"acquire_command_buffer", "acquire_swapchain", "begin_render_pass", "end_render_pass", "submit"});
     const auto& counters = renderer.counters();
     require(counters.command_buffers == 1, "command buffer counter differs");
     require(counters.swapchain_acquisitions == 1, "swapchain counter differs");
@@ -156,12 +160,8 @@ void test_minimized_frame_submits_without_render_pass() {
     FrameRenderer renderer(binding, frame_api);
 
     const auto result = renderer.clear_and_present();
-    require(
-        result.status == FrameStatus::no_swapchain_texture,
-        "minimized frame was treated as failure");
-    require_calls(
-        frame_api.calls,
-        {"acquire_command_buffer", "acquire_swapchain", "submit"});
+    require(result.status == FrameStatus::no_swapchain_texture, "minimized frame was treated as failure");
+    require_calls(frame_api.calls, {"acquire_command_buffer", "acquire_swapchain", "submit"});
     require(renderer.counters().render_passes == 0, "minimized frame began a render pass");
     require(renderer.counters().submissions == 1, "minimized frame was not submitted");
     require(renderer.counters().no_texture_frames == 1, "minimized frame was not counted");
@@ -177,9 +177,7 @@ void test_pre_swapchain_failure_cancels_command_buffer() {
     const auto result = renderer.clear_and_present();
     require(result.status == FrameStatus::failed, "swapchain failure unexpectedly succeeded");
     require(result.message == "injected frame failure", "frame error was not preserved");
-    require_calls(
-        frame_api.calls,
-        {"acquire_command_buffer", "acquire_swapchain", "cancel"});
+    require_calls(frame_api.calls, {"acquire_command_buffer", "acquire_swapchain", "cancel"});
     require(renderer.counters().submissions == 0, "failed frame was counted as submitted");
 }
 

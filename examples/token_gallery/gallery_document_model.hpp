@@ -44,13 +44,11 @@ struct GalleryNavigationTarget final {
     AntDesignGalleryCategory category{AntDesignGalleryCategory::general};
     std::string_view component_identity;
 
-    [[nodiscard]] static constexpr GalleryNavigationTarget to_section(
-        GalleryDocumentSectionKind value) noexcept {
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_section(GalleryDocumentSectionKind value) noexcept {
         return {GalleryNavigationTargetKind::section, value, {}};
     }
 
-    [[nodiscard]] static constexpr GalleryNavigationTarget to_category(
-        AntDesignGalleryCategory value) noexcept {
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_category(AntDesignGalleryCategory value) noexcept {
         return {
             GalleryNavigationTargetKind::category,
             GalleryDocumentSectionKind::component_overview,
@@ -58,15 +56,11 @@ struct GalleryNavigationTarget final {
         };
     }
 
-    [[nodiscard]] static constexpr GalleryNavigationTarget to_component(
-        std::string_view identity) noexcept {
-        return {GalleryNavigationTargetKind::component,
-            GalleryDocumentSectionKind::component_overview, {}, identity};
+    [[nodiscard]] static constexpr GalleryNavigationTarget to_component(std::string_view identity) noexcept {
+        return {GalleryNavigationTargetKind::component, GalleryDocumentSectionKind::component_overview, {}, identity};
     }
 
-    friend constexpr bool operator==(
-        GalleryNavigationTarget,
-        GalleryNavigationTarget) = default;
+    friend constexpr bool operator==(GalleryNavigationTarget, GalleryNavigationTarget) = default;
 
     [[nodiscard]] static constexpr GalleryNavigationTarget to_navigation() noexcept {
         return {GalleryNavigationTargetKind::navigation_start, {}, {}};
@@ -83,14 +77,9 @@ enum class GallerySupportFilter : std::uint8_t {
     out_of_scope,
 };
 
-[[nodiscard]] std::span<const GalleryDocumentSection>
-gallery_document_sections() noexcept;
-[[nodiscard]] std::span<const GalleryDesignValue>
-gallery_design_values() noexcept;
-[[nodiscard]] bool gallery_support_filter_matches(
-    GallerySupportFilter filter,
-    GallerySupportStatus status) noexcept;
-[[nodiscard]] std::string_view gallery_category_title(
-    AntDesignGalleryCategory category) noexcept;
+[[nodiscard]] std::span<const GalleryDocumentSection> gallery_document_sections() noexcept;
+[[nodiscard]] std::span<const GalleryDesignValue> gallery_design_values() noexcept;
+[[nodiscard]] bool gallery_support_filter_matches(GallerySupportFilter filter, GallerySupportStatus status) noexcept;
+[[nodiscard]] std::string_view gallery_category_title(AntDesignGalleryCategory category) noexcept;
 
 } // namespace rynui::example

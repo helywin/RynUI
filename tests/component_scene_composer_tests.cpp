@@ -10,7 +10,9 @@
 namespace {
 
 struct TestState final {};
+
 struct ChildrenSlot final {};
+
 using Children = ryn::SlotContent<ChildrenSlot>;
 
 void require(bool condition, const char* message) {
@@ -31,20 +33,17 @@ void test_ordered_scene_and_hit_test_share_component_traversal() {
     components.mount(ryn::Content{[&] {
         auto& build = ryn::runtime::require_component_build_context();
         first_component = build.mount_component<TestState>();
-        first_fragment = build.register_scene_fragment(
-            first_component,
-            ryn::runtime::SceneFragmentPlacement::before_children);
+        first_fragment =
+            build.register_scene_fragment(first_component, ryn::runtime::SceneFragmentPlacement::before_children);
         build.mount_slot(first_component, Children{[&] {
-            auto& text_build = ryn::runtime::require_component_build_context();
-            text_component = text_build.mount_component<TestState>();
-            text_fragment = text_build.register_scene_fragment(
-                text_component,
-                ryn::runtime::SceneFragmentPlacement::after_children);
-        }});
+                             auto& text_build = ryn::runtime::require_component_build_context();
+                             text_component = text_build.mount_component<TestState>();
+                             text_fragment = text_build.register_scene_fragment(
+                                 text_component, ryn::runtime::SceneFragmentPlacement::after_children);
+                         }});
         second_component = build.mount_component<TestState>();
-        second_fragment = build.register_scene_fragment(
-            second_component,
-            ryn::runtime::SceneFragmentPlacement::before_children);
+        second_fragment =
+            build.register_scene_fragment(second_component, ryn::runtime::SceneFragmentPlacement::before_children);
     }});
 
     for (const auto component : {first_component, second_component}) {
@@ -74,8 +73,7 @@ void test_ordered_scene_and_hit_test_share_component_traversal() {
         {},
     });
     ryn::input::HitTestSnapshot hit_test(interactions, nodes);
-    ryn::component::ComponentSceneComposer composer(
-        components, interactions, hit_test);
+    ryn::component::ComponentSceneComposer composer(components, interactions, hit_test);
     composer.reserve(3, 3, 2);
 
     const ryn::graphics::SceneDrawCommand first_command{
@@ -106,22 +104,19 @@ void test_ordered_scene_and_hit_test_share_component_traversal() {
         text_command,
         second_command,
     };
-    require(std::ranges::equal(
-                composer.ordered_scene().commands(), expected_commands),
+    require(std::ranges::equal(composer.ordered_scene().commands(), expected_commands),
             "Quad/Glyph scene order diverged from component traversal");
-    require(composer.interaction_order().size() == 2
-                && composer.interaction_order()[0].interaction == first_interaction
-                && composer.interaction_order()[1].interaction == second_interaction,
+    require(composer.interaction_order().size() == 2 &&
+                composer.interaction_order()[0].interaction == first_interaction &&
+                composer.interaction_order()[1].interaction == second_interaction,
             "HitTest interaction order diverged from component traversal");
     require(hit_test.hit_test({20.0F, 20.0F}) == second_interaction,
             "visually topmost overlapping component was not the HitTest target");
 
-    require(components.destroy(second_component),
-            "second overlapping component destroy failed");
+    require(components.destroy(second_component), "second overlapping component destroy failed");
     composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
-    require(composer.ordered_scene().commands().size() == 2
-                && composer.interaction_order().size() == 1
-                && hit_test.hit_test({20.0F, 20.0F}) == first_interaction,
+    require(composer.ordered_scene().commands().size() == 2 && composer.interaction_order().size() == 1 &&
+                hit_test.hit_test({20.0F, 20.0F}) == first_interaction,
             "structure destroy did not update scene and HitTest together");
 }
 

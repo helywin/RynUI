@@ -26,20 +26,15 @@ void require(bool condition, const char* message) {
     }
 }
 
-std::size_t drain_animation_frames(
-    ryn::detail::ButtonComponentHost& host,
-    ryn::runtime::OnDemandFrameLoop& loop,
-    const char* message) {
+std::size_t drain_animation_frames(ryn::detail::ButtonComponentHost& host, ryn::runtime::OnDemandFrameLoop& loop,
+                                   const char* message) {
     const auto submissions = loop.counters().submissions;
     bool reached_idle = false;
     for (std::size_t step = 0; step < 256; ++step) {
         const auto result = loop.step();
-        require(
-            result == ryn::runtime::FrameLoopStep::submitted
-                || result == ryn::runtime::FrameLoopStep::idle,
-            message);
-        if (host.animations().size() == 0
-            && result == ryn::runtime::FrameLoopStep::idle) {
+        require(result == ryn::runtime::FrameLoopStep::submitted || result == ryn::runtime::FrameLoopStep::idle,
+                message);
+        if (host.animations().size() == 0 && result == ryn::runtime::FrameLoopStep::idle) {
             reached_idle = true;
             break;
         }
@@ -54,23 +49,13 @@ bool near(float actual, float expected, float tolerance = 0.25F) {
 
 struct Fixture final {
     Fixture()
-        : fonts(create_runtime()),
-          engine(*fonts),
-          layout(nodes),
-          dirty(nodes, &frames),
+        : fonts(create_runtime()), engine(*fonts), layout(nodes), dirty(nodes, &frames),
           text_scene(*fonts, engine, frames) {
-        const auto latin = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT, 0, 14);
-        const auto cjk = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT, 0, 14);
+        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, 14);
         require(latin && cjk, "Layout demo frame fonts failed to load");
         host = std::make_unique<ryn::detail::ButtonComponentHost>(
-            nodes,
-            layout,
-            dirty,
-            text_scene,
-            std::vector<ryn::font::FontIdentity>{latin.font, cjk.font},
-            frames);
+            nodes, layout, dirty, text_scene, std::vector<ryn::font::FontIdentity>{latin.font, cjk.font}, frames);
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
@@ -91,16 +76,17 @@ struct Fixture final {
 
 class ControlledEvents final : public ryn::runtime::FrameEventSource {
 public:
-    ControlledEvents(
-        ryn::detail::ButtonComponentHost& host,
-        ryn::runtime::FrameRequestState& frames) noexcept
+    ControlledEvents(ryn::detail::ButtonComponentHost& host, ryn::runtime::FrameRequestState& frames) noexcept
         : host_(&host), frames_(&frames) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
-        return ryn::animation::AnimationTime::microseconds(
-            static_cast<std::int64_t>(now_) * 1000);
+        return ryn::animation::AnimationTime::microseconds(static_cast<std::int64_t>(now_) * 1000);
     }
-    bool poll_frame_event() noexcept override { return dispatch_next(); }
+
+    bool poll_frame_event() noexcept override {
+        return dispatch_next();
+    }
+
     bool wait_for_frame_event(std::uint32_t timeout) noexcept override {
         now_ += timeout;
         return dispatch_next();
@@ -110,8 +96,13 @@ public:
         events_.push_back(std::move(event));
     }
 
-    [[nodiscard]] std::uint64_t dispatched() const noexcept { return dispatched_; }
-    [[nodiscard]] bool failed() const noexcept { return failed_; }
+    [[nodiscard]] std::uint64_t dispatched() const noexcept {
+        return dispatched_;
+    }
+
+    [[nodiscard]] bool failed() const noexcept {
+        return failed_;
+    }
 
 private:
     bool dispatch_next() noexcept {
@@ -137,8 +128,11 @@ private:
 
     // These samples have no text input owner yet.
     void dispatch(const ryn::input::TextCommitted&) {}
+
     void dispatch(const ryn::input::CompositionChanged&) {}
+
     void dispatch(const ryn::input::CandidatesChanged&) {}
+
     void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -160,9 +154,7 @@ private:
 
 class LayoutSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    LayoutSubmitter(
-        ryn::detail::ButtonComponentHost& host,
-        ryn::runtime::FrameRequestState& frames) noexcept
+    LayoutSubmitter(ryn::detail::ButtonComponentHost& host, ryn::runtime::FrameRequestState& frames) noexcept
         : host_(&host), frames_(&frames) {}
 
     void set_viewport(ryn::runtime::Size viewport) {
@@ -170,16 +162,12 @@ public:
         frames_->request_frame();
     }
 
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime frame_time) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         static_cast<void>(host_->tick_animations(frame_time));
-        return host_->layout_and_synchronize(
-                   viewport_,
-                   {0.0F, 0.0F, viewport_.width, viewport_.height},
-                   {24.0F, 20.0F},
-                   0.0F)
-            ? ryn::runtime::FrameSubmissionResult::submitted
-            : ryn::runtime::FrameSubmissionResult::failed;
+        return host_->layout_and_synchronize(viewport_, {0.0F, 0.0F, viewport_.width, viewport_.height}, {24.0F, 20.0F},
+                                             0.0F)
+                   ? ryn::runtime::FrameSubmissionResult::submitted
+                   : ryn::runtime::FrameSubmissionResult::failed;
     }
 
 private:
@@ -188,31 +176,20 @@ private:
     ryn::runtime::Size viewport_{720.0F, 480.0F};
 };
 
-ryn::input::PointerInputEvent pointer_event(
-    ryn::input::PointerAction action,
-    ryn::runtime::Point point,
-    ryn::input::PointerButton button = ryn::input::PointerButton::none) {
+ryn::input::PointerInputEvent pointer_event(ryn::input::PointerAction action, ryn::runtime::Point point,
+                                            ryn::input::PointerButton button = ryn::input::PointerButton::none) {
     return {
-        ryn::input::PointerIdentity::mouse(),
-        action,
-        button,
-        point.x,
-        point.y,
+        ryn::input::PointerIdentity::mouse(), action, button, point.x, point.y,
     };
 }
 
-ryn::input::KeyboardInputEvent key_event(
-    ryn::input::Key key,
-    ryn::input::KeyAction action) {
+ryn::input::KeyboardInputEvent key_event(ryn::input::Key key, ryn::input::KeyAction action) {
     return {key, action, ryn::input::KeyModifier::none, false};
 }
 
-void require_event_step(
-    ControlledEvents& events,
-    ryn::runtime::OnDemandFrameLoop& loop,
-    ryn::input::PlatformInputEvent event,
-    ryn::runtime::FrameLoopStep expected,
-    const char* message) {
+void require_event_step(ControlledEvents& events, ryn::runtime::OnDemandFrameLoop& loop,
+                        ryn::input::PlatformInputEvent event, ryn::runtime::FrameLoopStep expected,
+                        const char* message) {
     events.push(std::move(event));
     require(loop.step() == expected, message);
 }
@@ -223,8 +200,7 @@ void test_responsive_layout_demo_frame_contract() {
     ryn::Signal<bool> wrap{true};
     ryn::Signal<ryn::FlexJustify> justify{ryn::FlexJustify::Start};
     ryn::Signal<ryn::FlexAlign> align{ryn::FlexAlign::Center};
-    ryn::Signal<ryn::LayoutGap> gap{
-        ryn::LayoutGap{ryn::dp(10.0F), ryn::dp(14.0F)}};
+    ryn::Signal<ryn::LayoutGap> gap{ryn::LayoutGap{ryn::dp(10.0F), ryn::dp(14.0F)}};
     ryn::Signal<float> grow{1.0F};
     ryn::Signal<int> order{1};
     std::uint64_t content_runs = 0;
@@ -253,65 +229,44 @@ void test_responsive_layout_demo_frame_contract() {
 
     fixture.host->mount(ryn::Content{[&] {
         ++content_runs;
-        ryn::Flex(
-            ryn::FlexProps{}.vertical(true).gap(ryn::dp(12.0F)),
-            [&] {
-                ryn::Text(u8"Responsive Flex / 响应式布局");
-                ryn::Flex(
-                    ryn::FlexProps{}
-                        .vertical(vertical)
-                        .wrap(wrap)
-                        .justify(justify)
-                        .align(align)
-                        .gap(gap)
-                        .layout(
-                            ryn::LayoutStyle{}
-                                .width(ryn::dp(672.0F))
-                                .margin_right(ryn::dp(24.0F))),
-                    [&] {
-                        ryn::Button(
-                            ryn::ButtonProps{}
-                                .layout(
-                                    ryn::LayoutStyle{}
-                                        .min_width(ryn::dp(80.0F))
-                                        .flex_basis(ryn::dp(180.0F))
-                                        .flex_grow(grow)
-                                        .flex_shrink(1.0F)
-                                        .order(order))
-                                .onClick(toggle_item),
-                            [] { ryn::Text(u8"Pointer item / 指针"); });
-                        ryn::Button(
-                            ryn::ButtonProps{}
-                                .layout(
-                                    ryn::LayoutStyle{}
-                                        .min_width(ryn::dp(80.0F))
-                                        .flex_basis(ryn::dp(180.0F))
-                                        .flex_grow(1.0F)
-                                        .flex_shrink(1.0F)
-                                        .order(0))
-                                .onClick(toggle_container),
-                            [] { ryn::Text(u8"Keyboard item / 键盘"); });
-                    });
-                ryn::Space(
-                    ryn::SpaceProps{}
-                        .wrap(true)
-                        .align(ryn::SpaceAlign::Center)
-                        .size(ryn::dp(8.0F), ryn::dp(16.0F)),
-                    [&] {
-                        ryn::Text(u8"Space A");
-                        ryn::Text(u8"Space 项目 B");
-                    });
-            });
+        ryn::Flex(ryn::FlexProps{}.vertical(true).gap(ryn::dp(12.0F)), [&] {
+            ryn::Text(u8"Responsive Flex / 响应式布局");
+            ryn::Flex(ryn::FlexProps{}.vertical(vertical).wrap(wrap).justify(justify).align(align).gap(gap).layout(
+                          ryn::LayoutStyle{}.width(ryn::dp(672.0F)).margin_right(ryn::dp(24.0F))),
+                      [&] {
+                          ryn::Button(ryn::ButtonProps{}
+                                          .layout(ryn::LayoutStyle{}
+                                                      .min_width(ryn::dp(80.0F))
+                                                      .flex_basis(ryn::dp(180.0F))
+                                                      .flex_grow(grow)
+                                                      .flex_shrink(1.0F)
+                                                      .order(order))
+                                          .onClick(toggle_item),
+                                      [] { ryn::Text(u8"Pointer item / 指针"); });
+                          ryn::Button(ryn::ButtonProps{}
+                                          .layout(ryn::LayoutStyle{}
+                                                      .min_width(ryn::dp(80.0F))
+                                                      .flex_basis(ryn::dp(180.0F))
+                                                      .flex_grow(1.0F)
+                                                      .flex_shrink(1.0F)
+                                                      .order(0))
+                                          .onClick(toggle_container),
+                                      [] { ryn::Text(u8"Keyboard item / 键盘"); });
+                      });
+            ryn::Space(ryn::SpaceProps{}.wrap(true).align(ryn::SpaceAlign::Center).size(ryn::dp(8.0F), ryn::dp(16.0F)),
+                       [&] {
+                           ryn::Text(u8"Space A");
+                           ryn::Text(u8"Space 项目 B");
+                       });
+        });
     }});
 
     auto& components = fixture.host->components();
-    const auto roots_before = std::vector(
-        components.root_components().begin(), components.root_components().end());
+    const auto roots_before = std::vector(components.root_components().begin(), components.root_components().end());
     require(roots_before.size() == 1, "Layout demo must expose one public root");
     const auto root = roots_before.front();
     const auto root_children_before = components.children(root);
-    require(root_children_before.size() == 3,
-            "Layout demo root did not retain Text, Flex, and Space children");
+    require(root_children_before.size() == 3, "Layout demo root did not retain Text, Flex, and Space children");
     const auto responsive = root_children_before[1];
     const auto space = root_children_before[2];
     const auto responsive_node = components.root(responsive);
@@ -321,13 +276,10 @@ void test_responsive_layout_demo_frame_contract() {
     ControlledEvents events(*fixture.host, fixture.frames);
     LayoutSubmitter submitter(*fixture.host, fixture.frames);
     auto& animation_deadlines = *fixture.host;
-    ryn::runtime::OnDemandFrameLoop loop(
-        fixture.frames, events, submitter, animation_deadlines, 5);
+    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, animation_deadlines, 5);
 
-    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-            "initial wide layout frame was not submitted");
-    const auto wide_lines =
-        fixture.layout.flex_layout_diagnostics(responsive_node).line_count;
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "initial wide layout frame was not submitted");
+    const auto wide_lines = fixture.layout.flex_layout_diagnostics(responsive_node).line_count;
     require(wide_lines == 1, "wide viewport did not keep Flex on one line");
     const auto first = fixture.host->mounted_buttons()[0];
     const auto second = fixture.host->mounted_buttons()[1];
@@ -338,19 +290,14 @@ void test_responsive_layout_demo_frame_contract() {
     if (left->x > right->x) {
         std::swap(left, right);
     }
-    require(near(right->x - (left->x + left->width), 10.0F),
-            "wide Flex did not apply the main-axis custom gap");
-    require(near(left->x, 24.0F)
-                && near(720.0F - (right->x + right->width), 24.0F),
+    require(near(right->x - (left->x + left->width), 10.0F), "wide Flex did not apply the main-axis custom gap");
+    require(near(left->x, 24.0F) && near(720.0F - (right->x + right->width), 24.0F),
             "wide Flex did not preserve symmetric horizontal insets");
 
     submitter.set_viewport({260.0F, 480.0F});
-    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-            "narrow wrapped layout frame was not submitted");
-    const auto narrow_lines =
-        fixture.layout.flex_layout_diagnostics(responsive_node).line_count;
-    require(narrow_lines == 2,
-            "narrow viewport did not form two deterministic Flex lines");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "narrow wrapped layout frame was not submitted");
+    const auto narrow_lines = fixture.layout.flex_layout_diagnostics(responsive_node).line_count;
+    require(narrow_lines == 2, "narrow viewport did not form two deterministic Flex lines");
     const auto narrow_first = fixture.nodes.require(first.node).bounds;
     const auto narrow_second = fixture.nodes.require(second.node).bounds;
     const auto* upper = &narrow_first;
@@ -358,22 +305,17 @@ void test_responsive_layout_demo_frame_contract() {
     if (upper->y > lower->y) {
         std::swap(upper, lower);
     }
-    require(near(lower->y - (upper->y + upper->height), 14.0F),
-            "narrow Flex did not apply the cross-axis custom gap");
-    require(narrow_first.x + narrow_first.width <= 236.25F
-                && narrow_second.x + narrow_second.width <= 236.25F,
+    require(near(lower->y - (upper->y + upper->height), 14.0F), "narrow Flex did not apply the cross-axis custom gap");
+    require(narrow_first.x + narrow_first.width <= 236.25F && narrow_second.x + narrow_second.width <= 236.25F,
             "narrow Flex content exceeded the viewport right inset");
-    require(near(narrow_first.x, 24.0F)
-                && near(260.0F - (narrow_first.x + narrow_first.width), 24.0F)
-                && near(narrow_second.x, 24.0F)
-                && near(260.0F - (narrow_second.x + narrow_second.width), 24.0F),
+    require(near(narrow_first.x, 24.0F) && near(260.0F - (narrow_first.x + narrow_first.width), 24.0F) &&
+                near(narrow_second.x, 24.0F) && near(260.0F - (narrow_second.x + narrow_second.width), 24.0F),
             "narrow Flex did not preserve symmetric horizontal insets");
     require(fixture.layout.flex_layout_diagnostics(components.root(space)).line_count >= 1,
             "nested Space did not participate in responsive measurement");
 
     wrap.set(false);
-    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-            "no-wrap shrink transition did not submit");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "no-wrap shrink transition did not submit");
     const auto shrunk_first = fixture.nodes.require(first.node).bounds;
     const auto shrunk_second = fixture.nodes.require(second.node).bounds;
     require(shrunk_first.width < 180.0F && shrunk_second.width < 180.0F,
@@ -381,83 +323,50 @@ void test_responsive_layout_demo_frame_contract() {
 
     wrap.set(true);
     submitter.set_viewport({720.0F, 480.0F});
-    require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-            "wide layout restoration did not submit");
-    const auto rebuilds_before_prop_updates =
-        fixture.host->scene_composer().diagnostics().rebuilds;
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "wide layout restoration did not submit");
+    const auto rebuilds_before_prop_updates = fixture.host->scene_composer().diagnostics().rebuilds;
     const auto pointer_bounds = fixture.nodes.require(first.node).bounds;
     const ryn::runtime::Point pointer_inside{
         pointer_bounds.x + pointer_bounds.width * 0.5F,
         pointer_bounds.y + pointer_bounds.height * 0.5F,
     };
     require_event_step(
-        events,
-        loop,
-        pointer_event(
-            ryn::input::PointerAction::down,
-            pointer_inside,
-            ryn::input::PointerButton::primary),
-        ryn::runtime::FrameLoopStep::submitted,
-        "pointer down did not submit the pressed layout state");
+        events, loop,
+        pointer_event(ryn::input::PointerAction::down, pointer_inside, ryn::input::PointerButton::primary),
+        ryn::runtime::FrameLoopStep::submitted, "pointer down did not submit the pressed layout state");
     require_event_step(
-        events,
-        loop,
-        pointer_event(
-            ryn::input::PointerAction::up,
-            pointer_inside,
-            ryn::input::PointerButton::primary),
-        ryn::runtime::FrameLoopStep::submitted,
-        "pointer activation did not submit changed layout Props");
+        events, loop, pointer_event(ryn::input::PointerAction::up, pointer_inside, ryn::input::PointerButton::primary),
+        ryn::runtime::FrameLoopStep::submitted, "pointer activation did not submit changed layout Props");
     const auto grown_first = fixture.nodes.require(first.node).bounds;
     const auto grown_second = fixture.nodes.require(second.node).bounds;
-    require(pointer_activations == 1,
-            "pointer activation did not invoke the public Button callback");
-    require(grown_first.x < grown_second.x,
-            "reactive order did not move the first declared item before its sibling");
+    require(pointer_activations == 1, "pointer activation did not invoke the public Button callback");
+    require(grown_first.x < grown_second.x, "reactive order did not move the first declared item before its sibling");
     require(grown_first.width > grown_second.width,
             "reactive grow did not allocate more positive free space to the first item");
-    require(dirty_measure_roots > 0,
-            "pointer layout updates did not record a measure dirty root");
+    require(dirty_measure_roots > 0, "pointer layout updates did not record a measure dirty root");
 
-    require_event_step(
-        events,
-        loop,
-        key_event(ryn::input::Key::tab, ryn::input::KeyAction::down),
-        ryn::runtime::FrameLoopStep::submitted,
-        "Tab did not move focus in declaration order");
-    require_event_step(
-        events,
-        loop,
-        key_event(ryn::input::Key::enter, ryn::input::KeyAction::down),
-        ryn::runtime::FrameLoopStep::submitted,
-        "keyboard activation did not submit container Props");
-    const auto* responsive_state =
-        components.state<ryn::detail::FlexComponentState>(responsive);
-    require(keyboard_activations == 1 && responsive_state != nullptr
-                && responsive_state->model.direction ==
-                    ryn::layout::FlexDirection::vertical
-                && responsive_state->model.justify == ryn::layout::FlexJustify::end
-                && responsive_state->model.align == ryn::layout::FlexAlign::stretch
-                && (dirty_measure_roots > 0 || dirty_place_roots > 0),
+    require_event_step(events, loop, key_event(ryn::input::Key::tab, ryn::input::KeyAction::down),
+                       ryn::runtime::FrameLoopStep::submitted, "Tab did not move focus in declaration order");
+    require_event_step(events, loop, key_event(ryn::input::Key::enter, ryn::input::KeyAction::down),
+                       ryn::runtime::FrameLoopStep::submitted, "keyboard activation did not submit container Props");
+    const auto* responsive_state = components.state<ryn::detail::FlexComponentState>(responsive);
+    require(keyboard_activations == 1 && responsive_state != nullptr &&
+                responsive_state->model.direction == ryn::layout::FlexDirection::vertical &&
+                responsive_state->model.justify == ryn::layout::FlexJustify::end &&
+                responsive_state->model.align == ryn::layout::FlexAlign::stretch &&
+                (dirty_measure_roots > 0 || dirty_place_roots > 0),
             "keyboard activation did not update direction and alignment Props");
 
-    require(content_runs == 1
-                && components.component_count() == component_count
-                && std::vector(
-                       components.root_components().begin(),
-                       components.root_components().end()) == roots_before
-                && components.children(root) == root_children_before
-                && components.children(responsive) == responsive_children_before
-                && fixture.host->scene_composer().diagnostics().rebuilds
-                    == rebuilds_before_prop_updates,
+    require(content_runs == 1 && components.component_count() == component_count &&
+                std::vector(components.root_components().begin(), components.root_components().end()) == roots_before &&
+                components.children(root) == root_children_before &&
+                components.children(responsive) == responsive_children_before &&
+                fixture.host->scene_composer().diagnostics().rebuilds == rebuilds_before_prop_updates,
             "ordinary layout Props reran content or rebuilt retained topology");
 
-    require(
-        drain_animation_frames(
-            *fixture.host,
-            loop,
-            "responsive layout animations did not settle through frame deadlines") > 0,
-        "responsive layout did not submit animation frames");
+    require(drain_animation_frames(*fixture.host, loop,
+                                   "responsive layout animations did not settle through frame deadlines") > 0,
+            "responsive layout did not submit animation frames");
     require(loop.counters().animation_frames > 0,
             "responsive layout did not attribute deadline submissions to animation frames");
 
@@ -466,10 +375,8 @@ void test_responsive_layout_demo_frame_contract() {
         require(loop.step() == ryn::runtime::FrameLoopStep::idle,
                 "stable responsive layout continued submitting frames");
     }
-    require(loop.counters().submissions == submissions
-                && loop.counters().idle_waits >= 40
-                && events.dispatched() == 4
-                && !events.failed(),
+    require(loop.counters().submissions == submissions && loop.counters().idle_waits >= 40 &&
+                events.dispatched() == 4 && !events.failed(),
             "layout headless evidence missed input, submit, or idle counts");
 }
 

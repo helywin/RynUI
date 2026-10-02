@@ -20,8 +20,7 @@ void require_close(float actual, float expected, float tolerance, const char* me
     }
 }
 
-template <typename Exception, typename Operation>
-void require_throws(Operation&& operation, const char* message) {
+template <typename Exception, typename Operation> void require_throws(Operation&& operation, const char* message) {
     try {
         operation();
     } catch (const Exception&) {
@@ -32,31 +31,29 @@ void require_throws(Operation&& operation, const char* message) {
 
 void test_linear_and_hybrid_solver_reference_values() {
     using ryn::animation::Easing;
-    require(Easing::linear().sample(-1.0F) == 0.0F
-                && Easing::linear().sample(0.25F) == 0.25F
-                && Easing::linear().sample(2.0F) == 1.0F,
+    require(Easing::linear().sample(-1.0F) == 0.0F && Easing::linear().sample(0.25F) == 0.25F &&
+                Easing::linear().sample(2.0F) == 1.0F,
             "linear easing did not clamp only its time domain");
 
     const auto identity = Easing::cubic_bezier({0.0F, 0.0F, 1.0F, 1.0F});
-    require_close(identity.sample(0.25F), 0.25F, 1.0e-5F,
-                  "identity cubic-bezier reference sample drifted");
+    require_close(identity.sample(0.25F), 0.25F, 1.0e-5F, "identity cubic-bezier reference sample drifted");
 
     const auto flat_derivative = Easing::cubic_bezier({0.0F, 0.0F, 0.0F, 1.0F});
     require_close(flat_derivative.sample(0.125F), 0.5F, 1.0e-5F,
                   "cubic-bezier bisection fallback reference sample drifted");
 
-    const auto ease_in_out = ryn::animation::ant_easing(
-        ryn::animation::AntEasingPreset::ease_in_out);
-    require_close(ease_in_out.sample(0.5F), 0.516875F, 1.0e-5F,
-                  "Ant easeInOut midpoint reference sample drifted");
+    const auto ease_in_out = ryn::animation::ant_easing(ryn::animation::AntEasingPreset::ease_in_out);
+    require_close(ease_in_out.sample(0.5F), 0.516875F, 1.0e-5F, "Ant easeInOut midpoint reference sample drifted");
 }
 
 void test_ant_design_presets_and_overshoot() {
     using namespace ryn::animation;
+
     struct Expected final {
         AntEasingPreset preset;
         ryn::CubicBezier curve;
     };
+
     const std::array expected{
         Expected{AntEasingPreset::ease_out_circ, {0.08F, 0.82F, 0.17F, 1.0F}},
         Expected{AntEasingPreset::ease_in_out_circ, {0.78F, 0.14F, 0.15F, 0.86F}},
@@ -69,8 +66,7 @@ void test_ant_design_presets_and_overshoot() {
     };
     for (const auto& item : expected) {
         const auto easing = ant_easing(item.preset);
-        require(easing.kind() == EasingKind::cubic_bezier
-                    && easing.curve() == item.curve,
+        require(easing.kind() == EasingKind::cubic_bezier && easing.curve() == item.curve,
                 "Ant Design easing preset control points drifted");
         require(easing.sample(0.0F) == 0.0F && easing.sample(1.0F) == 1.0F,
                 "Ant Design easing endpoints were not exact");
@@ -83,24 +79,12 @@ void test_ant_design_presets_and_overshoot() {
 
 void test_invalid_inputs() {
     require_throws<std::invalid_argument>(
-        [] {
-            static_cast<void>(ryn::animation::Easing::linear().sample(
-                std::numeric_limits<float>::quiet_NaN()));
-        },
+        [] { static_cast<void>(ryn::animation::Easing::linear().sample(std::numeric_limits<float>::quiet_NaN())); },
         "easing accepted NaN input");
+    require_throws<std::invalid_argument>([] { static_cast<void>(ryn::CubicBezier{-0.1F, 0.0F, 1.0F, 1.0F}); },
+                                          "cubic-bezier accepted an invalid x control point");
     require_throws<std::invalid_argument>(
-        [] {
-            static_cast<void>(ryn::CubicBezier{-0.1F, 0.0F, 1.0F, 1.0F});
-        },
-        "cubic-bezier accepted an invalid x control point");
-    require_throws<std::invalid_argument>(
-        [] {
-            static_cast<void>(ryn::CubicBezier{
-                0.0F,
-                std::numeric_limits<float>::infinity(),
-                1.0F,
-                1.0F});
-        },
+        [] { static_cast<void>(ryn::CubicBezier{0.0F, std::numeric_limits<float>::infinity(), 1.0F, 1.0F}); },
         "cubic-bezier accepted an infinite y control point");
 }
 

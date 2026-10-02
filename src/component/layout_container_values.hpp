@@ -27,9 +27,7 @@ struct ResolvedLayoutGap final {
     float cross{0.0F};
 };
 
-[[nodiscard]] inline ResolvedLayoutGap resolve_layout_gap(
-    const LayoutGap& gap,
-    theme_runtime::ThemeScope& theme) {
+[[nodiscard]] inline ResolvedLayoutGap resolve_layout_gap(const LayoutGap& gap, theme_runtime::ThemeScope& theme) {
     if (!LayoutGapAccess::preset(gap).has_value()) {
         return {LayoutGapAccess::main(gap), LayoutGapAccess::cross(gap)};
     }

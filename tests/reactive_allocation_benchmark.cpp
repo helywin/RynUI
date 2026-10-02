@@ -143,14 +143,9 @@ int main() {
         const auto elapsed = std::chrono::steady_clock::now() - started;
 
         const auto allocations = allocation_probe::count.load(std::memory_order_relaxed);
-        const auto elapsed_microseconds =
-            std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-        std::cout
-            << "steady_state_writes=" << measured_writes
-            << " allocations=" << allocations
-            << " effect_runs=" << effect_runs
-            << " elapsed_us=" << elapsed_microseconds
-            << '\n';
+        const auto elapsed_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+        std::cout << "steady_state_writes=" << measured_writes << " allocations=" << allocations
+                  << " effect_runs=" << effect_runs << " elapsed_us=" << elapsed_microseconds << '\n';
 
         require(allocations == 0, "steady-state Signal write/flush allocated heap memory");
         require(observed_value == (warmup_writes + measured_writes) * 2,

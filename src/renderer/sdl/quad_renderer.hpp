@@ -25,12 +25,10 @@ struct QuadRendererCounters {
     std::uint64_t no_texture_frames{0};
 };
 
-class SdlQuadRenderer final : public detail::QuadUploadApi,
-                              public runtime::FrameSubmitter {
+class SdlQuadRenderer final : public detail::QuadUploadApi, public runtime::FrameSubmitter {
 public:
-    SdlQuadRenderer(
-        PlatformState& platform,
-        const std::filesystem::path& shader_directory, bool debug_mode = default_sdl_gpu_debug);
+    SdlQuadRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
+                    bool debug_mode = default_sdl_gpu_debug);
     SdlQuadRenderer(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer& operator=(const SdlQuadRenderer&) = delete;
     SdlQuadRenderer(SdlQuadRenderer&&) = delete;
@@ -41,17 +39,17 @@ public:
 
     detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
     void release_buffer(detail::QuadGpuBufferHandle buffer) noexcept override;
-    bool upload(
-        detail::QuadGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override;
+    bool upload(detail::QuadGpuBufferHandle buffer, std::size_t offset, std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;
 
-    runtime::FrameSubmissionResult submit_frame(
-        animation::AnimationTime frame_time) override;
+    runtime::FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) override;
 
     [[nodiscard]] const char* shader_format() const noexcept;
-    [[nodiscard]] const char* gpu_driver() const noexcept { return binding_.driver(); }
+
+    [[nodiscard]] const char* gpu_driver() const noexcept {
+        return binding_.driver();
+    }
+
     [[nodiscard]] const QuadRendererCounters& counters() const noexcept;
 
 private:

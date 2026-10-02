@@ -9,16 +9,12 @@ namespace ryn::input {
 namespace {
 
 constexpr std::uint8_t all_modifier_bits =
-    static_cast<std::uint8_t>(KeyModifier::shift)
-    | static_cast<std::uint8_t>(KeyModifier::control)
-    | static_cast<std::uint8_t>(KeyModifier::alt)
-    | static_cast<std::uint8_t>(KeyModifier::meta);
+    static_cast<std::uint8_t>(KeyModifier::shift) | static_cast<std::uint8_t>(KeyModifier::control) |
+    static_cast<std::uint8_t>(KeyModifier::alt) | static_cast<std::uint8_t>(KeyModifier::meta);
 
 bool is_pointer_action(PointerAction action) noexcept {
-    return action == PointerAction::move
-        || action == PointerAction::down
-        || action == PointerAction::up
-        || action == PointerAction::cancel;
+    return action == PointerAction::move || action == PointerAction::down || action == PointerAction::up ||
+           action == PointerAction::cancel;
 }
 
 bool is_key_action(KeyAction action) noexcept {
@@ -30,21 +26,16 @@ bool is_key(Key key) noexcept {
 }
 
 bool is_window_action(WindowInputAction action) noexcept {
-    return action == WindowInputAction::focus_gained
-        || action == WindowInputAction::focus_lost
-        || action == WindowInputAction::resized;
+    return action == WindowInputAction::focus_gained || action == WindowInputAction::focus_lost ||
+           action == WindowInputAction::resized;
 }
 
-bool is_consecutive_move(
-    const PlatformInputEvent& previous,
-    const PlatformInputEvent& current) noexcept {
+bool is_consecutive_move(const PlatformInputEvent& previous, const PlatformInputEvent& current) noexcept {
     const auto* previous_pointer = std::get_if<PointerInputEvent>(&previous);
     const auto* current_pointer = std::get_if<PointerInputEvent>(&current);
-    return previous_pointer != nullptr
-        && current_pointer != nullptr
-        && previous_pointer->action == PointerAction::move
-        && current_pointer->action == PointerAction::move
-        && previous_pointer->pointer == current_pointer->pointer;
+    return previous_pointer != nullptr && current_pointer != nullptr &&
+           previous_pointer->action == PointerAction::move && current_pointer->action == PointerAction::move &&
+           previous_pointer->pointer == current_pointer->pointer;
 }
 
 } // namespace
@@ -57,33 +48,26 @@ bool is_valid(const PointerIdentity& identity) noexcept {
 }
 
 bool is_valid(const PointerInputEvent& event) noexcept {
-    if (!is_valid(event.pointer)
-            || !is_pointer_action(event.action)
-            || !std::isfinite(event.x)
-            || !std::isfinite(event.y)) {
+    if (!is_valid(event.pointer) || !is_pointer_action(event.action) || !std::isfinite(event.x) ||
+        !std::isfinite(event.y)) {
         return false;
     }
     if (event.action == PointerAction::down || event.action == PointerAction::up) {
-        return event.button == PointerButton::primary
-            || event.button == PointerButton::secondary;
+        return event.button == PointerButton::primary || event.button == PointerButton::secondary;
     }
     return event.button == PointerButton::none;
 }
 
 bool is_valid(const ScrollInputEvent& event) noexcept {
-    return std::isfinite(event.delta_x)
-        && std::isfinite(event.delta_y)
-        && std::isfinite(event.x)
-        && std::isfinite(event.y)
-        && (event.delta_x != 0.0F || event.delta_y != 0.0F);
+    return std::isfinite(event.delta_x) && std::isfinite(event.delta_y) && std::isfinite(event.x) &&
+           std::isfinite(event.y) && (event.delta_x != 0.0F || event.delta_y != 0.0F);
 }
 
 bool is_valid(const KeyboardInputEvent& event) noexcept {
     const auto modifier_bits = static_cast<std::uint8_t>(event.modifiers);
-    return is_key(event.key)
-        && is_key_action(event.action)
-        && (event.primary_modifier == KeyModifier::control || event.primary_modifier == KeyModifier::meta)
-        && (modifier_bits & static_cast<std::uint8_t>(~all_modifier_bits)) == 0;
+    return is_key(event.key) && is_key_action(event.action) &&
+           (event.primary_modifier == KeyModifier::control || event.primary_modifier == KeyModifier::meta) &&
+           (modifier_bits & static_cast<std::uint8_t>(~all_modifier_bits)) == 0;
 }
 
 bool is_valid(const WindowInputEvent& event) noexcept {
@@ -100,12 +84,13 @@ bool is_valid(const PlatformInputEvent& event) noexcept {
     return std::visit([](const auto& value) { return is_valid(value); }, event);
 }
 
-PlatformInputBatch::PlatformInputBatch(std::size_t max_events,
-    std::size_t max_payload_bytes) noexcept
+PlatformInputBatch::PlatformInputBatch(std::size_t max_events, std::size_t max_payload_bytes) noexcept
     : max_events_(max_events), max_payload_bytes_(max_payload_bytes) {}
 
 void PlatformInputBatch::reserve(std::size_t capacity) {
-    if (capacity > max_events_) throw std::length_error("Input batch reserve exceeds limit");
+    if (capacity > max_events_) {
+        throw std::length_error("Input batch reserve exceeds limit");
+    }
     events_.reserve(capacity);
 }
 
@@ -118,15 +103,21 @@ bool PlatformInputBatch::append(PlatformInputEvent event) {
         ++coalesced_move_count_;
         return false;
     }
-    const auto bytes = std::visit([](const auto& value) -> std::size_t {
-        using T = std::decay_t<decltype(value)>;
-        if constexpr (std::is_same_v<T, TextCommitted> || std::is_same_v<T, CompositionChanged>)
-            return value.text.size_bytes();
-        else if constexpr (std::is_same_v<T, CandidatesChanged>) return payload_bytes(value);
-        else return 0;
-    }, event);
-    if (events_.size() >= max_events_ || bytes > max_payload_bytes_ - payload_bytes_)
+    const auto bytes = std::visit(
+        [](const auto& value) -> std::size_t {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, TextCommitted> || std::is_same_v<T, CompositionChanged>) {
+                return value.text.size_bytes();
+            } else if constexpr (std::is_same_v<T, CandidatesChanged>) {
+                return payload_bytes(value);
+            } else {
+                return 0;
+            }
+        },
+        event);
+    if (events_.size() >= max_events_ || bytes > max_payload_bytes_ - payload_bytes_) {
         throw std::length_error("Input batch capacity exceeded");
+    }
     events_.push_back(std::move(event));
     payload_bytes_ += bytes;
     return true;

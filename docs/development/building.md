@@ -19,6 +19,8 @@ RynUI 的正式构建统一使用仓库内的 `CMakePresets.json` 和 `Ninja Mul
 
 仓库自带 `.vscode/` 配置，用于 C/C++ IntelliSense：include 路径、宏和语言标准集中在该目录，任何 preset 都会生成 `compile_commands.json`。配置来源、生效条件和排查方式见 [VS Code 使用说明](vscode.md)。
 
+自有 C++ / HLSL 的统一格式与检查命令见 [代码格式](formatting.md)。
+
 ## Windows / MSVC
 
 推荐从普通 PowerShell 运行仓库包装脚本。脚本只负责定位 Visual Studio、进入 x64 Developer Environment，随后仍通过 presets 完成全部操作：

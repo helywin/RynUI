@@ -13,12 +13,10 @@
 namespace ryn {
 namespace detail {
 
-template <typename T, typename Equal>
-class SignalCell final : public ReactiveSource {
+template <typename T, typename Equal> class SignalCell final : public ReactiveSource {
 public:
     SignalCell(T initial_value, Equal equal)
-        : value_(std::move(initial_value)), equal_(std::move(equal)),
-          owner_thread_(std::this_thread::get_id()) {}
+        : value_(std::move(initial_value)), equal_(std::move(equal)), owner_thread_(std::this_thread::get_id()) {}
 
     [[nodiscard]] const T& get() {
         ensure_owner_thread();
@@ -49,14 +47,10 @@ private:
 };
 
 template <typename T, typename Equal>
-class MemoCell final : public ReactiveSource,
-                       public std::enable_shared_from_this<MemoCell<T, Equal>> {
+class MemoCell final : public ReactiveSource, public std::enable_shared_from_this<MemoCell<T, Equal>> {
 public:
-    static std::shared_ptr<MemoCell> create(
-        std::function<T()> compute,
-        Equal equal) {
-        auto cell = std::shared_ptr<MemoCell>(
-            new MemoCell(std::move(compute), std::move(equal)));
+    static std::shared_ptr<MemoCell> create(std::function<T()> compute, Equal equal) {
+        auto cell = std::shared_ptr<MemoCell>(new MemoCell(std::move(compute), std::move(equal)));
         cell->initialize();
         return cell;
     }
@@ -76,18 +70,15 @@ public:
     }
 
 private:
-    MemoCell(std::function<T()> compute, Equal equal)
-        : compute_(std::move(compute)), equal_(std::move(equal)) {}
+    MemoCell(std::function<T()> compute, Equal equal) : compute_(std::move(compute)), equal_(std::move(equal)) {}
 
     void initialize() {
         std::weak_ptr<MemoCell> weak_cell = this->shared_from_this();
-        observer_ = observe(
-            ObserverPhase::memo,
-            [weak_cell] {
-                if (const auto cell = weak_cell.lock()) {
-                    cell->recompute();
-                }
-            });
+        observer_ = observe(ObserverPhase::memo, [weak_cell] {
+            if (const auto cell = weak_cell.lock()) {
+                cell->recompute();
+            }
+        });
     }
 
     void recompute() {
@@ -111,13 +102,10 @@ private:
 
 } // namespace detail
 
-template <typename T, typename Equal = std::equal_to<T>>
-class Signal final {
+template <typename T, typename Equal = std::equal_to<T>> class Signal final {
 public:
     explicit Signal(T initial_value, Equal equal = {})
-        : cell_(std::make_shared<detail::SignalCell<T, Equal>>(
-              std::move(initial_value),
-              std::move(equal))) {}
+        : cell_(std::make_shared<detail::SignalCell<T, Equal>>(std::move(initial_value), std::move(equal))) {}
 
     [[nodiscard]] const T& get() const {
         return cell_->get();
@@ -131,14 +119,11 @@ private:
     std::shared_ptr<detail::SignalCell<T, Equal>> cell_;
 };
 
-template <typename T, typename Equal = std::equal_to<T>>
-class Memo final {
+template <typename T, typename Equal = std::equal_to<T>> class Memo final {
 public:
     template <typename Compute>
     explicit Memo(Compute compute, Equal equal = {})
-        : cell_(detail::MemoCell<T, Equal>::create(
-              std::function<T()>(std::move(compute)),
-              std::move(equal))) {}
+        : cell_(detail::MemoCell<T, Equal>::create(std::function<T()>(std::move(compute)), std::move(equal))) {}
 
     [[nodiscard]] const T& get() const {
         return cell_->get();
@@ -152,14 +137,12 @@ class Effect;
 class BindingHandle;
 class Scope;
 
-template <typename T>
-class Binding;
+template <typename T> class Binding;
 
 template <typename T, typename Apply>
 BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& apply);
 
-template <typename T>
-class Binding final {
+template <typename T> class Binding final {
 public:
     explicit Binding(std::function<T()> compute) : compute_(std::move(compute)) {}
 
@@ -171,8 +154,7 @@ private:
     std::function<T()> compute_;
 };
 
-template <typename Function>
-auto bind(Function&& function) {
+template <typename Function> auto bind(Function&& function) {
     using Result = std::remove_cvref_t<std::invoke_result_t<Function>>;
     return Binding<Result>(std::function<Result()>(std::forward<Function>(function)));
 }
@@ -191,13 +173,9 @@ public:
     [[nodiscard]] bool active() const noexcept;
 
 private:
-    template <typename Function>
-    friend Effect effect(Scope& scope, Function&& function);
+    template <typename Function> friend Effect effect(Scope& scope, Function&& function);
     template <typename T, typename Apply>
-    friend BindingHandle connect_binding(
-        Scope& scope,
-        const Binding<T>& binding,
-        Apply&& apply);
+    friend BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& apply);
 
     void own_observer(std::shared_ptr<detail::ObserverNode> observer);
 
@@ -215,11 +193,9 @@ public:
     }
 
 private:
-    template <typename Function>
-    friend Effect effect(Scope& scope, Function&& function);
+    template <typename Function> friend Effect effect(Scope& scope, Function&& function);
 
-    explicit Effect(const std::shared_ptr<detail::ObserverNode>& observer)
-        : observer_(observer) {}
+    explicit Effect(const std::shared_ptr<detail::ObserverNode>& observer) : observer_(observer) {}
 
     std::weak_ptr<detail::ObserverNode> observer_;
 };
@@ -235,26 +211,19 @@ public:
 
 private:
     template <typename T, typename Apply>
-    friend BindingHandle connect_binding(
-        Scope& scope,
-        const Binding<T>& binding,
-        Apply&& apply);
+    friend BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& apply);
 
-    explicit BindingHandle(const std::shared_ptr<detail::ObserverNode>& observer)
-        : observer_(observer) {}
+    explicit BindingHandle(const std::shared_ptr<detail::ObserverNode>& observer) : observer_(observer) {}
 
     std::weak_ptr<detail::ObserverNode> observer_;
 };
 
-template <typename Function>
-Effect effect(Scope& scope, Function&& function) {
+template <typename Function> Effect effect(Scope& scope, Function&& function) {
     if (!scope.active()) {
         return Effect{};
     }
-    auto observer = detail::observe(
-        detail::ObserverPhase::effect,
-        std::function<void()>(std::forward<Function>(function)),
-        false);
+    auto observer =
+        detail::observe(detail::ObserverPhase::effect, std::function<void()>(std::forward<Function>(function)), false);
     observer->run();
     scope.own_observer(observer);
     return Effect(observer);
@@ -276,8 +245,7 @@ BindingHandle connect_binding(Scope& scope, const Binding<T>& binding, Apply&& a
     return BindingHandle(observer);
 }
 
-template <typename Function>
-std::invoke_result_t<Function> batch(Function&& function) {
+template <typename Function> std::invoke_result_t<Function> batch(Function&& function) {
     using Result = std::invoke_result_t<Function>;
     auto& scheduler = detail::Scheduler::current();
     scheduler.begin_batch();

@@ -78,8 +78,7 @@ public:
         return *this;
     }
 
-    template <std::size_t N>
-    TypographyProps& content(const char8_t (&literal)[N]) {
+    template <std::size_t N> TypographyProps& content(const char8_t (&literal)[N]) {
         return content(String{literal});
     }
 
@@ -129,12 +128,29 @@ public:
     }
 
     TypographyProps& ellipsis(Prop<TypographyEllipsis> value) {
-        ellipsis_ = std::move(value); return *this;
+        ellipsis_ = std::move(value);
+        return *this;
     }
-    TypographyProps& copyable(Prop<TypographyCopyable> value) { copyable_ = std::move(value); return *this; }
-    TypographyProps& editable(Prop<TypographyEditable> value) { editable_ = std::move(value); return *this; }
-    TypographyProps& onEdit(std::function<void(String)> value) { on_edit_ = std::move(value); return *this; }
-    TypographyProps& onCopy(std::function<void(bool)> value) { on_copy_ = std::move(value); return *this; }
+
+    TypographyProps& copyable(Prop<TypographyCopyable> value) {
+        copyable_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& editable(Prop<TypographyEditable> value) {
+        editable_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& onEdit(std::function<void(String)> value) {
+        on_edit_ = std::move(value);
+        return *this;
+    }
+
+    TypographyProps& onCopy(std::function<void(bool)> value) {
+        on_copy_ = std::move(value);
+        return *this;
+    }
 
     TypographyProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
@@ -172,8 +188,7 @@ public:
         return *this;
     }
 
-    template <std::size_t N>
-    TitleProps& content(const char8_t (&literal)[N]) {
+    template <std::size_t N> TitleProps& content(const char8_t (&literal)[N]) {
         return content(String{literal});
     }
 
@@ -192,14 +207,45 @@ public:
         return *this;
     }
 
-    TitleProps& code(Prop<bool> value) { typography_.code(std::move(value)); return *this; }
-    TitleProps& keyboard(Prop<bool> value) { typography_.keyboard(std::move(value)); return *this; }
-    TitleProps& mark(Prop<bool> value) { typography_.mark(std::move(value)); return *this; }
-    TitleProps& ellipsis(Prop<TypographyEllipsis> value) { typography_.ellipsis(std::move(value)); return *this; }
-    TitleProps& copyable(Prop<TypographyCopyable> value) { typography_.copyable(std::move(value)); return *this; }
-    TitleProps& editable(Prop<TypographyEditable> value) { typography_.editable(std::move(value)); return *this; }
-    TitleProps& onEdit(std::function<void(String)> value) { typography_.onEdit(std::move(value)); return *this; }
-    TitleProps& onCopy(std::function<void(bool)> value) { typography_.onCopy(std::move(value)); return *this; }
+    TitleProps& code(Prop<bool> value) {
+        typography_.code(std::move(value));
+        return *this;
+    }
+
+    TitleProps& keyboard(Prop<bool> value) {
+        typography_.keyboard(std::move(value));
+        return *this;
+    }
+
+    TitleProps& mark(Prop<bool> value) {
+        typography_.mark(std::move(value));
+        return *this;
+    }
+
+    TitleProps& ellipsis(Prop<TypographyEllipsis> value) {
+        typography_.ellipsis(std::move(value));
+        return *this;
+    }
+
+    TitleProps& copyable(Prop<TypographyCopyable> value) {
+        typography_.copyable(std::move(value));
+        return *this;
+    }
+
+    TitleProps& editable(Prop<TypographyEditable> value) {
+        typography_.editable(std::move(value));
+        return *this;
+    }
+
+    TitleProps& onEdit(std::function<void(String)> value) {
+        typography_.onEdit(std::move(value));
+        return *this;
+    }
+
+    TitleProps& onCopy(std::function<void(bool)> value) {
+        typography_.onCopy(std::move(value));
+        return *this;
+    }
 
     TitleProps& strong(Prop<bool> value) {
         typography_.strong(std::move(value));
@@ -239,12 +285,35 @@ void Paragraph(TypographyProps props);
 
 class LinkProps final {
 public:
-    LinkProps& content(Prop<String> value) { content_ = std::move(value); return *this; }
-    template<std::size_t N> LinkProps& content(const char8_t (&value)[N]) { return content(String{value}); }
-    LinkProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
-    LinkProps& type(Prop<TypographyType> value) { type_ = std::move(value); return *this; }
-    LinkProps& onClick(std::function<void()> value) { click_ = std::move(value); return *this; }
-    LinkProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
+    LinkProps& content(Prop<String> value) {
+        content_ = std::move(value);
+        return *this;
+    }
+
+    template <std::size_t N> LinkProps& content(const char8_t (&value)[N]) {
+        return content(String{value});
+    }
+
+    LinkProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    LinkProps& type(Prop<TypographyType> value) {
+        type_ = std::move(value);
+        return *this;
+    }
+
+    LinkProps& onClick(std::function<void()> value) {
+        click_ = std::move(value);
+        return *this;
+    }
+
+    LinkProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend class detail::TypographyComponentHost;
     Prop<String> content_{String{}};

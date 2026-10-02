@@ -34,47 +34,34 @@ std::array<float, 4> channels(ryn::Color color) {
 
 struct Fixture final {
     Fixture()
-        : layout(nodes),
-          dirty(nodes, &frames),
-          fonts(create_runtime()),
-          engine(*fonts),
+        : layout(nodes), dirty(nodes, &frames), fonts(create_runtime()), engine(*fonts),
           text_scene(*fonts, engine, frames) {
-        const auto latin = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT, 0, 14);
-        const auto cjk = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT, 0, 14);
+        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
+        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, 14);
         require(latin && cjk, "ReferenceSurface fonts failed to load");
         chain = {latin.font, cjk.font};
         chains.emplace(14, chain);
         application = std::make_unique<ryn::detail::ButtonComponentHost>(
-            nodes,
-            layout,
-            dirty,
-            text_scene,
+            nodes, layout, dirty, text_scene,
             [this](ryn::SystemFontFamily, std::uint32_t, bool, std::uint32_t pixel_size) {
                 return resolve_fonts(pixel_size);
             },
             frames);
-        surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(
-            *application);
+        surfaces = std::make_unique<rynui::example::ReferenceSurfaceHost>(*application);
     }
 
     static std::unique_ptr<ryn::font::FontRuntime> create_runtime() {
         auto created = ryn::font::FontRuntime::create();
-        require(static_cast<bool>(created),
-                "ReferenceSurface Font Runtime initialization failed");
+        require(static_cast<bool>(created), "ReferenceSurface Font Runtime initialization failed");
         return std::move(created.runtime);
     }
 
-    std::vector<ryn::font::FontIdentity> resolve_fonts(
-        std::uint32_t pixel_size) {
+    std::vector<ryn::font::FontIdentity> resolve_fonts(std::uint32_t pixel_size) {
         if (const auto found = chains.find(pixel_size); found != chains.end()) {
             return found->second;
         }
-        const auto latin = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT, 0, pixel_size);
-        const auto cjk = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT, 0, pixel_size);
+        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixel_size);
+        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixel_size);
         if (!latin || !cjk) {
             return {};
         }
@@ -83,18 +70,14 @@ struct Fixture final {
         return resolved;
     }
 
-    bool synchronize(
-        ryn::runtime::Rect clip = {5.0F, 6.0F, 500.0F, 300.0F}) {
-        return surfaces->layout_and_synchronize(
-            {640.0F, 360.0F}, clip, {20.0F, 20.0F}, 8.0F);
+    bool synchronize(ryn::runtime::Rect clip = {5.0F, 6.0F, 500.0F, 300.0F}) {
+        return surfaces->layout_and_synchronize({640.0F, 360.0F}, clip, {20.0F, 20.0F}, 8.0F);
     }
 
-    const ryn::graphics::QuadInstance& layer(
-        const rynui::example::MountedReferenceSurface& mounted,
-        rynui::example::ReferenceSurfaceVisualLayer layer) const {
+    const ryn::graphics::QuadInstance& layer(const rynui::example::MountedReferenceSurface& mounted,
+                                             rynui::example::ReferenceSurfaceVisualLayer layer) const {
         const auto range = application->button_scene().visual_range(mounted.scene);
-        return application->button_scene().instances().at(
-            range.first + static_cast<std::uint32_t>(layer));
+        return application->button_scene().instances().at(range.first + static_cast<std::uint32_t>(layer));
     }
 
     ryn::runtime::NodeStore nodes;
@@ -117,141 +100,99 @@ void test_typed_mount_retained_scene_and_non_interaction() {
     } catch (const std::logic_error&) {
         outside_host_rejected = true;
     }
-    require(outside_host_rejected,
-            "ReferenceSurface outside its Gallery host was accepted");
+    require(outside_host_rejected, "ReferenceSurface outside its Gallery host was accepted");
 
     Fixture fixture;
-    ryn::Signal<rynui::example::GallerySupportStatus> status{
-        rynui::example::GallerySupportStatus::partial};
-    ryn::Signal<std::optional<ryn::Color>> swatch{
-        std::optional<ryn::Color>{ryn::Color::rgba8(114, 46, 209)}};
+    ryn::Signal<rynui::example::GallerySupportStatus> status{rynui::example::GallerySupportStatus::partial};
+    ryn::Signal<std::optional<ryn::Color>> swatch{std::optional<ryn::Color>{ryn::Color::rgba8(114, 46, 209)}};
     ryn::Signal<bool> elevated{true};
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     int content_runs = 0;
     fixture.surfaces->mount(ryn::Content{[&] {
         ryn::Theme(
-            ryn::ThemeProps{}.config(theme),
-            ryn::ThemeContent{[&] {
+            ryn::ThemeProps{}.config(theme), ryn::ThemeContent{[&] {
                 rynui::example::ReferenceSurface(
-                    rynui::example::ReferenceSurfaceProps{}
-                        .status(status)
-                        .swatch(swatch)
-                        .elevated(elevated)
-                        .layout(ryn::LayoutStyle{}
-                            .width(ryn::dp(260.0F))
-                            .min_height(ryn::dp(96.0F))),
+                    rynui::example::ReferenceSurfaceProps{}.status(status).swatch(swatch).elevated(elevated).layout(
+                        ryn::LayoutStyle{}.width(ryn::dp(260.0F)).min_height(ryn::dp(96.0F))),
                     [&] {
                         ++content_runs;
                         ryn::Text(u8"中文 Latin reference");
-                        rynui::example::ReferenceSurface(
-                            rynui::example::ReferenceSurfaceProps{}
-                                .status(
-                                    rynui::example::GallerySupportStatus::implemented)
-                                .layout(ryn::LayoutStyle{}
-                                    .width(ryn::dp(180.0F))),
-                            [&] {
-                                ++content_runs;
-                                ryn::Text(u8"Nested surface");
-                            });
+                        rynui::example::ReferenceSurface(rynui::example::ReferenceSurfaceProps{}
+                                                             .status(rynui::example::GallerySupportStatus::implemented)
+                                                             .layout(ryn::LayoutStyle{}.width(ryn::dp(180.0F))),
+                                                         [&] {
+                                                             ++content_runs;
+                                                             ryn::Text(u8"Nested surface");
+                                                         });
                     });
-                rynui::example::ReferenceSurface(
-                    rynui::example::ReferenceSurfaceProps{}
-                        .status(rynui::example::GallerySupportStatus::planned)
-                        .layout(ryn::LayoutStyle{}.width(ryn::dp(220.0F))),
-                    [&] { ++content_runs; });
+                rynui::example::ReferenceSurface(rynui::example::ReferenceSurfaceProps{}
+                                                     .status(rynui::example::GallerySupportStatus::planned)
+                                                     .layout(ryn::LayoutStyle{}.width(ryn::dp(220.0F))),
+                                                 [&] { ++content_runs; });
             }});
     }});
-    require(fixture.synchronize(),
-            "ReferenceSurface retained fixture did not synchronize");
+    require(fixture.synchronize(), "ReferenceSurface retained fixture did not synchronize");
 
     const auto mounted = fixture.surfaces->mounted_surfaces();
-    require(content_runs == 3 && mounted.size() == 3
-                && fixture.application->components().component_count() == 8
-                && fixture.application->text().mounted_texts().size() == 5
-                && fixture.application->mounted_buttons().empty()
-                && fixture.application->interactions().size() == 0
-                && fixture.application->button_scene().size() == 3,
+    require(content_runs == 3 && mounted.size() == 3 && fixture.application->components().component_count() == 8 &&
+                fixture.application->text().mounted_texts().size() == 5 &&
+                fixture.application->mounted_buttons().empty() && fixture.application->interactions().size() == 0 &&
+                fixture.application->button_scene().size() == 3,
             "ReferenceSurface mount leaked Button or Interaction semantics");
 
-    const auto outer_it = std::ranges::find_if(mounted, [&](const auto& item) {
-        return fixture.surfaces->snapshot(item.component).elevated;
-    });
+    const auto outer_it = std::ranges::find_if(
+        mounted, [&](const auto& item) { return fixture.surfaces->snapshot(item.component).elevated; });
     const auto nested_it = std::ranges::find_if(mounted, [&](const auto& item) {
-        return fixture.surfaces->snapshot(item.component).status
-            == rynui::example::GallerySupportStatus::implemented;
+        return fixture.surfaces->snapshot(item.component).status == rynui::example::GallerySupportStatus::implemented;
     });
     require(outer_it != mounted.end() && nested_it != mounted.end(),
             "ReferenceSurface generation-checked records were not discoverable");
     const auto outer = *outer_it;
     const auto nested = *nested_it;
     const auto outer_snapshot = fixture.surfaces->snapshot(outer.component);
-    require(outer_snapshot.visual_range.count
-                    == rynui::example::reference_surface_visual_layer_count
-                && fixture.layer(
-                    outer,
-                    rynui::example::ReferenceSurfaceVisualLayer::swatch).opacity == 1.0F
-                && fixture.layer(
-                    outer,
-                    rynui::example::ReferenceSurfaceVisualLayer::status_badge).color
-                    == channels(ryn::resolve_theme().map().color_warning)
-                && fixture.application->button_scene()
-                    .shadow_effects(outer.scene).size() == 3
-                && fixture.application->rounded_effects().live_count() == 3,
+    require(outer_snapshot.visual_range.count == rynui::example::reference_surface_visual_layer_count &&
+                fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::swatch).opacity == 1.0F &&
+                fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::status_badge).color ==
+                    channels(ryn::resolve_theme().map().color_warning) &&
+                fixture.application->button_scene().shadow_effects(outer.scene).size() == 3 &&
+                fixture.application->rounded_effects().live_count() == 3,
             "ReferenceSurface Theme visuals, swatch, badge, or shadow drifted");
     const auto& outer_bounds = fixture.nodes.require(outer.node).bounds;
-    const auto& swatch_quad = fixture.layer(
-        outer, rynui::example::ReferenceSurfaceVisualLayer::swatch);
-    const auto& badge_quad = fixture.layer(
-        outer, rynui::example::ReferenceSurfaceVisualLayer::status_badge);
+    const auto& swatch_quad = fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::swatch);
+    const auto& badge_quad = fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::status_badge);
     const float swatch_x = swatch_quad.bounds[0];
     const float swatch_y = swatch_quad.bounds[1];
     const float badge_x = badge_quad.bounds[0];
-    require(near(swatch_x, outer_bounds.x + outer_bounds.width - 48.0F)
-                && near(swatch_y, outer_bounds.y + 8.0F)
-                && swatch_x + 16.0F < badge_x,
+    require(near(swatch_x, outer_bounds.x + outer_bounds.width - 48.0F) && near(swatch_y, outer_bounds.y + 8.0F) &&
+                swatch_x + 16.0F < badge_x,
             "ReferenceSurface swatch did not stay in its separate header slot");
     for (std::size_t index = 0; index < 2; ++index) {
-        const auto text_node = fixture.text_scene.node(
-            fixture.application->text().mounted_texts()[index].scene);
+        const auto text_node = fixture.text_scene.node(fixture.application->text().mounted_texts()[index].scene);
         const auto& text_bounds = fixture.nodes.require(text_node).bounds;
-        require(swatch_x + 16.0F <= text_bounds.x
-                    || text_bounds.x + text_bounds.width <= swatch_x
-                    || swatch_y + 16.0F <= text_bounds.y
-                    || text_bounds.y + text_bounds.height <= swatch_y,
+        require(swatch_x + 16.0F <= text_bounds.x || text_bounds.x + text_bounds.width <= swatch_x ||
+                    swatch_y + 16.0F <= text_bounds.y || text_bounds.y + text_bounds.height <= swatch_y,
                 "ReferenceSurface swatch overlapped its status or content text");
     }
     require(fixture.application->scene_composer().interaction_order().empty(),
             "ReferenceSurface entered the scene Interaction order");
-    const auto commands = fixture.application->scene_composer()
-        .ordered_scene().commands();
-    require(!commands.empty()
-                && commands.front().kind
-                    == ryn::graphics::SceneDrawKind::rounded_effect
-                && std::ranges::any_of(commands, [](const auto& command) {
-                    return command.kind == ryn::graphics::SceneDrawKind::quad;
-                })
-                && std::ranges::any_of(commands, [](const auto& command) {
-                    return command.kind == ryn::graphics::SceneDrawKind::glyph;
-                }),
+    const auto commands = fixture.application->scene_composer().ordered_scene().commands();
+    require(!commands.empty() && commands.front().kind == ryn::graphics::SceneDrawKind::rounded_effect &&
+                std::ranges::any_of(
+                    commands, [](const auto& command) { return command.kind == ryn::graphics::SceneDrawKind::quad; }) &&
+                std::ranges::any_of(
+                    commands, [](const auto& command) { return command.kind == ryn::graphics::SceneDrawKind::glyph; }),
             "ReferenceSurface scene order omitted effect, quad, or Text content");
 
-    const auto first_shadow = fixture.application->button_scene()
-        .shadow_effects(outer.scene).front();
-    ryn::runtime::NodePropertyWriter writer(
-        fixture.nodes, fixture.dirty);
-    require(writer.set_translation(outer.node, {7.0F, 5.0F})
-                && fixture.synchronize(),
+    const auto first_shadow = fixture.application->button_scene().shadow_effects(outer.scene).front();
+    ryn::runtime::NodePropertyWriter writer(fixture.nodes, fixture.dirty);
+    require(writer.set_translation(outer.node, {7.0F, 5.0F}) && fixture.synchronize(),
             "ReferenceSurface translation did not synchronize");
-    const auto& translated = fixture.layer(
-        outer,
-        rynui::example::ReferenceSurfaceVisualLayer::background);
+    const auto& translated = fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::background);
     const auto& shadow = fixture.application->rounded_effects().at(first_shadow);
-    require(near(translated.translation[0], 7.0F)
-                && near(translated.translation[1], 5.0F)
-                && shadow.geometry.translation == ryn::runtime::Point{7.0F, 5.0F}
-                && shadow.geometry.ancestor_clip.has_value()
-                && shadow.geometry.ancestor_clip->bounds
-                    == ryn::runtime::Rect{5.0F, 6.0F, 500.0F, 300.0F},
+    require(near(translated.translation[0], 7.0F) && near(translated.translation[1], 5.0F) &&
+                shadow.geometry.translation == ryn::runtime::Point{7.0F, 5.0F} &&
+                shadow.geometry.ancestor_clip.has_value() &&
+                shadow.geometry.ancestor_clip->bounds == ryn::runtime::Rect{5.0F, 6.0F, 500.0F, 300.0F},
             "ReferenceSurface translation or ancestor clip diverged");
 
     fixture.application->pointer().dispatch({
@@ -268,8 +209,7 @@ void test_typed_mount_retained_scene_and_non_interaction() {
         fixture.nodes.require(outer.node).bounds.x + 10.0F,
         fixture.nodes.require(outer.node).bounds.y + 10.0F,
     });
-    for (const auto key : {ryn::input::Key::tab, ryn::input::Key::enter,
-                            ryn::input::Key::space}) {
+    for (const auto key : {ryn::input::Key::tab, ryn::input::Key::enter, ryn::input::Key::space}) {
         fixture.application->focus().dispatch({
             key,
             ryn::input::KeyAction::down,
@@ -277,165 +217,118 @@ void test_typed_mount_retained_scene_and_non_interaction() {
             false,
         });
     }
-    const auto pointer = fixture.application->pointer().state(
-        ryn::input::PointerIdentity::mouse());
-    require(fixture.application->pointer().diagnostics().routes_dispatched == 0
-                && fixture.application->focus().diagnostics().focus_changes == 0
-                && !fixture.application->focus().state().focused.has_value()
-                && pointer.has_value() && !pointer->capture.has_value()
-                && fixture.application->interactions().size() == 0,
+    const auto pointer = fixture.application->pointer().state(ryn::input::PointerIdentity::mouse());
+    require(fixture.application->pointer().diagnostics().routes_dispatched == 0 &&
+                fixture.application->focus().diagnostics().focus_changes == 0 &&
+                !fixture.application->focus().state().focused.has_value() && pointer.has_value() &&
+                !pointer->capture.has_value() && fixture.application->interactions().size() == 0,
             "ReferenceSurface reacted to pointer or keyboard input");
 
-    const auto stable_component_count = fixture.application->components()
-        .component_count();
+    const auto stable_component_count = fixture.application->components().component_count();
     const auto stable_scene = outer.scene;
     const auto stable_range = outer_snapshot.visual_range;
     const auto content_text = fixture.application->text().mounted_texts()[1].scene;
-    const auto shape_count = fixture.text_scene.text_state(content_text)
-        .counters().shape_count;
+    const auto shape_count = fixture.text_scene.text_state(content_text).counters().shape_count;
     fixture.dirty.clear();
     auto dark = ryn::ThemeConfig{};
     dark.algorithms = {ryn::ThemeAlgorithm::Dark};
     require(theme.set(dark), "ReferenceSurface Theme update was ignored");
-    require(fixture.dirty.hit_test_nodes().empty()
-                && fixture.synchronize(),
+    require(fixture.dirty.hit_test_nodes().empty() && fixture.synchronize(),
             "ReferenceSurface Theme update refreshed HitTest or failed");
-    require(content_runs == 3
-                && fixture.application->components().component_count()
-                    == stable_component_count
-                && fixture.surfaces->snapshot(outer.component).scene == stable_scene
-                && fixture.surfaces->snapshot(outer.component).visual_range == stable_range
-                && fixture.text_scene.text_state(content_text).counters().shape_count
-                    == shape_count
-                && fixture.layer(
-                    outer,
-                    rynui::example::ReferenceSurfaceVisualLayer::background).color
-                    == channels(ryn::resolve_theme(dark)
-                        .alias().color_background_container),
+    require(content_runs == 3 && fixture.application->components().component_count() == stable_component_count &&
+                fixture.surfaces->snapshot(outer.component).scene == stable_scene &&
+                fixture.surfaces->snapshot(outer.component).visual_range == stable_range &&
+                fixture.text_scene.text_state(content_text).counters().shape_count == shape_count &&
+                fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::background).color ==
+                    channels(ryn::resolve_theme(dark).alias().color_background_container),
             "ReferenceSurface Theme update reran content or rebuilt retained identity");
 
     fixture.dirty.clear();
-    require(swatch.set(std::nullopt)
-                && elevated.set(false)
-                && fixture.dirty.hit_test_nodes().empty()
-                && fixture.synchronize(),
+    require(swatch.set(std::nullopt) && elevated.set(false) && fixture.dirty.hit_test_nodes().empty() &&
+                fixture.synchronize(),
             "ReferenceSurface reactive material update failed");
-    require(status.set(rynui::example::GallerySupportStatus::deprecated)
-                && fixture.synchronize(),
+    require(status.set(rynui::example::GallerySupportStatus::deprecated) && fixture.synchronize(),
             "ReferenceSurface status label update failed");
-    require(content_runs == 3
-                && fixture.surfaces->snapshot(outer.component).scene == stable_scene
-                && fixture.layer(
-                    outer,
-                    rynui::example::ReferenceSurfaceVisualLayer::swatch).opacity == 0.0F
-                && fixture.application->button_scene()
-                    .shadow_effects(outer.scene).empty()
-                && fixture.application->rounded_effects().live_count() == 0
-                && fixture.application->interactions().size() == 0,
+    require(content_runs == 3 && fixture.surfaces->snapshot(outer.component).scene == stable_scene &&
+                fixture.layer(outer, rynui::example::ReferenceSurfaceVisualLayer::swatch).opacity == 0.0F &&
+                fixture.application->button_scene().shadow_effects(outer.scene).empty() &&
+                fixture.application->rounded_effects().live_count() == 0 &&
+                fixture.application->interactions().size() == 0,
             "ReferenceSurface status/swatch/shadow update changed interaction or identity");
 
     const auto stale_scene = nested.scene;
-    require(fixture.surfaces->destroy(nested.component),
-            "ReferenceSurface destroy failed");
+    require(fixture.surfaces->destroy(nested.component), "ReferenceSurface destroy failed");
     bool stale_rejected = false;
     try {
-        static_cast<void>(fixture.application->button_scene()
-            .visual_range(stale_scene));
+        static_cast<void>(fixture.application->button_scene().visual_range(stale_scene));
     } catch (const std::out_of_range&) {
         stale_rejected = true;
     }
-    require(stale_rejected,
-            "ReferenceSurface stale scene generation was not rejected");
+    require(stale_rejected, "ReferenceSurface stale scene generation was not rejected");
 
     Fixture cascade;
     cascade.surfaces->mount(ryn::Content{[] {
         rynui::example::ReferenceSurface(
-            rynui::example::ReferenceSurfaceProps{}
-                .status(rynui::example::GallerySupportStatus::partial),
-            [] {
+            rynui::example::ReferenceSurfaceProps{}.status(rynui::example::GallerySupportStatus::partial), [] {
                 rynui::example::ReferenceSurface(
-                    rynui::example::ReferenceSurfaceProps{}
-                        .status(
-                            rynui::example::GallerySupportStatus::implemented),
+                    rynui::example::ReferenceSurfaceProps{}.status(rynui::example::GallerySupportStatus::implemented),
                     [] { ryn::Text(u8"Cascade child"); });
             });
     }});
-    require(cascade.synchronize(),
-            "nested ReferenceSurface cascade did not synchronize");
-    const auto cascade_outer_it = std::ranges::find_if(
-        cascade.surfaces->mounted_surfaces(),
-        [&](const auto& item) {
-            return cascade.surfaces->snapshot(item.component).status
-                == rynui::example::GallerySupportStatus::partial;
-        });
+    require(cascade.synchronize(), "nested ReferenceSurface cascade did not synchronize");
+    const auto cascade_outer_it = std::ranges::find_if(cascade.surfaces->mounted_surfaces(), [&](const auto& item) {
+        return cascade.surfaces->snapshot(item.component).status == rynui::example::GallerySupportStatus::partial;
+    });
     require(cascade_outer_it != cascade.surfaces->mounted_surfaces().end(),
             "outer ReferenceSurface cascade record was not found");
     const auto cascade_outer = *cascade_outer_it;
-    require(cascade.surfaces->destroy(cascade_outer.component),
-            "parent ReferenceSurface destroy failed");
-    require(cascade.surfaces->mounted_surfaces().empty(),
-            "parent ReferenceSurface destroy retained nested records");
-    require(cascade.application->button_scene().size() == 0,
-            "parent ReferenceSurface destroy retained nested scenes");
+    require(cascade.surfaces->destroy(cascade_outer.component), "parent ReferenceSurface destroy failed");
+    require(cascade.surfaces->mounted_surfaces().empty(), "parent ReferenceSurface destroy retained nested records");
+    require(cascade.application->button_scene().size() == 0, "parent ReferenceSurface destroy retained nested scenes");
     require(cascade.application->text().mounted_texts().empty(),
             "parent ReferenceSurface destroy retained nested Text records");
-    require(cascade.application->interactions().size() == 0,
-            "parent ReferenceSurface destroy retained interactions");
+    require(cascade.application->interactions().size() == 0, "parent ReferenceSurface destroy retained interactions");
 }
 
 void test_gallery_chrome_roles_use_theme_without_status_labels() {
     using namespace rynui::example;
     Fixture fixture;
     fixture.surfaces->mount(ryn::Content{[] {
-        ReferenceSurface(
-            ReferenceSurfaceProps{}
-                .role(ReferenceSurfaceRole::site_header)
-                .layout(ryn::LayoutStyle{}
-                    .width(ryn::dp(400.0F))
-                    .height(ryn::dp(64.0F))),
-            [] { ryn::Text(u8"RynUI"); });
-        ReferenceSurface(
-            ReferenceSurfaceProps{}
-                .role(ReferenceSurfaceRole::scrollbar_track)
-                .layout(ryn::LayoutStyle{}
-                    .width(ryn::dp(8.0F))
-                    .height(ryn::dp(200.0F))),
-            [] {});
-        ReferenceSurface(
-            ReferenceSurfaceProps{}
-                .role(ReferenceSurfaceRole::scrollbar_thumb)
-                .layout(ryn::LayoutStyle{}
-                    .width(ryn::dp(8.0F))
-                    .height(ryn::dp(40.0F))),
-            [] {});
+        ReferenceSurface(ReferenceSurfaceProps{}
+                             .role(ReferenceSurfaceRole::site_header)
+                             .layout(ryn::LayoutStyle{}.width(ryn::dp(400.0F)).height(ryn::dp(64.0F))),
+                         [] { ryn::Text(u8"RynUI"); });
+        ReferenceSurface(ReferenceSurfaceProps{}
+                             .role(ReferenceSurfaceRole::scrollbar_track)
+                             .layout(ryn::LayoutStyle{}.width(ryn::dp(8.0F)).height(ryn::dp(200.0F))),
+                         [] {});
+        ReferenceSurface(ReferenceSurfaceProps{}
+                             .role(ReferenceSurfaceRole::scrollbar_thumb)
+                             .layout(ryn::LayoutStyle{}.width(ryn::dp(8.0F)).height(ryn::dp(40.0F))),
+                         [] {});
         ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::document_heading),
-            [] { ryn::Text(u8"Document heading"); });
+                         [] { ryn::Text(u8"Document heading"); });
         ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::document_note),
-            [] { ryn::Text(u8"Source note"); });
+                         [] { ryn::Text(u8"Source note"); });
     }});
     require(fixture.synchronize(), "Gallery chrome did not synchronize");
     const auto mounted = fixture.surfaces->mounted_surfaces();
-    require(mounted.size() == 5
-                && fixture.application->text().mounted_texts().size() == 3
-                && fixture.application->interactions().size() == 0,
+    require(mounted.size() == 5 && fixture.application->text().mounted_texts().size() == 3 &&
+                fixture.application->interactions().size() == 0,
             "Gallery chrome mounted status labels or interactions");
     const auto header = fixture.surfaces->snapshot(mounted[0].component);
     const auto track = fixture.surfaces->snapshot(mounted[1].component);
     const auto thumb = fixture.surfaces->snapshot(mounted[2].component);
-    require(header.role == ReferenceSurfaceRole::site_header
-                && track.role == ReferenceSurfaceRole::scrollbar_track
-                && thumb.role == ReferenceSurfaceRole::scrollbar_thumb,
+    require(header.role == ReferenceSurfaceRole::site_header && track.role == ReferenceSurfaceRole::scrollbar_track &&
+                thumb.role == ReferenceSurfaceRole::scrollbar_thumb,
             "Gallery chrome roles were not retained");
     for (const auto& surface : mounted) {
         const auto role = fixture.surfaces->snapshot(surface.component).role;
-        const bool document = role == ReferenceSurfaceRole::document_heading
-            || role == ReferenceSurfaceRole::document_note;
-        require(fixture.layer(surface, ReferenceSurfaceVisualLayer::background).opacity
-                    == (document ? 0.0F : 1.0F)
-                    && fixture.layer(surface, ReferenceSurfaceVisualLayer::border).opacity
-                        == 0.0F
-                    && fixture.layer(surface, ReferenceSurfaceVisualLayer::status_badge).opacity
-                        == 0.0F,
+        const bool document =
+            role == ReferenceSurfaceRole::document_heading || role == ReferenceSurfaceRole::document_note;
+        require(fixture.layer(surface, ReferenceSurfaceVisualLayer::background).opacity == (document ? 0.0F : 1.0F) &&
+                    fixture.layer(surface, ReferenceSurfaceVisualLayer::border).opacity == 0.0F &&
+                    fixture.layer(surface, ReferenceSurfaceVisualLayer::status_badge).opacity == 0.0F,
                 "Gallery chrome rendered reference card decoration");
     }
 }
@@ -446,44 +339,45 @@ void test_scrollbar_material_uses_hover_press_and_dark_theme() {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     fixture.surfaces->mount(ryn::Content{[&] {
         ryn::Theme(ryn::ThemeProps{}.config(theme), ryn::ThemeContent{[] {
-            ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::scrollbar_track)
-                .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(200))), [] {});
-            ReferenceSurface(ReferenceSurfaceProps{}.role(ReferenceSurfaceRole::scrollbar_thumb)
-                .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(40))), [] {});
-        }});
+                       ReferenceSurface(ReferenceSurfaceProps{}
+                                            .role(ReferenceSurfaceRole::scrollbar_track)
+                                            .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(200))),
+                                        [] {});
+                       ReferenceSurface(ReferenceSurfaceProps{}
+                                            .role(ReferenceSurfaceRole::scrollbar_thumb)
+                                            .layout(ryn::LayoutStyle{}.width(ryn::dp(8)).height(ryn::dp(40))),
+                                        [] {});
+                   }});
     }});
     require(fixture.synchronize(), "scrollbar visual fixture did not synchronize");
     const auto mounted = fixture.surfaces->mounted_surfaces();
-    const auto track = mounted[0], thumb = mounted[1];
+    const auto track = mounted[0];
+    const auto thumb = mounted[1];
     const auto color = [&](const auto& surface) {
         return fixture.layer(surface, ReferenceSurfaceVisualLayer::background).color;
     };
-    require(near(color(track)[3], 0.05F) && near(color(thumb)[3], 0.28F),
-        "scrollbar resting material drifted");
+    require(near(color(track)[3], 0.05F) && near(color(thumb)[3], 0.28F), "scrollbar resting material drifted");
     fixture.dirty.clear();
     GalleryScrollbarVisualState hover;
     hover.track_hover = hover.thumb_hover = true;
-    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover)
-        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover)
-        && near(color(track)[3], 0.10F) && near(color(thumb)[3], 0.46F)
-        && fixture.dirty.layout_roots().empty(),
-        "scrollbar hover did not stay a material-only update");
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover) &&
+                fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover) && near(color(track)[3], 0.10F) &&
+                near(color(thumb)[3], 0.46F) && fixture.dirty.layout_roots().empty(),
+            "scrollbar hover did not stay a material-only update");
     hover.track_pressed = hover.thumb_pressed = hover.dragging = true;
-    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover)
-        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover)
-        && near(color(track)[3], 0.16F) && near(color(thumb)[3], 0.62F),
-        "scrollbar press did not change track and thumb colors");
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, hover) &&
+                fixture.surfaces->set_scrollbar_visual_state(thumb.component, hover) && near(color(track)[3], 0.16F) &&
+                near(color(thumb)[3], 0.62F),
+            "scrollbar press did not change track and thumb colors");
     auto dark = ryn::ThemeConfig{};
     dark.algorithms = {ryn::ThemeAlgorithm::Dark};
     theme.set(dark);
-    require(fixture.synchronize()
-        && color(thumb)[0] > 0.5F
-        && near(color(thumb)[3], 0.62F),
-        "dark scrollbar did not inherit its theme foreground");
-    require(fixture.surfaces->set_scrollbar_visual_state(track.component, {})
-        && fixture.surfaces->set_scrollbar_visual_state(thumb.component, {})
-        && near(color(track)[3], 0.05F) && near(color(thumb)[3], 0.28F),
-        "scrollbar release did not restore resting colors");
+    require(fixture.synchronize() && color(thumb)[0] > 0.5F && near(color(thumb)[3], 0.62F),
+            "dark scrollbar did not inherit its theme foreground");
+    require(fixture.surfaces->set_scrollbar_visual_state(track.component, {}) &&
+                fixture.surfaces->set_scrollbar_visual_state(thumb.component, {}) && near(color(track)[3], 0.05F) &&
+                near(color(thumb)[3], 0.28F),
+            "scrollbar release did not restore resting colors");
 }
 
 } // namespace

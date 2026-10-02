@@ -9,16 +9,14 @@ namespace {
 
 double curve_coordinate(double first, double second, double parameter) noexcept {
     const double inverse = 1.0 - parameter;
-    return 3.0 * first * inverse * inverse * parameter
-        + 3.0 * second * inverse * parameter * parameter
-        + parameter * parameter * parameter;
+    return 3.0 * first * inverse * inverse * parameter + 3.0 * second * inverse * parameter * parameter +
+           parameter * parameter * parameter;
 }
 
 double curve_derivative(double first, double second, double parameter) noexcept {
     const double inverse = 1.0 - parameter;
-    return 3.0 * first * inverse * inverse
-        + 6.0 * (second - first) * inverse * parameter
-        + 3.0 * (1.0 - second) * parameter * parameter;
+    return 3.0 * first * inverse * inverse + 6.0 * (second - first) * inverse * parameter +
+           3.0 * (1.0 - second) * parameter * parameter;
 }
 
 double solve_curve_parameter(CubicBezier curve, double progress) noexcept {
@@ -42,12 +40,8 @@ double solve_curve_parameter(CubicBezier curve, double progress) noexcept {
         }
 
         const double derivative = curve_derivative(curve.x1, curve.x2, parameter);
-        const double newton = derivative > derivative_epsilon
-            ? parameter - error / derivative
-            : -1.0;
-        parameter = newton > lower && newton < upper
-            ? newton
-            : (lower + upper) * 0.5;
+        const double newton = derivative > derivative_epsilon ? parameter - error / derivative : -1.0;
+        parameter = newton > lower && newton < upper ? newton : (lower + upper) * 0.5;
     }
     return parameter;
 }
@@ -58,14 +52,12 @@ float Easing::sample(float normalized_time) const {
     if (!std::isfinite(normalized_time)) {
         throw std::invalid_argument("easing input must be finite");
     }
-    const double progress = std::clamp(
-        static_cast<double>(normalized_time), 0.0, 1.0);
+    const double progress = std::clamp(static_cast<double>(normalized_time), 0.0, 1.0);
     if (progress == 0.0 || progress == 1.0 || kind_ == EasingKind::linear) {
         return static_cast<float>(progress);
     }
     const double parameter = solve_curve_parameter(curve_, progress);
-    return static_cast<float>(
-        curve_coordinate(curve_.y1, curve_.y2, parameter));
+    return static_cast<float>(curve_coordinate(curve_.y1, curve_.y2, parameter));
 }
 
 Easing ant_easing(AntEasingPreset preset) {

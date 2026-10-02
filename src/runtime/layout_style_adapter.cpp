@@ -21,26 +21,18 @@ enum class LayoutStyleField {
     margin_bottom,
 };
 
-bool dimensions_equal(
-    const ExternalLayoutStyle& left,
-    const ExternalLayoutStyle& right) noexcept {
-    return left.width == right.width
-        && left.height == right.height
-        && left.min_width == right.min_width
-        && left.max_width == right.max_width
-        && left.min_height == right.min_height
-        && left.max_height == right.max_height;
+bool dimensions_equal(const ExternalLayoutStyle& left, const ExternalLayoutStyle& right) noexcept {
+    return left.width == right.width && left.height == right.height && left.min_width == right.min_width &&
+           left.max_width == right.max_width && left.min_height == right.min_height &&
+           left.max_height == right.max_height;
 }
 
-bool flex_measure_equal(const ExternalLayoutStyle& left,
-                        const ExternalLayoutStyle& right) noexcept {
+bool flex_measure_equal(const ExternalLayoutStyle& left, const ExternalLayoutStyle& right) noexcept {
     return left.flex_grow == right.flex_grow && left.flex_shrink == right.flex_shrink &&
            left.flex_basis == right.flex_basis && left.order == right.order;
 }
 
-void validate_optional_length(
-    const std::optional<float>& value,
-    const char* name) {
+void validate_optional_length(const std::optional<float>& value, const char* name) {
     if (value.has_value() && (!std::isfinite(*value) || *value < 0.0F)) {
         throw std::invalid_argument(name);
     }
@@ -48,30 +40,17 @@ void validate_optional_length(
 
 void validate_margin(float value) {
     if (!std::isfinite(value) || value < 0.0F) {
-        throw std::invalid_argument(
-            "LayoutStyle margin must be finite and non-negative");
+        throw std::invalid_argument("LayoutStyle margin must be finite and non-negative");
     }
 }
 
 void validate_style(const ExternalLayoutStyle& style) {
-    validate_optional_length(
-        style.width,
-        "LayoutStyle width must be finite and non-negative");
-    validate_optional_length(
-        style.height,
-        "LayoutStyle height must be finite and non-negative");
-    validate_optional_length(
-        style.min_width,
-        "LayoutStyle min width must be finite and non-negative");
-    validate_optional_length(
-        style.max_width,
-        "LayoutStyle max width must be finite and non-negative");
-    validate_optional_length(
-        style.min_height,
-        "LayoutStyle min height must be finite and non-negative");
-    validate_optional_length(
-        style.max_height,
-        "LayoutStyle max height must be finite and non-negative");
+    validate_optional_length(style.width, "LayoutStyle width must be finite and non-negative");
+    validate_optional_length(style.height, "LayoutStyle height must be finite and non-negative");
+    validate_optional_length(style.min_width, "LayoutStyle min width must be finite and non-negative");
+    validate_optional_length(style.max_width, "LayoutStyle max width must be finite and non-negative");
+    validate_optional_length(style.min_height, "LayoutStyle min height must be finite and non-negative");
+    validate_optional_length(style.max_height, "LayoutStyle max height must be finite and non-negative");
     validate_margin(style.margin.left);
     validate_margin(style.margin.top);
     validate_margin(style.margin.right);
@@ -82,8 +61,7 @@ void validate_style(const ExternalLayoutStyle& style) {
     if (!std::isfinite(style.flex_shrink) || style.flex_shrink < 0.0F) {
         throw std::invalid_argument("LayoutStyle flex shrink must be finite and non-negative");
     }
-    validate_optional_length(style.flex_basis,
-                             "LayoutStyle flex basis must be finite and non-negative");
+    validate_optional_length(style.flex_basis, "LayoutStyle flex basis must be finite and non-negative");
     switch (style.align_self) {
     case FlexItemAlign::automatic:
     case FlexItemAlign::start:
@@ -94,12 +72,10 @@ void validate_style(const ExternalLayoutStyle& style) {
     default:
         throw std::invalid_argument("LayoutStyle align-self is invalid");
     }
-    if (style.min_width.has_value() && style.max_width.has_value() &&
-        *style.min_width > *style.max_width) {
+    if (style.min_width.has_value() && style.max_width.has_value() && *style.min_width > *style.max_width) {
         throw std::invalid_argument("LayoutStyle min width cannot exceed max width");
     }
-    if (style.min_height.has_value() && style.max_height.has_value()
-            && *style.min_height > *style.max_height) {
+    if (style.min_height.has_value() && style.max_height.has_value() && *style.min_height > *style.max_height) {
         throw std::invalid_argument("LayoutStyle min height cannot exceed max height");
     }
 }
@@ -134,10 +110,7 @@ FlexItemAlign flex_item_align(FlexAlignSelf value) {
     throw std::invalid_argument("LayoutStyle align-self is invalid");
 }
 
-void set_field(
-    ExternalLayoutStyle& style,
-    LayoutStyleField field,
-    LogicalLength value) {
+void set_field(ExternalLayoutStyle& style, LayoutStyleField field, LogicalLength value) {
     switch (field) {
     case LayoutStyleField::width:
         style.width = optional_length(value);
@@ -193,21 +166,14 @@ public:
         node.external_layout = std::move(value);
         if (margin_change) {
             node.layout_size = {
-                node.measured_size.width
-                    + node.external_layout.margin.left
-                    + node.external_layout.margin.right,
-                node.measured_size.height
-                    + node.external_layout.margin.top
-                    + node.external_layout.margin.bottom,
+                node.measured_size.width + node.external_layout.margin.left + node.external_layout.margin.right,
+                node.measured_size.height + node.external_layout.margin.top + node.external_layout.margin.bottom,
             };
         }
         if (dimension_change) {
-            dirty_->invalidate(
-                id,
-                DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry);
+            dirty_->invalidate(id, DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry);
         } else if (flex_measure_change) {
-            dirty_->invalidate_subtree(flex_root, DirtyFlags::Measure | DirtyFlags::Layout |
-                                                      DirtyFlags::Geometry);
+            dirty_->invalidate_subtree(flex_root, DirtyFlags::Measure | DirtyFlags::Layout | DirtyFlags::Geometry);
         } else if (margin_change) {
             dirty_->invalidate(id, DirtyFlags::Placement | DirtyFlags::Geometry);
         } else if (align_self_change) {
@@ -270,8 +236,7 @@ private:
     std::thread::id owner_thread_;
 };
 
-using PropMember = const std::optional<Prop<LogicalLength>>& (*)(
-    const LayoutStyle&) noexcept;
+using PropMember = const std::optional<Prop<LogicalLength>>& (*)(const LayoutStyle&) noexcept;
 
 struct FieldBinding final {
     LayoutStyleField field;
@@ -293,12 +258,7 @@ constexpr FieldBinding fields[] = {
 
 } // namespace
 
-void connect_layout_style(
-    Scope& scope,
-    const LayoutStyle& style,
-    NodeId node,
-    NodeStore& nodes,
-    DirtyQueues& dirty) {
+void connect_layout_style(Scope& scope, const LayoutStyle& style, NodeId node, NodeStore& nodes, DirtyQueues& dirty) {
     if (!scope.active()) {
         return;
     }
@@ -335,9 +295,7 @@ void connect_layout_style(
             continue;
         }
         static_cast<void>(detail::connect_prop(
-            scope,
-            *prop,
-            [writer, node, current_field = field.field](LogicalLength value) mutable {
+            scope, *prop, [writer, node, current_field = field.field](LogicalLength value) mutable {
                 static_cast<void>(writer.set(node, current_field, value));
             }));
     }
@@ -353,21 +311,18 @@ void connect_layout_style(
         }));
     }
     if (const auto& prop = detail::LayoutStyleAccess::flex_basis(style)) {
-        static_cast<void>(
-            detail::connect_prop(scope, *prop, [writer, node](LogicalLength value) mutable {
-                static_cast<void>(writer.set_flex_basis(node, value));
-            }));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](LogicalLength value) mutable {
+            static_cast<void>(writer.set_flex_basis(node, value));
+        }));
     }
     if (const auto& prop = detail::LayoutStyleAccess::align_self(style)) {
-        static_cast<void>(
-            detail::connect_prop(scope, *prop, [writer, node](FlexAlignSelf value) mutable {
-                static_cast<void>(writer.set_align_self(node, value));
-            }));
+        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](FlexAlignSelf value) mutable {
+            static_cast<void>(writer.set_align_self(node, value));
+        }));
     }
     if (const auto& prop = detail::LayoutStyleAccess::order(style)) {
-        static_cast<void>(detail::connect_prop(scope, *prop, [writer, node](int value) mutable {
-            static_cast<void>(writer.set_order(node, value));
-        }));
+        static_cast<void>(detail::connect_prop(
+            scope, *prop, [writer, node](int value) mutable { static_cast<void>(writer.set_order(node, value)); }));
     }
 }
 

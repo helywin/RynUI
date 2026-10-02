@@ -27,15 +27,21 @@ std::array<float, 4> channels(Color color) noexcept {
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
 
-void set_geometry(graphics::QuadInstance& quad, runtime::Rect rect,
-    runtime::Size viewport, float radius, runtime::Point translation) {
-    if (viewport.width <= 0.0F || viewport.height <= 0.0F) return;
+void set_geometry(graphics::QuadInstance& quad, runtime::Rect rect, runtime::Size viewport, float radius,
+                  runtime::Point translation) {
+    if (viewport.width <= 0.0F || viewport.height <= 0.0F) {
+        return;
+    }
     quad.bounds = {
-        rect.x, rect.y, rect.width, rect.height,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
     };
     quad.corner_radius = radius;
     quad.translation = {
-        translation.x, translation.y,
+        translation.x,
+        translation.y,
     };
 }
 
@@ -45,8 +51,9 @@ void set_material(graphics::QuadInstance& quad, Color color, float opacity = 1.0
 }
 
 void validate(SwitchSize size) {
-    if (size != SwitchSize::Middle && size != SwitchSize::Small)
+    if (size != SwitchSize::Middle && size != SwitchSize::Small) {
         throw std::invalid_argument("Switch size must be Middle or Small");
+    }
 }
 
 struct SelectionTokens {
@@ -60,8 +67,19 @@ struct SelectionTokens {
     float radio_dot_size{};
     float line_width{};
     float label_gap{};
-    Color on, on_hover, on_active, off, off_hover, off_active, handle, checkmark, box_background;
-    Color box_border, disabled_background, disabled_foreground, focus;
+    Color on;
+    Color on_hover;
+    Color on_active;
+    Color off;
+    Color off_hover;
+    Color off_active;
+    Color handle;
+    Color checkmark;
+    Color box_background;
+    Color box_border;
+    Color disabled_background;
+    Color disabled_foreground;
+    Color focus;
     Color radio_dot;
 };
 
@@ -84,12 +102,9 @@ SelectionTokens resolve_tokens(const ThemeSnapshot& theme, SwitchSize size) {
         map.color_primary_hover,
         map.color_primary_active,
         // Ant 6.6.5 Switch track uses colorTextQuaternary/Tertiary.
-        Color(map.color_text_base.red(), map.color_text_base.green(),
-            map.color_text_base.blue(), 0.25F),
-        Color(map.color_text_base.red(), map.color_text_base.green(),
-            map.color_text_base.blue(), 0.45F),
-        Color(map.color_text_base.red(), map.color_text_base.green(),
-            map.color_text_base.blue(), 0.45F),
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.25F),
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.45F),
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.45F),
         switch_token.handle_background,
         Color::rgba8(255, 255, 255),
         alias.color_background_container,
@@ -155,43 +170,50 @@ struct RadioGroupState final {
     theme_runtime::Subscription theme_subscription;
 };
 
-template<class Label>
-void mount_selection_label(runtime::ComponentBuildContext& build,
-    WindowComponentServices& services, SelectionState& state,
-    runtime::ComponentId component, const std::optional<Label>& label, float size) {
+template <class Label>
+void mount_selection_label(runtime::ComponentBuildContext& build, WindowComponentServices& services,
+                           SelectionState& state, runtime::ComponentId component, const std::optional<Label>& label,
+                           float size) {
     build.mount_slot(component, Content{[&] {
-        auto& nested = runtime::require_component_build_context();
-        const auto spacer = nested.mount_component<int>(0);
-        const auto node = nested.root(spacer);
-        state.spacer = node;
-        services.layout().set_layout(node, layout::LeafLayout{{size, size}});
-        nested.on_resource_cleanup(spacer, [layout = &services.layout(), node] {
-            static_cast<void>(layout->remove_layout(node));
-        });
-        if (label) nested.mount_slot_with_semantic_text_style(component, *label,
-            Prop<runtime::SemanticForeground>{state.label_foreground},
-            Prop<runtime::SemanticTypography>{state.label_typography});
-    }});
+                         auto& nested = runtime::require_component_build_context();
+                         const auto spacer = nested.mount_component<int>(0);
+                         const auto node = nested.root(spacer);
+                         state.spacer = node;
+                         services.layout().set_layout(node, layout::LeafLayout{{size, size}});
+                         nested.on_resource_cleanup(spacer, [layout = &services.layout(), node] {
+                             static_cast<void>(layout->remove_layout(node));
+                         });
+                         if (label) {
+                             nested.mount_slot_with_semantic_text_style(
+                                 component, *label, Prop<runtime::SemanticForeground>{state.label_foreground},
+                                 Prop<runtime::SemanticTypography>{state.label_typography});
+                         }
+                     }});
 }
 
-SelectionComponentHost::SelectionComponentHost(WindowComponentServices& services)
-    : services_(&services) {
+SelectionComponentHost::SelectionComponentHost(WindowComponentServices& services) : services_(&services) {
     services_->attach(*this);
 }
 
 SelectionComponentHost::~SelectionComponentHost() {
     while (!groups_.empty()) {
         const auto id = groups_.back();
-        if (!services_->destroy(id)) groups_.pop_back();
+        if (!services_->destroy(id)) {
+            groups_.pop_back();
+        }
     }
     while (!mounted_.empty()) {
         const auto id = mounted_.back().component;
-        if (!services_->destroy(id)) mounted_.pop_back();
+        if (!services_->destroy(id)) {
+            mounted_.pop_back();
+        }
     }
     services_->detach(*this);
 }
 
-void SelectionComponentHost::mount(const Content& content) { services_->mount(content); }
+void SelectionComponentHost::mount(const Content& content) {
+    services_->mount(content);
+}
 
 void* SelectionComponentHost::begin_mount() noexcept {
     return std::exchange(active_selection_host, this);
@@ -202,12 +224,8 @@ void SelectionComponentHost::end_mount(void* previous) noexcept {
 }
 
 void SelectionComponentHost::on_destroy() noexcept {
-    std::erase_if(mounted_, [this](const auto& item) {
-        return !services_->components().contains(item.component);
-    });
-    std::erase_if(groups_, [this](const auto id) {
-        return !services_->components().contains(id);
-    });
+    std::erase_if(mounted_, [this](const auto& item) { return !services_->components().contains(item.component); });
+    std::erase_if(groups_, [this](const auto id) { return !services_->components().contains(id); });
 }
 
 void SelectionComponentHost::on_dispose() noexcept {
@@ -218,16 +236,19 @@ void SelectionComponentHost::on_dispose() noexcept {
 void SelectionComponentHost::synchronize_auxiliary_motion() {
     for (const auto& item : mounted_) {
         auto* state = find(item.component);
-        if (!state || state->checkbox || state->radio) continue;
+        if (!state || state->checkbox || state->radio) {
+            continue;
+        }
         synchronize_spinner(*state);
         const auto& theme = services_->components().theme_scope(item.component)->snapshot();
-        if (state->handle_animation.valid()
-            && !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled()) {
+        if (state->handle_animation.valid() &&
+            !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled()) {
             static_cast<void>(services_->animations().finish(state->handle_animation));
             state->handle_animation = {};
             state->presented_checked = state->checked ? 1.0F : 0.0F;
-            if (viewport_.width > 0.0F && viewport_.height > 0.0F)
+            if (viewport_.width > 0.0F && viewport_.height > 0.0F) {
                 update_geometry(*state, viewport_);
+            }
         }
     }
 }
@@ -242,19 +263,21 @@ const SelectionState* SelectionComponentHost::find(runtime::ComponentId id) cons
 
 SelectionSnapshot SelectionComponentHost::snapshot(runtime::ComponentId id) const {
     const auto* state = find(id);
-    if (!state) throw std::out_of_range("Selection component is stale or invalid");
-    return {state->checkbox, state->checked, state->indeterminate,
-        state->disabled, state->loading, state->hovered,
-        state->press.pressed(), state->focus, state->size, state->radio};
+    if (!state) {
+        throw std::out_of_range("Selection component is stale or invalid");
+    }
+    return {state->checkbox, state->checked,         state->indeterminate, state->disabled, state->loading,
+            state->hovered,  state->press.pressed(), state->focus,         state->size,     state->radio};
 }
 
-std::optional<input::InteractionId> SelectionComponentHost::parent_interaction(
-    runtime::ComponentId component) const {
+std::optional<input::InteractionId> SelectionComponentHost::parent_interaction(runtime::ComponentId component) const {
     for (auto ancestor = services_->components().parent(component); ancestor;
-        ancestor = services_->components().parent(*ancestor)) {
+         ancestor = services_->components().parent(*ancestor)) {
         for (const auto interaction : services_->interactions().declaration_order()) {
             const auto* record = services_->interactions().find(interaction);
-            if (record && record->component == *ancestor) return interaction;
+            if (record && record->component == *ancestor) {
+                return interaction;
+            }
         }
     }
     return {};
@@ -262,32 +285,35 @@ std::optional<input::InteractionId> SelectionComponentHost::parent_interaction(
 
 void SelectionComponentHost::attach_interaction(SelectionState& state) {
     const auto id = state.component;
-    state.interaction = services_->interactions().create({id, state.node,
-        parent_interaction(id), !state.disabled, true, {}});
+    state.interaction =
+        services_->interactions().create({id, state.node, parent_interaction(id), !state.disabled, true, {}});
     input::InteractionHandlers pointer_handlers;
     pointer_handlers.target = [this, id](input::PointerDispatchContext& event) {
         handle_pointer(id, event);
     };
-    static_cast<void>(services_->interactions().set_handlers(
-        state.interaction, std::move(pointer_handlers)));
+    static_cast<void>(services_->interactions().set_handlers(state.interaction, std::move(pointer_handlers)));
     input::FocusHandlers focus_handlers;
     focus_handlers.state_changed = [this, id](input::FocusPresentation focus) {
         apply_focus(id, focus);
     };
-    focus_handlers.activation_allowed = [this, id] { return activation_allowed(id); };
-    focus_handlers.activate = [this, id] { activate(id); };
+    focus_handlers.activation_allowed = [this, id] {
+        return activation_allowed(id);
+    };
+    focus_handlers.activate = [this, id] {
+        activate(id);
+    };
     // Selection controls use Space only; Enter is a Button action.
     focus_handlers.text_edit = [](const input::KeyboardInputEvent& event) {
         return event.key == input::Key::enter;
     };
-    static_cast<void>(services_->interactions().set_focus_handlers(
-        state.interaction, std::move(focus_handlers)));
+    static_cast<void>(services_->interactions().set_focus_handlers(state.interaction, std::move(focus_handlers)));
 }
 
 void SelectionComponentHost::release_selection(SelectionState& state) {
     services_->pointer().cancel_interaction(state.interaction);
-    if (state.animation_scope.valid())
+    if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
+    }
     services_->focus().cancel_interaction(state.interaction);
     static_cast<void>(services_->interactions().remove(state.interaction));
     static_cast<void>(services_->surfaces().destroy(state.surface));
@@ -301,8 +327,12 @@ bool SelectionComponentHost::activation_allowed(runtime::ComponentId id) const n
 
 void SelectionComponentHost::activate(runtime::ComponentId id) {
     auto* state = find(id);
-    if (!state || state->disabled || state->loading) return;
-    if (state->radio && state->checked) return;
+    if (!state || state->disabled || state->loading) {
+        return;
+    }
+    if (state->radio && state->checked) {
+        return;
+    }
     if (state->radio && state->group.valid() && state->value) {
         const String value = *state->value;
         select_group_option(state->group, value);
@@ -312,16 +342,21 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
     auto callback = state->on_change;
     if (!state->controlled) {
         state->checked = next;
-        if (!state->checkbox && !state->radio) retarget_handle(*state);
+        if (!state->checkbox && !state->radio) {
+            retarget_handle(*state);
+        }
         update_visuals(*state);
     }
-    if (callback) callback(next);
+    if (callback) {
+        callback(next);
+    }
 }
 
-void SelectionComponentHost::handle_pointer(runtime::ComponentId id,
-    input::PointerDispatchContext& event) {
+void SelectionComponentHost::handle_pointer(runtime::ComponentId id, input::PointerDispatchContext& event) {
     auto* state = find(id);
-    if (!state) return;
+    if (!state) {
+        return;
+    }
     if (event.kind() == input::PointerEventKind::enter) {
         if (!state->disabled && !state->hovered) {
             state->hovered = true;
@@ -336,97 +371,116 @@ void SelectionComponentHost::handle_pointer(runtime::ComponentId id,
         }
         return;
     }
-    const auto result = state->press.dispatch(event, state->interaction,
-        activation_allowed(id));
+    const auto result = state->press.dispatch(event, state->interaction, activation_allowed(id));
     state = find(id);
-    if (!state) return;
-    if (result.pressed_changed) update_visuals(*state);
-    if (result.activate) activate(id);
+    if (!state) {
+        return;
+    }
+    if (result.pressed_changed) {
+        update_visuals(*state);
+    }
+    if (result.activate) {
+        activate(id);
+    }
 }
 
 void SelectionComponentHost::apply_checked(runtime::ComponentId id, bool value) {
     if (auto* state = find(id); state && state->checked != value) {
         state->checked = value;
-        if (!state->checkbox && !state->radio) retarget_handle(*state);
+        if (!state->checkbox && !state->radio) {
+            retarget_handle(*state);
+        }
         update_visuals(*state);
     }
 }
 
 void SelectionComponentHost::apply_radio_own_disabled(runtime::ComponentId id, bool value) {
     auto* state = find(id);
-    if (!state || !state->radio) return;
+    if (!state || !state->radio) {
+        return;
+    }
     state->own_disabled = value;
-    const auto* group = state->group.valid()
-        ? services_->components().state<RadioGroupState>(state->group) : nullptr;
+    const auto* group = state->group.valid() ? services_->components().state<RadioGroupState>(state->group) : nullptr;
     apply_disabled(id, value || (group && group->disabled));
 }
 
-void SelectionComponentHost::apply_group_value(runtime::ComponentId id,
-    std::optional<String> value) {
+void SelectionComponentHost::apply_group_value(runtime::ComponentId id, std::optional<String> value) {
     auto* group = services_->components().state<RadioGroupState>(id);
-    if (!group || group->value == value) return;
+    if (!group || group->value == value) {
+        return;
+    }
     group->value = std::move(value);
     const auto options = group->options;
     for (const auto option : options) {
         const auto* state = find(option);
-        if (state && state->value)
+        if (state && state->value) {
             apply_checked(option, group->value && *state->value == *group->value);
+        }
     }
 }
 
 void SelectionComponentHost::apply_group_disabled(runtime::ComponentId id, bool value) {
     auto* group = services_->components().state<RadioGroupState>(id);
-    if (!group || group->disabled == value) return;
+    if (!group || group->disabled == value) {
+        return;
+    }
     group->disabled = value;
     const auto options = group->options;
     for (const auto option : options) {
-        if (const auto* state = find(option))
+        if (const auto* state = find(option)) {
             apply_disabled(option, state->own_disabled || value);
+        }
     }
 }
 
-void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id,
-    RadioGroupOrientation value) {
-    if (value != RadioGroupOrientation::Horizontal
-        && value != RadioGroupOrientation::Vertical)
+void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id, RadioGroupOrientation value) {
+    if (value != RadioGroupOrientation::Horizontal && value != RadioGroupOrientation::Vertical) {
         throw std::invalid_argument("RadioGroup orientation is invalid");
+    }
     auto* group = services_->components().state<RadioGroupState>(id);
-    if (!group || group->orientation == value) return;
+    if (!group || group->orientation == value) {
+        return;
+    }
     group->orientation = value;
     update_group_layout(*group);
 }
 
-void SelectionComponentHost::select_group_option(runtime::ComponentId id,
-    const String& value) {
+void SelectionComponentHost::select_group_option(runtime::ComponentId id, const String& value) {
     auto* group = services_->components().state<RadioGroupState>(id);
-    if (!group || group->disabled || group->value == value) return;
+    if (!group || group->disabled || group->value == value) {
+        return;
+    }
     const auto callback = group->on_change;
     const bool controlled = group->controlled;
-    if (!controlled) apply_group_value(id, value);
-    if (callback) callback(value);
+    if (!controlled) {
+        apply_group_value(id, value);
+    }
+    if (callback) {
+        callback(value);
+    }
 }
 
 void SelectionComponentHost::update_group_layout(RadioGroupState& group) {
     const auto& theme = services_->components().theme_scope(group.component)->snapshot();
     const float gap = theme.map().size_xs;
-    if (group.layout_gap == gap && group.layout_orientation == group.orientation) return;
+    if (group.layout_gap == gap && group.layout_orientation == group.orientation) {
+        return;
+    }
     layout::FlexLayout model;
-    model.direction = group.orientation == RadioGroupOrientation::Vertical
-        ? layout::FlexDirection::vertical : layout::FlexDirection::horizontal;
+    model.direction = group.orientation == RadioGroupOrientation::Vertical ? layout::FlexDirection::vertical
+                                                                           : layout::FlexDirection::horizontal;
     model.main_gap = gap;
     model.align = layout::FlexAlign::center;
     services_->layout().set_layout(group.node, model);
     group.layout_gap = gap;
     group.layout_orientation = group.orientation;
-    services_->dirty().invalidate(group.node,
-        runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
-            | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                  runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
 }
 
 void SelectionComponentHost::retarget_handle(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
-    const auto policy = animation::resolve_motion_policy(
-        theme, services_->motion_preference());
+    const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
     const float target = state.checked ? 1.0F : 0.0F;
     if (!policy.enabled() || !state.handle_target.valid()) {
         if (state.handle_animation.valid()) {
@@ -436,61 +490,67 @@ void SelectionComponentHost::retarget_handle(SelectionState& state) {
         state.presented_checked = target;
         return;
     }
-    const auto spec = policy.transition(animation::MotionDurationToken::mid,
-        animation::MotionEasingToken::ease_in_out);
-    if (state.handle_animation.valid()
-        && services_->animations().contains(state.handle_animation)
-        && services_->animations().retarget(state.handle_animation,
-            target, spec, services_->animation_time())) return;
-    state.handle_animation = services_->animations().play(state.handle_target,
-        state.presented_checked, target, spec, services_->animation_time());
+    const auto spec = policy.transition(animation::MotionDurationToken::mid, animation::MotionEasingToken::ease_in_out);
+    if (state.handle_animation.valid() && services_->animations().contains(state.handle_animation) &&
+        services_->animations().retarget(state.handle_animation, target, spec, services_->animation_time())) {
+        return;
+    }
+    state.handle_animation = services_->animations().play(state.handle_target, state.presented_checked, target, spec,
+                                                          services_->animation_time());
 }
 
 void SelectionComponentHost::synchronize_spinner(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
-    const bool animate = state.loading && animation::resolve_motion_policy(
-        theme, services_->motion_preference()).enabled();
+    const bool animate =
+        state.loading && animation::resolve_motion_policy(theme, services_->motion_preference()).enabled();
     if (!animate) {
-        if (services_->animations().contains(state.spinner_animation))
-            static_cast<void>(services_->animations().cancel(
-                state.spinner_animation, services_->animation_time()));
+        if (services_->animations().contains(state.spinner_animation)) {
+            static_cast<void>(services_->animations().cancel(state.spinner_animation, services_->animation_time()));
+        }
         state.spinner_animation = {};
         state.spinner_phase = 0.0F;
         return;
     }
-    if (services_->animations().contains(state.spinner_animation)) return;
+    if (services_->animations().contains(state.spinner_animation)) {
+        return;
+    }
     state.spinner_phase -= std::floor(state.spinner_phase);
-    state.spinner_animation = services_->animations().play(state.spinner_target,
-        state.spinner_phase, state.spinner_phase + 1.0F,
-        {{}, animation::AnimationDuration::microseconds(800'000),
-            animation::Easing::linear()}, services_->animation_time());
+    state.spinner_animation = services_->animations().play(
+        state.spinner_target, state.spinner_phase, state.spinner_phase + 1.0F,
+        {{}, animation::AnimationDuration::microseconds(800'000), animation::Easing::linear()},
+        services_->animation_time());
 }
 
-void SelectionComponentHost::apply(animation::AnimationId,
-    animation::AnimationTargetId target, const animation::AnimationValue& value,
-    animation::AnimationDirtyDomain) {
+void SelectionComponentHost::apply(animation::AnimationId, animation::AnimationTargetId target,
+                                   const animation::AnimationValue& value, animation::AnimationDirtyDomain) {
     for (const auto& item : mounted_) {
         auto* state = find(item.component);
-        if (!state) continue;
+        if (!state) {
+            continue;
+        }
         if (state->spinner_target == target) {
             state->spinner_phase = std::get<float>(value);
             update_visuals(*state);
             return;
         }
-        if (state->handle_target != target) continue;
+        if (state->handle_target != target) {
+            continue;
+        }
         state->presented_checked = std::get<float>(value);
-        if (viewport_.width > 0.0F && viewport_.height > 0.0F)
+        if (viewport_.width > 0.0F && viewport_.height > 0.0F) {
             update_geometry(*state, viewport_);
+        }
         services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
         return;
     }
 }
 
-void SelectionComponentHost::completed(animation::AnimationId animation,
-    animation::AnimationTargetId target) {
+void SelectionComponentHost::completed(animation::AnimationId animation, animation::AnimationTargetId target) {
     for (const auto& item : mounted_) {
         auto* state = find(item.component);
-        if (!state) continue;
+        if (!state) {
+            continue;
+        }
         if (state->spinner_target == target && state->spinner_animation == animation) {
             state->spinner_animation = {};
             synchronize_spinner(*state);
@@ -505,14 +565,18 @@ void SelectionComponentHost::completed(animation::AnimationId animation,
 
 void SelectionComponentHost::apply_disabled(runtime::ComponentId id, bool value) {
     auto* state = find(id);
-    if (!state || state->disabled == value) return;
+    if (!state || state->disabled == value) {
+        return;
+    }
     state->disabled = value;
     if (value) {
         state->hovered = false;
         static_cast<void>(state->press.reset());
         services_->pointer().cancel_interaction(state->interaction);
         state = find(id);
-        if (!state) return;
+        if (!state) {
+            return;
+        }
     }
     static_cast<void>(services_->interactions().set_eligible(state->interaction, !value));
     services_->focus().synchronize();
@@ -521,13 +585,17 @@ void SelectionComponentHost::apply_disabled(runtime::ComponentId id, bool value)
 
 void SelectionComponentHost::apply_loading(runtime::ComponentId id, bool value) {
     auto* state = find(id);
-    if (!state || state->loading == value) return;
+    if (!state || state->loading == value) {
+        return;
+    }
     state->loading = value;
     if (value) {
         static_cast<void>(state->press.reset());
         services_->pointer().cancel_pointer_interaction(state->interaction);
         state = find(id);
-        if (!state) return;
+        if (!state) {
+            return;
+        }
     }
     synchronize_spinner(*state);
     update_visuals(*state);
@@ -549,15 +617,18 @@ void SelectionComponentHost::apply_size(runtime::ComponentId id, SwitchSize valu
     }
 }
 
-void SelectionComponentHost::apply_focus(runtime::ComponentId id,
-    input::FocusPresentation value) {
+void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPresentation value) {
     auto* state = find(id);
-    if (!state || state->focus == value) return;
+    if (!state || state->focus == value) {
+        return;
+    }
     state->focus = value;
     if (!value.focused && state->press.reset()) {
         services_->pointer().cancel_pointer_interaction(state->interaction);
         state = find(id);
-        if (!state) return;
+        if (!state) {
+            return;
+        }
     }
     update_visuals(*state);
 }
@@ -567,28 +638,29 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
     const auto token = resolve_tokens(theme, state.size);
     if (state.checkbox || state.radio) {
         const float size = state.radio ? token.radio_size : token.checkbox_size;
-        if (state.layout_height == size
-            && state.layout_gap == token.label_gap) return;
+        if (state.layout_height == size && state.layout_gap == token.label_gap) {
+            return;
+        }
         layout::FlexLayout model;
         model.direction = layout::FlexDirection::horizontal;
         model.main_gap = token.label_gap;
         model.align = layout::FlexAlign::center;
         services_->layout().set_layout(state.node, model);
-        if (state.spacer.valid()) services_->layout().set_layout(state.spacer,
-            layout::LeafLayout{{size, size}});
+        if (state.spacer.valid()) {
+            services_->layout().set_layout(state.spacer, layout::LeafLayout{{size, size}});
+        }
         state.layout_height = size;
         state.layout_gap = token.label_gap;
     } else {
-        if (state.layout_width == token.switch_width
-            && state.layout_height == token.switch_height) return;
-        services_->layout().set_layout(state.node,
-            layout::LeafLayout{{token.switch_width, token.switch_height}});
+        if (state.layout_width == token.switch_width && state.layout_height == token.switch_height) {
+            return;
+        }
+        services_->layout().set_layout(state.node, layout::LeafLayout{{token.switch_width, token.switch_height}});
         state.layout_width = token.switch_width;
         state.layout_height = token.switch_height;
     }
-    services_->dirty().invalidate(state.node,
-        runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
-            | runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    services_->dirty().invalidate(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                  runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
 }
 
 void SelectionComponentHost::update_visuals(SelectionState& state) {
@@ -598,48 +670,50 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
     const bool faded = state.disabled || state.loading;
     const float opacity = faded ? 0.65F : 1.0F;
     if (!state.checkbox && !state.radio) {
-        const Color track = state.checked
-            ? (active ? token.on_active : state.hovered ? token.on_hover : token.on)
-            : (active ? token.off_active : state.hovered ? token.off_hover : token.off);
+        const Color track = state.checked ? (active          ? token.on_active
+                                             : state.hovered ? token.on_hover
+                                                             : token.on)
+                                          : (active          ? token.off_active
+                                             : state.hovered ? token.off_hover
+                                                             : token.off);
         set_material(state.visuals[0], track, opacity);
         set_material(state.visuals[1], token.handle, opacity);
         for (std::size_t segment = 0; segment < switch_loading_segments; ++segment) {
-            const float angle = 2.0F * std::numbers::pi_v<float>
-                * (static_cast<float>(segment) / static_cast<float>(switch_loading_segments)
-                    - (state.spinner_phase - std::floor(state.spinner_phase)));
+            const float angle = 2.0F * std::numbers::pi_v<float> *
+                                (static_cast<float>(segment) / static_cast<float>(switch_loading_segments) -
+                                 (state.spinner_phase - std::floor(state.spinner_phase)));
             const float wave = 0.5F + 0.5F * std::cos(angle);
             set_material(state.visuals[2 + segment], state.checked ? token.on : token.off,
-                state.loading ? 0.18F + 0.82F * wave * wave : 0.0F);
+                         state.loading ? 0.18F + 0.82F * wave * wave : 0.0F);
         }
     } else if (state.radio) {
-        const Color border = state.disabled ? token.box_border
-            : state.checked || state.hovered ? token.on : token.box_border;
-        const Color fill = state.disabled ? token.disabled_background
-            : state.checked ? (state.hovered ? token.on_hover : token.on)
-            : token.box_background;
+        const Color border = state.disabled                   ? token.box_border
+                             : state.checked || state.hovered ? token.on
+                                                              : token.box_border;
+        const Color fill = state.disabled  ? token.disabled_background
+                           : state.checked ? (state.hovered ? token.on_hover : token.on)
+                                           : token.box_background;
         set_material(state.visuals[0], border);
         set_material(state.visuals[1], fill);
-        set_material(state.visuals[2], state.disabled
-            ? token.disabled_foreground : token.radio_dot,
-            state.checked ? 1.0F : 0.0F);
+        set_material(state.visuals[2], state.disabled ? token.disabled_foreground : token.radio_dot,
+                     state.checked ? 1.0F : 0.0F);
     } else {
         const bool mixed = state.indeterminate;
-        const Color border = state.disabled ? token.box_border
-            : state.checked && !mixed ? token.on
-            : state.hovered ? token.on : token.box_border;
-        const Color fill = state.disabled ? token.disabled_background
-            : state.checked && !mixed ? (state.hovered ? token.on_hover : token.on)
-            : token.box_background;
+        const Color border = state.disabled            ? token.box_border
+                             : state.checked && !mixed ? token.on
+                             : state.hovered           ? token.on
+                                                       : token.box_border;
+        const Color fill = state.disabled            ? token.disabled_background
+                           : state.checked && !mixed ? (state.hovered ? token.on_hover : token.on)
+                                                     : token.box_background;
         set_material(state.visuals[0], border);
         set_material(state.visuals[1], fill);
         for (std::size_t segment = 0; segment < checkbox_check_segments; ++segment) {
-            set_material(state.visuals[2 + segment],
-                state.disabled ? token.disabled_foreground : token.checkmark,
-                state.checked && !mixed ? 1.0F : 0.0F);
+            set_material(state.visuals[2 + segment], state.disabled ? token.disabled_foreground : token.checkmark,
+                         state.checked && !mixed ? 1.0F : 0.0F);
         }
-        set_material(state.visuals[checkbox_indeterminate_layer],
-            state.disabled ? token.disabled_foreground : token.on,
-            mixed ? 1.0F : 0.0F);
+        set_material(state.visuals[checkbox_indeterminate_layer], state.disabled ? token.disabled_foreground : token.on,
+                     mixed ? 1.0F : 0.0F);
     }
     state.effects.focus_color = token.focus;
     state.effects.focus_opacity = state.focus.focus_visible && !state.disabled ? 1.0F : 0.0F;
@@ -652,16 +726,13 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
             services_->dirty().invalidate(state.node, runtime::DirtyFlags::Material);
         }
     }
-    const auto label_color = state.disabled
-        ? token.disabled_foreground : theme.alias().color_text;
+    const auto label_color = state.disabled ? token.disabled_foreground : theme.alias().color_text;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
-    static_cast<void>(state.label_typography.set({theme.text().font_family,
-        theme.text().font_weight, false, theme.text().font_size,
-        theme.text().line_height}));
+    static_cast<void>(state.label_typography.set(
+        {theme.text().font_family, theme.text().font_weight, false, theme.text().font_size, theme.text().line_height}));
 }
 
-void SelectionComponentHost::update_geometry(SelectionState& state,
-    runtime::Size viewport) {
+void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Size viewport) {
     const auto& node = services_->nodes().require(state.node);
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto token = resolve_tokens(theme, state.size);
@@ -669,67 +740,58 @@ void SelectionComponentHost::update_geometry(SelectionState& state,
     auto next = state.visuals;
     if (!state.checkbox && !state.radio) {
         set_geometry(next[0], rect, viewport, rect.height / 2.0F, node.translation);
-        const float x = rect.x + token.track_padding
-            + std::clamp(state.presented_checked, 0.0F, 1.0F)
-                * (rect.width - token.handle_size - 2.0F * token.track_padding);
-        const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F,
-            token.handle_size, token.handle_size};
+        const float x = rect.x + token.track_padding +
+                        std::clamp(state.presented_checked, 0.0F, 1.0F) *
+                            (rect.width - token.handle_size - 2.0F * token.track_padding);
+        const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F, token.handle_size,
+                                   token.handle_size};
         set_geometry(next[1], handle, viewport, token.handle_size / 2.0F, node.translation);
         const float dot = std::max(1.0F, token.handle_size * 0.13F);
         const float orbit = token.handle_size * 0.27F;
         const float center_x = x + token.handle_size / 2.0F;
         const float center_y = rect.y + rect.height / 2.0F;
         for (std::size_t segment = 0; segment < switch_loading_segments; ++segment) {
-            const float angle = 2.0F * std::numbers::pi_v<float>
-                * static_cast<float>(segment) / static_cast<float>(switch_loading_segments);
+            const float angle = 2.0F * std::numbers::pi_v<float> * static_cast<float>(segment) /
+                                static_cast<float>(switch_loading_segments);
             set_geometry(next[2 + segment],
-                {center_x + std::sin(angle) * orbit - dot / 2.0F,
-                    center_y - std::cos(angle) * orbit - dot / 2.0F, dot, dot},
-                viewport, dot / 2.0F, node.translation);
+                         {center_x + std::sin(angle) * orbit - dot / 2.0F,
+                          center_y - std::cos(angle) * orbit - dot / 2.0F, dot, dot},
+                         viewport, dot / 2.0F, node.translation);
         }
     } else if (state.radio) {
-        const runtime::Rect ring{rect.x,
-            rect.y + (rect.height - token.radio_size) / 2.0F,
-            token.radio_size, token.radio_size};
+        const runtime::Rect ring{rect.x, rect.y + (rect.height - token.radio_size) / 2.0F, token.radio_size,
+                                 token.radio_size};
         set_geometry(next[0], ring, viewport, ring.width / 2.0F, node.translation);
         const float stroke = token.line_width;
-        const runtime::Rect inner{ring.x + stroke, ring.y + stroke,
-            std::max(0.0F, ring.width - 2.0F * stroke),
-            std::max(0.0F, ring.height - 2.0F * stroke)};
+        const runtime::Rect inner{ring.x + stroke, ring.y + stroke, std::max(0.0F, ring.width - 2.0F * stroke),
+                                  std::max(0.0F, ring.height - 2.0F * stroke)};
         set_geometry(next[1], inner, viewport, inner.width / 2.0F, node.translation);
         const float dot = token.radio_dot_size;
-        set_geometry(next[2], {ring.x + (ring.width - dot) / 2.0F,
-            ring.y + (ring.height - dot) / 2.0F, dot, dot},
-            viewport, dot / 2.0F, node.translation);
+        set_geometry(next[2], {ring.x + (ring.width - dot) / 2.0F, ring.y + (ring.height - dot) / 2.0F, dot, dot},
+                     viewport, dot / 2.0F, node.translation);
     } else {
-        const runtime::Rect box{rect.x,
-            rect.y + (rect.height - token.checkbox_size) / 2.0F,
-            token.checkbox_size, token.checkbox_size};
-        set_geometry(next[0], box, viewport, theme.map().border_radius_small,
-            node.translation);
-        set_geometry(next[1], {box.x + 1.0F, box.y + 1.0F,
-            std::max(0.0F, box.width - 2.0F), std::max(0.0F, box.height - 2.0F)},
-            viewport, std::max(0.0F, theme.map().border_radius_small - 1.0F), node.translation);
+        const runtime::Rect box{rect.x, rect.y + (rect.height - token.checkbox_size) / 2.0F, token.checkbox_size,
+                                token.checkbox_size};
+        set_geometry(next[0], box, viewport, theme.map().border_radius_small, node.translation);
+        set_geometry(next[1],
+                     {box.x + 1.0F, box.y + 1.0F, std::max(0.0F, box.width - 2.0F), std::max(0.0F, box.height - 2.0F)},
+                     viewport, std::max(0.0F, theme.map().border_radius_small - 1.0F), node.translation);
         const float stroke = std::max(1.5F, box.width * 0.15F);
         for (std::size_t segment = 0; segment < checkbox_check_segments; ++segment) {
-            const float progress = static_cast<float>(segment)
-                / static_cast<float>(checkbox_check_segments - 1);
-            const float x = progress < 0.4F
-                ? 0.22F + 0.20F * (progress / 0.4F)
-                : 0.42F + 0.37F * ((progress - 0.4F) / 0.6F);
-            const float y = progress < 0.4F
-                ? 0.52F + 0.18F * (progress / 0.4F)
-                : 0.70F - 0.40F * ((progress - 0.4F) / 0.6F);
-            set_geometry(next[2 + segment],
-                {box.x + box.width * x - stroke / 2.0F,
-                    box.y + box.height * y - stroke / 2.0F, stroke, stroke},
+            const float progress = static_cast<float>(segment) / static_cast<float>(checkbox_check_segments - 1);
+            const float x =
+                progress < 0.4F ? 0.22F + 0.20F * (progress / 0.4F) : 0.42F + 0.37F * ((progress - 0.4F) / 0.6F);
+            const float y =
+                progress < 0.4F ? 0.52F + 0.18F * (progress / 0.4F) : 0.70F - 0.40F * ((progress - 0.4F) / 0.6F);
+            set_geometry(
+                next[2 + segment],
+                {box.x + box.width * x - stroke / 2.0F, box.y + box.height * y - stroke / 2.0F, stroke, stroke},
                 viewport, stroke / 2.0F, node.translation);
         }
         const float side = token.indicator_size;
         set_geometry(next[checkbox_indeterminate_layer],
-            {box.x + (box.width - side) / 2.0F,
-            box.y + (box.height - side) / 2.0F, side, side},
-            viewport, 0.0F, node.translation);
+                     {box.x + (box.width - side) / 2.0F, box.y + (box.height - side) / 2.0F, side, side}, viewport,
+                     0.0F, node.translation);
     }
     if (next != state.visuals) {
         state.visuals = next;
@@ -737,11 +799,13 @@ void SelectionComponentHost::update_geometry(SelectionState& state,
     }
     auto effects = state.effects;
     const float indicator_size = state.radio ? token.radio_size : token.checkbox_size;
-    effects.shape = {state.checkbox || state.radio
-        ? runtime::Rect{rect.x, rect.y + (rect.height - indicator_size) / 2.0F,
-            indicator_size, indicator_size} : rect,
+    effects.shape = {
+        state.checkbox || state.radio
+            ? runtime::Rect{rect.x, rect.y + (rect.height - indicator_size) / 2.0F, indicator_size, indicator_size}
+            : rect,
         state.checkbox ? theme.map().border_radius_small
-            : state.radio ? indicator_size / 2.0F : rect.height / 2.0F};
+        : state.radio  ? indicator_size / 2.0F
+                       : rect.height / 2.0F};
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = effects;
@@ -749,21 +813,24 @@ void SelectionComponentHost::update_geometry(SelectionState& state,
     }
 }
 
-void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
-    runtime::Rect) {
+void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect) {
     viewport_ = viewport;
     for (const auto& item : mounted_) {
-        if (auto* state = find(item.component)) update_geometry(*state, viewport);
+        if (auto* state = find(item.component)) {
+            update_geometry(*state, viewport);
+        }
     }
 }
 
 struct SwitchPropsAccess {
     static void mount(const SwitchProps& props) {
-        if (!active_selection_host)
+        if (!active_selection_host) {
             throw std::logic_error("Switch requires an active SelectionComponentHost");
+        }
         auto& host = *active_selection_host;
-        if (props.checked_ && props.default_checked_)
+        if (props.checked_ && props.default_checked_) {
             throw std::invalid_argument("Switch checked and defaultChecked are mutually exclusive");
+        }
         const auto size = read_prop(props.size_);
         validate(size);
         auto& build = runtime::require_component_build_context();
@@ -772,8 +839,7 @@ struct SwitchPropsAccess {
         state.component = component;
         state.node = build.root(component);
         state.controlled = props.checked_.has_value();
-        state.checked = props.checked_ ? read_prop(*props.checked_)
-            : props.default_checked_.value_or(false);
+        state.checked = props.checked_ ? read_prop(*props.checked_) : props.default_checked_.value_or(false);
         state.presented_checked = state.checked ? 1.0F : 0.0F;
         state.disabled = read_prop(props.disabled_);
         state.loading = read_prop(props.loading_);
@@ -781,57 +847,64 @@ struct SwitchPropsAccess {
         state.visuals.resize(switch_layer_count);
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
-            if (auto* current = host.find(component)) host.release_selection(*current);
+            if (auto* current = host.find(component)) {
+                host.release_selection(*current);
+            }
         });
         host.update_layout(state);
-        runtime::connect_layout_style(build.scope(component), props.layout_,
-            state.node, host.services_->nodes(), host.services_->dirty());
-        state.fragment = build.register_scene_fragment(component,
-            runtime::SceneFragmentPlacement::before_children);
+        runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
+                                      host.services_->dirty());
+        state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.attach_interaction(state);
         host.update_visuals(state);
-        state.surface = host.services_->surfaces().create_surface(component, state.node,
-            state.fragment, state.visuals, state.effects, state.interaction);
+        state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
+                                                                  state.effects, state.interaction);
         state.animation_scope = host.services_->animations().create_scope();
-        state.handle_target = host.services_->animations().register_target(
-            state.animation_scope, host, animation::AnimationValueKind::scalar,
-            animation::AnimationDirtyDomain::geometry);
+        state.handle_target = host.services_->animations().register_target(state.animation_scope, host,
+                                                                           animation::AnimationValueKind::scalar,
+                                                                           animation::AnimationDirtyDomain::geometry);
         state.spinner_target = host.services_->animations().register_target(
             state.animation_scope, host, animation::AnimationValueKind::scalar,
             animation::AnimationDirtyDomain::material | animation::AnimationDirtyDomain::animation);
         host.synchronize_spinner(state);
         auto& scope = build.scope(component);
-        if (props.checked_) static_cast<void>(connect_prop(scope, *props.checked_,
-            [&host, component](bool value) { host.apply_checked(component, value); }));
+        if (props.checked_) {
+            static_cast<void>(connect_prop(scope, *props.checked_,
+                                           [&host, component](bool value) { host.apply_checked(component, value); }));
+        }
         static_cast<void>(connect_prop(scope, props.disabled_,
-            [&host, component](bool value) { host.apply_disabled(component, value); }));
+                                       [&host, component](bool value) { host.apply_disabled(component, value); }));
         static_cast<void>(connect_prop(scope, props.loading_,
-            [&host, component](bool value) { host.apply_loading(component, value); }));
+                                       [&host, component](bool value) { host.apply_loading(component, value); }));
         static_cast<void>(connect_prop(scope, props.size_,
-            [&host, component](SwitchSize value) { host.apply_size(component, value); }));
+                                       [&host, component](SwitchSize value) { host.apply_size(component, value); }));
         const auto theme = host.services_->components().theme_scope(component);
-        state.theme_subscription = theme->capture([&host, component](theme_runtime::DirtyPhase) {
-            if (auto* current = host.find(component)) {
-                host.update_layout(*current);
-                host.update_visuals(*current);
-            }
-        }, [theme] {
-            static_cast<void>(theme->map());
-            static_cast<void>(theme->alias());
-            static_cast<void>(theme->switch_geometry());
-            static_cast<void>(theme->switch_colors());
-        });
+        state.theme_subscription = theme->capture(
+            [&host, component](theme_runtime::DirtyPhase) {
+                if (auto* current = host.find(component)) {
+                    host.update_layout(*current);
+                    host.update_visuals(*current);
+                }
+            },
+            [theme] {
+                static_cast<void>(theme->map());
+                static_cast<void>(theme->alias());
+                static_cast<void>(theme->switch_geometry());
+                static_cast<void>(theme->switch_colors());
+            });
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false});
     }
 };
 
 struct CheckboxPropsAccess {
     static void mount(const CheckboxProps& props, const std::optional<CheckboxLabel>& label) {
-        if (!active_selection_host)
+        if (!active_selection_host) {
             throw std::logic_error("Checkbox requires an active SelectionComponentHost");
+        }
         auto& host = *active_selection_host;
-        if (props.checked_ && props.default_checked_)
+        if (props.checked_ && props.default_checked_) {
             throw std::invalid_argument("Checkbox checked and defaultChecked are mutually exclusive");
+        }
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<SelectionState>();
         auto& state = build.state<SelectionState>(component);
@@ -840,63 +913,70 @@ struct CheckboxPropsAccess {
         state.checkbox = true;
         state.visuals.resize(checkbox_layer_count);
         state.controlled = props.checked_.has_value();
-        state.checked = props.checked_ ? read_prop(*props.checked_)
-            : props.default_checked_.value_or(false);
+        state.checked = props.checked_ ? read_prop(*props.checked_) : props.default_checked_.value_or(false);
         state.indeterminate = read_prop(props.indeterminate_);
         state.disabled = read_prop(props.disabled_);
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
-            if (auto* current = host.find(component)) host.release_selection(*current);
+            if (auto* current = host.find(component)) {
+                host.release_selection(*current);
+            }
         });
         host.update_layout(state);
-        runtime::connect_layout_style(build.scope(component), props.layout_,
-            state.node, host.services_->nodes(), host.services_->dirty());
-        state.fragment = build.register_scene_fragment(component,
-            runtime::SceneFragmentPlacement::before_children);
+        runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
+                                      host.services_->dirty());
+        state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.attach_interaction(state);
         host.update_visuals(state);
-        state.surface = host.services_->surfaces().create_surface(component, state.node,
-            state.fragment, state.visuals, state.effects, state.interaction);
+        state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
+                                                                  state.effects, state.interaction);
         auto& scope = build.scope(component);
-        if (props.checked_) static_cast<void>(connect_prop(scope, *props.checked_,
-            [&host, component](bool value) { host.apply_checked(component, value); }));
+        if (props.checked_) {
+            static_cast<void>(connect_prop(scope, *props.checked_,
+                                           [&host, component](bool value) { host.apply_checked(component, value); }));
+        }
         static_cast<void>(connect_prop(scope, props.disabled_,
-            [&host, component](bool value) { host.apply_disabled(component, value); }));
+                                       [&host, component](bool value) { host.apply_disabled(component, value); }));
         static_cast<void>(connect_prop(scope, props.indeterminate_,
-            [&host, component](bool value) { host.apply_indeterminate(component, value); }));
+                                       [&host, component](bool value) { host.apply_indeterminate(component, value); }));
         const auto theme = host.services_->components().theme_scope(component);
-        state.theme_subscription = theme->capture([&host, component](theme_runtime::DirtyPhase) {
-            if (auto* current = host.find(component)) {
-                host.update_layout(*current);
-                host.update_visuals(*current);
-            }
-        }, [theme] {
-            static_cast<void>(theme->map());
-            static_cast<void>(theme->alias());
-            static_cast<void>(theme->text());
-        });
+        state.theme_subscription = theme->capture(
+            [&host, component](theme_runtime::DirtyPhase) {
+                if (auto* current = host.find(component)) {
+                    host.update_layout(*current);
+                    host.update_visuals(*current);
+                }
+            },
+            [theme] {
+                static_cast<void>(theme->map());
+                static_cast<void>(theme->alias());
+                static_cast<void>(theme->text());
+            });
         mount_selection_label(build, *host.services_, state, component, label,
-            host.services_->components().theme_scope(component)
-                ->snapshot().map().control_height / 2.0F);
+                              host.services_->components().theme_scope(component)->snapshot().map().control_height /
+                                  2.0F);
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, true});
     }
 };
 
 struct RadioPropsAccess {
     static void mount(const RadioProps& props, const std::optional<RadioLabel>& label,
-        runtime::ComponentId group_id = {}) {
-        if (!active_selection_host)
+                      runtime::ComponentId group_id = {}) {
+        if (!active_selection_host) {
             throw std::logic_error("Radio requires an active SelectionComponentHost");
+        }
         auto& host = *active_selection_host;
-        if (props.checked_ && props.default_checked_)
+        if (props.checked_ && props.default_checked_) {
             throw std::invalid_argument("Radio checked and defaultChecked are mutually exclusive");
-        if (group_id.valid() && (props.checked_ || props.default_checked_ || !props.value_))
+        }
+        if (group_id.valid() && (props.checked_ || props.default_checked_ || !props.value_)) {
             throw std::invalid_argument("Grouped Radio requires value without checked props");
+        }
         auto& build = runtime::require_component_build_context();
-        auto* group = group_id.valid()
-            ? host.services_->components().state<RadioGroupState>(group_id) : nullptr;
-        if (group_id.valid() && !group)
+        auto* group = group_id.valid() ? host.services_->components().state<RadioGroupState>(group_id) : nullptr;
+        if (group_id.valid() && !group) {
             throw std::logic_error("RadioGroup is stale");
+        }
         const auto component = build.mount_component<SelectionState>();
         auto& state = build.state<SelectionState>(component);
         state.component = component;
@@ -906,67 +986,74 @@ struct RadioPropsAccess {
         state.value = props.value_;
         state.visuals.resize(radio_layer_count);
         state.controlled = group_id.valid() || props.checked_.has_value();
-        state.checked = group ? group->value && props.value_ && *group->value == *props.value_
-            : props.checked_ ? read_prop(*props.checked_)
-            : props.default_checked_.value_or(false);
+        state.checked = group            ? group->value && props.value_ && *group->value == *props.value_
+                        : props.checked_ ? read_prop(*props.checked_)
+                                         : props.default_checked_.value_or(false);
         state.own_disabled = read_prop(props.disabled_);
         state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
-            if (auto* current = host.find(component)) host.release_selection(*current);
+            if (auto* current = host.find(component)) {
+                host.release_selection(*current);
+            }
         });
         host.update_layout(state);
-        runtime::connect_layout_style(build.scope(component), props.layout_,
-            state.node, host.services_->nodes(), host.services_->dirty());
-        state.fragment = build.register_scene_fragment(component,
-            runtime::SceneFragmentPlacement::before_children);
+        runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
+                                      host.services_->dirty());
+        state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
         host.attach_interaction(state);
         host.update_visuals(state);
-        state.surface = host.services_->surfaces().create_surface(component, state.node,
-            state.fragment, state.visuals, state.effects, state.interaction);
+        state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
+                                                                  state.effects, state.interaction);
         auto& scope = build.scope(component);
-        if (props.checked_) static_cast<void>(connect_prop(scope, *props.checked_,
-            [&host, component](bool value) { host.apply_checked(component, value); }));
-        static_cast<void>(connect_prop(scope, props.disabled_,
-            [&host, component](bool value) {
-                host.apply_radio_own_disabled(component, value);
-            }));
+        if (props.checked_) {
+            static_cast<void>(connect_prop(scope, *props.checked_,
+                                           [&host, component](bool value) { host.apply_checked(component, value); }));
+        }
+        static_cast<void>(connect_prop(scope, props.disabled_, [&host, component](bool value) {
+            host.apply_radio_own_disabled(component, value);
+        }));
         const auto theme = host.services_->components().theme_scope(component);
-        state.theme_subscription = theme->capture([&host, component](theme_runtime::DirtyPhase) {
-            if (auto* current = host.find(component)) {
-                host.update_layout(*current);
-                host.update_visuals(*current);
-            }
-        }, [theme] {
-            static_cast<void>(theme->map());
-            static_cast<void>(theme->alias());
-            static_cast<void>(theme->text());
-            static_cast<void>(theme->line_width());
-        });
+        state.theme_subscription = theme->capture(
+            [&host, component](theme_runtime::DirtyPhase) {
+                if (auto* current = host.find(component)) {
+                    host.update_layout(*current);
+                    host.update_visuals(*current);
+                }
+            },
+            [theme] {
+                static_cast<void>(theme->map());
+                static_cast<void>(theme->alias());
+                static_cast<void>(theme->text());
+                static_cast<void>(theme->line_width());
+            });
         mount_selection_label(build, *host.services_, state, component, label,
-            host.services_->components().theme_scope(component)
-                ->snapshot().map().font_size_large);
-        host.mounted_.push_back({component, state.node, state.interaction,
-            state.surface, false, true});
-        if (group) group->options.push_back(component);
+                              host.services_->components().theme_scope(component)->snapshot().map().font_size_large);
+        host.mounted_.push_back({component, state.node, state.interaction, state.surface, false, true});
+        if (group) {
+            group->options.push_back(component);
+        }
     }
 };
 
 struct RadioGroupPropsAccess {
     static void mount(const RadioGroupProps& props) {
-        if (!active_selection_host)
+        if (!active_selection_host) {
             throw std::logic_error("RadioGroup requires an active SelectionComponentHost");
+        }
         auto& host = *active_selection_host;
-        if (props.value_ && props.default_value_)
+        if (props.value_ && props.default_value_) {
             throw std::invalid_argument("RadioGroup value and defaultValue are mutually exclusive");
+        }
         const auto orientation = read_prop(props.orientation_);
-        if (orientation != RadioGroupOrientation::Horizontal
-            && orientation != RadioGroupOrientation::Vertical)
+        if (orientation != RadioGroupOrientation::Horizontal && orientation != RadioGroupOrientation::Vertical) {
             throw std::invalid_argument("RadioGroup orientation is invalid");
+        }
         for (std::size_t left = 0; left < props.options_.size(); ++left) {
             for (std::size_t right = left + 1; right < props.options_.size(); ++right) {
-                if (props.options_[left].value == props.options_[right].value)
+                if (props.options_[left].value == props.options_[right].value) {
                     throw std::invalid_argument("RadioGroup option values must be unique");
+                }
             }
         }
         auto& build = runtime::require_component_build_context();
@@ -980,36 +1067,41 @@ struct RadioGroupPropsAccess {
         state.orientation = orientation;
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
-            if (auto* current = host.services_->components().state<RadioGroupState>(component))
+            if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
                 static_cast<void>(host.services_->layout().remove_layout(current->node));
+            }
         });
         host.update_group_layout(state);
-        runtime::connect_layout_style(build.scope(component), props.layout_,
-            state.node, host.services_->nodes(), host.services_->dirty());
+        runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
+                                      host.services_->dirty());
         auto& scope = build.scope(component);
-        if (props.value_) static_cast<void>(connect_prop(scope, *props.value_,
-            [&host, component](const std::optional<String>& value) {
-                host.apply_group_value(component, value);
-            }));
-        static_cast<void>(connect_prop(scope, props.disabled_,
-            [&host, component](bool value) { host.apply_group_disabled(component, value); }));
-        static_cast<void>(connect_prop(scope, props.orientation_,
-            [&host, component](RadioGroupOrientation value) {
-                host.apply_group_orientation(component, value);
-            }));
+        if (props.value_) {
+            static_cast<void>(
+                connect_prop(scope, *props.value_, [&host, component](const std::optional<String>& value) {
+                    host.apply_group_value(component, value);
+                }));
+        }
+        static_cast<void>(connect_prop(
+            scope, props.disabled_, [&host, component](bool value) { host.apply_group_disabled(component, value); }));
+        static_cast<void>(connect_prop(scope, props.orientation_, [&host, component](RadioGroupOrientation value) {
+            host.apply_group_orientation(component, value);
+        }));
         const auto theme = host.services_->components().theme_scope(component);
-        state.theme_subscription = theme->capture([&host, component](theme_runtime::DirtyPhase) {
-            if (auto* current = host.services_->components().state<RadioGroupState>(component))
-                host.update_group_layout(*current);
-        }, [theme] { static_cast<void>(theme->map()); });
+        state.theme_subscription = theme->capture(
+            [&host, component](theme_runtime::DirtyPhase) {
+                if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
+                    host.update_group_layout(*current);
+                }
+            },
+            [theme] { static_cast<void>(theme->map()); });
         build.mount_slot(component, Content{[&] {
-            for (const auto& option : props.options_) {
-                RadioProps radio;
-                radio.value(option.value).disabled(option.disabled);
-                RadioPropsAccess::mount(radio,
-                    RadioLabel{[label = option.label] { Text(label); }}, component);
-            }
-        }});
+                             for (const auto& option : props.options_) {
+                                 RadioProps radio;
+                                 radio.value(option.value).disabled(option.disabled);
+                                 RadioPropsAccess::mount(radio, RadioLabel{[label = option.label] { Text(label); }},
+                                                         component);
+                             }
+                         }});
         host.groups_.push_back(component);
     }
 };
@@ -1017,13 +1109,18 @@ struct RadioGroupPropsAccess {
 } // namespace ryn::detail
 
 namespace ryn {
-void Switch(SwitchProps props) { detail::SwitchPropsAccess::mount(props); }
+void Switch(SwitchProps props) {
+    detail::SwitchPropsAccess::mount(props);
+}
+
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {
     detail::CheckboxPropsAccess::mount(props, label);
 }
+
 void Radio(RadioProps props, std::optional<RadioLabel> label) {
     detail::RadioPropsAccess::mount(props, label);
 }
+
 void RadioGroup(RadioGroupProps props) {
     detail::RadioGroupPropsAccess::mount(props);
 }

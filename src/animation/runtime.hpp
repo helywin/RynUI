@@ -16,8 +16,7 @@
 namespace ryn::animation {
 
 struct AnimationId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -30,8 +29,7 @@ struct AnimationId final {
 };
 
 struct AnimationScopeId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -40,14 +38,11 @@ struct AnimationScopeId final {
         return index != invalid_index && generation != 0;
     }
 
-    friend constexpr bool operator==(
-        AnimationScopeId,
-        AnimationScopeId) = default;
+    friend constexpr bool operator==(AnimationScopeId, AnimationScopeId) = default;
 };
 
 struct AnimationTargetId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -56,9 +51,7 @@ struct AnimationTargetId final {
         return index != invalid_index && generation != 0;
     }
 
-    friend constexpr bool operator==(
-        AnimationTargetId,
-        AnimationTargetId) = default;
+    friend constexpr bool operator==(AnimationTargetId, AnimationTargetId) = default;
 };
 
 enum class AnimationDirtyDomain : std::uint32_t {
@@ -71,25 +64,15 @@ enum class AnimationDirtyDomain : std::uint32_t {
     measure_layout = 1U << 5U,
 };
 
-[[nodiscard]] constexpr AnimationDirtyDomain operator|(
-    AnimationDirtyDomain left,
-    AnimationDirtyDomain right) noexcept {
-    return static_cast<AnimationDirtyDomain>(
-        static_cast<std::uint32_t>(left)
-        | static_cast<std::uint32_t>(right));
+[[nodiscard]] constexpr AnimationDirtyDomain operator|(AnimationDirtyDomain left, AnimationDirtyDomain right) noexcept {
+    return static_cast<AnimationDirtyDomain>(static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
 }
 
-[[nodiscard]] constexpr AnimationDirtyDomain operator&(
-    AnimationDirtyDomain left,
-    AnimationDirtyDomain right) noexcept {
-    return static_cast<AnimationDirtyDomain>(
-        static_cast<std::uint32_t>(left)
-        & static_cast<std::uint32_t>(right));
+[[nodiscard]] constexpr AnimationDirtyDomain operator&(AnimationDirtyDomain left, AnimationDirtyDomain right) noexcept {
+    return static_cast<AnimationDirtyDomain>(static_cast<std::uint32_t>(left) & static_cast<std::uint32_t>(right));
 }
 
-[[nodiscard]] constexpr bool has_any(
-    AnimationDirtyDomain value,
-    AnimationDirtyDomain mask) noexcept {
+[[nodiscard]] constexpr bool has_any(AnimationDirtyDomain value, AnimationDirtyDomain mask) noexcept {
     return static_cast<std::uint32_t>(value & mask) != 0U;
 }
 
@@ -98,24 +81,17 @@ struct AnimationSpec final {
     AnimationDuration duration;
     Easing easing{Easing::linear()};
 
-    friend constexpr bool operator==(
-        const AnimationSpec&,
-        const AnimationSpec&) = default;
+    friend constexpr bool operator==(const AnimationSpec&, const AnimationSpec&) = default;
 };
 
 class AnimationTargetSink {
 public:
     virtual ~AnimationTargetSink() = default;
 
-    virtual void apply(
-        AnimationId animation,
-        AnimationTargetId target,
-        const AnimationValue& value,
-        AnimationDirtyDomain dirty_domain) = 0;
+    virtual void apply(AnimationId animation, AnimationTargetId target, const AnimationValue& value,
+                       AnimationDirtyDomain dirty_domain) = 0;
 
-    virtual void completed(
-        AnimationId animation,
-        AnimationTargetId target);
+    virtual void completed(AnimationId animation, AnimationTargetId target);
 };
 
 struct AnimationRuntimeDiagnostics final {
@@ -138,38 +114,25 @@ struct AnimationRuntimeDiagnostics final {
 class AnimationRuntime final {
 public:
     AnimationRuntime() noexcept;
+
     void set_schedule_observer(AnimationScheduleObserver* observer) noexcept {
         schedule_observer_ = observer;
     }
 
-    void reserve(
-        std::size_t animation_capacity,
-        std::size_t scope_capacity,
-        std::size_t target_capacity);
+    void reserve(std::size_t animation_capacity, std::size_t scope_capacity, std::size_t target_capacity);
 
     [[nodiscard]] AnimationScopeId create_scope();
     bool dispose_scope(AnimationScopeId scope);
 
-    [[nodiscard]] AnimationTargetId register_target(
-        AnimationScopeId scope,
-        AnimationTargetSink& sink,
-        AnimationValueKind value_kind,
-        AnimationDirtyDomain dirty_domain);
+    [[nodiscard]] AnimationTargetId register_target(AnimationScopeId scope, AnimationTargetSink& sink,
+                                                    AnimationValueKind value_kind, AnimationDirtyDomain dirty_domain);
     bool unregister_target(AnimationTargetId target);
 
-    [[nodiscard]] AnimationId play(
-        AnimationTargetId target,
-        AnimationValue from,
-        AnimationValue to,
-        AnimationSpec spec,
-        AnimationTime start_time);
+    [[nodiscard]] AnimationId play(AnimationTargetId target, AnimationValue from, AnimationValue to, AnimationSpec spec,
+                                   AnimationTime start_time);
     bool cancel(AnimationId animation, AnimationTime sample_time);
     bool finish(AnimationId animation);
-    bool retarget(
-        AnimationId animation,
-        AnimationValue to,
-        AnimationSpec spec,
-        AnimationTime start_time);
+    bool retarget(AnimationId animation, AnimationValue to, AnimationSpec spec, AnimationTime start_time);
     [[nodiscard]] std::size_t tick(AnimationTime sample_time);
     [[nodiscard]] std::size_t finish_all();
 
@@ -234,23 +197,13 @@ private:
     [[nodiscard]] std::uint32_t acquire_scope_slot();
     [[nodiscard]] std::uint32_t acquire_target_slot();
     [[nodiscard]] std::uint32_t acquire_animation_slot();
-    void validate_target_binding(
-        AnimationValueKind kind,
-        AnimationDirtyDomain dirty_domain) const;
-    void validate_play_request(
-        const TargetRecord& target,
-        const AnimationValue& from,
-        const AnimationValue& to,
-        const AnimationSpec& spec,
-        AnimationTime start_time) const;
+    void validate_target_binding(AnimationValueKind kind, AnimationDirtyDomain dirty_domain) const;
+    void validate_play_request(const TargetRecord& target, const AnimationValue& from, const AnimationValue& to,
+                               const AnimationSpec& spec, AnimationTime start_time) const;
 
     [[nodiscard]] AnimationTime observe_time(AnimationTime candidate) noexcept;
-    [[nodiscard]] AnimationValue sample_value(
-        const AnimationRecord& record,
-        AnimationTime sample_time) const;
-    [[nodiscard]] bool apply_value(
-        AnimationId animation,
-        const AnimationValue& value);
+    [[nodiscard]] AnimationValue sample_value(const AnimationRecord& record, AnimationTime sample_time) const;
+    [[nodiscard]] bool apply_value(AnimationId animation, const AnimationValue& value);
     void invoke_completion(AnimationId animation);
     bool remove_animation(AnimationId animation, bool canceled);
     void cancel_target_animations(AnimationTargetId target);
@@ -268,8 +221,7 @@ private:
     std::vector<AnimationId> tick_snapshot_;
     AnimationRuntimeDiagnostics diagnostics_;
     AnimationScheduleObserver* schedule_observer_{nullptr};
-    AnimationDuration nominal_frame_period_{
-        AnimationDuration::microseconds(16'667)};
+    AnimationDuration nominal_frame_period_{AnimationDuration::microseconds(16'667)};
 };
 
 } // namespace ryn::animation

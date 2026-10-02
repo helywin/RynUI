@@ -27,30 +27,20 @@ struct VisibleSceneStats final {
 
 class ComponentSceneComposer final {
 public:
-    ComponentSceneComposer(
-        runtime::ComponentHost& components,
-        input::InteractionRegistry& interactions,
-        input::HitTestSnapshot& hit_test) noexcept;
+    ComponentSceneComposer(runtime::ComponentHost& components, input::InteractionRegistry& interactions,
+                           input::HitTestSnapshot& hit_test) noexcept;
 
-    void reserve(
-        std::size_t fragment_capacity,
-        std::size_t command_capacity,
-        std::size_t interaction_capacity);
-    void set_fragment(
-        runtime::SceneFragmentId fragment,
-        std::span<const graphics::SceneDrawCommand> commands,
-        std::optional<input::InteractionId> interaction = std::nullopt,
-        std::optional<runtime::Rect> interaction_clip = std::nullopt);
+    void reserve(std::size_t fragment_capacity, std::size_t command_capacity, std::size_t interaction_capacity);
+    void set_fragment(runtime::SceneFragmentId fragment, std::span<const graphics::SceneDrawCommand> commands,
+                      std::optional<input::InteractionId> interaction = std::nullopt,
+                      std::optional<runtime::Rect> interaction_clip = std::nullopt);
     bool remove_fragment(runtime::SceneFragmentId fragment);
     void rebuild(runtime::Rect window_clip);
-    [[nodiscard]] VisibleSceneStats build_visible_scene(
-        const runtime::NodeStore& nodes,
-        runtime::Rect window_clip,
-        graphics::OrderedScene& destination) const;
+    [[nodiscard]] VisibleSceneStats build_visible_scene(const runtime::NodeStore& nodes, runtime::Rect window_clip,
+                                                        graphics::OrderedScene& destination) const;
 
     [[nodiscard]] const graphics::OrderedScene& ordered_scene() const noexcept;
-    [[nodiscard]] std::span<const input::HitTestPaintEntry>
-        interaction_order() const noexcept;
+    [[nodiscard]] std::span<const input::HitTestPaintEntry> interaction_order() const noexcept;
     [[nodiscard]] const ComponentSceneDiagnostics& diagnostics() const noexcept;
 
 private:
@@ -61,10 +51,8 @@ private:
         std::optional<runtime::Rect> interaction_clip;
     };
 
-    [[nodiscard]] FragmentBinding* find_binding(
-        runtime::SceneFragmentId fragment) noexcept;
-    [[nodiscard]] const FragmentBinding* find_binding(
-        runtime::SceneFragmentId fragment) const noexcept;
+    [[nodiscard]] FragmentBinding* find_binding(runtime::SceneFragmentId fragment) noexcept;
+    [[nodiscard]] const FragmentBinding* find_binding(runtime::SceneFragmentId fragment) const noexcept;
     void ensure_owner_thread() const;
 
     runtime::ComponentHost* components_;

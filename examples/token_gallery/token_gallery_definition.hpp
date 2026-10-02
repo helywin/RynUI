@@ -48,16 +48,12 @@ struct TokenGalleryDefinition final {
     ryn::Content content;
     std::function<void(std::size_t)> smoke_step;
     std::function<void(float)> set_viewport_width;
-    std::function<bool(
-        const GalleryScrollbarGeometry&,
-        const GalleryScrollbarGeometry&,
-        bool)> set_scrollbars;
+    std::function<bool(const GalleryScrollbarGeometry&, const GalleryScrollbarGeometry&, bool)> set_scrollbars;
     std::function<bool()> narrow_layout;
     std::function<bool(GalleryDocumentSectionKind)> set_current_section;
     std::function<void(bool)> set_motion_enabled;
     std::function<void(bool)> set_clear_disabled;
-    std::function<std::optional<GalleryNavigationTarget>()>
-        take_navigation_request;
+    std::function<std::optional<GalleryNavigationTarget>()> take_navigation_request;
     std::function<TokenGalleryTelemetry()> telemetry;
     std::vector<std::string_view> stable_test_ids;
     std::size_t navigation_control_count{};
@@ -66,15 +62,11 @@ struct TokenGalleryDefinition final {
 
 [[nodiscard]] TokenGalleryDefinition make_token_gallery_definition();
 
-[[nodiscard]] TokenGalleryViewport token_gallery_logical_viewport(
-    int pixel_width,
-    int pixel_height,
-    float render_scale);
+[[nodiscard]] TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height,
+                                                                  float render_scale);
 
-[[nodiscard]] float token_gallery_pointer_to_render_logical(
-    float host_logical_coordinate,
-    float host_display_scale,
-    float render_scale);
+[[nodiscard]] float token_gallery_pointer_to_render_logical(float host_logical_coordinate, float host_display_scale,
+                                                            float render_scale);
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition);
 int run_typography_acceptance(int argc, char** argv);

@@ -32,6 +32,7 @@ template <typename T>
 concept AcceptsStringGap = requires(T props) { props.gap("middle"); };
 
 struct ForeignContentSlot final {};
+
 using ForeignContent = ryn::SlotContent<ForeignContentSlot>;
 
 static_assert(!HasColor<ryn::FlexProps>);
@@ -71,17 +72,11 @@ int main() {
         ryn::Signal<ryn::FlexAlign> align{ryn::FlexAlign::Stretch};
         ryn::Signal<ryn::SpaceAlign> space_align{ryn::SpaceAlign::End};
         ryn::Signal<ryn::LayoutGap> gap{ryn::LayoutGap{ryn::SpaceSize::Middle}};
-        const auto bound_gap =
-            ryn::bind([] { return ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)}; });
+        const auto bound_gap = ryn::bind([] { return ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)}; });
 
         auto declarations = [&] {
-            ryn::Flex(ryn::FlexProps{}
-                          .vertical(vertical)
-                          .wrap(wrap)
-                          .justify(justify)
-                          .align(align)
-                          .gap(gap)
-                          .layout(ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
+            ryn::Flex(ryn::FlexProps{}.vertical(vertical).wrap(wrap).justify(justify).align(align).gap(gap).layout(
+                          ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
                       [] { ryn::Text(u8"content"); });
             ryn::Flex(ryn::FlexProps{}
                           .gap(ryn::SpaceSize::Small)
@@ -93,27 +88,17 @@ int main() {
         static_cast<void>(declarations);
         static_cast<void>(space_align);
 
-        require(ryn::LayoutGap{} == ryn::LayoutGap{ryn::dp(0.0F)},
-                "zero LayoutGap equality is inconsistent");
+        require(ryn::LayoutGap{} == ryn::LayoutGap{ryn::dp(0.0F)}, "zero LayoutGap equality is inconsistent");
         require(ryn::LayoutGap{ryn::SpaceSize::Small} == ryn::LayoutGap{ryn::SpaceSize::Small} &&
                     ryn::LayoutGap{ryn::SpaceSize::Small} != ryn::LayoutGap{ryn::dp(8.0F)} &&
-                    ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)} !=
-                        ryn::LayoutGap{ryn::dp(5.0F), ryn::dp(3.0F)},
+                    ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)} != ryn::LayoutGap{ryn::dp(5.0F), ryn::dp(3.0F)},
                 "LayoutGap source or dual-axis equality is ambiguous");
-        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::auto_length}); },
-                        "auto LayoutGap was accepted");
-        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::dp(-1.0F)}); },
-                        "negative LayoutGap was accepted");
-        require_invalid(
-            [] {
-                static_cast<void>(ryn::LayoutGap{ryn::dp(std::numeric_limits<float>::quiet_NaN())});
-            },
-            "NaN LayoutGap was accepted");
-        require_invalid(
-            [] {
-                static_cast<void>(ryn::LayoutGap{ryn::dp(std::numeric_limits<float>::infinity())});
-            },
-            "infinite LayoutGap was accepted");
+        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::auto_length}); }, "auto LayoutGap was accepted");
+        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::dp(-1.0F)}); }, "negative LayoutGap was accepted");
+        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::dp(std::numeric_limits<float>::quiet_NaN())}); },
+                        "NaN LayoutGap was accepted");
+        require_invalid([] { static_cast<void>(ryn::LayoutGap{ryn::dp(std::numeric_limits<float>::infinity())}); },
+                        "infinite LayoutGap was accepted");
         require_invalid([] { static_cast<void>(ryn::LayoutGap{static_cast<ryn::SpaceSize>(255)}); },
                         "invalid SpaceSize was accepted");
 

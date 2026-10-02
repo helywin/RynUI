@@ -10,11 +10,22 @@ namespace {
 using namespace ryn::input;
 using namespace ryn::detail;
 using ryn::String;
-void require(bool value, const char* message) { if(!value) throw std::runtime_error(message); }
-template<class E, class F> void rejects(F action) {
-    try { action(); } catch(const E&) { return; }
+
+void require(bool value, const char* message) {
+    if (!value) {
+        throw std::runtime_error(message);
+    }
+}
+
+template <class E, class F> void rejects(F action) {
+    try {
+        action();
+    } catch (const E&) {
+        return;
+    }
     throw std::runtime_error("Expected rejection");
 }
+
 void adapter() {
     PlatformEvents result;
     result.text_session = {{1, 2}, 3};
@@ -81,8 +92,9 @@ void adapter() {
     require(std::get<CompositionChanged>(values[2]).selection == TextScalarRange{1, 1}, "range not scalar");
     require(!std::get<CompositionChanged>(values[3]).selection.known, "unset range lost");
     const auto& snapshot = std::get<CandidatesChanged>(values[4]);
-    require(snapshot.candidates[1] == String(u8"你好") && snapshot.selected == 1
-        && snapshot.orientation == CandidateOrientation::horizontal, "candidate snapshot lost");
+    require(snapshot.candidates[1] == String(u8"你好") && snapshot.selected == 1 &&
+                snapshot.orientation == CandidateOrientation::horizontal,
+            "candidate snapshot lost");
     require(std::get<TextCommitted>(values[5]).session == result.text_session, "owner stamp lost");
     PlatformEvents bounded;
     bounded.input = PlatformInputBatch{1, 2};
@@ -101,27 +113,68 @@ void adapter() {
 }
 
 struct FakeApi final : PlatformApi {
-    int token{}, starts{}, stops{}, cancels{}, areas{};
-    bool fail_stop{}, fail_start{};
+    int token{};
+    int starts{};
+    int stops{};
+    int cancels{};
+    int areas{};
+    bool fail_stop{};
+    bool fail_start{};
     TextInputProperties properties;
     WindowTextInputArea area;
-    bool init_video() override { return true; }
+
+    bool init_video() override {
+        return true;
+    }
+
     void quit() noexcept override {}
-    PlatformWindowHandle create_window(const char*, int, int, bool) override { return &token; }
+
+    PlatformWindowHandle create_window(const char*, int, int, bool) override {
+        return &token;
+    }
+
     void destroy_window(PlatformWindowHandle) noexcept override {}
-    const char* last_error() const noexcept override { return "injected platform error"; }
-    PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override { return {800, 600}; }
+
+    const char* last_error() const noexcept override {
+        return "injected platform error";
+    }
+
+    PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override {
+        return {800, 600};
+    }
+
     void delay(std::uint32_t) noexcept override {}
-    std::uint32_t window_id(PlatformWindowHandle) const noexcept override { return 7; }
-    std::uint64_t ticks_ns() const noexcept override { return 100; }
+
+    std::uint32_t window_id(PlatformWindowHandle) const noexcept override {
+        return 7;
+    }
+
+    std::uint64_t ticks_ns() const noexcept override {
+        return 100;
+    }
+
     bool start_text_input(PlatformWindowHandle, const TextInputProperties& value) noexcept override {
-        ++starts; properties = value; return !fail_start;
+        ++starts;
+        properties = value;
+        return !fail_start;
     }
-    bool stop_text_input(PlatformWindowHandle) noexcept override { ++stops; return !fail_stop; }
-    bool cancel_composition(PlatformWindowHandle) noexcept override { ++cancels; return true; }
+
+    bool stop_text_input(PlatformWindowHandle) noexcept override {
+        ++stops;
+        return !fail_stop;
+    }
+
+    bool cancel_composition(PlatformWindowHandle) noexcept override {
+        ++cancels;
+        return true;
+    }
+
     bool set_text_input_area(PlatformWindowHandle, const WindowTextInputArea& value) noexcept override {
-        ++areas; area = value; return true;
+        ++areas;
+        area = value;
+        return true;
     }
+
     void poll_events(PlatformWindowHandle, PlatformEvents& result) override {
         SDL_Event event{};
         event.type = SDL_EVENT_TEXT_INPUT;
@@ -132,6 +185,7 @@ struct FakeApi final : PlatformApi {
         SdlEventAdapter::merge(result, event, metrics);
     }
 };
+
 void bridge() {
     FakeApi api;
     auto created = PlatformState::create(api, {});
@@ -141,7 +195,8 @@ void bridge() {
     TextInputSessionHost host(store, platform);
     const auto id = store.create();
     require(host.focus(id, {TextInputType::email, TextCapitalization::words, false}), "start failed");
-    require(api.properties == TextInputProperties{TextInputType::email, TextCapitalization::words, false}, "props lost");
+    require(api.properties == TextInputProperties{TextInputType::email, TextCapitalization::words, false},
+            "props lost");
     const auto event = std::get<TextCommitted>(platform.poll_events().input.events()[0]);
     require(event.session == host.active() && bool(host.dispatch(event)), "pump lost owner");
     const auto wait_event = std::get<TextCommitted>(platform.wait_events(1).input.events()[0]);
@@ -149,8 +204,9 @@ void bridge() {
     require(host.set_input_area({{1, 2, 100, 24}, {0, 0, 800, 600}, 0, 0, 40, 1.25, 800, 600}), "area failed");
     require(api.area == WindowTextInputArea{1, 2, 126, 31, 49}, "area conversion mismatch");
     bool rejected = false;
-    std::thread worker([&] { rejected = !platform.cancel() && !platform.stop()
-        && !platform.start({id, 9}, {}) && !platform.set_area({}); });
+    std::thread worker([&] {
+        rejected = !platform.cancel() && !platform.stop() && !platform.start({id, 9}, {}) && !platform.set_area({});
+    });
     worker.join();
     require(rejected, "native calls allowed off owner thread");
     api.fail_stop = true;
@@ -162,8 +218,15 @@ void bridge() {
     require(host.focus(id), "restart failed");
     require(!host.dispatch(event), "previous-session event accepted");
 }
-}
+} // namespace
+
 int main() {
-    try { adapter(); bridge(); std::cout << "SDL-shaped text events and platform bridge passed\n"; }
-    catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+    try {
+        adapter();
+        bridge();
+        std::cout << "SDL-shaped text events and platform bridge passed\n";
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 1;
+    }
 }

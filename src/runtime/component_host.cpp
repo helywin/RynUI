@@ -11,8 +11,7 @@ thread_local ComponentBuildContext* active_build_context = nullptr;
 
 class ActiveBuildContextGuard final {
 public:
-    explicit ActiveBuildContextGuard(ComponentBuildContext& context) noexcept
-        : previous_(active_build_context) {
+    explicit ActiveBuildContextGuard(ComponentBuildContext& context) noexcept : previous_(active_build_context) {
         active_build_context = &context;
     }
 
@@ -43,19 +42,11 @@ struct ComponentHost::Record final {
     std::size_t declaration_order{0};
     bool branch_active{true};
 
-    Record(
-        std::optional<ComponentId> component_parent,
-        NodeId component_root,
-        std::shared_ptr<void> component_state,
-        std::type_index component_state_type,
-        std::size_t order,
-        std::shared_ptr<theme_runtime::ThemeScope> component_theme_scope)
-        : parent(component_parent),
-          root(component_root),
-          state(std::move(component_state)),
-          state_type(component_state_type),
-          declaration_order(order),
-          theme_scope(std::move(component_theme_scope)) {}
+    Record(std::optional<ComponentId> component_parent, NodeId component_root, std::shared_ptr<void> component_state,
+           std::type_index component_state_type, std::size_t order,
+           std::shared_ptr<theme_runtime::ThemeScope> component_theme_scope)
+        : parent(component_parent), root(component_root), state(std::move(component_state)),
+          state_type(component_state_type), declaration_order(order), theme_scope(std::move(component_theme_scope)) {}
 };
 
 struct ComponentHost::Slot final {
@@ -74,8 +65,7 @@ struct ComponentHost::FragmentSlot final {
 };
 
 ComponentHost::ComponentHost(NodeStore& nodes)
-    : nodes_(&nodes),
-      owner_thread_(std::this_thread::get_id()),
+    : nodes_(&nodes), owner_thread_(std::this_thread::get_id()),
       default_theme_scope_(theme_runtime::ThemeScope::create_default()) {}
 
 ComponentHost::~ComponentHost() {
@@ -96,12 +86,7 @@ void ComponentHost::mount(const Content& content) {
 
     mounting_ = true;
     ++mount_runs_;
-    ComponentBuildContext context(
-        *this,
-        std::nullopt,
-        std::nullopt,
-        std::nullopt,
-        default_theme_scope_);
+    ComponentBuildContext context(*this, std::nullopt, std::nullopt, std::nullopt, default_theme_scope_);
     try {
         ActiveBuildContextGuard guard(context);
         detail::SlotContentAccess::function(content)();
@@ -217,7 +202,9 @@ std::span<const ComponentId> ComponentHost::root_components() const noexcept {
 bool ComponentHost::set_branch_active(ComponentId id, bool active) {
     ensure_owner_thread();
     auto& record = require_record(id);
-    if (record.branch_active == active) return false;
+    if (record.branch_active == active) {
+        return false;
+    }
     record.branch_active = active;
     paint_traversal_dirty_ = true;
     return true;
@@ -225,7 +212,9 @@ bool ComponentHost::set_branch_active(ComponentId id, bool active) {
 
 bool ComponentHost::branch_active(ComponentId id) const {
     const auto* record = find_record(id);
-    if (!record || !record->branch_active) return false;
+    if (!record || !record->branch_active) {
+        return false;
+    }
     return !record->parent || branch_active(*record->parent);
 }
 
@@ -237,8 +226,7 @@ Scope& ComponentHost::scope(ComponentId id) {
     return require_record(id).scope;
 }
 
-const std::shared_ptr<theme_runtime::ThemeScope>& ComponentHost::theme_scope(
-    ComponentId id) const {
+const std::shared_ptr<theme_runtime::ThemeScope>& ComponentHost::theme_scope(ComponentId id) const {
     return require_record(id).theme_scope;
 }
 
@@ -252,10 +240,9 @@ bool ComponentHost::remove_scene_fragment(SceneFragmentId id) {
         return false;
     }
     if (auto* component = find_record(slot.record->component)) {
-        auto& fragments = slot.record->placement
-                == SceneFragmentPlacement::before_children
-            ? component->before_children_fragments
-            : component->after_children_fragments;
+        auto& fragments = slot.record->placement == SceneFragmentPlacement::before_children
+                              ? component->before_children_fragments
+                              : component->after_children_fragments;
         std::erase(fragments, id);
     }
     slot.record.reset();
@@ -270,13 +257,14 @@ bool ComponentHost::contains(SceneFragmentId id) const noexcept {
         return false;
     }
     const auto& slot = fragment_slots_[id.index];
-    return slot.generation == id.generation && slot.record.has_value()
-        && contains(slot.record->component);
+    return slot.generation == id.generation && slot.record.has_value() && contains(slot.record->component);
 }
 
 ComponentId ComponentHost::fragment_component(SceneFragmentId id) const {
     ensure_owner_thread();
-    if (!contains(id)) throw std::out_of_range("scene fragment is stale");
+    if (!contains(id)) {
+        throw std::out_of_range("scene fragment is stale");
+    }
     return fragment_slots_[id.index].record->component;
 }
 
@@ -295,10 +283,8 @@ std::span<const SceneFragmentPaintEntry> ComponentHost::paint_traversal() {
     return paint_traversal_;
 }
 
-ComponentId ComponentHost::create_record(
-    std::optional<ComponentId> parent,
-    std::shared_ptr<void> state,
-    std::type_index state_type) {
+ComponentId ComponentHost::create_record(std::optional<ComponentId> parent, std::shared_ptr<void> state,
+                                         std::type_index state_type) {
     ensure_owner_thread();
     if (!active_ || !mounting_ || active_build_context == nullptr) {
         throw std::logic_error("Components can only be declared during Host mount");
@@ -308,20 +294,13 @@ ComponentId ComponentHost::create_record(
     if (parent.has_value()) {
         parent_record = &require_record(*parent);
     }
-    const NodeId node = parent_record == nullptr
-        ? nodes_->create_root()
-        : nodes_->create_child(parent_record->root);
+    const NodeId node = parent_record == nullptr ? nodes_->create_root() : nodes_->create_child(parent_record->root);
 
     std::uint32_t slot_index = ComponentId::invalid_index;
     try {
         slot_index = acquire_slot();
-        auto record = std::make_unique<Record>(
-            parent,
-            node,
-            std::move(state),
-            state_type,
-            next_declaration_order_++,
-            active_build_context->theme_scope());
+        auto record = std::make_unique<Record>(parent, node, std::move(state), state_type, next_declaration_order_++,
+                                               active_build_context->theme_scope());
         const ComponentId id{slot_index, slots_[slot_index].generation};
         slots_[slot_index].record = std::move(record);
         if (parent_record != nullptr) {
@@ -349,9 +328,7 @@ ComponentId ComponentHost::create_record(
     }
 }
 
-SceneFragmentId ComponentHost::register_scene_fragment(
-    ComponentId component,
-    SceneFragmentPlacement placement) {
+SceneFragmentId ComponentHost::register_scene_fragment(ComponentId component, SceneFragmentPlacement placement) {
     ensure_owner_thread();
     auto& owner = require_record(component);
     const auto slot_index = acquire_fragment_slot();
@@ -359,9 +336,8 @@ SceneFragmentId ComponentHost::register_scene_fragment(
     const SceneFragmentId id{slot_index, slot.generation};
     try {
         slot.record.emplace(FragmentRecord{component, placement});
-        auto& fragments = placement == SceneFragmentPlacement::before_children
-            ? owner.before_children_fragments
-            : owner.after_children_fragments;
+        auto& fragments = placement == SceneFragmentPlacement::before_children ? owner.before_children_fragments
+                                                                               : owner.after_children_fragments;
         fragments.push_back(id);
     } catch (...) {
         slot.record.reset();
@@ -375,41 +351,31 @@ SceneFragmentId ComponentHost::register_scene_fragment(
     return id;
 }
 
-void ComponentHost::add_resource_cleanup(
-    ComponentId id,
-    std::function<void()> cleanup) {
+void ComponentHost::add_resource_cleanup(ComponentId id, std::function<void()> cleanup) {
     ensure_owner_thread();
     require_record(id).resource_cleanups.push_back(std::move(cleanup));
 }
 
-void ComponentHost::mount_slot(
-    ComponentId parent,
-    const std::function<void()>& content,
-    std::optional<Prop<SemanticForeground>> semantic_foreground,
-    std::optional<Prop<SemanticTypography>> semantic_typography,
-    std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
+void ComponentHost::mount_slot(ComponentId parent, const std::function<void()>& content,
+                               std::optional<Prop<SemanticForeground>> semantic_foreground,
+                               std::optional<Prop<SemanticTypography>> semantic_typography,
+                               std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
     ensure_owner_thread();
     static_cast<void>(require_record(parent));
     if (!mounting_ || active_build_context == nullptr) {
         throw std::logic_error("Typed slots can only run during Host mount");
     }
 
-    ComponentBuildContext context(
-        *this,
-        parent,
-        std::move(semantic_foreground),
-        std::move(semantic_typography),
-        std::move(theme_scope));
+    ComponentBuildContext context(*this, parent, std::move(semantic_foreground), std::move(semantic_typography),
+                                  std::move(theme_scope));
     ActiveBuildContextGuard guard(context);
     content();
 }
 
-void ComponentHost::mount_transparent_slot(
-    std::optional<ComponentId> parent,
-    const std::function<void()>& content,
-    std::optional<Prop<SemanticForeground>> semantic_foreground,
-    std::optional<Prop<SemanticTypography>> semantic_typography,
-    std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
+void ComponentHost::mount_transparent_slot(std::optional<ComponentId> parent, const std::function<void()>& content,
+                                           std::optional<Prop<SemanticForeground>> semantic_foreground,
+                                           std::optional<Prop<SemanticTypography>> semantic_typography,
+                                           std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
     ensure_owner_thread();
     if (!mounting_ || active_build_context == nullptr) {
         throw std::logic_error("Transparent slots can only run during Host mount");
@@ -421,12 +387,8 @@ void ComponentHost::mount_transparent_slot(
         static_cast<void>(require_record(*parent));
     }
 
-    ComponentBuildContext context(
-        *this,
-        parent,
-        std::move(semantic_foreground),
-        std::move(semantic_typography),
-        std::move(theme_scope));
+    ComponentBuildContext context(*this, parent, std::move(semantic_foreground), std::move(semantic_typography),
+                                  std::move(theme_scope));
     ActiveBuildContextGuard guard(context);
     content();
 }
@@ -448,8 +410,7 @@ ComponentHost::Record* ComponentHost::find_record(ComponentId id) noexcept {
     return slot.record.get();
 }
 
-const ComponentHost::Record* ComponentHost::find_record(
-    ComponentId id) const noexcept {
+const ComponentHost::Record* ComponentHost::find_record(ComponentId id) const noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -482,9 +443,7 @@ void* ComponentHost::find_state(ComponentId id, std::type_index type) noexcept {
     return record->state.get();
 }
 
-const void* ComponentHost::find_state(
-    ComponentId id,
-    std::type_index type) const noexcept {
+const void* ComponentHost::find_state(ComponentId id, std::type_index type) const noexcept {
     const auto* record = find_record(id);
     if (record == nullptr || record->state_type != type) {
         return nullptr;
@@ -563,7 +522,9 @@ void ComponentHost::release_component_fragments(Record& record) noexcept {
 }
 
 void ComponentHost::append_paint_subtree(ComponentId id) {
-    if (!branch_active(id)) return;
+    if (!branch_active(id)) {
+        return;
+    }
     const auto& record = require_record(id);
     for (const auto fragment : record.before_children_fragments) {
         if (contains(fragment)) {
@@ -590,9 +551,7 @@ void ComponentHost::append_paint_subtree(ComponentId id) {
     }
 }
 
-void ComponentHost::collect_subtree(
-    ComponentId id,
-    std::vector<ComponentId>& ids) const {
+void ComponentHost::collect_subtree(ComponentId id, std::vector<ComponentId>& ids) const {
     const auto& record = require_record(id);
     ids.push_back(id);
     for (const auto child : record.children) {
@@ -600,9 +559,7 @@ void ComponentHost::collect_subtree(
     }
 }
 
-void ComponentHost::dispose_records(
-    const std::vector<ComponentId>& ids,
-    const std::vector<NodeId>& roots) noexcept {
+void ComponentHost::dispose_records(const std::vector<ComponentId>& ids, const std::vector<NodeId>& roots) noexcept {
     for (const auto id : ids) {
         if (auto* record = find_record(id)) {
             record->scope.dispose();
@@ -611,8 +568,7 @@ void ComponentHost::dispose_records(
 
     for (auto iterator = ids.rbegin(); iterator != ids.rend(); ++iterator) {
         if (auto* record = find_record(*iterator)) {
-            for (auto cleanup = record->resource_cleanups.rbegin();
-                 cleanup != record->resource_cleanups.rend();
+            for (auto cleanup = record->resource_cleanups.rbegin(); cleanup != record->resource_cleanups.rend();
                  ++cleanup) {
                 try {
                     (*cleanup)();
@@ -652,27 +608,18 @@ void ComponentHost::advance_generation(FragmentSlot& slot) noexcept {
     }
 }
 
-ComponentBuildContext::ComponentBuildContext(
-    ComponentHost& host,
-    std::optional<ComponentId> parent,
-    std::optional<Prop<SemanticForeground>> semantic_foreground,
-    std::optional<Prop<SemanticTypography>> semantic_typography,
-    std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept
-    : host_(&host),
-      parent_(parent),
-      semantic_foreground_(std::move(semantic_foreground)),
-      semantic_typography_(std::move(semantic_typography)),
-      theme_scope_(std::move(theme_scope)) {}
+ComponentBuildContext::ComponentBuildContext(ComponentHost& host, std::optional<ComponentId> parent,
+                                             std::optional<Prop<SemanticForeground>> semantic_foreground,
+                                             std::optional<Prop<SemanticTypography>> semantic_typography,
+                                             std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept
+    : host_(&host), parent_(parent), semantic_foreground_(std::move(semantic_foreground)),
+      semantic_typography_(std::move(semantic_typography)), theme_scope_(std::move(theme_scope)) {}
 
-void ComponentBuildContext::on_resource_cleanup(
-    ComponentId id,
-    std::function<void()> cleanup) {
+void ComponentBuildContext::on_resource_cleanup(ComponentId id, std::function<void()> cleanup) {
     host_->add_resource_cleanup(id, std::move(cleanup));
 }
 
-SceneFragmentId ComponentBuildContext::register_scene_fragment(
-    ComponentId id,
-    SceneFragmentPlacement placement) {
+SceneFragmentId ComponentBuildContext::register_scene_fragment(ComponentId id, SceneFragmentPlacement placement) {
     return host_->register_scene_fragment(id, placement);
 }
 
@@ -684,8 +631,7 @@ Scope& ComponentBuildContext::lifetime_scope() {
     return parent_.has_value() ? host_->scope(*parent_) : host_->host_scope_;
 }
 
-const std::shared_ptr<theme_runtime::ThemeScope>&
-ComponentBuildContext::theme_scope() const noexcept {
+const std::shared_ptr<theme_runtime::ThemeScope>& ComponentBuildContext::theme_scope() const noexcept {
     return theme_scope_;
 }
 
@@ -693,20 +639,17 @@ NodeId ComponentBuildContext::root(ComponentId id) const {
     return host_->root(id);
 }
 
-const std::optional<Prop<SemanticForeground>>&
-ComponentBuildContext::semantic_foreground() const noexcept {
+const std::optional<Prop<SemanticForeground>>& ComponentBuildContext::semantic_foreground() const noexcept {
     return semantic_foreground_;
 }
 
-const std::optional<Prop<SemanticTypography>>&
-ComponentBuildContext::semantic_typography() const noexcept {
+const std::optional<Prop<SemanticTypography>>& ComponentBuildContext::semantic_typography() const noexcept {
     return semantic_typography_;
 }
 
 ComponentBuildContext& require_component_build_context() {
     if (active_build_context == nullptr) {
-        throw std::logic_error(
-            "A component can only be declared inside active Host content");
+        throw std::logic_error("A component can only be declared inside active Host content");
     }
     return *active_build_context;
 }

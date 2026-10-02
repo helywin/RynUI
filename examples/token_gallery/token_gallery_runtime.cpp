@@ -64,8 +64,7 @@ std::optional<float> acceptance_scale_argument(int argc, char** argv) {
         if (value == "2" || value == "2.0") {
             return 2.0F;
         }
-        throw std::invalid_argument(
-            "--acceptance-scale must be 1.0, 1.25, 1.5, or 2.0");
+        throw std::invalid_argument("--acceptance-scale must be 1.0, 1.25, 1.5, or 2.0");
     }
     return std::nullopt;
 }
@@ -82,141 +81,126 @@ struct GalleryScrollPresentation final {
     GalleryScrollbarGeometry document;
 };
 
-GalleryScrollPresentation gallery_scroll_presentation(
-    ryn::runtime::Size viewport,
-    GalleryScrollRangeSnapshot navigation,
-    GalleryDocumentViewportSnapshot document) {
+GalleryScrollPresentation gallery_scroll_presentation(ryn::runtime::Size viewport,
+                                                      GalleryScrollRangeSnapshot navigation,
+                                                      GalleryDocumentViewportSnapshot document) {
     const auto layout = gallery_layout_metrics(viewport);
     return {
         layout.narrow,
         layout.navigation_lane,
         layout.document_lane,
         gallery_scrollbar_geometry(layout.navigation_track, navigation),
-        gallery_scrollbar_geometry(
-            layout.document_track,
-            {document.viewport_extent, document.content_extent,
-             document.maximum_offset, document.offset}),
+        gallery_scrollbar_geometry(layout.document_track, {document.viewport_extent, document.content_extent,
+                                                           document.maximum_offset, document.offset}),
     };
 }
 
 bool gallery_contains(ryn::runtime::Rect bounds, float x, float y) noexcept {
-    return x >= bounds.x && x < bounds.x + bounds.width
-        && y >= bounds.y && y < bounds.y + bounds.height;
+    return x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height;
 }
 
 class GalleryEvents final : public ryn::runtime::FrameEventSource {
 public:
-    GalleryEvents(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::detail::InputComponentHost& inputs,
-        ReferenceSurfaceHost& reference_surfaces,
-        ryn::runtime::FrameRequestState& frame_requests,
-        GalleryDocumentViewport& document_viewport,
-        GalleryScrollRange& navigation_scroll,
-        GalleryScrollPresentation& scroll_presentation,
-        ryn::runtime::NodeId header_root,
-        ryn::runtime::Size& viewport,
-        float& render_scale,
-        bool fixed_render_scale,
-        ryn::font::FontRuntime& fonts,
-        ryn::detail::DefaultFontChainResult& font_chain,
-        const std::function<void(float)>& set_viewport_width,
-        const std::function<std::optional<GalleryNavigationTarget>()>&
-            take_navigation_request,
-        std::optional<GalleryNavigationTarget>& deferred_navigation) noexcept
-        : platform_(&platform),
-          application_(&application),
-          inputs_(&inputs),
-          reference_surfaces_(&reference_surfaces),
-          frame_requests_(&frame_requests),
-          document_viewport_(&document_viewport),
-          navigation_scroll_(&navigation_scroll),
-          scroll_presentation_(&scroll_presentation),
-          header_root_(header_root),
-          viewport_(&viewport),
-          render_scale_(&render_scale),
-          fixed_render_scale_(fixed_render_scale),
-          fonts_(&fonts),
-          font_chain_(&font_chain),
-          set_viewport_width_(&set_viewport_width),
-          take_navigation_request_(&take_navigation_request),
-          deferred_navigation_(&deferred_navigation),
+    GalleryEvents(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                  ryn::detail::InputComponentHost& inputs, ReferenceSurfaceHost& reference_surfaces,
+                  ryn::runtime::FrameRequestState& frame_requests, GalleryDocumentViewport& document_viewport,
+                  GalleryScrollRange& navigation_scroll, GalleryScrollPresentation& scroll_presentation,
+                  ryn::runtime::NodeId header_root, ryn::runtime::Size& viewport, float& render_scale,
+                  bool fixed_render_scale, ryn::font::FontRuntime& fonts,
+                  ryn::detail::DefaultFontChainResult& font_chain, const std::function<void(float)>& set_viewport_width,
+                  const std::function<std::optional<GalleryNavigationTarget>()>& take_navigation_request,
+                  std::optional<GalleryNavigationTarget>& deferred_navigation) noexcept
+        : platform_(&platform), application_(&application), inputs_(&inputs), reference_surfaces_(&reference_surfaces),
+          frame_requests_(&frame_requests), document_viewport_(&document_viewport),
+          navigation_scroll_(&navigation_scroll), scroll_presentation_(&scroll_presentation), header_root_(header_root),
+          viewport_(&viewport), render_scale_(&render_scale), fixed_render_scale_(fixed_render_scale), fonts_(&fonts),
+          font_chain_(&font_chain), set_viewport_width_(&set_viewport_width),
+          take_navigation_request_(&take_navigation_request), deferred_navigation_(&deferred_navigation),
           started_(std::chrono::steady_clock::now()) {}
 
     ryn::animation::AnimationTime now() const noexcept override {
         return ryn::animation::AnimationTime::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                std::chrono::steady_clock::now() - started_).count());
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started_).count());
     }
 
-    bool poll_frame_event() noexcept override { return consume(platform_->poll_events()); }
+    bool poll_frame_event() noexcept override {
+        return consume(platform_->poll_events());
+    }
+
     bool wait_for_frame_event(std::uint32_t timeout_milliseconds) noexcept override {
         return consume(platform_->wait_events(timeout_milliseconds));
     }
 
-    [[nodiscard]] bool quit_requested() const noexcept { return quit_requested_; }
-    [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] bool quit_requested() const noexcept {
+        return quit_requested_;
+    }
+
+    [[nodiscard]] const std::string& last_error() const noexcept {
+        return last_error_;
+    }
+
     [[nodiscard]] std::uint64_t scroll_events() const noexcept {
         return scroll_events_;
     }
+
     void inject_scroll_at(float x, float y, float delta_y) {
         const float host_factor = *render_scale_ / platform_->display_scale();
-        dispatch(ryn::input::ScrollInputEvent{
-            0.0F, delta_y, x * host_factor, y * host_factor});
+        dispatch(ryn::input::ScrollInputEvent{0.0F, delta_y, x * host_factor, y * host_factor});
     }
-    void inject_pointer_at(
-        ryn::input::PointerAction action,
-        float x,
-        float y,
-        ryn::input::PointerButton button = ryn::input::PointerButton::none) {
+
+    void inject_pointer_at(ryn::input::PointerAction action, float x, float y,
+                           ryn::input::PointerButton button = ryn::input::PointerButton::none) {
         const float host_factor = *render_scale_ / platform_->display_scale();
-        dispatch(ryn::input::PointerInputEvent{
-            ryn::input::PointerIdentity::mouse(), action, button,
-            x * host_factor, y * host_factor});
+        dispatch(ryn::input::PointerInputEvent{ryn::input::PointerIdentity::mouse(), action, button, x * host_factor,
+                                               y * host_factor});
     }
 
 private:
     void publish_scrollbar_visuals() {
         const auto mounted = reference_surfaces_->mounted_surfaces();
-        if (mounted.size() < 5) return;
+        if (mounted.size() < 5) {
+            return;
+        }
         const auto navigation = navigation_bar_.visual_state();
         const auto document = document_bar_.visual_state();
         bool changed = false;
-        changed = reference_surfaces_->set_scrollbar_visual_state(
-            mounted[mounted.size() - 5].component, navigation) || changed;
-        changed = reference_surfaces_->set_scrollbar_visual_state(
-            mounted[mounted.size() - 4].component, navigation) || changed;
-        changed = reference_surfaces_->set_scrollbar_visual_state(
-            mounted[mounted.size() - 3].component, document) || changed;
-        changed = reference_surfaces_->set_scrollbar_visual_state(
-            mounted[mounted.size() - 2].component, document) || changed;
-        if (changed) frame_requests_->request_frame();
+        changed = reference_surfaces_->set_scrollbar_visual_state(mounted[mounted.size() - 5].component, navigation) ||
+                  changed;
+        changed = reference_surfaces_->set_scrollbar_visual_state(mounted[mounted.size() - 4].component, navigation) ||
+                  changed;
+        changed =
+            reference_surfaces_->set_scrollbar_visual_state(mounted[mounted.size() - 3].component, document) || changed;
+        changed =
+            reference_surfaces_->set_scrollbar_visual_state(mounted[mounted.size() - 2].component, document) || changed;
+        if (changed) {
+            frame_requests_->request_frame();
+        }
     }
 
     bool consume(const ryn::detail::PlatformEvents& events) noexcept {
         application_->set_animation_time(now());
         quit_requested_ = quit_requested_ || events.quit_requested;
         try {
-            if (scroll_presentation_->narrow && navigation_bar_.reset())
+            if (scroll_presentation_->narrow && navigation_bar_.reset()) {
                 publish_scrollbar_visuals();
+            }
             for (const auto& event : events.input.events()) {
                 std::visit([this](const auto& value) { dispatch(value); }, event);
             }
             if (const auto request = (*take_navigation_request_)()) {
                 if (request->kind == GalleryNavigationTargetKind::navigation_start) {
-                    const bool changed = scroll_presentation_->narrow
-                        ? document_viewport_->scroll_to(0.0F)
-                        : navigation_scroll_->scroll_to(0.0F);
-                    if (changed) frame_requests_->request_frame();
+                    const bool changed = scroll_presentation_->narrow ? document_viewport_->scroll_to(0.0F)
+                                                                      : navigation_scroll_->scroll_to(0.0F);
+                    if (changed) {
+                        frame_requests_->request_frame();
+                    }
                 } else if (request->kind == GalleryNavigationTargetKind::component) {
                     *deferred_navigation_ = request;
                     frame_requests_->request_frame();
                 } else {
-                    const auto anchor = request->kind
-                            == GalleryNavigationTargetKind::section
-                        ? document_viewport_->anchor(request->section)
-                        : document_viewport_->category_anchor(request->category);
+                    const auto anchor = request->kind == GalleryNavigationTargetKind::section
+                                            ? document_viewport_->anchor(request->section)
+                                            : document_viewport_->category_anchor(request->category);
                     if (anchor.has_value() && document_viewport_->jump_to(*anchor)) {
                         frame_requests_->request_frame();
                     }
@@ -227,54 +211,44 @@ private:
             quit_requested_ = true;
             return true;
         }
-        return frame_requests_->pending()
-            || events.redraw_requested
-            || (events.frame_requested && events.input.empty());
+        return frame_requests_->pending() || events.redraw_requested ||
+               (events.frame_requested && events.input.empty());
     }
 
     void dispatch(const ryn::input::PointerInputEvent& event) {
         auto mapped = event;
         const float host_scale = platform_->display_scale();
-        mapped.x = token_gallery_pointer_to_render_logical(
-            event.x, host_scale, *render_scale_);
-        mapped.y = token_gallery_pointer_to_render_logical(
-            event.y, host_scale, *render_scale_);
+        mapped.x = token_gallery_pointer_to_render_logical(event.x, host_scale, *render_scale_);
+        mapped.y = token_gallery_pointer_to_render_logical(event.y, host_scale, *render_scale_);
         auto& presentation = *scroll_presentation_;
-        const auto handle_bar = [this, &mapped](
-            GalleryScrollbarController& controller,
-            const GalleryScrollbarGeometry& geometry,
-            float viewport_extent,
-            float current_offset,
-            auto&& scroll_to) {
-            const auto result = controller.dispatch(
-                mapped, geometry, viewport_extent, current_offset);
-            if (result.requested_offset.has_value()
-                    && scroll_to(*result.requested_offset)) {
+        const auto handle_bar = [this, &mapped](GalleryScrollbarController& controller,
+                                                const GalleryScrollbarGeometry& geometry, float viewport_extent,
+                                                float current_offset, auto&& scroll_to) {
+            const auto result = controller.dispatch(mapped, geometry, viewport_extent, current_offset);
+            if (result.requested_offset.has_value() && scroll_to(*result.requested_offset)) {
                 frame_requests_->request_frame();
             }
             return result.consumed;
         };
-        if (!presentation.narrow && handle_bar(
-                navigation_bar_, presentation.navigation,
-                navigation_scroll_->snapshot().viewport_extent,
-                navigation_scroll_->snapshot().offset,
-                [this](float value) { return navigation_scroll_->scroll_to(value); })) {
+        if (!presentation.narrow &&
+            handle_bar(navigation_bar_, presentation.navigation, navigation_scroll_->snapshot().viewport_extent,
+                       navigation_scroll_->snapshot().offset,
+                       [this](float value) { return navigation_scroll_->scroll_to(value); })) {
             static_cast<void>(document_bar_.clear_hover());
             publish_scrollbar_visuals();
             return;
         }
-        const bool document_bar_consumed = handle_bar(
-                document_bar_, presentation.document,
-                document_viewport_->snapshot().viewport_extent,
-                document_viewport_->snapshot().offset,
-                [this](float value) { return document_viewport_->scroll_to(value); });
+        const bool document_bar_consumed =
+            handle_bar(document_bar_, presentation.document, document_viewport_->snapshot().viewport_extent,
+                       document_viewport_->snapshot().offset,
+                       [this](float value) { return document_viewport_->scroll_to(value); });
         publish_scrollbar_visuals();
         if (document_bar_consumed) {
             return;
         }
-        const bool over_bar = (!presentation.narrow && gallery_contains(
-                presentation.navigation.track, mapped.x, mapped.y))
-            || gallery_contains(presentation.document.track, mapped.x, mapped.y);
+        const bool over_bar =
+            (!presentation.narrow && gallery_contains(presentation.navigation.track, mapped.x, mapped.y)) ||
+            gallery_contains(presentation.document.track, mapped.x, mapped.y);
         bool header_control = false;
         if (mapped.y < presentation.document_lane.y) {
             for (const auto& button : application_->mounted_buttons()) {
@@ -289,26 +263,20 @@ private:
                 }
             }
         }
-        if (((mapped.y < presentation.document_lane.y && !header_control) || over_bar)
-                && mapped.action != ryn::input::PointerAction::up
-                && mapped.action != ryn::input::PointerAction::cancel) {
+        if (((mapped.y < presentation.document_lane.y && !header_control) || over_bar) &&
+            mapped.action != ryn::input::PointerAction::up && mapped.action != ryn::input::PointerAction::cancel) {
             return;
         }
         application_->pointer().dispatch(mapped);
     }
 
     void dispatch(const ryn::input::ScrollInputEvent& event) {
-        const float ticks = event.delta_y != 0.0F
-            ? -event.delta_y : -event.delta_x;
-        const float x = token_gallery_pointer_to_render_logical(
-            event.x, platform_->display_scale(), *render_scale_);
-        const float y = token_gallery_pointer_to_render_logical(
-            event.y, platform_->display_scale(), *render_scale_);
+        const float ticks = event.delta_y != 0.0F ? -event.delta_y : -event.delta_x;
+        const float x = token_gallery_pointer_to_render_logical(event.x, platform_->display_scale(), *render_scale_);
+        const float y = token_gallery_pointer_to_render_logical(event.y, platform_->display_scale(), *render_scale_);
         bool changed = false;
-        switch (gallery_scroll_target(
-            x, y, scroll_presentation_->narrow,
-            scroll_presentation_->navigation_lane,
-            scroll_presentation_->document_lane)) {
+        switch (gallery_scroll_target(x, y, scroll_presentation_->narrow, scroll_presentation_->navigation_lane,
+                                      scroll_presentation_->document_lane)) {
         case GalleryScrollTarget::navigation:
             changed = navigation_scroll_->scroll_by(ticks * 48.0F);
             break;
@@ -324,9 +292,18 @@ private:
         ++scroll_events_;
     }
 
-    void dispatch(const ryn::input::TextCommitted& event) { static_cast<void>(inputs_->dispatch(event)); }
-    void dispatch(const ryn::input::CompositionChanged& event) { static_cast<void>(inputs_->dispatch(event)); }
-    void dispatch(const ryn::input::CandidatesChanged& event) { static_cast<void>(inputs_->dispatch(event)); }
+    void dispatch(const ryn::input::TextCommitted& event) {
+        static_cast<void>(inputs_->dispatch(event));
+    }
+
+    void dispatch(const ryn::input::CompositionChanged& event) {
+        static_cast<void>(inputs_->dispatch(event));
+    }
+
+    void dispatch(const ryn::input::CandidatesChanged& event) {
+        static_cast<void>(inputs_->dispatch(event));
+    }
+
     void dispatch(const ryn::input::ClipboardChanged&) {}
 
     void dispatch(const ryn::input::KeyboardInputEvent& event) {
@@ -349,21 +326,16 @@ private:
         case ryn::input::WindowInputAction::resized:
             if (event.width > 0 && event.height > 0) {
                 const auto metrics = platform_->window_metrics();
-                const float next_render_scale = fixed_render_scale_
-                    ? *render_scale_
-                    : metrics.display_scale;
+                const float next_render_scale = fixed_render_scale_ ? *render_scale_ : metrics.display_scale;
                 if (std::abs(next_render_scale - *render_scale_) > 0.0001F) {
-                    auto resolver = ryn::detail::make_default_ui_font_resolver(
-                        *fonts_, *font_chain_, next_render_scale);
-                    static_cast<void>(
-                        application_->text().set_font_resolver(std::move(resolver)));
+                    auto resolver =
+                        ryn::detail::make_default_ui_font_resolver(*fonts_, *font_chain_, next_render_scale);
+                    static_cast<void>(application_->text().set_font_resolver(std::move(resolver)));
                     *render_scale_ = next_render_scale;
                     inputs_->set_display_scale(next_render_scale);
                 }
-                const auto logical = token_gallery_logical_viewport(
-                    metrics.pixel_width,
-                    metrics.pixel_height,
-                    *render_scale_);
+                const auto logical =
+                    token_gallery_logical_viewport(metrics.pixel_width, metrics.pixel_height, *render_scale_);
                 *viewport_ = {logical.width, logical.height};
                 static_cast<void>(navigation_bar_.reset());
                 static_cast<void>(document_bar_.reset());
@@ -394,8 +366,7 @@ private:
     ryn::font::FontRuntime* fonts_;
     ryn::detail::DefaultFontChainResult* font_chain_;
     const std::function<void(float)>* set_viewport_width_;
-    const std::function<std::optional<GalleryNavigationTarget>()>*
-        take_navigation_request_;
+    const std::function<std::optional<GalleryNavigationTarget>()>* take_navigation_request_;
     std::optional<GalleryNavigationTarget>* deferred_navigation_;
     std::chrono::steady_clock::time_point started_;
     bool quit_requested_{};
@@ -416,61 +387,35 @@ public:
         std::uint64_t glyph_texture_uploads{};
     };
 
-    GallerySubmitter(
-        ryn::detail::PlatformState& platform,
-        ryn::detail::ButtonComponentHost& application,
-        ryn::detail::InputComponentHost& inputs,
-        ryn::detail::TextSceneService& text_scene,
-        ryn::detail::SceneResources& resources,
-        ryn::detail::SdlSceneRenderer& renderer,
-        const std::function<ryn::Color()>& background_color,
-        ReferenceSurfaceHost& reference_surfaces,
-        GalleryDocumentViewport& document_viewport,
-        GalleryScrollRange& navigation_scroll,
-        GalleryScrollPresentation& scroll_presentation,
-        const std::function<bool(
-            const GalleryScrollbarGeometry&,
-            const GalleryScrollbarGeometry&,
-            bool)>& set_scrollbars,
-        const std::function<bool()>& narrow_layout,
-        const std::function<bool(GalleryDocumentSectionKind)>& set_current_section,
-        std::optional<GalleryNavigationTarget>& deferred_navigation,
-        ryn::runtime::NodeId body_root,
-        ryn::runtime::NodeId navigation_root,
-        ryn::runtime::NodeId document_root,
-        ryn::runtime::Size& viewport,
-        float& render_scale) noexcept
-        : platform_(&platform),
-          application_(&application),
-          inputs_(&inputs),
-          text_scene_(&text_scene),
-          resources_(&resources),
-          renderer_(&renderer),
-          background_color_(&background_color),
-          reference_surfaces_(&reference_surfaces),
-          document_viewport_(&document_viewport),
-          navigation_scroll_(&navigation_scroll),
-          scroll_presentation_(&scroll_presentation),
-          set_scrollbars_(&set_scrollbars),
-          narrow_layout_(&narrow_layout),
-          set_current_section_(&set_current_section),
-          deferred_navigation_(&deferred_navigation),
-          body_root_(body_root),
-          navigation_root_(navigation_root),
-          document_root_(document_root),
-          viewport_(&viewport),
-          render_scale_(&render_scale) {}
+    GallerySubmitter(ryn::detail::PlatformState& platform, ryn::detail::ButtonComponentHost& application,
+                     ryn::detail::InputComponentHost& inputs, ryn::detail::TextSceneService& text_scene,
+                     ryn::detail::SceneResources& resources, ryn::detail::SdlSceneRenderer& renderer,
+                     const std::function<ryn::Color()>& background_color, ReferenceSurfaceHost& reference_surfaces,
+                     GalleryDocumentViewport& document_viewport, GalleryScrollRange& navigation_scroll,
+                     GalleryScrollPresentation& scroll_presentation,
+                     const std::function<bool(const GalleryScrollbarGeometry&, const GalleryScrollbarGeometry&, bool)>&
+                         set_scrollbars,
+                     const std::function<bool()>& narrow_layout,
+                     const std::function<bool(GalleryDocumentSectionKind)>& set_current_section,
+                     std::optional<GalleryNavigationTarget>& deferred_navigation, ryn::runtime::NodeId body_root,
+                     ryn::runtime::NodeId navigation_root, ryn::runtime::NodeId document_root,
+                     ryn::runtime::Size& viewport, float& render_scale) noexcept
+        : platform_(&platform), application_(&application), inputs_(&inputs), text_scene_(&text_scene),
+          resources_(&resources), renderer_(&renderer), background_color_(&background_color),
+          reference_surfaces_(&reference_surfaces), document_viewport_(&document_viewport),
+          navigation_scroll_(&navigation_scroll), scroll_presentation_(&scroll_presentation),
+          set_scrollbars_(&set_scrollbars), narrow_layout_(&narrow_layout), set_current_section_(&set_current_section),
+          deferred_navigation_(&deferred_navigation), body_root_(body_root), navigation_root_(navigation_root),
+          document_root_(document_root), viewport_(&viewport), render_scale_(&render_scale) {}
 
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime frame_time) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime frame_time) override {
         try {
             const auto frame_started = std::chrono::steady_clock::now();
-            const auto renderer_before_first = !first_frame_captured_
-                ? renderer_->counters() : ryn::detail::SceneRendererCounters{};
-            const auto glyph_before_first = !first_frame_captured_
-                ? resources_->glyphs().counters().texture_uploads : 0;
-            const auto hit_refresh_before = application_->services()
-                .hit_test_refresh_nanoseconds();
+            const auto renderer_before_first =
+                !first_frame_captured_ ? renderer_->counters() : ryn::detail::SceneRendererCounters{};
+            const auto glyph_before_first =
+                !first_frame_captured_ ? resources_->glyphs().counters().texture_uploads : 0;
+            const auto hit_refresh_before = application_->services().hit_test_refresh_nanoseconds();
             static_cast<void>(application_->tick_animations(frame_time));
             const ryn::runtime::Rect clip{
                 16.0F,
@@ -486,28 +431,26 @@ public:
             if (narrow) {
                 static_cast<void>(navigation_scroll_->scroll_to(0.0F));
             }
-            *scroll_presentation_ = gallery_scroll_presentation(
-                *viewport_, navigation_scroll_->snapshot(),
-                document_viewport_->snapshot());
-            static_cast<void>((*set_scrollbars_)(
-                scroll_presentation_->navigation,
-                scroll_presentation_->document, narrow));
+            *scroll_presentation_ =
+                gallery_scroll_presentation(*viewport_, navigation_scroll_->snapshot(), document_viewport_->snapshot());
+            static_cast<void>(
+                (*set_scrollbars_)(scroll_presentation_->navigation, scroll_presentation_->document, narrow));
             static_cast<void>(position_scrollbars());
             const auto scroll_root = narrow ? body_root_ : document_root_;
-            if (!document_viewport_->apply_subtree_translation(
-                    scroll_root, application_->nodes(), application_->dirty())) {
+            if (!document_viewport_->apply_subtree_translation(scroll_root, application_->nodes(),
+                                                               application_->dirty())) {
                 last_error_ = "Token Gallery document root is stale";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
-            if (!narrow && !navigation_translation_.apply(
-                    navigation_root_, navigation_scroll_->snapshot().offset,
-                    application_->nodes(), application_->dirty()).valid) {
+            if (!narrow && !navigation_translation_
+                                .apply(navigation_root_, navigation_scroll_->snapshot().offset, application_->nodes(),
+                                       application_->dirty())
+                                .valid) {
                 last_error_ = "Token Gallery navigation root is stale";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto document_translated = std::chrono::steady_clock::now();
-            if (!application_->layout_and_synchronize(
-                    *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+            if (!application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                 last_error_ = "Token Gallery layout or scene sync failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -517,8 +460,9 @@ public:
             std::array<float, 6> anchors{};
             std::size_t heading_count = 0;
             for (const auto& surface : mounted_surfaces) {
-                if (reference_surfaces_->snapshot(surface.component).role
-                        != ReferenceSurfaceRole::document_heading) continue;
+                if (reference_surfaces_->snapshot(surface.component).role != ReferenceSurfaceRole::document_heading) {
+                    continue;
+                }
                 if (heading_count == anchors.size()) {
                     throw std::logic_error("Token Gallery has too many section headings");
                 }
@@ -528,21 +472,18 @@ public:
             if (heading_count != anchors.size()) {
                 throw std::logic_error("Token Gallery section heading inventory is incomplete");
             }
-            const bool had_section_anchors = document_viewport_->anchor(
-                GalleryDocumentSectionKind::header_source).has_value();
-            const auto resize_anchor =
-                document_viewport_->capture_resize_anchor();
-            bool anchors_changed =
-                document_viewport_->replace_anchors(anchors);
+            const bool had_section_anchors =
+                document_viewport_->anchor(GalleryDocumentSectionKind::header_source).has_value();
+            const auto resize_anchor = document_viewport_->capture_resize_anchor();
+            bool anchors_changed = document_viewport_->replace_anchors(anchors);
             const auto catalog = ant_design_reference_entries();
             if (component_nodes_.empty()) {
                 component_nodes_.reserve(catalog.size());
                 component_anchors_.reserve(catalog.size());
                 for (const auto& entry : catalog) {
-                    const auto found = std::find_if(mounted_surfaces.begin(),
-                        mounted_surfaces.end(), [&](const auto& surface) {
-                            return reference_surfaces_->snapshot(surface.component).identity
-                                == entry.identity;
+                    const auto found =
+                        std::find_if(mounted_surfaces.begin(), mounted_surfaces.end(), [&](const auto& surface) {
+                            return reference_surfaces_->snapshot(surface.component).identity == entry.identity;
                         });
                     if (found == mounted_surfaces.end()) {
                         throw std::logic_error("Token Gallery component surface identity is missing");
@@ -569,80 +510,74 @@ public:
             if (std::ranges::find(category_present, false) != category_present.end()) {
                 throw std::logic_error("Token Gallery component category is missing");
             }
-            anchors_changed = document_viewport_->replace_category_anchors(
-                category_anchors) || anchors_changed;
-            anchors_changed = document_viewport_->replace_component_anchors(
-                component_anchors_) || anchors_changed;
+            anchors_changed = document_viewport_->replace_category_anchors(category_anchors) || anchors_changed;
+            anchors_changed = document_viewport_->replace_component_anchors(component_anchors_) || anchors_changed;
             const float applied_offset = document_viewport_->snapshot().offset;
-            static_cast<void>(document_viewport_->set_extents(
-                scroll_presentation_->document.track.height, root.bounds.height));
-            const float applied_navigation_offset =
-                navigation_scroll_->snapshot().offset;
-            static_cast<void>(navigation_scroll_->set_extents(
-                scroll_presentation_->navigation.track.height,
-                application_->nodes().require(navigation_root_).bounds.height));
+            static_cast<void>(
+                document_viewport_->set_extents(scroll_presentation_->document.track.height, root.bounds.height));
+            const float applied_navigation_offset = navigation_scroll_->snapshot().offset;
+            static_cast<void>(
+                navigation_scroll_->set_extents(scroll_presentation_->navigation.track.height,
+                                                application_->nodes().require(navigation_root_).bounds.height));
             if (narrow && !had_section_anchors) {
                 static_cast<void>(document_viewport_->scroll_to(anchors.front()));
             } else if (anchors_changed && had_section_anchors) {
-                static_cast<void>(
-                    document_viewport_->restore_resize_anchor(resize_anchor));
+                static_cast<void>(document_viewport_->restore_resize_anchor(resize_anchor));
             }
             if (deferred_navigation_->has_value()) {
-                const auto anchor = document_viewport_->component_anchor(
-                    deferred_navigation_->value().component_identity);
-                if (!anchor) throw std::logic_error("Token Gallery component anchor is missing");
+                const auto anchor =
+                    document_viewport_->component_anchor(deferred_navigation_->value().component_identity);
+                if (!anchor) {
+                    throw std::logic_error("Token Gallery component anchor is missing");
+                }
                 static_cast<void>(document_viewport_->jump_to(*anchor));
                 deferred_navigation_->reset();
             }
             // Ordinary wheel translation is flushed by the first sync. A resize
             // or first layout can change scroll clamps and scrollbar dimensions.
-            *scroll_presentation_ = gallery_scroll_presentation(
-                *viewport_, navigation_scroll_->snapshot(),
-                document_viewport_->snapshot());
-            const bool chrome_changed = (*set_scrollbars_)(
-                scroll_presentation_->navigation,
-                scroll_presentation_->document, narrow);
-            const bool selection_changed = (*set_current_section_)(
-                document_viewport_->snapshot().current_section);
+            *scroll_presentation_ =
+                gallery_scroll_presentation(*viewport_, navigation_scroll_->snapshot(), document_viewport_->snapshot());
+            const bool chrome_changed =
+                (*set_scrollbars_)(scroll_presentation_->navigation, scroll_presentation_->document, narrow);
+            const bool selection_changed = (*set_current_section_)(document_viewport_->snapshot().current_section);
             const bool chrome_position_changed = position_scrollbars();
-            const bool offset_changed =
-                document_viewport_->snapshot().offset != applied_offset
-                || navigation_scroll_->snapshot().offset != applied_navigation_offset;
+            const bool offset_changed = document_viewport_->snapshot().offset != applied_offset ||
+                                        navigation_scroll_->snapshot().offset != applied_navigation_offset;
             if (offset_changed || chrome_changed || chrome_position_changed || selection_changed) {
-                if (!document_viewport_->apply_subtree_translation(
-                        scroll_root, application_->nodes(), application_->dirty())
-                        || (!narrow && !navigation_translation_.apply(
-                            navigation_root_, navigation_scroll_->snapshot().offset,
-                            application_->nodes(), application_->dirty()).valid)
-                        || !application_->layout_and_synchronize(
-                            *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+                if (!document_viewport_->apply_subtree_translation(scroll_root, application_->nodes(),
+                                                                   application_->dirty()) ||
+                    (!narrow && !navigation_translation_
+                                     .apply(navigation_root_, navigation_scroll_->snapshot().offset,
+                                            application_->nodes(), application_->dirty())
+                                     .valid) ||
+                    !application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                     last_error_ = "Token Gallery final scroll sync failed";
                     return ryn::runtime::FrameSubmissionResult::failed;
                 }
-                if (offset_changed) ++reconciliation_syncs_;
-                if (position_scrollbars()
-                        && !application_->layout_and_synchronize(
-                            *viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
+                if (offset_changed) {
+                    ++reconciliation_syncs_;
+                }
+                if (position_scrollbars() &&
+                    !application_->layout_and_synchronize(*viewport_, clip, {24.0F, 20.0F}, 0.0F, true)) {
                     last_error_ = "Token Gallery scrollbar placement sync failed";
                     return ryn::runtime::FrameSubmissionResult::failed;
                 }
             }
             const auto metrics = platform_->window_metrics();
-            if (!inputs_->synchronize_input_area(
-                    double(metrics.coordinate_width) / viewport_->width,
-                    metrics.coordinate_width, metrics.coordinate_height)) {
+            if (!inputs_->synchronize_input_area(double(metrics.coordinate_width) / viewport_->width,
+                                                 metrics.coordinate_width, metrics.coordinate_height)) {
                 last_error_ = "Token Gallery text input area update failed";
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
             const auto scene_synchronized = std::chrono::steady_clock::now();
             ryn::detail::SceneUploadTiming upload_timing;
-            if (!resources_->synchronize({
-                    &application_->services().surfaces().instances(),
-                    text_scene_->atlas(), text_scene_->glyph_scene().instances(),
-                    &application_->rounded_effects(),
-                    {static_cast<std::uint32_t>(metrics.pixel_width),
-                     static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_}},
-                    &upload_timing)) {
+            if (!resources_->synchronize({&application_->services().surfaces().instances(),
+                                          text_scene_->atlas(),
+                                          text_scene_->glyph_scene().instances(),
+                                          &application_->rounded_effects(),
+                                          {static_cast<std::uint32_t>(metrics.pixel_width),
+                                           static_cast<std::uint32_t>(metrics.pixel_height), *render_scale_}},
+                                         &upload_timing)) {
                 last_error_ = renderer_->last_error();
                 return ryn::runtime::FrameSubmissionResult::failed;
             }
@@ -651,8 +586,8 @@ public:
             const auto glyph_synchronized = upload_timing.glyphs;
             const auto effect_synchronized = upload_timing.effects;
             const auto resources_synchronized = upload_timing.committed;
-            last_visible_scene_ = application_->scene_composer().build_visible_scene(
-                application_->nodes(), clip, visible_scene_);
+            last_visible_scene_ =
+                application_->scene_composer().build_visible_scene(application_->nodes(), clip, visible_scene_);
             const auto scene_culled = std::chrono::steady_clock::now();
             if (!renderer_->attach_scene(resources_->attach(visible_scene_))) {
                 last_error_ = "Token Gallery scene attachment is invalid";
@@ -663,53 +598,37 @@ public:
             const auto frame_finished = std::chrono::steady_clock::now();
             const auto microseconds = [](auto start, auto end) {
                 return static_cast<std::int64_t>(
-                    std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-                        .count());
+                    std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
             };
             const auto elapsed = microseconds(frame_started, frame_finished);
-            if (!first_frame_captured_
-                    && result == ryn::runtime::FrameSubmissionResult::submitted) {
+            if (!first_frame_captured_ && result == ryn::runtime::FrameSubmissionResult::submitted) {
                 const auto& renderer_after = renderer_->counters();
                 first_frame_profile_ = {
                     elapsed,
                     microseconds(scene_synchronized, resources_synchronized),
                     microseconds(quad_synchronized, glyph_synchronized),
                     microseconds(effect_synchronized, resources_synchronized),
-                    renderer_after.upload_submissions
-                        - renderer_before_first.upload_submissions,
-                    renderer_after.texture_transfer_creations
-                        - renderer_before_first.texture_transfer_creations,
-                    renderer_after.buffer_transfer_creations
-                        - renderer_before_first.buffer_transfer_creations,
+                    renderer_after.upload_submissions - renderer_before_first.upload_submissions,
+                    renderer_after.texture_transfer_creations - renderer_before_first.texture_transfer_creations,
+                    renderer_after.buffer_transfer_creations - renderer_before_first.buffer_transfer_creations,
                     resources_->glyphs().counters().texture_uploads - glyph_before_first,
                 };
                 first_frame_captured_ = true;
             }
             if (!scroll_capture_enabled_ || timed_frames_ < scroll_capture_frames) {
-                total_scene_sync_microseconds_ +=
-                    microseconds(frame_started, scene_synchronized);
-                total_hit_refresh_nanoseconds_ += application_->services()
-                    .hit_test_refresh_nanoseconds() - hit_refresh_before;
-                total_translation_microseconds_ +=
-                    microseconds(frame_started, document_translated);
-                total_layout_microseconds_ +=
-                    microseconds(document_translated, layout_synchronized);
-                total_anchor_input_microseconds_ +=
-                    microseconds(layout_synchronized, scene_synchronized);
-                total_resource_sync_microseconds_ +=
-                    microseconds(scene_synchronized, resources_synchronized);
-                total_quad_sync_microseconds_ +=
-                    microseconds(scene_synchronized, quad_synchronized);
-                total_glyph_sync_microseconds_ +=
-                    microseconds(quad_synchronized, glyph_synchronized);
-                total_effect_sync_microseconds_ +=
-                    microseconds(glyph_synchronized, effect_synchronized);
-                total_upload_finish_microseconds_ +=
-                    microseconds(effect_synchronized, resources_synchronized);
-                total_cull_microseconds_ +=
-                    microseconds(resources_synchronized, scene_culled);
-                total_submit_microseconds_ +=
-                    microseconds(scene_culled, frame_finished);
+                total_scene_sync_microseconds_ += microseconds(frame_started, scene_synchronized);
+                total_hit_refresh_nanoseconds_ +=
+                    application_->services().hit_test_refresh_nanoseconds() - hit_refresh_before;
+                total_translation_microseconds_ += microseconds(frame_started, document_translated);
+                total_layout_microseconds_ += microseconds(document_translated, layout_synchronized);
+                total_anchor_input_microseconds_ += microseconds(layout_synchronized, scene_synchronized);
+                total_resource_sync_microseconds_ += microseconds(scene_synchronized, resources_synchronized);
+                total_quad_sync_microseconds_ += microseconds(scene_synchronized, quad_synchronized);
+                total_glyph_sync_microseconds_ += microseconds(quad_synchronized, glyph_synchronized);
+                total_effect_sync_microseconds_ += microseconds(glyph_synchronized, effect_synchronized);
+                total_upload_finish_microseconds_ += microseconds(effect_synchronized, resources_synchronized);
+                total_cull_microseconds_ += microseconds(resources_synchronized, scene_culled);
+                total_submit_microseconds_ += microseconds(scene_culled, frame_finished);
                 total_frame_microseconds_ += elapsed;
                 max_frame_microseconds_ = std::max(max_frame_microseconds_, elapsed);
                 if (sampled_frames_ < frame_samples_.size()) {
@@ -733,13 +652,19 @@ public:
         }
     }
 
-    [[nodiscard]] const std::string& last_error() const noexcept { return last_error_; }
+    [[nodiscard]] const std::string& last_error() const noexcept {
+        return last_error_;
+    }
+
     [[nodiscard]] std::uint64_t reconciliation_syncs() const noexcept {
         return reconciliation_syncs_;
     }
+
     [[nodiscard]] bool scrollbar_geometry_matches() const {
         const auto mounted = reference_surfaces_->mounted_surfaces();
-        if (mounted.size() < 5) return false;
+        if (mounted.size() < 5) {
+            return false;
+        }
         const std::array targets{
             scroll_presentation_->navigation.track,
             scroll_presentation_->navigation.thumb,
@@ -747,55 +672,67 @@ public:
             scroll_presentation_->document.thumb,
         };
         for (std::size_t index = 0; index < targets.size(); ++index) {
-            const auto& node = application_->nodes().require(
-                mounted[mounted.size() - 5 + index].node);
+            const auto& node = application_->nodes().require(mounted[mounted.size() - 5 + index].node);
             const auto& target = targets[index];
-            if (std::abs(node.bounds.x + node.translation.x - target.x) > 0.25F
-                    || std::abs(node.bounds.y + node.translation.y - target.y) > 0.25F
-                    || std::abs(node.bounds.width - target.width) > 0.25F
-                    || std::abs(node.bounds.height - target.height) > 0.25F) {
+            if (std::abs(node.bounds.x + node.translation.x - target.x) > 0.25F ||
+                std::abs(node.bounds.y + node.translation.y - target.y) > 0.25F ||
+                std::abs(node.bounds.width - target.width) > 0.25F ||
+                std::abs(node.bounds.height - target.height) > 0.25F) {
                 return false;
             }
         }
         return true;
     }
+
     [[nodiscard]] bool scrollbar_draw_commands_present() const {
         const auto mounted = reference_surfaces_->mounted_surfaces();
-        if (mounted.size() < 5) return false;
+        if (mounted.size() < 5) {
+            return false;
+        }
         for (std::size_t index = 0; index < 4; ++index) {
-            if (scroll_presentation_->narrow && index < 2) continue;
-            const auto range = reference_surfaces_->snapshot(
-                mounted[mounted.size() - 5 + index].component).visual_range;
-            const bool present = std::any_of(
-                visible_scene_.commands().begin(),
-                visible_scene_.commands().end(),
-                [range](const auto& command) {
-                    return command.kind == ryn::graphics::SceneDrawKind::quad
-                        && command.first_instance < range.first + range.count
-                        && range.first < command.first_instance
-                            + command.instance_count;
-                });
-            if (!present) return false;
+            if (scroll_presentation_->narrow && index < 2) {
+                continue;
+            }
+            const auto range =
+                reference_surfaces_->snapshot(mounted[mounted.size() - 5 + index].component).visual_range;
+            const bool present = std::any_of(visible_scene_.commands().begin(), visible_scene_.commands().end(),
+                                             [range](const auto& command) {
+                                                 return command.kind == ryn::graphics::SceneDrawKind::quad &&
+                                                        command.first_instance < range.first + range.count &&
+                                                        range.first < command.first_instance + command.instance_count;
+                                             });
+            if (!present) {
+                return false;
+            }
         }
         return true;
     }
+
     [[nodiscard]] ryn::component::VisibleSceneStats last_visible_scene() const noexcept {
         return last_visible_scene_;
     }
+
     [[nodiscard]] std::int64_t average_frame_microseconds() const noexcept {
         return timed_frames_ == 0 ? 0 : total_frame_microseconds_ / timed_frames_;
     }
-    [[nodiscard]] std::int64_t timed_frames() const noexcept { return timed_frames_; }
+
+    [[nodiscard]] std::int64_t timed_frames() const noexcept {
+        return timed_frames_;
+    }
+
     [[nodiscard]] FirstFrameProfile first_frame_profile() const noexcept {
         return first_frame_profile_;
     }
+
     [[nodiscard]] std::int64_t max_frame_microseconds() const noexcept {
         return max_frame_microseconds_;
     }
+
     [[nodiscard]] std::int64_t average_hit_refresh_microseconds() const noexcept {
-        return timed_frames_ == 0 ? 0 : static_cast<std::int64_t>(
-            total_hit_refresh_nanoseconds_ / timed_frames_ / 1000);
+        return timed_frames_ == 0 ? 0
+                                  : static_cast<std::int64_t>(total_hit_refresh_nanoseconds_ / timed_frames_ / 1000);
     }
+
     [[nodiscard]] std::array<std::int64_t, 4> average_phase_microseconds() const noexcept {
         if (timed_frames_ == 0) {
             return {};
@@ -807,31 +744,29 @@ public:
             total_submit_microseconds_ / timed_frames_,
         };
     }
+
     [[nodiscard]] std::array<std::int64_t, 7> average_detail_microseconds() const noexcept {
         if (timed_frames_ == 0) {
             return {};
         }
         return {
-            total_translation_microseconds_ / timed_frames_,
-            total_layout_microseconds_ / timed_frames_,
-            total_anchor_input_microseconds_ / timed_frames_,
-            total_quad_sync_microseconds_ / timed_frames_,
-            total_glyph_sync_microseconds_ / timed_frames_,
-            total_effect_sync_microseconds_ / timed_frames_,
+            total_translation_microseconds_ / timed_frames_,   total_layout_microseconds_ / timed_frames_,
+            total_anchor_input_microseconds_ / timed_frames_,  total_quad_sync_microseconds_ / timed_frames_,
+            total_glyph_sync_microseconds_ / timed_frames_,    total_effect_sync_microseconds_ / timed_frames_,
             total_upload_finish_microseconds_ / timed_frames_,
         };
     }
+
     [[nodiscard]] std::int64_t p95_frame_microseconds() const {
         if (sampled_frames_ == 0) {
             return 0;
         }
         auto samples = frame_samples_;
         const auto rank = (sampled_frames_ * 95 + 99) / 100 - 1;
-        std::nth_element(
-            samples.begin(), samples.begin() + rank,
-            samples.begin() + sampled_frames_);
+        std::nth_element(samples.begin(), samples.begin() + rank, samples.begin() + sampled_frames_);
         return samples[rank];
     }
+
     void reset_frame_timings() noexcept {
         scroll_capture_enabled_ = true;
         scroll_capture_complete_ = false;
@@ -857,23 +792,23 @@ public:
         timed_frames_ = 0;
         sampled_frames_ = 0;
     }
+
     [[nodiscard]] const ryn::detail::QuadUploadCounters& quad_uploads() const {
         if (quad_buffer_ == nullptr) {
             throw std::logic_error("Token Gallery Quad buffer was not created");
         }
         return quad_buffer_->counters();
     }
-    [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters&
-    effect_uploads() const noexcept {
+
+    [[nodiscard]] const ryn::detail::RoundedEffectGpuResourceCounters& effect_uploads() const noexcept {
         return resources_->effects().counters();
     }
-    [[nodiscard]] const ryn::detail::SceneRendererCounters&
-    captured_renderer_counters() const noexcept {
-        return scroll_capture_complete_ ? captured_renderer_counters_
-                                        : renderer_->counters();
+
+    [[nodiscard]] const ryn::detail::SceneRendererCounters& captured_renderer_counters() const noexcept {
+        return scroll_capture_complete_ ? captured_renderer_counters_ : renderer_->counters();
     }
-    [[nodiscard]] const ryn::detail::SceneRendererCounters&
-    renderer_counters_before_scroll() const noexcept {
+
+    [[nodiscard]] const ryn::detail::SceneRendererCounters& renderer_counters_before_scroll() const noexcept {
         return renderer_counters_before_scroll_;
     }
 
@@ -892,9 +827,8 @@ private:
         bool changed = false;
         for (std::size_t index = 0; index < targets.size(); ++index) {
             const auto node = mounted[mounted.size() - 5 + index].node;
-            changed = gallery_place_scrollbar(
-                node, targets[index], application_->nodes(),
-                application_->dirty()) || changed;
+            changed =
+                gallery_place_scrollbar(node, targets[index], application_->nodes(), application_->dirty()) || changed;
         }
         return changed;
     }
@@ -912,10 +846,7 @@ private:
     GalleryScrollRange* navigation_scroll_;
     GalleryScrollTranslation navigation_translation_;
     GalleryScrollPresentation* scroll_presentation_;
-    const std::function<bool(
-        const GalleryScrollbarGeometry&,
-        const GalleryScrollbarGeometry&,
-        bool)>* set_scrollbars_;
+    const std::function<bool(const GalleryScrollbarGeometry&, const GalleryScrollbarGeometry&, bool)>* set_scrollbars_;
     const std::function<bool()>* narrow_layout_;
     const std::function<bool(GalleryDocumentSectionKind)>* set_current_section_;
     std::optional<GalleryNavigationTarget>* deferred_navigation_;
@@ -960,101 +891,85 @@ private:
 } // namespace
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
-    if(has_argument(argc,argv,"--typography-acceptance"))return run_typography_acceptance(argc,argv);
-    if(has_argument(argc,argv,"--slider-acceptance"))return run_slider_acceptance(argc,argv);
+    if (has_argument(argc, argv, "--typography-acceptance")) {
+        return run_typography_acceptance(argc, argv);
+    }
+    if (has_argument(argc, argv, "--slider-acceptance")) {
+        return run_slider_acceptance(argc, argv);
+    }
     try {
         std::optional<std::filesystem::path> snapshot_path;
         for (int index = 1; index < argc; ++index) {
             const std::string_view argument = argv[index];
             if (argument.starts_with("--snapshot=")) {
                 const auto value = argument.substr(std::string_view{"--snapshot="}.size());
-                if (value.empty()) throw std::invalid_argument("--snapshot requires a BMP path");
+                if (value.empty()) {
+                    throw std::invalid_argument("--snapshot requires a BMP path");
+                }
                 snapshot_path = std::filesystem::path{value};
             }
         }
         const bool snapshot_middle = has_argument(argc, argv, "--snapshot-middle");
         const bool snapshot_dark = has_argument(argc, argv, "--snapshot-theme=dark");
-        const bool snapshot_navigation_hover =
-            has_argument(argc, argv, "--snapshot-navigation=hover");
-        const bool snapshot_navigation_click =
-            has_argument(argc, argv, "--snapshot-navigation=click");
+        const bool snapshot_navigation_hover = has_argument(argc, argv, "--snapshot-navigation=hover");
+        const bool snapshot_navigation_click = has_argument(argc, argv, "--snapshot-navigation=click");
         const bool snapshot_password = has_argument(argc, argv, "--snapshot-password");
-        const bool snapshot_scrollbar_hover =
-            has_argument(argc, argv, "--snapshot-scrollbar=hover");
-        const bool snapshot_scrollbar_pressed =
-            has_argument(argc, argv, "--snapshot-scrollbar=pressed");
+        const bool snapshot_scrollbar_hover = has_argument(argc, argv, "--snapshot-scrollbar=hover");
+        const bool snapshot_scrollbar_pressed = has_argument(argc, argv, "--snapshot-scrollbar=pressed");
         bool snapshot_positioned = false;
         bool snapshot_navigation_positioned = false;
         bool snapshot_scrollbar_positioned = false;
         std::optional<std::chrono::steady_clock::time_point> snapshot_settle_until;
-        const bool animation_acceptance =
-            has_argument(argc, argv, "--animation-acceptance");
-        const bool input_acceptance =
-            has_argument(argc, argv, "--input-acceptance");
-        const bool selection_acceptance =
-            has_argument(argc, argv, "--selection-acceptance");
+        const bool animation_acceptance = has_argument(argc, argv, "--animation-acceptance");
+        const bool input_acceptance = has_argument(argc, argv, "--input-acceptance");
+        const bool selection_acceptance = has_argument(argc, argv, "--selection-acceptance");
         const bool selection_dark = has_argument(argc, argv, "--selection-theme=dark");
         const bool selection_compact = has_argument(argc, argv, "--selection-theme=compact");
-        const bool search_acceptance =
-            has_argument(argc, argv, "--search-acceptance");
-        const bool password_acceptance =
-            has_argument(argc, argv, "--password-acceptance");
-        const bool clear_acceptance =
-            has_argument(argc, argv, "--input-clear-acceptance");
-        const bool scroll_acceptance =
-            has_argument(argc, argv, "--scroll-acceptance");
-        const bool scrollbar_acceptance =
-            has_argument(argc, argv, "--scrollbar-acceptance");
+        const bool search_acceptance = has_argument(argc, argv, "--search-acceptance");
+        const bool password_acceptance = has_argument(argc, argv, "--password-acceptance");
+        const bool clear_acceptance = has_argument(argc, argv, "--input-clear-acceptance");
+        const bool scroll_acceptance = has_argument(argc, argv, "--scroll-acceptance");
+        const bool scrollbar_acceptance = has_argument(argc, argv, "--scrollbar-acceptance");
         const bool motion_disabled = has_argument(argc, argv, "--motion-disabled");
         const bool reduced_motion = has_argument(argc, argv, "--reduced-motion");
-        const int acceptance_modes = static_cast<int>(animation_acceptance)
-            + static_cast<int>(input_acceptance)
-            + static_cast<int>(selection_acceptance)
-            + static_cast<int>(search_acceptance)
-            + static_cast<int>(password_acceptance)
-            + static_cast<int>(clear_acceptance)
-            + static_cast<int>(scroll_acceptance)
-            + static_cast<int>(scrollbar_acceptance)
-            + static_cast<int>(motion_disabled)
-            + static_cast<int>(reduced_motion);
+        const int acceptance_modes = static_cast<int>(animation_acceptance) + static_cast<int>(input_acceptance) +
+                                     static_cast<int>(selection_acceptance) + static_cast<int>(search_acceptance) +
+                                     static_cast<int>(password_acceptance) + static_cast<int>(clear_acceptance) +
+                                     static_cast<int>(scroll_acceptance) + static_cast<int>(scrollbar_acceptance) +
+                                     static_cast<int>(motion_disabled) + static_cast<int>(reduced_motion);
         if (acceptance_modes > 1) {
-            throw std::invalid_argument(
-                "--motion-disabled, --reduced-motion, --animation-acceptance, and "
-                "--input-acceptance, --selection-acceptance, --search-acceptance, --password-acceptance, --input-clear-acceptance, "
-                "and --scroll-acceptance, --scrollbar-acceptance "
-                "are mutually exclusive");
+            throw std::invalid_argument("--motion-disabled, --reduced-motion, --animation-acceptance, and "
+                                        "--input-acceptance, --selection-acceptance, --search-acceptance, "
+                                        "--password-acceptance, --input-clear-acceptance, "
+                                        "and --scroll-acceptance, --scrollbar-acceptance "
+                                        "are mutually exclusive");
         }
-        if ((snapshot_path && (acceptance_modes != 0 || has_argument(argc, argv, "--smoke")))
-                || ((snapshot_middle || snapshot_dark || snapshot_navigation_hover
-                    || snapshot_navigation_click || snapshot_password) && !snapshot_path)
-                || (snapshot_navigation_hover && snapshot_navigation_click)
-                || ((snapshot_scrollbar_hover || snapshot_scrollbar_pressed) && !snapshot_path)
-                || (snapshot_scrollbar_hover && snapshot_scrollbar_pressed)
-                || (snapshot_password && (snapshot_middle || snapshot_navigation_hover
-                    || snapshot_navigation_click || snapshot_scrollbar_hover
-                    || snapshot_scrollbar_pressed))) {
+        if ((snapshot_path && (acceptance_modes != 0 || has_argument(argc, argv, "--smoke"))) ||
+            ((snapshot_middle || snapshot_dark || snapshot_navigation_hover || snapshot_navigation_click ||
+              snapshot_password) &&
+             !snapshot_path) ||
+            (snapshot_navigation_hover && snapshot_navigation_click) ||
+            ((snapshot_scrollbar_hover || snapshot_scrollbar_pressed) && !snapshot_path) ||
+            (snapshot_scrollbar_hover && snapshot_scrollbar_pressed) ||
+            (snapshot_password && (snapshot_middle || snapshot_navigation_hover || snapshot_navigation_click ||
+                                   snapshot_scrollbar_hover || snapshot_scrollbar_pressed))) {
             throw std::invalid_argument("--snapshot is a separate visual acceptance mode");
         }
-        if ((selection_dark && selection_compact)
-            || ((selection_dark || selection_compact) && !selection_acceptance
-                && !password_acceptance && !clear_acceptance)) {
-            throw std::invalid_argument(
-                "selection theme requires one selection acceptance mode");
+        if ((selection_dark && selection_compact) || ((selection_dark || selection_compact) && !selection_acceptance &&
+                                                      !password_acceptance && !clear_acceptance)) {
+            throw std::invalid_argument("selection theme requires one selection acceptance mode");
         }
-        const bool smoke_mode = has_argument(argc, argv, "--smoke")
-            || animation_acceptance || input_acceptance || selection_acceptance
-            || search_acceptance || password_acceptance || clear_acceptance;
+        const bool smoke_mode = has_argument(argc, argv, "--smoke") || animation_acceptance || input_acceptance ||
+                                selection_acceptance || search_acceptance || password_acceptance || clear_acceptance;
         const auto acceptance_scale = acceptance_scale_argument(argc, argv);
         const auto executable = executable_directory(argv[0]);
         constexpr ryn::runtime::Size requested_window{1280.0F, 900.0F};
         ryn::runtime::Size viewport = requested_window;
 
         ryn::detail::PlatformConfig platform_config;
-        platform_config.title = motion_disabled
-            ? "RynUI Token Gallery [Theme Motion Disabled]"
-            : reduced_motion
-                ? "RynUI Token Gallery [Reduced Motion]"
-                : "RynUI Ant Design Token Gallery";
+        platform_config.title = motion_disabled  ? "RynUI Token Gallery [Theme Motion Disabled]"
+                                : reduced_motion ? "RynUI Token Gallery [Reduced Motion]"
+                                                 : "RynUI Ant Design Token Gallery";
         platform_config.width = static_cast<int>(requested_window.width);
         platform_config.height = static_cast<int>(requested_window.height);
         auto platform_result = ryn::detail::PlatformState::create(platform_config);
@@ -1066,14 +981,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         if (motion_disabled) {
             definition.set_motion_enabled(false);
         }
-        if (selection_dark || snapshot_dark) definition.smoke_step(0);
-        if (selection_compact) definition.smoke_step(1);
+        if (selection_dark || snapshot_dark) {
+            definition.smoke_step(0);
+        }
+        if (selection_compact) {
+            definition.smoke_step(1);
+        }
         const auto initial_metrics = platform.window_metrics();
         float render_scale = acceptance_scale.value_or(initial_metrics.display_scale);
-        const auto logical_viewport = token_gallery_logical_viewport(
-            initial_metrics.pixel_width,
-            initial_metrics.pixel_height,
-            render_scale);
+        const auto logical_viewport =
+            token_gallery_logical_viewport(initial_metrics.pixel_width, initial_metrics.pixel_height, render_scale);
         viewport = {logical_viewport.width, logical_viewport.height};
         if (viewport.width <= 0.0F || viewport.height <= 0.0F) {
             std::cerr << "platform_error=window metrics did not provide a logical viewport\n";
@@ -1096,8 +1013,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             std::cerr << "font_error=" << font_chain.diagnostic << '\n';
             return 3;
         }
-        auto font_resolver = ryn::detail::make_default_ui_font_resolver(
-            *fonts, font_chain, render_scale);
+        auto font_resolver = ryn::detail::make_default_ui_font_resolver(*fonts, font_chain, render_scale);
 
         ryn::runtime::NodeStore nodes;
         ryn::layout::LayoutEngine layout(nodes);
@@ -1105,22 +1021,20 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::runtime::DirtyQueues dirty(nodes, &frame_requests);
         ryn::text::TextEngine text_engine(*fonts);
         ryn::detail::TextSceneService text_scene(*fonts, text_engine, frame_requests);
-        ryn::detail::WindowComponentServices services(
-            nodes, layout, dirty, text_scene, std::move(font_resolver), frame_requests);
+        ryn::detail::WindowComponentServices services(nodes, layout, dirty, text_scene, std::move(font_resolver),
+                                                      frame_requests);
         ryn::detail::ButtonComponentHost application(services);
         ReferenceSurfaceHost reference_surfaces(application);
         ryn::detail::InputComponentHost inputs(services, platform, platform);
         ryn::detail::SelectionComponentHost selections(services);
         inputs.set_display_scale(render_scale);
         if (reduced_motion) {
-            application.set_motion_preference(
-                ryn::animation::MotionPreference::reduced);
+            application.set_motion_preference(ryn::animation::MotionPreference::reduced);
         }
         reference_surfaces.mount(definition.content, &inputs);
         const auto roots = application.components().root_components();
         if (roots.size() != 1) {
-            throw std::logic_error(
-                "Token Gallery document requires exactly one retained root");
+            throw std::logic_error("Token Gallery document requires exactly one retained root");
         }
         const auto site_root = application.components().root(roots.front());
         const auto& site_children = nodes.require(site_root).children;
@@ -1142,48 +1056,17 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         ryn::detail::SdlSceneRenderer renderer(platform, executable / "shaders");
         ryn::detail::SceneResources scene_resources(renderer);
         scene_resources.glyphs().set_sparse_upload_coalescing_limit(512 * 1024);
-        GallerySubmitter submitter(
-            platform,
-            application,
-            inputs,
-            text_scene,
-            scene_resources,
-            renderer,
-            definition.background_color,
-            reference_surfaces,
-            document_viewport,
-            navigation_scroll,
-            scroll_presentation,
-            definition.set_scrollbars,
-            definition.narrow_layout,
-            definition.set_current_section,
-            deferred_navigation,
-            body_root,
-            navigation_root,
-            document_root,
-            viewport,
-            render_scale);
-        GalleryEvents events(
-            platform,
-            application,
-            inputs,
-            reference_surfaces,
-            frame_requests,
-            document_viewport,
-            navigation_scroll,
-            scroll_presentation,
-            site_children.back(),
-            viewport,
-            render_scale,
-            acceptance_scale.has_value(),
-            *fonts,
-            font_chain,
-            definition.set_viewport_width,
-            definition.take_navigation_request,
-            deferred_navigation);
+        GallerySubmitter submitter(platform, application, inputs, text_scene, scene_resources, renderer,
+                                   definition.background_color, reference_surfaces, document_viewport,
+                                   navigation_scroll, scroll_presentation, definition.set_scrollbars,
+                                   definition.narrow_layout, definition.set_current_section, deferred_navigation,
+                                   body_root, navigation_root, document_root, viewport, render_scale);
+        GalleryEvents events(platform, application, inputs, reference_surfaces, frame_requests, document_viewport,
+                             navigation_scroll, scroll_presentation, site_children.back(), viewport, render_scale,
+                             acceptance_scale.has_value(), *fonts, font_chain, definition.set_viewport_width,
+                             definition.take_navigation_request, deferred_navigation);
         auto& animation_deadlines = application;
-        ryn::runtime::OnDemandFrameLoop loop(
-            frame_requests, events, submitter, animation_deadlines, 10);
+        ryn::runtime::OnDemandFrameLoop loop(frame_requests, events, submitter, animation_deadlines, 10);
 
         std::size_t smoke_stage = 0;
         std::size_t scroll_stage = 0;
@@ -1236,11 +1119,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto dispatch_acceptance_input = [&](std::size_t stage) {
             const auto mounted = application.mounted_buttons();
             if (mounted.size() <= definition.navigation_control_count + 7) {
-                throw std::logic_error(
-                    "animation acceptance requires the interactive Gallery cells");
+                throw std::logic_error("animation acceptance requires the interactive Gallery cells");
             }
-            const auto& hover_node = nodes.require(
-                mounted[definition.navigation_control_count + 7].node);
+            const auto& hover_node = nodes.require(mounted[definition.navigation_control_count + 7].node);
             const auto bounds = hover_node.bounds;
             const ryn::runtime::Point inside{
                 bounds.x + hover_node.translation.x + 0.5F * bounds.width,
@@ -1315,8 +1196,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto dispatch_input_acceptance = [&](std::size_t stage) {
             const auto mounted = inputs.mounted_inputs();
             if (mounted.size() < 2) {
-                throw std::logic_error(
-                    "input acceptance requires the controlled and uncontrolled Gallery Inputs");
+                throw std::logic_error("input acceptance requires the controlled and uncontrolled Gallery Inputs");
             }
             const auto controlled = mounted.front();
             auto& editor = inputs.editors().require(controlled.editor);
@@ -1332,42 +1212,35 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             };
             switch (stage) {
             case 0:
-                input_initial_theme_identity = application.components()
-                    .theme_scope(controlled.component)->snapshot().identity();
-                application.set_motion_preference(
-                    ryn::animation::MotionPreference::reduced);
+                input_initial_theme_identity =
+                    application.components().theme_scope(controlled.component)->snapshot().identity();
+                application.set_motion_preference(ryn::animation::MotionPreference::reduced);
                 definition.smoke_step(0);
-                if (const auto live = document_viewport.anchor(
-                        GalleryDocumentSectionKind::live_samples)) {
+                if (const auto live = document_viewport.anchor(GalleryDocumentSectionKind::live_samples)) {
                     static_cast<void>(document_viewport.jump_to(*live));
                     frame_requests.request_frame();
                 }
                 break;
             case 1:
-                application.set_motion_preference(
-                    ryn::animation::MotionPreference::normal);
-                if (!application.focus().request_focus(
-                        controlled.interaction, ryn::input::FocusModality::keyboard)) {
+                application.set_motion_preference(ryn::animation::MotionPreference::normal);
+                if (!application.focus().request_focus(controlled.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("input acceptance could not focus the controlled Input");
                 }
-                input_caret_active = inputs.sessions().active().valid()
-                    && inputs.next_caret_deadline().has_value();
+                input_caret_active = inputs.sessions().active().valid() && inputs.next_caret_deadline().has_value();
                 break;
             case 2: {
-                const auto result = inputs.dispatch(ryn::input::TextCommitted{
-                    ryn::String{u8"RynUI"}, inputs.sessions().active()});
-                input_latin = static_cast<bool>(result)
-                    && editor.value() == std::string_view{"RynUI"}
-                    && inputs.status(controlled.component) == ryn::InputStatus::Warning;
+                const auto result =
+                    inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"RynUI"}, inputs.sessions().active()});
+                input_latin = static_cast<bool>(result) && editor.value() == std::string_view{"RynUI"} &&
+                              inputs.status(controlled.component) == ryn::InputStatus::Warning;
                 ++automated_input_events;
                 break;
             }
             case 3: {
                 key(ryn::input::Key::a, ryn::input::KeyModifier::control);
                 const auto selection = editor.selection();
-                input_selection = std::min(selection.anchor, selection.caret) == 0
-                    && std::max(selection.anchor, selection.caret)
-                        == editor.value().size();
+                input_selection = std::min(selection.anchor, selection.caret) == 0 &&
+                                  std::max(selection.anchor, selection.caret) == editor.value().size();
                 break;
             }
             case 4:
@@ -1379,13 +1252,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 break;
             case 6:
                 key(ryn::input::Key::v, ryn::input::KeyModifier::control);
-                input_clipboard = input_clipboard
-                    && editor.value() == std::string_view{"RynUI"};
+                input_clipboard = input_clipboard && editor.value() == std::string_view{"RynUI"};
                 editor.break_history_merge();
                 break;
             case 7:
-                static_cast<void>(inputs.dispatch(ryn::input::TextCommitted{
-                    ryn::String{u8"X"}, inputs.sessions().active()}));
+                static_cast<void>(
+                    inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"X"}, inputs.sessions().active()}));
                 ++automated_input_events;
                 break;
             case 8:
@@ -1397,20 +1269,18 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 input_redo = editor.value() == std::string_view{"RynUIX"};
                 break;
             case 10:
-                input_theme_status = inputs.status(controlled.component)
-                        == ryn::InputStatus::Warning
-                    && application.components().theme_scope(controlled.component)
-                           ->snapshot().identity() != input_initial_theme_identity;
+                input_theme_status =
+                    inputs.status(controlled.component) == ryn::InputStatus::Warning &&
+                    application.components().theme_scope(controlled.component)->snapshot().identity() !=
+                        input_initial_theme_identity;
                 break;
             case 11:
                 key(ryn::input::Key::enter);
-                input_caret_active = input_caret_active
-                    && inputs.next_caret_deadline().has_value();
+                input_caret_active = input_caret_active && inputs.next_caret_deadline().has_value();
                 break;
             case 12:
                 static_cast<void>(application.focus().clear_focus());
-                input_caret_idle = !inputs.sessions().active().valid()
-                    && !inputs.next_caret_deadline().has_value();
+                input_caret_idle = !inputs.sessions().active().valid() && !inputs.next_caret_deadline().has_value();
                 break;
             default:
                 throw std::out_of_range("unknown Input acceptance stage");
@@ -1419,28 +1289,26 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         };
         const auto dispatch_selection_acceptance = [&](std::size_t stage) {
             const auto mounted = selections.mounted();
-            if (mounted.size() != 12)
+            if (mounted.size() != 12) {
                 throw std::logic_error("selection acceptance requires twelve Gallery controls");
+            }
             const auto key = [&](ryn::input::Key value, ryn::input::KeyAction action) {
-                application.focus().dispatch({value, action,
-                    ryn::input::KeyModifier::none, false});
+                application.focus().dispatch({value, action, ryn::input::KeyModifier::none, false});
                 ++automated_input_events;
             };
             const auto click = [&](const ryn::detail::MountedSelectionComponent& item) {
                 const auto& node = nodes.require(item.node);
-                const ryn::runtime::Point center{
-                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
-                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                const ryn::runtime::Point center{node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                                                 node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
                 const auto& clip = scroll_presentation.document_lane;
-                if (center.x < clip.x || center.x >= clip.x + clip.width
-                    || center.y < clip.y || center.y >= clip.y + clip.height)
+                if (center.x < clip.x || center.x >= clip.x + clip.width || center.y < clip.y ||
+                    center.y >= clip.y + clip.height) {
                     throw std::logic_error("selection acceptance target is outside the viewport");
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
-                    center.x, center.y});
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
-                    center.x, center.y});
+                }
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::down,
+                                                ryn::input::PointerButton::primary, center.x, center.y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::up,
+                                                ryn::input::PointerButton::primary, center.x, center.y});
                 automated_input_events += 2;
             };
             switch (stage) {
@@ -1453,41 +1321,37 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     bottom = std::max(bottom, bounds.y + bounds.height);
                 }
                 const auto& clip = scroll_presentation.document_lane;
-                selection_scroll = document_viewport.scroll_to(
-                    (top + bottom) / 2.0F - clip.y - clip.height / 2.0F);
+                selection_scroll = document_viewport.scroll_to((top + bottom) / 2.0F - clip.y - clip.height / 2.0F);
                 frame_requests.request_frame();
                 break;
             }
             case 1:
-                if (!application.focus().request_focus(mounted[0].interaction,
-                        ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(mounted[0].interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("selection acceptance could not focus Switch");
+                }
                 key(ryn::input::Key::enter, ryn::input::KeyAction::down);
                 key(ryn::input::Key::enter, ryn::input::KeyAction::up);
                 selection_keyboard = !selections.snapshot(mounted[0].component).checked;
                 key(ryn::input::Key::space, ryn::input::KeyAction::down);
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
-                selection_keyboard = selection_keyboard
-                    && selections.snapshot(mounted[0].component).checked;
+                selection_keyboard = selection_keyboard && selections.snapshot(mounted[0].component).checked;
                 key(ryn::input::Key::tab, ryn::input::KeyAction::down);
-                selection_keyboard = selection_keyboard
-                    && application.focus().state().focused == mounted[1].interaction;
+                selection_keyboard =
+                    selection_keyboard && application.focus().state().focused == mounted[1].interaction;
                 break;
             case 2:
-                if (!application.focus().request_focus(mounted[4].interaction,
-                        ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(mounted[4].interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("selection acceptance could not focus Checkbox");
+                }
                 key(ryn::input::Key::enter, ryn::input::KeyAction::down);
                 key(ryn::input::Key::enter, ryn::input::KeyAction::up);
-                selection_keyboard = selection_keyboard
-                    && !selections.snapshot(mounted[4].component).checked;
+                selection_keyboard = selection_keyboard && !selections.snapshot(mounted[4].component).checked;
                 key(ryn::input::Key::space, ryn::input::KeyAction::down);
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
-                selection_keyboard = selection_keyboard
-                    && selections.snapshot(mounted[4].component).checked;
+                selection_keyboard = selection_keyboard && selections.snapshot(mounted[4].component).checked;
                 key(ryn::input::Key::tab, ryn::input::KeyAction::down);
-                selection_keyboard = selection_keyboard
-                    && application.focus().state().focused == mounted[5].interaction;
+                selection_keyboard =
+                    selection_keyboard && application.focus().state().focused == mounted[5].interaction;
                 break;
             case 3: {
                 click(mounted[1]);
@@ -1498,41 +1362,36 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 click(mounted[2]);
                 click(mounted[3]);
                 click(mounted[7]);
-                selection_blocked = !selections.snapshot(mounted[2].component).checked
-                    && !selections.snapshot(mounted[3].component).checked
-                    && !selections.snapshot(mounted[7].component).checked;
-                if (!application.focus().request_focus(mounted[3].interaction,
-                        ryn::input::FocusModality::keyboard))
+                selection_blocked = !selections.snapshot(mounted[2].component).checked &&
+                                    !selections.snapshot(mounted[3].component).checked &&
+                                    !selections.snapshot(mounted[7].component).checked;
+                if (!application.focus().request_focus(mounted[3].interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("selection acceptance could not focus loading Switch");
+                }
                 key(ryn::input::Key::space, ryn::input::KeyAction::down);
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
-                selection_blocked = selection_blocked
-                    && !selections.snapshot(mounted[3].component).checked;
-                if (!application.focus().request_focus(mounted[9].interaction,
-                        ryn::input::FocusModality::keyboard))
+                selection_blocked = selection_blocked && !selections.snapshot(mounted[3].component).checked;
+                if (!application.focus().request_focus(mounted[9].interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("selection acceptance could not focus RadioGroup");
+                }
                 key(ryn::input::Key::tab, ryn::input::KeyAction::down);
-                selection_keyboard = selection_keyboard
-                    && application.focus().state().focused == mounted[10].interaction;
+                selection_keyboard =
+                    selection_keyboard && application.focus().state().focused == mounted[10].interaction;
                 key(ryn::input::Key::enter, ryn::input::KeyAction::down);
                 key(ryn::input::Key::enter, ryn::input::KeyAction::up);
-                selection_keyboard = selection_keyboard
-                    && selections.snapshot(mounted[9].component).checked
-                    && !selections.snapshot(mounted[10].component).checked;
+                selection_keyboard = selection_keyboard && selections.snapshot(mounted[9].component).checked &&
+                                     !selections.snapshot(mounted[10].component).checked;
                 key(ryn::input::Key::space, ryn::input::KeyAction::down);
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
-                selection_keyboard = selection_keyboard
-                    && !selections.snapshot(mounted[9].component).checked
-                    && selections.snapshot(mounted[10].component).checked;
+                selection_keyboard = selection_keyboard && !selections.snapshot(mounted[9].component).checked &&
+                                     selections.snapshot(mounted[10].component).checked;
                 click(mounted[9]);
-                selection_pointer = selection_pointer
-                    && selections.snapshot(mounted[9].component).checked
-                    && !selections.snapshot(mounted[10].component).checked;
+                selection_pointer = selection_pointer && selections.snapshot(mounted[9].component).checked &&
+                                    !selections.snapshot(mounted[10].component).checked;
                 click(mounted[11]);
                 click(mounted[8]);
-                selection_blocked = selection_blocked
-                    && !selections.snapshot(mounted[11].component).checked
-                    && selections.snapshot(mounted[8].component).checked;
+                selection_blocked = selection_blocked && !selections.snapshot(mounted[11].component).checked &&
+                                    selections.snapshot(mounted[8].component).checked;
                 break;
             }
             default:
@@ -1543,14 +1402,19 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         const auto dispatch_search_acceptance = [&](std::size_t stage) {
             const auto mounted_inputs = inputs.mounted_inputs();
             const auto mounted_buttons = application.mounted_buttons();
-            if (mounted_inputs.size() < 9 || mounted_buttons.size() < 5)
+            if (mounted_inputs.size() < 9 || mounted_buttons.size() < 5) {
                 throw std::logic_error("search acceptance requires five Gallery Search cells");
+            }
             const auto& field = mounted_inputs[2];
             const auto search_button = [&](std::size_t input_index) -> const auto& {
                 const auto parent = application.components().parent(mounted_inputs[input_index].component);
-                const auto found = std::find_if(mounted_buttons.begin(), mounted_buttons.end(),
-                    [&](const auto& button) { return application.components().parent(button.component) == parent; });
-                if (found == mounted_buttons.end()) throw std::logic_error("Search sibling button is absent");
+                const auto found =
+                    std::find_if(mounted_buttons.begin(), mounted_buttons.end(), [&](const auto& button) {
+                        return application.components().parent(button.component) == parent;
+                    });
+                if (found == mounted_buttons.end()) {
+                    throw std::logic_error("Search sibling button is absent");
+                }
                 return *found;
             };
             const auto& first_button = search_button(2);
@@ -1558,43 +1422,37 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             const auto& loading_button = search_button(5);
             const auto& disabled_button = search_button(6);
             const auto key = [&](ryn::input::Key value, ryn::input::KeyAction action) {
-                application.focus().dispatch({value, action,
-                    ryn::input::KeyModifier::none, false});
+                application.focus().dispatch({value, action, ryn::input::KeyModifier::none, false});
                 ++automated_input_events;
             };
             const auto click = [&](const ryn::detail::MountedButtonComponent& item) {
                 const auto& node = nodes.require(item.node);
-                const ryn::runtime::Point center{
-                    node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
-                    node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary,
-                    center.x, center.y});
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary,
-                    center.x, center.y});
+                const ryn::runtime::Point center{node.bounds.x + node.translation.x + node.bounds.width / 2.0F,
+                                                 node.bounds.y + node.translation.y + node.bounds.height / 2.0F};
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::down,
+                                                ryn::input::PointerButton::primary, center.x, center.y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::up,
+                                                ryn::input::PointerButton::primary, center.x, center.y});
                 automated_input_events += 2;
             };
             switch (stage) {
             case 0: {
                 const auto& node = nodes.require(field.node);
-                search_scroll = document_viewport.scroll_to(
-                    node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
+                search_scroll =
+                    document_viewport.scroll_to(node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
                 frame_requests.request_frame();
                 break;
             }
             case 1: {
-                if (!application.focus().request_focus(field.interaction,
-                        ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("search acceptance could not focus Search Input");
+                }
                 const auto stamp = inputs.sessions().active();
-                const auto result = inputs.dispatch(ryn::input::TextCommitted{
-                    ryn::String{u8"RynUI 中文"}, stamp});
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"RynUI 中文"}, stamp});
                 ++automated_input_events;
-                search_text = static_cast<bool>(result)
-                    && inputs.editors().require(field.editor).value()
-                        == ryn::String{u8"RynUI 中文"}.bytes()
-                    && definition.telemetry().search_submits == 0;
+                search_text = static_cast<bool>(result) &&
+                              inputs.editors().require(field.editor).value() == ryn::String{u8"RynUI 中文"}.bytes() &&
+                              definition.telemetry().search_submits == 0;
                 break;
             }
             case 2:
@@ -1602,12 +1460,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 key(ryn::input::Key::enter, ryn::input::KeyAction::up);
                 search_keyboard = definition.telemetry().search_submits == 1;
                 key(ryn::input::Key::tab, ryn::input::KeyAction::down);
-                search_keyboard = search_keyboard
-                    && application.focus().state().focused == first_button.interaction;
+                search_keyboard = search_keyboard && application.focus().state().focused == first_button.interaction;
                 key(ryn::input::Key::space, ryn::input::KeyAction::down);
                 key(ryn::input::Key::space, ryn::input::KeyAction::up);
-                search_keyboard = search_keyboard
-                    && definition.telemetry().search_submits == 2;
+                search_keyboard = search_keyboard && definition.telemetry().search_submits == 2;
                 break;
             case 3:
                 click(large_button);
@@ -1619,9 +1475,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 search_blocked = definition.telemetry().search_submits == 3;
                 break;
             case 5:
-                if (!application.focus().request_focus(field.interaction,
-                        ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("search acceptance could not restore Search focus");
+                }
                 break;
             default:
                 throw std::out_of_range("unknown Search acceptance stage");
@@ -1630,13 +1486,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         };
         const auto dispatch_clear_acceptance = [&](std::size_t stage) {
             const auto mounted = inputs.mounted_inputs();
-            if(mounted.size() != 9) throw std::logic_error("Input clear acceptance requires Gallery Input cells");
+            if (mounted.size() != 9) {
+                throw std::logic_error("Input clear acceptance requires Gallery Input cells");
+            }
             const auto& field = mounted[1];
             const auto action = [&] {
-                for(const auto id : application.interactions().declaration_order()) {
+                for (const auto id : application.interactions().declaration_order()) {
                     const auto* record = application.interactions().find(id);
-                    if(record && record->parent == field.interaction && id != field.interaction)
+                    if (record && record->parent == field.interaction && id != field.interaction) {
                         return id;
+                    }
                 }
                 throw std::logic_error("Input clear action absent");
             }();
@@ -1644,56 +1503,56 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 const auto& node = nodes.require(application.interactions().require(action).node);
                 const float x = node.bounds.x + node.translation.x + node.bounds.width / 2.0F;
                 const float y = node.bounds.y + node.translation.y + node.bounds.height / 2.0F;
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary, x, y});
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary, x, y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::down,
+                                                ryn::input::PointerButton::primary, x, y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::up,
+                                                ryn::input::PointerButton::primary, x, y});
                 automated_input_events += 2;
             };
-            switch(stage) {
+            switch (stage) {
             case 0: {
                 const auto& node = nodes.require(field.node);
-                clear_scroll = document_viewport.scroll_to(
-                    node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
+                clear_scroll =
+                    document_viewport.scroll_to(node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
                 frame_requests.request_frame();
                 break;
             }
             case 1: {
-                if(!application.focus().request_focus(field.interaction,
-                    ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Input clear acceptance could not focus field");
+                }
                 const auto stamp = inputs.sessions().active();
                 click();
-                clear_pointer = inputs.editors().require(field.editor).value().empty()
-                    && application.focus().state().focused == field.interaction
-                    && inputs.sessions().active() == stamp
-                    && !application.interactions().require(action).eligible;
+                clear_pointer = inputs.editors().require(field.editor).value().empty() &&
+                                application.focus().state().focused == field.interaction &&
+                                inputs.sessions().active() == stamp &&
+                                !application.interactions().require(action).eligible;
                 break;
             }
             case 2: {
                 const auto stamp = inputs.sessions().active();
-                const auto result = inputs.dispatch(ryn::input::TextCommitted{
-                    ryn::String{u8"重写"}, stamp});
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"重写"}, stamp});
                 ++automated_input_events;
-                if(!application.focus().request_focus(action, ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(action, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Input clear acceptance could not focus action");
-                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::down,
-                    ryn::input::KeyModifier::none, false});
-                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::up,
-                    ryn::input::KeyModifier::none, false});
+                }
+                application.focus().dispatch(
+                    {ryn::input::Key::space, ryn::input::KeyAction::down, ryn::input::KeyModifier::none, false});
+                application.focus().dispatch(
+                    {ryn::input::Key::space, ryn::input::KeyAction::up, ryn::input::KeyModifier::none, false});
                 automated_input_events += 2;
-                clear_keyboard = static_cast<bool>(result)
-                    && inputs.editors().require(field.editor).value().empty()
-                    && !application.interactions().require(action).eligible;
+                clear_keyboard = static_cast<bool>(result) && inputs.editors().require(field.editor).value().empty() &&
+                                 !application.interactions().require(action).eligible;
                 break;
             }
             case 3: {
-                if(!application.focus().request_focus(field.interaction,
-                    ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Input clear acceptance could not restore field focus");
+                }
                 const auto stamp = inputs.sessions().active();
-                if(!inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"禁用"}, stamp}))
+                if (!inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"禁用"}, stamp})) {
                     throw std::logic_error("Input clear acceptance could not seed disabled field");
+                }
                 ++automated_input_events;
                 definition.set_clear_disabled(true);
                 break;
@@ -1701,15 +1560,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             case 4: {
                 const auto before = std::string{inputs.editors().require(field.editor).value()};
                 click();
-                clear_disabled = !application.interactions().require(action).eligible
-                    && inputs.editors().require(field.editor).value() == before;
+                clear_disabled = !application.interactions().require(action).eligible &&
+                                 inputs.editors().require(field.editor).value() == before;
                 break;
             }
             case 5:
                 definition.set_clear_disabled(false);
-                if(!application.focus().request_focus(field.interaction,
-                    ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Input clear acceptance could not refocus field");
+                }
                 break;
             default:
                 throw std::out_of_range("unknown Input clear acceptance stage");
@@ -1718,13 +1577,17 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         };
         const auto dispatch_password_acceptance = [&](std::size_t stage) {
             const auto mounted = inputs.mounted_inputs();
-            if(mounted.size() != 9) throw std::logic_error("Password acceptance requires Gallery Password cells");
+            if (mounted.size() != 9) {
+                throw std::logic_error("Password acceptance requires Gallery Password cells");
+            }
             const auto& field = mounted[7];
             const auto& disabled = mounted[8];
             const auto toggle = [&](ryn::input::InteractionId parent) {
-                for(const auto id : application.interactions().declaration_order()) {
+                for (const auto id : application.interactions().declaration_order()) {
                     const auto* record = application.interactions().find(id);
-                    if(record && record->parent == parent && id != parent) return id;
+                    if (record && record->parent == parent && id != parent) {
+                        return id;
+                    }
                 }
                 throw std::logic_error("Password toggle interaction absent");
             };
@@ -1732,72 +1595,73 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 const auto& node = nodes.require(application.interactions().require(id).node);
                 const float x = node.bounds.x + node.translation.x + node.bounds.width / 2.0F;
                 const float y = node.bounds.y + node.translation.y + node.bounds.height / 2.0F;
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::down, ryn::input::PointerButton::primary, x, y});
-                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(),
-                    ryn::input::PointerAction::up, ryn::input::PointerButton::primary, x, y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::down,
+                                                ryn::input::PointerButton::primary, x, y});
+                application.pointer().dispatch({ryn::input::PointerIdentity::mouse(), ryn::input::PointerAction::up,
+                                                ryn::input::PointerButton::primary, x, y});
                 automated_input_events += 2;
             };
-            switch(stage) {
+            switch (stage) {
             case 0: {
                 const auto& node = nodes.require(field.node);
-                password_scroll = document_viewport.scroll_to(
-                    node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
+                password_scroll =
+                    document_viewport.scroll_to(node.bounds.y - document_viewport.snapshot().viewport_extent / 2.0F);
                 frame_requests.request_frame();
                 break;
             }
             case 1: {
-                if(!application.focus().request_focus(field.interaction,
-                    ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Password acceptance could not focus field");
+                }
                 const auto display = inputs.display_snapshot(field.component);
                 const auto scene_text = inputs.text_scene(field.component);
-                password_hidden = display.text.find("RynUI") == std::string_view::npos
-                    && text_scene.text_state(scene_text).content().bytes().find("RynUI") == std::string_view::npos
-                    && inputs.sessions().active().owner == field.editor;
+                password_hidden =
+                    display.text.find("RynUI") == std::string_view::npos &&
+                    text_scene.text_state(scene_text).content().bytes().find("RynUI") == std::string_view::npos &&
+                    inputs.sessions().active().owner == field.editor;
                 break;
             }
             case 2: {
                 const auto stamp = inputs.sessions().active();
-                const auto result = inputs.dispatch(ryn::input::CompositionChanged{
-                    ryn::String{u8"ni"}, {2, 0}, stamp});
+                const auto result = inputs.dispatch(ryn::input::CompositionChanged{ryn::String{u8"ni"}, {2, 0}, stamp});
                 ++automated_input_events;
                 click(toggle(field.interaction));
-                password_pointer = static_cast<bool>(result)
-                    && application.focus().state().focused == field.interaction
-                    && inputs.editors().require(field.editor).composition().active
-                    && inputs.sessions().active() == stamp
-                    && inputs.display_snapshot(field.component).text.find("ni") != std::string_view::npos;
+                password_pointer = static_cast<bool>(result) &&
+                                   application.focus().state().focused == field.interaction &&
+                                   inputs.editors().require(field.editor).composition().active &&
+                                   inputs.sessions().active() == stamp &&
+                                   inputs.display_snapshot(field.component).text.find("ni") != std::string_view::npos;
                 break;
             }
             case 3: {
                 const auto stamp = inputs.sessions().active();
-                const auto result = inputs.dispatch(ryn::input::TextCommitted{
-                    ryn::String{u8"你"}, stamp});
+                const auto result = inputs.dispatch(ryn::input::TextCommitted{ryn::String{u8"你"}, stamp});
                 ++automated_input_events;
                 const auto toggler = toggle(field.interaction);
-                if(!application.focus().request_focus(toggler, ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(toggler, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Password acceptance could not focus toggle");
-                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::down,
-                    ryn::input::KeyModifier::none, false});
-                application.focus().dispatch({ryn::input::Key::space, ryn::input::KeyAction::up,
-                    ryn::input::KeyModifier::none, false});
+                }
+                application.focus().dispatch(
+                    {ryn::input::Key::space, ryn::input::KeyAction::down, ryn::input::KeyModifier::none, false});
+                application.focus().dispatch(
+                    {ryn::input::Key::space, ryn::input::KeyAction::up, ryn::input::KeyModifier::none, false});
                 automated_input_events += 2;
-                password_keyboard = static_cast<bool>(result)
-                    && inputs.display_snapshot(field.component).text.find("RynUI") == std::string_view::npos;
+                password_keyboard =
+                    static_cast<bool>(result) &&
+                    inputs.display_snapshot(field.component).text.find("RynUI") == std::string_view::npos;
                 break;
             }
             case 4: {
                 const auto before = inputs.display_snapshot(disabled.component).text;
                 click(toggle(disabled.interaction));
-                password_disabled = !application.interactions().require(toggle(disabled.interaction)).eligible
-                    && inputs.display_snapshot(disabled.component).text == before;
+                password_disabled = !application.interactions().require(toggle(disabled.interaction)).eligible &&
+                                    inputs.display_snapshot(disabled.component).text == before;
                 break;
             }
             case 5:
-                if(!application.focus().request_focus(field.interaction,
-                    ryn::input::FocusModality::keyboard))
+                if (!application.focus().request_focus(field.interaction, ryn::input::FocusModality::keyboard)) {
                     throw std::logic_error("Password acceptance could not restore field focus");
+                }
                 break;
             default:
                 throw std::out_of_range("unknown Password acceptance stage");
@@ -1807,81 +1671,70 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
         while (!events.quit_requested()) {
             application.set_animation_time(events.now());
             const auto elapsed = events.now_milliseconds();
-            if (scrollbar_acceptance && scrollbar_stage < scrollbar_stage_count
-                    && elapsed >= 250 + 90 * std::min(scrollbar_stage, std::size_t{8})) {
+            if (scrollbar_acceptance && scrollbar_stage < scrollbar_stage_count &&
+                elapsed >= 250 + 90 * std::min(scrollbar_stage, std::size_t{8})) {
                 const auto& bars = scroll_presentation;
                 switch (scrollbar_stage) {
                 case 0:
-                    if (narrow_acceptance) break;
-                    events.inject_scroll_at(
-                        bars.navigation_lane.x + 40.0F,
-                        bars.navigation_lane.y + 80.0F, -3.0F);
+                    if (narrow_acceptance) {
+                        break;
+                    }
+                    events.inject_scroll_at(bars.navigation_lane.x + 40.0F, bars.navigation_lane.y + 80.0F, -3.0F);
                     break;
                 case 1:
-                    if (narrow_acceptance) break;
-                    navigation_wheel_passed = navigation_scroll.snapshot().offset > 0.0F
-                        && document_viewport.snapshot().offset == 0.0F;
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::down,
-                        bars.navigation.thumb.x + 4.0F,
-                        bars.navigation.thumb.y + bars.navigation.thumb.height * 0.5F,
-                        ryn::input::PointerButton::primary);
+                    if (narrow_acceptance) {
+                        break;
+                    }
+                    navigation_wheel_passed =
+                        navigation_scroll.snapshot().offset > 0.0F && document_viewport.snapshot().offset == 0.0F;
+                    events.inject_pointer_at(ryn::input::PointerAction::down, bars.navigation.thumb.x + 4.0F,
+                                             bars.navigation.thumb.y + bars.navigation.thumb.height * 0.5F,
+                                             ryn::input::PointerButton::primary);
                     break;
                 case 2:
-                    if (narrow_acceptance) break;
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::move,
-                        bars.navigation.track.x + 4.0F,
-                        bars.navigation.track.y + bars.navigation.track.height - 2.0F);
+                    if (narrow_acceptance) {
+                        break;
+                    }
+                    events.inject_pointer_at(ryn::input::PointerAction::move, bars.navigation.track.x + 4.0F,
+                                             bars.navigation.track.y + bars.navigation.track.height - 2.0F);
                     break;
                 case 3:
-                    if (narrow_acceptance) break;
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::up,
-                        bars.navigation.track.x + 4.0F,
-                        bars.navigation.track.y + bars.navigation.track.height - 2.0F,
-                        ryn::input::PointerButton::primary);
+                    if (narrow_acceptance) {
+                        break;
+                    }
+                    events.inject_pointer_at(ryn::input::PointerAction::up, bars.navigation.track.x + 4.0F,
+                                             bars.navigation.track.y + bars.navigation.track.height - 2.0F,
+                                             ryn::input::PointerButton::primary);
                     navigation_after_drag = navigation_scroll.snapshot().offset;
-                    navigation_drag_passed = navigation_after_drag > 144.0F
-                        && document_viewport.snapshot().offset == 0.0F;
+                    navigation_drag_passed =
+                        navigation_after_drag > 144.0F && document_viewport.snapshot().offset == 0.0F;
                     break;
                 case 4:
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::down,
-                        bars.document.track.x + 4.0F,
-                        bars.document.track.y + bars.document.track.height * 0.75F,
-                        ryn::input::PointerButton::primary);
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::up,
-                        bars.document.track.x + 4.0F,
-                        bars.document.track.y + bars.document.track.height * 0.75F,
-                        ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(ryn::input::PointerAction::down, bars.document.track.x + 4.0F,
+                                             bars.document.track.y + bars.document.track.height * 0.75F,
+                                             ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(ryn::input::PointerAction::up, bars.document.track.x + 4.0F,
+                                             bars.document.track.y + bars.document.track.height * 0.75F,
+                                             ryn::input::PointerButton::primary);
                     document_after_track = document_viewport.snapshot().offset;
-                    document_track_passed = document_after_track > 0.0F
-                        && navigation_scroll.snapshot().offset == navigation_after_drag;
+                    document_track_passed =
+                        document_after_track > 0.0F && navigation_scroll.snapshot().offset == navigation_after_drag;
                     break;
                 case 5:
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::down,
-                        bars.document.thumb.x + 4.0F,
-                        bars.document.thumb.y + bars.document.thumb.height * 0.5F,
-                        ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(ryn::input::PointerAction::down, bars.document.thumb.x + 4.0F,
+                                             bars.document.thumb.y + bars.document.thumb.height * 0.5F,
+                                             ryn::input::PointerButton::primary);
                     break;
                 case 6:
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::move,
-                        bars.document.track.x + 4.0F,
-                        bars.document.track.y + bars.document.track.height - 2.0F);
+                    events.inject_pointer_at(ryn::input::PointerAction::move, bars.document.track.x + 4.0F,
+                                             bars.document.track.y + bars.document.track.height - 2.0F);
                     break;
                 case 7:
-                    events.inject_pointer_at(
-                        ryn::input::PointerAction::up,
-                        bars.document.track.x + 4.0F,
-                        bars.document.track.y + bars.document.track.height - 2.0F,
-                        ryn::input::PointerButton::primary);
-                    document_drag_passed =
-                        document_viewport.snapshot().offset > document_after_track
-                        && navigation_scroll.snapshot().offset == navigation_after_drag;
+                    events.inject_pointer_at(ryn::input::PointerAction::up, bars.document.track.x + 4.0F,
+                                             bars.document.track.y + bars.document.track.height - 2.0F,
+                                             ryn::input::PointerButton::primary);
+                    document_drag_passed = document_viewport.snapshot().offset > document_after_track &&
+                                           navigation_scroll.snapshot().offset == navigation_after_drag;
                     break;
                 case scrollbar_drag_end: {
                     const auto& buttons = application.mounted_buttons();
@@ -1889,87 +1742,83 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     const auto& node = nodes.require(header_button.node);
                     const float x = node.bounds.x + node.bounds.width * 0.5F;
                     const float y = node.bounds.y + node.bounds.height * 0.5F;
-                    events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
-                        ryn::input::PointerButton::primary);
-                    events.inject_pointer_at(ryn::input::PointerAction::up, x, y,
-                        ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(ryn::input::PointerAction::down, x, y, ryn::input::PointerButton::primary);
+                    events.inject_pointer_at(ryn::input::PointerAction::up, x, y, ryn::input::PointerButton::primary);
                     break;
                 }
                 case scrollbar_drag_end + 1: {
-                    header_navigation_passed = navigation_scroll.snapshot().offset == 0.0F
-                        && (narrow_acceptance ? document_viewport.snapshot().offset == 0.0F
-                            : document_viewport.snapshot().offset == document_viewport.snapshot().maximum_offset);
+                    header_navigation_passed = navigation_scroll.snapshot().offset == 0.0F &&
+                                               (narrow_acceptance ? document_viewport.snapshot().offset == 0.0F
+                                                                  : document_viewport.snapshot().offset ==
+                                                                        document_viewport.snapshot().maximum_offset);
                     if (narrow_acceptance) {
                         const auto& node = nodes.require(application.mounted_buttons().front().node);
                         const float x = node.bounds.x + node.translation.x + node.bounds.width * 0.5F;
                         const float y = node.bounds.y + node.translation.y + node.bounds.height * 0.5F;
                         events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
-                            ryn::input::PointerButton::primary);
+                                                 ryn::input::PointerButton::primary);
                         events.inject_pointer_at(ryn::input::PointerAction::up, x, y,
-                            ryn::input::PointerButton::primary);
+                                                 ryn::input::PointerButton::primary);
                     }
                     break;
                 }
                 case scrollbar_drag_end + 2:
-                    header_navigation_passed = header_navigation_passed && (!narrow_acceptance
-                        || (document_viewport.snapshot().offset > 0.0F
-                            && document_viewport.snapshot().current_section
-                                == GalleryDocumentSectionKind::header_source));
+                    header_navigation_passed = header_navigation_passed &&
+                                               (!narrow_acceptance || (document_viewport.snapshot().offset > 0.0F &&
+                                                                       document_viewport.snapshot().current_section ==
+                                                                           GalleryDocumentSectionKind::header_source));
                     break;
                 default: {
                     const auto stage = (scrollbar_stage - 8) % scrollbar_drag_stages;
-                    const bool document_drag = narrow_acceptance
-                        || scrollbar_stage - 8 < scrollbar_drag_stages;
+                    const bool document_drag = narrow_acceptance || scrollbar_stage - 8 < scrollbar_drag_stages;
                     const auto& geometry = document_drag ? bars.document : bars.navigation;
                     const float x = geometry.thumb.x + geometry.thumb.width * 0.5F;
                     const float grab = geometry.thumb.height * 0.5F;
                     if (stage == 0) {
-                        events.inject_pointer_at(ryn::input::PointerAction::down,
-                            x, geometry.thumb.y + grab, ryn::input::PointerButton::primary);
+                        events.inject_pointer_at(ryn::input::PointerAction::down, x, geometry.thumb.y + grab,
+                                                 ryn::input::PointerButton::primary);
                     } else if (stage <= scrollbar_drag_steps) {
                         // Cross every intermediate viewport in both directions,
                         // including bursts of input before a frame is submitted.
                         const auto move = stage - 1;
                         const float progress = static_cast<float>(move % 60) / 59.0F;
-                        const float fraction = (move / 60) % 2 == 0
-                            ? 1.0F - progress : progress;
-                        const float y = geometry.track.y + grab
-                            + (geometry.track.height - geometry.thumb.height) * fraction;
+                        const float fraction = (move / 60) % 2 == 0 ? 1.0F - progress : progress;
+                        const float y =
+                            geometry.track.y + grab + (geometry.track.height - geometry.thumb.height) * fraction;
                         for (int burst = 0; burst < 3; ++burst) {
-                            events.inject_pointer_at(ryn::input::PointerAction::move,
-                                x + (burst == 1 ? -32.0F : 0.0F), y);
+                            events.inject_pointer_at(ryn::input::PointerAction::move, x + (burst == 1 ? -32.0F : 0.0F),
+                                                     y);
                         }
                         scrollbar_expected_offset = geometry.maximum_offset * fraction;
                     } else {
-                        events.inject_pointer_at(ryn::input::PointerAction::up,
-                            x, geometry.thumb.y + grab, ryn::input::PointerButton::primary);
+                        events.inject_pointer_at(ryn::input::PointerAction::up, x, geometry.thumb.y + grab,
+                                                 ryn::input::PointerButton::primary);
                     }
                     break;
                 }
                 }
                 ++scrollbar_stage;
             }
-            if (scroll_acceptance && scroll_stage < 240
-                    && elapsed >= 250 + 4 * scroll_stage) {
+            if (scroll_acceptance && scroll_stage < 240 && elapsed >= 250 + 4 * scroll_stage) {
                 if (scroll_stage == 0) {
                     rasterizations_before_scroll = fonts->counters().rasterizations;
                     submitter.reset_frame_timings();
                     scroll_started_milliseconds = elapsed;
                 }
                 const bool changed = scroll_stage == 239
-                    ? document_viewport.scroll_to(
-                        document_viewport.snapshot().maximum_offset)
-                    : document_viewport.scroll_by(48.0F);
+                                         ? document_viewport.scroll_to(document_viewport.snapshot().maximum_offset)
+                                         : document_viewport.scroll_by(48.0F);
                 if (changed) {
                     frame_requests.request_frame();
                 }
                 ++scroll_stage;
             }
-            const std::size_t smoke_stage_count = search_acceptance || password_acceptance || clear_acceptance
-                ? 6 : selection_acceptance ? 5 : input_acceptance ? 13
-                : animation_acceptance ? 16 : 5;
-            if (smoke_mode && smoke_stage < smoke_stage_count
-                    && elapsed >= 250 * (smoke_stage + 1)) {
+            const std::size_t smoke_stage_count = search_acceptance || password_acceptance || clear_acceptance ? 6
+                                                  : selection_acceptance                                       ? 5
+                                                  : input_acceptance                                           ? 13
+                                                  : animation_acceptance                                       ? 16
+                                                                                                               : 5;
+            if (smoke_mode && smoke_stage < smoke_stage_count && elapsed >= 250 * (smoke_stage + 1)) {
                 if (clear_acceptance) {
                     dispatch_clear_acceptance(smoke_stage);
                 } else if (password_acceptance) {
@@ -1981,20 +1830,16 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 } else if (input_acceptance) {
                     dispatch_input_acceptance(smoke_stage);
                 } else if (!animation_acceptance || smoke_stage >= 11) {
-                    definition.smoke_step(
-                        animation_acceptance ? smoke_stage - 11 : smoke_stage);
+                    definition.smoke_step(animation_acceptance ? smoke_stage - 11 : smoke_stage);
                 } else if (smoke_stage == 0) {
                     definition.set_motion_enabled(false);
                 } else if (smoke_stage == 1) {
                     definition.set_motion_enabled(true);
                 } else if (smoke_stage == 2) {
-                    application.set_motion_preference(
-                        ryn::animation::MotionPreference::reduced);
+                    application.set_motion_preference(ryn::animation::MotionPreference::reduced);
                 } else if (smoke_stage == 3) {
-                    application.set_motion_preference(
-                        ryn::animation::MotionPreference::normal);
-                    if (const auto live = document_viewport.anchor(
-                            GalleryDocumentSectionKind::live_samples)) {
+                    application.set_motion_preference(ryn::animation::MotionPreference::normal);
+                    if (const auto live = document_viewport.anchor(GalleryDocumentSectionKind::live_samples)) {
                         static_cast<void>(document_viewport.jump_to(*live));
                         frame_requests.request_frame();
                     }
@@ -2005,17 +1850,15 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             }
             const auto step = loop.step();
             if (scrollbar_expected_offset.has_value()) {
-                const bool document_drag = narrow_acceptance
-                    || scrollbar_stage - 9 < scrollbar_drag_stages;
-                const float offset = document_drag ? document_viewport.snapshot().offset
-                    : navigation_scroll.snapshot().offset;
-                continuous_drag_passed = continuous_drag_passed
-                    && std::abs(offset - *scrollbar_expected_offset) < 0.25F
-                    && submitter.scrollbar_geometry_matches();
+                const bool document_drag = narrow_acceptance || scrollbar_stage - 9 < scrollbar_drag_stages;
+                const float offset =
+                    document_drag ? document_viewport.snapshot().offset : navigation_scroll.snapshot().offset;
+                continuous_drag_passed = continuous_drag_passed &&
+                                         std::abs(offset - *scrollbar_expected_offset) < 0.25F &&
+                                         submitter.scrollbar_geometry_matches();
                 scrollbar_expected_offset.reset();
             }
-            if (scroll_acceptance && scroll_stage == 240
-                    && scroll_finished_milliseconds == 0) {
+            if (scroll_acceptance && scroll_stage == 240 && scroll_finished_milliseconds == 0) {
                 scroll_finished_milliseconds = events.now_milliseconds();
             }
             if (!events.last_error().empty()) {
@@ -2027,20 +1870,19 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 return 5;
             }
             if (snapshot_path && step == ryn::runtime::FrameLoopStep::submitted) {
-                if (!snapshot_scrollbar_positioned
-                    && (snapshot_scrollbar_hover || snapshot_scrollbar_pressed)) {
+                if (!snapshot_scrollbar_positioned && (snapshot_scrollbar_hover || snapshot_scrollbar_pressed)) {
                     const auto& thumb = scroll_presentation.document.thumb;
                     const float x = thumb.x + thumb.width * 0.5F;
                     const float y = thumb.y + thumb.height * 0.5F;
                     events.inject_pointer_at(ryn::input::PointerAction::move, x, y);
                     if (snapshot_scrollbar_pressed) {
                         events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
-                            ryn::input::PointerButton::primary);
+                                                 ryn::input::PointerButton::primary);
                     }
                     snapshot_scrollbar_positioned = true;
                     frame_requests.request_frame();
-                } else if (!snapshot_navigation_positioned
-                    && (snapshot_navigation_hover || snapshot_navigation_click)) {
+                } else if (!snapshot_navigation_positioned &&
+                           (snapshot_navigation_hover || snapshot_navigation_click)) {
                     if (definition.narrow_layout()) {
                         throw std::logic_error("navigation snapshot requires a visible sidebar");
                     }
@@ -2054,9 +1896,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                     events.inject_pointer_at(ryn::input::PointerAction::move, x, y);
                     if (snapshot_navigation_click) {
                         events.inject_pointer_at(ryn::input::PointerAction::down, x, y,
-                            ryn::input::PointerButton::primary);
+                                                 ryn::input::PointerButton::primary);
                         events.inject_pointer_at(ryn::input::PointerAction::up, x, y,
-                            ryn::input::PointerButton::primary);
+                                                 ryn::input::PointerButton::primary);
                     }
                     snapshot_navigation_positioned = true;
                     frame_requests.request_frame();
@@ -2070,8 +1912,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         static_cast<void>(document_viewport.scroll_to(
                             node.bounds.y - document_viewport.snapshot().viewport_extent * 0.5F));
                     } else {
-                        static_cast<void>(document_viewport.scroll_to(
-                            document_viewport.snapshot().maximum_offset * 0.5F));
+                        static_cast<void>(
+                            document_viewport.scroll_to(document_viewport.snapshot().maximum_offset * 0.5F));
                     }
                     snapshot_positioned = true;
                     frame_requests.request_frame();
@@ -2086,50 +1928,51 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                         frame_requests.request_frame();
                         continue;
                     }
-                    if (snapshot_navigation_click
-                        && definition.telemetry().navigation_requests == 0) {
+                    if (snapshot_navigation_click && definition.telemetry().navigation_requests == 0) {
                         throw std::logic_error("component navigation click was not delivered");
                     }
-                    if (snapshot_navigation_hover
-                        && application.pointer().diagnostics().hover_enters == 0) {
+                    if (snapshot_navigation_hover && application.pointer().diagnostics().hover_enters == 0) {
                         throw std::logic_error("component navigation hover was not delivered");
                     }
                     if (!renderer.save_frame_bmp(*snapshot_path)) {
                         std::cerr << "snapshot_error=" << renderer.last_error() << '\n';
                         return 6;
                     }
-                    std::cout << "snapshot=" << snapshot_path->string()
-                        << " gpu_driver=" << renderer.gpu_driver()
-                        << " display_scale=" << render_scale
-                        << " theme=" << (snapshot_dark ? "dark" : "light")
-                        << " navigation=" << (snapshot_navigation_hover ? "hover"
-                            : snapshot_navigation_click ? "click" : "none")
-                        << " scrollbar=" << (snapshot_scrollbar_hover ? "hover"
-                            : snapshot_scrollbar_pressed ? "pressed" : "none")
-                        << " navigation_requests=" << definition.telemetry().navigation_requests
-                        << " document_section=" << gallery_document_sections()[static_cast<std::size_t>(
-                            document_viewport.snapshot().current_section)].identity << '\n';
+                    std::cout << "snapshot=" << snapshot_path->string() << " gpu_driver=" << renderer.gpu_driver()
+                              << " display_scale=" << render_scale << " theme=" << (snapshot_dark ? "dark" : "light")
+                              << " navigation="
+                              << (snapshot_navigation_hover   ? "hover"
+                                  : snapshot_navigation_click ? "click"
+                                                              : "none")
+                              << " scrollbar="
+                              << (snapshot_scrollbar_hover     ? "hover"
+                                  : snapshot_scrollbar_pressed ? "pressed"
+                                                               : "none")
+                              << " navigation_requests=" << definition.telemetry().navigation_requests
+                              << " document_section="
+                              << gallery_document_sections()[static_cast<std::size_t>(
+                                                                 document_viewport.snapshot().current_section)]
+                                     .identity
+                              << '\n';
                     return 0;
                 }
             }
-            const auto completion_time = search_acceptance || password_acceptance || clear_acceptance
-                ? 4'000U : selection_acceptance ? 5'000U : input_acceptance ? 4'000U
-                : animation_acceptance ? 4'700U : 1'700U;
-            const bool acceptance_complete = search_acceptance || selection_acceptance
-                || password_acceptance || clear_acceptance
-                ? true : input_acceptance
-                ? input_caret_idle && !inputs.next_caret_deadline().has_value()
-                : loop.counters().idle_waits >= 20;
-            if (smoke_mode && smoke_stage == smoke_stage_count
-                    && elapsed >= completion_time && acceptance_complete) {
+            const auto completion_time = search_acceptance || password_acceptance || clear_acceptance ? 4'000U
+                                         : selection_acceptance                                       ? 5'000U
+                                         : input_acceptance                                           ? 4'000U
+                                         : animation_acceptance                                       ? 4'700U
+                                                                                                      : 1'700U;
+            const bool acceptance_complete =
+                search_acceptance || selection_acceptance || password_acceptance || clear_acceptance ? true
+                : input_acceptance ? input_caret_idle && !inputs.next_caret_deadline().has_value()
+                                   : loop.counters().idle_waits >= 20;
+            if (smoke_mode && smoke_stage == smoke_stage_count && elapsed >= completion_time && acceptance_complete) {
                 break;
             }
-            if (scroll_acceptance && scroll_stage == 240
-                    && elapsed >= 1'800) {
+            if (scroll_acceptance && scroll_stage == 240 && elapsed >= 1'800) {
                 break;
             }
-            if (scrollbar_acceptance && scrollbar_stage == scrollbar_stage_count
-                    && elapsed >= 1'100) {
+            if (scrollbar_acceptance && scrollbar_stage == scrollbar_stage_count && elapsed >= 1'100) {
                 break;
             }
         }
@@ -2163,10 +2006,8 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
                 input_instance_rebuilds += counters.instance_rebuilds;
             }
         }
-        const auto average_sync_us = [frames = submitter.timed_frames()](
-            std::uint64_t nanoseconds) -> std::uint64_t {
-            return frames == 0 ? 0 : nanoseconds /
-                static_cast<std::uint64_t>(frames) / 1000;
+        const auto average_sync_us = [frames = submitter.timed_frames()](std::uint64_t nanoseconds) -> std::uint64_t {
+            return frames == 0 ? 0 : nanoseconds / static_cast<std::uint64_t>(frames) / 1000;
         };
         const auto font_counters = fonts->counters();
         const auto frames = loop.counters();
@@ -2200,189 +2041,136 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             layout_passes += nodes.require(mounted.node).place_count;
         }
 
-        const auto expected_stages = search_acceptance || password_acceptance || clear_acceptance
-            ? 6U : selection_acceptance ? 5U : input_acceptance ? 13U
-            : animation_acceptance ? 16U : 5U;
-        const auto expected_theme_updates = search_acceptance
-            ? 0U : password_acceptance || selection_acceptance || clear_acceptance
-            ? (selection_dark || selection_compact ? 1U : 0U) : input_acceptance
-            ? 1U : animation_acceptance ? 6U
-            : motion_disabled ? 5U : 4U;
-        const auto expected_motion_updates = search_acceptance || password_acceptance || clear_acceptance
-            ? 0U : selection_acceptance
-            ? 0U : input_acceptance
-            ? 0U : animation_acceptance ? 2U
-            : motion_disabled ? 1U : 0U;
-        const bool scroll_failed = scroll_acceptance
-            && (scroll_stage != 240 || document.maximum_offset <= 0.0F
-                || document.offset != document.maximum_offset
-                || document_diagnostics.translation_passes < 2
-                || submitter.reconciliation_syncs() != 0
-                || submitter.last_visible_scene().fragments_visible
-                    >= submitter.last_visible_scene().fragments_considered
-                || telemetry.content_runs != 1
-                || render.frame_submissions < 2);
-        const bool scrollbar_failed = scrollbar_acceptance
-            && (scrollbar_stage != scrollbar_stage_count || !continuous_drag_passed
-                || !header_navigation_passed
-                || (!narrow_acceptance && (!navigation_wheel_passed || !navigation_drag_passed))
-                || !document_track_passed
-                || !document_drag_passed || telemetry.content_runs != 1
-                || !submitter.scrollbar_geometry_matches()
-                || !submitter.scrollbar_draw_commands_present()
-                || render.frame_submissions < 4);
-        const bool smoke_failed = scroll_failed || scrollbar_failed || (smoke_mode
-            && (smoke_stage != expected_stages || telemetry.content_runs != 1
-                || telemetry.theme_updates != expected_theme_updates
-                || telemetry.motion_updates != expected_motion_updates
-                || (!input_acceptance && !selection_acceptance && !search_acceptance
-                    && !password_acceptance && !clear_acceptance
-                    && (telemetry.brand_updates != 1 || telemetry.state_updates != 2))
-                || (search_acceptance
-                    && (!search_scroll || !search_text || !search_keyboard
-                        || !search_pointer || !search_blocked
-                        || telemetry.search_submits != 3
-                        || telemetry.live_samples != 57))
-                || (selection_acceptance
-                    && (!selection_scroll || !selection_keyboard || !selection_pointer
-                        || !selection_blocked || automated_input_events != 31
-                        || telemetry.live_samples != 57))
-                || (password_acceptance
-                    && (!password_scroll || !password_hidden || !password_pointer
-                        || !password_keyboard || !password_disabled
-                        || telemetry.live_samples != 57))
-                || (clear_acceptance
-                    && (!clear_scroll || !clear_pointer || !clear_keyboard || !clear_disabled
-                        || telemetry.input_changes < 3 || telemetry.live_samples != 57))
-                || (input_acceptance
-                    && (!input_latin || !input_selection || !input_clipboard
-                        || !input_undo || !input_redo || !input_theme_status
-                        || !input_caret_active || !input_caret_idle
-                        || telemetry.input_changes < 6
-                        || telemetry.input_submits != 1
-                        || inputs.next_caret_deadline().has_value()))
-                || (animation_acceptance
-                    && (automated_input_events != 7
-                        || pointer_diagnostics.input_events < 4
-                        || pointer_diagnostics.hover_enters == 0
-                        || pointer_diagnostics.hover_leaves == 0
-                        || pointer_diagnostics.captures_started != 1
-                        || pointer_diagnostics.captures_released != 1
-                        || focus_diagnostics.keyboard_events != 3
-                        || focus_diagnostics.traversals == 0
-                        || focus_diagnostics.activations != 1))));
+        const auto expected_stages = search_acceptance || password_acceptance || clear_acceptance ? 6U
+                                     : selection_acceptance                                       ? 5U
+                                     : input_acceptance                                           ? 13U
+                                     : animation_acceptance                                       ? 16U
+                                                                                                  : 5U;
+        const auto expected_theme_updates = search_acceptance ? 0U
+                                            : password_acceptance || selection_acceptance || clear_acceptance
+                                                ? (selection_dark || selection_compact ? 1U : 0U)
+                                            : input_acceptance     ? 1U
+                                            : animation_acceptance ? 6U
+                                            : motion_disabled      ? 5U
+                                                                   : 4U;
+        const auto expected_motion_updates = search_acceptance || password_acceptance || clear_acceptance ? 0U
+                                             : selection_acceptance                                       ? 0U
+                                             : input_acceptance                                           ? 0U
+                                             : animation_acceptance                                       ? 2U
+                                             : motion_disabled                                            ? 1U
+                                                                                                          : 0U;
+        const bool scroll_failed =
+            scroll_acceptance &&
+            (scroll_stage != 240 || document.maximum_offset <= 0.0F || document.offset != document.maximum_offset ||
+             document_diagnostics.translation_passes < 2 || submitter.reconciliation_syncs() != 0 ||
+             submitter.last_visible_scene().fragments_visible >= submitter.last_visible_scene().fragments_considered ||
+             telemetry.content_runs != 1 || render.frame_submissions < 2);
+        const bool scrollbar_failed =
+            scrollbar_acceptance &&
+            (scrollbar_stage != scrollbar_stage_count || !continuous_drag_passed || !header_navigation_passed ||
+             (!narrow_acceptance && (!navigation_wheel_passed || !navigation_drag_passed)) || !document_track_passed ||
+             !document_drag_passed || telemetry.content_runs != 1 || !submitter.scrollbar_geometry_matches() ||
+             !submitter.scrollbar_draw_commands_present() || render.frame_submissions < 4);
+        const bool smoke_failed =
+            scroll_failed || scrollbar_failed ||
+            (smoke_mode &&
+             (smoke_stage != expected_stages || telemetry.content_runs != 1 ||
+              telemetry.theme_updates != expected_theme_updates ||
+              telemetry.motion_updates != expected_motion_updates ||
+              (!input_acceptance && !selection_acceptance && !search_acceptance && !password_acceptance &&
+               !clear_acceptance && (telemetry.brand_updates != 1 || telemetry.state_updates != 2)) ||
+              (search_acceptance &&
+               (!search_scroll || !search_text || !search_keyboard || !search_pointer || !search_blocked ||
+                telemetry.search_submits != 3 || telemetry.live_samples != 57)) ||
+              (selection_acceptance &&
+               (!selection_scroll || !selection_keyboard || !selection_pointer || !selection_blocked ||
+                automated_input_events != 31 || telemetry.live_samples != 57)) ||
+              (password_acceptance && (!password_scroll || !password_hidden || !password_pointer ||
+                                       !password_keyboard || !password_disabled || telemetry.live_samples != 57)) ||
+              (clear_acceptance && (!clear_scroll || !clear_pointer || !clear_keyboard || !clear_disabled ||
+                                    telemetry.input_changes < 3 || telemetry.live_samples != 57)) ||
+              (input_acceptance &&
+               (!input_latin || !input_selection || !input_clipboard || !input_undo || !input_redo ||
+                !input_theme_status || !input_caret_active || !input_caret_idle || telemetry.input_changes < 6 ||
+                telemetry.input_submits != 1 || inputs.next_caret_deadline().has_value())) ||
+              (animation_acceptance &&
+               (automated_input_events != 7 || pointer_diagnostics.input_events < 4 ||
+                pointer_diagnostics.hover_enters == 0 || pointer_diagnostics.hover_leaves == 0 ||
+                pointer_diagnostics.captures_started != 1 || pointer_diagnostics.captures_released != 1 ||
+                focus_diagnostics.keyboard_events != 3 || focus_diagnostics.traversals == 0 ||
+                focus_diagnostics.activations != 1))));
 
         std::cout
-            << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH
-            << " gpu_driver=" << renderer.gpu_driver()
-            << " shader_format=" << renderer.shader_format()
-            << " display_scale=" << render_scale
+            << "catalog_hash=" << RYNUI_TOKEN_CATALOG_HASH << " gpu_driver=" << renderer.gpu_driver()
+            << " shader_format=" << renderer.shader_format() << " display_scale=" << render_scale
             << " host_display_scale=" << platform.display_scale()
             << " scale_source=" << (acceptance_scale.has_value() ? "acceptance" : "window")
-            << " pixel_density=" << metrics.pixel_density
-            << " window_system=" << RYNUI_WINDOW_SYSTEM
+            << " pixel_density=" << metrics.pixel_density << " window_system=" << RYNUI_WINDOW_SYSTEM
             << " window_size=" << metrics.coordinate_width << 'x' << metrics.coordinate_height
-            << " pixel_size=" << metrics.pixel_width << 'x' << metrics.pixel_height
-            << " viewport=" << viewport.width << 'x' << viewport.height
-            << " font_source=" << font_chain.telemetry_source()
+            << " pixel_size=" << metrics.pixel_width << 'x' << metrics.pixel_height << " viewport=" << viewport.width
+            << 'x' << viewport.height << " font_source=" << font_chain.telemetry_source()
             << " font_families=" << font_chain.telemetry_families()
             << " font_rendering=" << font_chain.telemetry_rendering()
             << " stable_test_ids=" << definition.stable_test_ids.size()
-            << " snapshot_identity=" << telemetry.snapshot_identity
-            << " snapshot=" << telemetry.snapshot_diagnostic
-            << " content_runs=" << telemetry.content_runs
-            << " theme_content_runs=" << telemetry.theme_content_runs
-            << " theme_updates=" << telemetry.theme_updates
-            << " brand_updates=" << telemetry.brand_updates
-            << " motion_updates=" << telemetry.motion_updates
-            << " viewport_updates=" << telemetry.viewport_updates
-            << " state_updates=" << telemetry.state_updates
-            << " activations=" << telemetry.activations
+            << " snapshot_identity=" << telemetry.snapshot_identity << " snapshot=" << telemetry.snapshot_diagnostic
+            << " content_runs=" << telemetry.content_runs << " theme_content_runs=" << telemetry.theme_content_runs
+            << " theme_updates=" << telemetry.theme_updates << " brand_updates=" << telemetry.brand_updates
+            << " motion_updates=" << telemetry.motion_updates << " viewport_updates=" << telemetry.viewport_updates
+            << " state_updates=" << telemetry.state_updates << " activations=" << telemetry.activations
             << " document_sections=" << telemetry.document_sections
             << " component_entries=" << telemetry.component_entries
             << " reference_surfaces=" << telemetry.reference_surfaces
             << " reference_content_runs=" << telemetry.reference_content_runs
-            << " live_samples=" << telemetry.live_samples
-            << " input_changes=" << telemetry.input_changes
-            << " input_submits=" << telemetry.input_submits
-            << " search_submits=" << telemetry.search_submits
+            << " live_samples=" << telemetry.live_samples << " input_changes=" << telemetry.input_changes
+            << " input_submits=" << telemetry.input_submits << " search_submits=" << telemetry.search_submits
             << " navigation_controls=" << definition.navigation_control_count
             << " navigation_requests=" << telemetry.navigation_requests
-            << " filter_updates=" << telemetry.filter_updates
-            << " reference_interactions=0"
+            << " filter_updates=" << telemetry.filter_updates << " reference_interactions=0"
             << " document_content_extent=" << document.content_extent
-            << " document_viewport_extent=" << document.viewport_extent
-            << " document_offset=" << document.offset
+            << " document_viewport_extent=" << document.viewport_extent << " document_offset=" << document.offset
             << " document_maximum_offset=" << document.maximum_offset
             << " navigation_offset=" << navigation_scroll.snapshot().offset
-            << " navigation_maximum_offset="
-            << navigation_scroll.snapshot().maximum_offset
-            << " scrollbar_geometry="
-            << (submitter.scrollbar_geometry_matches() ? "passed" : "failed")
-            << " scrollbar_draw="
-            << (submitter.scrollbar_draw_commands_present() ? "passed" : "failed")
+            << " navigation_maximum_offset=" << navigation_scroll.snapshot().maximum_offset
+            << " scrollbar_geometry=" << (submitter.scrollbar_geometry_matches() ? "passed" : "failed")
+            << " scrollbar_draw=" << (submitter.scrollbar_draw_commands_present() ? "passed" : "failed")
             << " document_section="
-            << gallery_document_sections()[static_cast<std::size_t>(
-                document.current_section)].identity
+            << gallery_document_sections()[static_cast<std::size_t>(document.current_section)].identity
             << " document_anchor_generation=" << document.anchor_generation
             << " scroll_events=" << events.scroll_events()
-            << " document_extent_updates="
-            << document_diagnostics.extent_updates
-            << " document_scroll_updates="
-            << document_diagnostics.scroll_updates
-            << " document_anchor_updates="
-            << document_diagnostics.anchor_updates
-            << " document_navigation_jumps="
-            << document_diagnostics.navigation_jumps
-            << " document_translation_passes="
-            << document_diagnostics.translation_passes
-            << " document_translated_nodes="
-            << document_diagnostics.translated_nodes
-            << " document_reconciliation_syncs="
-            << submitter.reconciliation_syncs()
-            << " draw_fragments_considered="
-            << submitter.last_visible_scene().fragments_considered
-            << " draw_fragments_visible="
-            << submitter.last_visible_scene().fragments_visible
-            << " frame_samples=" << submitter.timed_frames()
-            << " first_frame_cpu_us=" << first_frame.cpu_microseconds
+            << " document_extent_updates=" << document_diagnostics.extent_updates
+            << " document_scroll_updates=" << document_diagnostics.scroll_updates
+            << " document_anchor_updates=" << document_diagnostics.anchor_updates
+            << " document_navigation_jumps=" << document_diagnostics.navigation_jumps
+            << " document_translation_passes=" << document_diagnostics.translation_passes
+            << " document_translated_nodes=" << document_diagnostics.translated_nodes
+            << " document_reconciliation_syncs=" << submitter.reconciliation_syncs()
+            << " draw_fragments_considered=" << submitter.last_visible_scene().fragments_considered
+            << " draw_fragments_visible=" << submitter.last_visible_scene().fragments_visible
+            << " frame_samples=" << submitter.timed_frames() << " first_frame_cpu_us=" << first_frame.cpu_microseconds
             << " first_frame_resource_us=" << first_frame.resource_microseconds
             << " first_frame_glyph_us=" << first_frame.glyph_microseconds
-            << " first_frame_upload_finish_us="
-            << first_frame.upload_finish_microseconds
+            << " first_frame_upload_finish_us=" << first_frame.upload_finish_microseconds
             << " first_frame_upload_submissions=" << first_frame.upload_submissions
             << " first_frame_texture_transfers=" << first_frame.texture_transfers
             << " first_frame_buffer_transfers=" << first_frame.buffer_transfers
-            << " first_frame_glyph_texture_uploads="
-            << first_frame.glyph_texture_uploads
+            << " first_frame_glyph_texture_uploads=" << first_frame.glyph_texture_uploads
             << " frame_average_us=" << submitter.average_frame_microseconds()
             << " frame_max_us=" << submitter.max_frame_microseconds()
-            << " frame_p95_us=" << submitter.p95_frame_microseconds()
-            << " frame_scene_sync_us=" << phase_times[0]
-            << " frame_translation_us=" << detail_times[0]
-            << " frame_layout_us=" << detail_times[1]
+            << " frame_p95_us=" << submitter.p95_frame_microseconds() << " frame_scene_sync_us=" << phase_times[0]
+            << " frame_translation_us=" << detail_times[0] << " frame_layout_us=" << detail_times[1]
             << " frame_hit_refresh_us=" << submitter.average_hit_refresh_microseconds()
             << " frame_text_host_us=" << average_sync_us(sync_profile.text_nanoseconds)
             << " frame_text_layout_us=" << average_sync_us(text_profile.layout_nanoseconds)
-            << " frame_text_mounted_loop_us="
-            << average_sync_us(text_profile.mounted_loop_nanoseconds)
+            << " frame_text_mounted_loop_us=" << average_sync_us(text_profile.mounted_loop_nanoseconds)
             << " frame_text_scene_us=" << average_sync_us(text_profile.text_scene_nanoseconds)
-            << " frame_aux_geometry_us="
-            << average_sync_us(sync_profile.auxiliary_geometry_nanoseconds)
-            << " frame_button_geometry_us="
-            << average_sync_us(sync_profile.participant_geometry_nanoseconds[0])
-            << " frame_reference_geometry_us="
-            << average_sync_us(sync_profile.participant_geometry_nanoseconds[1])
-            << " frame_input_geometry_us="
-            << average_sync_us(sync_profile.participant_geometry_nanoseconds[2])
-            << " frame_selection_geometry_us="
-            << average_sync_us(sync_profile.participant_geometry_nanoseconds[3])
-            << " frame_input_update_text_us="
-            << average_sync_us(input_profile.update_text_nanoseconds)
-            << " frame_input_theme_us="
-            << average_sync_us(input_profile.theme_nanoseconds)
-            << " frame_input_text_scene_us="
-            << average_sync_us(input_profile.text_scene_nanoseconds)
+            << " frame_aux_geometry_us=" << average_sync_us(sync_profile.auxiliary_geometry_nanoseconds)
+            << " frame_button_geometry_us=" << average_sync_us(sync_profile.participant_geometry_nanoseconds[0])
+            << " frame_reference_geometry_us=" << average_sync_us(sync_profile.participant_geometry_nanoseconds[1])
+            << " frame_input_geometry_us=" << average_sync_us(sync_profile.participant_geometry_nanoseconds[2])
+            << " frame_selection_geometry_us=" << average_sync_us(sync_profile.participant_geometry_nanoseconds[3])
+            << " frame_input_update_text_us=" << average_sync_us(input_profile.update_text_nanoseconds)
+            << " frame_input_theme_us=" << average_sync_us(input_profile.theme_nanoseconds)
+            << " frame_input_text_scene_us=" << average_sync_us(input_profile.text_scene_nanoseconds)
             << " input_mounted_visited=" << input_profile.mounted_visited
             << " input_text_scene_calls=" << input_profile.text_scene_calls
             << " input_geometry_rebuilds=" << input_geometry_rebuilds
@@ -2391,28 +2179,20 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " ordered_scene_rebuilds=" << text_scene.counters().ordered_scene_rebuilds
             << " sync_participant_count=" << sync_profile.participant_count
             << " frame_effect_compact_us=" << average_sync_us(sync_profile.effect_nanoseconds)
-            << " frame_text_fragments_us="
-            << average_sync_us(sync_profile.text_fragments_nanoseconds)
-            << " frame_aux_fragments_us="
-            << average_sync_us(sync_profile.auxiliary_fragments_nanoseconds)
+            << " frame_text_fragments_us=" << average_sync_us(sync_profile.text_fragments_nanoseconds)
+            << " frame_aux_fragments_us=" << average_sync_us(sync_profile.auxiliary_fragments_nanoseconds)
             << " frame_composer_us=" << average_sync_us(sync_profile.composer_nanoseconds)
             << " frame_focus_sync_us=" << average_sync_us(sync_profile.focus_nanoseconds)
-            << " sync_calls=" << sync_profile.calls
-            << " text_layout_calls=" << text_profile.layout_calls
+            << " sync_calls=" << sync_profile.calls << " text_layout_calls=" << text_profile.layout_calls
             << " text_mounted_visited=" << text_profile.mounted_visited
             << " text_mounted_synchronized=" << text_profile.mounted_synchronized
             << " text_offscreen_skipped=" << text_profile.offscreen_skipped
-            << " frame_anchor_input_us=" << detail_times[2]
-            << " frame_resource_sync_us=" << phase_times[1]
-            << " frame_quad_sync_us=" << detail_times[3]
-            << " frame_glyph_sync_us=" << detail_times[4]
-            << " frame_effect_sync_us=" << detail_times[5]
-            << " frame_upload_finish_us=" << detail_times[6]
-            << " frame_cull_us=" << phase_times[2]
-            << " frame_submit_us=" << phase_times[3]
+            << " frame_anchor_input_us=" << detail_times[2] << " frame_resource_sync_us=" << phase_times[1]
+            << " frame_quad_sync_us=" << detail_times[3] << " frame_glyph_sync_us=" << detail_times[4]
+            << " frame_effect_sync_us=" << detail_times[5] << " frame_upload_finish_us=" << detail_times[6]
+            << " frame_cull_us=" << phase_times[2] << " frame_submit_us=" << phase_times[3]
             << " font_rasterizations=" << font_counters.rasterizations
-            << " scroll_rasterizations="
-            << (font_counters.rasterizations - rasterizations_before_scroll)
+            << " scroll_rasterizations=" << (font_counters.rasterizations - rasterizations_before_scroll)
             << " input_events=" << platform_diagnostics.normalized_input_events
             << " pointer_input_events=" << pointer_diagnostics.input_events
             << " pointer_routes=" << pointer_diagnostics.routes_dispatched
@@ -2424,15 +2204,10 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " focus_traversals=" << focus_diagnostics.traversals
             << " focus_changes=" << focus_diagnostics.focus_changes
             << " keyboard_activations=" << focus_diagnostics.activations
-            << " component_count=" << application.components().component_count()
-            << " node_count=" << nodes.size()
-            << " interaction_count=" << application.interactions().size()
-            << " layout_passes=" << layout_passes
-            << " scene_rebuilds=" << scene.rebuilds
-            << " effect_layers=" << application.rounded_effects().live_count()
-            << " outer_layers=" << outer_layers
-            << " inset_layers=" << inset_layers
-            << " focus_layers=" << focus_layers
+            << " component_count=" << application.components().component_count() << " node_count=" << nodes.size()
+            << " interaction_count=" << application.interactions().size() << " layout_passes=" << layout_passes
+            << " scene_rebuilds=" << scene.rebuilds << " effect_layers=" << application.rounded_effects().live_count()
+            << " outer_layers=" << outer_layers << " inset_layers=" << inset_layers << " focus_layers=" << focus_layers
             << " button_material_updates=" << retained_surfaces.material_updates
             << " button_geometry_updates=" << retained_surfaces.geometry_updates
             << " quad_uploads=" << quad.initial_uploads + quad.range_uploads
@@ -2441,35 +2216,28 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " glyph_buffer_uploads=" << glyph.buffer_uploads
             << " glyph_buffer_coalesces=" << glyph.buffer_upload_coalesces
             << " glyph_buffer_capacity=" << scene_resources.glyphs().instance_capacity()
-            << " glyph_uploaded_bytes="
-            << glyph.texture_uploaded_bytes + glyph.buffer_uploaded_bytes
-            << " effect_uploads=" << effect.buffer_uploads
-            << " effect_uploaded_bytes=" << effect.uploaded_bytes
-            << " gpu_upload_submissions=" << render.upload_submissions
-            << " scroll_buffer_upload_regions="
+            << " glyph_uploaded_bytes=" << glyph.texture_uploaded_bytes + glyph.buffer_uploaded_bytes
+            << " effect_uploads=" << effect.buffer_uploads << " effect_uploaded_bytes=" << effect.uploaded_bytes
+            << " gpu_upload_submissions=" << render.upload_submissions << " scroll_buffer_upload_regions="
             << render.buffer_upload_regions - render_before_scroll.buffer_upload_regions
             << " scroll_buffer_transfer_creations="
-            << render.buffer_transfer_creations
-                - render_before_scroll.buffer_transfer_creations
+            << render.buffer_transfer_creations - render_before_scroll.buffer_transfer_creations
             << " scroll_buffer_transfer_maps="
             << render.buffer_transfer_maps - render_before_scroll.buffer_transfer_maps
             << " scroll_texture_transfer_creations="
-            << render.texture_transfer_creations
-                - render_before_scroll.texture_transfer_creations
+            << render.texture_transfer_creations - render_before_scroll.texture_transfer_creations
             << " scroll_texture_transfer_maps="
             << render.texture_transfer_maps - render_before_scroll.texture_transfer_maps
-            << " quad_draws=" << render.quad_draws
-            << " glyph_draws=" << render.glyph_draws
-            << " effect_draws=" << render.effect_draws
-            << " submits=" << render.frame_submissions
-            << " idle_waits=" << frames.idle_waits
-            << " animation_frames=" << frames.animation_frames
+            << " quad_draws=" << render.quad_draws << " glyph_draws=" << render.glyph_draws
+            << " effect_draws=" << render.effect_draws << " submits=" << render.frame_submissions
+            << " idle_waits=" << frames.idle_waits << " animation_frames=" << frames.animation_frames
             << " idle_after_animation=" << frames.idle_after_animation
             << " animation_acceptance=" << (animation_acceptance ? "true" : "false")
             << " input_acceptance=" << (input_acceptance ? "true" : "false")
-            << " selection_acceptance=" << (selection_acceptance ? "true" : "false")
-            << " selection_theme=" << (selection_dark ? "dark"
-                : selection_compact ? "compact" : "default")
+            << " selection_acceptance=" << (selection_acceptance ? "true" : "false") << " selection_theme="
+            << (selection_dark      ? "dark"
+                : selection_compact ? "compact"
+                                    : "default")
             << " search_acceptance=" << (search_acceptance ? "true" : "false")
             << " search_keyboard=" << (search_keyboard ? "true" : "false")
             << " search_pointer=" << (search_pointer ? "true" : "false")
@@ -2500,8 +2268,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " document_track=" << (document_track_passed ? "passed" : "not-run")
             << " document_drag=" << (document_drag_passed ? "passed" : "not-run")
             << " scroll_acceptance_steps=" << scroll_stage
-            << " scroll_sequence_ms="
-            << (scroll_finished_milliseconds - scroll_started_milliseconds)
+            << " scroll_sequence_ms=" << (scroll_finished_milliseconds - scroll_started_milliseconds)
             << " input_latin=" << (input_latin ? "passed" : "not-run")
             << " input_selection=" << (input_selection ? "passed" : "not-run")
             << " input_clipboard=" << (input_clipboard ? "passed" : "not-run")
@@ -2509,11 +2276,12 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
             << " input_redo=" << (input_redo ? "passed" : "not-run")
             << " input_theme_status=" << (input_theme_status ? "passed" : "not-run")
             << " input_caret_idle=" << (input_caret_idle ? "passed" : "not-run")
-            << " automated_input_events=" << automated_input_events
-            << " motion_mode=" << (motion_disabled
-                    ? "theme-disabled"
-                    : reduced_motion ? "reduced" : "normal")
-            << " exit_code=" << (smoke_failed ? 6 : 0) << '\n' << std::flush;
+            << " automated_input_events=" << automated_input_events << " motion_mode="
+            << (motion_disabled  ? "theme-disabled"
+                : reduced_motion ? "reduced"
+                                 : "normal")
+            << " exit_code=" << (smoke_failed ? 6 : 0) << '\n'
+            << std::flush;
         return smoke_failed ? 6 : 0;
     } catch (const std::exception& error) {
         std::cerr << "fatal_error=" << error.what() << '\n';

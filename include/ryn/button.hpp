@@ -66,6 +66,7 @@ private:
 };
 
 struct ButtonContentSlot final {};
+
 using ButtonContent = SlotContent<ButtonContentSlot>;
 
 void Button(ButtonProps props, ButtonContent content);

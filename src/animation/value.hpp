@@ -18,20 +18,11 @@ enum class AnimationValueKind : std::uint8_t {
     logical_offset,
 };
 
-using AnimationValue = std::variant<
-    float,
-    Color,
-    runtime::Point,
-    runtime::Size,
-    runtime::Rect,
-    LogicalOffset>;
+using AnimationValue = std::variant<float, Color, runtime::Point, runtime::Size, runtime::Rect, LogicalOffset>;
 
-[[nodiscard]] AnimationValueKind value_kind(
-    const AnimationValue& value) noexcept;
+[[nodiscard]] AnimationValueKind value_kind(const AnimationValue& value) noexcept;
 void validate_animation_value(const AnimationValue& value);
-[[nodiscard]] AnimationValue interpolate_animation_value(
-    const AnimationValue& from,
-    const AnimationValue& to,
-    float progress);
+[[nodiscard]] AnimationValue interpolate_animation_value(const AnimationValue& from, const AnimationValue& to,
+                                                         float progress);
 
 } // namespace ryn::animation

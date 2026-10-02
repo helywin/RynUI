@@ -10,10 +10,7 @@ using SdlWindowMetrics = PlatformWindowMetrics;
 
 class SdlEventAdapter final {
 public:
-    static void merge(
-        PlatformEvents& result,
-        const SDL_Event& event,
-        SdlWindowMetrics& metrics);
+    static void merge(PlatformEvents& result, const SDL_Event& event, SdlWindowMetrics& metrics);
 };
 
 } // namespace ryn::detail

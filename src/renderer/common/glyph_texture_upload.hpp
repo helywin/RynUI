@@ -19,22 +19,17 @@ struct GlyphTextureUpload final {
     std::span<const std::byte> bytes;
 };
 
-inline void validate_glyph_texture_upload(
-    const GlyphTextureUpload& source,
-    std::uint32_t target_width,
-    std::uint32_t target_height) {
+inline void validate_glyph_texture_upload(const GlyphTextureUpload& source, std::uint32_t target_width,
+                                          std::uint32_t target_height) {
     const auto rect = source.rectangle;
-    if (!rect.width || !rect.height
-        || std::uint64_t(rect.x) + rect.width > target_width
-        || std::uint64_t(rect.y) + rect.height > target_height
-        || source.source_row_pitch < rect.width
-        || source.source_offset > source.bytes.size()) {
+    if (!rect.width || !rect.height || std::uint64_t(rect.x) + rect.width > target_width ||
+        std::uint64_t(rect.y) + rect.height > target_height || source.source_row_pitch < rect.width ||
+        source.source_offset > source.bytes.size()) {
         throw std::out_of_range("Glyph texture source or destination range is invalid");
     }
     const auto available = source.bytes.size() - source.source_offset;
     // Subtraction/division avoids overflow, and the final row needs no padding.
-    if (rect.width > available
-        || std::size_t(rect.height - 1) > (available - rect.width) / source.source_row_pitch) {
+    if (rect.width > available || std::size_t(rect.height - 1) > (available - rect.width) / source.source_row_pitch) {
         throw std::out_of_range("Glyph texture source bytes are truncated");
     }
 }

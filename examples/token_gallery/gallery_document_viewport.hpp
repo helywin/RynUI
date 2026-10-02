@@ -20,17 +20,14 @@ struct GalleryDocumentAnchorId final {
         return generation != 0;
     }
 
-    friend constexpr bool operator==(
-        GalleryDocumentAnchorId,
-        GalleryDocumentAnchorId) = default;
+    friend constexpr bool operator==(GalleryDocumentAnchorId, GalleryDocumentAnchorId) = default;
 };
 
 struct GalleryComponentAnchor final {
     std::string_view identity;
     float offset{};
 
-    friend constexpr bool operator==(GalleryComponentAnchor,
-        GalleryComponentAnchor) = default;
+    friend constexpr bool operator==(GalleryComponentAnchor, GalleryComponentAnchor) = default;
 };
 
 struct GalleryDocumentResizeAnchor final {
@@ -43,8 +40,7 @@ struct GalleryDocumentViewportSnapshot final {
     float content_extent{};
     float maximum_offset{};
     float offset{};
-    GalleryDocumentSectionKind current_section{
-        GalleryDocumentSectionKind::header_source};
+    GalleryDocumentSectionKind current_section{GalleryDocumentSectionKind::header_source};
     std::uint32_t anchor_generation{};
 };
 
@@ -66,34 +62,28 @@ public:
     bool scroll_by(float delta);
 
     bool replace_anchors(std::span<const float> offsets);
-    [[nodiscard]] std::optional<GalleryDocumentAnchorId> anchor(
-        GalleryDocumentSectionKind section) const noexcept;
+    [[nodiscard]] std::optional<GalleryDocumentAnchorId> anchor(GalleryDocumentSectionKind section) const noexcept;
     bool replace_category_anchors(std::span<const float> offsets);
-    [[nodiscard]] std::optional<GalleryDocumentAnchorId> category_anchor(
-        AntDesignGalleryCategory category) const noexcept;
+    [[nodiscard]] std::optional<GalleryDocumentAnchorId>
+    category_anchor(AntDesignGalleryCategory category) const noexcept;
     bool replace_component_anchors(std::span<const GalleryComponentAnchor> anchors);
-    [[nodiscard]] std::optional<GalleryDocumentAnchorId> component_anchor(
-        std::string_view identity) const noexcept;
+    [[nodiscard]] std::optional<GalleryDocumentAnchorId> component_anchor(std::string_view identity) const noexcept;
     bool jump_to(GalleryDocumentAnchorId anchor);
     [[nodiscard]] GalleryDocumentResizeAnchor capture_resize_anchor() const;
     bool restore_resize_anchor(const GalleryDocumentResizeAnchor& anchor);
 
-    bool apply_subtree_translation(
-        ryn::runtime::NodeId root,
-        ryn::runtime::NodeStore& nodes,
-        ryn::runtime::DirtyQueues& dirty) const;
+    bool apply_subtree_translation(ryn::runtime::NodeId root, ryn::runtime::NodeStore& nodes,
+                                   ryn::runtime::DirtyQueues& dirty) const;
 
     [[nodiscard]] GalleryDocumentViewportSnapshot snapshot() const noexcept;
-    [[nodiscard]] const GalleryDocumentViewportDiagnostics& diagnostics()
-        const noexcept;
+    [[nodiscard]] const GalleryDocumentViewportDiagnostics& diagnostics() const noexcept;
 
 private:
     static constexpr std::size_t section_count = 6;
     static constexpr std::size_t category_count = 7;
     static constexpr std::size_t anchor_count = section_count + category_count;
 
-    [[nodiscard]] static std::size_t section_index(
-        GalleryDocumentSectionKind section) noexcept;
+    [[nodiscard]] static std::size_t section_index(GalleryDocumentSectionKind section) noexcept;
     [[nodiscard]] GalleryDocumentSectionKind current_section() const noexcept;
 
     GalleryScrollRange scroll_;

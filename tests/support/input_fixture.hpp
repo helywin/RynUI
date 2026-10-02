@@ -9,8 +9,10 @@
 namespace ryn_test::input_component {
 using namespace ryn;
 using namespace ryn::input;
+
 struct Platform final : TextInputPlatform, TextClipboard {
-    int starts{}, stops{};
+    int starts{};
+    int stops{};
     int cancels{};
     TextInputProperties last_properties;
     int areas{};
@@ -18,32 +20,63 @@ struct Platform final : TextInputPlatform, TextClipboard {
     WindowTextInputArea area;
     std::optional<String> clipboard;
     bool clipboard_failure{};
-    int reads{}, writes{};
+    int reads{};
+    int writes{};
     std::function<void()> on_clipboard;
+
     bool start(TextInputSessionStamp, const TextInputProperties& value) noexcept override {
-        ++starts; last_properties = value; return true;
+        ++starts;
+        last_properties = value;
+        return true;
     }
-    bool stop() noexcept override { ++stops; return true; }
-    bool cancel() noexcept override { ++cancels; return true; }
+
+    bool stop() noexcept override {
+        ++stops;
+        return true;
+    }
+
+    bool cancel() noexcept override {
+        ++cancels;
+        return true;
+    }
+
     bool set_area(const WindowTextInputArea& value) noexcept override {
-        ++areas; if(area_failure) return false; area = value; return true;
+        ++areas;
+        if (area_failure) {
+            return false;
+        }
+        area = value;
+        return true;
     }
+
     ClipboardReadResult read_text() override {
         ++reads;
         auto result = clipboard_failure ? ClipboardReadResult{ClipboardError::platform_failure, {}}
-            : clipboard ? ClipboardReadResult{ClipboardError::none, clipboard} : ClipboardReadResult{ClipboardError::no_text, {}};
-        if(on_clipboard) on_clipboard();
+                      : clipboard       ? ClipboardReadResult{ClipboardError::none, clipboard}
+                                        : ClipboardReadResult{ClipboardError::no_text, {}};
+        if (on_clipboard) {
+            on_clipboard();
+        }
         return result;
     }
+
     ClipboardError write_text(StringView text) override {
         ++writes;
-        if(clipboard_failure) return ClipboardError::platform_failure;
+        if (clipboard_failure) {
+            return ClipboardError::platform_failure;
+        }
         clipboard = String::from_utf8(text.bytes()).value();
-        if(on_clipboard) on_clipboard();
+        if (on_clipboard) {
+            on_clipboard();
+        }
         return ClipboardError::none;
     }
-    ClipboardAvailability has_text() const noexcept override { return {}; }
+
+    ClipboardAvailability has_text() const noexcept override {
+        return {};
+    }
 };
+
 struct Fixture {
     runtime::NodeStore nodes;
     runtime::FrameRequestState frames;
@@ -54,24 +87,44 @@ struct Fixture {
     detail::TextSceneService scene{*fonts, engine, frames};
     float font_scale{1.0F};
     std::map<std::uint32_t, std::vector<font::FontIdentity>> chains;
+
     std::vector<font::FontIdentity> resolve(std::uint32_t pixels) {
-        if(auto found = chains.find(pixels); found != chains.end()) return found->second;
-        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, font::FontRasterConfig{pixels, font_scale});
-        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, font::FontRasterConfig{pixels, font_scale});
-        if(!latin || !cjk) throw std::runtime_error("Input validation fonts failed to load");
+        if (auto found = chains.find(pixels); found != chains.end()) {
+            return found->second;
+        }
+        const auto latin =
+            fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, font::FontRasterConfig{pixels, font_scale});
+        const auto cjk =
+            fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, font::FontRasterConfig{pixels, font_scale});
+        if (!latin || !cjk) {
+            throw std::runtime_error("Input validation fonts failed to load");
+        }
         auto chain = std::vector<font::FontIdentity>{latin.font, cjk.font};
-        chains.emplace(pixels, chain); return chain;
+        chains.emplace(pixels, chain);
+        return chain;
     }
-    detail::WindowComponentServices services{nodes, layout, dirty, scene,
-        [this](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) { return resolve(pixels); }, frames};
+
+    detail::WindowComponentServices services{
+        nodes,
+        layout,
+        dirty,
+        scene,
+        [this](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) { return resolve(pixels); },
+        frames};
     detail::ButtonComponentHost buttons{services};
     Platform platform;
     detail::InputComponentHost inputs{services, platform, platform};
+
     // Settled geometry/material fixture; animation tests explicitly select normal
     // motion and drive the retained clock themselves.
-    Fixture() { buttons.set_motion_preference(animation::MotionPreference::reduced); }
+    Fixture() {
+        buttons.set_motion_preference(animation::MotionPreference::reduced);
+    }
+
     void synchronize(float width = 320, runtime::Rect clip = {0, 0, 320, 240}) {
-        if(!buttons.layout_and_synchronize({width, 240}, clip)) throw std::runtime_error("layout synchronization failed");
+        if (!buttons.layout_and_synchronize({width, 240}, clip)) {
+            throw std::runtime_error("layout synchronization failed");
+        }
     }
 };
-}
+} // namespace ryn_test::input_component

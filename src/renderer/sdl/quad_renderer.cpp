@@ -29,9 +29,7 @@ std::vector<Uint8> read_shader(const std::filesystem::path& path) {
     }
     std::vector<Uint8> bytes(static_cast<std::size_t>(size));
     stream.seekg(0);
-    stream.read(
-        reinterpret_cast<char*>(bytes.data()),
-        static_cast<std::streamsize>(size));
+    stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(size));
     if (!stream) {
         throw std::runtime_error("Unable to read shader: " + path.string());
     }
@@ -49,12 +47,8 @@ ShaderSelection select_shader_format(SDL_GPUDevice* device) {
     throw std::runtime_error("SDL GPU device supports neither DXIL nor SPIR-V");
 }
 
-SDL_GPUShader* create_shader(
-    SDL_GPUDevice* device,
-    const std::filesystem::path& path,
-    const char* entrypoint,
-    SDL_GPUShaderFormat format,
-    SDL_GPUShaderStage stage) {
+SDL_GPUShader* create_shader(SDL_GPUDevice* device, const std::filesystem::path& path, const char* entrypoint,
+                             SDL_GPUShaderFormat format, SDL_GPUShaderStage stage) {
     const auto code = read_shader(path);
     SDL_GPUShaderCreateInfo info{};
     info.code_size = code.size();
@@ -72,30 +66,22 @@ std::string sdl_error(const char* fallback) {
 
 } // namespace
 
-SdlQuadRenderer::SdlQuadRenderer(
-    PlatformState& platform,
-    const std::filesystem::path& shader_directory, bool debug_mode)
+SdlQuadRenderer::SdlQuadRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
+                                 bool debug_mode)
     : platform_(&platform), binding_(platform, debug_mode) {
     auto* device = static_cast<SDL_GPUDevice*>(binding_.device());
     auto* window = static_cast<SDL_Window*>(platform.window());
     const auto selection = select_shader_format(device);
     shader_format_ = selection.name;
 
-    auto* vertex_shader = create_shader(
-        device,
-        shader_directory / (std::string("quad.vertex.") + selection.extension),
-        "VSMain",
-        selection.format,
-        SDL_GPU_SHADERSTAGE_VERTEX);
+    auto* vertex_shader = create_shader(device, shader_directory / (std::string("quad.vertex.") + selection.extension),
+                                        "VSMain", selection.format, SDL_GPU_SHADERSTAGE_VERTEX);
     if (vertex_shader == nullptr) {
         throw std::runtime_error(sdl_error("Failed to create Quad vertex shader"));
     }
-    auto* fragment_shader = create_shader(
-        device,
-        shader_directory / (std::string("quad.fragment.") + selection.extension),
-        "PSMain",
-        selection.format,
-        SDL_GPU_SHADERSTAGE_FRAGMENT);
+    auto* fragment_shader =
+        create_shader(device, shader_directory / (std::string("quad.fragment.") + selection.extension), "PSMain",
+                      selection.format, SDL_GPU_SHADERSTAGE_FRAGMENT);
     if (fragment_shader == nullptr) {
         SDL_ReleaseGPUShader(device, vertex_shader);
         throw std::runtime_error(sdl_error("Failed to create Quad fragment shader"));
@@ -123,10 +109,7 @@ SdlQuadRenderer::SdlQuadRenderer(
     color_target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
     color_target.blend_state.color_write_mask = static_cast<SDL_GPUColorComponentFlags>(
-        SDL_GPU_COLORCOMPONENT_R
-        | SDL_GPU_COLORCOMPONENT_G
-        | SDL_GPU_COLORCOMPONENT_B
-        | SDL_GPU_COLORCOMPONENT_A);
+        SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A);
     color_target.blend_state.enable_blend = true;
     color_target.blend_state.enable_color_write_mask = true;
 
@@ -136,8 +119,7 @@ SdlQuadRenderer::SdlQuadRenderer(
     pipeline_info.vertex_input_state.vertex_buffer_descriptions = &buffer_description;
     pipeline_info.vertex_input_state.num_vertex_buffers = 1;
     pipeline_info.vertex_input_state.vertex_attributes = attributes.data();
-    pipeline_info.vertex_input_state.num_vertex_attributes =
-        static_cast<Uint32>(attributes.size());
+    pipeline_info.vertex_input_state.num_vertex_attributes = static_cast<Uint32>(attributes.size());
     pipeline_info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
     pipeline_info.target_info.color_target_descriptions = &color_target;
@@ -152,15 +134,12 @@ SdlQuadRenderer::SdlQuadRenderer(
 
 SdlQuadRenderer::~SdlQuadRenderer() {
     if (pipeline_ != nullptr) {
-        SDL_ReleaseGPUGraphicsPipeline(
-            static_cast<SDL_GPUDevice*>(binding_.device()),
-            static_cast<SDL_GPUGraphicsPipeline*>(pipeline_));
+        SDL_ReleaseGPUGraphicsPipeline(static_cast<SDL_GPUDevice*>(binding_.device()),
+                                       static_cast<SDL_GPUGraphicsPipeline*>(pipeline_));
     }
 }
 
-void SdlQuadRenderer::attach_scene(
-    detail::QuadGpuBuffer& buffer,
-    std::uint32_t instance_count) {
+void SdlQuadRenderer::attach_scene(detail::QuadGpuBuffer& buffer, std::uint32_t instance_count) {
     if (instance_count == 0 || instance_count > buffer.capacity()) {
         throw std::invalid_argument("Quad scene instance count exceeds the GPU buffer");
     }
@@ -176,9 +155,7 @@ detail::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t si
     SDL_GPUBufferCreateInfo info{};
     info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     info.size = static_cast<Uint32>(size);
-    auto* buffer = SDL_CreateGPUBuffer(
-        static_cast<SDL_GPUDevice*>(binding_.device()),
-        &info);
+    auto* buffer = SDL_CreateGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), &info);
     if (buffer == nullptr) {
         last_error_ = sdl_error("Failed to create Quad vertex buffer");
     }
@@ -186,22 +163,16 @@ detail::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t si
 }
 
 void SdlQuadRenderer::release_buffer(detail::QuadGpuBufferHandle buffer) noexcept {
-    SDL_ReleaseGPUBuffer(
-        static_cast<SDL_GPUDevice*>(binding_.device()),
-        static_cast<SDL_GPUBuffer*>(buffer));
+    SDL_ReleaseGPUBuffer(static_cast<SDL_GPUDevice*>(binding_.device()), static_cast<SDL_GPUBuffer*>(buffer));
 }
 
-bool SdlQuadRenderer::upload(
-    detail::QuadGpuBufferHandle buffer,
-    std::size_t offset,
-    std::span<const std::byte> bytes) {
+bool SdlQuadRenderer::upload(detail::QuadGpuBufferHandle buffer, std::size_t offset, std::span<const std::byte> bytes) {
     if (!platform_->is_owner_thread()) {
         last_error_ = "GPU uploads must run on the Window owner thread";
         return false;
     }
-    if (buffer == nullptr || bytes.empty()
-            || offset > std::numeric_limits<Uint32>::max()
-            || bytes.size() > std::numeric_limits<Uint32>::max()) {
+    if (buffer == nullptr || bytes.empty() || offset > std::numeric_limits<Uint32>::max() ||
+        bytes.size() > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Quad upload range is invalid";
         return false;
     }
@@ -262,8 +233,7 @@ const char* SdlQuadRenderer::last_error() const noexcept {
     return last_error_.c_str();
 }
 
-runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
-    animation::AnimationTime) {
+runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(animation::AnimationTime) {
     if (!platform_->is_owner_thread()) {
         last_error_ = "GPU frame work must run on the Window owner thread";
         return runtime::FrameSubmissionResult::failed;
@@ -284,12 +254,8 @@ runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
     SDL_GPUTexture* swapchain = nullptr;
     Uint32 width = 0;
     Uint32 height = 0;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(
-            command,
-            static_cast<SDL_Window*>(platform_->window()),
-            &swapchain,
-            &width,
-            &height)) {
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(command, static_cast<SDL_Window*>(platform_->window()), &swapchain,
+                                               &width, &height)) {
         last_error_ = sdl_error("Failed to acquire Quad swapchain texture");
         SDL_CancelGPUCommandBuffer(command);
         return runtime::FrameSubmissionResult::failed;
@@ -323,12 +289,7 @@ runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
         0,
     };
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
-    SDL_DrawGPUPrimitives(
-        pass,
-        detail::quad_vertex_count,
-        instance_count_,
-        0,
-        0);
+    SDL_DrawGPUPrimitives(pass, detail::quad_vertex_count, instance_count_, 0, 0);
     ++counters_.draw_calls;
     SDL_EndGPURenderPass(pass);
 

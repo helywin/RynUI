@@ -43,15 +43,13 @@ struct FontDescriptor {
 };
 
 #if defined(_WIN32)
-template <typename T>
-class ComHandle final {
+template <typename T> class ComHandle final {
 public:
     ComHandle() = default;
     ComHandle(const ComHandle&) = delete;
     ComHandle& operator=(const ComHandle&) = delete;
 
-    ComHandle(ComHandle&& other) noexcept
-        : value_(std::exchange(other.value_, nullptr)) {}
+    ComHandle(ComHandle&& other) noexcept : value_(std::exchange(other.value_, nullptr)) {}
 
     ComHandle& operator=(ComHandle&& other) noexcept {
         if (this != &other) {
@@ -61,15 +59,26 @@ public:
         return *this;
     }
 
-    ~ComHandle() { reset(); }
+    ~ComHandle() {
+        reset();
+    }
 
-    [[nodiscard]] T* get() const noexcept { return value_; }
+    [[nodiscard]] T* get() const noexcept {
+        return value_;
+    }
+
     [[nodiscard]] T** put() noexcept {
         reset();
         return &value_;
     }
-    [[nodiscard]] T* operator->() const noexcept { return value_; }
-    [[nodiscard]] explicit operator bool() const noexcept { return value_ != nullptr; }
+
+    [[nodiscard]] T* operator->() const noexcept {
+        return value_;
+    }
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return value_ != nullptr;
+    }
 
 private:
     void reset() noexcept {
@@ -86,28 +95,14 @@ private:
     if (value.empty()) {
         return {};
     }
-    const int size = WideCharToMultiByte(
-        CP_UTF8,
-        WC_ERR_INVALID_CHARS,
-        value.data(),
-        static_cast<int>(value.size()),
-        nullptr,
-        0,
-        nullptr,
-        nullptr);
+    const int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()),
+                                         nullptr, 0, nullptr, nullptr);
     if (size <= 0) {
         return {};
     }
     std::string result(static_cast<std::size_t>(size), '\0');
-    if (WideCharToMultiByte(
-            CP_UTF8,
-            WC_ERR_INVALID_CHARS,
-            value.data(),
-            static_cast<int>(value.size()),
-            result.data(),
-            size,
-            nullptr,
-            nullptr) != size) {
+    if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), result.data(),
+                            size, nullptr, nullptr) != size) {
         return {};
     }
     return result;
@@ -119,9 +114,8 @@ private:
         return {};
     }
     ComHandle<IDWriteLocalFontFileLoader> local_loader;
-    if (FAILED(loader->QueryInterface(
-            __uuidof(IDWriteLocalFontFileLoader),
-            reinterpret_cast<void**>(local_loader.put())))) {
+    if (FAILED(loader->QueryInterface(__uuidof(IDWriteLocalFontFileLoader),
+                                      reinterpret_cast<void**>(local_loader.put())))) {
         return {};
     }
 
@@ -131,32 +125,25 @@ private:
         return {};
     }
     UINT32 path_length = 0;
-    if (FAILED(local_loader->GetFilePathLengthFromKey(
-            key, key_size, &path_length))) {
+    if (FAILED(local_loader->GetFilePathLengthFromKey(key, key_size, &path_length))) {
         return {};
     }
     std::wstring path(static_cast<std::size_t>(path_length) + 1U, L'\0');
-    if (FAILED(local_loader->GetFilePathFromKey(
-            key,
-            key_size,
-            path.data(),
-            static_cast<UINT32>(path.size())))) {
+    if (FAILED(local_loader->GetFilePathFromKey(key, key_size, path.data(), static_cast<UINT32>(path.size())))) {
         return {};
     }
     path.resize(path_length);
     return std::filesystem::path{path};
 }
 
-[[nodiscard]] std::optional<FontDescriptor> resolve_family(
-    IDWriteFontCollection& collection,
-    std::wstring_view family_name,
-    DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL,
-    DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL) {
+[[nodiscard]] std::optional<FontDescriptor> resolve_family(IDWriteFontCollection& collection,
+                                                           std::wstring_view family_name,
+                                                           DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL,
+                                                           DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL) {
     UINT32 family_index = 0;
     BOOL exists = FALSE;
     const std::wstring name{family_name};
-    if (FAILED(collection.FindFamilyName(name.c_str(), &family_index, &exists))
-            || !exists) {
+    if (FAILED(collection.FindFamilyName(name.c_str(), &family_index, &exists)) || !exists) {
         return std::nullopt;
     }
 
@@ -175,11 +162,11 @@ private:
         return std::nullopt;
     }
     const auto slant_rank = [&](DWRITE_FONT_STYLE candidate) {
-        if (candidate == style) return 0;
-        const bool italic_side = style == DWRITE_FONT_STYLE_ITALIC
-            || style == DWRITE_FONT_STYLE_OBLIQUE;
-        const bool candidate_italic = candidate == DWRITE_FONT_STYLE_ITALIC
-            || candidate == DWRITE_FONT_STYLE_OBLIQUE;
+        if (candidate == style) {
+            return 0;
+        }
+        const bool italic_side = style == DWRITE_FONT_STYLE_ITALIC || style == DWRITE_FONT_STYLE_OBLIQUE;
+        const bool candidate_italic = candidate == DWRITE_FONT_STYLE_ITALIC || candidate == DWRITE_FONT_STYLE_OBLIQUE;
         return italic_side == candidate_italic ? 1 : 2;
     };
     ComHandle<IDWriteFont> font;
@@ -188,21 +175,19 @@ private:
     int best_distance = std::numeric_limits<int>::max();
     for (UINT32 index = 0; index < font_count; ++index) {
         ComHandle<IDWriteFont> candidate;
-        if (FAILED(family->GetFont(index, candidate.put()))
-                || candidate->GetSimulations() != DWRITE_FONT_SIMULATIONS_NONE) {
+        if (FAILED(family->GetFont(index, candidate.put())) ||
+            candidate->GetSimulations() != DWRITE_FONT_SIMULATIONS_NONE) {
             continue;
         }
         const int rank = slant_rank(candidate->GetStyle());
-        const int distance = std::abs(
-            static_cast<int>(candidate->GetWeight()) - static_cast<int>(weight));
+        const int distance = std::abs(static_cast<int>(candidate->GetWeight()) - static_cast<int>(weight));
         if (rank < best_rank || (rank == best_rank && distance < best_distance)) {
             best_rank = rank;
             best_distance = distance;
             best_index = index;
         }
     }
-    if (best_distance == std::numeric_limits<int>::max()
-            || FAILED(family->GetFont(best_index, font.put()))) {
+    if (best_distance == std::numeric_limits<int>::max() || FAILED(family->GetFont(best_index, font.put()))) {
         return std::nullopt;
     }
     const auto matched_weight = font->GetWeight();
@@ -272,10 +257,8 @@ enum class PlatformFontRole {
         std::wstring_view{L"Lucida Console"},
     };
     ComHandle<IDWriteFactory> factory;
-    if (FAILED(DWriteCreateFactory(
-            DWRITE_FACTORY_TYPE_SHARED,
-            __uuidof(IDWriteFactory),
-            reinterpret_cast<IUnknown**>(factory.put())))) {
+    if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
+                                   reinterpret_cast<IUnknown**>(factory.put())))) {
         return {};
     }
     ComHandle<IDWriteFontCollection> collection;
@@ -309,10 +292,8 @@ enum class PlatformFontRole {
 // Resolves every named candidate at the requested weight and slant. A family
 // that has no such face is skipped so the caller can continue to the next
 // candidate instead of silently receiving the regular face.
-[[nodiscard]] std::vector<FontDescriptor> windows_styled_fonts(
-    PlatformFontRole role,
-    std::uint32_t weight,
-    bool italic) {
+[[nodiscard]] std::vector<FontDescriptor> windows_styled_fonts(PlatformFontRole role, std::uint32_t weight,
+                                                               bool italic) {
     constexpr std::array latin_families{
         std::wstring_view{L"Segoe UI Variable Text"},
         std::wstring_view{L"Segoe UI Variable"},
@@ -324,10 +305,8 @@ enum class PlatformFontRole {
         std::wstring_view{L"Lucida Console"},
     };
     ComHandle<IDWriteFactory> factory;
-    if (FAILED(DWriteCreateFactory(
-            DWRITE_FACTORY_TYPE_SHARED,
-            __uuidof(IDWriteFactory),
-            reinterpret_cast<IUnknown**>(factory.put())))) {
+    if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
+                                   reinterpret_cast<IUnknown**>(factory.put())))) {
         return {};
     }
     ComHandle<IDWriteFontCollection> collection;
@@ -337,8 +316,7 @@ enum class PlatformFontRole {
     const auto style = italic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
     std::vector<FontDescriptor> result;
     const auto resolve_real_style = [&](std::wstring_view name) {
-        auto resolved = resolve_family(*collection.get(), name,
-            static_cast<DWRITE_FONT_WEIGHT>(weight), style);
+        auto resolved = resolve_family(*collection.get(), name, static_cast<DWRITE_FONT_WEIGHT>(weight), style);
         if (!resolved || resolved->italic != italic) {
             return std::optional<FontDescriptor>{};
         }
@@ -349,8 +327,7 @@ enum class PlatformFontRole {
             // but a path/index descriptor cannot carry their axis coordinates.
             // Continue to a static family instead of claiming that metadata alone
             // changed the rendered weight or slant.
-            if (regular && resolved->path == regular->path
-                    && resolved->face_index == regular->face_index) {
+            if (regular && resolved->path == regular->path && resolved->face_index == regular->face_index) {
                 return std::optional<FontDescriptor>{};
             }
         }
@@ -463,8 +440,7 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     if (FcPatternGetInteger(&pattern, FC_LCD_FILTER, 0, &integer) == FcResultMatch) {
         policy.lcd_filter = font_lcd_filter(integer);
     }
-    if (FcPatternGetBool(&pattern, FC_EMBEDDED_BITMAP, 0, &boolean)
-            == FcResultMatch) {
+    if (FcPatternGetBool(&pattern, FC_EMBEDDED_BITMAP, 0, &boolean) == FcResultMatch) {
         policy.embedded_bitmap = boolean == FcTrue;
     }
     return policy;
@@ -472,14 +448,30 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
 
 // Maps the CSS/DirectWrite weight scale to the Fontconfig weight constants.
 [[nodiscard]] int fontconfig_weight(std::uint32_t weight) noexcept {
-    if (weight <= 150U) return FC_WEIGHT_THIN;
-    if (weight <= 250U) return FC_WEIGHT_EXTRALIGHT;
-    if (weight <= 350U) return FC_WEIGHT_LIGHT;
-    if (weight <= 450U) return FC_WEIGHT_REGULAR;
-    if (weight <= 550U) return FC_WEIGHT_MEDIUM;
-    if (weight <= 650U) return FC_WEIGHT_DEMIBOLD;
-    if (weight <= 750U) return FC_WEIGHT_BOLD;
-    if (weight <= 850U) return FC_WEIGHT_EXTRABOLD;
+    if (weight <= 150U) {
+        return FC_WEIGHT_THIN;
+    }
+    if (weight <= 250U) {
+        return FC_WEIGHT_EXTRALIGHT;
+    }
+    if (weight <= 350U) {
+        return FC_WEIGHT_LIGHT;
+    }
+    if (weight <= 450U) {
+        return FC_WEIGHT_REGULAR;
+    }
+    if (weight <= 550U) {
+        return FC_WEIGHT_MEDIUM;
+    }
+    if (weight <= 650U) {
+        return FC_WEIGHT_DEMIBOLD;
+    }
+    if (weight <= 750U) {
+        return FC_WEIGHT_BOLD;
+    }
+    if (weight <= 850U) {
+        return FC_WEIGHT_EXTRABOLD;
+    }
     return FC_WEIGHT_BLACK;
 }
 
@@ -488,32 +480,20 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
 // face backs it. `weight` and `italic` are requested explicitly; a face the
 // platform cannot match falls back to the family default, which the caller
 // detects by comparing the requested and returned style.
-[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_family(
-    FcConfig& config,
-    const char* language,
-    char32_t coverage_probe,
-    const char* generic_family,
-    const char* fallback_name,
-    std::optional<std::uint32_t> weight = std::nullopt,
-    bool italic = false) {
+[[nodiscard]] std::optional<FontDescriptor>
+resolve_fontconfig_family(FcConfig& config, const char* language, char32_t coverage_probe, const char* generic_family,
+                          const char* fallback_name, std::optional<std::uint32_t> weight = std::nullopt,
+                          bool italic = false) {
     UniqueFcPattern request{FcPatternCreate()};
-    if (!request
-            || FcPatternAddString(
-                request.get(), FC_FAMILY,
-                reinterpret_cast<const FcChar8*>(generic_family)) == FcFalse
-            || FcPatternAddString(
-                request.get(), FC_LANG,
-                reinterpret_cast<const FcChar8*>(language)) == FcFalse) {
+    if (!request ||
+        FcPatternAddString(request.get(), FC_FAMILY, reinterpret_cast<const FcChar8*>(generic_family)) == FcFalse ||
+        FcPatternAddString(request.get(), FC_LANG, reinterpret_cast<const FcChar8*>(language)) == FcFalse) {
         return std::nullopt;
     }
-    if (weight.has_value()
-            && FcPatternAddInteger(request.get(), FC_WEIGHT,
-                fontconfig_weight(*weight)) == FcFalse) {
+    if (weight.has_value() && FcPatternAddInteger(request.get(), FC_WEIGHT, fontconfig_weight(*weight)) == FcFalse) {
         return std::nullopt;
     }
-    if (italic
-            && FcPatternAddInteger(request.get(), FC_SLANT, FC_SLANT_ITALIC)
-                == FcFalse) {
+    if (italic && FcPatternAddInteger(request.get(), FC_SLANT, FC_SLANT_ITALIC) == FcFalse) {
         return std::nullopt;
     }
     if (FcConfigSubstitute(&config, request.get(), FcMatchPattern) == FcFalse) {
@@ -530,9 +510,8 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     FcChar8* path = nullptr;
     FcChar8* family = nullptr;
     int face_index = 0;
-    if (FcPatternGetString(match.get(), FC_FILE, 0, &path) != FcResultMatch
-            || FcPatternGetInteger(match.get(), FC_INDEX, 0, &face_index)
-                != FcResultMatch) {
+    if (FcPatternGetString(match.get(), FC_FILE, 0, &path) != FcResultMatch ||
+        FcPatternGetInteger(match.get(), FC_INDEX, 0, &face_index) != FcResultMatch) {
         return std::nullopt;
     }
     static_cast<void>(FcPatternGetString(match.get(), FC_FAMILY, 0, &family));
@@ -544,9 +523,7 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     return FontDescriptor{
         std::filesystem::path{reinterpret_cast<const char*>(path)},
         static_cast<long>(face_index),
-        family != nullptr
-            ? reinterpret_cast<const char*>(family)
-            : std::string{fallback_name},
+        family != nullptr ? reinterpret_cast<const char*>(family) : std::string{fallback_name},
         coverage_probe,
         false,
         true,
@@ -556,30 +533,23 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     };
 }
 
-[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_default(
-    FcConfig& config,
-    const char* language,
-    char32_t coverage_probe) {
-    return resolve_fontconfig_family(config, language, coverage_probe, "sans-serif",
-        "LinuxSystemSans");
+[[nodiscard]] std::optional<FontDescriptor> resolve_fontconfig_default(FcConfig& config, const char* language,
+                                                                       char32_t coverage_probe) {
+    return resolve_fontconfig_family(config, language, coverage_probe, "sans-serif", "LinuxSystemSans");
 }
 
 // Resolves the platform family for the requested role, weight and slant. On
 // Linux the generic family alias lets Fontconfig pick the concrete family and
 // its matched style is reported back so callers can detect a fallback.
-[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(
-    PlatformFontRole role,
-    std::uint32_t weight,
-    bool italic) {
+[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(PlatformFontRole role, std::uint32_t weight,
+                                                                       bool italic) {
     UniqueFcConfig config{FcInitLoadConfigAndFonts()};
     if (!config) {
         return std::nullopt;
     }
     const bool monospace = role == PlatformFontRole::monospace;
-    return resolve_fontconfig_family(*config, "en", U'\0',
-        monospace ? "monospace" : "sans-serif",
-        monospace ? "LinuxSystemMonospace" : "LinuxSystemSans",
-        weight, italic);
+    return resolve_fontconfig_family(*config, "en", U'\0', monospace ? "monospace" : "sans-serif",
+                                     monospace ? "LinuxSystemMonospace" : "LinuxSystemSans", weight, italic);
 }
 
 [[nodiscard]] std::vector<FontDescriptor> platform_system_fonts(PlatformFontRole role) {
@@ -589,8 +559,7 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     }
     std::vector<FontDescriptor> result;
     if (role == PlatformFontRole::monospace) {
-        if (auto mono = resolve_fontconfig_family(*config, "en", U'\0', "monospace",
-                "LinuxSystemMonospace")) {
+        if (auto mono = resolve_fontconfig_family(*config, "en", U'\0', "monospace", "LinuxSystemMonospace")) {
             result.push_back(std::move(*mono));
         }
         return result;
@@ -608,10 +577,7 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     return {};
 }
 
-[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(
-    PlatformFontRole,
-    std::uint32_t,
-    bool) {
+[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(PlatformFontRole, std::uint32_t, bool) {
     return std::nullopt;
 }
 #endif
@@ -621,10 +587,8 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     return windows_system_fonts(role);
 }
 
-[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(
-    PlatformFontRole role,
-    std::uint32_t weight,
-    bool italic) {
+[[nodiscard]] std::optional<FontDescriptor> platform_styled_descriptor(PlatformFontRole role, std::uint32_t weight,
+                                                                       bool italic) {
     const auto candidates = windows_styled_fonts(role, weight, italic);
     if (candidates.empty()) {
         return std::nullopt;
@@ -637,12 +601,8 @@ using UniqueFcPattern = std::unique_ptr<FcPattern, FcPatternDeleter>;
     return left.face_index == right.face_index && left.path == right.path;
 }
 
-void append_unique(
-    std::vector<FontDescriptor>& descriptors,
-    FontDescriptor descriptor) {
-    if (std::ranges::none_of(descriptors, [&](const auto& existing) {
-            return same_face(existing, descriptor);
-        })) {
+void append_unique(std::vector<FontDescriptor>& descriptors, FontDescriptor descriptor) {
+    if (std::ranges::none_of(descriptors, [&](const auto& existing) { return same_face(existing, descriptor); })) {
         descriptors.push_back(std::move(descriptor));
     }
 }
@@ -670,8 +630,7 @@ struct FaceKey final {
 };
 
 void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) noexcept {
-    for (auto face = result.monospace_faces.rbegin();
-         face != result.monospace_faces.rend(); ++face) {
+    for (auto face = result.monospace_faces.rbegin(); face != result.monospace_faces.rend(); ++face) {
         static_cast<void>(fonts.remove_font(face->identity));
     }
     result.monospace_faces.clear();
@@ -681,46 +640,29 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     result.faces.clear();
 }
 
-[[nodiscard]] bool covers(
-    font::FontRuntime& fonts,
-    const DefaultFontChainResult& result,
-    char32_t codepoint) {
+[[nodiscard]] bool covers(font::FontRuntime& fonts, const DefaultFontChainResult& result, char32_t codepoint) {
     const auto identities = result.identities();
     return static_cast<bool>(fonts.find_glyph(identities, codepoint, std::nullopt));
 }
 
-[[nodiscard]] std::optional<LoadedDefaultFontFace> load_face(
-    font::FontRuntime& fonts,
-    const FontDescriptor& descriptor,
-    font::FontRasterConfig raster) {
+[[nodiscard]] std::optional<LoadedDefaultFontFace> load_face(font::FontRuntime& fonts, const FontDescriptor& descriptor,
+                                                             font::FontRasterConfig raster) {
     if (descriptor.raster_policy.has_value()) {
         raster.policy = *descriptor.raster_policy;
     }
-    const auto loaded = fonts.load_font_file(
-        descriptor.path,
-        descriptor.face_index,
-        raster);
+    const auto loaded = fonts.load_font_file(descriptor.path, descriptor.face_index, raster);
     if (!loaded) {
         return std::nullopt;
     }
     return LoadedDefaultFontFace{
-        loaded.font,
-        descriptor.path,
-        descriptor.face_index,
-        descriptor.family_name,
-        raster.policy,
-        descriptor.custom_font,
-        descriptor.system_font,
-        descriptor.weight,
+        loaded.font,       descriptor.path,        descriptor.face_index,  descriptor.family_name,
+        raster.policy,     descriptor.custom_font, descriptor.system_font, descriptor.weight,
         descriptor.italic,
     };
 }
 
-[[nodiscard]] bool load_descriptor(
-    font::FontRuntime& fonts,
-    const FontDescriptor& descriptor,
-    font::FontRasterConfig raster,
-    DefaultFontChainResult& result) {
+[[nodiscard]] bool load_descriptor(font::FontRuntime& fonts, const FontDescriptor& descriptor,
+                                   font::FontRasterConfig raster, DefaultFontChainResult& result) {
     auto face = load_face(fonts, descriptor, raster);
     if (!face.has_value()) {
         return false;
@@ -728,18 +670,15 @@ void release_loaded(font::FontRuntime& fonts, DefaultFontChainResult& result) no
     result.faces.push_back(std::move(*face));
     result.uses_custom_fonts = result.uses_custom_fonts || descriptor.custom_font;
     result.uses_system_fonts = result.uses_system_fonts || descriptor.system_font;
-    result.uses_bundled_fallbacks = result.uses_bundled_fallbacks
-        || (!descriptor.custom_font && !descriptor.system_font);
+    result.uses_bundled_fallbacks =
+        result.uses_bundled_fallbacks || (!descriptor.custom_font && !descriptor.system_font);
     return true;
 }
 
 // Monospace faces are separate from the UI chain, so a failure to resolve them
 // is not fatal: the UI chain still covers the codepoint.
-void load_monospace_descriptor(
-    font::FontRuntime& fonts,
-    const FontDescriptor& descriptor,
-    font::FontRasterConfig raster,
-    DefaultFontChainResult& result) {
+void load_monospace_descriptor(font::FontRuntime& fonts, const FontDescriptor& descriptor,
+                               font::FontRasterConfig raster, DefaultFontChainResult& result) {
     auto face = load_face(fonts, descriptor, raster);
     if (face.has_value()) {
         result.monospace_faces.push_back(std::move(*face));
@@ -879,41 +818,35 @@ std::string DefaultFontChainResult::telemetry_rendering() const {
     return result;
 }
 
-DefaultFontChainResult load_default_ui_font_chain(
-    font::FontRuntime& fonts,
-    const DefaultFontChainRequest& request) {
+DefaultFontChainResult load_default_ui_font_chain(font::FontRuntime& fonts, const DefaultFontChainRequest& request) {
     DefaultFontChainResult result;
     std::vector<FontDescriptor> descriptors;
     for (const auto& preferred : request.preferred_fonts) {
         append_unique(descriptors, {
-            preferred.path,
-            preferred.face_index,
-            preferred.family_name.empty() ? "CustomFont" : preferred.family_name,
-            U'\0',
-            true,
-            false,
-            {},
-            preferred.weight,
-            preferred.italic,
-        });
+                                       preferred.path,
+                                       preferred.face_index,
+                                       preferred.family_name.empty() ? "CustomFont" : preferred.family_name,
+                                       U'\0',
+                                       true,
+                                       false,
+                                       {},
+                                       preferred.weight,
+                                       preferred.italic,
+                                   });
     }
     for (const auto& descriptor : descriptors) {
         if (!load_descriptor(fonts, descriptor, request.raster, result)) {
             release_loaded(fonts, result);
-            result.diagnostic = "Configured custom UI font could not be loaded: "
-                + descriptor.path.string();
+            result.diagnostic = "Configured custom UI font could not be loaded: " + descriptor.path.string();
             return result;
         }
     }
 
     for (auto descriptor : platform_system_fonts(PlatformFontRole::ui)) {
-        if (descriptor.coverage_probe != U'\0'
-                && covers(fonts, result, descriptor.coverage_probe)) {
+        if (descriptor.coverage_probe != U'\0' && covers(fonts, result, descriptor.coverage_probe)) {
             continue;
         }
-        if (std::ranges::none_of(descriptors, [&](const auto& existing) {
-                return same_face(existing, descriptor);
-            })) {
+        if (std::ranges::none_of(descriptors, [&](const auto& existing) { return same_face(existing, descriptor); })) {
             static_cast<void>(load_descriptor(fonts, descriptor, request.raster, result));
             descriptors.push_back(std::move(descriptor));
         }
@@ -921,13 +854,7 @@ DefaultFontChainResult load_default_ui_font_chain(
 
     if (!covers(fonts, result, U'A')) {
         const FontDescriptor fallback{
-            request.fallback_latin,
-            0,
-            "BundledLatinFallback",
-            U'A',
-            false,
-            false,
-            {},
+            request.fallback_latin, 0, "BundledLatinFallback", U'A', false, false, {},
         };
         if (!load_descriptor(fonts, fallback, request.raster, result)) {
             release_loaded(fonts, result);
@@ -937,13 +864,7 @@ DefaultFontChainResult load_default_ui_font_chain(
     }
     if (!covers(fonts, result, U'中')) {
         const FontDescriptor fallback{
-            request.fallback_cjk,
-            0,
-            "BundledCjkFallback",
-            U'中',
-            false,
-            false,
-            {},
+            request.fallback_cjk, 0, "BundledCjkFallback", U'中', false, false, {},
         };
         if (!load_descriptor(fonts, fallback, request.raster, result)) {
             release_loaded(fonts, result);
@@ -958,25 +879,23 @@ DefaultFontChainResult load_default_ui_font_chain(
     std::vector<FontDescriptor> monospace;
     for (const auto& preferred : request.preferred_monospace_fonts) {
         append_unique(monospace, {
-            preferred.path,
-            preferred.face_index,
-            preferred.family_name.empty() ? "CustomMonospaceFont"
-                                          : preferred.family_name,
-            U'\0',
-            true,
-            false,
-            {},
-            preferred.weight,
-            preferred.italic,
-        });
+                                     preferred.path,
+                                     preferred.face_index,
+                                     preferred.family_name.empty() ? "CustomMonospaceFont" : preferred.family_name,
+                                     U'\0',
+                                     true,
+                                     false,
+                                     {},
+                                     preferred.weight,
+                                     preferred.italic,
+                                 });
     }
     for (auto descriptor : platform_system_fonts(PlatformFontRole::monospace)) {
         append_unique(monospace, std::move(descriptor));
     }
     for (const auto& descriptor : monospace) {
         if (std::ranges::any_of(result.faces, [&](const auto& existing) {
-                return existing.source_path == descriptor.path
-                    && existing.face_index == descriptor.face_index;
+                return existing.source_path == descriptor.path && existing.face_index == descriptor.face_index;
             })) {
             continue;
         }
@@ -985,13 +904,8 @@ DefaultFontChainResult load_default_ui_font_chain(
     return result;
 }
 
-std::optional<LoadedDefaultFontFace> resolve_platform_face(
-    SystemFontFamily family,
-    std::uint32_t weight,
-    bool italic) {
-    const auto role = family == SystemFontFamily::ui_monospace
-        ? PlatformFontRole::monospace
-        : PlatformFontRole::ui;
+std::optional<LoadedDefaultFontFace> resolve_platform_face(SystemFontFamily family, std::uint32_t weight, bool italic) {
+    const auto role = family == SystemFontFamily::ui_monospace ? PlatformFontRole::monospace : PlatformFontRole::ui;
     auto descriptor = platform_styled_descriptor(role, weight, italic);
     if (!descriptor.has_value()) {
         return std::nullopt;
@@ -1009,20 +923,19 @@ std::optional<LoadedDefaultFontFace> resolve_platform_face(
     };
 }
 
-DefaultUiFontResolver make_default_ui_font_resolver(
-    font::FontRuntime& fonts,
-    DefaultFontChainResult& initial_chain,
-    float display_scale) {
+DefaultUiFontResolver make_default_ui_font_resolver(font::FontRuntime& fonts, DefaultFontChainResult& initial_chain,
+                                                    float display_scale) {
     if (!initial_chain || !std::isfinite(display_scale) || display_scale <= 0.0F) {
-        throw std::invalid_argument(
-            "Default UI font resolver requires a loaded chain and positive display scale");
+        throw std::invalid_argument("Default UI font resolver requires a loaded chain and positive display scale");
     }
+
     struct ResolverState final {
         font::FontRuntime* fonts{};
         DefaultFontChainResult* chain{};
         float display_scale{1.0F};
         std::map<FaceKey, std::vector<font::FontIdentity>> cache;
     };
+
     auto state = std::make_shared<ResolverState>();
     state->fonts = &fonts;
     state->chain = &initial_chain;
@@ -1033,42 +946,33 @@ DefaultUiFontResolver make_default_ui_font_resolver(
     // because a weight/slant matrix would otherwise load many unused faces.
     for (const auto family : {SystemFontFamily::ui_sans, SystemFontFamily::ui_monospace}) {
         const bool monospace = family == SystemFontFamily::ui_monospace;
-        const auto& source = monospace ? initial_chain.monospace_faces
-                                       : initial_chain.faces;
+        const auto& source = monospace ? initial_chain.monospace_faces : initial_chain.faces;
         if (source.empty() || (!monospace && source.empty())) {
             continue;
         }
         const auto metrics = fonts.metrics(source.front().identity);
-        if (!metrics
-                || std::abs(metrics.metrics.display_scale - display_scale) >= 0.0001F) {
+        if (!metrics || std::abs(metrics.metrics.display_scale - display_scale) >= 0.0001F) {
             continue;
         }
-        state->cache.emplace(FaceKey{family, 400, false,
-                metrics.metrics.logical_pixel_size},
-            monospace ? initial_chain.monospace_identities()
-                      : initial_chain.identities());
+        state->cache.emplace(FaceKey{family, 400, false, metrics.metrics.logical_pixel_size},
+                             monospace ? initial_chain.monospace_identities() : initial_chain.identities());
     }
 
-    return [state](SystemFontFamily family, std::uint32_t weight, bool italic,
-                    std::uint32_t pixel_size) {
+    return [state](SystemFontFamily family, std::uint32_t weight, bool italic, std::uint32_t pixel_size) {
         const FaceKey key{family, weight, italic, pixel_size};
         if (const auto found = state->cache.find(key); found != state->cache.end()) {
             return found->second;
         }
         const bool monospace = family == SystemFontFamily::ui_monospace;
         const auto raster = [&](const LoadedDefaultFontFace& face) {
-            return font::FontRasterConfig{
-                pixel_size,
-                state->display_scale,
-                face.raster_policy};
+            return font::FontRasterConfig{pixel_size, state->display_scale, face.raster_policy};
         };
-        const auto reload = [&](std::span<const LoadedDefaultFontFace> source)
-            -> std::optional<std::vector<font::FontIdentity>> {
+        const auto reload =
+            [&](std::span<const LoadedDefaultFontFace> source) -> std::optional<std::vector<font::FontIdentity>> {
             std::vector<font::FontIdentity> identities;
             identities.reserve(source.size());
             for (const auto& face : source) {
-                const auto loaded = state->fonts->load_font_file(
-                    face.source_path, face.face_index, raster(face));
+                const auto loaded = state->fonts->load_font_file(face.source_path, face.face_index, raster(face));
                 if (!loaded) {
                     return std::nullopt;
                 }
@@ -1081,17 +985,14 @@ DefaultUiFontResolver make_default_ui_font_resolver(
         // slant. Two chains take part: `own` is the requested family and
         // `fallback` is the UI chain that a monospace request appends so an
         // uncovered codepoint still resolves.
-        const std::vector<LoadedDefaultFontFace>& own = monospace
-            ? state->chain->monospace_faces : state->chain->faces;
+        const std::vector<LoadedDefaultFontFace>& own = monospace ? state->chain->monospace_faces : state->chain->faces;
         const std::vector<LoadedDefaultFontFace>& fallback = state->chain->faces;
         std::vector<LoadedDefaultFontFace> styled;
         const auto already_loaded = [&](const LoadedDefaultFontFace& face) {
             const auto matches = [&](const LoadedDefaultFontFace& existing) {
-                return existing.source_path == face.source_path
-                    && existing.face_index == face.face_index;
+                return existing.source_path == face.source_path && existing.face_index == face.face_index;
             };
-            return std::ranges::any_of(own, matches)
-                || std::ranges::any_of(fallback, matches);
+            return std::ranges::any_of(own, matches) || std::ranges::any_of(fallback, matches);
         };
         const bool wants_style = weight != 400U || italic;
         if (wants_style) {
@@ -1103,24 +1004,21 @@ DefaultUiFontResolver make_default_ui_font_resolver(
                 // UI Variable reports one file for every weight).
                 if (already_loaded(*resolved)) {
                     state->chain->diagnostic_fallbacks.push_back(
-                        "requested weight " + std::to_string(weight)
-                        + (italic ? " italic" : "")
-                        + " resolved to an already loaded face; no styled face available");
+                        "requested weight " + std::to_string(weight) + (italic ? " italic" : "") +
+                        " resolved to an already loaded face; no styled face available");
                 } else {
                     styled.push_back(std::move(*resolved));
                 }
             } else {
-                state->chain->diagnostic_fallbacks.push_back(
-                    "requested weight " + std::to_string(weight)
-                    + (italic ? " italic" : "")
-                    + " could not be resolved; using the regular face");
+                state->chain->diagnostic_fallbacks.push_back("requested weight " + std::to_string(weight) +
+                                                             (italic ? " italic" : "") +
+                                                             " could not be resolved; using the regular face");
             }
         }
 
         std::vector<font::FontIdentity> identities;
         for (const auto& face : styled) {
-            const auto loaded = state->fonts->load_font_file(
-                face.source_path, face.face_index, raster(face));
+            const auto loaded = state->fonts->load_font_file(face.source_path, face.face_index, raster(face));
             if (loaded && std::ranges::find(identities, loaded.font) == identities.end()) {
                 identities.push_back(loaded.font);
             }

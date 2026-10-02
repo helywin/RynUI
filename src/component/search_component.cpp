@@ -76,6 +76,7 @@ namespace {
 
 struct SearchValueBridge final {
     explicit SearchValueBridge(String initial) : committed(std::move(initial)) {}
+
     Signal<String> committed;
     Scope scope;
 };
@@ -87,8 +88,7 @@ void validate(ControlSize size) {
 }
 
 void validate(InputStatus status) {
-    if (status != InputStatus::Default && status != InputStatus::Warning
-            && status != InputStatus::Error) {
+    if (status != InputStatus::Default && status != InputStatus::Warning && status != InputStatus::Error) {
         throw std::invalid_argument("Invalid Search status");
     }
 }
@@ -107,15 +107,13 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     detail::validate(detail::read_prop(detail::SearchPropsAccess::status(props)));
 
     const bool controlled = detail::SearchPropsAccess::value(props).has_value();
-    String initial = controlled
-        ? detail::read_prop(*detail::SearchPropsAccess::value(props))
-        : detail::SearchPropsAccess::default_value(props).value_or(String{});
+    String initial = controlled ? detail::read_prop(*detail::SearchPropsAccess::value(props))
+                                : detail::SearchPropsAccess::default_value(props).value_or(String{});
     auto bridge = std::make_shared<detail::SearchValueBridge>(std::move(initial));
     if (controlled) {
         const std::weak_ptr<detail::SearchValueBridge> weak = bridge;
-        static_cast<void>(detail::connect_prop(
-            bridge->scope, *detail::SearchPropsAccess::value(props),
-            [weak](String next) {
+        static_cast<void>(
+            detail::connect_prop(bridge->scope, *detail::SearchPropsAccess::value(props), [weak](String next) {
                 if (const auto live = weak.lock()) {
                     live->committed.set(std::move(next));
                 }
@@ -125,8 +123,7 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     auto can_submit = [disabled = detail::SearchPropsAccess::disabled(props),
                        read_only = detail::SearchPropsAccess::read_only(props),
                        loading = detail::SearchPropsAccess::loading(props)] {
-        return !detail::read_prop(disabled) && !detail::read_prop(read_only)
-            && !detail::read_prop(loading);
+        return !detail::read_prop(disabled) && !detail::read_prop(read_only) && !detail::read_prop(loading);
     };
     auto on_change = detail::SearchPropsAccess::on_change(props);
     auto on_search = detail::SearchPropsAccess::on_search(props);
@@ -158,7 +155,8 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     }
 
     ButtonProps action;
-    action.type(bind([enter = detail::SearchPropsAccess::enter_button(props)] {
+    action
+        .type(bind([enter = detail::SearchPropsAccess::enter_button(props)] {
             return detail::read_prop(enter) ? ButtonType::Primary : ButtonType::Default;
         }))
         .size(detail::SearchPropsAccess::size(props))
@@ -175,19 +173,18 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
             }
         });
 
-    Flex(FlexProps{}.gap(dp(0.0F)).align(FlexAlign::Center)
-             .layout(detail::SearchPropsAccess::layout(props)),
-         FlexContent{[bridge, input = std::move(input), action = std::move(action),
-                      button = std::move(button)]() mutable {
-             Input(std::move(input));
-             Button(std::move(action), ButtonContent{[button = std::move(button)] {
-                 if (button) {
-                     detail::SlotContentAccess::function(*button)();
-                 } else {
-                     Icon(IconProps{}.name(IconName::SearchOutlined));
-                 }
+    Flex(FlexProps{}.gap(dp(0.0F)).align(FlexAlign::Center).layout(detail::SearchPropsAccess::layout(props)),
+         FlexContent{
+             [bridge, input = std::move(input), action = std::move(action), button = std::move(button)]() mutable {
+                 Input(std::move(input));
+                 Button(std::move(action), ButtonContent{[button = std::move(button)] {
+                            if (button) {
+                                detail::SlotContentAccess::function (*button)();
+                            } else {
+                                Icon(IconProps{}.name(IconName::SearchOutlined));
+                            }
+                        }});
              }});
-         }});
 }
 
 } // namespace ryn

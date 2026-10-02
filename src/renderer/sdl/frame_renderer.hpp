@@ -46,18 +46,11 @@ class GpuFrameApi {
 public:
     virtual ~GpuFrameApi() = default;
 
-    virtual GpuCommandBufferHandle acquire_command_buffer(
-        GpuDeviceHandle device) = 0;
-    virtual bool wait_and_acquire_swapchain(
-        GpuCommandBufferHandle command_buffer,
-        PlatformWindowHandle window,
-        GpuTextureHandle& texture,
-        std::uint32_t& width,
-        std::uint32_t& height) = 0;
-    virtual GpuRenderPassHandle begin_clear_pass(
-        GpuCommandBufferHandle command_buffer,
-        GpuTextureHandle texture,
-        ClearColor color) = 0;
+    virtual GpuCommandBufferHandle acquire_command_buffer(GpuDeviceHandle device) = 0;
+    virtual bool wait_and_acquire_swapchain(GpuCommandBufferHandle command_buffer, PlatformWindowHandle window,
+                                            GpuTextureHandle& texture, std::uint32_t& width, std::uint32_t& height) = 0;
+    virtual GpuRenderPassHandle begin_clear_pass(GpuCommandBufferHandle command_buffer, GpuTextureHandle texture,
+                                                 ClearColor color) = 0;
     virtual void end_render_pass(GpuRenderPassHandle render_pass) noexcept = 0;
     virtual bool submit(GpuCommandBufferHandle command_buffer) = 0;
     virtual bool cancel(GpuCommandBufferHandle command_buffer) noexcept = 0;

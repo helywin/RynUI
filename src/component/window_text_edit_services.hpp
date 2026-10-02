@@ -10,18 +10,27 @@ namespace ryn::detail {
 class WindowTextEditServices final {
 public:
     WindowTextEditServices(input::TextInputPlatform& platform, input::TextClipboard& clipboard)
-        : platform_(&platform), clipboard_port_(&clipboard),
-          sessions_(editors_, platform), clipboard_(editors_, clipboard) {}
+        : platform_(&platform), clipboard_port_(&clipboard), sessions_(editors_, platform),
+          clipboard_(editors_, clipboard) {}
+
     WindowTextEditServices(const WindowTextEditServices&) = delete;
     WindowTextEditServices& operator=(const WindowTextEditServices&) = delete;
 
-    [[nodiscard]] bool uses(input::TextInputPlatform& platform,
-        input::TextClipboard& clipboard) const noexcept {
+    [[nodiscard]] bool uses(input::TextInputPlatform& platform, input::TextClipboard& clipboard) const noexcept {
         return platform_ == &platform && clipboard_port_ == &clipboard;
     }
-    [[nodiscard]] input::TextEditorStore& editors() noexcept { return editors_; }
-    [[nodiscard]] input::TextInputSessionHost& sessions() noexcept { return sessions_; }
-    [[nodiscard]] input::TextClipboardCommands& clipboard() noexcept { return clipboard_; }
+
+    [[nodiscard]] input::TextEditorStore& editors() noexcept {
+        return editors_;
+    }
+
+    [[nodiscard]] input::TextInputSessionHost& sessions() noexcept {
+        return sessions_;
+    }
+
+    [[nodiscard]] input::TextClipboardCommands& clipboard() noexcept {
+        return clipboard_;
+    }
 
 private:
     input::TextInputPlatform* platform_;

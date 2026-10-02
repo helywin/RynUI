@@ -28,8 +28,7 @@ void test_material_and_transform_updates_skip_layout() {
     ryn::runtime::DirtyQueues dirty(nodes);
     ryn::runtime::NodePropertyWriter properties(nodes, dirty);
 
-    require(properties.set_color(child, {0.2F, 0.4F, 0.8F, 1.0F}),
-            "color update was suppressed");
+    require(properties.set_color(child, {0.2F, 0.4F, 0.8F, 1.0F}), "color update was suppressed");
     require(properties.set_opacity(child, 0.5F), "opacity update was suppressed");
     require(dirty.material_nodes() == std::vector<ryn::runtime::NodeId>({child}),
             "Material queue did not deduplicate the target Node");
@@ -39,22 +38,18 @@ void test_material_and_transform_updates_skip_layout() {
     require(dirty.hit_test_nodes().empty(), "Material update queued HitTest");
 
     dirty.clear();
-    require(properties.set_translation(child, {5.0F, 7.0F}),
-            "translation update was suppressed");
+    require(properties.set_translation(child, {5.0F, 7.0F}), "translation update was suppressed");
     require(dirty.transform_nodes() == std::vector<ryn::runtime::NodeId>({child}),
             "translation did not queue the target Transform");
     require(dirty.layout_roots().empty(), "Transform update queued Layout");
     require(dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({child}),
             "translation did not queue the target HitTest record");
-    require(ryn::runtime::has_any(
-                ryn::runtime::dirty_flags_for(ryn::runtime::NodeProperty::translation),
-                ryn::runtime::DirtyFlags::HitTest),
+    require(ryn::runtime::has_any(ryn::runtime::dirty_flags_for(ryn::runtime::NodeProperty::translation),
+                                  ryn::runtime::DirtyFlags::HitTest),
             "translation mapping omitted HitTest");
 
-    require(nodes.require(root).measure_count == root_measure
-                && nodes.require(root).place_count == root_place
-                && nodes.require(child).measure_count == child_measure
-                && nodes.require(child).place_count == child_place,
+    require(nodes.require(root).measure_count == root_measure && nodes.require(root).place_count == root_place &&
+                nodes.require(child).measure_count == child_measure && nodes.require(child).place_count == child_place,
             "Material or Transform update changed Measure/Layout counters");
 }
 
@@ -72,8 +67,7 @@ void test_size_update_queues_layout_root_and_geometry() {
     ryn::runtime::DirtyQueues dirty(nodes);
     ryn::runtime::NodePropertyWriter properties(nodes, dirty);
     require(properties.set_size(child, {50.0F, 30.0F}), "size update was suppressed");
-    require(!properties.set_size(child, {50.0F, 30.0F}),
-            "equal size update was not suppressed");
+    require(!properties.set_size(child, {50.0F, 30.0F}), "equal size update was not suppressed");
     require(dirty.layout_roots() == std::vector<ryn::runtime::NodeId>({root}),
             "size update did not queue the affected layout root exactly once");
     require(dirty.geometry_nodes() == std::vector<ryn::runtime::NodeId>({child}),
@@ -88,8 +82,8 @@ void test_size_update_queues_layout_root_and_geometry() {
     }
     require(nodes.require(child).measured_size == ryn::runtime::Size{50.0F, 30.0F},
             "size update was not consumed by the next layout pass");
-    require(nodes.require(child).measure_count == previous_measure + 1
-                && nodes.require(child).place_count == previous_place + 1,
+    require(nodes.require(child).measure_count == previous_measure + 1 &&
+                nodes.require(child).place_count == previous_place + 1,
             "size update did not rerun Measure and Place");
 }
 
@@ -101,13 +95,12 @@ void test_explicit_subtree_invalidation_does_not_bubble_to_page_root() {
     const auto sibling = nodes.create_child(root);
     ryn::runtime::DirtyQueues dirty(nodes);
 
-    dirty.invalidate_subtree(flex, ryn::runtime::DirtyFlags::Measure |
-                                       ryn::runtime::DirtyFlags::Layout |
+    dirty.invalidate_subtree(flex, ryn::runtime::DirtyFlags::Measure | ryn::runtime::DirtyFlags::Layout |
                                        ryn::runtime::DirtyFlags::Geometry);
     require(dirty.layout_roots() == std::vector<ryn::runtime::NodeId>({flex}) &&
                 dirty.geometry_nodes() == std::vector<ryn::runtime::NodeId>({flex}) &&
-                dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({flex}) &&
-                nodes.find(child) != nullptr && nodes.find(sibling) != nullptr,
+                dirty.hit_test_nodes() == std::vector<ryn::runtime::NodeId>({flex}) && nodes.find(child) != nullptr &&
+                nodes.find(sibling) != nullptr,
             "explicit subtree invalidation bubbled or changed sibling topology");
 }
 
@@ -118,14 +111,11 @@ void test_generation_aware_deduplication_and_order() {
     const auto second = nodes.create_child(root);
     ryn::runtime::DirtyQueues dirty(nodes);
 
-    dirty.invalidate(second, ryn::runtime::DirtyFlags::Material |
-                                 ryn::runtime::DirtyFlags::Transform);
+    dirty.invalidate(second, ryn::runtime::DirtyFlags::Material | ryn::runtime::DirtyFlags::Transform);
     dirty.invalidate(first, ryn::runtime::DirtyFlags::Material);
     dirty.invalidate(second, ryn::runtime::DirtyFlags::Material);
-    require(dirty.material_nodes()
-                == std::vector<ryn::runtime::NodeId>({second, first})
-                && dirty.transform_nodes()
-                    == std::vector<ryn::runtime::NodeId>({second}),
+    require(dirty.material_nodes() == std::vector<ryn::runtime::NodeId>({second, first}) &&
+                dirty.transform_nodes() == std::vector<ryn::runtime::NodeId>({second}),
             "dirty domain lost first-insertion order or duplicated an ID");
 
     require(nodes.destroy(second), "failed to destroy dirty Node");
@@ -133,15 +123,13 @@ void test_generation_aware_deduplication_and_order() {
     require(reused.index == second.index && reused.generation != second.generation,
             "NodeStore did not reuse the expected slot with a new generation");
     dirty.invalidate(reused, ryn::runtime::DirtyFlags::Material);
-    require(dirty.material_nodes()
-                == std::vector<ryn::runtime::NodeId>({first, reused})
-                && dirty.transform_nodes().empty(),
+    require(dirty.material_nodes() == std::vector<ryn::runtime::NodeId>({first, reused}) &&
+                dirty.transform_nodes().empty(),
             "stale generation remained in a dirty queue");
 
     dirty.clear();
     dirty.invalidate(reused, ryn::runtime::DirtyFlags::Material);
-    require(dirty.material_nodes()
-                == std::vector<ryn::runtime::NodeId>({reused}),
+    require(dirty.material_nodes() == std::vector<ryn::runtime::NodeId>({reused}),
             "new dirty epoch suppressed a live Node");
 }
 
@@ -158,12 +146,10 @@ void test_large_queue_keeps_order_across_stamp_transition() {
     }
     dirty.invalidate(children.front(), ryn::runtime::DirtyFlags::Material);
     dirty.invalidate(children.back(), ryn::runtime::DirtyFlags::Material);
-    require(dirty.material_nodes() == children,
-            "stamp transition changed dirty order or admitted duplicates");
+    require(dirty.material_nodes() == children, "stamp transition changed dirty order or admitted duplicates");
     dirty.clear();
     dirty.invalidate(children.back(), ryn::runtime::DirtyFlags::Material);
-    require(dirty.material_nodes()
-                == std::vector<ryn::runtime::NodeId>({children.back()}),
+    require(dirty.material_nodes() == std::vector<ryn::runtime::NodeId>({children.back()}),
             "preallocated stamps suppressed a later epoch");
 }
 

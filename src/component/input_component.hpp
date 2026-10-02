@@ -21,14 +21,24 @@ struct MountedInputComponent {
 };
 
 struct InputLayoutSnapshot {
-    runtime::Rect viewport, clip;
-    runtime::Rect caret, underline;
-    float baseline{}, scroll_offset{}, text_width{};
-    float caret_x{}, selection_start{}, selection_end{}, composition_start{}, composition_end{};
+    runtime::Rect viewport;
+    runtime::Rect clip;
+    runtime::Rect caret;
+    runtime::Rect underline;
+    float baseline{};
+    float scroll_offset{};
+    float text_width{};
+    float caret_x{};
+    float selection_start{};
+    float selection_end{};
+    float composition_start{};
+    float composition_end{};
 };
 
 struct InputTextLayers {
-    TextSceneId base, selected, placeholder;
+    TextSceneId base;
+    TextSceneId selected;
+    TextSceneId placeholder;
 };
 
 struct InputSyncProfile final {
@@ -55,19 +65,38 @@ public:
     // Call after layout/scroll synchronization. The window adapter supplies its
     // coordinate transform independently of glyph raster/display scale.
     bool synchronize_input_area(double logical_to_window_scale, int window_width, int window_height);
-    [[nodiscard]] std::span<const MountedInputComponent> mounted_inputs() const noexcept { return mounted_; }
-    void set_sync_profiling_enabled(bool enabled) noexcept { sync_profiling_enabled_ = enabled; }
-    void reset_sync_profile() noexcept { sync_profile_ = {}; }
-    [[nodiscard]] InputSyncProfile sync_profile() const noexcept { return sync_profile_; }
-    [[nodiscard]] input::TextEditorStore& editors() noexcept { return editors_; }
-    [[nodiscard]] input::TextInputSessionHost& sessions() noexcept { return sessions_; }
+
+    [[nodiscard]] std::span<const MountedInputComponent> mounted_inputs() const noexcept {
+        return mounted_;
+    }
+
+    void set_sync_profiling_enabled(bool enabled) noexcept {
+        sync_profiling_enabled_ = enabled;
+    }
+
+    void reset_sync_profile() noexcept {
+        sync_profile_ = {};
+    }
+
+    [[nodiscard]] InputSyncProfile sync_profile() const noexcept {
+        return sync_profile_;
+    }
+
+    [[nodiscard]] input::TextEditorStore& editors() noexcept {
+        return editors_;
+    }
+
+    [[nodiscard]] input::TextInputSessionHost& sessions() noexcept {
+        return sessions_;
+    }
+
     [[nodiscard]] input::TextEditResult dispatch(const input::TextCommitted&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CompositionChanged&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CandidatesChanged&);
     void submit(runtime::ComponentId);
-    void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>,
-        Prop<bool> active, std::function<void(String)> commit, std::function<void()> cancel,
-        std::function<void(String)> blur);
+    void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>, Prop<bool> active,
+                                     std::function<void(String)> commit, std::function<void()> cancel,
+                                     std::function<void(String)> blur);
     void set_active(runtime::ComponentId, bool);
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);
@@ -79,6 +108,7 @@ public:
     // Internal deadline injection seam for controlled-clock/lifecycle tests.
     bool set_caret_deadline(runtime::ComponentId, std::optional<animation::AnimationTime>);
     [[nodiscard]] std::optional<animation::AnimationTime> next_caret_deadline() const;
+
 private:
     friend struct InputPropsAccess;
     friend struct PasswordPropsAccess;
@@ -98,7 +128,11 @@ private:
     void synchronize_auxiliary_motion() override;
     void update_caret(runtime::ComponentId, bool reset = false);
     std::size_t tick_auxiliary(animation::AnimationTime) override;
-    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override { return next_caret_deadline(); }
+
+    std::optional<animation::AnimationTime> next_auxiliary_deadline() const override {
+        return next_caret_deadline();
+    }
+
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     bool synchronize_auxiliary_fragments() override;
     WindowComponentServices* host_;

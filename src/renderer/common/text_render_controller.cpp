@@ -4,21 +4,13 @@
 
 namespace ryn::detail {
 
-TextRenderController::TextRenderController(
-    font::FontRuntime& fonts,
-    text::TextEngine& engine,
-    runtime::FrameRequestState& frame_requests,
-    String content,
-    std::vector<font::FontIdentity> fallback_chain,
-    std::uint32_t pixel_size,
-    text::TextLayoutConfig layout)
-    : service_(fonts, engine, frame_requests),
-      record_(service_.create(
-          runtime::NodeId{0, 1},
-          std::move(content),
-          std::move(fallback_chain),
-          pixel_size,
-          layout)) {}
+TextRenderController::TextRenderController(font::FontRuntime& fonts, text::TextEngine& engine,
+                                           runtime::FrameRequestState& frame_requests, String content,
+                                           std::vector<font::FontIdentity> fallback_chain, std::uint32_t pixel_size,
+                                           text::TextLayoutConfig layout)
+    : service_(fonts, engine, frame_requests), record_(service_.create(runtime::NodeId{0, 1}, std::move(content),
+                                                                       std::move(fallback_chain), pixel_size, layout)) {
+}
 
 bool TextRenderController::set_content(String content) {
     return service_.set_content(record_, std::move(content));

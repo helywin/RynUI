@@ -66,22 +66,15 @@ struct ButtonAnimationBinding final {
 };
 
 class ButtonComponentHost final : private animation::AnimationTargetSink,
-    public runtime::FrameDeadlineSource, private WindowComponentParticipant {
+                                  public runtime::FrameDeadlineSource,
+                                  private WindowComponentParticipant {
 public:
-    ButtonComponentHost(
-        runtime::NodeStore& nodes,
-        layout::LayoutEngine& layout,
-        runtime::DirtyQueues& dirty,
-        TextSceneService& text_scene,
-        std::vector<font::FontIdentity> default_font_chain,
-        runtime::FrameRequestState& frame_requests);
-    ButtonComponentHost(
-        runtime::NodeStore& nodes,
-        layout::LayoutEngine& layout,
-        runtime::DirtyQueues& dirty,
-        TextSceneService& text_scene,
-        ThemeFontResolver font_resolver,
-        runtime::FrameRequestState& frame_requests);
+    ButtonComponentHost(runtime::NodeStore& nodes, layout::LayoutEngine& layout, runtime::DirtyQueues& dirty,
+                        TextSceneService& text_scene, std::vector<font::FontIdentity> default_font_chain,
+                        runtime::FrameRequestState& frame_requests);
+    ButtonComponentHost(runtime::NodeStore& nodes, layout::LayoutEngine& layout, runtime::DirtyQueues& dirty,
+                        TextSceneService& text_scene, ThemeFontResolver font_resolver,
+                        runtime::FrameRequestState& frame_requests);
     explicit ButtonComponentHost(WindowComponentServices& services);
     ButtonComponentHost(const ButtonComponentHost&) = delete;
     ButtonComponentHost& operator=(const ButtonComponentHost&) = delete;
@@ -92,17 +85,20 @@ public:
     void dispose() noexcept;
     void set_window_active(bool active);
     void set_animation_time(animation::AnimationTime time) noexcept;
-    [[nodiscard]] animation::AnimationTime animation_time() const noexcept { return services_->animation_time(); }
-    [[nodiscard]] animation::MotionPreference motion_preference() const noexcept { return services_->motion_preference(); }
+
+    [[nodiscard]] animation::AnimationTime animation_time() const noexcept {
+        return services_->animation_time();
+    }
+
+    [[nodiscard]] animation::MotionPreference motion_preference() const noexcept {
+        return services_->motion_preference();
+    }
+
     void set_motion_preference(animation::MotionPreference preference);
     [[nodiscard]] std::size_t tick_animations(animation::AnimationTime frame_time);
     [[nodiscard]] std::optional<animation::AnimationTime> next_deadline() const override;
-    [[nodiscard]] bool layout_and_synchronize(
-        runtime::Size viewport,
-        runtime::Rect clip,
-        runtime::Point origin = {},
-        float gap = 0.0F,
-        bool unbounded_root_height = false);
+    [[nodiscard]] bool layout_and_synchronize(runtime::Size viewport, runtime::Rect clip, runtime::Point origin = {},
+                                              float gap = 0.0F, bool unbounded_root_height = false);
 
     [[nodiscard]] TextComponentHost& text() noexcept;
     [[nodiscard]] const TextComponentHost& text() const noexcept;
@@ -118,72 +114,50 @@ public:
     [[nodiscard]] runtime::NodeStore& nodes() noexcept;
     [[nodiscard]] layout::LayoutEngine& layout() noexcept;
     [[nodiscard]] runtime::DirtyQueues& dirty() noexcept;
-    [[nodiscard]] WindowComponentServices& services() noexcept { return *services_; }
+
+    [[nodiscard]] WindowComponentServices& services() noexcept {
+        return *services_;
+    }
+
     void attach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary);
     void detach_auxiliary(AuxiliaryComponentSynchronizer& auxiliary) noexcept;
     [[nodiscard]] animation::AnimationRuntime& animations() noexcept;
     [[nodiscard]] const animation::AnimationRuntime& animations() const noexcept;
-    [[nodiscard]] std::span<const MountedButtonComponent>
-        mounted_buttons() const noexcept;
-    [[nodiscard]] ButtonComponentSnapshot snapshot(
-        runtime::ComponentId component) const;
+    [[nodiscard]] std::span<const MountedButtonComponent> mounted_buttons() const noexcept;
+    [[nodiscard]] ButtonComponentSnapshot snapshot(runtime::ComponentId component) const;
 
 private:
     explicit ButtonComponentHost(std::unique_ptr<WindowComponentServices> services);
-    friend void mount_button_component(
-        const ButtonProps& props,
-        const ButtonContent& content);
+    friend void mount_button_component(const ButtonProps& props, const ButtonContent& content);
 
     void record_mounted_button(MountedButtonComponent mounted);
-    [[nodiscard]] ButtonComponentState* find_state(
-        runtime::ComponentId component) noexcept;
-    [[nodiscard]] const ButtonComponentState* find_state(
-        runtime::ComponentId component) const noexcept;
-    [[nodiscard]] std::optional<input::InteractionId> interaction_for(
-        runtime::ComponentId component) const;
+    [[nodiscard]] ButtonComponentState* find_state(runtime::ComponentId component) noexcept;
+    [[nodiscard]] const ButtonComponentState* find_state(runtime::ComponentId component) const noexcept;
+    [[nodiscard]] std::optional<input::InteractionId> interaction_for(runtime::ComponentId component) const;
     void apply_type(runtime::ComponentId component, ButtonType type);
     void apply_size(runtime::ComponentId component, ControlSize size);
     void apply_disabled(runtime::ComponentId component, bool disabled);
     void apply_loading(runtime::ComponentId component, bool loading);
-    void apply_focus(
-        runtime::ComponentId component,
-        input::FocusPresentation focus);
-    void handle_pointer(
-        runtime::ComponentId component,
-        input::PointerDispatchContext& event);
-    [[nodiscard]] bool activation_allowed(
-        runtime::ComponentId component) const noexcept;
+    void apply_focus(runtime::ComponentId component, input::FocusPresentation focus);
+    void handle_pointer(runtime::ComponentId component, input::PointerDispatchContext& event);
+    [[nodiscard]] bool activation_allowed(runtime::ComponentId component) const noexcept;
     void activate(runtime::ComponentId component);
     void update_visuals(ButtonComponentState& state);
-    void apply_presentation(
-        ButtonComponentState& state,
-        bool animation_update = false);
+    void apply_presentation(ButtonComponentState& state, bool animation_update = false);
     void register_animation_targets(ButtonComponentState& state);
     void unregister_animation_targets(ButtonComponentState& state) noexcept;
-    void retarget_channel(
-        ButtonComponentState& state,
-        ButtonAnimationChannel channel,
-        const animation::AnimationValue& target,
-        const animation::AnimationSpec& spec);
-    void update_spinner(
-        ButtonComponentState& state,
-        const animation::MotionPolicy& policy);
+    void retarget_channel(ButtonComponentState& state, ButtonAnimationChannel channel,
+                          const animation::AnimationValue& target, const animation::AnimationSpec& spec);
+    void update_spinner(ButtonComponentState& state, const animation::MotionPolicy& policy);
     void start_spinner(ButtonComponentState& state);
     void stop_spinner(ButtonComponentState& state);
-    void apply(
-        animation::AnimationId animation,
-        animation::AnimationTargetId target,
-        const animation::AnimationValue& value,
-        animation::AnimationDirtyDomain dirty_domain) override;
-    void completed(
-        animation::AnimationId animation,
-        animation::AnimationTargetId target) override;
+    void apply(animation::AnimationId animation, animation::AnimationTargetId target,
+               const animation::AnimationValue& value, animation::AnimationDirtyDomain dirty_domain) override;
+    void completed(animation::AnimationId animation, animation::AnimationTargetId target) override;
     void update_typography(ButtonComponentState& state);
     void update_layout(ButtonComponentState& state);
     void subscribe_theme(ButtonComponentState& state);
-    void synchronize_geometry(
-        ButtonComponentState& state,
-        runtime::Size viewport);
+    void synchronize_geometry(ButtonComponentState& state, runtime::Size viewport);
     void* begin_mount() noexcept override;
     void end_mount(void* previous) noexcept override;
     void on_destroy() noexcept override;
@@ -208,8 +182,6 @@ private:
     std::vector<MountedButtonComponent> mounted_buttons_;
 };
 
-void mount_button_component(
-    const ButtonProps& props,
-    const ButtonContent& content);
+void mount_button_component(const ButtonProps& props, const ButtonContent& content);
 
 } // namespace ryn::detail

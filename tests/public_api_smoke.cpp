@@ -9,12 +9,12 @@ int main() {
     ryn::Signal<int> count{1};
     ryn::Prop<int> count_prop{count};
 
-    if(current != expected) {
-        std::cerr << "Unexpected RynUI version: " << current.major << '.'
-                  << current.minor << '.' << current.patch << '\n';
+    if (current != expected) {
+        std::cerr << "Unexpected RynUI version: " << current.major << '.' << current.minor << '.' << current.patch
+                  << '\n';
         return 1;
     }
-    if(title.empty() || title.view().size_bytes() != title.size_bytes()) {
+    if (title.empty() || title.view().size_bytes() != title.size_bytes()) {
         std::cerr << "Unexpected RynUI String state\n";
         return 1;
     }

@@ -36,6 +36,7 @@ template <typename T>
 concept AcceptsStringSize = requires(T props) { props.size("middle"); };
 
 struct ForeignContentSlot final {};
+
 using ForeignContent = ryn::SlotContent<ForeignContentSlot>;
 
 static_assert(!HasBaseline<ryn::SpaceProps>);
@@ -65,25 +66,18 @@ int main() {
         ryn::Signal<bool> wrap{true};
         ryn::Signal<ryn::SpaceAlign> align{ryn::SpaceAlign::End};
         ryn::Signal<ryn::LayoutGap> size{ryn::LayoutGap{ryn::SpaceSize::Middle}};
-        const auto bound_size =
-            ryn::bind([] { return ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)}; });
+        const auto bound_size = ryn::bind([] { return ryn::LayoutGap{ryn::dp(3.0F), ryn::dp(5.0F)}; });
 
         auto declarations = [&] {
-            ryn::Space(
-                ryn::SpaceProps{}
-                    .vertical(vertical)
-                    .wrap(wrap)
-                    .align(align)
-                    .size(size)
-                    .layout(ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
-                [] { ryn::Text(u8"content"); });
-            ryn::Space(
-                ryn::SpaceProps{}
-                    .size(ryn::SpaceSize::Small)
-                    .size(ryn::dp(4.0F))
-                    .size(ryn::dp(4.0F), ryn::dp(6.0F))
-                    .size(bound_size),
-                [] {});
+            ryn::Space(ryn::SpaceProps{}.vertical(vertical).wrap(wrap).align(align).size(size).layout(
+                           ryn::LayoutStyle{}.width(ryn::dp(160.0F))),
+                       [] { ryn::Text(u8"content"); });
+            ryn::Space(ryn::SpaceProps{}
+                           .size(ryn::SpaceSize::Small)
+                           .size(ryn::dp(4.0F))
+                           .size(ryn::dp(4.0F), ryn::dp(6.0F))
+                           .size(bound_size),
+                       [] {});
         };
         static_cast<void>(declarations);
 

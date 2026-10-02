@@ -25,8 +25,7 @@ void require(bool condition, const char* message) {
     }
 }
 
-template <typename Operation>
-void require_invalid(Operation&& operation, const char* message) {
+template <typename Operation> void require_invalid(Operation&& operation, const char* message) {
     try {
         operation();
     } catch (const std::invalid_argument&) {
@@ -47,80 +46,60 @@ void test_typed_values() {
 
     const float nan = std::numeric_limits<float>::quiet_NaN();
     const float infinity = std::numeric_limits<float>::infinity();
-    require_invalid([&] { static_cast<void>(ryn::Color(nan, 0.0F, 0.0F)); },
-                    "Color accepted NaN");
-    require_invalid([&] { static_cast<void>(ryn::Color(1.1F, 0.0F, 0.0F)); },
-                    "Color accepted an out-of-range channel");
-    require_invalid([&] { static_cast<void>(ryn::LogicalOffset(infinity, 0.0F)); },
-                    "logical offset accepted Infinity");
+    require_invalid([&] { static_cast<void>(ryn::Color(nan, 0.0F, 0.0F)); }, "Color accepted NaN");
+    require_invalid([&] { static_cast<void>(ryn::Color(1.1F, 0.0F, 0.0F)); }, "Color accepted an out-of-range channel");
+    require_invalid([&] { static_cast<void>(ryn::LogicalOffset(infinity, 0.0F)); }, "logical offset accepted Infinity");
     require_invalid([&] { static_cast<void>(ryn::Duration::milliseconds(-1.0F)); },
                     "Duration accepted a negative value");
     require_invalid([&] { static_cast<void>(ryn::CubicBezier(-0.1F, 0.0F, 1.0F, 1.0F)); },
                     "CubicBezier accepted an invalid x control point");
-    require_invalid([&] {
-        static_cast<void>(ryn::ShadowLayer{
-            ryn::ShadowKind::outer, {}, -1.0F, 0.0F, {}});
-    }, "ShadowLayer accepted negative blur");
+    require_invalid([&] { static_cast<void>(ryn::ShadowLayer{ryn::ShadowKind::outer, {}, -1.0F, 0.0F, {}}); },
+                    "ShadowLayer accepted negative blur");
 }
 
 void test_default_seed() {
     const auto& seed = ryn::ant_design_default_seed();
-    require(seed.color_primary == ryn::Color::rgba8(22, 119, 255)
-                && seed.color_success == ryn::Color::rgba8(82, 196, 26)
-                && seed.color_warning == ryn::Color::rgba8(250, 173, 20)
-                && seed.color_error == ryn::Color::rgba8(255, 77, 79)
-                && seed.color_info == seed.color_primary,
+    require(seed.color_primary == ryn::Color::rgba8(22, 119, 255) &&
+                seed.color_success == ryn::Color::rgba8(82, 196, 26) &&
+                seed.color_warning == ryn::Color::rgba8(250, 173, 20) &&
+                seed.color_error == ryn::Color::rgba8(255, 77, 79) && seed.color_info == seed.color_primary,
             "default semantic seed colors drifted");
-    require(seed.font_family == ryn::SystemFontFamily::ui_sans
-                && seed.font_family_code == ryn::SystemFontFamily::ui_monospace
-                && !seed.color_link.has_value() && !seed.color_text_base.has_value()
-                && !seed.color_background_base.has_value()
-                && seed.font_size == 14 && seed.line_width == 1.0F
-                && seed.border_radius == 6.0F && seed.size_unit == 4.0F
-                && seed.size_step == 4.0F && seed.size_popup_arrow == 16.0F
-                && seed.control_height == 32.0F && seed.z_index_base == 0
-                && seed.z_index_popup_base == 1000 && seed.opacity_image == 1.0F
-                && seed.motion_unit == ryn::Duration::seconds(0.1F)
-                && seed.motion_base == ryn::Duration{} && !seed.wireframe && seed.motion,
+    require(seed.font_family == ryn::SystemFontFamily::ui_sans &&
+                seed.font_family_code == ryn::SystemFontFamily::ui_monospace && !seed.color_link.has_value() &&
+                !seed.color_text_base.has_value() && !seed.color_background_base.has_value() && seed.font_size == 14 &&
+                seed.line_width == 1.0F && seed.border_radius == 6.0F && seed.size_unit == 4.0F &&
+                seed.size_step == 4.0F && seed.size_popup_arrow == 16.0F && seed.control_height == 32.0F &&
+                seed.z_index_base == 0 && seed.z_index_popup_base == 1000 && seed.opacity_image == 1.0F &&
+                seed.motion_unit == ryn::Duration::seconds(0.1F) && seed.motion_base == ryn::Duration{} &&
+                !seed.wireframe && seed.motion,
             "default numeric or motion seed values drifted");
 }
 
 void test_shadow_normalization() {
     const auto& shadows = ryn::ant_design_default_shadows();
-    require(shadows.box_shadow.size() == 3
-                && shadows.box_shadow[0].offset == ryn::LogicalOffset(0.0F, 6.0F)
-                && shadows.box_shadow[0].blur == 16.0F
-                && shadows.box_shadow[0].color.alpha() == 0.08F
-                && shadows.box_shadow[1].spread == -4.0F
-                && shadows.box_shadow[1].color.alpha() == 0.12F
-                && shadows.box_shadow[2].offset.y == 9.0F
-                && shadows.box_shadow[2].spread == 8.0F,
+    require(shadows.box_shadow.size() == 3 && shadows.box_shadow[0].offset == ryn::LogicalOffset(0.0F, 6.0F) &&
+                shadows.box_shadow[0].blur == 16.0F && shadows.box_shadow[0].color.alpha() == 0.08F &&
+                shadows.box_shadow[1].spread == -4.0F && shadows.box_shadow[1].color.alpha() == 0.12F &&
+                shadows.box_shadow[2].offset.y == 9.0F && shadows.box_shadow[2].spread == 8.0F,
             "primary elevation shadow order or values drifted");
     require(shadows.box_shadow == shadows.box_shadow_secondary,
             "Ant Design default secondary elevation is no longer normalized identically");
-    require(shadows.box_shadow_tertiary.size() == 3
-                && shadows.box_shadow_tertiary[1].blur == 6.0F
-                && shadows.box_shadow_tertiary[1].spread == -1.0F,
+    require(shadows.box_shadow_tertiary.size() == 3 && shadows.box_shadow_tertiary[1].blur == 6.0F &&
+                shadows.box_shadow_tertiary[1].spread == -1.0F,
             "tertiary elevation shadow drifted");
-    require(shadows.button_default[0].offset.y == 2.0F
-                && shadows.button_primary[0].color.alpha() == 0.1F
-                && shadows.button_danger[0].color.alpha() == 0.06F,
+    require(shadows.button_default[0].offset.y == 2.0F && shadows.button_primary[0].color.alpha() == 0.1F &&
+                shadows.button_danger[0].color.alpha() == 0.06F,
             "Button shadow normalization drifted");
-    require(shadows.card.size() == 3 && shadows.card[0].spread == -2.0F
-                && shadows.popover_drop.size() == 3
-                && shadows.popover_drop[1].spread == 0.0F,
+    require(shadows.card.size() == 3 && shadows.card[0].spread == -2.0F && shadows.popover_drop.size() == 3 &&
+                shadows.popover_drop[1].spread == 0.0F,
             "Card or Popover shadow normalization drifted");
-    require(shadows.drawer_right[0].offset.x == -6.0F
-                && shadows.drawer_left[0].offset.x == 6.0F
-                && shadows.drawer_up[0].offset.y == 6.0F
-                && shadows.drawer_down[0].offset.y == -6.0F,
+    require(shadows.drawer_right[0].offset.x == -6.0F && shadows.drawer_left[0].offset.x == 6.0F &&
+                shadows.drawer_up[0].offset.y == 6.0F && shadows.drawer_down[0].offset.y == -6.0F,
             "Drawer directional shadow normalization drifted");
-    require(shadows.tabs_overflow_left[0].kind == ryn::ShadowKind::inset
-                && shadows.tabs_overflow_left[0].offset.x == 10.0F
-                && shadows.tabs_overflow_right[0].offset.x == -10.0F
-                && shadows.tabs_overflow_top[0].offset.y == 10.0F
-                && shadows.tabs_overflow_bottom[0].offset.y == -10.0F
-                && shadows.tabs_overflow_bottom[0].spread == -8.0F,
+    require(shadows.tabs_overflow_left[0].kind == ryn::ShadowKind::inset &&
+                shadows.tabs_overflow_left[0].offset.x == 10.0F && shadows.tabs_overflow_right[0].offset.x == -10.0F &&
+                shadows.tabs_overflow_top[0].offset.y == 10.0F && shadows.tabs_overflow_bottom[0].offset.y == -10.0F &&
+                shadows.tabs_overflow_bottom[0].spread == -8.0F,
             "Tabs inset overflow shadow normalization drifted");
 }
 
@@ -130,12 +109,9 @@ void test_generated_metadata() {
     std::unordered_set<std::uint64_t> stable_ids;
     std::string_view previous;
     for (const auto& entry : entries) {
-        require(!entry.identity.empty() && entry.stable_id != 0,
-                "generated metadata contains an empty identity");
-        require(previous.empty() || previous < entry.identity,
-                "generated metadata is not in stable identity order");
-        require(stable_ids.insert(entry.stable_id).second,
-                "generated metadata contains a stable id collision");
+        require(!entry.identity.empty() && entry.stable_id != 0, "generated metadata contains an empty identity");
+        require(previous.empty() || previous < entry.identity, "generated metadata is not in stable identity order");
+        require(stable_ids.insert(entry.stable_id).second, "generated metadata contains a stable id collision");
         previous = entry.identity;
     }
     const auto* runtime = ryn::find_ant_design_token("ant.alias.boxShadow");
@@ -145,43 +121,37 @@ void test_generated_metadata() {
     const auto* future = ryn::find_ant_design_token("ant.component.Affix.zIndexPopup");
     const auto* focus_outline = ryn::find_ant_design_token("ant.seed.focusOutline");
     const auto* listy = ryn::find_ant_design_token("ant.component.Listy.itemPaddingBlock");
-    for(const auto name : {"paddingInline", "paddingInlineSM", "paddingInlineLG", "paddingBlock",
-        "paddingBlockSM", "paddingBlockLG", "inputFontSize", "inputFontSizeSM", "inputFontSizeLG"}) {
+    for (const auto name : {"paddingInline", "paddingInlineSM", "paddingInlineLG", "paddingBlock", "paddingBlockSM",
+                            "paddingBlockLG", "inputFontSize", "inputFontSizeSM", "inputFontSizeLG"}) {
         const auto* input = ryn::find_ant_design_token(std::string("ant.component.Input.") + name);
         require(input && input->support == ryn::TokenSupportStatus::runtime && input->component_owner == "Input",
-            "Implemented Input geometry token is missing runtime metadata");
+                "Implemented Input geometry token is missing runtime metadata");
     }
     const auto* input_shadow = ryn::find_ant_design_token("ant.component.Input.activeShadow");
     require(input_shadow && input_shadow->support == ryn::TokenSupportStatus::runtime,
-        "Implemented Input active shadow was not promoted");
+            "Implemented Input active shadow was not promoted");
     const auto* input_addon = ryn::find_ant_design_token("ant.component.Input.addonBg");
     require(input_addon && input_addon->support == ryn::TokenSupportStatus::component_not_yet_implemented,
-        "Unimplemented Input addon was incorrectly promoted");
-    require(runtime != nullptr && runtime->support == ryn::TokenSupportStatus::runtime
-                && runtime->value_kind == ryn::TokenValueKind::shadow_list,
+            "Unimplemented Input addon was incorrectly promoted");
+    require(runtime != nullptr && runtime->support == ryn::TokenSupportStatus::runtime &&
+                runtime->value_kind == ryn::TokenValueKind::shadow_list,
             "runtime metadata query failed");
-    require(error_hover != nullptr && error_active != nullptr
-                && error_hover->support == ryn::TokenSupportStatus::runtime
-                && error_active->support == ryn::TokenSupportStatus::runtime
-                && error_hover->invalidation
-                    == ryn::TokenInvalidationDomain::paint_material
-                && error_active->invalidation
-                    == ryn::TokenInvalidationDomain::paint_material,
+    require(error_hover != nullptr && error_active != nullptr &&
+                error_hover->support == ryn::TokenSupportStatus::runtime &&
+                error_active->support == ryn::TokenSupportStatus::runtime &&
+                error_hover->invalidation == ryn::TokenInvalidationDomain::paint_material &&
+                error_active->invalidation == ryn::TokenInvalidationDomain::paint_material,
             "typed error palette metadata was not promoted to runtime support");
     require(web != nullptr && web->support == ryn::TokenSupportStatus::web_only,
             "web-only catalog metadata is not queryable");
-    require(future != nullptr
-                && future->support
-                    == ryn::TokenSupportStatus::component_not_yet_implemented
-                && future->component_owner == "Affix",
+    require(future != nullptr && future->support == ryn::TokenSupportStatus::component_not_yet_implemented &&
+                future->component_owner == "Affix",
             "unsupported component metadata is not queryable");
-    require(focus_outline != nullptr
-                && focus_outline->support == ryn::TokenSupportStatus::runtime
-                && focus_outline->value_kind == ryn::TokenValueKind::boolean,
+    require(focus_outline != nullptr && focus_outline->support == ryn::TokenSupportStatus::runtime &&
+                focus_outline->value_kind == ryn::TokenValueKind::boolean,
             "6.6.5 focusOutline seed is missing typed runtime metadata");
-    require(listy != nullptr
-                && listy->support == ryn::TokenSupportStatus::component_not_yet_implemented
-                && listy->component_owner == "Listy",
+    require(listy != nullptr && listy->support == ryn::TokenSupportStatus::component_not_yet_implemented &&
+                listy->component_owner == "Listy",
             "6.6.5 Listy token was incorrectly presented as implemented");
     require(ryn::find_ant_design_token("ant.alias.doesNotExist") == nullptr,
             "unknown token metadata query did not fail closed");

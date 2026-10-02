@@ -21,15 +21,20 @@ public:
         return Easing(EasingKind::cubic_bezier, curve);
     }
 
-    [[nodiscard]] constexpr EasingKind kind() const noexcept { return kind_; }
-    [[nodiscard]] constexpr CubicBezier curve() const noexcept { return curve_; }
+    [[nodiscard]] constexpr EasingKind kind() const noexcept {
+        return kind_;
+    }
+
+    [[nodiscard]] constexpr CubicBezier curve() const noexcept {
+        return curve_;
+    }
+
     [[nodiscard]] float sample(float normalized_time) const;
 
     friend constexpr bool operator==(Easing, Easing) = default;
 
 private:
-    constexpr Easing(EasingKind kind, CubicBezier curve) noexcept
-        : kind_(kind), curve_(curve) {}
+    constexpr Easing(EasingKind kind, CubicBezier curve) noexcept : kind_(kind), curve_(curve) {}
 
     EasingKind kind_{EasingKind::linear};
     CubicBezier curve_;

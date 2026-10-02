@@ -10,12 +10,13 @@
 namespace {
 
 struct TestState final {};
+
 struct ChildrenSlot final {};
+
 using Children = ryn::SlotContent<ChildrenSlot>;
 
 ryn::runtime::ComponentId mount_leaf() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<TestState>();
+    return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
 ryn::runtime::ComponentId mount_parent(const Children& children) {
@@ -33,7 +34,8 @@ void require(bool condition, const char* message) {
 
 ryn::input::InteractionHandlers test_handlers() {
     ryn::input::InteractionHandlers handlers;
-    handlers.target = [](ryn::input::PointerDispatchContext&) {};
+    handlers.target = [](ryn::input::PointerDispatchContext&) {
+    };
     return handlers;
 }
 
@@ -44,9 +46,7 @@ void test_create_find_remove_and_slot_reuse() {
     ryn::runtime::ComponentId child_component;
     ryn::runtime::ComponentId sibling_component;
     components.mount(ryn::Content{[&] {
-        parent_component = mount_parent(Children{[&] {
-            child_component = mount_leaf();
-        }});
+        parent_component = mount_parent(Children{[&] { child_component = mount_leaf(); }});
         sibling_component = mount_leaf();
     }});
 
@@ -70,19 +70,14 @@ void test_create_find_remove_and_slot_reuse() {
 
     const auto* parent_record = registry.find(parent);
     const auto* child_record = registry.find(child);
-    require(parent_record != nullptr && child_record != nullptr,
-            "live interactions were not registered");
-    require(parent_record->component == parent_component
-                && parent_record->node == components.root(parent_component)
-                && parent_record->focusable
-                && parent_record->handlers != nullptr
-                && static_cast<bool>(parent_record->handlers->target),
+    require(parent_record != nullptr && child_record != nullptr, "live interactions were not registered");
+    require(parent_record->component == parent_component && parent_record->node == components.root(parent_component) &&
+                parent_record->focusable && parent_record->handlers != nullptr &&
+                static_cast<bool>(parent_record->handlers->target),
             "interaction registration fields differ");
-    require(child_record->parent == parent,
-            "nested interaction parent was not preserved");
-    require(registry.declaration_order().size() == 2
-                && registry.declaration_order()[0] == parent
-                && registry.declaration_order()[1] == child,
+    require(child_record->parent == parent, "nested interaction parent was not preserved");
+    require(registry.declaration_order().size() == 2 && registry.declaration_order()[0] == parent &&
+                registry.declaration_order()[1] == child,
             "interaction declaration order differs");
 
     require(registry.remove(child), "live interaction could not be removed");
@@ -94,10 +89,8 @@ void test_create_find_remove_and_slot_reuse() {
         true,
         {},
     });
-    require(replacement.index == child.index,
-            "interaction free slot was not reused");
-    require(replacement.generation != child.generation,
-            "reused interaction slot kept its generation");
+    require(replacement.index == child.index, "interaction free slot was not reused");
+    require(replacement.generation != child.generation, "reused interaction slot kept its generation");
     require(registry.find(child) == nullptr && registry.find(replacement) != nullptr,
             "stale interaction accessed a reused slot");
     require(registry.size() == 2, "interaction live count differs");
@@ -115,8 +108,7 @@ void test_create_find_remove_and_slot_reuse() {
     } catch (const std::invalid_argument&) {
         wrong_owner_rejected = true;
     }
-    require(wrong_owner_rejected,
-            "interaction accepted a Node owned by another component");
+    require(wrong_owner_rejected, "interaction accepted a Node owned by another component");
 
     const auto sibling = registry.create({
         sibling_component,
@@ -139,8 +131,7 @@ void test_create_find_remove_and_slot_reuse() {
     } catch (const std::invalid_argument&) {
         unrelated_parent_rejected = true;
     }
-    require(unrelated_parent_rejected,
-            "interaction accepted a parent from an unrelated component");
+    require(unrelated_parent_rejected, "interaction accepted a parent from an unrelated component");
 }
 
 void test_component_and_node_generations_cannot_resurrect_records() {
@@ -162,8 +153,7 @@ void test_component_and_node_generations_cannot_resurrect_records() {
             false,
             {},
         });
-        require(components.destroy(stale_component),
-                "component setup destroy failed");
+        require(components.destroy(stale_component), "component setup destroy failed");
         replacement_component = mount_leaf();
         replacement_interaction = registry.create({
             replacement_component,
@@ -175,22 +165,18 @@ void test_component_and_node_generations_cannot_resurrect_records() {
         });
     }});
 
-    require(replacement_component.index == stale_component.index
-                && replacement_component.generation != stale_component.generation,
+    require(replacement_component.index == stale_component.index &&
+                replacement_component.generation != stale_component.generation,
             "component setup did not reuse its generation slot");
-    require(registry.find(stale_interaction) == nullptr,
-            "stale ComponentId resurrected an interaction record");
-    require(registry.find(replacement_interaction) != nullptr,
-            "replacement component interaction is inaccessible");
+    require(registry.find(stale_interaction) == nullptr, "stale ComponentId resurrected an interaction record");
+    require(registry.find(replacement_interaction) != nullptr, "replacement component interaction is inaccessible");
 
     const auto replacement_node = components.root(replacement_component);
     require(nodes.destroy(replacement_node), "node setup destroy failed");
     const auto reused_node = nodes.create_root();
-    require(reused_node.index == replacement_node.index
-                && reused_node.generation != replacement_node.generation,
+    require(reused_node.index == replacement_node.index && reused_node.generation != replacement_node.generation,
             "node setup did not reuse its generation slot");
-    require(registry.find(replacement_interaction) == nullptr,
-            "stale NodeId resurrected an interaction record");
+    require(registry.find(replacement_interaction) == nullptr, "stale NodeId resurrected an interaction record");
 }
 
 void test_component_resource_cleanup_removes_interaction() {
@@ -211,9 +197,8 @@ void test_component_resource_cleanup_removes_interaction() {
             true,
             {},
         });
-        context.on_resource_cleanup(component, [&registry, interaction] {
-            static_cast<void>(registry.remove(interaction));
-        });
+        context.on_resource_cleanup(component,
+                                    [&registry, interaction] { static_cast<void>(registry.remove(interaction)); });
     }});
 
     require(components.destroy(component), "component cleanup destroy failed");
@@ -252,8 +237,7 @@ void test_wrong_thread_fails_before_registry_mutation() {
     });
     worker.join();
 
-    require(rejected.load(std::memory_order_relaxed) == 2,
-            "wrong-thread registry operation did not fail fast");
+    require(rejected.load(std::memory_order_relaxed) == 2, "wrong-thread registry operation did not fail fast");
     require(registry.size() == size_before && registry.find(interaction) != nullptr,
             "wrong-thread registry operation mutated state");
 }

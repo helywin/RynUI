@@ -19,12 +19,8 @@
 namespace ryn::font {
 namespace {
 
-[[nodiscard]] FontError make_error(
-    FontErrorStage stage,
-    FontErrorKind kind,
-    std::string diagnostic,
-    FontIdentity font = {},
-    char32_t codepoint = {}) {
+[[nodiscard]] FontError make_error(FontErrorStage stage, FontErrorKind kind, std::string diagnostic,
+                                   FontIdentity font = {}, char32_t codepoint = {}) {
     return FontError{stage, kind, font, codepoint, std::move(diagnostic)};
 }
 
@@ -36,19 +32,13 @@ namespace {
     return static_cast<float>(value) / 64.0F;
 }
 
-[[nodiscard]] std::optional<std::uint32_t> resolve_raster_pixel_size(
-    FontRasterConfig raster) noexcept {
-    if (raster.logical_pixel_size == 0
-            || !std::isfinite(raster.display_scale)
-            || raster.display_scale <= 0.0F
-            || raster.logical_pixel_size
-                > static_cast<std::uint32_t>(std::numeric_limits<int>::max() / 64)) {
+[[nodiscard]] std::optional<std::uint32_t> resolve_raster_pixel_size(FontRasterConfig raster) noexcept {
+    if (raster.logical_pixel_size == 0 || !std::isfinite(raster.display_scale) || raster.display_scale <= 0.0F ||
+        raster.logical_pixel_size > static_cast<std::uint32_t>(std::numeric_limits<int>::max() / 64)) {
         return std::nullopt;
     }
-    const double scaled = static_cast<double>(raster.logical_pixel_size)
-        * static_cast<double>(raster.display_scale);
-    if (!std::isfinite(scaled)
-            || scaled > static_cast<double>(std::numeric_limits<std::uint32_t>::max())) {
+    const double scaled = static_cast<double>(raster.logical_pixel_size) * static_cast<double>(raster.display_scale);
+    if (!std::isfinite(scaled) || scaled > static_cast<double>(std::numeric_limits<std::uint32_t>::max())) {
         return std::nullopt;
     }
     return std::max(1U, static_cast<std::uint32_t>(std::ceil(scaled)));
@@ -83,43 +73,33 @@ namespace {
     return policy.antialias ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO;
 }
 
-[[nodiscard]] CoverageNormalizationResult normalize_mono_coverage(
-    std::span<const std::uint8_t> source,
-    std::uint32_t width,
-    std::uint32_t height,
-    int pitch) {
+[[nodiscard]] CoverageNormalizationResult
+normalize_mono_coverage(std::span<const std::uint8_t> source, std::uint32_t width, std::uint32_t height, int pitch) {
     if (width == 0 || height == 0) {
         return {};
     }
     if (pitch == 0 || pitch == std::numeric_limits<int>::min()) {
         return {
             {},
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::unsupported_bitmap,
-                "Monochrome glyph bitmap pitch is invalid."),
+            make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                       "Monochrome glyph bitmap pitch is invalid."),
         };
     }
     const std::size_t packed_width = (static_cast<std::size_t>(width) + 7U) / 8U;
     const std::size_t absolute_pitch = static_cast<std::size_t>(std::abs(pitch));
-    if (absolute_pitch < packed_width
-            || height > std::numeric_limits<std::size_t>::max() / absolute_pitch
-            || source.size() < absolute_pitch * height
-            || height > std::numeric_limits<std::size_t>::max() / width) {
+    if (absolute_pitch < packed_width || height > std::numeric_limits<std::size_t>::max() / absolute_pitch ||
+        source.size() < absolute_pitch * height || height > std::numeric_limits<std::size_t>::max() / width) {
         return {
             {},
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::unsupported_bitmap,
-                "Monochrome glyph bitmap storage does not match its dimensions."),
+            make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                       "Monochrome glyph bitmap storage does not match its dimensions."),
         };
     }
     CoverageNormalizationResult result;
     result.coverage.resize(static_cast<std::size_t>(width) * height);
     for (std::uint32_t row = 0; row < height; ++row) {
         const std::uint32_t source_row = pitch > 0 ? row : height - 1 - row;
-        const auto* packed = source.data()
-            + static_cast<std::size_t>(source_row) * absolute_pitch;
+        const auto* packed = source.data() + static_cast<std::size_t>(source_row) * absolute_pitch;
         for (std::uint32_t column = 0; column < width; ++column) {
             const auto mask = static_cast<std::uint8_t>(0x80U >> (column & 7U));
             result.coverage[static_cast<std::size_t>(row) * width + column] =
@@ -162,13 +142,10 @@ struct FontRuntime::Impl {
         FontRecord& operator=(const FontRecord&) = delete;
 
         FontRecord(FontRecord&& other) noexcept
-            : bytes(std::move(other.bytes)),
-              face(std::exchange(other.face, nullptr)),
+            : bytes(std::move(other.bytes)), face(std::exchange(other.face, nullptr)),
               shaping_face(std::exchange(other.shaping_face, nullptr)),
-              harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)),
-              metrics(other.metrics),
-              raster_policy(other.raster_policy),
-              owns_bytes(std::exchange(other.owns_bytes, false)),
+              harfbuzz_font(std::exchange(other.harfbuzz_font, nullptr)), metrics(other.metrics),
+              raster_policy(other.raster_policy), owns_bytes(std::exchange(other.owns_bytes, false)),
               counters(std::move(other.counters)) {}
 
         FontRecord& operator=(FontRecord&&) = delete;
@@ -230,10 +207,7 @@ struct FontRuntime::Impl {
     }
 
     [[nodiscard]] FontError owner_error(FontErrorStage stage) const {
-        return make_error(
-            stage,
-            FontErrorKind::wrong_thread,
-            "Font Runtime operation must run on its owner thread.");
+        return make_error(stage, FontErrorKind::wrong_thread, "Font Runtime operation must run on its owner thread.");
     }
 
     [[nodiscard]] FontRecord* find(FontIdentity identity) noexcept {
@@ -275,25 +249,20 @@ struct FontRuntime::Impl {
     }
 };
 
-FontRuntime::FontRuntime(std::unique_ptr<Impl> implementation) noexcept
-    : impl_(std::move(implementation)) {}
+FontRuntime::FontRuntime(std::unique_ptr<Impl> implementation) noexcept : impl_(std::move(implementation)) {}
 
 FontRuntime::~FontRuntime() {
     impl_->shutdown_unchecked();
 }
 
 FontRuntimeCreateResult FontRuntime::create(FontRuntimeOptions options) {
-    auto counters = options.counters != nullptr
-        ? std::move(options.counters)
-        : std::make_shared<FontRuntimeCounters>();
+    auto counters = options.counters != nullptr ? std::move(options.counters) : std::make_shared<FontRuntimeCounters>();
 
     if (options.failure_point == FontFailurePoint::library_initialization) {
         return {
             nullptr,
-            make_error(
-                FontErrorStage::library_initialization,
-                FontErrorKind::runtime_unavailable,
-                "Injected FreeType library initialization failure."),
+            make_error(FontErrorStage::library_initialization, FontErrorKind::runtime_unavailable,
+                       "Injected FreeType library initialization failure."),
         };
     }
 
@@ -303,52 +272,36 @@ FontRuntimeCreateResult FontRuntime::create(FontRuntimeOptions options) {
     if (result != 0) {
         return {
             nullptr,
-            make_error(
-                FontErrorStage::library_initialization,
-                FontErrorKind::runtime_unavailable,
-                "FreeType library initialization failed."),
+            make_error(FontErrorStage::library_initialization, FontErrorKind::runtime_unavailable,
+                       "FreeType library initialization failed."),
         };
     }
     ++implementation->counters->libraries_acquired;
     return {std::unique_ptr<FontRuntime>(new FontRuntime(std::move(implementation))), {}};
 }
 
-FontLoadResult FontRuntime::load_font_file(
-    const std::filesystem::path& path,
-    long face_index,
-    std::uint32_t pixel_size,
-    FontFailurePoint failure_point) {
-    return load_font_file(
-        path,
-        face_index,
-        FontRasterConfig{pixel_size, 1.0F},
-        failure_point);
+FontLoadResult FontRuntime::load_font_file(const std::filesystem::path& path, long face_index, std::uint32_t pixel_size,
+                                           FontFailurePoint failure_point) {
+    return load_font_file(path, face_index, FontRasterConfig{pixel_size, 1.0F}, failure_point);
 }
 
-FontLoadResult FontRuntime::load_font_file(
-    const std::filesystem::path& path,
-    long face_index,
-    FontRasterConfig raster,
-    FontFailurePoint failure_point) {
+FontLoadResult FontRuntime::load_font_file(const std::filesystem::path& path, long face_index, FontRasterConfig raster,
+                                           FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::resource_read)};
     }
     if (!impl_->active) {
         return {
             {},
-            make_error(
-                FontErrorStage::library_initialization,
-                FontErrorKind::runtime_unavailable,
-                "Font Runtime has been shut down."),
+            make_error(FontErrorStage::library_initialization, FontErrorKind::runtime_unavailable,
+                       "Font Runtime has been shut down."),
         };
     }
     if (!resolve_raster_pixel_size(raster)) {
         return {
             {},
-            make_error(
-                FontErrorStage::pixel_size_configuration,
-                FontErrorKind::invalid_pixel_size,
-                "Font logical pixel size and display scale must be finite and positive."),
+            make_error(FontErrorStage::pixel_size_configuration, FontErrorKind::invalid_pixel_size,
+                       "Font logical pixel size and display scale must be finite and positive."),
         };
     }
 
@@ -356,22 +309,16 @@ FontLoadResult FontRuntime::load_font_file(
     if (!input) {
         return {
             {},
-            make_error(
-                FontErrorStage::resource_read,
-                FontErrorKind::resource_unavailable,
-                "Unable to open the explicit font resource."),
+            make_error(FontErrorStage::resource_read, FontErrorKind::resource_unavailable,
+                       "Unable to open the explicit font resource."),
         };
     }
     const std::streamoff length = input.tellg();
-    if (length <= 0
-            || static_cast<std::uintmax_t>(length)
-                > std::numeric_limits<std::size_t>::max()) {
+    if (length <= 0 || static_cast<std::uintmax_t>(length) > std::numeric_limits<std::size_t>::max()) {
         return {
             {},
-            make_error(
-                FontErrorStage::resource_read,
-                FontErrorKind::invalid_font_data,
-                "The explicit font resource is empty or too large."),
+            make_error(FontErrorStage::resource_read, FontErrorKind::invalid_font_data,
+                       "The explicit font resource is empty or too large."),
         };
     }
 
@@ -380,52 +327,36 @@ FontLoadResult FontRuntime::load_font_file(
     if (!input.read(reinterpret_cast<char*>(bytes.data()), length)) {
         return {
             {},
-            make_error(
-                FontErrorStage::resource_read,
-                FontErrorKind::resource_unavailable,
-                "Unable to read the explicit font resource."),
+            make_error(FontErrorStage::resource_read, FontErrorKind::resource_unavailable,
+                       "Unable to read the explicit font resource."),
         };
     }
     return load_font_bytes(bytes, face_index, raster, failure_point);
 }
 
-FontLoadResult FontRuntime::load_font_bytes(
-    std::span<const std::byte> bytes,
-    long face_index,
-    std::uint32_t pixel_size,
-    FontFailurePoint failure_point) {
-    return load_font_bytes(
-        bytes,
-        face_index,
-        FontRasterConfig{pixel_size, 1.0F},
-        failure_point);
+FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, long face_index, std::uint32_t pixel_size,
+                                            FontFailurePoint failure_point) {
+    return load_font_bytes(bytes, face_index, FontRasterConfig{pixel_size, 1.0F}, failure_point);
 }
 
-FontLoadResult FontRuntime::load_font_bytes(
-    std::span<const std::byte> bytes,
-    long face_index,
-    FontRasterConfig raster,
-    FontFailurePoint failure_point) {
+FontLoadResult FontRuntime::load_font_bytes(std::span<const std::byte> bytes, long face_index, FontRasterConfig raster,
+                                            FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::face_creation)};
     }
     if (!impl_->active) {
         return {
             {},
-            make_error(
-                FontErrorStage::library_initialization,
-                FontErrorKind::runtime_unavailable,
-                "Font Runtime has been shut down."),
+            make_error(FontErrorStage::library_initialization, FontErrorKind::runtime_unavailable,
+                       "Font Runtime has been shut down."),
         };
     }
     const auto raster_pixel_size = resolve_raster_pixel_size(raster);
     if (!raster_pixel_size) {
         return {
             {},
-            make_error(
-                FontErrorStage::pixel_size_configuration,
-                FontErrorKind::invalid_pixel_size,
-                "Font logical pixel size and display scale must be finite and positive."),
+            make_error(FontErrorStage::pixel_size_configuration, FontErrorKind::invalid_pixel_size,
+                       "Font logical pixel size and display scale must be finite and positive."),
         };
     }
 
@@ -440,73 +371,50 @@ FontLoadResult FontRuntime::load_font_bytes(
     };
 
     if (failure_point == FontFailurePoint::after_font_bytes) {
-        return fail(make_error(
-            FontErrorStage::face_creation,
-            FontErrorKind::invalid_font_data,
-            "Injected failure after font bytes were acquired."));
+        return fail(make_error(FontErrorStage::face_creation, FontErrorKind::invalid_font_data,
+                               "Injected failure after font bytes were acquired."));
     }
-    if (record.bytes.empty()
-            || record.bytes.size() > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max())) {
-        return fail(make_error(
-            FontErrorStage::face_creation,
-            FontErrorKind::invalid_font_data,
-            "Font bytes are empty or exceed the FreeType input limit."));
+    if (record.bytes.empty() || record.bytes.size() > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max())) {
+        return fail(make_error(FontErrorStage::face_creation, FontErrorKind::invalid_font_data,
+                               "Font bytes are empty or exceed the FreeType input limit."));
     }
 
-    const FT_Error face_result = FT_New_Memory_Face(
-        impl_->library,
-        reinterpret_cast<const FT_Byte*>(record.bytes.data()),
-        static_cast<FT_Long>(record.bytes.size()),
-        face_index,
-        &record.face);
+    const FT_Error face_result =
+        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes.data()),
+                           static_cast<FT_Long>(record.bytes.size()), face_index, &record.face);
     if (face_result != 0) {
-        return fail(make_error(
-            FontErrorStage::face_creation,
-            face_index == 0
-                ? FontErrorKind::invalid_font_data
-                : FontErrorKind::invalid_face_index,
-            face_index == 0
-                ? "FreeType rejected the font bytes."
-                : "FreeType rejected the requested face index."));
+        return fail(make_error(FontErrorStage::face_creation,
+                               face_index == 0 ? FontErrorKind::invalid_font_data : FontErrorKind::invalid_face_index,
+                               face_index == 0 ? "FreeType rejected the font bytes."
+                                               : "FreeType rejected the requested face index."));
     }
     ++impl_->counters->faces_acquired;
 
-    if (failure_point == FontFailurePoint::after_face_creation
-            || failure_point == FontFailurePoint::charmap_selection) {
-        return fail(make_error(
-            FontErrorStage::charmap_selection,
-            FontErrorKind::no_unicode_charmap,
-            "Injected Unicode charmap selection failure."));
+    if (failure_point == FontFailurePoint::after_face_creation ||
+        failure_point == FontFailurePoint::charmap_selection) {
+        return fail(make_error(FontErrorStage::charmap_selection, FontErrorKind::no_unicode_charmap,
+                               "Injected Unicode charmap selection failure."));
     }
     if (FT_Select_Charmap(record.face, FT_ENCODING_UNICODE) != 0) {
-        return fail(make_error(
-            FontErrorStage::charmap_selection,
-            FontErrorKind::no_unicode_charmap,
-            "Font has no usable Unicode charmap."));
+        return fail(make_error(FontErrorStage::charmap_selection, FontErrorKind::no_unicode_charmap,
+                               "Font has no usable Unicode charmap."));
     }
 
     if (failure_point == FontFailurePoint::pixel_size_configuration) {
-        return fail(make_error(
-            FontErrorStage::pixel_size_configuration,
-            FontErrorKind::invalid_pixel_size,
-            "Injected pixel-size configuration failure."));
+        return fail(make_error(FontErrorStage::pixel_size_configuration, FontErrorKind::invalid_pixel_size,
+                               "Injected pixel-size configuration failure."));
     }
     if (FT_Set_Pixel_Sizes(record.face, 0, *raster_pixel_size) != 0) {
-        return fail(make_error(
-            FontErrorStage::pixel_size_configuration,
-            FontErrorKind::invalid_pixel_size,
-            "FreeType rejected the requested pixel size."));
+        return fail(make_error(FontErrorStage::pixel_size_configuration, FontErrorKind::invalid_pixel_size,
+                               "FreeType rejected the requested pixel size."));
     }
 
-    const float raster_scale = static_cast<float>(*raster_pixel_size)
-        / static_cast<float>(raster.logical_pixel_size);
+    const float raster_scale = static_cast<float>(*raster_pixel_size) / static_cast<float>(raster.logical_pixel_size);
     const FT_Size_Metrics& metrics = record.face->size->metrics;
     record.metrics.ascent = fixed_26_6_to_pixels(metrics.ascender) / raster_scale;
     record.metrics.descent = fixed_26_6_to_pixels(metrics.descender) / raster_scale;
-    record.metrics.line_gap = std::max(
-        0.0F,
-        fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender)
-            / raster_scale);
+    record.metrics.line_gap =
+        std::max(0.0F, fixed_26_6_to_pixels(metrics.height - metrics.ascender + metrics.descender) / raster_scale);
     // Decoration geometry comes from the face rather than being derived from
     // ascent/descent, so the underline and strikethrough land where the font
     // designer placed them. Values are stored RELATIVE TO THE EM and are
@@ -524,18 +432,14 @@ FontLoadResult FontRuntime::load_font_bytes(
     // baseline, which is where the underline and strikeout lines go.
     const float units_per_em = static_cast<float>(record.face->units_per_EM);
     if (units_per_em > 0.0F) {
-        record.metrics.underline_position =
-            static_cast<float>(record.face->underline_position) / units_per_em;
-        record.metrics.underline_thickness = std::max(0.0F,
-            static_cast<float>(record.face->underline_thickness) / units_per_em);
+        record.metrics.underline_position = static_cast<float>(record.face->underline_position) / units_per_em;
+        record.metrics.underline_thickness =
+            std::max(0.0F, static_cast<float>(record.face->underline_thickness) / units_per_em);
     }
-    if (const auto* os2 = static_cast<const TT_OS2*>(
-            FT_Get_Sfnt_Table(record.face, FT_SFNT_OS2));
-            os2 != nullptr && units_per_em > 0.0F && os2->version != 0xFFFFU) {
-        record.metrics.strikeout_position =
-            static_cast<float>(os2->yStrikeoutPosition) / units_per_em;
-        record.metrics.strikeout_thickness = std::max(0.0F,
-            static_cast<float>(os2->yStrikeoutSize) / units_per_em);
+    if (const auto* os2 = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(record.face, FT_SFNT_OS2));
+        os2 != nullptr && units_per_em > 0.0F && os2->version != 0xFFFFU) {
+        record.metrics.strikeout_position = static_cast<float>(os2->yStrikeoutPosition) / units_per_em;
+        record.metrics.strikeout_thickness = std::max(0.0F, static_cast<float>(os2->yStrikeoutSize) / units_per_em);
     }
     record.metrics.logical_pixel_size = raster.logical_pixel_size;
     record.metrics.raster_pixel_size = *raster_pixel_size;
@@ -543,34 +447,24 @@ FontLoadResult FontRuntime::load_font_bytes(
     record.metrics.raster_scale = raster_scale;
     record.raster_policy = raster.policy;
 
-    const FT_Error shaping_face_result = FT_New_Memory_Face(
-        impl_->library,
-        reinterpret_cast<const FT_Byte*>(record.bytes.data()),
-        static_cast<FT_Long>(record.bytes.size()),
-        face_index,
-        &record.shaping_face);
+    const FT_Error shaping_face_result =
+        FT_New_Memory_Face(impl_->library, reinterpret_cast<const FT_Byte*>(record.bytes.data()),
+                           static_cast<FT_Long>(record.bytes.size()), face_index, &record.shaping_face);
     if (shaping_face_result != 0) {
-        return fail(make_error(
-            FontErrorStage::shaping,
-            FontErrorKind::shaping_failed,
-            "FreeType could not create an independent shaping face."));
+        return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                               "FreeType could not create an independent shaping face."));
     }
     ++impl_->counters->faces_acquired;
-    if (FT_Select_Charmap(record.shaping_face, FT_ENCODING_UNICODE) != 0
-            || FT_Set_Pixel_Sizes(
-                record.shaping_face, 0, raster.logical_pixel_size) != 0) {
-        return fail(make_error(
-            FontErrorStage::shaping,
-            FontErrorKind::shaping_failed,
-            "FreeType could not configure the independent shaping face."));
+    if (FT_Select_Charmap(record.shaping_face, FT_ENCODING_UNICODE) != 0 ||
+        FT_Set_Pixel_Sizes(record.shaping_face, 0, raster.logical_pixel_size) != 0) {
+        return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                               "FreeType could not configure the independent shaping face."));
     }
 
     record.harfbuzz_font = hb_ft_font_create_referenced(record.shaping_face);
     if (record.harfbuzz_font == nullptr) {
-        return fail(make_error(
-            FontErrorStage::shaping,
-            FontErrorKind::shaping_failed,
-            "HarfBuzz could not create an immutable font adapter."));
+        return fail(make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                               "HarfBuzz could not create an immutable font adapter."));
     }
     hb_ft_font_set_load_flags(record.harfbuzz_font, FT_LOAD_DEFAULT);
     const int harfbuzz_scale = static_cast<int>(raster.logical_pixel_size * 64U);
@@ -601,43 +495,30 @@ FontMetricsResult FontRuntime::metrics(FontIdentity font) const {
     if (record == nullptr) {
         return {
             {},
-            make_error(
-                FontErrorStage::coverage_query,
-                FontErrorKind::invalid_identity,
-                "Font identity is stale or unknown.",
-                font),
+            make_error(FontErrorStage::coverage_query, FontErrorKind::invalid_identity,
+                       "Font identity is stale or unknown.", font),
         };
     }
     return {record->metrics, {}};
 }
 
-GlyphLookupResult FontRuntime::glyph_index(
-    FontIdentity font,
-    char32_t codepoint) const {
+GlyphLookupResult FontRuntime::glyph_index(FontIdentity font, char32_t codepoint) const {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::coverage_query)};
     }
     if (!is_unicode_scalar(codepoint)) {
         return {
             {},
-            make_error(
-                FontErrorStage::coverage_query,
-                FontErrorKind::invalid_codepoint,
-                "Coverage queries require a Unicode scalar value.",
-                font,
-                codepoint),
+            make_error(FontErrorStage::coverage_query, FontErrorKind::invalid_codepoint,
+                       "Coverage queries require a Unicode scalar value.", font, codepoint),
         };
     }
     const Impl::FontRecord* record = impl_->find(font);
     if (record == nullptr) {
         return {
             {},
-            make_error(
-                FontErrorStage::coverage_query,
-                FontErrorKind::invalid_identity,
-                "Font identity is stale or unknown.",
-                font,
-                codepoint),
+            make_error(FontErrorStage::coverage_query, FontErrorKind::invalid_identity,
+                       "Font identity is stale or unknown.", font, codepoint),
         };
     }
     ++impl_->counters->coverage_queries;
@@ -645,28 +526,21 @@ GlyphLookupResult FontRuntime::glyph_index(
     return {{font, glyph_id, codepoint, codepoint, false}, {}};
 }
 
-GlyphLookupResult FontRuntime::find_glyph(
-    std::span<const FontIdentity> fallback_chain,
-    char32_t codepoint,
-    std::optional<char32_t> replacement) const {
+GlyphLookupResult FontRuntime::find_glyph(std::span<const FontIdentity> fallback_chain, char32_t codepoint,
+                                          std::optional<char32_t> replacement) const {
     if (!impl_->is_owner_thread()) {
         return {{}, impl_->owner_error(FontErrorStage::coverage_query)};
     }
     if (!is_unicode_scalar(codepoint)) {
         return {
             {},
-            make_error(
-                FontErrorStage::coverage_query,
-                FontErrorKind::invalid_codepoint,
-                "Fallback lookup requires a Unicode scalar value.",
-                {},
-                codepoint),
+            make_error(FontErrorStage::coverage_query, FontErrorKind::invalid_codepoint,
+                       "Fallback lookup requires a Unicode scalar value.", {}, codepoint),
         };
     }
 
     FontError search_error;
-    const auto search = [&](char32_t candidate, bool used_replacement)
-        -> std::optional<GlyphSelection> {
+    const auto search = [&](char32_t candidate, bool used_replacement) -> std::optional<GlyphSelection> {
         for (const FontIdentity font : fallback_chain) {
             const GlyphLookupResult lookup = glyph_index(font, candidate);
             if (!lookup) {
@@ -700,34 +574,18 @@ GlyphLookupResult FontRuntime::find_glyph(
     }
     return {
         {},
-        make_error(
-            FontErrorStage::coverage_query,
-            FontErrorKind::missing_glyph,
-            "No font in the declared fallback chain covers the codepoint.",
-            {},
-            codepoint),
+        make_error(FontErrorStage::coverage_query, FontErrorKind::missing_glyph,
+                   "No font in the declared fallback chain covers the codepoint.", {}, codepoint),
     };
 }
 
-GlyphRasterResult FontRuntime::rasterize(
-    FontIdentity font,
-    std::uint32_t glyph_id,
-    GlyphRasterMode mode,
-    FontFailurePoint failure_point) {
-    return rasterize(
-        font,
-        glyph_id,
-        GlyphRasterPhase::zero,
-        mode,
-        failure_point);
+GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterMode mode,
+                                         FontFailurePoint failure_point) {
+    return rasterize(font, glyph_id, GlyphRasterPhase::zero, mode, failure_point);
 }
 
-GlyphRasterResult FontRuntime::rasterize(
-    FontIdentity font,
-    std::uint32_t glyph_id,
-    GlyphRasterPhase phase,
-    GlyphRasterMode mode,
-    FontFailurePoint failure_point) {
+GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase,
+                                         GlyphRasterMode mode, FontFailurePoint failure_point) {
     if (!impl_->is_owner_thread()) {
         return {nullptr, false, impl_->owner_error(FontErrorStage::rasterization)};
     }
@@ -736,11 +594,8 @@ GlyphRasterResult FontRuntime::rasterize(
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::invalid_identity,
-                "Font identity is stale or unknown.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::invalid_identity,
+                       "Font identity is stale or unknown.", font),
         };
     }
 
@@ -749,22 +604,14 @@ GlyphRasterResult FontRuntime::rasterize(
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::rasterization_failed,
-                "Glyph raster phase is invalid.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
+                       "Glyph raster phase is invalid.", font),
         };
     }
     const GlyphCacheKey key{
-        font,
-        glyph_id,
-        record->metrics.raster_pixel_size,
-        phase,
-        mode,
+        font, glyph_id, record->metrics.raster_pixel_size, phase, mode,
     };
-    if (const auto existing = impl_->glyph_cache.find(key);
-            existing != impl_->glyph_cache.end()) {
+    if (const auto existing = impl_->glyph_cache.find(key); existing != impl_->glyph_cache.end()) {
         ++impl_->counters->cache_hits;
         return {&existing->second, true, {}};
     }
@@ -772,11 +619,8 @@ GlyphRasterResult FontRuntime::rasterize(
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::rasterization_failed,
-                "Injected glyph rasterization failure.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
+                       "Injected glyph rasterization failure.", font),
         };
     }
     FT_Vector raster_translation{
@@ -784,37 +628,28 @@ GlyphRasterResult FontRuntime::rasterize(
         0,
     };
     FT_Set_Transform(record->face, nullptr, &raster_translation);
-    const bool raster_failed = mode != GlyphRasterMode::grayscale
-        || FT_Load_Glyph(
-            record->face, glyph_id, raster_load_flags(record->raster_policy)) != 0
-        || FT_Render_Glyph(
-            record->face->glyph, raster_render_mode(record->raster_policy)) != 0;
+    const bool raster_failed = mode != GlyphRasterMode::grayscale ||
+                               FT_Load_Glyph(record->face, glyph_id, raster_load_flags(record->raster_policy)) != 0 ||
+                               FT_Render_Glyph(record->face->glyph, raster_render_mode(record->raster_policy)) != 0;
     FT_Set_Transform(record->face, nullptr, nullptr);
     if (raster_failed) {
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::rasterization_failed,
-                "FreeType could not render the requested glyph.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
+                       "FreeType could not render the requested glyph.", font),
         };
     }
 
     const FT_GlyphSlot slot = record->face->glyph;
     const FT_Bitmap& bitmap = slot->bitmap;
-    if (bitmap.pixel_mode != FT_PIXEL_MODE_GRAY
-            && bitmap.pixel_mode != FT_PIXEL_MODE_MONO
-            && bitmap.width != 0 && bitmap.rows != 0) {
+    if (bitmap.pixel_mode != FT_PIXEL_MODE_GRAY && bitmap.pixel_mode != FT_PIXEL_MODE_MONO && bitmap.width != 0 &&
+        bitmap.rows != 0) {
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::unsupported_bitmap,
-                "FreeType returned a glyph bitmap incompatible with the R8 atlas.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                       "FreeType returned a glyph bitmap incompatible with the R8 atlas.", font),
         };
     }
 
@@ -840,19 +675,15 @@ GlyphRasterResult FontRuntime::rasterize(
             return {
                 nullptr,
                 false,
-                make_error(
-                    FontErrorStage::rasterization,
-                    FontErrorKind::unsupported_bitmap,
-                    "FreeType returned an invalid glyph bitmap pitch.",
-                    font),
+                make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                           "FreeType returned an invalid glyph bitmap pitch.", font),
             };
         }
-        const std::size_t source_size = static_cast<std::size_t>(std::abs(bitmap.pitch))
-            * bitmap.rows;
+        const std::size_t source_size = static_cast<std::size_t>(std::abs(bitmap.pitch)) * bitmap.rows;
         const auto source = std::span<const std::uint8_t>{bitmap.buffer, source_size};
         const auto normalized = bitmap.pixel_mode == FT_PIXEL_MODE_MONO
-            ? normalize_mono_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch)
-            : normalize_gray_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch);
+                                    ? normalize_mono_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch)
+                                    : normalize_gray_coverage(source, bitmap.width, bitmap.rows, bitmap.pitch);
         if (!normalized) {
             return {nullptr, false, normalized.error};
         }
@@ -865,21 +696,15 @@ GlyphRasterResult FontRuntime::rasterize(
         return {
             nullptr,
             false,
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::rasterization_failed,
-                "Glyph cache insertion failed.",
-                font),
+            make_error(FontErrorStage::rasterization, FontErrorKind::rasterization_failed,
+                       "Glyph cache insertion failed.", font),
         };
     }
     return {&entry->second, false, {}};
 }
 
-FontShapeResult FontRuntime::shape_utf8_segment(
-    FontIdentity font,
-    std::string_view normalized_utf8,
-    std::size_t byte_offset,
-    std::size_t byte_length) const {
+FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,
+                                                std::size_t byte_offset, std::size_t byte_length) const {
     if (!impl_->is_owner_thread()) {
         return {{}, false, impl_->owner_error(FontErrorStage::shaping)};
     }
@@ -888,26 +713,19 @@ FontShapeResult FontRuntime::shape_utf8_segment(
         return {
             {},
             false,
-            make_error(
-                FontErrorStage::shaping,
-                FontErrorKind::invalid_identity,
-                "Font identity is stale or unknown.",
-                font),
+            make_error(FontErrorStage::shaping, FontErrorKind::invalid_identity, "Font identity is stale or unknown.",
+                       font),
         };
     }
-    if (byte_offset > normalized_utf8.size()
-            || byte_length > normalized_utf8.size() - byte_offset
-            || normalized_utf8.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())
-            || byte_offset > std::numeric_limits<unsigned int>::max()
-            || byte_length > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+    if (byte_offset > normalized_utf8.size() || byte_length > normalized_utf8.size() - byte_offset ||
+        normalized_utf8.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+        byte_offset > std::numeric_limits<unsigned int>::max() ||
+        byte_length > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         return {
             {},
             false,
-            make_error(
-                FontErrorStage::shaping,
-                FontErrorKind::shaping_failed,
-                "UTF-8 shaping byte range is outside the normalized input.",
-                font),
+            make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                       "UTF-8 shaping byte range is outside the normalized input.", font),
         };
     }
     if (byte_length == 0) {
@@ -920,51 +738,36 @@ FontShapeResult FontRuntime::shape_utf8_segment(
         return {
             {},
             false,
-            make_error(
-                FontErrorStage::shaping,
-                FontErrorKind::shaping_failed,
-                "HarfBuzz buffer allocation failed.",
-                font),
+            make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed, "HarfBuzz buffer allocation failed.",
+                       font),
         };
     }
 
-    hb_buffer_set_cluster_level(
-        buffer.get(), HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
-    hb_buffer_add_utf8(
-        buffer.get(),
-        normalized_utf8.data(),
-        static_cast<int>(normalized_utf8.size()),
-        static_cast<unsigned int>(byte_offset),
-        static_cast<int>(byte_length));
+    hb_buffer_set_cluster_level(buffer.get(), HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+    hb_buffer_add_utf8(buffer.get(), normalized_utf8.data(), static_cast<int>(normalized_utf8.size()),
+                       static_cast<unsigned int>(byte_offset), static_cast<int>(byte_length));
     hb_buffer_guess_segment_properties(buffer.get());
     hb_shape(record->harfbuzz_font, buffer.get(), nullptr, 0);
 
     unsigned int glyph_count = 0;
-    const hb_glyph_info_t* glyph_info = hb_buffer_get_glyph_infos(
-        buffer.get(), &glyph_count);
-    const hb_glyph_position_t* glyph_positions = hb_buffer_get_glyph_positions(
-        buffer.get(), &glyph_count);
-    if ((glyph_count != 0 && (glyph_info == nullptr || glyph_positions == nullptr))
-            || !hb_buffer_allocation_successful(buffer.get())) {
+    const hb_glyph_info_t* glyph_info = hb_buffer_get_glyph_infos(buffer.get(), &glyph_count);
+    const hb_glyph_position_t* glyph_positions = hb_buffer_get_glyph_positions(buffer.get(), &glyph_count);
+    if ((glyph_count != 0 && (glyph_info == nullptr || glyph_positions == nullptr)) ||
+        !hb_buffer_allocation_successful(buffer.get())) {
         return {
             {},
             false,
-            make_error(
-                FontErrorStage::shaping,
-                FontErrorKind::shaping_failed,
-                "HarfBuzz could not produce shaped glyph data.",
-                font),
+            make_error(FontErrorStage::shaping, FontErrorKind::shaping_failed,
+                       "HarfBuzz could not produce shaped glyph data.", font),
         };
     }
 
     FontShapeResult result;
-    result.right_to_left = HB_DIRECTION_IS_BACKWARD(
-        hb_buffer_get_direction(buffer.get()));
+    result.right_to_left = HB_DIRECTION_IS_BACKWARD(hb_buffer_get_direction(buffer.get()));
     result.glyphs.reserve(glyph_count);
     for (unsigned int index = 0; index < glyph_count; ++index) {
         hb_glyph_extents_t extents{};
-        static_cast<void>(hb_font_get_glyph_extents(
-            record->harfbuzz_font, glyph_info[index].codepoint, &extents));
+        static_cast<void>(hb_font_get_glyph_extents(record->harfbuzz_font, glyph_info[index].codepoint, &extents));
         result.glyphs.push_back({
             glyph_info[index].codepoint,
             glyph_info[index].cluster,
@@ -987,16 +790,11 @@ FontActionResult FontRuntime::remove_font(FontIdentity font) {
     }
     Impl::FontRecord* record = impl_->find(font);
     if (record == nullptr) {
-        return {make_error(
-            FontErrorStage::destruction,
-            FontErrorKind::invalid_identity,
-            "Font identity is stale or unknown.",
-            font)};
+        return {make_error(FontErrorStage::destruction, FontErrorKind::invalid_identity,
+                           "Font identity is stale or unknown.", font)};
     }
 
-    std::erase_if(impl_->glyph_cache, [font](const auto& entry) {
-        return entry.first.font == font;
-    });
+    std::erase_if(impl_->glyph_cache, [font](const auto& entry) { return entry.first.font == font; });
     Impl::FontSlot& slot = impl_->fonts[font.slot];
     impl_->release_record(*slot.record);
     slot.record.reset();
@@ -1023,34 +821,25 @@ std::size_t FontRuntime::glyph_cache_size() const noexcept {
     return impl_->glyph_cache.size();
 }
 
-CoverageNormalizationResult normalize_gray_coverage(
-    std::span<const std::uint8_t> source,
-    std::uint32_t width,
-    std::uint32_t height,
-    int pitch) {
+CoverageNormalizationResult normalize_gray_coverage(std::span<const std::uint8_t> source, std::uint32_t width,
+                                                    std::uint32_t height, int pitch) {
     if (width == 0 || height == 0) {
         return {};
     }
     if (pitch == 0 || pitch == std::numeric_limits<int>::min()) {
         return {
             {},
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::unsupported_bitmap,
-                "Glyph bitmap pitch is invalid."),
+            make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                       "Glyph bitmap pitch is invalid."),
         };
     }
     const std::size_t absolute_pitch = static_cast<std::size_t>(std::abs(pitch));
-    if (absolute_pitch < width
-            || height > std::numeric_limits<std::size_t>::max() / absolute_pitch
-            || source.size() < absolute_pitch * height
-            || height > std::numeric_limits<std::size_t>::max() / width) {
+    if (absolute_pitch < width || height > std::numeric_limits<std::size_t>::max() / absolute_pitch ||
+        source.size() < absolute_pitch * height || height > std::numeric_limits<std::size_t>::max() / width) {
         return {
             {},
-            make_error(
-                FontErrorStage::rasterization,
-                FontErrorKind::unsupported_bitmap,
-                "Glyph bitmap storage does not match its dimensions and pitch."),
+            make_error(FontErrorStage::rasterization, FontErrorKind::unsupported_bitmap,
+                       "Glyph bitmap storage does not match its dimensions and pitch."),
         };
     }
 
@@ -1058,10 +847,8 @@ CoverageNormalizationResult normalize_gray_coverage(
     result.coverage.resize(static_cast<std::size_t>(width) * height);
     for (std::uint32_t row = 0; row < height; ++row) {
         const std::uint32_t source_row = pitch > 0 ? row : height - 1 - row;
-        std::copy_n(
-            source.begin() + static_cast<std::size_t>(source_row) * absolute_pitch,
-            width,
-            result.coverage.begin() + static_cast<std::size_t>(row) * width);
+        std::copy_n(source.begin() + static_cast<std::size_t>(source_row) * absolute_pitch, width,
+                    result.coverage.begin() + static_cast<std::size_t>(row) * width);
     }
     return result;
 }

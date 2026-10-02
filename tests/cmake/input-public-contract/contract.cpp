@@ -1,5 +1,6 @@
 #include <ryn/input.hpp>
 #include <string>
+
 void contract() {
 #if INPUT_CASE == 0
     ryn::Input(ryn::InputProps{}.value(u8"valid"));

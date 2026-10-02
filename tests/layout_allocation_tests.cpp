@@ -80,15 +80,11 @@ void operator delete[](void* memory, std::size_t) noexcept {
 }
 
 void* operator new(std::size_t size, std::align_val_t alignment) {
-    return allocation_probe::allocate_aligned(
-        size,
-        static_cast<std::size_t>(alignment));
+    return allocation_probe::allocate_aligned(size, static_cast<std::size_t>(alignment));
 }
 
 void* operator new[](std::size_t size, std::align_val_t alignment) {
-    return allocation_probe::allocate_aligned(
-        size,
-        static_cast<std::size_t>(alignment));
+    return allocation_probe::allocate_aligned(size, static_cast<std::size_t>(alignment));
 }
 
 void operator delete(void* memory, std::align_val_t) noexcept {
@@ -134,9 +130,9 @@ int main() {
         for (std::size_t index = 0; index < child_count; ++index) {
             const auto child = nodes.create_child(root);
             layout.set_layout(child, ryn::layout::LeafLayout{{
-                18.0F + static_cast<float>(index % 4),
-                10.0F + static_cast<float>(index % 3),
-            }});
+                                         18.0F + static_cast<float>(index % 4),
+                                         10.0F + static_cast<float>(index % 3),
+                                     }});
             nodes.require(child).external_layout.flex_grow = 1.0F + static_cast<float>(index % 3);
             nodes.require(child).external_layout.order = static_cast<int>(index % 5) - 2;
         }
@@ -155,21 +151,14 @@ int main() {
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
 
-        const auto allocations = allocation_probe::count.load(
-            std::memory_order_relaxed);
+        const auto allocations = allocation_probe::count.load(std::memory_order_relaxed);
         const auto stable = layout.flex_layout_diagnostics(root);
-        require(allocations == 0,
-                "stable wrapped Flex layout allocated");
-        require(stable.item_capacity == warm.item_capacity
-                    && stable.line_capacity == warm.line_capacity,
+        require(allocations == 0, "stable wrapped Flex layout allocated");
+        require(stable.item_capacity == warm.item_capacity && stable.line_capacity == warm.line_capacity,
                 "stable wrapped Flex layout changed scratch capacity");
 
-        std::cout
-            << "flex_children=" << child_count
-            << " layouts=" << measured_layouts
-            << " lines=" << stable.line_count
-            << " allocations=" << allocations
-            << '\n';
+        std::cout << "flex_children=" << child_count << " layouts=" << measured_layouts
+                  << " lines=" << stable.line_count << " allocations=" << allocations << '\n';
     } catch (const std::exception& error) {
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         std::cerr << error.what() << '\n';

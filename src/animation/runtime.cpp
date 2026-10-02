@@ -7,11 +7,9 @@
 namespace ryn::animation {
 namespace {
 
-constexpr AnimationDirtyDomain allowed_dirty_domains =
-    AnimationDirtyDomain::material
-    | AnimationDirtyDomain::transform
-    | AnimationDirtyDomain::geometry
-    | AnimationDirtyDomain::animation;
+constexpr AnimationDirtyDomain allowed_dirty_domains = AnimationDirtyDomain::material |
+                                                       AnimationDirtyDomain::transform |
+                                                       AnimationDirtyDomain::geometry | AnimationDirtyDomain::animation;
 
 void advance_generation(std::uint32_t& generation) noexcept {
     ++generation;
@@ -22,17 +20,12 @@ void advance_generation(std::uint32_t& generation) noexcept {
 
 } // namespace
 
-void AnimationTargetSink::completed(
-    AnimationId,
-    AnimationTargetId) {}
+void AnimationTargetSink::completed(AnimationId, AnimationTargetId) {}
 
-AnimationRuntime::AnimationRuntime() noexcept
-    : owner_thread_(std::this_thread::get_id()) {}
+AnimationRuntime::AnimationRuntime() noexcept : owner_thread_(std::this_thread::get_id()) {}
 
-void AnimationRuntime::reserve(
-    std::size_t animation_capacity,
-    std::size_t scope_capacity,
-    std::size_t target_capacity) {
+void AnimationRuntime::reserve(std::size_t animation_capacity, std::size_t scope_capacity,
+                               std::size_t target_capacity) {
     ensure_owner_thread();
     animation_slots_.reserve(animation_capacity);
     free_animation_slots_.reserve(animation_capacity);
@@ -77,11 +70,8 @@ bool AnimationRuntime::dispose_scope(AnimationScopeId scope) {
     return true;
 }
 
-AnimationTargetId AnimationRuntime::register_target(
-    AnimationScopeId scope,
-    AnimationTargetSink& sink,
-    AnimationValueKind kind,
-    AnimationDirtyDomain dirty_domain) {
+AnimationTargetId AnimationRuntime::register_target(AnimationScopeId scope, AnimationTargetSink& sink,
+                                                    AnimationValueKind kind, AnimationDirtyDomain dirty_domain) {
     ensure_owner_thread();
     if (find(scope) == nullptr) {
         ++diagnostics_.stale_operations;
@@ -112,12 +102,8 @@ bool AnimationRuntime::unregister_target(AnimationTargetId target) {
     return true;
 }
 
-AnimationId AnimationRuntime::play(
-    AnimationTargetId target_id,
-    AnimationValue from,
-    AnimationValue to,
-    AnimationSpec spec,
-    AnimationTime start_time) {
+AnimationId AnimationRuntime::play(AnimationTargetId target_id, AnimationValue from, AnimationValue to,
+                                   AnimationSpec spec, AnimationTime start_time) {
     ensure_owner_thread();
     const auto* target = find(target_id);
     if (target == nullptr) {
@@ -150,7 +136,9 @@ AnimationId AnimationRuntime::play(
     }
     ++diagnostics_.created;
     ++diagnostics_.active;
-    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
+    if (schedule_observer_) {
+        schedule_observer_->animation_schedule_changed();
+    }
 
     if (spec.duration == AnimationDuration{}) {
         static_cast<void>(finish(id));
@@ -168,9 +156,7 @@ AnimationId AnimationRuntime::play(
     return id;
 }
 
-bool AnimationRuntime::cancel(
-    AnimationId animation,
-    AnimationTime sample_time) {
+bool AnimationRuntime::cancel(AnimationId animation, AnimationTime sample_time) {
     ensure_owner_thread();
     auto* record = find(animation);
     if (record == nullptr) {
@@ -221,11 +207,8 @@ bool AnimationRuntime::finish(AnimationId animation) {
     return true;
 }
 
-bool AnimationRuntime::retarget(
-    AnimationId animation,
-    AnimationValue to,
-    AnimationSpec spec,
-    AnimationTime start_time) {
+bool AnimationRuntime::retarget(AnimationId animation, AnimationValue to, AnimationSpec spec,
+                                AnimationTime start_time) {
     ensure_owner_thread();
     auto* record = find(animation);
     if (record == nullptr) {
@@ -235,8 +218,7 @@ bool AnimationRuntime::retarget(
     validate_animation_value(to);
     const auto* target = find(record->target);
     if (target == nullptr || value_kind(to) != target->value_kind) {
-        throw std::invalid_argument(
-            "retarget value does not match the animation target kind");
+        throw std::invalid_argument("retarget value does not match the animation target kind");
     }
 
     const auto effective_time = observe_time(start_time);
@@ -260,7 +242,9 @@ bool AnimationRuntime::retarget(
     record->spec = spec;
     record->start_time = effective_time;
     ++diagnostics_.retargeted;
-    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
+    if (schedule_observer_) {
+        schedule_observer_->animation_schedule_changed();
+    }
     if (spec.duration == AnimationDuration{}) {
         if (record->in_callback) {
             record->finish_requested = true;
@@ -287,45 +271,46 @@ std::size_t AnimationRuntime::tick(AnimationTime sample_time) {
         const auto elapsed = observation.effective - *previous_time;
         const auto period = nominal_frame_period_.count_microseconds();
         if (elapsed.count_microseconds() > period) {
-            diagnostics_.missed_cadences += static_cast<std::uint64_t>(
-                elapsed.count_microseconds() / period - 1);
+            diagnostics_.missed_cadences += static_cast<std::uint64_t>(elapsed.count_microseconds() / period - 1);
         }
     }
 
     tick_snapshot_.assign(active_.begin(), active_.end());
+
     struct Sampling {
         AnimationScheduleObserver* observer;
-        ~Sampling() { if (observer) observer->animation_tick_finished(); }
+
+        ~Sampling() {
+            if (observer) {
+                observer->animation_tick_finished();
+            }
+        }
     } sampling{schedule_observer_};
-    if (sampling.observer) sampling.observer->animation_tick_started();
+
+    if (sampling.observer) {
+        sampling.observer->animation_tick_started();
+    }
     std::size_t updates = 0;
     for (const auto id : tick_snapshot_) {
         const auto* record = find(id);
         if (record == nullptr) {
             continue;
         }
-        const auto interval = sample_animation_interval(
-            observation.effective,
-            record->start_time,
-            record->spec.delay,
-            record->spec.duration);
+        const auto interval = sample_animation_interval(observation.effective, record->start_time, record->spec.delay,
+                                                        record->spec.duration);
         if (interval.phase == AnimationIntervalPhase::completed) {
             const auto applied_before = diagnostics_.applied_values;
             static_cast<void>(finish(id));
-            updates += static_cast<std::size_t>(
-                diagnostics_.applied_values - applied_before);
+            updates += static_cast<std::size_t>(diagnostics_.applied_values - applied_before);
             continue;
         }
-        const auto value = interval.phase == AnimationIntervalPhase::delayed
-            ? record->from
-            : interpolate_animation_value(
-                record->from,
-                record->to,
-                record->spec.easing.sample(interval.progress));
+        const auto value =
+            interval.phase == AnimationIntervalPhase::delayed
+                ? record->from
+                : interpolate_animation_value(record->from, record->to, record->spec.easing.sample(interval.progress));
         const auto applied_before = diagnostics_.applied_values;
         static_cast<void>(apply_value(id, value));
-        updates += static_cast<std::size_t>(
-            diagnostics_.applied_values - applied_before);
+        updates += static_cast<std::size_t>(diagnostics_.applied_values - applied_before);
     }
     return updates;
 }
@@ -347,11 +332,12 @@ std::size_t AnimationRuntime::finish_all() {
 void AnimationRuntime::set_nominal_frame_period(AnimationDuration period) {
     ensure_owner_thread();
     if (period == AnimationDuration{}) {
-        throw std::invalid_argument(
-            "nominal animation frame period must be positive");
+        throw std::invalid_argument("nominal animation frame period must be positive");
     }
     nominal_frame_period_ = period;
-    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
+    if (schedule_observer_) {
+        schedule_observer_->animation_schedule_changed();
+    }
 }
 
 AnimationDuration AnimationRuntime::nominal_frame_period() const noexcept {
@@ -381,8 +367,8 @@ std::optional<AnimationTime> AnimationRuntime::next_deadline() const {
             const auto step = elapsed.count_microseconds() / period_value + 1;
             const auto duration_value = record->spec.duration.count_microseconds();
             candidate = step > duration_value / period_value
-                ? active_end
-                : active_start + AnimationDuration::microseconds(step * period_value);
+                            ? active_end
+                            : active_start + AnimationDuration::microseconds(step * period_value);
             if (candidate > active_end) {
                 candidate = active_end;
             }
@@ -417,70 +403,52 @@ const AnimationRuntimeDiagnostics& AnimationRuntime::diagnostics() const noexcep
     return diagnostics_;
 }
 
-AnimationRuntime::ScopeRecord* AnimationRuntime::find(
-    AnimationScopeId scope) noexcept {
+AnimationRuntime::ScopeRecord* AnimationRuntime::find(AnimationScopeId scope) noexcept {
     if (!scope.valid() || scope.index >= scope_slots_.size()) {
         return nullptr;
     }
     auto& slot = scope_slots_[scope.index];
-    return slot.generation == scope.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == scope.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
-const AnimationRuntime::ScopeRecord* AnimationRuntime::find(
-    AnimationScopeId scope) const noexcept {
+const AnimationRuntime::ScopeRecord* AnimationRuntime::find(AnimationScopeId scope) const noexcept {
     if (!scope.valid() || scope.index >= scope_slots_.size()) {
         return nullptr;
     }
     const auto& slot = scope_slots_[scope.index];
-    return slot.generation == scope.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == scope.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
-AnimationRuntime::TargetRecord* AnimationRuntime::find(
-    AnimationTargetId target) noexcept {
+AnimationRuntime::TargetRecord* AnimationRuntime::find(AnimationTargetId target) noexcept {
     if (!target.valid() || target.index >= target_slots_.size()) {
         return nullptr;
     }
     auto& slot = target_slots_[target.index];
-    return slot.generation == target.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == target.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
-const AnimationRuntime::TargetRecord* AnimationRuntime::find(
-    AnimationTargetId target) const noexcept {
+const AnimationRuntime::TargetRecord* AnimationRuntime::find(AnimationTargetId target) const noexcept {
     if (!target.valid() || target.index >= target_slots_.size()) {
         return nullptr;
     }
     const auto& slot = target_slots_[target.index];
-    return slot.generation == target.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == target.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
-AnimationRuntime::AnimationRecord* AnimationRuntime::find(
-    AnimationId animation) noexcept {
+AnimationRuntime::AnimationRecord* AnimationRuntime::find(AnimationId animation) noexcept {
     if (!animation.valid() || animation.index >= animation_slots_.size()) {
         return nullptr;
     }
     auto& slot = animation_slots_[animation.index];
-    return slot.generation == animation.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == animation.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
-const AnimationRuntime::AnimationRecord* AnimationRuntime::find(
-    AnimationId animation) const noexcept {
+const AnimationRuntime::AnimationRecord* AnimationRuntime::find(AnimationId animation) const noexcept {
     if (!animation.valid() || animation.index >= animation_slots_.size()) {
         return nullptr;
     }
     const auto& slot = animation_slots_[animation.index];
-    return slot.generation == animation.generation && slot.record.has_value()
-        ? &*slot.record
-        : nullptr;
+    return slot.generation == animation.generation && slot.record.has_value() ? &*slot.record : nullptr;
 }
 
 std::uint32_t AnimationRuntime::acquire_scope_slot() {
@@ -522,9 +490,7 @@ std::uint32_t AnimationRuntime::acquire_animation_slot() {
     return static_cast<std::uint32_t>(animation_slots_.size() - 1);
 }
 
-void AnimationRuntime::validate_target_binding(
-    AnimationValueKind kind,
-    AnimationDirtyDomain dirty_domain) const {
+void AnimationRuntime::validate_target_binding(AnimationValueKind kind, AnimationDirtyDomain dirty_domain) const {
     const auto raw = static_cast<std::uint32_t>(dirty_domain);
     const auto allowed = static_cast<std::uint32_t>(allowed_dirty_domains);
     if (raw == 0U || (raw & ~allowed) != 0U) {
@@ -543,18 +509,13 @@ void AnimationRuntime::validate_target_binding(
     throw std::invalid_argument("animation target value kind is invalid");
 }
 
-void AnimationRuntime::validate_play_request(
-    const TargetRecord& target,
-    const AnimationValue& from,
-    const AnimationValue& to,
-    const AnimationSpec& spec,
-    AnimationTime start_time) const {
+void AnimationRuntime::validate_play_request(const TargetRecord& target, const AnimationValue& from,
+                                             const AnimationValue& to, const AnimationSpec& spec,
+                                             AnimationTime start_time) const {
     validate_animation_value(from);
     validate_animation_value(to);
-    if (value_kind(from) != target.value_kind
-            || value_kind(to) != target.value_kind) {
-        throw std::invalid_argument(
-            "animation endpoints do not match the target value kind");
+    if (value_kind(from) != target.value_kind || value_kind(to) != target.value_kind) {
+        throw std::invalid_argument("animation endpoints do not match the target value kind");
     }
     static_cast<void>(start_time + spec.delay + spec.duration);
 }
@@ -567,29 +528,19 @@ AnimationTime AnimationRuntime::observe_time(AnimationTime candidate) noexcept {
     return observation.effective;
 }
 
-AnimationValue AnimationRuntime::sample_value(
-    const AnimationRecord& record,
-    AnimationTime sample_time) const {
-    const auto interval = sample_animation_interval(
-        sample_time,
-        record.start_time,
-        record.spec.delay,
-        record.spec.duration);
+AnimationValue AnimationRuntime::sample_value(const AnimationRecord& record, AnimationTime sample_time) const {
+    const auto interval =
+        sample_animation_interval(sample_time, record.start_time, record.spec.delay, record.spec.duration);
     if (interval.phase == AnimationIntervalPhase::delayed) {
         return record.from;
     }
     if (interval.phase == AnimationIntervalPhase::completed) {
         return record.to;
     }
-    return interpolate_animation_value(
-        record.from,
-        record.to,
-        record.spec.easing.sample(interval.progress));
+    return interpolate_animation_value(record.from, record.to, record.spec.easing.sample(interval.progress));
 }
 
-bool AnimationRuntime::apply_value(
-    AnimationId animation,
-    const AnimationValue& value) {
+bool AnimationRuntime::apply_value(AnimationId animation, const AnimationValue& value) {
     auto* record = find(animation);
     if (record == nullptr) {
         return false;
@@ -658,9 +609,7 @@ void AnimationRuntime::invoke_completion(AnimationId animation) {
     }
 }
 
-bool AnimationRuntime::remove_animation(
-    AnimationId animation,
-    bool canceled) {
+bool AnimationRuntime::remove_animation(AnimationId animation, bool canceled) {
     auto* record = find(animation);
     if (record == nullptr) {
         return false;
@@ -675,7 +624,9 @@ bool AnimationRuntime::remove_animation(
     advance_generation(slot.generation);
     free_animation_slots_.push_back(animation.index);
     --diagnostics_.active;
-    if (schedule_observer_) schedule_observer_->animation_schedule_changed();
+    if (schedule_observer_) {
+        schedule_observer_->animation_schedule_changed();
+    }
     if (canceled && !completion_counted) {
         ++diagnostics_.canceled;
     }
@@ -697,8 +648,7 @@ void AnimationRuntime::cancel_target_animations(AnimationTargetId target) {
 
 void AnimationRuntime::ensure_owner_thread() const {
     if (std::this_thread::get_id() != owner_thread_) {
-        throw std::logic_error(
-            "AnimationRuntime must be used on its owner thread");
+        throw std::logic_error("AnimationRuntime must be used on its owner thread");
     }
 }
 

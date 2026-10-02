@@ -15,35 +15,32 @@
 namespace rynui::example::detail {
 
 struct ReferenceSurfacePropsAccess final {
-    [[nodiscard]] static ReferenceSurfaceRole role(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static ReferenceSurfaceRole role(const ReferenceSurfaceProps& props) noexcept {
         return props.role_;
     }
-    [[nodiscard]] static std::string_view identity(
-        const ReferenceSurfaceProps& props) noexcept { return props.identity_; }
 
-    [[nodiscard]] static const ryn::Prop<GallerySupportStatus>& status(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static std::string_view identity(const ReferenceSurfaceProps& props) noexcept {
+        return props.identity_;
+    }
+
+    [[nodiscard]] static const ryn::Prop<GallerySupportStatus>& status(const ReferenceSurfaceProps& props) noexcept {
         return props.status_;
     }
 
-    [[nodiscard]] static const ryn::Prop<std::optional<ryn::Color>>& swatch(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static const ryn::Prop<std::optional<ryn::Color>>&
+    swatch(const ReferenceSurfaceProps& props) noexcept {
         return props.swatch_;
     }
 
-    [[nodiscard]] static const ryn::Prop<bool>& elevated(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static const ryn::Prop<bool>& elevated(const ReferenceSurfaceProps& props) noexcept {
         return props.elevated_;
     }
 
-    [[nodiscard]] static const ryn::Prop<bool>& visible(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static const ryn::Prop<bool>& visible(const ReferenceSurfaceProps& props) noexcept {
         return props.visible_;
     }
 
-    [[nodiscard]] static const ryn::LayoutStyle& layout(
-        const ReferenceSurfaceProps& props) noexcept {
+    [[nodiscard]] static const ryn::LayoutStyle& layout(const ReferenceSurfaceProps& props) noexcept {
         return props.layout_;
     }
 };
@@ -132,9 +129,7 @@ ryn::String status_label(GallerySupportStatus status) {
     throw std::invalid_argument("ReferenceSurface support status is invalid");
 }
 
-ryn::Color status_color(
-    GallerySupportStatus status,
-    const ryn::ThemeSnapshot& theme) {
+ryn::Color status_color(GallerySupportStatus status, const ryn::ThemeSnapshot& theme) {
     switch (status) {
     case GallerySupportStatus::implemented:
         return theme.map().color_success;
@@ -156,75 +151,64 @@ std::array<float, 4> channels(ryn::Color color) noexcept {
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
 
-std::array<float, 4> logical_bounds(
-    ryn::runtime::Rect bounds,
-    ryn::runtime::Size viewport) {
-    if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height)
-            || viewport.width <= 0.0F || viewport.height <= 0.0F) {
-        throw std::invalid_argument(
-            "ReferenceSurface viewport must be finite and positive");
+std::array<float, 4> logical_bounds(ryn::runtime::Rect bounds, ryn::runtime::Size viewport) {
+    if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height) || viewport.width <= 0.0F ||
+        viewport.height <= 0.0F) {
+        throw std::invalid_argument("ReferenceSurface viewport must be finite and positive");
     }
     return {
-        bounds.x, bounds.y, bounds.width, bounds.height,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
     };
 }
 
-ryn::graphics::QuadInstance make_quad(
-    ryn::runtime::Rect bounds,
-    ryn::runtime::Size viewport,
-    ryn::Color color,
-    float opacity,
-    float radius,
-    ryn::runtime::Point translation) {
+ryn::graphics::QuadInstance make_quad(ryn::runtime::Rect bounds, ryn::runtime::Size viewport, ryn::Color color,
+                                      float opacity, float radius, ryn::runtime::Point translation) {
     return {
         logical_bounds(bounds, viewport),
         channels(color),
         opacity,
         radius,
         {
-            translation.x, translation.y,
+            translation.x,
+            translation.y,
         },
     };
 }
 
 float logical_radius(ryn::runtime::Rect bounds, float radius) noexcept {
-    return std::clamp(
-        radius,
-        0.0F,
-        0.5F * std::min(bounds.width, bounds.height));
+    return std::clamp(radius, 0.0F, 0.5F * std::min(bounds.width, bounds.height));
 }
 
-ryn::Color chrome_background(const detail::ReferenceSurfaceComponentState& state,
-    const ryn::ThemeSnapshot& theme) {
-    if (state.role == ReferenceSurfaceRole::site_header)
+ryn::Color chrome_background(const detail::ReferenceSurfaceComponentState& state, const ryn::ThemeSnapshot& theme) {
+    if (state.role == ReferenceSurfaceRole::site_header) {
         return theme.alias().color_background_container;
+    }
     const auto foreground = theme.alias().color_text;
     float alpha = 0.28F;
     if (state.role == ReferenceSurfaceRole::scrollbar_track) {
-        alpha = state.scrollbar_visual.track_pressed ? 0.16F
-            : state.scrollbar_visual.track_hover ? 0.10F : 0.05F;
+        alpha = state.scrollbar_visual.track_pressed ? 0.16F : state.scrollbar_visual.track_hover ? 0.10F : 0.05F;
     } else if (state.role == ReferenceSurfaceRole::scrollbar_thumb) {
-        alpha = state.scrollbar_visual.thumb_pressed ? 0.62F
-            : state.scrollbar_visual.thumb_hover ? 0.46F : 0.28F;
+        alpha = state.scrollbar_visual.thumb_pressed ? 0.62F : state.scrollbar_visual.thumb_hover ? 0.46F : 0.28F;
     }
     return {foreground.red(), foreground.green(), foreground.blue(), alpha};
 }
 
-void refresh_material(
-    ReferenceSurfaceHost& host,
-    detail::ReferenceSurfaceComponentState& state) {
-    const auto& theme = host.application().components()
-        .theme_scope(state.component)->snapshot();
+void refresh_material(ReferenceSurfaceHost& host, detail::ReferenceSurfaceComponentState& state) {
+    const auto& theme = host.application().components().theme_scope(state.component)->snapshot();
     if (state.role != ReferenceSurfaceRole::reference) {
         const auto background = chrome_background(state, theme);
-        for (auto& visual : state.visuals) visual.opacity = 0.0F;
-        auto& fill = state.visuals[static_cast<std::size_t>(
-            ReferenceSurfaceVisualLayer::background)];
+        for (auto& visual : state.visuals) {
+            visual.opacity = 0.0F;
+        }
+        auto& fill = state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)];
         fill.color = channels(background);
-        fill.opacity = state.visible
-                && state.role != ReferenceSurfaceRole::document_heading
-                && state.role != ReferenceSurfaceRole::document_note
-            ? 1.0F : 0.0F;
+        fill.opacity = state.visible && state.role != ReferenceSurfaceRole::document_heading &&
+                               state.role != ReferenceSurfaceRole::document_note
+                           ? 1.0F
+                           : 0.0F;
         if (state.role == ReferenceSurfaceRole::site_header) {
             auto& border = state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)];
             border.color = channels(theme.alias().color_border_secondary);
@@ -232,56 +216,40 @@ void refresh_material(
         }
         state.effects = {};
         if (state.scene.valid()) {
-            static_cast<void>(host.application().services().surfaces().update_surface(
-                state.scene, state.visuals));
-            static_cast<void>(host.application().services().surfaces().update_effects(
-                state.scene, state.effects));
-            host.application().dirty().invalidate(
-                state.node, ryn::runtime::DirtyFlags::Material);
+            static_cast<void>(host.application().services().surfaces().update_surface(state.scene, state.visuals));
+            static_cast<void>(host.application().services().surfaces().update_effects(state.scene, state.effects));
+            host.application().dirty().invalidate(state.node, ryn::runtime::DirtyFlags::Material);
         }
         return;
     }
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::border)].color =
-            channels(theme.alias().color_border_secondary);
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::border)].opacity = state.visible ? 1.0F : 0.0F;
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::background)].color =
-            channels(theme.alias().color_background_container);
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::background)].opacity = state.visible ? 1.0F : 0.0F;
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::swatch)].color =
-            channels(state.swatch.value_or(theme.alias().color_background_container));
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::swatch)].opacity =
-            state.visible && state.swatch.has_value() ? 1.0F : 0.0F;
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::status_badge)].color =
-            channels(status_color(state.status, theme));
-    state.visuals[static_cast<std::size_t>(
-        ReferenceSurfaceVisualLayer::status_badge)].opacity = state.visible ? 1.0F : 0.0F;
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::border)].color =
+        channels(theme.alias().color_border_secondary);
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::border)].opacity = state.visible ? 1.0F : 0.0F;
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)].color =
+        channels(theme.alias().color_background_container);
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)].opacity =
+        state.visible ? 1.0F : 0.0F;
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)].color =
+        channels(state.swatch.value_or(theme.alias().color_background_container));
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)].opacity =
+        state.visible && state.swatch.has_value() ? 1.0F : 0.0F;
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)].color =
+        channels(status_color(state.status, theme));
+    state.visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)].opacity =
+        state.visible ? 1.0F : 0.0F;
 
-    state.effects.shadows = state.elevated && state.visible
-        ? theme.alias().box_shadow_tertiary : ryn::ShadowList{};
+    state.effects.shadows = state.elevated && state.visible ? theme.alias().box_shadow_tertiary : ryn::ShadowList{};
     state.effects.shadow_opacity = state.elevated && state.visible ? 1.0F : 0.0F;
     state.effects.focus_enabled = false;
     state.effects.focus_opacity = 0.0F;
     if (state.scene.valid()) {
-        static_cast<void>(host.application().services().surfaces().update_surface(
-            state.scene, state.visuals));
-        static_cast<void>(host.application().services().surfaces().update_effects(
-            state.scene, state.effects));
-        host.application().dirty().invalidate(
-            state.node, ryn::runtime::DirtyFlags::Material);
+        static_cast<void>(host.application().services().surfaces().update_surface(state.scene, state.visuals));
+        static_cast<void>(host.application().services().surfaces().update_effects(state.scene, state.effects));
+        host.application().dirty().invalidate(state.node, ryn::runtime::DirtyFlags::Material);
     }
 }
 
-void apply_status(
-    ReferenceSurfaceHost& host,
-    ryn::runtime::ComponentId component,
-    GallerySupportStatus status) {
+void apply_status(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, GallerySupportStatus status) {
     validate_status(status);
     auto* state = host.find_state(component);
     if (state == nullptr || state->status == status) {
@@ -292,10 +260,7 @@ void apply_status(
     refresh_material(host, *state);
 }
 
-void apply_swatch(
-    ReferenceSurfaceHost& host,
-    ryn::runtime::ComponentId component,
-    std::optional<ryn::Color> swatch) {
+void apply_swatch(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, std::optional<ryn::Color> swatch) {
     auto* state = host.find_state(component);
     if (state == nullptr || state->swatch == swatch) {
         return;
@@ -304,10 +269,7 @@ void apply_swatch(
     refresh_material(host, *state);
 }
 
-void apply_elevated(
-    ReferenceSurfaceHost& host,
-    ryn::runtime::ComponentId component,
-    bool elevated) {
+void apply_elevated(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, bool elevated) {
     auto* state = host.find_state(component);
     if (state == nullptr || state->elevated == elevated) {
         return;
@@ -316,10 +278,7 @@ void apply_elevated(
     refresh_material(host, *state);
 }
 
-void apply_visible(
-    ReferenceSurfaceHost& host,
-    ryn::runtime::ComponentId component,
-    bool visible) {
+void apply_visible(ReferenceSurfaceHost& host, ryn::runtime::ComponentId component, bool visible) {
     auto* state = host.find_state(component);
     if (state == nullptr || state->visible == visible) {
         return;
@@ -343,17 +302,14 @@ void apply_visible(
             continue;
         }
         if (scenes.set_opacity(mounted.scene, visible ? 1.0F : 0.0F)) {
-            host.application().dirty().invalidate(
-                scenes.node(mounted.scene), ryn::runtime::DirtyFlags::Material);
+            host.application().dirty().invalidate(scenes.node(mounted.scene), ryn::runtime::DirtyFlags::Material);
         }
     }
 }
 
 } // namespace
 
-ReferenceSurfaceHost::ReferenceSurfaceHost(
-    ryn::detail::ButtonComponentHost& application)
-    : application_(&application) {
+ReferenceSurfaceHost::ReferenceSurfaceHost(ryn::detail::ButtonComponentHost& application) : application_(&application) {
     application_->attach_auxiliary(*this);
 }
 
@@ -364,9 +320,7 @@ ReferenceSurfaceHost::~ReferenceSurfaceHost() {
             if (!application_->destroy(component)) {
                 mounted_.pop_back();
             } else {
-                std::erase_if(mounted_, [component](const auto& mounted) {
-                    return mounted.component == component;
-                });
+                std::erase_if(mounted_, [component](const auto& mounted) { return mounted.component == component; });
             }
         } catch (...) {
             mounted_.pop_back();
@@ -377,40 +331,35 @@ ReferenceSurfaceHost::~ReferenceSurfaceHost() {
 
 void ReferenceSurfaceHost::mount(const ryn::Content& content, ryn::detail::InputComponentHost* inputs) {
     ActiveReferenceSurfaceHost guard(*this);
-    if (inputs) inputs->mount(content);
-    else application_->mount(content);
+    if (inputs) {
+        inputs->mount(content);
+    } else {
+        application_->mount(content);
+    }
 }
 
 bool ReferenceSurfaceHost::destroy(ryn::runtime::ComponentId component) {
     if (!application_->destroy(component)) {
         return false;
     }
-    std::erase_if(mounted_, [this](const auto& mounted) {
-        return !application_->components().contains(mounted.component);
-    });
+    std::erase_if(mounted_,
+                  [this](const auto& mounted) { return !application_->components().contains(mounted.component); });
     return true;
 }
 
-bool ReferenceSurfaceHost::layout_and_synchronize(
-    ryn::runtime::Size viewport,
-    ryn::runtime::Rect clip,
-    ryn::runtime::Point origin,
-    float gap) {
-    return application_->layout_and_synchronize(
-        viewport, clip, origin, gap);
+bool ReferenceSurfaceHost::layout_and_synchronize(ryn::runtime::Size viewport, ryn::runtime::Rect clip,
+                                                  ryn::runtime::Point origin, float gap) {
+    return application_->layout_and_synchronize(viewport, clip, origin, gap);
 }
 
-std::span<const MountedReferenceSurface>
-ReferenceSurfaceHost::mounted_surfaces() const noexcept {
+std::span<const MountedReferenceSurface> ReferenceSurfaceHost::mounted_surfaces() const noexcept {
     return mounted_;
 }
 
-ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
-    ryn::runtime::ComponentId component) const {
+ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(ryn::runtime::ComponentId component) const {
     const auto* state = find_state(component);
     if (state == nullptr) {
-        throw std::out_of_range(
-            "ReferenceSurface component is stale or invalid");
+        throw std::out_of_range("ReferenceSurface component is stale or invalid");
     }
     return {
         state->role,
@@ -425,14 +374,16 @@ ReferenceSurfaceSnapshot ReferenceSurfaceHost::snapshot(
     };
 }
 
-bool ReferenceSurfaceHost::set_scrollbar_visual_state(
-    ryn::runtime::ComponentId component, GalleryScrollbarVisualState visual) {
+bool ReferenceSurfaceHost::set_scrollbar_visual_state(ryn::runtime::ComponentId component,
+                                                      GalleryScrollbarVisualState visual) {
     auto* state = find_state(component);
-    if (!state || (state->role != ReferenceSurfaceRole::scrollbar_track
-            && state->role != ReferenceSurfaceRole::scrollbar_thumb)) {
+    if (!state || (state->role != ReferenceSurfaceRole::scrollbar_track &&
+                   state->role != ReferenceSurfaceRole::scrollbar_thumb)) {
         return false;
     }
-    if (state->scrollbar_visual == visual) return false;
+    if (state->scrollbar_visual == visual) {
+        return false;
+    }
     state->scrollbar_visual = visual;
     refresh_material(*this, *state);
     return true;
@@ -442,47 +393,41 @@ ryn::detail::ButtonComponentHost& ReferenceSurfaceHost::application() noexcept {
     return *application_;
 }
 
-void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
-    ryn::runtime::Size viewport,
-    ryn::runtime::Rect clip) {
+void ReferenceSurfaceHost::synchronize_auxiliary_geometry(ryn::runtime::Size viewport, ryn::runtime::Rect clip) {
     for (const auto& mounted : mounted_) {
         auto* state = find_state(mounted.component);
         if (state == nullptr) {
             continue;
         }
-        const auto& theme = application_->components()
-            .theme_scope(state->component)->snapshot();
+        const auto& theme = application_->components().theme_scope(state->component)->snapshot();
         const auto& node = application_->nodes().require(state->node);
         if (state->role != ReferenceSurfaceRole::reference) {
             const auto color = chrome_background(*state, theme);
-            for (auto& visual : state->visuals) visual.opacity = 0.0F;
-            auto& fill = state->visuals[static_cast<std::size_t>(
-                ReferenceSurfaceVisualLayer::background)];
-            const auto fill_bounds = state->role == ReferenceSurfaceRole::site_header
-                ? ryn::runtime::Rect{0.0F, 0.0F, viewport.width,
-                    node.bounds.y + node.bounds.height + GalleryLayoutMetrics::body_gap}
-                : node.bounds;
-            fill = make_quad(
-                fill_bounds, viewport, color,
-                state->visible
-                        && state->role != ReferenceSurfaceRole::document_heading
-                        && state->role != ReferenceSurfaceRole::document_note
-                    ? 1.0F : 0.0F,
+            for (auto& visual : state->visuals) {
+                visual.opacity = 0.0F;
+            }
+            auto& fill = state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)];
+            const auto fill_bounds =
                 state->role == ReferenceSurfaceRole::site_header
-                    ? 0.0F : node.bounds.width * 0.5F,
-                node.translation);
+                    ? ryn::runtime::Rect{0.0F, 0.0F, viewport.width,
+                                         node.bounds.y + node.bounds.height + GalleryLayoutMetrics::body_gap}
+                    : node.bounds;
+            fill = make_quad(fill_bounds, viewport, color,
+                             state->visible && state->role != ReferenceSurfaceRole::document_heading &&
+                                     state->role != ReferenceSurfaceRole::document_note
+                                 ? 1.0F
+                                 : 0.0F,
+                             state->role == ReferenceSurfaceRole::site_header ? 0.0F : node.bounds.width * 0.5F,
+                             node.translation);
             if (state->role == ReferenceSurfaceRole::site_header) {
                 // The bottom rule is above the opaque header background layer.
-                state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)] = make_quad(
-                    {0.0F, node.bounds.y + node.bounds.height - 1.0F, viewport.width, 1.0F},
-                    viewport, theme.alias().color_border_secondary,
-                    state->visible ? 1.0F : 0.0F, 0.0F, {});
+                state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)] =
+                    make_quad({0.0F, node.bounds.y + node.bounds.height - 1.0F, viewport.width, 1.0F}, viewport,
+                              theme.alias().color_border_secondary, state->visible ? 1.0F : 0.0F, 0.0F, {});
             }
             state->effects = {};
-            static_cast<void>(application_->services().surfaces().update_surface(
-                state->scene, state->visuals));
-            static_cast<void>(application_->services().surfaces().update_effects(
-                state->scene, state->effects));
+            static_cast<void>(application_->services().surfaces().update_surface(state->scene, state->visuals));
+            static_cast<void>(application_->services().surfaces().update_effects(state->scene, state->effects));
             continue;
         }
         const float border_width = theme.seed().line_width;
@@ -505,95 +450,58 @@ void ReferenceSurfaceHost::synchronize_auxiliary_geometry(
             8.0F,
             8.0F,
         };
-        state->visuals[static_cast<std::size_t>(
-            ReferenceSurfaceVisualLayer::border)] = make_quad(
-                node.bounds,
-                viewport,
-                theme.alias().color_border_secondary,
-                1.0F,
-                radius,
-                node.translation);
-        state->visuals[static_cast<std::size_t>(
-            ReferenceSurfaceVisualLayer::background)] = make_quad(
-                background,
-                viewport,
-                theme.alias().color_background_container,
-                1.0F,
-                std::max(0.0F, radius - border_width),
-                node.translation);
-        state->visuals[static_cast<std::size_t>(
-            ReferenceSurfaceVisualLayer::swatch)] = make_quad(
-                swatch,
-                viewport,
-                state->swatch.value_or(theme.alias().color_background_container),
-                state->swatch.has_value() ? 1.0F : 0.0F,
-                4.0F,
-                node.translation);
-        state->visuals[static_cast<std::size_t>(
-            ReferenceSurfaceVisualLayer::status_badge)] = make_quad(
-                badge,
-                viewport,
-                status_color(state->status, theme),
-                1.0F,
-                4.0F,
-                node.translation);
+        state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::border)] =
+            make_quad(node.bounds, viewport, theme.alias().color_border_secondary, 1.0F, radius, node.translation);
+        state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::background)] =
+            make_quad(background, viewport, theme.alias().color_background_container, 1.0F,
+                      std::max(0.0F, radius - border_width), node.translation);
+        state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::swatch)] =
+            make_quad(swatch, viewport, state->swatch.value_or(theme.alias().color_background_container),
+                      state->swatch.has_value() ? 1.0F : 0.0F, 4.0F, node.translation);
+        state->visuals[static_cast<std::size_t>(ReferenceSurfaceVisualLayer::status_badge)] =
+            make_quad(badge, viewport, status_color(state->status, theme), 1.0F, 4.0F, node.translation);
         state->effects.shape = {
             node.bounds,
             logical_radius(node.bounds, radius),
         };
         state->effects.translation = node.translation;
         state->effects.ancestor_clip = ryn::graphics::EffectClip{
-            (static_cast<std::uint64_t>(state->component.index) << 32U)
-                | state->component.generation,
+            (static_cast<std::uint64_t>(state->component.index) << 32U) | state->component.generation,
             clip,
         };
-        static_cast<void>(application_->services().surfaces().update_surface(
-            state->scene, state->visuals));
-        static_cast<void>(application_->services().surfaces().update_effects(
-            state->scene, state->effects));
+        static_cast<void>(application_->services().surfaces().update_surface(state->scene, state->visuals));
+        static_cast<void>(application_->services().surfaces().update_effects(state->scene, state->effects));
     }
 }
 
-detail::ReferenceSurfaceComponentState* ReferenceSurfaceHost::find_state(
-    ryn::runtime::ComponentId component) noexcept {
-    return application_->components()
-        .state<detail::ReferenceSurfaceComponentState>(component);
+detail::ReferenceSurfaceComponentState* ReferenceSurfaceHost::find_state(ryn::runtime::ComponentId component) noexcept {
+    return application_->components().state<detail::ReferenceSurfaceComponentState>(component);
 }
 
-const detail::ReferenceSurfaceComponentState* ReferenceSurfaceHost::find_state(
-    ryn::runtime::ComponentId component) const noexcept {
-    return application_->components()
-        .state<detail::ReferenceSurfaceComponentState>(component);
+const detail::ReferenceSurfaceComponentState*
+ReferenceSurfaceHost::find_state(ryn::runtime::ComponentId component) const noexcept {
+    return application_->components().state<detail::ReferenceSurfaceComponentState>(component);
 }
 
-void ReferenceSurfaceHost::record_mounted(
-    MountedReferenceSurface mounted) {
+void ReferenceSurfaceHost::record_mounted(MountedReferenceSurface mounted) {
     mounted_.push_back(std::move(mounted));
 }
 
-void ReferenceSurface(
-    ReferenceSurfaceProps props,
-    ReferenceSurfaceContent content) {
+void ReferenceSurface(ReferenceSurfaceProps props, ReferenceSurfaceContent content) {
     if (active_reference_surface_host == nullptr) {
-        throw std::logic_error(
-            "ReferenceSurface can only be declared inside an active Gallery host");
+        throw std::logic_error("ReferenceSurface can only be declared inside an active Gallery host");
     }
     auto& host = *active_reference_surface_host;
     auto& build = ryn::runtime::require_component_build_context();
     const auto role = detail::ReferenceSurfacePropsAccess::role(props);
     validate_role(role);
-    const auto initial_status = ryn::detail::read_prop(
-        detail::ReferenceSurfacePropsAccess::status(props));
+    const auto initial_status = ryn::detail::read_prop(detail::ReferenceSurfacePropsAccess::status(props));
     validate_status(initial_status);
-    const auto initial_swatch = ryn::detail::read_prop(
-        detail::ReferenceSurfacePropsAccess::swatch(props));
-    const bool initial_elevated = ryn::detail::read_prop(
-        detail::ReferenceSurfacePropsAccess::elevated(props));
-    const bool initial_visible = ryn::detail::read_prop(
-        detail::ReferenceSurfacePropsAccess::visible(props));
+    const auto initial_swatch = ryn::detail::read_prop(detail::ReferenceSurfacePropsAccess::swatch(props));
+    const bool initial_elevated = ryn::detail::read_prop(detail::ReferenceSurfacePropsAccess::elevated(props));
+    const bool initial_visible = ryn::detail::read_prop(detail::ReferenceSurfacePropsAccess::visible(props));
 
-    const auto component = build.mount_component<
-        detail::ReferenceSurfaceComponentState>();
+    const auto component = build.mount_component<detail::ReferenceSurfaceComponentState>();
     auto& state = build.state<detail::ReferenceSurfaceComponentState>(component);
     state.component = component;
     state.node = build.root(component);
@@ -609,39 +517,24 @@ void ReferenceSurface(
     model.direction = ryn::layout::FlexDirection::vertical;
     model.main_gap = 4.0F;
     model.cross_gap = 4.0F;
-    model.padding = role == ReferenceSurfaceRole::scrollbar_track
-            || role == ReferenceSurfaceRole::scrollbar_thumb
-            || role == ReferenceSurfaceRole::document_heading
-            || role == ReferenceSurfaceRole::document_note
-        ? ryn::layout::Padding{}
-        : ryn::layout::Padding{12.0F, 12.0F, 12.0F, 12.0F};
+    model.padding = role == ReferenceSurfaceRole::scrollbar_track || role == ReferenceSurfaceRole::scrollbar_thumb ||
+                            role == ReferenceSurfaceRole::document_heading ||
+                            role == ReferenceSurfaceRole::document_note
+                        ? ryn::layout::Padding{}
+                        : ryn::layout::Padding{12.0F, 12.0F, 12.0F, 12.0F};
     model.item_policy = ryn::layout::FlexItemPolicy::sequential;
     host.application().layout().set_layout(state.node, model);
-    build.on_resource_cleanup(component, [
-        layout = &host.application().layout(),
-        node = state.node] {
+    build.on_resource_cleanup(component, [layout = &host.application().layout(), node = state.node] {
         static_cast<void>(layout->remove_layout(node));
     });
-    ryn::runtime::connect_layout_style(
-        build.scope(component),
-        detail::ReferenceSurfacePropsAccess::layout(props),
-        state.node,
-        host.application().nodes(),
-        host.application().dirty());
+    ryn::runtime::connect_layout_style(build.scope(component), detail::ReferenceSurfacePropsAccess::layout(props),
+                                       state.node, host.application().nodes(), host.application().dirty());
 
-    state.fragment = build.register_scene_fragment(
-        component,
-        ryn::runtime::SceneFragmentPlacement::before_children);
+    state.fragment = build.register_scene_fragment(component, ryn::runtime::SceneFragmentPlacement::before_children);
     refresh_material(host, state);
-    state.scene = host.application().services().surfaces().create_surface(
-        component,
-        state.node,
-        state.fragment,
-        state.visuals,
-        state.effects);
-    build.on_resource_cleanup(component, [
-        scenes = &host.application().services().surfaces(),
-        scene = state.scene] {
+    state.scene = host.application().services().surfaces().create_surface(component, state.node, state.fragment,
+                                                                          state.visuals, state.effects);
+    build.on_resource_cleanup(component, [scenes = &host.application().services().surfaces(), scene = state.scene] {
         static_cast<void>(scenes->destroy(scene));
     });
 
@@ -659,36 +552,21 @@ void ReferenceSurface(
 
     auto& scope = build.scope(component);
     static_cast<void>(ryn::detail::connect_prop(
-        scope,
-        detail::ReferenceSurfacePropsAccess::status(props),
-        [&host, component](GallerySupportStatus value) {
-            apply_status(host, component, value);
-        }));
+        scope, detail::ReferenceSurfacePropsAccess::status(props),
+        [&host, component](GallerySupportStatus value) { apply_status(host, component, value); }));
     static_cast<void>(ryn::detail::connect_prop(
-        scope,
-        detail::ReferenceSurfacePropsAccess::swatch(props),
-        [&host, component](std::optional<ryn::Color> value) {
-            apply_swatch(host, component, value);
-        }));
-    static_cast<void>(ryn::detail::connect_prop(
-        scope,
-        detail::ReferenceSurfacePropsAccess::elevated(props),
-        [&host, component](bool value) {
-            apply_elevated(host, component, value);
-        }));
-    static_cast<void>(ryn::detail::connect_prop(
-        scope,
-        detail::ReferenceSurfacePropsAccess::visible(props),
-        [&host, component](bool value) {
-            apply_visible(host, component, value);
-        }));
+        scope, detail::ReferenceSurfacePropsAccess::swatch(props),
+        [&host, component](std::optional<ryn::Color> value) { apply_swatch(host, component, value); }));
+    static_cast<void>(
+        ryn::detail::connect_prop(scope, detail::ReferenceSurfacePropsAccess::elevated(props),
+                                  [&host, component](bool value) { apply_elevated(host, component, value); }));
+    static_cast<void>(
+        ryn::detail::connect_prop(scope, detail::ReferenceSurfacePropsAccess::visible(props),
+                                  [&host, component](bool value) { apply_visible(host, component, value); }));
 
     const ReferenceSurfaceContent children{[&state, &content] {
         if (state.role == ReferenceSurfaceRole::reference) {
-            ryn::Text(
-                ryn::TextProps{}
-                    .content(state.status_label)
-                    .tone(ryn::TextTone::Secondary));
+            ryn::Text(ryn::TextProps{}.content(state.status_label).tone(ryn::TextTone::Secondary));
         }
         ryn::detail::SlotContentAccess::function(content)();
     }};
@@ -698,11 +576,8 @@ void ReferenceSurface(
         apply_visible(host, component, false);
     }
     host.application().dirty().invalidate_subtree(
-        state.node,
-        ryn::runtime::DirtyFlags::Measure
-            | ryn::runtime::DirtyFlags::Layout
-            | ryn::runtime::DirtyFlags::Geometry
-            | ryn::runtime::DirtyFlags::Material);
+        state.node, ryn::runtime::DirtyFlags::Measure | ryn::runtime::DirtyFlags::Layout |
+                        ryn::runtime::DirtyFlags::Geometry | ryn::runtime::DirtyFlags::Material);
     host.record_mounted({component, state.node, state.scene, state.fragment});
 }
 

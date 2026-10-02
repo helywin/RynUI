@@ -5,9 +5,7 @@
 
 namespace ryn::input {
 
-FocusManager::FocusManager(
-    InteractionRegistry& registry,
-    runtime::FrameRequestState* frames) noexcept
+FocusManager::FocusManager(InteractionRegistry& registry, runtime::FrameRequestState* frames) noexcept
     : registry_(&registry), frames_(frames) {}
 
 void FocusManager::reserve(std::size_t focus_capacity) {
@@ -63,25 +61,18 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
                     static_cast<void>(clear_focus_internal(false));
                     modality_ = FocusModality::keyboard;
                 } else {
-                    auto found = focused_.has_value()
-                        ? std::find(focus_order_.begin(), focus_order_.end(), *focused_)
-                        : focus_order_.end();
-                    const bool reverse = has_modifier(
-                        event.modifiers, KeyModifier::shift);
+                    auto found = focused_.has_value() ? std::find(focus_order_.begin(), focus_order_.end(), *focused_)
+                                                      : focus_order_.end();
+                    const bool reverse = has_modifier(event.modifiers, KeyModifier::shift);
                     InteractionId next;
                     if (found == focus_order_.end()) {
                         next = reverse ? focus_order_.back() : focus_order_.front();
                     } else if (reverse) {
-                        next = found == focus_order_.begin()
-                            ? focus_order_.back()
-                            : *std::prev(found);
+                        next = found == focus_order_.begin() ? focus_order_.back() : *std::prev(found);
                     } else {
-                        next = std::next(found) == focus_order_.end()
-                            ? focus_order_.front()
-                            : *std::next(found);
+                        next = std::next(found) == focus_order_.end() ? focus_order_.front() : *std::next(found);
                     }
-                    static_cast<void>(set_focus_internal(
-                        next, FocusModality::keyboard));
+                    static_cast<void>(set_focus_internal(next, FocusModality::keyboard));
                 }
             }
             end_operation();
@@ -106,8 +97,7 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
         }
 
         if (event.key == Key::enter) {
-            if (event.action == KeyAction::down && !event.repeat
-                    && !keyboard_press_.has_value()) {
+            if (event.action == KeyAction::down && !event.repeat && !keyboard_press_.has_value()) {
                 activate(*focused_);
             }
             end_operation();
@@ -116,8 +106,7 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
 
         if (event.key == Key::space) {
             if (event.action == KeyAction::down) {
-                if (!event.repeat && !keyboard_press_.has_value()
-                        && activation_permitted(*focused_)) {
+                if (!event.repeat && !keyboard_press_.has_value() && activation_permitted(*focused_)) {
                     keyboard_press_ = focused_;
                     ++diagnostics_.keyboard_presses;
                     request_frame();
@@ -144,17 +133,14 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
     }
 }
 
-bool FocusManager::focus_from_pointer(
-    std::optional<InteractionId> target) {
+bool FocusManager::focus_from_pointer(std::optional<InteractionId> target) {
     begin_operation();
     try {
         ++diagnostics_.pointer_focus_requests;
         sanitize_internal();
         static_cast<void>(cancel_keyboard_press_internal(true));
         const auto next = focus_candidate(target);
-        const bool changed = window_active_
-            ? set_focus_internal(next, FocusModality::pointer)
-            : false;
+        const bool changed = window_active_ ? set_focus_internal(next, FocusModality::pointer) : false;
         sanitize_internal();
         end_operation();
         return changed;
@@ -164,15 +150,11 @@ bool FocusManager::focus_from_pointer(
     }
 }
 
-bool FocusManager::request_focus(
-    InteractionId target,
-    FocusModality modality) {
+bool FocusManager::request_focus(InteractionId target, FocusModality modality) {
     begin_operation();
     try {
         sanitize_internal();
-        const bool changed = window_active_ && can_focus(target)
-            ? set_focus_internal(target, modality)
-            : false;
+        const bool changed = window_active_ && can_focus(target) ? set_focus_internal(target, modality) : false;
         sanitize_internal();
         end_operation();
         return changed;
@@ -183,9 +165,13 @@ bool FocusManager::request_focus(
 }
 
 void FocusManager::defer_focus(std::optional<InteractionId> target, FocusModality modality) {
-    if (!registry_->is_owner_thread()) throw std::logic_error("FocusManager can only be used on its owner thread");
+    if (!registry_->is_owner_thread()) {
+        throw std::logic_error("FocusManager can only be used on its owner thread");
+    }
     pending_focus_ = FocusRequest{target, modality};
-    if (!dispatching_ && !flushing_focus_) end_operation();
+    if (!dispatching_ && !flushing_focus_) {
+        end_operation();
+    }
 }
 
 bool FocusManager::clear_focus() {
@@ -234,7 +220,9 @@ void FocusManager::synchronize() {
     }
     // Reactive eligibility changes inside a command are reconciled by the
     // outer dispatch's sanitize step; this is not a nested input dispatch.
-    if (dispatching_) return;
+    if (dispatching_) {
+        return;
+    }
     begin_operation();
     try {
         sanitize_internal();
@@ -254,8 +242,7 @@ void FocusManager::cancel_interaction(InteractionId interaction) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("FocusManager can only be used on its owner thread");
     }
-    const bool affected = focused_ == interaction
-        || keyboard_press_ == interaction;
+    const bool affected = focused_ == interaction || keyboard_press_ == interaction;
     if (!affected) {
         return;
     }
@@ -300,8 +287,7 @@ FocusSnapshot FocusManager::state() const {
         focused_,
         modality_,
         window_active_,
-        focused_.has_value() && window_active_
-            && modality_ == FocusModality::keyboard,
+        focused_.has_value() && window_active_ && modality_ == FocusModality::keyboard,
         keyboard_press_.has_value(),
     };
 }
@@ -324,19 +310,31 @@ void FocusManager::begin_operation() {
 
 void FocusManager::end_operation() {
     dispatching_ = false;
-    if (flushing_focus_) return;
+    if (flushing_focus_) {
+        return;
+    }
     flushing_focus_ = true;
     try {
         std::size_t transfers = 0;
         while (pending_focus_) {
-            if (++transfers > 32) throw std::logic_error("focus transaction failed to converge");
+            if (++transfers > 32) {
+                throw std::logic_error("focus transaction failed to converge");
+            }
             const auto request = *pending_focus_;
             pending_focus_.reset();
             if (request.target) {
-                if (can_focus(*request.target)) static_cast<void>(request_focus(*request.target, request.modality));
-            } else static_cast<void>(clear_focus());
+                if (can_focus(*request.target)) {
+                    static_cast<void>(request_focus(*request.target, request.modality));
+                }
+            } else {
+                static_cast<void>(clear_focus());
+            }
         }
-    } catch (...) { pending_focus_.reset(); flushing_focus_ = false; throw; }
+    } catch (...) {
+        pending_focus_.reset();
+        flushing_focus_ = false;
+        throw;
+    }
     flushing_focus_ = false;
 }
 
@@ -355,8 +353,7 @@ bool FocusManager::can_focus(InteractionId target) const {
     return record != nullptr && record->eligible && record->focusable;
 }
 
-std::optional<InteractionId> FocusManager::focus_candidate(
-    std::optional<InteractionId> target) const {
+std::optional<InteractionId> FocusManager::focus_candidate(std::optional<InteractionId> target) const {
     auto current = target;
     while (current.has_value()) {
         const auto* record = registry_->find(*current);
@@ -371,9 +368,7 @@ std::optional<InteractionId> FocusManager::focus_candidate(
     return std::nullopt;
 }
 
-bool FocusManager::set_focus_internal(
-    std::optional<InteractionId> target,
-    FocusModality modality) {
+bool FocusManager::set_focus_internal(std::optional<InteractionId> target, FocusModality modality) {
     if (target.has_value() && !can_focus(*target)) {
         target.reset();
     }
@@ -465,8 +460,7 @@ void FocusManager::sanitize_internal() {
     }
     if (keyboard_press_.has_value()) {
         const auto pressed = *keyboard_press_;
-        if (focused_ != pressed || !window_active_
-                || !activation_permitted(pressed)) {
+        if (focused_ != pressed || !window_active_ || !activation_permitted(pressed)) {
             static_cast<void>(cancel_keyboard_press_internal(true));
         }
     }
@@ -478,9 +472,8 @@ bool FocusManager::activation_permitted(InteractionId target) {
         return false;
     }
     const auto* record = registry_->find(target);
-    if (record == nullptr || !record->eligible || !record->focusable
-            || record->focus_handlers == nullptr
-            || !record->focus_handlers->activate) {
+    if (record == nullptr || !record->eligible || !record->focusable || record->focus_handlers == nullptr ||
+        !record->focus_handlers->activate) {
         ++diagnostics_.activation_rejections;
         return false;
     }
@@ -490,8 +483,7 @@ bool FocusManager::activation_permitted(InteractionId target) {
         return false;
     }
     const auto* current = registry_->find(target);
-    if (current == nullptr || !current->eligible || !current->focusable
-            || !window_active_ || focused_ != target) {
+    if (current == nullptr || !current->eligible || !current->focusable || !window_active_ || focused_ != target) {
         ++diagnostics_.activation_rejections;
         return false;
     }
@@ -503,8 +495,7 @@ void FocusManager::activate(InteractionId target) {
         return;
     }
     const auto* record = registry_->find(target);
-    if (record == nullptr || record->focus_handlers == nullptr
-            || !record->focus_handlers->activate) {
+    if (record == nullptr || record->focus_handlers == nullptr || !record->focus_handlers->activate) {
         ++diagnostics_.activation_rejections;
         return;
     }
@@ -514,12 +505,9 @@ void FocusManager::activate(InteractionId target) {
     sanitize_internal();
 }
 
-void FocusManager::notify_state(
-    InteractionId target,
-    FocusPresentation presentation) {
+void FocusManager::notify_state(InteractionId target, FocusPresentation presentation) {
     const auto* record = registry_->find(target);
-    if (record == nullptr || record->focus_handlers == nullptr
-            || !record->focus_handlers->state_changed) {
+    if (record == nullptr || record->focus_handlers == nullptr || !record->focus_handlers->state_changed) {
         return;
     }
     const auto handlers = record->focus_handlers;
@@ -538,8 +526,7 @@ void FocusManager::request_frame() noexcept {
     }
 }
 
-FocusPresentation FocusManager::presentation_for(
-    InteractionId target) const noexcept {
+FocusPresentation FocusManager::presentation_for(InteractionId target) const noexcept {
     const bool focused = focused_ == target;
     return {
         focused,

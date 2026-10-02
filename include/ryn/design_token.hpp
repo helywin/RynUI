@@ -32,25 +32,32 @@ public:
 
     constexpr Color(float red, float green, float blue, float alpha = 1.0F)
         : red_(red), green_(green), blue_(blue), alpha_(alpha) {
-        if (!valid_channel(red_) || !valid_channel(green_) || !valid_channel(blue_)
-            || !valid_channel(alpha_)) {
+        if (!valid_channel(red_) || !valid_channel(green_) || !valid_channel(blue_) || !valid_channel(alpha_)) {
             throw std::invalid_argument("color channels must be finite and in [0, 1]");
         }
     }
 
-    [[nodiscard]] static constexpr Color rgba8(
-        std::uint8_t red,
-        std::uint8_t green,
-        std::uint8_t blue,
-        std::uint8_t alpha = 255) {
+    [[nodiscard]] static constexpr Color rgba8(std::uint8_t red, std::uint8_t green, std::uint8_t blue,
+                                               std::uint8_t alpha = 255) {
         constexpr float maximum = 255.0F;
         return Color(red / maximum, green / maximum, blue / maximum, alpha / maximum);
     }
 
-    [[nodiscard]] constexpr float red() const noexcept { return red_; }
-    [[nodiscard]] constexpr float green() const noexcept { return green_; }
-    [[nodiscard]] constexpr float blue() const noexcept { return blue_; }
-    [[nodiscard]] constexpr float alpha() const noexcept { return alpha_; }
+    [[nodiscard]] constexpr float red() const noexcept {
+        return red_;
+    }
+
+    [[nodiscard]] constexpr float green() const noexcept {
+        return green_;
+    }
+
+    [[nodiscard]] constexpr float blue() const noexcept {
+        return blue_;
+    }
+
+    [[nodiscard]] constexpr float alpha() const noexcept {
+        return alpha_;
+    }
 
     friend constexpr bool operator==(Color, Color) = default;
 
@@ -69,8 +76,7 @@ struct LogicalOffset final {
     float x{};
     float y{};
 
-    constexpr LogicalOffset(float x_value = 0.0F, float y_value = 0.0F)
-        : x(x_value), y(y_value) {
+    constexpr LogicalOffset(float x_value = 0.0F, float y_value = 0.0F) : x(x_value), y(y_value) {
         detail::require_finite(x, "logical x offset must be finite");
         detail::require_finite(y, "logical y offset must be finite");
     }
@@ -112,17 +118,11 @@ struct CubicBezier final {
     float x2{1.0F};
     float y2{1.0F};
 
-    constexpr CubicBezier(
-        float first_x,
-        float first_y,
-        float second_x,
-        float second_y)
+    constexpr CubicBezier(float first_x, float first_y, float second_x, float second_y)
         : x1(first_x), y1(first_y), x2(second_x), y2(second_y) {
-        if (!detail::finite(x1) || !detail::finite(y1) || !detail::finite(x2)
-            || !detail::finite(y2) || x1 < 0.0F || x1 > 1.0F || x2 < 0.0F
-            || x2 > 1.0F) {
-            throw std::invalid_argument(
-                "cubic-bezier x values must be in [0, 1] and all values finite");
+        if (!detail::finite(x1) || !detail::finite(y1) || !detail::finite(x2) || !detail::finite(y2) || x1 < 0.0F ||
+            x1 > 1.0F || x2 < 0.0F || x2 > 1.0F) {
+            throw std::invalid_argument("cubic-bezier x values must be in [0, 1] and all values finite");
         }
     }
 
@@ -140,10 +140,8 @@ struct BorderToken final {
     BorderStyle style{BorderStyle::none};
     Color color{};
 
-    constexpr BorderToken(
-        float logical_width = 0.0F,
-        BorderStyle border_style = BorderStyle::none,
-        Color border_color = {})
+    constexpr BorderToken(float logical_width = 0.0F, BorderStyle border_style = BorderStyle::none,
+                          Color border_color = {})
         : width(logical_width), style(border_style), color(border_color) {
         if (!detail::finite(width) || width < 0.0F) {
             throw std::invalid_argument("border width must be finite and non-negative");
@@ -167,20 +165,11 @@ struct ShadowLayer final {
 
     constexpr ShadowLayer() noexcept = default;
 
-    constexpr ShadowLayer(
-        ShadowKind shadow_kind,
-        LogicalOffset logical_offset,
-        float logical_blur,
-        float logical_spread,
-        Color shadow_color)
-        : kind(shadow_kind),
-          offset(logical_offset),
-          blur(logical_blur),
-          spread(logical_spread),
-          color(shadow_color) {
+    constexpr ShadowLayer(ShadowKind shadow_kind, LogicalOffset logical_offset, float logical_blur,
+                          float logical_spread, Color shadow_color)
+        : kind(shadow_kind), offset(logical_offset), blur(logical_blur), spread(logical_spread), color(shadow_color) {
         if (!detail::finite(blur) || blur < 0.0F || !detail::finite(spread)) {
-            throw std::invalid_argument(
-                "shadow blur must be non-negative and shadow values must be finite");
+            throw std::invalid_argument("shadow blur must be non-negative and shadow values must be finite");
         }
     }
 
@@ -202,8 +191,13 @@ public:
         }
     }
 
-    [[nodiscard]] constexpr bool empty() const noexcept { return size_ == 0; }
-    [[nodiscard]] constexpr std::size_t size() const noexcept { return size_; }
+    [[nodiscard]] constexpr bool empty() const noexcept {
+        return size_ == 0;
+    }
+
+    [[nodiscard]] constexpr std::size_t size() const noexcept {
+        return size_;
+    }
 
     [[nodiscard]] constexpr const ShadowLayer& operator[](std::size_t index) const {
         if (index >= size_) {
@@ -265,9 +259,7 @@ struct AntDesignDefaultSeed final {
     bool focus_outline{true};
     bool motion{true};
 
-    friend constexpr bool operator==(
-        const AntDesignDefaultSeed&,
-        const AntDesignDefaultSeed&) = default;
+    friend constexpr bool operator==(const AntDesignDefaultSeed&, const AntDesignDefaultSeed&) = default;
 };
 
 struct AntDesignShadowSnapshot final {

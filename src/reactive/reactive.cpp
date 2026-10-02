@@ -24,8 +24,7 @@ thread_local ObserverNode* active_observer = nullptr;
 
 class ActiveObserverGuard final {
 public:
-    explicit ActiveObserverGuard(ObserverNode* observer) noexcept
-        : previous_(active_observer) {
+    explicit ActiveObserverGuard(ObserverNode* observer) noexcept : previous_(active_observer) {
         active_observer = observer;
     }
 
@@ -127,8 +126,7 @@ ObserverPhase ObserverNode::phase() const noexcept {
 }
 
 void ObserverNode::track(ReactiveSource& source) {
-    if (std::find(dependencies_.begin(), dependencies_.end(), &source)
-            != dependencies_.end()) {
+    if (std::find(dependencies_.begin(), dependencies_.end(), &source) != dependencies_.end()) {
         return;
     }
     dependencies_.push_back(&source);
@@ -156,10 +154,7 @@ void Scheduler::schedule(const std::shared_ptr<ObserverNode>& observer) {
         pending_effects_.push_back(observer);
         break;
     }
-    if (notification_depth_ == 0
-            && batch_depth_ == 0
-            && observer_depth_ == 0
-            && !flushing_) {
+    if (notification_depth_ == 0 && batch_depth_ == 0 && observer_depth_ == 0 && !flushing_) {
         flush();
     }
 }
@@ -173,10 +168,7 @@ void Scheduler::end_notification() {
         throw std::logic_error("Reactive notification depth underflow");
     }
     --notification_depth_;
-    if (notification_depth_ == 0
-            && batch_depth_ == 0
-            && observer_depth_ == 0
-            && !flushing_) {
+    if (notification_depth_ == 0 && batch_depth_ == 0 && observer_depth_ == 0 && !flushing_) {
         flush();
     }
 }
@@ -190,10 +182,7 @@ void Scheduler::end_batch() {
         throw std::logic_error("Reactive batch depth underflow");
     }
     --batch_depth_;
-    if (batch_depth_ == 0
-            && notification_depth_ == 0
-            && observer_depth_ == 0
-            && !flushing_) {
+    if (batch_depth_ == 0 && notification_depth_ == 0 && observer_depth_ == 0 && !flushing_) {
         flush();
     }
 }
@@ -207,10 +196,7 @@ void Scheduler::end_observer() {
         throw std::logic_error("Reactive observer depth underflow");
     }
     --observer_depth_;
-    if (observer_depth_ == 0
-            && batch_depth_ == 0
-            && notification_depth_ == 0
-            && !flushing_) {
+    if (observer_depth_ == 0 && batch_depth_ == 0 && notification_depth_ == 0 && !flushing_) {
         flush();
     }
 }
@@ -225,9 +211,7 @@ void Scheduler::process_queue(std::vector<std::shared_ptr<ObserverNode>>& queue)
 }
 
 bool Scheduler::has_pending_work() const noexcept {
-    return !pending_memos_.empty()
-        || !pending_bindings_.empty()
-        || !pending_effects_.empty();
+    return !pending_memos_.empty() || !pending_bindings_.empty() || !pending_effects_.empty();
 }
 
 void Scheduler::flush() {
@@ -257,10 +241,7 @@ std::size_t Scheduler::epoch() const noexcept {
     return epoch_;
 }
 
-std::shared_ptr<ObserverNode> observe(
-    ObserverPhase phase,
-    std::function<void()> callback,
-    bool run_immediately) {
+std::shared_ptr<ObserverNode> observe(ObserverPhase phase, std::function<void()> callback, bool run_immediately) {
     auto observer = std::make_shared<ObserverNode>(phase, std::move(callback));
     if (run_immediately) {
         observer->run();
@@ -306,9 +287,7 @@ void Scope::dispose() noexcept {
     }
     state_->observers.clear();
 
-    for (auto iterator = state_->cleanups.rbegin();
-         iterator != state_->cleanups.rend();
-         ++iterator) {
+    for (auto iterator = state_->cleanups.rbegin(); iterator != state_->cleanups.rend(); ++iterator) {
         try {
             (*iterator)();
         } catch (...) {

@@ -21,9 +21,7 @@ void advance_generation(std::uint32_t& generation) noexcept {
 
 } // namespace
 
-bool GalleryDocumentViewport::set_extents(
-    float viewport_extent,
-    float content_extent) {
+bool GalleryDocumentViewport::set_extents(float viewport_extent, float content_extent) {
     const bool changed = scroll_.set_extents(viewport_extent, content_extent);
     if (changed) {
         ++diagnostics_.extent_updates;
@@ -33,35 +31,34 @@ bool GalleryDocumentViewport::set_extents(
 
 bool GalleryDocumentViewport::scroll_to(float offset) {
     const bool changed = scroll_.scroll_to(offset);
-    if (changed) ++diagnostics_.scroll_updates;
+    if (changed) {
+        ++diagnostics_.scroll_updates;
+    }
     return changed;
 }
 
 bool GalleryDocumentViewport::scroll_by(float delta) {
     const bool changed = scroll_.scroll_by(delta);
-    if (changed) ++diagnostics_.scroll_updates;
+    if (changed) {
+        ++diagnostics_.scroll_updates;
+    }
     return changed;
 }
 
-bool GalleryDocumentViewport::replace_anchors(
-    std::span<const float> offsets) {
+bool GalleryDocumentViewport::replace_anchors(std::span<const float> offsets) {
     if (offsets.size() != section_count) {
-        throw std::invalid_argument(
-            "Gallery document requires one anchor per section");
+        throw std::invalid_argument("Gallery document requires one anchor per section");
     }
     std::array<float, section_count> next{};
     for (std::size_t index = 0; index < offsets.size(); ++index) {
-        if (!finite_non_negative(offsets[index])
-                || (index != 0 && offsets[index] < offsets[index - 1])) {
-            throw std::invalid_argument(
-                "Gallery document anchors must be finite and ordered");
+        if (!finite_non_negative(offsets[index]) || (index != 0 && offsets[index] < offsets[index - 1])) {
+            throw std::invalid_argument("Gallery document anchors must be finite and ordered");
         }
         next[index] = offsets[index];
     }
     bool unchanged = true;
     for (std::size_t index = 0; index < section_count; ++index) {
-        unchanged = unchanged
-            && anchor_present_[index] && anchors_[index] == next[index];
+        unchanged = unchanged && anchor_present_[index] && anchors_[index] == next[index];
     }
     if (unchanged) {
         return false;
@@ -73,22 +70,17 @@ bool GalleryDocumentViewport::replace_anchors(
     return true;
 }
 
-bool GalleryDocumentViewport::replace_category_anchors(
-    std::span<const float> offsets) {
+bool GalleryDocumentViewport::replace_category_anchors(std::span<const float> offsets) {
     if (offsets.size() != category_count) {
-        throw std::invalid_argument(
-            "Gallery document requires one anchor per component category");
+        throw std::invalid_argument("Gallery document requires one anchor per component category");
     }
     bool unchanged = true;
     for (std::size_t index = 0; index < offsets.size(); ++index) {
-        if (!finite_non_negative(offsets[index])
-                || (index != 0 && offsets[index] < offsets[index - 1])) {
-            throw std::invalid_argument(
-                "Gallery category anchors must be finite and ordered");
+        if (!finite_non_negative(offsets[index]) || (index != 0 && offsets[index] < offsets[index - 1])) {
+            throw std::invalid_argument("Gallery category anchors must be finite and ordered");
         }
         const auto target = section_count + index;
-        unchanged = unchanged
-            && anchor_present_[target] && anchors_[target] == offsets[index];
+        unchanged = unchanged && anchor_present_[target] && anchors_[target] == offsets[index];
     }
     if (unchanged) {
         return false;
@@ -103,8 +95,7 @@ bool GalleryDocumentViewport::replace_category_anchors(
 }
 
 std::optional<GalleryDocumentAnchorId>
-GalleryDocumentViewport::category_anchor(
-    AntDesignGalleryCategory category) const noexcept {
+GalleryDocumentViewport::category_anchor(AntDesignGalleryCategory category) const noexcept {
     const auto index = section_count + static_cast<std::size_t>(category);
     if (index >= anchor_count || !anchor_present_[index]) {
         return std::nullopt;
@@ -115,12 +106,13 @@ GalleryDocumentViewport::category_anchor(
     };
 }
 
-bool GalleryDocumentViewport::replace_component_anchors(
-    std::span<const GalleryComponentAnchor> next) {
+bool GalleryDocumentViewport::replace_component_anchors(std::span<const GalleryComponentAnchor> next) {
     if (next.empty()) {
         throw std::invalid_argument("Gallery document requires component anchors");
     }
-    if (std::ranges::equal(next, component_anchors_)) return false;
+    if (std::ranges::equal(next, component_anchors_)) {
+        return false;
+    }
     for (std::size_t index = 0; index < next.size(); ++index) {
         if (next[index].identity.empty() || !finite_non_negative(next[index].offset)) {
             throw std::invalid_argument("Gallery component anchors need finite offsets and identities");
@@ -137,19 +129,20 @@ bool GalleryDocumentViewport::replace_component_anchors(
     return true;
 }
 
-std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::component_anchor(
-    std::string_view identity) const noexcept {
+std::optional<GalleryDocumentAnchorId>
+GalleryDocumentViewport::component_anchor(std::string_view identity) const noexcept {
     const auto found = std::find_if(component_anchors_.begin(), component_anchors_.end(),
-        [identity](const auto& anchor) { return anchor.identity == identity; });
-    if (found == component_anchors_.end()) return std::nullopt;
+                                    [identity](const auto& anchor) { return anchor.identity == identity; });
+    if (found == component_anchors_.end()) {
+        return std::nullopt;
+    }
     return GalleryDocumentAnchorId{
-        static_cast<std::uint32_t>(anchor_count +
-            static_cast<std::size_t>(found - component_anchors_.begin())),
+        static_cast<std::uint32_t>(anchor_count + static_cast<std::size_t>(found - component_anchors_.begin())),
         anchor_generation_};
 }
 
-std::optional<GalleryDocumentAnchorId> GalleryDocumentViewport::anchor(
-    GalleryDocumentSectionKind section) const noexcept {
+std::optional<GalleryDocumentAnchorId>
+GalleryDocumentViewport::anchor(GalleryDocumentSectionKind section) const noexcept {
     const auto index = section_index(section);
     if (!anchor_present_[index]) {
         return std::nullopt;
@@ -166,11 +159,15 @@ bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
     }
     float offset{};
     if (value.index < anchor_count) {
-        if (!anchor_present_[value.index]) return false;
+        if (!anchor_present_[value.index]) {
+            return false;
+        }
         offset = anchors_[value.index];
     } else {
         const auto component_index = value.index - anchor_count;
-        if (component_index >= component_anchors_.size()) return false;
+        if (component_index >= component_anchors_.size()) {
+            return false;
+        }
         offset = component_anchors_[component_index].offset;
     }
     const bool changed = scroll_to(offset);
@@ -180,8 +177,7 @@ bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
     return changed;
 }
 
-GalleryDocumentResizeAnchor
-GalleryDocumentViewport::capture_resize_anchor() const {
+GalleryDocumentResizeAnchor GalleryDocumentViewport::capture_resize_anchor() const {
     const auto section = current_section();
     const auto index = section_index(section);
     const float offset = scroll_.snapshot().offset;
@@ -191,11 +187,9 @@ GalleryDocumentViewport::capture_resize_anchor() const {
     };
 }
 
-bool GalleryDocumentViewport::restore_resize_anchor(
-    const GalleryDocumentResizeAnchor& value) {
+bool GalleryDocumentViewport::restore_resize_anchor(const GalleryDocumentResizeAnchor& value) {
     if (!std::isfinite(value.distance)) {
-        throw std::invalid_argument(
-            "Gallery resize anchor distance must be finite");
+        throw std::invalid_argument("Gallery resize anchor distance must be finite");
     }
     const auto index = section_index(value.section);
     if (!anchor_present_[index]) {
@@ -204,12 +198,9 @@ bool GalleryDocumentViewport::restore_resize_anchor(
     return scroll_to(anchors_[index] + value.distance);
 }
 
-bool GalleryDocumentViewport::apply_subtree_translation(
-    ryn::runtime::NodeId root,
-    ryn::runtime::NodeStore& nodes,
-    ryn::runtime::DirtyQueues& dirty) const {
-    const auto result = translation_.apply(
-        root, scroll_.snapshot().offset, nodes, dirty);
+bool GalleryDocumentViewport::apply_subtree_translation(ryn::runtime::NodeId root, ryn::runtime::NodeStore& nodes,
+                                                        ryn::runtime::DirtyQueues& dirty) const {
+    const auto result = translation_.apply(root, scroll_.snapshot().offset, nodes, dirty);
     if (result.changed) {
         ++diagnostics_.translation_passes;
         diagnostics_.translated_nodes += result.translated_nodes;
@@ -217,36 +208,27 @@ bool GalleryDocumentViewport::apply_subtree_translation(
     return result.valid;
 }
 
-GalleryDocumentViewportSnapshot
-GalleryDocumentViewport::snapshot() const noexcept {
+GalleryDocumentViewportSnapshot GalleryDocumentViewport::snapshot() const noexcept {
     const auto range = scroll_.snapshot();
     return {
-        range.viewport_extent,
-        range.content_extent,
-        range.maximum_offset,
-        range.offset,
-        current_section(),
-        anchor_generation_,
+        range.viewport_extent, range.content_extent, range.maximum_offset,
+        range.offset,          current_section(),    anchor_generation_,
     };
 }
 
-const GalleryDocumentViewportDiagnostics&
-GalleryDocumentViewport::diagnostics() const noexcept {
+const GalleryDocumentViewportDiagnostics& GalleryDocumentViewport::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-std::size_t GalleryDocumentViewport::section_index(
-    GalleryDocumentSectionKind section) noexcept {
+std::size_t GalleryDocumentViewport::section_index(GalleryDocumentSectionKind section) noexcept {
     return static_cast<std::size_t>(section);
 }
 
-GalleryDocumentSectionKind
-GalleryDocumentViewport::current_section() const noexcept {
+GalleryDocumentSectionKind GalleryDocumentViewport::current_section() const noexcept {
     constexpr float bottom_section_tolerance = 32.0F;
     const auto range = scroll_.snapshot();
-    if (range.maximum_offset > 0.0F
-            && range.offset >= std::max(
-                0.0F, range.maximum_offset - bottom_section_tolerance)) {
+    if (range.maximum_offset > 0.0F &&
+        range.offset >= std::max(0.0F, range.maximum_offset - bottom_section_tolerance)) {
         for (std::size_t index = section_count; index > 0; --index) {
             if (anchor_present_[index - 1]) {
                 return static_cast<GalleryDocumentSectionKind>(index - 1);

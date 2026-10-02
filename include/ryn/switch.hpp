@@ -8,19 +8,48 @@
 #include <utility>
 
 namespace ryn {
-namespace detail { struct SwitchPropsAccess; }
+namespace detail {
+struct SwitchPropsAccess;
+}
 
 enum class SwitchSize { Middle, Small };
 
 class SwitchProps final {
 public:
-    SwitchProps& checked(Prop<bool> value) { checked_ = std::move(value); return *this; }
-    SwitchProps& defaultChecked(bool value) { default_checked_ = value; return *this; }
-    SwitchProps& disabled(Prop<bool> value) { disabled_ = std::move(value); return *this; }
-    SwitchProps& loading(Prop<bool> value) { loading_ = std::move(value); return *this; }
-    SwitchProps& size(Prop<SwitchSize> value) { size_ = std::move(value); return *this; }
-    SwitchProps& onChange(std::function<void(bool)> callback) { on_change_ = std::move(callback); return *this; }
-    SwitchProps& layout(LayoutStyle value) { layout_ = std::move(value); return *this; }
+    SwitchProps& checked(Prop<bool> value) {
+        checked_ = std::move(value);
+        return *this;
+    }
+
+    SwitchProps& defaultChecked(bool value) {
+        default_checked_ = value;
+        return *this;
+    }
+
+    SwitchProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    SwitchProps& loading(Prop<bool> value) {
+        loading_ = std::move(value);
+        return *this;
+    }
+
+    SwitchProps& size(Prop<SwitchSize> value) {
+        size_ = std::move(value);
+        return *this;
+    }
+
+    SwitchProps& onChange(std::function<void(bool)> callback) {
+        on_change_ = std::move(callback);
+        return *this;
+    }
+
+    SwitchProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
 
 private:
     friend struct detail::SwitchPropsAccess;

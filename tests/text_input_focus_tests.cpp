@@ -8,15 +8,38 @@
 
 namespace {
 using namespace ryn::input;
-void require(bool value, const char* message) { if(!value) throw std::runtime_error(message); }
+
+void require(bool value, const char* message) {
+    if (!value) {
+        throw std::runtime_error(message);
+    }
+}
+
 struct State {};
+
 struct Platform final : TextInputPlatform {
-    int starts{}, stops{};
-    bool start(TextInputSessionStamp, const TextInputProperties&) noexcept override { ++starts; return true; }
-    bool stop() noexcept override { ++stops; return true; }
-    bool cancel() noexcept override { return true; }
-    bool set_area(const WindowTextInputArea&) noexcept override { return true; }
+    int starts{};
+    int stops{};
+
+    bool start(TextInputSessionStamp, const TextInputProperties&) noexcept override {
+        ++starts;
+        return true;
+    }
+
+    bool stop() noexcept override {
+        ++stops;
+        return true;
+    }
+
+    bool cancel() noexcept override {
+        return true;
+    }
+
+    bool set_area(const WindowTextInputArea&) noexcept override {
+        return true;
+    }
 };
+
 void journey() {
     ryn::runtime::NodeStore nodes;
     ryn::runtime::ComponentHost components{nodes};
@@ -30,7 +53,7 @@ void journey() {
     std::array<TextInputOwnerId, 2> owners;
     components.mount(ryn::Content{[&] {
         auto& build = ryn::runtime::require_component_build_context();
-        for(std::size_t index = 0; index < 2; ++index) {
+        for (std::size_t index = 0; index < 2; ++index) {
             const auto component = build.mount_component<State>();
             const auto owner = editors.create();
             const auto interaction = registry.create({component, build.root(component), {}, true, true, {}});
@@ -39,8 +62,11 @@ void journey() {
             owners[index] = owner;
             FocusHandlers handlers;
             handlers.state_changed = [&, owner](FocusPresentation value) {
-                if(value.focused) static_cast<void>(sessions.focus(owner));
-                else if(sessions.active().owner == owner) static_cast<void>(sessions.blur());
+                if (value.focused) {
+                    static_cast<void>(sessions.focus(owner));
+                } else if (sessions.active().owner == owner) {
+                    static_cast<void>(sessions.blur());
+                }
             };
             registry.set_focus_handlers(interaction, std::move(handlers));
             build.on_resource_cleanup(component, [&, owner, interaction] {
@@ -73,8 +99,14 @@ void journey() {
     require(editors.size() == 0 && !sessions.active().valid(), "dispose retained editor resources");
     require(platform.starts == platform.stops, "native session lifetime imbalance");
 }
-}
+} // namespace
+
 int main() {
-    try { journey(); std::cout << "Focus, Tab, pointer focus and conditional unmount text session passed\n"; }
-    catch(const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+    try {
+        journey();
+        std::cout << "Focus, Tab, pointer focus and conditional unmount text session passed\n";
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 1;
+    }
 }

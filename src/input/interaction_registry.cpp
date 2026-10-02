@@ -9,23 +9,15 @@ namespace ryn::input {
 namespace {
 
 bool valid_rect(runtime::Rect rect) noexcept {
-    return std::isfinite(rect.x)
-        && std::isfinite(rect.y)
-        && std::isfinite(rect.width)
-        && std::isfinite(rect.height)
-        && rect.width >= 0.0F
-        && rect.height >= 0.0F;
+    return std::isfinite(rect.x) && std::isfinite(rect.y) && std::isfinite(rect.width) && std::isfinite(rect.height) &&
+           rect.width >= 0.0F && rect.height >= 0.0F;
 }
 
 runtime::Rect intersect(runtime::Rect left, runtime::Rect right) noexcept {
     const float x = std::max(left.x, right.x);
     const float y = std::max(left.y, right.y);
-    const float right_edge = std::min(
-        left.x + left.width,
-        right.x + right.width);
-    const float bottom_edge = std::min(
-        left.y + left.height,
-        right.y + right.height);
+    const float right_edge = std::min(left.x + left.width, right.x + right.width);
+    const float bottom_edge = std::min(left.y + left.height, right.y + right.height);
     return {
         x,
         y,
@@ -35,22 +27,14 @@ runtime::Rect intersect(runtime::Rect left, runtime::Rect right) noexcept {
 }
 
 bool contains(runtime::Rect rect, runtime::Point point) noexcept {
-    return rect.width > 0.0F
-        && rect.height > 0.0F
-        && point.x >= rect.x
-        && point.y >= rect.y
-        && point.x < rect.x + rect.width
-        && point.y < rect.y + rect.height;
+    return rect.width > 0.0F && rect.height > 0.0F && point.x >= rect.x && point.y >= rect.y &&
+           point.x < rect.x + rect.width && point.y < rect.y + rect.height;
 }
 
 } // namespace
 
-InteractionRegistry::InteractionRegistry(
-    runtime::ComponentHost& components,
-    runtime::NodeStore& nodes) noexcept
-    : components_(&components),
-      nodes_(&nodes),
-      owner_thread_(std::this_thread::get_id()) {}
+InteractionRegistry::InteractionRegistry(runtime::ComponentHost& components, runtime::NodeStore& nodes) noexcept
+    : components_(&components), nodes_(&nodes), owner_thread_(std::this_thread::get_id()) {}
 
 void InteractionRegistry::reserve(std::size_t capacity) {
     ensure_owner_thread();
@@ -73,8 +57,7 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
             registration.parent,
             registration.eligible,
             registration.focusable,
-            std::make_shared<const InteractionHandlers>(
-                std::move(registration.handlers)),
+            std::make_shared<const InteractionHandlers>(std::move(registration.handlers)),
             {},
             next_declaration_order_,
             registration.focus_on_pointer,
@@ -126,21 +109,15 @@ bool InteractionRegistry::set_focusable(InteractionId id, bool focusable) {
     return true;
 }
 
-bool InteractionRegistry::set_handlers(
-    InteractionId id,
-    InteractionHandlers handlers) {
+bool InteractionRegistry::set_handlers(InteractionId id, InteractionHandlers handlers) {
     auto& record = require(id);
-    record.handlers = std::make_shared<const InteractionHandlers>(
-        std::move(handlers));
+    record.handlers = std::make_shared<const InteractionHandlers>(std::move(handlers));
     return true;
 }
 
-bool InteractionRegistry::set_focus_handlers(
-    InteractionId id,
-    FocusHandlers handlers) {
+bool InteractionRegistry::set_focus_handlers(InteractionId id, FocusHandlers handlers) {
     auto& record = require(id);
-    record.focus_handlers = std::make_shared<const FocusHandlers>(
-        std::move(handlers));
+    record.focus_handlers = std::make_shared<const FocusHandlers>(std::move(handlers));
     return true;
 }
 
@@ -194,35 +171,26 @@ void InteractionRegistry::ensure_owner_thread() const {
     }
 }
 
-void InteractionRegistry::validate_registration(
-    const InteractionRegistration& registration) const {
-    if (!registration.component.valid()
-            || !components_->contains(registration.component)) {
+void InteractionRegistry::validate_registration(const InteractionRegistration& registration) const {
+    if (!registration.component.valid() || !components_->contains(registration.component)) {
         throw std::invalid_argument("Interaction registration requires a live ComponentId");
     }
-    if (!registration.node.valid()
-            || nodes_->find(registration.node) == nullptr
-            || !node_belongs_to_component(registration.node, registration.component)) {
-        throw std::invalid_argument(
-            "Interaction registration requires a live NodeId owned by its component");
+    if (!registration.node.valid() || nodes_->find(registration.node) == nullptr ||
+        !node_belongs_to_component(registration.node, registration.component)) {
+        throw std::invalid_argument("Interaction registration requires a live NodeId owned by its component");
     }
     if (registration.parent.has_value()) {
         const auto* parent = find_slot_record(*registration.parent);
         if (parent == nullptr || !associations_are_live(*parent)) {
             throw std::invalid_argument("Interaction parent is stale or invalid");
         }
-        if (!component_is_same_or_ancestor(
-                parent->component,
-                registration.component)) {
-            throw std::invalid_argument(
-                "Interaction parent component is not an ancestor");
+        if (!component_is_same_or_ancestor(parent->component, registration.component)) {
+            throw std::invalid_argument("Interaction parent component is not an ancestor");
         }
     }
 }
 
-bool InteractionRegistry::node_belongs_to_component(
-    runtime::NodeId node,
-    runtime::ComponentId component) const {
+bool InteractionRegistry::node_belongs_to_component(runtime::NodeId node, runtime::ComponentId component) const {
     const auto component_root = components_->root(component);
     runtime::NodeId current = node;
     while (const auto* record = nodes_->find(current)) {
@@ -237,9 +205,8 @@ bool InteractionRegistry::node_belongs_to_component(
     return false;
 }
 
-bool InteractionRegistry::component_is_same_or_ancestor(
-    runtime::ComponentId ancestor,
-    runtime::ComponentId component) const {
+bool InteractionRegistry::component_is_same_or_ancestor(runtime::ComponentId ancestor,
+                                                        runtime::ComponentId component) const {
     auto current = std::optional<runtime::ComponentId>{component};
     while (current.has_value()) {
         if (*current == ancestor) {
@@ -253,8 +220,7 @@ bool InteractionRegistry::component_is_same_or_ancestor(
     return false;
 }
 
-InteractionRecord* InteractionRegistry::find_slot_record(
-    InteractionId id) noexcept {
+InteractionRecord* InteractionRegistry::find_slot_record(InteractionId id) noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -265,8 +231,7 @@ InteractionRecord* InteractionRegistry::find_slot_record(
     return &*slot.record;
 }
 
-const InteractionRecord* InteractionRegistry::find_slot_record(
-    InteractionId id) const noexcept {
+const InteractionRecord* InteractionRegistry::find_slot_record(InteractionId id) const noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -277,18 +242,14 @@ const InteractionRecord* InteractionRegistry::find_slot_record(
     return &*slot.record;
 }
 
-bool InteractionRegistry::associations_are_live(
-    const InteractionRecord& record) const {
-    if (!components_->contains(record.component)
-            || nodes_->find(record.node) == nullptr
-            || !node_belongs_to_component(record.node, record.component)) {
+bool InteractionRegistry::associations_are_live(const InteractionRecord& record) const {
+    if (!components_->contains(record.component) || nodes_->find(record.node) == nullptr ||
+        !node_belongs_to_component(record.node, record.component)) {
         return false;
     }
     if (record.parent.has_value()) {
         const auto* parent = find_slot_record(*record.parent);
-        if (parent == nullptr
-                || !components_->contains(parent->component)
-                || nodes_->find(parent->node) == nullptr) {
+        if (parent == nullptr || !components_->contains(parent->component) || nodes_->find(parent->node) == nullptr) {
             return false;
         }
     }
@@ -316,18 +277,14 @@ void InteractionRegistry::advance_generation(Slot& slot) noexcept {
     }
 }
 
-HitTestSnapshot::HitTestSnapshot(
-    InteractionRegistry& registry,
-    runtime::NodeStore& nodes) noexcept
+HitTestSnapshot::HitTestSnapshot(InteractionRegistry& registry, runtime::NodeStore& nodes) noexcept
     : registry_(&registry), nodes_(&nodes) {}
 
 void HitTestSnapshot::reserve(std::size_t capacity) {
     records_.reserve(capacity);
 }
 
-void HitTestSnapshot::rebuild(
-    std::span<const HitTestPaintEntry> paint_entries,
-    runtime::Rect window_clip) {
+void HitTestSnapshot::rebuild(std::span<const HitTestPaintEntry> paint_entries, runtime::Rect window_clip) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("HitTestSnapshot can only be used on its owner thread");
     }
@@ -338,19 +295,12 @@ void HitTestSnapshot::rebuild(
     std::vector<HitTestRecord> replacement;
     replacement.reserve(std::max(records_.capacity(), paint_entries.size()));
     for (std::size_t index = 0; index < paint_entries.size(); ++index) {
-        if (std::find_if(
-                replacement.begin(),
-                replacement.end(),
-                [&](const auto& record) {
-                    return record.interaction == paint_entries[index].interaction;
-                }) != replacement.end()) {
+        if (std::find_if(replacement.begin(), replacement.end(), [&](const auto& record) {
+                return record.interaction == paint_entries[index].interaction;
+            }) != replacement.end()) {
             throw std::invalid_argument("HitTest paint traversal contains a duplicate interaction");
         }
-        replacement.push_back(make_record(
-            paint_entries[index],
-            index,
-            replacement,
-            window_clip));
+        replacement.push_back(make_record(paint_entries[index], index, replacement, window_clip));
     }
     records_ = std::move(replacement);
     window_clip_ = window_clip;
@@ -358,8 +308,7 @@ void HitTestSnapshot::rebuild(
     diagnostics_.records_refreshed += records_.size();
 }
 
-std::size_t HitTestSnapshot::refresh(
-    std::span<const runtime::NodeId> dirty_nodes) {
+std::size_t HitTestSnapshot::refresh(std::span<const runtime::NodeId> dirty_nodes) {
     if (!registry_->is_owner_thread()) {
         throw std::logic_error("HitTestSnapshot can only be used on its owner thread");
     }
@@ -381,11 +330,9 @@ std::size_t HitTestSnapshot::refresh(
         for (const auto dirty : dirty_nodes) {
             if (dirty.valid() && dirty.index < dirty_node_stamps_.size()) {
                 auto& stamp = dirty_node_stamps_[dirty.index];
-                if (stamp.epoch == dirty_node_epoch_
-                        && stamp.generation != dirty.generation) {
+                if (stamp.epoch == dirty_node_epoch_ && stamp.generation != dirty.generation) {
                     if (stamp.generation != 0) {
-                        conflicting_dirty_nodes_.insert(node_key({
-                            dirty.index, stamp.generation}));
+                        conflicting_dirty_nodes_.insert(node_key({dirty.index, stamp.generation}));
                     }
                     conflicting_dirty_nodes_.insert(node_key(dirty));
                     stamp.generation = 0;
@@ -403,12 +350,11 @@ std::size_t HitTestSnapshot::refresh(
             while (current.has_value()) {
                 if (current->index < dirty_node_stamps_.size()) {
                     const auto& stamp = dirty_node_stamps_[current->index];
-                    if (stamp.epoch == dirty_node_epoch_
-                            && (stamp.generation == current->generation
-                                || (stamp.generation == 0
-                                    && conflicting_dirty_nodes_.contains(
-                                        (static_cast<std::uint64_t>(current->index) << 32)
-                                            | current->generation)))) {
+                    if (stamp.epoch == dirty_node_epoch_ &&
+                        (stamp.generation == current->generation ||
+                         (stamp.generation == 0 &&
+                          conflicting_dirty_nodes_.contains((static_cast<std::uint64_t>(current->index) << 32) |
+                                                            current->generation)))) {
                         affected = true;
                         break;
                     }
@@ -420,12 +366,9 @@ std::size_t HitTestSnapshot::refresh(
                 current = node->parent;
             }
         } else {
-            affected = std::any_of(
-                dirty_nodes.begin(),
-                dirty_nodes.end(),
-                [&](runtime::NodeId dirty) {
-                    return node_descends_from(records_[index].node, dirty);
-                });
+            affected = std::any_of(dirty_nodes.begin(), dirty_nodes.end(), [&](runtime::NodeId dirty) {
+                return node_descends_from(records_[index].node, dirty);
+            });
         }
         if (affected && refresh_record(index)) {
             ++refreshed;
@@ -441,9 +384,8 @@ std::size_t HitTestSnapshot::refresh_interaction(InteractionId interaction) {
     }
     std::size_t refreshed = 0;
     for (std::size_t index = 0; index < records_.size(); ++index) {
-        if ((records_[index].interaction == interaction
-                || snapshot_descends_from(records_[index], interaction))
-                && refresh_record(index)) {
+        if ((records_[index].interaction == interaction || snapshot_descends_from(records_[index], interaction)) &&
+            refresh_record(index)) {
             ++refreshed;
         }
     }
@@ -469,11 +411,8 @@ std::optional<InteractionId> HitTestSnapshot::hit_test(runtime::Point point) {
             ++diagnostics_.stale_skips;
             continue;
         }
-        if (!iterator->has_committed_layout
-                || !iterator->effective_eligible
-                || !interaction->eligible
-                || !contains(iterator->effective_clip, point)
-                || !contains(iterator->translated_bounds, point)) {
+        if (!iterator->has_committed_layout || !iterator->effective_eligible || !interaction->eligible ||
+            !contains(iterator->effective_clip, point) || !contains(iterator->translated_bounds, point)) {
             continue;
         }
         ++diagnostics_.hits;
@@ -494,11 +433,8 @@ const HitTestDiagnostics& HitTestSnapshot::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-HitTestRecord HitTestSnapshot::make_record(
-    const HitTestPaintEntry& entry,
-    std::size_t paint_order,
-    std::span<const HitTestRecord> preceding,
-    runtime::Rect window_clip) const {
+HitTestRecord HitTestSnapshot::make_record(const HitTestPaintEntry& entry, std::size_t paint_order,
+                                           std::span<const HitTestRecord> preceding, runtime::Rect window_clip) const {
     const auto& interaction = registry_->require(entry.interaction);
     if (entry.clip.has_value() && !valid_rect(*entry.clip)) {
         throw std::invalid_argument("HitTest entry clip must be finite and non-negative");
@@ -508,17 +444,13 @@ HitTestRecord HitTestSnapshot::make_record(
     if (interaction.parent.has_value()) {
         parent = find_preceding(*interaction.parent, preceding);
         if (parent == nullptr) {
-            throw std::invalid_argument(
-                "HitTest traversal must place an interaction parent before its child");
+            throw std::invalid_argument("HitTest traversal must place an interaction parent before its child");
         }
     }
 
     const auto* node = nodes_->find(interaction.node);
-    const bool committed = node != nullptr
-        && node->place_generation != 0
-        && valid_rect(node->bounds)
-        && std::isfinite(node->translation.x)
-        && std::isfinite(node->translation.y);
+    const bool committed = node != nullptr && node->place_generation != 0 && valid_rect(node->bounds) &&
+                           std::isfinite(node->translation.x) && std::isfinite(node->translation.y);
     runtime::Rect bounds{};
     if (committed) {
         bounds = {
@@ -559,36 +491,26 @@ bool HitTestSnapshot::refresh_record(std::size_t index) {
         return true;
     }
     const HitTestPaintEntry entry{target.interaction, target.source_clip};
-    target = make_record(
-        entry,
-        target.paint_order,
-        std::span<const HitTestRecord>{records_.data(), index},
-        window_clip_);
+    target =
+        make_record(entry, target.paint_order, std::span<const HitTestRecord>{records_.data(), index}, window_clip_);
     return true;
 }
 
-const HitTestRecord* HitTestSnapshot::find_preceding(
-    InteractionId id,
-    std::span<const HitTestRecord> records) const noexcept {
-    const auto found = std::find_if(
-        records.begin(),
-        records.end(),
-        [&](const auto& record) { return record.interaction == id; });
+const HitTestRecord* HitTestSnapshot::find_preceding(InteractionId id,
+                                                     std::span<const HitTestRecord> records) const noexcept {
+    const auto found =
+        std::find_if(records.begin(), records.end(), [&](const auto& record) { return record.interaction == id; });
     return found == records.end() ? nullptr : &*found;
 }
 
-bool HitTestSnapshot::snapshot_descends_from(
-    const HitTestRecord& record,
-    InteractionId ancestor) const noexcept {
+bool HitTestSnapshot::snapshot_descends_from(const HitTestRecord& record, InteractionId ancestor) const noexcept {
     auto parent = record.parent;
     while (parent.has_value()) {
         if (*parent == ancestor) {
             return true;
         }
-        const auto found = std::find_if(
-            records_.begin(),
-            records_.end(),
-            [&](const auto& current) { return current.interaction == *parent; });
+        const auto found = std::find_if(records_.begin(), records_.end(),
+                                        [&](const auto& current) { return current.interaction == *parent; });
         if (found == records_.end()) {
             return false;
         }
@@ -597,9 +519,7 @@ bool HitTestSnapshot::snapshot_descends_from(
     return false;
 }
 
-bool HitTestSnapshot::node_descends_from(
-    runtime::NodeId node,
-    runtime::NodeId ancestor) const noexcept {
+bool HitTestSnapshot::node_descends_from(runtime::NodeId node, runtime::NodeId ancestor) const noexcept {
     auto current = std::optional<runtime::NodeId>{node};
     while (current.has_value()) {
         if (*current == ancestor) {

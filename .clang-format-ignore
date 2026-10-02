@@ -1,0 +1,4 @@
+# Build dependencies, upstream fixtures, and generated assets keep their own format.
+out/**
+tests/fixtures/**
+**/*.inc

@@ -167,22 +167,16 @@ struct TextMeasureResult {
 class TextEngine final {
 public:
     explicit TextEngine(font::FontRuntime& fonts) noexcept;
-    [[nodiscard]] bool map_carets(const ShapedText&, StringView source,
-        std::uint64_t revision, float baseline, TextCaretMap& output) const;
+    [[nodiscard]] bool map_carets(const ShapedText&, StringView source, std::uint64_t revision, float baseline,
+                                  TextCaretMap& output) const;
 
-    [[nodiscard]] TextShapeResult shape(
-        StringView text,
-        std::span<const font::FontIdentity> fallback_chain) const;
+    [[nodiscard]] TextShapeResult shape(StringView text, std::span<const font::FontIdentity> fallback_chain) const;
 
-    [[nodiscard]] TextShapeResult shape_utf8_lossy(
-        std::string_view bytes,
-        std::span<const font::FontIdentity> fallback_chain) const;
+    [[nodiscard]] TextShapeResult shape_utf8_lossy(std::string_view bytes,
+                                                   std::span<const font::FontIdentity> fallback_chain) const;
 
-    [[nodiscard]] TextMeasureResult measure(
-        const ShapedText& text,
-        TextLayoutConfig config) const;
-    [[nodiscard]] bool has_exact_glyphs(StringView text,
-        std::span<const font::FontIdentity> fallback_chain) const;
+    [[nodiscard]] TextMeasureResult measure(const ShapedText& text, TextLayoutConfig config) const;
+    [[nodiscard]] bool has_exact_glyphs(StringView text, std::span<const font::FontIdentity> fallback_chain) const;
 
 private:
     font::FontRuntime* fonts_;
@@ -206,13 +200,8 @@ struct TextStateCounters {
 
 class TextState final {
 public:
-    TextState(
-        TextEngine& engine,
-        String content,
-        std::vector<font::FontIdentity> fallback_chain,
-        std::uint32_t pixel_size,
-        TextLayoutConfig layout,
-        std::function<void()> request_frame = {});
+    TextState(TextEngine& engine, String content, std::vector<font::FontIdentity> fallback_chain,
+              std::uint32_t pixel_size, TextLayoutConfig layout, std::function<void()> request_frame = {});
 
     bool set_content(String content);
     bool set_font_chain(std::vector<font::FontIdentity> fallback_chain);
@@ -229,14 +218,31 @@ public:
     [[nodiscard]] const TextMeasurement& measurement() const noexcept;
     [[nodiscard]] const TextMaterial& material() const noexcept;
     [[nodiscard]] const TextStateCounters& counters() const noexcept;
-    [[nodiscard]] StringView content() const noexcept { return content_.view(); }
+
+    [[nodiscard]] StringView content() const noexcept {
+        return content_.view();
+    }
+
     [[nodiscard]] StringView display_content() const noexcept {
         return ellipsis_.rows ? displayed_.view() : content_.view();
     }
-    [[nodiscard]] bool truncated() const noexcept { return truncated_; }
-    [[nodiscard]] bool suffix_available() const noexcept { return suffix_available_; }
-    [[nodiscard]] const TextEllipsisConfig& ellipsis() const noexcept { return ellipsis_; }
-    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
+
+    [[nodiscard]] bool truncated() const noexcept {
+        return truncated_;
+    }
+
+    [[nodiscard]] bool suffix_available() const noexcept {
+        return suffix_available_;
+    }
+
+    [[nodiscard]] const TextEllipsisConfig& ellipsis() const noexcept {
+        return ellipsis_;
+    }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept {
+        return revision_;
+    }
+
     [[nodiscard]] const TextError& last_error() const noexcept;
 
 private:

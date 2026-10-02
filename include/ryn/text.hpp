@@ -28,8 +28,7 @@ public:
         return *this;
     }
 
-    template <std::size_t N>
-    TextProps& content(const char8_t (&literal)[N]) {
+    template <std::size_t N> TextProps& content(const char8_t (&literal)[N]) {
         return content(String{literal});
     }
 
@@ -59,8 +58,7 @@ inline void Text(String content) {
     Text(std::move(props));
 }
 
-template <std::size_t N>
-void Text(const char8_t (&literal)[N]) {
+template <std::size_t N> void Text(const char8_t (&literal)[N]) {
     Text(String{literal});
 }
 

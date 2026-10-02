@@ -18,12 +18,10 @@ void test_precise_dependency_notification() {
     int executions = 0;
     int observed = 0;
 
-    const auto observer = ryn::detail::observe(
-        ryn::detail::ObserverPhase::binding,
-        [&] {
-            ++executions;
-            observed = dependent.get();
-        });
+    const auto observer = ryn::detail::observe(ryn::detail::ObserverPhase::binding, [&] {
+        ++executions;
+        observed = dependent.get();
+    });
 
     require(executions == 1, "observer did not execute initially");
     require(observed == 1, "observer read the wrong initial value");

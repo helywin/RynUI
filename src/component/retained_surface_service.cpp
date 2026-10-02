@@ -8,14 +8,11 @@
 
 namespace ryn::component {
 
-RetainedSurfaceService::RetainedSurfaceService(
-    runtime::ComponentHost& components,
-    runtime::NodeStore& nodes,
-    ComponentSceneComposer& composer) noexcept
+RetainedSurfaceService::RetainedSurfaceService(runtime::ComponentHost& components, runtime::NodeStore& nodes,
+                                               ComponentSceneComposer& composer) noexcept
     : components_(&components), nodes_(&nodes), composer_(&composer) {}
 
-void RetainedSurfaceService::reserve(
-    std::size_t surface_capacity, std::size_t visual_capacity) {
+void RetainedSurfaceService::reserve(std::size_t surface_capacity, std::size_t visual_capacity) {
     ensure_owner_thread();
     if (visual_capacity > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("retained visual capacity exceeds uint32_t");
@@ -25,42 +22,31 @@ void RetainedSurfaceService::reserve(
     instances_.reserve(visual_capacity, surface_capacity);
 }
 
-RetainedSurfaceId RetainedSurfaceService::create(
-    runtime::ComponentId component,
-    runtime::NodeId node,
-    runtime::SceneFragmentId fragment,
-    std::optional<input::InteractionId> interaction,
-    std::span<const graphics::QuadInstance> visuals,
-    const RetainedSurfaceEffects& effects) {
-    return create_record(
-        component, node, fragment, interaction, visuals, effects);
+RetainedSurfaceId RetainedSurfaceService::create(runtime::ComponentId component, runtime::NodeId node,
+                                                 runtime::SceneFragmentId fragment,
+                                                 std::optional<input::InteractionId> interaction,
+                                                 std::span<const graphics::QuadInstance> visuals,
+                                                 const RetainedSurfaceEffects& effects) {
+    return create_record(component, node, fragment, interaction, visuals, effects);
 }
 
-RetainedSurfaceId RetainedSurfaceService::create_surface(
-    runtime::ComponentId component,
-    runtime::NodeId node,
-    runtime::SceneFragmentId fragment,
-    std::span<const graphics::QuadInstance> visuals,
-    const RetainedSurfaceEffects& effects,
-    std::optional<input::InteractionId> interaction) {
-    return create_record(
-        component, node, fragment, interaction, visuals, effects);
+RetainedSurfaceId RetainedSurfaceService::create_surface(runtime::ComponentId component, runtime::NodeId node,
+                                                         runtime::SceneFragmentId fragment,
+                                                         std::span<const graphics::QuadInstance> visuals,
+                                                         const RetainedSurfaceEffects& effects,
+                                                         std::optional<input::InteractionId> interaction) {
+    return create_record(component, node, fragment, interaction, visuals, effects);
 }
 
-RetainedSurfaceId RetainedSurfaceService::create_record(
-    runtime::ComponentId component,
-    runtime::NodeId node,
-    runtime::SceneFragmentId fragment,
-    std::optional<input::InteractionId> interaction,
-    std::span<const graphics::QuadInstance> visuals,
-    const RetainedSurfaceEffects& effects) {
+RetainedSurfaceId RetainedSurfaceService::create_record(runtime::ComponentId component, runtime::NodeId node,
+                                                        runtime::SceneFragmentId fragment,
+                                                        std::optional<input::InteractionId> interaction,
+                                                        std::span<const graphics::QuadInstance> visuals,
+                                                        const RetainedSurfaceEffects& effects) {
     ensure_owner_thread();
-    if (!components_->contains(component)
-            || components_->root(component) != node
-            || nodes_->find(node) == nullptr
-            || !components_->contains(fragment)) {
-        throw std::invalid_argument(
-            "retained surface requires live Component, root Node, and fragment identities");
+    if (!components_->contains(component) || components_->root(component) != node || nodes_->find(node) == nullptr ||
+        !components_->contains(fragment)) {
+        throw std::invalid_argument("retained surface requires live Component, root Node, and fragment identities");
     }
     validate_visuals(visuals);
     const auto slot_index = acquire_slot();
@@ -128,22 +114,18 @@ bool RetainedSurfaceService::destroy(RetainedSurfaceId id) {
     return true;
 }
 
-std::size_t RetainedSurfaceService::update(
-    RetainedSurfaceId id,
-    std::span<const graphics::QuadInstance> visuals) {
+std::size_t RetainedSurfaceService::update(RetainedSurfaceId id, std::span<const graphics::QuadInstance> visuals) {
     return update_surface(id, visuals);
 }
 
-std::size_t RetainedSurfaceService::update_surface(
-    RetainedSurfaceId id,
-    std::span<const graphics::QuadInstance> visuals) {
+std::size_t RetainedSurfaceService::update_surface(RetainedSurfaceId id,
+                                                   std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     auto& record = require(id);
     validate_visuals(visuals);
     if (visuals.size() != record.range.count) {
-        throw std::invalid_argument(
-            "retained surface update changed its visual layer count; use the "
-            "content range API for a variable count");
+        throw std::invalid_argument("retained surface update changed its visual layer count; use the "
+                                    "content range API for a variable count");
     }
 
     // Surface updates run on interaction frames and are covered by allocation
@@ -160,10 +142,8 @@ std::size_t RetainedSurfaceService::update_surface(
             visuals[index].translation,
         };
     }
-    const auto material_updates = instances_.update_material(
-        record.range, std::span{materials}.first(visuals.size()));
-    const auto geometry_updates = instances_.update_geometry(
-        record.range, std::span{geometry}.first(visuals.size()));
+    const auto material_updates = instances_.update_material(record.range, std::span{materials}.first(visuals.size()));
+    const auto geometry_updates = instances_.update_geometry(record.range, std::span{geometry}.first(visuals.size()));
     diagnostics_.material_updates += material_updates;
     diagnostics_.geometry_updates += geometry_updates;
     return material_updates + geometry_updates;
@@ -176,28 +156,25 @@ std::uint32_t RetainedSurfaceService::acquire_content_slot() {
         return index;
     }
     if (content_slots_.size() >= RetainedSurfaceId::invalid_index) {
-        throw std::length_error(
-            "RetainedSurfaceService exhausted content range indices");
+        throw std::length_error("RetainedSurfaceService exhausted content range indices");
     }
     content_slots_.emplace_back();
     return static_cast<std::uint32_t>(content_slots_.size() - 1);
 }
 
-RetainedSurfaceService::ContentRecord* RetainedSurfaceService::find_content(
-    RetainedSurfaceId id) noexcept {
+RetainedSurfaceService::ContentRecord* RetainedSurfaceService::find_content(RetainedSurfaceId id) noexcept {
     if (!id.valid() || !id.content_range || id.index >= content_slots_.size()) {
         return nullptr;
     }
     auto& slot = content_slots_[id.index];
-    if (!slot.record.has_value() || slot.record->id.generation != id.generation
-            || !components_->contains(slot.record->fragment)) {
+    if (!slot.record.has_value() || slot.record->id.generation != id.generation ||
+        !components_->contains(slot.record->fragment)) {
         return nullptr;
     }
     return &*slot.record;
 }
 
-RetainedSurfaceService::ContentRecord& RetainedSurfaceService::require_content(
-    RetainedSurfaceId id) {
+RetainedSurfaceService::ContentRecord& RetainedSurfaceService::require_content(RetainedSurfaceId id) {
     auto* record = find_content(id);
     if (record == nullptr) {
         throw std::out_of_range("content range id is stale or unknown");
@@ -215,25 +192,26 @@ void RetainedSurfaceService::publish_content(ContentRecord& record) {
     // The fragment belongs to the caller, so the command list is replaced rather
     // than merged; the caller keeps sole ownership of that fragment's contents.
     std::vector<graphics::SceneDrawCommand> commands;
-    if (record.range.count) commands.push_back(fill);
+    if (record.range.count) {
+        commands.push_back(fill);
+    }
     for (const auto effect : record.effects) {
-        if (const auto packed = effect_scene_.store().packed_index(effect))
-            commands.push_back({graphics::SceneDrawKind::rounded_effect, *packed, 1,
-                graphics::invalid_glyph_atlas_page});
+        if (const auto packed = effect_scene_.store().packed_index(effect)) {
+            commands.push_back(
+                {graphics::SceneDrawKind::rounded_effect, *packed, 1, graphics::invalid_glyph_atlas_page});
+        }
     }
     composer_->set_fragment(record.fragment, commands);
 }
 
-std::size_t RetainedSurfaceService::republish_range(
-    graphics::QuadInstanceRange& range,
-    std::span<const graphics::QuadInstance> visuals) {
+std::size_t RetainedSurfaceService::republish_range(graphics::QuadInstanceRange& range,
+                                                    std::span<const graphics::QuadInstance> visuals) {
     if (range.count == visuals.size()) {
         std::size_t updates = 0;
         for (std::uint32_t index = 0; index < range.count; ++index) {
             const auto& visual = visuals[index];
             const graphics::QuadMaterial material{visual.color, visual.opacity};
-            const graphics::QuadGeometry geometry{visual.bounds,
-                visual.corner_radius, visual.translation};
+            const graphics::QuadGeometry geometry{visual.bounds, visual.corner_radius, visual.translation};
             const graphics::QuadInstanceRange single{range.first + index, 1};
             const auto material_updates = instances_.update_material(single, {&material, 1});
             const auto geometry_updates = instances_.update_geometry(single, {&geometry, 1});
@@ -245,7 +223,9 @@ std::size_t RetainedSurfaceService::republish_range(
     }
     // Empty ranges have no storage position. Insert them at the tail to avoid
     // ambiguous ownership when several empty layers share the same index.
-    if (range.count == 0) range.first = static_cast<std::uint32_t>(instances_.size());
+    if (range.count == 0) {
+        range.first = static_cast<std::uint32_t>(instances_.size());
+    }
     const auto old = range;
     const auto replaced = instances_.replace(range, visuals);
     remap_after_replace(old, replaced.count, &range);
@@ -254,18 +234,18 @@ std::size_t RetainedSurfaceService::republish_range(
     return range.count;
 }
 
-RetainedSurfaceId RetainedSurfaceService::create_content_range(
-    runtime::SceneFragmentId fragment,
-    std::span<const graphics::QuadInstance> visuals) {
+RetainedSurfaceId RetainedSurfaceService::create_content_range(runtime::SceneFragmentId fragment,
+                                                               std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     validate_content_visuals(visuals);
-    if (!components_->contains(fragment)) throw std::invalid_argument("content fragment is stale");
+    if (!components_->contains(fragment)) {
+        throw std::invalid_argument("content fragment is stale");
+    }
     const auto slot_index = acquire_content_slot();
     auto& slot = content_slots_[slot_index];
     const RetainedSurfaceId id{slot_index, slot.generation, true};
     try {
-        slot.record.emplace(ContentRecord{
-            id, fragment, instances_.append(visuals)});
+        slot.record.emplace(ContentRecord{id, fragment, instances_.append(visuals)});
         publish_content(*slot.record);
     } catch (...) {
         if (slot.record) {
@@ -285,24 +265,31 @@ RetainedSurfaceId RetainedSurfaceService::create_content_range(
     return id;
 }
 
-void RetainedSurfaceService::remap_after_replace(
-    graphics::QuadInstanceRange old_range, std::uint32_t new_count,
-    const graphics::QuadInstanceRange* owner) {
+void RetainedSurfaceService::remap_after_replace(graphics::QuadInstanceRange old_range, std::uint32_t new_count,
+                                                 const graphics::QuadInstanceRange* owner) {
     const auto end = old_range.first + old_range.count;
     const auto shift = static_cast<std::int64_t>(new_count) - old_range.count;
-    if (shift == 0) return;
+    if (shift == 0) {
+        return;
+    }
     for (auto& slot : slots_) {
-        if (!slot.record || &slot.record->range == owner
-                || slot.record->range.first < end) continue;
+        if (!slot.record || &slot.record->range == owner || slot.record->range.first < end) {
+            continue;
+        }
         slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
-        if (components_->contains(slot.record->fragment)) bind_fragment(*slot.record);
+        if (components_->contains(slot.record->fragment)) {
+            bind_fragment(*slot.record);
+        }
         ++diagnostics_.fragment_remaps;
     }
     for (auto& slot : content_slots_) {
-        if (!slot.record || &slot.record->range == owner
-                || slot.record->range.first < end) continue;
+        if (!slot.record || &slot.record->range == owner || slot.record->range.first < end) {
+            continue;
+        }
         slot.record->range.first = static_cast<std::uint32_t>(slot.record->range.first + shift);
-        if (components_->contains(slot.record->fragment)) publish_content(*slot.record);
+        if (components_->contains(slot.record->fragment)) {
+            publish_content(*slot.record);
+        }
         ++diagnostics_.fragment_remaps;
     }
 }
@@ -310,40 +297,49 @@ void RetainedSurfaceService::remap_after_replace(
 bool RetainedSurfaceService::destroy_content_range(RetainedSurfaceId id) {
     ensure_owner_thread();
     // Cleanup is also valid after ComponentHost has removed the fragment.
-    if (!id.valid() || !id.content_range || id.index >= content_slots_.size()) return false;
+    if (!id.valid() || !id.content_range || id.index >= content_slots_.size()) {
+        return false;
+    }
     auto& slot = content_slots_[id.index];
-    if (!slot.record || slot.generation != id.generation) return false;
+    if (!slot.record || slot.generation != id.generation) {
+        return false;
+    }
     const auto removed = slot.record->range;
     static_cast<void>(composer_->remove_fragment(slot.record->fragment));
-    for (const auto effect : slot.record->effects) static_cast<void>(effect_scene_.store().remove(effect));
+    for (const auto effect : slot.record->effects) {
+        static_cast<void>(effect_scene_.store().remove(effect));
+    }
     static_cast<void>(instances_.replace(removed, {}));
     remap_after_replace(removed, 0, &slot.record->range);
     slot.record.reset();
-    if (++slot.generation == 0) slot.generation = 1;
+    if (++slot.generation == 0) {
+        slot.generation = 1;
+    }
     free_content_slots_.push_back(id.index);
     --live_records_;
     ++diagnostics_.destroys;
     return true;
 }
 
-std::size_t RetainedSurfaceService::set_content_range(
-    RetainedSurfaceId id,
-    runtime::SceneFragmentId fragment,
-    std::span<const graphics::QuadInstance> visuals) {
+std::size_t RetainedSurfaceService::set_content_range(RetainedSurfaceId id, runtime::SceneFragmentId fragment,
+                                                      std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     auto& record = require_content(id);
     validate_content_visuals(visuals);
-    if (!components_->contains(fragment)) throw std::invalid_argument("content fragment is stale");
-    if (record.fragment != fragment) static_cast<void>(composer_->remove_fragment(record.fragment));
+    if (!components_->contains(fragment)) {
+        throw std::invalid_argument("content fragment is stale");
+    }
+    if (record.fragment != fragment) {
+        static_cast<void>(composer_->remove_fragment(record.fragment));
+    }
     record.fragment = fragment;
     const auto updates = republish_range(record.range, visuals);
     publish_content(record);
     return updates;
 }
 
-std::size_t RetainedSurfaceService::update_content_range(
-    RetainedSurfaceId id,
-    std::span<const graphics::QuadInstance> visuals) {
+std::size_t RetainedSurfaceService::update_content_range(RetainedSurfaceId id,
+                                                         std::span<const graphics::QuadInstance> visuals) {
     ensure_owner_thread();
     auto& record = require_content(id);
     validate_content_visuals(visuals);
@@ -353,19 +349,23 @@ std::size_t RetainedSurfaceService::update_content_range(
 }
 
 std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
-    std::span<const graphics::RoundedEffectInstance> effects) {
+                                                           std::span<const graphics::RoundedEffectInstance> effects) {
     ensure_owner_thread();
     auto& record = require_content(id);
-    for (const auto& effect : effects) graphics::validate_rounded_effect(effect);
+    for (const auto& effect : effects) {
+        graphics::validate_rounded_effect(effect);
+    }
     auto& store = effect_scene_.store();
     std::size_t updates = 0;
     while (record.effects.size() > effects.size()) {
         static_cast<void>(store.remove(record.effects.back()));
-        record.effects.pop_back(); ++updates;
+        record.effects.pop_back();
+        ++updates;
     }
     for (std::size_t index = 0; index < effects.size(); ++index) {
         if (index == record.effects.size()) {
-            record.effects.push_back(store.add(effects[index])); ++updates;
+            record.effects.push_back(store.add(effects[index]));
+            ++updates;
         } else {
             updates += store.update_geometry(record.effects[index], effects[index].geometry);
             updates += store.update_material(record.effects[index], effects[index].material);
@@ -375,24 +375,21 @@ std::size_t RetainedSurfaceService::update_content_effects(RetainedSurfaceId id,
     return updates;
 }
 
-std::size_t RetainedSurfaceService::update_effects(
-    RetainedSurfaceId id,
-    const RetainedSurfaceEffects& effects) {
+std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects) {
     ensure_owner_thread();
     auto& record = require(id);
     if (record.effects == effects) {
         return 0;
     }
 
-    bool topology_changed = record.shadow_ids.size() != effects.shadows.size()
-        || record.focus_id.valid() != effects.focus_enabled;
+    bool topology_changed =
+        record.shadow_ids.size() != effects.shadows.size() || record.focus_id.valid() != effects.focus_enabled;
     if (!topology_changed) {
         for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
             const auto expected = effects.shadows[index].kind == ShadowKind::outer
-                ? graphics::RoundedEffectKind::outer_shadow
-                : graphics::RoundedEffectKind::inset_shadow;
-            if (effect_scene_.store().at(record.shadow_ids[index]).geometry.kind
-                    != expected) {
+                                      ? graphics::RoundedEffectKind::outer_shadow
+                                      : graphics::RoundedEffectKind::inset_shadow;
+            if (effect_scene_.store().at(record.shadow_ids[index]).geometry.kind != expected) {
                 topology_changed = true;
                 break;
             }
@@ -408,11 +405,8 @@ std::size_t RetainedSurfaceService::update_effects(
 
     std::size_t updates = 0;
     for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
-        auto candidate = graphics::make_shadow_effect(
-            effects.shape,
-            effects.shadows[index],
-            effects.translation,
-            effects.ancestor_clip);
+        auto candidate = graphics::make_shadow_effect(effects.shape, effects.shadows[index], effects.translation,
+                                                      effects.ancestor_clip);
         candidate.material.opacity = effects.shadow_opacity;
         const auto effect = record.shadow_ids[index];
         if (effect_scene_.store().update_geometry(effect, candidate.geometry)) {
@@ -425,14 +419,9 @@ std::size_t RetainedSurfaceService::update_effects(
         }
     }
     if (effects.focus_enabled) {
-        auto focus = graphics::make_outline_effect(
-            effects.shape,
-            effects.focus_width,
-            effects.focus_offset,
-            effects.focus_color,
-            effects.focus_opacity,
-            effects.translation,
-            effects.ancestor_clip);
+        auto focus =
+            graphics::make_outline_effect(effects.shape, effects.focus_width, effects.focus_offset, effects.focus_color,
+                                          effects.focus_opacity, effects.translation, effects.ancestor_clip);
         if (effect_scene_.store().update_geometry(record.focus_id, focus.geometry)) {
             ++diagnostics_.effect_geometry_updates;
             ++updates;
@@ -457,34 +446,35 @@ bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip) {
         }
     }
     for (auto& slot : content_slots_) {
-        if (slot.record && components_->contains(slot.record->fragment)) publish_content(*slot.record);
+        if (slot.record && components_->contains(slot.record->fragment)) {
+            publish_content(*slot.record);
+        }
     }
     return true;
 }
 
-graphics::QuadInstanceRange RetainedSurfaceService::visual_range(
-    RetainedSurfaceId id) const {
+graphics::QuadInstanceRange RetainedSurfaceService::visual_range(RetainedSurfaceId id) const {
     ensure_owner_thread();
     if (id.content_range) {
-        if (!id.valid() || id.index >= content_slots_.size())
+        if (!id.valid() || id.index >= content_slots_.size()) {
             throw std::out_of_range("content range id is stale or unknown");
+        }
         const auto& slot = content_slots_[id.index];
-        if (!slot.record || slot.generation != id.generation)
+        if (!slot.record || slot.generation != id.generation) {
             throw std::out_of_range("content range id is stale or unknown");
+        }
         return slot.record->range;
     }
     return require(id).range;
 }
 
-const graphics::RoundedEffectInstance& RetainedSurfaceService::focus_effect(
-    RetainedSurfaceId id) const {
+const graphics::RoundedEffectInstance& RetainedSurfaceService::focus_effect(RetainedSurfaceId id) const {
     ensure_owner_thread();
     const auto& record = require(id);
     return effect_scene_.store().at(record.focus_id);
 }
 
-std::span<const graphics::RoundedEffectId> RetainedSurfaceService::shadow_effects(
-    RetainedSurfaceId id) const {
+std::span<const graphics::RoundedEffectId> RetainedSurfaceService::shadow_effects(RetainedSurfaceId id) const {
     ensure_owner_thread();
     return require(id).shadow_ids;
 }
@@ -493,8 +483,7 @@ graphics::QuadInstanceStore& RetainedSurfaceService::instances() noexcept {
     return instances_;
 }
 
-const graphics::QuadInstanceStore&
-RetainedSurfaceService::instances() const noexcept {
+const graphics::QuadInstanceStore& RetainedSurfaceService::instances() const noexcept {
     return instances_;
 }
 
@@ -510,13 +499,11 @@ std::size_t RetainedSurfaceService::size() const noexcept {
     return live_records_;
 }
 
-const RetainedSurfaceDiagnostics&
-RetainedSurfaceService::diagnostics() const noexcept {
+const RetainedSurfaceDiagnostics& RetainedSurfaceService::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-RetainedSurfaceService::Record* RetainedSurfaceService::find(
-    RetainedSurfaceId id) noexcept {
+RetainedSurfaceService::Record* RetainedSurfaceService::find(RetainedSurfaceId id) noexcept {
     if (!id.valid() || id.content_range || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -525,15 +512,13 @@ RetainedSurfaceService::Record* RetainedSurfaceService::find(
         return nullptr;
     }
     auto& record = *slot.record;
-    return components_->contains(record.component)
-            && nodes_->find(record.node) != nullptr
-            && components_->contains(record.fragment)
-        ? &record
-        : nullptr;
+    return components_->contains(record.component) && nodes_->find(record.node) != nullptr &&
+                   components_->contains(record.fragment)
+               ? &record
+               : nullptr;
 }
 
-const RetainedSurfaceService::Record* RetainedSurfaceService::find(
-    RetainedSurfaceId id) const noexcept {
+const RetainedSurfaceService::Record* RetainedSurfaceService::find(RetainedSurfaceId id) const noexcept {
     if (!id.valid() || id.content_range || id.index >= slots_.size()) {
         return nullptr;
     }
@@ -542,11 +527,10 @@ const RetainedSurfaceService::Record* RetainedSurfaceService::find(
         return nullptr;
     }
     const auto& record = *slot.record;
-    return components_->contains(record.component)
-            && nodes_->find(record.node) != nullptr
-            && components_->contains(record.fragment)
-        ? &record
-        : nullptr;
+    return components_->contains(record.component) && nodes_->find(record.node) != nullptr &&
+                   components_->contains(record.fragment)
+               ? &record
+               : nullptr;
 }
 
 RetainedSurfaceService::Record& RetainedSurfaceService::require(RetainedSurfaceId id) {
@@ -557,8 +541,7 @@ RetainedSurfaceService::Record& RetainedSurfaceService::require(RetainedSurfaceI
     throw std::out_of_range("RetainedSurfaceId is stale or has stale associations");
 }
 
-const RetainedSurfaceService::Record& RetainedSurfaceService::require(
-    RetainedSurfaceId id) const {
+const RetainedSurfaceService::Record& RetainedSurfaceService::require(RetainedSurfaceId id) const {
     if (const auto* record = find(id)) {
         return *record;
     }
@@ -588,10 +571,7 @@ void RetainedSurfaceService::bind_fragment(const Record& record) {
     std::vector<graphics::SceneDrawCommand> commands;
     commands.reserve(record.shadow_ids.size() + 2);
     effect_scene_.compose_surface(record.effect_primitive, fill, commands);
-    composer_->set_fragment(
-        record.fragment,
-        commands,
-        record.interaction);
+    composer_->set_fragment(record.fragment, commands, record.interaction);
 }
 
 void RetainedSurfaceService::create_effects(Record& record) {
@@ -602,11 +582,8 @@ void RetainedSurfaceService::create_effects(Record& record) {
     record.effect_primitive.after_fill.reserve(record.effects.shadows.size());
     try {
         for (const auto& layer : record.effects.shadows.layers()) {
-            auto instance = graphics::make_shadow_effect(
-                record.effects.shape,
-                layer,
-                record.effects.translation,
-                record.effects.ancestor_clip);
+            auto instance = graphics::make_shadow_effect(record.effects.shape, layer, record.effects.translation,
+                                                         record.effects.ancestor_clip);
             instance.material.opacity = record.effects.shadow_opacity;
             const auto id = effect_scene_.store().add(std::move(instance));
             record.shadow_ids.push_back(id);
@@ -617,14 +594,10 @@ void RetainedSurfaceService::create_effects(Record& record) {
             }
         }
         if (record.effects.focus_enabled) {
-            auto outline = graphics::make_outline_effect(
-                record.effects.shape,
-                record.effects.focus_width,
-                record.effects.focus_offset,
-                record.effects.focus_color,
-                record.effects.focus_opacity,
-                record.effects.translation,
-                record.effects.ancestor_clip);
+            auto outline = graphics::make_outline_effect(record.effects.shape, record.effects.focus_width,
+                                                         record.effects.focus_offset, record.effects.focus_color,
+                                                         record.effects.focus_opacity, record.effects.translation,
+                                                         record.effects.ancestor_clip);
             record.focus_id = effect_scene_.store().add(std::move(outline));
             record.effect_primitive.before_fill.push_back(record.focus_id);
         }
@@ -646,47 +619,35 @@ void RetainedSurfaceService::remove_effects(Record& record) noexcept {
 
 void RetainedSurfaceService::ensure_owner_thread() const {
     if (!components_->is_owner_thread()) {
-        throw std::logic_error(
-            "RetainedSurfaceService can only be used on its owner thread");
+        throw std::logic_error("RetainedSurfaceService can only be used on its owner thread");
     }
 }
 
-void RetainedSurfaceService::validate_visuals(
-    std::span<const graphics::QuadInstance> visuals) {
-    if (visuals.empty()
-            || visuals.size() > retained_surface_visual_capacity) {
-        throw std::invalid_argument(
-            "retained surface visual layer count is invalid");
+void RetainedSurfaceService::validate_visuals(std::span<const graphics::QuadInstance> visuals) {
+    if (visuals.empty() || visuals.size() > retained_surface_visual_capacity) {
+        throw std::invalid_argument("retained surface visual layer count is invalid");
     }
     validate_finite_visuals(visuals);
 }
 
-void RetainedSurfaceService::validate_content_visuals(
-    std::span<const graphics::QuadInstance> visuals) {
+void RetainedSurfaceService::validate_content_visuals(std::span<const graphics::QuadInstance> visuals) {
     // A content range may legitimately be empty (a text run with no decoration
     // after a reflow), and its count is not bounded by the surface layer limit.
     if (visuals.size() > retained_content_visual_capacity) {
-        throw std::invalid_argument(
-            "retained content visual count is invalid");
+        throw std::invalid_argument("retained content visual count is invalid");
     }
     validate_finite_visuals(visuals);
 }
 
-void RetainedSurfaceService::validate_finite_visuals(
-    std::span<const graphics::QuadInstance> visuals) {
+void RetainedSurfaceService::validate_finite_visuals(std::span<const graphics::QuadInstance> visuals) {
     for (const auto& visual : visuals) {
-        const bool finite_clip = std::ranges::all_of(
-            visual.bounds, [](float value) { return std::isfinite(value); });
-        const bool finite_color = std::ranges::all_of(
-            visual.color, [](float value) { return std::isfinite(value); });
-        const bool finite_translation = std::ranges::all_of(
-            visual.translation, [](float value) { return std::isfinite(value); });
-        if (!finite_clip || !finite_color || !finite_translation
-                || !std::isfinite(visual.opacity)
-                || !std::isfinite(visual.corner_radius)
-                || visual.opacity < 0.0F || visual.opacity > 1.0F
-                || visual.corner_radius < 0.0F
-                || visual.bounds[2] < 0.0F || visual.bounds[3] < 0.0F) {
+        const bool finite_clip = std::ranges::all_of(visual.bounds, [](float value) { return std::isfinite(value); });
+        const bool finite_color = std::ranges::all_of(visual.color, [](float value) { return std::isfinite(value); });
+        const bool finite_translation =
+            std::ranges::all_of(visual.translation, [](float value) { return std::isfinite(value); });
+        if (!finite_clip || !finite_color || !finite_translation || !std::isfinite(visual.opacity) ||
+            !std::isfinite(visual.corner_radius) || visual.opacity < 0.0F || visual.opacity > 1.0F ||
+            visual.corner_radius < 0.0F || visual.bounds[2] < 0.0F || visual.bounds[3] < 0.0F) {
             throw std::invalid_argument("retained surface visual data is invalid");
         }
     }

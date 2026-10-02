@@ -80,8 +80,7 @@ public:
         return "fake-gpu";
     }
 
-    [[nodiscard]] PlatformWindowMetrics window_metrics(
-        PlatformWindowHandle) const noexcept override {
+    [[nodiscard]] PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override {
         return {960, 720, 1200, 900, 1.25F, 1.25F};
     }
 
@@ -103,9 +102,7 @@ void require(bool condition, const char* message) {
     }
 }
 
-void require_calls(
-    const std::vector<std::string>& actual,
-    const std::vector<std::string>& expected) {
+void require_calls(const std::vector<std::string>& actual, const std::vector<std::string>& expected) {
     if (actual != expected) {
         std::cerr << "Expected:";
         for (const auto& call : expected) {
@@ -120,10 +117,7 @@ void require_calls(
     }
 }
 
-void test_failure(
-    FailurePoint point,
-    PlatformStage expected_stage,
-    const std::vector<std::string>& expected_calls) {
+void test_failure(FailurePoint point, PlatformStage expected_stage, const std::vector<std::string>& expected_calls) {
     FakePlatformApi api(point);
     const auto result = PlatformState::create(api, PlatformConfig{});
     require(!result, "injected failure unexpectedly succeeded");
@@ -141,21 +135,12 @@ void test_success_cleanup() {
         require(!result.error.has_value(), "successful lifecycle included an error");
         require(result.state->window() != nullptr, "window handle is missing");
         require(result.state->display_scale() == 1.25F, "display scale differs");
-        require(result.state->window_metrics().logical_width() == 960.0F,
-                "logical viewport width differs");
-        require(api.high_pixel_density_requested,
-                "platform did not request a high-pixel-density window");
+        require(result.state->window_metrics().logical_width() == 960.0F, "logical viewport width differs");
+        require(api.high_pixel_density_requested, "platform did not request a high-pixel-density window");
         require(result.state->is_owner_thread(), "lifecycle lost its owner thread");
-        require_calls(
-            api.calls,
-            {"init", "create_window"});
+        require_calls(api.calls, {"init", "create_window"});
     }
-    require_calls(
-        api.calls,
-        {"init",
-         "create_window",
-         "destroy_window",
-         "quit"});
+    require_calls(api.calls, {"init", "create_window", "destroy_window", "quit"});
 }
 
 void test_gpu_failure_preserves_host(FailurePoint point) {
@@ -166,16 +151,16 @@ void test_gpu_failure_preserves_host(FailurePoint point) {
         SdlGpuBinding binding(*host.state, api);
         throw std::logic_error("GPU binding unexpectedly succeeded");
     } catch (const std::runtime_error& error) {
-        require(std::string(error.what()).find("injected failure") != std::string::npos,
-                "binding lost GPU error");
+        require(std::string(error.what()).find("injected failure") != std::string::npos, "binding lost GPU error");
     }
     static_cast<void>(host.state->poll_events());
     require(host.state->window_metrics().pixel_width == 1200, "host service lost after GPU failure");
     require(!api.device_live, "failed binding leaked its GPU device");
-    if (point == FailurePoint::device)
+    if (point == FailurePoint::device) {
         require_calls(api.calls, {"init", "create_window", "create_device"});
-    else
+    } else {
         require_calls(api.calls, {"init", "create_window", "create_device", "claim_window", "destroy_device"});
+    }
     host.state.reset();
     require(api.calls[api.calls.size() - 2] == "destroy_window" && api.calls.back() == "quit",
             "host did not independently clean up");
@@ -184,14 +169,26 @@ void test_gpu_failure_preserves_host(FailurePoint point) {
 class ResourceApi final : public ryn::detail::QuadUploadApi {
 public:
     explicit ResourceApi(FakePlatformApi& api) : api_(&api) {}
-    void* create_vertex_buffer(std::size_t) override { return this; }
+
+    void* create_vertex_buffer(std::size_t) override {
+        return this;
+    }
+
     void release_buffer(void*) noexcept override {
         released_on_live_device = api_->device_live;
         api_->calls.emplace_back("release_resource");
     }
-    bool upload(void*, std::size_t, std::span<const std::byte>) override { return api_->device_live; }
-    const char* last_error() const noexcept override { return "resource device absent"; }
+
+    bool upload(void*, std::size_t, std::span<const std::byte>) override {
+        return api_->device_live;
+    }
+
+    const char* last_error() const noexcept override {
+        return "resource device absent";
+    }
+
     bool released_on_live_device{};
+
 private:
     FakePlatformApi* api_;
 };
@@ -211,60 +208,129 @@ void test_resources_retired_before_binding_rebuild() {
             require(binding.device() && std::string(binding.driver()) == "fake-gpu", "binding invalid");
             require(binding.epoch() > previous_epoch, "rebuild reused device epoch");
             previous_epoch = binding.epoch();
-            { ryn::detail::QuadGpuBuffer buffer(resources, store, {100, 100, 1}); }
+            {
+                ryn::detail::QuadGpuBuffer buffer(resources, store, {100, 100, 1});
+            }
             require(resources.released_on_live_device, "old resource released through destroyed device");
         }
         require(!api.device_live, "binding did not destroy device");
     }
-    require_calls(api.calls, {"init", "create_window", "create_device", "claim_window",
-        "release_resource", "release_window", "destroy_device", "create_device", "claim_window",
-        "release_resource", "release_window", "destroy_device"});
+    require_calls(api.calls, {"init", "create_window", "create_device", "claim_window", "release_resource",
+                              "release_window", "destroy_device", "create_device", "claim_window", "release_resource",
+                              "release_window", "destroy_device"});
 }
 
 class BindingSceneApi final : public ryn::detail::SceneBackend {
 public:
     BindingSceneApi(SdlGpuBinding& binding, FakePlatformApi& api) : binding_(&binding), api_(&api) {}
+
     ryn::detail::SceneBackendCapabilities capabilities() const noexcept override {
         return ryn::detail::baseline_scene_capabilities();
     }
-    std::uint64_t device_epoch() const noexcept override { return binding_->epoch(); }
-    bool begin_upload_batch() override { return api_->device_live; }
-    bool finish_upload_batch() override { return api_->device_live; }
+
+    std::uint64_t device_epoch() const noexcept override {
+        return binding_->epoch();
+    }
+
+    bool begin_upload_batch() override {
+        return api_->device_live;
+    }
+
+    bool finish_upload_batch() override {
+        return api_->device_live;
+    }
+
     void cancel_upload_batch() noexcept override {}
-    void* create_vertex_buffer(std::size_t) override { return &buffer_; }
+
+    void* create_vertex_buffer(std::size_t) override {
+        return &buffer_;
+    }
+
     void release_buffer(void*) noexcept override {
         released_live &= api_->device_live;
         api_->calls.emplace_back("release_scene_buffer");
     }
-    bool upload(void*, std::size_t, std::span<const std::byte>) override { return api_->device_live; }
-    void* create_glyph_sampler() override { return &sampler_; }
-    void* create_glyph_texture(std::uint32_t, std::uint32_t) override { return &texture_; }
-    void* create_glyph_buffer(std::size_t size) override { return create_vertex_buffer(size); }
-    bool upload_glyph_texture(void*, const ryn::detail::GlyphTextureUpload&) override { return api_->device_live; }
-    bool upload_glyph_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override { return upload(value, offset, bytes); }
-    void release_glyph_buffer(void* value) noexcept override { release_buffer(value); }
-    void release_glyph_texture(void*) noexcept override { released_live &= api_->device_live; }
+
+    bool upload(void*, std::size_t, std::span<const std::byte>) override {
+        return api_->device_live;
+    }
+
+    void* create_glyph_sampler() override {
+        return &sampler_;
+    }
+
+    void* create_glyph_texture(std::uint32_t, std::uint32_t) override {
+        return &texture_;
+    }
+
+    void* create_glyph_buffer(std::size_t size) override {
+        return create_vertex_buffer(size);
+    }
+
+    bool upload_glyph_texture(void*, const ryn::detail::GlyphTextureUpload&) override {
+        return api_->device_live;
+    }
+
+    bool upload_glyph_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override {
+        return upload(value, offset, bytes);
+    }
+
+    void release_glyph_buffer(void* value) noexcept override {
+        release_buffer(value);
+    }
+
+    void release_glyph_texture(void*) noexcept override {
+        released_live &= api_->device_live;
+    }
+
     void release_glyph_sampler(void*) noexcept override {
         released_live &= api_->device_live;
         api_->calls.emplace_back("release_scene_sampler");
     }
-    void* create_effect_buffer(std::size_t size) override { return create_vertex_buffer(size); }
-    bool upload_effect_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override { return upload(value, offset, bytes); }
-    void release_effect_buffer(void* value) noexcept override { release_buffer(value); }
-    const char* last_error() const noexcept override { return "device not alive"; }
-    const char* glyph_gpu_error() const noexcept override { return last_error(); }
-    const char* effect_gpu_error() const noexcept override { return last_error(); }
-    void draw_quad(std::uint32_t, std::uint32_t) override {}
-    void draw_glyph(std::uint32_t, std::uint32_t, std::uint32_t) override {}
-    void draw_rounded_effect(std::uint32_t, std::uint32_t) override {}
-    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime) override {
-        return attached_scene_ready() ? ryn::runtime::FrameSubmissionResult::submitted : ryn::runtime::FrameSubmissionResult::failed;
+
+    void* create_effect_buffer(std::size_t size) override {
+        return create_vertex_buffer(size);
     }
+
+    bool upload_effect_buffer(void* value, std::size_t offset, std::span<const std::byte> bytes) override {
+        return upload(value, offset, bytes);
+    }
+
+    void release_effect_buffer(void* value) noexcept override {
+        release_buffer(value);
+    }
+
+    const char* last_error() const noexcept override {
+        return "device not alive";
+    }
+
+    const char* glyph_gpu_error() const noexcept override {
+        return last_error();
+    }
+
+    const char* effect_gpu_error() const noexcept override {
+        return last_error();
+    }
+
+    void draw_quad(std::uint32_t, std::uint32_t) override {}
+
+    void draw_glyph(std::uint32_t, std::uint32_t, std::uint32_t) override {}
+
+    void draw_rounded_effect(std::uint32_t, std::uint32_t) override {}
+
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime) override {
+        return attached_scene_ready() ? ryn::runtime::FrameSubmissionResult::submitted
+                                      : ryn::runtime::FrameSubmissionResult::failed;
+    }
+
     bool released_live{true};
+
 private:
     SdlGpuBinding* binding_;
     FakePlatformApi* api_;
-    int buffer_{}, sampler_{}, texture_{};
+    int buffer_{};
+    int sampler_{};
+    int texture_{};
 };
 
 void test_shared_scene_retirement_and_binding_order() {
@@ -290,10 +356,10 @@ void test_shared_scene_retirement_and_binding_order() {
         require(!backend.valid_attachment(attached) && backend.released_live,
                 "shared retire left attachment valid or released on dead device");
     }
-    require_calls(api.calls, {"init", "create_window", "create_device", "claim_window",
-        "release_scene_buffer", "release_scene_sampler", "release_window", "destroy_device",
-        "create_device", "claim_window", "release_scene_buffer", "release_scene_sampler",
-        "release_window", "destroy_device"});
+    require_calls(api.calls,
+                  {"init", "create_window", "create_device", "claim_window", "release_scene_buffer",
+                   "release_scene_sampler", "release_window", "destroy_device", "create_device", "claim_window",
+                   "release_scene_buffer", "release_scene_sampler", "release_window", "destroy_device"});
 }
 
 } // namespace
@@ -301,10 +367,7 @@ void test_shared_scene_retirement_and_binding_order() {
 int main() {
     try {
         test_failure(FailurePoint::init, PlatformStage::sdl_init, {"init"});
-        test_failure(
-            FailurePoint::window,
-            PlatformStage::window,
-            {"init", "create_window", "quit"});
+        test_failure(FailurePoint::window, PlatformStage::window, {"init", "create_window", "quit"});
         test_gpu_failure_preserves_host(FailurePoint::device);
         test_gpu_failure_preserves_host(FailurePoint::claim);
         test_resources_retired_before_binding_rebuild();

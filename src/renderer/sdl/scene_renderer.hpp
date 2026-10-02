@@ -45,67 +45,63 @@ struct SceneRendererCounters {
 
 class SdlSceneRenderer final : public SceneBackend {
 public:
-    SdlSceneRenderer(
-        PlatformState& platform,
-        const std::filesystem::path& shader_directory, bool debug_mode = default_sdl_gpu_debug);
+    SdlSceneRenderer(PlatformState& platform, const std::filesystem::path& shader_directory,
+                     bool debug_mode = default_sdl_gpu_debug);
     SdlSceneRenderer(const SdlSceneRenderer&) = delete;
     SdlSceneRenderer& operator=(const SdlSceneRenderer&) = delete;
     ~SdlSceneRenderer() override;
 
     bool attach_scene(const SceneAttachment& attachment) noexcept override;
-    [[nodiscard]] std::uint64_t device_epoch() const noexcept override { return binding_.epoch(); }
-    [[nodiscard]] SceneBackendCapabilities capabilities() const noexcept override { return capabilities_; }
+
+    [[nodiscard]] std::uint64_t device_epoch() const noexcept override {
+        return binding_.epoch();
+    }
+
+    [[nodiscard]] SceneBackendCapabilities capabilities() const noexcept override {
+        return capabilities_;
+    }
+
     bool resize_window(int width, int height);
-    void set_clear_color(Color value) noexcept { clear_color_ = value; }
+
+    void set_clear_color(Color value) noexcept {
+        clear_color_ = value;
+    }
 
     detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
     void release_buffer(detail::QuadGpuBufferHandle buffer) noexcept override;
-    bool upload(
-        detail::QuadGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override;
+    bool upload(detail::QuadGpuBufferHandle buffer, std::size_t offset, std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;
 
     GlyphGpuSamplerHandle create_glyph_sampler() override;
-    GlyphGpuTextureHandle create_glyph_texture(
-        std::uint32_t width,
-        std::uint32_t height) override;
+    GlyphGpuTextureHandle create_glyph_texture(std::uint32_t width, std::uint32_t height) override;
     GlyphGpuBufferHandle create_glyph_buffer(std::size_t size) override;
-    bool upload_glyph_texture(
-        GlyphGpuTextureHandle texture,
-        const GlyphTextureUpload& upload) override;
-    bool upload_glyph_buffer(
-        GlyphGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override;
+    bool upload_glyph_texture(GlyphGpuTextureHandle texture, const GlyphTextureUpload& upload) override;
+    bool upload_glyph_buffer(GlyphGpuBufferHandle buffer, std::size_t offset,
+                             std::span<const std::byte> bytes) override;
     void release_glyph_buffer(GlyphGpuBufferHandle buffer) noexcept override;
     void release_glyph_texture(GlyphGpuTextureHandle texture) noexcept override;
     void release_glyph_sampler(GlyphGpuSamplerHandle sampler) noexcept override;
     [[nodiscard]] const char* glyph_gpu_error() const noexcept override;
 
     RoundedEffectGpuBufferHandle create_effect_buffer(std::size_t size) override;
-    bool upload_effect_buffer(
-        RoundedEffectGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override;
+    bool upload_effect_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                              std::span<const std::byte> bytes) override;
     void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept override;
     [[nodiscard]] const char* effect_gpu_error() const noexcept override;
 
     void draw_quad(std::uint32_t first, std::uint32_t count) override;
-    void draw_glyph(
-        std::uint32_t atlas_page,
-        std::uint32_t first,
-        std::uint32_t count) override;
-    void draw_rounded_effect(
-        std::uint32_t first,
-        std::uint32_t count) override;
-    runtime::FrameSubmissionResult submit_frame(
-        animation::AnimationTime frame_time) override;
+    void draw_glyph(std::uint32_t atlas_page, std::uint32_t first, std::uint32_t count) override;
+    void draw_rounded_effect(std::uint32_t first, std::uint32_t count) override;
+    runtime::FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) override;
     // Render the attached scene into a matching offscreen target for visual QA.
     bool save_frame_bmp(const std::filesystem::path& path);
 
     [[nodiscard]] const char* shader_format() const noexcept;
-    [[nodiscard]] const char* gpu_driver() const noexcept { return binding_.driver(); }
+
+    [[nodiscard]] const char* gpu_driver() const noexcept {
+        return binding_.driver();
+    }
+
     [[nodiscard]] const SceneRendererCounters& counters() const noexcept;
     bool begin_upload_batch() override;
     bool finish_upload_batch() override;
@@ -117,23 +113,22 @@ private:
     bool ensure_upload_copy_pass();
     bool flush_buffer_upload_chunk();
     bool flush_texture_upload_chunk();
-    bool upload_buffer(
-        void* buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes,
-        const char* label);
+    bool upload_buffer(void* buffer, std::size_t offset, std::span<const std::byte> bytes, const char* label);
     enum class ResourceKind { quad, glyph, effect, texture, sampler };
+
     struct Resource final {
         void* native{};
         GpuDeviceHandle device{};
         ResourceKind kind{};
         std::size_t size{};
-        std::uint32_t width{}, height{};
+        std::uint32_t width{};
+        std::uint32_t height{};
         void release() noexcept;
         ~Resource();
     };
-    void* track_resource(void* native, ResourceKind kind, std::size_t size = 0,
-        std::uint32_t width = 0, std::uint32_t height = 0);
+
+    void* track_resource(void* native, ResourceKind kind, std::size_t size = 0, std::uint32_t width = 0,
+                         std::uint32_t height = 0);
     [[nodiscard]] Resource* resource(void* handle, ResourceKind kind) const noexcept;
     void release_resource(void* handle, ResourceKind kind) noexcept;
     [[nodiscard]] void* native_resource(void* handle, ResourceKind kind) const;

@@ -179,8 +179,7 @@ enum class TypographyLevel : std::uint8_t {
 
 inline constexpr std::size_t typography_level_count = 5;
 
-[[nodiscard]] constexpr std::size_t typography_level_index(
-    TypographyLevel level) noexcept {
+[[nodiscard]] constexpr std::size_t typography_level_index(TypographyLevel level) noexcept {
     return static_cast<std::size_t>(level);
 }
 
@@ -277,12 +276,24 @@ struct DividerThemeConfig final {
 };
 
 struct SliderTokenOverride final {
-    std::optional<LogicalLength> rail_size, handle_size, handle_size_hover;
-    std::optional<LogicalLength> handle_line_width, handle_line_width_hover;
-    std::optional<Color> rail, rail_hover, track, track_hover, track_disabled;
-    std::optional<Color> handle, handle_active, handle_outline, handle_disabled, handle_background;
+    std::optional<LogicalLength> rail_size;
+    std::optional<LogicalLength> handle_size;
+    std::optional<LogicalLength> handle_size_hover;
+    std::optional<LogicalLength> handle_line_width;
+    std::optional<LogicalLength> handle_line_width_hover;
+    std::optional<Color> rail;
+    std::optional<Color> rail_hover;
+    std::optional<Color> track;
+    std::optional<Color> track_hover;
+    std::optional<Color> track_disabled;
+    std::optional<Color> handle;
+    std::optional<Color> handle_active;
+    std::optional<Color> handle_outline;
+    std::optional<Color> handle_disabled;
+    std::optional<Color> handle_background;
     friend bool operator==(const SliderTokenOverride&, const SliderTokenOverride&) = default;
 };
+
 struct SliderThemeConfig final {
     SliderTokenOverride tokens;
     SeedTokenOverride seed;
@@ -365,9 +376,7 @@ struct ThemeAliasToken final {
     ShadowList box_shadow_secondary;
     ShadowList box_shadow_tertiary;
 
-    friend constexpr bool operator==(
-        const ThemeAliasToken&,
-        const ThemeAliasToken&) = default;
+    friend constexpr bool operator==(const ThemeAliasToken&, const ThemeAliasToken&) = default;
 };
 
 struct ButtonThemeToken final {
@@ -416,9 +425,7 @@ struct ButtonThemeToken final {
     ShadowList primary_shadow;
     ShadowList danger_shadow;
 
-    friend constexpr bool operator==(
-        const ButtonThemeToken&,
-        const ButtonThemeToken&) = default;
+    friend constexpr bool operator==(const ButtonThemeToken&, const ButtonThemeToken&) = default;
 };
 
 struct TextThemeToken final {
@@ -459,18 +466,14 @@ struct InlineCodeThemeToken final {
     float border_radius{3.0F};
     float border_bottom_width{1.0F};
 
-    friend constexpr bool operator==(
-        const InlineCodeThemeToken&,
-        const InlineCodeThemeToken&) = default;
+    friend constexpr bool operator==(const InlineCodeThemeToken&, const InlineCodeThemeToken&) = default;
 };
 
 struct TypographyHeadingToken final {
     float font_size{};
     float line_height{};
 
-    friend constexpr bool operator==(
-        const TypographyHeadingToken&,
-        const TypographyHeadingToken&) = default;
+    friend constexpr bool operator==(const TypographyHeadingToken&, const TypographyHeadingToken&) = default;
 };
 
 struct TypographyColorToken final {
@@ -485,9 +488,7 @@ struct TypographyColorToken final {
     Color link;
     Color mark_background;
 
-    friend constexpr bool operator==(
-        const TypographyColorToken&,
-        const TypographyColorToken&) = default;
+    friend constexpr bool operator==(const TypographyColorToken&, const TypographyColorToken&) = default;
 };
 
 // Groups follow the Theme invalidation domains: `colors` only repaints,
@@ -508,14 +509,11 @@ struct TypographyThemeToken final {
     InlineCodeThemeToken code;
     InlineCodeThemeToken keyboard;
 
-    [[nodiscard]] const TypographyHeadingToken& heading(
-        TypographyLevel level) const noexcept {
+    [[nodiscard]] const TypographyHeadingToken& heading(TypographyLevel level) const noexcept {
         return headings[typography_level_index(level)];
     }
 
-    friend constexpr bool operator==(
-        const TypographyThemeToken&,
-        const TypographyThemeToken&) = default;
+    friend constexpr bool operator==(const TypographyThemeToken&, const TypographyThemeToken&) = default;
 };
 
 struct DividerColorToken final {
@@ -543,9 +541,7 @@ struct DividerTypographyToken final {
     float plain_font_size{14.0F};
     std::uint32_t plain_font_weight{400};
 
-    friend constexpr bool operator==(
-        const DividerTypographyToken&,
-        const DividerTypographyToken&) = default;
+    friend constexpr bool operator==(const DividerTypographyToken&, const DividerTypographyToken&) = default;
 };
 
 struct DividerThemeToken final {
@@ -557,17 +553,39 @@ struct DividerThemeToken final {
 };
 
 struct SliderMetricToken final {
-    float rail_size{4}, handle_size{10}, handle_size_hover{12};
-    float handle_line_width{2}, handle_line_width_hover{2.5F};
-    [[nodiscard]] auto values() const noexcept { return std::array{rail_size, handle_size, handle_size_hover, handle_line_width, handle_line_width_hover}; }
+    float rail_size{4};
+    float handle_size{10};
+    float handle_size_hover{12};
+    float handle_line_width{2};
+    float handle_line_width_hover{2.5F};
+
+    [[nodiscard]] auto values() const noexcept {
+        return std::array{rail_size, handle_size, handle_size_hover, handle_line_width, handle_line_width_hover};
+    }
+
     friend constexpr bool operator==(const SliderMetricToken&, const SliderMetricToken&) = default;
 };
+
 struct SliderColorToken final {
-    Color rail, rail_hover, track, track_hover, track_disabled;
-    Color handle, handle_active, handle_outline, handle_disabled, handle_background;
-    [[nodiscard]] auto values() const noexcept { return std::array{rail, rail_hover, track, track_hover, track_disabled, handle, handle_active, handle_outline, handle_disabled, handle_background}; }
+    Color rail;
+    Color rail_hover;
+    Color track;
+    Color track_hover;
+    Color track_disabled;
+    Color handle;
+    Color handle_active;
+    Color handle_outline;
+    Color handle_disabled;
+    Color handle_background;
+
+    [[nodiscard]] auto values() const noexcept {
+        return std::array{rail,   rail_hover,    track,          track_hover,     track_disabled,
+                          handle, handle_active, handle_outline, handle_disabled, handle_background};
+    }
+
     friend constexpr bool operator==(const SliderColorToken&, const SliderColorToken&) = default;
 };
+
 struct SliderThemeToken final {
     SliderMetricToken metrics;
     SliderColorToken colors;
@@ -601,22 +619,12 @@ public:
 
 private:
     friend struct detail::InputTokenAccess;
-    friend ThemeSnapshot resolve_theme(
-        const ThemeConfig&,
-        const ThemeSnapshot*);
+    friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
-    ThemeSnapshot(
-        AntDesignDefaultSeed seed,
-        ThemeMapToken map,
-        ThemeAliasToken alias,
-        ButtonThemeToken button,
-        TextThemeToken text,
-        SwitchThemeToken switch_token,
-        TypographyThemeToken typography,
-        DividerThemeToken divider,
-        SliderThemeToken slider,
-        std::shared_ptr<const detail::InputTokenSet> input,
-        std::vector<ThemeAlgorithm> algorithms);
+    ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
+                  TextThemeToken text, SwitchThemeToken switch_token, TypographyThemeToken typography,
+                  DividerThemeToken divider, SliderThemeToken slider,
+                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -633,9 +641,7 @@ private:
     std::string diagnostic_json_;
 };
 
-[[nodiscard]] ThemeSnapshot resolve_theme(
-    const ThemeConfig& config = {},
-    const ThemeSnapshot* parent = nullptr);
+[[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = {}, const ThemeSnapshot* parent = nullptr);
 
 class ThemeProps final {
 public:
@@ -651,6 +657,7 @@ private:
 };
 
 struct ThemeContentSlot final {};
+
 using ThemeContent = SlotContent<ThemeContentSlot>;
 
 void Theme(ThemeProps props, ThemeContent content);

@@ -5,6 +5,7 @@
 
 namespace ryn::detail {
 struct SliderState;
+
 struct MountedSliderComponent final {
     runtime::ComponentId component;
     runtime::NodeId node;
@@ -12,26 +13,40 @@ struct MountedSliderComponent final {
     component::RetainedSurfaceId surface;
     bool range{};
 };
+
 struct SliderSnapshot final {
     SliderRange value;
     SliderLimits limits;
-    bool range{}, disabled{}, dragging{}, reverse{};
+    bool range{};
+    bool disabled{};
+    bool dragging{};
+    bool reverse{};
     SliderOrientation orientation{};
     std::array<runtime::Point, 2> centers;
     std::array<input::FocusPresentation, 2> focus;
 };
+
 class SliderComponentHost final : private WindowComponentParticipant {
 public:
     explicit SliderComponentHost(WindowComponentServices&);
     ~SliderComponentHost();
-    [[nodiscard]] std::span<const MountedSliderComponent> mounted() const noexcept { return mounted_; }
+
+    [[nodiscard]] std::span<const MountedSliderComponent> mounted() const noexcept {
+        return mounted_;
+    }
+
     [[nodiscard]] SliderSnapshot snapshot(runtime::ComponentId) const;
+
 private:
     friend struct SliderPropsAccess;
     void* begin_mount() noexcept override;
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
-    void on_dispose() noexcept override { mounted_.clear(); }
+
+    void on_dispose() noexcept override {
+        mounted_.clear();
+    }
+
     void on_window_active(bool) override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     SliderState* find(runtime::ComponentId) noexcept;

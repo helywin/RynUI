@@ -17,10 +17,8 @@ public:
     virtual ~RoundedEffectGpuApi() = default;
 
     virtual RoundedEffectGpuBufferHandle create_effect_buffer(std::size_t size) = 0;
-    virtual bool upload_effect_buffer(
-        RoundedEffectGpuBufferHandle buffer,
-        std::size_t offset,
-        std::span<const std::byte> bytes) = 0;
+    virtual bool upload_effect_buffer(RoundedEffectGpuBufferHandle buffer, std::size_t offset,
+                                      std::span<const std::byte> bytes) = 0;
     virtual void release_effect_buffer(RoundedEffectGpuBufferHandle buffer) noexcept = 0;
     [[nodiscard]] virtual const char* effect_gpu_error() const noexcept = 0;
 };
@@ -43,6 +41,7 @@ public:
     RoundedEffectGpuResources(RoundedEffectGpuResources&&) = delete;
     RoundedEffectGpuResources& operator=(RoundedEffectGpuResources&&) = delete;
     ~RoundedEffectGpuResources();
+
     void abandon_device() noexcept {
         buffer_ = nullptr;
         capacity_ = 0;
@@ -51,28 +50,22 @@ public:
         instances_.clear();
     }
 
-    void synchronize(
-        graphics::RoundedEffectStore& store,
-        SceneDeviceMetrics metrics);
+    void synchronize(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
     void invalidate_upload() noexcept;
 
     [[nodiscard]] RoundedEffectGpuBufferHandle buffer() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;
     [[nodiscard]] std::uint32_t instance_count() const noexcept;
-    [[nodiscard]] std::span<const RoundedEffectGpuInstance>
-        instances() const noexcept;
+    [[nodiscard]] std::span<const RoundedEffectGpuInstance> instances() const noexcept;
     [[nodiscard]] const RoundedEffectGpuResourceCounters& counters() const noexcept;
 
 private:
     void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
-    static void append_dirty_range(
-        std::vector<graphics::RoundedEffectInstanceRange>& ranges,
-        graphics::RoundedEffectInstanceRange range);
+    static void append_dirty_range(std::vector<graphics::RoundedEffectInstanceRange>& ranges,
+                                   graphics::RoundedEffectInstanceRange range);
     [[nodiscard]] static std::uint32_t next_capacity(std::size_t required);
-    void convert_range(
-        std::span<const graphics::RoundedEffectInstance> source,
-        graphics::RoundedEffectInstanceRange range,
-        SceneDeviceMetrics metrics);
+    void convert_range(std::span<const graphics::RoundedEffectInstance> source,
+                       graphics::RoundedEffectInstanceRange range, SceneDeviceMetrics metrics);
 
     RoundedEffectGpuApi* api_;
     RoundedEffectGpuBufferHandle buffer_{nullptr};

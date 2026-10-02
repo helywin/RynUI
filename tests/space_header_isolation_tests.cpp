@@ -9,11 +9,7 @@ static_assert(ryn::SpaceAlign::Start != ryn::SpaceAlign::End);
 int main() {
     auto declaration = [] {
         ryn::Space(
-            ryn::SpaceProps{}
-                .vertical(false)
-                .wrap(true)
-                .align(ryn::SpaceAlign::Center)
-                .size(ryn::SpaceSize::Large),
+            ryn::SpaceProps{}.vertical(false).wrap(true).align(ryn::SpaceAlign::Center).size(ryn::SpaceSize::Large),
             [] {});
     };
     static_cast<void>(declaration);

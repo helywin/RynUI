@@ -15,29 +15,19 @@ template <typename T>
 concept AcceptsIntegerAlignSelf = requires(T style) { style.align_self(1); };
 
 template <typename T>
-concept HasColor = requires(T style) {
-    style.color(ryn::dp(1.0F));
-};
+concept HasColor = requires(T style) { style.color(ryn::dp(1.0F)); };
 
 template <typename T>
-concept HasPadding = requires(T style) {
-    style.padding(ryn::dp(1.0F));
-};
+concept HasPadding = requires(T style) { style.padding(ryn::dp(1.0F)); };
 
 template <typename T>
-concept HasBackground = requires(T style) {
-    style.background(ryn::dp(1.0F));
-};
+concept HasBackground = requires(T style) { style.background(ryn::dp(1.0F)); };
 
 template <typename T>
-concept HasFont = requires(T style) {
-    style.font(ryn::dp(1.0F));
-};
+concept HasFont = requires(T style) { style.font(ryn::dp(1.0F)); };
 
 template <typename T>
-concept HasModifier = requires(T style) {
-    style.modifier(ryn::dp(1.0F));
-};
+concept HasModifier = requires(T style) { style.modifier(ryn::dp(1.0F)); };
 
 static_assert(!std::is_convertible_v<float, ryn::LogicalLength>);
 static_assert(!AcceptsRawWidth<ryn::LayoutStyle>);

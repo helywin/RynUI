@@ -30,10 +30,7 @@ ryn::component::ButtonVisualData visuals(float offset) {
         result[index] = {
             {offset, 0.8F, 0.4F, 0.2F},
             {0.1F * static_cast<float>(index + 1), 0.3F, 0.7F, 1.0F},
-            index >= static_cast<std::size_t>(
-                         ryn::component::ButtonVisualLayer::loading_indicator)
-                ? 0.0F
-                : 1.0F,
+            index >= static_cast<std::size_t>(ryn::component::ButtonVisualLayer::loading_indicator) ? 0.0F : 1.0F,
             0.1F,
             {0.0F, 0.0F},
         };
@@ -45,11 +42,7 @@ std::array<ryn::graphics::QuadInstance, 4> surface_visuals(float offset) {
     std::array<ryn::graphics::QuadInstance, 4> result;
     for (std::size_t index = 0; index < result.size(); ++index) {
         result[index] = {
-            {offset, 0.8F, 0.4F, 0.2F},
-            {0.2F, 0.3F * static_cast<float>(index + 1), 0.7F, 1.0F},
-            1.0F,
-            0.1F,
-            {},
+            {offset, 0.8F, 0.4F, 0.2F}, {0.2F, 0.3F * static_cast<float>(index + 1), 0.7F, 1.0F}, 1.0F, 0.1F, {},
         };
     }
     return result;
@@ -67,8 +60,7 @@ public:
         }
     }
 
-    ryn::detail::QuadGpuBufferHandle create_vertex_buffer(
-        std::size_t size) override {
+    ryn::detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override {
         auto* buffer = new Buffer;
         buffer->bytes.resize(size);
         live.push_back(buffer);
@@ -86,10 +78,8 @@ public:
         }
     }
 
-    bool upload(
-        ryn::detail::QuadGpuBufferHandle handle,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override {
+    bool upload(ryn::detail::QuadGpuBufferHandle handle, std::size_t offset,
+                std::span<const std::byte> bytes) override {
         if (fail_next) {
             fail_next = false;
             error = "injected Quad upload failure";
@@ -106,7 +96,9 @@ public:
         return true;
     }
 
-    const char* last_error() const noexcept override { return error.c_str(); }
+    const char* last_error() const noexcept override {
+        return error.c_str();
+    }
 
     std::vector<Buffer*> live;
     std::vector<std::size_t> upload_offsets;
@@ -124,8 +116,7 @@ struct Fixture final {
     std::array<ryn::runtime::SceneFragmentId, 3> fragments;
     ryn::input::InteractionRegistry interactions{components, nodes};
     ryn::input::HitTestSnapshot hit_test{interactions, nodes};
-    ryn::component::ComponentSceneComposer composer{
-        components, interactions, hit_test};
+    ryn::component::ComponentSceneComposer composer{components, interactions, hit_test};
     ryn::component::RetainedSurfaceService buttons{components, nodes, composer};
     std::array<ryn::input::InteractionId, 3> interaction_ids;
 
@@ -134,9 +125,8 @@ struct Fixture final {
             auto& build = ryn::runtime::require_component_build_context();
             for (std::size_t index = 0; index < component_ids.size(); ++index) {
                 component_ids[index] = build.mount_component<TestState>();
-                fragments[index] = build.register_scene_fragment(
-                    component_ids[index],
-                    ryn::runtime::SceneFragmentPlacement::before_children);
+                fragments[index] = build.register_scene_fragment(component_ids[index],
+                                                                 ryn::runtime::SceneFragmentPlacement::before_children);
             }
         }});
         for (std::size_t index = 0; index < component_ids.size(); ++index) {
@@ -159,32 +149,21 @@ struct Fixture final {
 
 void test_fixed_ranges_compaction_and_shared_hit_order() {
     Fixture fixture;
-    require(fixture.buttons.instances().capacity()
-                == 3 * ryn::component::button_visual_layer_count,
+    require(fixture.buttons.instances().capacity() == 3 * ryn::component::button_visual_layer_count,
             "Button scene reserve did not preallocate fixed spinner topology");
-    const auto first = fixture.buttons.create(
-        fixture.component_ids[0],
-        fixture.components.root(fixture.component_ids[0]),
-        fixture.fragments[0],
-        fixture.interaction_ids[0],
-        visuals(0.0F));
-    const auto second = fixture.buttons.create(
-        fixture.component_ids[1],
-        fixture.components.root(fixture.component_ids[1]),
-        fixture.fragments[1],
-        fixture.interaction_ids[1],
-        visuals(0.1F));
-    require(fixture.buttons.visual_range(first)
-                    == ryn::graphics::QuadInstanceRange{
-                        0,
-                        ryn::component::button_visual_layer_count}
-                && fixture.buttons.visual_range(second)
-                    == ryn::graphics::QuadInstanceRange{
-                        ryn::component::button_visual_layer_count,
-                        ryn::component::button_visual_layer_count}
-                && fixture.buttons.instances().at(2).opacity == 0.0F
-                && fixture.buttons.instances().at(
-                    ryn::component::button_visual_layer_count + 2).opacity == 0.0F,
+    const auto first =
+        fixture.buttons.create(fixture.component_ids[0], fixture.components.root(fixture.component_ids[0]),
+                               fixture.fragments[0], fixture.interaction_ids[0], visuals(0.0F));
+    const auto second =
+        fixture.buttons.create(fixture.component_ids[1], fixture.components.root(fixture.component_ids[1]),
+                               fixture.fragments[1], fixture.interaction_ids[1], visuals(0.1F));
+    require(fixture.buttons.visual_range(first) ==
+                    ryn::graphics::QuadInstanceRange{0, ryn::component::button_visual_layer_count} &&
+                fixture.buttons.visual_range(second) ==
+                    ryn::graphics::QuadInstanceRange{ryn::component::button_visual_layer_count,
+                                                     ryn::component::button_visual_layer_count} &&
+                fixture.buttons.instances().at(2).opacity == 0.0F &&
+                fixture.buttons.instances().at(ryn::component::button_visual_layer_count + 2).opacity == 0.0F,
             "Button fixed visual ranges or hidden layers differ");
 
     std::atomic<bool> wrong_thread_rejected{false};
@@ -196,66 +175,51 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
         }
     });
     worker.join();
-    require(wrong_thread_rejected.load(std::memory_order_relaxed),
-            "wrong-thread Button scene update was not rejected");
+    require(wrong_thread_rejected.load(std::memory_order_relaxed), "wrong-thread Button scene update was not rejected");
 
     fixture.composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
-    require(fixture.composer.ordered_scene().commands().size() == 1
-                && fixture.composer.ordered_scene().commands().front()
-                    == ryn::graphics::SceneDrawCommand{
+    require(fixture.composer.ordered_scene().commands().size() == 1 &&
+                fixture.composer.ordered_scene().commands().front() ==
+                    ryn::graphics::SceneDrawCommand{
                         ryn::graphics::SceneDrawKind::quad,
                         0,
                         2 * ryn::component::button_visual_layer_count,
                         ryn::graphics::invalid_glyph_atlas_page,
-                    }
-                && fixture.hit_test.hit_test({20.0F, 20.0F})
-                    == fixture.interaction_ids[1],
+                    } &&
+                fixture.hit_test.hit_test({20.0F, 20.0F}) == fixture.interaction_ids[1],
             "Button draw order and HitTest order diverged");
 
     auto changed = visuals(0.1F);
     fixture.buttons.instances().clear_dirty_ranges();
     const auto changed_segment = ryn::component::button_loading_segment_index(3);
     changed[changed_segment].color = {0.9F, 0.2F, 0.1F, 1.0F};
-    require(fixture.buttons.update(second, changed) == 1
-                && fixture.buttons.instances().material_dirty_ranges().size() == 1
-                && fixture.buttons.instances().material_dirty_ranges().front()
-                    == ryn::graphics::QuadInstanceRange{
-                        static_cast<std::uint32_t>(
-                            ryn::component::button_visual_layer_count
-                            + changed_segment),
-                        1}
-                && fixture.buttons.instances().geometry_dirty_ranges().empty(),
+    require(fixture.buttons.update(second, changed) == 1 &&
+                fixture.buttons.instances().material_dirty_ranges().size() == 1 &&
+                fixture.buttons.instances().material_dirty_ranges().front() ==
+                    ryn::graphics::QuadInstanceRange{
+                        static_cast<std::uint32_t>(ryn::component::button_visual_layer_count + changed_segment), 1} &&
+                fixture.buttons.instances().geometry_dirty_ranges().empty(),
             "Button Material update expanded beyond one visual layer");
 
-    const auto third = fixture.buttons.create(
-        fixture.component_ids[2],
-        fixture.components.root(fixture.component_ids[2]),
-        fixture.fragments[2],
-        fixture.interaction_ids[2],
-        visuals(0.2F));
-    require(fixture.buttons.destroy(second)
-                && fixture.buttons.visual_range(third)
-                    == ryn::graphics::QuadInstanceRange{
-                        ryn::component::button_visual_layer_count,
-                        ryn::component::button_visual_layer_count}
-                && fixture.buttons.instances().size()
-                    == 2 * ryn::component::button_visual_layer_count,
+    const auto third =
+        fixture.buttons.create(fixture.component_ids[2], fixture.components.root(fixture.component_ids[2]),
+                               fixture.fragments[2], fixture.interaction_ids[2], visuals(0.2F));
+    require(fixture.buttons.destroy(second) &&
+                fixture.buttons.visual_range(third) ==
+                    ryn::graphics::QuadInstanceRange{ryn::component::button_visual_layer_count,
+                                                     ryn::component::button_visual_layer_count} &&
+                fixture.buttons.instances().size() == 2 * ryn::component::button_visual_layer_count,
             "middle Button destroy did not compact/remap the surviving range");
     fixture.composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
-    require(fixture.hit_test.hit_test({20.0F, 20.0F})
-                    == fixture.interaction_ids[2]
-                && fixture.buttons.diagnostics().fragment_remaps == 1,
+    require(fixture.hit_test.hit_test({20.0F, 20.0F}) == fixture.interaction_ids[2] &&
+                fixture.buttons.diagnostics().fragment_remaps == 1,
             "compacted Button fragment lost visual/HitTest order");
 
     require(fixture.buttons.destroy(first), "first Button scene destroy failed");
-    const auto replacement = fixture.buttons.create(
-        fixture.component_ids[0],
-        fixture.components.root(fixture.component_ids[0]),
-        fixture.fragments[0],
-        fixture.interaction_ids[0],
-        visuals(0.3F));
-    require(replacement.index == first.index
-                && replacement.generation != first.generation,
+    const auto replacement =
+        fixture.buttons.create(fixture.component_ids[0], fixture.components.root(fixture.component_ids[0]),
+                               fixture.fragments[0], fixture.interaction_ids[0], visuals(0.3F));
+    require(replacement.index == first.index && replacement.generation != first.generation,
             "Button scene slot reuse did not advance generation");
     bool stale_rejected = false;
     try {
@@ -268,44 +232,31 @@ void test_fixed_ranges_compaction_and_shared_hit_order() {
 
 void test_gpu_capacity_sparse_upload_and_failure_retention() {
     Fixture fixture;
-    const auto first = fixture.buttons.create(
-        fixture.component_ids[0],
-        fixture.components.root(fixture.component_ids[0]),
-        fixture.fragments[0],
-        fixture.interaction_ids[0],
-        visuals(0.0F));
-    const auto second = fixture.buttons.create(
-        fixture.component_ids[1],
-        fixture.components.root(fixture.component_ids[1]),
-        fixture.fragments[1],
-        fixture.interaction_ids[1],
-        visuals(0.1F));
+    const auto first =
+        fixture.buttons.create(fixture.component_ids[0], fixture.components.root(fixture.component_ids[0]),
+                               fixture.fragments[0], fixture.interaction_ids[0], visuals(0.0F));
+    const auto second =
+        fixture.buttons.create(fixture.component_ids[1], fixture.components.root(fixture.component_ids[1]),
+                               fixture.fragments[1], fixture.interaction_ids[1], visuals(0.1F));
     RecordingUploadApi api;
     {
         ryn::detail::QuadGpuBuffer gpu(api, fixture.buttons.instances(), {100, 100, 1});
-        static_cast<void>(fixture.buttons.create(
-            fixture.component_ids[2],
-            fixture.components.root(fixture.component_ids[2]),
-            fixture.fragments[2],
-            fixture.interaction_ids[2],
-            visuals(0.2F)));
+        static_cast<void>(fixture.buttons.create(fixture.component_ids[2],
+                                                 fixture.components.root(fixture.component_ids[2]),
+                                                 fixture.fragments[2], fixture.interaction_ids[2], visuals(0.2F)));
         gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
-        require(gpu.capacity() == 4 * ryn::component::button_visual_layer_count
-                    && api.creates == 2,
+        require(gpu.capacity() == 4 * ryn::component::button_visual_layer_count && api.creates == 2,
                 "Button Quad GPU buffer did not retain growth capacity");
 
         auto changed = visuals(0.1F);
-        const auto changed_segment =
-            ryn::component::button_loading_segment_index(0);
+        const auto changed_segment = ryn::component::button_loading_segment_index(0);
         changed[changed_segment].color = {0.8F, 0.1F, 0.2F, 1.0F};
         static_cast<void>(fixture.buttons.update(second, changed));
         gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
-        require(api.upload_offsets.back()
-                    == (ryn::component::button_visual_layer_count + changed_segment)
-                        * sizeof(ryn::detail::QuadGpuInstance)
-                && api.upload_sizes.back()
-                    == sizeof(ryn::detail::QuadGpuInstance),
-            "Button Material change did not use a one-instance GPU upload");
+        require(api.upload_offsets.back() == (ryn::component::button_visual_layer_count + changed_segment) *
+                                                 sizeof(ryn::detail::QuadGpuInstance) &&
+                    api.upload_sizes.back() == sizeof(ryn::detail::QuadGpuInstance),
+                "Button Material change did not use a one-instance GPU upload");
 
         changed[1].opacity = 0.5F;
         static_cast<void>(fixture.buttons.update(second, changed));
@@ -316,15 +267,13 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
         } catch (const std::runtime_error&) {
             failed = true;
         }
-        require(failed
-                    && !fixture.buttons.instances().material_dirty_ranges().empty(),
+        require(failed && !fixture.buttons.instances().material_dirty_ranges().empty(),
                 "failed Button GPU upload discarded dirty state");
         gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
         require(fixture.buttons.instances().material_dirty_ranges().empty(),
                 "successful Button GPU retry retained dirty state");
     }
-    require(api.live.empty() && api.releases == api.creates,
-            "Button Quad GPU buffers leaked across growth/teardown");
+    require(api.live.empty() && api.releases == api.creates, "Button Quad GPU buffers leaked across growth/teardown");
     static_cast<void>(first);
 }
 
@@ -333,23 +282,17 @@ void test_non_interactive_surface_range_and_generation_reuse() {
     ryn::component::ButtonEffectData effects;
     effects.focus_enabled = false;
     const auto first_visuals = surface_visuals(0.0F);
-    const auto first = fixture.buttons.create_surface(
-        fixture.component_ids[0],
-        fixture.components.root(fixture.component_ids[0]),
-        fixture.fragments[0],
-        first_visuals,
-        effects);
+    const auto first =
+        fixture.buttons.create_surface(fixture.component_ids[0], fixture.components.root(fixture.component_ids[0]),
+                                       fixture.fragments[0], first_visuals, effects);
     fixture.composer.rebuild({0.0F, 0.0F, 100.0F, 100.0F});
-    require(fixture.buttons.visual_range(first)
-                    == ryn::graphics::QuadInstanceRange{0, 4}
-                && fixture.composer.interaction_order().empty()
-                && fixture.buttons.effects().live_count() == 0,
+    require(fixture.buttons.visual_range(first) == ryn::graphics::QuadInstanceRange{0, 4} &&
+                fixture.composer.interaction_order().empty() && fixture.buttons.effects().live_count() == 0,
             "non-interactive surface registered Interaction or invisible focus effects");
 
     auto changed = first_visuals;
     changed[2].color = {0.8F, 0.2F, 0.1F, 1.0F};
-    require(fixture.buttons.update_surface(first, changed) == 1,
-            "surface Material update escaped its changed layer");
+    require(fixture.buttons.update_surface(first, changed) == 1, "surface Material update escaped its changed layer");
     const std::array<ryn::graphics::QuadInstance, 3> wrong_count{};
     bool wrong_count_rejected = false;
     try {
@@ -357,69 +300,60 @@ void test_non_interactive_surface_range_and_generation_reuse() {
     } catch (const std::invalid_argument&) {
         wrong_count_rejected = true;
     }
-    require(wrong_count_rejected,
-            "surface update accepted a changed visual layer count");
+    require(wrong_count_rejected, "surface update accepted a changed visual layer count");
 
-    require(fixture.buttons.destroy(first),
-            "non-interactive surface destroy failed");
+    require(fixture.buttons.destroy(first), "non-interactive surface destroy failed");
     const auto replacement_visuals = surface_visuals(0.2F);
-    const auto replacement = fixture.buttons.create_surface(
-        fixture.component_ids[0],
-        fixture.components.root(fixture.component_ids[0]),
-        fixture.fragments[0],
-        replacement_visuals,
-        effects);
+    const auto replacement =
+        fixture.buttons.create_surface(fixture.component_ids[0], fixture.components.root(fixture.component_ids[0]),
+                                       fixture.fragments[0], replacement_visuals, effects);
     bool stale_rejected = false;
     try {
         static_cast<void>(fixture.buttons.update_surface(first, first_visuals));
     } catch (const std::out_of_range&) {
         stale_rejected = true;
     }
-    require(replacement.index == first.index
-                && replacement.generation != first.generation
-                && stale_rejected,
+    require(replacement.index == first.index && replacement.generation != first.generation && stale_rejected,
             "non-interactive surface slot reuse did not reject its stale generation");
 }
 
 void test_content_reflow_remaps_shared_surfaces_and_cleans_up() {
     Fixture fixture;
     const auto content = fixture.buttons.create_content_range(fixture.fragments[0], {});
-    const auto surface = fixture.buttons.create_surface(fixture.component_ids[1],
-        fixture.components.root(fixture.component_ids[1]), fixture.fragments[1],
-        surface_visuals(0.25F));
+    const auto surface =
+        fixture.buttons.create_surface(fixture.component_ids[1], fixture.components.root(fixture.component_ids[1]),
+                                       fixture.fragments[1], surface_visuals(0.25F));
     require(content != surface, "content range aliases a surface identity");
     std::vector<ryn::graphics::QuadInstance> lines(40, surface_visuals(0.5F)[0]);
     static_cast<void>(fixture.buttons.update_content_range(content, lines));
     const auto tail = fixture.buttons.create_content_range(fixture.fragments[2], lines);
     lines.resize(20);
     static_cast<void>(fixture.buttons.update_content_range(content, lines));
-    require(fixture.buttons.visual_range(tail).first == 24
-        && fixture.buttons.instances().at(fixture.buttons.visual_range(surface).first)
-            == surface_visuals(0.25F)[0], "content shrink did not remap shared ranges");
+    require(fixture.buttons.visual_range(tail).first == 24 &&
+                fixture.buttons.instances().at(fixture.buttons.visual_range(surface).first) ==
+                    surface_visuals(0.25F)[0],
+            "content shrink did not remap shared ranges");
     fixture.buttons.instances().clear_dirty_ranges();
     lines[0].color = {1, 0, 0, 1};
-    require(fixture.buttons.update_content_range(content, lines) == 1
-        && fixture.buttons.instances().geometry_dirty_ranges().empty(),
-        "content color update invalidated geometry");
+    require(fixture.buttons.update_content_range(content, lines) == 1 &&
+                fixture.buttons.instances().geometry_dirty_ranges().empty(),
+            "content color update invalidated geometry");
     fixture.buttons.instances().clear_dirty_ranges();
-    require(fixture.buttons.update_content_range(content, lines) == 0
-        && fixture.buttons.instances().material_dirty_ranges().empty(),
-        "identical content update dirtied its range");
-    require(fixture.buttons.destroy(surface)
-        && fixture.buttons.visual_range(content).first == 0
-        && fixture.buttons.visual_range(tail).first == 20,
-        "surface removal did not remap following content ranges");
-    require(fixture.buttons.destroy_content_range(content)
-        && fixture.buttons.visual_range(tail).first == 0
-        && !fixture.buttons.destroy_content_range(content),
-        "content destroy did not compact or reject stale identity");
+    require(fixture.buttons.update_content_range(content, lines) == 0 &&
+                fixture.buttons.instances().material_dirty_ranges().empty(),
+            "identical content update dirtied its range");
+    require(fixture.buttons.destroy(surface) && fixture.buttons.visual_range(content).first == 0 &&
+                fixture.buttons.visual_range(tail).first == 20,
+            "surface removal did not remap following content ranges");
+    require(fixture.buttons.destroy_content_range(content) && fixture.buttons.visual_range(tail).first == 0 &&
+                !fixture.buttons.destroy_content_range(content),
+            "content destroy did not compact or reject stale identity");
     const auto reused = fixture.buttons.create_content_range(fixture.fragments[0], {});
     require(reused.index == content.index && reused.generation != content.generation,
-        "content slot reuse did not advance generation");
-    require(fixture.buttons.destroy_content_range(tail)
-        && fixture.buttons.destroy_content_range(reused)
-        && fixture.buttons.size() == 0 && fixture.buttons.instances().size() == 0,
-        "content range teardown leaked shared instances");
+            "content slot reuse did not advance generation");
+    require(fixture.buttons.destroy_content_range(tail) && fixture.buttons.destroy_content_range(reused) &&
+                fixture.buttons.size() == 0 && fixture.buttons.instances().size() == 0,
+            "content range teardown leaked shared instances");
 }
 
 } // namespace

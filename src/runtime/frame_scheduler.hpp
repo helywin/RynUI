@@ -28,12 +28,22 @@ public:
     [[nodiscard]] bool consume_request() noexcept;
     [[nodiscard]] bool pending() const noexcept;
     [[nodiscard]] const FrameRequestCounters& counters() const noexcept;
-    [[nodiscard]] std::uint64_t revision() const noexcept { return revision_; }
+
+    [[nodiscard]] std::uint64_t revision() const noexcept {
+        return revision_;
+    }
+
     void bind_wake_sink(FrameWakeSink& sink);
     void unbind_wake_sink(FrameWakeSink& sink) noexcept;
     void animation_schedule_changed() noexcept override;
-    void animation_tick_started() noexcept override { ++animation_tick_depth_; }
-    void animation_tick_finished() noexcept override { --animation_tick_depth_; }
+
+    void animation_tick_started() noexcept override {
+        ++animation_tick_depth_;
+    }
+
+    void animation_tick_finished() noexcept override {
+        --animation_tick_depth_;
+    }
 
 private:
     friend class OnDemandFrameLoop;
@@ -72,15 +82,13 @@ public:
 class FrameDeadlineSource {
 public:
     virtual ~FrameDeadlineSource() = default;
-    [[nodiscard]] virtual std::optional<animation::AnimationTime>
-        next_deadline() const = 0;
+    [[nodiscard]] virtual std::optional<animation::AnimationTime> next_deadline() const = 0;
 };
 
 class FrameSubmitter {
 public:
     virtual ~FrameSubmitter() = default;
-    virtual FrameSubmissionResult submit_frame(
-        animation::AnimationTime frame_time) = 0;
+    virtual FrameSubmissionResult submit_frame(animation::AnimationTime frame_time) = 0;
 };
 
 struct FrameLoopCounters {
@@ -100,17 +108,10 @@ struct FrameLoopCounters {
 
 class OnDemandFrameLoop final {
 public:
-    OnDemandFrameLoop(
-        FrameRequestState& requests,
-        FrameEventSource& events,
-        FrameSubmitter& submitter,
-        std::uint32_t idle_wait_milliseconds = 16) noexcept;
-    OnDemandFrameLoop(
-        FrameRequestState& requests,
-        FrameEventSource& events,
-        FrameSubmitter& submitter,
-        FrameDeadlineSource& deadlines,
-        std::uint32_t idle_wait_milliseconds = 16) noexcept;
+    OnDemandFrameLoop(FrameRequestState& requests, FrameEventSource& events, FrameSubmitter& submitter,
+                      std::uint32_t idle_wait_milliseconds = 16) noexcept;
+    OnDemandFrameLoop(FrameRequestState& requests, FrameEventSource& events, FrameSubmitter& submitter,
+                      FrameDeadlineSource& deadlines, std::uint32_t idle_wait_milliseconds = 16) noexcept;
 
     [[nodiscard]] FrameLoopStep step();
     // Poll and submit at most once; never waits. Callback timestamps use the
@@ -118,19 +119,17 @@ public:
     [[nodiscard]] FrameLoopStep tick();
     [[nodiscard]] FrameLoopStep tick(animation::AnimationTime frame_time);
     [[nodiscard]] std::optional<animation::AnimationTime> next_deadline() const;
+
     [[nodiscard]] std::optional<std::uint64_t> pending_presentation_revision() const noexcept {
         return pending_presentation_revision_;
     }
+
     [[nodiscard]] const FrameLoopCounters& counters() const noexcept;
 
 private:
-    [[nodiscard]] bool request_due_deadline(
-        animation::AnimationTime now);
-    [[nodiscard]] std::uint32_t wait_timeout(
-        animation::AnimationTime now) const;
-    [[nodiscard]] FrameLoopStep submit_pending(
-        animation::AnimationTime frame_time,
-        bool deadline_due);
+    [[nodiscard]] bool request_due_deadline(animation::AnimationTime now);
+    [[nodiscard]] std::uint32_t wait_timeout(animation::AnimationTime now) const;
+    [[nodiscard]] FrameLoopStep submit_pending(animation::AnimationTime frame_time, bool deadline_due);
 
     FrameRequestState* requests_;
     FrameEventSource* events_;

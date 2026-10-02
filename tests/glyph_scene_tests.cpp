@@ -35,16 +35,11 @@ bool near_physical(float left, float right) {
 
 struct Fixture final {
     explicit Fixture(float display_scale = 1.0F, std::uint32_t pixel_size = 14)
-        : fonts(create_runtime()),
-          text_engine(*fonts) {
-        const auto latin_load = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT,
-            0,
-            ryn::font::FontRasterConfig{pixel_size, display_scale});
-        const auto cjk_load = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT,
-            0,
-            ryn::font::FontRasterConfig{pixel_size, display_scale});
+        : fonts(create_runtime()), text_engine(*fonts) {
+        const auto latin_load = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0,
+                                                      ryn::font::FontRasterConfig{pixel_size, display_scale});
+        const auto cjk_load =
+            fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, ryn::font::FontRasterConfig{pixel_size, display_scale});
         require(latin_load && cjk_load, "glyph scene fonts failed to load");
         chain = {latin_load.font, cjk_load.font};
     }
@@ -84,10 +79,8 @@ void test_physical_phase_scale_and_size_matrix() {
             Fixture fixture{display_scale, pixel_size};
             const String content = u8"A";
             const auto shaped = fixture.text_engine.shape(content.view(), fixture.chain);
-            const auto measured = fixture.text_engine.measure(
-                shaped.text,
-                {320.0F,
-                 std::numeric_limits<float>::infinity()});
+            const auto measured =
+                fixture.text_engine.measure(shaped.text, {320.0F, std::numeric_limits<float>::infinity()});
             require(shaped && measured && shaped.text.glyphs.size() == 1,
                     "glyph phase matrix could not shape its fixture");
             if (reference_width < 0.0F) {
@@ -96,58 +89,42 @@ void test_physical_phase_scale_and_size_matrix() {
             require(near(measured.measurement.width, reference_width),
                     "display scale changed logical Text measurement");
 
-            for (std::size_t phase_index = 0;
-                    phase_index < phases.size(); ++phase_index) {
+            for (std::size_t phase_index = 0; phase_index < phases.size(); ++phase_index) {
                 ryn::graphics::GlyphAtlas atlas;
                 ryn::graphics::GlyphScene scene;
                 const auto& glyph = shaped.text.glyphs.front();
-                const float origin_x = phase_offsets[phase_index] / display_scale
-                    - glyph.offset_x;
+                const float origin_x = phase_offsets[phase_index] / display_scale - glyph.offset_x;
                 const ryn::graphics::GlyphPlacement placement{
                     {origin_x, 10.37F},
                     viewport,
                     {0.0F, 0.0F, viewport.width, viewport.height},
                 };
-                const auto result = scene.append_text(
-                    *fixture.fonts,
-                    atlas,
-                    shaped.text,
-                    measured.measurement,
-                    placement);
+                const auto result =
+                    scene.append_text(*fixture.fonts, atlas, shaped.text, measured.measurement, placement);
                 require(result && result.primitive.instances.count == 1,
                         "glyph phase matrix did not create one visible instance");
                 const auto& entry = atlas.entries().front();
-                const auto instance = ryn::detail::pack_glyph_instance(scene.instances().at(
-                    result.primitive.instances.first),
+                const auto instance = ryn::detail::pack_glyph_instance(
+                    scene.instances().at(result.primitive.instances.first),
                     {static_cast<std::uint32_t>(viewport.width * display_scale),
                      static_cast<std::uint32_t>(viewport.height * display_scale), display_scale});
-                const float left_physical = (instance.position_size[0] + 1.0F)
-                    * 0.5F * viewport.width * display_scale;
-                const float top_physical = (1.0F - instance.position_size[1])
-                    * 0.5F * viewport.height * display_scale;
-                const float width_physical = instance.position_size[2]
-                    * 0.5F * viewport.width * display_scale;
-                const float height_physical = -instance.position_size[3]
-                    * 0.5F * viewport.height * display_scale;
-                const bool matrix_contract = entry.key.phase == phases[phase_index]
-                    && near_physical(left_physical, std::round(left_physical))
-                    && near_physical(top_physical, std::round(top_physical))
-                    && near_physical(width_physical, entry.padded_rect.width)
-                    && near_physical(height_physical, entry.padded_rect.height);
+                const float left_physical = (instance.position_size[0] + 1.0F) * 0.5F * viewport.width * display_scale;
+                const float top_physical = (1.0F - instance.position_size[1]) * 0.5F * viewport.height * display_scale;
+                const float width_physical = instance.position_size[2] * 0.5F * viewport.width * display_scale;
+                const float height_physical = -instance.position_size[3] * 0.5F * viewport.height * display_scale;
+                const bool matrix_contract = entry.key.phase == phases[phase_index] &&
+                                             near_physical(left_physical, std::round(left_physical)) &&
+                                             near_physical(top_physical, std::round(top_physical)) &&
+                                             near_physical(width_physical, entry.padded_rect.width) &&
+                                             near_physical(height_physical, entry.padded_rect.height);
                 if (!matrix_contract) {
-                    std::cerr << "pixel_size=" << pixel_size
-                              << " display_scale=" << display_scale
-                              << " phase=" << phase_index
-                              << " actual_phase=" << static_cast<int>(entry.key.phase)
-                              << " left=" << left_physical
-                              << " top=" << top_physical
-                              << " width=" << width_physical
-                              << " expected_width=" << entry.padded_rect.width
-                              << " height=" << height_physical
+                    std::cerr << "pixel_size=" << pixel_size << " display_scale=" << display_scale
+                              << " phase=" << phase_index << " actual_phase=" << static_cast<int>(entry.key.phase)
+                              << " left=" << left_physical << " top=" << top_physical << " width=" << width_physical
+                              << " expected_width=" << entry.padded_rect.width << " height=" << height_physical
                               << " expected_height=" << entry.padded_rect.height << '\n';
                 }
-                require(matrix_contract,
-                        "glyph phase matrix broke raster phase or 1:1 texel sampling");
+                require(matrix_contract, "glyph phase matrix broke raster phase or 1:1 texel sampling");
             }
         }
     }
@@ -161,158 +138,114 @@ void test_instance_layout_and_text_positioning() {
         ryn::detail::GlyphAttributeBinding{3, ryn::detail::GlyphAttributeFormat::float4, 48},
         ryn::detail::GlyphAttributeBinding{4, ryn::detail::GlyphAttributeFormat::float4, 64},
     };
-    require(sizeof(ryn::detail::GlyphGpuInstance) == 80
-                && ryn::detail::glyph_attribute_bindings == expected_bindings
-                && ryn::detail::glyph_vertex_count == 6,
+    require(sizeof(ryn::detail::GlyphGpuInstance) == 80 && ryn::detail::glyph_attribute_bindings == expected_bindings &&
+                ryn::detail::glyph_vertex_count == 6,
             "Glyph instance layout does not match the shader contract");
 
     Fixture fixture{1.5F};
     const String content = u8"A 中";
     const auto shaped = fixture.text_engine.shape(content.view(), fixture.chain);
-    const auto measured = fixture.text_engine.measure(
-        shaped.text,
-        {20.0F, std::numeric_limits<float>::infinity()});
+    const auto measured = fixture.text_engine.measure(shaped.text, {20.0F, std::numeric_limits<float>::infinity()});
     require(shaped && measured, "glyph scene text fixture failed");
 
     ryn::graphics::GlyphAtlas atlas;
     ryn::graphics::GlyphScene scene;
     const ryn::graphics::GlyphPlacement placement{
-        {10.25F, 20.0F},
-        {400.0F, 200.0F},
-        {0.0F, 0.0F, 400.0F, 200.0F},
-        {4.0F, 2.0F},
-        {0.2F, 0.4F, 0.6F, 0.8F},
-        0.5F,
+        {10.25F, 20.0F}, {400.0F, 200.0F}, {0.0F, 0.0F, 400.0F, 200.0F}, {4.0F, 2.0F}, {0.2F, 0.4F, 0.6F, 0.8F}, 0.5F,
     };
-    const auto result = scene.append_text(
-        *fixture.fonts, atlas, shaped.text, measured.measurement, placement);
-    require(result && result.primitive.instances.count == 2
-                && scene.instances().size() == 2,
+    const auto result = scene.append_text(*fixture.fonts, atlas, shaped.text, measured.measurement, placement);
+    require(result && result.primitive.instances.count == 2 && scene.instances().size() == 2,
             "visible glyph scene instance count is incorrect");
-    require(atlas.entry_count() == 3,
-            "space glyph was not cached as an explicit empty entry");
+    require(atlas.entry_count() == 3, "space glyph was not cached as an explicit empty entry");
 
     const auto& logical_first = scene.instances().at(result.primitive.instances.first);
     const auto first = ryn::detail::pack_glyph_instance(logical_first, {600, 300, 1.5F});
-    const auto first_atlas = atlas.ensure(
-        *fixture.fonts, shaped.text.glyphs.front().font,
-        shaped.text.glyphs.front().glyph_id,
-        ryn::font::GlyphRasterPhase::half);
-    require(first_atlas && !first_atlas.entry->empty,
-            "first glyph atlas entry is unavailable");
-    require(first_atlas.entry->key.pixel_size == 21
-                && near(first_atlas.entry->raster_scale, 1.5F),
+    const auto first_atlas = atlas.ensure(*fixture.fonts, shaped.text.glyphs.front().font,
+                                          shaped.text.glyphs.front().glyph_id, ryn::font::GlyphRasterPhase::half);
+    require(first_atlas && !first_atlas.entry->empty, "first glyph atlas entry is unavailable");
+    require(first_atlas.entry->key.pixel_size == 21 && near(first_atlas.entry->raster_scale, 1.5F),
             "glyph scene did not retain the high-density atlas scale");
-    require(near(first_atlas.entry->display_scale, 1.5F)
-                && first_atlas.entry->key.phase == ryn::font::GlyphRasterPhase::half,
+    require(near(first_atlas.entry->display_scale, 1.5F) &&
+                first_atlas.entry->key.phase == ryn::font::GlyphRasterPhase::half,
             "glyph scene atlas entry lost physical scale or phase");
     const float inverse_display_scale = 1.0F / first_atlas.entry->display_scale;
-    const float physical_x = std::round(
-        (placement.origin_pixels.x + placement.translation_pixels.x
-            + shaped.text.glyphs.front().offset_x)
-        * first_atlas.entry->display_scale * 4.0F) * 0.25F;
-    const float expected_left = (
-        std::floor(physical_x)
-            + static_cast<float>(first_atlas.entry->bearing_x)
-            - static_cast<float>(ryn::graphics::glyph_atlas_padding))
-        * inverse_display_scale;
-    const float physical_y = std::round(
-        (placement.origin_pixels.y + placement.translation_pixels.y
-            + measured.measurement.lines.front().baseline
-            - shaped.text.glyphs.front().offset_y)
-        * first_atlas.entry->display_scale);
-    const float expected_top = (
-        physical_y - static_cast<float>(first_atlas.entry->bearing_y)
-            - static_cast<float>(ryn::graphics::glyph_atlas_padding))
-        * inverse_display_scale;
-    require(near(logical_first.position_size[0], expected_left)
-                && near(logical_first.position_size[1], expected_top)
-                && logical_first.clip_bounds == std::array<float, 4>{0, 0, 400, 200},
+    const float physical_x =
+        std::round((placement.origin_pixels.x + placement.translation_pixels.x + shaped.text.glyphs.front().offset_x) *
+                   first_atlas.entry->display_scale * 4.0F) *
+        0.25F;
+    const float expected_left = (std::floor(physical_x) + static_cast<float>(first_atlas.entry->bearing_x) -
+                                 static_cast<float>(ryn::graphics::glyph_atlas_padding)) *
+                                inverse_display_scale;
+    const float physical_y =
+        std::round((placement.origin_pixels.y + placement.translation_pixels.y +
+                    measured.measurement.lines.front().baseline - shaped.text.glyphs.front().offset_y) *
+                   first_atlas.entry->display_scale);
+    const float expected_top = (physical_y - static_cast<float>(first_atlas.entry->bearing_y) -
+                                static_cast<float>(ryn::graphics::glyph_atlas_padding)) *
+                               inverse_display_scale;
+    require(near(logical_first.position_size[0], expected_left) && near(logical_first.position_size[1], expected_top) &&
+                logical_first.clip_bounds == std::array<float, 4>{0, 0, 400, 200},
             "Core Glyph scene still contains viewport-relative coordinates");
-    require(near(first.position_size[0], -1.0F + 2.0F * expected_left / 400.0F)
-                && near(first.position_size[1], 1.0F - 2.0F * expected_top / 200.0F)
-                && near(
-                    first.position_size[2],
-                    2.0F * first_atlas.entry->padded_rect.width
-                        * inverse_display_scale / 400.0F),
-            "Glyph instance did not apply raster padding, baseline, bearing, and shaping offset");
-    require(first.clip_bounds == std::array<float, 4>{-1.0F, 1.0F, 1.0F, -1.0F}
-                && first.color == placement.color
-                && near(first.translation_opacity[0], 0.0F)
-                && near(first.translation_opacity[1], 0.0F)
-                && first.translation_opacity[2] == 0.5F,
+    require(
+        near(first.position_size[0], -1.0F + 2.0F * expected_left / 400.0F) &&
+            near(first.position_size[1], 1.0F - 2.0F * expected_top / 200.0F) &&
+            near(first.position_size[2], 2.0F * first_atlas.entry->padded_rect.width * inverse_display_scale / 400.0F),
+        "Glyph instance did not apply raster padding, baseline, bearing, and shaping offset");
+    require(first.clip_bounds == std::array<float, 4>{-1.0F, 1.0F, 1.0F, -1.0F} && first.color == placement.color &&
+                near(first.translation_opacity[0], 0.0F) && near(first.translation_opacity[1], 0.0F) &&
+                first.translation_opacity[2] == 0.5F,
             "Glyph instance lost clip, translation, color, or opacity");
-    require(scene.instances().at(result.primitive.instances.first + 1).position_size[0]
-                > logical_first.position_size[0],
+    require(scene.instances().at(result.primitive.instances.first + 1).position_size[0] >
+                logical_first.position_size[0],
             "space advance did not move the following visible glyph");
-    const float first_left_physical = (
-        first.position_size[0] + 1.0F) * 0.5F * 400.0F * 1.5F;
-    const float first_top_physical = (
-        1.0F - first.position_size[1]) * 0.5F * 200.0F * 1.5F;
-    require(near(first_left_physical, std::round(first_left_physical))
-                && near(first_top_physical, std::round(first_top_physical)),
+    const float first_left_physical = (first.position_size[0] + 1.0F) * 0.5F * 400.0F * 1.5F;
+    const float first_top_physical = (1.0F - first.position_size[1]) * 0.5F * 200.0F * 1.5F;
+    require(near(first_left_physical, std::round(first_left_physical)) &&
+                near(first_top_physical, std::round(first_top_physical)),
             "glyph bitmap quad is not aligned to its physical raster origin");
-    require(atlas.dirty_regions().size() == 2,
-            "space glyph unexpectedly dirtied the atlas texture");
+    require(atlas.dirty_regions().size() == 2, "space glyph unexpectedly dirtied the atlas texture");
 
     atlas.clear_dirty_regions();
     const std::size_t rasterizations = fixture.fonts->counters().rasterizations;
-    require(scene.instances().update_material(
-                result.primitive.instances,
-                {0.8F, 0.2F, 0.1F, 1.0F},
-                0.7F) == 2,
+    require(scene.instances().update_material(result.primitive.instances, {0.8F, 0.2F, 0.1F, 1.0F}, 0.7F) == 2,
             "Glyph Material-only update did not reach visible instances");
-    require(atlas.dirty_regions().empty()
-                && fixture.fonts->counters().rasterizations == rasterizations,
+    require(atlas.dirty_regions().empty() && fixture.fonts->counters().rasterizations == rasterizations,
             "Glyph Material-only update changed atlas or raster state");
     scene.instances().clear_dirty_ranges();
-    require(scene.instances().update_geometry(
-                result.primitive.instances,
-                {100, 50, 300, 150},
-                {10, 5}) == 2,
+    require(scene.instances().update_geometry(result.primitive.instances, {100, 50, 300, 150}, {10, 5}) == 2,
             "Glyph translation/clip update did not reach visible instances");
-    require(atlas.dirty_regions().empty()
-                && fixture.fonts->counters().rasterizations == rasterizations,
+    require(atlas.dirty_regions().empty() && fixture.fonts->counters().rasterizations == rasterizations,
             "Glyph translation/clip update caused raster or atlas work");
 }
 
 void test_dirty_ranges_remain_layered_and_sparse() {
     ryn::graphics::GlyphInstanceStore store;
     const std::array initial{
-        instance(0.0F), instance(1.0F), instance(2.0F),
-        instance(3.0F), instance(4.0F), instance(5.0F),
+        instance(0.0F), instance(1.0F), instance(2.0F), instance(3.0F), instance(4.0F), instance(5.0F),
     };
     const auto all = store.append(initial);
     require(all == GlyphInstanceRange{0, 6}, "Glyph instance append range is incorrect");
 
     const auto original_geometry = store.at(1).position_size;
-    require(store.update_material({1, 2}, {0.1F, 0.2F, 0.3F, 0.4F}, 0.6F) == 2
-                && store.update_material({4, 1}, {0.1F, 0.2F, 0.3F, 0.4F}, 0.6F) == 1,
+    require(store.update_material({1, 2}, {0.1F, 0.2F, 0.3F, 0.4F}, 0.6F) == 2 &&
+                store.update_material({4, 1}, {0.1F, 0.2F, 0.3F, 0.4F}, 0.6F) == 1,
             "sparse Glyph Material update count is incorrect");
-    require(store.material_dirty_ranges().size() == 2
-                && store.material_dirty_ranges()[0] == GlyphInstanceRange{1, 2}
-                && store.material_dirty_ranges()[1] == GlyphInstanceRange{4, 1},
+    require(store.material_dirty_ranges().size() == 2 && store.material_dirty_ranges()[0] == GlyphInstanceRange{1, 2} &&
+                store.material_dirty_ranges()[1] == GlyphInstanceRange{4, 1},
             "non-adjacent Material updates expanded into a broad range");
-    require(store.at(1).position_size == original_geometry,
-            "Material update changed Glyph geometry");
+    require(store.at(1).position_size == original_geometry, "Material update changed Glyph geometry");
 
     const auto original_color = store.at(2).color;
-    require(store.update_geometry(
-                {2, 3},
-                {100, 50, 300, 150},
-                {20, 10}) == 3,
+    require(store.update_geometry({2, 3}, {100, 50, 300, 150}, {20, 10}) == 3,
             "Glyph geometry update count is incorrect");
-    require(store.geometry_dirty_ranges().size() == 1
-                && store.geometry_dirty_ranges().front() == GlyphInstanceRange{2, 3},
+    require(store.geometry_dirty_ranges().size() == 1 &&
+                store.geometry_dirty_ranges().front() == GlyphInstanceRange{2, 3},
             "contiguous Glyph geometry update was not merged");
-    require(store.at(2).color == original_color,
-            "geometry/clip update changed Glyph Material");
-    require(store.bytes({1, 2}).size() == 2 * sizeof(GlyphInstance),
-            "Glyph dirty byte range has the wrong size");
+    require(store.at(2).color == original_color, "geometry/clip update changed Glyph Material");
+    require(store.bytes({1, 2}).size() == 2 * sizeof(GlyphInstance), "Glyph dirty byte range has the wrong size");
 
     store.clear_dirty_ranges();
-    require(store.material_dirty_ranges().empty()
-                && store.geometry_dirty_ranges().empty(),
+    require(store.material_dirty_ranges().empty() && store.geometry_dirty_ranges().empty(),
             "Glyph dirty ranges did not clear");
 }
 
@@ -325,62 +258,49 @@ void test_out_of_order_glyph_ranges_and_shifted_suffix() {
     static_cast<void>(store.update_material({2, 1}, color, 0.5F));
     static_cast<void>(store.update_material({1, 1}, color, 0.5F));
     const auto material = store.material_dirty_ranges();
-    require(material.size() == 2 && material[0] == GlyphInstanceRange{1, 2}
-                && material[1] == GlyphInstanceRange{5, 1},
+    require(material.size() == 2 && material[0] == GlyphInstanceRange{1, 2} && material[1] == GlyphInstanceRange{5, 1},
             "Glyph dirty plan did not preserve sparse ordered ranges");
 
     static_cast<void>(store.update_material({2, 3}, {0.4F, 0.3F, 0.2F, 1.0F}, 0.8F));
-    require(store.material_dirty_ranges().size() == 1
-                && store.material_dirty_ranges().front() == GlyphInstanceRange{1, 5},
+    require(store.material_dirty_ranges().size() == 1 &&
+                store.material_dirty_ranges().front() == GlyphInstanceRange{1, 5},
             "overlapping Glyph ranges were not merged into the exact union");
 
     const std::array replacement{instance(0.7F), instance(0.8F)};
     static_cast<void>(store.replace({2, 1}, replacement));
     const auto geometry = store.geometry_dirty_ranges();
-    require(store.size() == 9 && geometry.size() == 1
-                && geometry.front() == GlyphInstanceRange{2, 7}
-                && store.material_dirty_ranges().size() == 1
-                && store.material_dirty_ranges().front() == GlyphInstanceRange{1, 1},
+    require(store.size() == 9 && geometry.size() == 1 && geometry.front() == GlyphInstanceRange{2, 7} &&
+                store.material_dirty_ranges().size() == 1 &&
+                store.material_dirty_ranges().front() == GlyphInstanceRange{1, 1},
             "Glyph shifted suffix left stale or missing dirty ranges");
 }
 
 void test_new_glyph_ranges_insert_in_place_and_preserve_aliased_source() {
     ryn::graphics::GlyphInstanceStore store;
-    const std::array initial{
-        instance(0.0F), instance(1.0F), instance(2.0F), instance(3.0F)};
+    const std::array initial{instance(0.0F), instance(1.0F), instance(2.0F), instance(3.0F)};
     static_cast<void>(store.append(initial));
     store.clear_dirty_ranges();
     static_cast<void>(store.update_material({0, 1}, {1, 0, 0, 1}, 1.0F));
     static_cast<void>(store.update_material({3, 1}, {0, 0, 1, 1}, 1.0F));
     const std::array inserted{instance(10.0F), instance(11.0F)};
-    require(store.replace({1, 0}, inserted) == GlyphInstanceRange{1, 2}
-                && store.size() == 6
-                && store.at(0).position_size[0] == 0.0F
-                && store.at(1).position_size[0] == 10.0F
-                && store.at(2).position_size[0] == 11.0F
-                && store.at(3).position_size[0] == 1.0F
-                && store.at(4).position_size[0] == 2.0F
-                && store.at(5).position_size[0] == 3.0F,
+    require(store.replace({1, 0}, inserted) == GlyphInstanceRange{1, 2} && store.size() == 6 &&
+                store.at(0).position_size[0] == 0.0F && store.at(1).position_size[0] == 10.0F &&
+                store.at(2).position_size[0] == 11.0F && store.at(3).position_size[0] == 1.0F &&
+                store.at(4).position_size[0] == 2.0F && store.at(5).position_size[0] == 3.0F,
             "zero-length Glyph insertion changed instance order");
-    require(store.geometry_dirty_ranges().size() == 1
-                && store.geometry_dirty_ranges().front()
-                    == GlyphInstanceRange{1, 5}
-                && store.material_dirty_ranges().size() == 1
-                && store.material_dirty_ranges().front()
-                    == GlyphInstanceRange{0, 1},
+    require(store.geometry_dirty_ranges().size() == 1 &&
+                store.geometry_dirty_ranges().front() == GlyphInstanceRange{1, 5} &&
+                store.material_dirty_ranges().size() == 1 &&
+                store.material_dirty_ranges().front() == GlyphInstanceRange{0, 1},
             "zero-length Glyph insertion left stale dirty ranges");
 
     const auto aliased = store.instances().subspan(3, 2);
     store.clear_dirty_ranges();
-    require(store.replace({0, 0}, aliased) == GlyphInstanceRange{0, 2}
-                && store.size() == 8
-                && store.at(0).position_size[0] == 1.0F
-                && store.at(1).position_size[0] == 2.0F
-                && store.at(2).position_size[0] == 0.0F
-                && store.at(5).position_size[0] == 1.0F
-                && store.geometry_dirty_ranges().size() == 1
-                && store.geometry_dirty_ranges().front()
-                    == GlyphInstanceRange{0, 8},
+    require(store.replace({0, 0}, aliased) == GlyphInstanceRange{0, 2} && store.size() == 8 &&
+                store.at(0).position_size[0] == 1.0F && store.at(1).position_size[0] == 2.0F &&
+                store.at(2).position_size[0] == 0.0F && store.at(5).position_size[0] == 1.0F &&
+                store.geometry_dirty_ranges().size() == 1 &&
+                store.geometry_dirty_ranges().front() == GlyphInstanceRange{0, 8},
             "aliased Glyph insertion lost the original source or suffix");
 
     ryn::graphics::GlyphInstanceStore repeated;
@@ -404,13 +324,11 @@ void test_full_retry_after_batch_submit_failure() {
     const std::array initial{instance(0.1F), instance(0.2F), instance(0.3F)};
     static_cast<void>(store.append(initial));
     store.clear_dirty_ranges();
-    require(store.geometry_dirty_ranges().empty(),
-            "Glyph fixture did not clear optimistic dirty ranges");
+    require(store.geometry_dirty_ranges().empty(), "Glyph fixture did not clear optimistic dirty ranges");
     store.mark_all_dirty();
-    require(store.geometry_dirty_ranges().size() == 1
-                && store.geometry_dirty_ranges().front() == GlyphInstanceRange{0, 3}
-                && store.material_dirty_ranges().empty()
-                && store.bytes({0, 3}).size() == 3 * sizeof(GlyphInstance),
+    require(store.geometry_dirty_ranges().size() == 1 &&
+                store.geometry_dirty_ranges().front() == GlyphInstanceRange{0, 3} &&
+                store.material_dirty_ranges().empty() && store.bytes({0, 3}).size() == 3 * sizeof(GlyphInstance),
             "failed batch did not restore all Glyph instance bytes");
 }
 
@@ -423,22 +341,13 @@ void test_ordered_scene_preserves_quad_glyph_z_order() {
     scene.append_quad(1, 1);
 
     const auto commands = scene.commands();
-    require(commands.size() == 4,
-            "ordered Scene merged across pipeline or atlas boundaries");
-    require(commands[0] == ryn::graphics::SceneDrawCommand{
-                ryn::graphics::SceneDrawKind::quad,
-                0,
-                1,
-                ryn::graphics::invalid_glyph_atlas_page}
-                && commands[1] == ryn::graphics::SceneDrawCommand{
-                    ryn::graphics::SceneDrawKind::glyph, 0, 3, 0}
-                && commands[2] == ryn::graphics::SceneDrawCommand{
-                    ryn::graphics::SceneDrawKind::glyph, 3, 2, 1}
-                && commands[3] == ryn::graphics::SceneDrawCommand{
-                    ryn::graphics::SceneDrawKind::quad,
-                    1,
-                    1,
-                    ryn::graphics::invalid_glyph_atlas_page},
+    require(commands.size() == 4, "ordered Scene merged across pipeline or atlas boundaries");
+    require(commands[0] == ryn::graphics::SceneDrawCommand{ryn::graphics::SceneDrawKind::quad, 0, 1,
+                                                           ryn::graphics::invalid_glyph_atlas_page} &&
+                commands[1] == ryn::graphics::SceneDrawCommand{ryn::graphics::SceneDrawKind::glyph, 0, 3, 0} &&
+                commands[2] == ryn::graphics::SceneDrawCommand{ryn::graphics::SceneDrawKind::glyph, 3, 2, 1} &&
+                commands[3] == ryn::graphics::SceneDrawCommand{ryn::graphics::SceneDrawKind::quad, 1, 1,
+                                                               ryn::graphics::invalid_glyph_atlas_page},
             "ordered Scene changed Quad/Glyph/page Z order");
 }
 

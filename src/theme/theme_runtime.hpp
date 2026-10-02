@@ -41,9 +41,7 @@ public:
     using InvalidationCallback = std::function<void(DirtyPhase)>;
 
     [[nodiscard]] static std::shared_ptr<ThemeScope> create_default();
-    [[nodiscard]] static std::shared_ptr<ThemeScope> create(
-        std::shared_ptr<ThemeScope> parent,
-        ThemeConfig config);
+    [[nodiscard]] static std::shared_ptr<ThemeScope> create(std::shared_ptr<ThemeScope> parent, ThemeConfig config);
 
     ThemeScope(const ThemeScope&) = delete;
     ThemeScope& operator=(const ThemeScope&) = delete;
@@ -55,9 +53,7 @@ public:
     [[nodiscard]] Diagnostics diagnostics() const;
     [[nodiscard]] std::span<const TokenIdentity> changed_identities() const;
 
-    Subscription capture(
-        InvalidationCallback callback,
-        const std::function<void()>& typed_token_reads);
+    Subscription capture(InvalidationCallback callback, const std::function<void()>& typed_token_reads);
 
     [[nodiscard]] const ThemeAliasToken& alias() const;
     [[nodiscard]] const ThemeMapToken& map() const;
@@ -132,8 +128,7 @@ private:
     std::shared_ptr<const ThemeSnapshot> snapshot_;
     std::vector<std::weak_ptr<ThemeScope>> children_;
     std::vector<Subscriber> subscribers_;
-    std::array<TokenIdentity, static_cast<std::size_t>(TokenIdentity::count)>
-        changed_identities_{};
+    std::array<TokenIdentity, static_cast<std::size_t>(TokenIdentity::count)> changed_identities_{};
     std::size_t changed_identity_count_{0};
     Diagnostics diagnostics_;
     std::thread::id owner_thread_;

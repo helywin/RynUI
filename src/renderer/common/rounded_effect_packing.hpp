@@ -18,9 +18,7 @@ struct alignas(16) RoundedEffectGpuInstance final {
     std::array<float, 4> effect_params{};
     std::array<float, 4> material_params{};
 
-    friend constexpr bool operator==(
-        const RoundedEffectGpuInstance&,
-        const RoundedEffectGpuInstance&) = default;
+    friend constexpr bool operator==(const RoundedEffectGpuInstance&, const RoundedEffectGpuInstance&) = default;
 };
 
 static_assert(sizeof(RoundedEffectGpuInstance) == 112);
@@ -36,16 +34,13 @@ inline constexpr std::uint32_t rounded_effect_vertex_count = 6;
 
 // Valid effects outside the device clip become transparent zero-area instances,
 // preserving the retained store's indices and draw order across DPI changes.
-[[nodiscard]] RoundedEffectGpuInstance pack_rounded_effect_instance(
-    const graphics::RoundedEffectInstance& instance,
-    SceneDeviceMetrics metrics);
+[[nodiscard]] RoundedEffectGpuInstance pack_rounded_effect_instance(const graphics::RoundedEffectInstance& instance,
+                                                                    SceneDeviceMetrics metrics);
 
-[[nodiscard]] float rounded_effect_gpu_coverage_reference(
-    runtime::Point point_pixels,
-    const RoundedEffectGpuInstance& instance);
+[[nodiscard]] float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels,
+                                                          const RoundedEffectGpuInstance& instance);
 
-[[nodiscard]] std::array<float, 4> rounded_effect_gpu_fragment_reference(
-    runtime::Point point_pixels,
-    const RoundedEffectGpuInstance& instance);
+[[nodiscard]] std::array<float, 4> rounded_effect_gpu_fragment_reference(runtime::Point point_pixels,
+                                                                         const RoundedEffectGpuInstance& instance);
 
 } // namespace ryn::detail

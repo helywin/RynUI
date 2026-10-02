@@ -181,8 +181,7 @@ enum class GlyphRasterPhase : std::uint8_t {
     three_quarters,
 };
 
-[[nodiscard]] constexpr float glyph_raster_phase_offset(
-    GlyphRasterPhase phase) noexcept {
+[[nodiscard]] constexpr float glyph_raster_phase_offset(GlyphRasterPhase phase) noexcept {
     return static_cast<float>(phase) * 0.25F;
 }
 
@@ -296,66 +295,45 @@ struct FontRuntimeCreateResult {
 
 class FontRuntime final {
 public:
-    [[nodiscard]] static FontRuntimeCreateResult create(
-        FontRuntimeOptions options = {});
+    [[nodiscard]] static FontRuntimeCreateResult create(FontRuntimeOptions options = {});
 
     FontRuntime(const FontRuntime&) = delete;
     FontRuntime& operator=(const FontRuntime&) = delete;
     ~FontRuntime();
 
-    [[nodiscard]] FontLoadResult load_font_file(
-        const std::filesystem::path& path,
-        long face_index,
-        std::uint32_t pixel_size,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] FontLoadResult load_font_file(const std::filesystem::path& path, long face_index,
+                                                std::uint32_t pixel_size,
+                                                FontFailurePoint failure_point = FontFailurePoint::none);
 
-    [[nodiscard]] FontLoadResult load_font_file(
-        const std::filesystem::path& path,
-        long face_index,
-        FontRasterConfig raster,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] FontLoadResult load_font_file(const std::filesystem::path& path, long face_index,
+                                                FontRasterConfig raster,
+                                                FontFailurePoint failure_point = FontFailurePoint::none);
 
-    [[nodiscard]] FontLoadResult load_font_bytes(
-        std::span<const std::byte> bytes,
-        long face_index,
-        std::uint32_t pixel_size,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] FontLoadResult load_font_bytes(std::span<const std::byte> bytes, long face_index,
+                                                 std::uint32_t pixel_size,
+                                                 FontFailurePoint failure_point = FontFailurePoint::none);
 
-    [[nodiscard]] FontLoadResult load_font_bytes(
-        std::span<const std::byte> bytes,
-        long face_index,
-        FontRasterConfig raster,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] FontLoadResult load_font_bytes(std::span<const std::byte> bytes, long face_index,
+                                                 FontRasterConfig raster,
+                                                 FontFailurePoint failure_point = FontFailurePoint::none);
 
     [[nodiscard]] FontMetricsResult metrics(FontIdentity font) const;
 
-    [[nodiscard]] GlyphLookupResult glyph_index(
-        FontIdentity font,
-        char32_t codepoint) const;
+    [[nodiscard]] GlyphLookupResult glyph_index(FontIdentity font, char32_t codepoint) const;
 
-    [[nodiscard]] GlyphLookupResult find_glyph(
-        std::span<const FontIdentity> fallback_chain,
-        char32_t codepoint,
-        std::optional<char32_t> replacement = U'\uFFFD') const;
+    [[nodiscard]] GlyphLookupResult find_glyph(std::span<const FontIdentity> fallback_chain, char32_t codepoint,
+                                               std::optional<char32_t> replacement = U'\uFFFD') const;
 
-    [[nodiscard]] GlyphRasterResult rasterize(
-        FontIdentity font,
-        std::uint32_t glyph_id,
-        GlyphRasterMode mode = GlyphRasterMode::grayscale,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] GlyphRasterResult rasterize(FontIdentity font, std::uint32_t glyph_id,
+                                              GlyphRasterMode mode = GlyphRasterMode::grayscale,
+                                              FontFailurePoint failure_point = FontFailurePoint::none);
 
-    [[nodiscard]] GlyphRasterResult rasterize(
-        FontIdentity font,
-        std::uint32_t glyph_id,
-        GlyphRasterPhase phase,
-        GlyphRasterMode mode = GlyphRasterMode::grayscale,
-        FontFailurePoint failure_point = FontFailurePoint::none);
+    [[nodiscard]] GlyphRasterResult rasterize(FontIdentity font, std::uint32_t glyph_id, GlyphRasterPhase phase,
+                                              GlyphRasterMode mode = GlyphRasterMode::grayscale,
+                                              FontFailurePoint failure_point = FontFailurePoint::none);
 
-    [[nodiscard]] FontShapeResult shape_utf8_segment(
-        FontIdentity font,
-        std::string_view normalized_utf8,
-        std::size_t byte_offset,
-        std::size_t byte_length) const;
+    [[nodiscard]] FontShapeResult shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,
+                                                     std::size_t byte_offset, std::size_t byte_length) const;
 
     [[nodiscard]] FontActionResult remove_font(FontIdentity font);
     [[nodiscard]] FontActionResult shutdown();
@@ -371,10 +349,7 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-[[nodiscard]] CoverageNormalizationResult normalize_gray_coverage(
-    std::span<const std::uint8_t> source,
-    std::uint32_t width,
-    std::uint32_t height,
-    int pitch);
+[[nodiscard]] CoverageNormalizationResult normalize_gray_coverage(std::span<const std::uint8_t> source,
+                                                                  std::uint32_t width, std::uint32_t height, int pitch);
 
 } // namespace ryn::font

@@ -113,8 +113,7 @@ namespace {
 struct TestState final {};
 
 ryn::runtime::ComponentId mount_leaf() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<TestState>();
+    return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
 void require(bool condition, const char* message) {
@@ -126,10 +125,13 @@ void require(bool condition, const char* message) {
 class IdleEvents final : public ryn::runtime::FrameEventSource {
 public:
     ryn::animation::AnimationTime now() const noexcept override {
-        return ryn::animation::AnimationTime::microseconds(
-            static_cast<std::int64_t>(now_milliseconds_) * 1000);
+        return ryn::animation::AnimationTime::microseconds(static_cast<std::int64_t>(now_milliseconds_) * 1000);
     }
-    bool poll_frame_event() noexcept override { return false; }
+
+    bool poll_frame_event() noexcept override {
+        return false;
+    }
+
     bool wait_for_frame_event(std::uint32_t timeout) noexcept override {
         now_milliseconds_ += timeout;
         return false;
@@ -140,8 +142,7 @@ public:
 
 class CountingSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime) override {
         ++submissions;
         return ryn::runtime::FrameSubmissionResult::submitted;
     }
@@ -149,16 +150,11 @@ public:
     int submissions{0};
 };
 
-ryn::input::PointerInputEvent event(
-    ryn::input::PointerAction action,
-    ryn::input::PointerButton button = ryn::input::PointerButton::none,
-    float x = 20.0F) {
+ryn::input::PointerInputEvent event(ryn::input::PointerAction action,
+                                    ryn::input::PointerButton button = ryn::input::PointerButton::none,
+                                    float x = 20.0F) {
     return {
-        ryn::input::PointerIdentity::mouse(),
-        action,
-        button,
-        x,
-        20.0F,
+        ryn::input::PointerIdentity::mouse(), action, button, x, 20.0F,
     };
 }
 
@@ -184,21 +180,17 @@ int main() {
         handlers.target = [&](ryn::input::PointerDispatchContext& pointer) {
             switch (pointer.kind()) {
             case ryn::input::PointerEventKind::enter:
-                static_cast<void>(properties.set_color(
-                    node, {0.2F, 0.4F, 0.8F, 1.0F}));
+                static_cast<void>(properties.set_color(node, {0.2F, 0.4F, 0.8F, 1.0F}));
                 break;
             case ryn::input::PointerEventKind::down:
-                static_cast<void>(properties.set_color(
-                    node, {0.1F, 0.2F, 0.5F, 1.0F}));
+                static_cast<void>(properties.set_color(node, {0.1F, 0.2F, 0.5F, 1.0F}));
                 static_cast<void>(pointer.capture_pointer());
                 break;
             case ryn::input::PointerEventKind::up:
-                static_cast<void>(properties.set_color(
-                    node, {0.2F, 0.4F, 0.8F, 1.0F}));
+                static_cast<void>(properties.set_color(node, {0.2F, 0.4F, 0.8F, 1.0F}));
                 break;
             case ryn::input::PointerEventKind::leave:
-                static_cast<void>(properties.set_color(
-                    node, {1.0F, 1.0F, 1.0F, 1.0F}));
+                static_cast<void>(properties.set_color(node, {1.0F, 1.0F, 1.0F, 1.0F}));
                 break;
             case ryn::input::PointerEventKind::move:
             case ryn::input::PointerEventKind::cancel:
@@ -216,16 +208,13 @@ int main() {
         ryn::input::HitTestSnapshot hit_test(registry, nodes);
         hit_test.reserve(1);
         const ryn::input::HitTestPaintEntry paint_entry{interaction, std::nullopt};
-        hit_test.rebuild(
-            std::span<const ryn::input::HitTestPaintEntry>{&paint_entry, 1},
-            {0.0F, 0.0F, 100.0F, 100.0F});
+        hit_test.rebuild(std::span<const ryn::input::HitTestPaintEntry>{&paint_entry, 1}, {0.0F, 0.0F, 100.0F, 100.0F});
         ryn::input::PointerRouter router(registry, hit_test, &frames);
         router.reserve(1, 4);
 
         router.dispatch(event(ryn::input::PointerAction::move));
         require(frames.consume_request(), "initial hover did not request a frame");
-        require(dirty.material_nodes().size() == 1,
-                "hover did not invalidate the Material phase");
+        require(dirty.material_nodes().size() == 1, "hover did not invalidate the Material phase");
         dirty.clear();
         const auto requests_before = frames.counters().requests;
         const auto route_count_before = router.diagnostics().routes_dispatched;
@@ -233,10 +222,8 @@ int main() {
         allocation_probe::count.store(0, std::memory_order_relaxed);
         allocation_probe::tracking.store(true, std::memory_order_relaxed);
         for (std::size_t index = 0; index < measured_moves; ++index) {
-            router.dispatch(event(
-                ryn::input::PointerAction::move,
-                ryn::input::PointerButton::none,
-                20.0F + static_cast<float>(index % 10)));
+            router.dispatch(event(ryn::input::PointerAction::move, ryn::input::PointerButton::none,
+                                  20.0F + static_cast<float>(index % 10)));
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
 
@@ -244,50 +231,35 @@ int main() {
         require(allocations == 0, "steady-state pointer move allocated");
         require(frames.counters().requests == requests_before && !frames.pending(),
                 "stable pointer move requested continuous frames");
-        require(router.diagnostics().routes_dispatched
-                    == route_count_before + measured_moves,
+        require(router.diagnostics().routes_dispatched == route_count_before + measured_moves,
                 "steady-state pointer move skipped routes");
 
-        router.dispatch(event(
-            ryn::input::PointerAction::down,
-            ryn::input::PointerButton::primary));
+        router.dispatch(event(ryn::input::PointerAction::down, ryn::input::PointerButton::primary));
         require(frames.pending(), "pointer press did not request a frame");
-        require(router.state(ryn::input::PointerIdentity::mouse())->capture
-                    == interaction,
+        require(router.state(ryn::input::PointerIdentity::mouse())->capture == interaction,
                 "pointer press handler did not capture");
-        require(dirty.material_nodes().size() == 1,
-                "press did not invalidate the Material phase");
+        require(dirty.material_nodes().size() == 1, "press did not invalidate the Material phase");
         static_cast<void>(frames.consume_request());
         dirty.clear();
         router.dispatch(event(ryn::input::PointerAction::move));
-        require(!frames.pending(),
-                "stable captured move requested an unnecessary frame");
-        router.dispatch(event(
-            ryn::input::PointerAction::up,
-            ryn::input::PointerButton::primary));
+        require(!frames.pending(), "stable captured move requested an unnecessary frame");
+        router.dispatch(event(ryn::input::PointerAction::up, ryn::input::PointerButton::primary));
         require(frames.pending(), "pointer release did not request a frame");
-        require(dirty.material_nodes().size() == 1,
-                "release did not invalidate the Material phase");
+        require(dirty.material_nodes().size() == 1, "release did not invalidate the Material phase");
 
         IdleEvents idle_events;
         CountingSubmitter submitter;
         ryn::runtime::OnDemandFrameLoop loop(frames, idle_events, submitter, 1);
-        require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-                "pointer release frame was not submitted");
+        require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "pointer release frame was not submitted");
         for (int index = 0; index < 120; ++index) {
-            require(loop.step() == ryn::runtime::FrameLoopStep::idle,
-                    "stable pointer state did not return to idle");
+            require(loop.step() == ryn::runtime::FrameLoopStep::idle, "stable pointer state did not return to idle");
         }
-        require(submitter.submissions == 1,
-                "stable pointer state submitted continuously");
+        require(submitter.submissions == 1, "stable pointer state submitted continuously");
 
-        std::cout
-            << "pointer_moves=" << measured_moves
-            << " allocations=" << allocations
-            << " routes=" << router.diagnostics().routes_dispatched
-            << " frame_requests=" << router.diagnostics().frame_requests
-            << " idle_submissions=" << submitter.submissions
-            << '\n';
+        std::cout << "pointer_moves=" << measured_moves << " allocations=" << allocations
+                  << " routes=" << router.diagnostics().routes_dispatched
+                  << " frame_requests=" << router.diagnostics().frame_requests
+                  << " idle_submissions=" << submitter.submissions << '\n';
     } catch (const std::exception& error) {
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         std::cerr << error.what() << '\n';

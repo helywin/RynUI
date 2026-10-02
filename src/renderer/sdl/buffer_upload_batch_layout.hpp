@@ -32,21 +32,16 @@ public:
             return false;
         }
         const std::uint64_t aligned =
-            (static_cast<std::uint64_t>(used_) + source_alignment - 1U)
-            / source_alignment * source_alignment;
+            (static_cast<std::uint64_t>(used_) + source_alignment - 1U) / source_alignment * source_alignment;
         return aligned + byte_count <= capacity_;
     }
 
-    [[nodiscard]] std::uint32_t append(
-        void* target,
-        std::uint32_t target_offset,
-        std::uint32_t byte_count) {
+    [[nodiscard]] std::uint32_t append(void* target, std::uint32_t target_offset, std::uint32_t byte_count) {
         if (target == nullptr || !can_fit(byte_count)) {
             throw std::length_error("Buffer upload region does not fit transfer chunk");
         }
         const auto source_offset = static_cast<std::uint32_t>(
-            (static_cast<std::uint64_t>(used_) + source_alignment - 1U)
-            / source_alignment * source_alignment);
+            (static_cast<std::uint64_t>(used_) + source_alignment - 1U) / source_alignment * source_alignment);
         regions_.push_back({target, target_offset, source_offset, byte_count});
         used_ = source_offset + byte_count;
         return source_offset;
@@ -55,8 +50,14 @@ public:
     [[nodiscard]] std::span<const BufferUploadBatchRegion> regions() const noexcept {
         return regions_;
     }
-    [[nodiscard]] std::uint32_t used_bytes() const noexcept { return used_; }
-    [[nodiscard]] std::uint32_t capacity() const noexcept { return capacity_; }
+
+    [[nodiscard]] std::uint32_t used_bytes() const noexcept {
+        return used_;
+    }
+
+    [[nodiscard]] std::uint32_t capacity() const noexcept {
+        return capacity_;
+    }
 
 private:
     std::uint32_t capacity_{default_capacity};

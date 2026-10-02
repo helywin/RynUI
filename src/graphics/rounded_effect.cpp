@@ -15,23 +15,19 @@ namespace {
 }
 
 void validate_rect(runtime::Rect rect, const char* message) {
-    if (!finite(rect.x) || !finite(rect.y) || !finite(rect.width)
-            || !finite(rect.height) || rect.width < 0.0F || rect.height < 0.0F) {
+    if (!finite(rect.x) || !finite(rect.y) || !finite(rect.width) || !finite(rect.height) || rect.width < 0.0F ||
+        rect.height < 0.0F) {
         throw std::invalid_argument(message);
     }
 }
 
-[[nodiscard]] LogicalRoundedRect translated(
-    LogicalRoundedRect shape,
-    runtime::Point translation) noexcept {
+[[nodiscard]] LogicalRoundedRect translated(LogicalRoundedRect shape, runtime::Point translation) noexcept {
     shape.rect.x += translation.x;
     shape.rect.y += translation.y;
     return shape;
 }
 
-[[nodiscard]] LogicalRoundedRect spread_shape(
-    LogicalRoundedRect shape,
-    float spread) noexcept {
+[[nodiscard]] LogicalRoundedRect spread_shape(LogicalRoundedRect shape, float spread) noexcept {
     shape.rect.x -= spread;
     shape.rect.y -= spread;
     shape.rect.width += 2.0F * spread;
@@ -42,10 +38,7 @@ void validate_rect(runtime::Rect rect, const char* message) {
         shape.radius = 0.0F;
         return shape;
     }
-    shape.radius = std::clamp(
-        shape.radius + spread,
-        0.0F,
-        0.5F * std::min(shape.rect.width, shape.rect.height));
+    shape.radius = std::clamp(shape.radius + spread, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
     return shape;
 }
 
@@ -54,10 +47,7 @@ void validate_rect(runtime::Rect rect, const char* message) {
         return signed_distance <= 0.0F ? 1.0F : 0.0F;
     }
     constexpr float inverse_sqrt_two = 0.7071067811865475F;
-    return std::clamp(
-        0.5F * std::erfc(signed_distance * inverse_sqrt_two / sigma),
-        0.0F,
-        1.0F);
+    return std::clamp(0.5F * std::erfc(signed_distance * inverse_sqrt_two / sigma), 0.0F, 1.0F);
 }
 
 [[nodiscard]] float smoothstep(float edge0, float edge1, float value) noexcept {
@@ -81,16 +71,13 @@ void validate_rect(runtime::Rect rect, const char* message) {
     };
 }
 
-[[nodiscard]] runtime::Rect translate(
-    runtime::Rect rect,
-    runtime::Point point) noexcept {
+[[nodiscard]] runtime::Rect translate(runtime::Rect rect, runtime::Point point) noexcept {
     rect.x += point.x;
     rect.y += point.y;
     return rect;
 }
 
-[[nodiscard]] RoundedEffectGeometry geometry_of(
-    const RoundedEffectInstance& instance) {
+[[nodiscard]] RoundedEffectGeometry geometry_of(const RoundedEffectInstance& instance) {
     return instance.geometry;
 }
 
@@ -101,23 +88,17 @@ void validate_rect(runtime::Rect rect, const char* message) {
     return instance.material.visible;
 }
 
-void append_command(
-    std::vector<SceneDrawCommand>& output,
-    SceneDrawCommand command) {
+void append_command(std::vector<SceneDrawCommand>& output, SceneDrawCommand command) {
     if (command.instance_count == 0) {
         return;
     }
     if (!output.empty()) {
         auto& previous = output.back();
-        if (previous.kind == command.kind
-                && previous.atlas_page == command.atlas_page
-                && static_cast<std::uint64_t>(previous.first_instance)
-                        + previous.instance_count == command.first_instance) {
-            const auto merged = static_cast<std::uint64_t>(previous.instance_count)
-                + command.instance_count;
+        if (previous.kind == command.kind && previous.atlas_page == command.atlas_page &&
+            static_cast<std::uint64_t>(previous.first_instance) + previous.instance_count == command.first_instance) {
+            const auto merged = static_cast<std::uint64_t>(previous.instance_count) + command.instance_count;
             if (merged > std::numeric_limits<std::uint32_t>::max()) {
-                throw std::length_error(
-                    "Rounded effect Scene command range exceeds uint32_t");
+                throw std::length_error("Rounded effect Scene command range exceeds uint32_t");
             }
             previous.instance_count = static_cast<std::uint32_t>(merged);
             return;
@@ -139,17 +120,12 @@ RoundedEffectStore::~RoundedEffectStore() = default;
 RoundedEffectStore::RoundedEffectStore(RoundedEffectStore&&) noexcept = default;
 RoundedEffectStore& RoundedEffectStore::operator=(RoundedEffectStore&&) noexcept = default;
 
-RoundedEffectInstance make_shadow_effect(
-    LogicalRoundedRect shape,
-    const ShadowLayer& layer,
-    runtime::Point translation,
-    std::optional<EffectClip> ancestor_clip) {
+RoundedEffectInstance make_shadow_effect(LogicalRoundedRect shape, const ShadowLayer& layer, runtime::Point translation,
+                                         std::optional<EffectClip> ancestor_clip) {
     RoundedEffectInstance instance{
         {
             shape,
-            layer.kind == ShadowKind::outer
-                ? RoundedEffectKind::outer_shadow
-                : RoundedEffectKind::inset_shadow,
+            layer.kind == ShadowKind::outer ? RoundedEffectKind::outer_shadow : RoundedEffectKind::inset_shadow,
             layer.offset,
             layer.blur,
             layer.spread,
@@ -164,14 +140,9 @@ RoundedEffectInstance make_shadow_effect(
     return instance;
 }
 
-RoundedEffectInstance make_outline_effect(
-    LogicalRoundedRect shape,
-    float width,
-    float offset,
-    Color color,
-    float opacity,
-    runtime::Point translation,
-    std::optional<EffectClip> ancestor_clip) {
+RoundedEffectInstance make_outline_effect(LogicalRoundedRect shape, float width, float offset, Color color,
+                                          float opacity, runtime::Point translation,
+                                          std::optional<EffectClip> ancestor_clip) {
     RoundedEffectInstance instance{
         {
             shape,
@@ -193,16 +164,12 @@ RoundedEffectInstance make_outline_effect(
 void validate_rounded_effect(const RoundedEffectInstance& instance) {
     const auto& geometry = instance.geometry;
     validate_rect(geometry.shape.rect, "Rounded effect shape must be finite and non-negative");
-    const float maximum_radius =
-        0.5F * std::min(geometry.shape.rect.width, geometry.shape.rect.height);
-    if (!finite(geometry.shape.radius) || geometry.shape.radius < 0.0F
-            || geometry.shape.radius > maximum_radius
-            || !finite(geometry.offset.x) || !finite(geometry.offset.y)
-            || !finite(geometry.blur) || geometry.blur < 0.0F
-            || !finite(geometry.spread)
-            || !finite(geometry.outline_width) || geometry.outline_width < 0.0F
-            || !finite(geometry.outline_offset) || geometry.outline_offset < 0.0F
-            || !finite(geometry.translation.x) || !finite(geometry.translation.y)) {
+    const float maximum_radius = 0.5F * std::min(geometry.shape.rect.width, geometry.shape.rect.height);
+    if (!finite(geometry.shape.radius) || geometry.shape.radius < 0.0F || geometry.shape.radius > maximum_radius ||
+        !finite(geometry.offset.x) || !finite(geometry.offset.y) || !finite(geometry.blur) || geometry.blur < 0.0F ||
+        !finite(geometry.spread) || !finite(geometry.outline_width) || geometry.outline_width < 0.0F ||
+        !finite(geometry.outline_offset) || geometry.outline_offset < 0.0F || !finite(geometry.translation.x) ||
+        !finite(geometry.translation.y)) {
         throw std::invalid_argument("Rounded effect geometry is invalid");
     }
     switch (geometry.kind) {
@@ -213,35 +180,27 @@ void validate_rounded_effect(const RoundedEffectInstance& instance) {
         }
         break;
     case RoundedEffectKind::outline:
-        if (geometry.outline_width <= 0.0F || geometry.blur != 0.0F
-                || geometry.spread != 0.0F || geometry.offset != LogicalOffset{}) {
+        if (geometry.outline_width <= 0.0F || geometry.blur != 0.0F || geometry.spread != 0.0F ||
+            geometry.offset != LogicalOffset{}) {
             throw std::invalid_argument("Outline effect geometry is invalid");
         }
         break;
     default:
         throw std::invalid_argument("Rounded effect kind is invalid");
     }
-    if (!finite(instance.material.opacity) || instance.material.opacity < 0.0F
-            || instance.material.opacity > 1.0F) {
+    if (!finite(instance.material.opacity) || instance.material.opacity < 0.0F || instance.material.opacity > 1.0F) {
         throw std::invalid_argument("Rounded effect opacity must be in [0, 1]");
     }
     if (geometry.ancestor_clip.has_value()) {
-        validate_rect(
-            geometry.ancestor_clip->bounds,
-            "Rounded effect ancestor clip must be finite and non-negative");
+        validate_rect(geometry.ancestor_clip->bounds, "Rounded effect ancestor clip must be finite and non-negative");
     }
 }
 
-float rounded_rect_signed_distance(
-    runtime::Point point,
-    LogicalRoundedRect shape) noexcept {
+float rounded_rect_signed_distance(runtime::Point point, LogicalRoundedRect shape) noexcept {
     if (shape.rect.width <= 0.0F || shape.rect.height <= 0.0F) {
         return std::numeric_limits<float>::infinity();
     }
-    const float radius = std::clamp(
-        shape.radius,
-        0.0F,
-        0.5F * std::min(shape.rect.width, shape.rect.height));
+    const float radius = std::clamp(shape.radius, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
     const float center_x = shape.rect.x + shape.rect.width * 0.5F;
     const float center_y = shape.rect.y + shape.rect.height * 0.5F;
     const float half_width = shape.rect.width * 0.5F;
@@ -253,10 +212,7 @@ float rounded_rect_signed_distance(
     return outside + inside - radius;
 }
 
-float rounded_effect_coverage(
-    runtime::Point point,
-    const RoundedEffectInstance& instance,
-    float antialias_width) {
+float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance& instance, float antialias_width) {
     validate_rounded_effect(instance);
     if (!finite(antialias_width) || antialias_width <= 0.0F) {
         throw std::invalid_argument("Rounded effect antialias width must be positive");
@@ -268,9 +224,7 @@ float rounded_effect_coverage(
         auto shadow = spread_shape(base, geometry.spread);
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
-        return gaussian_edge(
-            rounded_rect_signed_distance(point, shadow),
-            geometry.blur * 0.5F);
+        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F);
     }
     case RoundedEffectKind::inset_shadow: {
         if (rounded_rect_signed_distance(point, base) > 0.0F) {
@@ -279,30 +233,22 @@ float rounded_effect_coverage(
         auto shifted = base;
         shifted.rect.x += geometry.offset.x;
         shifted.rect.y += geometry.offset.y;
-        const float distance_inside = -rounded_rect_signed_distance(point, shifted)
-            - geometry.spread;
+        const float distance_inside = -rounded_rect_signed_distance(point, shifted) - geometry.spread;
         return gaussian_edge(distance_inside, geometry.blur * 0.5F);
     }
     case RoundedEffectKind::outline: {
         const float distance = rounded_rect_signed_distance(point, base);
         const float half_aa = antialias_width * 0.5F;
-        const float inner = smoothstep(
-            geometry.outline_offset - half_aa,
-            geometry.outline_offset + half_aa,
-            distance);
-        const float outer = 1.0F - smoothstep(
-            geometry.outline_offset + geometry.outline_width - half_aa,
-            geometry.outline_offset + geometry.outline_width + half_aa,
-            distance);
+        const float inner = smoothstep(geometry.outline_offset - half_aa, geometry.outline_offset + half_aa, distance);
+        const float outer = 1.0F - smoothstep(geometry.outline_offset + geometry.outline_width - half_aa,
+                                              geometry.outline_offset + geometry.outline_width + half_aa, distance);
         return std::clamp(inner * outer, 0.0F, 1.0F);
     }
     }
     return 0.0F;
 }
 
-runtime::Rect rounded_effect_bounds(
-    const RoundedEffectInstance& instance,
-    float antialias_guard) {
+runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float antialias_guard) {
     validate_rounded_effect(instance);
     if (!finite(antialias_guard) || antialias_guard < 0.0F) {
         throw std::invalid_argument("Rounded effect antialias guard must be non-negative");
@@ -314,8 +260,7 @@ runtime::Rect rounded_effect_bounds(
     }
     switch (geometry.kind) {
     case RoundedEffectKind::outer_shadow: {
-        const auto spread = spread_shape(
-            {bounds, geometry.shape.radius}, geometry.spread);
+        const auto spread = spread_shape({bounds, geometry.shape.radius}, geometry.spread);
         if (empty(spread.rect)) {
             return spread.rect;
         }
@@ -328,9 +273,7 @@ runtime::Rect rounded_effect_bounds(
     case RoundedEffectKind::inset_shadow:
         break;
     case RoundedEffectKind::outline:
-        bounds = expand(
-            bounds,
-            geometry.outline_offset + geometry.outline_width + antialias_guard);
+        bounds = expand(bounds, geometry.outline_offset + geometry.outline_width + antialias_guard);
         break;
     }
     if (geometry.ancestor_clip.has_value()) {
@@ -339,9 +282,7 @@ runtime::Rect rounded_effect_bounds(
     return bounds;
 }
 
-runtime::Rect intersect_effect_bounds(
-    runtime::Rect bounds,
-    runtime::Rect clip) noexcept {
+runtime::Rect intersect_effect_bounds(runtime::Rect bounds, runtime::Rect clip) noexcept {
     const float left = std::max(bounds.x, clip.x);
     const float top = std::max(bounds.y, clip.y);
     const float right = std::min(bounds.x + bounds.width, clip.x + clip.width);
@@ -370,25 +311,21 @@ RoundedEffectId RoundedEffectStore::add(RoundedEffectInstance instance) {
     return add_batch(values).front();
 }
 
-std::vector<RoundedEffectId> RoundedEffectStore::add_batch(
-    std::span<const RoundedEffectInstance> instances) {
+std::vector<RoundedEffectId> RoundedEffectStore::add_batch(std::span<const RoundedEffectInstance> instances) {
     for (const auto& instance : instances) {
         validate_rounded_effect(instance);
     }
     if (instances.empty()) {
         return {};
     }
-    if (diagnostics_.live_instances + instances.size()
-            > std::numeric_limits<std::uint32_t>::max()) {
+    if (diagnostics_.live_instances + instances.size() > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("RoundedEffectStore exhausted instance identities");
     }
 
     const auto slots_before = slots_.capacity();
     const auto order_before = draw_order_.capacity();
     const auto packed_before = packed_instances_.capacity();
-    const auto new_slots = instances.size() > free_slots_.size()
-        ? instances.size() - free_slots_.size()
-        : 0;
+    const auto new_slots = instances.size() > free_slots_.size() ? instances.size() - free_slots_.size() : 0;
     slots_.reserve(slots_.size() + new_slots);
     free_slots_.reserve(slots_.size() + new_slots);
     draw_order_.reserve(draw_order_.size() + instances.size());
@@ -445,9 +382,7 @@ const RoundedEffectInstance& RoundedEffectStore::at(RoundedEffectId id) const {
     return *require_slot(id).instance;
 }
 
-bool RoundedEffectStore::update_material(
-    RoundedEffectId id,
-    RoundedEffectMaterial material) {
+bool RoundedEffectStore::update_material(RoundedEffectId id, RoundedEffectMaterial material) {
     auto& slot = require_slot(id);
     auto candidate = *slot.instance;
     candidate.material = material;
@@ -455,8 +390,7 @@ bool RoundedEffectStore::update_material(
     if (slot.instance->material == material) {
         return false;
     }
-    const bool visibility_changed =
-        drawable(*slot.instance) != drawable(candidate);
+    const bool visibility_changed = drawable(*slot.instance) != drawable(candidate);
     slot.instance->material = material;
     ++diagnostics_.material_updates;
     if (visibility_changed || !slot.packed_index.has_value()) {
@@ -468,9 +402,7 @@ bool RoundedEffectStore::update_material(
     return true;
 }
 
-bool RoundedEffectStore::update_geometry(
-    RoundedEffectId id,
-    RoundedEffectGeometry geometry) {
+bool RoundedEffectStore::update_geometry(RoundedEffectId id, RoundedEffectGeometry geometry) {
     auto& slot = require_slot(id);
     auto candidate = *slot.instance;
     candidate.geometry = geometry;
@@ -482,9 +414,9 @@ bool RoundedEffectStore::update_geometry(
     ++diagnostics_.geometry_updates;
     if (!compact_dirty_ && compact_clip_.has_value()) {
         const bool was_packed = slot.packed_index.has_value();
-        const bool remains_drawable = drawable(*slot.instance)
-            && !empty(intersect_effect_bounds(
-                rounded_effect_bounds(*slot.instance), *compact_clip_));
+        const bool remains_drawable =
+            drawable(*slot.instance) &&
+            !empty(intersect_effect_bounds(rounded_effect_bounds(*slot.instance), *compact_clip_));
         if (was_packed == remains_drawable) {
             if (was_packed) {
                 packed_instances_[*slot.packed_index].geometry = slot.instance->geometry;
@@ -515,9 +447,7 @@ bool RoundedEffectStore::compact(runtime::Rect window_clip) {
             ++diagnostics_.culled_instances;
             continue;
         }
-        const auto bounds = intersect_effect_bounds(
-            rounded_effect_bounds(*slot->instance),
-            window_clip);
+        const auto bounds = intersect_effect_bounds(rounded_effect_bounds(*slot->instance), window_clip);
         if (empty(bounds)) {
             ++diagnostics_.culled_instances;
             continue;
@@ -546,18 +476,15 @@ bool RoundedEffectStore::compact(runtime::Rect window_clip) {
     return true;
 }
 
-std::optional<std::uint32_t> RoundedEffectStore::packed_index(
-    RoundedEffectId id) const {
+std::optional<std::uint32_t> RoundedEffectStore::packed_index(RoundedEffectId id) const {
     return require_slot(id).packed_index;
 }
 
-std::span<const RoundedEffectInstance>
-RoundedEffectStore::packed_instances() const noexcept {
+std::span<const RoundedEffectInstance> RoundedEffectStore::packed_instances() const noexcept {
     return packed_instances_;
 }
 
-std::span<const std::byte> RoundedEffectStore::bytes(
-    RoundedEffectInstanceRange range) const {
+std::span<const std::byte> RoundedEffectStore::bytes(RoundedEffectInstanceRange range) const {
     const auto end = static_cast<std::uint64_t>(range.first) + range.count;
     if (end > packed_instances_.size()) {
         throw std::out_of_range("Rounded effect byte range is out of bounds");
@@ -565,13 +492,11 @@ std::span<const std::byte> RoundedEffectStore::bytes(
     return std::as_bytes(std::span(packed_instances_).subspan(range.first, range.count));
 }
 
-std::span<const RoundedEffectInstanceRange>
-RoundedEffectStore::material_dirty_ranges() const noexcept {
+std::span<const RoundedEffectInstanceRange> RoundedEffectStore::material_dirty_ranges() const noexcept {
     return material_dirty_ranges_;
 }
 
-std::span<const RoundedEffectInstanceRange>
-RoundedEffectStore::geometry_dirty_ranges() const noexcept {
+std::span<const RoundedEffectInstanceRange> RoundedEffectStore::geometry_dirty_ranges() const noexcept {
     return geometry_dirty_ranges_;
 }
 
@@ -588,31 +513,24 @@ std::size_t RoundedEffectStore::slot_capacity() const noexcept {
     return slots_.capacity();
 }
 
-const RoundedEffectStoreDiagnostics&
-RoundedEffectStore::diagnostics() const noexcept {
+const RoundedEffectStoreDiagnostics& RoundedEffectStore::diagnostics() const noexcept {
     return diagnostics_;
 }
 
-RoundedEffectStore::Slot* RoundedEffectStore::find_slot(
-    RoundedEffectId id) noexcept {
+RoundedEffectStore::Slot* RoundedEffectStore::find_slot(RoundedEffectId id) noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
     auto& slot = slots_[id.index];
-    return slot.generation == id.generation && slot.instance.has_value()
-        ? &slot
-        : nullptr;
+    return slot.generation == id.generation && slot.instance.has_value() ? &slot : nullptr;
 }
 
-const RoundedEffectStore::Slot* RoundedEffectStore::find_slot(
-    RoundedEffectId id) const noexcept {
+const RoundedEffectStore::Slot* RoundedEffectStore::find_slot(RoundedEffectId id) const noexcept {
     if (!id.valid() || id.index >= slots_.size()) {
         return nullptr;
     }
     const auto& slot = slots_[id.index];
-    return slot.generation == id.generation && slot.instance.has_value()
-        ? &slot
-        : nullptr;
+    return slot.generation == id.generation && slot.instance.has_value() ? &slot : nullptr;
 }
 
 RoundedEffectStore::Slot& RoundedEffectStore::require_slot(RoundedEffectId id) {
@@ -622,8 +540,7 @@ RoundedEffectStore::Slot& RoundedEffectStore::require_slot(RoundedEffectId id) {
     throw std::out_of_range("RoundedEffectId is stale or invalid");
 }
 
-const RoundedEffectStore::Slot& RoundedEffectStore::require_slot(
-    RoundedEffectId id) const {
+const RoundedEffectStore::Slot& RoundedEffectStore::require_slot(RoundedEffectId id) const {
     if (const auto* slot = find_slot(id)) {
         return *slot;
     }
@@ -637,9 +554,7 @@ void RoundedEffectStore::advance_generation(Slot& slot) noexcept {
     }
 }
 
-void RoundedEffectStore::mark_dirty(
-    std::vector<RoundedEffectInstanceRange>& ranges,
-    RoundedEffectInstanceRange range) {
+void RoundedEffectStore::mark_dirty(std::vector<RoundedEffectInstanceRange>& ranges, RoundedEffectInstanceRange range) {
     if (range.count == 0) {
         return;
     }
@@ -653,11 +568,9 @@ void RoundedEffectStore::mark_dirty(
         }
         auto& prior = ranges[merged_count - 1];
         const auto prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
-        const auto candidate_end =
-            static_cast<std::uint64_t>(candidate.first) + candidate.count;
+        const auto candidate_end = static_cast<std::uint64_t>(candidate.first) + candidate.count;
         if (candidate.first <= prior_end) {
-            prior.count = static_cast<std::uint32_t>(
-                std::max(prior_end, candidate_end) - prior.first);
+            prior.count = static_cast<std::uint32_t>(std::max(prior_end, candidate_end) - prior.first);
         } else {
             ranges[merged_count++] = candidate;
         }
@@ -669,30 +582,21 @@ void RoundedEffectStore::validate_clip(runtime::Rect clip) {
     validate_rect(clip, "Rounded effect window clip must be finite and non-negative");
 }
 
-void RoundedEffectStore::note_capacity_growth(
-    std::size_t slots_before,
-    std::size_t order_before,
-    std::size_t packed_before) noexcept {
-    if (slots_.capacity() != slots_before
-            || draw_order_.capacity() != order_before
-            || packed_instances_.capacity() != packed_before) {
+void RoundedEffectStore::note_capacity_growth(std::size_t slots_before, std::size_t order_before,
+                                              std::size_t packed_before) noexcept {
+    if (slots_.capacity() != slots_before || draw_order_.capacity() != order_before ||
+        packed_instances_.capacity() != packed_before) {
         ++diagnostics_.capacity_growths;
     }
 }
 
-RoundedEffectPrimitive RoundedEffectScene::append_shadow_list(
-    LogicalRoundedRect shape,
-    const ShadowList& shadows,
-    runtime::Point translation,
-    std::optional<EffectClip> ancestor_clip) {
+RoundedEffectPrimitive RoundedEffectScene::append_shadow_list(LogicalRoundedRect shape, const ShadowList& shadows,
+                                                              runtime::Point translation,
+                                                              std::optional<EffectClip> ancestor_clip) {
     std::vector<RoundedEffectInstance> pending;
     pending.reserve(shadows.size());
     for (const auto& layer : shadows.layers()) {
-        pending.push_back(make_shadow_effect(
-            shape,
-            layer,
-            translation,
-            ancestor_clip));
+        pending.push_back(make_shadow_effect(shape, layer, translation, ancestor_clip));
     }
     RoundedEffectPrimitive primitive;
     primitive.before_fill.reserve(pending.size());
@@ -708,24 +612,13 @@ RoundedEffectPrimitive RoundedEffectScene::append_shadow_list(
     return primitive;
 }
 
-RoundedEffectPrimitive RoundedEffectScene::append_outline(
-    LogicalRoundedRect shape,
-    float width,
-    float offset,
-    Color color,
-    float opacity,
-    runtime::Point translation,
-    std::optional<EffectClip> ancestor_clip) {
+RoundedEffectPrimitive RoundedEffectScene::append_outline(LogicalRoundedRect shape, float width, float offset,
+                                                          Color color, float opacity, runtime::Point translation,
+                                                          std::optional<EffectClip> ancestor_clip) {
     RoundedEffectPrimitive primitive;
     primitive.before_fill.reserve(1);
-    primitive.before_fill.push_back(store_.add(make_outline_effect(
-        shape,
-        width,
-        offset,
-        color,
-        opacity,
-        translation,
-        std::move(ancestor_clip))));
+    primitive.before_fill.push_back(
+        store_.add(make_outline_effect(shape, width, offset, color, opacity, translation, std::move(ancestor_clip))));
     return primitive;
 }
 
@@ -740,10 +633,8 @@ bool RoundedEffectScene::remove(const RoundedEffectPrimitive& primitive) {
     return removed;
 }
 
-void RoundedEffectScene::compose_surface(
-    const RoundedEffectPrimitive& primitive,
-    SceneDrawCommand fill,
-    std::vector<SceneDrawCommand>& output) const {
+void RoundedEffectScene::compose_surface(const RoundedEffectPrimitive& primitive, SceneDrawCommand fill,
+                                         std::vector<SceneDrawCommand>& output) const {
     append_effect_commands(primitive.before_fill, output);
     append_command(output, fill);
     append_effect_commands(primitive.after_fill, output);
@@ -757,9 +648,8 @@ const RoundedEffectStore& RoundedEffectScene::store() const noexcept {
     return store_;
 }
 
-void RoundedEffectScene::append_effect_commands(
-    std::span<const RoundedEffectId> effects,
-    std::vector<SceneDrawCommand>& output) const {
+void RoundedEffectScene::append_effect_commands(std::span<const RoundedEffectId> effects,
+                                                std::vector<SceneDrawCommand>& output) const {
     for (const auto id : effects) {
         if (!store_.contains(id)) {
             continue;
@@ -769,11 +659,11 @@ void RoundedEffectScene::append_effect_commands(
             continue;
         }
         append_command(output, {
-            SceneDrawKind::rounded_effect,
-            *index,
-            1,
-            invalid_glyph_atlas_page,
-        });
+                                   SceneDrawKind::rounded_effect,
+                                   *index,
+                                   1,
+                                   invalid_glyph_atlas_page,
+                               });
     }
 }
 

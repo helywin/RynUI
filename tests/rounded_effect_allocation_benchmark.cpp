@@ -25,17 +25,23 @@ void record() noexcept {
 
 void* allocate(std::size_t size) {
     record();
-    if (void* memory = std::malloc(size == 0 ? 1 : size)) return memory;
+    if (void* memory = std::malloc(size == 0 ? 1 : size)) {
+        return memory;
+    }
     throw std::bad_alloc();
 }
 
 void* allocate_aligned(std::size_t size, std::size_t alignment) {
     record();
 #if defined(_MSC_VER)
-    if (void* memory = _aligned_malloc(size == 0 ? 1 : size, alignment)) return memory;
+    if (void* memory = _aligned_malloc(size == 0 ? 1 : size, alignment)) {
+        return memory;
+    }
 #else
     void* memory = nullptr;
-    if (posix_memalign(&memory, alignment, size == 0 ? 1 : size) == 0) return memory;
+    if (posix_memalign(&memory, alignment, size == 0 ? 1 : size) == 0) {
+        return memory;
+    }
 #endif
     throw std::bad_alloc();
 }
@@ -49,27 +55,50 @@ void deallocate_aligned(void* memory) noexcept {
 }
 } // namespace allocation_probe
 
-void* operator new(std::size_t size) { return allocation_probe::allocate(size); }
-void* operator new[](std::size_t size) { return allocation_probe::allocate(size); }
-void operator delete(void* memory) noexcept { std::free(memory); }
-void operator delete[](void* memory) noexcept { std::free(memory); }
-void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
-void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+void* operator new(std::size_t size) {
+    return allocation_probe::allocate(size);
+}
+
+void* operator new[](std::size_t size) {
+    return allocation_probe::allocate(size);
+}
+
+void operator delete(void* memory) noexcept {
+    std::free(memory);
+}
+
+void operator delete[](void* memory) noexcept {
+    std::free(memory);
+}
+
+void operator delete(void* memory, std::size_t) noexcept {
+    std::free(memory);
+}
+
+void operator delete[](void* memory, std::size_t) noexcept {
+    std::free(memory);
+}
+
 void* operator new(std::size_t size, std::align_val_t alignment) {
     return allocation_probe::allocate_aligned(size, static_cast<std::size_t>(alignment));
 }
+
 void* operator new[](std::size_t size, std::align_val_t alignment) {
     return allocation_probe::allocate_aligned(size, static_cast<std::size_t>(alignment));
 }
+
 void operator delete(void* memory, std::align_val_t) noexcept {
     allocation_probe::deallocate_aligned(memory);
 }
+
 void operator delete[](void* memory, std::align_val_t) noexcept {
     allocation_probe::deallocate_aligned(memory);
 }
+
 void operator delete(void* memory, std::size_t, std::align_val_t) noexcept {
     allocation_probe::deallocate_aligned(memory);
 }
+
 void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept {
     allocation_probe::deallocate_aligned(memory);
 }
@@ -83,12 +112,8 @@ int main() {
         effects.reserve(effect_count);
         for (std::size_t index = 0; index < effect_count; ++index) {
             effects.push_back(ryn::graphics::make_shadow_effect(
-                {{static_cast<float>(index % 32) * 12.0F,
-                  static_cast<float>(index / 32) * 12.0F,
-                  10.0F,
-                  10.0F}, 2.0F},
-                {ryn::ShadowKind::outer, {}, 2.0F, 0.0F,
-                 ryn::Color::rgba8(0, 0, 0, 64)}));
+                {{static_cast<float>(index % 32) * 12.0F, static_cast<float>(index / 32) * 12.0F, 10.0F, 10.0F}, 2.0F},
+                {ryn::ShadowKind::outer, {}, 2.0F, 0.0F, ryn::Color::rgba8(0, 0, 0, 64)}));
         }
         const auto ids = store.add_batch(effects);
         const ryn::runtime::Rect clip{0.0F, 0.0F, 500.0F, 500.0F};
@@ -107,13 +132,10 @@ int main() {
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         const auto allocations = allocation_probe::count.load(std::memory_order_relaxed);
-        if (allocations != 0 || store.slot_capacity() != capacity
-                || store.diagnostics().idle_compactions != 10'000
-                || !store.material_dirty_ranges().empty()
-                || !store.geometry_dirty_ranges().empty()) {
+        if (allocations != 0 || store.slot_capacity() != capacity || store.diagnostics().idle_compactions != 10'000 ||
+            !store.material_dirty_ranges().empty() || !store.geometry_dirty_ranges().empty()) {
             std::cerr << "steady-state allocations: " << allocations << '\n';
-            throw std::runtime_error(
-                "idle/equal rounded-effect updates allocated or requested uploads");
+            throw std::runtime_error("idle/equal rounded-effect updates allocated or requested uploads");
         }
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

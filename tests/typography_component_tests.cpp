@@ -35,34 +35,29 @@ struct FontRequest final {
 
 struct Fixture final {
     Fixture()
-        : layout(nodes),
-          dirty(nodes, &frames),
-          fonts(create_runtime()),
-          engine(*fonts),
-          scene(*fonts, engine, frames) {
+        : layout(nodes), dirty(nodes, &frames), fonts(create_runtime()), engine(*fonts), scene(*fonts, engine, frames) {
         const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, 14);
         const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, 14);
         require(latin && cjk, "Typography component fonts failed to load");
         chain = {latin.font, cjk.font};
         chains.emplace(14, chain);
         host = std::make_unique<ryn::detail::TextComponentHost>(
-            nodes,
-            layout,
-            dirty,
-            scene,
-            [this](ryn::SystemFontFamily family, std::uint32_t weight, bool italic,
-                   std::uint32_t pixel_size) {
+            nodes, layout, dirty, scene,
+            [this](ryn::SystemFontFamily family, std::uint32_t weight, bool italic, std::uint32_t pixel_size) {
                 requests.push_back(FontRequest{family, weight, italic, pixel_size});
                 return resolve_fonts(pixel_size);
             });
     }
 
-    ~Fixture() { host->dispose(); }
+    ~Fixture() {
+        host->dispose();
+    }
 
     void enable_surfaces() {
         interactions = std::make_unique<ryn::input::InteractionRegistry>(host->components(), nodes);
         hit_test = std::make_unique<ryn::input::HitTestSnapshot>(*interactions, nodes);
-        composer = std::make_unique<ryn::component::ComponentSceneComposer>(host->components(), *interactions, *hit_test);
+        composer =
+            std::make_unique<ryn::component::ComponentSceneComposer>(host->components(), *interactions, *hit_test);
         surfaces = std::make_unique<ryn::component::RetainedSurfaceService>(host->components(), nodes, *composer);
         host->attach_component_scene(*composer);
         host->attach_surfaces(*surfaces);
@@ -78,10 +73,8 @@ struct Fixture final {
         if (const auto found = chains.find(pixel_size); found != chains.end()) {
             return found->second;
         }
-        const auto latin = fonts->load_font_file(
-            RYNUI_VALIDATION_LATIN_FONT, 0, pixel_size);
-        const auto cjk = fonts->load_font_file(
-            RYNUI_VALIDATION_CJK_FONT, 0, pixel_size);
+        const auto latin = fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, pixel_size);
+        const auto cjk = fonts->load_font_file(RYNUI_VALIDATION_CJK_FONT, 0, pixel_size);
         if (!latin || !cjk) {
             return {};
         }
@@ -91,19 +84,14 @@ struct Fixture final {
     }
 
     bool layout_texts(float width = 640.0F, float height = 360.0F) {
-        return host->layout_and_synchronize(
-            {width, height},
-            {0.0F, 0.0F, width, height},
-            {12.0F, 16.0F},
-            4.0F);
+        return host->layout_and_synchronize({width, height}, {0.0F, 0.0F, width, height}, {12.0F, 16.0F}, 4.0F);
     }
 
     ryn::runtime::SemanticForeground mounted_color(std::size_t index) const {
         const auto& instances = scene.glyph_scene().instances().instances();
         const auto primitive = scene.primitive(host->mounted_texts()[index].scene);
         const auto& instance = instances[primitive.instances.first];
-        return {instance.color[0], instance.color[1], instance.color[2],
-            instance.color[3]};
+        return {instance.color[0], instance.color[1], instance.color[2], instance.color[3]};
     }
 
     ryn::text::TextState& text_state(std::size_t index) {
@@ -128,11 +116,9 @@ struct Fixture final {
     std::unique_ptr<ryn::component::ComponentSceneComposer> composer;
     std::unique_ptr<ryn::component::RetainedSurfaceService> surfaces;
 
-    [[nodiscard]] bool requested(ryn::SystemFontFamily family, std::uint32_t weight,
-                                  bool italic) const {
+    [[nodiscard]] bool requested(ryn::SystemFontFamily family, std::uint32_t weight, bool italic) const {
         return std::ranges::any_of(requests, [&](const FontRequest& request) {
-            return request.family == family && request.weight == weight
-                && request.italic == italic;
+            return request.family == family && request.weight == weight && request.italic == italic;
         });
     }
 };
@@ -154,8 +140,7 @@ void test_public_api_and_heading_levels() {
         ryn::Text(ryn::TypographyProps{}.content(u8"Body 中文"));
         ryn::Paragraph(ryn::TypographyProps{}.content(u8"Paragraph copy"));
     }});
-    require(fixture.host->mounted_texts().size() == 7,
-            "Typography declarations did not mount one component each");
+    require(fixture.host->mounted_texts().size() == 7, "Typography declarations did not mount one component each");
     require(fixture.layout_texts(), "Typography fixture did not synchronize");
 
     const auto& typography = ryn::resolve_theme().typography();
@@ -166,15 +151,14 @@ void test_public_api_and_heading_levels() {
                 "Typography heading token drifted from the reference chain");
         // A larger level must produce a taller line box for identical text.
         if (index + 1 < expected_sizes.size()) {
-            require(fixture.text_state(index).measurement().content_bounds.bottom
-                        > fixture.text_state(index + 1).measurement().content_bounds.bottom,
+            require(fixture.text_state(index).measurement().content_bounds.bottom >
+                        fixture.text_state(index + 1).measurement().content_bounds.bottom,
                     "a larger heading level did not measure taller than the next level");
         }
     }
     // Body and paragraph share the base typography, so they measure identically
     // apart from their content.
-    require(near(typography.base_font_size, 14.0F)
-                && near(typography.base_line_height, 22.0F),
+    require(near(typography.base_font_size, 14.0F) && near(typography.base_line_height, 22.0F),
             "Typography base typography drifted from the locked baseline");
 }
 
@@ -182,14 +166,10 @@ void test_semantic_colours_and_disabled() {
     Fixture fixture;
     fixture.host->mount(ryn::Content{[] {
         ryn::Text(ryn::TypographyProps{}.content(u8"Default"));
-        ryn::Text(ryn::TypographyProps{}.content(u8"Secondary")
-            .type(ryn::TypographyType::Secondary));
-        ryn::Text(ryn::TypographyProps{}.content(u8"Success")
-            .type(ryn::TypographyType::Success));
-        ryn::Text(ryn::TypographyProps{}.content(u8"Warning")
-            .type(ryn::TypographyType::Warning));
-        ryn::Text(ryn::TypographyProps{}.content(u8"Danger")
-            .type(ryn::TypographyType::Danger));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Secondary").type(ryn::TypographyType::Secondary));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Success").type(ryn::TypographyType::Success));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Warning").type(ryn::TypographyType::Warning));
+        ryn::Text(ryn::TypographyProps{}.content(u8"Danger").type(ryn::TypographyType::Danger));
         ryn::Text(ryn::TypographyProps{}.content(u8"Disabled").disabled(true));
     }});
     require(fixture.layout_texts(), "semantic Typography fixture did not synchronize");
@@ -203,8 +183,7 @@ void test_semantic_colours_and_disabled() {
             "success Typography text did not use the success colour");
     require(fixture.mounted_color(3) == channels(colors.warning),
             "warning Typography text did not use the warning colour");
-    require(fixture.mounted_color(4) == channels(colors.error),
-            "danger Typography text did not use the error colour");
+    require(fixture.mounted_color(4) == channels(colors.error), "danger Typography text did not use the error colour");
     require(fixture.mounted_color(5) == channels(colors.disabled),
             "disabled Typography text did not use the disabled colour");
 }
@@ -218,8 +197,7 @@ void test_emphasis_reaches_the_shape_request() {
     }});
     require(fixture.layout_texts(), "emphasis Typography fixture did not synchronize");
     const auto theme = ryn::resolve_theme();
-    require(theme.typography().font_weight == 400
-                && theme.typography().font_weight_strong == 600,
+    require(theme.typography().font_weight == 400 && theme.typography().font_weight_strong == 600,
             "Typography weights drifted from the locked baseline");
 
     const auto& state = fixture.text_state(1);
@@ -232,12 +210,11 @@ void test_emphasis_reaches_the_shape_request() {
     // component only. The fixture resolver ignores weight, so the assertion is
     // about the request reaching the shape path, not about visible weight.
     require(bold.set(true), "Typography strong Signal did not propagate");
-    require(!fixture.dirty.layout_roots().empty()
-                && fixture.dirty.layout_roots().front() == target_node,
+    require(!fixture.dirty.layout_roots().empty() && fixture.dirty.layout_roots().front() == target_node,
             "emphasis change did not request a reshape of its own component");
     require(fixture.layout_texts(), "emphasis update did not synchronize");
-    require(fixture.host->components().component_count() == component_count
-                && fixture.text_state(1).counters().shape_count > shape_before,
+    require(fixture.host->components().component_count() == component_count &&
+                fixture.text_state(1).counters().shape_count > shape_before,
             "emphasis change did not reshape or remounted the component");
 }
 
@@ -256,8 +233,7 @@ void test_inline_semantics_reach_the_resolver_and_scale() {
     // Every inline variant must reach the resolver with its own request.
     require(fixture.requested(ryn::SystemFontFamily::ui_sans, 400, false),
             "plain Typography text did not request the UI family at regular weight");
-    require(fixture.requested(ryn::SystemFontFamily::ui_sans,
-                typography.font_weight_strong, false),
+    require(fixture.requested(ryn::SystemFontFamily::ui_sans, typography.font_weight_strong, false),
             "strong Typography text did not request the strong weight");
     require(fixture.requested(ryn::SystemFontFamily::ui_sans, 400, true),
             "italic Typography text did not request a slanted face");
@@ -266,34 +242,32 @@ void test_inline_semantics_reach_the_resolver_and_scale() {
 
     // `code` and `keyboard` scale by their inline token instead of the base size.
     const auto expected_code =
-        static_cast<std::uint32_t>(std::lround(
-            typography.base_font_size * typography.code.font_scale));
+        static_cast<std::uint32_t>(std::lround(typography.base_font_size * typography.code.font_scale));
     const auto expected_keyboard =
-        static_cast<std::uint32_t>(std::lround(
-            typography.base_font_size * typography.keyboard.font_scale));
-    require(expected_code != expected_keyboard,
-            "code and keyboard inline scales are not distinct");
-    require(std::ranges::any_of(fixture.requests, [&](const FontRequest& request) {
-                return request.family == ryn::SystemFontFamily::ui_monospace
-                    && request.pixel_size == expected_code;
-            })
-                && std::ranges::any_of(fixture.requests, [&](const FontRequest& request) {
-                    return request.family == ryn::SystemFontFamily::ui_monospace
-                        && request.pixel_size == expected_keyboard;
-                }),
+        static_cast<std::uint32_t>(std::lround(typography.base_font_size * typography.keyboard.font_scale));
+    require(expected_code != expected_keyboard, "code and keyboard inline scales are not distinct");
+    require(std::ranges::any_of(fixture.requests,
+                                [&](const FontRequest& request) {
+                                    return request.family == ryn::SystemFontFamily::ui_monospace &&
+                                           request.pixel_size == expected_code;
+                                }) &&
+                std::ranges::any_of(fixture.requests,
+                                    [&](const FontRequest& request) {
+                                        return request.family == ryn::SystemFontFamily::ui_monospace &&
+                                               request.pixel_size == expected_keyboard;
+                                    }),
             "code or keyboard did not resolve at its inline token size");
-    require(fixture.text_state(3).shaped().default_metrics.logical_pixel_size == expected_code
-        && fixture.text_state(4).shaped().default_metrics.logical_pixel_size == expected_keyboard,
-        "inline font requests were correct but final shapes reverted to body size");
+    require(fixture.text_state(3).shaped().default_metrics.logical_pixel_size == expected_code &&
+                fixture.text_state(4).shaped().default_metrics.logical_pixel_size == expected_keyboard,
+            "inline font requests were correct but final shapes reverted to body size");
 }
 
 void test_inline_token_change_reaches_the_shape() {
     Fixture fixture;
     ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
     fixture.host->mount(ryn::Content{[&] {
-        ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
-            ryn::Text(ryn::TypographyProps{}.content(u8"Code").code(true));
-        }});
+        ryn::Theme(ryn::ThemeProps{}.config(config),
+                   ryn::ThemeContent{[&] { ryn::Text(ryn::TypographyProps{}.content(u8"Code").code(true)); }});
         ryn::Text(ryn::TypographyProps{}.content(u8"Stable sibling"));
     }});
     require(fixture.layout_texts(), "inline token fixture did not synchronize");
@@ -312,16 +286,13 @@ void test_inline_token_change_reaches_the_shape() {
             "inline code font scale did not invalidate the code component layout");
     require(fixture.layout_texts(), "inline code token update did not synchronize");
 
-    const auto expected = static_cast<std::uint32_t>(std::lround(
-        ryn::resolve_theme(scaled).typography().base_font_size * 0.5F));
-    const auto resolved_scaled = std::ranges::any_of(
-        std::span{fixture.requests}.subspan(code_requests_before),
-        [&](const FontRequest& request) {
-            return request.family == ryn::SystemFontFamily::ui_monospace
-                && request.pixel_size == expected;
+    const auto expected =
+        static_cast<std::uint32_t>(std::lround(ryn::resolve_theme(scaled).typography().base_font_size * 0.5F));
+    const auto resolved_scaled =
+        std::ranges::any_of(std::span{fixture.requests}.subspan(code_requests_before), [&](const FontRequest& request) {
+            return request.family == ryn::SystemFontFamily::ui_monospace && request.pixel_size == expected;
         });
-    require(resolved_scaled,
-            "inline code font scale did not change the resolved code font size");
+    require(resolved_scaled, "inline code font scale did not change the resolved code font size");
     require(fixture.host->components().component_count() == component_count,
             "inline code token update remounted the component");
     require(fixture.text_state(1).counters().shape_count == sibling_shape_before,
@@ -345,19 +316,17 @@ void test_reactive_heading_level_keeps_identity() {
 
     // The spec requires a level change after mount to keep the component
     // identity, so the node, component id and component count must all survive.
-    require(level.set(ryn::TypographyLevel::H4),
-            "reactive level Signal did not propagate");
+    require(level.set(ryn::TypographyLevel::H4), "reactive level Signal did not propagate");
     require(fixture.dirty.layout_roots() == std::vector<ryn::runtime::NodeId>{target_node},
             "level change did not invalidate exactly the heading layout");
     require(fixture.layout_texts(), "level change did not synchronize");
-    require(fixture.host->components().component_count() == component_count
-                && fixture.host->mounted_texts()[0].component == target_component
-                && fixture.scene.node(fixture.host->mounted_texts()[0].scene) == target_node,
+    require(fixture.host->components().component_count() == component_count &&
+                fixture.host->mounted_texts()[0].component == target_component &&
+                fixture.scene.node(fixture.host->mounted_texts()[0].scene) == target_node,
             "level change changed the heading component identity");
     const auto& typography = ryn::resolve_theme().typography();
-    require(fixture.text_state(0).measurement().content_bounds.bottom < bottom_before
-                && fixture.text_state(0).measurement().content_bounds.bottom
-                    > typography.headings[4].font_size * 0.5F,
+    require(fixture.text_state(0).measurement().content_bounds.bottom < bottom_before &&
+                fixture.text_state(0).measurement().content_bounds.bottom > typography.headings[4].font_size * 0.5F,
             "level change did not re-resolve the heading tokens");
     require(fixture.text_state(1).counters().shape_count == sibling_shape_before,
             "level change reshaped an unrelated sibling");
@@ -377,10 +346,9 @@ void test_reactive_props_stay_local() {
     const auto component_count = fixture.host->components().component_count();
     fixture.dirty.clear();
 
-    require(content.set(ryn::String{u8"Second 中文"}),
-            "Typography content Signal did not propagate");
-    require(fixture.dirty.layout_roots() == std::vector<ryn::runtime::NodeId>{target_node}
-                && fixture.host->components().component_count() == component_count,
+    require(content.set(ryn::String{u8"Second 中文"}), "Typography content Signal did not propagate");
+    require(fixture.dirty.layout_roots() == std::vector<ryn::runtime::NodeId>{target_node} &&
+                fixture.host->components().component_count() == component_count,
             "Typography content update remounted a component or missed its node");
     require(fixture.layout_texts(), "Typography content update did not synchronize");
     require(fixture.text_state(1).counters().shape_count == sibling_shape_before,
@@ -388,10 +356,9 @@ void test_reactive_props_stay_local() {
 
     fixture.dirty.clear();
     const auto& colors = ryn::resolve_theme().typography().colors;
-    require(type.set(ryn::TypographyType::Danger),
-            "Typography type Signal did not propagate");
-    require(fixture.dirty.material_nodes() == std::vector<ryn::runtime::NodeId>{target_node}
-                && fixture.dirty.layout_roots().empty(),
+    require(type.set(ryn::TypographyType::Danger), "Typography type Signal did not propagate");
+    require(fixture.dirty.material_nodes() == std::vector<ryn::runtime::NodeId>{target_node} &&
+                fixture.dirty.layout_roots().empty(),
             "Typography type change was not a material-only invalidation");
     require(fixture.layout_texts(), "Typography type update did not synchronize");
     require(fixture.mounted_color(0) == channels(colors.error),
@@ -403,19 +370,16 @@ void test_theme_update_rescales_headings_without_remount() {
     ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
     fixture.host->mount(ryn::Content{[&] {
         ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
-            ryn::Title(ryn::TitleProps{}.content(u8"Themed heading")
-                .level(ryn::TypographyLevel::H1));
-        }});
+                       ryn::Title(ryn::TitleProps{}.content(u8"Themed heading").level(ryn::TypographyLevel::H1));
+                   }});
         ryn::Text(ryn::TypographyProps{}.content(u8"Stable sibling"));
     }});
     require(fixture.layout_texts(), "themed Typography fixture did not synchronize");
     const auto target_node = fixture.scene.node(fixture.host->mounted_texts()[0].scene);
     const auto component_count = fixture.host->components().component_count();
     const auto sibling_shape_before = fixture.text_state(1).counters().shape_count;
-    const auto heading_baseline_before =
-        fixture.text_state(0).measurement().lines.front().baseline;
-    const auto heading_bottom_before =
-        fixture.text_state(0).measurement().content_bounds.bottom;
+    const auto heading_baseline_before = fixture.text_state(0).measurement().lines.front().baseline;
+    const auto heading_bottom_before = fixture.text_state(0).measurement().content_bounds.bottom;
     fixture.dirty.clear();
 
     auto compact = ryn::ThemeConfig{};
@@ -427,9 +391,8 @@ void test_theme_update_rescales_headings_without_remount() {
     // Compact lowers the base size, so the heading level scales down and its
     // baseline and line box both move up.
     const auto& compact_lines = fixture.text_state(0).measurement().lines;
-    require(fixture.text_state(0).measurement().content_bounds.bottom
-                    < heading_bottom_before
-                && compact_lines.front().baseline < heading_baseline_before,
+    require(fixture.text_state(0).measurement().content_bounds.bottom < heading_bottom_before &&
+                compact_lines.front().baseline < heading_baseline_before,
             "heading did not rescale from the Typography Component Token group");
     require(fixture.host->components().component_count() == component_count,
             "Typography Theme update remounted the component");
@@ -444,22 +407,26 @@ void test_decoration_layers_metrics_reflow_and_material_updates() {
     ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
     fixture.host->mount(ryn::Content{[&] {
         ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
-            ryn::Paragraph(ryn::TypographyProps{}.content(u8"Decorated text")
-                .code(true).mark(true).underline(underline).strikethrough(true));
-        }});
+                       ryn::Paragraph(ryn::TypographyProps{}
+                                          .content(u8"Decorated text")
+                                          .code(true)
+                                          .mark(true)
+                                          .underline(underline)
+                                          .strikethrough(true));
+                   }});
     }});
     require(fixture.layout_texts(), "decoration layout failed");
-    require(fixture.host->synchronize_scene_fragments([](auto) {
-        return std::optional<ryn::input::InteractionId>{}; }), "glyph fragment was not published");
+    require(fixture.host->synchronize_scene_fragments([](auto) { return std::optional<ryn::input::InteractionId>{}; }),
+            "glyph fragment was not published");
     static_cast<void>(fixture.surfaces->compact_effects({0, 0, 640, 360}));
     fixture.composer->rebuild({0, 0, 640, 360});
     auto commands = fixture.composer->ordered_scene().commands();
-    require(commands.size() == 4 && commands[0].kind == ryn::graphics::SceneDrawKind::quad
-        && commands[1].kind == ryn::graphics::SceneDrawKind::rounded_effect
-        && commands[2].kind == ryn::graphics::SceneDrawKind::glyph
-        && commands[3].kind == ryn::graphics::SceneDrawKind::quad
-        && commands[0].instance_count == 2 && commands[3].instance_count == 1,
-        "decorations were not layered before and after glyphs");
+    require(commands.size() == 4 && commands[0].kind == ryn::graphics::SceneDrawKind::quad &&
+                commands[1].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
+                commands[2].kind == ryn::graphics::SceneDrawKind::glyph &&
+                commands[3].kind == ryn::graphics::SceneDrawKind::quad && commands[0].instance_count == 2 &&
+                commands[3].instance_count == 1,
+            "decorations were not layered before and after glyphs");
     const auto shape_before = fixture.text_state(0).counters().shape_count;
     const auto measure_before = fixture.text_state(0).counters().measure_count;
     require(underline.set(true) && fixture.layout_texts(), "reactive underline did not synchronize");
@@ -471,55 +438,53 @@ void test_decoration_layers_metrics_reflow_and_material_updates() {
     const auto& token = ryn::resolve_theme().typography().code;
     const auto size = text.shaped().default_metrics.logical_pixel_size;
     const float glyph_top = node.bounds.y + token.padding_block_start_em * (14 * token.font_scale) + token.border_width;
-    const float expected_y = glyph_top + text.measurement().lines[0].baseline
-        - text.shaped().default_metrics.underline_position * (14 * token.font_scale);
+    const float expected_y = glyph_top + text.measurement().lines[0].baseline -
+                             text.shaped().default_metrics.underline_position * (14 * token.font_scale);
     const auto& quad = fixture.surfaces->instances().at(commands.back().first_instance);
-    require(near(quad.bounds[1], expected_y)
-        && near(quad.bounds[3],
-            text.shaped().default_metrics.underline_thickness * (14 * token.font_scale)),
-        "underline does not follow the font's em-relative position and thickness");
-    require(size == 12 && text.counters().shape_count == shape_before
-        && text.counters().measure_count == measure_before,
-        "decoration flags reshaped or remeasured text");
+    require(near(quad.bounds[1], expected_y) &&
+                near(quad.bounds[3], text.shaped().default_metrics.underline_thickness * (14 * token.font_scale)),
+            "underline does not follow the font's em-relative position and thickness");
+    require(size == 12 && text.counters().shape_count == shape_before &&
+                text.counters().measure_count == measure_before,
+            "decoration flags reshaped or remeasured text");
     auto changed = ryn::ThemeConfig{};
     changed.typography.tokens.code.background = ryn::Color::rgba8(50, 60, 70);
     fixture.surfaces->instances().clear_dirty_ranges();
     fixture.dirty.clear();
-    require(config.set(changed) && fixture.dirty.layout_roots().empty()
-        && fixture.layout_texts(), "decoration color requested layout");
-    require(fixture.text_state(0).counters().shape_count == shape_before
-        && fixture.text_state(0).counters().measure_count == measure_before
-        && fixture.surfaces->instances().geometry_dirty_ranges().empty()
-        && !fixture.surfaces->instances().material_dirty_ranges().empty(),
-        "decoration color was not a material-only update");
+    require(config.set(changed) && fixture.dirty.layout_roots().empty() && fixture.layout_texts(),
+            "decoration color requested layout");
+    require(fixture.text_state(0).counters().shape_count == shape_before &&
+                fixture.text_state(0).counters().measure_count == measure_before &&
+                fixture.surfaces->instances().geometry_dirty_ranges().empty() &&
+                !fixture.surfaces->instances().material_dirty_ranges().empty(),
+            "decoration color was not a material-only update");
     const auto component = fixture.host->mounted_texts()[0].component;
-    require(fixture.host->destroy(component) && fixture.surfaces->size() == 0
-        && fixture.surfaces->instances().size() == 0, "decoration teardown leaked ranges");
+    require(fixture.host->destroy(component) && fixture.surfaces->size() == 0 &&
+                fixture.surfaces->instances().size() == 0,
+            "decoration teardown leaked ranges");
 }
 
 void test_multiline_decoration_ranges_translation_and_clip() {
     Fixture fixture;
     fixture.enable_surfaces();
     ryn::Signal<ryn::String> content{ryn::String{u8"One\nTwo\nThree\nFour\nFive\nSix\nSeven\nEight\nNine\nTen"}};
-    fixture.host->mount(ryn::Content{[&] {
-        ryn::Paragraph(ryn::TypographyProps{}.content(content).underline(true).strikethrough(true));
-    }});
+    fixture.host->mount(ryn::Content{
+        [&] { ryn::Paragraph(ryn::TypographyProps{}.content(content).underline(true).strikethrough(true)); }});
     require(fixture.layout_texts(), "multiline decorations failed");
     require(fixture.surfaces->instances().size() == 20, "multiline decorations retained the 16-quad surface limit");
     const auto count = fixture.host->components().component_count();
-    require(content.set(ryn::String{u8"One line"}) && fixture.layout_texts()
-        && fixture.surfaces->instances().size() == 2
-        && fixture.host->components().component_count() == count,
-        "decoration reflow did not resize ranges while preserving identity");
+    require(content.set(ryn::String{u8"One line"}) && fixture.layout_texts() &&
+                fixture.surfaces->instances().size() == 2 && fixture.host->components().component_count() == count,
+            "decoration reflow did not resize ranges while preserving identity");
     auto& node = fixture.nodes.require(fixture.scene.node(fixture.host->mounted_texts()[0].scene));
     const auto before = fixture.surfaces->instances().instances()[0].bounds;
     node.translation = {5, 7};
     require(fixture.layout_texts(), "translated decoration layout failed");
     const auto after = fixture.surfaces->instances().instances()[0].bounds;
-    require(near(after[0] - before[0], 5.0F)
-        && near(after[1] - before[1], 7.0F), "decorations did not follow scroll translation");
+    require(near(after[0] - before[0], 5.0F) && near(after[1] - before[1], 7.0F),
+            "decorations did not follow scroll translation");
     require(fixture.host->layout_and_synchronize({640, 360}, {20, 0, 10, 360}, {12, 16}, 4),
-        "clipped decoration synchronization failed");
+            "clipped decoration synchronization failed");
     for (const auto& q : fixture.surfaces->instances().instances()) {
         const auto x = q.bounds[0];
         const auto right = x + q.bounds[2];
@@ -532,31 +497,32 @@ void test_disabled_secondary_uses_component_color_and_subscription() {
     ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
     fixture.host->mount(ryn::Content{[&] {
         ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
-            ryn::Text(ryn::TypographyProps{}.content(u8"Disabled secondary")
-                .type(ryn::TypographyType::Secondary).disabled(true));
-        }});
+                       ryn::Text(ryn::TypographyProps{}
+                                     .content(u8"Disabled secondary")
+                                     .type(ryn::TypographyType::Secondary)
+                                     .disabled(true));
+                   }});
     }});
     require(fixture.layout_texts(), "disabled fixture failed");
     require(fixture.mounted_color(0) == channels(ryn::resolve_theme().typography().colors.disabled),
-        "secondary overrode disabled precedence");
+            "secondary overrode disabled precedence");
     auto changed = ryn::ThemeConfig{};
     changed.typography.tokens.disabled = ryn::Color::rgba8(70, 80, 90);
-    require(config.set(changed) && fixture.layout_texts()
-        && fixture.mounted_color(0) == channels(*changed.typography.tokens.disabled),
-        "disabled text missed its Typography component token subscription");
+    require(config.set(changed) && fixture.layout_texts() &&
+                fixture.mounted_color(0) == channels(*changed.typography.tokens.disabled),
+            "disabled text missed its Typography component token subscription");
 }
 
 void test_decoration_geometry_at_display_scales() {
     Fixture fixture;
     fixture.enable_surfaces();
-    fixture.host->mount(ryn::Content{[] {
-        ryn::Title(ryn::TitleProps{}.content(u8"Title").underline(true).strikethrough(true));
-    }});
+    fixture.host->mount(
+        ryn::Content{[] { ryn::Title(ryn::TitleProps{}.content(u8"Title").underline(true).strikethrough(true)); }});
     const auto identity = fixture.host->mounted_texts()[0].component;
     for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
         fixture.host->set_font_resolver([&](auto, auto, auto, std::uint32_t size) {
-            auto loaded = fixture.fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0,
-                ryn::font::FontRasterConfig{size, scale});
+            auto loaded =
+                fixture.fonts->load_font_file(RYNUI_VALIDATION_LATIN_FONT, 0, ryn::font::FontRasterConfig{size, scale});
             require(static_cast<bool>(loaded), "scaled font failed to load");
             return std::vector{loaded.font};
         });
@@ -566,13 +532,12 @@ void test_decoration_geometry_at_display_scales() {
         const auto& node = fixture.nodes.require(fixture.scene.node(fixture.host->mounted_texts()[0].scene));
         const float top = node.bounds.y + 1.2F * 38;
         const auto& quad = fixture.surfaces->instances().instances()[0];
-        require(near(quad.bounds[1],
-            top + text.measurement().lines[0].baseline - metrics.underline_position * 38)
-            && near(quad.bounds[3], metrics.underline_thickness * 38)
-            && fixture.host->mounted_texts()[0].component == identity,
-            "display scale changed decoration units or component identity");
+        require(near(quad.bounds[1], top + text.measurement().lines[0].baseline - metrics.underline_position * 38) &&
+                    near(quad.bounds[3], metrics.underline_thickness * 38) &&
+                    fixture.host->mounted_texts()[0].component == identity,
+                "display scale changed decoration units or component identity");
         require(near(node.bounds.height, 38 * (1.2F + 0.5F) + 38 * 1.4F),
-            "heading margins do not follow the Typography component tokens");
+                "heading margins do not follow the Typography component tokens");
     }
 }
 
@@ -588,12 +553,11 @@ void test_ellipsis_longest_grapheme_prefix_and_cache() {
     const auto component = fixture.host->mounted_texts()[0].component;
     std::string previous;
     for (const float width : {40.0F, 75.0F, 120.0F, 75.0F, 40.0F}) {
-        require(fixture.host->layout_and_synchronize({width, 360}, {0, 0, width, 360}),
-            "ellipsis layout failed");
+        require(fixture.host->layout_and_synchronize({width, 360}, {0, 0, width, 360}), "ellipsis layout failed");
         const auto& state = fixture.text_state(0);
-        require(state.truncated() && state.content() == full.view()
-            && state.measurement().lines.size() == 1 && state.measurement().width <= width,
-            "ellipsis did not retain the original or overflowed its row");
+        require(state.truncated() && state.content() == full.view() && state.measurement().lines.size() == 1 &&
+                    state.measurement().width <= width,
+                "ellipsis did not retain the original or overflowed its row");
         ryn::input::TextBoundaryMap boundaries;
         require(boundaries.assign(full.bytes()), "oracle boundaries failed");
         std::string expected;
@@ -603,53 +567,53 @@ void test_ellipsis_longest_grapheme_prefix_and_cache() {
             const auto shaped = fixture.engine.shape(value.view(), fixture.chain);
             require(static_cast<bool>(shaped), "oracle shape failed");
             const auto measured = fixture.engine.measure(shaped.text, {22, width});
-            if (measured && !measured.measurement.overflow && measured.measurement.lines.size() == 1)
+            if (measured && !measured.measurement.overflow && measured.measurement.lines.size() == 1) {
                 expected = candidate;
+            }
         }
-        require(state.display_content().bytes() == expected, "ellipsis did not choose the longest whole grapheme prefix");
+        require(state.display_content().bytes() == expected,
+                "ellipsis did not choose the longest whole grapheme prefix");
         const auto counters = state.counters();
-        require(fixture.text_state(0).synchronize()
-            && fixture.text_state(0).counters().shape_count == counters.shape_count
-            && fixture.text_state(0).counters().measure_count == counters.measure_count,
-            "repeated same-width ellipsis query reshaped or measured");
-        require(fixture.host->mounted_texts()[0].component == component
-            && fixture.scene.size() == 2, "candidate search polluted retained text scenes or remounted");
+        require(fixture.text_state(0).synchronize() &&
+                    fixture.text_state(0).counters().shape_count == counters.shape_count &&
+                    fixture.text_state(0).counters().measure_count == counters.measure_count,
+                "repeated same-width ellipsis query reshaped or measured");
+        require(fixture.host->mounted_texts()[0].component == component && fixture.scene.size() == 2,
+                "candidate search polluted retained text scenes or remounted");
     }
     auto expanded = ryn::TypographyEllipsis{};
     expanded.expanded = true;
-    require(config.set(expanded) && fixture.layout_texts(40)
-        && fixture.text_state(0).display_content() == full.view()
-        && !fixture.text_state(0).truncated(), "expanded ellipsis did not restore the full content");
+    require(config.set(expanded) && fixture.layout_texts(40) &&
+                fixture.text_state(0).display_content() == full.view() && !fixture.text_state(0).truncated(),
+            "expanded ellipsis did not restore the full content");
     expanded.expanded = false;
-    require(config.set(expanded) && fixture.layout_texts(40)
-        && fixture.text_state(0).truncated(), "ellipsis collapse failed");
+    require(config.set(expanded) && fixture.layout_texts(40) && fixture.text_state(0).truncated(),
+            "ellipsis collapse failed");
 }
 
 void test_ellipsis_degenerate_rows_suffix_and_explicit_newlines() {
     Fixture fixture;
-    ryn::text::TextState state(fixture.engine, ryn::String{u8"First\nSecond\nThird"},
-        fixture.chain, 14, {22, 100});
-    require(state.set_ellipsis({2}) && state.synchronize()
-        && state.measurement().lines.size() == 2
-        && state.display_content().bytes().find('\n') != std::string_view::npos,
-        "multiline ellipsis collapsed explicit newlines");
-    require(state.set_ellipsis({0}) && state.synchronize()
-        && state.display_content().empty() && state.measurement().lines.empty(),
-        "rows zero produced a suffix or line boxes");
-    require(state.set_ellipsis({1}) && state.set_width_constraint(1)
-        && state.synchronize() && state.display_content().empty()
-        && state.measurement().lines.size() == 1 && state.measurement().height == 22,
-        "unfittable grapheme did not preserve an empty line box");
-    require(state.set_width_constraint(0) && state.synchronize()
-        && state.measurement().lines.empty(), "zero width produced line boxes");
+    ryn::text::TextState state(fixture.engine, ryn::String{u8"First\nSecond\nThird"}, fixture.chain, 14, {22, 100});
+    require(state.set_ellipsis({2}) && state.synchronize() && state.measurement().lines.size() == 2 &&
+                state.display_content().bytes().find('\n') != std::string_view::npos,
+            "multiline ellipsis collapsed explicit newlines");
+    require(state.set_ellipsis({0}) && state.synchronize() && state.display_content().empty() &&
+                state.measurement().lines.empty(),
+            "rows zero produced a suffix or line boxes");
+    require(state.set_ellipsis({1}) && state.set_width_constraint(1) && state.synchronize() &&
+                state.display_content().empty() && state.measurement().lines.size() == 1 &&
+                state.measurement().height == 22,
+            "unfittable grapheme did not preserve an empty line box");
+    require(state.set_width_constraint(0) && state.synchronize() && state.measurement().lines.empty(),
+            "zero width produced line boxes");
     const ryn::String missing{u8"\U0010ffff"};
-    require(state.set_ellipsis({1, missing}) && state.set_width_constraint(60)
-        && state.synchronize() && !state.suffix_available()
-        && state.display_content().bytes().find(missing.bytes()) == std::string_view::npos,
-        "missing suffix was rendered as a replacement glyph");
-    require(state.set_ellipsis({std::nullopt}) && state.synchronize()
-        && state.display_content() == state.content() && state.measurement().lines.size() >= 3,
-        "unlimited rows did not restore original content");
+    require(state.set_ellipsis({1, missing}) && state.set_width_constraint(60) && state.synchronize() &&
+                !state.suffix_available() &&
+                state.display_content().bytes().find(missing.bytes()) == std::string_view::npos,
+            "missing suffix was rendered as a replacement glyph");
+    require(state.set_ellipsis({std::nullopt}) && state.synchronize() && state.display_content() == state.content() &&
+                state.measurement().lines.size() >= 3,
+            "unlimited rows did not restore original content");
 }
 
 } // namespace

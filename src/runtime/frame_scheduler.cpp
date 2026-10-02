@@ -29,14 +29,22 @@ void FrameRequestState::request_invalidation_frame() noexcept {
 }
 
 void FrameRequestState::bind_wake_sink(FrameWakeSink& sink) {
-    if (wake_sink_ && wake_sink_ != &sink) throw std::logic_error("Frame requests already have a pump");
+    if (wake_sink_ && wake_sink_ != &sink) {
+        throw std::logic_error("Frame requests already have a pump");
+    }
     wake_sink_ = &sink;
 }
+
 void FrameRequestState::unbind_wake_sink(FrameWakeSink& sink) noexcept {
-    if (wake_sink_ == &sink) wake_sink_ = nullptr;
+    if (wake_sink_ == &sink) {
+        wake_sink_ = nullptr;
+    }
 }
+
 void FrameRequestState::animation_schedule_changed() noexcept {
-    if (wake_sink_) wake_sink_->wake();
+    if (wake_sink_) {
+        wake_sink_->wake();
+    }
 }
 
 bool FrameRequestState::consume_request() noexcept {
@@ -59,31 +67,21 @@ std::uint64_t FrameEventSource::now_milliseconds() const noexcept {
     return static_cast<std::uint64_t>(now().count_microseconds() / 1000);
 }
 
-OnDemandFrameLoop::OnDemandFrameLoop(
-    FrameRequestState& requests,
-    FrameEventSource& events,
-    FrameSubmitter& submitter,
-    std::uint32_t idle_wait_milliseconds) noexcept
-    : requests_(&requests),
-      events_(&events),
-      submitter_(&submitter),
+OnDemandFrameLoop::OnDemandFrameLoop(FrameRequestState& requests, FrameEventSource& events, FrameSubmitter& submitter,
+                                     std::uint32_t idle_wait_milliseconds) noexcept
+    : requests_(&requests), events_(&events), submitter_(&submitter),
       idle_wait_milliseconds_(std::max(1U, idle_wait_milliseconds)) {}
 
-OnDemandFrameLoop::OnDemandFrameLoop(
-    FrameRequestState& requests,
-    FrameEventSource& events,
-    FrameSubmitter& submitter,
-    FrameDeadlineSource& deadlines,
-    std::uint32_t idle_wait_milliseconds) noexcept
-    : requests_(&requests),
-      events_(&events),
-      submitter_(&submitter),
-      deadlines_(&deadlines),
+OnDemandFrameLoop::OnDemandFrameLoop(FrameRequestState& requests, FrameEventSource& events, FrameSubmitter& submitter,
+                                     FrameDeadlineSource& deadlines, std::uint32_t idle_wait_milliseconds) noexcept
+    : requests_(&requests), events_(&events), submitter_(&submitter), deadlines_(&deadlines),
       idle_wait_milliseconds_(std::max(1U, idle_wait_milliseconds)) {}
 
 FrameLoopStep OnDemandFrameLoop::step() {
     const auto initial = tick();
-    if (initial != FrameLoopStep::idle) return initial;
+    if (initial != FrameLoopStep::idle) {
+        return initial;
+    }
     ++counters_.idle_waits;
     if (events_->wait_for_frame_event(wait_timeout(events_->now()))) {
         ++counters_.event_wakes;
@@ -92,18 +90,32 @@ FrameLoopStep OnDemandFrameLoop::step() {
     return tick();
 }
 
-FrameLoopStep OnDemandFrameLoop::tick() { return tick(events_->now()); }
+FrameLoopStep OnDemandFrameLoop::tick() {
+    return tick(events_->now());
+}
 
 std::optional<animation::AnimationTime> OnDemandFrameLoop::next_deadline() const {
     return deadlines_ ? deadlines_->next_deadline() : std::nullopt;
 }
 
 FrameLoopStep OnDemandFrameLoop::tick(animation::AnimationTime candidate) {
-    if (ticking_) throw std::logic_error("Frame tick must not reenter");
+    if (ticking_) {
+        throw std::logic_error("Frame tick must not reenter");
+    }
     ticking_ = true;
-    struct Guard { bool& flag; ~Guard() { flag = false; } } guard{ticking_};
+
+    struct Guard {
+        bool& flag;
+
+        ~Guard() {
+            flag = false;
+        }
+    } guard{ticking_};
+
     const auto observation = time_cursor_.observe(candidate);
-    if (observation.clamped) ++counters_.clamped_timestamps;
+    if (observation.clamped) {
+        ++counters_.clamped_timestamps;
+    }
     const auto frame_time = observation.effective;
     if (events_->poll_frame_event()) {
         requests_->request_frame();
@@ -120,8 +132,7 @@ const FrameLoopCounters& OnDemandFrameLoop::counters() const noexcept {
     return counters_;
 }
 
-bool OnDemandFrameLoop::request_due_deadline(
-    animation::AnimationTime now) {
+bool OnDemandFrameLoop::request_due_deadline(animation::AnimationTime now) {
     if (deadlines_ == nullptr) {
         return false;
     }
@@ -138,8 +149,7 @@ bool OnDemandFrameLoop::request_due_deadline(
     return true;
 }
 
-std::uint32_t OnDemandFrameLoop::wait_timeout(
-    animation::AnimationTime now) const {
+std::uint32_t OnDemandFrameLoop::wait_timeout(animation::AnimationTime now) const {
     if (deadlines_ == nullptr) {
         return idle_wait_milliseconds_;
     }
@@ -152,18 +162,13 @@ std::uint32_t OnDemandFrameLoop::wait_timeout(
     }
     const auto remaining = *deadline - now;
     const auto microseconds = remaining.count_microseconds();
-    const auto rounded_milliseconds = microseconds / 1000
-        + (microseconds % 1000 == 0 ? 0 : 1);
-    const auto bounded = std::min<std::uint64_t>(
-        static_cast<std::uint64_t>(rounded_milliseconds),
-        std::numeric_limits<std::uint32_t>::max());
-    return std::min(
-        idle_wait_milliseconds_, static_cast<std::uint32_t>(bounded));
+    const auto rounded_milliseconds = microseconds / 1000 + (microseconds % 1000 == 0 ? 0 : 1);
+    const auto bounded = std::min<std::uint64_t>(static_cast<std::uint64_t>(rounded_milliseconds),
+                                                 std::numeric_limits<std::uint32_t>::max());
+    return std::min(idle_wait_milliseconds_, static_cast<std::uint32_t>(bounded));
 }
 
-FrameLoopStep OnDemandFrameLoop::submit_pending(
-    animation::AnimationTime frame_time,
-    bool deadline_due) {
+FrameLoopStep OnDemandFrameLoop::submit_pending(animation::AnimationTime frame_time, bool deadline_due) {
     if (!requests_->consume_request()) {
         return FrameLoopStep::idle;
     }
@@ -172,27 +177,31 @@ FrameLoopStep OnDemandFrameLoop::submit_pending(
     if (deadline_due) {
         ++counters_.animation_frames;
     }
-    const bool had_animation_deadline = deadlines_ != nullptr
-        && deadlines_->next_deadline().has_value();
+    const bool had_animation_deadline = deadlines_ != nullptr && deadlines_->next_deadline().has_value();
     requests_->submitting_ = true;
     requests_->submission_revision_ = *pending_presentation_revision_;
+
     struct Submission {
         bool& flag;
         std::uint64_t& revision;
         std::optional<std::uint64_t>& pending;
-        ~Submission() { if (pending) pending = revision; flag = false; }
+
+        ~Submission() {
+            if (pending) {
+                pending = revision;
+            }
+            flag = false;
+        }
     } submission{requests_->submitting_, requests_->submission_revision_, pending_presentation_revision_};
+
     const auto result = submitter_->submit_frame(frame_time);
     switch (result) {
     case FrameSubmissionResult::submitted:
         pending_presentation_revision_.reset();
         ++counters_.submissions;
-        counters_.last_submission_microseconds = static_cast<std::uint64_t>(
-            frame_time.count_microseconds());
-        counters_.last_submission_milliseconds =
-            counters_.last_submission_microseconds / 1000;
-        if (had_animation_deadline && deadlines_ != nullptr
-                && !deadlines_->next_deadline().has_value()) {
+        counters_.last_submission_microseconds = static_cast<std::uint64_t>(frame_time.count_microseconds());
+        counters_.last_submission_milliseconds = counters_.last_submission_microseconds / 1000;
+        if (had_animation_deadline && deadlines_ != nullptr && !deadlines_->next_deadline().has_value()) {
             ++counters_.idle_after_animation;
         }
         return FrameLoopStep::submitted;

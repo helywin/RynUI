@@ -11,7 +11,9 @@
 namespace {
 
 struct TestState final {};
+
 struct ChildrenSlot final {};
+
 using Children = ryn::SlotContent<ChildrenSlot>;
 
 void require(bool condition, const char* message) {
@@ -38,52 +40,36 @@ void test_depth_first_fragment_order_destroy_and_generation_reuse() {
     components.mount(ryn::Content{[&] {
         auto& build = ryn::runtime::require_component_build_context();
         root = build.mount_component<TestState>();
-        root_before_first = build.register_scene_fragment(
-            root, ryn::runtime::SceneFragmentPlacement::before_children);
-        stale = build.register_scene_fragment(
-            root, ryn::runtime::SceneFragmentPlacement::before_children);
-        require(components.remove_scene_fragment(stale),
-                "live fragment could not be removed during mount");
-        replacement = build.register_scene_fragment(
-            root, ryn::runtime::SceneFragmentPlacement::before_children);
+        root_before_first = build.register_scene_fragment(root, ryn::runtime::SceneFragmentPlacement::before_children);
+        stale = build.register_scene_fragment(root, ryn::runtime::SceneFragmentPlacement::before_children);
+        require(components.remove_scene_fragment(stale), "live fragment could not be removed during mount");
+        replacement = build.register_scene_fragment(root, ryn::runtime::SceneFragmentPlacement::before_children);
         root_before_second = replacement;
-        root_after = build.register_scene_fragment(
-            root, ryn::runtime::SceneFragmentPlacement::after_children);
+        root_after = build.register_scene_fragment(root, ryn::runtime::SceneFragmentPlacement::after_children);
         build.mount_slot(root, Children{[&] {
-            auto& child_build = ryn::runtime::require_component_build_context();
-            first_child = child_build.mount_component<TestState>();
-            first_before = child_build.register_scene_fragment(
-                first_child,
-                ryn::runtime::SceneFragmentPlacement::before_children);
-            first_after = child_build.register_scene_fragment(
-                first_child,
-                ryn::runtime::SceneFragmentPlacement::after_children);
-            second_child = child_build.mount_component<TestState>();
-            second_before = child_build.register_scene_fragment(
-                second_child,
-                ryn::runtime::SceneFragmentPlacement::before_children);
-        }});
+                             auto& child_build = ryn::runtime::require_component_build_context();
+                             first_child = child_build.mount_component<TestState>();
+                             first_before = child_build.register_scene_fragment(
+                                 first_child, ryn::runtime::SceneFragmentPlacement::before_children);
+                             first_after = child_build.register_scene_fragment(
+                                 first_child, ryn::runtime::SceneFragmentPlacement::after_children);
+                             second_child = child_build.mount_component<TestState>();
+                             second_before = child_build.register_scene_fragment(
+                                 second_child, ryn::runtime::SceneFragmentPlacement::before_children);
+                         }});
     }});
 
-    require(stale.index == replacement.index
-                && stale.generation != replacement.generation
-                && !components.contains(stale)
-                && components.contains(replacement),
+    require(stale.index == replacement.index && stale.generation != replacement.generation &&
+                !components.contains(stale) && components.contains(replacement),
             "fragment slot reuse did not advance generation");
     const std::vector expected{
-        root_before_first,
-        root_before_second,
-        first_before,
-        first_after,
-        second_before,
-        root_after,
+        root_before_first, root_before_second, first_before, first_after, second_before, root_after,
     };
     std::vector<ryn::runtime::SceneFragmentId> actual;
     for (const auto& entry : components.paint_traversal()) {
         actual.push_back(entry.fragment);
     }
-    require(actual == expected,
-            "Component fragment traversal is not stable depth-first order");
+    require(actual == expected, "Component fragment traversal is not stable depth-first order");
 
     std::atomic<bool> wrong_thread_rejected{false};
     std::thread worker([&] {
@@ -98,26 +84,23 @@ void test_depth_first_fragment_order_destroy_and_generation_reuse() {
             "wrong-thread component paint traversal was not rejected");
 
     require(components.destroy(first_child), "child component destroy failed");
-    require(!components.contains(first_before)
-                && !components.contains(first_after),
+    require(!components.contains(first_before) && !components.contains(first_after),
             "destroyed component retained scene fragments");
     actual.clear();
     for (const auto& entry : components.paint_traversal()) {
         actual.push_back(entry.fragment);
     }
     require(actual == std::vector<ryn::runtime::SceneFragmentId>({
-                root_before_first,
-                root_before_second,
-                second_before,
-                root_after,
-            }),
+                          root_before_first,
+                          root_before_second,
+                          second_before,
+                          root_after,
+                      }),
             "destroyed subtree remained in paint traversal");
 
     require(components.destroy(root), "root component destroy failed");
-    require(components.paint_traversal().empty()
-                && !components.contains(root_before_first)
-                && !components.contains(root_after)
-                && !components.contains(second_before),
+    require(components.paint_traversal().empty() && !components.contains(root_before_first) &&
+                !components.contains(root_after) && !components.contains(second_before),
             "root destroy retained traversal fragments");
 }
 

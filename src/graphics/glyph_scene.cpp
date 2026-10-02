@@ -30,8 +30,7 @@ struct QuantizedPhysicalOrigin final {
 [[nodiscard]] QuantizedPhysicalOrigin quantize_physical_x(float value) noexcept {
     const float position = std::round(value * 4.0F) * 0.25F;
     const float integer_position = std::floor(position);
-    auto phase_index = static_cast<std::uint8_t>(
-        std::lround((position - integer_position) * 4.0F));
+    auto phase_index = static_cast<std::uint8_t>(std::lround((position - integer_position) * 4.0F));
     if (phase_index == 4) {
         phase_index = 0;
     }
@@ -63,43 +62,35 @@ void validate_placement(const GlyphPlacement& placement) {
     };
     validate_finite(values, "Glyph placement values must be finite");
     validate_finite(placement.color, "Glyph color values must be finite");
-    if (placement.viewport_pixels.width <= 0.0F
-            || placement.viewport_pixels.height <= 0.0F
-            || placement.clip_pixels.width < 0.0F
-            || placement.clip_pixels.height < 0.0F
-            || placement.opacity < 0.0F
-            || placement.opacity > 1.0F) {
+    if (placement.viewport_pixels.width <= 0.0F || placement.viewport_pixels.height <= 0.0F ||
+        placement.clip_pixels.width < 0.0F || placement.clip_pixels.height < 0.0F || placement.opacity < 0.0F ||
+        placement.opacity > 1.0F) {
         throw std::invalid_argument("Glyph placement dimensions or opacity are invalid");
     }
 }
 
-[[nodiscard]] std::array<float, 4> clip_bounds(
-    runtime::Rect pixels,
-    runtime::Size) noexcept {
+[[nodiscard]] std::array<float, 4> clip_bounds(runtime::Rect pixels, runtime::Size) noexcept {
     return {
-        pixels.x, pixels.y, pixels.x + pixels.width, pixels.y + pixels.height,
+        pixels.x,
+        pixels.y,
+        pixels.x + pixels.width,
+        pixels.y + pixels.height,
     };
 }
 
-[[nodiscard]] PendingGlyphText build_text(
-    font::FontRuntime& fonts,
-    GlyphAtlas& atlas,
-    const text::ShapedText& shaped,
-    const text::TextMeasurement& measurement,
-    const GlyphPlacement& placement) {
+[[nodiscard]] PendingGlyphText build_text(font::FontRuntime& fonts, GlyphAtlas& atlas, const text::ShapedText& shaped,
+                                          const text::TextMeasurement& measurement, const GlyphPlacement& placement) {
     validate_placement(placement);
     const auto clip = clip_bounds(placement.clip_pixels, placement.viewport_pixels);
 
     PendingGlyphText pending;
     for (const text::TextLine& line : measurement.lines) {
-        const std::uint64_t line_end =
-            static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
+        const std::uint64_t line_end = static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
         if (line_end > shaped.glyphs.size()) {
             throw std::invalid_argument("TextMeasurement references glyphs outside ShapedText");
         }
         float pen_x = 0.0F;
-        for (std::size_t glyph_index = line.glyph_begin;
-                glyph_index < line_end; ++glyph_index) {
+        for (std::size_t glyph_index = line.glyph_begin; glyph_index < line_end; ++glyph_index) {
             const text::ShapedGlyph& glyph = shaped.glyphs[glyph_index];
             const auto metrics = fonts.metrics(glyph.font);
             if (!metrics) {
@@ -113,14 +104,13 @@ void validate_placement(const GlyphPlacement& placement) {
                 return pending;
             }
             const float display_scale = metrics.metrics.display_scale;
-            const float baseline_x = placement.origin_pixels.x
-                + pen_x + glyph.offset_x + placement.translation_pixels.x;
-            const float baseline_y = placement.origin_pixels.y
-                + line.baseline - glyph.offset_y + placement.translation_pixels.y;
+            const float baseline_x =
+                placement.origin_pixels.x + pen_x + glyph.offset_x + placement.translation_pixels.x;
+            const float baseline_y =
+                placement.origin_pixels.y + line.baseline - glyph.offset_y + placement.translation_pixels.y;
             const auto physical_x = quantize_physical_x(baseline_x * display_scale);
             const float physical_y = std::round(baseline_y * display_scale);
-            const GlyphAtlasResult atlas_result = atlas.ensure(
-                fonts, glyph.font, glyph.glyph_id, physical_x.phase);
+            const GlyphAtlasResult atlas_result = atlas.ensure(fonts, glyph.font, glyph.glyph_id, physical_x.phase);
             if (!atlas_result) {
                 pending.error = atlas_result.error;
                 return pending;
@@ -128,17 +118,17 @@ void validate_placement(const GlyphPlacement& placement) {
             const GlyphAtlasEntry& entry = *atlas_result.entry;
             if (!entry.empty) {
                 const float inverse_display_scale = 1.0F / entry.display_scale;
-                const float left_pixels = (
-                    physical_x.integer_position + static_cast<float>(
-                        entry.bearing_x - static_cast<int>(glyph_atlas_padding)))
-                    * inverse_display_scale;
-                const float top_pixels = (
-                    physical_y - static_cast<float>(
-                        entry.bearing_y + static_cast<int>(glyph_atlas_padding)))
-                    * inverse_display_scale;
+                const float left_pixels =
+                    (physical_x.integer_position +
+                     static_cast<float>(entry.bearing_x - static_cast<int>(glyph_atlas_padding))) *
+                    inverse_display_scale;
+                const float top_pixels =
+                    (physical_y - static_cast<float>(entry.bearing_y + static_cast<int>(glyph_atlas_padding))) *
+                    inverse_display_scale;
                 pending.instances.push_back({
                     {
-                        left_pixels, top_pixels,
+                        left_pixels,
+                        top_pixels,
                         entry.padded_rect.width * inverse_display_scale,
                         entry.padded_rect.height * inverse_display_scale,
                     },
@@ -147,12 +137,10 @@ void validate_placement(const GlyphPlacement& placement) {
                     placement.color,
                     {0.0F, 0.0F, placement.opacity, 0.0F},
                 });
-                const std::uint32_t local_index =
-                    static_cast<std::uint32_t>(pending.instances.size() - 1);
-                if (!pending.draw_ranges.empty()
-                        && pending.draw_ranges.back().atlas_page == entry.page
-                        && pending.draw_ranges.back().instances.first
-                                + pending.draw_ranges.back().instances.count == local_index) {
+                const std::uint32_t local_index = static_cast<std::uint32_t>(pending.instances.size() - 1);
+                if (!pending.draw_ranges.empty() && pending.draw_ranges.back().atlas_page == entry.page &&
+                    pending.draw_ranges.back().instances.first + pending.draw_ranges.back().instances.count ==
+                        local_index) {
                     ++pending.draw_ranges.back().instances.count;
                 } else {
                     pending.draw_ranges.push_back({entry.page, {local_index, 1}});
@@ -164,9 +152,7 @@ void validate_placement(const GlyphPlacement& placement) {
     return pending;
 }
 
-void offset_draw_ranges(
-    std::vector<GlyphDrawRange>& ranges,
-    std::uint32_t first) noexcept {
+void offset_draw_ranges(std::vector<GlyphDrawRange>& ranges, std::uint32_t first) noexcept {
     for (GlyphDrawRange& range : ranges) {
         range.instances.first += first;
     }
@@ -174,8 +160,7 @@ void offset_draw_ranges(
 
 } // namespace
 
-GlyphInstanceRange GlyphInstanceStore::append(
-    std::span<const GlyphInstance> instances) {
+GlyphInstanceRange GlyphInstanceStore::append(std::span<const GlyphInstance> instances) {
     if (instances_.size() + instances.size() > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("GlyphInstanceStore exhausted instance indices");
     }
@@ -187,9 +172,7 @@ GlyphInstanceRange GlyphInstanceStore::append(
     return range;
 }
 
-GlyphInstanceRange GlyphInstanceStore::replace(
-    GlyphInstanceRange range,
-    std::span<const GlyphInstance> instances) {
+GlyphInstanceRange GlyphInstanceStore::replace(GlyphInstanceRange range, std::span<const GlyphInstance> instances) {
     require_range(range);
     const std::uint64_t replacement_size =
         static_cast<std::uint64_t>(instances_.size()) - range.count + instances.size();
@@ -216,8 +199,7 @@ GlyphInstanceRange GlyphInstanceStore::replace(
             }
         }
         geometry_dirty_ranges_.reserve_for_append();
-        instances_.insert(
-            instances_.begin() + range.first, source.begin(), source.end());
+        instances_.insert(instances_.begin() + range.first, source.begin(), source.end());
         material_dirty_ranges_.discard_shifted(range.first);
         geometry_dirty_ranges_.discard_shifted(range.first);
         geometry_dirty_ranges_.append({
@@ -229,20 +211,13 @@ GlyphInstanceRange GlyphInstanceStore::replace(
 
     std::vector<GlyphInstance> replacement;
     replacement.reserve(static_cast<std::size_t>(replacement_size));
-    replacement.insert(
-        replacement.end(),
-        instances_.begin(),
-        instances_.begin() + range.first);
+    replacement.insert(replacement.end(), instances_.begin(), instances_.begin() + range.first);
     replacement.insert(replacement.end(), instances.begin(), instances.end());
-    replacement.insert(
-        replacement.end(),
-        instances_.begin() + range.first + range.count,
-        instances_.end());
+    replacement.insert(replacement.end(), instances_.begin() + range.first + range.count, instances_.end());
     instances_.swap(replacement);
 
     if (range.count == instances.size()) {
-        geometry_dirty_ranges_.append({
-            range.first, static_cast<std::uint32_t>(instances.size())});
+        geometry_dirty_ranges_.append({range.first, static_cast<std::uint32_t>(instances.size())});
     } else {
         material_dirty_ranges_.discard_shifted(range.first);
         geometry_dirty_ranges_.discard_shifted(range.first);
@@ -275,10 +250,7 @@ std::span<const std::byte> GlyphInstanceStore::bytes(GlyphInstanceRange range) c
     return std::as_bytes(std::span(instances_).subspan(range.first, range.count));
 }
 
-std::size_t GlyphInstanceStore::update_material(
-    GlyphInstanceRange range,
-    std::array<float, 4> color,
-    float opacity) {
+std::size_t GlyphInstanceStore::update_material(GlyphInstanceRange range, std::array<float, 4> color, float opacity) {
     require_range(range);
     validate_finite(color, "Glyph color values must be finite");
     if (!std::isfinite(opacity) || opacity < 0.0F || opacity > 1.0F) {
@@ -303,16 +275,13 @@ std::size_t GlyphInstanceStore::update_material(
         ++updated;
     }
     if (dirty_start) {
-        material_dirty_ranges_.append({
-            *dirty_start, range.first + range.count - *dirty_start});
+        material_dirty_ranges_.append({*dirty_start, range.first + range.count - *dirty_start});
     }
     return updated;
 }
 
-std::size_t GlyphInstanceStore::update_geometry(
-    GlyphInstanceRange range,
-    std::array<float, 4> clip,
-    std::array<float, 2> translation) {
+std::size_t GlyphInstanceStore::update_geometry(GlyphInstanceRange range, std::array<float, 4> clip,
+                                                std::array<float, 2> translation) {
     require_range(range);
     validate_finite(clip, "Glyph clip bounds must be finite");
     validate_finite(translation, "Glyph translation must be finite");
@@ -340,19 +309,16 @@ std::size_t GlyphInstanceStore::update_geometry(
         ++updated;
     }
     if (dirty_start) {
-        geometry_dirty_ranges_.append({
-            *dirty_start, range.first + range.count - *dirty_start});
+        geometry_dirty_ranges_.append({*dirty_start, range.first + range.count - *dirty_start});
     }
     return updated;
 }
 
-std::span<const GlyphInstanceRange>
-GlyphInstanceStore::material_dirty_ranges() const noexcept {
+std::span<const GlyphInstanceRange> GlyphInstanceStore::material_dirty_ranges() const noexcept {
     return material_dirty_ranges_.ranges();
 }
 
-std::span<const GlyphInstanceRange>
-GlyphInstanceStore::geometry_dirty_ranges() const noexcept {
+std::span<const GlyphInstanceRange> GlyphInstanceStore::geometry_dirty_ranges() const noexcept {
     return geometry_dirty_ranges_.ranges();
 }
 
@@ -365,7 +331,8 @@ void GlyphInstanceStore::mark_all_dirty() {
     clear_dirty_ranges();
     if (!instances_.empty()) {
         geometry_dirty_ranges_.append({
-            0, static_cast<std::uint32_t>(instances_.size()),
+            0,
+            static_cast<std::uint32_t>(instances_.size()),
         });
     }
 }
@@ -377,12 +344,8 @@ void GlyphInstanceStore::require_range(GlyphInstanceRange range) const {
     }
 }
 
-GlyphSceneResult GlyphScene::append_text(
-    font::FontRuntime& fonts,
-    GlyphAtlas& atlas,
-    const text::ShapedText& shaped,
-    const text::TextMeasurement& measurement,
-    GlyphPlacement placement) {
+GlyphSceneResult GlyphScene::append_text(font::FontRuntime& fonts, GlyphAtlas& atlas, const text::ShapedText& shaped,
+                                         const text::TextMeasurement& measurement, GlyphPlacement placement) {
     auto pending = build_text(fonts, atlas, shaped, measurement, placement);
     if (!pending) {
         return {{}, std::move(pending.error)};
@@ -392,13 +355,9 @@ GlyphSceneResult GlyphScene::append_text(
     return {{inserted, std::move(pending.draw_ranges)}, {}};
 }
 
-GlyphSceneResult GlyphScene::replace_text(
-    GlyphInstanceRange range,
-    font::FontRuntime& fonts,
-    GlyphAtlas& atlas,
-    const text::ShapedText& shaped,
-    const text::TextMeasurement& measurement,
-    GlyphPlacement placement) {
+GlyphSceneResult GlyphScene::replace_text(GlyphInstanceRange range, font::FontRuntime& fonts, GlyphAtlas& atlas,
+                                          const text::ShapedText& shaped, const text::TextMeasurement& measurement,
+                                          GlyphPlacement placement) {
     auto pending = build_text(fonts, atlas, shaped, measurement, placement);
     if (!pending) {
         return {{}, std::move(pending.error)};
@@ -408,14 +367,10 @@ GlyphSceneResult GlyphScene::replace_text(
     return {{replaced, std::move(pending.draw_ranges)}, {}};
 }
 
-std::size_t GlyphScene::update_geometry(
-    GlyphInstanceRange range,
-    GlyphPlacement placement) {
+std::size_t GlyphScene::update_geometry(GlyphInstanceRange range, GlyphPlacement placement) {
     validate_placement(placement);
-    return instances_.update_geometry(
-        range,
-        clip_bounds(placement.clip_pixels, placement.viewport_pixels),
-        {0.0F, 0.0F});
+    return instances_.update_geometry(range, clip_bounds(placement.clip_pixels, placement.viewport_pixels),
+                                      {0.0F, 0.0F});
 }
 
 GlyphInstanceStore& GlyphScene::instances() noexcept {
@@ -430,9 +385,7 @@ void OrderedScene::reserve(std::size_t command_capacity) {
     commands_.reserve(command_capacity);
 }
 
-void OrderedScene::append_quad(
-    std::uint32_t first_instance,
-    std::uint32_t instance_count) {
+void OrderedScene::append_quad(std::uint32_t first_instance, std::uint32_t instance_count) {
     append({
         SceneDrawKind::quad,
         first_instance,
@@ -474,14 +427,11 @@ void OrderedScene::append(SceneDrawCommand command) {
     }
     if (!commands_.empty()) {
         SceneDrawCommand& previous = commands_.back();
-        const bool compatible = previous.kind == command.kind
-            && previous.atlas_page == command.atlas_page
-            && static_cast<std::uint64_t>(previous.first_instance)
-                    + previous.instance_count == command.first_instance;
+        const bool compatible =
+            previous.kind == command.kind && previous.atlas_page == command.atlas_page &&
+            static_cast<std::uint64_t>(previous.first_instance) + previous.instance_count == command.first_instance;
         if (compatible) {
-            const std::uint64_t merged =
-                static_cast<std::uint64_t>(previous.instance_count)
-                + command.instance_count;
+            const std::uint64_t merged = static_cast<std::uint64_t>(previous.instance_count) + command.instance_count;
             if (merged > std::numeric_limits<std::uint32_t>::max()) {
                 throw std::length_error("Ordered Scene command range exceeds uint32_t");
             }

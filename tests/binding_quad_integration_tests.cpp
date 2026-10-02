@@ -32,10 +32,8 @@ public:
 
     void release_buffer(ryn::detail::QuadGpuBufferHandle) noexcept override {}
 
-    bool upload(
-        ryn::detail::QuadGpuBufferHandle handle,
-        std::size_t offset,
-        std::span<const std::byte> bytes) override {
+    bool upload(ryn::detail::QuadGpuBufferHandle handle, std::size_t offset,
+                std::span<const std::byte> bytes) override {
         if (handle != this || offset + bytes.size() > buffer.size()) {
             error = "invalid fake upload";
             return false;
@@ -66,9 +64,7 @@ void test_bindings_update_only_the_target_quad_range() {
     layout.set_layout(root, flex);
     layout.set_layout(first, ryn::layout::LeafLayout{{100.0F, 80.0F}});
     layout.set_layout(second, ryn::layout::LeafLayout{{100.0F, 80.0F}});
-    static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(
-        viewport.width,
-        viewport.height)));
+    static_cast<void>(layout.layout(root, ryn::layout::Constraints::fixed(viewport.width, viewport.height)));
 
     ryn::runtime::DirtyQueues dirty(nodes);
     ryn::runtime::NodePropertyWriter properties(nodes, dirty);
@@ -79,14 +75,12 @@ void test_bindings_update_only_the_target_quad_range() {
     ryn::graphics::QuadScene scene(nodes);
     const auto first_quad = scene.add_quad(first, 8.0F);
     const auto second_quad = scene.add_quad(second, 12.0F);
-    require(first_quad.instance_index == 0 && second_quad.instance_index == 1,
-            "Quad instance ordering is incorrect");
+    require(first_quad.instance_index == 0 && second_quad.instance_index == 1, "Quad instance ordering is incorrect");
 
     RecordingUploadApi upload_api;
     ryn::detail::QuadGpuBuffer gpu_buffer(upload_api, scene.instances(), {400, 200, 1});
-    const std::vector<std::byte> original_first(
-        upload_api.buffer.begin(),
-        upload_api.buffer.begin() + sizeof(ryn::detail::QuadGpuInstance));
+    const std::vector<std::byte> original_first(upload_api.buffer.begin(),
+                                                upload_api.buffer.begin() + sizeof(ryn::detail::QuadGpuInstance));
     const auto initial_measure = nodes.require(second).measure_count;
     const auto initial_place = nodes.require(second).place_count;
 
@@ -94,27 +88,18 @@ void test_bindings_update_only_the_target_quad_range() {
     ryn::Signal<float> opacity{1.0F};
     ryn::Signal<ryn::runtime::Point> translation{{0.0F, 0.0F}};
     ryn::Scope scope;
-    const auto color_connection = ryn::connect_binding(
-        scope,
-        ryn::bind([&] { return color.get(); }),
-        [&](ryn::runtime::Color value) {
+    const auto color_connection =
+        ryn::connect_binding(scope, ryn::bind([&] { return color.get(); }), [&](ryn::runtime::Color value) {
             static_cast<void>(properties.set_color(second, value));
         });
-    const auto opacity_connection = ryn::connect_binding(
-        scope,
-        ryn::bind([&] { return opacity.get(); }),
-        [&](float value) {
-            static_cast<void>(properties.set_opacity(second, value));
-        });
-    const auto translation_connection = ryn::connect_binding(
-        scope,
-        ryn::bind([&] { return translation.get(); }),
-        [&](ryn::runtime::Point value) {
+    const auto opacity_connection =
+        ryn::connect_binding(scope, ryn::bind([&] { return opacity.get(); }),
+                             [&](float value) { static_cast<void>(properties.set_opacity(second, value)); });
+    const auto translation_connection =
+        ryn::connect_binding(scope, ryn::bind([&] { return translation.get(); }), [&](ryn::runtime::Point value) {
             static_cast<void>(properties.set_translation(second, value));
         });
-    require(color_connection.active()
-                && opacity_connection.active()
-                && translation_connection.active(),
+    require(color_connection.active() && opacity_connection.active() && translation_connection.active(),
             "Binding connection is inactive after mount");
     require(dirty.material_nodes().empty() && dirty.transform_nodes().empty(),
             "equal initial Binding values dirtied the Node");
@@ -136,31 +121,24 @@ void test_bindings_update_only_the_target_quad_range() {
     gpu_buffer.synchronize(scene.instances(), {400, 200, 1});
     require(updated == 1 && scene.counters().instance_updates == 1,
             "dirty queues did not coalesce to one Quad instance update");
-    require(gpu_buffer.counters().range_uploads == 1,
-            "Quad update did not issue exactly one range upload");
+    require(gpu_buffer.counters().range_uploads == 1, "Quad update did not issue exactly one range upload");
     require(upload_api.upload_offsets == std::vector<std::size_t>({
-                0,
-                sizeof(ryn::detail::QuadGpuInstance),
-            }),
+                                             0,
+                                             sizeof(ryn::detail::QuadGpuInstance),
+                                         }),
             "Quad update uploaded the wrong instance byte range");
-    require(std::equal(
-                original_first.begin(),
-                original_first.end(),
-                upload_api.buffer.begin()),
+    require(std::equal(original_first.begin(), original_first.end(), upload_api.buffer.begin()),
             "unrelated first Quad bytes changed");
 
     const auto& instance = scene.instances().at(second_quad.instance_index);
-    require(instance.color == std::array<float, 4>{0.2F, 0.8F, 0.4F, 0.9F}
-                && instance.opacity == 0.6F,
+    require(instance.color == std::array<float, 4>{0.2F, 0.8F, 0.4F, 0.9F} && instance.opacity == 0.6F,
             "Material Binding did not reach the target Quad instance");
-    require(near(instance.translation[0], 10.0F)
-                && near(instance.translation[1], 5.0F),
+    require(near(instance.translation[0], 10.0F) && near(instance.translation[1], 5.0F),
             "Transform Binding did not reach the target Quad instance");
-    require(nodes.require(second).measure_count == initial_measure
-                && nodes.require(second).place_count == initial_place,
+    require(nodes.require(second).measure_count == initial_measure &&
+                nodes.require(second).place_count == initial_place,
             "targeted Quad update reran Measure or Place");
-    require(scene.counters().primitive_rebuilds == 2,
-            "targeted update rebuilt Quad topology");
+    require(scene.counters().primitive_rebuilds == 2, "targeted update rebuilt Quad topology");
 }
 
 } // namespace

@@ -10,8 +10,7 @@
 namespace ryn::graphics {
 
 // Range is an internal {first, count} instance range with uint32_t fields.
-template <typename Range>
-class DirtyRangeAccumulator final {
+template <typename Range> class DirtyRangeAccumulator final {
 public:
     void reserve(std::size_t capacity) {
         ranges_.reserve(capacity);
@@ -27,10 +26,8 @@ public:
         }
         if (!ranges_.empty()) {
             Range& last = ranges_.back();
-            const auto last_end =
-                static_cast<std::uint64_t>(last.first) + last.count;
-            const auto range_end =
-                static_cast<std::uint64_t>(range.first) + range.count;
+            const auto last_end = static_cast<std::uint64_t>(last.first) + last.count;
+            const auto range_end = static_cast<std::uint64_t>(range.first) + range.count;
             if (range.first <= last_end && last.first <= range_end) {
                 const auto first = std::min(last.first, range.first);
                 last = {
@@ -69,13 +66,10 @@ public:
             for (const Range candidate : ranges_) {
                 if (merged != 0) {
                     Range& prior = ranges_[merged - 1];
-                    const auto prior_end =
-                        static_cast<std::uint64_t>(prior.first) + prior.count;
-                    const auto candidate_end =
-                        static_cast<std::uint64_t>(candidate.first) + candidate.count;
+                    const auto prior_end = static_cast<std::uint64_t>(prior.first) + prior.count;
+                    const auto candidate_end = static_cast<std::uint64_t>(candidate.first) + candidate.count;
                     if (candidate.first <= prior_end) {
-                        prior.count = static_cast<std::uint32_t>(
-                            std::max(prior_end, candidate_end) - prior.first);
+                        prior.count = static_cast<std::uint32_t>(std::max(prior_end, candidate_end) - prior.first);
                         continue;
                     }
                 }

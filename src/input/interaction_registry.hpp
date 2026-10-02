@@ -18,8 +18,7 @@
 namespace ryn::input {
 
 struct InteractionId final {
-    static constexpr std::uint32_t invalid_index =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t invalid_index = std::numeric_limits<std::uint32_t>::max();
 
     std::uint32_t index{invalid_index};
     std::uint32_t generation{0};
@@ -86,9 +85,7 @@ struct InteractionRecord final {
 
 class InteractionRegistry final {
 public:
-    InteractionRegistry(
-        runtime::ComponentHost& components,
-        runtime::NodeStore& nodes) noexcept;
+    InteractionRegistry(runtime::ComponentHost& components, runtime::NodeStore& nodes) noexcept;
 
     void reserve(std::size_t capacity);
     [[nodiscard]] InteractionId create(InteractionRegistration registration);
@@ -115,15 +112,11 @@ private:
 
     void ensure_owner_thread() const;
     void validate_registration(const InteractionRegistration& registration) const;
-    [[nodiscard]] bool node_belongs_to_component(
-        runtime::NodeId node,
-        runtime::ComponentId component) const;
-    [[nodiscard]] bool component_is_same_or_ancestor(
-        runtime::ComponentId ancestor,
-        runtime::ComponentId component) const;
+    [[nodiscard]] bool node_belongs_to_component(runtime::NodeId node, runtime::ComponentId component) const;
+    [[nodiscard]] bool component_is_same_or_ancestor(runtime::ComponentId ancestor,
+                                                     runtime::ComponentId component) const;
     [[nodiscard]] InteractionRecord* find_slot_record(InteractionId id) noexcept;
-    [[nodiscard]] const InteractionRecord* find_slot_record(
-        InteractionId id) const noexcept;
+    [[nodiscard]] const InteractionRecord* find_slot_record(InteractionId id) const noexcept;
     [[nodiscard]] bool associations_are_live(const InteractionRecord& record) const;
     [[nodiscard]] std::uint32_t acquire_slot();
     static void advance_generation(Slot& slot) noexcept;
@@ -169,14 +162,10 @@ struct HitTestDiagnostics final {
 
 class HitTestSnapshot final {
 public:
-    HitTestSnapshot(
-        InteractionRegistry& registry,
-        runtime::NodeStore& nodes) noexcept;
+    HitTestSnapshot(InteractionRegistry& registry, runtime::NodeStore& nodes) noexcept;
 
     void reserve(std::size_t capacity);
-    void rebuild(
-        std::span<const HitTestPaintEntry> paint_entries,
-        runtime::Rect window_clip);
+    void rebuild(std::span<const HitTestPaintEntry> paint_entries, runtime::Rect window_clip);
     std::size_t refresh(std::span<const runtime::NodeId> dirty_nodes);
     std::size_t refresh_interaction(InteractionId interaction);
     [[nodiscard]] std::optional<InteractionId> hit_test(runtime::Point point);
@@ -191,21 +180,13 @@ private:
         std::uint32_t epoch{};
     };
 
-    [[nodiscard]] HitTestRecord make_record(
-        const HitTestPaintEntry& entry,
-        std::size_t paint_order,
-        std::span<const HitTestRecord> preceding,
-        runtime::Rect window_clip) const;
+    [[nodiscard]] HitTestRecord make_record(const HitTestPaintEntry& entry, std::size_t paint_order,
+                                            std::span<const HitTestRecord> preceding, runtime::Rect window_clip) const;
     bool refresh_record(std::size_t index);
-    [[nodiscard]] const HitTestRecord* find_preceding(
-        InteractionId id,
-        std::span<const HitTestRecord> records) const noexcept;
-    [[nodiscard]] bool snapshot_descends_from(
-        const HitTestRecord& record,
-        InteractionId ancestor) const noexcept;
-    [[nodiscard]] bool node_descends_from(
-        runtime::NodeId node,
-        runtime::NodeId ancestor) const noexcept;
+    [[nodiscard]] const HitTestRecord* find_preceding(InteractionId id,
+                                                      std::span<const HitTestRecord> records) const noexcept;
+    [[nodiscard]] bool snapshot_descends_from(const HitTestRecord& record, InteractionId ancestor) const noexcept;
+    [[nodiscard]] bool node_descends_from(runtime::NodeId node, runtime::NodeId ancestor) const noexcept;
 
     InteractionRegistry* registry_;
     runtime::NodeStore* nodes_;

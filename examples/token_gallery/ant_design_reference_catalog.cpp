@@ -22,10 +22,8 @@ std::span<const AntDesignReferenceEntry> ant_design_reference_entries() noexcept
     return kAntDesignReferenceEntries;
 }
 
-const AntDesignReferenceEntry* find_ant_design_reference_entry(
-    std::string_view identity) noexcept {
-    const auto found = std::ranges::find(
-        kAntDesignReferenceEntries, identity, &AntDesignReferenceEntry::identity);
+const AntDesignReferenceEntry* find_ant_design_reference_entry(std::string_view identity) noexcept {
+    const auto found = std::ranges::find(kAntDesignReferenceEntries, identity, &AntDesignReferenceEntry::identity);
     return found == kAntDesignReferenceEntries.end() ? nullptr : &*found;
 }
 

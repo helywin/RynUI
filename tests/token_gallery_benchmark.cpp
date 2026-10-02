@@ -18,11 +18,10 @@ void require(bool condition, const char* message) {
     }
 }
 
-void append_shadow_list(
-    ryn::graphics::RoundedEffectStore& store,
-    const ryn::ShadowList& shadows) {
+void append_shadow_list(ryn::graphics::RoundedEffectStore& store, const ryn::ShadowList& shadows) {
     const ryn::graphics::LogicalRoundedRect shape{
-        {40.0F, 40.0F, 172.0F, 32.0F}, 6.0F,
+        {40.0F, 40.0F, 172.0F, 32.0F},
+        6.0F,
     };
     for (const auto& layer : shadows.layers()) {
         static_cast<void>(store.add(ryn::graphics::make_shadow_effect(shape, layer)));
@@ -74,26 +73,18 @@ int main() {
         for (const auto* list : lists) {
             append_shadow_list(store, *list);
         }
-        static_cast<void>(store.add(ryn::graphics::make_outline_effect(
-            {{40.0F, 40.0F, 172.0F, 32.0F}, 6.0F},
-            3.0F,
-            1.0F,
-            ryn::Color::rgba8(22, 119, 255))));
+        static_cast<void>(store.add(ryn::graphics::make_outline_effect({{40.0F, 40.0F, 172.0F, 32.0F}, 6.0F}, 3.0F,
+                                                                       1.0F, ryn::Color::rgba8(22, 119, 255))));
         require(store.compact({0.0F, 0.0F, 320.0F, 160.0F}),
                 "Token Gallery benchmark did not compact the initial effect set");
         const auto layer_count = store.live_count();
-        require(layer_count == 36,
-                "Token Gallery benchmark shadow inventory lost a layer");
+        require(layer_count == 36, "Token Gallery benchmark shadow inventory lost a layer");
 
-        const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - started);
-        require(elapsed < std::chrono::seconds(30),
-                "Token Gallery benchmark exceeded the hang guard");
-        std::cout
-            << "theme_resolutions=" << iterations * 4
-            << " effect_layers=" << layer_count
-            << " elapsed_us=" << elapsed.count()
-            << " checksum=" << checksum << '\n';
+        const auto elapsed =
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started);
+        require(elapsed < std::chrono::seconds(30), "Token Gallery benchmark exceeded the hang guard");
+        std::cout << "theme_resolutions=" << iterations * 4 << " effect_layers=" << layer_count
+                  << " elapsed_us=" << elapsed.count() << " checksum=" << checksum << '\n';
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

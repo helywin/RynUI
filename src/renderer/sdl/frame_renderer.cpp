@@ -9,42 +9,28 @@ namespace {
 
 class SdlGpuFrameApi final : public GpuFrameApi {
 public:
-    GpuCommandBufferHandle acquire_command_buffer(
-        GpuDeviceHandle device) override {
+    GpuCommandBufferHandle acquire_command_buffer(GpuDeviceHandle device) override {
         return SDL_AcquireGPUCommandBuffer(static_cast<SDL_GPUDevice*>(device));
     }
 
-    bool wait_and_acquire_swapchain(
-        GpuCommandBufferHandle command_buffer,
-        PlatformWindowHandle window,
-        GpuTextureHandle& texture,
-        std::uint32_t& width,
-        std::uint32_t& height) override {
+    bool wait_and_acquire_swapchain(GpuCommandBufferHandle command_buffer, PlatformWindowHandle window,
+                                    GpuTextureHandle& texture, std::uint32_t& width, std::uint32_t& height) override {
         SDL_GPUTexture* sdl_texture = nullptr;
-        const bool acquired = SDL_WaitAndAcquireGPUSwapchainTexture(
-            static_cast<SDL_GPUCommandBuffer*>(command_buffer),
-            static_cast<SDL_Window*>(window),
-            &sdl_texture,
-            &width,
-            &height);
+        const bool acquired =
+            SDL_WaitAndAcquireGPUSwapchainTexture(static_cast<SDL_GPUCommandBuffer*>(command_buffer),
+                                                  static_cast<SDL_Window*>(window), &sdl_texture, &width, &height);
         texture = sdl_texture;
         return acquired;
     }
 
-    GpuRenderPassHandle begin_clear_pass(
-        GpuCommandBufferHandle command_buffer,
-        GpuTextureHandle texture,
-        ClearColor color) override {
+    GpuRenderPassHandle begin_clear_pass(GpuCommandBufferHandle command_buffer, GpuTextureHandle texture,
+                                         ClearColor color) override {
         SDL_GPUColorTargetInfo target{};
         target.texture = static_cast<SDL_GPUTexture*>(texture);
         target.clear_color = SDL_FColor{color.red, color.green, color.blue, color.alpha};
         target.load_op = SDL_GPU_LOADOP_CLEAR;
         target.store_op = SDL_GPU_STOREOP_STORE;
-        return SDL_BeginGPURenderPass(
-            static_cast<SDL_GPUCommandBuffer*>(command_buffer),
-            &target,
-            1,
-            nullptr);
+        return SDL_BeginGPURenderPass(static_cast<SDL_GPUCommandBuffer*>(command_buffer), &target, 1, nullptr);
     }
 
     void end_render_pass(GpuRenderPassHandle render_pass) noexcept override {
@@ -52,13 +38,11 @@ public:
     }
 
     bool submit(GpuCommandBufferHandle command_buffer) override {
-        return SDL_SubmitGPUCommandBuffer(
-            static_cast<SDL_GPUCommandBuffer*>(command_buffer));
+        return SDL_SubmitGPUCommandBuffer(static_cast<SDL_GPUCommandBuffer*>(command_buffer));
     }
 
     bool cancel(GpuCommandBufferHandle command_buffer) noexcept override {
-        return SDL_CancelGPUCommandBuffer(
-            static_cast<SDL_GPUCommandBuffer*>(command_buffer));
+        return SDL_CancelGPUCommandBuffer(static_cast<SDL_GPUCommandBuffer*>(command_buffer));
     }
 
     [[nodiscard]] const char* last_error() const noexcept override {
@@ -78,8 +62,7 @@ std::string copy_error(GpuFrameApi& api, const char* fallback) {
 
 } // namespace
 
-FrameRenderer::FrameRenderer(SdlGpuBinding& binding)
-    : FrameRenderer(binding, real_gpu_frame_api()) {}
+FrameRenderer::FrameRenderer(SdlGpuBinding& binding) : FrameRenderer(binding, real_gpu_frame_api()) {}
 
 FrameRenderer::FrameRenderer(SdlGpuBinding& binding, GpuFrameApi& api) noexcept
     : platform_(&binding.host()), binding_(&binding), api_(&api) {}
@@ -104,12 +87,8 @@ FrameResult FrameRenderer::clear_and_present(ClearColor color) {
     GpuTextureHandle swapchain_texture = nullptr;
     std::uint32_t swapchain_width = 0;
     std::uint32_t swapchain_height = 0;
-    if (!api_->wait_and_acquire_swapchain(
-            command_buffer,
-            platform_->window(),
-            swapchain_texture,
-            swapchain_width,
-            swapchain_height)) {
+    if (!api_->wait_and_acquire_swapchain(command_buffer, platform_->window(), swapchain_texture, swapchain_width,
+                                          swapchain_height)) {
         auto message = copy_error(*api_, "Failed to acquire GPU swapchain texture");
         api_->cancel(command_buffer);
         return FrameResult{FrameStatus::failed, std::move(message)};
@@ -128,10 +107,7 @@ FrameResult FrameRenderer::clear_and_present(ClearColor color) {
         return FrameResult{FrameStatus::no_swapchain_texture, {}};
     }
 
-    const auto render_pass = api_->begin_clear_pass(
-        command_buffer,
-        swapchain_texture,
-        color);
+    const auto render_pass = api_->begin_clear_pass(command_buffer, swapchain_texture, color);
     if (render_pass == nullptr) {
         auto message = copy_error(*api_, "Failed to begin GPU render pass");
         api_->submit(command_buffer);

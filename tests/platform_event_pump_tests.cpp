@@ -126,7 +126,10 @@ using ryn::input::WindowInputEvent;
 
 class FakePlatformApi final : public PlatformApi {
 public:
-    bool init_video() override { return true; }
+    bool init_video() override {
+        return true;
+    }
+
     void quit() noexcept override {}
 
     PlatformWindowHandle create_window(const char*, int, int, bool) override {
@@ -135,14 +138,14 @@ public:
 
     void destroy_window(PlatformWindowHandle) noexcept override {}
 
+    [[nodiscard]] const char* last_error() const noexcept override {
+        return "";
+    }
 
-
-
-    [[nodiscard]] const char* last_error() const noexcept override { return ""; }
-    [[nodiscard]] PlatformWindowMetrics window_metrics(
-        PlatformWindowHandle) const noexcept override {
+    [[nodiscard]] PlatformWindowMetrics window_metrics(PlatformWindowHandle) const noexcept override {
         return {960, 640, 960, 640, 1.0F, 1.0F};
     }
+
     void delay(std::uint32_t) noexcept override {}
 
     void poll_events(PlatformWindowHandle, PlatformEvents& result) override {
@@ -178,10 +181,7 @@ public:
         result.suppressed_compatibility_mouse_events = 1;
     }
 
-    void wait_events(
-        PlatformWindowHandle,
-        std::uint32_t,
-        PlatformEvents& result) override {
+    void wait_events(PlatformWindowHandle, std::uint32_t, PlatformEvents& result) override {
         ++wait_calls;
         static_cast<void>(result.input.append(WindowInputEvent{
             WindowInputAction::focus_lost,
@@ -218,10 +218,8 @@ void test_owner_thread_pump_reuses_storage_without_allocation() {
     auto& state = *created.state;
 
     const auto& warmup = state.poll_events();
-    require(warmup.input.size() == 3,
-            "pump did not preserve move/scroll/key boundaries");
-    require(warmup.input.coalesced_move_count() == 1,
-            "pump did not diagnose consecutive move coalescing");
+    require(warmup.input.size() == 3, "pump did not preserve move/scroll/key boundaries");
+    require(warmup.input.coalesced_move_count() == 1, "pump did not diagnose consecutive move coalescing");
     const auto stable_capacity = warmup.input.capacity();
 
     constexpr std::uint64_t measured_polls = 1'000;
@@ -232,22 +230,17 @@ void test_owner_thread_pump_reuses_storage_without_allocation() {
     }
     allocation_probe::tracking.store(false, std::memory_order_relaxed);
 
-    require(allocation_probe::count.load(std::memory_order_relaxed) == 0,
-            "steady-state event pump allocated");
-    require(state.poll_events().input.capacity() == stable_capacity,
-            "event pump did not retain stable batch capacity");
+    require(allocation_probe::count.load(std::memory_order_relaxed) == 0, "steady-state event pump allocated");
+    require(state.poll_events().input.capacity() == stable_capacity, "event pump did not retain stable batch capacity");
 
     const auto diagnostics = state.event_diagnostics();
     const auto expected_polls = measured_polls + 2;
     require(diagnostics.poll_calls == expected_polls, "poll diagnostic count differs");
-    require(diagnostics.normalized_input_events == expected_polls * 4,
-            "normalized input diagnostic count differs");
-    require(diagnostics.coalesced_pointer_moves == expected_polls,
-            "move coalescing diagnostic count differs");
+    require(diagnostics.normalized_input_events == expected_polls * 4, "normalized input diagnostic count differs");
+    require(diagnostics.coalesced_pointer_moves == expected_polls, "move coalescing diagnostic count differs");
     require(diagnostics.suppressed_compatibility_mouse_events == expected_polls,
             "compatibility suppression diagnostic count differs");
-    require(diagnostics.frame_requested_pumps == expected_polls,
-            "frame request diagnostic count differs");
+    require(diagnostics.frame_requested_pumps == expected_polls, "frame request diagnostic count differs");
 }
 
 void test_wrong_thread_is_rejected_without_mutation() {
@@ -269,12 +262,9 @@ void test_wrong_thread_is_rejected_without_mutation() {
     });
     worker.join();
 
-    require(rejected.load(std::memory_order_relaxed),
-            "non-owner event pump was not rejected");
-    require(api.poll_calls == api_calls_before,
-            "non-owner event pump reached the platform API");
-    require(state.event_diagnostics() == before,
-            "non-owner event pump mutated diagnostics");
+    require(rejected.load(std::memory_order_relaxed), "non-owner event pump was not rejected");
+    require(api.poll_calls == api_calls_before, "non-owner event pump reached the platform API");
+    require(state.event_diagnostics() == before, "non-owner event pump mutated diagnostics");
 }
 
 void test_wait_pump_uses_the_same_batch_and_diagnostics() {
@@ -285,16 +275,13 @@ void test_wait_pump_uses_the_same_batch_and_diagnostics() {
 
     const auto& waited = state.wait_events(5);
     require(waited.input.size() == 2, "wait pump lost normalized input");
-    require(std::get<WindowInputEvent>(waited.input.events().front()).action
-                == WindowInputAction::focus_lost,
+    require(std::get<WindowInputEvent>(waited.input.events().front()).action == WindowInputAction::focus_lost,
             "wait pump event differs");
     const auto diagnostics = state.event_diagnostics();
-    require(diagnostics.wait_calls == 1 && diagnostics.poll_calls == 0,
-            "wait diagnostics were counted as poll calls");
+    require(diagnostics.wait_calls == 1 && diagnostics.poll_calls == 0, "wait diagnostics were counted as poll calls");
     require(std::holds_alternative<ScrollInputEvent>(waited.input.events()[1]),
             "wait pump changed focus/scroll event order");
-    require(diagnostics.normalized_input_events == 2,
-            "wait normalized input count differs");
+    require(diagnostics.normalized_input_events == 2, "wait normalized input count differs");
 }
 
 } // namespace

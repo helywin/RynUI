@@ -112,8 +112,7 @@ namespace {
 struct TestState final {};
 
 ryn::runtime::ComponentId mount_leaf() {
-    return ryn::runtime::require_component_build_context()
-        .mount_component<TestState>();
+    return ryn::runtime::require_component_build_context().mount_component<TestState>();
 }
 
 void require(bool condition, const char* message) {
@@ -125,10 +124,13 @@ void require(bool condition, const char* message) {
 class IdleEvents final : public ryn::runtime::FrameEventSource {
 public:
     ryn::animation::AnimationTime now() const noexcept override {
-        return ryn::animation::AnimationTime::microseconds(
-            static_cast<std::int64_t>(now_milliseconds_) * 1000);
+        return ryn::animation::AnimationTime::microseconds(static_cast<std::int64_t>(now_milliseconds_) * 1000);
     }
-    bool poll_frame_event() noexcept override { return false; }
+
+    bool poll_frame_event() noexcept override {
+        return false;
+    }
+
     bool wait_for_frame_event(std::uint32_t timeout) noexcept override {
         now_milliseconds_ += timeout;
         return false;
@@ -139,8 +141,7 @@ public:
 
 class CountingSubmitter final : public ryn::runtime::FrameSubmitter {
 public:
-    ryn::runtime::FrameSubmissionResult submit_frame(
-        ryn::animation::AnimationTime) override {
+    ryn::runtime::FrameSubmissionResult submit_frame(ryn::animation::AnimationTime) override {
         ++submissions;
         return ryn::runtime::FrameSubmissionResult::submitted;
     }
@@ -148,10 +149,7 @@ public:
     int submissions{0};
 };
 
-ryn::input::KeyboardInputEvent key(
-    ryn::input::Key value,
-    ryn::input::KeyAction action,
-    bool repeat = false) {
+ryn::input::KeyboardInputEvent key(ryn::input::Key value, ryn::input::KeyAction action, bool repeat = false) {
     return {value, action, ryn::input::KeyModifier::none, repeat};
 }
 
@@ -182,8 +180,11 @@ int main() {
                 {},
             });
             ryn::input::FocusHandlers handlers;
-            handlers.state_changed = [](ryn::input::FocusPresentation) {};
-            handlers.activate = [&] { ++activations; };
+            handlers.state_changed = [](ryn::input::FocusPresentation) {
+            };
+            handlers.activate = [&] {
+                ++activations;
+            };
             registry.set_focus_handlers(interactions[index], std::move(handlers));
         }
 
@@ -199,55 +200,38 @@ int main() {
             focus.dispatch(key(ryn::input::Key::tab, ryn::input::KeyAction::down));
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
-        const auto traversal_allocations = allocation_probe::count.load(
-            std::memory_order_relaxed);
-        require(traversal_allocations == 0,
-                "steady-state focus traversal allocated");
-        require(frames.consume_request(),
-                "focus traversal did not request a coalesced frame");
+        const auto traversal_allocations = allocation_probe::count.load(std::memory_order_relaxed);
+        require(traversal_allocations == 0, "steady-state focus traversal allocated");
+        require(frames.consume_request(), "focus traversal did not request a coalesced frame");
 
         const auto requests_before = frames.counters().requests;
         allocation_probe::count.store(0, std::memory_order_relaxed);
         allocation_probe::tracking.store(true, std::memory_order_relaxed);
         for (std::size_t index = 0; index < measured_events; ++index) {
-            focus.dispatch(key(
-                ryn::input::Key::enter,
-                ryn::input::KeyAction::down,
-                true));
+            focus.dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::down, true));
         }
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
-        const auto repeat_allocations = allocation_probe::count.load(
-            std::memory_order_relaxed);
-        require(repeat_allocations == 0,
-                "steady-state repeated keyboard input allocated");
-        require(frames.counters().requests == requests_before
-                    && !frames.pending() && activations == 0,
+        const auto repeat_allocations = allocation_probe::count.load(std::memory_order_relaxed);
+        require(repeat_allocations == 0, "steady-state repeated keyboard input allocated");
+        require(frames.counters().requests == requests_before && !frames.pending() && activations == 0,
                 "ignored key repeat requested a frame or activation");
 
         focus.dispatch(key(ryn::input::Key::space, ryn::input::KeyAction::down));
         focus.dispatch(key(ryn::input::Key::space, ryn::input::KeyAction::up));
-        require(frames.pending() && activations == 1,
-                "Space activation did not request its necessary frame");
+        require(frames.pending() && activations == 1, "Space activation did not request its necessary frame");
 
         IdleEvents events;
         CountingSubmitter submitter;
         ryn::runtime::OnDemandFrameLoop loop(frames, events, submitter, 1);
-        require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
-                "keyboard state frame was not submitted");
+        require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "keyboard state frame was not submitted");
         for (int index = 0; index < 120; ++index) {
-            require(loop.step() == ryn::runtime::FrameLoopStep::idle,
-                    "stable keyboard state did not return to idle");
+            require(loop.step() == ryn::runtime::FrameLoopStep::idle, "stable keyboard state did not return to idle");
         }
-        require(submitter.submissions == 1,
-                "stable keyboard state submitted continuously");
+        require(submitter.submissions == 1, "stable keyboard state submitted continuously");
 
-        std::cout
-            << "focus_events=" << measured_events
-            << " traversal_allocations=" << traversal_allocations
-            << " repeat_allocations=" << repeat_allocations
-            << " activations=" << activations
-            << " idle_submissions=" << submitter.submissions
-            << '\n';
+        std::cout << "focus_events=" << measured_events << " traversal_allocations=" << traversal_allocations
+                  << " repeat_allocations=" << repeat_allocations << " activations=" << activations
+                  << " idle_submissions=" << submitter.submissions << '\n';
     } catch (const std::exception& error) {
         allocation_probe::tracking.store(false, std::memory_order_relaxed);
         std::cerr << error.what() << '\n';

@@ -9,17 +9,20 @@
 namespace ryn::theme_runtime {
 
 Color ThemeScope::color_link_hover() const {
-    ensure_owner_thread(); record(TokenIdentity::map_color_link_hover);
+    ensure_owner_thread();
+    record(TokenIdentity::map_color_link_hover);
     return snapshot_->map().color_link_hover;
 }
+
 Color ThemeScope::color_link_active() const {
-    ensure_owner_thread(); record(TokenIdentity::map_color_link_active);
+    ensure_owner_thread();
+    record(TokenIdentity::map_color_link_active);
     return snapshot_->map().color_link_active;
 }
+
 namespace {
 
-constexpr std::size_t identity_count =
-    static_cast<std::size_t>(TokenIdentity::count);
+constexpr std::size_t identity_count = static_cast<std::size_t>(TokenIdentity::count);
 
 struct ReadCapture final {
     const ThemeScope* scope{};
@@ -32,8 +35,7 @@ thread_local ReadCapture* active_capture = nullptr;
 
 class ReadCaptureGuard final {
 public:
-    explicit ReadCaptureGuard(ReadCapture& capture) noexcept
-        : capture_(&capture) {
+    explicit ReadCaptureGuard(ReadCapture& capture) noexcept : capture_(&capture) {
         capture.previous = active_capture;
         active_capture = &capture;
     }
@@ -47,301 +49,257 @@ private:
 };
 
 template <typename Value>
-void append_if_changed(
-    const Value& before,
-    const Value& after,
-    TokenIdentity identity,
-    std::array<TokenIdentity, identity_count>& changed,
-    std::size_t& count) {
+void append_if_changed(const Value& before, const Value& after, TokenIdentity identity,
+                       std::array<TokenIdentity, identity_count>& changed, std::size_t& count) {
     if (before != after) {
         changed[count++] = identity;
     }
 }
 
-std::size_t collect_changed(
-    const ThemeSnapshot& before,
-    const ThemeSnapshot& after,
-    std::array<TokenIdentity, identity_count>& changed) {
+std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& after,
+                            std::array<TokenIdentity, identity_count>& changed) {
     std::size_t count = 0;
     const auto& before_alias = before.alias();
     const auto& after_alias = after.alias();
-    append_if_changed(before_alias.color_text, after_alias.color_text,
-        TokenIdentity::alias_color_text, changed, count);
+    append_if_changed(before_alias.color_text, after_alias.color_text, TokenIdentity::alias_color_text, changed, count);
     append_if_changed(before_alias.color_text_secondary, after_alias.color_text_secondary,
-        TokenIdentity::alias_color_text_secondary, changed, count);
+                      TokenIdentity::alias_color_text_secondary, changed, count);
     append_if_changed(before_alias.color_text_disabled, after_alias.color_text_disabled,
-        TokenIdentity::alias_color_text_disabled, changed, count);
-    append_if_changed(before_alias.color_background_container,
-        after_alias.color_background_container,
-        TokenIdentity::alias_color_background_container, changed, count);
-    append_if_changed(before_alias.color_background_elevated,
-        after_alias.color_background_elevated,
-        TokenIdentity::alias_color_background_elevated, changed, count);
-    append_if_changed(before_alias.color_background_container_disabled,
-        after_alias.color_background_container_disabled,
-        TokenIdentity::alias_color_background_container_disabled, changed, count);
-    append_if_changed(before_alias.color_border, after_alias.color_border,
-        TokenIdentity::alias_color_border, changed, count);
+                      TokenIdentity::alias_color_text_disabled, changed, count);
+    append_if_changed(before_alias.color_background_container, after_alias.color_background_container,
+                      TokenIdentity::alias_color_background_container, changed, count);
+    append_if_changed(before_alias.color_background_elevated, after_alias.color_background_elevated,
+                      TokenIdentity::alias_color_background_elevated, changed, count);
+    append_if_changed(before_alias.color_background_container_disabled, after_alias.color_background_container_disabled,
+                      TokenIdentity::alias_color_background_container_disabled, changed, count);
+    append_if_changed(before_alias.color_border, after_alias.color_border, TokenIdentity::alias_color_border, changed,
+                      count);
     append_if_changed(before_alias.color_border_secondary, after_alias.color_border_secondary,
-        TokenIdentity::alias_color_border_secondary, changed, count);
-    append_if_changed(before_alias.color_split, after_alias.color_split,
-        TokenIdentity::alias_color_split, changed, count);
+                      TokenIdentity::alias_color_border_secondary, changed, count);
+    append_if_changed(before_alias.color_split, after_alias.color_split, TokenIdentity::alias_color_split, changed,
+                      count);
     append_if_changed(before_alias.color_focus_outline, after_alias.color_focus_outline,
-        TokenIdentity::alias_color_focus_outline, changed, count);
+                      TokenIdentity::alias_color_focus_outline, changed, count);
     append_if_changed(before_alias.line_width_focus, after_alias.line_width_focus,
-        TokenIdentity::alias_line_width_focus, changed, count);
+                      TokenIdentity::alias_line_width_focus, changed, count);
     append_if_changed(before_alias.focus_outline_offset, after_alias.focus_outline_offset,
-        TokenIdentity::alias_focus_outline_offset, changed, count);
-    append_if_changed(before_alias.box_shadow, after_alias.box_shadow,
-        TokenIdentity::alias_box_shadow, changed, count);
+                      TokenIdentity::alias_focus_outline_offset, changed, count);
+    append_if_changed(before_alias.box_shadow, after_alias.box_shadow, TokenIdentity::alias_box_shadow, changed, count);
     append_if_changed(before_alias.box_shadow_secondary, after_alias.box_shadow_secondary,
-        TokenIdentity::alias_box_shadow_secondary, changed, count);
+                      TokenIdentity::alias_box_shadow_secondary, changed, count);
     append_if_changed(before_alias.box_shadow_tertiary, after_alias.box_shadow_tertiary,
-        TokenIdentity::alias_box_shadow_tertiary, changed, count);
+                      TokenIdentity::alias_box_shadow_tertiary, changed, count);
 
     const auto& before_map = before.map();
     const auto& after_map = after.map();
-    append_if_changed(before_map.color_primary, after_map.color_primary,
-        TokenIdentity::map_color_primary, changed, count);
+    append_if_changed(before_map.color_primary, after_map.color_primary, TokenIdentity::map_color_primary, changed,
+                      count);
     append_if_changed(before_map.color_primary_hover, after_map.color_primary_hover,
-        TokenIdentity::map_color_primary_hover, changed, count);
+                      TokenIdentity::map_color_primary_hover, changed, count);
     append_if_changed(before_map.color_primary_active, after_map.color_primary_active,
-        TokenIdentity::map_color_primary_active, changed, count);
+                      TokenIdentity::map_color_primary_active, changed, count);
     append_if_changed(before_map.color_primary_border, after_map.color_primary_border,
-        TokenIdentity::map_color_primary_border, changed, count);
-    append_if_changed(before_map.color_success, after_map.color_success,
-        TokenIdentity::map_color_success, changed, count);
-    append_if_changed(before_map.color_warning, after_map.color_warning,
-        TokenIdentity::map_color_warning, changed, count);
-    append_if_changed(before_map.color_error, after_map.color_error,
-        TokenIdentity::map_color_error, changed, count);
-    append_if_changed(before_map.color_error_hover, after_map.color_error_hover,
-        TokenIdentity::map_color_error_hover, changed, count);
+                      TokenIdentity::map_color_primary_border, changed, count);
+    append_if_changed(before_map.color_success, after_map.color_success, TokenIdentity::map_color_success, changed,
+                      count);
+    append_if_changed(before_map.color_warning, after_map.color_warning, TokenIdentity::map_color_warning, changed,
+                      count);
+    append_if_changed(before_map.color_error, after_map.color_error, TokenIdentity::map_color_error, changed, count);
+    append_if_changed(before_map.color_error_hover, after_map.color_error_hover, TokenIdentity::map_color_error_hover,
+                      changed, count);
     append_if_changed(before_map.color_error_active, after_map.color_error_active,
-        TokenIdentity::map_color_error_active, changed, count);
-    append_if_changed(before_map.color_info, after_map.color_info,
-        TokenIdentity::map_color_info, changed, count);
+                      TokenIdentity::map_color_error_active, changed, count);
+    append_if_changed(before_map.color_info, after_map.color_info, TokenIdentity::map_color_info, changed, count);
     append_if_changed(before_map.color_success_text, after_map.color_success_text,
-        TokenIdentity::map_color_success_text, changed, count);
+                      TokenIdentity::map_color_success_text, changed, count);
     append_if_changed(before_map.color_warning_text, after_map.color_warning_text,
-        TokenIdentity::map_color_warning_text, changed, count);
-    append_if_changed(before_map.color_error_text, after_map.color_error_text,
-        TokenIdentity::map_color_error_text, changed, count);
-    append_if_changed(before_map.color_link, after_map.color_link,
-        TokenIdentity::map_color_link, changed, count);
-    append_if_changed(before_map.color_link_hover, after_map.color_link_hover,
-        TokenIdentity::map_color_link_hover, changed, count);
-    append_if_changed(before_map.color_link_active, after_map.color_link_active,
-        TokenIdentity::map_color_link_active, changed, count);
-    append_if_changed(before_map.color_text_base, after_map.color_text_base,
-        TokenIdentity::map_color_text_base, changed, count);
+                      TokenIdentity::map_color_warning_text, changed, count);
+    append_if_changed(before_map.color_error_text, after_map.color_error_text, TokenIdentity::map_color_error_text,
+                      changed, count);
+    append_if_changed(before_map.color_link, after_map.color_link, TokenIdentity::map_color_link, changed, count);
+    append_if_changed(before_map.color_link_hover, after_map.color_link_hover, TokenIdentity::map_color_link_hover,
+                      changed, count);
+    append_if_changed(before_map.color_link_active, after_map.color_link_active, TokenIdentity::map_color_link_active,
+                      changed, count);
+    append_if_changed(before_map.color_text_base, after_map.color_text_base, TokenIdentity::map_color_text_base,
+                      changed, count);
     append_if_changed(before_map.color_background_base, after_map.color_background_base,
-        TokenIdentity::map_color_background_base, changed, count);
-    append_if_changed(before_map.font_size_small, after_map.font_size_small,
-        TokenIdentity::map_font_size_small, changed, count);
-    append_if_changed(before_map.font_size, after_map.font_size,
-        TokenIdentity::map_font_size, changed, count);
-    append_if_changed(before_map.font_size_large, after_map.font_size_large,
-        TokenIdentity::map_font_size_large, changed, count);
-    append_if_changed(before_map.line_height_small, after_map.line_height_small,
-        TokenIdentity::map_line_height_small, changed, count);
-    append_if_changed(before_map.line_height, after_map.line_height,
-        TokenIdentity::map_line_height, changed, count);
-    append_if_changed(before_map.line_height_large, after_map.line_height_large,
-        TokenIdentity::map_line_height_large, changed, count);
-    append_if_changed(before_map.size_xs, after_map.size_xs,
-        TokenIdentity::map_size_xs, changed, count);
-    append_if_changed(before_map.size_small, after_map.size_small,
-        TokenIdentity::map_size_small, changed, count);
-    append_if_changed(before_map.size, after_map.size,
-        TokenIdentity::map_size, changed, count);
-    append_if_changed(before_map.size_large, after_map.size_large,
-        TokenIdentity::map_size_large, changed, count);
+                      TokenIdentity::map_color_background_base, changed, count);
+    append_if_changed(before_map.font_size_small, after_map.font_size_small, TokenIdentity::map_font_size_small,
+                      changed, count);
+    append_if_changed(before_map.font_size, after_map.font_size, TokenIdentity::map_font_size, changed, count);
+    append_if_changed(before_map.font_size_large, after_map.font_size_large, TokenIdentity::map_font_size_large,
+                      changed, count);
+    append_if_changed(before_map.line_height_small, after_map.line_height_small, TokenIdentity::map_line_height_small,
+                      changed, count);
+    append_if_changed(before_map.line_height, after_map.line_height, TokenIdentity::map_line_height, changed, count);
+    append_if_changed(before_map.line_height_large, after_map.line_height_large, TokenIdentity::map_line_height_large,
+                      changed, count);
+    append_if_changed(before_map.size_xs, after_map.size_xs, TokenIdentity::map_size_xs, changed, count);
+    append_if_changed(before_map.size_small, after_map.size_small, TokenIdentity::map_size_small, changed, count);
+    append_if_changed(before_map.size, after_map.size, TokenIdentity::map_size, changed, count);
+    append_if_changed(before_map.size_large, after_map.size_large, TokenIdentity::map_size_large, changed, count);
     append_if_changed(before_map.control_height_small, after_map.control_height_small,
-        TokenIdentity::map_control_height_small, changed, count);
-    append_if_changed(before_map.control_height, after_map.control_height,
-        TokenIdentity::map_control_height, changed, count);
+                      TokenIdentity::map_control_height_small, changed, count);
+    append_if_changed(before_map.control_height, after_map.control_height, TokenIdentity::map_control_height, changed,
+                      count);
     append_if_changed(before_map.control_height_large, after_map.control_height_large,
-        TokenIdentity::map_control_height_large, changed, count);
+                      TokenIdentity::map_control_height_large, changed, count);
     append_if_changed(before_map.border_radius_small, after_map.border_radius_small,
-        TokenIdentity::map_border_radius_small, changed, count);
-    append_if_changed(before_map.border_radius, after_map.border_radius,
-        TokenIdentity::map_border_radius, changed, count);
+                      TokenIdentity::map_border_radius_small, changed, count);
+    append_if_changed(before_map.border_radius, after_map.border_radius, TokenIdentity::map_border_radius, changed,
+                      count);
     append_if_changed(before_map.border_radius_large, after_map.border_radius_large,
-        TokenIdentity::map_border_radius_large, changed, count);
-    append_if_changed(before_map.motion_unit, after_map.motion_unit,
-        TokenIdentity::map_motion_unit, changed, count);
-    append_if_changed(before_map.motion_base, after_map.motion_base,
-        TokenIdentity::map_motion_base, changed, count);
-    append_if_changed(before_map.motion, after_map.motion,
-        TokenIdentity::map_motion_enabled, changed, count);
+                      TokenIdentity::map_border_radius_large, changed, count);
+    append_if_changed(before_map.motion_unit, after_map.motion_unit, TokenIdentity::map_motion_unit, changed, count);
+    append_if_changed(before_map.motion_base, after_map.motion_base, TokenIdentity::map_motion_base, changed, count);
+    append_if_changed(before_map.motion, after_map.motion, TokenIdentity::map_motion_enabled, changed, count);
 
     const auto& before_button = before.button();
     const auto& after_button = after.button();
     const bool button_colors_changed =
-        before_button.default_color != after_button.default_color
-        || before_button.default_background != after_button.default_background
-        || before_button.default_border_color != after_button.default_border_color
-        || before_button.default_hover_color != after_button.default_hover_color
-        || before_button.default_active_color != after_button.default_active_color
-        || before_button.text_color != after_button.text_color
-        || before_button.text_background != after_button.text_background
-        || before_button.text_hover_color != after_button.text_hover_color
-        || before_button.text_active_color != after_button.text_active_color
-        || before_button.text_hover_background != after_button.text_hover_background
-        || before_button.text_active_background != after_button.text_active_background
-        || before_button.primary_color != after_button.primary_color
-        || before_button.primary_background != after_button.primary_background
-        || before_button.primary_hover_background != after_button.primary_hover_background
-        || before_button.primary_active_background != after_button.primary_active_background
-        || before_button.danger_color != after_button.danger_color
-        || before_button.danger_background != after_button.danger_background
-        || before_button.danger_hover_background != after_button.danger_hover_background
-        || before_button.danger_active_background != after_button.danger_active_background
-        || before_button.disabled_color != after_button.disabled_color
-        || before_button.disabled_background != after_button.disabled_background
-        || before_button.disabled_border_color != after_button.disabled_border_color;
-    append_if_changed(false, button_colors_changed,
-        TokenIdentity::button_colors, changed, count);
+        before_button.default_color != after_button.default_color ||
+        before_button.default_background != after_button.default_background ||
+        before_button.default_border_color != after_button.default_border_color ||
+        before_button.default_hover_color != after_button.default_hover_color ||
+        before_button.default_active_color != after_button.default_active_color ||
+        before_button.text_color != after_button.text_color ||
+        before_button.text_background != after_button.text_background ||
+        before_button.text_hover_color != after_button.text_hover_color ||
+        before_button.text_active_color != after_button.text_active_color ||
+        before_button.text_hover_background != after_button.text_hover_background ||
+        before_button.text_active_background != after_button.text_active_background ||
+        before_button.primary_color != after_button.primary_color ||
+        before_button.primary_background != after_button.primary_background ||
+        before_button.primary_hover_background != after_button.primary_hover_background ||
+        before_button.primary_active_background != after_button.primary_active_background ||
+        before_button.danger_color != after_button.danger_color ||
+        before_button.danger_background != after_button.danger_background ||
+        before_button.danger_hover_background != after_button.danger_hover_background ||
+        before_button.danger_active_background != after_button.danger_active_background ||
+        before_button.disabled_color != after_button.disabled_color ||
+        before_button.disabled_background != after_button.disabled_background ||
+        before_button.disabled_border_color != after_button.disabled_border_color;
+    append_if_changed(false, button_colors_changed, TokenIdentity::button_colors, changed, count);
     append_if_changed(
         std::array{before_button.control_height_small, before_button.control_height,
-            before_button.control_height_large},
-        std::array{after_button.control_height_small, after_button.control_height,
-            after_button.control_height_large},
+                   before_button.control_height_large},
+        std::array{after_button.control_height_small, after_button.control_height, after_button.control_height_large},
         TokenIdentity::button_control_heights, changed, count);
     append_if_changed(
         std::array{before_button.padding_inline_small, before_button.padding_inline,
-            before_button.padding_inline_large},
-        std::array{after_button.padding_inline_small, after_button.padding_inline,
-            after_button.padding_inline_large},
+                   before_button.padding_inline_large},
+        std::array{after_button.padding_inline_small, after_button.padding_inline, after_button.padding_inline_large},
         TokenIdentity::button_padding_inline, changed, count);
+    append_if_changed(std::array{before_button.content_font_size_small, before_button.content_font_size,
+                                 before_button.content_font_size_large, before_button.content_line_height_small,
+                                 before_button.content_line_height, before_button.content_line_height_large,
+                                 before_button.loading_indicator_size, before_button.loading_opacity},
+                      std::array{after_button.content_font_size_small, after_button.content_font_size,
+                                 after_button.content_font_size_large, after_button.content_line_height_small,
+                                 after_button.content_line_height, after_button.content_line_height_large,
+                                 after_button.loading_indicator_size, after_button.loading_opacity},
+                      TokenIdentity::button_typography, changed, count);
     append_if_changed(
-        std::array{before_button.content_font_size_small, before_button.content_font_size,
-            before_button.content_font_size_large,
-            before_button.content_line_height_small, before_button.content_line_height,
-            before_button.content_line_height_large, before_button.loading_indicator_size,
-            before_button.loading_opacity},
-        std::array{after_button.content_font_size_small, after_button.content_font_size,
-            after_button.content_font_size_large,
-            after_button.content_line_height_small, after_button.content_line_height,
-            after_button.content_line_height_large, after_button.loading_indicator_size,
-            after_button.loading_opacity},
-        TokenIdentity::button_typography, changed, count);
-    append_if_changed(
-        std::array{before_button.border_radius_small, before_button.border_radius,
-            before_button.border_radius_large},
-        std::array{after_button.border_radius_small, after_button.border_radius,
-            after_button.border_radius_large},
+        std::array{before_button.border_radius_small, before_button.border_radius, before_button.border_radius_large},
+        std::array{after_button.border_radius_small, after_button.border_radius, after_button.border_radius_large},
         TokenIdentity::button_border_radius, changed, count);
-    append_if_changed(before_button.border_width, after_button.border_width,
-        TokenIdentity::button_border_width, changed, count);
-    append_if_changed(before_button.icon_gap, after_button.icon_gap,
-        TokenIdentity::button_icon_gap, changed, count);
-    const bool button_shadows_changed =
-        before_button.default_shadow != after_button.default_shadow
-        || before_button.primary_shadow != after_button.primary_shadow
-        || before_button.danger_shadow != after_button.danger_shadow;
-    append_if_changed(false, button_shadows_changed,
-        TokenIdentity::button_shadows, changed, count);
+    append_if_changed(before_button.border_width, after_button.border_width, TokenIdentity::button_border_width,
+                      changed, count);
+    append_if_changed(before_button.icon_gap, after_button.icon_gap, TokenIdentity::button_icon_gap, changed, count);
+    const bool button_shadows_changed = before_button.default_shadow != after_button.default_shadow ||
+                                        before_button.primary_shadow != after_button.primary_shadow ||
+                                        before_button.danger_shadow != after_button.danger_shadow;
+    append_if_changed(false, button_shadows_changed, TokenIdentity::button_shadows, changed, count);
 
     const auto& before_text = before.text();
     const auto& after_text = after.text();
-    append_if_changed(before_text.color, after_text.color,
-        TokenIdentity::text_color, changed, count);
-    append_if_changed(before_text.font_family, after_text.font_family,
-        TokenIdentity::text_font_family, changed, count);
-    append_if_changed(before_text.font_weight, after_text.font_weight,
-        TokenIdentity::text_font_weight, changed, count);
-    append_if_changed(before_text.font_size, after_text.font_size,
-        TokenIdentity::text_font_size, changed, count);
-    append_if_changed(before_text.line_height, after_text.line_height,
-        TokenIdentity::text_line_height, changed, count);
-    append_if_changed(before.seed().line_width, after.seed().line_width,
-        TokenIdentity::seed_line_width, changed, count);
+    append_if_changed(before_text.color, after_text.color, TokenIdentity::text_color, changed, count);
+    append_if_changed(before_text.font_family, after_text.font_family, TokenIdentity::text_font_family, changed, count);
+    append_if_changed(before_text.font_weight, after_text.font_weight, TokenIdentity::text_font_weight, changed, count);
+    append_if_changed(before_text.font_size, after_text.font_size, TokenIdentity::text_font_size, changed, count);
+    append_if_changed(before_text.line_height, after_text.line_height, TokenIdentity::text_line_height, changed, count);
+    append_if_changed(before.seed().line_width, after.seed().line_width, TokenIdentity::seed_line_width, changed,
+                      count);
     const auto& old_input = detail::InputTokenAccess::get(before);
     const auto& new_input = detail::InputTokenAccess::get(after);
-    bool input_layout = old_input.border_width != new_input.border_width
-        || old_input.affix_padding != new_input.affix_padding;
-    bool input_typography{}, input_radius{};
-    for(std::size_t i = 0; i < old_input.sizes.size(); ++i) {
-        const auto& old_size = old_input.sizes[i]; const auto& new_size = new_input.sizes[i];
-        input_layout = input_layout || old_size.control_height != new_size.control_height
-            || old_size.padding_inline != new_size.padding_inline || old_size.padding_block != new_size.padding_block;
-        input_typography = input_typography || old_size.font_size != new_size.font_size || old_size.line_height != new_size.line_height;
+    bool input_layout =
+        old_input.border_width != new_input.border_width || old_input.affix_padding != new_input.affix_padding;
+    bool input_typography{};
+    bool input_radius{};
+    for (std::size_t i = 0; i < old_input.sizes.size(); ++i) {
+        const auto& old_size = old_input.sizes[i];
+        const auto& new_size = new_input.sizes[i];
+        input_layout = input_layout || old_size.control_height != new_size.control_height ||
+                       old_size.padding_inline != new_size.padding_inline ||
+                       old_size.padding_block != new_size.padding_block;
+        input_typography = input_typography || old_size.font_size != new_size.font_size ||
+                           old_size.line_height != new_size.line_height;
         input_radius = input_radius || old_size.border_radius != new_size.border_radius;
     }
     append_if_changed(false, input_layout, TokenIdentity::input_layout_metrics, changed, count);
     append_if_changed(false, input_typography, TokenIdentity::input_typography, changed, count);
     append_if_changed(false, input_radius, TokenIdentity::input_border_radius, changed, count);
     append_if_changed(old_input.colors, new_input.colors, TokenIdentity::input_colors, changed, count);
-    const bool input_shadows = old_input.active_shadow != new_input.active_shadow
-        || old_input.error_active_shadow != new_input.error_active_shadow
-        || old_input.warning_active_shadow != new_input.warning_active_shadow;
+    const bool input_shadows = old_input.active_shadow != new_input.active_shadow ||
+                               old_input.error_active_shadow != new_input.error_active_shadow ||
+                               old_input.warning_active_shadow != new_input.warning_active_shadow;
     append_if_changed(false, input_shadows, TokenIdentity::input_shadows, changed, count);
     const auto& old_switch = before.switch_token();
     const auto& new_switch = after.switch_token();
-    append_if_changed(std::array{old_switch.track_height, old_switch.track_height_small,
-            old_switch.track_min_width, old_switch.track_min_width_small,
-            old_switch.track_padding, old_switch.handle_size, old_switch.handle_size_small},
-        std::array{new_switch.track_height, new_switch.track_height_small,
-            new_switch.track_min_width, new_switch.track_min_width_small,
-            new_switch.track_padding, new_switch.handle_size, new_switch.handle_size_small},
-        TokenIdentity::switch_geometry, changed, count);
-    append_if_changed(old_switch.handle_background, new_switch.handle_background,
-        TokenIdentity::switch_colors, changed, count);
+    append_if_changed(std::array{old_switch.track_height, old_switch.track_height_small, old_switch.track_min_width,
+                                 old_switch.track_min_width_small, old_switch.track_padding, old_switch.handle_size,
+                                 old_switch.handle_size_small},
+                      std::array{new_switch.track_height, new_switch.track_height_small, new_switch.track_min_width,
+                                 new_switch.track_min_width_small, new_switch.track_padding, new_switch.handle_size,
+                                 new_switch.handle_size_small},
+                      TokenIdentity::switch_geometry, changed, count);
+    append_if_changed(old_switch.handle_background, new_switch.handle_background, TokenIdentity::switch_colors, changed,
+                      count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_typography = before.typography();
     const auto& new_typography = after.typography();
-    append_if_changed(old_typography.colors, new_typography.colors,
-        TokenIdentity::typography_colors, changed, count);
-    append_if_changed(old_typography.headings, new_typography.headings,
-        TokenIdentity::typography_headings, changed, count);
+    append_if_changed(old_typography.colors, new_typography.colors, TokenIdentity::typography_colors, changed, count);
+    append_if_changed(old_typography.headings, new_typography.headings, TokenIdentity::typography_headings, changed,
+                      count);
     const auto typography_fonts = [](const TypographyThemeToken& token) {
-        return std::array<std::uint32_t, 4>{
-            static_cast<std::uint32_t>(token.font_family),
-            static_cast<std::uint32_t>(token.font_family_code),
-            token.font_weight,
-            token.font_weight_strong};
+        return std::array<std::uint32_t, 4>{static_cast<std::uint32_t>(token.font_family),
+                                            static_cast<std::uint32_t>(token.font_family_code), token.font_weight,
+                                            token.font_weight_strong};
     };
     append_if_changed(typography_fonts(old_typography), typography_fonts(new_typography),
-        TokenIdentity::typography_fonts, changed, count);
+                      TokenIdentity::typography_fonts, changed, count);
     append_if_changed(std::array{old_typography.base_font_size, old_typography.base_line_height},
-        std::array{new_typography.base_font_size, new_typography.base_line_height},
-        TokenIdentity::typography_base_typography, changed, count);
-    append_if_changed(std::array{old_typography.title_margin_top_em,
-            old_typography.title_margin_bottom_em},
-        std::array{new_typography.title_margin_top_em,
-            new_typography.title_margin_bottom_em},
-        TokenIdentity::typography_metrics, changed, count);
+                      std::array{new_typography.base_font_size, new_typography.base_line_height},
+                      TokenIdentity::typography_base_typography, changed, count);
+    append_if_changed(std::array{old_typography.title_margin_top_em, old_typography.title_margin_bottom_em},
+                      std::array{new_typography.title_margin_top_em, new_typography.title_margin_bottom_em},
+                      TokenIdentity::typography_metrics, changed, count);
     const auto inline_metrics = [](const InlineCodeThemeToken& t) {
-        return std::array{t.font_scale, t.padding_inline_em, t.padding_block_start_em,
-            t.padding_block_end_em, t.border_width, t.border_radius, t.border_bottom_width};
+        return std::array{t.font_scale,   t.padding_inline_em, t.padding_block_start_em, t.padding_block_end_em,
+                          t.border_width, t.border_radius,     t.border_bottom_width};
     };
     const auto inline_colors = [](const TypographyThemeToken& t) {
-        return std::array{t.code.background, t.code.border_color,
-            t.keyboard.background, t.keyboard.border_color};
+        return std::array{t.code.background, t.code.border_color, t.keyboard.background, t.keyboard.border_color};
     };
     append_if_changed(inline_metrics(old_typography.code), inline_metrics(new_typography.code),
-        TokenIdentity::typography_inline_code, changed, count);
+                      TokenIdentity::typography_inline_code, changed, count);
     append_if_changed(inline_metrics(old_typography.keyboard), inline_metrics(new_typography.keyboard),
-        TokenIdentity::typography_inline_keyboard, changed, count);
+                      TokenIdentity::typography_inline_keyboard, changed, count);
     append_if_changed(inline_colors(old_typography), inline_colors(new_typography),
-        TokenIdentity::typography_inline_colors, changed, count);
+                      TokenIdentity::typography_inline_colors, changed, count);
     const auto& old_divider = before.divider();
     const auto& new_divider = after.divider();
-    append_if_changed(old_divider.colors, new_divider.colors,
-        TokenIdentity::divider_colors, changed, count);
-    append_if_changed(old_divider.metrics, new_divider.metrics,
-        TokenIdentity::divider_metrics, changed, count);
-    append_if_changed(old_divider.typography, new_divider.typography,
-        TokenIdentity::divider_typography, changed, count);
+    append_if_changed(old_divider.colors, new_divider.colors, TokenIdentity::divider_colors, changed, count);
+    append_if_changed(old_divider.metrics, new_divider.metrics, TokenIdentity::divider_metrics, changed, count);
+    append_if_changed(old_divider.typography, new_divider.typography, TokenIdentity::divider_typography, changed,
+                      count);
     return count;
 }
 
 bool contains(std::span<const TokenIdentity> identities, TokenIdentity identity) {
-    return std::find(identities.begin(), identities.end(), identity)
-        != identities.end();
+    return std::find(identities.begin(), identities.end(), identity) != identities.end();
 }
 
 } // namespace
@@ -356,11 +314,9 @@ struct ThemeScope::Subscriber final {
     std::weak_ptr<Subscription::State> state;
 };
 
-Subscription::Subscription(std::shared_ptr<State> state) noexcept
-    : state_(std::move(state)) {}
+Subscription::Subscription(std::shared_ptr<State> state) noexcept : state_(std::move(state)) {}
 
-Subscription::Subscription(Subscription&& other) noexcept
-    : state_(std::move(other.state_)) {}
+Subscription::Subscription(Subscription&& other) noexcept : state_(std::move(other.state_)) {}
 
 Subscription& Subscription::operator=(Subscription&& other) noexcept {
     if (this != &other) {
@@ -389,25 +345,20 @@ std::shared_ptr<ThemeScope> ThemeScope::create_default() {
     return std::shared_ptr<ThemeScope>(new ThemeScope(nullptr, ThemeConfig{}));
 }
 
-std::shared_ptr<ThemeScope> ThemeScope::create(
-    std::shared_ptr<ThemeScope> parent,
-    ThemeConfig config) {
+std::shared_ptr<ThemeScope> ThemeScope::create(std::shared_ptr<ThemeScope> parent, ThemeConfig config) {
     if (!parent) {
         throw std::invalid_argument("Nested ThemeScope requires a parent scope");
     }
     parent->ensure_owner_thread();
-    auto scope = std::shared_ptr<ThemeScope>(
-        new ThemeScope(parent, std::move(config)));
+    auto scope = std::shared_ptr<ThemeScope>(new ThemeScope(parent, std::move(config)));
     parent->children_.push_back(scope);
     return scope;
 }
 
 ThemeScope::ThemeScope(std::shared_ptr<ThemeScope> parent, ThemeConfig config)
-    : parent_(std::move(parent)),
-      config_(std::move(config)),
-      snapshot_(std::make_shared<ThemeSnapshot>(resolve_theme(
-          config_,
-          config_.inherit && parent_ ? &parent_->snapshot() : nullptr))),
+    : parent_(std::move(parent)), config_(std::move(config)),
+      snapshot_(std::make_shared<ThemeSnapshot>(
+          resolve_theme(config_, config_.inherit && parent_ ? &parent_->snapshot() : nullptr))),
       owner_thread_(std::this_thread::get_id()) {}
 
 bool ThemeScope::update(const ThemeConfig& config) {
@@ -419,9 +370,7 @@ bool ThemeScope::update(const ThemeConfig& config) {
         diagnostics_.dirty_phase = DirtyPhase::none;
         return false;
     }
-    ThemeSnapshot next = resolve_theme(
-        config,
-        config.inherit && parent_ ? &parent_->snapshot() : nullptr);
+    ThemeSnapshot next = resolve_theme(config, config.inherit && parent_ ? &parent_->snapshot() : nullptr);
     commit_snapshot(config, std::move(next));
     return true;
 }
@@ -448,13 +397,10 @@ std::span<const TokenIdentity> ThemeScope::changed_identities() const {
     return {changed_identities_.data(), changed_identity_count_};
 }
 
-Subscription ThemeScope::capture(
-    InvalidationCallback callback,
-    const std::function<void()>& typed_token_reads) {
+Subscription ThemeScope::capture(InvalidationCallback callback, const std::function<void()>& typed_token_reads) {
     ensure_owner_thread();
     if (!callback || !typed_token_reads) {
-        throw std::invalid_argument(
-            "Theme token capture requires reads and an invalidation callback");
+        throw std::invalid_argument("Theme token capture requires reads and an invalidation callback");
     }
     ReadCapture capture{.scope = this};
     {
@@ -462,13 +408,11 @@ Subscription ThemeScope::capture(
         typed_token_reads();
     }
     if (capture.count == 0) {
-        throw std::logic_error(
-            "Theme token capture did not read a typed token accessor");
+        throw std::logic_error("Theme token capture did not read a typed token accessor");
     }
     auto state = std::make_shared<Subscription::State>();
-    state->identities.assign(
-        capture.identities.begin(),
-        capture.identities.begin() + static_cast<std::ptrdiff_t>(capture.count));
+    state->identities.assign(capture.identities.begin(),
+                             capture.identities.begin() + static_cast<std::ptrdiff_t>(capture.count));
     state->callback = std::move(callback);
     subscribers_.push_back({state});
     ++diagnostics_.subscription_allocations;
@@ -503,8 +447,7 @@ const ThemeAliasToken& ThemeScope::alias() const {
 
 const ThemeMapToken& ThemeScope::map() const {
     ensure_owner_thread();
-    for (auto identity = TokenIdentity::map_color_primary;
-         identity <= TokenIdentity::map_motion_enabled;
+    for (auto identity = TokenIdentity::map_color_primary; identity <= TokenIdentity::map_motion_enabled;
          identity = static_cast<TokenIdentity>(static_cast<std::uint8_t>(identity) + 1U)) {
         record(identity);
     }
@@ -513,8 +456,7 @@ const ThemeMapToken& ThemeScope::map() const {
 
 const ButtonThemeToken& ThemeScope::button() const {
     ensure_owner_thread();
-    for (auto identity = TokenIdentity::button_colors;
-         identity <= TokenIdentity::button_shadows;
+    for (auto identity = TokenIdentity::button_colors; identity <= TokenIdentity::button_shadows;
          identity = static_cast<TokenIdentity>(static_cast<std::uint8_t>(identity) + 1U)) {
         record(identity);
     }
@@ -523,8 +465,7 @@ const ButtonThemeToken& ThemeScope::button() const {
 
 const TextThemeToken& ThemeScope::text() const {
     ensure_owner_thread();
-    for (auto identity = TokenIdentity::text_color;
-         identity <= TokenIdentity::text_line_height;
+    for (auto identity = TokenIdentity::text_color; identity <= TokenIdentity::text_line_height;
          identity = static_cast<TokenIdentity>(static_cast<std::uint8_t>(identity) + 1U)) {
         record(identity);
     }
@@ -598,81 +539,104 @@ const ButtonThemeToken& ThemeScope::button_padding_inline() const {
 }
 
 const detail::InputTokenSet& ThemeScope::input_layout_metrics() const {
-    ensure_owner_thread(); record(TokenIdentity::input_layout_metrics);
+    ensure_owner_thread();
+    record(TokenIdentity::input_layout_metrics);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+
 const detail::InputTokenSet& ThemeScope::input_typography() const {
-    ensure_owner_thread(); record(TokenIdentity::input_typography);
+    ensure_owner_thread();
+    record(TokenIdentity::input_typography);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+
 const detail::InputTokenSet& ThemeScope::input_border_radius() const {
-    ensure_owner_thread(); record(TokenIdentity::input_border_radius);
+    ensure_owner_thread();
+    record(TokenIdentity::input_border_radius);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+
 const detail::InputTokenSet& ThemeScope::input_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::input_colors);
+    ensure_owner_thread();
+    record(TokenIdentity::input_colors);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+
 const detail::InputTokenSet& ThemeScope::input_shadows() const {
-    ensure_owner_thread(); record(TokenIdentity::input_shadows);
+    ensure_owner_thread();
+    record(TokenIdentity::input_shadows);
     return detail::InputTokenAccess::get(*snapshot_);
 }
+
 const SwitchThemeToken& ThemeScope::switch_geometry() const {
-    ensure_owner_thread(); record(TokenIdentity::switch_geometry);
+    ensure_owner_thread();
+    record(TokenIdentity::switch_geometry);
     return snapshot_->switch_token();
 }
+
 const SwitchThemeToken& ThemeScope::switch_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::switch_colors);
+    ensure_owner_thread();
+    record(TokenIdentity::switch_colors);
     return snapshot_->switch_token();
 }
 
 const TypographyThemeToken& ThemeScope::typography_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_colors);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_colors);
     return snapshot_->typography();
 }
 
 const TypographyThemeToken& ThemeScope::typography_headings() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_headings);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_headings);
     return snapshot_->typography();
 }
 
 const TypographyThemeToken& ThemeScope::typography_fonts() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_fonts);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_fonts);
     return snapshot_->typography();
 }
 
 const TypographyThemeToken& ThemeScope::typography_base_typography() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_base_typography);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_base_typography);
     return snapshot_->typography();
 }
 
 const TypographyThemeToken& ThemeScope::typography_metrics() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_metrics);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_metrics);
     return snapshot_->typography();
 }
 
 const InlineCodeThemeToken& ThemeScope::typography_inline_code() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_inline_code);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_inline_code);
     return snapshot_->typography().code;
 }
 
 const InlineCodeThemeToken& ThemeScope::typography_inline_keyboard() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_inline_keyboard);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_inline_keyboard);
     return snapshot_->typography().keyboard;
 }
 
 const DividerThemeToken& ThemeScope::divider_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::divider_colors);
+    ensure_owner_thread();
+    record(TokenIdentity::divider_colors);
     return snapshot_->divider();
 }
 
 const DividerThemeToken& ThemeScope::divider_metrics() const {
-    ensure_owner_thread(); record(TokenIdentity::divider_metrics);
+    ensure_owner_thread();
+    record(TokenIdentity::divider_metrics);
     return snapshot_->divider();
 }
 
 const DividerThemeToken& ThemeScope::divider_typography() const {
-    ensure_owner_thread(); record(TokenIdentity::divider_typography);
+    ensure_owner_thread();
+    record(TokenIdentity::divider_typography);
     return snapshot_->divider();
 }
 
@@ -776,13 +740,10 @@ void ThemeScope::record(TokenIdentity identity) const {
     if (active_capture == nullptr || active_capture->scope != this) {
         return;
     }
-    const auto present = std::find(
-        active_capture->identities.begin(),
-        active_capture->identities.begin()
-            + static_cast<std::ptrdiff_t>(active_capture->count),
-        identity);
-    if (present == active_capture->identities.begin()
-            + static_cast<std::ptrdiff_t>(active_capture->count)) {
+    const auto present =
+        std::find(active_capture->identities.begin(),
+                  active_capture->identities.begin() + static_cast<std::ptrdiff_t>(active_capture->count), identity);
+    if (present == active_capture->identities.begin() + static_cast<std::ptrdiff_t>(active_capture->count)) {
         active_capture->identities[active_capture->count++] = identity;
     }
 }
@@ -854,57 +815,121 @@ void ThemeScope::notify_children() {
 }
 
 std::size_t ThemeScope::live_subscriber_count() const noexcept {
-    return static_cast<std::size_t>(std::count_if(
-        subscribers_.begin(),
-        subscribers_.end(),
-        [](const Subscriber& subscriber) {
+    return static_cast<std::size_t>(
+        std::count_if(subscribers_.begin(), subscribers_.end(), [](const Subscriber& subscriber) {
             const auto state = subscriber.state.lock();
             return state && state->active;
         }));
 }
 
 const TypographyThemeToken& ThemeScope::typography_inline_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::typography_inline_colors);
+    ensure_owner_thread();
+    record(TokenIdentity::typography_inline_colors);
     return snapshot_->typography();
 }
+
 const SliderThemeToken& ThemeScope::slider_colors() const {
-    ensure_owner_thread(); record(TokenIdentity::slider_colors); return snapshot_->slider();
+    ensure_owner_thread();
+    record(TokenIdentity::slider_colors);
+    return snapshot_->slider();
 }
+
 const SliderThemeToken& ThemeScope::slider_metrics() const {
-    ensure_owner_thread(); record(TokenIdentity::slider_metrics); return snapshot_->slider();
+    ensure_owner_thread();
+    record(TokenIdentity::slider_metrics);
+    return snapshot_->slider();
 }
 
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
     constexpr std::array names{
-        "alias.colorText", "alias.colorTextSecondary", "alias.colorTextDisabled",
-        "alias.colorBgContainer", "alias.colorBgElevated",
-        "alias.colorBgContainerDisabled", "alias.colorBorder",
-        "alias.colorBorderSecondary", "alias.colorSplit", "alias.colorFocusOutline",
-        "alias.lineWidthFocus", "alias.focusOutlineOffset", "alias.boxShadow",
-        "alias.boxShadowSecondary", "alias.boxShadowTertiary", "map.colorPrimary",
-        "map.colorPrimaryHover", "map.colorPrimaryActive", "map.colorPrimaryBorder",
-        "map.colorSuccess", "map.colorWarning", "map.colorError",
-        "map.colorErrorHover", "map.colorErrorActive", "map.colorInfo",
-        "map.colorSuccessText", "map.colorWarningText", "map.colorErrorText",
-        "map.colorLink", "map.colorLinkHover", "map.colorLinkActive",
-        "map.colorTextBase", "map.colorBgBase", "map.fontSizeSM",
-        "map.fontSize", "map.fontSizeLG", "map.lineHeightSM", "map.lineHeight",
-        "map.lineHeightLG", "map.sizeXS", "map.sizeSM", "map.size",
-        "map.sizeLG", "map.controlHeightSM", "map.controlHeight",
-        "map.controlHeightLG", "map.borderRadiusSM", "map.borderRadius",
-        "map.borderRadiusLG", "map.motionUnit", "map.motionBase", "map.motion",
-        "Button.colors", "Button.controlHeights", "Button.paddingInline",
-        "Button.typography", "Button.borderRadius", "Button.borderWidth",
-        "Button.iconGap", "Button.shadows", "Text.color", "Text.fontFamily",
-        "Text.fontWeight", "Text.fontSize", "Text.lineHeight", "seed.lineWidth",
-        "Input.layoutMetrics", "Input.typography", "Input.borderRadius",
-        "Input.colors", "Input.shadows", "Switch.geometry", "Switch.colors",
-        "Typography.colors", "Typography.headings", "Typography.fonts",
-        "Typography.baseTypography", "Typography.metrics", "Typography.inlineCode",
-        "Typography.inlineKeyboard", "Typography.inlineColors", "Divider.colors", "Divider.metrics",
-        "Divider.typography", "Slider.colors", "Slider.metrics",
+        "alias.colorText",
+        "alias.colorTextSecondary",
+        "alias.colorTextDisabled",
+        "alias.colorBgContainer",
+        "alias.colorBgElevated",
+        "alias.colorBgContainerDisabled",
+        "alias.colorBorder",
+        "alias.colorBorderSecondary",
+        "alias.colorSplit",
+        "alias.colorFocusOutline",
+        "alias.lineWidthFocus",
+        "alias.focusOutlineOffset",
+        "alias.boxShadow",
+        "alias.boxShadowSecondary",
+        "alias.boxShadowTertiary",
+        "map.colorPrimary",
+        "map.colorPrimaryHover",
+        "map.colorPrimaryActive",
+        "map.colorPrimaryBorder",
+        "map.colorSuccess",
+        "map.colorWarning",
+        "map.colorError",
+        "map.colorErrorHover",
+        "map.colorErrorActive",
+        "map.colorInfo",
+        "map.colorSuccessText",
+        "map.colorWarningText",
+        "map.colorErrorText",
+        "map.colorLink",
+        "map.colorLinkHover",
+        "map.colorLinkActive",
+        "map.colorTextBase",
+        "map.colorBgBase",
+        "map.fontSizeSM",
+        "map.fontSize",
+        "map.fontSizeLG",
+        "map.lineHeightSM",
+        "map.lineHeight",
+        "map.lineHeightLG",
+        "map.sizeXS",
+        "map.sizeSM",
+        "map.size",
+        "map.sizeLG",
+        "map.controlHeightSM",
+        "map.controlHeight",
+        "map.controlHeightLG",
+        "map.borderRadiusSM",
+        "map.borderRadius",
+        "map.borderRadiusLG",
+        "map.motionUnit",
+        "map.motionBase",
+        "map.motion",
+        "Button.colors",
+        "Button.controlHeights",
+        "Button.paddingInline",
+        "Button.typography",
+        "Button.borderRadius",
+        "Button.borderWidth",
+        "Button.iconGap",
+        "Button.shadows",
+        "Text.color",
+        "Text.fontFamily",
+        "Text.fontWeight",
+        "Text.fontSize",
+        "Text.lineHeight",
+        "seed.lineWidth",
+        "Input.layoutMetrics",
+        "Input.typography",
+        "Input.borderRadius",
+        "Input.colors",
+        "Input.shadows",
+        "Switch.geometry",
+        "Switch.colors",
+        "Typography.colors",
+        "Typography.headings",
+        "Typography.fonts",
+        "Typography.baseTypography",
+        "Typography.metrics",
+        "Typography.inlineCode",
+        "Typography.inlineKeyboard",
+        "Typography.inlineColors",
+        "Divider.colors",
+        "Divider.metrics",
+        "Divider.typography",
+        "Slider.colors",
+        "Slider.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -997,8 +1022,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_inline_keyboard:
     case TokenIdentity::divider_metrics:
     case TokenIdentity::slider_metrics:
-        return DirtyPhase::measure_layout | DirtyPhase::geometry
-            | DirtyPhase::hit_test;
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::map_border_radius_small:
     case TokenIdentity::map_border_radius:
     case TokenIdentity::map_border_radius_large:

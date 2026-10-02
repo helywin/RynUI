@@ -58,8 +58,7 @@ Scope& MountContext::scope() noexcept {
     return state_->scope;
 }
 
-ComponentInstance::ComponentInstance(NodeStore& nodes, MountFunction mount)
-    : state_(std::make_unique<State>(nodes)) {
+ComponentInstance::ComponentInstance(NodeStore& nodes, MountFunction mount) : state_(std::make_unique<State>(nodes)) {
     MountContext context(*state_);
     ++state_->mount_runs;
     mount(context);

@@ -20,9 +20,7 @@ struct DecodeResult final {
 };
 
 template <typename Character>
-[[nodiscard]] std::uint8_t byte_at(
-    std::basic_string_view<Character> value,
-    std::size_t offset) noexcept {
+[[nodiscard]] std::uint8_t byte_at(std::basic_string_view<Character> value, std::size_t offset) noexcept {
     return static_cast<std::uint8_t>(value[offset]);
 }
 
@@ -34,18 +32,13 @@ template <typename Character>
     return DecodeResult{true, length, length, {}};
 }
 
-[[nodiscard]] DecodeResult invalid_sequence(
-    std::size_t byte_offset,
-    Utf8ErrorKind kind,
-    std::size_t recovery_length) noexcept {
-    return DecodeResult{false, 0, std::max<std::size_t>(1, recovery_length),
-                        Utf8Error{byte_offset, kind}};
+[[nodiscard]] DecodeResult invalid_sequence(std::size_t byte_offset, Utf8ErrorKind kind,
+                                            std::size_t recovery_length) noexcept {
+    return DecodeResult{false, 0, std::max<std::size_t>(1, recovery_length), Utf8Error{byte_offset, kind}};
 }
 
 template <typename Character>
-[[nodiscard]] DecodeResult inspect_sequence(
-    std::basic_string_view<Character> value,
-    std::size_t offset) noexcept {
+[[nodiscard]] DecodeResult inspect_sequence(std::basic_string_view<Character> value, std::size_t offset) noexcept {
     const auto lead = byte_at(value, offset);
     if (lead <= 0x7FU) {
         return valid_sequence(1);
@@ -74,16 +67,10 @@ template <typename Character>
 
     for (std::size_t index = 1; index < expected_length; ++index) {
         if (offset + index >= value.size()) {
-            return invalid_sequence(
-                offset,
-                Utf8ErrorKind::truncated_sequence,
-                value.size() - offset);
+            return invalid_sequence(offset, Utf8ErrorKind::truncated_sequence, value.size() - offset);
         }
         if (!is_continuation(byte_at(value, offset + index))) {
-            return invalid_sequence(
-                offset + index,
-                Utf8ErrorKind::invalid_continuation,
-                index);
+            return invalid_sequence(offset + index, Utf8ErrorKind::invalid_continuation, index);
         }
     }
 
@@ -105,8 +92,7 @@ template <typename Character>
 }
 
 template <typename Character>
-[[nodiscard]] std::optional<Utf8Error> validate_utf8(
-    std::basic_string_view<Character> value) noexcept {
+[[nodiscard]] std::optional<Utf8Error> validate_utf8(std::basic_string_view<Character> value) noexcept {
     std::size_t offset = 0;
     while (offset < value.size()) {
         const DecodeResult decoded = inspect_sequence(value, offset);
@@ -118,8 +104,7 @@ template <typename Character>
     return std::nullopt;
 }
 
-template <typename Character>
-[[nodiscard]] std::u8string copy_utf8(std::basic_string_view<Character> value) {
+template <typename Character> [[nodiscard]] std::u8string copy_utf8(std::basic_string_view<Character> value) {
     // Guaranteed prvalue elision avoids a potentially allocating Debug move
     // when optional NRVO is disabled by the toolchain configuration.
     return std::u8string(value.begin(), value.end());
@@ -130,8 +115,7 @@ struct RepairStorage final {
     std::size_t replacement_count{};
 };
 
-template <typename Character>
-[[nodiscard]] RepairStorage repair_utf8(std::basic_string_view<Character> value) {
+template <typename Character> [[nodiscard]] RepairStorage repair_utf8(std::basic_string_view<Character> value) {
     RepairStorage repaired;
     repaired.value.reserve(value.size());
 
@@ -140,8 +124,7 @@ template <typename Character>
         const DecodeResult decoded = inspect_sequence(value, offset);
         if (decoded.valid) {
             for (std::size_t index = 0; index < decoded.length; ++index) {
-                repaired.value.push_back(
-                    static_cast<char8_t>(byte_at(value, offset + index)));
+                repaired.value.push_back(static_cast<char8_t>(byte_at(value, offset + index)));
             }
             offset += decoded.length;
             continue;
@@ -200,16 +183,12 @@ Utf8ParseResult String::from_utf8(std::string_view bytes) {
 
 Utf8RepairResult String::from_utf8_lossy(std::u8string_view value) {
     RepairStorage repaired = repair_utf8(value);
-    return Utf8RepairResult{
-        String{std::move(repaired.value), ValidatedUtf8{}},
-        repaired.replacement_count};
+    return Utf8RepairResult{String{std::move(repaired.value), ValidatedUtf8{}}, repaired.replacement_count};
 }
 
 Utf8RepairResult String::from_utf8_lossy(std::string_view bytes) {
     RepairStorage repaired = repair_utf8(bytes);
-    return Utf8RepairResult{
-        String{std::move(repaired.value), ValidatedUtf8{}},
-        repaired.replacement_count};
+    return Utf8RepairResult{String{std::move(repaired.value), ValidatedUtf8{}}, repaired.replacement_count};
 }
 
 std::string_view String::bytes() const noexcept {
@@ -228,14 +207,11 @@ std::u8string String::copy_literal(const char8_t* literal, std::size_t extent) {
         throw std::invalid_argument("RynUI UTF-8 literal is not null terminated");
     }
 
-    Utf8ParseResult parsed = from_utf8(
-        std::u8string_view{literal, extent - 1});
+    Utf8ParseResult parsed = from_utf8(std::u8string_view{literal, extent - 1});
     if (!parsed) {
         const Utf8Error error = parsed.error();
-        throw std::invalid_argument(
-            std::string{"Invalid RynUI UTF-8 literal at byte "}
-            + std::to_string(error.byte_offset) + ": "
-            + error_kind_name(error.kind));
+        throw std::invalid_argument(std::string{"Invalid RynUI UTF-8 literal at byte "} +
+                                    std::to_string(error.byte_offset) + ": " + error_kind_name(error.kind));
     }
     return std::u8string(parsed.value().utf8());
 }

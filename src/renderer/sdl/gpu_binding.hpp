@@ -34,10 +34,19 @@ public:
     SdlGpuBinding& operator=(const SdlGpuBinding&) = delete;
     ~SdlGpuBinding();
 
-    [[nodiscard]] GpuDeviceHandle device() const noexcept { return device_; }
+    [[nodiscard]] GpuDeviceHandle device() const noexcept {
+        return device_;
+    }
+
     [[nodiscard]] const char* driver() const noexcept;
-    [[nodiscard]] std::uint64_t epoch() const noexcept { return epoch_; }
-    [[nodiscard]] PlatformState& host() const noexcept { return *host_; }
+
+    [[nodiscard]] std::uint64_t epoch() const noexcept {
+        return epoch_;
+    }
+
+    [[nodiscard]] PlatformState& host() const noexcept {
+        return *host_;
+    }
 
 private:
     PlatformState* host_;

@@ -18,9 +18,16 @@
 namespace ryn::input {
 
 enum class TextEditError {
-    none, invalid_utf8, invalid_range, disabled, read_only,
-    capacity_exceeded, allocation_failure, revision_exhausted,
-    stale_owner, revision_conflict,
+    none,
+    invalid_utf8,
+    invalid_range,
+    disabled,
+    read_only,
+    capacity_exceeded,
+    allocation_failure,
+    revision_exhausted,
+    stale_owner,
+    revision_conflict,
 };
 
 struct TextEditResult final {
@@ -28,7 +35,10 @@ struct TextEditResult final {
     bool value_changed{};
     bool selection_changed{};
     bool truncated{};
-    [[nodiscard]] explicit operator bool() const noexcept { return error == TextEditError::none; }
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return error == TextEditError::none;
+    }
 };
 
 struct TextEditEcho {
@@ -36,9 +46,11 @@ struct TextEditEcho {
     std::uint64_t revision{};
     friend bool operator==(const TextEditEcho&, const TextEditEcho&) = default;
 };
+
 struct TextReconcileResult {
     TextEditResult edit;
-    bool echoed{}, stale{};
+    bool echoed{};
+    bool stale{};
 };
 
 enum class TextCaretMove { left, right, home, end };
@@ -79,7 +91,10 @@ public:
     TextEditorState(const TextEditorState&) = delete;
     TextEditorState& operator=(const TextEditorState&) = delete;
 
-    [[nodiscard]] TextInputOwnerId id() const noexcept { return id_; }
+    [[nodiscard]] TextInputOwnerId id() const noexcept {
+        return id_;
+    }
+
     [[nodiscard]] std::string_view value() const;
     [[nodiscard]] TextSelection selection() const;
     [[nodiscard]] const TextBoundaryMap& boundaries() const;
@@ -103,8 +118,7 @@ public:
     // Record before delivering onChange. Only the latest emitted value is kept.
     [[nodiscard]] TextEditResult note_emitted_value();
     [[nodiscard]] TextEditEcho edit_echo() const;
-    [[nodiscard]] TextReconcileResult reconcile(std::string_view text,
-        std::optional<TextEditEcho> echo = {});
+    [[nodiscard]] TextReconcileResult reconcile(std::string_view text, std::optional<TextEditEcho> echo = {});
 
     // Authoritative value replacement bypasses edit eligibility, but uses the
     // same normalization/limits/atomic publication as a committed edit.
@@ -128,7 +142,8 @@ private:
     void ensure_owner_thread() const;
     [[nodiscard]] TextEditResult reject(TextEditError error);
     [[nodiscard]] TextEditResult replace(TextSelection range, std::string_view text, bool authoritative,
-        bool merge_typing = false, std::optional<TextSelection> history_selection = {});
+                                         bool merge_typing = false,
+                                         std::optional<TextSelection> history_selection = {});
     [[nodiscard]] TextEditResult navigate_history(bool redo);
     [[nodiscard]] TextEditResult publish_selection(TextSelection selection);
     [[nodiscard]] TextWordClass word_class_at(std::size_t byte) const noexcept;
@@ -147,7 +162,8 @@ private:
     TextHistory history_;
     std::string history_navigation_;
     std::uint64_t merge_epoch_{1};
-    std::string emitted_value_, pending_emitted_value_;
+    std::string emitted_value_;
+    std::string pending_emitted_value_;
     std::optional<TextEditEcho> emitted_echo_;
     TextEditorObserver* observer_{};
     std::string composition_text_;
@@ -182,12 +198,15 @@ public:
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] std::size_t capacity() const;
     [[nodiscard]] bool is_owner_thread() const noexcept;
+
 private:
     void ensure_owner_thread() const;
+
     struct Slot final {
         std::unique_ptr<TextEditorState> state;
         std::uint32_t generation{1};
     };
+
     std::thread::id owner_thread_{std::this_thread::get_id()};
     std::vector<Slot> slots_;
     std::size_t size_{};

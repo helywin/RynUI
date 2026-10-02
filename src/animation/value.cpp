@@ -15,9 +15,8 @@ void require_finite(float value) {
 }
 
 float interpolate_scalar(float from, float to, float progress) {
-    const double result = static_cast<double>(from)
-        + (static_cast<double>(to) - static_cast<double>(from))
-            * static_cast<double>(progress);
+    const double result = static_cast<double>(from) +
+                          (static_cast<double>(to) - static_cast<double>(from)) * static_cast<double>(progress);
     const double maximum = static_cast<double>(std::numeric_limits<float>::max());
     if (!std::isfinite(result) || result < -maximum || result > maximum) {
         throw std::overflow_error("animation interpolation exceeded float range");
@@ -26,9 +25,8 @@ float interpolate_scalar(float from, float to, float progress) {
 }
 
 float interpolate_color_channel(float from, float to, float progress) {
-    const double result = static_cast<double>(from)
-        + (static_cast<double>(to) - static_cast<double>(from))
-            * static_cast<double>(progress);
+    const double result = static_cast<double>(from) +
+                          (static_cast<double>(to) - static_cast<double>(from)) * static_cast<double>(progress);
     if (!std::isfinite(result)) {
         throw std::overflow_error("color interpolation exceeded finite range");
     }
@@ -92,16 +90,12 @@ void validate_animation_value(const AnimationValue& value) {
     }
 }
 
-AnimationValue interpolate_animation_value(
-    const AnimationValue& from,
-    const AnimationValue& to,
-    float progress) {
+AnimationValue interpolate_animation_value(const AnimationValue& from, const AnimationValue& to, float progress) {
     validate_animation_value(from);
     validate_animation_value(to);
     require_finite(progress);
     if (from.index() != to.index()) {
-        throw std::invalid_argument(
-            "animation endpoints must have the same value kind");
+        throw std::invalid_argument("animation endpoints must have the same value kind");
     }
     if (progress == 0.0F) {
         return from;
@@ -112,8 +106,7 @@ AnimationValue interpolate_animation_value(
 
     switch (value_kind(from)) {
     case AnimationValueKind::scalar:
-        return interpolate_scalar(
-            std::get<float>(from), std::get<float>(to), progress);
+        return interpolate_scalar(std::get<float>(from), std::get<float>(to), progress);
     case AnimationValueKind::color: {
         const auto left = std::get<Color>(from);
         const auto right = std::get<Color>(to);

@@ -12,18 +12,25 @@ namespace {
 using namespace ryn::detail;
 
 void check(bool value, const char* message) {
-    if (!value) throw std::runtime_error(message);
+    if (!value) {
+        throw std::runtime_error(message);
+    }
 }
-template<class F> void rejects(F action) {
+
+template <class F> void rejects(F action) {
     bool failed = false;
-    try { action(); } catch (const std::exception&) { failed = true; }
+    try {
+        action();
+    } catch (const std::exception&) {
+        failed = true;
+    }
     check(failed, "invalid texture upload/layout was accepted");
 }
 
 void literal_source_and_sdl_layout() {
     // Prefix, three pixels, a stride gap, and a final row without trailing padding.
-    const std::array source{std::byte{99}, std::byte{98}, std::byte{1}, std::byte{2},
-        std::byte{3}, std::byte{97}, std::byte{96}, std::byte{4}, std::byte{5}, std::byte{6}};
+    const std::array source{std::byte{99}, std::byte{98}, std::byte{1}, std::byte{2}, std::byte{3},
+                            std::byte{97}, std::byte{96}, std::byte{4}, std::byte{5}, std::byte{6}};
     const GlyphTextureUpload upload{3, {2, 1, 3, 2}, 2, 5, source};
     validate_glyph_texture_upload(upload, 5, 3);
     const auto layout = sdl_glyph_texture_layout(upload);
@@ -32,19 +39,25 @@ void literal_source_and_sdl_layout() {
     std::array<std::byte, 520> packed;
     packed.fill(std::byte{88});
     pack_sdl_glyph_texture_rows(upload, packed);
-    check(packed[0] == std::byte{1} && packed[2] == std::byte{3}
-        && packed[256] == std::byte{4} && packed[258] == std::byte{6}, "source offset/stride lost pixels");
-    for (std::size_t row : {0U, 256U})
+    check(packed[0] == std::byte{1} && packed[2] == std::byte{3} && packed[256] == std::byte{4} &&
+              packed[258] == std::byte{6},
+          "source offset/stride lost pixels");
+    for (std::size_t row : {0U, 256U}) {
         check(std::all_of(packed.begin() + row + 3, packed.begin() + row + 256,
-                         [](auto value) { return value == std::byte{}; }), "SDL padding is not zero");
+                          [](auto value) { return value == std::byte{}; }),
+              "SDL padding is not zero");
+    }
     check(packed[512] == std::byte{88} && packed.back() == std::byte{88}, "packing wrote beyond transfer");
     TextureUploadBatchLayout batch;
     batch.reset(1024);
     int texture{};
-    check(batch.append(&texture, upload.rectangle, layout.pixels_per_row, layout.rows_per_layer,
-                       layout.byte_count) == 0, "first region offset differs");
-    check(batch.append(&texture, upload.rectangle, layout.pixels_per_row, layout.rows_per_layer,
-                       layout.byte_count) == 512 && !batch.can_fit(1), "batch alignment/chunk boundary differs");
+    check(batch.append(&texture, upload.rectangle, layout.pixels_per_row, layout.rows_per_layer, layout.byte_count) ==
+              0,
+          "first region offset differs");
+    check(batch.append(&texture, upload.rectangle, layout.pixels_per_row, layout.rows_per_layer, layout.byte_count) ==
+                  512 &&
+              !batch.can_fit(1),
+          "batch alignment/chunk boundary differs");
     rejects([&] { batch.append(&texture, upload.rectangle, 256, 2, layout.byte_count); });
     batch.reset(2048);
     check(batch.can_fit(2048) && batch.append(&texture, {0, 0, 3, 8}, 256, 8, 2048) == 0,
@@ -59,14 +72,30 @@ void invalid_ranges_do_not_write() {
     for (int mode = 0; mode < 8; ++mode) {
         auto upload = valid;
         switch (mode) {
-        case 0: upload.rectangle.width = 0; break;
-        case 1: upload.rectangle.height = 0; break;
-        case 2: upload.source_row_pitch = 2; break;
-        case 3: upload.source_offset = std::numeric_limits<std::size_t>::max(); break;
-        case 4: upload.bytes = std::span(source).first(9); break;
-        case 5: upload.rectangle.x = std::numeric_limits<std::uint32_t>::max(); break;
-        case 6: upload.rectangle.y = std::numeric_limits<std::uint32_t>::max(); break;
-        case 7: upload.source_row_pitch = std::numeric_limits<std::uint32_t>::max(); break;
+        case 0:
+            upload.rectangle.width = 0;
+            break;
+        case 1:
+            upload.rectangle.height = 0;
+            break;
+        case 2:
+            upload.source_row_pitch = 2;
+            break;
+        case 3:
+            upload.source_offset = std::numeric_limits<std::size_t>::max();
+            break;
+        case 4:
+            upload.bytes = std::span(source).first(9);
+            break;
+        case 5:
+            upload.rectangle.x = std::numeric_limits<std::uint32_t>::max();
+            break;
+        case 6:
+            upload.rectangle.y = std::numeric_limits<std::uint32_t>::max();
+            break;
+        case 7:
+            upload.source_row_pitch = std::numeric_limits<std::uint32_t>::max();
+            break;
         }
         rejects([&] { validate_glyph_texture_upload(upload, 4, 3); });
         rejects([&] { pack_sdl_glyph_texture_rows(upload, target); });
@@ -84,6 +113,11 @@ void invalid_ranges_do_not_write() {
 } // namespace
 
 int main() {
-    try { literal_source_and_sdl_layout(); invalid_ranges_do_not_write(); }
-    catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
+    try {
+        literal_source_and_sdl_layout();
+        invalid_ranges_do_not_write();
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+        return 1;
+    }
 }
