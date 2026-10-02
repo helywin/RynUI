@@ -68,6 +68,7 @@ struct InteractionRegistration final {
     bool focusable{false};
     InteractionHandlers handlers;
     bool focus_on_pointer{true};
+    bool tab_stop{true};
 };
 
 struct InteractionRecord final {
@@ -81,6 +82,7 @@ struct InteractionRecord final {
     std::shared_ptr<const FocusHandlers> focus_handlers;
     std::size_t declaration_order{0};
     bool focus_on_pointer{true};
+    bool tab_stop{true};
 };
 
 class InteractionRegistry final {
@@ -92,6 +94,7 @@ public:
     bool remove(InteractionId id);
     bool set_eligible(InteractionId id, bool eligible);
     bool set_focusable(InteractionId id, bool focusable);
+    bool set_tab_stop(InteractionId id, bool tab_stop);
     bool set_handlers(InteractionId id, InteractionHandlers handlers);
     bool set_focus_handlers(InteractionId id, FocusHandlers handlers);
     void reorder_after(InteractionId anchor, std::span<const InteractionId> interactions);

@@ -619,6 +619,14 @@ target_compile_definitions(rynui_radio_component_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
 add_test(NAME rynui.radio_component COMMAND rynui_radio_component_tests)
+add_executable(rynui_radio_features_tests radio_features_tests.cpp)
+rynui_configure_cpp_target(rynui_radio_features_tests)
+target_include_directories(rynui_radio_features_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(rynui_radio_features_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_radio_features_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.radio_features COMMAND rynui_radio_features_tests)
 add_executable(rynui_selection_idle_benchmark selection_idle_benchmark.cpp)
 rynui_configure_cpp_target(rynui_selection_idle_benchmark)
 target_include_directories(rynui_selection_idle_benchmark PRIVATE "${PROJECT_SOURCE_DIR}/src")

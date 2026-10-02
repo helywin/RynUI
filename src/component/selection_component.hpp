@@ -67,6 +67,12 @@ public:
 
     [[nodiscard]] CheckboxValues checkbox_group_value(runtime::ComponentId component) const;
 
+    [[nodiscard]] std::span<const runtime::ComponentId> radio_groups() const noexcept {
+        return groups_;
+    }
+
+    [[nodiscard]] RadioSelection radio_group_value(runtime::ComponentId component) const;
+
 private:
     friend struct SwitchPropsAccess;
     friend struct CheckboxPropsAccess;
@@ -108,10 +114,14 @@ private:
     void apply_checkbox_options(runtime::ComponentId, std::vector<CheckboxOption>);
     void update_checkbox_group_layout(CheckboxGroupState&);
     [[nodiscard]] runtime::ComponentId parent_checkbox_group(runtime::ComponentId) const;
-    void apply_group_value(runtime::ComponentId, std::optional<String>);
+    [[nodiscard]] runtime::ComponentId parent_radio_group(runtime::ComponentId) const;
+    void apply_group_value(runtime::ComponentId, RadioSelection);
     void apply_group_disabled(runtime::ComponentId, bool);
     void apply_group_orientation(runtime::ComponentId, RadioGroupOrientation);
-    void select_group_option(runtime::ComponentId, const String&);
+    void apply_group_direction(runtime::ComponentId, RadioDirection);
+    void apply_radio_options(runtime::ComponentId, std::vector<RadioOption>);
+    void update_radio_tab_stops(RadioGroupState&);
+    bool handle_radio_key(runtime::ComponentId, const input::KeyboardInputEvent&);
     void update_group_layout(RadioGroupState&);
     void retarget_handle(SelectionState&);
     void synchronize_spinner(SelectionState&);

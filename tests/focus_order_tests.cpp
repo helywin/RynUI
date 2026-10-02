@@ -81,6 +81,14 @@ void test_focus_order_wraps_and_tracks_dynamic_eligibility() {
     focus.dispatch(tab());
     focus.dispatch(tab());
     require(focus.state().focused == interactions[1], "dynamic eligibility did not update stable declaration order");
+    registry.set_tab_stop(interactions[1], false);
+    require(!registry.set_tab_stop(interactions[1], false), "unchanged Tab eligibility reported a mutation");
+    focus.dispatch(tab());
+    require(focus.state().focused == interactions[0], "Tab did not skip a non-Tab focusable interaction");
+    require(focus.request_focus(interactions[1], ryn::input::FocusModality::keyboard),
+            "non-Tab interaction rejected programmatic focus");
+    require(!registry.require(interactions[1]).tab_stop && registry.require(interactions[1]).focusable,
+            "Tab eligibility changed focusability");
     focus.dispatch({
         ryn::input::Key::enter,
         ryn::input::KeyAction::down,

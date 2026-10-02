@@ -73,6 +73,7 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
             {},
             next_declaration_order_,
             registration.focus_on_pointer,
+            registration.tab_stop,
         });
         declaration_order_.push_back(id);
     } catch (...) {
@@ -118,6 +119,15 @@ bool InteractionRegistry::set_focusable(InteractionId id, bool focusable) {
         return false;
     }
     record.focusable = focusable;
+    return true;
+}
+
+bool InteractionRegistry::set_tab_stop(InteractionId id, bool tab_stop) {
+    auto& record = require(id);
+    if (record.tab_stop == tab_stop) {
+        return false;
+    }
+    record.tab_stop = tab_stop;
     return true;
 }
 

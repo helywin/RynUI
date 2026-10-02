@@ -2,7 +2,7 @@
 
 ## 1. 动态值、组合与键盘（平台通用）
 
-- [ ] 1.1 实现兼容 String 的类型值、reactive options、最近 typed Group、稳定身份/删除回滚、单一 Tab 入口/方向键、ref/autoFocus/onClick；补 docs/radio.md 与 public API/生命周期/旧用法合同。在 Windows `windows-msvc-headless` Debug/Release 构建并通过 radio_component、radio_features、selection_component、selection_controls_public_api、input_focus；运行格式、OpenSpec 与 diff 检查后提交。
+- [x] 1.1 实现兼容 String 的类型值、reactive options、最近 typed Group、稳定身份/删除回滚、单一 Tab 入口/方向键、ref/autoFocus/onClick；补 docs/radio.md 与 public API/生命周期/旧用法合同。在 Windows `windows-msvc-headless` Debug/Release 构建并通过 radio_component、radio_features、radio_public_api、selection_component、selection_controls_public_api、focus_order/state/lifecycle；运行格式、OpenSpec 与 diff 检查后提交。实际 Debug 8/8（1.59s），Release 8/8（1.08s），407 自有源格式检查通过。
 
 ## 2. 按钮、主题与反馈（平台通用）
 

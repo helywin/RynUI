@@ -356,7 +356,7 @@ void FocusManager::rebuild_focus_order() {
     focus_order_.clear();
     for (const auto interaction : registry_->declaration_order()) {
         const auto* record = registry_->find(interaction);
-        if (record != nullptr && record->eligible && record->focusable) {
+        if (record != nullptr && record->eligible && record->focusable && record->tab_stop) {
             focus_order_.push_back(interaction);
         }
     }

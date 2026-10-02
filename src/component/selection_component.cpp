@@ -41,6 +41,19 @@ struct CheckboxRefState final {
     }
 };
 
+struct RadioRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    bool binding{};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("RadioRef requires its owner thread");
+        }
+    }
+};
+
 namespace {
 thread_local SelectionComponentHost* active_selection_host{};
 constexpr std::size_t switch_loading_segments = 8;
@@ -94,6 +107,13 @@ SwitchDirection selection_direction(CheckboxDirection direction) {
         throw std::invalid_argument("Checkbox direction is invalid");
     }
     return direction == CheckboxDirection::RightToLeft ? SwitchDirection::RightToLeft : SwitchDirection::LeftToRight;
+}
+
+SwitchDirection selection_direction(RadioDirection direction) {
+    if (direction != RadioDirection::LeftToRight && direction != RadioDirection::RightToLeft) {
+        throw std::invalid_argument("Radio direction is invalid");
+    }
+    return direction == RadioDirection::RightToLeft ? SwitchDirection::RightToLeft : SwitchDirection::LeftToRight;
 }
 
 void translate_content(runtime::NodeStore& nodes, runtime::NodeId id, runtime::Point delta) {
@@ -183,7 +203,7 @@ struct SelectionState final {
     bool radio{};
     bool own_disabled{};
     runtime::ComponentId group;
-    std::optional<String> value;
+    RadioSelection value;
     std::optional<CheckboxValue> checkbox_value;
     bool controlled{};
     bool checked{};
@@ -209,6 +229,7 @@ struct SelectionState final {
     SwitchDirection direction{SwitchDirection::LeftToRight};
     std::shared_ptr<SwitchRefState> ref;
     std::shared_ptr<CheckboxRefState> checkbox_ref;
+    std::shared_ptr<RadioRefState> radio_ref;
     bool own_direction{};
     bool wave{true};
     bool wave_active{};
@@ -227,17 +248,33 @@ struct SelectionState final {
     theme_runtime::Subscription theme_subscription;
 };
 
+struct GeneratedRadioOption final {
+    RadioValue value;
+    Signal<String> label;
+    Signal<bool> disabled;
+    runtime::ComponentId component;
+
+    explicit GeneratedRadioOption(const RadioOption& option)
+        : value(option.value), label(option.label), disabled(option.disabled) {}
+};
+
 struct RadioGroupState final {
     runtime::ComponentId component;
     runtime::NodeId node;
+    input::InteractionId anchor;
+    runtime::SceneFragmentId fragment;
     std::vector<runtime::ComponentId> options;
-    std::optional<String> value;
+    std::vector<std::unique_ptr<GeneratedRadioOption>> generated;
+    std::vector<RadioOption> source_options;
+    RadioSelection value;
     bool controlled{};
     bool disabled{};
+    bool reconciling{};
     RadioGroupOrientation orientation{RadioGroupOrientation::Horizontal};
+    RadioDirection direction{RadioDirection::LeftToRight};
     float layout_gap{-1.0F};
     RadioGroupOrientation layout_orientation{RadioGroupOrientation::Vertical};
-    std::function<void(const String&)> on_change;
+    std::function<void(const RadioValue&)> on_change;
     theme_runtime::Subscription theme_subscription;
 };
 
@@ -290,6 +327,17 @@ void validate_checkbox_values(const CheckboxValues& values) {
 void validate_checkbox_options(const std::vector<CheckboxOption>& options) {
     if (options.size() > 1024) {
         throw std::invalid_argument("CheckboxGroup supports at most 1024 options");
+    }
+    CheckboxValues values;
+    for (const auto& option : options) {
+        values.push_back(option.value);
+    }
+    validate_checkbox_values(values);
+}
+
+void validate_radio_options(const std::vector<RadioOption>& options) {
+    if (options.size() > 1024) {
+        throw std::invalid_argument("RadioGroup supports at most 1024 options");
     }
     CheckboxValues values;
     for (const auto& option : options) {
@@ -449,13 +497,25 @@ void SelectionComponentHost::attach_interaction(SelectionState& state) {
         activate(id);
     };
     // Selection controls use Space only; Enter is a Button action.
-    focus_handlers.text_edit = [](const input::KeyboardInputEvent& event) {
+    focus_handlers.text_edit = [this, id](const input::KeyboardInputEvent& event) {
+        if (const auto* current = find(id); current && current->radio && handle_radio_key(id, event)) {
+            return true;
+        }
         return event.key == input::Key::enter;
     };
     static_cast<void>(services_->interactions().set_focus_handlers(state.interaction, std::move(focus_handlers)));
 }
 
 void SelectionComponentHost::release_selection(SelectionState& state) {
+    if (state.radio && state.group.valid()) {
+        if (auto* group = services_->components().state<RadioGroupState>(state.group); group && !group->reconciling) {
+            std::erase(group->options, state.component);
+            if (!group->controlled && state.value == group->value) {
+                group->value.reset();
+            }
+            update_radio_tab_stops(*group);
+        }
+    }
     if (state.checkbox && state.group.valid() && state.checkbox_value) {
         if (auto* group = services_->components().state<CheckboxGroupState>(state.group);
             group && !group->reconciling) {
@@ -474,6 +534,11 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
         state.checkbox_ref->binding = false;
         state.checkbox_ref->focus = {};
         state.checkbox_ref->blur = {};
+    }
+    if (state.radio_ref) {
+        state.radio_ref->binding = false;
+        state.radio_ref->focus = {};
+        state.radio_ref->blur = {};
     }
     services_->pointer().cancel_interaction(state.interaction);
     if (state.animation_scope.valid()) {
@@ -499,11 +564,35 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         return;
     }
     if (state->radio && state->checked) {
+        const auto click = state->on_click;
+        if (click) {
+            click(true);
+        }
         return;
     }
     if (state->radio && state->group.valid() && state->value) {
-        const String value = *state->value;
-        select_group_option(state->group, value);
+        const auto group_id = state->group;
+        const auto* group = services_->components().state<RadioGroupState>(group_id);
+        if (!group || group->disabled) {
+            return;
+        }
+        const RadioValue candidate = *state->value;
+        const auto own_callback = state->on_change;
+        const auto group_callback = group->on_change;
+        const auto click = state->on_click;
+        const bool changed = group->value != state->value;
+        if (!group->controlled) {
+            apply_group_value(group_id, candidate);
+        }
+        if (changed && own_callback) {
+            own_callback(true);
+        }
+        if (changed && group_callback) {
+            group_callback(candidate);
+        }
+        if (click) {
+            click(true);
+        }
         return;
     }
     if (state->checkbox && state->group.valid() && state->checkbox_value) {
@@ -615,6 +704,9 @@ void SelectionComponentHost::apply_radio_own_disabled(runtime::ComponentId id, b
     state->own_disabled = value;
     const auto* group = state->group.valid() ? services_->components().state<RadioGroupState>(state->group) : nullptr;
     apply_disabled(id, value || (group && group->disabled));
+    if (group) {
+        update_radio_tab_stops(*services_->components().state<RadioGroupState>(state->group));
+    }
 }
 
 runtime::ComponentId SelectionComponentHost::parent_checkbox_group(runtime::ComponentId id) const {
@@ -716,7 +808,27 @@ void SelectionComponentHost::apply_checkbox_group_direction(runtime::ComponentId
     }
 }
 
-void SelectionComponentHost::apply_group_value(runtime::ComponentId id, std::optional<String> value) {
+runtime::ComponentId SelectionComponentHost::parent_radio_group(runtime::ComponentId id) const {
+    for (auto parent = services_->components().parent(id); parent; parent = services_->components().parent(*parent)) {
+        if (services_->components().state<RadioGroupState>(*parent)) {
+            return *parent;
+        }
+    }
+    return {};
+}
+
+RadioSelection SelectionComponentHost::radio_group_value(runtime::ComponentId id) const {
+    const auto* group = services_->components().state<RadioGroupState>(id);
+    if (!group) {
+        throw std::out_of_range("RadioGroup is stale or invalid");
+    }
+    return group->value;
+}
+
+void SelectionComponentHost::apply_group_value(runtime::ComponentId id, RadioSelection value) {
+    if (value) {
+        validate_checkbox_value(*value);
+    }
     auto* group = services_->components().state<RadioGroupState>(id);
     if (!group || group->value == value) {
         return;
@@ -729,6 +841,7 @@ void SelectionComponentHost::apply_group_value(runtime::ComponentId id, std::opt
             apply_checked(option, group->value && *state->value == *group->value);
         }
     }
+    update_radio_tab_stops(*group);
 }
 
 void SelectionComponentHost::apply_group_disabled(runtime::ComponentId id, bool value) {
@@ -743,6 +856,7 @@ void SelectionComponentHost::apply_group_disabled(runtime::ComponentId id, bool 
             apply_disabled(option, state->own_disabled || value);
         }
     }
+    update_radio_tab_stops(*group);
 }
 
 void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id, RadioGroupOrientation value) {
@@ -757,19 +871,74 @@ void SelectionComponentHost::apply_group_orientation(runtime::ComponentId id, Ra
     update_group_layout(*group);
 }
 
-void SelectionComponentHost::select_group_option(runtime::ComponentId id, const String& value) {
-    auto* group = services_->components().state<RadioGroupState>(id);
-    if (!group || group->disabled || group->value == value) {
-        return;
+void SelectionComponentHost::apply_group_direction(runtime::ComponentId id, RadioDirection value) {
+    const auto direction = selection_direction(value);
+    if (auto* group = services_->components().state<RadioGroupState>(id); group && group->direction != value) {
+        group->direction = value;
+        for (const auto option : group->options) {
+            if (const auto* state = find(option); state && !state->own_direction) {
+                apply_direction(option, direction);
+            }
+        }
     }
-    const auto callback = group->on_change;
-    const bool controlled = group->controlled;
-    if (!controlled) {
-        apply_group_value(id, value);
+}
+
+void SelectionComponentHost::update_radio_tab_stops(RadioGroupState& group) {
+    runtime::ComponentId entry;
+    runtime::ComponentId selected;
+    runtime::ComponentId focused;
+    for (const auto id : group.options) {
+        if (const auto* state = find(id); state && !state->disabled) {
+            if (!entry.valid()) {
+                entry = id;
+            }
+            if (state->checked) {
+                selected = id;
+            }
+            if (services_->focus().state().focused == state->interaction) {
+                focused = id;
+            }
+        }
     }
-    if (callback) {
-        callback(value);
+    entry = focused.valid() ? focused : selected.valid() ? selected : entry;
+    for (const auto id : group.options) {
+        if (const auto* state = find(id)) {
+            services_->interactions().set_tab_stop(state->interaction, id == entry);
+        }
     }
+}
+
+bool SelectionComponentHost::handle_radio_key(runtime::ComponentId id, const input::KeyboardInputEvent& event) {
+    const auto* state = find(id);
+    const auto* group = state ? services_->components().state<RadioGroupState>(state->group) : nullptr;
+    if (!group || (event.key != input::Key::left && event.key != input::Key::right && event.key != input::Key::up &&
+                   event.key != input::Key::down)) {
+        return false;
+    }
+    if (event.action != input::KeyAction::down || state->disabled || event.modifiers != input::KeyModifier::none) {
+        return true;
+    }
+    bool reverse = event.key == input::Key::left || event.key == input::Key::up;
+    if ((event.key == input::Key::left || event.key == input::Key::right) &&
+        group->direction == RadioDirection::RightToLeft) {
+        reverse = !reverse;
+    }
+    const auto found = std::ranges::find(group->options, id);
+    if (found == group->options.end()) {
+        return true;
+    }
+    const std::size_t count = group->options.size();
+    const std::size_t current = static_cast<std::size_t>(found - group->options.begin());
+    for (std::size_t step = 1; step < count; ++step) {
+        const auto index = reverse ? (current + count - step) % count : (current + step) % count;
+        const auto target = group->options[index];
+        if (const auto* next = find(target); next && !next->disabled) {
+            services_->focus().defer_focus(next->interaction, input::FocusModality::keyboard);
+            activate(target);
+            return true;
+        }
+    }
+    return true;
 }
 
 void SelectionComponentHost::update_group_layout(RadioGroupState& group) {
@@ -952,7 +1121,7 @@ void SelectionComponentHost::apply_direction(runtime::ComponentId id, SwitchDire
     validate(value);
     if (auto* state = find(id); state && state->direction != value) {
         state->direction = value;
-        if (state->checkbox) {
+        if (state->checkbox || state->radio) {
             if (state->spacer.valid()) {
                 services_->nodes().require(state->spacer).external_layout.order =
                     value == SwitchDirection::RightToLeft ? 1 : 0;
@@ -1114,6 +1283,11 @@ void SelectionComponentHost::apply_focus(runtime::ComponentId id, input::FocusPr
         return;
     }
     state->focus = value;
+    if (state->radio && state->group.valid()) {
+        if (auto* group = services_->components().state<RadioGroupState>(state->group)) {
+            update_radio_tab_stops(*group);
+        }
+    }
     if (!value.focused && state->press.reset()) {
         services_->pointer().cancel_pointer_interaction(state->interaction);
         state = find(id);
@@ -1323,7 +1497,8 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                          viewport, dot / 2.0F, node.translation);
         }
     } else if (state.radio) {
-        const runtime::Rect ring{rect.x, rect.y + (rect.height - token.radio_size) / 2.0F, token.radio_size,
+        const auto spacer = services_->nodes().require(state.spacer).bounds;
+        const runtime::Rect ring{spacer.x, rect.y + (rect.height - token.radio_size) / 2.0F, token.radio_size,
                                  token.radio_size};
         set_geometry(next[0], ring, viewport, ring.width / 2.0F, node.translation);
         const float stroke = token.line_width;
@@ -1372,7 +1547,8 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         effects.ancestor_clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
     }
     const float indicator_size = state.radio ? token.radio_size : theme.checkbox().size;
-    const float indicator_x = state.checkbox ? services_->nodes().require(state.spacer).bounds.x : rect.x;
+    const float indicator_x =
+        state.checkbox || state.radio ? services_->nodes().require(state.spacer).bounds.x : rect.x;
     effects.shape = {
         state.checkbox || state.radio
             ? runtime::Rect{indicator_x, rect.y + (rect.height - indicator_size) / 2.0F, indicator_size, indicator_size}
@@ -1910,8 +2086,7 @@ void SelectionComponentHost::apply_checkbox_options(runtime::ComponentId id, std
 }
 
 struct RadioPropsAccess {
-    static void mount(const RadioProps& props, const std::optional<RadioLabel>& label,
-                      runtime::ComponentId group_id = {}) {
+    static runtime::ComponentId mount(const RadioProps& props, const std::optional<RadioLabel>& label) {
         if (!active_selection_host) {
             throw std::logic_error("Radio requires an active SelectionComponentHost");
         }
@@ -1919,15 +2094,39 @@ struct RadioPropsAccess {
         if (props.checked_ && props.default_checked_) {
             throw std::invalid_argument("Radio checked and defaultChecked are mutually exclusive");
         }
+        auto& build = runtime::require_component_build_context();
+        const auto component = build.mount_component<SelectionState>();
+        const auto group_id = host.parent_radio_group(component);
         if (group_id.valid() && (props.checked_ || props.default_checked_ || !props.value_)) {
             throw std::invalid_argument("Grouped Radio requires value without checked props");
         }
-        auto& build = runtime::require_component_build_context();
         auto* group = group_id.valid() ? host.services_->components().state<RadioGroupState>(group_id) : nullptr;
         if (group_id.valid() && !group) {
             throw std::logic_error("RadioGroup is stale");
         }
-        const auto component = build.mount_component<SelectionState>();
+        if (props.value_) {
+            validate_checkbox_value(*props.value_);
+        }
+        if (group) {
+            if (!group->reconciling && group->options.size() >= 1024) {
+                throw std::invalid_argument("RadioGroup supports at most 1024 members");
+            }
+            for (const auto member : group->options) {
+                if (const auto* item = host.find(member); item && item->value == props.value_) {
+                    throw std::invalid_argument("RadioGroup members require unique values");
+                }
+            }
+        }
+        const auto direction = props.direction_ ? selection_direction(read_prop(*props.direction_))
+                               : group          ? selection_direction(group->direction)
+                                                : SwitchDirection::LeftToRight;
+        const auto reference = props.ref_ ? props.ref_->state_ : nullptr;
+        if (reference) {
+            reference->ensure_owner();
+            if (reference->binding) {
+                throw std::invalid_argument("RadioRef is already bound");
+            }
+        }
         auto& state = build.state<SelectionState>(component);
         state.component = component;
         state.node = build.root(component);
@@ -1942,11 +2141,18 @@ struct RadioPropsAccess {
         state.own_disabled = read_prop(props.disabled_);
         state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
+        state.on_click = props.on_click_;
+        state.direction = direction;
+        state.own_direction = props.direction_.has_value();
+        state.radio_ref = reference;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
                 host.release_selection(*current);
             }
         });
+        if (reference) {
+            reference->binding = true;
+        }
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
                                       host.services_->dirty());
@@ -1963,6 +2169,11 @@ struct RadioPropsAccess {
         static_cast<void>(connect_prop(scope, props.disabled_, [&host, component](bool value) {
             host.apply_radio_own_disabled(component, value);
         }));
+        if (props.direction_) {
+            static_cast<void>(connect_prop(scope, *props.direction_, [&host, component](RadioDirection value) {
+                host.apply_direction(component, selection_direction(value));
+            }));
+        }
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
@@ -1979,63 +2190,155 @@ struct RadioPropsAccess {
             });
         mount_selection_label(build, *host.services_, state, component, label,
                               host.services_->components().theme_scope(component)->snapshot().map().font_size_large);
+        host.services_->nodes().require(state.spacer).external_layout.order =
+            state.direction == SwitchDirection::RightToLeft ? 1 : 0;
+        for (const auto interaction : host.services_->interactions().declaration_order()) {
+            const auto* record = host.services_->interactions().find(interaction);
+            if (!record || record->component == component) {
+                continue;
+            }
+            for (auto parent = host.services_->components().parent(record->component); parent;
+                 parent = host.services_->components().parent(*parent)) {
+                if (*parent == component) {
+                    throw std::invalid_argument("RadioLabel accepts passive content only");
+                }
+            }
+        }
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false, true});
         if (group) {
             group->options.push_back(component);
+            host.update_radio_tab_stops(*group);
         }
+        const auto focus = [&host, component] {
+            const auto* state = host.find(component);
+            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+                return false;
+            }
+            host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);
+            return true;
+        };
+        if (reference) {
+            reference->focus = focus;
+            reference->blur = [&host, component] {
+                const auto* state = host.find(component);
+                if (!state || host.services_->focus().state().focused != state->interaction) {
+                    return false;
+                }
+                host.services_->focus().defer_focus({}, input::FocusModality::keyboard);
+                return true;
+            };
+        }
+        if (props.auto_focus_) {
+            static_cast<void>(focus());
+        }
+        return component;
     }
 };
 
 struct RadioGroupPropsAccess {
-    static void mount(const RadioGroupProps& props) {
+    static void mount(const RadioGroupProps& props, const std::optional<RadioGroupContent>& content) {
         if (!active_selection_host) {
             throw std::logic_error("RadioGroup requires an active SelectionComponentHost");
         }
         auto& host = *active_selection_host;
-        if (props.value_ && props.default_value_) {
-            throw std::invalid_argument("RadioGroup value and defaultValue are mutually exclusive");
+        if ((props.value_ && props.selection_) || ((props.value_ || props.selection_) && props.default_value_) ||
+            (props.options_ && content)) {
+            throw std::invalid_argument("RadioGroup controlled/default and options/content are exclusive");
         }
         const auto orientation = read_prop(props.orientation_);
         if (orientation != RadioGroupOrientation::Horizontal && orientation != RadioGroupOrientation::Vertical) {
             throw std::invalid_argument("RadioGroup orientation is invalid");
         }
-        for (std::size_t left = 0; left < props.options_.size(); ++left) {
-            for (std::size_t right = left + 1; right < props.options_.size(); ++right) {
-                if (props.options_[left].value == props.options_[right].value) {
-                    throw std::invalid_argument("RadioGroup option values must be unique");
-                }
-            }
+        const auto options = props.options_ ? read_prop(*props.options_) : std::vector<RadioOption>{};
+        validate_radio_options(options);
+        RadioSelection initial = props.selection_ ? read_prop(*props.selection_) : props.default_value_;
+        if (props.value_) {
+            const auto legacy = read_prop(*props.value_);
+            initial = legacy ? RadioSelection{*legacy} : RadioSelection{};
         }
+        if (initial) {
+            validate_checkbox_value(*initial);
+        }
+        const auto direction = read_prop(props.direction_);
+        static_cast<void>(selection_direction(direction));
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<RadioGroupState>();
         auto& state = build.state<RadioGroupState>(component);
         state.component = component;
         state.node = build.root(component);
-        state.controlled = props.value_.has_value();
-        state.value = props.value_ ? read_prop(*props.value_) : props.default_value_;
+        state.controlled = props.value_.has_value() || props.selection_.has_value();
+        state.value = initial;
         state.disabled = read_prop(props.disabled_);
         state.orientation = orientation;
-        state.on_change = props.on_change_;
+        state.direction = direction;
+        state.on_change = [legacy = props.on_change_, typed = props.on_value_change_](const RadioValue& value) {
+            if (legacy) {
+                if (const auto* string = std::get_if<String>(&value)) {
+                    legacy(*string);
+                }
+            }
+            if (typed) {
+                typed(value);
+            }
+        };
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
+                host.services_->pointer().cancel_interaction(current->anchor);
+                host.services_->focus().cancel_interaction(current->anchor);
+                static_cast<void>(host.services_->interactions().remove(current->anchor));
                 static_cast<void>(host.services_->layout().remove_layout(current->node));
             }
         });
         host.update_group_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
                                       host.services_->dirty());
+        state.anchor = host.services_->interactions().create(
+            {component, state.node, host.parent_interaction(component), true, false, {}});
+        state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
+        host.services_->scene_composer().set_fragment(state.fragment, {}, state.anchor);
+        if (content) {
+            build.mount_slot(component, *content);
+        } else {
+            build.mount_slot(component, Content{[&] {
+                                 for (const auto& option : options) {
+                                     auto generated = std::make_unique<GeneratedRadioOption>(option);
+                                     RadioProps child;
+                                     child.value(option.value).disabled(generated->disabled);
+                                     generated->component =
+                                         RadioPropsAccess::mount(child, RadioLabel{[caption = generated->label] {
+                                                                     Text(TextProps{}.content(caption));
+                                                                 }});
+                                     state.generated.push_back(std::move(generated));
+                                 }
+                             }});
+        }
+        state.source_options = options;
         auto& scope = build.scope(component);
         if (props.value_) {
             static_cast<void>(
                 connect_prop(scope, *props.value_, [&host, component](const std::optional<String>& value) {
-                    host.apply_group_value(component, value);
+                    host.apply_group_value(component, value ? RadioSelection{*value} : RadioSelection{});
                 }));
+        }
+        if (props.selection_) {
+            static_cast<void>(connect_prop(scope, *props.selection_, [&host, component](const RadioSelection& value) {
+                host.apply_group_value(component, value);
+            }));
         }
         static_cast<void>(connect_prop(
             scope, props.disabled_, [&host, component](bool value) { host.apply_group_disabled(component, value); }));
         static_cast<void>(connect_prop(scope, props.orientation_, [&host, component](RadioGroupOrientation value) {
             host.apply_group_orientation(component, value);
         }));
+        static_cast<void>(connect_prop(scope, props.direction_, [&host, component](RadioDirection value) {
+            host.apply_group_direction(component, value);
+        }));
+        if (props.options_) {
+            static_cast<void>(
+                connect_prop(scope, *props.options_, [&host, component](const std::vector<RadioOption>& value) {
+                    host.apply_radio_options(component, value);
+                }));
+        }
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
@@ -2044,17 +2347,96 @@ struct RadioGroupPropsAccess {
                 }
             },
             [theme] { static_cast<void>(theme->map()); });
-        build.mount_slot(component, Content{[&] {
-                             for (const auto& option : props.options_) {
-                                 RadioProps radio;
-                                 radio.value(option.value).disabled(option.disabled);
-                                 RadioPropsAccess::mount(radio, RadioLabel{[label = option.label] { Text(label); }},
-                                                         component);
-                             }
-                         }});
         host.groups_.push_back(component);
     }
 };
+
+void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::vector<RadioOption> options) {
+    validate_radio_options(options);
+    auto* group = services_->components().state<RadioGroupState>(id);
+    if (!group || group->source_options == options) {
+        return;
+    }
+    std::vector<std::size_t> matched(options.size(), group->generated.size());
+    std::vector<std::unique_ptr<GeneratedRadioOption>> replacement(options.size());
+    for (std::size_t i = 0; i < options.size(); ++i) {
+        for (std::size_t previous = 0; previous < group->generated.size(); ++previous) {
+            if (group->generated[previous]->value == options[i].value) {
+                matched[i] = previous;
+                break;
+            }
+        }
+        if (matched[i] == group->generated.size()) {
+            replacement[i] = std::make_unique<GeneratedRadioOption>(options[i]);
+        }
+    }
+    const auto original_options = group->options;
+    group->reconciling = true;
+    try {
+        if (std::ranges::any_of(replacement, [](const auto& option) { return bool(option); })) {
+            services_->append_slot(id, Content{[&] {
+                                       for (auto& option : replacement) {
+                                           if (option) {
+                                               RadioProps child;
+                                               child.value(option->value).disabled(option->disabled);
+                                               option->component =
+                                                   RadioPropsAccess::mount(child, RadioLabel{[caption = option->label] {
+                                                                               Text(TextProps{}.content(caption));
+                                                                           }});
+                                           }
+                                       }
+                                   }});
+        }
+    } catch (...) {
+        if (auto* live = services_->components().state<RadioGroupState>(id)) {
+            live->options = original_options;
+            live->reconciling = false;
+        }
+        throw;
+    }
+    auto removed = std::move(group->generated);
+    for (std::size_t i = 0; i < replacement.size(); ++i) {
+        if (matched[i] < removed.size()) {
+            replacement[i] = std::move(removed[matched[i]]);
+        }
+    }
+    group->generated = std::move(replacement);
+    group->source_options = options;
+    group->options.clear();
+    std::vector<input::InteractionId> order;
+    bool value_retained = false;
+    for (std::size_t i = 0; i < group->generated.size(); ++i) {
+        const auto& option = group->generated[i];
+        group->options.push_back(option->component);
+        auto* state = find(option->component);
+        if (!state) {
+            throw std::logic_error("RadioGroup retained option is stale");
+        }
+        services_->nodes().require(state->node).external_layout.order = static_cast<int>(i);
+        order.push_back(state->interaction);
+        option->label.set(options[i].label);
+        option->disabled.set(options[i].disabled);
+        value_retained |= group->value && *group->value == option->value;
+    }
+    for (const auto& option : removed) {
+        if (option) {
+            services_->destroy(option->component);
+        }
+    }
+    group = services_->components().state<RadioGroupState>(id);
+    if (!group) {
+        return;
+    }
+    group->reconciling = false;
+    if (!group->controlled && !value_retained) {
+        apply_group_value(id, {});
+    }
+    update_radio_tab_stops(*group);
+    services_->interactions().reorder_after(group->anchor, order);
+    services_->dirty().invalidate(group->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    services_->mark_scene_structure_dirty();
+}
 
 } // namespace ryn::detail
 
@@ -2132,10 +2514,38 @@ void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent>
 }
 
 void Radio(RadioProps props, std::optional<RadioLabel> label) {
-    detail::RadioPropsAccess::mount(props, label);
+    static_cast<void>(detail::RadioPropsAccess::mount(props, label));
 }
 
-void RadioGroup(RadioGroupProps props) {
-    detail::RadioGroupPropsAccess::mount(props);
+RadioRef::RadioRef() : state_(std::make_shared<detail::RadioRefState>()) {}
+
+bool RadioRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return bool(state_->focus);
+}
+
+bool RadioRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool RadioRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
+}
+
+void RadioGroup(RadioGroupProps props, std::optional<RadioGroupContent> content) {
+    detail::RadioGroupPropsAccess::mount(props, content);
 }
 } // namespace ryn
