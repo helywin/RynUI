@@ -106,6 +106,9 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.button.ghost",
     "gallery.button.round-block",
     "gallery.button.loading-focus",
+    "gallery.divider.small-dotted-rtl",
+    "gallery.divider.middle-length",
+    "gallery.divider.vertical-dotted",
     "gallery.input.controlled",
     "gallery.input.uncontrolled",
     "ant.map.colorPrimary",
@@ -980,6 +983,24 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Button(ryn::ButtonProps{}.block(true).shape(ryn::ButtonShape::Round),
                 [] { ryn::Text(u8"gallery.button.round-block · Round block / resize"); });
     ++state->telemetry.live_samples;
+    ryn::Divider(ryn::DividerProps{}
+                     .variant(ryn::DividerVariant::Dotted)
+                     .size(ryn::ControlSize::Small)
+                     .orientation(ryn::DividerOrientation::Start)
+                     .direction(ryn::DividerDirection::RightToLeft)
+                     .content(u8"gallery.divider.small-dotted-rtl · Small / Start / RTL"));
+    ryn::Divider(ryn::DividerProps{}
+                     .variant(ryn::DividerVariant::Dashed)
+                     .size(ryn::ControlSize::Middle)
+                     .orientation(ryn::DividerOrientation::End)
+                     .orientationMargin(ryn::DividerOrientationMargin::length(ryn::dp(20)))
+                     .content(u8"gallery.divider.middle-length · Middle / End / 20 dp"));
+    ryn::Space(ryn::SpaceProps{}.align(ryn::SpaceAlign::Center), [] {
+        ryn::Text(u8"gallery.divider.vertical-dotted · Vertical");
+        ryn::Divider(ryn::DividerProps{}.type(ryn::DividerType::Vertical).variant(ryn::DividerVariant::Dotted));
+        ryn::Text(u8"Dotted");
+    });
+    state->telemetry.live_samples += 3;
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))), ryn::FlexContent{[] {}});
 }
 

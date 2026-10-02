@@ -111,6 +111,12 @@ void test_typed_support_status() {
                 button->supported_scope.find("wave") != std::string_view::npos &&
                 button->missing_scope.find("HTML") != std::string_view::npos,
             "native Button completion lost implementation evidence or Web boundary");
+    const auto* divider = find_ant_design_reference_entry("ant.component.divider");
+    require(divider && divider->support_status == GallerySupportStatus::implemented &&
+                divider->evidence_identifiers.find("openspec:045-") != std::string_view::npos &&
+                divider->supported_scope.find("Dotted") != std::string_view::npos &&
+                divider->missing_scope.find("DOM") != std::string_view::npos,
+            "native Divider completion lost implementation evidence or Web boundary");
     require_partial("ant.component.typography");
     require_partial("ant.component.flex");
     require_partial("ant.component.space");

@@ -787,7 +787,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 78, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 81, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -810,7 +810,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.host->interactions().size() == definition.navigation_control_count + 149,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
-                fixture.host->services().divider().mounted().size() == 8,
+                fixture.host->services().divider().mounted().size() == 11,
             "Gallery Typography actions or Divider examples absent");
 
     RecordingGpuApi gpu;
@@ -828,7 +828,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 55 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 95,
+                initial.reference_content_runs == 126 && initial.live_samples == 98,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,

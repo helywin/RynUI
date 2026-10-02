@@ -1,5 +1,7 @@
 #pragma once
+#include <cmath>
 #include <optional>
+#include <stdexcept>
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
@@ -35,7 +37,7 @@ struct DividerOrientationMargin final {
     }
 
     static DividerOrientationMargin length(LogicalLength value) {
-        if (value.is_auto() || !detail::finite(value.value()) || value.value() < 0) {
+        if (value.is_auto() || !std::isfinite(value.value()) || value.value() < 0) {
             throw std::invalid_argument("Divider margin length must be finite and non-negative");
         }
         return {Source::Length, 0, value.value()};

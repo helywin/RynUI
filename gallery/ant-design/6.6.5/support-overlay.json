@@ -99,20 +99,26 @@
     },
     {
       "identity": "ant.component.divider",
-      "status": "partial",
-      "summary": "RynUI 已提供水平/垂直 Divider、typed 文字 slot、三种朝向、Theme/None/比例间距、虚线与 plain；完整 Web API 尚未覆盖。",
+      "status": "implemented",
+      "summary": "原生 Divider 已补齐水平/垂直 Solid/Dashed/Dotted、尺寸、物理/逻辑标题方位、长度/比例间距和 Theme；Web 专用 API 不移植，平台验收独立记录。",
       "supported_scope": [
         "horizontal/vertical and persistent typed text slot",
         "left/center/right orientation and explicit margin precedence",
         "dashed/plain variants and Theme component tokens",
-        "same-frame label/rail layout and material-only color updates"
+        "same-frame label/rail layout and material-only color updates",
+        "Solid/Dashed/Dotted with circular dots and transparent gaps",
+        "Small/Middle/Large Theme margins",
+        "physical Left/Right/Center and scoped LTR/RTL Start/End",
+        "explicit logical length margins with bounded narrow constraints"
       ],
       "missing_scope": [
-        "complete Ant Design Web API"
+        "DOM refs, CSS styles/classNames and HTML/React compatibility aliases are out of native scope",
+        "Linux native GPU/font/window evidence remains independent pending"
       ],
       "evidence_identifiers": [
         "source:components/divider/index.en-US.md",
         "openspec:034-20261001-complete-typography-and-divider",
+        "openspec:045-20261002-complete-native-divider-variants",
         "test:rynui.divider_component"
       ]
     },

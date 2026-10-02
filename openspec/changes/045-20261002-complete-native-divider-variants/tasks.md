@@ -10,7 +10,7 @@
 
 ## 3. 整合（平台通用）
 
-- [ ] 3.1 更新 Gallery 样例、支持目录和收尾清单，补公开编译与目录合同；完整 headless Debug/Release CTest、实际 Core/renderer configure guard、golden 增量校验、格式/doctor/full strict/diff 通过后记录证据并提交。
+- [x] 3.1 更新 Gallery 样例、支持目录和收尾清单，补公开编译与目录合同；完整 headless Debug/Release CTest、实际 Core/renderer configure guard、golden 增量校验、格式/doctor/full strict/diff 通过后记录证据并提交。
 
 ## 4. Windows 原生验收
 

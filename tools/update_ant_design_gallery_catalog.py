@@ -264,6 +264,9 @@ def validate_overlay(
     button = result["ant.component.button"]
     if button["status"] != "implemented" or "openspec:044-20261002-complete-native-button-variants" not in button["evidence_identifiers"]:
         raise ValueError("native Button completion requires its implementation change evidence")
+    divider = result["ant.component.divider"]
+    if divider["status"] != "implemented" or "openspec:045-20261002-complete-native-divider-variants" not in divider["evidence_identifiers"]:
+        raise ValueError("native Divider completion requires its implementation change evidence")
     return result
 
 
