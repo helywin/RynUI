@@ -28,6 +28,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 排版与分割线 | 五级标题、行内语义与装饰、字素安全省略和展开、全文复制、原地单行编辑、Link 交互；水平/垂直、带文字、虚线和 plain Divider |
 | 单行编辑 | 受控/非受控值、占位文本、前后缀、Unicode 字素安全选区、剪贴板、撤销/重做、输入法组合事件与光标闪烁 |
 | 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |
+| 提示浮层 | 基础文字 Tooltip、受控显示、hover/focus 延迟、Escape、十二种位置、边缘翻转与箭头；范围与验收见 [Tooltip](docs/tooltip.md) |
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
 | 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
 
@@ -97,6 +98,8 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [多 backend 与跨端调研](docs/research/multi-backend-portability.md)：已实施的框架基础与未来桌面、移动端、Web 路线和验收范围。
 - [Design Token 参考](docs/design-tokens.md)：锁定的设计变量及支持范围。
 - [Slider / RangeSlider](docs/slider.md)：数值、交互、主题、支持范围与验收入口。
+- [Tooltip](docs/tooltip.md)：窗口提示层、触发与受控显示、主题及分平台验收。
+- [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
 - [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。
 - [OpenSpec changes](openspec/changes)：各项变更的范围、任务和验收证据。

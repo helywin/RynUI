@@ -258,6 +258,17 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
+    const auto& old_tooltip = before.tooltip();
+    const auto& new_tooltip = after.tooltip();
+    append_if_changed(old_tooltip.background, new_tooltip.background, TokenIdentity::tooltip_colors, changed, count);
+    append_if_changed(old_tooltip.text, new_tooltip.text, TokenIdentity::tooltip_colors, changed, count);
+    append_if_changed(old_tooltip.metrics(), new_tooltip.metrics(), TokenIdentity::tooltip_metrics, changed, count);
+    append_if_changed(old_tooltip.font_size, new_tooltip.font_size, TokenIdentity::tooltip_typography, changed, count);
+    append_if_changed(old_tooltip.line_height, new_tooltip.line_height, TokenIdentity::tooltip_typography, changed,
+                      count);
+    append_if_changed(old_tooltip.shadow, new_tooltip.shadow, TokenIdentity::tooltip_shadow, changed, count);
+    append_if_changed(old_tooltip.z_index_popup, new_tooltip.z_index_popup, TokenIdentity::tooltip_order, changed,
+                      count);
     const auto& old_typography = before.typography();
     const auto& new_typography = after.typography();
     append_if_changed(old_typography.colors, new_typography.colors, TokenIdentity::typography_colors, changed, count);
@@ -840,6 +851,36 @@ const SliderThemeToken& ThemeScope::slider_metrics() const {
     return snapshot_->slider();
 }
 
+const TooltipThemeToken& ThemeScope::tooltip_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tooltip_colors);
+    return snapshot_->tooltip();
+}
+
+const TooltipThemeToken& ThemeScope::tooltip_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tooltip_metrics);
+    return snapshot_->tooltip();
+}
+
+const TooltipThemeToken& ThemeScope::tooltip_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tooltip_typography);
+    return snapshot_->tooltip();
+}
+
+const TooltipThemeToken& ThemeScope::tooltip_shadow() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tooltip_shadow);
+    return snapshot_->tooltip();
+}
+
+const TooltipThemeToken& ThemeScope::tooltip_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tooltip_order);
+    return snapshot_->tooltip();
+}
+
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
@@ -930,6 +971,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Divider.typography",
         "Slider.colors",
         "Slider.metrics",
+        "Tooltip.colors",
+        "Tooltip.metrics",
+        "Tooltip.typography",
+        "Tooltip.shadow",
+        "Tooltip.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -973,6 +1019,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_inline_colors:
     case TokenIdentity::divider_colors:
     case TokenIdentity::slider_colors:
+    case TokenIdentity::tooltip_colors:
+    case TokenIdentity::tooltip_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
@@ -986,6 +1034,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_border_width:
     case TokenIdentity::button_shadows:
     case TokenIdentity::input_shadows:
+    case TokenIdentity::tooltip_shadow:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1003,6 +1052,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_fonts:
     case TokenIdentity::typography_base_typography:
     case TokenIdentity::divider_typography:
+    case TokenIdentity::tooltip_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1022,6 +1072,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_inline_keyboard:
     case TokenIdentity::divider_metrics:
     case TokenIdentity::slider_metrics:
+    case TokenIdentity::tooltip_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::map_border_radius_small:
     case TokenIdentity::map_border_radius:

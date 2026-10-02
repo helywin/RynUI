@@ -10,7 +10,7 @@
 
 ## 3. Tooltip 整体交付（平台通用）
 
-- [ ] 3.1 完成 typed API/slot、受控/非受控、hover/focus delay/cancel/Escape/reentrant callback、十二种定位/flip/shift/arrow、Theme token/algorithm/继承/分阶段失效、同帧文本和 retained scene、Gallery 与使用文档；补 public API、数值/输入/生命周期/idle/scene/主题负例，Windows/MSVC headless Debug/Release 完整 CTest 和格式/doctor/strict/diff 后保存证据并提交。
+- [x] 3.1 完成 typed API/slot、受控/非受控、hover/focus delay/cancel/Escape/reentrant callback、十二种定位/flip/shift/arrow、Theme token/algorithm/继承/分阶段失效、同帧文本和 retained scene、Gallery 与使用文档；补 public API、数值/输入/生命周期/idle/scene/主题负例，Windows/MSVC headless Debug/Release 完整 CTest 和格式/doctor/strict/diff 后保存证据并提交。
 
 ## 4. Windows 原生验收
 

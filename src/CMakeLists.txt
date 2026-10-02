@@ -194,6 +194,7 @@ add_library(rynui_components STATIC
     component/input_display.cpp
     component/selection_component.cpp
     component/slider_component.cpp
+    component/tooltip_component.cpp
     component/search_component.cpp
     component/retained_surface_service.cpp
     component/component_scene.cpp

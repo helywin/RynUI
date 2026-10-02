@@ -16,6 +16,7 @@
 #include <ryn/search.hpp>
 #include <ryn/space.hpp>
 #include <ryn/slider.hpp>
+#include <ryn/tooltip.hpp>
 #include <ryn/string.hpp>
 #include <ryn/switch.hpp>
 #include <ryn/text.hpp>

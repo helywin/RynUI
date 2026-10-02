@@ -860,16 +860,24 @@
     },
     {
       "identity": "ant.component.tooltip",
-      "status": "planned",
-      "summary": "文字提示（Tooltip）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 提供基础文字 Tooltip、窗口浮层、hover/focus/手动与受控显示、延迟/Escape、十二种位置/边缘调整、箭头及主题；富内容和扩展触发方式待补齐。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive title, open and trigger slot",
+        "hover/focus/manual with delay, Escape and disabled-child hover",
+        "twelve placements, flip/shift, arrow and window clipping",
+        "retained scene and Theme component tokens/algorithms"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "rich content title slot",
+        "click/context-menu triggers and arrow pointAtCenter",
+        "Web-only DOM/CSS/portal APIs are excluded from native scope"
       ],
       "evidence_identifiers": [
-        "source:components/tooltip/index.en-US.md"
+        "source:components/tooltip/index.en-US.md",
+        "openspec:040-20261002-add-tooltip-overlay-foundation",
+        "test:rynui.tooltip_component",
+        "test:rynui.window_overlay"
       ]
     },
     {

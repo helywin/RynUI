@@ -301,6 +301,50 @@ struct SliderThemeConfig final {
     friend bool operator==(const SliderThemeConfig&, const SliderThemeConfig&) = default;
 };
 
+struct TooltipTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> text;
+    std::optional<LogicalLength> max_width;
+    std::optional<LogicalLength> padding_inline;
+    std::optional<LogicalLength> padding_block;
+    std::optional<LogicalLength> min_height;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> arrow_size;
+    std::optional<LogicalLength> gap;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const TooltipTokenOverride&, const TooltipTokenOverride&) = default;
+};
+
+struct TooltipThemeConfig final {
+    TooltipTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TooltipThemeConfig&, const TooltipThemeConfig&) = default;
+};
+
+struct TooltipThemeToken final {
+    Color background;
+    Color text;
+    float max_width{250};
+    float padding_inline{8};
+    float padding_block{6};
+    float min_height{32};
+    float border_radius{6};
+    float arrow_size{8};
+    float gap{4};
+    float font_size{14};
+    float line_height{22};
+    ShadowList shadow;
+    std::int32_t z_index_popup{1070};
+
+    [[nodiscard]] std::array<float, 7> metrics() const {
+        return {max_width, padding_inline, padding_block, min_height, border_radius, arrow_size, gap};
+    }
+
+    friend bool operator==(const TooltipThemeToken&, const TooltipThemeToken&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -311,6 +355,7 @@ struct ThemeConfig final {
     TypographyThemeConfig typography;
     DividerThemeConfig divider;
     SliderThemeConfig slider;
+    TooltipThemeConfig tooltip;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -609,6 +654,7 @@ public:
     [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
+    [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -623,7 +669,7 @@ private:
 
     ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
                   TextThemeToken text, SwitchThemeToken switch_token, TypographyThemeToken typography,
-                  DividerThemeToken divider, SliderThemeToken slider,
+                  DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                   std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
@@ -635,6 +681,7 @@ private:
     TypographyThemeToken typography_;
     DividerThemeToken divider_;
     SliderThemeToken slider_;
+    TooltipThemeToken tooltip_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

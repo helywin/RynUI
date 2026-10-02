@@ -29,6 +29,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Single-line editing | Controlled/uncontrolled values, placeholders, prefix/suffix slots, grapheme-safe selection, clipboard, undo/redo, IME composition events, and caret blinking |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
+| Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
 | Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
 The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, and multiline editing are not available yet.

@@ -68,6 +68,11 @@ public:
     [[nodiscard]] const SwitchThemeToken& switch_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
+    [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
+    [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
+    [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
+    [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;
+    [[nodiscard]] const TooltipThemeToken& tooltip_order() const;
     [[nodiscard]] const TypographyThemeToken& typography_colors() const;
     [[nodiscard]] const TypographyThemeToken& typography_headings() const;
     [[nodiscard]] const TypographyThemeToken& typography_fonts() const;

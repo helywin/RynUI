@@ -23,6 +23,14 @@ rynui_configure_cpp_target(rynui_window_overlay_tests)
 target_link_libraries(rynui_window_overlay_tests PRIVATE rynui_components)
 add_test(NAME rynui.window_overlay COMMAND rynui_window_overlay_tests)
 
+add_executable(rynui_tooltip_component_tests tooltip_component_tests.cpp)
+rynui_configure_cpp_target(rynui_tooltip_component_tests)
+target_link_libraries(rynui_tooltip_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_tooltip_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.tooltip_component COMMAND rynui_tooltip_component_tests)
+
 add_test(
     NAME rynui.icon_asset_contract
     COMMAND "${Python3_EXECUTABLE}"

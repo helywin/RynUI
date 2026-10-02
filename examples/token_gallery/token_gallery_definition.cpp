@@ -780,7 +780,7 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
                                        }));
                    state->telemetry.live_samples += 3;
                });
-    ryn::Text(u8"Typography · 省略、复制与原地编辑（Tooltip 浮层尚未实现）");
+    ryn::Text(u8"Typography · 省略、复制与原地编辑");
     ryn::Text(ryn::TypographyProps{}
                   .content(u8"原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。")
                   .ellipsis(ryn::TypographyEllipsis{.expandable = true})
@@ -819,6 +819,19 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
         ryn::Text(u8"文字");
     });
     state->telemetry.live_samples += 5;
+    ryn::Text(u8"Tooltip · 悬停 / 键盘焦点 / Escape / 边缘翻转 / 禁用触发项");
+    ryn::Space(ryn::SpaceProps{}.wrap(true), [] {
+        ryn::Tooltip(ryn::TooltipProps{}.title(ryn::String{u8"悬停或 Tab 焦点显示，Escape 关闭"}),
+                     ryn::TooltipTrigger{
+                         [] { ryn::Button(ryn::ButtonProps{}, ryn::ButtonContent{[] { ryn::Text(u8"提示"); }}); }});
+        ryn::Tooltip(
+            ryn::TooltipProps{}.title(ryn::String{u8"禁用按钮保留说明"}).placement(ryn::TooltipPlacement::Right),
+            ryn::TooltipTrigger{[] {
+                ryn::Button(ryn::ButtonProps{}.disabled(true),
+                            ryn::ButtonContent{[] { ryn::Text(u8"禁用 / Disabled"); }});
+            }});
+    });
+    state->telemetry.live_samples += 2;
     ryn::Text(u8"Slider · 单值、范围、反向、禁用、纵向（Tooltip / marks 待实现）");
     ryn::Slider(ryn::SliderProps{}
                     .value(state->slider_value)

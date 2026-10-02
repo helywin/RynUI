@@ -860,6 +860,53 @@ SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapT
          Color(disabled.red(), disabled.green(), disabled.blue(), 1), alias.color_background_elevated}};
 }
 
+TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                 const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    const bool dark = std::find(algorithms.begin(), algorithms.end(), ThemeAlgorithm::Dark) != algorithms.end();
+    if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 70) {
+        throw std::invalid_argument("Tooltip z-index exceeds the supported integer range");
+    }
+    TooltipThemeToken result;
+    result.background = dark ? Color::rgba8(66, 66, 66) : Color(0, 0, 0, 0.85F);
+    result.text = Color::rgba8(255, 255, 255);
+    result.padding_inline = map.size_xs;
+    result.padding_block = map.size_small / 2;
+    result.min_height = map.control_height;
+    result.border_radius = map.border_radius;
+    result.arrow_size = seed.size_popup_arrow / 2;
+    result.gap = seed.size_unit;
+    result.font_size = map.font_size;
+    result.line_height = map.font_size * map.line_height;
+    result.shadow = alias.box_shadow_secondary;
+    result.z_index_popup = seed.z_index_popup_base + 70;
+    return result;
+}
+
+void apply_tooltip_override(TooltipThemeToken& token, const TooltipTokenOverride& o) {
+    if (o.background) {
+        token.background = *o.background;
+    }
+    if (o.text) {
+        token.text = *o.text;
+    }
+    token.max_width = fixed_length(o.max_width, token.max_width, "Tooltip max width must be positive", true);
+    token.padding_inline = fixed_length(o.padding_inline, token.padding_inline, "Tooltip padding must be non-negative");
+    token.padding_block = fixed_length(o.padding_block, token.padding_block, "Tooltip padding must be non-negative");
+    token.min_height = fixed_length(o.min_height, token.min_height, "Tooltip min height must be non-negative");
+    token.border_radius = fixed_length(o.border_radius, token.border_radius, "Tooltip radius must be non-negative");
+    token.arrow_size = fixed_length(o.arrow_size, token.arrow_size, "Tooltip arrow size must be non-negative");
+    token.gap = fixed_length(o.gap, token.gap, "Tooltip gap must be non-negative");
+    if (o.shadow) {
+        token.shadow = *o.shadow;
+    }
+    if (o.z_index_popup) {
+        token.z_index_popup = *o.z_index_popup;
+    }
+    if (!std::isfinite(token.padding_inline * 2 + token.padding_block * 2 + token.arrow_size * 2 + token.gap)) {
+        throw std::invalid_argument("Tooltip geometry must have a finite combined extent");
+    }
+}
+
 void apply_slider_override(SliderThemeToken& token, const SliderTokenOverride& o) {
     auto& m = token.metrics;
     auto& c = token.colors;
@@ -1025,7 +1072,8 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                                             const SliderThemeToken& slider, const detail::InputTokenSet& input,
+                                             const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                                             const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -1111,7 +1159,21 @@ void append_color(std::ostringstream& stream, Color color) {
         }
         append_color(stream, slider_colors[i]);
     }
-    stream << "]},\"text\":{\"color\":";
+    stream << "]},\"tooltip\":{\"background\":";
+    append_color(stream, tooltip.background);
+    stream << ",\"color\":";
+    append_color(stream, tooltip.text);
+    stream << ",\"metrics\":[";
+    const auto metrics = tooltip.metrics();
+    for (std::size_t index = 0; index < metrics.size(); ++index) {
+        if (index) {
+            stream << ',';
+        }
+        stream << metrics[index];
+    }
+    stream << "],\"fontSize\":" << tooltip.font_size << ",\"lineHeight\":" << tooltip.line_height
+           << ",\"zIndexPopup\":" << tooltip.z_index_popup << ",\"shadowLayers\":" << tooltip.shadow.size()
+           << "},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -1316,7 +1378,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
                                               const ThemeAliasToken& alias, const ButtonThemeToken& button,
                                               const TextThemeToken& text, const SwitchThemeToken& switch_token,
                                               const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                                              const SliderThemeToken& slider, const detail::InputTokenSet& input,
+                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                                              const detail::InputTokenSet& input,
                                               std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
@@ -1476,6 +1539,15 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     for (auto value : slider.colors.values()) {
         hash_color(hash, value);
     }
+    hash_color(hash, tooltip.background);
+    hash_color(hash, tooltip.text);
+    for (auto value : tooltip.metrics()) {
+        hash_float(hash, value);
+    }
+    hash_float(hash, tooltip.font_size);
+    hash_float(hash, tooltip.line_height);
+    hash_integer(hash, tooltip.z_index_popup);
+    hash_shadow(hash, tooltip.shadow);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -1507,15 +1579,16 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
 ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
                              TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
+                             TooltipThemeToken tooltip, std::shared_ptr<const detail::InputTokenSet> input,
+                             std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), typography_(std::move(typography)),
-      divider_(std::move(divider)), slider_(std::move(slider)), input_(std::move(input)),
+      divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)), input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, typography_, divider_, slider_,
-                                  *input_, algorithms_);
+                                  tooltip_, *input_, algorithms_);
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, typography_, divider_,
-                                          slider_, *input_, algorithms_, identity_);
+                                          slider_, tooltip_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -1554,6 +1627,10 @@ const SliderThemeToken& ThemeSnapshot::slider() const noexcept {
     return slider_;
 }
 
+const TooltipThemeToken& ThemeSnapshot::tooltip() const noexcept {
+    return tooltip_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -1578,7 +1655,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_ && left.alias_ == right.alias_ &&
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
            left.typography_ == right.typography_ && left.divider_ == right.divider_ && left.slider_ == right.slider_ &&
-           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.tooltip_ == right.tooltip_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -1716,9 +1793,26 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         slider = derive_slider(seed, map, alias, algorithms);
     }
     apply_slider_override(slider, config.slider.tokens);
+    TooltipThemeToken tooltip;
+    const bool inherit_tooltip = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                 config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                 !config.tooltip.algorithm && config.tooltip.seed == SeedTokenOverride{};
+    if (inherit_tooltip) {
+        tooltip = parent->tooltip();
+    } else if (config.tooltip.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.tooltip.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        tooltip = derive_tooltip(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                                 algorithms);
+    } else {
+        tooltip = derive_tooltip(seed, map, alias, algorithms);
+    }
+    apply_tooltip_override(tooltip, config.tooltip.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(typography), std::move(divider), std::move(slider),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
+                         std::move(tooltip), std::make_shared<const detail::InputTokenSet>(std::move(input)),
+                         std::move(algorithms));
 }
 
 } // namespace ryn

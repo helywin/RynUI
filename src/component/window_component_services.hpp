@@ -21,6 +21,7 @@ class InputComponentHost;
 class TypographyComponentHost;
 class DividerComponentHost;
 class SliderComponentHost;
+class TooltipComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -168,6 +169,10 @@ public:
         return *slider_;
     }
 
+    [[nodiscard]] TooltipComponentHost& tooltip() noexcept {
+        return *tooltip_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -258,6 +263,7 @@ private:
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SliderComponentHost> slider_;
+    std::unique_ptr<TooltipComponentHost> tooltip_;
 };
 
 } // namespace ryn::detail
