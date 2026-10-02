@@ -10,7 +10,7 @@
 
 ## 3. 集成（平台通用）
 
-- [ ] 3.1 补 Gallery 基线/WrapReverse/RTL 样例，同步目录和收尾清单；生成器 self-test/check、HEADLESS Debug/Release 完整 CTest、文档与格式/OpenSpec/diff 检查通过，记录实际 preset 和结果后提交。
+- [x] 3.1 补 Gallery 基线/WrapReverse/纵向 RTL/默认 Stretch 四组样例，同步目录和收尾清单，Flex 原生功能 implemented。生成器 write/self-test/check 通过；`windows-msvc-headless` Debug/Release 完整 CTest 各 65/65（90.26s/15.97s），原生 Gallery frame 通过（22.45s）；409 自有源格式、OpenSpec doctor/strict 49/49 与 diff 检查通过。Gallery 102 IDs、118 live samples、59 Theme scopes。
 
 ## 4. 平台集成
 

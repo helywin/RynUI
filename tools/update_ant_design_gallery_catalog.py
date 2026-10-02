@@ -33,7 +33,6 @@ EXPECTED_DOCUMENT_SOURCES = {
 }
 EXPECTED_INITIAL_PARTIALS = {
     "ant.component.typography",
-    "ant.component.flex",
     "ant.component.space",
     "ant.component.config-provider",
 }
@@ -276,6 +275,9 @@ def validate_overlay(
     radio = result["ant.component.radio"]
     if radio["status"] != "implemented" or "openspec:048-20261002-complete-native-radio-features" not in radio["evidence_identifiers"]:
         raise ValueError("native Radio completion requires its implementation change evidence")
+    flex = result["ant.component.flex"]
+    if flex["status"] != "implemented" or "openspec:049-20261003-complete-native-flex-layout" not in flex["evidence_identifiers"]:
+        raise ValueError("native Flex completion requires its implementation change evidence")
     return result
 
 

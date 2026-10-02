@@ -1,0 +1,490 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftgasp.c.obj
+[2/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftpatent.c.obj
+[3/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbdf.c.obj
+[4/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\bzip2\ftbzip2.c.obj
+[5/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftinit.c.obj
+[6/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftotval.c.obj
+[7/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftfstype.c.obj
+[8/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbbox.c.obj
+[9/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftcid.c.obj
+[10/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftpfr.c.obj
+[11/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftmm.c.obj
+[12/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftsynth.c.obj
+[13/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftglyph.c.obj
+[14/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\fttype1.c.obj
+[15/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftwinfnt.c.obj
+[16/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbitmap.c.obj
+[17/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\bdf\bdf.c.obj
+[18/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\autofit\autofit.c.obj
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afadjust.c(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afadjust.c(766): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afblue.c(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afblue.c(257): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\autofit\afscript.h(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+[19/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftstroke.c.obj
+[20/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\svg\svg.c.obj
+[21/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftgxval.c.obj
+[22/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cid\type1cid.c.obj
+[23/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cff\cff.c.obj
+[24/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\raster\raster.c.obj
+[25/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\smooth\smooth.c.obj
+[26/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\builds\windows\ftdebug.c.obj
+[27/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pfr\pfr.c.obj
+[28/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\lzw\ftlzw.c.obj
+[29/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\winfonts\winfnt.c.obj
+[30/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pcf\pcf.c.obj
+[31/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\type42\type42.c.obj
+[32/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\psnames\psnames.c.obj
+[33/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\pshinter\pshinter.c.obj
+[34/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\builds\windows\ftsystem.c.obj
+[35/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftbase.c.obj
+[36/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\cache\ftcache.c.obj
+[37/268] Building RC object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\base\ftver.rc.res
+[38/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\type1\type1.c.obj
+[39/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\sdf\sdf.c.obj
+[40/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\gzip\ftgzip.c.obj
+[41/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\sfnt\sfnt.c.obj
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\sfnt\ttload.c(1): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+[42/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\runtime.cpp.obj
+[43/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\truetype\truetype.c.obj
+D:\code\RynUI\out\build\windows-msvc\_deps\rynui_freetype-src\src\truetype\ttobjs.c(969): warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+[44/268] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\easing.cpp.obj
+[45/268] Building C object _deps\rynui_utf8proc-build\CMakeFiles\utf8proc.dir\Release\utf8proc.c.obj
+[46/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\component_mount.cpp.obj
+[47/268] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\value.cpp.obj
+[48/268] Building CXX object src\CMakeFiles\rynui_text_boundary.dir\Release\input\text_boundary.cpp.obj
+[49/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\node_store.cpp.obj
+[50/268] Building CXX object src\CMakeFiles\rynui_string.dir\Release\text\string.cpp.obj
+[51/268] Building CXX object src\CMakeFiles\rynui_layout.dir\Release\layout\layout.cpp.obj
+[52/268] Building CXX object src\CMakeFiles\rynui_reactive.dir\Release\reactive\reactive.cpp.obj
+[53/268] Linking C static library _deps\rynui_utf8proc-build\Release\utf8proc_static.lib
+[54/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\graphics.cpp.obj
+[55/268] Linking CXX static library src\Release\rynui_string.lib
+[56/268] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\design_token.cpp.obj
+[57/268] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\input_tokens.cpp.obj
+[58/268] Linking CXX static library src\Release\rynui_text_boundary.lib
+[59/268] Linking CXX static library src\Release\rynui_reactive.lib
+[60/268] Building CXX object src\CMakeFiles\rynui_input.dir\Release\input\text_input_events.cpp.obj
+[61/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\layout_style_adapter.cpp.obj
+[62/268] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\time.cpp.obj
+[63/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\frame_scheduler.cpp.obj
+[64/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\callback_frame_pump.cpp.obj
+[65/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\component_host.cpp.obj
+[66/268] Building CXX object src\CMakeFiles\rynui_runtime.dir\Release\runtime\invalidation.cpp.obj
+[67/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\quad_scene.cpp.obj
+[68/268] Building CXX object src\CMakeFiles\rynui_animation.dir\Release\animation\runtime.cpp.obj
+[69/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\quad_primitive.cpp.obj
+[70/268] Building CXX object src\CMakeFiles\rynui_text_editor.dir\Release\input\text_history.cpp.obj
+[71/268] Building CXX object src\CMakeFiles\rynui_input.dir\Release\input\platform_input.cpp.obj
+[72/268] Building CXX object src\CMakeFiles\rynui_text_clipboard_commands.dir\Release\input\text_clipboard_commands.cpp.obj
+[73/268] Building CXX object src\CMakeFiles\rynui_text_input_session.dir\Release\input\text_input_session.cpp.obj
+[74/268] Building CXX object src\CMakeFiles\rynui_layout.dir\Release\layout\layout_engine.cpp.obj
+[75/268] Building CXX object src\CMakeFiles\rynui_text_editor.dir\Release\input\text_editor.cpp.obj
+[76/268] Building C object _deps\rynui_freetype-build\CMakeFiles\freetype.dir\Release\src\psaux\psaux.c.obj
+[77/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_metrics.cpp.obj
+[78/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\glyph_atlas.cpp.obj
+[79/268] Building CXX object src\CMakeFiles\rynui_text.dir\Release\text\text_caret_map.cpp.obj
+[80/268] Linking CXX static library src\Release\rynui_input.lib
+[81/268] Linking CXX static library src\Release\rynui_animation.lib
+[82/268] Building CXX object src\CMakeFiles\rynui_font.dir\Release\font\font_runtime.cpp.obj
+[83/268] Building CXX object src\CMakeFiles\rynui_text.dir\Release\text\text_engine.cpp.obj
+[84/268] Linking C static library _deps\rynui_freetype-build\Release\freetype.lib
+[85/268] Building CXX object src\CMakeFiles\rynui_motion.dir\Release\animation\motion_policy.cpp.obj
+[86/268] Linking CXX static library src\Release\rynui_text_editor.lib
+[87/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\glyph_scene.cpp.obj
+[88/268] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\theme_runtime.cpp.obj
+[89/268] Building CXX object src\CMakeFiles\rynui_theme.dir\Release\theme\theme_snapshot.cpp.obj
+[90/268] Building CXX object src\CMakeFiles\rynui_text_scene.dir\Release\text\text_scene_service.cpp.obj
+[91/268] Building CXX object src\CMakeFiles\rynui_graphics.dir\Release\graphics\rounded_effect.cpp.obj
+[92/268] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\focus_manager.cpp.obj
+[93/268] Linking CXX static library src\Release\rynui_text_clipboard_commands.lib
+[94/268] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\interaction_registry.cpp.obj
+[95/268] Linking CXX static library src\Release\rynui_text_input_session.lib
+[96/268] Linking CXX static library src\Release\rynui_theme.lib
+[97/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_capabilities.cpp.obj
+[98/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_packing.cpp.obj
+[99/268] Linking CXX static library src\Release\rynui_runtime.lib
+[100/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\rounded_effect_packing.cpp.obj
+[101/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_display.cpp.obj
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(83): warning C4244: “初始化”: 从“_Ty”转换到“float”，可能丢失数据
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(83): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\src\component\input_display.cpp(203): note: 查看对正在编译的函数 模板 实例化“std::optional<float>::optional<int,0>(_Ty2 &&) noexcept”的引用
+        with
+        [
+            _Ty2=int
+        ]
+D:\code\RynUI\src\component\input_display.cpp(203): note: 请参阅 "ryn::detail::InputDisplayState::scroll_for_caret" 中对 "std::optional<float>::optional" 的第一个引用
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(307): note: 查看对正在编译的函数 模板 实例化“std::_Optional_construct_base<_Ty>::_Optional_construct_base<int>(std::in_place_t,int &&)”的引用
+        with
+        [
+            _Ty=float
+        ]
+D:\code\RynUI\src\component\input_display.cpp(216): note: 查看对正在编译的函数 模板 实例化“std::_Optional_destruct_base<_Ty,true>::_Optional_destruct_base<int>(std::in_place_t,int &&) noexcept”的引用
+        with
+        [
+            _Ty=float
+        ]
+[102/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\scene_resources.cpp.obj
+[103/268] Building CXX object src\CMakeFiles\rynui_interaction.dir\Release\input\pointer_router.cpp.obj
+[104/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\layout_component_context.cpp.obj
+[105/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\text_render_controller.cpp.obj
+[106/268] Linking CXX static library src\Release\rynui_layout.lib
+[107/268] Linking CXX static library src\Release\rynui_motion.lib
+[108/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\glyph_gpu_resources.cpp.obj
+[109/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\quad_gpu_resources.cpp.obj
+[110/268] Linking CXX static library src\Release\rynui_interaction.lib
+[111/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_material_transition.cpp.obj
+[112/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\default_theme.cpp.obj
+[113/268] Building CXX object src\CMakeFiles\rynui_renderer_common.dir\Release\renderer\common\rounded_effect_gpu_resources.cpp.obj
+[114/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\flex_component.cpp.obj
+[115/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_component.cpp.obj
+[116/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_prop.dir\Release\__\prop_tests.cpp.obj
+[117/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\theme_component.cpp.obj
+[118/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_glyph_texture_upload.dir\Release\__\glyph_texture_upload_tests.cpp.obj
+D:\code\RynUI\tests\glyph_texture_upload_tests.cpp(61): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[119/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\retained_surface_service.cpp.obj
+[120/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\component_scene.cpp.obj
+[121/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[122/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_logical_scene_packing.dir\Release\__\logical_scene_packing_tests.cpp.obj
+[123/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_texture_upload_batch_layout.dir\Release\__\texture_upload_batch_layout_tests.cpp.obj
+D:\code\RynUI\tests\texture_upload_batch_layout_tests.cpp(37): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+D:\code\RynUI\tests\texture_upload_batch_layout_tests.cpp(39): warning C4267: “参数”: 从“size_t”转换到“uint32_t”，可能丢失数据
+[124/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\search_component.cpp.obj
+[125/268] Building CXX object src\CMakeFiles\rynui_renderer_recording.dir\Release\renderer\recording\recording_renderer.cpp.obj
+[126/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_affix_action.cpp.obj
+[127/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_font_runtime.dir\Release\__\font_runtime_tests.cpp.obj
+[128/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_quad_primitive.dir\Release\__\quad_primitive_tests.cpp.obj
+[129/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_engine.dir\Release\__\text_engine_tests.cpp.obj
+[130/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_binding_quad_integration.dir\Release\__\binding_quad_integration_tests.cpp.obj
+[131/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_render_integration.dir\Release\__\text_render_integration_tests.cpp.obj
+[132/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_scene_service.dir\Release\__\button_scene_service_tests.cpp.obj
+[133/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_state.dir\Release\__\text_state_tests.cpp.obj
+[134/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+[135/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_math.dir\Release\__\rounded_effect_math_tests.cpp.obj
+[136/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_store.dir\Release\__\rounded_effect_store_tests.cpp.obj
+[137/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_glyph_gpu_resources.dir\Release\__\glyph_gpu_resources_tests.cpp.obj
+[138/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_gpu.dir\Release\__\rounded_effect_gpu_tests.cpp.obj
+[139/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_scene_service.dir\Release\__\text_scene_service_tests.cpp.obj
+[140/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_glyph_atlas.dir\Release\__\glyph_atlas_tests.cpp.obj
+[141/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_scene.dir\Release\__\rounded_effect_scene_tests.cpp.obj
+[142/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\text_component.cpp.obj
+D:\code\RynUI\src\component\text_component.cpp(574): warning C4100: 'viewport': 未引用的参数
+[143/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_glyph_scene.dir\Release\__\glyph_scene_tests.cpp.obj
+D:\code\RynUI\tests\glyph_scene_tests.cpp(118): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+D:\code\RynUI\tests\glyph_scene_tests.cpp(119): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+[144/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_gpu_resources.dir\Release\__\rounded_effect_gpu_resources_tests.cpp.obj
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(888): warning C4389: '==': 有符号/无符号不匹配
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(888): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\tests\rounded_effect_gpu_resources_tests.cpp(290): note: 查看对正在编译的函数 模板 实例化“bool std::operator ==<uint32_t,int,0>(const std::optional<uint32_t> &,const _Ty2 &) noexcept(<expr>)”的引用
+        with
+        [
+            _Ty2=int
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(890): warning C4389: '==': 有符号/无符号不匹配
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(890): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\tests\rounded_effect_gpu_resources_tests.cpp(290): note: 查看对正在编译的函数 模板 实例化“bool std::operator ==<uint32_t,int,0>(const std::optional<uint32_t> &,const _Ty2 &) noexcept”的引用
+        with
+        [
+            _Ty2=int
+        ]
+[145/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tooltip_component.cpp.obj
+[146/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[147/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_selection_controls_public_api.dir\Release\__\selection_controls_public_api_tests.cpp.obj
+[148/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\divider_component.cpp.obj
+D:\code\RynUI\src\component\divider_component.cpp(411): warning C4100: 'viewport': 未引用的参数
+[149/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_switch_public_api.dir\Release\__\switch_public_api_tests.cpp.obj
+[150/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_checkbox_public_api.dir\Release\__\checkbox_public_api_tests.cpp.obj
+[151/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_order.dir\Release\__\focus_order_tests.cpp.obj
+[152/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_state.dir\Release\__\focus_state_tests.cpp.obj
+[153/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_public_api.dir\Release\__\radio_public_api_tests.cpp.obj
+[154/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_theme_runtime.dir\Release\__\theme_runtime_tests.cpp.obj
+[155/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_focus_lifecycle.dir\Release\__\focus_lifecycle_tests.cpp.obj
+[156/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_divider_public_api.dir\Release\__\divider_public_api_tests.cpp.obj
+[157/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_theme_algorithm.dir\Release\__\theme_algorithm_tests.cpp.obj
+[158/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\typography_component.cpp.obj
+D:\code\RynUI\src\component\typography_component.cpp(759): warning C4189: “theme”: 局部变量已初始化但不引用
+[159/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_gpu.dir\Release\__\input_gpu_tests.cpp.obj
+[160/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_frame_scheduler.dir\Release\__\frame_scheduler_tests.cpp.obj
+[161/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_selection_component.dir\Release\__\selection_component_tests.cpp.obj
+[162/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_interaction_registry.dir\Release\__\interaction_registry_tests.cpp.obj
+[163/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_layout_allocation.dir\Release\__\layout_allocation_tests.cpp.obj
+[164/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_checkbox_group.dir\Release\__\checkbox_group_tests.cpp.obj
+[165/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[166/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_caret_blink.dir\Release\__\input_caret_blink_tests.cpp.obj
+[167/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_layout_engine.dir\Release\__\layout_engine_tests.cpp.obj
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(83): warning C4244: “初始化”: 从“_Ty”转换到“float”，可能丢失数据
+        with
+        [
+            _Ty=int
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(83): note: 模板实例化上下文(最早的实例化上下文)为
+D:\code\RynUI\tests\layout_engine_tests.cpp(880): note: 查看对正在编译的函数 模板 实例化“std::optional<float>::optional<int,0>(_Ty2 &&) noexcept”的引用
+        with
+        [
+            _Ty2=int
+        ]
+D:\code\RynUI\tests\layout_engine_tests.cpp(880): note: 请参阅 "`anonymous-namespace'::test_baseline_lines_margins_reverse_and_cache::<lambda_1>::operator ()" 中对 "std::optional<float>::optional" 的第一个引用
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\optional(307): note: 查看对正在编译的函数 模板 实例化“std::_Optional_construct_base<_Ty>::_Optional_construct_base<int>(std::in_place_t,int &&)”的引用
+        with
+        [
+            _Ty=float
+        ]
+D:\code\RynUI\tests\layout_engine_tests.cpp(955): note: 查看对正在编译的函数 模板 实例化“std::_Optional_destruct_base<_Ty,true>::_Optional_destruct_base<int>(std::in_place_t,int &&) noexcept”的引用
+        with
+        [
+            _Ty=float
+        ]
+[168/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_layout_style_public_api.dir\Release\__\layout_style_public_api_tests.cpp.obj
+[169/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_window_overlay.dir\Release\__\window_overlay_tests.cpp.obj
+D:\code\RynUI\tests\window_overlay_tests.cpp(71): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[170/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component.dir\Release\__\text_component_tests.cpp.obj
+[171/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_flex_header_isolation.dir\Release\__\flex_header_isolation_tests.cpp.obj
+[172/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_pointer_route.dir\Release\__\pointer_route_tests.cpp.obj
+[173/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_layout_style.dir\Release\__\layout_style_tests.cpp.obj
+[174/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_space_header_isolation.dir\Release\__\space_header_isolation_tests.cpp.obj
+[175/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_text_component_frame.dir\Release\__\text_component_frame_tests.cpp.obj
+[176/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_rounded_effect_allocation.dir\Release\__\rounded_effect_allocation_benchmark.cpp.obj
+[177/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_space_public_api.dir\Release\__\space_public_api_tests.cpp.obj
+[178/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_switch_features.dir\Release\__\switch_features_tests.cpp.obj
+[179/268] Building CXX object _deps\rynui_harfbuzz-build\CMakeFiles\harfbuzz.dir\Release\src\harfbuzz.cc.obj
+[180/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_flex_public_api.dir\Release\__\flex_public_api_tests.cpp.obj
+[181/268] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\slider_component.cpp.obj
+[182/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_tooltip_component.dir\Release\__\tooltip_component_tests.cpp.obj
+D:\code\RynUI\tests\tooltip_component_tests.cpp(275): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\tooltip_component_tests.cpp(276): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[183/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_component.dir\Release\__\radio_component_tests.cpp.obj
+[184/268] Linking CXX static library _deps\rynui_harfbuzz-build\Release\harfbuzz.lib
+[185/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_component.dir\Release\__\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(400): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(408): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[186/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_interaction.dir\Release\__\typography_interaction_tests.cpp.obj
+[187/268] Linking CXX static library src\Release\rynui_font.lib
+[188/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_typography_component.dir\Release\__\typography_component_tests.cpp.obj
+[189/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_features.dir\Release\__\radio_features_tests.cpp.obj
+[190/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_divider_component.dir\Release\__\divider_component_tests.cpp.obj
+[191/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_flex_features.dir\Release\__\flex_features_tests.cpp.obj
+[192/268] Linking CXX static library src\Release\rynui_text.lib
+[193/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_input_scene_allocation.dir\Release\__\input_scene_allocation_benchmark.cpp.obj
+[194/268] Linking CXX static library src\Release\rynui_graphics.lib
+[195/268] Linking CXX static library src\Release\rynui_text_scene.lib
+[196/268] Linking CXX static library src\Release\rynui_renderer_common.lib
+[197/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_flex_component.dir\Release\__\flex_component_tests.cpp.obj
+[198/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_slider_component.dir\Release\__\slider_component_tests.cpp.obj
+[199/268] Linking CXX static library src\Release\rynui_renderer_recording.lib
+[200/268] Linking CXX static library src\Release\rynui_components.lib
+[201/268] Linking CXX executable tests\portable\Release\rynui_portable_prop.exe
+[202/268] Linking CXX executable tests\portable\Release\rynui_portable_glyph_texture_upload.exe
+[203/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_space_component.dir\Release\__\space_component_tests.cpp.obj
+[204/268] Linking CXX executable tests\portable\Release\rynui_portable_texture_upload_batch_layout.exe
+[205/268] Linking CXX executable tests\portable\Release\rynui_portable_logical_scene_packing.exe
+[206/268] Linking CXX executable tests\portable\Release\rynui_portable_quad_primitive.exe
+[207/268] Linking CXX executable tests\portable\Release\rynui_portable_binding_quad_integration.exe
+[208/268] Linking CXX executable tests\portable\Release\rynui_portable_button_scene_service.exe
+[209/268] Linking CXX executable tests\portable\Release\rynui_portable_font_runtime.exe
+[210/268] Linking CXX executable tests\portable\Release\rynui_portable_text_engine.exe
+[211/268] Linking CXX executable tests\portable\Release\rynui_portable_text_state.exe
+[212/268] Linking CXX executable tests\portable\Release\rynui_portable_text_scene_service.exe
+[213/268] Linking CXX executable tests\portable\Release\rynui_portable_text_render_integration.exe
+[214/268] Linking CXX executable tests\portable\Release\rynui_portable_glyph_atlas.exe
+[215/268] Linking CXX executable tests\portable\Release\rynui_portable_glyph_scene.exe
+[216/268] Linking CXX executable tests\portable\Release\rynui_portable_glyph_gpu_resources.exe
+[217/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_math.exe
+[218/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_store.exe
+[219/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_scene.exe
+[220/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu.exe
+[221/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu_resources.exe
+[222/268] Linking CXX executable tests\portable\Release\rynui_portable_selection_controls_public_api.exe
+[223/268] Linking CXX executable tests\portable\Release\rynui_portable_input_gpu.exe
+[224/268] Linking CXX executable tests\portable\Release\rynui_portable_input_caret_blink.exe
+[225/268] Linking CXX executable tests\portable\Release\rynui_portable_input_component.exe
+[226/268] Linking CXX executable tests\portable\Release\rynui_portable_text_component.exe
+[227/268] Linking CXX executable tests\portable\Release\rynui_portable_theme_runtime.exe
+[228/268] Linking CXX executable tests\portable\Release\rynui_portable_theme_algorithm.exe
+[229/268] Linking CXX executable tests\portable\Release\rynui_portable_selection_component.exe
+[230/268] Linking CXX executable tests\portable\Release\rynui_portable_focus_state.exe
+[231/268] Linking CXX executable tests\portable\Release\rynui_portable_switch_features.exe
+[232/268] Linking CXX executable tests\portable\Release\rynui_portable_focus_lifecycle.exe
+[233/268] Linking CXX executable tests\portable\Release\rynui_portable_focus_order.exe
+[234/268] Linking CXX executable tests\portable\Release\rynui_portable_switch_public_api.exe
+[235/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_scene_backend.dir\Release\__\scene_backend_tests.cpp.obj
+[236/268] Linking CXX executable tests\portable\Release\rynui_portable_divider_public_api.exe
+[237/268] Linking CXX executable tests\portable\Release\rynui_portable_checkbox_group.exe
+[238/268] Linking CXX executable tests\portable\Release\rynui_portable_interaction_registry.exe
+[239/268] Linking CXX executable tests\portable\Release\rynui_portable_frame_scheduler.exe
+[240/268] Linking CXX executable tests\portable\Release\rynui_portable_layout_engine.exe
+[241/268] Linking CXX executable tests\portable\Release\rynui_portable_checkbox_public_api.exe
+[242/268] Linking CXX executable tests\portable\Release\rynui_portable_window_overlay.exe
+[243/268] Linking CXX executable tests\portable\Release\rynui_portable_layout_allocation.exe
+[244/268] Linking CXX executable tests\portable\Release\rynui_portable_layout_style_public_api.exe
+[245/268] Linking CXX executable tests\portable\Release\rynui_portable_layout_style.exe
+[246/268] Linking CXX executable tests\portable\Release\rynui_portable_pointer_route.exe
+[247/268] Linking CXX executable tests\portable\Release\rynui_portable_flex_header_isolation.exe
+[248/268] Linking CXX executable tests\portable\Release\rynui_portable_flex_public_api.exe
+[249/268] Linking CXX executable tests\portable\Release\rynui_portable_radio_component.exe
+[250/268] Linking CXX executable tests\portable\Release\rynui_portable_flex_component.exe
+[251/268] Linking CXX executable tests\portable\Release\rynui_portable_typography_component.exe
+[252/268] Linking CXX executable tests\portable\Release\rynui_portable_space_public_api.exe
+[253/268] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_allocation.exe
+[254/268] Linking CXX executable tests\portable\Release\rynui_portable_space_header_isolation.exe
+[255/268] Linking CXX executable tests\portable\Release\rynui_portable_slider_component.exe
+[256/268] Linking CXX executable tests\portable\Release\rynui_portable_radio_public_api.exe
+[257/268] Linking CXX executable tests\portable\Release\rynui_portable_typography_interaction.exe
+[258/268] Linking CXX executable tests\portable\Release\rynui_portable_radio_features.exe
+[259/268] Linking CXX executable tests\portable\Release\rynui_portable_text_component_frame.exe
+[260/268] Linking CXX executable tests\portable\Release\rynui_portable_divider_component.exe
+[261/268] Linking CXX executable tests\portable\Release\rynui_portable_tooltip_component.exe
+[262/268] Linking CXX executable tests\portable\Release\rynui_portable_flex_features.exe
+[263/268] Linking CXX executable tests\portable\Release\rynui_portable_input_scene_allocation.exe
+[264/268] Linking CXX executable tests\portable\Release\rynui_portable_space_component.exe
+[265/268] Linking CXX executable tests\portable\Release\rynui_portable_scene_backend.exe
+[266/268] Building CXX object tests\portable\CMakeFiles\rynui_portable_button_component.dir\Release\__\button_component_tests.cpp.obj
+[267/268] Linking CXX executable tests\portable\Release\rynui_portable_button_component.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.portable.prop
+ 1/65 Test  #1: rynui.portable.prop ............................   Passed    0.02 sec
+      Start  2: rynui.portable.glyph_texture_upload
+ 2/65 Test  #2: rynui.portable.glyph_texture_upload ............   Passed    0.03 sec
+      Start  3: rynui.portable.texture_upload_batch_layout
+ 3/65 Test  #3: rynui.portable.texture_upload_batch_layout .....   Passed    0.03 sec
+      Start  4: rynui.portable.logical_scene_packing
+ 4/65 Test  #4: rynui.portable.logical_scene_packing ...........   Passed    0.02 sec
+      Start  5: rynui.portable.quad_primitive
+ 5/65 Test  #5: rynui.portable.quad_primitive ..................   Passed    0.02 sec
+      Start  6: rynui.portable.binding_quad_integration
+ 6/65 Test  #6: rynui.portable.binding_quad_integration ........   Passed    0.03 sec
+      Start  7: rynui.portable.button_scene_service
+ 7/65 Test  #7: rynui.portable.button_scene_service ............   Passed    0.03 sec
+      Start  8: rynui.portable.font_runtime
+ 8/65 Test  #8: rynui.portable.font_runtime ....................   Passed    0.05 sec
+      Start  9: rynui.portable.text_engine
+ 9/65 Test  #9: rynui.portable.text_engine .....................   Passed    0.10 sec
+      Start 10: rynui.portable.text_state
+10/65 Test #10: rynui.portable.text_state ......................   Passed    0.06 sec
+      Start 11: rynui.portable.text_scene_service
+11/65 Test #11: rynui.portable.text_scene_service ..............   Passed    0.16 sec
+      Start 12: rynui.portable.text_render_integration
+12/65 Test #12: rynui.portable.text_render_integration .........   Passed    0.05 sec
+      Start 13: rynui.portable.glyph_atlas
+13/65 Test #13: rynui.portable.glyph_atlas .....................   Passed    0.03 sec
+      Start 14: rynui.portable.glyph_scene
+14/65 Test #14: rynui.portable.glyph_scene .....................   Passed    0.27 sec
+      Start 15: rynui.portable.glyph_gpu_resources
+15/65 Test #15: rynui.portable.glyph_gpu_resources .............   Passed    0.03 sec
+      Start 16: rynui.portable.rounded_effect_math
+16/65 Test #16: rynui.portable.rounded_effect_math .............   Passed    0.03 sec
+      Start 17: rynui.portable.rounded_effect_store
+17/65 Test #17: rynui.portable.rounded_effect_store ............   Passed    0.03 sec
+      Start 18: rynui.portable.rounded_effect_scene
+18/65 Test #18: rynui.portable.rounded_effect_scene ............   Passed    0.03 sec
+      Start 19: rynui.portable.rounded_effect_gpu
+19/65 Test #19: rynui.portable.rounded_effect_gpu ..............   Passed    0.03 sec
+      Start 20: rynui.portable.rounded_effect_gpu_resources
+20/65 Test #20: rynui.portable.rounded_effect_gpu_resources ....   Passed    0.02 sec
+      Start 21: rynui.portable.input_component
+21/65 Test #21: rynui.portable.input_component .................   Passed    1.26 sec
+      Start 22: rynui.portable.input_gpu
+22/65 Test #22: rynui.portable.input_gpu .......................   Passed    0.10 sec
+      Start 23: rynui.portable.input_caret_blink
+23/65 Test #23: rynui.portable.input_caret_blink ...............   Passed    0.05 sec
+      Start 24: rynui.portable.text_component
+24/65 Test #24: rynui.portable.text_component ..................   Passed    0.33 sec
+      Start 25: rynui.portable.button_component
+25/65 Test #25: rynui.portable.button_component ................   Passed    0.75 sec
+      Start 26: rynui.portable.selection_component
+26/65 Test #26: rynui.portable.selection_component .............   Passed    0.39 sec
+      Start 27: rynui.portable.selection_controls_public_api
+27/65 Test #27: rynui.portable.selection_controls_public_api ...   Passed    0.03 sec
+      Start 28: rynui.portable.switch_features
+28/65 Test #28: rynui.portable.switch_features .................   Passed    0.23 sec
+      Start 29: rynui.portable.switch_public_api
+29/65 Test #29: rynui.portable.switch_public_api ...............   Passed    0.03 sec
+      Start 30: rynui.portable.checkbox_group
+30/65 Test #30: rynui.portable.checkbox_group ..................   Passed    0.32 sec
+      Start 31: rynui.portable.checkbox_public_api
+31/65 Test #31: rynui.portable.checkbox_public_api .............   Passed    0.02 sec
+      Start 32: rynui.portable.theme_algorithm
+32/65 Test #32: rynui.portable.theme_algorithm .................   Passed    0.04 sec
+      Start 33: rynui.portable.theme_runtime
+33/65 Test #33: rynui.portable.theme_runtime ...................   Passed    0.04 sec
+      Start 34: rynui.portable.slider_component
+34/65 Test #34: rynui.portable.slider_component ................   Passed    0.96 sec
+      Start 35: rynui.portable.radio_component
+35/65 Test #35: rynui.portable.radio_component .................   Passed    0.36 sec
+      Start 36: rynui.portable.radio_features
+36/65 Test #36: rynui.portable.radio_features ..................   Passed    0.45 sec
+      Start 37: rynui.portable.radio_public_api
+37/65 Test #37: rynui.portable.radio_public_api ................   Passed    0.03 sec
+      Start 38: rynui.portable.focus_order
+38/65 Test #38: rynui.portable.focus_order .....................   Passed    0.03 sec
+      Start 39: rynui.portable.focus_state
+39/65 Test #39: rynui.portable.focus_state .....................   Passed    0.03 sec
+      Start 40: rynui.portable.focus_lifecycle
+40/65 Test #40: rynui.portable.focus_lifecycle .................   Passed    0.03 sec
+      Start 41: rynui.portable.typography_component
+41/65 Test #41: rynui.portable.typography_component ............   Passed    0.59 sec
+      Start 42: rynui.portable.typography_interaction
+42/65 Test #42: rynui.portable.typography_interaction ..........   Passed    0.16 sec
+      Start 43: rynui.portable.divider_component
+43/65 Test #43: rynui.portable.divider_component ...............   Passed    0.35 sec
+      Start 44: rynui.portable.divider_public_api
+44/65 Test #44: rynui.portable.divider_public_api ..............   Passed    0.02 sec
+      Start 45: rynui.portable.text_component_frame
+45/65 Test #45: rynui.portable.text_component_frame ............   Passed    0.05 sec
+      Start 46: rynui.portable.frame_scheduler
+46/65 Test #46: rynui.portable.frame_scheduler .................   Passed    0.03 sec
+      Start 47: rynui.portable.window_overlay
+47/65 Test #47: rynui.portable.window_overlay ..................   Passed    0.04 sec
+      Start 48: rynui.portable.tooltip_component
+48/65 Test #48: rynui.portable.tooltip_component ...............   Passed    0.45 sec
+      Start 49: rynui.portable.interaction_registry
+49/65 Test #49: rynui.portable.interaction_registry ............   Passed    0.03 sec
+      Start 50: rynui.portable.pointer_route
+50/65 Test #50: rynui.portable.pointer_route ...................   Passed    0.03 sec
+      Start 51: rynui.portable.layout_engine
+51/65 Test #51: rynui.portable.layout_engine ...................   Passed    0.03 sec
+      Start 52: rynui.portable.layout_style
+52/65 Test #52: rynui.portable.layout_style ....................   Passed    0.03 sec
+      Start 53: rynui.portable.layout_style_public_api
+53/65 Test #53: rynui.portable.layout_style_public_api .........   Passed    0.02 sec
+      Start 54: rynui.portable.layout_allocation
+54/65 Test #54: rynui.portable.layout_allocation ...............   Passed    0.03 sec
+      Start 55: rynui.portable.flex_component
+55/65 Test #55: rynui.portable.flex_component ..................   Passed    0.03 sec
+      Start 56: rynui.portable.flex_features
+56/65 Test #56: rynui.portable.flex_features ...................   Passed    0.12 sec
+      Start 57: rynui.portable.flex_public_api
+57/65 Test #57: rynui.portable.flex_public_api .................   Passed    0.03 sec
+      Start 58: rynui.portable.flex_header_isolation
+58/65 Test #58: rynui.portable.flex_header_isolation ...........   Passed    0.03 sec
+      Start 59: rynui.portable.space_component
+59/65 Test #59: rynui.portable.space_component .................   Passed    0.06 sec
+      Start 60: rynui.portable.space_public_api
+60/65 Test #60: rynui.portable.space_public_api ................   Passed    0.03 sec
+      Start 61: rynui.portable.space_header_isolation
+61/65 Test #61: rynui.portable.space_header_isolation ..........   Passed    0.03 sec
+      Start 62: rynui.portable.rounded_effect_allocation
+62/65 Test #62: rynui.portable.rounded_effect_allocation .......   Passed    0.03 sec
+      Start 63: rynui.portable.input_scene_allocation
+63/65 Test #63: rynui.portable.input_scene_allocation ..........   Passed    4.49 sec
+      Start 64: rynui.portable.scene_backend
+64/65 Test #64: rynui.portable.scene_backend ...................   Passed    0.23 sec
+      Start 65: rynui.portable.backend_boundaries
+65/65 Test #65: rynui.portable.backend_boundaries ..............   Passed    1.47 sec
+
+100% tests passed out of 65
+
+Total Test time (real) =  15.97 sec

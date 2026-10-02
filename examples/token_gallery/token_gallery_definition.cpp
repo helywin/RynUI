@@ -79,6 +79,10 @@ struct GalleryState final {
 const std::size_t navigation_control_count = 20 + ant_design_reference_entries().size();
 
 constexpr auto stable_test_ids = std::to_array<std::string_view>({
+    "gallery.flex.baseline",
+    "gallery.flex.wrap-reverse",
+    "gallery.flex.vertical-rtl",
+    "gallery.flex.default-stretch",
     "gallery.theme.default",
     "gallery.theme.dark",
     "gallery.theme.compact",
@@ -1196,6 +1200,56 @@ void add_radio_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 6;
 }
 
+void add_flex_samples(const std::shared_ptr<GalleryState>& state) {
+    ryn::Text(u8"Flex · 真实文字基线、反向换行、RTL 与默认拉伸");
+    ryn::Text(u8"gallery.flex.baseline · 14 / 28 dp 与控件标签");
+    ryn::Flex(ryn::FlexProps{}.align(ryn::FlexAlign::Baseline).gap(ryn::dp(8)), ryn::FlexContent{[state] {
+                  ryn::Text(u8"Ag 基线");
+                  ryn::ThemeConfig large;
+                  large.text.tokens.font_size = ryn::dp(28);
+                  large.text.tokens.line_height = ryn::dp(40);
+                  ryn::Theme(ryn::ThemeProps{}.config(large), ryn::ThemeContent{[state] {
+                                 ++state->telemetry.theme_content_runs;
+                                 ryn::Text(u8"Ag 大字");
+                             }});
+                  ryn::Button(ryn::ButtonProps{}, [] { ryn::Text(u8"Ag 按钮"); });
+              }});
+    ryn::Text(u8"gallery.flex.wrap-reverse · 从下边堆叠");
+    ryn::Flex(ryn::FlexProps{}
+                  .align(ryn::FlexAlign::Start)
+                  .wrap(ryn::FlexWrap::WrapReverse)
+                  .gap(ryn::dp(8))
+                  .layout(ryn::LayoutStyle{}.width(ryn::dp(180)).height(ryn::dp(130))),
+              ryn::FlexContent{[] {
+                  for (const auto label : {u8"第一行 A", u8"第二行 B", u8"第三行 C"}) {
+                      ryn::Button(ryn::ButtonProps{}.layout(ryn::LayoutStyle{}.width(ryn::dp(110))), [label] {
+                          ryn::Text(ryn::String::from_utf8(reinterpret_cast<const char*>(label)).value());
+                      });
+                  }
+              }});
+    ryn::Text(u8"gallery.flex.vertical-rtl · 纵向换列");
+    ryn::Flex(ryn::FlexProps{}
+                  .align(ryn::FlexAlign::Start)
+                  .vertical(true)
+                  .wrap(true)
+                  .direction(ryn::FlexDirection::RightToLeft)
+                  .gap(ryn::dp(8))
+                  .layout(ryn::LayoutStyle{}.width(ryn::dp(220)).height(ryn::dp(80))),
+              ryn::FlexContent{[] {
+                  for (const auto label : {u8"列 A", u8"列 B", u8"列 C"}) {
+                      ryn::Button(ryn::ButtonProps{}, [label] {
+                          ryn::Text(ryn::String::from_utf8(reinterpret_cast<const char*>(label)).value());
+                      });
+                  }
+              }});
+    ryn::Text(u8"gallery.flex.default-stretch · 自动高度 64 dp");
+    ryn::Flex(ryn::FlexProps{}.gap(ryn::dp(8)).layout(ryn::LayoutStyle{}.height(ryn::dp(64))), ryn::FlexContent{[] {
+                  ryn::Text(u8"默认 Stretch");
+                  ryn::Text(ryn::TextProps{}.content(u8"固定 22 dp").layout(ryn::LayoutStyle{}.height(ryn::dp(22))));
+              }});
+    state->telemetry.live_samples += 4;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1272,6 +1326,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_switch_samples(state);
                                                         add_checkbox_samples(state);
                                                         add_radio_samples(state);
+                                                        add_flex_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

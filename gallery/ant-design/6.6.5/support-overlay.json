@@ -124,22 +124,26 @@
     },
     {
       "identity": "ant.component.flex",
-      "status": "partial",
-      "summary": "RynUI 已提供 typed Flex 布局、方向、对齐、换行、gap 与 LayoutStyle 外部约束；尚未覆盖 Ant Design Flex 的全部响应式接口。",
+      "status": "implemented",
+      "summary": "RynUI 已补齐原生 Flex 的默认 Stretch、真实文字基线、WrapReverse、LTR/RTL、物理对齐与弹性外部布局；Web 专用接口不移植。",
       "supported_scope": [
         "horizontal and vertical layout",
         "align and justify",
-        "wrap",
+        "NoWrap/Wrap/WrapReverse",
+        "real text and control baselines with align-self",
+        "LTR/RTL and physical Left/Right alignment",
+        "default Stretch and native compatibility aliases",
         "row/column gap",
         "LayoutStyle integration"
       ],
       "missing_scope": [
-        "complete responsive breakpoint API",
-        "all Ant Design Flex compatibility aliases"
+        "Web CSS strings, DOM/component and React attributes (out of native scope)"
       ],
       "evidence_identifiers": [
         "openspec:005-20260827-build-flex-and-space-layout-foundation",
+        "openspec:049-20261003-complete-native-flex-layout",
         "test:rynui.flex_component",
+        "test:rynui.flex_features",
         "test:rynui.flex_public_api"
       ]
     },

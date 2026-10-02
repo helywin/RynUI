@@ -10,7 +10,7 @@
 | Divider | 045 补齐 dotted、尺寸、Start/End 与 scoped RTL、逻辑长度间距；重新审计发现这些是实际原生缺口 | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Button | 044 已实现颜色/六变体/ghost/真实虚线、保留 icon/loading slots、形状/block、ref/autoFocus/延迟加载与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Icon | 完整离线图标集、filled/two-tone 与 typed 原生自定义图标 | 锁定来源/许可/生成器，复用 glyph atlas |
-| Flex | 待审计 wrap-reverse、baseline 和原生 flex 值映射；锁定上游无 responsive API | 对照 6.6.5 原生布局合同补缺口 |
+| Flex | 049 已补齐默认 Stretch、真实字体与控件基线/align-self、WrapReverse、LTR/RTL、物理 Left/Right 和原生别名/弹性数值映射；上游无 responsive API | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Space | separator/split、Compact 与相邻控件边界；锁定上游无 responsive size API | typed slots 与共同控件边界 |
 | Checkbox | 047 已实现三类值、多选 Group、动态 options、最近组/skipGroup、RTL/ref/autoFocus/onClick、独立主题与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Radio | 048 已实现三类值、动态 options、最近 typed Group、单一 Tab 入口/方向键、RadioButton、outline/solid、三尺寸/block/H/V/RTL、ref/autoFocus/onClick、独立主题与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
