@@ -94,6 +94,11 @@ public:
         return *this;
     }
 
+    ButtonProps& wave(Prop<bool> value) {
+        wave_ = std::move(value);
+        return *this;
+    }
+
     ButtonProps& ref(ButtonRef value) {
         ref_ = std::move(value);
         return *this;
@@ -129,6 +134,7 @@ private:
     Prop<ButtonIconPlacement> icon_placement_{ButtonIconPlacement::Start};
     Prop<ButtonShape> shape_{ButtonShape::Default};
     Prop<bool> block_{false};
+    Prop<bool> wave_{true};
     std::optional<ButtonRef> ref_;
     bool auto_focus_{};
     std::function<void()> on_click_;

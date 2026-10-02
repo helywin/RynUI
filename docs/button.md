@@ -26,7 +26,7 @@ ryn::Button(ryn::ButtonProps{}
 
 ## 实施与验收
 
-044 以 Windows MSVC `windows-msvc-headless` Debug/Release 验证颜色/状态矩阵、透明间隙、Theme identity/继承、普通颜色更新不测量/不重排文本，以及 retained slots、布局、focus ref、deadline 和资源清理。Wave 在该 change 的后续阶段实施；真实 Windows GPU 和 Linux native 验收分别记录，headless 结果不代替原生平台证据。
+044 以 Windows MSVC `windows-msvc-headless` Debug/Release 验证颜色/状态矩阵、透明间隙、Theme identity/继承、普通颜色更新不测量/不重排文本，以及 retained slots、布局、focus ref、deadline、wave 和资源清理。真实 Windows GPU 和 Linux native 验收分别记录，headless 结果不代替原生平台证据。
 
 ## 图标、形状与加载
 
@@ -57,5 +57,11 @@ shape 支持 Default/Circle/Round/Square，三档 `ControlSize`；icon-only 默�
 `ButtonRef` 的 `focus()` / `blur()` / `bound()` 只允许 owner thread 使用。disabled 或失活窗口不能通过 ref 获取焦点；loading 保留焦点。销毁后方法返回 false，同一个 ref 可以重新绑定新一代组件，重复绑定会失败。`autoFocus` 只在首次挂载请求键盘焦点，不随属性更新再次执行。
 
 `loadingDelay` 接受非负 `Duration`；等待期间仍可操作，到期才进入 loading。恢复 false、重配 delay、销毁会取消旧截止时间；非零重配从当前 host 单调时间重新计时，零延迟立即生效。实现使用窗口 deadline/tick，无阻塞等待或平台私有定时器。
+
+## 点击反馈
+
+有边框变体默认启用有限 wave，`.wave(false)` 可关闭。每次成功 activation 在共同 RoundedEffect 中扩散并淡出，重复点击重启一条 scalar 通道；不会累积多个波纹，不改变 measure、命中范围或焦点。默认中性色使用主题 hover 主色，彩色按钮使用当前主题颜色。`wave_spread` / `wave_width` / `wave_opacity` 控制几何与透明度；持续时间和 easing 采用 Theme 的 slow / ease_out motion token。
+
+disabled、loading、Text/Link、motion=false/reduced、窗口失活和销毁会取消 wave。opacity/width 为零也停止动画。结束或取消时移除波纹 effect 与未来 wave deadline，保留组件拥有的 range 供下一次点击复用；组件销毁时释放该 range。activation 回调可安全销毁本组件或父组件。
 
 公开 API 不移植 HTML/DOM/CSS 属性。完整计划和阶段证据见 [044](../openspec/changes/044-20261002-complete-native-button-variants)。

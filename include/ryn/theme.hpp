@@ -111,6 +111,9 @@ struct ButtonTokenOverride final {
     std::optional<LogicalLength> border_width;
     std::optional<LogicalLength> dash_length;
     std::optional<LogicalLength> dash_gap;
+    std::optional<LogicalLength> wave_spread;
+    std::optional<LogicalLength> wave_width;
+    std::optional<float> wave_opacity;
 
     friend bool operator==(const ButtonTokenOverride&, const ButtonTokenOverride&) = default;
 };
@@ -556,6 +559,9 @@ struct ButtonThemeToken final {
     ButtonVariantThemeToken variants;
     float dash_length{3.0F};
     float dash_gap{3.0F};
+    float wave_spread{6.0F};
+    float wave_width{2.0F};
+    float wave_opacity{0.2F};
 
     friend constexpr bool operator==(const ButtonThemeToken&, const ButtonThemeToken&) = default;
 };

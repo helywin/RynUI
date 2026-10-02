@@ -1200,6 +1200,15 @@ void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& 
     button.dash_length =
         fixed_length(override.dash_length, button.dash_length, "Button dash length must be positive", true);
     button.dash_gap = fixed_length(override.dash_gap, button.dash_gap, "Button dash gap must be positive", true);
+    button.wave_spread =
+        fixed_length(override.wave_spread, button.wave_spread, "Button wave spread must be non-negative");
+    button.wave_width = fixed_length(override.wave_width, button.wave_width, "Button wave width must be non-negative");
+    if (override.wave_opacity) {
+        if (!detail::finite(*override.wave_opacity) || *override.wave_opacity < 0 || *override.wave_opacity > 1) {
+            throw std::invalid_argument("Button wave opacity must be finite and in [0, 1]");
+        }
+        button.wave_opacity = *override.wave_opacity;
+    }
 }
 
 [[nodiscard]] TextThemeToken derive_text(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
@@ -1317,7 +1326,9 @@ void append_color(std::ostringstream& stream, Color color) {
     stream << ",\"controlHeight\":" << button.control_height << ",\"paddingInline\":" << button.padding_inline
            << ",\"borderRadius\":" << button.border_radius << ",\"shadowLayers\":" << button.primary_shadow.size()
            << ",\"borderWidth\":" << button.border_width << ",\"dashLength\":" << button.dash_length
-           << ",\"dashGap\":" << button.dash_gap << ",\"variantColors\":[";
+           << ",\"dashGap\":" << button.dash_gap << ",\"waveSpread\":" << button.wave_spread
+           << ",\"waveWidth\":" << button.wave_width << ",\"waveOpacity\":" << button.wave_opacity
+           << ",\"variantColors\":[";
     for (std::size_t index = 0; index < button_color_count; ++index) {
         if (index) {
             stream << ',';
@@ -1738,6 +1749,9 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_shadow(hash, button.danger_shadow);
     hash_float(hash, button.dash_length);
     hash_float(hash, button.dash_gap);
+    hash_float(hash, button.wave_spread);
+    hash_float(hash, button.wave_width);
+    hash_float(hash, button.wave_opacity);
     for (const auto& palette : button.variants.colors) {
         for (const auto color : palette.values()) {
             hash_color(hash, color);

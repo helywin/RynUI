@@ -56,6 +56,8 @@ struct ButtonComponentSnapshot final {
     bool loading_pending{};
     runtime::ComponentId icon;
     runtime::ComponentId loading_icon;
+    bool wave_active{};
+    float wave_progress{1};
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
@@ -64,10 +66,11 @@ enum class ButtonAnimationChannel : std::uint8_t {
     foreground,
     loading_mix,
     spinner_phase,
+    wave_progress,
 };
 
 inline constexpr std::size_t button_animation_channel_count =
-    static_cast<std::size_t>(ButtonAnimationChannel::spinner_phase) + 1;
+    static_cast<std::size_t>(ButtonAnimationChannel::wave_progress) + 1;
 
 struct ButtonAnimationBinding final {
     animation::AnimationTargetId target;
@@ -161,6 +164,10 @@ private:
     void apply_block(runtime::ComponentId component, bool block);
     void apply_icon_placement(runtime::ComponentId component, ButtonIconPlacement placement);
     void update_icon_branch(ButtonComponentState& state);
+    void apply_wave(runtime::ComponentId component, bool wave);
+    void start_wave(ButtonComponentState& state);
+    void stop_wave(ButtonComponentState& state);
+    void publish_wave(ButtonComponentState& state);
     void apply_focus(runtime::ComponentId component, input::FocusPresentation focus);
     void handle_pointer(runtime::ComponentId component, input::PointerDispatchContext& event);
     [[nodiscard]] bool activation_allowed(runtime::ComponentId component) const noexcept;
@@ -187,6 +194,7 @@ private:
     void on_dispose() noexcept override;
     void synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) override;
     void synchronize_auxiliary_motion() override;
+    void on_window_active(bool active) override;
     std::size_t tick_auxiliary(animation::AnimationTime time) override;
     std::optional<animation::AnimationTime> next_auxiliary_deadline() const override;
 

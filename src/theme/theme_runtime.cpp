@@ -187,7 +187,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
         before_button.danger_active_background != after_button.danger_active_background ||
         before_button.disabled_color != after_button.disabled_color ||
         before_button.disabled_background != after_button.disabled_background ||
-        before_button.disabled_border_color != after_button.disabled_border_color || variant_colors_changed;
+        before_button.disabled_border_color != after_button.disabled_border_color ||
+        before_button.wave_opacity != after_button.wave_opacity || variant_colors_changed;
     append_if_changed(false, button_colors_changed, TokenIdentity::button_colors, changed, count);
     append_if_changed(
         std::array{before_button.control_height_small, before_button.control_height,
@@ -212,8 +213,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
         std::array{before_button.border_radius_small, before_button.border_radius, before_button.border_radius_large},
         std::array{after_button.border_radius_small, after_button.border_radius, after_button.border_radius_large},
         TokenIdentity::button_border_radius, changed, count);
-    append_if_changed(std::array{before_button.border_width, before_button.dash_length, before_button.dash_gap},
-                      std::array{after_button.border_width, after_button.dash_length, after_button.dash_gap},
+    append_if_changed(std::array{before_button.border_width, before_button.dash_length, before_button.dash_gap,
+                                 before_button.wave_spread, before_button.wave_width},
+                      std::array{after_button.border_width, after_button.dash_length, after_button.dash_gap,
+                                 after_button.wave_spread, after_button.wave_width},
                       TokenIdentity::button_border_width, changed, count);
     append_if_changed(before_button.icon_gap, after_button.icon_gap, TokenIdentity::button_icon_gap, changed, count);
     const bool button_shadows_changed = before_button.default_shadow != after_button.default_shadow ||

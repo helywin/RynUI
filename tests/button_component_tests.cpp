@@ -234,7 +234,8 @@ void test_mount_scene_composition_and_lifecycle() {
                 fixture.host->components().component_count() == 4 && fixture.host->mounted_buttons().size() == 2 &&
                 fixture.host->text().mounted_texts().size() == 2 && fixture.host->interactions().size() == 2 &&
                 fixture.host->button_scene().size() == 2 && fixture.host->animations().diagnostics().scopes == 2 &&
-                fixture.host->animations().diagnostics().targets == 10 && fixture.nodes.size() == 4,
+                fixture.host->animations().diagnostics().targets == 2 * ryn::detail::button_animation_channel_count &&
+                fixture.nodes.size() == 4,
             "Button mount did not create stable component resources");
     const auto first = fixture.host->mounted_buttons()[0];
     const auto second = fixture.host->mounted_buttons()[1];
@@ -274,7 +275,8 @@ void test_mount_scene_composition_and_lifecycle() {
                 fixture.host->text().mounted_texts().size() == 1,
             "Button destroy leaked its content, interaction, or scene range");
     require(fixture.host->animations().diagnostics().scopes == 1 &&
-                fixture.host->animations().diagnostics().targets == 5 && fixture.host->animations().size() == 0,
+                fixture.host->animations().diagnostics().targets == ryn::detail::button_animation_channel_count &&
+                fixture.host->animations().size() == 0,
             "Button destroy leaked animation scope or target resources");
     static_cast<void>(fixture.frames.consume_request());
     first_type.set(ryn::ButtonType::Primary);
@@ -738,7 +740,7 @@ void test_retained_loading_spinner_phase_and_policy_lifecycle() {
 
     require(fixture.host->destroy(first.component) && fixture.host->animations().size() == 1 &&
                 fixture.host->animations().diagnostics().scopes == 1 &&
-                fixture.host->animations().diagnostics().targets == 5 &&
+                fixture.host->animations().diagnostics().targets == ryn::detail::button_animation_channel_count &&
                 fixture.host->mounted_buttons().front().component == second.component &&
                 fixture.host->mounted_buttons().front().scene == second.scene,
             "spinner owner destroy leaked its phase or changed sibling identity");
@@ -1708,6 +1710,176 @@ void test_button_loading_delay_cancellation_reconfiguration_and_idle() {
             "Button destruction retained delayed loading request");
 }
 
+void test_button_wave_finite_feedback_restarts_and_cleanup() {
+    Fixture fixture;
+    int clicks{};
+    int runs{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.onClick([&] { ++clicks; }), [&] {
+            ++runs;
+            ryn::Text(u8"Wave");
+        });
+    }});
+    require(fixture.synchronize(), "Button wave initial layout failed");
+    const auto mounted = fixture.host->mounted_buttons()[0];
+    const auto bounds = fixture.bounds(0);
+    const auto measures = fixture.nodes.require(mounted.node).measure_count;
+    const auto effects = fixture.host->rounded_effects().live_count();
+    require(fixture.host->focus().request_focus(mounted.interaction, ryn::input::FocusModality::keyboard),
+            "Button wave failed initial focus");
+    const auto focus = fixture.host->button_scene().focus_effect(mounted.scene);
+    const auto activate = [&] {
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::down));
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::up));
+    };
+    activate();
+    require(clicks == 1 && fixture.host->snapshot(mounted.component).wave_active &&
+                near(fixture.host->snapshot(mounted.component).wave_progress, 0) &&
+                fixture.host->rounded_effects().live_count() == effects + 1 && fixture.dirty.layout_roots().empty() &&
+                fixture.host->next_deadline(),
+            "Button wave did not start a single finite effect or changed layout");
+    require(fixture.synchronize(), "Button initial wave failed scene publication");
+    fixture.tick(100000);
+    const auto middle = fixture.host->snapshot(mounted.component);
+    require(middle.wave_active && middle.wave_progress > 0 && middle.wave_progress < 1 && fixture.synchronize() &&
+                fixture.bounds(0) == bounds && fixture.nodes.require(mounted.node).measure_count == measures &&
+                fixture.host->button_scene().focus_effect(mounted.scene) == focus && runs == 1,
+            "Button wave failed to progress without measure/focus/content changes");
+    const auto& token = ryn::resolve_theme().button();
+    bool matched{};
+    for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
+        if (effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline &&
+            near(effect.geometry.outline_width, token.wave_width) &&
+            effect.material.color == token.default_hover_color) {
+            require(near(effect.geometry.outline_offset, token.wave_spread * middle.wave_progress) &&
+                        near(effect.material.opacity, token.wave_opacity * (1 - middle.wave_progress)),
+                    "Button wave spread/fade did not use Theme tokens");
+            matched = true;
+        }
+    }
+    require(matched, "Button wave rounded effect missing from packed scene");
+    activate();
+    require(clicks == 2 && fixture.host->snapshot(mounted.component).wave_progress == 0 &&
+                fixture.host->rounded_effects().live_count() == effects + 1,
+            "Button repeated activation accumulated effects or did not restart");
+    fixture.tick(500000);
+    require(!fixture.host->snapshot(mounted.component).wave_active &&
+                fixture.host->rounded_effects().live_count() == effects && !fixture.host->next_deadline() && runs == 1,
+            "Button completed wave left effect or deadline");
+    activate();
+    fixture.host->set_window_active(false);
+    require(!fixture.host->snapshot(mounted.component).wave_active &&
+                fixture.host->rounded_effects().live_count() == effects && !fixture.host->next_deadline(),
+            "Button window loss retained wave resources/deadline");
+    fixture.host->set_window_active(true);
+    require(fixture.host->focus().request_focus(mounted.interaction, ryn::input::FocusModality::keyboard) ||
+                fixture.host->focus().state().focused == mounted.interaction,
+            "Button wave could not refocus after window loss");
+    activate();
+    require(fixture.host->destroy(mounted.component) && fixture.host->rounded_effects().live_count() == 0 &&
+                !fixture.host->next_deadline(),
+            "Button wave owner destroy leaked resources/deadline");
+}
+
+void test_button_wave_reactive_policy_and_theme_identity() {
+    Fixture fixture;
+    ryn::Signal<bool> wave{true};
+    ryn::Signal<bool> disabled{false};
+    ryn::Signal<bool> loading{false};
+    ryn::Signal<ryn::ButtonVariant> variant{ryn::ButtonVariant::Dashed};
+    ryn::Signal<ryn::ThemeConfig> config{ryn::ThemeConfig{}};
+    int clicks{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[&] {
+                       ryn::Button(
+                           ryn::ButtonProps{}.wave(wave).disabled(disabled).loading(loading).variant(variant).onClick(
+                               [&] { ++clicks; }),
+                           [] { ryn::Text(u8"Policy"); });
+                   }});
+    }});
+    require(fixture.synchronize(), "Button wave policy initial layout failed");
+    const auto mounted = fixture.host->mounted_buttons()[0];
+    const auto activate = [&] {
+        require(fixture.host->focus().request_focus(mounted.interaction, ryn::input::FocusModality::keyboard) ||
+                    fixture.host->focus().state().focused == mounted.interaction,
+                "Button wave policy focus failed");
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::down));
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::up));
+    };
+    activate();
+    require(fixture.host->snapshot(mounted.component).wave_active, "Dashed Button did not wave");
+    wave.set(false);
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button wave=false did not cancel");
+    activate();
+    require(!fixture.host->snapshot(mounted.component).wave_active && clicks == 2,
+            "Button disabled wave blocked action");
+    wave.set(true);
+    activate();
+    disabled.set(true);
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button disabled retained wave");
+    disabled.set(false);
+    activate();
+    loading.set(true);
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button loading retained wave");
+    loading.set(false);
+    activate();
+    variant.set(ryn::ButtonVariant::Link);
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button unbordered transition retained wave");
+    activate();
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button Link activation created wave");
+    variant.set(ryn::ButtonVariant::Text);
+    activate();
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button Text activation created wave");
+    variant.set(ryn::ButtonVariant::Solid);
+    activate();
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    require(!fixture.host->snapshot(mounted.component).wave_active && !fixture.host->next_deadline(),
+            "Reduced motion retained wave deadline");
+    activate();
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Reduced motion created wave");
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::normal);
+    activate();
+    ryn::ThemeConfig changed;
+    changed.seed.motion = false;
+    config.set(changed);
+    require(!fixture.host->snapshot(mounted.component).wave_active && !fixture.host->next_deadline(),
+            "Theme motion=false retained wave deadline");
+    activate();
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Theme motion=false created wave");
+    changed.seed.motion = true;
+    changed.button.tokens.wave_width = ryn::dp(4);
+    changed.button.tokens.wave_spread = ryn::dp(10);
+    changed.button.tokens.wave_opacity = 0.4F;
+    require(ryn::resolve_theme(changed).identity() != ryn::resolve_theme().identity() &&
+                ryn::resolve_theme(changed).diagnostic_json().find("waveSpread") != std::string::npos,
+            "Button wave tokens missing from hash/diagnostics");
+    config.set(changed);
+    activate();
+    require(fixture.synchronize(), "Button themed wave scene publication failed");
+    fixture.tick(60000);
+    const auto progress = fixture.host->snapshot(mounted.component).wave_progress;
+    require(fixture.synchronize(), "Button themed wave frame failed");
+    bool matched{};
+    for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
+        if (near(effect.geometry.outline_width, 4) && near(effect.material.opacity, 0.4F * (1 - progress))) {
+            require(near(effect.geometry.outline_offset, 10 * progress), "Button wave spread override missed geometry");
+            matched = true;
+        }
+    }
+    require(matched, "Button wave overrides missed effect");
+    changed.button.tokens.wave_opacity = 0.0F;
+    config.set(changed);
+    require(!fixture.host->snapshot(mounted.component).wave_active, "Button wave opacity zero retained animation");
+    changed.button.tokens.wave_opacity = std::numeric_limits<float>::quiet_NaN();
+    bool rejected{};
+    try {
+        static_cast<void>(ryn::resolve_theme(changed));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected, "Button accepted invalid wave opacity");
+}
+
 } // namespace
 
 int main() {
@@ -1734,6 +1906,8 @@ int main() {
         test_button_shape_block_constraints_and_reactive_resize();
         test_button_ref_thread_generation_autofocus_and_mount_rollback();
         test_button_loading_delay_cancellation_reconfiguration_and_idle();
+        test_button_wave_finite_feedback_restarts_and_cleanup();
+        test_button_wave_reactive_policy_and_theme_identity();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

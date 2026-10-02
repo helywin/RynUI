@@ -14,7 +14,7 @@
 
 ## 4. Wave（平台通用）
 
-- [ ] 4.1 实现主题控制的有限 wave scalar 通道与共同 rounded effect，补激活/重复/disabled/loading/无边框/motion off/reduced/window loss/destructive callback/清理合同与文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
+- [x] 4.1 实现主题控制的有限 wave scalar 通道与共同 rounded effect，补激活/重复/disabled/loading/无边框/motion off/reduced/window loss/destructive callback/清理合同与文档；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录 evidence 并提交。
 
 ## 5. 整合（平台通用）
 
