@@ -2,6 +2,7 @@
 #include "renderer/recording/recording_renderer.hpp"
 #include "runtime/callback_frame_pump.hpp"
 #include "support/input_fixture.hpp"
+#include "component/slider_component.hpp"
 
 #include <algorithm>
 #include <array>
@@ -212,6 +213,7 @@ void required_capabilities_and_scene_limits() {
 
 struct Fixture final {
     Signal<String> content{String{u8"共同场景 Hello"}};
+    Signal<double> slider_value{25};
     ryn_test::input_component::Fixture ui;
     RecordingRenderer backend;
     SceneResources resources{backend};
@@ -221,6 +223,7 @@ struct Fixture final {
     Fixture() {
         ui.services.mount(Content{[this] {
             ++mounts;
+            Slider(SliderProps{}.value(slider_value));
             Input(
                 InputProps{}.defaultValue(u8"编辑状态 kept").layout(LayoutStyle{}.width(dp(180))));
             Button(ButtonProps{},
@@ -385,6 +388,34 @@ void real_scene_transaction_and_epoch() {
     check(fixture.resources.synchronize(fixture.data()),
           "explicit resource retirement did not rebuild");
     fixture.verify();
+}
+
+void slider_scene_locality_and_retry() {
+    Fixture fixture;
+    check(fixture.resources.synchronize(fixture.data()), "Slider scene initial sync failed");
+    fixture.verify();
+    const auto mounted = fixture.ui.services.slider().mounted().front();
+    const auto surface = mounted.surface;
+    const auto before = fixture.backend.counters().uploaded_bytes;
+    fixture.slider_value.set(75); fixture.layout();
+    check(fixture.resources.synchronize(fixture.data()), "Slider local sync failed");
+    check(fixture.backend.counters().uploaded_bytes - before < fixture.data().quads->instances().size_bytes(),
+        "Slider local geometry uploaded full scene");
+    fixture.verify();
+    fixture.slider_value.set(65); fixture.layout();
+    const auto attachment = fixture.attachment();
+    fixture.backend.fail_next(RecordingFailure::commit);
+    check(!fixture.resources.synchronize(fixture.data()), "Slider commit injection succeeded");
+    check(!fixture.backend.valid_attachment(attachment), "failed Slider upload retained old attachment");
+    check(fixture.resources.synchronize(fixture.data()), "Slider retry failed");
+    fixture.verify();
+    check(fixture.ui.services.slider().mounted().front().surface == surface && fixture.mounts == 1,
+        "Slider value rebuilt component or surface");
+    const auto uploads = fixture.backend.counters().uploads;
+    fixture.layout(); check(fixture.resources.synchronize(fixture.data()), "Slider idle sync failed");
+    check(fixture.backend.counters().uploads == uploads, "idle Slider uploaded resources");
+    fixture.backend.reset_device();
+    check(fixture.resources.synchronize(fixture.data()), "Slider epoch recovery failed"); fixture.verify();
 }
 
 void logical_resize_and_recovery() {
@@ -632,6 +663,7 @@ int main() {
         texture_source_lifetime_cancel_and_invalid_ranges();
         required_capabilities_and_scene_limits();
         real_scene_transaction_and_epoch();
+        slider_scene_locality_and_retry();
         logical_resize_and_recovery();
         deferred_surface_retains_uploads();
         upload_exceptions_release_temporary_resources();

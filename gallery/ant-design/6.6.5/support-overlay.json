@@ -510,16 +510,22 @@
     },
     {
       "identity": "ant.component.slider",
-      "status": "planned",
-      "summary": "滑动输入条（Slider）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 提供 typed 单值与双端范围 Slider、受控属性、步长、横纵向与反向、拖动和键盘交互；Tooltip、marks 与多端点尚未覆盖。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "Slider / RangeSlider typed values and atomic reactive limits",
+        "mouse/touch capture, keyboard, independent thumb focus, disabled",
+        "Theme Slider tokens and retained logical scene"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Tooltip / marks / dots / draggable track / multiple editable handles"
       ],
       "evidence_identifiers": [
-        "source:components/slider/index.en-US.md"
+        "source:components/slider/index.en-US.md",
+        "openspec:039-20261002-add-single-and-range-slider#2.1",
+        "test:rynui.slider_component",
+        "runtime:src/component/slider_component.cpp",
+        "api:include/ryn/slider.hpp"
       ]
     },
     {

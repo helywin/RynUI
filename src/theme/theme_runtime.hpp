@@ -70,6 +70,8 @@ public:
     [[nodiscard]] const detail::InputTokenSet& input_shadows() const;
     [[nodiscard]] const SwitchThemeToken& switch_geometry() const;
     [[nodiscard]] const SwitchThemeToken& switch_colors() const;
+    [[nodiscard]] const SliderThemeToken& slider_colors() const;
+    [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TypographyThemeToken& typography_colors() const;
     [[nodiscard]] const TypographyThemeToken& typography_headings() const;
     [[nodiscard]] const TypographyThemeToken& typography_fonts() const;

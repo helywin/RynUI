@@ -81,6 +81,7 @@ enum class Key : std::uint8_t {
     space,
     left, right, home, end, backspace, delete_forward, escape,
     a, c, x, v, z, y,
+    up, down, page_up, page_down,
 };
 
 enum class KeyAction : std::uint8_t {

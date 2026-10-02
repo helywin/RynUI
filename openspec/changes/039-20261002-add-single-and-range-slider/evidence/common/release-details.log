@@ -1,0 +1,553 @@
+Start testing: Oct 02 11:24 中国标准时间
+----------------------------------------------------------
+1/36 Testing: rynui.portable.glyph_texture_upload
+1/36 Test: rynui.portable.glyph_texture_upload
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_glyph_texture_upload.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.glyph_texture_upload" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.glyph_texture_upload" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.glyph_texture_upload" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/36 Testing: rynui.portable.texture_upload_batch_layout
+2/36 Test: rynui.portable.texture_upload_batch_layout
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_texture_upload_batch_layout.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.texture_upload_batch_layout" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.texture_upload_batch_layout" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.texture_upload_batch_layout" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/36 Testing: rynui.portable.logical_scene_packing
+3/36 Test: rynui.portable.logical_scene_packing
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_logical_scene_packing.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.logical_scene_packing" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.logical_scene_packing" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.logical_scene_packing" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/36 Testing: rynui.portable.quad_primitive
+4/36 Test: rynui.portable.quad_primitive
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_quad_primitive.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.quad_primitive" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.quad_primitive" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.quad_primitive" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/36 Testing: rynui.portable.binding_quad_integration
+5/36 Test: rynui.portable.binding_quad_integration
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_binding_quad_integration.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.binding_quad_integration" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.binding_quad_integration" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.binding_quad_integration" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/36 Testing: rynui.portable.button_scene_service
+6/36 Test: rynui.portable.button_scene_service
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_button_scene_service.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.button_scene_service" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.button_scene_service" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.button_scene_service" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/36 Testing: rynui.portable.font_runtime
+7/36 Test: rynui.portable.font_runtime
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_font_runtime.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.font_runtime" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.font_runtime" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.font_runtime" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/36 Testing: rynui.portable.text_engine
+8/36 Test: rynui.portable.text_engine
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_engine.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_engine" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.10 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_engine" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.text_engine" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/36 Testing: rynui.portable.text_state
+9/36 Test: rynui.portable.text_state
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_state.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_state" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_state" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.text_state" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/36 Testing: rynui.portable.text_scene_service
+10/36 Test: rynui.portable.text_scene_service
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_scene_service.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_scene_service" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_scene_service" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.text_scene_service" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/36 Testing: rynui.portable.text_render_integration
+11/36 Test: rynui.portable.text_render_integration
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_render_integration.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_render_integration" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_render_integration" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.text_render_integration" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/36 Testing: rynui.portable.glyph_atlas
+12/36 Test: rynui.portable.glyph_atlas
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_glyph_atlas.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.glyph_atlas" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.glyph_atlas" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.glyph_atlas" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/36 Testing: rynui.portable.glyph_scene
+13/36 Test: rynui.portable.glyph_scene
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_glyph_scene.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.glyph_scene" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.28 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.glyph_scene" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.glyph_scene" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/36 Testing: rynui.portable.glyph_gpu_resources
+14/36 Test: rynui.portable.glyph_gpu_resources
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_glyph_gpu_resources.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.glyph_gpu_resources" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.glyph_gpu_resources" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.glyph_gpu_resources" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/36 Testing: rynui.portable.rounded_effect_math
+15/36 Test: rynui.portable.rounded_effect_math
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_math.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_math" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_math" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.rounded_effect_math" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/36 Testing: rynui.portable.rounded_effect_store
+16/36 Test: rynui.portable.rounded_effect_store
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_store.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_store" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_store" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.rounded_effect_store" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/36 Testing: rynui.portable.rounded_effect_scene
+17/36 Test: rynui.portable.rounded_effect_scene
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_scene.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_scene" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_scene" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.rounded_effect_scene" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/36 Testing: rynui.portable.rounded_effect_gpu
+18/36 Test: rynui.portable.rounded_effect_gpu
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_gpu.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_gpu" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_gpu" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.rounded_effect_gpu" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/36 Testing: rynui.portable.rounded_effect_gpu_resources
+19/36 Test: rynui.portable.rounded_effect_gpu_resources
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_gpu_resources.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_gpu_resources" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_gpu_resources" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.rounded_effect_gpu_resources" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/36 Testing: rynui.portable.input_component
+20/36 Test: rynui.portable.input_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+Input layout simulated-scale cases=768
+Input lifecycle, layout and controlled callbacks passed
+<end of output>
+Test time =   1.32 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.input_component" time elapsed: 00:00:01
+----------------------------------------------------------
+
+21/36 Testing: rynui.portable.input_gpu
+21/36 Test: rynui.portable.input_gpu
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_gpu.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_gpu" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_gpu" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.input_gpu" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/36 Testing: rynui.portable.input_caret_blink
+22/36 Test: rynui.portable.input_caret_blink
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_caret_blink.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_caret_blink" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_caret_blink" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.input_caret_blink" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/36 Testing: rynui.portable.text_component
+23/36 Test: rynui.portable.text_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.35 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.text_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/36 Testing: rynui.portable.button_component
+24/36 Test: rynui.portable.button_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_button_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.button_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.35 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.button_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.button_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/36 Testing: rynui.portable.selection_component
+25/36 Test: rynui.portable.selection_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_selection_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.selection_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.37 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.selection_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.selection_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/36 Testing: rynui.portable.slider_component
+26/36 Test: rynui.portable.slider_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_slider_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.slider_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+Slider contracts passed
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.slider_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.slider_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/36 Testing: rynui.portable.radio_component
+27/36 Test: rynui.portable.radio_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_radio_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.radio_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+radio component tests passed
+<end of output>
+Test time =   0.39 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.radio_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.radio_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/36 Testing: rynui.portable.typography_component
+28/36 Test: rynui.portable.typography_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_typography_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.typography_component" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   1.23 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.typography_component" end time: Oct 02 11:24 中国标准时间
+"rynui.portable.typography_component" time elapsed: 00:00:01
+----------------------------------------------------------
+
+29/36 Testing: rynui.portable.typography_interaction
+29/36 Test: rynui.portable.typography_interaction
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_typography_interaction.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.typography_interaction" start time: Oct 02 11:24 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.34 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.typography_interaction" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.typography_interaction" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/36 Testing: rynui.portable.divider_component
+30/36 Test: rynui.portable.divider_component
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_divider_component.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.divider_component" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.divider_component" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.divider_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/36 Testing: rynui.portable.text_component_frame
+31/36 Test: rynui.portable.text_component_frame
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_component_frame.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_component_frame" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_component_frame" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.text_component_frame" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/36 Testing: rynui.portable.frame_scheduler
+32/36 Test: rynui.portable.frame_scheduler
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_frame_scheduler.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.frame_scheduler" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.frame_scheduler" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.frame_scheduler" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/36 Testing: rynui.portable.rounded_effect_allocation
+33/36 Test: rynui.portable.rounded_effect_allocation
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_rounded_effect_allocation.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.rounded_effect_allocation" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.rounded_effect_allocation" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.rounded_effect_allocation" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/36 Testing: rynui.portable.input_scene_allocation
+34/36 Test: rynui.portable.input_scene_allocation
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_scene_allocation.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_scene_allocation" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+inputs=256 mode=selection updates=20000 allocations=0 elapsed_ms=2401
+dispatch_allocations=0 sync_allocations=0
+inputs=256 mode=composition-selection updates=20000 allocations=0 elapsed_ms=2625
+dispatch_allocations=0 sync_allocations=0
+<end of output>
+Test time =   5.26 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_scene_allocation" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.input_scene_allocation" time elapsed: 00:00:05
+----------------------------------------------------------
+
+35/36 Testing: rynui.portable.scene_backend
+35/36 Test: rynui.portable.scene_backend
+Command: "D:/code/RynUI/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_scene_backend.exe"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.scene_backend" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+Shared component scene, owned bytes, retry, ordered draw and device epoch passed
+<end of output>
+Test time =   0.23 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.scene_backend" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.scene_backend" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/36 Testing: rynui.portable.backend_boundaries
+36/36 Test: rynui.portable.backend_boundaries
+Command: "C:/Users/jiang/AppData/Local/Programs/Python/Python313/python.exe" "D:/code/RynUI/tests/portable/verify_boundaries.py" "--source" "D:/code/RynUI" "--build" "D:/code/RynUI/out/build/windows-msvc-headless"
+Directory: D:/code/RynUI/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.backend_boundaries" start time: Oct 02 11:25 中国标准时间
+Output:
+----------------------------------------------------------
+Actual headless/Core build graph, negative renderer dependency guards and legal common dependencies passed
+<end of output>
+Test time =   1.44 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.backend_boundaries" end time: Oct 02 11:25 中国标准时间
+"rynui.portable.backend_boundaries" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Oct 02 11:25 中国标准时间

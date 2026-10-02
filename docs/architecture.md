@@ -297,6 +297,8 @@ Props builder 是规范入口，简单组件可以提供不损失语义的 conve
 
 ### 9.3 Layout 响应规则
 
+Slider / RangeSlider 使用原子 `SliderLimits` 与独立 typed 值，两个范围 thumb 各自保留 node、interaction、focus 与 surface；通过 WindowComponentServices 和共同 logical scene 绘制。数值变化更新 retained geometry，不重执行无关组件，颜色与 metrics token 独立失效。公开行为与支持边界见 [Slider 合同](slider.md)。
+
 `Grid` 的断点命名与初始阈值采用 Ant Design 6：`xs=480`、`sm=576`、`md=768`、`lg=992`、`xl=1200`、`xxl=1600`、`xxxl=1920`。阈值以窗口可用内容宽度为输入，并通过 Theme/Scale 配置保留受控覆盖能力。
 
 桌面窗口缩放时，布局必须按断点、flex、wrap、gutter 和 content constraints 重排；不得把单一设备分辨率写死到组件实现。

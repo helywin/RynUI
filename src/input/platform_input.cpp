@@ -26,7 +26,7 @@ bool is_key_action(KeyAction action) noexcept {
 }
 
 bool is_key(Key key) noexcept {
-    return key >= Key::tab && key <= Key::y;
+    return key >= Key::tab && key <= Key::page_down;
 }
 
 bool is_window_action(WindowInputAction action) noexcept {

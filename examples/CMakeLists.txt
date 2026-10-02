@@ -179,6 +179,7 @@ add_executable(
     token_gallery/main.cpp
     token_gallery/token_gallery_runtime.cpp
     token_gallery/typography_acceptance.cpp
+    token_gallery/slider_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(
@@ -190,6 +191,7 @@ target_link_libraries(
         rynui_components
         rynui_default_fonts
         rynui_renderer_sdl
+        SDL3::SDL3
 )
 target_compile_definitions(
     rynui_token_gallery

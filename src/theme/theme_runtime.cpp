@@ -289,6 +289,8 @@ std::size_t collect_changed(
         TokenIdentity::switch_geometry, changed, count);
     append_if_changed(old_switch.handle_background, new_switch.handle_background,
         TokenIdentity::switch_colors, changed, count);
+    append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
+    append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_typography = before.typography();
     const auto& new_typography = after.typography();
     append_if_changed(old_typography.colors, new_typography.colors,
@@ -865,6 +867,12 @@ const TypographyThemeToken& ThemeScope::typography_inline_colors() const {
     ensure_owner_thread(); record(TokenIdentity::typography_inline_colors);
     return snapshot_->typography();
 }
+const SliderThemeToken& ThemeScope::slider_colors() const {
+    ensure_owner_thread(); record(TokenIdentity::slider_colors); return snapshot_->slider();
+}
+const SliderThemeToken& ThemeScope::slider_metrics() const {
+    ensure_owner_thread(); record(TokenIdentity::slider_metrics); return snapshot_->slider();
+}
 
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
@@ -896,7 +904,7 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Typography.colors", "Typography.headings", "Typography.fonts",
         "Typography.baseTypography", "Typography.metrics", "Typography.inlineCode",
         "Typography.inlineKeyboard", "Typography.inlineColors", "Divider.colors", "Divider.metrics",
-        "Divider.typography",
+        "Divider.typography", "Slider.colors", "Slider.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -939,6 +947,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_colors:
     case TokenIdentity::typography_inline_colors:
     case TokenIdentity::divider_colors:
+    case TokenIdentity::slider_colors:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
@@ -987,6 +996,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_inline_code:
     case TokenIdentity::typography_inline_keyboard:
     case TokenIdentity::divider_metrics:
+    case TokenIdentity::slider_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry
             | DirtyPhase::hit_test;
     case TokenIdentity::map_border_radius_small:

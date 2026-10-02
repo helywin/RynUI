@@ -20,6 +20,7 @@ namespace ryn::detail {
 class InputComponentHost;
 class TypographyComponentHost;
 class DividerComponentHost;
+class SliderComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -107,6 +108,7 @@ public:
     [[nodiscard]] InputComponentHost* input_runtime() const noexcept { return input_runtime_; }
     [[nodiscard]] TypographyComponentHost& typography() noexcept { return *typography_; }
     [[nodiscard]] DividerComponentHost& divider() noexcept { return *divider_; }
+    [[nodiscard]] SliderComponentHost& slider() noexcept { return *slider_; }
 
     [[nodiscard]] TextComponentHost& text() noexcept { return text_; }
     [[nodiscard]] const TextComponentHost& text() const noexcept { return text_; }
@@ -150,6 +152,7 @@ private:
     InputComponentHost* input_runtime_{};
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
+    std::unique_ptr<SliderComponentHost> slider_;
 };
 
 } // namespace ryn::detail

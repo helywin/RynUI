@@ -61,6 +61,10 @@ std::optional<Key> map_key(SDL_Keycode key) noexcept {
     case SDLK_SPACE:
         return Key::space;
     case SDLK_LEFT: return Key::left;
+    case SDLK_UP: return Key::up;
+    case SDLK_DOWN: return Key::down;
+    case SDLK_PAGEUP: return Key::page_up;
+    case SDLK_PAGEDOWN: return Key::page_down;
     case SDLK_RIGHT: return Key::right;
     case SDLK_HOME: return Key::home;
     case SDLK_END: return Key::end;

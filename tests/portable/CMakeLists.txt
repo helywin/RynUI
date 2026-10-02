@@ -16,7 +16,7 @@ foreach(name IN ITEMS glyph_texture_upload texture_upload_batch_layout logical_s
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources
         rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu
         rounded_effect_gpu_resources input_component input_gpu input_caret_blink text_component
-        button_component selection_component radio_component typography_component
+        button_component selection_component slider_component radio_component typography_component
         typography_interaction divider_component text_component_frame frame_scheduler)
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()

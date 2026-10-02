@@ -276,6 +276,20 @@ struct DividerThemeConfig final {
     friend bool operator==(const DividerThemeConfig&, const DividerThemeConfig&) = default;
 };
 
+struct SliderTokenOverride final {
+    std::optional<LogicalLength> rail_size, handle_size, handle_size_hover;
+    std::optional<LogicalLength> handle_line_width, handle_line_width_hover;
+    std::optional<Color> rail, rail_hover, track, track_hover, track_disabled;
+    std::optional<Color> handle, handle_active, handle_outline, handle_disabled, handle_background;
+    friend bool operator==(const SliderTokenOverride&, const SliderTokenOverride&) = default;
+};
+struct SliderThemeConfig final {
+    SliderTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SliderThemeConfig&, const SliderThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -285,6 +299,7 @@ struct ThemeConfig final {
     SwitchThemeConfig switch_;
     TypographyThemeConfig typography;
     DividerThemeConfig divider;
+    SliderThemeConfig slider;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -541,6 +556,24 @@ struct DividerThemeToken final {
     friend constexpr bool operator==(const DividerThemeToken&, const DividerThemeToken&) = default;
 };
 
+struct SliderMetricToken final {
+    float rail_size{4}, handle_size{10}, handle_size_hover{12};
+    float handle_line_width{2}, handle_line_width_hover{2.5F};
+    [[nodiscard]] auto values() const noexcept { return std::array{rail_size, handle_size, handle_size_hover, handle_line_width, handle_line_width_hover}; }
+    friend constexpr bool operator==(const SliderMetricToken&, const SliderMetricToken&) = default;
+};
+struct SliderColorToken final {
+    Color rail, rail_hover, track, track_hover, track_disabled;
+    Color handle, handle_active, handle_outline, handle_disabled, handle_background;
+    [[nodiscard]] auto values() const noexcept { return std::array{rail, rail_hover, track, track_hover, track_disabled, handle, handle_active, handle_outline, handle_disabled, handle_background}; }
+    friend constexpr bool operator==(const SliderColorToken&, const SliderColorToken&) = default;
+};
+struct SliderThemeToken final {
+    SliderMetricToken metrics;
+    SliderColorToken colors;
+    friend constexpr bool operator==(const SliderThemeToken&, const SliderThemeToken&) = default;
+};
+
 class ThemeSnapshot final {
 public:
     ThemeSnapshot(const ThemeSnapshot&) = default;
@@ -557,6 +590,7 @@ public:
     [[nodiscard]] const SwitchThemeToken& switch_token() const noexcept;
     [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
+    [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -580,6 +614,7 @@ private:
         SwitchThemeToken switch_token,
         TypographyThemeToken typography,
         DividerThemeToken divider,
+        SliderThemeToken slider,
         std::shared_ptr<const detail::InputTokenSet> input,
         std::vector<ThemeAlgorithm> algorithms);
 
@@ -591,6 +626,7 @@ private:
     SwitchThemeToken switch_token_;
     TypographyThemeToken typography_;
     DividerThemeToken divider_;
+    SliderThemeToken slider_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

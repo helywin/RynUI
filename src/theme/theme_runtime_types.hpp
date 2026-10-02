@@ -91,6 +91,8 @@ enum class TokenIdentity : std::uint8_t {
     divider_colors,
     divider_metrics,
     divider_typography,
+    slider_colors,
+    slider_metrics,
     count,
 };
 

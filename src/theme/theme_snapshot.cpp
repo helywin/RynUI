@@ -798,6 +798,43 @@ void apply_divider_override(
         Color::rgba8(255, 255, 255), handle, small_handle};
 }
 
+SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+    const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    const bool dark = std::find(algorithms.begin(), algorithms.end(), ThemeAlgorithm::Dark) != algorithms.end();
+    const auto with_alpha = [](Color value, float alpha) { return Color(value.red(), value.green(), value.blue(), alpha); };
+    const auto border_hover = is_default_primary(seed.color_primary)
+        ? (dark ? Color::rgba8(21, 65, 126) : Color::rgba8(105, 177, 255))
+        : (dark ? mix(map.color_primary_border, map.color_primary, 0.25F) : palette_variant(seed.color_primary, 2, true));
+    const auto disabled = mix(alias.color_background_container, alias.color_text_disabled, alias.color_text_disabled.alpha());
+    return {{4, map.control_height_large / 4, map.control_height_small / 2,
+            seed.line_width + 1, seed.line_width + 1.5F},
+        {with_alpha(map.color_text_base, dark ? 0.08F : 0.04F), with_alpha(map.color_text_base, dark ? 0.12F : 0.06F),
+            map.color_primary_border, border_hover, alias.color_background_container_disabled,
+            map.color_primary_border, map.color_primary, with_alpha(map.color_primary, 0.2F),
+            Color(disabled.red(), disabled.green(), disabled.blue(), 1), alias.color_background_elevated}};
+}
+void apply_slider_override(SliderThemeToken& token, const SliderTokenOverride& o) {
+    auto& m = token.metrics; auto& c = token.colors;
+    m.rail_size = fixed_length(o.rail_size, m.rail_size, "Slider rail size must be positive", true);
+    m.handle_size = fixed_length(o.handle_size, m.handle_size, "Slider handle size must be positive", true);
+    m.handle_size_hover = fixed_length(o.handle_size_hover, m.handle_size_hover, "Slider hover handle size must be positive", true);
+    m.handle_line_width = fixed_length(o.handle_line_width, m.handle_line_width, "Slider handle line width must be non-negative");
+    m.handle_line_width_hover = fixed_length(o.handle_line_width_hover, m.handle_line_width_hover, "Slider hover line width must be non-negative");
+    if (o.rail) c.rail = *o.rail;
+    if (o.rail_hover) c.rail_hover = *o.rail_hover;
+    if (o.track) c.track = *o.track;
+    if (o.track_hover) c.track_hover = *o.track_hover;
+    if (o.track_disabled) c.track_disabled = *o.track_disabled;
+    if (o.handle) c.handle = *o.handle;
+    if (o.handle_active) c.handle_active = *o.handle_active;
+    if (o.handle_outline) c.handle_outline = *o.handle_outline;
+    if (o.handle_disabled) c.handle_disabled = *o.handle_disabled;
+    if (o.handle_background) c.handle_background = *o.handle_background;
+    if (!std::isfinite(m.handle_size + 2 * m.handle_line_width)
+        || !std::isfinite(m.handle_size_hover + 2 * m.handle_line_width_hover))
+        throw std::invalid_argument("Slider handle extent must be finite");
+}
+
 void apply_switch_override(SwitchThemeToken& token,
     const SwitchTokenOverride& override) {
     token.track_height = fixed_length(override.track_height, token.track_height,
@@ -899,6 +936,7 @@ void append_color(std::ostringstream& stream, Color color) {
     const SwitchThemeToken& switch_token,
     const TypographyThemeToken& typography,
     const DividerThemeToken& divider,
+    const SliderThemeToken& slider,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms,
     std::uint64_t identity) {
@@ -978,7 +1016,13 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, switch_token.handle_background);
     stream << ",\"handleSize\":" << switch_token.handle_size
            << ",\"handleSizeSM\":" << switch_token.handle_size_small
-           << "},\"text\":{\"color\":";
+           << "},\"slider\":{\"metrics\":[";
+    const auto slider_metrics = slider.metrics.values();
+    for (std::size_t i = 0; i < slider_metrics.size(); ++i) { if (i) stream << ','; stream << slider_metrics[i]; }
+    stream << "],\"colors\":[";
+    const auto slider_colors = slider.colors.values();
+    for (std::size_t i = 0; i < slider_colors.size(); ++i) { if (i) stream << ','; append_color(stream, slider_colors[i]); }
+    stream << "]},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family)
            << ",\"fontWeight\":" << text.font_weight
@@ -1189,6 +1233,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     const SwitchThemeToken& switch_token,
     const TypographyThemeToken& typography,
     const DividerThemeToken& divider,
+    const SliderThemeToken& slider,
     const detail::InputTokenSet& input,
     std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
@@ -1292,6 +1337,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
     hash_typography(hash, typography);
     hash_divider(hash, divider);
+    for (auto value : slider.metrics.values()) hash_float(hash, value);
+    for (auto value : slider.colors.values()) hash_color(hash, value);
     for(const auto& size : input.sizes) {
         hash_float(hash, size.control_height); hash_float(hash, size.font_size);
         hash_float(hash, size.line_height); hash_float(hash, size.padding_inline);
@@ -1318,6 +1365,7 @@ ThemeSnapshot::ThemeSnapshot(
     SwitchThemeToken switch_token,
     TypographyThemeToken typography,
     DividerThemeToken divider,
+    SliderThemeToken slider,
     std::shared_ptr<const detail::InputTokenSet> input,
     std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)),
@@ -1328,12 +1376,13 @@ ThemeSnapshot::ThemeSnapshot(
       switch_token_(std::move(switch_token)),
       typography_(std::move(typography)),
       divider_(std::move(divider)),
+      slider_(std::move(slider)),
       input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_,
-        switch_token_, typography_, divider_, *input_, algorithms_);
+        switch_token_, typography_, divider_, slider_, *input_, algorithms_);
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_,
-        switch_token_, typography_, divider_, *input_, algorithms_, identity_);
+        switch_token_, typography_, divider_, slider_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept { return seed_; }
@@ -1344,6 +1393,7 @@ const TextThemeToken& ThemeSnapshot::text() const noexcept { return text_; }
 const SwitchThemeToken& ThemeSnapshot::switch_token() const noexcept { return switch_token_; }
 const TypographyThemeToken& ThemeSnapshot::typography() const noexcept { return typography_; }
 const DividerThemeToken& ThemeSnapshot::divider() const noexcept { return divider_; }
+const SliderThemeToken& ThemeSnapshot::slider() const noexcept { return slider_; }
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -1356,7 +1406,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_
         && left.alias_ == right.alias_ && left.button_ == right.button_
         && left.text_ == right.text_ && left.switch_token_ == right.switch_token_
-        && left.typography_ == right.typography_ && left.divider_ == right.divider_
+        && left.typography_ == right.typography_ && left.divider_ == right.divider_ && left.slider_ == right.slider_
         && *left.input_ == *right.input_
         && left.algorithms_ == right.algorithms_;
 }
@@ -1486,10 +1536,22 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         divider = derive_divider(seed, map, alias);
     }
     apply_divider_override(divider, config.divider.tokens);
+    SliderThemeToken slider;
+    const bool inherit_slider = parent && config.inherit && config.seed == SeedTokenOverride{}
+        && config.alias == AliasTokenOverride{} && config.algorithms.empty()
+        && !config.slider.algorithm && config.slider.seed == SeedTokenOverride{};
+    if (inherit_slider) slider = parent->slider();
+    else if (config.slider.algorithm) {
+        auto component_seed = seed; apply_seed_override(component_seed, config.slider.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        slider = derive_slider(component_seed, component_map, derive_alias(component_seed, component_map, algorithms), algorithms);
+    } else slider = derive_slider(seed, map, alias, algorithms);
+    apply_slider_override(slider, config.slider.tokens);
     return ThemeSnapshot(
         std::move(seed), std::move(map), std::move(alias), std::move(button),
         std::move(text), std::move(switch_token), std::move(typography),
         std::move(divider),
+        std::move(slider),
         std::make_shared<const detail::InputTokenSet>(std::move(input)),
         std::move(algorithms));
 }

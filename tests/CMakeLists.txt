@@ -10,6 +10,13 @@ add_executable(rynui_glyph_texture_upload_tests glyph_texture_upload_tests.cpp)
 rynui_configure_cpp_target(rynui_glyph_texture_upload_tests)
 target_link_libraries(rynui_glyph_texture_upload_tests PRIVATE rynui_renderer_common)
 add_test(NAME rynui.glyph_texture_upload COMMAND rynui_glyph_texture_upload_tests)
+add_executable(rynui_slider_component_tests slider_component_tests.cpp)
+rynui_configure_cpp_target(rynui_slider_component_tests)
+target_link_libraries(rynui_slider_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_slider_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.slider_component COMMAND rynui_slider_component_tests)
 
 add_test(
     NAME rynui.icon_asset_contract

@@ -47,6 +47,8 @@ struct GalleryState final {
     ryn::Signal<ryn::String> search_feedback{ryn::String{u8"Enter 或按钮提交搜索"}};
     ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
+    ryn::Signal<double> slider_value{30};
+    ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
     ryn::Signal<GalleryNavigationTarget> active_navigation{
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
@@ -855,6 +857,18 @@ void add_live_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Divider(ryn::DividerProps{}.content(u8"None / 显式无朝向间距").orientation(ryn::DividerOrientation::Left).orientationMargin(ryn::DividerOrientationMargin::none()));
     ryn::Space(ryn::SpaceProps{}.align(ryn::SpaceAlign::Center),[]{ryn::Text(u8"文字");ryn::Divider(ryn::DividerProps{}.type(ryn::DividerType::Vertical));ryn::Text(u8"文字");});
     state->telemetry.live_samples+=5;
+    ryn::Text(u8"Slider · 单值、范围、反向、禁用、纵向（Tooltip / marks 待实现）");
+    ryn::Slider(ryn::SliderProps{}.value(state->slider_value)
+        .onChange([state](double value) { state->slider_value.set(value); })
+        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::RangeSlider(ryn::RangeSliderProps{}.value(state->slider_range)
+        .onChange([state](ryn::SliderRange value) { state->slider_range.set(value); })
+        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Slider(ryn::SliderProps{}.defaultValue(35).reverse(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Slider(ryn::SliderProps{}.defaultValue(60).disabled(true).layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Slider(ryn::SliderProps{}.defaultValue(40).orientation(ryn::SliderOrientation::Vertical)
+        .layout(ryn::LayoutStyle{}.height(ryn::dp(120))));
+    state->telemetry.live_samples += 5;
     ryn::Flex(ryn::FlexProps{}.layout(ryn::LayoutStyle{}.height(ryn::dp(48.0F))),
         ryn::FlexContent{[] {}});
 }

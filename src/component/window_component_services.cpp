@@ -1,6 +1,7 @@
 #include "component/window_component_services.hpp"
 #include "component/typography_component.hpp"
 #include "component/divider_component.hpp"
+#include "component/slider_component.hpp"
 
 #include <chrono>
 
@@ -81,6 +82,7 @@ WindowComponentServices::WindowComponentServices(
     animations_.set_schedule_observer(&frame_requests);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
+    slider_ = std::make_unique<SliderComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

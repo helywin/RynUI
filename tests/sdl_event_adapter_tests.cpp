@@ -149,6 +149,8 @@ void test_compatibility_mouse_is_suppressed_without_hiding_real_mouse() {
 void test_editing_key_mapping() {
     const std::array keys{
         std::pair{SDLK_LEFT, Key::left}, std::pair{SDLK_RIGHT, Key::right},
+        std::pair{SDLK_UP, Key::up}, std::pair{SDLK_DOWN, Key::down},
+        std::pair{SDLK_PAGEUP, Key::page_up}, std::pair{SDLK_PAGEDOWN, Key::page_down},
         std::pair{SDLK_HOME, Key::home}, std::pair{SDLK_END, Key::end},
         std::pair{SDLK_BACKSPACE, Key::backspace}, std::pair{SDLK_DELETE, Key::delete_forward},
         std::pair{SDLK_ESCAPE, Key::escape}, std::pair{SDLK_A, Key::a}, std::pair{SDLK_C, Key::c},

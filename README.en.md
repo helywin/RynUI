@@ -28,6 +28,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
 | Single-line editing | Controlled/uncontrolled values, placeholders, prefix/suffix slots, grapheme-safe selection, clipboard, undo/redo, IME composition events, and caret blinking |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
+| Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
 | Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
 The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, and multiline editing are not available yet.
@@ -93,6 +94,7 @@ Example sources live in [`examples/`](examples); public headers live in [`includ
 - [Build guide](docs/development/building.md): environment, presets, and build options.
 - [Architecture](docs/architecture.md): design goals, module boundaries, and long-term decisions, including plans that are not implemented yet.
 - [Design Token reference](docs/design-tokens.md): locked design tokens and their support status.
+- [Slider / RangeSlider](docs/slider.md): values, input, themes, supported scope, and validation evidence.
 - [Third-party dependencies](docs/development/third-party.md): versions, sources, verification, and dependency licenses.
 - [OpenSpec changes](openspec/changes): change scope, tasks, and validation evidence.
 - [Agent collaboration rules](AGENTS.md): repository development and verification conventions.
