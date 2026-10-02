@@ -14,7 +14,7 @@
 
 ## 4. Windows 原生验收
 
-- [ ] 4.1 windows-msvc Debug/Release build 和受影响平台 CTest；实际 D3D12/DXIL marks/dots/hints/keyboard/capture/反向/纵向/主题/resize/四档 scale，保存截图、诊断、SHA256、退出码并独立提交。
+- [x] 4.1 windows-msvc Debug/Release build 和受影响平台 CTest；实际 D3D12/DXIL marks/dots/hints/keyboard/capture/反向/纵向/主题/resize/四档 scale，保存截图、诊断、SHA256、退出码并独立提交。
 
 ## 5. Linux 原生验收
 

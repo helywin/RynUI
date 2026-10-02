@@ -894,7 +894,7 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     if (has_argument(argc, argv, "--typography-acceptance")) {
         return run_typography_acceptance(argc, argv);
     }
-    if (has_argument(argc, argv, "--slider-acceptance")) {
+    if (has_argument(argc, argv, "--slider-acceptance") || has_argument(argc, argv, "--slider-marks-acceptance")) {
         return run_slider_acceptance(argc, argv);
     }
     if (has_argument(argc, argv, "--tooltip-acceptance")) {

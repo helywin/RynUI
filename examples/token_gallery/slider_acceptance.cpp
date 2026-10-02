@@ -1,4 +1,5 @@
 #include "component/slider_component.hpp"
+#include "component/tooltip_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/common/scene_resources.hpp"
@@ -23,9 +24,11 @@ void require(bool condition, const char* message) {
 int run_slider_acceptance(int argc, char** argv) {
     try {
         std::optional<float> requested_scale;
+        bool with_marks{};
         std::filesystem::path directory;
         for (int i = 1; i < argc; ++i) {
             const std::string_view arg = argv[i];
+            with_marks = with_marks || arg == "--slider-marks-acceptance";
             if (arg.starts_with("--acceptance-scale=")) {
                 requested_scale = std::stof(std::string{arg.substr(19)});
             }
@@ -38,7 +41,7 @@ int run_slider_acceptance(int argc, char** argv) {
         detail::PlatformConfig config;
         config.title = "RynUI Slider Acceptance";
         config.width = 1100;
-        config.height = 850;
+        config.height = with_marks ? 1020 : 850;
         auto created = detail::PlatformState::create(config);
         require(bool(created), "Slider window creation failed");
         auto& platform = *created.state;
@@ -67,6 +70,9 @@ int run_slider_acceptance(int argc, char** argv) {
         Signal<SliderRange> range{SliderRange{20, 80}};
         Signal<bool> disabled{false};
         Signal<ThemeConfig> theme{ThemeConfig{}};
+        Signal<SliderMarks> marks{
+            SliderMarks{{0, String{u8"低 Low"}}, {50, String{u8"中 Middle"}}, {100, String{u8"高 High"}}}};
+        const Prop<SliderMarks> mark_prop = with_marks ? Prop<SliderMarks>{marks} : Prop<SliderMarks>{SliderMarks{}};
         int changes{};
         int completes{};
         int runs{};
@@ -78,6 +84,7 @@ int run_slider_acceptance(int argc, char** argv) {
                                Text(u8"Slider · 单值 / Range / Reverse / Disabled / Vertical");
                                Slider(SliderProps{}
                                           .value(value)
+                                          .marks(mark_prop)
                                           .disabled(disabled)
                                           .onChange([&](double next) {
                                               ++changes;
@@ -87,17 +94,35 @@ int run_slider_acceptance(int argc, char** argv) {
                                           .layout(LayoutStyle{}.width(width)));
                                RangeSlider(RangeSliderProps{}
                                                .value(range)
+                                               .marks(with_marks ? SliderMarks{{20, String{u8"20"}},
+                                                                               {50, String{u8"50"}},
+                                                                               {80, String{u8"80"}}}
+                                                                 : SliderMarks{})
+                                               .marksOnly(with_marks)
+                                               .dots(with_marks)
                                                .onChange([&](SliderRange next) {
                                                    ++changes;
                                                    range.set(next);
                                                })
                                                .onChangeComplete([&](SliderRange) { ++completes; })
                                                .layout(LayoutStyle{}.width(width)));
-                               Slider(SliderProps{}.defaultValue(35).reverse(true).layout(LayoutStyle{}.width(width)));
+                               Slider(SliderProps{}
+                                          .defaultValue(35)
+                                          .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
+                                          .dots(with_marks)
+                                          .included(!with_marks)
+                                          .reverse(true)
+                                          .layout(LayoutStyle{}.width(width)));
                                Slider(SliderProps{}.defaultValue(60).disabled(true).layout(LayoutStyle{}.width(width)));
                                Slider(SliderProps{}
                                           .defaultValue(40)
                                           .orientation(SliderOrientation::Vertical)
+                                          .limits(SliderLimits{0, 100, with_marks ? 10.0 : 1.0})
+                                          .marks(with_marks ? SliderMarks{{0, String{u8"低"}},
+                                                                          {50, String{u8"中"}},
+                                                                          {100, String{u8"高"}}}
+                                                            : SliderMarks{})
+                                          .dots(with_marks)
                                           .layout(LayoutStyle{}.height(dp(160))));
                            }});
                   }});
@@ -176,8 +201,20 @@ int run_slider_acceptance(int argc, char** argv) {
         require(services.focus().request_focus(dual.thumbs[1], input::FocusModality::keyboard),
                 "Range native focus failed");
         key(SDLK_LEFT);
-        require(range.get() == SliderRange{20, 79}, "Range keyboard changed wrong endpoint");
+        require(range.get() == SliderRange{20, with_marks ? 50.0 : 79.0}, "Range keyboard changed wrong endpoint");
         draw("keyboard");
+        if (with_marks) {
+            const auto hint = services.tooltip().mounted()[2];
+            require(services.tooltip().snapshot(hint).visible, "Range keyboard hint missing");
+            key(SDLK_ESCAPE);
+            draw("dismissed");
+            require(!services.tooltip().snapshot(hint).visible && services.focus().state().focused == dual.thumbs[1],
+                    "Range hint Escape changed focus or stayed visible");
+            services.focus().clear_focus();
+            services.focus().request_focus(dual.thumbs[1], input::FocusModality::keyboard);
+            draw("reopened");
+            require(services.tooltip().snapshot(hint).visible, "Range hint did not reopen");
+        }
         const auto point = [&](const detail::MountedSliderComponent& item, double ratio) {
             const auto b = nodes.require(item.node).bounds;
             const auto& m = services.components().theme_scope(item.component)->snapshot().slider().metrics;
@@ -185,7 +222,8 @@ int run_slider_acceptance(int argc, char** argv) {
             const float length = v ? b.height : b.width;
             const float inset = std::min(length / 2, m.handle_size_hover / 2 + m.handle_line_width_hover);
             const float pos = inset + (length - 2 * inset) * static_cast<float>(ratio);
-            return v ? runtime::Point{b.x + b.width / 2, b.y + pos} : runtime::Point{b.x + pos, b.y + b.height / 2};
+            const auto center = host.snapshot(item.component).centers[0];
+            return v ? runtime::Point{center.x, b.y + pos} : runtime::Point{b.x + pos, center.y};
         };
         const auto pointer = [&](Uint32 type, runtime::Point p) {
             SDL_Event event{};
@@ -206,16 +244,40 @@ int run_slider_acceptance(int argc, char** argv) {
             require(SDL_PushEvent(&event), "Slider mouse injection failed");
             poll();
         };
+        if (with_marks) {
+            const auto label = services.components().children(single.component).back();
+            const auto b = nodes.require(services.components().root(label)).bounds;
+            pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, {b.x + 3, b.y + 3});
+            pointer(SDL_EVENT_MOUSE_BUTTON_UP, {b.x + 3, b.y + 3});
+            require(value.get() == 100, "native label click failed");
+            draw("label");
+        }
         pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(single, 0.3));
         pointer(SDL_EVENT_MOUSE_MOTION, point(single, 1.2));
+        if (with_marks) {
+            draw("captured");
+            require(services.tooltip().snapshot(services.tooltip().mounted()[0]).visible &&
+                        host.snapshot(single.component).dragging,
+                    "native captured value hint missing");
+        }
         pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(single, 1.2));
         require(value.get() == 100 && !host.snapshot(single.component).dragging, "Slider native capture/clamp failed");
         draw("dragged");
         pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(dual, 0.2));
         pointer(SDL_EVENT_MOUSE_MOTION, point(dual, 0.95));
         pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(dual, 0.95));
-        require(range.get() == SliderRange{79, 79}, "Range native crossing failed");
+        require(range.get() == (with_marks ? SliderRange{50, 50} : SliderRange{79, 79}),
+                "Range native crossing failed");
         draw("range");
+        if (with_marks) {
+            const auto thumb = single.thumbs[0];
+            const auto hint = services.tooltip().mounted()[0];
+            marks.set(
+                {{0, String{u8"低 Low"}}, {25, String{u8"25"}}, {75, String{u8"75"}}, {100, String{u8"高 High"}}});
+            draw("dynamic");
+            require(host.mounted()[0].thumbs[0] == thumb && services.tooltip().mounted()[0] == hint && runs == 1,
+                    "native marks update remounted retained components");
+        }
         pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(reverse, 0.1));
         pointer(SDL_EVENT_MOUSE_BUTTON_UP, point(reverse, 0.1));
         pointer(SDL_EVENT_MOUSE_BUTTON_DOWN, point(vertical, 0.1));
@@ -241,18 +303,21 @@ int run_slider_acceptance(int argc, char** argv) {
         compact.algorithms = {ThemeAlgorithm::Compact};
         theme.set(compact);
         draw("compact");
-        require(SDL_SetWindowSize(window, 900, 720), "Slider native resize failed");
+        const int resized_height = with_marks ? 960 : 720;
+        require(SDL_SetWindowSize(window, 900, resized_height), "Slider native resize failed");
         platform.delay(100);
         metrics = platform.window_metrics();
         width.set(dp(280));
         draw("resized");
-        require(metrics.coordinate_width == 900 && metrics.coordinate_height == 720 && runs == 1,
+        require(metrics.coordinate_width == 900 && metrics.coordinate_height == resized_height && runs == 1,
                 "Slider resize rebuilt content or extent wrong");
-        std::cout << "slider_acceptance=passed gpu_driver=" << renderer.gpu_driver()
-                  << " shader_format=" << renderer.shader_format() << " system_display_scale=" << metrics.display_scale
-                  << " render_scale=" << scale << " normalized_events=" << normalized << " changes=" << changes
-                  << " completes=" << completes << " submits=" << renderer.counters().frame_submissions
-                  << " resize=900x720 content_runs=" << runs << " exit_code=0\n";
+        std::cout << (with_marks ? "slider_marks_acceptance=passed gpu_driver="
+                                 : "slider_acceptance=passed gpu_driver=")
+                  << renderer.gpu_driver() << " shader_format=" << renderer.shader_format()
+                  << " system_display_scale=" << metrics.display_scale << " render_scale=" << scale
+                  << " normalized_events=" << normalized << " changes=" << changes << " completes=" << completes
+                  << " submits=" << renderer.counters().frame_submissions << " resize=900x" << resized_height
+                  << " content_runs=" << runs << " exit_code=0\n";
         services.dispose();
         return 0;
     } catch (const std::exception& e) {
