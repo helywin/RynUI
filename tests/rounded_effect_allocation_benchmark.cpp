@@ -77,7 +77,6 @@ void operator delete[](void* memory, std::size_t, std::align_val_t) noexcept {
 int main() {
     try {
         constexpr std::size_t effect_count = 1'024;
-        static_assert(sizeof(ryn::graphics::QuadInstance) == 48);
         ryn::graphics::RoundedEffectStore store;
         store.reserve(effect_count);
         std::vector<ryn::graphics::RoundedEffectInstance> effects;

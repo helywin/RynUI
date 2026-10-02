@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/quad_primitive.hpp"
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -23,7 +23,7 @@ struct SceneResourceState final {
 // The weak resource stamp prevents access after retirement, failed upload or reset.
 class SceneAttachment final {
   public:
-    [[nodiscard]] graphics::QuadGpuBufferHandle quads() const noexcept { return quads_; }
+    [[nodiscard]] detail::QuadGpuBufferHandle quads() const noexcept { return quads_; }
     [[nodiscard]] const GlyphGpuResources *glyphs() const noexcept { return glyphs_; }
     [[nodiscard]] const RoundedEffectGpuResources *effects() const noexcept { return effects_; }
     [[nodiscard]] const graphics::OrderedScene *scene() const noexcept { return scene_; }
@@ -35,7 +35,7 @@ class SceneAttachment final {
     friend class SceneBackend;
     std::weak_ptr<const SceneResourceState> state_;
     std::uint64_t owner_{}, epoch_{}, revision_{};
-    graphics::QuadGpuBufferHandle quads_{};
+    detail::QuadGpuBufferHandle quads_{};
     const GlyphGpuResources *glyphs_{};
     const RoundedEffectGpuResources *effects_{};
     const graphics::OrderedScene *scene_{};
@@ -44,7 +44,7 @@ class SceneAttachment final {
 
 // All upload methods own/copy source bytes before returning success. Batch commit
 // accepts GPU work; it is not a GPU completion notification.
-class SceneBackend : public graphics::QuadUploadApi,
+class SceneBackend : public detail::QuadUploadApi,
                      public GlyphGpuApi,
                      public RoundedEffectGpuApi,
                      public SceneDrawApi,

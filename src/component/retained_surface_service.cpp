@@ -155,7 +155,7 @@ std::size_t RetainedSurfaceService::update_surface(
     for (std::size_t index = 0; index < visuals.size(); ++index) {
         materials[index] = {visuals[index].color, visuals[index].opacity};
         geometry[index] = {
-            visuals[index].clip_rect,
+            visuals[index].bounds,
             visuals[index].corner_radius,
             visuals[index].translation,
         };
@@ -232,7 +232,7 @@ std::size_t RetainedSurfaceService::republish_range(
         for (std::uint32_t index = 0; index < range.count; ++index) {
             const auto& visual = visuals[index];
             const graphics::QuadMaterial material{visual.color, visual.opacity};
-            const graphics::QuadGeometry geometry{visual.clip_rect,
+            const graphics::QuadGeometry geometry{visual.bounds,
                 visual.corner_radius, visual.translation};
             const graphics::QuadInstanceRange single{range.first + index, 1};
             const auto material_updates = instances_.update_material(single, {&material, 1});
@@ -462,12 +462,6 @@ bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip) {
     return true;
 }
 
-void RetainedSurfaceService::synchronize_gpu(
-    graphics::QuadGpuBuffer& gpu_buffer) {
-    ensure_owner_thread();
-    gpu_buffer.synchronize(instances_);
-}
-
 graphics::QuadInstanceRange RetainedSurfaceService::visual_range(
     RetainedSurfaceId id) const {
     ensure_owner_thread();
@@ -682,7 +676,7 @@ void RetainedSurfaceService::validate_finite_visuals(
     std::span<const graphics::QuadInstance> visuals) {
     for (const auto& visual : visuals) {
         const bool finite_clip = std::ranges::all_of(
-            visual.clip_rect, [](float value) { return std::isfinite(value); });
+            visual.bounds, [](float value) { return std::isfinite(value); });
         const bool finite_color = std::ranges::all_of(
             visual.color, [](float value) { return std::isfinite(value); });
         const bool finite_translation = std::ranges::all_of(
@@ -692,7 +686,7 @@ void RetainedSurfaceService::validate_finite_visuals(
                 || !std::isfinite(visual.corner_radius)
                 || visual.opacity < 0.0F || visual.opacity > 1.0F
                 || visual.corner_radius < 0.0F
-                || visual.corner_radius > 0.5F) {
+                || visual.bounds[2] < 0.0F || visual.bounds[3] < 0.0F) {
             throw std::invalid_argument("retained surface visual data is invalid");
         }
     }

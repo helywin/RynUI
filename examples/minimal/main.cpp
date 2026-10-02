@@ -81,15 +81,16 @@ public:
         ryn::runtime::DirtyQueues& dirty,
         ryn::layout::LayoutEngine& layout,
         ryn::graphics::QuadScene& scene,
-        ryn::graphics::QuadGpuBuffer& gpu_buffer,
+        ryn::detail::QuadGpuBuffer& gpu_buffer,
         ryn::detail::SdlQuadRenderer& renderer,
-        ryn::runtime::Size viewport) noexcept
+        ryn::runtime::Size viewport,
+        ryn::detail::SceneDeviceMetrics metrics) noexcept
         : dirty_(&dirty),
           layout_(&layout),
           scene_(&scene),
           gpu_buffer_(&gpu_buffer),
           renderer_(&renderer),
-          viewport_(viewport) {}
+          viewport_(viewport), metrics_(metrics) {}
 
     ryn::runtime::FrameSubmissionResult submit_frame(
         ryn::animation::AnimationTime frame_time) override {
@@ -98,7 +99,8 @@ public:
                 root,
                 ryn::layout::Constraints::fixed(viewport_.width, viewport_.height)));
         }
-        static_cast<void>(scene_->sync_dirty(*dirty_, *gpu_buffer_, viewport_));
+        static_cast<void>(scene_->sync_dirty(*dirty_));
+        gpu_buffer_->synchronize(scene_->instances(), metrics_);
         dirty_->clear();
         return renderer_->submit_frame(frame_time);
     }
@@ -107,9 +109,10 @@ private:
     ryn::runtime::DirtyQueues* dirty_;
     ryn::layout::LayoutEngine* layout_;
     ryn::graphics::QuadScene* scene_;
-    ryn::graphics::QuadGpuBuffer* gpu_buffer_;
+    ryn::detail::QuadGpuBuffer* gpu_buffer_;
     ryn::detail::SdlQuadRenderer* renderer_;
     ryn::runtime::Size viewport_;
+    ryn::detail::SceneDeviceMetrics metrics_;
 };
 
 struct ExampleCounters {
@@ -208,11 +211,14 @@ int main(int argc, char** argv) {
             ryn::layout::Constraints::fixed(viewport.width, viewport.height)));
 
         ryn::graphics::QuadScene scene(nodes);
-        static_cast<void>(scene.add_quad(quad_node, viewport, 28.0F));
+        static_cast<void>(scene.add_quad(quad_node, 28.0F));
         ryn::detail::SdlQuadRenderer renderer(
             platform,
             executable_directory(argv[0]) / "shaders");
-        ryn::graphics::QuadGpuBuffer gpu_buffer(renderer, scene.instances());
+        ryn::detail::QuadGpuBuffer gpu_buffer(renderer, scene.instances(),
+            {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
+             static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
+             initial_window_metrics.display_scale});
         renderer.attach_scene(gpu_buffer, static_cast<std::uint32_t>(scene.instances().size()));
         dirty.clear();
         if (!frame_requests.pending()) {
@@ -225,7 +231,10 @@ int main(int argc, char** argv) {
             scene,
             gpu_buffer,
             renderer,
-            viewport);
+            viewport,
+            {static_cast<std::uint32_t>(initial_window_metrics.pixel_width),
+             static_cast<std::uint32_t>(initial_window_metrics.pixel_height),
+             initial_window_metrics.display_scale});
         PlatformFrameEvents events(platform);
         ryn::runtime::OnDemandFrameLoop frame_loop(
             frame_requests,

@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "component/button_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
@@ -56,7 +57,7 @@ ryn::String click_label(std::uint64_t clicks) {
     return std::move(parsed).value();
 }
 
-class RecordingGpuApi final : public ryn::graphics::QuadUploadApi,
+class RecordingGpuApi final : public ryn::detail::QuadUploadApi,
                               public ryn::detail::GlyphGpuApi,
                               public ryn::detail::RoundedEffectGpuApi {
 public:
@@ -327,18 +328,18 @@ public:
             return ryn::runtime::FrameSubmissionResult::failed;
         }
         if (quad_buffer_ == nullptr) {
-            quad_buffer_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                *gpu_, host_->button_scene().instances());
+            quad_buffer_ = std::make_unique<ryn::detail::QuadGpuBuffer>(
+                *gpu_, host_->button_scene().instances(), ryn::detail::SceneDeviceMetrics{640, 360, 1});
         } else {
             try {
-                host_->button_scene().synchronize_gpu(*quad_buffer_);
+                quad_buffer_->synchronize(host_->button_scene().instances(), {640, 360, 1});
             } catch (const std::runtime_error&) {
                 return ryn::runtime::FrameSubmissionResult::deferred;
             }
         }
         glyph_resources_.synchronize(
             text_scene_->atlas(),
-            text_scene_->glyph_scene().instances());
+            text_scene_->glyph_scene().instances(), {640, 360, 1});
         effect_resources_.synchronize(
             host_->rounded_effects(),
             {640, 360, 1.0F});
@@ -347,7 +348,7 @@ public:
         return ryn::runtime::FrameSubmissionResult::submitted;
     }
 
-    [[nodiscard]] const ryn::graphics::QuadUploadCounters&
+    [[nodiscard]] const ryn::detail::QuadUploadCounters&
     quad_counters() const {
         require(quad_buffer_ != nullptr, "Quad GPU buffer was not created");
         return quad_buffer_->counters();
@@ -361,7 +362,7 @@ private:
     ryn::detail::RoundedEffectGpuResources effect_resources_;
     RecordingDrawApi* draw_;
     ryn::runtime::Size viewport_{640.0F, 360.0F};
-    std::unique_ptr<ryn::graphics::QuadGpuBuffer> quad_buffer_;
+    std::unique_ptr<ryn::detail::QuadGpuBuffer> quad_buffer_;
 };
 
 ryn::input::PointerInputEvent pointer_event(

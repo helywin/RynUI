@@ -1,6 +1,6 @@
 # RynUI 多 backend 与桌面、移动端、Web 可移植性调研
 
-调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 已建立可执行的跨端框架基础；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。
+调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 建立跨端框架基础，036 继续 logical scene 改造；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。036 的实际验收进度见 [tasks](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)。
 
 本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，本次采用的范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
 
@@ -30,7 +30,7 @@
 | [平台状态](../../src/platform/sdl/platform_state.hpp)、[GPU binding](../../src/renderer/sdl/gpu_binding.hpp) | host 拥有窗口和服务；renderer binding 独立拥有 GPU create/claim/release/destroy | GPU 失败保留可用 host；新平台 binding 仍需实际实现 |
 | [共同场景](../../src/renderer/common/scene_resources.hpp) | SceneBackend/SceneResources 共同事务，失败不可呈现、完整重试，附件校验 owner/epoch/revision | 可从 CPU scene 重建，不 remount；没有自动 device-loss 恢复 |
 | [Recording](../../src/renderer/recording/recording_renderer.hpp) | 拥有真实 buffer/texture bytes，范围/kind/owner/epoch 检查、有序 draw | 验证数据和控制合同，不能代替真实 GPU |
-| [共同 GPU resources](../../src/renderer/common/glyph_gpu_resources.hpp) | Glyph/Effect resources 与 draw 位于 common target；对齐要求来自 backend | 当前 ABI 冻结，未来后端消费/转换同一数据 |
+| [共同 GPU resources](../../src/renderer/common/scene_packing.hpp) | Quad/Glyph/Effect resources 与 draw 位于 common target；logical CPU scene v2 独立于 packed GPU ABI v1；对齐要求来自 backend | 后续组件发布 logical 数据，后端消费/转换共同 packed 数据 |
 | [帧调度](../../src/runtime/frame_scheduler.hpp)、[callback pump](../../src/runtime/callback_frame_pump.hpp) | native step 共用非阻塞 tick；Core 自动 wake，deadline 变更/取消、独立 lifetime token | future host 可实现 callback 排程；尚无 DOM/JNI/UIKit 宿主 |
 | [输入](../../src/input/platform_input.hpp)、[文字输入端口](../../src/input/text_input_platform.hpp) | 已有 mouse/touch identity、cancel、平台无关 UTF-8 与 text session | 有复用基础；不等于已有手势仲裁、原生移动编辑体验 |
 | [默认字体](../../src/platform/default_font_chain.cpp) | Windows DirectWrite、Linux Fontconfig 发现系统字体 | macOS、移动端、浏览器要增加各自字体来源，不依赖桌面文件路径 |
@@ -124,7 +124,7 @@ Renderer 消费通用场景与上传计划，管理自己的 GPU 资源、pipeli
 
 | 主题 | 建议共同合同 |
 | --- | --- |
-| 坐标 | layout/输入用 logical units；当前 Quad/Glyph 已打包 NDC，Effect 在 common 转为 NDC/pixel，冻结 packed ABI v1；完全 logical scene 转换为后续独立迁移 |
+| 坐标 | Core Quad/Glyph scene、layout/输入用 logical units；Quad/Glyph 在 common 打包 NDC，Effect 转为 NDC/pixel，保持 packed GPU ABI v1 |
 | 绘制顺序 | 保持 OrderedScene 的 Z order、clip 和 blend；只合并不会改变结果的相邻范围 |
 | GPU ABI | 明确 instance stride、字段 offset、vertex attribute、uniform packing、bind slot；后端可转换存储格式 |
 | 基础能力 | instanced triangles、R8 coverage atlas、采样、局部 buffer/texture 更新、scissor、已支持的圆角/阴影 |
@@ -134,7 +134,7 @@ Renderer 消费通用场景与上传计划，管理自己的 GPU 资源、pipeli
 | 异步完成 | 提交成功不等于 GPU 完成；retire/fence/completion 管 staging 与资源释放，callback 不重入 Core |
 | 资源恢复 | device/surface generation 失效；从 CPU 场景、atlas 和资源来源重新上传，组件状态保持 |
 
-当前 GlyphInstance 为固定 80-byte、Quad 为 48-byte，字段/坐标/颜色以 [ABI v1](../renderer-contract.md)为准。不能假设 C++ 任意 struct 都可作为 WGSL uniform；新 shader 需实际反射与校验。当前 upload commit 表示命令安全接受，不代表 GPU 完成。
+当前 GPU GlyphGpuInstance 为固定 80-byte、QuadGpuInstance 为 48-byte，CPU 类型不承诺这些 stride，字段/坐标/颜色以 [renderer 合同](../renderer-contract.md)为准。不能假设 C++ 任意 struct 都可作为 WGSL uniform；新 shader 需实际反射与校验。当前 upload commit 表示命令安全接受，不代表 GPU 完成。
 
 上传计划应表达源 rectangle/row stride/byte range，而非强迫所有后端复用 SDL staging 布局。WebGPU 不同写入 API、GLES pixel store 与 SDL copy 路径各有对齐规则；由各后端打包并验证。WebGL2 的 draw range 还需处理 instance 起始偏移，不能假设其有与 SDL 等价的 base-instance 参数。
 

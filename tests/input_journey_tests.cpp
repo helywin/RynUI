@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "support/input_fixture.hpp"
 #include "support/input_counting_gpu.hpp"
 #include <iostream>
@@ -23,14 +24,14 @@ void journey(bool controlled) {
     const auto mount_runs = f.buttons.components().mount_runs();
     auto& editor = f.inputs.editors().require(input.editor);
     ryn_test::input_component::CountingGpu gpu;
-    graphics::QuadGpuBuffer quads{gpu, f.buttons.button_scene().instances()};
+    detail::QuadGpuBuffer quads{gpu, f.buttons.button_scene().instances(), {180, 240, 1}};
     detail::GlyphGpuResources glyphs{gpu}; detail::RoundedEffectGpuResources effects{gpu};
     int stages{};
     const auto sync = [&](const char* stage) {
         f.synchronize(180);
         require(f.inputs.synchronize_input_area(1, 180, 240), "journey input area failed");
-        quads.synchronize(f.buttons.button_scene().instances());
-        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances());
+        quads.synchronize(f.buttons.button_scene().instances(), {180, 240, 1});
+        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances(), {180, 240, 1});
         effects.synchronize(f.buttons.rounded_effects(), {180, 240, 1});
         require(f.inputs.mounted_inputs().front().editor == input.editor
             && f.inputs.mounted_inputs().front().component == input.component

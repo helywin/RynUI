@@ -13,7 +13,9 @@
 
 namespace ryn::graphics {
 
-struct alignas(16) GlyphInstance {
+// Logical x/y/width/height and left/top/right/bottom clip; UV stays normalized.
+// The first two translation_opacity entries are logical lengths, not NDC.
+struct GlyphInstance {
     std::array<float, 4> position_size{};
     std::array<float, 4> uv_rect{};
     std::array<float, 4> clip_bounds{};
@@ -23,34 +25,6 @@ struct alignas(16) GlyphInstance {
     friend bool operator==(const GlyphInstance&, const GlyphInstance&) = default;
 };
 
-static_assert(sizeof(GlyphInstance) == 80);
-static_assert(offsetof(GlyphInstance, position_size) == 0);
-static_assert(offsetof(GlyphInstance, uv_rect) == 16);
-static_assert(offsetof(GlyphInstance, clip_bounds) == 32);
-static_assert(offsetof(GlyphInstance, color) == 48);
-static_assert(offsetof(GlyphInstance, translation_opacity) == 64);
-
-enum class GlyphAttributeFormat : std::uint8_t {
-    float4,
-};
-
-struct GlyphAttributeBinding {
-    std::uint32_t location{};
-    GlyphAttributeFormat format{GlyphAttributeFormat::float4};
-    std::uint32_t offset{};
-
-    friend bool operator==(GlyphAttributeBinding, GlyphAttributeBinding) = default;
-};
-
-inline constexpr std::array<GlyphAttributeBinding, 5> glyph_attribute_bindings{{
-    {0, GlyphAttributeFormat::float4, 0},
-    {1, GlyphAttributeFormat::float4, 16},
-    {2, GlyphAttributeFormat::float4, 32},
-    {3, GlyphAttributeFormat::float4, 48},
-    {4, GlyphAttributeFormat::float4, 64},
-}};
-
-inline constexpr std::uint32_t glyph_vertex_count = 6;
 
 struct GlyphInstanceRange {
     std::uint32_t first{};
@@ -101,6 +75,7 @@ private:
 };
 
 struct GlyphPlacement {
+    // Legacy *_pixels names denote logical units; density belongs to font rasterization.
     runtime::Point origin_pixels{};
     runtime::Size viewport_pixels{};
     runtime::Rect clip_pixels{};

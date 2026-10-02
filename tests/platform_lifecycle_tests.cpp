@@ -181,7 +181,7 @@ void test_gpu_failure_preserves_host(FailurePoint point) {
             "host did not independently clean up");
 }
 
-class ResourceApi final : public ryn::graphics::QuadUploadApi {
+class ResourceApi final : public ryn::detail::QuadUploadApi {
 public:
     explicit ResourceApi(FakePlatformApi& api) : api_(&api) {}
     void* create_vertex_buffer(std::size_t) override { return this; }
@@ -211,7 +211,7 @@ void test_resources_retired_before_binding_rebuild() {
             require(binding.device() && std::string(binding.driver()) == "fake-gpu", "binding invalid");
             require(binding.epoch() > previous_epoch, "rebuild reused device epoch");
             previous_epoch = binding.epoch();
-            { ryn::graphics::QuadGpuBuffer buffer(resources, store); }
+            { ryn::detail::QuadGpuBuffer buffer(resources, store, {100, 100, 1}); }
             require(resources.released_on_live_device, "old resource released through destroyed device");
         }
         require(!api.device_live, "binding did not destroy device");
@@ -280,7 +280,7 @@ void test_shared_scene_retirement_and_binding_order() {
         old_epoch = binding.epoch();
         BindingSceneApi backend(binding, api);
         ryn::detail::SceneResources resources(backend);
-        require(resources.synchronize({&quads, atlas, glyphs, nullptr, {}}), "shared lifecycle sync failed");
+        require(resources.synchronize({&quads, atlas, glyphs, nullptr, {100, 100, 1}}), "shared lifecycle sync failed");
         const auto attached = resources.attach(scene);
         require(backend.attach_scene(attached), "shared lifecycle attach failed");
         resources.retire();

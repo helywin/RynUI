@@ -156,7 +156,7 @@ std::array<float, 4> channels(ryn::Color color) noexcept {
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
 
-std::array<float, 4> clip_rect(
+std::array<float, 4> logical_bounds(
     ryn::runtime::Rect bounds,
     ryn::runtime::Size viewport) {
     if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height)
@@ -165,18 +165,8 @@ std::array<float, 4> clip_rect(
             "ReferenceSurface viewport must be finite and positive");
     }
     return {
-        -1.0F + 2.0F * bounds.x / viewport.width,
-        1.0F - 2.0F * bounds.y / viewport.height,
-        2.0F * bounds.width / viewport.width,
-        -2.0F * bounds.height / viewport.height,
+        bounds.x, bounds.y, bounds.width, bounds.height,
     };
-}
-
-float normalized_radius(ryn::runtime::Rect bounds, float radius) noexcept {
-    const float extent = std::min(bounds.width, bounds.height);
-    return extent > 0.0F
-        ? std::clamp(radius / extent, 0.0F, 0.5F)
-        : 0.0F;
 }
 
 ryn::graphics::QuadInstance make_quad(
@@ -187,13 +177,12 @@ ryn::graphics::QuadInstance make_quad(
     float radius,
     ryn::runtime::Point translation) {
     return {
-        clip_rect(bounds, viewport),
+        logical_bounds(bounds, viewport),
         channels(color),
         opacity,
-        normalized_radius(bounds, radius),
+        radius,
         {
-            2.0F * translation.x / viewport.width,
-            -2.0F * translation.y / viewport.height,
+            translation.x, translation.y,
         },
     };
 }

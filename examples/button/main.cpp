@@ -209,7 +209,7 @@ public:
         return last_error_;
     }
 
-    [[nodiscard]] const ryn::graphics::QuadUploadCounters&
+    [[nodiscard]] const ryn::detail::QuadUploadCounters&
     quad_upload_counters() const {
         if (quad_buffer_ == nullptr) {
             throw std::logic_error("Button Quad GPU buffer was not created");
@@ -229,7 +229,7 @@ private:
     ryn::detail::SceneResources* resources_;
     ryn::detail::SdlSceneRenderer* renderer_;
     ryn::runtime::Size* viewport_;
-    ryn::graphics::QuadGpuBuffer* quad_buffer_{};
+    ryn::detail::QuadGpuBuffer* quad_buffer_{};
     std::string last_error_;
 };
 

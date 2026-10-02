@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "component/input_caret_blink.hpp"
 #include "support/input_fixture.hpp"
 #include "support/input_counting_gpu.hpp"
@@ -49,15 +50,15 @@ public:
 struct Submitter final : runtime::FrameSubmitter {
     Fixture& f;
     ryn_test::input_component::CountingGpu gpu;
-    graphics::QuadGpuBuffer quads;
+    detail::QuadGpuBuffer quads;
     detail::GlyphGpuResources glyphs;
     detail::RoundedEffectGpuResources effects;
     std::size_t calls{};
-    explicit Submitter(Fixture& value) : f(value), quads(gpu, f.buttons.button_scene().instances()), glyphs(gpu), effects(gpu) {}
+    explicit Submitter(Fixture& value) : f(value), quads(gpu, f.buttons.button_scene().instances(), {320, 240, 1}), glyphs(gpu), effects(gpu) {}
     runtime::FrameSubmissionResult submit_frame(AnimationTime time) override {
         ++calls; static_cast<void>(f.buttons.tick_animations(time)); f.synchronize();
-        quads.synchronize(f.buttons.button_scene().instances());
-        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances());
+        quads.synchronize(f.buttons.button_scene().instances(), {320, 240, 1});
+        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances(), {320, 240, 1});
         effects.synchronize(f.buttons.rounded_effects(), {320, 240, 1});
         return runtime::FrameSubmissionResult::submitted;
     }

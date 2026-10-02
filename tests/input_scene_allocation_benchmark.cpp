@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "support/input_fixture.hpp"
 #include "support/input_counting_gpu.hpp"
 #include "support/allocation_probe.hpp"
@@ -24,7 +25,7 @@ void run(std::size_t iterations, bool composing) {
     CompositionChanged preedit{String{u8"compose"}, {0, 1}, stamp};
     if(composing) require(bool(f.inputs.dispatch(preedit)), "benchmark preedit failed");
     ryn_test::input_component::CountingGpu api;
-    graphics::QuadGpuBuffer quads{api, f.buttons.button_scene().instances()};
+    detail::QuadGpuBuffer quads{api, f.buttons.button_scene().instances(), {320, 9000, 1}};
     detail::GlyphGpuResources glyphs{api};
     detail::RoundedEffectGpuResources effects{api};
     std::size_t dispatch_allocations{}, sync_allocations{};
@@ -38,8 +39,8 @@ void run(std::size_t iterations, bool composing) {
         }
         const auto after_dispatch = ryn_test::allocation::count;
         sync();
-        quads.synchronize(f.buttons.button_scene().instances());
-        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances());
+        quads.synchronize(f.buttons.button_scene().instances(), {320, 9000, 1});
+        glyphs.synchronize(f.scene.atlas(), f.scene.glyph_scene().instances(), {320, 9000, 1});
         effects.synchronize(f.buttons.rounded_effects(), {320, 9000, 1});
         if(ryn_test::allocation::tracking) {
             dispatch_allocations += after_dispatch - before_dispatch;

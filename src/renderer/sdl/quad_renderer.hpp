@@ -1,5 +1,7 @@
 #pragma once
 
+#include "renderer/common/quad_gpu_resources.hpp"
+
 #include "graphics/quad_primitive.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/gpu_binding.hpp"
@@ -23,7 +25,7 @@ struct QuadRendererCounters {
     std::uint64_t no_texture_frames{0};
 };
 
-class SdlQuadRenderer final : public graphics::QuadUploadApi,
+class SdlQuadRenderer final : public detail::QuadUploadApi,
                               public runtime::FrameSubmitter {
 public:
     SdlQuadRenderer(
@@ -35,12 +37,12 @@ public:
     SdlQuadRenderer& operator=(SdlQuadRenderer&&) = delete;
     ~SdlQuadRenderer() override;
 
-    void attach_scene(graphics::QuadGpuBuffer& buffer, std::uint32_t instance_count);
+    void attach_scene(detail::QuadGpuBuffer& buffer, std::uint32_t instance_count);
 
-    graphics::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
-    void release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept override;
+    detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
+    void release_buffer(detail::QuadGpuBufferHandle buffer) noexcept override;
     bool upload(
-        graphics::QuadGpuBufferHandle buffer,
+        detail::QuadGpuBufferHandle buffer,
         std::size_t offset,
         std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;

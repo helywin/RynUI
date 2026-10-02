@@ -610,15 +610,15 @@ void input_pixel_grid() {
             "scaled End caret/underline lost thickness or was clipped");
         const auto scene = f.inputs.text_scene(mounted.component);
         const auto& instance = f.scene.glyph_scene().instances().at(f.scene.primitive(scene).instances.first);
-        require(on_grid(instance.translation_opacity[0] * 320 / 2), "glyph scroll changed physical raster phase");
+        require(on_grid(instance.translation_opacity[0]), "glyph scroll changed physical raster phase");
         require(bool(f.inputs.dispatch(TextCommitted{String{u8"中文输入测试很长"}, f.inputs.sessions().active()})), "scaled commit failed");
         require(bool(f.inputs.editors().require(mounted.editor).move(TextCaretMove::home)), "scaled Home failed"); f.synchronize();
         require(f.inputs.layout_snapshot(mounted.component).scroll_offset == 0, "scaled Home retained scroll");
         const auto& first = f.scene.glyph_scene().instances().at(f.scene.primitive(scene).instances.first);
         const float guard = graphics::glyph_atlas_padding / scale;
-        const float ink_left = (first.position_size[0] + 1) * 160 + guard;
-        const float ink_top = (1 - first.position_size[1]) * 120 + guard;
-        const float ink_bottom = ink_top - first.position_size[3] * 120 - 2 * guard;
+        const float ink_left = first.position_size[0] + guard;
+        const float ink_top = first.position_size[1] + guard;
+        const float ink_bottom = ink_top + first.position_size[3] - 2 * guard;
         const auto visible_clip = f.inputs.layout_snapshot(mounted.component).clip;
         require(ink_left >= visible_clip.x - 0.001F && ink_top >= visible_clip.y - 0.001F
             && ink_bottom <= visible_clip.y + visible_clip.height + 0.001F, "scaled visible CJK glyph was clipped");

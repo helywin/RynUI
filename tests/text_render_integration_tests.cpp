@@ -83,7 +83,7 @@ public:
         }
         resources_->synchronize(
             controller_->atlas(),
-            controller_->glyph_scene().instances());
+            controller_->glyph_scene().instances(), {640, 360, 1});
         return ryn::runtime::FrameSubmissionResult::submitted;
     }
 

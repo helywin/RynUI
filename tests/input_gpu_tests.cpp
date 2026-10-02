@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
@@ -23,7 +24,7 @@ struct Platform final : input::TextInputPlatform, input::TextClipboard {
     input::ClipboardError write_text(StringView) override { return input::ClipboardError::none; }
     input::ClipboardAvailability has_text() const noexcept override { return {}; }
 };
-struct Gpu final : detail::GlyphGpuApi, detail::RoundedEffectGpuApi, graphics::QuadUploadApi, detail::SceneDrawApi {
+struct Gpu final : detail::GlyphGpuApi, detail::RoundedEffectGpuApi, detail::QuadUploadApi, detail::SceneDrawApi {
     struct Upload { std::size_t offset, bytes; };
     std::vector<Upload> glyph_uploads, quad_uploads, effect_uploads;
     std::vector<graphics::SceneDrawCommand> draws;
@@ -79,7 +80,7 @@ struct Fixture final : runtime::FrameSubmitter {
     Platform platform;
     detail::InputComponentHost inputs{host.services(), platform, platform};
     Gpu api;
-    std::unique_ptr<graphics::QuadGpuBuffer> quads;
+    std::unique_ptr<detail::QuadGpuBuffer> quads;
     detail::GlyphGpuResources glyphs{api};
     detail::RoundedEffectGpuResources effects{api};
     bool defer{};
@@ -97,9 +98,11 @@ struct Fixture final : runtime::FrameSubmitter {
     }
     runtime::FrameSubmissionResult submit_frame(animation::AnimationTime) override {
         require(host.layout_and_synchronize({320, 240}, {0, 0, 320, 240}, {10, 10}), "GPU fixture layout failed");
-        if(!quads) quads = std::make_unique<graphics::QuadGpuBuffer>(api, host.button_scene().instances());
-        quads->synchronize(host.button_scene().instances());
-        glyphs.synchronize(scene.atlas(), scene.glyph_scene().instances());
+        const detail::SceneDeviceMetrics metrics{static_cast<std::uint32_t>(320 * scale),
+            static_cast<std::uint32_t>(240 * scale), scale};
+        if(!quads) quads = std::make_unique<detail::QuadGpuBuffer>(api, host.button_scene().instances(), metrics);
+        quads->synchronize(host.button_scene().instances(), metrics);
+        glyphs.synchronize(scene.atlas(), scene.glyph_scene().instances(), metrics);
         effects.synchronize(host.rounded_effects(), {
             static_cast<std::uint32_t>(320 * scale), static_cast<std::uint32_t>(240 * scale), scale});
         if(defer) return runtime::FrameSubmissionResult::deferred;
@@ -146,8 +149,8 @@ void run(float scale) {
     require(loop.step() == runtime::FrameLoopStep::deferred && f.requests.pending(), "deferred frame lost request");
     require(f.api.effect_uploads.empty() && f.api.textures == textures && !f.api.quad_uploads.empty()
         && !f.api.glyph_uploads.empty() && f.api.draws.empty(), "selection update touched unrelated effect/atlas or drew deferred frame");
-    for(const auto upload : f.api.glyph_uploads) require(upload.offset >= selected_range.first * sizeof(graphics::GlyphInstance)
-        && upload.offset + upload.bytes <= (selected_range.first + selected_range.count) * sizeof(graphics::GlyphInstance),
+    for(const auto upload : f.api.glyph_uploads) require(upload.offset >= selected_range.first * sizeof(detail::GlyphGpuInstance)
+        && upload.offset + upload.bytes <= (selected_range.first + selected_range.count) * sizeof(detail::GlyphGpuInstance),
         "selection upload escaped selected glyph range");
     f.api.clear(); f.defer = false;
     require(loop.step() == runtime::FrameLoopStep::submitted && !f.api.draws.empty()

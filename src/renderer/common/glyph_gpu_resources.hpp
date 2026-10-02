@@ -2,10 +2,12 @@
 
 #include "graphics/glyph_atlas.hpp"
 #include "graphics/glyph_scene.hpp"
+#include "renderer/common/scene_packing.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <optional>
 #include <vector>
 
 namespace ryn::detail {
@@ -64,11 +66,11 @@ public:
     GlyphGpuResources(GlyphGpuResources&&) = delete;
     GlyphGpuResources& operator=(GlyphGpuResources&&) = delete;
     ~GlyphGpuResources();
-    void abandon_device() noexcept { sampler_ = nullptr; textures_.clear(); instance_buffer_ = nullptr; }
+    void abandon_device() noexcept { sampler_ = nullptr; textures_.clear(); instance_buffer_ = nullptr; instance_capacity_ = 0; metrics_.reset(); }
 
     void synchronize(
         graphics::GlyphAtlas& atlas,
-        graphics::GlyphInstanceStore& instances);
+        graphics::GlyphInstanceStore& instances, SceneDeviceMetrics metrics);
     void set_sparse_upload_coalescing_limit(std::size_t max_span_bytes) noexcept;
 
     [[nodiscard]] GlyphGpuSamplerHandle sampler() const noexcept;
@@ -91,6 +93,10 @@ private:
     GlyphGpuBufferHandle instance_buffer_{nullptr};
     std::uint32_t instance_capacity_{};
     std::vector<graphics::GlyphInstanceRange> dirty_scratch_;
+    std::vector<GlyphGpuInstance> packed_;
+    std::optional<SceneDeviceMetrics> metrics_;
+    void convert_range(const graphics::GlyphInstanceStore& instances,
+                       graphics::GlyphInstanceRange range, SceneDeviceMetrics metrics);
     std::size_t max_coalesced_upload_bytes_{};
     GlyphGpuResourceCounters counters_;
 };

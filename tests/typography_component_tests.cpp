@@ -474,8 +474,8 @@ void test_decoration_layers_metrics_reflow_and_material_updates() {
     const float expected_y = glyph_top + text.measurement().lines[0].baseline
         - text.shaped().default_metrics.underline_position * (14 * token.font_scale);
     const auto& quad = fixture.surfaces->instances().at(commands.back().first_instance);
-    require(near((1 - quad.clip_rect[1]) * 180, expected_y)
-        && near(-quad.clip_rect[3] * 180,
+    require(near(quad.bounds[1], expected_y)
+        && near(quad.bounds[3],
             text.shaped().default_metrics.underline_thickness * (14 * token.font_scale)),
         "underline does not follow the font's em-relative position and thickness");
     require(size == 12 && text.counters().shape_count == shape_before
@@ -512,17 +512,17 @@ void test_multiline_decoration_ranges_translation_and_clip() {
         && fixture.host->components().component_count() == count,
         "decoration reflow did not resize ranges while preserving identity");
     auto& node = fixture.nodes.require(fixture.scene.node(fixture.host->mounted_texts()[0].scene));
-    const auto before = fixture.surfaces->instances().instances()[0].clip_rect;
+    const auto before = fixture.surfaces->instances().instances()[0].bounds;
     node.translation = {5, 7};
     require(fixture.layout_texts(), "translated decoration layout failed");
-    const auto after = fixture.surfaces->instances().instances()[0].clip_rect;
-    require(near(after[0] - before[0], 10.0F / 640)
-        && near(after[1] - before[1], -14.0F / 360), "decorations did not follow scroll translation");
+    const auto after = fixture.surfaces->instances().instances()[0].bounds;
+    require(near(after[0] - before[0], 5.0F)
+        && near(after[1] - before[1], 7.0F), "decorations did not follow scroll translation");
     require(fixture.host->layout_and_synchronize({640, 360}, {20, 0, 10, 360}, {12, 16}, 4),
         "clipped decoration synchronization failed");
     for (const auto& q : fixture.surfaces->instances().instances()) {
-        const auto x = (q.clip_rect[0] + 1) * 320;
-        const auto right = x + q.clip_rect[2] * 320;
+        const auto x = q.bounds[0];
+        const auto right = x + q.bounds[2];
         require(x >= 19.999F && right <= 30.001F, "decorations escaped the clip");
     }
 }
@@ -566,9 +566,9 @@ void test_decoration_geometry_at_display_scales() {
         const auto& node = fixture.nodes.require(fixture.scene.node(fixture.host->mounted_texts()[0].scene));
         const float top = node.bounds.y + 1.2F * 38;
         const auto& quad = fixture.surfaces->instances().instances()[0];
-        require(near((1 - quad.clip_rect[1]) * 180,
+        require(near(quad.bounds[1],
             top + text.measurement().lines[0].baseline - metrics.underline_position * 38)
-            && near(-quad.clip_rect[3] * 180, metrics.underline_thickness * 38)
+            && near(quad.bounds[3], metrics.underline_thickness * 38)
             && fixture.host->mounted_texts()[0].component == identity,
             "display scale changed decoration units or component identity");
         require(near(node.bounds.height, 38 * (1.2F + 0.5F) + 38 * 1.4F),

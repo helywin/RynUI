@@ -31,7 +31,7 @@ class SceneResources final {
     bool synchronize(SceneCpuData data, SceneUploadTiming *timing = nullptr);
     [[nodiscard]] SceneAttachment attach(const graphics::OrderedScene &scene) const noexcept;
     void retire() noexcept;
-    [[nodiscard]] graphics::QuadGpuBuffer *quads() const noexcept { return quads_.get(); }
+    [[nodiscard]] detail::QuadGpuBuffer *quads() const noexcept { return quads_.get(); }
     [[nodiscard]] GlyphGpuResources &glyphs() const noexcept { return *glyphs_; }
     [[nodiscard]] RoundedEffectGpuResources &effects() const noexcept { return *effects_; }
 
@@ -41,7 +41,7 @@ class SceneResources final {
     void mark_retry_data(SceneCpuData data);
     SceneBackend *backend_;
     std::shared_ptr<SceneResourceState> state_;
-    std::unique_ptr<graphics::QuadGpuBuffer> quads_;
+    std::unique_ptr<detail::QuadGpuBuffer> quads_;
     std::unique_ptr<GlyphGpuResources> glyphs_;
     std::unique_ptr<RoundedEffectGpuResources> effects_;
     std::uint32_t quad_count_{}, glyph_count_{};

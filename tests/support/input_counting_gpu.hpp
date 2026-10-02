@@ -1,11 +1,11 @@
 #pragma once
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
-#include "graphics/quad_primitive.hpp"
+#include "renderer/common/quad_gpu_resources.hpp"
 #include <stdexcept>
 
 namespace ryn_test::input_component {
-struct CountingGpu final : ryn::detail::GlyphGpuApi, ryn::detail::RoundedEffectGpuApi, ryn::graphics::QuadUploadApi {
+struct CountingGpu final : ryn::detail::GlyphGpuApi, ryn::detail::RoundedEffectGpuApi, ryn::detail::QuadUploadApi {
     std::uintptr_t identity{};
     std::size_t texture_uploads{}, effect_uploads{}, glyph_uploads{}, quad_uploads{};
     bool check_ranges{};
@@ -16,8 +16,8 @@ struct CountingGpu final : ryn::detail::GlyphGpuApi, ryn::detail::RoundedEffectG
     void* create_glyph_buffer(std::size_t) override { return handle(); }
     bool upload_glyph_texture(void*, const ryn::detail::GlyphTextureUpload&) override { ++texture_uploads; return true; }
     bool upload_glyph_buffer(void*, std::size_t offset, std::span<const std::byte> bytes) override {
-        if(check_ranges && (offset < selected.first * sizeof(ryn::graphics::GlyphInstance)
-            || offset + bytes.size() > (selected.first + selected.count) * sizeof(ryn::graphics::GlyphInstance)))
+        if(check_ranges && (offset < selected.first * sizeof(ryn::detail::GlyphGpuInstance)
+            || offset + bytes.size() > (selected.first + selected.count) * sizeof(ryn::detail::GlyphGpuInstance)))
             throw std::runtime_error("benchmark glyph upload escaped target selected range");
         ++glyph_uploads; return true;
     }
@@ -32,7 +32,7 @@ struct CountingGpu final : ryn::detail::GlyphGpuApi, ryn::detail::RoundedEffectG
     void* create_vertex_buffer(std::size_t) override { return handle(); }
     void release_buffer(void*) noexcept override {}
     bool upload(void*, std::size_t offset, std::span<const std::byte> bytes) override {
-        if(check_ranges && offset + bytes.size() > 3 * sizeof(ryn::graphics::QuadInstance))
+        if(check_ranges && offset + bytes.size() > 3 * sizeof(ryn::detail::QuadGpuInstance))
             throw std::runtime_error("benchmark quad upload escaped target Input range");
         ++quad_uploads; return true;
     }

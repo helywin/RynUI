@@ -165,7 +165,8 @@ public:
         }
         resources_->synchronize(
             scene_->atlas(),
-            scene_->glyph_scene().instances());
+            scene_->glyph_scene().instances(), {static_cast<std::uint32_t>(viewport_->width),
+                static_cast<std::uint32_t>(viewport_->height), 1});
         ryn::detail::draw_ordered_scene(scene_->ordered_scene(), *draw_);
         return ryn::runtime::FrameSubmissionResult::submitted;
     }

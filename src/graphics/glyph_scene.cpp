@@ -75,12 +75,9 @@ void validate_placement(const GlyphPlacement& placement) {
 
 [[nodiscard]] std::array<float, 4> clip_bounds(
     runtime::Rect pixels,
-    runtime::Size viewport) noexcept {
+    runtime::Size) noexcept {
     return {
-        -1.0F + 2.0F * pixels.x / viewport.width,
-        1.0F - 2.0F * pixels.y / viewport.height,
-        -1.0F + 2.0F * (pixels.x + pixels.width) / viewport.width,
-        1.0F - 2.0F * (pixels.y + pixels.height) / viewport.height,
+        pixels.x, pixels.y, pixels.x + pixels.width, pixels.y + pixels.height,
     };
 }
 
@@ -141,12 +138,9 @@ void validate_placement(const GlyphPlacement& placement) {
                     * inverse_display_scale;
                 pending.instances.push_back({
                     {
-                        -1.0F + 2.0F * left_pixels / placement.viewport_pixels.width,
-                        1.0F - 2.0F * top_pixels / placement.viewport_pixels.height,
-                        2.0F * entry.padded_rect.width * inverse_display_scale
-                            / placement.viewport_pixels.width,
-                        -2.0F * entry.padded_rect.height * inverse_display_scale
-                            / placement.viewport_pixels.height,
+                        left_pixels, top_pixels,
+                        entry.padded_rect.width * inverse_display_scale,
+                        entry.padded_rect.height * inverse_display_scale,
                     },
                     {entry.uv.left, entry.uv.top, entry.uv.right, entry.uv.bottom},
                     clip,

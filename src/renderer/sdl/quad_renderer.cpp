@@ -103,7 +103,7 @@ SdlQuadRenderer::SdlQuadRenderer(
 
     SDL_GPUVertexBufferDescription buffer_description{};
     buffer_description.slot = 0;
-    buffer_description.pitch = sizeof(graphics::QuadInstance);
+    buffer_description.pitch = sizeof(QuadGpuInstance);
     buffer_description.input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE;
 
     const std::array attributes{
@@ -159,7 +159,7 @@ SdlQuadRenderer::~SdlQuadRenderer() {
 }
 
 void SdlQuadRenderer::attach_scene(
-    graphics::QuadGpuBuffer& buffer,
+    detail::QuadGpuBuffer& buffer,
     std::uint32_t instance_count) {
     if (instance_count == 0 || instance_count > buffer.capacity()) {
         throw std::invalid_argument("Quad scene instance count exceeds the GPU buffer");
@@ -168,7 +168,7 @@ void SdlQuadRenderer::attach_scene(
     instance_count_ = instance_count;
 }
 
-graphics::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t size) {
+detail::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t size) {
     if (size == 0 || size > std::numeric_limits<Uint32>::max()) {
         last_error_ = "Quad vertex buffer size is invalid";
         return nullptr;
@@ -185,14 +185,14 @@ graphics::QuadGpuBufferHandle SdlQuadRenderer::create_vertex_buffer(std::size_t 
     return buffer;
 }
 
-void SdlQuadRenderer::release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept {
+void SdlQuadRenderer::release_buffer(detail::QuadGpuBufferHandle buffer) noexcept {
     SDL_ReleaseGPUBuffer(
         static_cast<SDL_GPUDevice*>(binding_.device()),
         static_cast<SDL_GPUBuffer*>(buffer));
 }
 
 bool SdlQuadRenderer::upload(
-    graphics::QuadGpuBufferHandle buffer,
+    detail::QuadGpuBufferHandle buffer,
     std::size_t offset,
     std::span<const std::byte> bytes) {
     if (!platform_->is_owner_thread()) {
@@ -325,7 +325,7 @@ runtime::FrameSubmissionResult SdlQuadRenderer::submit_frame(
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
     SDL_DrawGPUPrimitives(
         pass,
-        graphics::quad_vertex_count,
+        detail::quad_vertex_count,
         instance_count_,
         0,
         0);

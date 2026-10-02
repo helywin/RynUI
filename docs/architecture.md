@@ -357,7 +357,7 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 
 ## 10. GPU Scene 与 Renderer
 
-共同资源与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。现有 packed scene ABI 与编译期 backend 选择见 [renderer 合同](renderer-contract.md)。`windows-msvc-headless` 使用真实 Core、文本依赖和共同资源验收；Recording/新平台的具体状态由当前 change 证据说明。
+共同资源、Quad/Glyph GPU 打包与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。Core 的 logical CPU scene v2 与 packed GPU ABI v1 分离，组件只保存 logical 几何、裁剪、平移和圆角；renderer 根据显式 device metrics 打包，并在 metrics 改变时重新上传完整投影。版本与编译期 backend 选择见 [renderer 合同](renderer-contract.md)。`windows-msvc-headless` 使用真实 Core、文本依赖和共同资源验收；Recording/新平台的具体状态由当前 change 证据说明。
 
 GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；binding 必须在 host/window 销毁前清理。显式重建顺序是失效附件 → 旧 device 活着时释放资源/pipeline → release claim/destroy device → 创建新 binding/renderer → 从保留 CPU scene 上传。不能把旧 handle 交给新 device 释放；实际设备已消失时只丢弃其代际记录。现有 SDL 路径不承诺自动 device-loss 检测/恢复。
 
@@ -392,7 +392,8 @@ UTF-8
   -> glyph id + position
   -> FreeType rasterization
   -> GlyphAtlas
-  -> GlyphInstance
+  -> logical GlyphInstance
+  -> renderer/common packed GlyphGpuInstance
   -> GPU
 ```
 

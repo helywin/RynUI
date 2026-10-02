@@ -19,16 +19,6 @@ void QuadInstanceStore::reserve(
     geometry_dirty_ranges_.reserve(dirty_range_capacity);
 }
 
-namespace {
-
-std::runtime_error upload_error(QuadUploadApi& api, const char* fallback) {
-    const char* message = api.last_error();
-    return std::runtime_error(
-        message != nullptr && message[0] != '\0' ? message : fallback);
-}
-
-} // namespace
-
 QuadPrimitive QuadInstanceStore::add(runtime::NodeId node, QuadInstance instance) {
     if (!node.valid()) {
         throw std::invalid_argument("QuadPrimitive requires a valid NodeId");
@@ -177,12 +167,13 @@ std::size_t QuadInstanceStore::update_geometry(
         throw std::invalid_argument("Quad geometry count must match its instance range");
     }
     for (const auto& value : geometry) {
-        if (!std::ranges::all_of(value.clip_rect, [](float item) {
+        if (!std::ranges::all_of(value.bounds, [](float item) {
                 return std::isfinite(item);
             }) || !std::ranges::all_of(value.translation, [](float item) {
                 return std::isfinite(item);
             }) || !std::isfinite(value.corner_radius)
-                || value.corner_radius < 0.0F || value.corner_radius > 0.5F) {
+                || value.corner_radius < 0.0F || value.bounds[2] < 0.0F
+                || value.bounds[3] < 0.0F) {
             throw std::invalid_argument("Quad geometry values are invalid");
         }
     }
@@ -192,7 +183,7 @@ std::size_t QuadInstanceStore::update_geometry(
         const auto& value = geometry[offset];
         const std::uint32_t index = range.first + offset;
         auto& instance = instances_[index];
-        if (instance.clip_rect == value.clip_rect
+        if (instance.bounds == value.bounds
                 && instance.corner_radius == value.corner_radius
                 && instance.translation == value.translation) {
             if (dirty_start.has_value()) {
@@ -201,7 +192,7 @@ std::size_t QuadInstanceStore::update_geometry(
             }
             continue;
         }
-        instance.clip_rect = value.clip_rect;
+        instance.bounds = value.bounds;
         instance.corner_radius = value.corner_radius;
         instance.translation = value.translation;
         dirty_start = dirty_start.value_or(index);
@@ -243,137 +234,6 @@ void QuadInstanceStore::require_range(QuadInstanceRange range) const {
     if (end > instances_.size()) {
         throw std::out_of_range("Quad instance range is out of bounds");
     }
-}
-
-QuadGpuBuffer::QuadGpuBuffer(QuadUploadApi& api, QuadInstanceStore& store)
-    : api_(&api) {
-    if (store.size() == 0) {
-        throw std::invalid_argument("QuadGpuBuffer requires at least one instance");
-    }
-    if (store.size() > std::numeric_limits<std::uint32_t>::max()) {
-        throw std::length_error("QuadGpuBuffer instance capacity exceeds uint32_t");
-    }
-    capacity_ = static_cast<std::uint32_t>(store.size());
-    const auto byte_count = store.size() * sizeof(QuadInstance);
-    handle_ = api_->create_vertex_buffer(byte_count);
-    if (handle_ == nullptr) {
-        throw upload_error(*api_, "Failed to create Quad GPU buffer");
-    }
-    try {
-        if (!api_->upload(handle_, 0, store.bytes(0, capacity_)))
-            throw upload_error(*api_, "Failed to upload initial Quad instances");
-    } catch (...) {
-        api_->release_buffer(handle_);
-        handle_ = nullptr;
-        throw;
-    }
-    ++counters_.initial_uploads;
-    counters_.uploaded_bytes += byte_count;
-    store.clear_dirty_ranges();
-}
-
-QuadGpuBuffer::~QuadGpuBuffer() {
-    if (handle_ != nullptr) {
-        api_->release_buffer(handle_);
-    }
-}
-
-void QuadGpuBuffer::upload_range(
-    const QuadInstanceStore& store,
-    std::uint32_t first,
-    std::uint32_t count) {
-    const auto end = static_cast<std::uint64_t>(first) + count;
-    if (count == 0 || end > capacity_ || end > store.size()) {
-        throw std::out_of_range("Quad GPU upload range is out of bounds");
-    }
-    const auto data = store.bytes(first, count);
-    const auto offset = static_cast<std::size_t>(first) * sizeof(QuadInstance);
-    if (!api_->upload(handle_, offset, data)) {
-        throw upload_error(*api_, "Failed to upload Quad instance range");
-    }
-    ++counters_.range_uploads;
-    counters_.uploaded_bytes += data.size();
-}
-
-void QuadGpuBuffer::synchronize(QuadInstanceStore& store) {
-    if (store.size() > capacity_) {
-        const std::uint64_t doubled = static_cast<std::uint64_t>(capacity_) * 2U;
-        const std::uint64_t requested = std::max<std::uint64_t>(store.size(), doubled);
-        if (requested > std::numeric_limits<std::uint32_t>::max()) {
-            throw std::length_error("Quad GPU buffer capacity exceeds uint32_t");
-        }
-        const auto replacement_capacity = static_cast<std::uint32_t>(requested);
-        auto* replacement = api_->create_vertex_buffer(
-            static_cast<std::size_t>(replacement_capacity) * sizeof(QuadInstance));
-        if (replacement == nullptr) {
-            throw upload_error(*api_, "Failed to grow Quad GPU buffer");
-        }
-        try {
-            if (!api_->upload(replacement, 0,
-                    store.bytes(0, static_cast<std::uint32_t>(store.size()))))
-                throw upload_error(*api_, "Failed to upload grown Quad GPU buffer");
-        } catch (...) {
-            api_->release_buffer(replacement);
-            throw;
-        }
-        api_->release_buffer(handle_);
-        handle_ = replacement;
-        capacity_ = replacement_capacity;
-        ++counters_.buffer_reallocations;
-        ++counters_.range_uploads;
-        counters_.uploaded_bytes += store.size() * sizeof(QuadInstance);
-        store.clear_dirty_ranges();
-        return;
-    }
-
-    dirty_scratch_.assign(
-        store.material_dirty_ranges().begin(),
-        store.material_dirty_ranges().end());
-    dirty_scratch_.insert(
-        dirty_scratch_.end(),
-        store.geometry_dirty_ranges().begin(),
-        store.geometry_dirty_ranges().end());
-    std::ranges::sort(dirty_scratch_, {}, &QuadInstanceRange::first);
-    std::size_t merged_count = 0;
-    for (const auto range : dirty_scratch_) {
-        if (range.count == 0) {
-            continue;
-        }
-        if (merged_count == 0) {
-            dirty_scratch_[merged_count++] = range;
-            continue;
-        }
-        auto& prior = dirty_scratch_[merged_count - 1];
-        const std::uint64_t prior_end =
-            static_cast<std::uint64_t>(prior.first) + prior.count;
-        const std::uint64_t range_end =
-            static_cast<std::uint64_t>(range.first) + range.count;
-        if (range.first <= prior_end) {
-            prior.count = static_cast<std::uint32_t>(
-                std::max(prior_end, range_end) - prior.first);
-        } else {
-            dirty_scratch_[merged_count++] = range;
-        }
-    }
-    for (std::size_t index = 0; index < merged_count; ++index) {
-        upload_range(
-            store,
-            dirty_scratch_[index].first,
-            dirty_scratch_[index].count);
-    }
-    store.clear_dirty_ranges();
-}
-
-QuadGpuBufferHandle QuadGpuBuffer::handle() const noexcept {
-    return handle_;
-}
-
-std::uint32_t QuadGpuBuffer::capacity() const noexcept {
-    return capacity_;
-}
-
-const QuadUploadCounters& QuadGpuBuffer::counters() const noexcept {
-    return counters_;
 }
 
 } // namespace ryn::graphics

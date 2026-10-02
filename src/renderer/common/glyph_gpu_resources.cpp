@@ -88,15 +88,38 @@ GlyphGpuResources::~GlyphGpuResources() {
 
 void GlyphGpuResources::synchronize(
     graphics::GlyphAtlas& atlas,
-    graphics::GlyphInstanceStore& instances) {
-    ensure_textures(atlas);
-    const bool replaced_buffer = ensure_instance_buffer(instances);
-    upload_atlas(atlas);
-    if (!replaced_buffer) {
-        upload_instance_ranges(instances);
-    } else {
-        instances.clear_dirty_ranges();
+    graphics::GlyphInstanceStore& instances, SceneDeviceMetrics metrics) {
+    graphics::validate_rounded_effect_device_metrics(metrics);
+    if (instances.size() > std::numeric_limits<std::uint32_t>::max())
+        throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
+    const bool full = metrics_ != metrics || instances.size() > instance_capacity_;
+    packed_.resize(instances.size());
+    try {
+        if (full) {
+            instances.mark_all_dirty();
+            convert_range(instances, {0, static_cast<std::uint32_t>(instances.size())}, metrics);
+        } else {
+            dirty_ranges(instances, dirty_scratch_);
+            for (auto range : dirty_scratch_) convert_range(instances, range, metrics);
+        }
+        ensure_textures(atlas);
+        const bool replaced_buffer = ensure_instance_buffer(instances);
+        upload_atlas(atlas);
+        if (!replaced_buffer) upload_instance_ranges(instances);
+        else instances.clear_dirty_ranges();
+    } catch (...) {
+        metrics_.reset();
+        throw;
     }
+    metrics_ = metrics;
+}
+
+void GlyphGpuResources::convert_range(const graphics::GlyphInstanceStore& instances,
+    graphics::GlyphInstanceRange range, SceneDeviceMetrics metrics) {
+    if (std::uint64_t(range.first) + range.count > instances.size())
+        throw std::out_of_range("Glyph GPU range exceeds logical store");
+    for (std::uint32_t i = range.first; i < range.first + range.count; ++i)
+        packed_[i] = pack_glyph_instance(instances.at(i), metrics);
 }
 
 void GlyphGpuResources::set_sparse_upload_coalescing_limit(
@@ -146,15 +169,12 @@ bool GlyphGpuResources::ensure_instance_buffer(
     if (instances.size() > std::numeric_limits<std::uint32_t>::max()) {
         throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
     }
-    const std::size_t byte_count = instances.size() * sizeof(graphics::GlyphInstance);
+    const std::size_t byte_count = instances.size() * sizeof(GlyphGpuInstance);
     auto replacement = api_->create_glyph_buffer(byte_count);
     if (replacement == nullptr) {
         throw gpu_failure(*api_, "Failed to create Glyph instance buffer");
     }
-    const auto bytes = instances.bytes({
-        0,
-        static_cast<std::uint32_t>(instances.size()),
-    });
+    const auto bytes = std::as_bytes(std::span(packed_));
     try {
         if (!api_->upload_glyph_buffer(replacement, 0, bytes))
             throw gpu_failure(*api_, "Failed to upload Glyph instance buffer");
@@ -226,7 +246,7 @@ void GlyphGpuResources::upload_instance_ranges(
         for (const auto range : dirty_scratch_) {
             dirty_count += range.count;
         }
-        if (span_count * sizeof(graphics::GlyphInstance)
+        if (span_count * sizeof(GlyphGpuInstance)
                     <= max_coalesced_upload_bytes_
                 && span_count <= dirty_count * 4) {
             dirty_scratch_.front().count = static_cast<std::uint32_t>(span_count);
@@ -235,9 +255,9 @@ void GlyphGpuResources::upload_instance_ranges(
         }
     }
     for (const auto range : dirty_scratch_) {
-        const auto bytes = instances.bytes(range);
+        const auto bytes = std::as_bytes(std::span(packed_).subspan(range.first, range.count));
         const std::size_t offset =
-            static_cast<std::size_t>(range.first) * sizeof(graphics::GlyphInstance);
+            static_cast<std::size_t>(range.first) * sizeof(GlyphGpuInstance);
         if (!api_->upload_glyph_buffer(instance_buffer_, offset, bytes)) {
             throw gpu_failure(*api_, "Failed to upload Glyph instance range");
         }

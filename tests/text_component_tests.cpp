@@ -432,8 +432,8 @@ void test_shaped_measurement_wrap_resize_and_translation() {
     require(translated.counters().shape_count == shape_after_resize
                 && translated.counters().measure_count == measure_after_resize
                 && fixture.scene.atlas().dirty_regions().empty()
-                && near(glyph.translation_opacity[0], 2.0F * 9.0F / 120.0F)
-                && near(glyph.translation_opacity[1], -2.0F * 6.0F / 240.0F)
+                && near(glyph.translation_opacity[0], 9.0F)
+                && near(glyph.translation_opacity[1], 6.0F)
                 && near(
                     glyph.position_size[0] - glyph_before_translation.position_size[0],
                     0.0F)
@@ -794,7 +794,7 @@ void test_offscreen_text_realizes_after_first_layout_and_reentry() {
                 && range.count > 3,
             "reentered Text did not realize the latest content");
     const auto& glyph = fixture.scene.glyph_scene().instances().at(range.first);
-    require(glyph.translation_opacity[1] > 1.0F,
+    require(near(glyph.translation_opacity[1], 48.0F - y),
             "reentered Text glyph did not use the current translation");
 }
 

@@ -857,7 +857,7 @@ public:
         timed_frames_ = 0;
         sampled_frames_ = 0;
     }
-    [[nodiscard]] const ryn::graphics::QuadUploadCounters& quad_uploads() const {
+    [[nodiscard]] const ryn::detail::QuadUploadCounters& quad_uploads() const {
         if (quad_buffer_ == nullptr) {
             throw std::logic_error("Token Gallery Quad buffer was not created");
         }
@@ -927,7 +927,7 @@ private:
     ryn::runtime::NodeId document_root_;
     ryn::runtime::Size* viewport_;
     float* render_scale_;
-    ryn::graphics::QuadGpuBuffer* quad_buffer_{};
+    ryn::detail::QuadGpuBuffer* quad_buffer_{};
     ryn::graphics::OrderedScene visible_scene_;
     ryn::component::VisibleSceneStats last_visible_scene_;
     std::uint64_t reconciliation_syncs_{};

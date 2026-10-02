@@ -1,20 +1,28 @@
 # Renderer 合同
 
-035 的 P0 建立共同 renderer 边界；实现与验收状态以 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
+035 建立共同 renderer 边界，036 分离 logical CPU scene 与 GPU 打包；实现与验收状态以各 change 的 tasks 和 evidence 为准。Android、iOS、Web 与新 GPU renderer 属于后续工作。
+
+## Logical CPU scene v2
+
+Core 使用左上原点、x 向右/y 向下的 logical units。`QuadInstance::bounds` 为 `(x, y, width, height)`，宽高非负；translation 与 corner_radius 都是 logical 长度。`GlyphInstance::position_size` 为 logical `(x, y, width, height)`，`clip_bounds` 为 logical `(left, top, right, bottom)`，`translation_opacity` 前两项为 logical 平移。字体 density、quarter-pixel phase、bearing 与 atlas padding 已决定 glyph logical bounds，共同 packer 不再 round 或 rasterize。
+
+CPU 类型没有 shader stride/offset 承诺，CPU bytes 不得直接作为 vertex upload。组件、TextSceneService、RetainedSurfaceService 和 QuadScene 只发布 CPU dirty ranges；GPU 资源和上传入口属于 renderer。新功能必须遵守此边界。
 
 ## Packed scene ABI v1
 
-现有 scene 是 CPU 保留的、可重建的 packed 数据。布局使用左上原点、x 向右/y 向下的 logical 坐标；QuadScene/GlyphScene 在 Core 转换为下表的数据。不能将目录移动描述为全 logical scene 迁移。
+`renderer/common/scene_packing` 将保留的 logical CPU scene 转为下表的数据，QuadGpuInstance/GlyphGpuInstance 与 CPU 类型独立。packed GPU ABI v1 保持原有 shader 合同。
 
 | 数据 | 合同 |
 | --- | --- |
 | Quad | 48 bytes、16-byte alignment；rect 为 NDC `(left, top, width, negative-height)`，translation 为 NDC 向量；圆角为最短边的 0..0.5 比值 |
-| Glyph | `GlyphInstance` 固定 float packing；rect/clip 为 NDC，UV 左上原点、范围 0..1，translation 与 opacity 存在 instance 数据中 |
+| Glyph | `GlyphGpuInstance` 80 bytes、16-byte alignment；rect/clip 为 NDC，UV 左上原点、范围 0..1，translation 与 opacity 存在 instance 数据中 |
 | RoundedEffect | CPU store 保留 logical；共同 resources 按 device metrics 打包 NDC rect/clip 与物理 pixel 尺寸、半径、效果参数；格式由 `RoundedEffectGpuInstance` static_assert 固定 |
 | 颜色 | RGBA 浮点 token 值直接传入现有 shader；RGB 使用 source-alpha 混合，alpha 使用 `one + one-minus-source-alpha`；现有路径未增加统一线性/sRGB 转换 |
 | 顺序 | OrderedScene 的 Quad/Glyph/RoundedEffect 顺序必须保持；仅已有场景合同允许合并相邻兼容 draw |
 
-NDC x 向右、y 向上；完整视口范围 [-1, 1]。clip 边界、atlas UV 和 glyph padding 保持现有 shader 合同。backend 在消费边界转换 GPU API 特有的坐标、格式、传输对齐，不能让组件选择 shader 或 OS 类型。完整 logical scene 迁移需另立版本和验收。
+NDC x 向右、y 向上；完整视口范围 [-1, 1]。clip 边界、atlas UV 和 glyph padding 保持现有 shader 合同。backend 在消费边界转换 GPU API 特有的坐标、格式、传输对齐，不能让组件选择 shader 或 OS 类型。
+
+SceneDeviceMetrics 使用 physical pixel extent/display_scale，logical viewport = extent / scale，metrics 在上传前校验。Quad/Glyph resources 复用 packed staging；首次、容量增长、metrics 改变全量重打包，普通更新只转换合并 dirty ranges，idle 不上传。resize 不改写 Quad/Glyph CPU store，不重建字体 atlas。上传失败使资源 metrics 缓存失效；SceneResources 的提交失败还恢复所有参与数据，使下一次同步完整重试。字体 DPI 变化所需的 shaping/raster 更新由文本服务现有机制负责，不能仅用重打包替代。
 
 ## 构建边界
 

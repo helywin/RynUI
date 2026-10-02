@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "graphics/quad_scene.hpp"
 #include "layout/layout_engine.hpp"
 #include "runtime/invalidation.hpp"
@@ -22,17 +23,17 @@ bool near(float left, float right) {
     return std::abs(left - right) < 0.00001F;
 }
 
-class RecordingUploadApi final : public ryn::graphics::QuadUploadApi {
+class RecordingUploadApi final : public ryn::detail::QuadUploadApi {
 public:
-    ryn::graphics::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override {
+    ryn::detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override {
         buffer.assign(size, std::byte{});
         return this;
     }
 
-    void release_buffer(ryn::graphics::QuadGpuBufferHandle) noexcept override {}
+    void release_buffer(ryn::detail::QuadGpuBufferHandle) noexcept override {}
 
     bool upload(
-        ryn::graphics::QuadGpuBufferHandle handle,
+        ryn::detail::QuadGpuBufferHandle handle,
         std::size_t offset,
         std::span<const std::byte> bytes) override {
         if (handle != this || offset + bytes.size() > buffer.size()) {
@@ -76,16 +77,16 @@ void test_bindings_update_only_the_target_quad_range() {
     dirty.clear();
 
     ryn::graphics::QuadScene scene(nodes);
-    const auto first_quad = scene.add_quad(first, viewport, 8.0F);
-    const auto second_quad = scene.add_quad(second, viewport, 12.0F);
+    const auto first_quad = scene.add_quad(first, 8.0F);
+    const auto second_quad = scene.add_quad(second, 12.0F);
     require(first_quad.instance_index == 0 && second_quad.instance_index == 1,
             "Quad instance ordering is incorrect");
 
     RecordingUploadApi upload_api;
-    ryn::graphics::QuadGpuBuffer gpu_buffer(upload_api, scene.instances());
+    ryn::detail::QuadGpuBuffer gpu_buffer(upload_api, scene.instances(), {400, 200, 1});
     const std::vector<std::byte> original_first(
         upload_api.buffer.begin(),
-        upload_api.buffer.begin() + sizeof(ryn::graphics::QuadInstance));
+        upload_api.buffer.begin() + sizeof(ryn::detail::QuadGpuInstance));
     const auto initial_measure = nodes.require(second).measure_count;
     const auto initial_place = nodes.require(second).place_count;
 
@@ -131,14 +132,15 @@ void test_bindings_update_only_the_target_quad_range() {
     require(dirty.layout_roots().empty() && dirty.geometry_nodes().empty(),
             "Material/Transform Binding update expanded into Layout/Geometry");
 
-    const auto updated = scene.sync_dirty(dirty, gpu_buffer, viewport);
+    const auto updated = scene.sync_dirty(dirty);
+    gpu_buffer.synchronize(scene.instances(), {400, 200, 1});
     require(updated == 1 && scene.counters().instance_updates == 1,
             "dirty queues did not coalesce to one Quad instance update");
     require(gpu_buffer.counters().range_uploads == 1,
             "Quad update did not issue exactly one range upload");
     require(upload_api.upload_offsets == std::vector<std::size_t>({
                 0,
-                sizeof(ryn::graphics::QuadInstance),
+                sizeof(ryn::detail::QuadGpuInstance),
             }),
             "Quad update uploaded the wrong instance byte range");
     require(std::equal(
@@ -151,8 +153,8 @@ void test_bindings_update_only_the_target_quad_range() {
     require(instance.color == std::array<float, 4>{0.2F, 0.8F, 0.4F, 0.9F}
                 && instance.opacity == 0.6F,
             "Material Binding did not reach the target Quad instance");
-    require(near(instance.translation[0], 0.05F)
-                && near(instance.translation[1], -0.05F),
+    require(near(instance.translation[0], 10.0F)
+                && near(instance.translation[1], 5.0F),
             "Transform Binding did not reach the target Quad instance");
     require(nodes.require(second).measure_count == initial_measure
                 && nodes.require(second).place_count == initial_place,

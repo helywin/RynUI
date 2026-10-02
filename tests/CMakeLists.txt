@@ -831,7 +831,7 @@ add_test(
 
 add_executable(rynui_button_scene_service_tests button_scene_service_tests.cpp)
 rynui_configure_cpp_target(rynui_button_scene_service_tests)
-target_link_libraries(rynui_button_scene_service_tests PRIVATE rynui_components)
+target_link_libraries(rynui_button_scene_service_tests PRIVATE rynui_components rynui_renderer_common)
 add_test(NAME rynui.button_scene_service COMMAND rynui_button_scene_service_tests)
 
 add_executable(rynui_button_component_tests button_component_tests.cpp)
@@ -1367,9 +1367,13 @@ target_link_libraries(rynui_dirty_queue_tests PRIVATE rynui_layout)
 add_test(NAME rynui.dirty_queue COMMAND rynui_dirty_queue_tests)
 
 add_executable(rynui_quad_primitive_tests quad_primitive_tests.cpp)
+add_executable(rynui_logical_scene_packing_tests logical_scene_packing_tests.cpp)
+rynui_configure_cpp_target(rynui_logical_scene_packing_tests)
+target_link_libraries(rynui_logical_scene_packing_tests PRIVATE rynui_renderer_common)
+add_test(NAME rynui.logical_scene_packing COMMAND rynui_logical_scene_packing_tests)
 rynui_configure_cpp_target(rynui_quad_primitive_tests)
 target_include_directories(rynui_quad_primitive_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_graphics)
+target_link_libraries(rynui_quad_primitive_tests PRIVATE rynui_renderer_common)
 add_test(NAME rynui.quad_primitive COMMAND rynui_quad_primitive_tests)
 
 add_executable(rynui_buffer_upload_batch_layout_tests buffer_upload_batch_layout_tests.cpp)
@@ -1406,7 +1410,7 @@ add_test(NAME rynui.glyph_atlas COMMAND rynui_glyph_atlas_tests)
 add_executable(rynui_glyph_scene_tests glyph_scene_tests.cpp)
 rynui_configure_cpp_target(rynui_glyph_scene_tests)
 target_include_directories(rynui_glyph_scene_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(rynui_glyph_scene_tests PRIVATE rynui_graphics rynui_text)
+target_link_libraries(rynui_glyph_scene_tests PRIVATE rynui_renderer_common rynui_text)
 target_compile_definitions(
     rynui_glyph_scene_tests
     PRIVATE
@@ -1461,7 +1465,7 @@ rynui_configure_cpp_target(rynui_binding_quad_integration_tests)
 target_include_directories(rynui_binding_quad_integration_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(
     rynui_binding_quad_integration_tests
-    PRIVATE rynui_graphics rynui_reactive
+    PRIVATE rynui_renderer_common rynui_reactive
 )
 add_test(NAME rynui.binding_quad_integration COMMAND rynui_binding_quad_integration_tests)
 

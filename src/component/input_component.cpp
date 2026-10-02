@@ -128,10 +128,9 @@ runtime::Rect translated_bounds(const runtime::NodeStore& nodes, runtime::NodeId
     return result;
 }
 graphics::QuadInstance clipped_quad(runtime::Rect bounds, runtime::Rect clip,
-    runtime::Size viewport, std::array<float, 4> color, float opacity) {
+    runtime::Size, std::array<float, 4> color, float opacity) {
     bounds = graphics::intersect_effect_bounds(bounds, clip);
-    return {{-1 + 2 * bounds.x / viewport.width, 1 - 2 * bounds.y / viewport.height,
-        2 * bounds.width / viewport.width, -2 * bounds.height / viewport.height}, color, opacity};
+    return {{bounds.x, bounds.y, bounds.width, bounds.height}, color, opacity};
 }
 runtime::Rect pixel_clip(runtime::Rect clip, float scale) {
     const float left = std::ceil(clip.x * scale) / scale;

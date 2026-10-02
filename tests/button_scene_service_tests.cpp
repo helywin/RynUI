@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "component/button_scene_service.hpp"
 
 #include <ryn/component.hpp>
@@ -27,7 +28,7 @@ ryn::component::ButtonVisualData visuals(float offset) {
     ryn::component::ButtonVisualData result;
     for (std::size_t index = 0; index < result.size(); ++index) {
         result[index] = {
-            {offset, 0.8F, 0.4F, -0.2F},
+            {offset, 0.8F, 0.4F, 0.2F},
             {0.1F * static_cast<float>(index + 1), 0.3F, 0.7F, 1.0F},
             index >= static_cast<std::size_t>(
                          ryn::component::ButtonVisualLayer::loading_indicator)
@@ -44,7 +45,7 @@ std::array<ryn::graphics::QuadInstance, 4> surface_visuals(float offset) {
     std::array<ryn::graphics::QuadInstance, 4> result;
     for (std::size_t index = 0; index < result.size(); ++index) {
         result[index] = {
-            {offset, 0.8F, 0.4F, -0.2F},
+            {offset, 0.8F, 0.4F, 0.2F},
             {0.2F, 0.3F * static_cast<float>(index + 1), 0.7F, 1.0F},
             1.0F,
             0.1F,
@@ -54,7 +55,7 @@ std::array<ryn::graphics::QuadInstance, 4> surface_visuals(float offset) {
     return result;
 }
 
-class RecordingUploadApi final : public ryn::graphics::QuadUploadApi {
+class RecordingUploadApi final : public ryn::detail::QuadUploadApi {
 public:
     struct Buffer final {
         std::vector<std::byte> bytes;
@@ -66,7 +67,7 @@ public:
         }
     }
 
-    ryn::graphics::QuadGpuBufferHandle create_vertex_buffer(
+    ryn::detail::QuadGpuBufferHandle create_vertex_buffer(
         std::size_t size) override {
         auto* buffer = new Buffer;
         buffer->bytes.resize(size);
@@ -75,7 +76,7 @@ public:
         return buffer;
     }
 
-    void release_buffer(ryn::graphics::QuadGpuBufferHandle handle) noexcept override {
+    void release_buffer(ryn::detail::QuadGpuBufferHandle handle) noexcept override {
         auto* buffer = static_cast<Buffer*>(handle);
         const auto found = std::find(live.begin(), live.end(), buffer);
         if (found != live.end()) {
@@ -86,7 +87,7 @@ public:
     }
 
     bool upload(
-        ryn::graphics::QuadGpuBufferHandle handle,
+        ryn::detail::QuadGpuBufferHandle handle,
         std::size_t offset,
         std::span<const std::byte> bytes) override {
         if (fail_next) {
@@ -281,14 +282,14 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
         visuals(0.1F));
     RecordingUploadApi api;
     {
-        ryn::graphics::QuadGpuBuffer gpu(api, fixture.buttons.instances());
+        ryn::detail::QuadGpuBuffer gpu(api, fixture.buttons.instances(), {100, 100, 1});
         static_cast<void>(fixture.buttons.create(
             fixture.component_ids[2],
             fixture.components.root(fixture.component_ids[2]),
             fixture.fragments[2],
             fixture.interaction_ids[2],
             visuals(0.2F)));
-        fixture.buttons.synchronize_gpu(gpu);
+        gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
         require(gpu.capacity() == 4 * ryn::component::button_visual_layer_count
                     && api.creates == 2,
                 "Button Quad GPU buffer did not retain growth capacity");
@@ -298,12 +299,12 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
             ryn::component::button_loading_segment_index(0);
         changed[changed_segment].color = {0.8F, 0.1F, 0.2F, 1.0F};
         static_cast<void>(fixture.buttons.update(second, changed));
-        fixture.buttons.synchronize_gpu(gpu);
+        gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
         require(api.upload_offsets.back()
                     == (ryn::component::button_visual_layer_count + changed_segment)
-                        * sizeof(ryn::graphics::QuadInstance)
+                        * sizeof(ryn::detail::QuadGpuInstance)
                 && api.upload_sizes.back()
-                    == sizeof(ryn::graphics::QuadInstance),
+                    == sizeof(ryn::detail::QuadGpuInstance),
             "Button Material change did not use a one-instance GPU upload");
 
         changed[1].opacity = 0.5F;
@@ -311,14 +312,14 @@ void test_gpu_capacity_sparse_upload_and_failure_retention() {
         api.fail_next = true;
         bool failed = false;
         try {
-            fixture.buttons.synchronize_gpu(gpu);
+            gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
         } catch (const std::runtime_error&) {
             failed = true;
         }
         require(failed
                     && !fixture.buttons.instances().material_dirty_ranges().empty(),
                 "failed Button GPU upload discarded dirty state");
-        fixture.buttons.synchronize_gpu(gpu);
+        gpu.synchronize(fixture.buttons.instances(), {100, 100, 1});
         require(fixture.buttons.instances().material_dirty_ranges().empty(),
                 "successful Button GPU retry retained dirty state");
     }

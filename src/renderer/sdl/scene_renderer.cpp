@@ -178,7 +178,7 @@ SdlSceneRenderer::SdlSceneRenderer(
         SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 40},
     };
     quad_pipeline_ = build_pipeline(
-        "quad", sizeof(graphics::QuadInstance), quad_attributes, 0);
+        "quad", sizeof(QuadGpuInstance), quad_attributes, 0);
     try {
         const std::array glyph_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
@@ -188,7 +188,7 @@ SdlSceneRenderer::SdlSceneRenderer(
             SDL_GPUVertexAttribute{4, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 64},
         };
         glyph_pipeline_ = build_pipeline(
-            "glyph", sizeof(graphics::GlyphInstance), glyph_attributes, 1);
+            "glyph", sizeof(GlyphGpuInstance), glyph_attributes, 1);
         const std::array effect_attributes{
             SDL_GPUVertexAttribute{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
             SDL_GPUVertexAttribute{1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
@@ -263,18 +263,18 @@ bool SdlSceneRenderer::resize_window(int width, int height) {
     return true;
 }
 
-graphics::QuadGpuBufferHandle SdlSceneRenderer::create_vertex_buffer(std::size_t size) {
+detail::QuadGpuBufferHandle SdlSceneRenderer::create_vertex_buffer(std::size_t size) {
     auto* handle = create_glyph_buffer(size);
     if (handle) resources_.at(handle)->kind = ResourceKind::quad;
     return handle;
 }
 
-void SdlSceneRenderer::release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept {
+void SdlSceneRenderer::release_buffer(detail::QuadGpuBufferHandle buffer) noexcept {
     release_resource(buffer, ResourceKind::quad);
 }
 
 bool SdlSceneRenderer::upload(
-    graphics::QuadGpuBufferHandle buffer,
+    detail::QuadGpuBufferHandle buffer,
     std::size_t offset,
     std::span<const std::byte> bytes) {
     auto* owned = resource(buffer, ResourceKind::quad);
@@ -584,10 +584,10 @@ void SdlSceneRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
         pass, static_cast<SDL_GPUGraphicsPipeline*>(quad_pipeline_));
     const SDL_GPUBufferBinding binding{
         static_cast<SDL_GPUBuffer*>(native_resource(quad_buffer_, ResourceKind::quad)),
-        first * static_cast<Uint32>(sizeof(graphics::QuadInstance)),
+        first * static_cast<Uint32>(sizeof(QuadGpuInstance)),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
-    SDL_DrawGPUPrimitives(pass, graphics::quad_vertex_count, count, 0, 0);
+    SDL_DrawGPUPrimitives(pass, detail::quad_vertex_count, count, 0, 0);
     ++counters_.quad_draws;
 }
 
@@ -604,7 +604,7 @@ void SdlSceneRenderer::draw_glyph(
         pass, static_cast<SDL_GPUGraphicsPipeline*>(glyph_pipeline_));
     const SDL_GPUBufferBinding vertex_binding{
         static_cast<SDL_GPUBuffer*>(native_resource(glyph_resources_->instance_buffer(), ResourceKind::glyph)),
-        first * static_cast<Uint32>(sizeof(graphics::GlyphInstance)),
+        first * static_cast<Uint32>(sizeof(GlyphGpuInstance)),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &vertex_binding, 1);
     const SDL_GPUTextureSamplerBinding atlas_binding{
@@ -612,7 +612,7 @@ void SdlSceneRenderer::draw_glyph(
         static_cast<SDL_GPUSampler*>(native_resource(glyph_resources_->sampler(), ResourceKind::sampler)),
     };
     SDL_BindGPUFragmentSamplers(pass, 0, &atlas_binding, 1);
-    SDL_DrawGPUPrimitives(pass, graphics::glyph_vertex_count, count, 0, 0);
+    SDL_DrawGPUPrimitives(pass, detail::glyph_vertex_count, count, 0, 0);
     ++counters_.atlas_page_bindings;
     ++counters_.glyph_draws;
 }

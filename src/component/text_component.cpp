@@ -607,9 +607,8 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component,
         rect.width = right - rect.x; rect.height = bottom - rect.y;
         if (rect.width <= 0 || rect.height <= 0) return;
         destination.push_back(graphics::QuadInstance{
-            {-1 + 2 * rect.x / viewport.width, 1 - 2 * rect.y / viewport.height,
-                2 * rect.width / viewport.width, -2 * rect.height / viewport.height},
-            channels(color), 1, std::clamp(radius / std::min(rect.width, rect.height), 0.0F, 0.5F), {}});
+            {rect.x, rect.y, rect.width, rect.height},
+            channels(color), 1, radius, {}});
     };
     const float size = state->resolved_typography.font_size;
     const auto foreground = text.material().color;

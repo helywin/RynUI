@@ -330,12 +330,12 @@ bool material_changed(
 bool geometry_changed(
     const graphics::QuadInstance& left,
     const graphics::QuadInstance& right) noexcept {
-    return left.clip_rect != right.clip_rect
+    return left.bounds != right.bounds
         || left.corner_radius != right.corner_radius
         || left.translation != right.translation;
 }
 
-std::array<float, 4> clip_rect(
+std::array<float, 4> logical_bounds(
     runtime::Rect pixels,
     runtime::Size viewport) {
     if (!std::isfinite(viewport.width) || !std::isfinite(viewport.height)
@@ -343,18 +343,8 @@ std::array<float, 4> clip_rect(
         throw std::invalid_argument("Button viewport must be finite and positive");
     }
     return {
-        -1.0F + 2.0F * pixels.x / viewport.width,
-        1.0F - 2.0F * pixels.y / viewport.height,
-        2.0F * pixels.width / viewport.width,
-        -2.0F * pixels.height / viewport.height,
+        pixels.x, pixels.y, pixels.width, pixels.height,
     };
-}
-
-float normalized_radius(runtime::Rect bounds, float radius) noexcept {
-    const float extent = std::min(bounds.width, bounds.height);
-    return extent > 0.0F
-        ? std::clamp(radius / extent, 0.0F, 0.5F)
-        : 0.0F;
 }
 
 float logical_radius(runtime::Rect bounds, float radius) noexcept {
@@ -372,13 +362,12 @@ graphics::QuadInstance make_quad(
     float radius,
     runtime::Point translation) {
     return {
-        clip_rect(bounds, viewport),
+        logical_bounds(bounds, viewport),
         color,
         opacity,
-        normalized_radius(bounds, radius),
+        radius,
         {
-            2.0F * translation.x / viewport.width,
-            -2.0F * translation.y / viewport.height,
+            translation.x, translation.y,
         },
     };
 }

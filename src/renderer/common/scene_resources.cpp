@@ -110,6 +110,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming *timing) {
     ++state_->revision;
     bool active = false;
     try {
+        graphics::validate_rounded_effect_device_metrics(data.metrics);
         if (state_->epoch != backend_->device_epoch() || !glyphs_ || !effects_) {
             abandon_stale_device();
             quads_.reset();
@@ -134,13 +135,13 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming *timing) {
         glyph_count_ = static_cast<std::uint32_t>(data.glyphs.size());
         if (quad_count_) {
             if (!quads_)
-                quads_ = std::make_unique<graphics::QuadGpuBuffer>(*backend_, *data.quads);
+                quads_ = std::make_unique<QuadGpuBuffer>(*backend_, *data.quads, data.metrics);
             else
-                quads_->synchronize(*data.quads);
+                quads_->synchronize(*data.quads, data.metrics);
         }
         if (timing)
             timing->quads = std::chrono::steady_clock::now();
-        glyphs_->synchronize(data.atlas, data.glyphs);
+        glyphs_->synchronize(data.atlas, data.glyphs, data.metrics);
         if (timing)
             timing->glyphs = std::chrono::steady_clock::now();
         if (data.effects)

@@ -21,12 +21,9 @@ public:
 
     [[nodiscard]] QuadPrimitive add_quad(
         runtime::NodeId node,
-        runtime::Size viewport,
         float corner_radius_pixels = 0.0F);
     [[nodiscard]] std::size_t sync_dirty(
-        const runtime::DirtyQueues& dirty,
-        QuadGpuBuffer& gpu_buffer,
-        runtime::Size viewport);
+        const runtime::DirtyQueues& dirty);
 
     [[nodiscard]] QuadInstanceStore& instances() noexcept;
     [[nodiscard]] const QuadInstanceStore& instances() const noexcept;
@@ -42,7 +39,6 @@ private:
     [[nodiscard]] PrimitiveSlot& require_slot(runtime::NodeId node);
     [[nodiscard]] QuadInstance make_instance(
         runtime::NodeId node,
-        runtime::Size viewport,
         float corner_radius_pixels) const;
     static void append_unique(std::vector<runtime::NodeId>& nodes, runtime::NodeId node);
 

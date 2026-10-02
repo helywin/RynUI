@@ -115,7 +115,6 @@ public:
         RetainedSurfaceId id,
         const RetainedSurfaceEffects& effects);
     [[nodiscard]] bool compact_effects(runtime::Rect window_clip);
-    void synchronize_gpu(graphics::QuadGpuBuffer& gpu_buffer);
 
     [[nodiscard]] graphics::QuadInstanceRange visual_range(RetainedSurfaceId id) const;
     [[nodiscard]] const graphics::RoundedEffectInstance& focus_effect(

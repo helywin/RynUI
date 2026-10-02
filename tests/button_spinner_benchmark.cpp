@@ -97,7 +97,7 @@ ryn::component::ButtonVisualData spinner_visuals() {
     ryn::component::ButtonVisualData visuals;
     for (std::size_t index = 0; index < visuals.size(); ++index) {
         visuals[index] = {
-            {-0.8F, 0.8F, 0.02F, -0.02F},
+            {10.0F, 10.0F, 2.0F, 2.0F},
             {0.1F, 0.45F, 0.9F, 1.0F},
             index < 2 ? 1.0F : 0.2F,
             0.5F,

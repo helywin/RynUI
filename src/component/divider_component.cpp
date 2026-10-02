@@ -343,9 +343,8 @@ void DividerComponentHost::synchronize_auxiliary_geometry(
       if (rect.width <= 0 || rect.height <= 0)
         return;
       graphics::QuadInstance quad;
-      quad.clip_rect = {
-          -1 + 2 * rect.x / viewport.width, 1 - 2 * rect.y / viewport.height,
-          2 * rect.width / viewport.width, -2 * rect.height / viewport.height};
+      quad.bounds = {
+          rect.x, rect.y, rect.width, rect.height};
       quad.color = {color.red(), color.green(), color.blue(), color.alpha()};
       quad.opacity = node.opacity;
       quads.push_back(quad);

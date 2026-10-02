@@ -58,10 +58,10 @@ public:
     bool resize_window(int width, int height);
     void set_clear_color(Color value) noexcept { clear_color_ = value; }
 
-    graphics::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
-    void release_buffer(graphics::QuadGpuBufferHandle buffer) noexcept override;
+    detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override;
+    void release_buffer(detail::QuadGpuBufferHandle buffer) noexcept override;
     bool upload(
-        graphics::QuadGpuBufferHandle buffer,
+        detail::QuadGpuBufferHandle buffer,
         std::size_t offset,
         std::span<const std::byte> bytes) override;
     [[nodiscard]] const char* last_error() const noexcept override;

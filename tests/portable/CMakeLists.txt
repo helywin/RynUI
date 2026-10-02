@@ -11,9 +11,10 @@ function(rynui_portable_test name source)
     add_test(NAME rynui.portable.${name} COMMAND rynui_portable_${name})
 endfunction()
 
-foreach(name IN ITEMS font_runtime text_engine text_state text_scene_service
+foreach(name IN ITEMS logical_scene_packing quad_primitive binding_quad_integration button_scene_service
+        font_runtime text_engine text_state text_scene_service
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources
-        rounded_effect_gpu_resources input_gpu input_caret_blink
+        rounded_effect_gpu_resources input_component input_gpu input_caret_blink text_component
         button_component selection_component radio_component typography_component
         typography_interaction divider_component text_component_frame frame_scheduler)
     rynui_portable_test(${name} "${name}_tests.cpp")

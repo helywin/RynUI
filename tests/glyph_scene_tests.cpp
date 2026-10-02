@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "graphics/glyph_scene.hpp"
 
 #include <array>
@@ -116,8 +117,10 @@ void test_physical_phase_scale_and_size_matrix() {
                 require(result && result.primitive.instances.count == 1,
                         "glyph phase matrix did not create one visible instance");
                 const auto& entry = atlas.entries().front();
-                const auto& instance = scene.instances().at(
-                    result.primitive.instances.first);
+                const auto instance = ryn::detail::pack_glyph_instance(scene.instances().at(
+                    result.primitive.instances.first),
+                    {static_cast<std::uint32_t>(viewport.width * display_scale),
+                     static_cast<std::uint32_t>(viewport.height * display_scale), display_scale});
                 const float left_physical = (instance.position_size[0] + 1.0F)
                     * 0.5F * viewport.width * display_scale;
                 const float top_physical = (1.0F - instance.position_size[1])
@@ -152,15 +155,15 @@ void test_physical_phase_scale_and_size_matrix() {
 
 void test_instance_layout_and_text_positioning() {
     constexpr std::array expected_bindings{
-        ryn::graphics::GlyphAttributeBinding{0, ryn::graphics::GlyphAttributeFormat::float4, 0},
-        ryn::graphics::GlyphAttributeBinding{1, ryn::graphics::GlyphAttributeFormat::float4, 16},
-        ryn::graphics::GlyphAttributeBinding{2, ryn::graphics::GlyphAttributeFormat::float4, 32},
-        ryn::graphics::GlyphAttributeBinding{3, ryn::graphics::GlyphAttributeFormat::float4, 48},
-        ryn::graphics::GlyphAttributeBinding{4, ryn::graphics::GlyphAttributeFormat::float4, 64},
+        ryn::detail::GlyphAttributeBinding{0, ryn::detail::GlyphAttributeFormat::float4, 0},
+        ryn::detail::GlyphAttributeBinding{1, ryn::detail::GlyphAttributeFormat::float4, 16},
+        ryn::detail::GlyphAttributeBinding{2, ryn::detail::GlyphAttributeFormat::float4, 32},
+        ryn::detail::GlyphAttributeBinding{3, ryn::detail::GlyphAttributeFormat::float4, 48},
+        ryn::detail::GlyphAttributeBinding{4, ryn::detail::GlyphAttributeFormat::float4, 64},
     };
-    require(sizeof(GlyphInstance) == 80
-                && ryn::graphics::glyph_attribute_bindings == expected_bindings
-                && ryn::graphics::glyph_vertex_count == 6,
+    require(sizeof(ryn::detail::GlyphGpuInstance) == 80
+                && ryn::detail::glyph_attribute_bindings == expected_bindings
+                && ryn::detail::glyph_vertex_count == 6,
             "Glyph instance layout does not match the shader contract");
 
     Fixture fixture{1.5F};
@@ -189,7 +192,8 @@ void test_instance_layout_and_text_positioning() {
     require(atlas.entry_count() == 3,
             "space glyph was not cached as an explicit empty entry");
 
-    const auto& first = scene.instances().at(result.primitive.instances.first);
+    const auto& logical_first = scene.instances().at(result.primitive.instances.first);
+    const auto first = ryn::detail::pack_glyph_instance(logical_first, {600, 300, 1.5F});
     const auto first_atlas = atlas.ensure(
         *fixture.fonts, shaped.text.glyphs.front().font,
         shaped.text.glyphs.front().glyph_id,
@@ -221,6 +225,10 @@ void test_instance_layout_and_text_positioning() {
         physical_y - static_cast<float>(first_atlas.entry->bearing_y)
             - static_cast<float>(ryn::graphics::glyph_atlas_padding))
         * inverse_display_scale;
+    require(near(logical_first.position_size[0], expected_left)
+                && near(logical_first.position_size[1], expected_top)
+                && logical_first.clip_bounds == std::array<float, 4>{0, 0, 400, 200},
+            "Core Glyph scene still contains viewport-relative coordinates");
     require(near(first.position_size[0], -1.0F + 2.0F * expected_left / 400.0F)
                 && near(first.position_size[1], 1.0F - 2.0F * expected_top / 200.0F)
                 && near(
@@ -235,7 +243,7 @@ void test_instance_layout_and_text_positioning() {
                 && first.translation_opacity[2] == 0.5F,
             "Glyph instance lost clip, translation, color, or opacity");
     require(scene.instances().at(result.primitive.instances.first + 1).position_size[0]
-                > first.position_size[0],
+                > logical_first.position_size[0],
             "space advance did not move the following visible glyph");
     const float first_left_physical = (
         first.position_size[0] + 1.0F) * 0.5F * 400.0F * 1.5F;
@@ -260,8 +268,8 @@ void test_instance_layout_and_text_positioning() {
     scene.instances().clear_dirty_ranges();
     require(scene.instances().update_geometry(
                 result.primitive.instances,
-                {-0.5F, 0.5F, 0.5F, -0.5F},
-                {0.05F, -0.05F}) == 2,
+                {100, 50, 300, 150},
+                {10, 5}) == 2,
             "Glyph translation/clip update did not reach visible instances");
     require(atlas.dirty_regions().empty()
                 && fixture.fonts->counters().rasterizations == rasterizations,
@@ -291,8 +299,8 @@ void test_dirty_ranges_remain_layered_and_sparse() {
     const auto original_color = store.at(2).color;
     require(store.update_geometry(
                 {2, 3},
-                {-0.5F, 0.5F, 0.5F, -0.5F},
-                {0.1F, -0.2F}) == 3,
+                {100, 50, 300, 150},
+                {20, 10}) == 3,
             "Glyph geometry update count is incorrect");
     require(store.geometry_dirty_ranges().size() == 1
                 && store.geometry_dirty_ranges().front() == GlyphInstanceRange{2, 3},

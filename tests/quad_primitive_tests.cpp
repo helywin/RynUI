@@ -1,6 +1,8 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "graphics/quad_primitive.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -14,22 +16,22 @@ void require(bool condition, const char* message) {
     }
 }
 
-class RecordingUploadApi final : public ryn::graphics::QuadUploadApi {
+class RecordingUploadApi final : public ryn::detail::QuadUploadApi {
 public:
-    ryn::graphics::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override {
+    ryn::detail::QuadGpuBufferHandle create_vertex_buffer(std::size_t size) override {
         ++create_calls;
         buffer.assign(size, std::byte{});
         return this;
     }
 
-    void release_buffer(ryn::graphics::QuadGpuBufferHandle handle) noexcept override {
+    void release_buffer(ryn::detail::QuadGpuBufferHandle handle) noexcept override {
         if (handle == this) {
             ++release_calls;
         }
     }
 
     bool upload(
-        ryn::graphics::QuadGpuBufferHandle handle,
+        ryn::detail::QuadGpuBufferHandle handle,
         std::size_t offset,
         std::span<const std::byte> bytes) override {
         if (handle != this || offset + bytes.size() > buffer.size()) {
@@ -55,8 +57,8 @@ public:
 };
 
 void test_instance_layout_matches_shader_contract() {
-    using ryn::graphics::QuadAttributeBinding;
-    using ryn::graphics::QuadAttributeFormat;
+    using ryn::detail::QuadAttributeBinding;
+    using ryn::detail::QuadAttributeFormat;
     constexpr std::array expected{
         QuadAttributeBinding{0, QuadAttributeFormat::float4, 0},
         QuadAttributeBinding{1, QuadAttributeFormat::float4, 16},
@@ -65,10 +67,10 @@ void test_instance_layout_matches_shader_contract() {
         QuadAttributeBinding{4, QuadAttributeFormat::float2, 40},
     };
 
-    require(sizeof(ryn::graphics::QuadInstance) == 48, "Quad instance stride changed");
-    require(ryn::graphics::quad_attribute_bindings == expected,
+    require(sizeof(ryn::detail::QuadGpuInstance) == 48, "Quad instance stride changed");
+    require(ryn::detail::quad_attribute_bindings == expected,
             "Quad attribute metadata does not match the shader contract");
-    require(ryn::graphics::quad_vertex_count == 6, "Quad vertex count is incorrect");
+    require(ryn::detail::quad_vertex_count == 6, "Quad vertex count is incorrect");
 }
 
 void test_initial_upload_preserves_instance_bytes() {
@@ -76,34 +78,53 @@ void test_initial_upload_preserves_instance_bytes() {
     const auto first = store.add(
         {0, 1},
         {
-            {-0.8F, 0.6F, 0.5F, -0.4F},
+            {10.0F, 20.0F, 25.0F, 20.0F},
             {0.1F, 0.3F, 0.9F, 1.0F},
             0.75F,
-            0.1F,
+            2.0F,
             {0.0F, 0.0F},
         });
     const auto second = store.add(
         {1, 1},
         {
-            {0.1F, 0.4F, 0.6F, -0.5F},
+            {55.0F, 30.0F, 30.0F, 25.0F},
             {0.9F, 0.3F, 0.2F, 1.0F},
             1.0F,
-            0.2F,
-            {0.05F, -0.02F},
+            5.0F,
+            {2.5F, 1.0F},
         });
     require(first.instance_index == 0 && second.instance_index == 1,
             "Quad instance indices are unstable");
 
     RecordingUploadApi api;
     {
-        ryn::graphics::QuadGpuBuffer gpu_buffer(api, store);
-        const auto expected = std::as_bytes(store.instances());
+        ryn::detail::QuadGpuBuffer gpu_buffer(api, store, {100, 100, 1});
+        const std::array packed{
+            ryn::detail::QuadGpuInstance{{-0.8F, 0.6F, 0.5F, -0.4F},
+                {0.1F, 0.3F, 0.9F, 1}, 0.75F, 0.1F, {0, 0}},
+            ryn::detail::QuadGpuInstance{{0.1F, 0.4F, 0.6F, -0.5F},
+                {0.9F, 0.3F, 0.2F, 1}, 1, 0.2F, {0.05F, -0.02F}}};
+        // Compare floats below; different arithmetic order can change the last bit.
+        std::array<ryn::detail::QuadGpuInstance, 2> actual;
+        std::memcpy(actual.data(), api.buffer.data(), api.buffer.size());
+        for (std::size_t i = 0; i < actual.size(); ++i)
+        {
+            for (std::size_t j = 0; j < 4; ++j)
+                require(std::abs(actual[i].clip_rect[j] - packed[i].clip_rect[j]) < 0.00001F,
+                        "logical Quad bounds did not pack to expected NDC");
+            require(actual[i].color == packed[i].color && actual[i].opacity == packed[i].opacity
+                        && std::abs(actual[i].corner_radius - packed[i].corner_radius) < 0.00001F,
+                    "Quad upload lost material or radius");
+            for (std::size_t j = 0; j < 2; ++j)
+                require(std::abs(actual[i].translation[j] - packed[i].translation[j]) < 0.00001F,
+                        "Quad upload lost translation");
+        }
+        const auto expected = std::as_bytes(std::span(packed));
 
         require(api.create_calls == 1, "initial upload created the wrong number of buffers");
         require(api.upload_calls == 1 && api.upload_offsets == std::vector<std::size_t>({0}),
                 "initial upload did not write one full range at offset zero");
-        require(api.buffer == std::vector<std::byte>(expected.begin(), expected.end()),
-                "initial GPU buffer bytes differ from the CPU instance store");
+        require(api.buffer.size() == expected.size(), "initial GPU buffer has incorrect packed size");
         require(gpu_buffer.capacity() == 2, "GPU buffer capacity is incorrect");
         require(gpu_buffer.counters().initial_uploads == 1
                     && gpu_buffer.counters().range_uploads == 0
@@ -115,7 +136,7 @@ void test_initial_upload_preserves_instance_bytes() {
 
 ryn::graphics::QuadInstance instance(float value) {
     return {
-        {value, value + 0.1F, 0.2F, -0.2F},
+        {value, value + 0.1F, 0.2F, 0.2F},
         {value, 0.3F, 0.4F, 1.0F},
         1.0F,
         0.1F,
@@ -128,7 +149,7 @@ void test_full_retry_after_batch_submit_failure() {
     const std::array initial{instance(0.1F), instance(0.2F)};
     static_cast<void>(store.append(initial));
     RecordingUploadApi api;
-    ryn::graphics::QuadGpuBuffer gpu(api, store);
+    ryn::detail::QuadGpuBuffer gpu(api, store, {100, 100, 1});
     require(store.geometry_dirty_ranges().empty(),
             "initial Quad upload did not optimistically clear dirty ranges");
     api.buffer.assign(api.buffer.size(), std::byte{});
@@ -137,8 +158,10 @@ void test_full_retry_after_batch_submit_failure() {
                 && store.geometry_dirty_ranges().front()
                     == ryn::graphics::QuadInstanceRange{0, 2},
             "failed batch did not restore the full Quad upload range");
-    gpu.synchronize(store);
-    const auto expected = std::as_bytes(store.instances());
+    gpu.synchronize(store, {100, 100, 1});
+    const std::array packed{ryn::detail::pack_quad_instance(store.at(0), {100, 100, 1}),
+                            ryn::detail::pack_quad_instance(store.at(1), {100, 100, 1})};
+    const auto expected = std::as_bytes(std::span(packed));
     require(api.buffer == std::vector<std::byte>(expected.begin(), expected.end())
                 && api.upload_offsets.back() == 0,
             "Quad retry did not restore the complete GPU buffer");
@@ -176,7 +199,7 @@ void test_sparse_dirty_ranges_and_compaction() {
     std::array<ryn::graphics::QuadGeometry, 3> geometry;
     for (std::size_t index = 0; index < geometry.size(); ++index) {
         geometry[index] = {
-            {0.2F + static_cast<float>(index), 0.3F, 0.4F, -0.5F},
+            {0.2F + static_cast<float>(index), 0.3F, 0.4F, 0.5F},
             0.2F,
             {0.01F, -0.01F},
         };
@@ -207,11 +230,11 @@ void test_gpu_buffer_growth_and_sparse_synchronization() {
     const std::array initial{instance(0.0F), instance(0.1F)};
     static_cast<void>(store.append(initial));
     RecordingUploadApi api;
-    ryn::graphics::QuadGpuBuffer gpu(api, store);
+    ryn::detail::QuadGpuBuffer gpu(api, store, {100, 100, 1});
 
     const std::array appended{instance(0.2F)};
     static_cast<void>(store.append(appended));
-    gpu.synchronize(store);
+    gpu.synchronize(store, {100, 100, 1});
     require(gpu.capacity() == 4
                 && gpu.counters().buffer_reallocations == 1
                 && api.create_calls == 2,
@@ -221,8 +244,8 @@ void test_gpu_buffer_growth_and_sparse_synchronization() {
         ryn::graphics::QuadMaterial{{0.2F, 0.8F, 0.4F, 1.0F}, 0.5F},
     };
     static_cast<void>(store.update_material({1, 1}, material));
-    gpu.synchronize(store);
-    require(api.upload_offsets.back() == sizeof(ryn::graphics::QuadInstance)
+    gpu.synchronize(store, {100, 100, 1});
+    require(api.upload_offsets.back() == sizeof(ryn::detail::QuadGpuInstance)
                 && gpu.counters().range_uploads == 2,
             "Quad GPU synchronization expanded a sparse Material upload");
 }

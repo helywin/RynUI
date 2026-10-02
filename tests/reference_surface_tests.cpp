@@ -203,9 +203,9 @@ void test_typed_mount_retained_scene_and_non_interaction() {
         outer, rynui::example::ReferenceSurfaceVisualLayer::swatch);
     const auto& badge_quad = fixture.layer(
         outer, rynui::example::ReferenceSurfaceVisualLayer::status_badge);
-    const float swatch_x = (swatch_quad.clip_rect[0] + 1.0F) * 320.0F;
-    const float swatch_y = (1.0F - swatch_quad.clip_rect[1]) * 180.0F;
-    const float badge_x = (badge_quad.clip_rect[0] + 1.0F) * 320.0F;
+    const float swatch_x = swatch_quad.bounds[0];
+    const float swatch_y = swatch_quad.bounds[1];
+    const float badge_x = badge_quad.bounds[0];
     require(near(swatch_x, outer_bounds.x + outer_bounds.width - 48.0F)
                 && near(swatch_y, outer_bounds.y + 8.0F)
                 && swatch_x + 16.0F < badge_x,
@@ -246,8 +246,8 @@ void test_typed_mount_retained_scene_and_non_interaction() {
         outer,
         rynui::example::ReferenceSurfaceVisualLayer::background);
     const auto& shadow = fixture.application->rounded_effects().at(first_shadow);
-    require(near(translated.translation[0], 14.0F / 640.0F)
-                && near(translated.translation[1], -10.0F / 360.0F)
+    require(near(translated.translation[0], 7.0F)
+                && near(translated.translation[1], 5.0F)
                 && shadow.geometry.translation == ryn::runtime::Point{7.0F, 5.0F}
                 && shadow.geometry.ancestor_clip.has_value()
                 && shadow.geometry.ancestor_clip->bounds

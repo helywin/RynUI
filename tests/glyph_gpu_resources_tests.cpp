@@ -187,7 +187,7 @@ void test_aligned_dirty_texture_and_sparse_buffer_uploads() {
         const std::array initial{instance(1.0F), instance(2.0F), instance(3.0F)};
         static_cast<void>(instances.append(initial));
 
-        resources.synchronize(atlas, instances);
+        resources.synchronize(atlas, instances, {100, 100, 1});
         require(api.textures.size() == 2, "dirty atlas rectangles were not uploaded exactly");
         for (const auto& upload : api.textures) {
             require(upload.offset == 0
@@ -208,18 +208,18 @@ void test_aligned_dirty_texture_and_sparse_buffer_uploads() {
         }
         require(atlas.dirty_regions().empty(), "successful atlas upload did not clear dirty state");
         require(api.buffers.size() == 1 && api.buffers.front().offset == 0
-                    && api.buffers.front().bytes.size() == 3 * sizeof(ryn::graphics::GlyphInstance),
+                    && api.buffers.front().bytes.size() == 3 * sizeof(ryn::detail::GlyphGpuInstance),
                 "initial Glyph instance upload differs");
 
         const std::size_t texture_uploads = api.textures.size();
         static_cast<void>(instances.update_material(
             {1, 1}, {0.2F, 0.4F, 0.6F, 0.65F}, 1.0F));
-        resources.synchronize(atlas, instances);
+        resources.synchronize(atlas, instances, {100, 100, 1});
         require(api.textures.size() == texture_uploads,
                 "Material-only update re-uploaded atlas pixels");
         require(api.buffers.size() == 2
-                    && api.buffers.back().offset == sizeof(ryn::graphics::GlyphInstance)
-                    && api.buffers.back().bytes.size() == sizeof(ryn::graphics::GlyphInstance),
+                    && api.buffers.back().offset == sizeof(ryn::detail::GlyphGpuInstance)
+                    && api.buffers.back().bytes.size() == sizeof(ryn::detail::GlyphGpuInstance),
                 "Material-only update did not remain a sparse instance upload");
     }
     require(api.no_leaks(), "Glyph resources leaked after normal teardown");
@@ -247,7 +247,7 @@ void test_failure_paths_keep_dirty_state_and_release_resources() {
         bool failed = false;
         try {
             ryn::detail::GlyphGpuResources resources(api);
-            resources.synchronize(atlas, instances);
+            resources.synchronize(atlas, instances, {100, 100, 1});
         } catch (const std::runtime_error&) {
             failed = true;
         }
@@ -262,28 +262,28 @@ void test_bounded_sparse_upload_coalescing() {
     RecordingGpuApi api;
     ryn::detail::GlyphGpuResources resources(api);
     resources.set_sparse_upload_coalescing_limit(
-        16 * sizeof(ryn::graphics::GlyphInstance));
+        16 * sizeof(ryn::detail::GlyphGpuInstance));
     ryn::graphics::GlyphAtlas atlas({10, 10, 1});
     ryn::graphics::GlyphInstanceStore instances;
     std::array<ryn::graphics::GlyphInstance, 16> initial{};
     static_cast<void>(instances.append(initial));
-    resources.synchronize(atlas, instances);
+    resources.synchronize(atlas, instances, {100, 100, 1});
     const std::array<float, 4> clip{0.0F, 1.0F, 1.0F, 0.0F};
     static_cast<void>(instances.update_geometry({0, 1}, clip, {1.0F, 0.0F}));
     static_cast<void>(instances.update_geometry({5, 1}, clip, {1.0F, 0.0F}));
-    resources.synchronize(atlas, instances);
+    resources.synchronize(atlas, instances, {100, 100, 1});
     require(api.buffers.size() == 2 && api.buffers.back().offset == 0
                 && api.buffers.back().bytes.size()
-                    == 6 * sizeof(ryn::graphics::GlyphInstance)
+                    == 6 * sizeof(ryn::detail::GlyphGpuInstance)
                 && resources.counters().buffer_upload_coalesces == 1,
             "bounded nearby Glyph ranges were not coalesced");
     static_cast<void>(instances.update_geometry({0, 1}, clip, {2.0F, 0.0F}));
     static_cast<void>(instances.update_geometry({15, 1}, clip, {2.0F, 0.0F}));
-    resources.synchronize(atlas, instances);
+    resources.synchronize(atlas, instances, {100, 100, 1});
     require(api.buffers.size() == 4
                 && api.buffers[2].offset == 0
                 && api.buffers[3].offset
-                    == 15 * sizeof(ryn::graphics::GlyphInstance)
+                    == 15 * sizeof(ryn::detail::GlyphGpuInstance)
                 && resources.counters().buffer_upload_coalesces == 1,
             "distant Glyph ranges uploaded unrelated instance storage");
 }

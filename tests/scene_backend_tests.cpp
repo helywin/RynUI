@@ -71,6 +71,7 @@ struct Fixture final {
     RecordingRenderer backend;
     SceneResources resources{backend};
     int mounts{};
+    SceneDeviceMetrics metrics{320, 240, 1};
 
     Fixture() {
         ui.services.mount(Content{[this] {
@@ -95,7 +96,7 @@ struct Fixture final {
                 ui.scene.atlas(),
                 ui.scene.glyph_scene().instances(),
                 &ui.services.rounded_effects(),
-                {320, 240, 1}};
+                metrics};
     }
     void mark_all() {
         data().quads->mark_all_dirty();
@@ -108,14 +109,20 @@ struct Fixture final {
     }
     void verify() {
         const auto cpu = data();
+        std::vector<QuadGpuInstance> packed_quads;
+        for (const auto& instance : cpu.quads->instances())
+            packed_quads.push_back(pack_quad_instance(instance, cpu.metrics));
+        std::vector<GlyphGpuInstance> packed_glyphs;
+        for (const auto& instance : cpu.glyphs.instances())
+            packed_glyphs.push_back(pack_glyph_instance(instance, cpu.metrics));
         check(resources.quads(), "component scene omitted Quad resources");
         check(same(backend.buffer_bytes(resources.quads()->handle())
-                       .first(cpu.quads->instances().size_bytes()),
-                   std::as_bytes(cpu.quads->instances())),
+                       .first(packed_quads.size() * sizeof(QuadGpuInstance)),
+                   std::as_bytes(std::span(packed_quads))),
               "Quad bytes differ from component scene");
         check(same(backend.buffer_bytes(resources.glyphs().instance_buffer())
-                       .first(cpu.glyphs.instances().size_bytes()),
-                   std::as_bytes(cpu.glyphs.instances())),
+                       .first(packed_glyphs.size() * sizeof(GlyphGpuInstance)),
+                   std::as_bytes(std::span(packed_glyphs))),
               "Glyph bytes differ from component scene");
         check(resources.effects().instance_count() > 0,
               "focused component fixture omitted effects");
@@ -171,7 +178,7 @@ void real_scene_transaction_and_epoch() {
     const auto bytes_before = fixture.backend.counters().uploaded_bytes;
     check(fixture.resources.synchronize(fixture.data()), "partial transaction failed");
     check(fixture.backend.counters().uploaded_bytes - bytes_before ==
-              sizeof(graphics::QuadInstance),
+              sizeof(detail::QuadGpuInstance),
           "local material update uploaded unrelated resources");
     fixture.verify();
     for (const auto failure : {RecordingFailure::begin, RecordingFailure::upload,
@@ -233,6 +240,58 @@ void real_scene_transaction_and_epoch() {
     check(fixture.resources.synchronize(fixture.data()),
           "explicit resource retirement did not rebuild");
     fixture.verify();
+}
+
+void logical_resize_and_recovery() {
+    Fixture fixture;
+    check(fixture.resources.synchronize(fixture.data()), "logical scene initial sync failed");
+    const auto cpu = fixture.data();
+    const std::vector<graphics::QuadInstance> quads(cpu.quads->instances().begin(), cpu.quads->instances().end());
+    const std::vector<graphics::GlyphInstance> glyphs(cpu.glyphs.instances().begin(), cpu.glyphs.instances().end());
+    const auto rasterizations = fixture.ui.fonts->counters().rasterizations;
+    const auto quad_handle = fixture.resources.quads()->handle();
+    const auto glyph_handle = fixture.resources.glyphs().instance_buffer();
+    auto upload_quads = fixture.resources.quads()->counters().uploaded_bytes;
+    auto upload_glyphs = fixture.resources.glyphs().counters().buffer_uploaded_bytes;
+    const auto texture_uploads = fixture.resources.glyphs().counters().texture_uploads;
+    fixture.metrics = {640, 480, 1};
+    check(cpu.quads->geometry_dirty_ranges().empty() && cpu.glyphs.geometry_dirty_ranges().empty(),
+          "resize fixture retained dirty CPU geometry");
+    check(fixture.resources.synchronize(fixture.data()), "resize without CPU dirties failed");
+    check(fixture.resources.quads()->handle() == quad_handle &&
+          fixture.resources.glyphs().instance_buffer() == glyph_handle,
+          "resize recreated buffers without growth");
+    check(fixture.resources.quads()->counters().uploaded_bytes - upload_quads == quads.size() * sizeof(QuadGpuInstance) &&
+          fixture.resources.glyphs().counters().buffer_uploaded_bytes - upload_glyphs == glyphs.size() * sizeof(GlyphGpuInstance),
+          "resize failed to upload every packed instance");
+    check(fixture.resources.glyphs().counters().texture_uploads == texture_uploads,
+          "projection-only resize uploaded atlas");
+    fixture.verify();
+    for (auto failure : {RecordingFailure::upload_exception, RecordingFailure::commit}) {
+        fixture.metrics.pixel_width += 160;
+        const auto prior = fixture.attachment();
+        fixture.backend.fail_next(failure, failure == RecordingFailure::upload_exception ? 1 : 0);
+        bool accepted = false;
+        try { accepted = fixture.resources.synchronize(fixture.data()); } catch (const std::runtime_error&) {}
+        check(!accepted && !fixture.backend.valid_attachment(prior), "failed resize published a scene");
+        check(fixture.resources.synchronize(fixture.data()), "resize retry failed");
+        fixture.verify();
+    }
+    const auto committed = fixture.attachment();
+    const auto uploads = fixture.backend.counters().uploads;
+    auto invalid = fixture.data();
+    invalid.metrics = {0, 480, 1};
+    rejects([&] { fixture.resources.synchronize(invalid); });
+    check(!fixture.backend.valid_attachment(committed) && fixture.backend.counters().uploads == uploads,
+          "invalid metrics began uploading or left a valid attachment");
+    check(fixture.resources.synchronize(fixture.data()), "valid sync after invalid metrics failed");
+    fixture.backend.reset_device();
+    check(fixture.resources.synchronize(fixture.data()), "logical scene device reset failed");
+    fixture.verify();
+    check(same(std::as_bytes(cpu.quads->instances()), std::as_bytes(std::span(quads))) &&
+          same(std::as_bytes(cpu.glyphs.instances()), std::as_bytes(std::span(glyphs))) &&
+          fixture.ui.fonts->counters().rasterizations == rasterizations && fixture.mounts == 1,
+          "packing/resize/recovery rewrote logical scene or remounted/rasterized components");
 }
 
 void deferred_surface_retains_uploads() {
@@ -337,22 +396,22 @@ void upload_exceptions_release_temporary_resources() {
     static_cast<void>(quads.append(quad));
     check(backend.begin_upload_batch(), "Quad initial begin failed");
     backend.fail_next(RecordingFailure::upload_exception);
-    rejects([&] { graphics::QuadGpuBuffer failed{backend, quads}; });
+    rejects([&] { detail::QuadGpuBuffer failed{backend, quads, {100, 100, 1}}; });
     backend.cancel_upload_batch();
     check(backend.live_resources() == 0, "Quad constructor leaked temporary buffer");
     {
         check(backend.begin_upload_batch(), "Quad retry begin failed");
-        graphics::QuadGpuBuffer buffer{backend, quads};
+        detail::QuadGpuBuffer buffer{backend, quads, {100, 100, 1}};
         check(backend.finish_upload_batch(), "Quad retry commit failed");
         const std::vector<graphics::QuadInstance> growth(buffer.capacity() + 1);
         static_cast<void>(quads.append(growth));
         check(backend.begin_upload_batch(), "Quad growth begin failed");
         backend.fail_next(RecordingFailure::upload_exception);
-        rejects([&] { buffer.synchronize(quads); });
+        rejects([&] { buffer.synchronize(quads, {100, 100, 1}); });
         backend.cancel_upload_batch();
         check(backend.live_resources() == 1, "Quad growth leaked or retired old buffer");
         check(backend.begin_upload_batch(), "Quad growth retry begin failed");
-        buffer.synchronize(quads);
+        buffer.synchronize(quads, {100, 100, 1});
         check(backend.finish_upload_batch(), "Quad growth retry commit failed");
         check(backend.live_resources() == 1, "Quad growth retry retained obsolete buffer");
     }
@@ -365,21 +424,21 @@ void upload_exceptions_release_temporary_resources() {
         static_cast<void>(glyphs.append(glyph));
         check(backend.begin_upload_batch(), "Glyph initial begin failed");
         backend.fail_next(RecordingFailure::upload_exception);
-        rejects([&] { resources.synchronize(atlas, glyphs); });
+        rejects([&] { resources.synchronize(atlas, glyphs, {100, 100, 1}); });
         backend.cancel_upload_batch();
         check(backend.live_resources() == 1, "Glyph initial upload leaked buffer");
         check(backend.begin_upload_batch(), "Glyph retry begin failed");
-        resources.synchronize(atlas, glyphs);
+        resources.synchronize(atlas, glyphs, {100, 100, 1});
         check(backend.finish_upload_batch(), "Glyph retry commit failed");
         const std::vector<graphics::GlyphInstance> growth(resources.instance_capacity() + 1);
         static_cast<void>(glyphs.append(growth));
         check(backend.begin_upload_batch(), "Glyph growth begin failed");
         backend.fail_next(RecordingFailure::upload_exception);
-        rejects([&] { resources.synchronize(atlas, glyphs); });
+        rejects([&] { resources.synchronize(atlas, glyphs, {100, 100, 1}); });
         backend.cancel_upload_batch();
         check(backend.live_resources() == 2, "Glyph growth leaked or retired old buffer");
         check(backend.begin_upload_batch(), "Glyph growth retry begin failed");
-        resources.synchronize(atlas, glyphs);
+        resources.synchronize(atlas, glyphs, {100, 100, 1});
         check(backend.finish_upload_batch(), "Glyph growth retry commit failed");
         check(backend.live_resources() == 2, "Glyph growth retry retained obsolete buffer");
     }
@@ -418,6 +477,7 @@ int main() {
     try {
         owned_bytes_and_ranges();
         real_scene_transaction_and_epoch();
+        logical_resize_and_recovery();
         deferred_surface_retains_uploads();
         upload_exceptions_release_temporary_resources();
         real_component_animation_uses_future_callback();

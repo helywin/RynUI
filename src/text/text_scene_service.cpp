@@ -364,15 +364,10 @@ runtime::Point TextSceneService::set_phase_preserving_scroll_translation(
 std::size_t TextSceneService::patch_geometry(
     Record& record, const graphics::GlyphPlacement& placement) {
     const auto clip = placement.clip_pixels;
-    const auto viewport = placement.viewport_pixels;
     return glyph_scene_.instances().update_geometry(record.primitive.instances, {
-        -1.0F + 2.0F * clip.x / viewport.width,
-        1.0F - 2.0F * clip.y / viewport.height,
-        -1.0F + 2.0F * (clip.x + clip.width) / viewport.width,
-        1.0F - 2.0F * (clip.y + clip.height) / viewport.height,
+        clip.x, clip.y, clip.x + clip.width, clip.y + clip.height,
     }, {
-        2.0F * record.scroll_translation.x / viewport.width,
-        -2.0F * record.scroll_translation.y / viewport.height,
+        record.scroll_translation.x, record.scroll_translation.y,
     });
 }
 

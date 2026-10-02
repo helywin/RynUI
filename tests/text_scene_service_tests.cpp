@@ -125,7 +125,7 @@ void test_multiple_texts_share_font_atlas_scene_and_upload_plan() {
             "first Text did not populate the shared atlas");
     resources.synchronize(
         fixture.service.atlas(),
-        fixture.service.glyph_scene().instances());
+        fixture.service.glyph_scene().instances(), {640, 360, 1});
     const auto texture_uploads = api.texture_uploads;
 
     require(fixture.service.synchronize(second),
@@ -136,7 +136,7 @@ void test_multiple_texts_share_font_atlas_scene_and_upload_plan() {
             "second Text repeated shared glyph raster or atlas work");
     resources.synchronize(
         fixture.service.atlas(),
-        fixture.service.glyph_scene().instances());
+        fixture.service.glyph_scene().instances(), {640, 360, 1});
     require(api.texture_uploads == texture_uploads,
             "second Text repeated a texture upload for shared glyphs");
 
@@ -330,7 +330,7 @@ void test_scroll_translation_preserves_glyphs() {
         const auto& instance = fixture.service.glyph_scene().instances().at(initial.first);
         require(instance.position_size == glyph.position_size && instance.uv_rect == glyph.uv_rect
             && instance.clip_bounds == glyph.clip_bounds
-            && instance.translation_opacity[0] == -2.0F * scroll / placement.viewport_pixels.width,
+            && instance.translation_opacity[0] == -scroll,
             "scroll changed glyph shape, raster phase, or clip");
     }
     require(fixture.service.primitive(view).instances == initial

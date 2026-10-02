@@ -32,12 +32,9 @@ bool near(float actual, float expected, float tolerance = 0.001F) {
 
 ryn::runtime::Rect quad_bounds(
     const ryn::graphics::QuadInstance& instance,
-    ryn::runtime::Size viewport = {640.0F, 360.0F}) {
+    ryn::runtime::Size = {640.0F, 360.0F}) {
     return {
-        (instance.clip_rect[0] + 1.0F) * viewport.width * 0.5F,
-        (1.0F - instance.clip_rect[1]) * viewport.height * 0.5F,
-        instance.clip_rect[2] * viewport.width * 0.5F,
-        -instance.clip_rect[3] * viewport.height * 0.5F,
+        instance.bounds[0], instance.bounds[1], instance.bounds[2], instance.bounds[3],
     };
 }
 
@@ -549,8 +546,8 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     require(fixture.host->snapshot(target.component).loading
                 && loading_layer.opacity
                     == ryn::resolve_theme().button().loading_opacity
-                && loading_layer.clip_rect[2] > 0.0F
-                && loading_layer.clip_rect[3] < 0.0F
+                && loading_layer.bounds[2] > 0.0F
+                && loading_layer.bounds[3] > 0.0F
                 && fixture.text_color(0)[3]
                     == ryn::resolve_theme().button().loading_opacity,
             "loading state missed indicator geometry, opacity, or Text context");
@@ -666,9 +663,7 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
                     && near(primary_background.width * scale, primary_root.width * scale)
                     && near(primary_background.height * scale, primary_root.height * scale)
                     && near(
-                        primary_fill.corner_radius
-                            * std::min(primary_root.width, primary_root.height)
-                            * scale,
+                        primary_fill.corner_radius * scale,
                         6.0F * scale),
                 "solid Button border-box geometry drifted at simulated DPI");
     }
@@ -925,15 +920,15 @@ void test_retained_loading_spinner_phase_and_policy_lifecycle() {
          segment < ryn::component::button_loading_segment_count;
          ++segment) {
         const auto& visual = fixture.loading_segment(0, segment);
-        require(visual.clip_rect[2] > 0.0F
-                    && visual.clip_rect[3] < 0.0F
-                    && visual.corner_radius == 0.5F
+        require(visual.bounds[2] > 0.0F
+                    && visual.bounds[3] > 0.0F
+                    && near(visual.corner_radius, visual.bounds[2] * 0.5F)
                     && visual.opacity > 0.0F,
                 "loading spinner segment geometry or visibility is invalid");
     }
     const auto& scale_reference = fixture.loading_segment(0, 0);
     require(near(
-                std::fabs(scale_reference.clip_rect[2]) * 0.5F * 960.0F,
+                scale_reference.bounds[2] * 1.5F,
                 14.0F * 0.22F * 1.5F,
                 0.01F),
             "loading spinner segment did not scale from logical to 150 percent pixels");

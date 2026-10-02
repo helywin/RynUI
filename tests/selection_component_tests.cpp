@@ -28,11 +28,8 @@ runtime::Point center(const Fixture& fixture, runtime::NodeId node) {
 }
 
 runtime::Rect quad_bounds(const graphics::QuadInstance& quad,
-    runtime::Size viewport = {320.0F, 240.0F}) {
-    return {(quad.clip_rect[0] + 1.0F) * viewport.width / 2.0F,
-        (1.0F - quad.clip_rect[1]) * viewport.height / 2.0F,
-        quad.clip_rect[2] * viewport.width / 2.0F,
-        -quad.clip_rect[3] * viewport.height / 2.0F};
+    runtime::Size = {320.0F, 240.0F}) {
+    return {quad.bounds[0], quad.bounds[1], quad.bounds[2], quad.bounds[3]};
 }
 
 bool near(float left, float right) { return std::fabs(left - right) < 0.02F; }

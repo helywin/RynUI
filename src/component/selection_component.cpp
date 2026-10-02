@@ -27,24 +27,15 @@ std::array<float, 4> channels(Color color) noexcept {
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
 
-float rounded_radius(runtime::Rect rect, float radius) noexcept {
-    const float side = std::min(rect.width, rect.height);
-    return side > 0.0F ? std::clamp(radius / side, 0.0F, 0.5F) : 0.0F;
-}
-
 void set_geometry(graphics::QuadInstance& quad, runtime::Rect rect,
     runtime::Size viewport, float radius, runtime::Point translation) {
     if (viewport.width <= 0.0F || viewport.height <= 0.0F) return;
-    quad.clip_rect = {
-        -1.0F + 2.0F * rect.x / viewport.width,
-        1.0F - 2.0F * rect.y / viewport.height,
-        2.0F * rect.width / viewport.width,
-        -2.0F * rect.height / viewport.height,
+    quad.bounds = {
+        rect.x, rect.y, rect.width, rect.height,
     };
-    quad.corner_radius = rounded_radius(rect, radius);
+    quad.corner_radius = radius;
     quad.translation = {
-        2.0F * translation.x / viewport.width,
-        -2.0F * translation.y / viewport.height,
+        translation.x, translation.y,
     };
 }
 

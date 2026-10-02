@@ -63,13 +63,12 @@ void forms() {
   require(glyph.count > 0 &&
               near(f.nodes.require(text_node).bounds.x, root.x + left.label.x),
           "label placement missed same-frame geometry");
-  require((f.scene.glyph_scene().instances().at(glyph.first).position_size[0] +
-           1) * 150 >=
+  require(f.scene.glyph_scene().instances().at(glyph.first).position_size[0] >=
               root.x + left.label.x - 4,
           "glyphs remained at previous position");
   bool found_dash = false;
   for (const auto &quad : f.services.surfaces().instances().instances())
-    if (near(quad.clip_rect[2] * 150, 3))
+    if (near(quad.bounds[2], 3))
       found_dash = true;
   require(found_dash, "dashed Divider emitted no dash segments");
 }

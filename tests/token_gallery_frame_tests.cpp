@@ -1,3 +1,4 @@
+#include "renderer/common/quad_gpu_resources.hpp"
 #include "component/button_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/typography_component.hpp"
@@ -80,7 +81,7 @@ bool near(float actual, float expected, float tolerance = 0.001F) {
     return std::fabs(actual - expected) <= tolerance;
 }
 
-class RecordingGpuApi final : public ryn::graphics::QuadUploadApi,
+class RecordingGpuApi final : public ryn::detail::QuadUploadApi,
                               public ryn::detail::GlyphGpuApi,
                               public ryn::detail::RoundedEffectGpuApi {
 public:
@@ -252,13 +253,13 @@ public:
             return ryn::runtime::FrameSubmissionResult::failed;
         }
         if (quads_ == nullptr) {
-            quads_ = std::make_unique<ryn::graphics::QuadGpuBuffer>(
-                *gpu_, host_->button_scene().instances());
+            quads_ = std::make_unique<ryn::detail::QuadGpuBuffer>(
+                *gpu_, host_->button_scene().instances(), ryn::detail::SceneDeviceMetrics{1200, 30000, 1});
         } else {
-            host_->button_scene().synchronize_gpu(*quads_);
+            quads_->synchronize(host_->button_scene().instances(), {1200, 30000, 1});
         }
         glyphs_.synchronize(
-            text_scene_->atlas(), text_scene_->glyph_scene().instances());
+            text_scene_->atlas(), text_scene_->glyph_scene().instances(), {1200, 30000, 1});
         effects_.synchronize(
             host_->rounded_effects(),
             {
@@ -279,7 +280,7 @@ private:
     ryn::detail::RoundedEffectGpuResources effects_;
     RecordingDrawApi* draw_;
     ryn::runtime::Size viewport_{1200.0F, 30000.0F};
-    std::unique_ptr<ryn::graphics::QuadGpuBuffer> quads_;
+    std::unique_ptr<ryn::detail::QuadGpuBuffer> quads_;
 };
 
 void require_all_cells_reachable(

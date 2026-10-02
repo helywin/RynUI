@@ -274,7 +274,7 @@ void RecordingRenderer::record(graphics::SceneDrawKind kind, void *handle, Kind 
 
 void RecordingRenderer::draw_quad(std::uint32_t first, std::uint32_t count) {
     record(graphics::SceneDrawKind::quad, attachment().quads(), Kind::quad, first, count,
-           attachment().quad_count(), sizeof(graphics::QuadInstance));
+           attachment().quad_count(), sizeof(QuadGpuInstance));
 }
 void RecordingRenderer::draw_glyph(std::uint32_t page, std::uint32_t first, std::uint32_t count) {
     const auto *glyphs = attachment().glyphs();
@@ -284,7 +284,7 @@ void RecordingRenderer::draw_glyph(std::uint32_t page, std::uint32_t first, std:
     auto *texture = glyphs->texture(page);
     static_cast<void>(require(texture, Kind::texture));
     record(graphics::SceneDrawKind::glyph, glyphs->instance_buffer(), Kind::glyph, first, count,
-           attachment().glyph_count(), sizeof(graphics::GlyphInstance), page, texture);
+           attachment().glyph_count(), sizeof(GlyphGpuInstance), page, texture);
 }
 void RecordingRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t count) {
     const auto *effects = attachment().effects();

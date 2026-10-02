@@ -5,24 +5,12 @@
 #include <stdexcept>
 
 namespace ryn::graphics {
-namespace {
-
-void validate_viewport(runtime::Size viewport) {
-    if (viewport.width <= 0.0F || viewport.height <= 0.0F
-            || !std::isfinite(viewport.width) || !std::isfinite(viewport.height)) {
-        throw std::invalid_argument("Quad viewport must be finite and positive");
-    }
-}
-
-} // namespace
 
 QuadScene::QuadScene(runtime::NodeStore& nodes) noexcept : nodes_(&nodes) {}
 
 QuadPrimitive QuadScene::add_quad(
     runtime::NodeId node,
-    runtime::Size viewport,
     float corner_radius_pixels) {
-    validate_viewport(viewport);
     if (corner_radius_pixels < 0.0F || !std::isfinite(corner_radius_pixels)) {
         throw std::invalid_argument("Quad corner radius must be finite and non-negative");
     }
@@ -37,17 +25,14 @@ QuadPrimitive QuadScene::add_quad(
 
     const auto primitive = instances_.add(
         node,
-        make_instance(node, viewport, corner_radius_pixels));
+        make_instance(node, corner_radius_pixels));
     slot = PrimitiveSlot{node.generation, primitive.instance_index, corner_radius_pixels};
     ++counters_.primitive_rebuilds;
     return primitive;
 }
 
 std::size_t QuadScene::sync_dirty(
-    const runtime::DirtyQueues& dirty,
-    QuadGpuBuffer& gpu_buffer,
-    runtime::Size viewport) {
-    validate_viewport(viewport);
+    const runtime::DirtyQueues& dirty) {
     std::vector<runtime::NodeId> targets;
     targets.reserve(
         dirty.material_nodes().size()
@@ -67,12 +52,14 @@ std::size_t QuadScene::sync_dirty(
     for (const auto node : targets) {
         auto& slot = require_slot(node);
         const auto index = *slot.instance_index;
-        auto next = make_instance(node, viewport, slot.corner_radius_pixels);
+        auto next = make_instance(node, slot.corner_radius_pixels);
         if (instances_.at(index) == next) {
             continue;
         }
-        instances_.at(index) = next;
-        gpu_buffer.upload_range(instances_, index, 1);
+        const QuadMaterial material{next.color, next.opacity};
+        const QuadGeometry geometry{next.bounds, next.corner_radius, next.translation};
+        static_cast<void>(instances_.update_material({index, 1}, {&material, 1}));
+        static_cast<void>(instances_.update_geometry({index, 1}, {&geometry, 1}));
         ++counters_.instance_updates;
         ++updated;
     }
@@ -105,27 +92,17 @@ QuadScene::PrimitiveSlot& QuadScene::require_slot(runtime::NodeId node) {
 
 QuadInstance QuadScene::make_instance(
     runtime::NodeId node,
-    runtime::Size viewport,
     float corner_radius_pixels) const {
     const auto& source = nodes_->require(node);
-    const float minimum_extent = std::min(source.bounds.width, source.bounds.height);
-    const float normalized_radius = minimum_extent > 0.0F
-        ? std::clamp(corner_radius_pixels / minimum_extent, 0.0F, 0.5F)
-        : 0.0F;
-
     return {
         {
-            -1.0F + 2.0F * source.bounds.x / viewport.width,
-            1.0F - 2.0F * source.bounds.y / viewport.height,
-            2.0F * source.bounds.width / viewport.width,
-            -2.0F * source.bounds.height / viewport.height,
+            source.bounds.x, source.bounds.y, source.bounds.width, source.bounds.height,
         },
         {source.color.red, source.color.green, source.color.blue, source.color.alpha},
         source.opacity,
-        normalized_radius,
+        corner_radius_pixels,
         {
-            2.0F * source.translation.x / viewport.width,
-            -2.0F * source.translation.y / viewport.height,
+            source.translation.x, source.translation.y,
         },
     };
 }
