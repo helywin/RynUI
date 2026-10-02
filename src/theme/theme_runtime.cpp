@@ -281,6 +281,12 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
         old_switch.wave_width != new_switch.wave_width || old_switch.wave_opacity != new_switch.wave_opacity ||
         old_switch.focus_width != new_switch.focus_width || old_switch.focus_offset != new_switch.focus_offset;
     append_if_changed(false, switch_effects_changed, TokenIdentity::switch_effects, changed, count);
+    append_if_changed(before.checkbox().metrics(), after.checkbox().metrics(), TokenIdentity::checkbox_metrics, changed,
+                      count);
+    append_if_changed(before.checkbox().colors(), after.checkbox().colors(), TokenIdentity::checkbox_colors, changed,
+                      count);
+    append_if_changed(before.checkbox().effects(), after.checkbox().effects(), TokenIdentity::checkbox_effects, changed,
+                      count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
@@ -607,6 +613,24 @@ const detail::InputTokenSet& ThemeScope::input_shadows() const {
     ensure_owner_thread();
     record(TokenIdentity::input_shadows);
     return detail::InputTokenAccess::get(*snapshot_);
+}
+
+const CheckboxThemeToken& ThemeScope::checkbox_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::checkbox_metrics);
+    return snapshot_->checkbox();
+}
+
+const CheckboxThemeToken& ThemeScope::checkbox_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::checkbox_colors);
+    return snapshot_->checkbox();
+}
+
+const CheckboxThemeToken& ThemeScope::checkbox_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::checkbox_effects);
+    return snapshot_->checkbox();
 }
 
 const SwitchThemeToken& ThemeScope::switch_geometry() const {
@@ -1014,6 +1038,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Tooltip.order",
         "alias.opacityLoading",
         "Switch.effects",
+        "Checkbox.metrics",
+        "Checkbox.colors",
+        "Checkbox.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1052,6 +1079,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_colors:
     case TokenIdentity::input_colors:
     case TokenIdentity::switch_colors:
+    case TokenIdentity::checkbox_colors:
     case TokenIdentity::alias_opacity_loading:
     case TokenIdentity::text_color:
     case TokenIdentity::typography_colors:
@@ -1073,6 +1101,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_border_width:
     case TokenIdentity::button_shadows:
     case TokenIdentity::switch_effects:
+    case TokenIdentity::checkbox_effects:
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
@@ -1105,6 +1134,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
     case TokenIdentity::switch_geometry:
+    case TokenIdentity::checkbox_metrics:
     case TokenIdentity::button_padding_inline:
     case TokenIdentity::button_icon_gap:
     case TokenIdentity::typography_metrics:

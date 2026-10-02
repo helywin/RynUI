@@ -28,6 +28,19 @@ struct SwitchRefState final {
     }
 };
 
+struct CheckboxRefState final {
+    std::thread::id owner{std::this_thread::get_id()};
+    bool binding{};
+    std::function<bool()> focus;
+    std::function<bool()> blur;
+
+    void ensure_owner() const {
+        if (owner != std::this_thread::get_id()) {
+            throw std::logic_error("CheckboxRef requires its owner thread");
+        }
+    }
+};
+
 namespace {
 thread_local SelectionComponentHost* active_selection_host{};
 constexpr std::size_t switch_loading_segments = 8;
@@ -74,6 +87,13 @@ void validate(SwitchDirection direction) {
     if (direction != SwitchDirection::LeftToRight && direction != SwitchDirection::RightToLeft) {
         throw std::invalid_argument("Switch direction is invalid");
     }
+}
+
+SwitchDirection selection_direction(CheckboxDirection direction) {
+    if (direction != CheckboxDirection::LeftToRight && direction != CheckboxDirection::RightToLeft) {
+        throw std::invalid_argument("Checkbox direction is invalid");
+    }
+    return direction == CheckboxDirection::RightToLeft ? SwitchDirection::RightToLeft : SwitchDirection::LeftToRight;
 }
 
 void translate_content(runtime::NodeStore& nodes, runtime::NodeId id, runtime::Point delta) {
@@ -188,6 +208,8 @@ struct SelectionState final {
     runtime::ComponentId unchecked_content;
     SwitchDirection direction{SwitchDirection::LeftToRight};
     std::shared_ptr<SwitchRefState> ref;
+    std::shared_ptr<CheckboxRefState> checkbox_ref;
+    bool own_direction{};
     bool wave{true};
     bool wave_active{};
     float wave_progress{1};
@@ -242,6 +264,7 @@ struct CheckboxGroupState final {
     bool disabled{};
     bool reconciling{};
     CheckboxGroupOrientation orientation{CheckboxGroupOrientation::Horizontal};
+    CheckboxDirection direction{CheckboxDirection::LeftToRight};
     std::optional<CheckboxGroupOrientation> layout_orientation;
     float layout_gap{-1};
     std::function<void(const CheckboxValues&)> on_change;
@@ -350,10 +373,12 @@ void SelectionComponentHost::on_dispose() noexcept {
 void SelectionComponentHost::synchronize_auxiliary_motion() {
     for (const auto& item : mounted_) {
         auto* state = find(item.component);
-        if (!state || state->checkbox || state->radio) {
+        if (!state || state->radio) {
             continue;
         }
-        synchronize_spinner(*state);
+        if (!state->checkbox) {
+            synchronize_spinner(*state);
+        }
         if (state->wave_active &&
             !animation::resolve_motion_policy(services_->components().theme_scope(item.component)->snapshot(),
                                               services_->motion_preference())
@@ -445,6 +470,11 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
         state.ref->focus = {};
         state.ref->blur = {};
     }
+    if (state.checkbox_ref) {
+        state.checkbox_ref->binding = false;
+        state.checkbox_ref->focus = {};
+        state.checkbox_ref->blur = {};
+    }
     services_->pointer().cancel_interaction(state.interaction);
     if (state.animation_scope.valid()) {
         static_cast<void>(services_->animations().dispose_scope(state.animation_scope));
@@ -499,6 +529,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         const auto own_callback = state->on_change;
         const auto group_callback = group->on_change;
         const auto click = state->on_click;
+        start_wave(*state);
         if (!group->controlled) {
             apply_checkbox_group_value(group_id, candidate);
         }
@@ -523,7 +554,7 @@ void SelectionComponentHost::activate(runtime::ComponentId id) {
         }
         update_visuals(*state);
     }
-    if (!state->checkbox && !state->radio) {
+    if (!state->radio) {
         start_wave(*state);
     }
     if (callback) {
@@ -671,6 +702,18 @@ void SelectionComponentHost::update_checkbox_group_layout(CheckboxGroupState& gr
     group.layout_orientation = group.orientation;
     services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+}
+
+void SelectionComponentHost::apply_checkbox_group_direction(runtime::ComponentId id, CheckboxDirection value) {
+    const auto direction = selection_direction(value);
+    if (auto* group = services_->components().state<CheckboxGroupState>(id); group && group->direction != value) {
+        group->direction = value;
+        for (const auto option : group->options) {
+            if (const auto* state = find(option); state && !state->own_direction) {
+                apply_direction(option, direction);
+            }
+        }
+    }
 }
 
 void SelectionComponentHost::apply_group_value(runtime::ComponentId id, std::optional<String> value) {
@@ -909,7 +952,16 @@ void SelectionComponentHost::apply_direction(runtime::ComponentId id, SwitchDire
     validate(value);
     if (auto* state = find(id); state && state->direction != value) {
         state->direction = value;
-        services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+        if (state->checkbox) {
+            if (state->spacer.valid()) {
+                services_->nodes().require(state->spacer).external_layout.order =
+                    value == SwitchDirection::RightToLeft ? 1 : 0;
+            }
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry |
+                                                           runtime::DirtyFlags::HitTest);
+        } else {
+            services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry);
+        }
     }
 }
 
@@ -924,16 +976,18 @@ void SelectionComponentHost::apply_wave(runtime::ComponentId id, bool value) {
 
 void SelectionComponentHost::start_wave(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
-    const auto& token = theme.switch_token();
+    const float width = state.checkbox ? theme.checkbox().wave_width : theme.switch_token().wave_width;
+    const float opacity = state.checkbox ? theme.checkbox().wave_opacity : theme.switch_token().wave_opacity;
     const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
     const auto spec = policy.transition(animation::MotionDurationToken::slow, animation::MotionEasingToken::ease_out);
     if (!state.wave || state.disabled || state.loading || !services_->focus().state().window_active ||
-        !policy.enabled() || token.wave_width <= 0 || token.wave_opacity <= 0 ||
-        spec.duration.count_microseconds() == 0) {
+        !policy.enabled() || width <= 0 || opacity <= 0 || spec.duration.count_microseconds() == 0) {
         return;
     }
     stop_wave(state);
-    state.wave_color = state.checked ? token.checked_background : token.unchecked_background;
+    state.wave_color = state.checkbox  ? theme.checkbox().primary
+                       : state.checked ? theme.switch_token().checked_background
+                                       : theme.switch_token().unchecked_background;
     state.wave_active = true;
     state.wave_progress = 0;
     state.wave_animation =
@@ -969,18 +1023,24 @@ void SelectionComponentHost::publish_wave(SelectionState& state) {
         state.wave_range = services_->surfaces().create_content_range(state.wave_fragment, {});
     }
     const auto& node = services_->nodes().require(state.node);
-    const auto& token = services_->components().theme_scope(state.component)->snapshot().switch_token();
+    const auto& theme = services_->components().theme_scope(state.component)->snapshot();
+    const auto& checkbox = theme.checkbox();
+    const auto& token = theme.switch_token();
+    const auto shape =
+        state.checkbox ? state.effects.shape
+                       : graphics::LogicalRoundedRect{node.bounds, std::min(node.bounds.width, node.bounds.height) / 2};
     const auto effect = graphics::make_outline_effect(
-        {node.bounds, std::min(node.bounds.width, node.bounds.height) / 2}, token.wave_width,
-        token.wave_spread * state.wave_progress, state.wave_color, token.wave_opacity * (1 - state.wave_progress),
-        node.translation, window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt);
+        shape, state.checkbox ? checkbox.wave_width : token.wave_width,
+        (state.checkbox ? checkbox.wave_spread : token.wave_spread) * state.wave_progress, state.wave_color,
+        (state.checkbox ? checkbox.wave_opacity : token.wave_opacity) * (1 - state.wave_progress), node.translation,
+        window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt);
     services_->surfaces().update_content_effects(state.wave_range, std::span{&effect, 1});
 }
 
 void SelectionComponentHost::on_window_active(bool active) {
     if (!active) {
         for (const auto& item : mounted_) {
-            if (auto* state = find(item.component); state && !state->checkbox && !state->radio) {
+            if (auto* state = find(item.component); state && !state->radio) {
                 stop_wave(*state);
             }
         }
@@ -1068,20 +1128,21 @@ void SelectionComponentHost::update_layout(SelectionState& state) {
     const auto& theme = services_->components().theme_scope(state.component)->snapshot();
     const auto token = resolve_tokens(theme, state.size);
     if (state.checkbox || state.radio) {
-        const float size = state.radio ? token.radio_size : token.checkbox_size;
-        if (state.layout_height == size && state.layout_gap == token.label_gap) {
+        const float size = state.radio ? token.radio_size : theme.checkbox().size;
+        const float gap = state.checkbox ? theme.checkbox().label_gap : token.label_gap;
+        if (state.layout_height == size && state.layout_gap == gap) {
             return;
         }
         layout::FlexLayout model;
         model.direction = layout::FlexDirection::horizontal;
-        model.main_gap = token.label_gap;
+        model.main_gap = gap;
         model.align = layout::FlexAlign::center;
         services_->layout().set_layout(state.node, model);
         if (state.spacer.valid()) {
             services_->layout().set_layout(state.spacer, layout::LeafLayout{{size, size}});
         }
         state.layout_height = size;
-        state.layout_gap = token.label_gap;
+        state.layout_gap = gap;
     } else {
         if (state.layout_width == token.switch_width && state.layout_height == token.switch_height &&
             state.layout_inner_min == token.inner_min_margin && state.layout_inner_max == token.inner_max_margin) {
@@ -1134,7 +1195,7 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
         }
         state.effects.shadows = switch_token.handle_shadow;
         state.effects.shadow_fill_offset = 1;
-        state.effects.shadow_opacity = faded ? 0 : 1;
+        state.effects.shadow_opacity = faded ? 0.0F : 1.0F;
         const Color track =
             state.checked
                 ? (state.hovered ? switch_token.checked_hover_background : switch_token.checked_background)
@@ -1167,29 +1228,45 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
         set_material(state.visuals[2], state.disabled ? token.disabled_foreground : token.radio_dot,
                      state.checked ? 1.0F : 0.0F);
     } else {
+        const auto& checkbox = theme.checkbox();
+        if (state.wave_active && (!state.wave || state.disabled || !services_->focus().state().window_active ||
+                                  !animation::resolve_motion_policy(theme, services_->motion_preference()).enabled() ||
+                                  checkbox.wave_width <= 0 || checkbox.wave_opacity <= 0)) {
+            stop_wave(state);
+        }
         const bool mixed = state.indeterminate;
-        const Color border = state.disabled            ? token.box_border
-                             : state.checked && !mixed ? token.on
-                             : state.hovered           ? token.on
-                                                       : token.box_border;
-        const Color fill = state.disabled            ? token.disabled_background
-                           : state.checked && !mixed ? (state.hovered ? token.on_hover : token.on)
-                                                     : token.box_background;
+        const bool pressed = state.press.pressed() || state.focus.keyboard_pressed;
+        const Color active = pressed         ? checkbox.primary_active
+                             : state.hovered ? checkbox.primary_hover
+                                             : checkbox.primary;
+        const Color border = state.disabled             ? checkbox.border
+                             : state.checked && !mixed  ? active
+                             : state.hovered || pressed ? checkbox.primary
+                                                        : checkbox.border;
+        const Color fill = state.disabled            ? checkbox.disabled_background
+                           : state.checked && !mixed ? active
+                                                     : checkbox.background;
         set_material(state.visuals[0], border);
         set_material(state.visuals[1], fill);
         for (std::size_t segment = 0; segment < checkbox_check_segments; ++segment) {
-            set_material(state.visuals[2 + segment], state.disabled ? token.disabled_foreground : token.checkmark,
+            set_material(state.visuals[2 + segment], state.disabled ? checkbox.disabled_foreground : checkbox.checkmark,
                          state.checked && !mixed ? 1.0F : 0.0F);
         }
-        set_material(state.visuals[checkbox_indeterminate_layer], state.disabled ? token.disabled_foreground : token.on,
-                     mixed ? 1.0F : 0.0F);
+        set_material(state.visuals[checkbox_indeterminate_layer],
+                     state.disabled ? checkbox.disabled_foreground : checkbox.primary, mixed ? 1.0F : 0.0F);
     }
     const bool is_switch = !state.checkbox && !state.radio;
-    state.effects.focus_color = is_switch ? theme.switch_token().focus_color : token.focus;
+    state.effects.focus_color = is_switch        ? theme.switch_token().focus_color
+                                : state.checkbox ? theme.checkbox().focus
+                                                 : token.focus;
     state.effects.focus_opacity = state.focus.focus_visible && !state.disabled ? (is_switch ? opacity : 1.0F) : 0.0F;
-    state.effects.focus_width = is_switch ? theme.switch_token().focus_width : 2.0F;
-    state.effects.focus_enabled = !is_switch || state.effects.focus_width > 0;
-    state.effects.focus_offset = is_switch ? theme.switch_token().focus_offset : 0.0F;
+    state.effects.focus_width = is_switch        ? theme.switch_token().focus_width
+                                : state.checkbox ? theme.checkbox().focus_width
+                                                 : 2.0F;
+    state.effects.focus_enabled = state.effects.focus_width > 0;
+    state.effects.focus_offset = is_switch        ? theme.switch_token().focus_offset
+                                 : state.checkbox ? theme.checkbox().focus_offset
+                                                  : 0.0F;
     if (state.surface.valid()) {
         const auto visual_changes = services_->surfaces().update_surface(state.surface, state.visuals);
         const auto effect_changes = services_->surfaces().update_effects(state.surface, state.effects);
@@ -1197,14 +1274,19 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
             services_->dirty().invalidate(state.node, runtime::DirtyFlags::Material);
         }
     }
-    const auto label_color = !state.checkbox && !state.radio ? Color::rgba8(255, 255, 255)
-                             : state.disabled                ? token.disabled_foreground
-                                                             : theme.alias().color_text;
+    const auto label_color = state.checkbox
+                                 ? (state.disabled ? theme.checkbox().disabled_foreground : theme.checkbox().label)
+                             : !state.radio   ? Color::rgba8(255, 255, 255)
+                             : state.disabled ? token.disabled_foreground
+                                              : theme.alias().color_text;
     static_cast<void>(state.label_foreground.set(channels(label_color)));
-    static_cast<void>(
-        state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
-                                    is_switch ? theme.switch_token().content_font_size : theme.text().font_size,
-                                    is_switch ? token.switch_height : theme.text().line_height}));
+    static_cast<void>(state.label_typography.set({theme.text().font_family, theme.text().font_weight, false,
+                                                  is_switch        ? theme.switch_token().content_font_size
+                                                  : state.checkbox ? theme.checkbox().font_size
+                                                                   : theme.text().font_size,
+                                                  is_switch        ? token.switch_height
+                                                  : state.checkbox ? theme.checkbox().line_height
+                                                                   : theme.text().line_height}));
     synchronize_switch_content(state);
 }
 
@@ -1252,13 +1334,16 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         set_geometry(next[2], {ring.x + (ring.width - dot) / 2.0F, ring.y + (ring.height - dot) / 2.0F, dot, dot},
                      viewport, dot / 2.0F, node.translation);
     } else {
-        const runtime::Rect box{rect.x, rect.y + (rect.height - token.checkbox_size) / 2.0F, token.checkbox_size,
-                                token.checkbox_size};
-        set_geometry(next[0], box, viewport, theme.map().border_radius_small, node.translation);
+        const auto& checkbox = theme.checkbox();
+        const auto spacer = services_->nodes().require(state.spacer).bounds;
+        const runtime::Rect box{spacer.x, rect.y + (rect.height - checkbox.size) / 2.0F, checkbox.size, checkbox.size};
+        set_geometry(next[0], box, viewport, checkbox.border_radius, node.translation);
+        const float inset = checkbox.line_width;
         set_geometry(next[1],
-                     {box.x + 1.0F, box.y + 1.0F, std::max(0.0F, box.width - 2.0F), std::max(0.0F, box.height - 2.0F)},
-                     viewport, std::max(0.0F, theme.map().border_radius_small - 1.0F), node.translation);
-        const float stroke = std::max(1.5F, box.width * 0.15F);
+                     {box.x + inset, box.y + inset, std::max(0.0F, box.width - 2 * inset),
+                      std::max(0.0F, box.height - 2 * inset)},
+                     viewport, std::max(0.0F, checkbox.border_radius - inset), node.translation);
+        const float stroke = checkbox.check_width;
         for (std::size_t segment = 0; segment < checkbox_check_segments; ++segment) {
             const float progress = static_cast<float>(segment) / static_cast<float>(checkbox_check_segments - 1);
             const float x =
@@ -1270,7 +1355,7 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                 {box.x + box.width * x - stroke / 2.0F, box.y + box.height * y - stroke / 2.0F, stroke, stroke},
                 viewport, stroke / 2.0F, node.translation);
         }
-        const float side = token.indicator_size;
+        const float side = checkbox.indeterminate_size;
         set_geometry(next[checkbox_indeterminate_layer],
                      {box.x + (box.width - side) / 2.0F, box.y + (box.height - side) / 2.0F, side, side}, viewport,
                      0.0F, node.translation);
@@ -1286,12 +1371,13 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                                                             state.visuals[1].corner_radius};
         effects.ancestor_clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
     }
-    const float indicator_size = state.radio ? token.radio_size : token.checkbox_size;
+    const float indicator_size = state.radio ? token.radio_size : theme.checkbox().size;
+    const float indicator_x = state.checkbox ? services_->nodes().require(state.spacer).bounds.x : rect.x;
     effects.shape = {
         state.checkbox || state.radio
-            ? runtime::Rect{rect.x, rect.y + (rect.height - indicator_size) / 2.0F, indicator_size, indicator_size}
+            ? runtime::Rect{indicator_x, rect.y + (rect.height - indicator_size) / 2.0F, indicator_size, indicator_size}
             : rect,
-        state.checkbox ? theme.map().border_radius_small
+        state.checkbox ? theme.checkbox().border_radius
         : state.radio  ? indicator_size / 2.0F
                        : std::min(rect.width, rect.height) / 2.0F};
     effects.translation = node.translation;
@@ -1488,6 +1574,16 @@ struct CheckboxPropsAccess {
         if (props.checked_ && props.default_checked_) {
             throw std::invalid_argument("Checkbox checked and defaultChecked are mutually exclusive");
         }
+        const auto reference = props.ref_ ? props.ref_->state_ : nullptr;
+        if (reference) {
+            reference->ensure_owner();
+            if (reference->binding) {
+                throw std::invalid_argument("CheckboxRef is already bound");
+            }
+        }
+        if (props.direction_) {
+            static_cast<void>(selection_direction(read_prop(*props.direction_)));
+        }
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<SelectionState>();
         auto& state = build.state<SelectionState>(component);
@@ -1523,11 +1619,22 @@ struct CheckboxPropsAccess {
         state.own_disabled = read_prop(props.disabled_);
         state.disabled = state.own_disabled || (group && group->disabled);
         state.on_change = props.on_change_;
+        state.on_click = props.on_click_;
+        state.checkbox_ref = reference;
+        state.own_direction = props.direction_.has_value();
+        const auto direction = props.direction_ ? read_prop(*props.direction_)
+                               : group          ? group->direction
+                                                : CheckboxDirection::LeftToRight;
+        state.direction = selection_direction(direction);
+        state.wave = read_prop(props.wave_);
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.find(component)) {
                 host.release_selection(*current);
             }
         });
+        if (reference) {
+            reference->binding = true;
+        }
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
                                       host.services_->dirty());
@@ -1536,6 +1643,10 @@ struct CheckboxPropsAccess {
         host.update_visuals(state);
         state.surface = host.services_->surfaces().create_surface(component, state.node, state.fragment, state.visuals,
                                                                   state.effects, state.interaction);
+        state.animation_scope = host.services_->animations().create_scope();
+        state.wave_target = host.services_->animations().register_target(
+            state.animation_scope, host, animation::AnimationValueKind::scalar,
+            animation::AnimationDirtyDomain::geometry | animation::AnimationDirtyDomain::animation);
         auto& scope = build.scope(component);
         if (props.checked_) {
             static_cast<void>(connect_prop(scope, *props.checked_,
@@ -1546,6 +1657,13 @@ struct CheckboxPropsAccess {
         }));
         static_cast<void>(connect_prop(scope, props.indeterminate_,
                                        [&host, component](bool value) { host.apply_indeterminate(component, value); }));
+        static_cast<void>(
+            connect_prop(scope, props.wave_, [&host, component](bool value) { host.apply_wave(component, value); }));
+        if (props.direction_) {
+            static_cast<void>(connect_prop(scope, *props.direction_, [&host, component](CheckboxDirection value) {
+                host.apply_direction(component, selection_direction(value));
+            }));
+        }
         const auto theme = host.services_->components().theme_scope(component);
         state.theme_subscription = theme->capture(
             [&host, component](theme_runtime::DirtyPhase) {
@@ -1555,13 +1673,16 @@ struct CheckboxPropsAccess {
                 }
             },
             [theme] {
-                static_cast<void>(theme->map());
-                static_cast<void>(theme->alias());
+                static_cast<void>(theme->checkbox_metrics());
+                static_cast<void>(theme->checkbox_colors());
+                static_cast<void>(theme->checkbox_effects());
+                static_cast<void>(theme->motion_enabled());
                 static_cast<void>(theme->text());
             });
         mount_selection_label(build, *host.services_, state, component, label,
-                              host.services_->components().theme_scope(component)->snapshot().map().control_height /
-                                  2.0F);
+                              host.services_->components().theme_scope(component)->snapshot().checkbox().size);
+        host.services_->nodes().require(state.spacer).external_layout.order =
+            state.direction == SwitchDirection::RightToLeft ? 1 : 0;
         for (const auto interaction : host.services_->interactions().declaration_order()) {
             const auto* record = host.services_->interactions().find(interaction);
             if (!record || record->component == component) {
@@ -1577,6 +1698,28 @@ struct CheckboxPropsAccess {
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, true});
         if (group) {
             group->options.push_back(component);
+        }
+        const auto focus = [&host, component] {
+            const auto* state = host.find(component);
+            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+                return false;
+            }
+            host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);
+            return true;
+        };
+        if (reference) {
+            reference->focus = focus;
+            reference->blur = [&host, component] {
+                const auto* state = host.find(component);
+                if (!state || host.services_->focus().state().focused != state->interaction) {
+                    return false;
+                }
+                host.services_->focus().defer_focus({}, input::FocusModality::keyboard);
+                return true;
+            };
+        }
+        if (props.auto_focus_) {
+            static_cast<void>(focus());
         }
         return component;
     }
@@ -1600,6 +1743,8 @@ struct CheckboxGroupPropsAccess {
         if (orientation != CheckboxGroupOrientation::Horizontal && orientation != CheckboxGroupOrientation::Vertical) {
             throw std::invalid_argument("CheckboxGroup orientation is invalid");
         }
+        const auto direction = read_prop(props.direction_);
+        static_cast<void>(selection_direction(direction));
         auto& build = runtime::require_component_build_context();
         const auto component = build.mount_component<CheckboxGroupState>();
         auto& state = build.state<CheckboxGroupState>(component);
@@ -1609,6 +1754,7 @@ struct CheckboxGroupPropsAccess {
         state.value = initial_value;
         state.disabled = read_prop(props.disabled_);
         state.orientation = orientation;
+        state.direction = direction;
         state.on_change = props.on_change_;
         build.on_resource_cleanup(component, [&host, component] {
             if (auto* current = host.services_->components().state<CheckboxGroupState>(component)) {
@@ -1653,6 +1799,9 @@ struct CheckboxGroupPropsAccess {
         }));
         static_cast<void>(connect_prop(scope, props.orientation_, [&host, component](CheckboxGroupOrientation value) {
             host.apply_checkbox_group_orientation(component, value);
+        }));
+        static_cast<void>(connect_prop(scope, props.direction_, [&host, component](CheckboxDirection value) {
+            host.apply_checkbox_group_direction(component, value);
         }));
         if (props.options_) {
             static_cast<void>(
@@ -1948,6 +2097,34 @@ bool SwitchRef::blur() const {
 
 void Checkbox(CheckboxProps props, std::optional<CheckboxLabel> label) {
     static_cast<void>(detail::CheckboxPropsAccess::mount(props, label));
+}
+
+CheckboxRef::CheckboxRef() : state_(std::make_shared<detail::CheckboxRefState>()) {}
+
+bool CheckboxRef::bound() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    return bool(state_->focus);
+}
+
+bool CheckboxRef::focus() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->focus;
+    return callback && callback();
+}
+
+bool CheckboxRef::blur() const {
+    if (!state_) {
+        return false;
+    }
+    state_->ensure_owner();
+    const auto callback = state_->blur;
+    return callback && callback();
 }
 
 void CheckboxGroup(CheckboxGroupProps props, std::optional<CheckboxGroupContent> content) {

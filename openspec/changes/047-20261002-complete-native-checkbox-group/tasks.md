@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：焦点、主题与有限反馈
 
-- [ ] 2.1 实现 CheckboxRef/autoFocus/onClick、RTL、独立 Checkbox 主题算法/几何/色彩/标签/focus 与 wave 生命周期，更新 identity/JSON/goldens 和 API 文档；Windows windows-msvc-headless Debug/Release 验证 ref 绑定/跨线程/销毁、按压/禁用/半选/主题隔离/finite wave/reduced motion/idle，保持已有 golden 字段，运行受影响 Text/selection/Theme/animation 合同。
+- [x] 2.1 实现 CheckboxRef/autoFocus/onClick、RTL、独立 Checkbox 主题算法/几何/色彩/标签/focus 与 wave 生命周期，更新 identity/JSON/goldens 和 API 文档；Windows windows-msvc-headless Debug/Release 验证 ref 绑定/跨线程/销毁、按压/禁用/半选/主题隔离/finite wave/reduced motion/idle，保持已有 golden 字段，运行受影响 Text/selection/Theme/animation 合同。九项合同 Debug 9/9（2.33s，补充身份隔离断言后 Checkbox 再通过）、Release 9/9（1.55s）；五份 golden 仅新增 Checkbox 区段和 identity，既有字段逐项不变；格式检查 405 文件通过。
 
 ## 3. 平台通用：Gallery 与集成
 

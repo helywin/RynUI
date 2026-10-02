@@ -104,6 +104,7 @@ private:
     void apply_checkbox_group_value(runtime::ComponentId, CheckboxValues);
     void apply_checkbox_group_disabled(runtime::ComponentId, bool);
     void apply_checkbox_group_orientation(runtime::ComponentId, CheckboxGroupOrientation);
+    void apply_checkbox_group_direction(runtime::ComponentId, CheckboxDirection);
     void apply_checkbox_options(runtime::ComponentId, std::vector<CheckboxOption>);
     void update_checkbox_group_layout(CheckboxGroupState&);
     [[nodiscard]] runtime::ComponentId parent_checkbox_group(runtime::ComponentId) const;

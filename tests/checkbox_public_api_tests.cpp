@@ -13,6 +13,15 @@ int main() {
     ryn::CheckboxGroupProps props;
     props.options(options).value(value).disabled(false).orientation(ryn::CheckboxGroupOrientation::Vertical);
     ryn::CheckboxProps child;
-    child.value(ryn::String{u8"one"}).skipGroup(true).defaultChecked(false);
+    ryn::CheckboxRef reference;
+    child.value(ryn::String{u8"one"})
+        .skipGroup(true)
+        .defaultChecked(false)
+        .ref(reference)
+        .autoFocus(true)
+        .direction(ryn::CheckboxDirection::RightToLeft)
+        .wave(true)
+        .onClick([](bool) {});
+    props.direction(ryn::CheckboxDirection::RightToLeft);
     return 0;
 }

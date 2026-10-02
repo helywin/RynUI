@@ -100,6 +100,9 @@ enum class TokenIdentity : std::uint8_t {
     tooltip_order,
     alias_opacity_loading,
     switch_effects,
+    checkbox_metrics,
+    checkbox_colors,
+    checkbox_effects,
     count,
 };
 

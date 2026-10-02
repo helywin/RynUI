@@ -6,6 +6,7 @@
 #include <ryn/string.hpp>
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -15,6 +16,7 @@ namespace ryn {
 namespace detail {
 struct CheckboxPropsAccess;
 struct CheckboxGroupPropsAccess;
+struct CheckboxRefState;
 } // namespace detail
 
 using CheckboxValue = std::variant<String, double, bool>;
@@ -29,6 +31,20 @@ struct CheckboxOption final {
 };
 
 enum class CheckboxGroupOrientation { Horizontal, Vertical };
+
+enum class CheckboxDirection { LeftToRight, RightToLeft };
+
+class CheckboxRef final {
+public:
+    CheckboxRef();
+    [[nodiscard]] bool bound() const;
+    [[nodiscard]] bool focus() const;
+    [[nodiscard]] bool blur() const;
+
+private:
+    friend struct detail::CheckboxPropsAccess;
+    std::shared_ptr<detail::CheckboxRefState> state_;
+};
 
 class CheckboxProps final {
 public:
@@ -67,6 +83,31 @@ public:
         return *this;
     }
 
+    CheckboxProps& direction(Prop<CheckboxDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxProps& wave(Prop<bool> value) {
+        wave_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxProps& ref(CheckboxRef value) {
+        ref_ = std::move(value);
+        return *this;
+    }
+
+    CheckboxProps& autoFocus(bool value) {
+        auto_focus_ = value;
+        return *this;
+    }
+
+    CheckboxProps& onClick(std::function<void(bool)> value) {
+        on_click_ = std::move(value);
+        return *this;
+    }
+
     CheckboxProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -81,6 +122,11 @@ private:
     std::function<void(bool)> on_change_;
     std::optional<CheckboxValue> value_;
     bool skip_group_{};
+    std::optional<Prop<CheckboxDirection>> direction_;
+    Prop<bool> wave_{true};
+    std::optional<CheckboxRef> ref_;
+    bool auto_focus_{};
+    std::function<void(bool)> on_click_;
     LayoutStyle layout_;
 };
 
@@ -117,6 +163,11 @@ public:
         return *this;
     }
 
+    CheckboxGroupProps& direction(Prop<CheckboxDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
     CheckboxGroupProps& onChange(std::function<void(const CheckboxValues&)> callback) {
         on_change_ = std::move(callback);
         return *this;
@@ -134,6 +185,7 @@ private:
     std::optional<CheckboxValues> default_value_;
     Prop<bool> disabled_{false};
     Prop<CheckboxGroupOrientation> orientation_{CheckboxGroupOrientation::Horizontal};
+    Prop<CheckboxDirection> direction_{CheckboxDirection::LeftToRight};
     std::function<void(const CheckboxValues&)> on_change_;
     LayoutStyle layout_;
 };

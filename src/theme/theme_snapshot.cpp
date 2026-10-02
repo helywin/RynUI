@@ -939,6 +939,96 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
             alias.focus_outline_offset};
 }
 
+CheckboxThemeToken derive_checkbox(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                   const ThemeAliasToken& alias) {
+    return {map.control_height / 2,
+            map.font_size_large / 2,
+            seed.line_width,
+            2 * seed.line_width,
+            map.border_radius_small,
+            map.size_xs,
+            map.font_size,
+            map.font_size * map.line_height,
+            alias.line_width_focus,
+            alias.focus_outline_offset,
+            6,
+            2,
+            0.2F,
+            map.color_primary,
+            map.color_primary_hover,
+            map.color_primary_active,
+            alias.color_background_container,
+            alias.color_border,
+            alias.color_background_container_disabled,
+            alias.color_text_disabled,
+            Color::rgba8(255, 255, 255),
+            alias.color_text,
+            alias.color_focus_outline};
+}
+
+void apply_checkbox_override(CheckboxThemeToken& token, const CheckboxTokenOverride& override) {
+    token.size = fixed_length(override.size, token.size, "Checkbox size must be positive", true);
+    token.indeterminate_size = fixed_length(override.indeterminate_size, token.indeterminate_size,
+                                            "Checkbox indeterminate size must be non-negative");
+    token.line_width = fixed_length(override.line_width, token.line_width, "Checkbox line width must be non-negative");
+    token.check_width =
+        fixed_length(override.check_width, token.check_width, "Checkbox check width must be non-negative");
+    token.border_radius =
+        fixed_length(override.border_radius, token.border_radius, "Checkbox radius must be non-negative");
+    token.label_gap = fixed_length(override.label_gap, token.label_gap, "Checkbox label gap must be non-negative");
+    token.font_size = fixed_length(override.font_size, token.font_size, "Checkbox font size must be positive", true);
+    token.line_height =
+        fixed_length(override.line_height, token.line_height, "Checkbox line height must be positive", true);
+    token.focus_width =
+        fixed_length(override.focus_width, token.focus_width, "Checkbox focus width must be non-negative");
+    token.focus_offset =
+        fixed_length(override.focus_offset, token.focus_offset, "Checkbox focus offset must be non-negative");
+    token.wave_spread =
+        fixed_length(override.wave_spread, token.wave_spread, "Checkbox wave spread must be non-negative");
+    token.wave_width = fixed_length(override.wave_width, token.wave_width, "Checkbox wave width must be non-negative");
+    if (override.wave_opacity) {
+        if (!detail::finite(*override.wave_opacity) || *override.wave_opacity < 0 || *override.wave_opacity > 1) {
+            throw std::invalid_argument("Checkbox wave opacity must be finite and in [0, 1]");
+        }
+        token.wave_opacity = *override.wave_opacity;
+    }
+    if (token.indeterminate_size > token.size || 2 * token.line_width > token.size || token.check_width > token.size ||
+        !detail::finite(token.wave_spread + token.wave_width) ||
+        !detail::finite(token.size + token.label_gap + token.line_height + token.focus_width + token.focus_offset)) {
+        throw std::invalid_argument("Checkbox visual geometry exceeds its indicator or finite extents");
+    }
+    if (override.primary) {
+        token.primary = *override.primary;
+    }
+    if (override.primary_hover) {
+        token.primary_hover = *override.primary_hover;
+    }
+    if (override.primary_active) {
+        token.primary_active = *override.primary_active;
+    }
+    if (override.background) {
+        token.background = *override.background;
+    }
+    if (override.border) {
+        token.border = *override.border;
+    }
+    if (override.disabled_background) {
+        token.disabled_background = *override.disabled_background;
+    }
+    if (override.disabled_foreground) {
+        token.disabled_foreground = *override.disabled_foreground;
+    }
+    if (override.checkmark) {
+        token.checkmark = *override.checkmark;
+    }
+    if (override.label) {
+        token.label = *override.label;
+    }
+    if (override.focus) {
+        token.focus = *override.focus;
+    }
+}
+
 SliderThemeToken derive_slider(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
                                std::span<const ThemeAlgorithm> algorithms) {
     const bool dark = std::find(algorithms.begin(), algorithms.end(), ThemeAlgorithm::Dark) != algorithms.end();
@@ -1317,9 +1407,9 @@ void append_color(std::ostringstream& stream, Color color) {
 [[nodiscard]] std::string serialize_snapshot(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                                             const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                                             const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                             const detail::InputTokenSet& input,
+                                             const CheckboxThemeToken& checkbox, const TypographyThemeToken& typography,
+                                             const DividerThemeToken& divider, const SliderThemeToken& slider,
+                                             const TooltipThemeToken& tooltip, const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -1455,7 +1545,31 @@ void append_color(std::ostringstream& stream, Color color) {
         append_color(stream, switch_colors[index]);
     }
     stream << "],\"focusWidth\":" << switch_token.focus_width << ",\"focusOffset\":" << switch_token.focus_offset
-           << "},\"slider\":{\"metrics\":[";
+           << "},\"checkbox\":{\"metrics\":[";
+    const auto checkbox_metrics = checkbox.metrics();
+    for (std::size_t i = 0; i < checkbox_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << checkbox_metrics[i];
+    }
+    stream << "],\"effects\":[";
+    const auto checkbox_effects = checkbox.effects();
+    for (std::size_t i = 0; i < checkbox_effects.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << checkbox_effects[i];
+    }
+    stream << "],\"colors\":[";
+    const auto checkbox_colors = checkbox.colors();
+    for (std::size_t i = 0; i < checkbox_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, checkbox_colors[i]);
+    }
+    stream << "]},\"slider\":{\"metrics\":[";
     const auto slider_metrics = slider.metrics.values();
     for (std::size_t i = 0; i < slider_metrics.size(); ++i) {
         if (i) {
@@ -1689,13 +1803,12 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
 }
 
-[[nodiscard]] std::uint64_t snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
-                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
-                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                              const detail::InputTokenSet& input,
-                                              std::span<const ThemeAlgorithm> algorithms) noexcept {
+[[nodiscard]] std::uint64_t
+snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                  const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
+                  const CheckboxThemeToken& checkbox, const TypographyThemeToken& typography,
+                  const DividerThemeToken& divider, const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -1869,6 +1982,15 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     for (const auto color : switch_token.colors()) {
         hash_color(hash, color);
     }
+    for (const auto value : checkbox.metrics()) {
+        hash_float(hash, value);
+    }
+    for (const auto value : checkbox.effects()) {
+        hash_float(hash, value);
+    }
+    for (const auto value : checkbox.colors()) {
+        hash_color(hash, value);
+    }
     hash_typography(hash, typography);
     hash_divider(hash, divider);
     for (auto value : slider.metrics.values()) {
@@ -1916,17 +2038,17 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
 
 ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
-                             TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
-                             TooltipThemeToken tooltip, std::shared_ptr<const detail::InputTokenSet> input,
-                             std::vector<ThemeAlgorithm> algorithms)
+                             CheckboxThemeToken checkbox, TypographyThemeToken typography, DividerThemeToken divider,
+                             SliderThemeToken slider, TooltipThemeToken tooltip,
+                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
-      text_(std::move(text)), switch_token_(std::move(switch_token)), typography_(std::move(typography)),
-      divider_(std::move(divider)), slider_(std::move(slider)), tooltip_(std::move(tooltip)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, typography_, divider_, slider_,
-                                  tooltip_, *input_, algorithms_);
-    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, typography_, divider_,
-                                          slider_, tooltip_, *input_, algorithms_, identity_);
+      text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
+      typography_(std::move(typography)), divider_(std::move(divider)), slider_(std::move(slider)),
+      tooltip_(std::move(tooltip)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, typography_, divider_,
+                                  slider_, tooltip_, *input_, algorithms_);
+    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, typography_,
+                                          divider_, slider_, tooltip_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -1951,6 +2073,10 @@ const TextThemeToken& ThemeSnapshot::text() const noexcept {
 
 const SwitchThemeToken& ThemeSnapshot::switch_token() const noexcept {
     return switch_token_;
+}
+
+const CheckboxThemeToken& ThemeSnapshot::checkbox() const noexcept {
+    return checkbox_;
 }
 
 const TypographyThemeToken& ThemeSnapshot::typography() const noexcept {
@@ -1992,8 +2118,9 @@ const std::string& ThemeSnapshot::diagnostic_json() const noexcept {
 bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
     return left.seed_ == right.seed_ && left.map_ == right.map_ && left.alias_ == right.alias_ &&
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
-           left.typography_ == right.typography_ && left.divider_ == right.divider_ && left.slider_ == right.slider_ &&
-           left.tooltip_ == right.tooltip_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.checkbox_ == right.checkbox_ && left.typography_ == right.typography_ &&
+           left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -2085,6 +2212,22 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         switch_token = derive_switch(map, alias);
     }
     apply_switch_override(switch_token, config.switch_.tokens);
+    CheckboxThemeToken checkbox;
+    const bool inherit_checkbox = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.checkbox.algorithm && config.checkbox.seed == SeedTokenOverride{};
+    if (inherit_checkbox) {
+        checkbox = parent->checkbox();
+    } else if (config.checkbox.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.checkbox.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        checkbox =
+            derive_checkbox(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+    } else {
+        checkbox = derive_checkbox(seed, map, alias);
+    }
+    apply_checkbox_override(checkbox, config.checkbox.tokens);
     const bool inherit_parent_typography = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.typography.algorithm &&
@@ -2151,9 +2294,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     }
     apply_tooltip_override(tooltip, config.tooltip.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-                         std::move(switch_token), std::move(typography), std::move(divider), std::move(slider),
-                         std::move(tooltip), std::make_shared<const detail::InputTokenSet>(std::move(input)),
-                         std::move(algorithms));
+                         std::move(switch_token), std::move(checkbox), std::move(typography), std::move(divider),
+                         std::move(slider), std::move(tooltip),
+                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 
 } // namespace ryn

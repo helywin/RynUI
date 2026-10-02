@@ -208,6 +208,42 @@ struct SwitchThemeConfig final {
     friend bool operator==(const SwitchThemeConfig&, const SwitchThemeConfig&) = default;
 };
 
+// Native adaptation of Checkbox's component-local map/alias style values.
+// The locked upstream ComponentToken interface is empty.
+struct CheckboxTokenOverride final {
+    std::optional<LogicalLength> size;
+    std::optional<LogicalLength> indeterminate_size;
+    std::optional<LogicalLength> line_width;
+    std::optional<LogicalLength> check_width;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> label_gap;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    std::optional<LogicalLength> wave_spread;
+    std::optional<LogicalLength> wave_width;
+    std::optional<float> wave_opacity;
+    std::optional<Color> primary;
+    std::optional<Color> primary_hover;
+    std::optional<Color> primary_active;
+    std::optional<Color> background;
+    std::optional<Color> border;
+    std::optional<Color> disabled_background;
+    std::optional<Color> disabled_foreground;
+    std::optional<Color> checkmark;
+    std::optional<Color> label;
+    std::optional<Color> focus;
+    friend bool operator==(const CheckboxTokenOverride&, const CheckboxTokenOverride&) = default;
+};
+
+struct CheckboxThemeConfig final {
+    CheckboxTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CheckboxThemeConfig&, const CheckboxThemeConfig&) = default;
+};
+
 enum class TypographyLevel : std::uint8_t {
     H1,
     H2,
@@ -404,6 +440,7 @@ struct ThemeConfig final {
     TextThemeConfig text;
     InputThemeConfig input;
     SwitchThemeConfig switch_;
+    CheckboxThemeConfig checkbox;
     TypographyThemeConfig typography;
     DividerThemeConfig divider;
     SliderThemeConfig slider;
@@ -623,6 +660,47 @@ struct SwitchThemeToken final {
     friend constexpr bool operator==(const SwitchThemeToken&, const SwitchThemeToken&) = default;
 };
 
+struct CheckboxThemeToken final {
+    float size{};
+    float indeterminate_size{};
+    float line_width{};
+    float check_width{};
+    float border_radius{};
+    float label_gap{};
+    float font_size{};
+    float line_height{};
+    float focus_width{};
+    float focus_offset{};
+    float wave_spread{6};
+    float wave_width{2};
+    float wave_opacity{0.2F};
+    Color primary;
+    Color primary_hover;
+    Color primary_active;
+    Color background;
+    Color border;
+    Color disabled_background;
+    Color disabled_foreground;
+    Color checkmark;
+    Color label;
+    Color focus;
+
+    [[nodiscard]] constexpr std::array<float, 8> metrics() const {
+        return {size, indeterminate_size, line_width, check_width, border_radius, label_gap, font_size, line_height};
+    }
+
+    [[nodiscard]] constexpr std::array<float, 5> effects() const {
+        return {focus_width, focus_offset, wave_spread, wave_width, wave_opacity};
+    }
+
+    [[nodiscard]] constexpr std::array<Color, 10> colors() const {
+        return {primary,   primary_hover, primary_active, background, border, disabled_background, disabled_foreground,
+                checkmark, label,         focus};
+    }
+
+    friend constexpr bool operator==(const CheckboxThemeToken&, const CheckboxThemeToken&) = default;
+};
+
 // Inline `code` / `kbd` appearance. Sizes stay as ratios of the resolved font
 // size so padding tracks the surrounding typography. These have no upstream
 // Component Token; they are a RynUI typed adaptation of the locked reference
@@ -807,6 +885,7 @@ public:
     [[nodiscard]] const ButtonThemeToken& button() const noexcept;
     [[nodiscard]] const TextThemeToken& text() const noexcept;
     [[nodiscard]] const SwitchThemeToken& switch_token() const noexcept;
+    [[nodiscard]] const CheckboxThemeToken& checkbox() const noexcept;
     [[nodiscard]] const TypographyThemeToken& typography() const noexcept;
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
@@ -824,9 +903,10 @@ private:
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
 
     ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
-                  TextThemeToken text, SwitchThemeToken switch_token, TypographyThemeToken typography,
-                  DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
+                  TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
+                  TypographyThemeToken typography, DividerThemeToken divider, SliderThemeToken slider,
+                  TooltipThemeToken tooltip, std::shared_ptr<const detail::InputTokenSet> input,
+                  std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -834,6 +914,7 @@ private:
     ButtonThemeToken button_;
     TextThemeToken text_;
     SwitchThemeToken switch_token_;
+    CheckboxThemeToken checkbox_;
     TypographyThemeToken typography_;
     DividerThemeToken divider_;
     SliderThemeToken slider_;

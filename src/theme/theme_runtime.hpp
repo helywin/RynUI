@@ -68,6 +68,9 @@ public:
     [[nodiscard]] const SwitchThemeToken& switch_geometry() const;
     [[nodiscard]] const SwitchThemeToken& switch_colors() const;
     [[nodiscard]] const SwitchThemeToken& switch_effects() const;
+    [[nodiscard]] const CheckboxThemeToken& checkbox_metrics() const;
+    [[nodiscard]] const CheckboxThemeToken& checkbox_colors() const;
+    [[nodiscard]] const CheckboxThemeToken& checkbox_effects() const;
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
