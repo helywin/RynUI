@@ -1,6 +1,7 @@
 #pragma once
 
 #include "component/component_scene.hpp"
+#include "animation/runtime.hpp"
 #include "component/retained_surface_service.hpp"
 #include "input/interaction_registry.hpp"
 #include "layout/layout_engine.hpp"
@@ -9,6 +10,7 @@
 #include "text/text_scene_service.hpp"
 
 #include <ryn/text.hpp>
+#include <ryn/icon.hpp>
 #include <ryn/typography.hpp>
 
 #include <functional>
@@ -18,6 +20,16 @@
 #include <vector>
 
 namespace ryn::detail {
+
+class WindowComponentServices;
+
+struct IconComponentSnapshot final {
+    IconSource source;
+    std::vector<TextSceneId> layers;
+    float angle_degrees{};
+    bool spin{};
+    bool visible{};
+};
 
 using ThemeFontResolver =
     std::function<std::vector<font::FontIdentity>(SystemFontFamily, std::uint32_t, bool, std::uint32_t)>;
@@ -60,7 +72,7 @@ struct TextComponentSyncProfile final {
     std::uint64_t offscreen_skipped{};
 };
 
-class TextComponentHost final {
+class TextComponentHost final : public animation::AnimationTargetSink {
 public:
     TextComponentHost(runtime::NodeStore& nodes, layout::LayoutEngine& layout, runtime::DirtyQueues& dirty,
                       TextSceneService& text_scene, std::vector<font::FontIdentity> default_font_chain);
@@ -107,8 +119,19 @@ public:
     [[nodiscard]] runtime::SemanticTypography resolved_typography(runtime::ComponentId component) const;
     void reserve_ellipsis_inline(runtime::ComponentId component, float width);
 
+    void attach_window_services(WindowComponentServices& services) noexcept {
+        window_services_ = &services;
+    }
+
+    void synchronize_icon_motion();
+    [[nodiscard]] IconComponentSnapshot icon_snapshot(runtime::ComponentId component) const;
+    void apply(animation::AnimationId animation, animation::AnimationTargetId target,
+               const animation::AnimationValue& value, animation::AnimationDirtyDomain dirty_domain) override;
+    void completed(animation::AnimationId animation, animation::AnimationTargetId target) override;
+
 private:
     friend void mount_text_component(const TextProps& props, bool icon_font);
+    friend void mount_icon_component(const IconProps& props);
     friend void mount_typography_component(const TypographyProps& props, TypographySemantics::Role role,
                                            const Prop<TypographyLevel>& level);
 
@@ -118,11 +141,17 @@ private:
     void apply_theme(runtime::ComponentId component);
     void subscribe_theme(runtime::ComponentId component);
     void synchronize_decorations(runtime::ComponentId component, runtime::Size viewport, runtime::Rect clip);
+    void set_icon_source(runtime::ComponentId component, IconSource source);
+    void update_icon_colors(runtime::ComponentId component);
+    void update_icon_motion(runtime::ComponentId component);
+    void dispose_icon(runtime::ComponentId component) noexcept;
+    bool synchronize_icon_layers(runtime::ComponentId component, const graphics::GlyphPlacement& placement);
 
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
     TextSceneService* text_scene_;
+    WindowComponentServices* window_services_{};
     ThemeFontResolver font_resolver_;
     component::ComponentSceneComposer* composer_{nullptr};
     component::RetainedSurfaceService* surfaces_{nullptr};
@@ -136,9 +165,11 @@ private:
     bool layout_performed_last_sync_{false};
     bool sync_profiling_enabled_{};
     TextComponentSyncProfile sync_profile_{};
+    std::vector<std::pair<animation::AnimationTargetId, runtime::ComponentId>> icon_animation_bindings_;
 };
 
 void mount_text_component(const TextProps& props, bool icon_font = false);
+void mount_icon_component(const IconProps& props);
 void mount_typography_component(const TypographyProps& props, TypographySemantics::Role role,
                                 const Prop<TypographyLevel>& level);
 

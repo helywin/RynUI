@@ -2235,6 +2235,11 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
 
 } // namespace
 
+Color detail::palette_lightest(Color primary) {
+    const auto color = palette_variant(primary, 5, true);
+    return Color(color.red(), color.green(), color.blue(), primary.alpha());
+}
+
 Color detail::semantic_status_background(const ThemeSnapshot& theme, InputStatus status) {
     const auto base = status == InputStatus::Error ? theme.seed().color_error : theme.seed().color_warning;
     const bool dark = std::ranges::find(theme.algorithms(), ThemeAlgorithm::Dark) != theme.algorithms().end();

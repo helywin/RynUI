@@ -495,6 +495,12 @@ const ThemeAliasToken& ThemeScope::alias() const {
     return snapshot_->alias();
 }
 
+Color ThemeScope::primary_color() const {
+    ensure_owner_thread();
+    record(TokenIdentity::map_color_primary);
+    return snapshot_->map().color_primary;
+}
+
 const ThemeMapToken& ThemeScope::map() const {
     ensure_owner_thread();
     for (auto identity = TokenIdentity::map_color_primary; identity <= TokenIdentity::map_motion_enabled;

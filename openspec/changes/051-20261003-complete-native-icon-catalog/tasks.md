@@ -10,7 +10,7 @@
 
 ## 3. Icon 双色与 motion（平台通用）
 
-- [ ] 3.1 实现 typed reactive source/name、双色主副色、Theme 默认、逐层同节点保留 scene、rotate/spin；motion/reduced-motion/失活与销毁清理。更新公开 API/docs，加入 layer 顺序/对齐/主题/状态/身份/缓存/idle/slot 与旧 action 图标回归，HEADLESS D/R 受影响测试及格式/OpenSpec/diff 通过后提交。
+- [x] 3.1 实现 typed reactive source/name、双色主副色、Theme 默认、逐层同节点保留 scene、rotate/spin；motion/reduced-motion/失活与销毁清理。更新公开 API/docs，加入 layer 顺序/对齐/主题/状态/身份/缓存/idle/slot 与旧 action 图标回归，HEADLESS D/R 受影响测试及格式/OpenSpec/diff 通过后提交。
 
 ## 4. Typed 自定义向量（平台通用）
 

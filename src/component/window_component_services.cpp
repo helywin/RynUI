@@ -76,6 +76,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     });
     text_.attach_component_scene(scene_composer_);
     text_.attach_surfaces(surfaces_);
+    text_.attach_window_services(*this);
     animations_.reserve(256, 64, 256);
     animations_.set_schedule_observer(&frame_requests);
     typography_ = std::make_unique<TypographyComponentHost>(*this);
@@ -217,6 +218,7 @@ void WindowComponentServices::set_window_active(bool active) {
         pointer_.cancel_all();
     }
     focus_.set_window_active(active);
+    text_.synchronize_icon_motion();
     for (auto* participant : participants_) {
         participant->on_window_active(active);
     }
@@ -227,6 +229,7 @@ void WindowComponentServices::set_motion_preference(animation::MotionPreference 
         return;
     }
     motion_preference_ = preference;
+    text_.synchronize_icon_motion();
     for (auto* participant : participants_) {
         participant->synchronize_auxiliary_motion();
     }
@@ -234,6 +237,7 @@ void WindowComponentServices::set_motion_preference(animation::MotionPreference 
 
 std::size_t WindowComponentServices::tick_animations(animation::AnimationTime frame_time) {
     animation_time_ = frame_time;
+    text_.synchronize_icon_motion();
     auto changed = animations_.tick(frame_time);
     for (auto* participant : participants_) {
         changed += participant->tick_auxiliary(frame_time);

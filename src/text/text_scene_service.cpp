@@ -116,11 +116,14 @@ TextSceneId TextSceneService::create(runtime::NodeId node, String content,
         };
         slots_[index].record = std::move(record);
         ordered_ids_.push_back(id);
+        paint_ids_.push_back(id);
         ++live_records_;
         ++counters_.creates;
         frame_requests_->request_frame();
         return id;
     } catch (...) {
+        std::erase(ordered_ids_, id);
+        std::erase(paint_ids_, id);
         slots_[index].record.reset();
         try {
             free_slots_.push_back(index);
@@ -150,11 +153,14 @@ TextSceneId TextSceneService::create_view(TextSceneId source, runtime::NodeId no
         record->primitive.instances = {static_cast<std::uint32_t>(glyph_scene_.instances().size()), 0};
         slots_[index].record = std::move(record);
         ordered_ids_.push_back(id);
+        paint_ids_.push_back(id);
         ++live_records_;
         ++counters_.creates;
         frame_requests_->request_frame();
         return id;
     } catch (...) {
+        std::erase(ordered_ids_, id);
+        std::erase(paint_ids_, id);
         slots_[index].record.reset();
         try {
             free_slots_.push_back(index);
@@ -162,6 +168,25 @@ TextSceneId TextSceneService::create_view(TextSceneId source, runtime::NodeId no
         }
         throw;
     }
+}
+
+bool TextSceneService::place_after(TextSceneId id, TextSceneId previous) {
+    ensure_owner_thread();
+    static_cast<void>(require_record(id));
+    static_cast<void>(require_record(previous));
+    if (id == previous) {
+        throw std::invalid_argument("A glyph layer cannot follow itself");
+    }
+    const auto position = std::ranges::find(paint_ids_, id);
+    const auto anchor = std::ranges::find(paint_ids_, previous);
+    if (anchor + 1 == position) {
+        return false;
+    }
+    std::erase(paint_ids_, id);
+    paint_ids_.insert(std::ranges::find(paint_ids_, previous) + 1, id);
+    invalidate_ordered_scene();
+    frame_requests_->request_frame();
+    return true;
 }
 
 bool TextSceneService::destroy(TextSceneId id) {
@@ -174,6 +199,7 @@ bool TextSceneService::destroy(TextSceneId id) {
     static_cast<void>(glyph_scene_.instances().replace(range, {}));
     remap_following(id, -static_cast<std::int64_t>(range.count));
     std::erase(ordered_ids_, id);
+    std::erase(paint_ids_, id);
     release_slot(id);
     ++counters_.destroys;
     if (range.count != 0) {
@@ -767,7 +793,7 @@ void TextSceneService::invalidate_ordered_scene() {
 
 void TextSceneService::rebuild_ordered_scene() {
     ordered_scene_.clear();
-    for (const auto id : ordered_ids_) {
+    for (const auto id : paint_ids_) {
         ordered_scene_.append_glyph(require_record(id).primitive);
     }
     ++counters_.ordered_scene_rebuilds;

@@ -73,6 +73,8 @@ public:
     // Independent retained draw range/material, shared shaping ownership.
     // A view keeps the shaped state alive if its source record is destroyed.
     [[nodiscard]] TextSceneId create_view(TextSceneId source, runtime::NodeId node);
+    // Draw order is independent of physical instance storage/compaction order.
+    bool place_after(TextSceneId id, TextSceneId previous);
 
     bool set_content(TextSceneId id, String content);
     bool set_font_chain(TextSceneId id, std::vector<font::FontIdentity> fallback_chain);
@@ -168,6 +170,7 @@ private:
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
     std::vector<TextSceneId> ordered_ids_;
+    std::vector<TextSceneId> paint_ids_;
     std::size_t live_records_{0};
     std::size_t next_declaration_order_{0};
     bool ordered_scene_batch_active_{};

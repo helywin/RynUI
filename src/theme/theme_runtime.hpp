@@ -94,6 +94,7 @@ public:
     [[nodiscard]] const DividerThemeToken& divider_typography() const;
 
     [[nodiscard]] Color text_color() const;
+    [[nodiscard]] Color primary_color() const;
     [[nodiscard]] SystemFontFamily text_font_family() const;
     [[nodiscard]] std::uint32_t text_font_weight() const;
     [[nodiscard]] float text_font_size() const;

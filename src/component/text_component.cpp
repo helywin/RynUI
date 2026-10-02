@@ -2,6 +2,10 @@
 
 #include "component/layout_component_context.hpp"
 #include "component/typography_component.hpp"
+#include "component/window_component_services.hpp"
+#include "icons/bundled_icon_catalog.hpp"
+#include "theme/semantic_background.hpp"
+#include "animation/motion_policy.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -33,6 +37,22 @@ struct TextPropsAccess final {
 };
 
 struct IconPropsAccess final {
+    static const auto& source(const IconProps& props) {
+        return props.source_;
+    }
+
+    static const auto& two_tone_color(const IconProps& props) {
+        return props.two_tone_color_;
+    }
+
+    static const auto& rotate(const IconProps& props) {
+        return props.rotate_;
+    }
+
+    static const auto& spin(const IconProps& props) {
+        return props.spin_;
+    }
+
     [[nodiscard]] static const Prop<IconName>& name(const IconProps& props) noexcept {
         return props.name_;
     }
@@ -111,21 +131,52 @@ struct TypographyPropsAccess final {
     }
 };
 
+[[nodiscard]] String icon_glyph_content(char32_t codepoint) {
+    std::array<char, 4> bytes{};
+    std::size_t count{};
+    if (codepoint <= 0xFFFF) {
+        bytes = {static_cast<char>(0xE0 | (codepoint >> 12)), static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)),
+                 static_cast<char>(0x80 | (codepoint & 0x3F)), 0};
+        count = 3;
+    } else {
+        bytes = {static_cast<char>(0xF0 | (codepoint >> 18)), static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)),
+                 static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)), static_cast<char>(0x80 | (codepoint & 0x3F))};
+        count = 4;
+    }
+    return String::from_utf8(std::string_view(bytes.data(), count)).value();
+}
+
 [[nodiscard]] String icon_content(IconName name) {
     const auto index = static_cast<std::uint32_t>(name);
     if (index > static_cast<std::uint32_t>(last_bundled_icon)) {
         throw std::invalid_argument("Icon name is outside the bundled catalog");
     }
-    const char32_t codepoint = 0xE000 + index;
-    const std::array<char, 3> bytes{
-        static_cast<char>(0xE0 | (codepoint >> 12)),
-        static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)),
-        static_cast<char>(0x80 | (codepoint & 0x3F)),
-    };
-    return std::move(String::from_utf8(std::string_view(bytes.data(), bytes.size()))).value();
+    return icon_glyph_content(0xE000 + index);
 }
 
 namespace {
+
+struct IconLayerState final {
+    TextSceneId scene;
+    BundledIconLayer layer;
+};
+
+struct IconState final {
+    IconSource source;
+    std::vector<IconLayerState> layers;
+    std::array<float, 4> inherited_color{};
+    std::optional<IconTwoToneColor> two_tone_color;
+    bool two_tone{};
+    bool visible{true};
+    bool spin{};
+    bool suppress_animation{};
+    float rotate{};
+    float phase{};
+    animation::AnimationScopeId scope;
+    animation::AnimationTargetId target;
+    animation::AnimationId animation;
+    animation::AnimationDuration period;
+};
 
 struct TextComponentState final {
     TextSceneId scene;
@@ -134,6 +185,7 @@ struct TextComponentState final {
     bool semantic_foreground{};
     bool semantic_typography{};
     bool icon_font{};
+    std::optional<IconState> icon;
     // Typography builder state. `semantic` is present only for components
     // declared through `Title`/`Text`/`Paragraph`; the plain `Text`/`Icon`
     // builders leave it empty so their existing behaviour is unchanged.
@@ -380,6 +432,233 @@ void TextComponentHost::reserve_ellipsis_inline(runtime::ComponentId component, 
     }
 }
 
+IconComponentSnapshot TextComponentHost::icon_snapshot(runtime::ComponentId component) const {
+    const auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        throw std::out_of_range("Icon component is stale");
+    }
+    const auto& icon = *state->icon;
+    IconComponentSnapshot result{icon.source, {}, icon.rotate + icon.phase, icon.spin, icon.visible};
+    for (const auto& layer : icon.layers) {
+        result.layers.push_back(layer.scene);
+    }
+    return result;
+}
+
+void TextComponentHost::set_icon_source(runtime::ComponentId component, IconSource source) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        return;
+    }
+    const auto name = source.bundled_name();
+    if (!name) {
+        throw std::invalid_argument("Icon source has no bundled name");
+    }
+    const auto layers = bundled_layers(*name);
+    auto& icon = *state->icon;
+    if (icon.source == source && !icon.layers.empty()) {
+        return;
+    }
+    const auto node = components_.root(component);
+    auto chain = resolve_fonts(state->resolved_typography);
+    const auto pixels = static_cast<std::uint32_t>(std::lround(state->resolved_typography.font_size));
+    chain = {text_scene_->icon_font(chain.front(), pixels)};
+    std::vector<IconLayerState> next;
+    next.reserve(layers.size());
+    std::vector<TextSceneId> created;
+    created.reserve(layers.size());
+    try {
+        for (std::size_t index = 0; index < layers.size(); ++index) {
+            TextSceneId scene;
+            if (index == 0) {
+                scene = state->scene;
+            } else if (index < icon.layers.size()) {
+                scene = icon.layers[index].scene;
+            } else {
+                scene = text_scene_->create(
+                    node, {}, chain, pixels,
+                    {state->resolved_typography.line_height, std::numeric_limits<float>::infinity()});
+                created.push_back(scene);
+            }
+            next.push_back({scene, layers[index]});
+        }
+    } catch (...) {
+        for (const auto scene : created) {
+            static_cast<void>(text_scene_->destroy(scene));
+        }
+        throw;
+    }
+    for (std::size_t index = layers.size(); index < icon.layers.size(); ++index) {
+        static_cast<void>(text_scene_->destroy(icon.layers[index].scene));
+    }
+    icon.source = std::move(source);
+    icon.layers = std::move(next);
+    icon.two_tone = bundled_icon_entry(*name).name.ends_with("TwoTone");
+    for (std::size_t index = 0; index < icon.layers.size(); ++index) {
+        const auto& layer = icon.layers[index];
+        static_cast<void>(
+            text_scene_->set_content(layer.scene, icon.visible ? icon_glyph_content(layer.layer.codepoint) : String{}));
+        static_cast<void>(text_scene_->set_opacity(layer.scene, layer.layer.opacity));
+        if (index > 0) {
+            static_cast<void>(text_scene_->place_after(layer.scene, icon.layers[index - 1].scene));
+        }
+    }
+    static_cast<void>(layout_->set_intrinsic_revision(node, intrinsic_revision(text_scene_->revisions(state->scene))));
+    dirty_->invalidate(node,
+                       runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
+    update_icon_colors(component);
+    subscribe_theme(component);
+}
+
+void TextComponentHost::update_icon_colors(runtime::ComponentId component) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        return;
+    }
+    auto& icon = *state->icon;
+    auto primary = icon.inherited_color;
+    auto secondary = primary;
+    if (icon.two_tone) {
+        const auto color = icon.two_tone_color    ? icon.two_tone_color->primary
+                           : state->explicit_tone ? Color(primary[0], primary[1], primary[2], primary[3])
+                                                  : components_.theme_scope(component)->snapshot().map().color_primary;
+        primary = channels(color);
+        secondary = channels(icon.two_tone_color && icon.two_tone_color->secondary ? *icon.two_tone_color->secondary
+                                                                                   : palette_lightest(color));
+    }
+    bool changed{};
+    for (const auto& layer : icon.layers) {
+        changed = text_scene_->set_color(layer.scene, layer.layer.secondary ? secondary : primary) || changed;
+    }
+    if (changed) {
+        dirty_->invalidate(components_.root(component), runtime::DirtyFlags::Material);
+    }
+}
+
+void TextComponentHost::update_icon_motion(runtime::ComponentId component) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        return;
+    }
+    auto& icon = *state->icon;
+    const auto& theme = components_.theme_scope(component)->snapshot();
+    const auto unit = static_cast<double>(theme.map().motion_unit.count_milliseconds()) * 10'000;
+    const bool enabled = window_services_ && icon.spin && icon.visible && unit > 0 &&
+                         components_.branch_active(component) && window_services_->focus().state().window_active &&
+                         animation::resolve_motion_policy(theme, window_services_->motion_preference()).enabled();
+    const auto period =
+        animation::AnimationDuration::microseconds(static_cast<std::int64_t>(std::clamp(unit, 16'000.0, 60'000'000.0)));
+    if (window_services_ && icon.animation.valid() && (!enabled || icon.period != period)) {
+        const auto previous = icon.animation;
+        icon.animation = {};
+        icon.suppress_animation = true;
+        static_cast<void>(window_services_->animations().cancel(previous, window_services_->animation_time()));
+        icon.suppress_animation = false;
+    }
+    if (!enabled) {
+        if (icon.phase != 0) {
+            icon.phase = 0;
+            dirty_->invalidate(components_.root(component),
+                               runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+        }
+        return;
+    }
+    if (window_services_->animations().contains(icon.animation)) {
+        return;
+    }
+    if (!icon.target.valid()) {
+        icon.scope = window_services_->animations().create_scope();
+        icon.target = window_services_->animations().register_target(
+            icon.scope, *this, animation::AnimationValueKind::scalar,
+            animation::AnimationDirtyDomain::geometry | animation::AnimationDirtyDomain::animation);
+        icon_animation_bindings_.push_back({icon.target, component});
+    }
+    icon.phase = std::fmod(icon.phase, 360.0F);
+    icon.period = period;
+    icon.animation = window_services_->animations().play(
+        icon.target, icon.phase, 360.0F, {{}, period, animation::Easing::linear()}, window_services_->animation_time());
+}
+
+void TextComponentHost::synchronize_icon_motion() {
+    for (const auto& mounted : mounted_texts_) {
+        update_icon_motion(mounted.component);
+    }
+}
+
+void TextComponentHost::apply(animation::AnimationId id, animation::AnimationTargetId target,
+                              const animation::AnimationValue& value, animation::AnimationDirtyDomain) {
+    const auto found = std::ranges::find(icon_animation_bindings_, target,
+                                         &std::pair<animation::AnimationTargetId, runtime::ComponentId>::first);
+    if (found == icon_animation_bindings_.end()) {
+        return;
+    }
+    auto* state = components_.state<TextComponentState>(found->second);
+    if (!state || !state->icon || state->icon->suppress_animation ||
+        (state->icon->animation.valid() && state->icon->animation != id) || !components_.branch_active(found->second)) {
+        return;
+    }
+    state->icon->phase = std::get<float>(value);
+    dirty_->invalidate(components_.root(found->second), runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+}
+
+void TextComponentHost::completed(animation::AnimationId id, animation::AnimationTargetId target) {
+    const auto found = std::ranges::find(icon_animation_bindings_, target,
+                                         &std::pair<animation::AnimationTargetId, runtime::ComponentId>::first);
+    if (found == icon_animation_bindings_.end()) {
+        return;
+    }
+    const auto component = found->second;
+    auto* state = components_.state<TextComponentState>(component);
+    if (state && state->icon && state->icon->animation == id) {
+        state->icon->animation = {};
+        state->icon->phase = 0;
+        update_icon_motion(component);
+    }
+}
+
+void TextComponentHost::dispose_icon(runtime::ComponentId component) noexcept {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        return;
+    }
+    auto& icon = *state->icon;
+    if (window_services_ && icon.scope.valid()) {
+        static_cast<void>(window_services_->animations().dispose_scope(icon.scope));
+    }
+    std::erase_if(icon_animation_bindings_, [component](const auto& value) { return value.second == component; });
+    for (std::size_t index = icon.layers.size(); index > 1; --index) {
+        static_cast<void>(text_scene_->destroy(icon.layers[index - 1].scene));
+    }
+    icon.layers.clear();
+}
+
+bool TextComponentHost::synchronize_icon_layers(runtime::ComponentId component,
+                                                const graphics::GlyphPlacement& placement) {
+    auto* state = components_.state<TextComponentState>(component);
+    if (!state || !state->icon) {
+        return true;
+    }
+    auto& icon = *state->icon;
+    const auto size = state->resolved_typography.font_size;
+    const auto baseline = text_scene_->text_state(state->scene).measurement().first_baseline;
+    const graphics::GlyphTransform transform{{size / 2, baseline - size * .375F}, icon.rotate + icon.phase};
+    for (const auto& layer : icon.layers) {
+        static_cast<void>(text_scene_->set_transform(layer.scene, transform));
+        if (layer.scene == state->scene) {
+            continue;
+        }
+        auto current = placement;
+        current.translation_pixels = text_scene_->set_phase_preserving_scroll_translation(
+            layer.scene, nodes_->require(components_.root(component)).translation);
+        static_cast<void>(
+            text_scene_->set_content_opacity(layer.scene, nodes_->content_opacity(components_.root(component))));
+        if (!text_scene_->synchronize(layer.scene, current)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void TextComponentHost::mount(const Content& content) {
     ActiveTextHostGuard guard(*this);
     LayoutComponentServices services{*nodes_, *layout_, *dirty_};
@@ -475,6 +754,7 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
     if (after_layout) {
         after_layout();
     }
+    synchronize_icon_motion();
     const auto loop_started =
         sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     const auto synchronize_mounted = [&]() {
@@ -496,11 +776,12 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             constexpr float visual_overflow = 32.0F;
             const float left = retained.bounds.x + retained.translation.x;
             const float top = retained.bounds.y + retained.translation.y;
-            if (text_clip.width <= 0.0F || text_clip.height <= 0.0F || retained.bounds.width <= 0.0F ||
-                retained.bounds.height <= 0.0F || left >= text_clip.x + text_clip.width + visual_overflow ||
-                left + retained.bounds.width <= text_clip.x - visual_overflow ||
-                top >= text_clip.y + text_clip.height + visual_overflow ||
-                top + retained.bounds.height <= text_clip.y - visual_overflow) {
+            if ((!state || !state->icon || state->icon->visible) &&
+                (text_clip.width <= 0.0F || text_clip.height <= 0.0F || retained.bounds.width <= 0.0F ||
+                 retained.bounds.height <= 0.0F || left >= text_clip.x + text_clip.width + visual_overflow ||
+                 left + retained.bounds.width <= text_clip.x - visual_overflow ||
+                 top >= text_clip.y + text_clip.height + visual_overflow ||
+                 top + retained.bounds.height <= text_clip.y - visual_overflow)) {
                 if (sync_profiling_enabled_) {
                     ++sync_profile_.offscreen_skipped;
                 }
@@ -511,15 +792,18 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
             const auto sync_started =
                 sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
             static_cast<void>(text_scene_->set_content_opacity(mounted.scene, nodes_->content_opacity(node)));
-            const bool synchronized = text_scene_->synchronize(
-                mounted.scene, {
-                                   {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
-                                   viewport,
-                                   text_clip,
-                                   phase_residual,
-                                   {},
-                                   1.0F,
-                               });
+            const graphics::GlyphPlacement placement{
+                {retained.bounds.x + insets[0], retained.bounds.y + insets[1]},
+                viewport,
+                text_clip,
+                phase_residual,
+                {},
+                1.0F,
+            };
+            if (!synchronize_icon_layers(mounted.component, placement)) {
+                return false;
+            }
+            const bool synchronized = text_scene_->synchronize(mounted.scene, placement);
             if (sync_profiling_enabled_) {
                 ++sync_profile_.mounted_synchronized;
                 sync_profile_.text_scene_nanoseconds +=
@@ -692,29 +976,47 @@ bool TextComponentHost::synchronize_scene_fragments(
             !components_.contains(mounted.component) || !text_scene_->contains(mounted.scene)) {
             continue;
         }
-        const auto& primitive = text_scene_->primitive(mounted.scene);
         const auto interaction = interaction_for(mounted.component);
-        bool same =
-            interaction == mounted.interaction && primitive.draw_ranges.size() == mounted.fragment_commands.size();
-        for (std::size_t index = 0; same && index < primitive.draw_ranges.size(); ++index) {
-            const auto& range = primitive.draw_ranges[index];
-            same = mounted.fragment_commands[index] ==
-                   graphics::SceneDrawCommand{graphics::SceneDrawKind::glyph, range.instances.first,
-                                              range.instances.count, range.atlas_page};
+        const auto* state = components_.state<TextComponentState>(mounted.component);
+        std::size_t count{};
+        const auto visit_scenes = [&](const auto& visit) {
+            if (state && state->icon) {
+                for (const auto& layer : state->icon->layers) {
+                    visit(layer.scene);
+                }
+            } else {
+                visit(mounted.scene);
+            }
+        };
+        visit_scenes([&](TextSceneId scene) { count += text_scene_->primitive(scene).draw_ranges.size(); });
+        bool same = interaction == mounted.interaction && count == mounted.fragment_commands.size();
+        std::size_t index{};
+        if (same) {
+            visit_scenes([&](TextSceneId scene) {
+                for (const auto& range : text_scene_->primitive(scene).draw_ranges) {
+                    same = same && mounted.fragment_commands[index] ==
+                                       graphics::SceneDrawCommand{graphics::SceneDrawKind::glyph, range.instances.first,
+                                                                  range.instances.count, range.atlas_page};
+                    ++index;
+                }
+            });
         }
         if (same) {
             continue;
         }
         std::vector<graphics::SceneDrawCommand> commands;
-        commands.reserve(primitive.draw_ranges.size());
-        for (const auto& range : primitive.draw_ranges) {
-            commands.push_back({
-                graphics::SceneDrawKind::glyph,
-                range.instances.first,
-                range.instances.count,
-                range.atlas_page,
-            });
-        }
+        commands.reserve(count);
+        const auto append_scene = [&](TextSceneId scene) {
+            for (const auto& range : text_scene_->primitive(scene).draw_ranges) {
+                commands.push_back({
+                    graphics::SceneDrawKind::glyph,
+                    range.instances.first,
+                    range.instances.count,
+                    range.atlas_page,
+                });
+            }
+        };
+        visit_scenes(append_scene);
         composer_->set_fragment(*mounted.fragment, commands, interaction);
         mounted.fragment_commands = std::move(commands);
         mounted.interaction = interaction;
@@ -769,6 +1071,13 @@ bool TextComponentHost::set_font_resolver(ThemeFontResolver font_resolver) {
             chain = {
                 text_scene_->icon_font(chain.front(), static_cast<std::uint32_t>(std::lround(typography.font_size)))};
         }
+        if (state->icon) {
+            for (const auto& layer : state->icon->layers) {
+                if (layer.scene != state->scene) {
+                    static_cast<void>(text_scene_->set_font_chain(layer.scene, chain));
+                }
+            }
+        }
         if (!text_scene_->set_font_chain(state->scene, std::move(chain))) {
             continue;
         }
@@ -813,6 +1122,18 @@ bool TextComponentHost::apply_typography(runtime::ComponentId component, runtime
         changed;
     changed = text_scene_->set_line_height(state->scene, typography.line_height) || changed;
     state->resolved_typography = typography;
+    if (state->icon) {
+        auto icon_chain = resolve_fonts(typography);
+        const auto pixels = static_cast<std::uint32_t>(std::lround(typography.font_size));
+        icon_chain = {text_scene_->icon_font(icon_chain.front(), pixels)};
+        for (const auto& layer : state->icon->layers) {
+            if (layer.scene != state->scene) {
+                static_cast<void>(text_scene_->set_font_chain(layer.scene, icon_chain));
+                static_cast<void>(text_scene_->set_pixel_size(layer.scene, pixels));
+                static_cast<void>(text_scene_->set_line_height(layer.scene, typography.line_height));
+            }
+        }
+    }
     if (changed) {
         const auto node = components_.root(component);
         static_cast<void>(layout_->set_intrinsic_revision(
@@ -861,9 +1182,16 @@ void TextComponentHost::apply_theme(runtime::ComponentId component) {
         }
     } else if (!state->semantic_foreground) {
         const auto color = state->explicit_tone ? tone_color(theme, state->tone) : theme.text().color;
-        if (text_scene_->set_color(state->scene, channels(color))) {
+        if (state->icon) {
+            state->icon->inherited_color = channels(color);
+            update_icon_colors(component);
+        } else if (text_scene_->set_color(state->scene, channels(color))) {
             dirty_->invalidate(node, runtime::DirtyFlags::Material);
         }
+    }
+    if (state->icon) {
+        update_icon_colors(component);
+        update_icon_motion(component);
     }
 }
 
@@ -875,7 +1203,7 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
     state->theme_subscription.reset();
     const auto theme = components_.theme_scope(component);
     const bool semantic = state->typography.has_value();
-    if (!semantic && state->semantic_foreground && state->semantic_typography) {
+    if (!semantic && !state->icon && state->semantic_foreground && state->semantic_typography) {
         return;
     }
     state->theme_subscription = theme->capture(
@@ -895,6 +1223,13 @@ void TextComponentHost::subscribe_theme(runtime::ComponentId component) {
             }
         },
         [theme, state, semantic] {
+            if (state->icon) {
+                if (state->icon->two_tone && !state->icon->two_tone_color && !state->explicit_tone) {
+                    static_cast<void>(theme->primary_color());
+                }
+                static_cast<void>(theme->motion_enabled());
+                static_cast<void>(theme->motion_unit());
+            }
             if (semantic) {
                 // A semantic component resolves size and weight from the
                 // Typography Component Token group. The inline token group is a
@@ -1016,8 +1351,13 @@ void mount_text_component(const TextProps& props, bool icon_font) {
             dirty->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                         runtime::DirtyFlags::Geometry);
         }));
-    const auto apply_color = [text_scene = host.text_scene_, dirty = host.dirty_, scene,
+    const auto apply_color = [&host, component, text_scene = host.text_scene_, dirty = host.dirty_, scene,
                               node](std::array<float, 4> color) {
+        if (auto* current = host.components_.state<TextComponentState>(component); current && current->icon) {
+            current->icon->inherited_color = color;
+            host.update_icon_colors(component);
+            return;
+        }
         if (text_scene->set_color(scene, color)) {
             dirty->invalidate(node, runtime::DirtyFlags::Material);
         }
@@ -1047,6 +1387,99 @@ void mount_text_component(const TextProps& props, bool icon_font) {
     host.dirty_->invalidate(node,
                             runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout | runtime::DirtyFlags::Geometry);
     host.record_mounted_text(component, scene, fragment);
+}
+
+void mount_icon_component(const IconProps& props) {
+    if (!active_text_host) {
+        throw std::logic_error("ryn::Icon requires an active TextComponentHost");
+    }
+    auto& host = *active_text_host;
+    const auto source = IconPropsAccess::source(props) ? read_prop(*IconPropsAccess::source(props))
+                                                       : IconSource{read_prop(IconPropsAccess::name(props))};
+    if (!source.bundled_name()) {
+        throw std::invalid_argument("Icon source is invalid");
+    }
+    static_cast<void>(bundled_icon_entry(*source.bundled_name()));
+    const auto angle = read_prop(IconPropsAccess::rotate(props));
+    if (!std::isfinite(angle)) {
+        throw std::invalid_argument("Icon rotation must be finite");
+    }
+    TextProps text;
+    text.content(String{});
+    text.layout(IconPropsAccess::layout(props));
+    if (const auto& tone = IconPropsAccess::tone(props)) {
+        text.tone(*tone);
+    }
+    mount_text_component(text, true);
+    const auto component = host.mounted_texts_.back().component;
+    auto& build = runtime::require_component_build_context();
+    auto& state = *host.components_.state<TextComponentState>(component);
+    auto& icon = state.icon.emplace();
+    icon.inherited_color = host.text_scene_->text_state(state.scene).material().color;
+    icon.visible = read_prop(IconPropsAccess::visible(props));
+    icon.rotate = angle;
+    icon.spin = read_prop(IconPropsAccess::spin(props));
+    if (const auto& color = IconPropsAccess::two_tone_color(props)) {
+        icon.two_tone_color = read_prop(*color);
+    }
+    build.on_resource_cleanup(component, [&host, component] { host.dispose_icon(component); });
+    host.set_icon_source(component, source);
+    host.update_icon_motion(component);
+    auto& scope = build.scope(component);
+    if (const auto& source_prop = IconPropsAccess::source(props)) {
+        static_cast<void>(connect_prop(scope, *source_prop, [&host, component](IconSource value) {
+            host.set_icon_source(component, std::move(value));
+        }));
+    } else {
+        static_cast<void>(connect_prop(scope, IconPropsAccess::name(props), [&host, component](IconName name) {
+            host.set_icon_source(component, IconSource{name});
+        }));
+    }
+    if (const auto& color = IconPropsAccess::two_tone_color(props)) {
+        static_cast<void>(connect_prop(scope, *color, [&host, component](IconTwoToneColor value) {
+            auto* state = host.components_.state<TextComponentState>(component);
+            if (state && state->icon) {
+                state->icon->two_tone_color = value;
+                host.update_icon_colors(component);
+            }
+        }));
+    }
+    static_cast<void>(connect_prop(scope, IconPropsAccess::rotate(props), [&host, component](float value) {
+        if (!std::isfinite(value)) {
+            throw std::invalid_argument("Icon rotation must be finite");
+        }
+        auto* state = host.components_.state<TextComponentState>(component);
+        if (state && state->icon && state->icon->rotate != value) {
+            state->icon->rotate = value;
+            host.dirty_->invalidate(host.components_.root(component), runtime::DirtyFlags::Geometry);
+        }
+    }));
+    static_cast<void>(connect_prop(scope, IconPropsAccess::spin(props), [&host, component](bool value) {
+        auto* state = host.components_.state<TextComponentState>(component);
+        if (state && state->icon) {
+            state->icon->spin = value;
+            host.update_icon_motion(component);
+        }
+    }));
+    static_cast<void>(connect_prop(scope, IconPropsAccess::visible(props), [&host, component](bool value) {
+        auto* state = host.components_.state<TextComponentState>(component);
+        if (!state || !state->icon || state->icon->visible == value) {
+            return;
+        }
+        auto& icon = *state->icon;
+        icon.visible = value;
+        for (const auto& layer : icon.layers) {
+            static_cast<void>(host.text_scene_->set_content(
+                layer.scene, value ? icon_glyph_content(layer.layer.codepoint) : String{}));
+        }
+        const auto node = host.components_.root(component);
+        static_cast<void>(
+            host.layout_->set_intrinsic_revision(node, intrinsic_revision(host.text_scene_->revisions(state->scene))));
+        host.dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                          runtime::DirtyFlags::Geometry);
+        host.update_icon_motion(component);
+    }));
+    host.subscribe_theme(component);
 }
 
 // Semantic `Title`/`Text`/`Paragraph` mount into the same host as plain `Text`
@@ -1252,17 +1685,7 @@ void Text(TextProps props) {
 }
 
 void Icon(IconProps props) {
-    TextProps text;
-    const auto name = detail::IconPropsAccess::name(props);
-    const auto visible = detail::IconPropsAccess::visible(props);
-    text.content(bind([name, visible] {
-        return detail::read_prop(visible) ? detail::icon_content(detail::read_prop(name)) : String{};
-    }));
-    if (const auto& tone = detail::IconPropsAccess::tone(props)) {
-        text.tone(*tone);
-    }
-    text.layout(detail::IconPropsAccess::layout(props));
-    detail::mount_text_component(text, true);
+    detail::mount_icon_component(props);
 }
 
 void Title(TitleProps props) {
