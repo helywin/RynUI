@@ -509,6 +509,22 @@ void radio_tokens_and_corner_math() {
             "joined fill did not square only inner corners");
 }
 
+void constrained_button_geometry() {
+    Fixture fixture;
+    detail::SelectionComponentHost host{fixture.services};
+    Signal<LogicalLength> width{dp(0)};
+    host.mount(Content{[&] {
+        RadioButton(RadioProps{}.layout(LayoutStyle{}.width(width)), RadioLabel{[] { Text(u8"Constrained"); }});
+    }});
+    fixture.synchronize();
+    const auto item = host.mounted().front();
+    require(fixture.nodes.require(item.node).bounds.width == 0, "button ignored zero-width constraint");
+    width.set(dp(4));
+    fixture.synchronize();
+    fixture.services.focus().request_focus(item.interaction, FocusModality::keyboard);
+    require(host.snapshot(item.component).focus.focus_visible, "narrow button lost focus");
+}
+
 void finite_feedback() {
     for (const bool button : {false, true}) {
         Fixture fixture;
@@ -611,6 +627,7 @@ int main() {
         buttons_and_local_theme();
         dynamic_button_edges();
         radio_tokens_and_corner_math();
+        constrained_button_geometry();
         finite_feedback();
         std::cout << "radio features tests passed\n";
         return 0;

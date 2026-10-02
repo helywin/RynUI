@@ -1869,6 +1869,9 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
                          : state.radio_size == RadioSize::Large ? theme.radio().button_radius_large
                                                                 : theme.radio().button_radius)
                       : std::min(rect.width, rect.height) / 2.0F};
+    if (state.radio && state.radio_button) {
+        effects.shape.radius = std::min(effects.shape.radius, std::min(rect.width, rect.height) / 2.0F);
+    }
     effects.translation = node.translation;
     if (effects != state.effects) {
         state.effects = effects;

@@ -812,7 +812,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 31 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 178,
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 179,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -827,7 +827,7 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 30000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 154,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 158,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
