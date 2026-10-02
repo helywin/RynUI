@@ -1,0 +1,39 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start  56: rynui.theme_algorithm
+ 1/15 Test  #56: rynui.theme_algorithm ................   Passed    0.10 sec
+      Start  58: rynui.theme_runtime
+ 2/15 Test  #58: rynui.theme_runtime ..................   Passed    0.09 sec
+      Start  78: rynui.selection_component
+ 3/15 Test  #78: rynui.selection_component ............   Passed    0.57 sec
+      Start  79: rynui.switch_features
+ 4/15 Test  #79: rynui.switch_features ................   Passed    0.31 sec
+      Start  81: rynui.checkbox_group
+ 5/15 Test  #81: rynui.checkbox_group .................   Passed    0.43 sec
+      Start  84: rynui.radio_component
+ 6/15 Test  #84: rynui.radio_component ................   Passed    0.49 sec
+      Start  85: rynui.radio_features
+ 7/15 Test  #85: rynui.radio_features .................   Passed    0.60 sec
+      Start 119: rynui.button_scene_service
+ 8/15 Test #119: rynui.button_scene_service ...........   Passed    0.03 sec
+      Start 148: rynui.token_gallery_frame
+ 9/15 Test #148: rynui.token_gallery_frame ............   Passed   24.17 sec
+      Start 178: rynui.logical_scene_packing
+10/15 Test #178: rynui.logical_scene_packing ..........   Passed    0.01 sec
+      Start 185: rynui.rounded_effect_math
+11/15 Test #185: rynui.rounded_effect_math ............   Passed    0.01 sec
+      Start 186: rynui.rounded_effect_store
+12/15 Test #186: rynui.rounded_effect_store ...........   Passed    0.01 sec
+      Start 187: rynui.rounded_effect_scene
+13/15 Test #187: rynui.rounded_effect_scene ...........   Passed    0.01 sec
+      Start 189: rynui.rounded_effect_gpu
+14/15 Test #189: rynui.rounded_effect_gpu .............   Passed    0.01 sec
+      Start 190: rynui.rounded_effect_gpu_resources
+15/15 Test #190: rynui.rounded_effect_gpu_resources ...   Passed    0.02 sec
+
+100% tests passed out of 15
+
+Total Test time (real) =  26.88 sec

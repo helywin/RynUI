@@ -76,5 +76,6 @@ int run_button_acceptance(int argc, char** argv);
 int run_divider_acceptance(int argc, char** argv);
 int run_switch_acceptance(int argc, char** argv);
 int run_checkbox_acceptance(int argc, char** argv);
+int run_radio_acceptance(int argc, char** argv);
 
 } // namespace rynui::example

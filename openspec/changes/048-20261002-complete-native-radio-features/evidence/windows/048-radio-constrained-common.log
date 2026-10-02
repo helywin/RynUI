@@ -1,0 +1,28 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/5] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_features.dir\Debug\__\radio_features_tests.cpp.obj
+[2/5] Building CXX object src\CMakeFiles\rynui_components.dir\Debug\component\selection_component.cpp.obj
+[3/5] Linking CXX static library src\Debug\rynui_components.lib
+[4/5] Linking CXX executable tests\portable\Debug\rynui_portable_radio_features.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 36: rynui.portable.radio_features
+1/1 Test #36: rynui.portable.radio_features ....   Passed    0.68 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.70 sec
+[0/2] Re-checking globbed directories...
+[1/5] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_features.dir\Release\__\radio_features_tests.cpp.obj
+[2/5] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[3/5] Linking CXX static library src\Release\rynui_components.lib
+[4/5] Linking CXX executable tests\portable\Release\rynui_portable_radio_features.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 36: rynui.portable.radio_features
+1/1 Test #36: rynui.portable.radio_features ....   Passed    0.44 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.47 sec

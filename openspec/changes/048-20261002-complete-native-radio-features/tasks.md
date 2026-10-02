@@ -16,7 +16,7 @@
 
 ### Windows
 
-- [ ] 4.1 `windows-msvc` Debug/Release 构建和受影响平台 CTest；真实 D3D12 窗口验证鼠标/键盘/焦点、动态删除 capture、outline/solid/连接角、主题、系统字体、RTL、resize、系统及 1/1.25/1.5/2 缩放、有限反馈/空闲/销毁；保存程序日志、PNG/hash/EXE hash 和复现脚本，并完成 Gallery Debug/Release 原生烟测后独立提交。
+- [x] 4.1 `windows-msvc` Debug/Release 构建和受影响平台 CTest 各 15/15（26.88s/7.99s）；十个真实 D3D12/DXIL 窗口、270 GPU readback，覆盖鼠标/键盘/焦点、动态删除 capture、outline/solid/连接角、主题、系统字体、RTL、resize、系统及 1/1.25/1.5/2 缩放、有限反馈/空闲/销毁。脚本核验 EXE/PNG hash，Gallery Debug/Release 真窗口 smoke 通过；408 自有源格式、OpenSpec 和 diff 检查通过后独立提交。
 
 ### Linux
 
