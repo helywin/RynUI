@@ -6,7 +6,7 @@
 
 ## 2. Separator（平台通用）
 
-- [ ] 2.1 实现 SpaceSeparator typed slot、split alias、初始 item/separator 交错的共同 layout/scene/focus 顺序；空/单项不执行，富内容与 wrap/Theme/方向变化 retained。加入边界数量、顺序、slot 抛错回滚、动态销毁/零约束合同与文档，HEADLESS D/R 受影响测试与格式/OpenSpec/diff 通过后提交。
+- [x] 2.1 实现 SpaceSeparator typed slot、split alias、初始 item/separator 交错的共同 layout/scene/focus 顺序；空/单项不执行，富内容与 wrap/Theme/方向变化 retained。加入边界数量、顺序、slot 抛错回滚、动态销毁/零约束合同与文档，HEADLESS D/R 受影响测试与格式/OpenSpec/diff 通过后提交。
 
 ## 3. Compact 与 Button（平台通用）
 

@@ -15,7 +15,7 @@ Non-Goals：新增 Select 等尚未实现组件、DOM/ref.nativeElement/React/cl
 ## Decisions
 
 1. SpaceAlign 追加 Auto/Baseline，Auto 由 orientation 决定 Center/Stretch。typed SpaceOrientation 与 bool vertical 最后 setter 优先；direction 采用现有 FlexDirection LTR/RTL。更新复用 049 FlexLayout、gap 和 baseline invalidation，不重新塑形方向更新的文字。保留 sequential policy 不接管 child grow/shrink/order。
-2. SpaceProps 持有可选 SpaceSeparator typed slot，split alias 同一字段。先保留 content 的直接子项，再为 N-1 边界挂载 passive separator branches；逻辑子顺序交错，用共同布局处理 wrap。separator 本身可含多个组件，由 wrapper 统一测量。组件/命中场景顺序与实际子项交错保持，slot 生命周期由 ComponentHost 管理；无分隔时不增加 wrapper。
+2. SpaceProps 持有可选 SpaceSeparator typed slot，split alias 同一字段。ComponentBuildContext 的 scoped before-child hook 在第二个及后续直接项挂载前插入 passive separator branch；透明 Theme slot 共享 hook，嵌套子树不继承，调用自身的分隔时防止递归。这样逻辑布局、scene 与交互注册自然交错，不需要重排已经注册的焦点。separator 可含多个组件，由 wrapper 统一测量并继承 Space Theme；删除主项清理多余/首项前分隔，slot 生命周期及异常回滚由 ComponentHost 管理。无分隔时不增加 wrapper。
 3. Compact 使用共同组件上下文注册 member callbacks（size/connection geometry/material priority），mount 时给 child 最近组，explicit size 留给自己。group shared state 与 owner lifetime ticket 断开 callbacks；nested group 按首尾条件相交外角。Search 的 Input/Button 作为现有组合参与，嵌套保留整体边界。优先于通过 token 修改 control_height，因为后者会混淆显式 child size 和组件 own Theme。
 4. Compact layout 在当前 engine generation 测量/放置 retained child；用主题 border width 的负重叠而非普通负 LayoutStyle margin，block fill 可用宽度，方向只改坐标；空组和单项处理明确。unsupported passive内容继续布局，且不假装成可交互控件。
 5. joined visual metadata 只在组件/共同 logical CPU scene 侧消费。Button 四角 fill/outline、focus/wave、dash；Input 固定 effect 层可在 compact 中拆为四 quadrant clips；RadioButton 合并已有 corners。主题 shadow 与状态继续由 own controls 产生。seam 按 hover、focus/active、normal、disabled 优先解决相邻边，保持稳定 paint/键盘声明顺序；使用额外有限 logical seam fragment，避免全局 z-index 或 GPU ABI 变更。

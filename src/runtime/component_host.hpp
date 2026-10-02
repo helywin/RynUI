@@ -146,7 +146,7 @@ private:
     void mount_slot(ComponentId parent, const std::function<void()>& content,
                     std::optional<Prop<SemanticForeground>> semantic_foreground,
                     std::optional<Prop<SemanticTypography>> semantic_typography,
-                    std::shared_ptr<theme_runtime::ThemeScope> theme_scope);
+                    std::shared_ptr<theme_runtime::ThemeScope> theme_scope, std::function<void()> before_child = {});
     void mount_transparent_slot(std::optional<ComponentId> parent, const std::function<void()>& content,
                                 std::optional<Prop<SemanticForeground>> semantic_foreground,
                                 std::optional<Prop<SemanticTypography>> semantic_typography,
@@ -201,6 +201,17 @@ public:
     }
 
     template <typename SlotTag>
+    void mount_slot_with_before_child(ComponentId parent, const SlotContent<SlotTag>& content,
+                                      std::function<void()> before_child) {
+        host_->mount_slot(parent, detail::SlotContentAccess::function(content), semantic_foreground_,
+                          semantic_typography_, theme_scope_, std::move(before_child));
+    }
+
+    [[nodiscard]] ComponentHost& host() const noexcept {
+        return *host_;
+    }
+
+    template <typename SlotTag>
     void mount_slot_with_semantic_foreground(ComponentId parent, const SlotContent<SlotTag>& content,
                                              Prop<SemanticForeground> foreground) {
         host_->mount_slot(parent, detail::SlotContentAccess::function(content), std::move(foreground),
@@ -241,6 +252,13 @@ public:
 private:
     friend class ComponentHost;
 
+    struct ChildMountHook final {
+        std::function<void()> callback;
+        bool invoking{};
+    };
+
+    void before_child();
+
     ComponentBuildContext(ComponentHost& host, std::optional<ComponentId> parent,
                           std::optional<Prop<SemanticForeground>> semantic_foreground,
                           std::optional<Prop<SemanticTypography>> semantic_typography,
@@ -251,6 +269,7 @@ private:
     std::optional<Prop<SemanticForeground>> semantic_foreground_;
     std::optional<Prop<SemanticTypography>> semantic_typography_;
     std::shared_ptr<theme_runtime::ThemeScope> theme_scope_;
+    std::shared_ptr<ChildMountHook> child_mount_hook_;
 };
 
 [[nodiscard]] ComponentBuildContext& require_component_build_context();

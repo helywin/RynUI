@@ -331,6 +331,8 @@ ComponentId ComponentHost::create_record(std::optional<ComponentId> parent, std:
         throw std::logic_error("Components can only be declared during Host mount");
     }
 
+    active_build_context->before_child();
+
     Record* parent_record = nullptr;
     if (parent.has_value()) {
         parent_record = &require_record(*parent);
@@ -400,7 +402,8 @@ void ComponentHost::add_resource_cleanup(ComponentId id, std::function<void()> c
 void ComponentHost::mount_slot(ComponentId parent, const std::function<void()>& content,
                                std::optional<Prop<SemanticForeground>> semantic_foreground,
                                std::optional<Prop<SemanticTypography>> semantic_typography,
-                               std::shared_ptr<theme_runtime::ThemeScope> theme_scope) {
+                               std::shared_ptr<theme_runtime::ThemeScope> theme_scope,
+                               std::function<void()> before_child) {
     ensure_owner_thread();
     static_cast<void>(require_record(parent));
     if (!mounting_ || active_build_context == nullptr) {
@@ -409,6 +412,10 @@ void ComponentHost::mount_slot(ComponentId parent, const std::function<void()>& 
 
     ComponentBuildContext context(*this, parent, std::move(semantic_foreground), std::move(semantic_typography),
                                   std::move(theme_scope));
+    if (before_child) {
+        context.child_mount_hook_ = std::make_shared<ComponentBuildContext::ChildMountHook>();
+        context.child_mount_hook_->callback = std::move(before_child);
+    }
     ActiveBuildContextGuard guard(context);
     content();
 }
@@ -430,6 +437,9 @@ void ComponentHost::mount_transparent_slot(std::optional<ComponentId> parent, co
 
     ComponentBuildContext context(*this, parent, std::move(semantic_foreground), std::move(semantic_typography),
                                   std::move(theme_scope));
+    if (parent == active_build_context->parent_) {
+        context.child_mount_hook_ = active_build_context->child_mount_hook_;
+    }
     ActiveBuildContextGuard guard(context);
     content();
 }
@@ -679,6 +689,21 @@ ComponentBuildContext::ComponentBuildContext(ComponentHost& host, std::optional<
                                              std::shared_ptr<theme_runtime::ThemeScope> theme_scope) noexcept
     : host_(&host), parent_(parent), semantic_foreground_(std::move(semantic_foreground)),
       semantic_typography_(std::move(semantic_typography)), theme_scope_(std::move(theme_scope)) {}
+
+void ComponentBuildContext::before_child() {
+    const auto hook = child_mount_hook_;
+    if (!hook || hook->invoking) {
+        return;
+    }
+    hook->invoking = true;
+    try {
+        hook->callback();
+        hook->invoking = false;
+    } catch (...) {
+        hook->invoking = false;
+        throw;
+    }
+}
 
 void ComponentBuildContext::on_resource_cleanup(ComponentId id, std::function<void()> cleanup) {
     host_->add_resource_cleanup(id, std::move(cleanup));

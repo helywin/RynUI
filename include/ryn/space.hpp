@@ -17,6 +17,10 @@ struct SpacePropsAccess;
 
 enum class SpaceOrientation { Horizontal, Vertical };
 
+struct SpaceSeparatorSlot final {};
+
+using SpaceSeparator = SlotContent<SpaceSeparatorSlot>;
+
 class SpaceProps final {
 public:
     SpaceProps& vertical(Prop<bool> value) {
@@ -62,6 +66,15 @@ public:
         return size(LayoutGap{main, cross});
     }
 
+    SpaceProps& separator(SpaceSeparator value) {
+        separator_ = std::move(value);
+        return *this;
+    }
+
+    SpaceProps& split(SpaceSeparator value) {
+        return separator(std::move(value));
+    }
+
     SpaceProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -76,6 +89,7 @@ private:
     Prop<bool> wrap_{false};
     Prop<SpaceAlign> align_{SpaceAlign::Auto};
     Prop<LayoutGap> size_{LayoutGap{SpaceSize::Small}};
+    std::optional<SpaceSeparator> separator_;
     LayoutStyle layout_;
 };
 

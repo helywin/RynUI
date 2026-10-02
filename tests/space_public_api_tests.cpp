@@ -40,7 +40,7 @@ struct ForeignContentSlot final {};
 using ForeignContent = ryn::SlotContent<ForeignContentSlot>;
 
 static_assert(!HasBaseline<ryn::SpaceProps>);
-static_assert(!HasSeparator<ryn::SpaceProps>);
+static_assert(HasSeparator<ryn::SpaceProps>);
 static_assert(!HasCompact<ryn::SpaceProps>);
 static_assert(!HasColor<ryn::SpaceProps>);
 static_assert(!HasBackground<ryn::SpaceProps>);
@@ -51,6 +51,7 @@ static_assert(!AcceptsStringAlign<ryn::SpaceProps>);
 static_assert(!AcceptsStringSize<ryn::SpaceProps>);
 static_assert(!std::constructible_from<ryn::SpaceContent, ForeignContent>);
 static_assert(!std::constructible_from<ryn::SpaceContent, ryn::Content>);
+static_assert(!std::constructible_from<ryn::SpaceSeparator, ryn::SpaceContent>);
 
 void require(bool condition, const char* message) {
     if (!condition) {
@@ -71,6 +72,8 @@ int main() {
         ryn::Signal<ryn::FlexDirection> direction{ryn::FlexDirection::RightToLeft};
 
         auto declarations = [&] {
+            ryn::Space(ryn::SpaceProps{}.separator([] { ryn::Text(u8"/"); }).split([] { ryn::Text(u8"|"); }),
+                       [] { ryn::Text(u8"item"); });
             ryn::Space(ryn::SpaceProps{}.orientation(orientation).direction(direction).align(ryn::SpaceAlign::Baseline),
                        [] {});
             ryn::Space(ryn::SpaceProps{}.vertical(vertical).wrap(wrap).align(align).size(size).layout(

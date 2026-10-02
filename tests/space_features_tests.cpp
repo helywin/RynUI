@@ -1,6 +1,7 @@
 #include "support/input_fixture.hpp"
 #include "component/space_component.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -116,12 +117,128 @@ void real_baseline_and_nested_direction() {
         require(near(baseline(0), baseline(i)), "baseline re-entry retained stale line metrics");
     }
 }
+
+void separator_order_retention_and_deletion() {
+    Fixture fixture;
+    Signal<bool> wrap{false};
+    Signal<FlexDirection> direction{FlexDirection::LeftToRight};
+    int content_runs{};
+    int separators{};
+    ThemeConfig large;
+    large.text.tokens.font_size = dp(24);
+    fixture.buttons.mount(Content{[&] {
+        Space(SpaceProps{}.wrap(wrap).direction(direction).size(dp(4)).separator(SpaceSeparator{[&] {
+            ++separators;
+            Text(u8"/");
+            Button(ButtonProps{}, [] { Text(u8"分隔操作"); });
+        }}),
+              SpaceContent{[&] {
+                  ++content_runs;
+                  Button(ButtonProps{}, [] { Text(u8"一"); });
+                  Theme(ThemeProps{}.config(large), ThemeContent{[] {
+                            Button(ButtonProps{}, [] { Text(u8"二"); });
+                            Button(ButtonProps{}, [] { Text(u8"三"); });
+                        }});
+              }});
+    }});
+    fixture.synchronize(640, {0, 0, 640, 240});
+    auto& host = fixture.services.components();
+    const auto component = host.root_components().front();
+    const auto node = host.root(component);
+    const auto children = host.children(component);
+    require(children.size() == 5 && separators == 2 && content_runs == 1,
+            "separator count or transparent slots failed");
+    const auto buttons = fixture.buttons.mounted_buttons();
+    require(buttons.size() == 5, "rich separator did not mount all controls");
+    const auto order = fixture.services.interactions().declaration_order();
+    const auto paint = host.paint_traversal();
+    std::size_t last_paint{};
+    for (std::size_t i = 0; i < buttons.size(); ++i) {
+        require(order[i] == buttons[i].interaction, "separator focus registration is not interleaved");
+        fixture.services.focus().dispatch({input::Key::tab, input::KeyAction::down});
+        require(fixture.services.focus().state().focused == buttons[i].interaction,
+                "Tab did not traverse primary and separator controls in order");
+        const auto found = std::find_if(paint.begin(), paint.end(),
+                                        [&](const auto& entry) { return entry.fragment == buttons[i].fragment; });
+        require(found != paint.end(), "separator button scene fragment missing");
+        const auto position = static_cast<std::size_t>(found - paint.begin());
+        require(i == 0 || position > last_paint, "separator scene order is not interleaved");
+        last_paint = position;
+        if (i > 0) {
+            require(fixture.nodes.require(buttons[i].node).bounds.x >
+                        fixture.nodes.require(buttons[i - 1].node).bounds.x,
+                    "separator layout is not interleaved");
+        }
+    }
+    const auto texts = fixture.services.text().mounted_texts();
+    require(host.theme_scope(children[1]) == host.theme_scope(component) &&
+                host.theme_scope(children[3]) == host.theme_scope(component),
+            "separator inherited adjacent item Theme instead of Space Theme");
+    const auto shape_count = fixture.scene.text_state(texts.front().scene).counters().shape_count;
+    direction.set(FlexDirection::RightToLeft);
+    fixture.synchronize(640, {0, 0, 640, 240});
+    require(host.children(component) == children && content_runs == 1 && separators == 2 &&
+                fixture.scene.text_state(texts.front().scene).counters().shape_count == shape_count &&
+                fixture.nodes.require(buttons.front().node).bounds.x >
+                    fixture.nodes.require(buttons.back().node).bounds.x,
+            "RTL separator update remounted or reshaped content");
+    wrap.set(true);
+    fixture.synchronize(140, {0, 0, 140, 240});
+    require(host.children(component) == children && separators == 2, "wrap rebuilt separator branches");
+    static_cast<void>(fixture.layout.layout(node, layout::Constraints::fixed(0, 0)));
+    require(fixture.buttons.destroy(children[2]), "middle primary deletion failed");
+    fixture.synchronize();
+    require(host.children(component).size() == 3 && !host.contains(children[1]) && host.contains(children[3]),
+            "middle deletion left duplicate separators");
+    require(fixture.buttons.destroy(children[0]), "first primary deletion failed");
+    fixture.synchronize();
+    require(host.children(component).size() == 1 && !host.contains(children[3]),
+            "first deletion left a leading separator");
+    fixture.buttons.dispose();
+    require(fixture.nodes.size() == 0 && fixture.services.text().mounted_texts().empty() &&
+                fixture.services.interactions().size() == 0,
+            "separator disposal leaked resources");
+    wrap.set(false);
+    direction.set(FlexDirection::LeftToRight);
+}
+
+void separator_boundaries_and_rollback() {
+    Fixture fixture;
+    int separators{};
+    fixture.buttons.mount(Content{[&] {
+        Space(SpaceProps{}.separator([&] { ++separators; }), [] {});
+        Space(SpaceProps{}.split([&] { ++separators; }), [] { Text(u8"单项"); });
+    }});
+    fixture.synchronize();
+    require(separators == 0, "empty or single item executed separator");
+    Fixture failed;
+    bool rejected{};
+    try {
+        failed.buttons.mount(Content{[] {
+            Space(SpaceProps{}.separator([] {
+                Text(u8"已挂载分隔");
+                throw std::runtime_error("separator failure");
+            }),
+                  [] {
+                      Button(ButtonProps{}, [] { Text(u8"一"); });
+                      Text(u8"二");
+                  });
+        }});
+    } catch (const std::runtime_error&) {
+        rejected = true;
+    }
+    require(rejected && failed.nodes.size() == 0 && failed.services.components().component_count() == 0 &&
+                failed.services.text().mounted_texts().empty() && failed.services.interactions().size() == 0,
+            "separator exception did not roll back mount");
+}
 } // namespace
 
 int main() {
     try {
         defaults_orientation_and_last_setter();
         real_baseline_and_nested_direction();
+        separator_order_retention_and_deletion();
+        separator_boundaries_and_rollback();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

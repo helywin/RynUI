@@ -4,6 +4,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -37,9 +38,15 @@ struct SpacePropsAccess final {
     [[nodiscard]] static const LayoutStyle& layout(const SpaceProps& props) noexcept {
         return props.layout_;
     }
+
+    [[nodiscard]] static const std::optional<SpaceSeparator>& separator(const SpaceProps& props) noexcept {
+        return props.separator_;
+    }
 };
 
 namespace {
+
+struct SeparatorState final {};
 
 [[nodiscard]] layout::FlexDirection space_direction(bool vertical) noexcept {
     return vertical ? layout::FlexDirection::vertical : layout::FlexDirection::horizontal;
@@ -139,6 +146,67 @@ void subscribe_theme_gap(SpaceComponentState& state, const std::shared_ptr<theme
         [&state, theme] { static_cast<void>(resolve_layout_gap(state.gap, *theme)); });
 }
 
+void mount_separated_content(SpaceComponentState& state, const SpaceContent& content, const SpaceSeparator& separator,
+                             LayoutComponentServices& services, runtime::ComponentBuildContext& build) {
+    std::size_t count{};
+    const auto theme = build.theme_scope();
+    build.mount_slot_with_before_child(state.component, content, [&] {
+        if (count++ == 0) {
+            return;
+        }
+        auto& context = runtime::require_component_build_context();
+        context.mount_slot_with_theme_scope(
+            SpaceContent{[&] {
+                auto& separator_build = runtime::require_component_build_context();
+                const auto component = separator_build.mount_component<SeparatorState>();
+                const auto node = separator_build.root(component);
+                layout::FlexLayout model;
+                model.align = layout::FlexAlign::center;
+                model.item_policy = layout::FlexItemPolicy::sequential;
+                services.layout.set_layout(node, model);
+                separator_build.on_resource_cleanup(
+                    component, [layout = &services.layout, node] { static_cast<void>(layout->remove_layout(node)); });
+                separator_build.mount_slot(component, separator);
+            }},
+            theme);
+    });
+
+    auto* host = &build.host();
+    std::optional<runtime::ComponentId> preceding;
+    for (const auto child : host->children(state.component)) {
+        if (host->state<SeparatorState>(child)) {
+            preceding = child;
+        } else {
+            state.items.push_back({child, preceding});
+            preceding.reset();
+        }
+    }
+    for (const auto& item : state.items) {
+        build.on_resource_cleanup(item.component, [&state, host, dirty = &services.dirty, id = item.component] {
+            if (!host->active() || !host->contains(state.component) || !host->scope(state.component).active()) {
+                return;
+            }
+            const auto found = std::find_if(state.items.begin(), state.items.end(),
+                                            [id](const auto& value) { return value.component == id; });
+            if (found == state.items.end()) {
+                return;
+            }
+            const auto separator_id = found->separator;
+            state.items.erase(found);
+            if (separator_id) {
+                static_cast<void>(host->destroy(*separator_id));
+            }
+            if (!state.items.empty() && state.items.front().separator) {
+                const auto first_separator = *state.items.front().separator;
+                state.items.front().separator.reset();
+                static_cast<void>(host->destroy(first_separator));
+            }
+            dirty->invalidate_subtree(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                      runtime::DirtyFlags::Geometry);
+        });
+    }
+}
+
 } // namespace
 
 void mount_space_component(const SpaceProps& props, const SpaceContent& content) {
@@ -228,7 +296,11 @@ void mount_space_component(const SpaceProps& props, const SpaceContent& content)
             subscribe_theme_gap(state, theme, *layout, *dirty);
         }));
 
-    build.mount_slot(component, content);
+    if (const auto& separator = SpacePropsAccess::separator(props); separator) {
+        mount_separated_content(state, content, *separator, services, build);
+    } else {
+        build.mount_slot(component, content);
+    }
     services.dirty.invalidate_subtree(state.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                       runtime::DirtyFlags::Geometry);
 }

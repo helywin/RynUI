@@ -39,4 +39,6 @@ grow/shrink 为有限非负值；basis 为非负 logical length 或 auto。min/m
 
 `orientation(SpaceOrientation::Horizontal/Vertical)` 与旧 `vertical(bool/Prop<bool>)` 的最后配置决定方向及 reactive 订阅。`direction(FlexDirection::LeftToRight/RightToLeft)` 保留声明、绘制与键盘顺序，纯 RTL 更新复用测量。Space 保留 wrap、typed Small/Middle/Large 和独立 main/cross gap。
 
-Separator 与 Compact 按 050 的后续阶段实现。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。
+`.separator(SpaceSeparator{[] { Text(u8"/"); }})` 在每两个直接内容项之间挂载一个独立分隔分支；`.split(...)` 为同一字段别名，最后设置优先。空/单项不调用分隔 slot，分隔支持多个富内容根项并继承 Space 的 Theme。共同布局、绘制与键盘顺序交错；wrap 可把分隔单独换行，RTL 只改位置。方向、gap、Theme 更新保留已挂载内容；删除主项清理多余或首项前的分隔，slot 抛错由 Host 回滚。
+
+Compact 按 050 的后续阶段实现。平台通用与 Windows/Linux 原生验收分别见 049、050 的 tasks/evidence。
