@@ -328,7 +328,7 @@ Token 读取会在 reactive scope 记录 identity subscription。Theme 更新比
 ### 9.5 Shadow、圆角效果与焦点
 
 - `ShadowList` 是有序 typed layer 列表，逐层保留 outer/inset、x/y offset、blur、正负 spread、color 与 alpha；Button、Drawer、Popover/Card、Tabs overflow 等映射不得压扁为单个模糊值。
-- Shadow 与 focus outline 使用独立 retained `RoundedEffect` child 和 GPU instance store，不扩大普通 `QuadPrimitive`。Outer layer 在所属 surface fill 前绘制，inset layer 在 fill 后绘制，并与组件 Scene paint order、ancestor clip 和 stable identity 一起维护。
+- Shadow 与 focus outline 使用独立 retained `RoundedEffect` child 与 logical store，renderer 维护独立 packed GPU instances，不扩大普通 `QuadPrimitive`。Outer layer 在所属 surface fill 前绘制，inset layer 在 fill 后绘制，并与组件 Scene paint order、ancestor clip 和 stable identity 一起维护。
 - CPU reference 与共享 `rounded_effect.hlsl` 使用同一 rounded-rect SDF 约定；outer shadow 采用 `sigma = blur / 2` coverage，effect bounds 包含 spread、offset、`3*sigma` 与 antialias guard。DXIL 和 SPIR-V 必须从同一锁定 source 生成，不能手工分叉。
 - Button focus-visible 固定为 1 logical px 透明 gap 后的 3 logical px hollow ring；它是独立 outline effect，不是连续 4px 蓝色边框，也不能被 shadow/state layer 覆盖。
 - Geometry、blur、spread、offset、outline 与 antialias 均从 logical unit 转为 device unit；布局视口、字体 raster 与 effect resource 必须使用同一 render scale，避免 DPI 变化造成裁切、发虚或边缘异常增厚。
@@ -357,7 +357,7 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 
 ## 10. GPU Scene 与 Renderer
 
-共同资源、Quad/Glyph GPU 打包与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。Core 的 logical CPU scene v2 与 packed GPU ABI v1 分离，组件只保存 logical 几何、裁剪、平移和圆角；renderer 根据显式 device metrics 打包，并在 metrics 改变时重新上传完整投影。版本与编译期 backend 选择见 [renderer 合同](renderer-contract.md)。`windows-msvc-headless` 使用真实 Core、文本依赖和共同资源验收；Recording/新平台的具体状态由当前 change 证据说明。
+共同资源、Quad/Glyph/RoundedEffect GPU ABI、打包、shader reference 与 draw 合同属于 `renderer/common`，不依赖 SDL 或系统字体。Core 不 include/link renderer，保留 logical CPU scene v2、其 culling/math/coverage；packed GPU ABI v1 与 CPU 类型分离。renderer 根据独立 SceneDeviceMetrics 打包，并在 metrics 改变或上传失败后重新上传完整投影；device abandon 失效旧代际容量与缓存。include/link configure 守卫约束单向依赖，实际 `windows-msvc-headless` 构建验证真实 Core、文本和共同资源。版本与编译期 backend 选择见 [renderer 合同](renderer-contract.md)，具体平台状态由当前 change 证据说明。
 
 GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；binding 必须在 host/window 销毁前清理。显式重建顺序是失效附件 → 旧 device 活着时释放资源/pipeline → release claim/destroy device → 创建新 binding/renderer → 从保留 CPU scene 上传。不能把旧 handle 交给新 device 释放；实际设备已消失时只丢弃其代际记录。现有 SDL 路径不承诺自动 device-loss 检测/恢复。
 

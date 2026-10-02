@@ -277,14 +277,22 @@ void logical_resize_and_recovery() {
         check(fixture.resources.synchronize(fixture.data()), "resize retry failed");
         fixture.verify();
     }
-    const auto committed = fixture.attachment();
-    const auto uploads = fixture.backend.counters().uploads;
-    auto invalid = fixture.data();
-    invalid.metrics = {0, 480, 1};
-    rejects([&] { fixture.resources.synchronize(invalid); });
-    check(!fixture.backend.valid_attachment(committed) && fixture.backend.counters().uploads == uploads,
-          "invalid metrics began uploading or left a valid attachment");
-    check(fixture.resources.synchronize(fixture.data()), "valid sync after invalid metrics failed");
+    for (auto metrics : {SceneDeviceMetrics{0, 480, 1},
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::quiet_NaN()},
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::infinity()},
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::denorm_min()}}) {
+        const auto committed = fixture.attachment();
+        const auto uploads = fixture.backend.counters().uploads;
+        auto invalid = fixture.data();
+        invalid.metrics = metrics;
+        fixture.backend.fail_next(RecordingFailure::begin);
+        rejects([&] { fixture.resources.synchronize(invalid); });
+        check(!fixture.backend.valid_attachment(committed) && fixture.backend.counters().uploads == uploads,
+              "invalid metrics uploaded or left a valid attachment");
+        check(!fixture.resources.synchronize(fixture.data()),
+              "invalid metrics consumed the begin-upload failure injection");
+        check(fixture.resources.synchronize(fixture.data()), "valid sync after invalid metrics failed");
+    }
     fixture.backend.reset_device();
     check(fixture.resources.synchronize(fixture.data()), "logical scene device reset failed");
     fixture.verify();

@@ -35,10 +35,23 @@ void RoundedEffectGpuResources::invalidate_upload() noexcept {
 
 void RoundedEffectGpuResources::synchronize(
     graphics::RoundedEffectStore& store,
-    graphics::RoundedEffectDeviceMetrics metrics) {
-    graphics::validate_rounded_effect_device_metrics(metrics);
+    SceneDeviceMetrics metrics) {
+    try {
+        validate_scene_device_metrics(metrics);
+        synchronize_validated(store, metrics);
+    } catch (...) {
+        // A failed upload may already have changed buffer bytes. Even returning
+        // to the previous successful metrics must rebuild the entire projection.
+        metrics_.reset();
+        throw;
+    }
+}
+
+void RoundedEffectGpuResources::synchronize_validated(
+    graphics::RoundedEffectStore& store,
+    SceneDeviceMetrics metrics) {
     const bool compacted = store.compact(
-        graphics::rounded_effect_logical_viewport(metrics));
+        scene_logical_viewport(metrics));
     const auto source = store.packed_instances();
     if (source.empty()) {
         instances_.clear();
@@ -87,7 +100,7 @@ void RoundedEffectGpuResources::synchronize(
     if (needs_growth) {
         upload_capacity = next_capacity(source.size());
         const auto byte_capacity = static_cast<std::size_t>(upload_capacity)
-            * sizeof(graphics::RoundedEffectGpuInstance);
+            * sizeof(RoundedEffectGpuInstance);
         upload_buffer = api_->create_effect_buffer(byte_capacity);
         if (upload_buffer == nullptr) {
             throw gpu_failure(*api_, "Failed to create rounded-effect GPU buffer");
@@ -99,7 +112,7 @@ void RoundedEffectGpuResources::synchronize(
         const auto bytes = std::as_bytes(std::span(instances_).subspan(
             range.first, range.count));
         const auto offset = static_cast<std::size_t>(range.first)
-            * sizeof(graphics::RoundedEffectGpuInstance);
+            * sizeof(RoundedEffectGpuInstance);
         if (!api_->upload_effect_buffer(upload_buffer, offset, bytes)) {
             throw gpu_failure(*api_, "Failed to upload rounded-effect GPU buffer");
         }
@@ -141,7 +154,7 @@ std::uint32_t RoundedEffectGpuResources::instance_count() const noexcept {
     return instance_count_;
 }
 
-std::span<const graphics::RoundedEffectGpuInstance>
+std::span<const RoundedEffectGpuInstance>
 RoundedEffectGpuResources::instances() const noexcept {
     return instances_;
 }
@@ -192,14 +205,14 @@ std::uint32_t RoundedEffectGpuResources::next_capacity(std::size_t required) {
 void RoundedEffectGpuResources::convert_range(
     std::span<const graphics::RoundedEffectInstance> source,
     graphics::RoundedEffectInstanceRange range,
-    graphics::RoundedEffectDeviceMetrics metrics) {
+    SceneDeviceMetrics metrics) {
     const auto end = static_cast<std::uint64_t>(range.first) + range.count;
     if (end > source.size() || end > instances_.size()) {
         throw std::out_of_range("Rounded effect dirty range is out of bounds");
     }
     for (std::uint32_t offset = 0; offset < range.count; ++offset) {
         const auto index = range.first + offset;
-        instances_[index] = graphics::pack_rounded_effect_instance(source[index], metrics);
+        instances_[index] = pack_rounded_effect_instance(source[index], metrics);
     }
 }
 

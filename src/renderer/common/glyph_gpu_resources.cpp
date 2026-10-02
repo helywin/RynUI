@@ -89,7 +89,7 @@ GlyphGpuResources::~GlyphGpuResources() {
 void GlyphGpuResources::synchronize(
     graphics::GlyphAtlas& atlas,
     graphics::GlyphInstanceStore& instances, SceneDeviceMetrics metrics) {
-    graphics::validate_rounded_effect_device_metrics(metrics);
+    validate_scene_device_metrics(metrics);
     if (instances.size() > std::numeric_limits<std::uint32_t>::max())
         throw std::length_error("Glyph instance buffer exceeds uint32_t capacity");
     const bool full = metrics_ != metrics || instances.size() > instance_capacity_;

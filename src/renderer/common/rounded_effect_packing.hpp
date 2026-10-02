@@ -1,22 +1,13 @@
 #pragma once
 
 #include "graphics/rounded_effect.hpp"
+#include "renderer/common/scene_metrics.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 
-namespace ryn::graphics {
-
-struct RoundedEffectDeviceMetrics final {
-    std::uint32_t pixel_width{};
-    std::uint32_t pixel_height{};
-    float display_scale{1.0F};
-
-    friend constexpr bool operator==(
-        RoundedEffectDeviceMetrics,
-        RoundedEffectDeviceMetrics) = default;
-};
+namespace ryn::detail {
 
 struct alignas(16) RoundedEffectGpuInstance final {
     std::array<float, 4> clip_rect{};
@@ -43,16 +34,11 @@ static_assert(offsetof(RoundedEffectGpuInstance, material_params) == 96);
 
 inline constexpr std::uint32_t rounded_effect_vertex_count = 6;
 
-void validate_rounded_effect_device_metrics(RoundedEffectDeviceMetrics metrics);
-
-[[nodiscard]] runtime::Rect rounded_effect_logical_viewport(
-    RoundedEffectDeviceMetrics metrics);
-
 // Valid effects outside the device clip become transparent zero-area instances,
 // preserving the retained store's indices and draw order across DPI changes.
 [[nodiscard]] RoundedEffectGpuInstance pack_rounded_effect_instance(
-    const RoundedEffectInstance& instance,
-    RoundedEffectDeviceMetrics metrics);
+    const graphics::RoundedEffectInstance& instance,
+    SceneDeviceMetrics metrics);
 
 [[nodiscard]] float rounded_effect_gpu_coverage_reference(
     runtime::Point point_pixels,
@@ -62,4 +48,4 @@ void validate_rounded_effect_device_metrics(RoundedEffectDeviceMetrics metrics);
     runtime::Point point_pixels,
     const RoundedEffectGpuInstance& instance);
 
-} // namespace ryn::graphics
+} // namespace ryn::detail

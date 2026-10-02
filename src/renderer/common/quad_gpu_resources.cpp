@@ -30,7 +30,7 @@ void QuadGpuBuffer::convert_range(const graphics::QuadInstanceStore &store,
         packed_[i] = pack_quad_instance(store.at(i), metrics);
 }
 void QuadGpuBuffer::synchronize(graphics::QuadInstanceStore &store, SceneDeviceMetrics metrics) {
-    graphics::validate_rounded_effect_device_metrics(metrics);
+    validate_scene_device_metrics(metrics);
     if (store.size() > std::numeric_limits<std::uint32_t>::max())
         throw std::length_error("Quad GPU capacity exceeds uint32_t");
     const bool growth = store.size() > capacity_;

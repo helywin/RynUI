@@ -1,9 +1,11 @@
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -31,6 +33,7 @@ public:
         requested_sizes.push_back(size);
         if (fail_create) return nullptr;
         const auto handle = ++next_handle;
+        buffers.emplace(handle, std::vector<std::byte>(size));
         ++live_buffers;
         return reinterpret_cast<void*>(handle);
     }
@@ -45,14 +48,23 @@ public:
             offset,
             {bytes.begin(), bytes.end()},
         });
+        const auto found = buffers.find(reinterpret_cast<std::uintptr_t>(buffer));
+        if (found == buffers.end() || offset > found->second.size()
+            || bytes.size() > found->second.size() - offset)
+            return false;
+        std::copy(bytes.begin(), bytes.end(), found->second.begin() + offset);
+        if (throw_upload) throw std::runtime_error("injected write-then-throw");
         return !fail_upload;
     }
 
     void release_effect_buffer(
-        ryn::detail::RoundedEffectGpuBufferHandle) noexcept override {
+        ryn::detail::RoundedEffectGpuBufferHandle buffer) noexcept override {
         events.emplace_back("release");
-        --live_buffers;
+        if (!buffers.erase(reinterpret_cast<std::uintptr_t>(buffer))) released_stale = true;
+        live_buffers = buffers.size();
     }
+
+    void reset_device() { buffers.clear(); live_buffers = 0; }
 
     const char* effect_gpu_error() const noexcept override {
         return "injected rounded-effect GPU failure";
@@ -60,11 +72,14 @@ public:
 
     bool fail_create{};
     bool fail_upload{};
+    bool throw_upload{};
+    bool released_stale{};
     std::uintptr_t next_handle{};
     std::size_t live_buffers{};
     std::vector<std::size_t> requested_sizes;
     std::vector<Upload> uploads;
     std::vector<std::string> events;
+    std::map<std::uintptr_t, std::vector<std::byte>> buffers;
 };
 
 ryn::graphics::RoundedEffectInstance effect(float x, std::uint8_t marker) {
@@ -85,10 +100,10 @@ void test_full_partial_metrics_growth_and_idle_uploads() {
         require(resources.capacity() == 4 && resources.instance_count() == 3
                     && api.requested_sizes.size() == 1
                     && api.requested_sizes.front()
-                        == 4 * sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                        == 4 * sizeof(ryn::detail::RoundedEffectGpuInstance)
                     && api.uploads.size() == 1 && api.uploads.front().offset == 0
                     && api.uploads.front().bytes.size()
-                        == 3 * sizeof(ryn::graphics::RoundedEffectGpuInstance),
+                        == 3 * sizeof(ryn::detail::RoundedEffectGpuInstance),
                 "initial rounded-effect GPU allocation or full upload differs");
 
         auto material = store.at(ids[1]).material;
@@ -98,16 +113,16 @@ void test_full_partial_metrics_growth_and_idle_uploads() {
         resources.synchronize(store, {100, 100, 1.0F});
         require(api.uploads.size() == 2
                     && api.uploads.back().offset
-                        == sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                        == sizeof(ryn::detail::RoundedEffectGpuInstance)
                     && api.uploads.back().bytes.size()
-                        == sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                        == sizeof(ryn::detail::RoundedEffectGpuInstance)
                     && resources.counters().partial_uploads == 1,
                 "material-only effect update did not remain a partial upload");
 
         resources.synchronize(store, {200, 200, 2.0F});
         require(api.uploads.size() == 3 && api.uploads.back().offset == 0
                     && api.uploads.back().bytes.size()
-                        == 3 * sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                        == 3 * sizeof(ryn::detail::RoundedEffectGpuInstance)
                     && resources.instances()[1].shape_rect[0] == 60.0F,
                 "display-scale change did not force a full device-geometry upload");
         resources.synchronize(store, {200, 200, 2.0F});
@@ -199,9 +214,70 @@ void test_full_retry_after_batch_submit_failure() {
     resources.synchronize(store, {100, 100, 1.0F});
     require(api.uploads.size() == 2 && api.uploads.back().offset == 0
                 && api.uploads.back().bytes.size()
-                    == 2 * sizeof(ryn::graphics::RoundedEffectGpuInstance)
+                    == 2 * sizeof(ryn::detail::RoundedEffectGpuInstance)
                 && resources.counters().full_uploads == 2,
             "failed batch did not force a complete effect retry");
+}
+
+void test_failed_projection_returns_to_original_metrics_without_cpu_dirty() {
+    for (const bool throws : {false, true}) {
+        RecordingApi api;
+        ryn::graphics::RoundedEffectStore store;
+        const auto initial = std::array{effect(10, 1), effect(30, 2)};
+        const auto ids = store.add_batch(initial);
+        ryn::detail::RoundedEffectGpuResources resources(api);
+        resources.synchronize(store, {100, 100, 1});
+        const auto handle = reinterpret_cast<std::uintptr_t>(resources.buffer());
+        const auto original_bytes = api.buffers.at(handle);
+        api.fail_upload = !throws;
+        api.throw_upload = throws;
+        bool failed = false;
+        try { resources.synchronize(store, {200, 200, 2}); }
+        catch (const std::runtime_error&) { failed = true; }
+        require(failed && api.buffers.at(handle) != original_bytes,
+            "failure fixture did not contaminate the uploaded projection");
+        require(store.geometry_dirty_ranges().empty() && store.material_dirty_ranges().empty(),
+            "projection-only update unexpectedly dirtied CPU effects");
+        const auto uploads = api.uploads.size();
+        api.fail_upload = api.throw_upload = false;
+        resources.synchronize(store, {100, 100, 1});
+        require(api.uploads.size() == uploads + 1 && api.uploads.back().offset == 0
+            && api.uploads.back().bytes.size() == original_bytes.size()
+            && api.buffers.at(handle) == original_bytes,
+            "returning to original metrics skipped complete projection recovery");
+        require(store.at(ids[0]) == initial[0] && store.at(ids[1]) == initial[1],
+            "projection recovery changed CPU effect identity or material");
+    }
+}
+
+void test_abandon_recreates_buffer_without_releasing_old_epoch() {
+    RecordingApi api;
+    ryn::graphics::RoundedEffectStore store;
+    const auto initial = std::array{effect(10, 1), effect(30, 2)};
+    const auto ids = store.add_batch(initial);
+    {
+        ryn::detail::RoundedEffectGpuResources resources(api);
+        resources.synchronize(store, {100, 100, 1});
+        const auto old_handle = resources.buffer();
+        const auto staging = resources.instances().data();
+        const auto original_bytes = api.buffers.at(reinterpret_cast<std::uintptr_t>(old_handle));
+        const auto events = api.events.size();
+        api.reset_device();
+        resources.abandon_device();
+        require(api.events.size() == events && !resources.buffer() && !resources.capacity()
+            && !resources.instance_count() && resources.instances().empty(),
+            "abandon released a stale handle or retained old epoch capacity");
+        resources.synchronize(store, {100, 100, 1});
+        require(resources.buffer() && resources.buffer() != old_handle
+            && api.requested_sizes.size() == 2 && api.live_buffers == 1
+            && resources.instances().data() == staging
+            && api.buffers.at(reinterpret_cast<std::uintptr_t>(resources.buffer())) == original_bytes,
+            "abandoned effects did not recreate/upload a buffer and reuse staging");
+        require(store.at(ids[0]) == initial[0] && store.at(ids[1]) == initial[1],
+            "device epoch replacement lost CPU effects");
+    }
+    require(api.live_buffers == 0 && !api.released_stale,
+        "effect epoch teardown released a stale handle or leaked the new buffer");
 }
 
 void test_fractional_dpi_clip_edges_preserve_draw_indices() {
@@ -252,6 +328,8 @@ int main() {
         test_full_partial_metrics_growth_and_idle_uploads();
         test_zero_effect_and_failure_paths_preserve_dirty_state();
         test_full_retry_after_batch_submit_failure();
+        test_failed_projection_returns_to_original_metrics_without_cpu_dirty();
+        test_abandon_recreates_buffer_without_releasing_old_epoch();
         test_fractional_dpi_clip_edges_preserve_draw_indices();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

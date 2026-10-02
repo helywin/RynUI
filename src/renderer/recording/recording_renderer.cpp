@@ -291,7 +291,7 @@ void RecordingRenderer::draw_rounded_effect(std::uint32_t first, std::uint32_t c
     if (!drawing_ || !effects)
         throw std::logic_error("Recording effect attachment invalid");
     record(graphics::SceneDrawKind::rounded_effect, effects->buffer(), Kind::effect, first, count,
-           effects->instance_count(), sizeof(graphics::RoundedEffectGpuInstance));
+           effects->instance_count(), sizeof(detail::RoundedEffectGpuInstance));
 }
 
 runtime::FrameSubmissionResult RecordingRenderer::submit_frame(animation::AnimationTime) {

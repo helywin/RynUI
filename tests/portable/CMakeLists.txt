@@ -14,11 +14,15 @@ endfunction()
 foreach(name IN ITEMS logical_scene_packing quad_primitive binding_quad_integration button_scene_service
         font_runtime text_engine text_state text_scene_service
         text_render_integration glyph_atlas glyph_scene glyph_gpu_resources
+        rounded_effect_math rounded_effect_store rounded_effect_scene rounded_effect_gpu
         rounded_effect_gpu_resources input_component input_gpu input_caret_blink text_component
         button_component selection_component radio_component typography_component
         typography_interaction divider_component text_component_frame frame_scheduler)
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()
+
+rynui_portable_test(rounded_effect_allocation "rounded_effect_allocation_benchmark.cpp")
+rynui_portable_test(input_scene_allocation "input_scene_allocation_benchmark.cpp")
 
 if(TARGET rynui_renderer_recording)
     rynui_portable_test(scene_backend "scene_backend_tests.cpp")

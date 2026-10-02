@@ -1,4 +1,4 @@
-#include "graphics/rounded_effect_gpu.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 
 #include <array>
 #include <cmath>
@@ -37,8 +37,8 @@ ryn::graphics::RoundedEffectInstance outer() {
 }
 
 void test_instance_layout_and_device_packing() {
-    static_assert(sizeof(ryn::graphics::RoundedEffectGpuInstance) == 112);
-    const auto packed = ryn::graphics::pack_rounded_effect_instance(
+    static_assert(sizeof(ryn::detail::RoundedEffectGpuInstance) == 112);
+    const auto packed = ryn::detail::pack_rounded_effect_instance(
         outer(), {200, 100, 1.0F});
     require(near(packed.clip_rect[0], -1.0F)
                 && near(packed.clip_rect[1], 0.96F)
@@ -58,12 +58,13 @@ void test_instance_layout_and_device_packing() {
 
 void test_100_150_200_percent_scale_contract() {
     const auto source = outer();
-    const auto at_100 = ryn::graphics::pack_rounded_effect_instance(
+    const auto at_100 = ryn::detail::pack_rounded_effect_instance(
         source, {200, 100, 1.0F});
-    const auto at_150 = ryn::graphics::pack_rounded_effect_instance(
+    const auto at_150 = ryn::detail::pack_rounded_effect_instance(
         source, {300, 150, 1.5F});
-    const auto at_200 = ryn::graphics::pack_rounded_effect_instance(
+    const auto at_200 = ryn::detail::pack_rounded_effect_instance(
         source, {400, 200, 2.0F});
+    require(source == outer(), "renderer packing modified the CPU logical effect");
     for (std::size_t index = 0; index < 4; ++index) {
         require(near(at_100.clip_rect[index], at_150.clip_rect[index], 0.021F)
                     && near(at_100.clip_rect[index], at_200.clip_rect[index], 0.021F),
@@ -87,7 +88,7 @@ void test_100_150_200_percent_scale_contract() {
 void test_shader_reference_matches_logical_reference() {
     const auto shadow = outer();
     for (const float scale : {1.0F, 1.5F, 2.0F}) {
-        const auto packed = ryn::graphics::pack_rounded_effect_instance(
+        const auto packed = ryn::detail::pack_rounded_effect_instance(
             shadow,
             {static_cast<std::uint32_t>(200.0F * scale),
              static_cast<std::uint32_t>(100.0F * scale),
@@ -98,7 +99,7 @@ void test_shader_reference_matches_logical_reference() {
                  ryn::runtime::Point{124.0F, 40.0F}}) {
             const float logical = ryn::graphics::rounded_effect_coverage(
                 logical_point, shadow, 1.0F / scale);
-            const float gpu = ryn::graphics::rounded_effect_gpu_coverage_reference(
+            const float gpu = ryn::detail::rounded_effect_gpu_coverage_reference(
                 {logical_point.x * scale, logical_point.y * scale}, packed);
             require(near(logical, gpu, 0.00001F),
                     "GPU shadow reference drifted from logical SDF coverage");
@@ -113,15 +114,36 @@ void test_shader_reference_matches_logical_reference() {
         0.8F,
         {},
         ryn::graphics::EffectClip{5, {0.0F, 0.0F, 110.0F, 80.0F}});
-    const auto packed_outline = ryn::graphics::pack_rounded_effect_instance(
+    const auto packed_outline = ryn::detail::pack_rounded_effect_instance(
         outline, {200, 100, 1.0F});
-    require(near(ryn::graphics::rounded_effect_gpu_coverage_reference(
+    require(near(ryn::detail::rounded_effect_gpu_coverage_reference(
                      {100.5F, 36.0F}, packed_outline), 0.0F)
-                && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                && ryn::detail::rounded_effect_gpu_coverage_reference(
                        {102.5F, 36.0F}, packed_outline) > 0.99F
-                && near(ryn::graphics::rounded_effect_gpu_coverage_reference(
+                && near(ryn::detail::rounded_effect_gpu_coverage_reference(
                             {102.5F, 90.0F}, packed_outline), 0.0F),
             "GPU outline gap, ring, or ancestor clip reference is incorrect");
+}
+
+void test_inset_translation_and_density_reference() {
+    const auto inset = ryn::graphics::make_shadow_effect(
+        {{20, 20, 80, 32}, 6},
+        {ryn::ShadowKind::inset, {4, -2}, 8, 3, ryn::Color::rgba8(10, 20, 30, 64)},
+        {3, -4}, ryn::graphics::EffectClip{7, {0, 0, 110, 80}});
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const auto packed = ryn::detail::pack_rounded_effect_instance(inset,
+            {static_cast<std::uint32_t>(200 * scale), static_cast<std::uint32_t>(100 * scale), scale});
+        require(packed.effect_params[3] == 1 && near(packed.shape_rect[0], 23 * scale)
+            && near(packed.shape_rect[1], 16 * scale)
+            && near(packed.shadow_params[0], 6 * scale),
+            "inset kind, translation or pixel radius changed");
+        for (const auto point : std::array{ryn::runtime::Point{30, 24},
+                ryn::runtime::Point{102, 32}, ryn::runtime::Point{105.5F, 32}}) {
+            require(near(ryn::graphics::rounded_effect_coverage(point, inset, 1 / scale),
+                ryn::detail::rounded_effect_gpu_coverage_reference({point.x * scale, point.y * scale}, packed),
+                0.00001F), "inset GPU reference drifted from logical coverage");
+        }
+    }
 }
 
 std::array<float, 4> source_over(
@@ -139,11 +161,11 @@ void test_straight_alpha_and_overlapping_layer_contract() {
     auto shadow = outer();
     shadow.material.color = ryn::Color(0.2F, 0.4F, 0.8F, 0.5F);
     shadow.material.opacity = 0.5F;
-    const auto packed = ryn::graphics::pack_rounded_effect_instance(
+    const auto packed = ryn::detail::pack_rounded_effect_instance(
         shadow, {200, 100, 1.0F});
-    const auto fragment = ryn::graphics::rounded_effect_gpu_fragment_reference(
+    const auto fragment = ryn::detail::rounded_effect_gpu_fragment_reference(
         {30.0F, 30.0F}, packed);
-    const float coverage = ryn::graphics::rounded_effect_gpu_coverage_reference(
+    const float coverage = ryn::detail::rounded_effect_gpu_coverage_reference(
         {30.0F, 30.0F}, packed);
     require(near(fragment[0], 0.2F) && near(fragment[1], 0.4F)
                 && near(fragment[2], 0.8F)
@@ -166,18 +188,18 @@ void test_straight_alpha_and_overlapping_layer_contract() {
 
 void test_invalid_metrics_rejected_and_clipped_pack_is_degenerate() {
     require_invalid([] {
-        ryn::graphics::validate_rounded_effect_device_metrics({0, 100, 1.0F});
+        ryn::detail::validate_scene_device_metrics({0, 100, 1.0F});
     }, "zero-width effect metrics were accepted");
     require_invalid([] {
-        ryn::graphics::validate_rounded_effect_device_metrics(
+        ryn::detail::validate_scene_device_metrics(
             {100, 100, std::numeric_limits<float>::quiet_NaN()});
     }, "NaN effect display scale was accepted");
     auto clipped = outer();
     clipped.geometry.ancestor_clip = ryn::graphics::EffectClip{
         8, {500.0F, 500.0F, 20.0F, 20.0F}};
-    const auto packed = ryn::graphics::pack_rounded_effect_instance(
+    const auto packed = ryn::detail::pack_rounded_effect_instance(
         clipped, {200, 100, 1.0F});
-    require(packed == ryn::graphics::RoundedEffectGpuInstance{},
+    require(packed == ryn::detail::RoundedEffectGpuInstance{},
             "fully clipped rounded effect did not preserve its slot as a degenerate quad");
 }
 
@@ -188,6 +210,7 @@ int main() {
         test_instance_layout_and_device_packing();
         test_100_150_200_percent_scale_contract();
         test_shader_reference_matches_logical_reference();
+        test_inset_translation_and_density_reference();
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
     } catch (const std::exception& error) {

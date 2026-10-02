@@ -1,6 +1,6 @@
 # RynUI 多 backend 与桌面、移动端、Web 可移植性调研
 
-调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 建立跨端框架基础，036 继续 logical scene 改造；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。036 的实际验收进度见 [tasks](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)。
+调研日期：2026-10-01；框架实施更新：2026-10-02。状态：**035 建立跨端框架基础，036 迁移 Quad/Glyph logical scene，037 继续隔离 Effect packing 与 Core 依赖；新 OS、浏览器/移动宿主与第二真实 GPU 后端仍未实现**。当前实际验收进度见 [037 tasks](../../openspec/changes/037-20261002-isolate-effect-packing-from-core/tasks.md)。
 
 本文研究如何让同一套 RynUI C++ 组件与应用逻辑运行在 Windows、Linux、macOS、Android、iOS 和浏览器中。正式边界见 [架构](../architecture.md)与 [renderer 合同](../renderer-contract.md)，框架实施范围由 [035 change](../../openspec/changes/035-20261002-establish-portable-backend-foundation/tasks.md)与 [036 change](../../openspec/changes/036-20261002-retain-logical-scene-coordinates/tasks.md)确定；后续平台各自通过独立 change 明确兼容范围与验收。
 
@@ -30,7 +30,7 @@
 | [平台状态](../../src/platform/sdl/platform_state.hpp)、[GPU binding](../../src/renderer/sdl/gpu_binding.hpp) | host 拥有窗口和服务；renderer binding 独立拥有 GPU create/claim/release/destroy | GPU 失败保留可用 host；新平台 binding 仍需实际实现 |
 | [共同场景](../../src/renderer/common/scene_resources.hpp) | SceneBackend/SceneResources 共同事务，失败不可呈现、完整重试，附件校验 owner/epoch/revision | 可从 CPU scene 重建，不 remount；没有自动 device-loss 恢复 |
 | [Recording](../../src/renderer/recording/recording_renderer.hpp) | 拥有真实 buffer/texture bytes，范围/kind/owner/epoch 检查、有序 draw | 验证数据和控制合同，不能代替真实 GPU |
-| [共同 GPU resources](../../src/renderer/common/scene_packing.hpp) | Quad/Glyph/Effect resources 与 draw 位于 common target；logical CPU scene v2 独立于 packed GPU ABI v1；对齐要求来自 backend | 后续组件发布 logical 数据，后端消费/转换共同 packed 数据 |
+| [共同 GPU resources](../../src/renderer/common/scene_packing.hpp)、[Effect packing](../../src/renderer/common/rounded_effect_packing.hpp) | 三类 GPU packing/reference、resources 与 draw 位于 common target；统一 renderer device metrics；Core 不 include/link renderer，logical CPU scene v2 独立于 packed GPU ABI v1 | 后续组件发布 logical 数据，后端消费/转换共同 packed 数据 |
 | [帧调度](../../src/runtime/frame_scheduler.hpp)、[callback pump](../../src/runtime/callback_frame_pump.hpp) | native step 共用非阻塞 tick；Core 自动 wake，deadline 变更/取消、独立 lifetime token | future host 可实现 callback 排程；尚无 DOM/JNI/UIKit 宿主 |
 | [输入](../../src/input/platform_input.hpp)、[文字输入端口](../../src/input/text_input_platform.hpp) | 已有 mouse/touch identity、cancel、平台无关 UTF-8 与 text session | 有复用基础；不等于已有手势仲裁、原生移动编辑体验 |
 | [默认字体](../../src/platform/default_font_chain.cpp) | Windows DirectWrite、Linux Fontconfig 发现系统字体 | macOS、移动端、浏览器要增加各自字体来源，不依赖桌面文件路径 |

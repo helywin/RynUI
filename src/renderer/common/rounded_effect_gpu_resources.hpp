@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/rounded_effect_gpu.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -43,21 +43,28 @@ public:
     RoundedEffectGpuResources(RoundedEffectGpuResources&&) = delete;
     RoundedEffectGpuResources& operator=(RoundedEffectGpuResources&&) = delete;
     ~RoundedEffectGpuResources();
-    void abandon_device() noexcept { buffer_ = nullptr; }
+    void abandon_device() noexcept {
+        buffer_ = nullptr;
+        capacity_ = 0;
+        instance_count_ = 0;
+        metrics_.reset();
+        instances_.clear();
+    }
 
     void synchronize(
         graphics::RoundedEffectStore& store,
-        graphics::RoundedEffectDeviceMetrics metrics);
+        SceneDeviceMetrics metrics);
     void invalidate_upload() noexcept;
 
     [[nodiscard]] RoundedEffectGpuBufferHandle buffer() const noexcept;
     [[nodiscard]] std::uint32_t capacity() const noexcept;
     [[nodiscard]] std::uint32_t instance_count() const noexcept;
-    [[nodiscard]] std::span<const graphics::RoundedEffectGpuInstance>
+    [[nodiscard]] std::span<const RoundedEffectGpuInstance>
         instances() const noexcept;
     [[nodiscard]] const RoundedEffectGpuResourceCounters& counters() const noexcept;
 
 private:
+    void synchronize_validated(graphics::RoundedEffectStore& store, SceneDeviceMetrics metrics);
     static void append_dirty_range(
         std::vector<graphics::RoundedEffectInstanceRange>& ranges,
         graphics::RoundedEffectInstanceRange range);
@@ -65,15 +72,15 @@ private:
     void convert_range(
         std::span<const graphics::RoundedEffectInstance> source,
         graphics::RoundedEffectInstanceRange range,
-        graphics::RoundedEffectDeviceMetrics metrics);
+        SceneDeviceMetrics metrics);
 
     RoundedEffectGpuApi* api_;
     RoundedEffectGpuBufferHandle buffer_{nullptr};
     std::uint32_t capacity_{};
     std::uint32_t instance_count_{};
-    std::vector<graphics::RoundedEffectGpuInstance> instances_;
+    std::vector<RoundedEffectGpuInstance> instances_;
     std::vector<graphics::RoundedEffectInstanceRange> dirty_ranges_;
-    std::optional<graphics::RoundedEffectDeviceMetrics> metrics_;
+    std::optional<SceneDeviceMetrics> metrics_;
     RoundedEffectGpuResourceCounters counters_;
 };
 

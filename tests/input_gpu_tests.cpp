@@ -126,12 +126,12 @@ void run(float scale) {
     const auto shadow = f.effects.instances()[detail::input_shadow_layer_capacity - 1];
     const auto focus = f.effects.instances()[detail::input_focus_layer];
     const auto& shape = f.host.rounded_effects().packed_instances()[detail::input_shadow_layer_capacity - 1].geometry.shape.rect;
-    require(graphics::rounded_effect_gpu_coverage_reference(
+    require(detail::rounded_effect_gpu_coverage_reference(
         {(shape.x + shape.width + 1) * scale, (shape.y + shape.height / 2) * scale}, shadow) > 0.9F,
         "scaled active shadow footprint was clipped");
     const float outline_x = shape.x + shape.width + focus.effect_params[2] / scale
         + focus.effect_params[1] / scale / 2;
-    require(graphics::rounded_effect_gpu_coverage_reference(
+    require(detail::rounded_effect_gpu_coverage_reference(
         {outline_x * scale, (shape.y + shape.height / 2) * scale}, focus) > 0.9F,
         "scaled focus footprint was clipped");
     const auto target = f.inputs.mounted_inputs().front();

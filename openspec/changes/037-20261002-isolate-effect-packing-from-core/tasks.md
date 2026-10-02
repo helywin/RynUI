@@ -6,9 +6,9 @@
 
 ## 2. 连贯边界迁移与恢复（平台通用）
 
-- [ ] 2.1 迁移 Effect packing/reference、建立独立 SceneDeviceMetrics 并迁移全部 consumers；验证 Effect literal ABI/coverage、三类 primitive 共用 metrics、非法与不可表示 viewport 在 upload 前拒绝，graphics 不再编译 GPU packing。
-- [ ] 2.2 实现 Effect 异常 metrics 失效与 abandon 重建；注入写后失败/异常后回原 metrics、无 CPU dirty 完整重试、新代际 buffer 创建与 CPU effect 保留，现有局部/idle/zero/增长/clip 合同通过。
-- [ ] 2.3 强化 Core include/link 守卫并补正负 fixtures，更新 renderer contract、architecture、AGENTS 与研究入口；在 Windows/MSVC 使用 windows-msvc-headless Debug/Release 完整 CTest（补入 Effect math/store/scene/packing 与 allocation），验证实际 build graph、热路径分配合同及 doctor/strict/diff check，记录通用证据并提交本阶段。
+- [x] 2.1 迁移 Effect packing/reference、建立独立 SceneDeviceMetrics 并迁移全部 consumers；验证 Effect literal ABI/coverage、三类 primitive 共用 metrics、非法与不可表示 viewport 在 upload 前拒绝，graphics 不再编译 GPU packing。
+- [x] 2.2 实现 Effect 异常 metrics 失效与 abandon 重建；注入写后失败/异常后回原 metrics、无 CPU dirty 完整重试、新代际 buffer 创建与 CPU effect 保留，现有局部/idle/zero/增长/clip 合同通过。
+- [x] 2.3 强化 Core include/link 守卫并补正负 fixtures，更新 renderer contract、architecture、AGENTS 与研究入口；在 Windows/MSVC 使用 windows-msvc-headless Debug/Release 完整 CTest（补入 Effect math/store/scene/packing 与 allocation），验证实际 build graph、热路径分配合同及 doctor/strict/diff check，记录通用证据并提交本阶段。
 
 ## 3. Windows 原生验收
 

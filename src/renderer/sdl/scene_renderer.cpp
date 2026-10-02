@@ -200,7 +200,7 @@ SdlSceneRenderer::SdlSceneRenderer(
         };
         effect_pipeline_ = build_pipeline(
             "rounded_effect",
-            sizeof(graphics::RoundedEffectGpuInstance),
+            sizeof(detail::RoundedEffectGpuInstance),
             effect_attributes,
             0);
     } catch (...) {
@@ -627,7 +627,7 @@ void SdlSceneRenderer::draw_rounded_effect(
         throw std::logic_error("Rounded effect draw resources are not attached");
     }
     const auto byte_offset = static_cast<std::uint64_t>(first)
-        * sizeof(graphics::RoundedEffectGpuInstance);
+        * sizeof(detail::RoundedEffectGpuInstance);
     if (byte_offset > std::numeric_limits<Uint32>::max()) {
         throw std::length_error("Rounded effect draw offset exceeds uint32_t");
     }
@@ -639,7 +639,7 @@ void SdlSceneRenderer::draw_rounded_effect(
         static_cast<Uint32>(byte_offset),
     };
     SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
-    SDL_DrawGPUPrimitives(pass, graphics::rounded_effect_vertex_count, count, 0, 0);
+    SDL_DrawGPUPrimitives(pass, detail::rounded_effect_vertex_count, count, 0, 0);
     ++counters_.effect_draws;
     counters_.effect_instances += count;
 }

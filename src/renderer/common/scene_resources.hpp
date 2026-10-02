@@ -12,7 +12,7 @@ struct SceneCpuData final {
     graphics::GlyphAtlas &atlas;
     graphics::GlyphInstanceStore &glyphs;
     graphics::RoundedEffectStore *effects;
-    graphics::RoundedEffectDeviceMetrics metrics;
+    SceneDeviceMetrics metrics;
 };
 
 struct SceneUploadTiming final {

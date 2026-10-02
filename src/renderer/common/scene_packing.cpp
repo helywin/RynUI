@@ -20,7 +20,7 @@ std::array<float, 4> pack_bounds(const std::array<float, 4> &bounds, runtime::Re
 
 QuadGpuInstance pack_quad_instance(const graphics::QuadInstance &instance,
                                    SceneDeviceMetrics metrics) {
-    const auto viewport = graphics::rounded_effect_logical_viewport(metrics);
+    const auto viewport = scene_logical_viewport(metrics);
     const auto extent = std::min(instance.bounds[2], instance.bounds[3]);
     if (!std::isfinite(instance.corner_radius) || instance.corner_radius < 0)
         throw std::invalid_argument("Scene logical corner radius must be finite and nonnegative");
@@ -34,7 +34,7 @@ QuadGpuInstance pack_quad_instance(const graphics::QuadInstance &instance,
 
 GlyphGpuInstance pack_glyph_instance(const graphics::GlyphInstance &instance,
                                      SceneDeviceMetrics metrics) {
-    const auto viewport = graphics::rounded_effect_logical_viewport(metrics);
+    const auto viewport = scene_logical_viewport(metrics);
     return {pack_bounds(instance.position_size, viewport),
             instance.uv_rect,
             {-1 + 2 * instance.clip_bounds[0] / viewport.width,

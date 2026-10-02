@@ -1,15 +1,18 @@
-#include "graphics/rounded_effect_gpu.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
-namespace ryn::graphics {
+namespace ryn::detail {
+using graphics::LogicalRoundedRect;
+using graphics::RoundedEffectInstance;
+using graphics::RoundedEffectKind;
+using graphics::intersect_effect_bounds;
+using graphics::rounded_effect_bounds;
+using graphics::rounded_rect_signed_distance;
+using graphics::validate_rounded_effect;
 namespace {
-
-[[nodiscard]] bool finite(float value) noexcept {
-    return std::isfinite(value);
-}
 
 [[nodiscard]] runtime::Rect scale_rect(runtime::Rect rect, float scale) noexcept {
     return {
@@ -70,33 +73,15 @@ namespace {
 
 } // namespace
 
-void validate_rounded_effect_device_metrics(RoundedEffectDeviceMetrics metrics) {
-    if (metrics.pixel_width == 0 || metrics.pixel_height == 0
-            || !finite(metrics.display_scale) || metrics.display_scale <= 0.0F) {
-        throw std::invalid_argument(
-            "Rounded effect device metrics must have positive pixels and scale");
-    }
-}
-
-runtime::Rect rounded_effect_logical_viewport(RoundedEffectDeviceMetrics metrics) {
-    validate_rounded_effect_device_metrics(metrics);
-    return {
-        0.0F,
-        0.0F,
-        static_cast<float>(metrics.pixel_width) / metrics.display_scale,
-        static_cast<float>(metrics.pixel_height) / metrics.display_scale,
-    };
-}
-
 RoundedEffectGpuInstance pack_rounded_effect_instance(
     const RoundedEffectInstance& instance,
-    RoundedEffectDeviceMetrics metrics) {
+    SceneDeviceMetrics metrics) {
     validate_rounded_effect(instance);
-    validate_rounded_effect_device_metrics(metrics);
+    const auto viewport = scene_logical_viewport(metrics);
     const float scale = metrics.display_scale;
     const auto logical_bounds = intersect_effect_bounds(
         rounded_effect_bounds(instance, 1.0F / scale),
-        rounded_effect_logical_viewport(metrics));
+        viewport);
     if (logical_bounds.width <= 0.0F || logical_bounds.height <= 0.0F) {
         // The retained store culls with a conservative logical AA guard. At
         // fractional DPI its bound may overlap the clip while the one-pixel
@@ -227,4 +212,4 @@ std::array<float, 4> rounded_effect_gpu_fragment_reference(
     };
 }
 
-} // namespace ryn::graphics
+} // namespace ryn::detail

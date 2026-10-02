@@ -965,7 +965,7 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_input_evidence_schema.cmake")
 set_tests_properties(rynui.input_evidence_commit_idle_required PROPERTIES WILL_FAIL TRUE)
 rynui_configure_cpp_target(rynui_button_component_tests)
-target_link_libraries(rynui_button_component_tests PRIVATE rynui_components)
+target_link_libraries(rynui_button_component_tests PRIVATE rynui_components rynui_renderer_common)
 target_compile_definitions(
     rynui_button_component_tests
     PRIVATE
@@ -1445,6 +1445,7 @@ add_rynui_rounded_effect_test(scene rounded_effect_scene_tests.cpp)
 add_rynui_rounded_effect_test(
     allocation_benchmark rounded_effect_allocation_benchmark.cpp)
 add_rynui_rounded_effect_test(gpu rounded_effect_gpu_tests.cpp)
+target_link_libraries(rynui_rounded_effect_gpu_tests PRIVATE rynui_renderer_common)
 
 add_executable(
     rynui_rounded_effect_gpu_resources_tests

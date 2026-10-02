@@ -169,7 +169,6 @@ add_library(rynui_graphics STATIC
     graphics/quad_primitive.cpp
     graphics/quad_scene.cpp
     graphics/rounded_effect.cpp
-    graphics/rounded_effect_gpu.cpp
 )
 rynui_configure_cpp_target(rynui_graphics)
 target_include_directories(rynui_graphics PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -225,7 +224,9 @@ target_link_libraries(rynui_components PRIVATE
 )
 
 add_library(rynui_renderer_common STATIC
+    renderer/common/scene_metrics.cpp
     renderer/common/scene_packing.cpp
+    renderer/common/rounded_effect_packing.cpp
     renderer/common/quad_gpu_resources.cpp
     renderer/common/scene_resources.cpp
     renderer/common/glyph_gpu_resources.cpp
@@ -355,7 +356,10 @@ rynui_assert_direct_dependencies(
     rynui_theme
 )
 
-foreach(core_target IN ITEMS rynui rynui_renderer_common rynui_text_input_session
-        rynui_text_clipboard_commands)
-    rynui_assert_portable_link_closure(${core_target})
+foreach(core_target IN ITEMS rynui rynui_string rynui_theme rynui_animation rynui_font
+        rynui_text rynui_reactive rynui_input rynui_text_boundary rynui_text_editor
+        rynui_text_input_session rynui_text_clipboard_commands rynui_runtime rynui_motion
+        rynui_interaction rynui_layout rynui_graphics rynui_text_scene rynui_components)
+    rynui_assert_core_link_closure(${core_target})
 endforeach()
+rynui_assert_portable_link_closure(rynui_renderer_common)

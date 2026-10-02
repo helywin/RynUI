@@ -1,0 +1,15 @@
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start  1: rynui.portable.logical_scene_packing
+1/5 Test  #1: rynui.portable.logical_scene_packing ..........   Passed    0.01 sec
+    Start 16: rynui.portable.rounded_effect_gpu
+2/5 Test #16: rynui.portable.rounded_effect_gpu .............   Passed    0.02 sec
+    Start 17: rynui.portable.rounded_effect_gpu_resources
+3/5 Test #17: rynui.portable.rounded_effect_gpu_resources ...   Passed    0.01 sec
+    Start 32: rynui.portable.scene_backend
+4/5 Test #32: rynui.portable.scene_backend ..................   Passed    0.26 sec
+    Start 33: rynui.portable.backend_boundaries
+5/5 Test #33: rynui.portable.backend_boundaries .............   Passed    1.21 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   1.54 sec

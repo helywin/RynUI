@@ -2,12 +2,11 @@
 
 #include "graphics/glyph_scene.hpp"
 #include "graphics/quad_primitive.hpp"
-#include "graphics/rounded_effect_gpu.hpp"
+#include "renderer/common/scene_metrics.hpp"
 
 namespace ryn::detail {
 
 // CPU logical scene v2 and packed GPU ABI v1 are separate contracts.
-using SceneDeviceMetrics = graphics::RoundedEffectDeviceMetrics;
 inline constexpr std::uint32_t packed_scene_abi_version = 1;
 
 struct alignas(16) QuadGpuInstance {

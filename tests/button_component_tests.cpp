@@ -1,5 +1,5 @@
 #include "component/button_component.hpp"
-#include "graphics/rounded_effect_gpu.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -519,18 +519,18 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
                     {focus_shape.x + focus_shape.width + 2.5F, focus_mid_y},
                     focus_effect) > 0.99F,
             "Button focus did not preserve a transparent gap and hollow 3px ring");
-    const auto focus_150 = ryn::graphics::pack_rounded_effect_instance(
+    const auto focus_150 = ryn::detail::pack_rounded_effect_instance(
         focus_effect,
         {960, 540, 1.5F});
     require(focus_150.effect_params[1] == 4.5F
                 && focus_150.effect_params[2] == 1.5F
-                && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                && ryn::detail::rounded_effect_gpu_coverage_reference(
                     {
                         (focus_shape.x + focus_shape.width + 0.25F) * 1.5F,
                         focus_mid_y * 1.5F,
                     },
                     focus_150) == 0.0F
-                && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                && ryn::detail::rounded_effect_gpu_coverage_reference(
                     {
                         (focus_shape.x + focus_shape.width + 2.5F) * 1.5F,
                         focus_mid_y * 1.5F,
@@ -744,12 +744,12 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
             "keyboard focus did not use the locked hollow focus outline");
 
     for (const float scale : std::array{1.0F, 1.25F, 1.5F, 2.0F}) {
-        const ryn::graphics::RoundedEffectDeviceMetrics metrics{
+        const ryn::detail::SceneDeviceMetrics metrics{
             static_cast<std::uint32_t>(std::lround(640.0F * scale)),
             static_cast<std::uint32_t>(std::lround(360.0F * scale)),
             scale,
         };
-        const auto packed = ryn::graphics::pack_rounded_effect_instance(
+        const auto packed = ryn::detail::pack_rounded_effect_instance(
             focus, metrics);
         require(near(packed.effect_params[1], 3.0F * scale)
                     && near(packed.effect_params[2], 1.0F * scale)
@@ -757,13 +757,13 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
                         {shape.x + shape.width + 0.25F, mid_y}, focus) == 0.0F
                     && ryn::graphics::rounded_effect_coverage(
                         {shape.x + shape.width + 2.5F, mid_y}, focus) > 0.99F
-                    && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                    && ryn::detail::rounded_effect_gpu_coverage_reference(
                         {
                             (shape.x + shape.width + 0.25F) * scale,
                             mid_y * scale,
                         },
                         packed) == 0.0F
-                    && ryn::graphics::rounded_effect_gpu_coverage_reference(
+                    && ryn::detail::rounded_effect_gpu_coverage_reference(
                         {
                             (shape.x + shape.width + 2.5F) * scale,
                             mid_y * scale,

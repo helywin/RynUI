@@ -1,4 +1,5 @@
 #include "renderer/common/scene_packing.hpp"
+#include "renderer/common/rounded_effect_packing.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -34,6 +35,13 @@ void literal_packing() {
     const graphics::QuadInstance quad{
         {10, 20, 30, 40}, {0.2F, 0.4F, 0.6F, 0.8F}, 0.75F, 6, {5, -10}};
     const auto gpu = pack_quad_instance(quad, {400, 200, 2}); // logical viewport 200 x 100
+    const auto viewport = scene_logical_viewport({400, 200, 2});
+    check(viewport == runtime::Rect{0, 0, 200, 100}, "common logical viewport changed");
+    const auto effect = graphics::make_outline_effect({{10, 20, 30, 40}, 6}, 3, 1,
+        Color::rgba8(22, 119, 255));
+    const auto effect_gpu = pack_rounded_effect_instance(effect, {400, 200, 2});
+    check(effect_gpu.shape_rect == std::array<float, 4>{20, 40, 60, 80},
+        "Effect did not consume the common metrics scale");
     near(gpu.clip_rect, {-0.9F, 0.6F, 0.3F, -0.8F});
     near(gpu.translation, {0.05F, 0.2F});
     check(gpu.corner_radius == 0.2F && gpu.color == quad.color && gpu.opacity == quad.opacity,
@@ -60,9 +68,13 @@ void literal_packing() {
     check(quad.bounds == std::array<float, 4>{10, 20, 30, 40}, "packing changed CPU bounds");
     for (auto metrics : {SceneDeviceMetrics{0, 200, 1}, SceneDeviceMetrics{400, 0, 1},
                          SceneDeviceMetrics{400, 200, 0}, SceneDeviceMetrics{400, 200, -1},
-                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::quiet_NaN()}}) {
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::quiet_NaN()},
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::infinity()},
+                         SceneDeviceMetrics{400, 200, std::numeric_limits<float>::denorm_min()}}) {
+        rejects([&] { validate_scene_device_metrics(metrics); });
         rejects([&] { (void)pack_quad_instance(quad, metrics); });
         rejects([&] { (void)pack_glyph_instance(glyph, metrics); });
+        rejects([&] { (void)pack_rounded_effect_instance(effect, metrics); });
     }
     auto invalid = quad;
     invalid.bounds[3] = -1;

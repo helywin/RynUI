@@ -110,7 +110,7 @@ bool SceneResources::synchronize(SceneCpuData data, SceneUploadTiming *timing) {
     ++state_->revision;
     bool active = false;
     try {
-        graphics::validate_rounded_effect_device_metrics(data.metrics);
+        validate_scene_device_metrics(data.metrics);
         if (state_->epoch != backend_->device_epoch() || !glyphs_ || !effects_) {
             abandon_stale_device();
             quads_.reset();
