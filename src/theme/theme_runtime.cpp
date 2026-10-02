@@ -157,6 +157,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
 
     const auto& before_button = before.button();
     const auto& after_button = after.button();
+    bool variant_colors_changed = before_button.variants.values() != after_button.variants.values();
+    bool variant_shadows_changed{};
+    for (std::size_t index = 0; index < button_color_count; ++index) {
+        variant_colors_changed = variant_colors_changed || before_button.variants.colors[index].values() !=
+                                                               after_button.variants.colors[index].values();
+        variant_shadows_changed = variant_shadows_changed || before_button.variants.colors[index].shadow !=
+                                                                 after_button.variants.colors[index].shadow;
+    }
     const bool button_colors_changed =
         before_button.default_color != after_button.default_color ||
         before_button.default_background != after_button.default_background ||
@@ -179,7 +187,7 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
         before_button.danger_active_background != after_button.danger_active_background ||
         before_button.disabled_color != after_button.disabled_color ||
         before_button.disabled_background != after_button.disabled_background ||
-        before_button.disabled_border_color != after_button.disabled_border_color;
+        before_button.disabled_border_color != after_button.disabled_border_color || variant_colors_changed;
     append_if_changed(false, button_colors_changed, TokenIdentity::button_colors, changed, count);
     append_if_changed(
         std::array{before_button.control_height_small, before_button.control_height,
@@ -204,12 +212,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
         std::array{before_button.border_radius_small, before_button.border_radius, before_button.border_radius_large},
         std::array{after_button.border_radius_small, after_button.border_radius, after_button.border_radius_large},
         TokenIdentity::button_border_radius, changed, count);
-    append_if_changed(before_button.border_width, after_button.border_width, TokenIdentity::button_border_width,
-                      changed, count);
+    append_if_changed(std::array{before_button.border_width, before_button.dash_length, before_button.dash_gap},
+                      std::array{after_button.border_width, after_button.dash_length, after_button.dash_gap},
+                      TokenIdentity::button_border_width, changed, count);
     append_if_changed(before_button.icon_gap, after_button.icon_gap, TokenIdentity::button_icon_gap, changed, count);
     const bool button_shadows_changed = before_button.default_shadow != after_button.default_shadow ||
                                         before_button.primary_shadow != after_button.primary_shadow ||
-                                        before_button.danger_shadow != after_button.danger_shadow;
+                                        before_button.danger_shadow != after_button.danger_shadow ||
+                                        variant_shadows_changed;
     append_if_changed(false, button_shadows_changed, TokenIdentity::button_shadows, changed, count);
 
     const auto& before_text = before.text();

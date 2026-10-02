@@ -1,11 +1,13 @@
 #pragma once
 
 #include <ryn/component.hpp>
+#include <ryn/button_types.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 
 #include <functional>
+#include <optional>
 #include <utility>
 
 namespace ryn {
@@ -14,13 +16,6 @@ namespace detail {
 struct ButtonPropsAccess;
 
 } // namespace detail
-
-enum class ButtonType {
-    Default,
-    Primary,
-    Danger,
-    Text,
-};
 
 class ButtonProps final {
 public:
@@ -31,6 +26,26 @@ public:
 
     ButtonProps& size(Prop<ControlSize> value) {
         size_ = std::move(value);
+        return *this;
+    }
+
+    ButtonProps& color(Prop<ButtonColor> value) {
+        color_ = std::move(value);
+        return *this;
+    }
+
+    ButtonProps& variant(Prop<ButtonVariant> value) {
+        variant_ = std::move(value);
+        return *this;
+    }
+
+    ButtonProps& danger(Prop<bool> value) {
+        danger_ = std::move(value);
+        return *this;
+    }
+
+    ButtonProps& ghost(Prop<bool> value) {
+        ghost_ = std::move(value);
         return *this;
     }
 
@@ -58,6 +73,10 @@ private:
     friend struct detail::ButtonPropsAccess;
 
     Prop<ButtonType> type_{ButtonType::Default};
+    std::optional<Prop<ButtonColor>> color_;
+    std::optional<Prop<ButtonVariant>> variant_;
+    Prop<bool> danger_{false};
+    Prop<bool> ghost_{false};
     Prop<ControlSize> size_{ControlSize::Middle};
     Prop<bool> disabled_{false};
     Prop<bool> loading_{false};

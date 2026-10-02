@@ -6,7 +6,7 @@
 
 ## 2. 颜色与变体（平台通用）
 
-- [ ] 2.1 实现 typed color/variant/danger/ghost、Theme palette/override/identity 与真实虚线圆角；补旧 API、所有颜色/变体/优先级/透明 gap、reactive 不测量/不重跑、非法输入/销毁合同与公开文档；Windows headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录实际 preset/evidence 并提交。
+- [x] 2.1 实现 typed color/variant/danger/ghost、Theme palette/override/identity 与真实虚线圆角；补旧 API、所有颜色/变体/优先级/透明 gap、reactive 不测量/不重跑、非法输入/销毁合同与公开文档；Windows headless Debug/Release focused CTest、格式/doctor/strict/diff 通过后记录实际 preset/evidence 并提交。
 
 ## 3. 内容与原生入口（平台通用）
 

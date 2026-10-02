@@ -773,9 +773,28 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
                                                 "Divider plain font weight must be in [100, 1000]");
 }
 
-[[nodiscard]] ButtonThemeToken derive_button(const ThemeMapToken& map, const ThemeAliasToken& alias) {
+[[nodiscard]] ButtonColorThemeToken button_palette(Color base, bool dark, Color background) {
+    const auto normal = [base](int key) {
+        return key == 6 ? base : palette_variant(base, std::abs(key - 6), key < 6);
+    };
+    const auto palette = [&](int key) {
+        if (!dark) {
+            return normal(key);
+        }
+        constexpr std::array keys{8, 7, 6, 6, 5, 6, 6};
+        constexpr std::array opacity{0.15F, 0.25F, 0.30F, 0.45F, 0.90F, 0.85F, 0.65F};
+        return mix(Color::rgba8(20, 20, 20), normal(keys.at(key - 1)), opacity.at(key - 1));
+    };
+    ButtonColorThemeToken result{
+        palette(6), palette(5), palette(7), palette(1), palette(2), palette(3), Color::rgba8(255, 255, 255), {}};
+    result.shadow = {{ShadowKind::outer, {0, 2}, 0, 0, get_alpha_color(result.light, background)}};
+    return result;
+}
+
+[[nodiscard]] ButtonThemeToken derive_button(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                             const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
     const auto& shadows = ant_design_default_shadows();
-    return {
+    ButtonThemeToken result{
         .default_color = alias.color_text,
         .default_background = alias.color_background_container,
         .default_border_color = alias.color_border,
@@ -815,6 +834,7 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
         .border_radius_small = map.border_radius_small,
         .border_radius = map.border_radius,
         .border_radius_large = map.border_radius_large,
+        .border_width = seed.line_width,
         .icon_gap = map.size_xs,
         .loading_indicator_size = map.font_size,
         .loading_opacity = 0.65F,
@@ -822,6 +842,53 @@ void apply_divider_override(DividerThemeToken& token, const DividerTokenOverride
         .primary_shadow = shadows.button_primary,
         .danger_shadow = shadows.button_danger,
     };
+    const bool dark = contains_dark(algorithms);
+    auto& variant = result.variants;
+    const Color neutral = map.color_text_base;
+    const auto alpha = [neutral](float value) {
+        return Color(neutral.red(), neutral.green(), neutral.blue(), value);
+    };
+    variant.colors[0] = {result.default_border_color,
+                         result.default_hover_color,
+                         result.default_active_color,
+                         alpha(dark ? 0.08F : 0.04F),
+                         alpha(dark ? 0.12F : 0.06F),
+                         alpha(dark ? 0.18F : 0.15F),
+                         dark ? Color::rgba8(0, 0, 0) : Color::rgba8(255, 255, 255),
+                         result.default_shadow};
+    variant.colors[1] = button_palette(seed.color_primary, dark, alias.color_background_container);
+    variant.colors[2] = button_palette(seed.color_error, dark, alias.color_background_container);
+    variant.colors[1].base = result.primary_background;
+    variant.colors[1].hover = result.primary_hover_background;
+    variant.colors[1].active = result.primary_active_background;
+    variant.colors[1].solid_text = result.primary_color;
+    variant.colors[1].shadow = result.primary_shadow;
+    variant.colors[2].base = result.danger_background;
+    variant.colors[2].hover = result.danger_hover_background;
+    variant.colors[2].active = result.danger_active_background;
+    variant.colors[2].solid_text = result.danger_color;
+    variant.colors[2].shadow = result.danger_shadow;
+    constexpr std::array presets{Color::rgba8(22, 119, 255), Color::rgba8(114, 46, 209), Color::rgba8(19, 194, 194),
+                                 Color::rgba8(82, 196, 26),  Color::rgba8(235, 47, 150), Color::rgba8(235, 47, 150),
+                                 Color::rgba8(245, 34, 45),  Color::rgba8(250, 140, 22), Color::rgba8(250, 219, 20),
+                                 Color::rgba8(250, 84, 28),  Color::rgba8(47, 84, 235),  Color::rgba8(160, 217, 17),
+                                 Color::rgba8(250, 173, 20)};
+    for (std::size_t index = 0; index < presets.size(); ++index) {
+        variant.colors[index + 3] = button_palette(presets[index], dark, alias.color_background_container);
+    }
+    variant.ghost_background = Color::rgba8(0, 0, 0, 0);
+    variant.default_ghost_color = alias.color_background_container;
+    variant.default_ghost_border_color = alias.color_background_container;
+    variant.link_color = map.color_link;
+    variant.link_hover_color = map.color_link_hover;
+    variant.link_active_color = map.color_link_active;
+    variant.link_hover_background = Color::rgba8(0, 0, 0, 0);
+    variant.default_solid_background = alpha(dark ? 0.95F : 1.0F);
+    variant.default_solid_hover_background = alpha(dark ? 1.0F : 0.75F);
+    variant.default_solid_active_background = alpha(dark ? 0.90F : 0.95F);
+    result.dash_length = 3.0F * std::max(1.0F, result.border_width);
+    result.dash_gap = result.dash_length;
+    return result;
 }
 
 [[nodiscard]] SwitchThemeToken derive_switch(const ThemeMapToken& map) {
@@ -1048,6 +1115,91 @@ void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& 
     if (override.danger_shadow) {
         button.danger_shadow = *override.danger_shadow;
     }
+    auto& variant = button.variants;
+    if (override.default_border_color) {
+        variant.colors[0].base = button.default_border_color;
+    }
+    if (override.default_shadow) {
+        variant.colors[0].shadow = button.default_shadow;
+    }
+    if (override.primary_background) {
+        variant.colors[1].base = button.primary_background;
+    }
+    if (override.primary_color) {
+        variant.colors[1].solid_text = button.primary_color;
+    }
+    if (override.primary_shadow) {
+        variant.colors[1].shadow = button.primary_shadow;
+    }
+    if (override.danger_background) {
+        variant.colors[2].base = button.danger_background;
+    }
+    if (override.danger_shadow) {
+        variant.colors[2].shadow = button.danger_shadow;
+    }
+    for (std::size_t index = 0; index < button_color_count; ++index) {
+        auto& target = variant.colors[index];
+        const auto& source = override.colors[index];
+        if (source.base) {
+            target.base = *source.base;
+        }
+        if (source.hover) {
+            target.hover = *source.hover;
+        }
+        if (source.active) {
+            target.active = *source.active;
+        }
+        if (source.light) {
+            target.light = *source.light;
+        }
+        if (source.light_hover) {
+            target.light_hover = *source.light_hover;
+        }
+        if (source.light_active) {
+            target.light_active = *source.light_active;
+        }
+        if (source.solid_text) {
+            target.solid_text = *source.solid_text;
+        }
+        if (source.shadow) {
+            target.shadow = *source.shadow;
+        }
+    }
+    if (override.ghost_background) {
+        variant.ghost_background = *override.ghost_background;
+    }
+    if (override.default_ghost_color) {
+        variant.default_ghost_color = *override.default_ghost_color;
+    }
+    if (override.default_ghost_border_color) {
+        variant.default_ghost_border_color = *override.default_ghost_border_color;
+    }
+    if (override.link_color) {
+        variant.link_color = *override.link_color;
+    }
+    if (override.link_hover_color) {
+        variant.link_hover_color = *override.link_hover_color;
+    }
+    if (override.link_active_color) {
+        variant.link_active_color = *override.link_active_color;
+    }
+    if (override.link_hover_background) {
+        variant.link_hover_background = *override.link_hover_background;
+    }
+    if (override.default_solid_background) {
+        variant.default_solid_background = *override.default_solid_background;
+    }
+    if (override.default_solid_hover_background) {
+        variant.default_solid_hover_background = *override.default_solid_hover_background;
+    }
+    if (override.default_solid_active_background) {
+        variant.default_solid_active_background = *override.default_solid_active_background;
+    }
+    button.border_width =
+        fixed_length(override.border_width, button.border_width, "Button border width must be non-negative");
+    button.dash_length =
+        fixed_length(override.dash_length, button.dash_length, "Button dash length must be positive", true);
+    button.dash_gap = fixed_length(override.dash_gap, button.dash_gap, "Button dash gap must be positive", true);
 }
 
 [[nodiscard]] TextThemeToken derive_text(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
@@ -1164,7 +1316,43 @@ void append_color(std::ostringstream& stream, Color color) {
     append_color(stream, button.primary_background);
     stream << ",\"controlHeight\":" << button.control_height << ",\"paddingInline\":" << button.padding_inline
            << ",\"borderRadius\":" << button.border_radius << ",\"shadowLayers\":" << button.primary_shadow.size()
-           << "},\"switch\":{\"trackHeight\":" << switch_token.track_height
+           << ",\"borderWidth\":" << button.border_width << ",\"dashLength\":" << button.dash_length
+           << ",\"dashGap\":" << button.dash_gap << ",\"variantColors\":[";
+    for (std::size_t index = 0; index < button_color_count; ++index) {
+        if (index) {
+            stream << ',';
+        }
+        const auto& palette = button.variants.colors[index];
+        stream << "{\"colors\":[";
+        const auto colors = palette.values();
+        for (std::size_t channel = 0; channel < colors.size(); ++channel) {
+            if (channel) {
+                stream << ',';
+            }
+            append_color(stream, colors[channel]);
+        }
+        stream << "],\"shadow\":[";
+        for (std::size_t layer = 0; layer < palette.shadow.size(); ++layer) {
+            if (layer) {
+                stream << ',';
+            }
+            const auto& shadow = palette.shadow[layer];
+            stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                   << shadow.blur << ',' << shadow.spread << ',';
+            append_color(stream, shadow.color);
+            stream << ']';
+        }
+        stream << "]}";
+    }
+    stream << "],\"variantAppearance\":[";
+    const auto variant_colors = button.variants.values();
+    for (std::size_t index = 0; index < variant_colors.size(); ++index) {
+        if (index) {
+            stream << ',';
+        }
+        append_color(stream, variant_colors[index]);
+    }
+    stream << "]},\"switch\":{\"trackHeight\":" << switch_token.track_height
            << ",\"trackHeightSM\":" << switch_token.track_height_small
            << ",\"trackMinWidth\":" << switch_token.track_min_width
            << ",\"trackMinWidthSM\":" << switch_token.track_min_width_small
@@ -1548,6 +1736,17 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_shadow(hash, button.default_shadow);
     hash_shadow(hash, button.primary_shadow);
     hash_shadow(hash, button.danger_shadow);
+    hash_float(hash, button.dash_length);
+    hash_float(hash, button.dash_gap);
+    for (const auto& palette : button.variants.colors) {
+        for (const auto color : palette.values()) {
+            hash_color(hash, color);
+        }
+        hash_shadow(hash, palette.shadow);
+    }
+    for (const auto color : button.variants.values()) {
+        hash_color(hash, color);
+    }
     hash_color(hash, text.color);
     hash_integer(hash, text.font_family);
     hash_integer(hash, text.font_weight);
@@ -1720,9 +1919,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         apply_seed_override(component_seed, config.button.seed);
         const ThemeMapToken component_map = derive_map(component_seed, algorithms);
         const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
-        button = derive_button(component_map, component_alias);
+        button = derive_button(component_seed, component_map, component_alias, algorithms);
     } else {
-        button = derive_button(map, alias);
+        button = derive_button(seed, map, alias, algorithms);
     }
     apply_button_override(button, config.button.tokens);
 

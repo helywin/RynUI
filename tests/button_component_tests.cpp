@@ -1087,6 +1087,333 @@ void test_flex_composes_text_button_and_nested_flex() {
             "Flex update reran content or rebuilt Text/Button scene topology");
 }
 
+void test_native_color_variant_matrix_and_precedence() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<ryn::ButtonColor> color{ryn::ButtonColor::Default};
+    ryn::Signal<ryn::ButtonVariant> variant{ryn::ButtonVariant::Outlined};
+    ryn::Signal<bool> disabled{false};
+    ryn::Signal<bool> loading{false};
+    ryn::Signal<bool> ghost{false};
+    int runs{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}
+                        .type(ryn::ButtonType::Danger)
+                        .color(color)
+                        .variant(variant)
+                        .danger(true)
+                        .disabled(disabled)
+                        .loading(loading)
+                        .ghost(ghost),
+                    [&] {
+                        ++runs;
+                        ryn::Text(u8"Color matrix");
+                    });
+    }});
+    require(fixture.synchronize(), "Button color matrix initial layout failed");
+    const auto id = fixture.host->mounted_buttons()[0].component;
+    const auto text = fixture.host->text().mounted_texts()[0].scene;
+    const auto shape_count = fixture.text_scene.text_state(text).counters().shape_count;
+    const auto token = ryn::resolve_theme().button();
+    for (std::size_t index = 0; index < ryn::button_color_count; ++index) {
+        color.set(static_cast<ryn::ButtonColor>(index));
+        for (auto value : {ryn::ButtonVariant::Outlined, ryn::ButtonVariant::Dashed, ryn::ButtonVariant::Solid,
+                           ryn::ButtonVariant::Filled, ryn::ButtonVariant::Text, ryn::ButtonVariant::Link}) {
+            variant.set(value);
+            require(fixture.synchronize(), "Button color/variant failed layout");
+            const auto snapshot = fixture.host->snapshot(id);
+            require(snapshot.color == static_cast<ryn::ButtonColor>(index) && snapshot.variant == value && runs == 1 &&
+                        fixture.text_scene.text_state(text).counters().shape_count == shape_count,
+                    "Button explicit color/variant lost precedence or remounted/shaped content");
+            require((snapshot.dashed_effects > 0) == (value == ryn::ButtonVariant::Dashed),
+                    "Button dashed effect topology differs from variant");
+            if (value == ryn::ButtonVariant::Solid) {
+                require(snapshot.presentation_foreground == token.variants.colors[index].solid_text &&
+                            snapshot.presentation_border.alpha() == 0,
+                        "Button solid color contrast or transparent border differs");
+            } else if (value == ryn::ButtonVariant::Filled) {
+                require(snapshot.presentation_background == token.variants.colors[index].light,
+                        "Button filled palette did not apply light background");
+            } else if (value == ryn::ButtonVariant::Text || value == ryn::ButtonVariant::Link) {
+                require(snapshot.presentation_background.alpha() == 0 && snapshot.presentation_border.alpha() == 0,
+                        "Button text/link has a resting fill or border");
+            }
+            fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
+            const auto hovered = fixture.host->snapshot(id);
+            fixture.host->pointer().dispatch(
+                pointer_event(ryn::input::PointerAction::down, fixture.center(0), ryn::input::PointerButton::primary));
+            const auto pressed = fixture.host->snapshot(id);
+            if (index != 0 && value != ryn::ButtonVariant::Solid) {
+                require(hovered.presentation_foreground == token.variants.colors[index].hover &&
+                            pressed.presentation_foreground == token.variants.colors[index].active,
+                        "Button colored hover/active did not use corresponding palette");
+            }
+            if (value == ryn::ButtonVariant::Filled || value == ryn::ButtonVariant::Text) {
+                require(hovered.presentation_background == token.variants.colors[index].light_hover &&
+                            pressed.presentation_background == token.variants.colors[index].light_active,
+                        "Button filled/text hover/active light palette differs");
+            }
+            if (value == ryn::ButtonVariant::Solid && index != 0) {
+                require(hovered.presentation_background == token.variants.colors[index].hover &&
+                            pressed.presentation_background == token.variants.colors[index].active,
+                        "Button solid hover/active background differs");
+            }
+            disabled.set(true);
+            loading.set(true);
+            const auto blocked = fixture.host->snapshot(id);
+            require(blocked.presentation_foreground == token.disabled_color && !blocked.hovered &&
+                        !blocked.pointer_pressed,
+                    "Button disabled did not override loading/hover/press palette");
+            loading.set(false);
+            disabled.set(false);
+            fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, {1, 1}));
+        }
+    }
+    color.set(ryn::ButtonColor::Primary);
+    variant.set(ryn::ButtonVariant::Solid);
+    ghost.set(true);
+    require(fixture.synchronize(), "Button ghost layout failed");
+    auto snapshot = fixture.host->snapshot(id);
+    require(snapshot.variant == ryn::ButtonVariant::Outlined && snapshot.presentation_background.alpha() == 0 &&
+                snapshot.presentation_foreground == token.primary_background &&
+                snapshot.presentation_border == token.primary_background,
+            "Button primary ghost did not become transparent outlined");
+    color.set(ryn::ButtonColor::Default);
+    require(fixture.host->snapshot(id).presentation_foreground == token.variants.default_ghost_color,
+            "Button neutral ghost missed Theme color");
+    variant.set(ryn::ButtonVariant::Filled);
+    require(fixture.host->snapshot(id).presentation_background.alpha() == 0 &&
+                fixture.host->snapshot(id).presentation_foreground == token.variants.default_ghost_color,
+            "Button filled ghost retained a light fill or missed neutral ghost color");
+    color.set(ryn::ButtonColor::Blue);
+    require(fixture.host->snapshot(id).presentation_background.alpha() == 0 &&
+                fixture.host->snapshot(id).presentation_foreground ==
+                    token.variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Blue)].base,
+            "Button colored filled ghost missed transparent background");
+    color.set(ryn::ButtonColor::Default);
+    variant.set(ryn::ButtonVariant::Link);
+    require(fixture.host->snapshot(id).presentation_foreground == token.variants.link_color,
+            "Button ghost altered an unbordered link");
+    fixture.host->dispose();
+    require(fixture.nodes.size() == 0 && fixture.host->button_scene().size() == 0 &&
+                fixture.host->rounded_effects().live_count() == 0,
+            "Button color matrix leaked content/effect resources");
+}
+
+void test_native_sugar_props_and_theme_palette_inheritance() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<ryn::ButtonType> type{ryn::ButtonType::Primary};
+    ryn::Signal<bool> danger{false};
+    ryn::Signal<bool> ghost{false};
+    fixture.host->mount(ryn::Content{
+        [&] { ryn::Button(ryn::ButtonProps{}.type(type).danger(danger).ghost(ghost), [] { ryn::Text(u8"Sugar"); }); }});
+    require(fixture.synchronize(), "Button sugar layout failed");
+    const auto id = fixture.host->mounted_buttons()[0].component;
+    ghost.set(true);
+    require(fixture.host->snapshot(id).color == ryn::ButtonColor::Primary &&
+                fixture.host->snapshot(id).variant == ryn::ButtonVariant::Outlined,
+            "Button ghost sugar lost primary");
+    type.set(ryn::ButtonType::Dashed);
+    danger.set(true);
+    require(fixture.synchronize() && fixture.host->snapshot(id).color == ryn::ButtonColor::Danger &&
+                fixture.host->snapshot(id).variant == ryn::ButtonVariant::Dashed,
+            "Button danger sugar lost dashed");
+    danger.set(false);
+    ghost.set(false);
+    type.set(ryn::ButtonType::Link);
+    require(fixture.synchronize() && fixture.host->snapshot(id).variant == ryn::ButtonVariant::Link &&
+                fixture.host->snapshot(id).presentation_foreground == ryn::resolve_theme().button().variants.link_color,
+            "Button link type did not select link token");
+    const auto blue = static_cast<std::size_t>(ryn::ButtonColor::Blue);
+    ryn::ThemeConfig config;
+    config.button.tokens.colors[blue].base = ryn::Color::rgba8(120, 10, 20);
+    config.button.tokens.colors[blue].shadow =
+        ryn::ShadowList{{ryn::ShadowKind::outer, {0, 2}, 1, 0, ryn::Color::rgba8(20, 10, 20)}};
+    auto parent = ryn::resolve_theme(config);
+    const auto inherited = ryn::resolve_theme(ryn::ThemeConfig{}, &parent);
+    require(inherited.button().variants.colors[blue] == parent.button().variants.colors[blue] &&
+                inherited.identity() == parent.identity(),
+            "Button palette override was lost in inherited Theme");
+    require(parent.identity() != ryn::resolve_theme().identity() &&
+                parent.diagnostic_json().find("variantColors") != std::string::npos,
+            "Button palette values missing from identity/serialization");
+    auto changed = config;
+    changed.button.tokens.colors[blue].light = ryn::Color::rgba8(1, 2, 3);
+    require(ryn::resolve_theme(changed).identity() != parent.identity(), "Button light palette missing from identity");
+    changed = config;
+    changed.button.tokens.dash_gap = ryn::dp(7);
+    require(ryn::resolve_theme(changed).identity() != parent.identity(), "Button dash metric missing from identity");
+    ryn::ThemeConfig dark;
+    dark.algorithms = {ryn::ThemeAlgorithm::Dark};
+    const auto darker = ryn::resolve_theme(dark);
+    require(darker.button().variants.colors[blue] != ryn::resolve_theme().button().variants.colors[blue] &&
+                darker.button().variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Magenta)] ==
+                    darker.button().variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Pink)],
+            "Button dark preset or pink alias palette differs");
+    require(ryn::resolve_theme().button().variants.colors[blue].base == ryn::Color::rgba8(22, 119, 255) &&
+                ryn::resolve_theme().button().variants.colors[blue].hover == ryn::Color::rgba8(64, 150, 255) &&
+                ryn::resolve_theme().button().variants.colors[blue].active == ryn::Color::rgba8(9, 88, 217),
+            "Button locked blue preset differs from Ant palette");
+}
+
+void test_ghost_dashed_gaps_and_material_only_theme_updates() {
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    ryn::Signal<ryn::ButtonColor> color{ryn::ButtonColor::Blue};
+    ryn::Signal<ryn::ButtonVariant> variant{ryn::ButtonVariant::Dashed};
+    ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
+    int runs{};
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(theme), ryn::ThemeContent{[&] {
+                       ryn::Button(ryn::ButtonProps{}.color(color).variant(variant).ghost(true).layout(
+                                       ryn::LayoutStyle{}.width(ryn::dp(180))),
+                                   [&] {
+                                       ++runs;
+                                       ryn::Text(u8"Dashed");
+                                   });
+                   }});
+    }});
+    require(fixture.synchronize(), "Ghost dashed layout failed");
+    const auto id = fixture.host->mounted_buttons()[0].component;
+    const auto bounds = fixture.bounds(0);
+    require(fixture.layer(0, ryn::component::ButtonVisualLayer::border).opacity == 0 &&
+                fixture.layer(0, ryn::component::ButtonVisualLayer::background).color[3] == 0,
+            "Ghost dashed painted a solid border or opaque gap");
+    const auto coverage = [&](ryn::runtime::Point point) {
+        float result{};
+        for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
+            if (effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline && effect.geometry.ancestor_clip) {
+                const auto clip = effect.geometry.ancestor_clip->bounds;
+                if (point.x >= clip.x && point.x < clip.x + clip.width && point.y >= clip.y &&
+                    point.y < clip.y + clip.height) {
+                    result = std::max(result, ryn::graphics::rounded_effect_coverage(point, effect));
+                }
+            }
+        }
+        return result;
+    };
+    require(coverage({bounds.x + 13.5F, bounds.y + 0.5F}) > 0.5F && coverage({bounds.x + 16.5F, bounds.y + 0.5F}) == 0,
+            "Ghost dashed coverage filled the gap or lost dash");
+    const auto effects = fixture.host->snapshot(id).dashed_effects;
+    const auto shapes =
+        fixture.text_scene.text_state(fixture.host->text().mounted_texts()[0].scene).counters().shape_count;
+    clear_observation_state(fixture);
+    color.set(ryn::ButtonColor::Purple);
+    require(fixture.dirty.layout_roots().empty(), "Button color selector invalidated measure");
+    require(fixture.synchronize() && fixture.host->snapshot(id).dashed_effects == effects && runs == 1,
+            "Button color selector rebuilt dashed topology/content");
+    clear_observation_state(fixture);
+    auto changed = ryn::ThemeConfig{};
+    const auto purple = static_cast<std::size_t>(ryn::ButtonColor::Purple);
+    changed.button.tokens.colors[purple].base = ryn::Color::rgba8(1, 120, 30);
+    theme.set(changed);
+    require(fixture.dirty.layout_roots().empty() && fixture.synchronize() &&
+                fixture.host->snapshot(id).presentation_border == *changed.button.tokens.colors[purple].base &&
+                fixture.host->snapshot(id).dashed_effects == effects &&
+                fixture.text_scene.text_state(fixture.host->text().mounted_texts()[0].scene).counters().shape_count ==
+                    shapes &&
+                runs == 1,
+            "Button palette override missed material update or shaped/remounted text");
+    clear_observation_state(fixture);
+    changed.button.tokens.dash_gap = ryn::dp(9);
+    theme.set(changed);
+    require(!fixture.dirty.geometry_nodes().empty() && fixture.synchronize() &&
+                fixture.host->snapshot(id).dashed_effects < effects,
+            "Button dash metric failed to request geometry refresh");
+    variant.set(ryn::ButtonVariant::Outlined);
+    require(fixture.synchronize() && fixture.host->snapshot(id).dashed_effects == 0,
+            "Button old dashes survived outlined variant");
+    fixture.host->dispose();
+    require(fixture.host->rounded_effects().live_count() == 0 && fixture.host->button_scene().size() == 0,
+            "Ghost dashed leaked effects");
+}
+
+void test_button_variant_invalid_inputs_and_effect_limit() {
+    for (int field = 0; field < 2; ++field) {
+        Fixture fixture;
+        bool rejected{};
+        try {
+            fixture.host->mount(ryn::Content{[&] {
+                auto props = ryn::ButtonProps{};
+                if (field == 0) {
+                    props.color(static_cast<ryn::ButtonColor>(255));
+                } else {
+                    props.variant(static_cast<ryn::ButtonVariant>(255));
+                }
+                ryn::Button(props, [] { ryn::Text(u8"Invalid"); });
+            }});
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        require(rejected && fixture.nodes.size() == 0 && fixture.host->interactions().size() == 0 &&
+                    fixture.host->button_scene().size() == 0,
+                "Invalid Button selector acquired resources");
+    }
+    Fixture fixture;
+    ryn::ThemeConfig config;
+    config.button.tokens.dash_length = ryn::dp(0.00001F);
+    config.button.tokens.dash_gap = ryn::dp(0.00001F);
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Theme(ryn::ThemeProps{}.config(config), ryn::ThemeContent{[] {
+                       ryn::Button(ryn::ButtonProps{}.type(ryn::ButtonType::Dashed), [] { ryn::Text(u8"Over limit"); });
+                   }});
+    }});
+    bool limited{};
+    try {
+        static_cast<void>(fixture.synchronize());
+    } catch (const std::length_error&) {
+        limited = true;
+    }
+    require(limited, "Button silently dropped over-limit dashes");
+    fixture.host->dispose();
+    require(fixture.nodes.size() == 0 && fixture.host->rounded_effects().live_count() == 0,
+            "Over-limit Button cleanup leaked resources");
+}
+
+void test_button_palette_phase_identity_and_destructive_dash_activation() {
+    const auto scope = ryn::theme_runtime::ThemeScope::create_default();
+    int colors{};
+    int shadows{};
+    int metrics{};
+    const auto color_subscription = scope->capture([&](ryn::theme_runtime::DirtyPhase) { ++colors; },
+                                                   [&] { static_cast<void>(scope->button_colors()); });
+    const auto shadow_subscription = scope->capture([&](ryn::theme_runtime::DirtyPhase) { ++shadows; },
+                                                    [&] { static_cast<void>(scope->button_shadows()); });
+    const auto metric_subscription = scope->capture([&](ryn::theme_runtime::DirtyPhase) { ++metrics; },
+                                                    [&] { static_cast<void>(scope->button_border_width()); });
+    ryn::ThemeConfig config;
+    const auto blue = static_cast<std::size_t>(ryn::ButtonColor::Blue);
+    config.button.tokens.colors[blue].light = ryn::Color::rgba8(11, 22, 33);
+    scope->update(config);
+    require(colors == 1 && shadows == 0 && metrics == 0, "Button palette color escaped Material identity");
+    config.button.tokens.colors[blue].shadow = ryn::ShadowList{};
+    scope->update(config);
+    require(colors == 1 && shadows == 1 && metrics == 0, "Button palette shadow escaped effect identity");
+    config.button.tokens.dash_gap = ryn::dp(12);
+    scope->update(config);
+    require(colors == 1 && shadows == 1 && metrics == 1, "Button dash escaped geometry identity");
+    Fixture fixture;
+    ryn::runtime::ComponentId id;
+    fixture.host->mount(ryn::Content{[&] {
+        ryn::Button(ryn::ButtonProps{}.type(ryn::ButtonType::Dashed).onClick([&] {
+            require(fixture.host->destroy(id), "Dashed Button callback could not destroy owner");
+        }),
+                    [] { ryn::Text(u8"Destroy dashed"); });
+    }});
+    require(fixture.synchronize(), "Destructive dashed Button layout failed");
+    id = fixture.host->mounted_buttons()[0].component;
+    require(fixture.host->snapshot(id).dashed_effects > 0, "Destructive Button has no dashed effects");
+    const auto point = fixture.center(0);
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+    fixture.host->pointer().dispatch(
+        pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+    require(fixture.nodes.size() == 0 && fixture.host->interactions().size() == 0 &&
+                fixture.host->button_scene().size() == 0 && fixture.host->rounded_effects().live_count() == 0,
+            "Destructive dashed activation leaked lazy fragment/effects");
+}
+
 } // namespace
 
 int main() {
@@ -1103,6 +1430,11 @@ int main() {
         test_text_button_hover_and_theme_keep_foreground_visible();
         test_click_callback_can_destroy_parent_scope();
         test_flex_composes_text_button_and_nested_flex();
+        test_native_color_variant_matrix_and_precedence();
+        test_native_sugar_props_and_theme_palette_inheritance();
+        test_ghost_dashed_gaps_and_material_only_theme_updates();
+        test_button_variant_invalid_inputs_and_effect_limit();
+        test_button_palette_phase_identity_and_destructive_dash_activation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

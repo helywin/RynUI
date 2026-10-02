@@ -46,6 +46,10 @@ struct ButtonComponentSnapshot final {
     float presentation_loading_mix{0.0F};
     float spinner_phase{0.0F};
     bool spinner_running{false};
+    ButtonColor color{ButtonColor::Default};
+    ButtonVariant variant{ButtonVariant::Outlined};
+    bool ghost{};
+    std::size_t dashed_effects{};
 };
 
 enum class ButtonAnimationChannel : std::uint8_t {
@@ -135,6 +139,13 @@ private:
     [[nodiscard]] const ButtonComponentState* find_state(runtime::ComponentId component) const noexcept;
     [[nodiscard]] std::optional<input::InteractionId> interaction_for(runtime::ComponentId component) const;
     void apply_type(runtime::ComponentId component, ButtonType type);
+    void apply_color(runtime::ComponentId component, ButtonColor color);
+    void apply_variant(runtime::ComponentId component, ButtonVariant variant);
+    void apply_danger(runtime::ComponentId component, bool danger);
+    void apply_ghost(runtime::ComponentId component, bool ghost);
+    void update_variant(ButtonComponentState& state, bool previous_border_box, bool previous_dashed);
+    void update_decoration_material(ButtonComponentState& state);
+    void synchronize_decorations(ButtonComponentState& state, runtime::Rect clip);
     void apply_size(runtime::ComponentId component, ControlSize size);
     void apply_disabled(runtime::ComponentId component, bool disabled);
     void apply_loading(runtime::ComponentId component, bool loading);
@@ -157,7 +168,7 @@ private:
     void update_typography(ButtonComponentState& state);
     void update_layout(ButtonComponentState& state);
     void subscribe_theme(ButtonComponentState& state);
-    void synchronize_geometry(ButtonComponentState& state, runtime::Size viewport);
+    void synchronize_geometry(ButtonComponentState& state, runtime::Size viewport, runtime::Rect clip);
     void* begin_mount() noexcept override;
     void end_mount(void* previous) noexcept override;
     void on_destroy() noexcept override;

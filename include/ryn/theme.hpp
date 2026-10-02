@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/design_token.hpp>
+#include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
@@ -69,6 +70,18 @@ struct AliasTokenOverride final {
     friend bool operator==(const AliasTokenOverride&, const AliasTokenOverride&) = default;
 };
 
+struct ButtonColorTokenOverride final {
+    std::optional<Color> base;
+    std::optional<Color> hover;
+    std::optional<Color> active;
+    std::optional<Color> light;
+    std::optional<Color> light_hover;
+    std::optional<Color> light_active;
+    std::optional<Color> solid_text;
+    std::optional<ShadowList> shadow;
+    friend bool operator==(const ButtonColorTokenOverride&, const ButtonColorTokenOverride&) = default;
+};
+
 struct ButtonTokenOverride final {
     std::optional<Color> default_color;
     std::optional<Color> default_background;
@@ -84,6 +97,20 @@ struct ButtonTokenOverride final {
     std::optional<ShadowList> default_shadow;
     std::optional<ShadowList> primary_shadow;
     std::optional<ShadowList> danger_shadow;
+    std::array<ButtonColorTokenOverride, button_color_count> colors;
+    std::optional<Color> ghost_background;
+    std::optional<Color> default_ghost_color;
+    std::optional<Color> default_ghost_border_color;
+    std::optional<Color> link_color;
+    std::optional<Color> link_hover_color;
+    std::optional<Color> link_active_color;
+    std::optional<Color> link_hover_background;
+    std::optional<Color> default_solid_background;
+    std::optional<Color> default_solid_hover_background;
+    std::optional<Color> default_solid_active_background;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> dash_length;
+    std::optional<LogicalLength> dash_gap;
 
     friend bool operator==(const ButtonTokenOverride&, const ButtonTokenOverride&) = default;
 };
@@ -435,6 +462,52 @@ struct ThemeAliasToken final {
     friend constexpr bool operator==(const ThemeAliasToken&, const ThemeAliasToken&) = default;
 };
 
+struct ButtonColorThemeToken final {
+    Color base;
+    Color hover;
+    Color active;
+    Color light;
+    Color light_hover;
+    Color light_active;
+    Color solid_text;
+    ShadowList shadow;
+
+    [[nodiscard]] constexpr std::array<Color, 7> values() const noexcept {
+        return {base, hover, active, light, light_hover, light_active, solid_text};
+    }
+
+    friend constexpr bool operator==(const ButtonColorThemeToken&, const ButtonColorThemeToken&) = default;
+};
+
+struct ButtonVariantThemeToken final {
+    std::array<ButtonColorThemeToken, button_color_count> colors;
+    Color ghost_background;
+    Color default_ghost_color;
+    Color default_ghost_border_color;
+    Color link_color;
+    Color link_hover_color;
+    Color link_active_color;
+    Color link_hover_background;
+    Color default_solid_background;
+    Color default_solid_hover_background;
+    Color default_solid_active_background;
+
+    [[nodiscard]] constexpr std::array<Color, 10> values() const noexcept {
+        return {ghost_background,
+                default_ghost_color,
+                default_ghost_border_color,
+                link_color,
+                link_hover_color,
+                link_active_color,
+                link_hover_background,
+                default_solid_background,
+                default_solid_hover_background,
+                default_solid_active_background};
+    }
+
+    friend constexpr bool operator==(const ButtonVariantThemeToken&, const ButtonVariantThemeToken&) = default;
+};
+
 struct ButtonThemeToken final {
     Color default_color;
     Color default_background;
@@ -480,6 +553,9 @@ struct ButtonThemeToken final {
     ShadowList default_shadow;
     ShadowList primary_shadow;
     ShadowList danger_shadow;
+    ButtonVariantThemeToken variants;
+    float dash_length{3.0F};
+    float dash_gap{3.0F};
 
     friend constexpr bool operator==(const ButtonThemeToken&, const ButtonThemeToken&) = default;
 };

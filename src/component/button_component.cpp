@@ -23,6 +23,22 @@ struct ButtonPropsAccess final {
         return props.size_;
     }
 
+    [[nodiscard]] static const std::optional<Prop<ButtonColor>>& color(const ButtonProps& props) noexcept {
+        return props.color_;
+    }
+
+    [[nodiscard]] static const std::optional<Prop<ButtonVariant>>& variant(const ButtonProps& props) noexcept {
+        return props.variant_;
+    }
+
+    [[nodiscard]] static const Prop<bool>& danger(const ButtonProps& props) noexcept {
+        return props.danger_;
+    }
+
+    [[nodiscard]] static const Prop<bool>& ghost(const ButtonProps& props) noexcept {
+        return props.ghost_;
+    }
+
     [[nodiscard]] static const Prop<bool>& disabled(const ButtonProps& props) noexcept {
         return props.disabled_;
     }
@@ -50,6 +66,10 @@ struct ButtonComponentState final {
     component::ButtonSceneId scene;
     runtime::SceneFragmentId fragment;
     ButtonType type{ButtonType::Default};
+    std::optional<ButtonColor> color;
+    std::optional<ButtonVariant> variant;
+    bool danger{};
+    bool ghost{};
     ControlSize size{ControlSize::Middle};
     bool disabled{false};
     bool loading{false};
@@ -75,6 +95,10 @@ struct ButtonComponentState final {
     theme_runtime::Subscription layout_subscription;
     theme_runtime::Subscription typography_subscription;
     theme_runtime::Subscription motion_subscription;
+    runtime::SceneFragmentId decoration_fragment;
+    component::RetainedSurfaceId decoration_range;
+    std::vector<graphics::RoundedEffectInstance> decorations;
+    std::optional<std::array<float, 14>> decoration_geometry;
 };
 
 namespace {
@@ -126,9 +150,71 @@ void validate(ButtonType type) {
     case ButtonType::Primary:
     case ButtonType::Danger:
     case ButtonType::Text:
+    case ButtonType::Dashed:
+    case ButtonType::Link:
         return;
     }
     throw std::invalid_argument("ButtonType value is invalid");
+}
+
+void validate(ButtonColor color) {
+    if (static_cast<std::size_t>(color) >= button_color_count) {
+        throw std::invalid_argument("ButtonColor value is invalid");
+    }
+}
+
+void validate(ButtonVariant variant) {
+    if (static_cast<std::size_t>(variant) > static_cast<std::size_t>(ButtonVariant::Link)) {
+        throw std::invalid_argument("ButtonVariant value is invalid");
+    }
+}
+
+struct ResolvedButtonVariant final {
+    ButtonColor color;
+    ButtonVariant variant;
+};
+
+ResolvedButtonVariant resolved_variant(const ButtonComponentState& state) {
+    ResolvedButtonVariant value{ButtonColor::Default, ButtonVariant::Outlined};
+    switch (state.type) {
+    case ButtonType::Default:
+        break;
+    case ButtonType::Primary:
+        value = {ButtonColor::Primary, ButtonVariant::Solid};
+        break;
+    case ButtonType::Danger:
+        value = {ButtonColor::Danger, ButtonVariant::Solid};
+        break;
+    case ButtonType::Text:
+        value.variant = ButtonVariant::Text;
+        break;
+    case ButtonType::Dashed:
+        value.variant = ButtonVariant::Dashed;
+        break;
+    case ButtonType::Link:
+        value.variant = ButtonVariant::Link;
+        break;
+    }
+    value.color = state.color.value_or(state.danger ? ButtonColor::Danger : value.color);
+    value.variant = state.variant.value_or(value.variant);
+    if (state.ghost && value.variant == ButtonVariant::Solid) {
+        value.variant = ButtonVariant::Outlined;
+    }
+    return value;
+}
+
+bool legacy_variant(const ButtonComponentState& state) noexcept {
+    return !state.color && !state.variant && !state.danger && !state.ghost && state.type != ButtonType::Dashed &&
+           state.type != ButtonType::Link;
+}
+
+bool unbordered(const ButtonComponentState& state) {
+    const auto variant = resolved_variant(state).variant;
+    return variant == ButtonVariant::Text || variant == ButtonVariant::Link;
+}
+
+bool dashed(const ButtonComponentState& state) {
+    return resolved_variant(state).variant == ButtonVariant::Dashed;
 }
 
 void validate(ControlSize size) {
@@ -179,10 +265,15 @@ struct ResolvedButtonVisualState final {
 };
 
 [[nodiscard]] bool solid_fills_border_box(const ButtonComponentState& state) noexcept {
-    return !state.disabled && state.type != ButtonType::Default;
+    if (legacy_variant(state)) {
+        return !state.disabled && state.type != ButtonType::Default;
+    }
+    const auto variant = resolved_variant(state).variant;
+    return (!state.disabled || unbordered(state)) && variant != ButtonVariant::Outlined &&
+           variant != ButtonVariant::Dashed;
 }
 
-ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const ButtonComponentState& state) {
+ResolvedButtonVisualState legacy_visual_token(const ButtonThemeToken& button, const ButtonComponentState& state) {
     const Color transparent = Color::rgba8(0, 0, 0, 0);
     if (state.disabled) {
         if (state.type == ButtonType::Text) {
@@ -244,8 +335,69 @@ ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const But
                       : button.text_color,
             {},
         };
+    case ButtonType::Dashed:
+    case ButtonType::Link:
+        break;
     }
     throw std::invalid_argument("ButtonType value is invalid");
+}
+
+ResolvedButtonVisualState visual_token(const ButtonThemeToken& button, const ButtonComponentState& state) {
+    if (legacy_variant(state)) {
+        return legacy_visual_token(button, state);
+    }
+    const Color transparent = Color::rgba8(0, 0, 0, 0);
+    const auto selected = resolved_variant(state);
+    const auto& palette = button.variants.colors[static_cast<std::size_t>(selected.color)];
+    if (state.disabled) {
+        return {unbordered(state) ? transparent : button.disabled_background,
+                unbordered(state) ? transparent : button.disabled_border_color,
+                button.disabled_color,
+                {}};
+    }
+    const bool active = !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
+    const bool hover = !state.loading && !active && state.hovered;
+    const Color color = active ? palette.active : hover ? palette.hover : palette.base;
+    const Color light = active ? palette.light_active : hover ? palette.light_hover : palette.light;
+    const bool neutral = selected.color == ButtonColor::Default;
+    switch (selected.variant) {
+    case ButtonVariant::Solid:
+        return {neutral ? (active  ? button.variants.default_solid_active_background
+                           : hover ? button.variants.default_solid_hover_background
+                                   : button.variants.default_solid_background)
+                        : color,
+                transparent, palette.solid_text, palette.shadow};
+    case ButtonVariant::Outlined:
+    case ButtonVariant::Dashed: {
+        const Color foreground = neutral ? (active  ? button.default_active_color
+                                            : hover ? button.default_hover_color
+                                                    : button.default_color)
+                                         : color;
+        const bool ghost = state.ghost;
+        return {ghost ? button.variants.ghost_background : button.default_background,
+                ghost && neutral && !hover && !active ? button.variants.default_ghost_border_color : color,
+                ghost && neutral && !hover && !active ? button.variants.default_ghost_color : foreground,
+                ghost ? ShadowList{} : palette.shadow};
+    }
+    case ButtonVariant::Filled:
+        return {state.ghost ? button.variants.ghost_background : light,
+                transparent,
+                state.ghost && neutral && !hover && !active ? button.variants.default_ghost_color
+                : neutral                                   ? button.default_color
+                                                            : color,
+                {}};
+    case ButtonVariant::Text:
+        return {active || hover ? light : transparent, transparent, neutral ? button.text_color : color, {}};
+    case ButtonVariant::Link:
+        return {hover ? button.variants.link_hover_background : transparent,
+                transparent,
+                neutral ? (active  ? button.variants.link_active_color
+                           : hover ? button.variants.link_hover_color
+                                   : button.variants.link_color)
+                        : color,
+                {}};
+    }
+    throw std::invalid_argument("Button variant is invalid");
 }
 
 [[nodiscard]] runtime::SemanticForeground channels(Color color) noexcept {
@@ -263,7 +415,7 @@ runtime::SemanticForeground content_foreground(const ButtonThemeToken& button, c
 layout::HorizontalContentLayout content_layout(const ButtonThemeToken& button, const ButtonComponentState& state) {
     const auto& size = size_token(button, state.size);
     return {
-        size.control_height, size.padding_inline, state.type == ButtonType::Text ? 0.0F : button.border_width,
+        size.control_height, size.padding_inline, unbordered(state) ? 0.0F : button.border_width,
         button.icon_gap,     state.loading,       button.loading_indicator_size,
     };
 }
@@ -416,10 +568,10 @@ bool ButtonComponentHost::layout_and_synchronize(runtime::Size viewport, runtime
     return services_->layout_and_synchronize(viewport, clip, origin, gap, unbounded_root_height);
 }
 
-void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect) {
+void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     for (const auto& mounted : mounted_buttons_) {
         if (auto* state = find_state(mounted.component)) {
-            synchronize_geometry(*state, viewport);
+            synchronize_geometry(*state, viewport, clip);
         }
     }
 }
@@ -519,6 +671,10 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         state->presentation_loading_mix,
         state->spinner_phase,
         animations_.contains(state->animations[animation_channel_index(ButtonAnimationChannel::spinner_phase)]),
+        resolved_variant(*state).color,
+        resolved_variant(*state).variant,
+        state->ghost,
+        state->decorations.size(),
     };
 }
 
@@ -555,12 +711,56 @@ void ButtonComponentHost::apply_type(runtime::ComponentId component, ButtonType 
         return;
     }
     const bool previous_border_box = solid_fills_border_box(*state);
+    const bool previous_dashed = dashed(*state);
     state->type = type;
-    update_layout(*state);
-    if (previous_border_box != solid_fills_border_box(*state)) {
-        dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry);
+    update_variant(*state, previous_border_box, previous_dashed);
+}
+
+void ButtonComponentHost::update_variant(ButtonComponentState& state, bool previous_border_box, bool previous_dashed) {
+    update_layout(state);
+    if (previous_border_box != solid_fills_border_box(state) || previous_dashed != dashed(state)) {
+        state.decoration_geometry.reset();
+        dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry);
     }
-    update_visuals(*state);
+    update_visuals(state);
+}
+
+void ButtonComponentHost::apply_color(runtime::ComponentId component, ButtonColor color) {
+    validate(color);
+    if (auto* state = find_state(component); state && state->color != color) {
+        const bool previous = solid_fills_border_box(*state);
+        const bool previous_dashed = dashed(*state);
+        state->color = color;
+        update_variant(*state, previous, previous_dashed);
+    }
+}
+
+void ButtonComponentHost::apply_variant(runtime::ComponentId component, ButtonVariant variant) {
+    validate(variant);
+    if (auto* state = find_state(component); state && state->variant != variant) {
+        const bool previous = solid_fills_border_box(*state);
+        const bool previous_dashed = dashed(*state);
+        state->variant = variant;
+        update_variant(*state, previous, previous_dashed);
+    }
+}
+
+void ButtonComponentHost::apply_danger(runtime::ComponentId component, bool danger) {
+    if (auto* state = find_state(component); state && state->danger != danger) {
+        const bool previous = solid_fills_border_box(*state);
+        const bool previous_dashed = dashed(*state);
+        state->danger = danger;
+        update_variant(*state, previous, previous_dashed);
+    }
+}
+
+void ButtonComponentHost::apply_ghost(runtime::ComponentId component, bool ghost) {
+    if (auto* state = find_state(component); state && state->ghost != ghost) {
+        const bool previous = solid_fills_border_box(*state);
+        const bool previous_dashed = dashed(*state);
+        state->ghost = ghost;
+        update_variant(*state, previous, previous_dashed);
+    }
 }
 
 void ButtonComponentHost::apply_size(runtime::ComponentId component, ControlSize size) {
@@ -708,7 +908,7 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     const float layer_opacity = 1.0F + (button.loading_opacity - 1.0F) * loading_mix;
     auto next = state.visuals;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].color = channels(state.presentation_border);
-    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity = layer_opacity;
+    next[static_cast<std::size_t>(component::ButtonVisualLayer::border)].opacity = dashed(state) ? 0.0F : layer_opacity;
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].color =
         channels(state.presentation_background);
     next[static_cast<std::size_t>(component::ButtonVisualLayer::background)].opacity = layer_opacity;
@@ -757,6 +957,7 @@ void ButtonComponentHost::apply_presentation(ButtonComponentState& state, bool a
     auto foreground = channels(state.presentation_foreground);
     foreground[3] *= layer_opacity;
     static_cast<void>(state.foreground.set(foreground));
+    update_decoration_material(state);
 }
 
 void ButtonComponentHost::register_animation_targets(ButtonComponentState& state) {
@@ -951,6 +1152,7 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
     state.effect_subscription = theme->capture(
         [this, component = state.component](theme_runtime::DirtyPhase) {
             if (auto* current = find_state(component)) {
+                dirty_->invalidate(current->node, runtime::DirtyFlags::Geometry);
                 update_visuals(*current);
             }
         },
@@ -963,6 +1165,7 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
     state.layout_subscription = theme->capture(
         [this, component = state.component](theme_runtime::DirtyPhase) {
             if (auto* current = find_state(component)) {
+                dirty_->invalidate(current->node, runtime::DirtyFlags::Geometry);
                 update_layout(*current);
                 update_visuals(*current);
             }
@@ -999,7 +1202,107 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
         });
 }
 
-void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport) {
+void ButtonComponentHost::update_decoration_material(ButtonComponentState& state) {
+    if (!state.decoration_range.valid()) {
+        return;
+    }
+    const auto& token = components().theme_scope(state.component)->snapshot().button();
+    const float opacity =
+        1.0F + (token.loading_opacity - 1.0F) * std::clamp(state.presentation_loading_mix, 0.0F, 1.0F);
+    for (auto& effect : state.decorations) {
+        effect.material = {state.presentation_border, opacity, dashed(state)};
+    }
+    button_scene_.update_content_effects(state.decoration_range, state.decorations);
+}
+
+void ButtonComponentHost::synchronize_decorations(ButtonComponentState& state, runtime::Rect clip) {
+    if (!dashed(state)) {
+        if (!state.decorations.empty()) {
+            state.decorations.clear();
+            state.decoration_geometry.reset();
+            button_scene_.update_content_effects(state.decoration_range, {});
+        }
+        return;
+    }
+    const auto& token = components().theme_scope(state.component)->snapshot().button();
+    const auto& node = nodes_->require(state.node);
+    const float radius = logical_radius(node.bounds, size_token(token, state.size).border_radius);
+    const std::array key{node.bounds.x,
+                         node.bounds.y,
+                         node.bounds.width,
+                         node.bounds.height,
+                         node.translation.x,
+                         node.translation.y,
+                         clip.x,
+                         clip.y,
+                         clip.width,
+                         clip.height,
+                         radius,
+                         token.border_width,
+                         token.dash_length,
+                         token.dash_gap};
+    if (state.decoration_geometry == key) {
+        return;
+    }
+    const float width = std::min(token.border_width, 0.5F * std::min(node.bounds.width, node.bounds.height));
+    std::vector<graphics::RoundedEffectInstance> effects;
+    if (width > 0) {
+        const float band = std::min(0.5F * node.bounds.height, std::max(radius, width));
+        const float period = token.dash_length + token.dash_gap;
+        const double horizontal_count = std::ceil(static_cast<double>(node.bounds.width) / period);
+        const double vertical_count = std::ceil(static_cast<double>(node.bounds.height - 2.0F * band) / period);
+        const double count = 2 * (horizontal_count + vertical_count);
+        if (!std::isfinite(period) || !std::isfinite(count) || count > component::retained_content_visual_capacity) {
+            throw std::length_error("Button dashed border exceeds 4096 effects");
+        }
+        effects.reserve(static_cast<std::size_t>(count));
+        const graphics::LogicalRoundedRect shape{{node.bounds.x + width, node.bounds.y + width,
+                                                  std::max(0.0F, node.bounds.width - 2.0F * width),
+                                                  std::max(0.0F, node.bounds.height - 2.0F * width)},
+                                                 std::max(0.0F, radius - width)};
+        const auto append = [&](runtime::Rect segment) {
+            segment.x += node.translation.x;
+            segment.y += node.translation.y;
+            const float right = std::min(segment.x + segment.width, clip.x + clip.width);
+            const float bottom = std::min(segment.y + segment.height, clip.y + clip.height);
+            segment.x = std::max(segment.x, clip.x);
+            segment.y = std::max(segment.y, clip.y);
+            segment.width = std::max(0.0F, right - segment.x);
+            segment.height = std::max(0.0F, bottom - segment.y);
+            if (segment.width <= 0 || segment.height <= 0) {
+                return;
+            }
+            effects.push_back(graphics::make_outline_effect(shape, width, 0, state.presentation_border, 1,
+                                                            node.translation,
+                                                            graphics::EffectClip{effects.size() + 1, segment}));
+        };
+        for (std::size_t index = 0; index < static_cast<std::size_t>(horizontal_count); ++index) {
+            const float offset = static_cast<float>(index) * period;
+            const float length = std::min(token.dash_length, node.bounds.width - offset);
+            append({node.bounds.x + offset, node.bounds.y, length, band});
+            append({node.bounds.x + offset, node.bounds.y + node.bounds.height - band, length, band});
+        }
+        for (std::size_t index = 0; index < static_cast<std::size_t>(vertical_count); ++index) {
+            const float offset = static_cast<float>(index) * period;
+            const float length = std::min(token.dash_length, node.bounds.height - 2.0F * band - offset);
+            append({node.bounds.x, node.bounds.y + band + offset, width, length});
+            append({node.bounds.x + node.bounds.width - width, node.bounds.y + band + offset, width, length});
+        }
+    }
+    if (!state.decoration_range.valid() && !effects.empty()) {
+        if (!state.decoration_fragment.valid()) {
+            state.decoration_fragment =
+                components().register_scene_fragment(state.component, runtime::SceneFragmentPlacement::before_children);
+        }
+        state.decoration_range = button_scene_.create_content_range(state.decoration_fragment, {});
+    }
+    state.decorations = std::move(effects);
+    state.decoration_geometry = key;
+    update_decoration_material(state);
+}
+
+void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport,
+                                               runtime::Rect clip) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
     const auto size = size_token(button, state.size);
@@ -1036,6 +1339,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
         state.effects = std::move(effects);
         static_cast<void>(button_scene_.update_effects(state.scene, state.effects));
     }
+    synchronize_decorations(state, clip);
 }
 
 void mount_button_component(const ButtonProps& props, const ButtonContent& content) {
@@ -1046,8 +1350,18 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     auto& build = runtime::require_component_build_context();
     const auto initial_type = read_prop(ButtonPropsAccess::type(props));
     const auto initial_size = read_prop(ButtonPropsAccess::size(props));
+    const auto initial_color =
+        ButtonPropsAccess::color(props) ? std::optional{read_prop(*ButtonPropsAccess::color(props))} : std::nullopt;
+    const auto initial_variant =
+        ButtonPropsAccess::variant(props) ? std::optional{read_prop(*ButtonPropsAccess::variant(props))} : std::nullopt;
     validate(initial_type);
     validate(initial_size);
+    if (initial_color) {
+        validate(*initial_color);
+    }
+    if (initial_variant) {
+        validate(*initial_variant);
+    }
     const bool initial_disabled = read_prop(ButtonPropsAccess::disabled(props));
     const bool initial_loading = read_prop(ButtonPropsAccess::loading(props));
     const auto theme_scope = build.theme_scope();
@@ -1061,6 +1375,10 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
                                            theme.text().line_height,
                                        }};
     initial_state.type = initial_type;
+    initial_state.color = initial_color;
+    initial_state.variant = initial_variant;
+    initial_state.danger = read_prop(ButtonPropsAccess::danger(props));
+    initial_state.ghost = read_prop(ButtonPropsAccess::ghost(props));
     initial_state.size = initial_size;
     initial_state.disabled = initial_disabled;
     initial_state.loading = initial_loading;
@@ -1071,6 +1389,10 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     state.component = component;
     state.node = build.root(component);
     state.type = initial_type;
+    state.color = initial_color;
+    state.variant = initial_variant;
+    state.danger = initial_state.danger;
+    state.ghost = initial_state.ghost;
     state.size = initial_size;
     state.disabled = initial_disabled;
     state.loading = initial_loading;
@@ -1081,6 +1403,11 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
                                   *host.dirty_);
 
     state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
+    build.on_resource_cleanup(component, [&host, component] {
+        if (auto* current = host.find_state(component); current && current->decoration_range.valid()) {
+            host.button_scene_.destroy_content_range(current->decoration_range);
+        }
+    });
     const auto parent_interaction = host.interaction_for(component);
     state.interaction = host.interactions_.create({
         component,
@@ -1129,6 +1456,17 @@ void mount_button_component(const ButtonProps& props, const ButtonContent& conte
     auto& scope = build.scope(component);
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::type(props),
                                    [&host, component](ButtonType type) { host.apply_type(component, type); }));
+    if (const auto& color = ButtonPropsAccess::color(props)) {
+        connect_prop(scope, *color, [&host, component](ButtonColor value) { host.apply_color(component, value); });
+    }
+    if (const auto& variant = ButtonPropsAccess::variant(props)) {
+        connect_prop(scope, *variant,
+                     [&host, component](ButtonVariant value) { host.apply_variant(component, value); });
+    }
+    connect_prop(scope, ButtonPropsAccess::danger(props),
+                 [&host, component](bool value) { host.apply_danger(component, value); });
+    connect_prop(scope, ButtonPropsAccess::ghost(props),
+                 [&host, component](bool value) { host.apply_ghost(component, value); });
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::size(props),
                                    [&host, component](ControlSize size) { host.apply_size(component, size); }));
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::disabled(props),

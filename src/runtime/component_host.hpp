@@ -118,6 +118,8 @@ public:
     [[nodiscard]] Scope& scope(ComponentId id);
     [[nodiscard]] const std::shared_ptr<theme_runtime::ThemeScope>& theme_scope(ComponentId id) const;
     bool remove_scene_fragment(SceneFragmentId id);
+    // Retained decorations may acquire a component-owned fragment after mount.
+    [[nodiscard]] SceneFragmentId register_scene_fragment(ComponentId component, SceneFragmentPlacement placement);
     [[nodiscard]] bool contains(SceneFragmentId id) const noexcept;
     [[nodiscard]] ComponentId fragment_component(SceneFragmentId id) const;
     [[nodiscard]] std::span<const SceneFragmentPaintEntry> paint_traversal();
@@ -141,7 +143,6 @@ private:
     [[nodiscard]] ComponentId create_record(std::optional<ComponentId> parent, std::shared_ptr<void> state,
                                             std::type_index state_type);
     void add_resource_cleanup(ComponentId id, std::function<void()> cleanup);
-    [[nodiscard]] SceneFragmentId register_scene_fragment(ComponentId component, SceneFragmentPlacement placement);
     void mount_slot(ComponentId parent, const std::function<void()>& content,
                     std::optional<Prop<SemanticForeground>> semantic_foreground,
                     std::optional<Prop<SemanticTypography>> semantic_typography,
