@@ -48,20 +48,26 @@
     },
     {
       "identity": "ant.component.icon",
-      "status": "partial",
-      "summary": "RynUI 已提供十四种离线 Ant Design 图标的 typed Icon、主题颜色和 DPI 缓存；完整图标集与 Web API 仍未覆盖。",
+      "status": "implemented",
+      "summary": "RynUI 已提供完整 848 图标、outlined/filled/two-tone、typed 自定义贝塞尔向量、保留旋转与生命周期感知 spin；原生桌面范围已实现，平台验收独立记录。",
       "supported_scope": [
-        "typed Icon with fourteen bundled outlines",
+        "complete locked offline catalog: 447 outlined / 251 filled / 150 two-tone",
         "Theme and semantic foreground inheritance",
-        "reactive icon switching and DPI-aware raster cache"
+        "reactive source/name and DPI-aware shared glyph raster cache",
+        "retained color-role layers, explicit/derived two-tone colors",
+        "rotate/spin with Theme/reduced motion/active-branch lifetime",
+        "immutable typed viewBox and Move/Line/Quadratic/Cubic/Close vectors"
       ],
       "missing_scope": [
-        "complete Ant Design icon catalog",
-        "two-tone and arbitrary SVG APIs"
+        "Web DOM/CSS, arbitrary SVG parser and network iconfont APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "source:components/icon/index.en-US.md",
         "openspec:033-20260926-add-icons-and-unify-gallery-theme",
+        "openspec:051-20261003-complete-native-icon-catalog",
+        "test:rynui.icon_catalog",
+        "test:rynui.icon_component",
+        "test:rynui.icon_vector",
         "test:rynui.text_component",
         "test:rynui.icon_asset_contract"
       ]

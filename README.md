@@ -103,6 +103,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [Flex / Space](docs/flex-space.md)：原生换行、方向、对齐和弹性外部布局映射。
 - [Slider / RangeSlider](docs/slider.md)：数值、交互、主题、支持范围与验收入口。
 - [Tooltip](docs/tooltip.md)：窗口提示层、触发与受控显示、主题及分平台验收。
+- [Icon](docs/icon.md)：完整离线目录、双色、旋转动画与 typed 自定义向量。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
 - [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。

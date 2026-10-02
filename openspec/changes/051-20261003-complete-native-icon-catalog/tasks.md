@@ -18,7 +18,7 @@
 
 ## 5. 集成（平台通用）
 
-- [ ] 5.1 Gallery 添加 outlined/filled/two-tone/旋转/spin/自定义样例与目录计数，更新 support overlay 和原生收尾清单；生成器 self-test/check、完整 HEADLESS D/R CTest、文档/格式/OpenSpec/diff 通过，记录实际平台/preset 后提交。
+- [x] 5.1 Gallery 添加 outlined/filled/two-tone/旋转/spin/自定义样例与目录计数，更新 support overlay 和原生收尾清单；生成器 self-test/check、完整 HEADLESS D/R CTest、文档/格式/OpenSpec/diff 通过，记录实际平台/preset 后提交。
 
 ## 6. 平台集成
 

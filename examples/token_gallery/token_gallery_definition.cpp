@@ -4,6 +4,7 @@
 #include "gallery_document_model.hpp"
 #include "gallery_layout.hpp"
 #include "reference_surface.hpp"
+#include "icon_samples.hpp"
 
 #include <ryn/rynui.hpp>
 
@@ -60,6 +61,10 @@ struct GalleryState final {
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
     ryn::Signal<double> slider_value{30};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
+    ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
+    ryn::Signal<float> icon_angle{0};
+    ryn::Signal<bool> icon_spin{false};
+    std::size_t icon_source_step{};
     ryn::Signal<GallerySupportFilter> support_filter{GallerySupportFilter::all};
     ryn::Signal<GalleryNavigationTarget> active_navigation{
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
@@ -189,6 +194,14 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "ant.alias.boxShadowTabsOverflowRight",
     "ant.alias.boxShadowTabsOverflowTop",
     "ant.alias.boxShadowTabsOverflowBottom",
+    "gallery.icon.outlined",
+    "gallery.icon.filled",
+    "gallery.icon.two-tone",
+    "gallery.icon.four-layers",
+    "gallery.icon.retained-source",
+    "gallery.icon.spin",
+    "gallery.icon.custom-vector",
+    "gallery.icon.wide-vector",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1373,6 +1386,46 @@ void add_space_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 11;
 }
 
+void add_icon_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Icon：848 个离线图标 / 三类 / 双色 / 旋转 / 自定义向量");
+    ThemeConfig large;
+    large.text.tokens.font_size = dp(32);
+    large.text.tokens.line_height = dp(40);
+    Theme(ThemeProps{}.config(large), ThemeContent{[state] {
+              ++state->telemetry.theme_content_runs;
+              Space(SpaceProps{}.wrap(true).size(dp(20)).layout(LayoutStyle{}.width(state->document_width)),
+                    SpaceContent{[state] {
+                        Icon(IconProps{}.name(IconName::HomeOutlined));
+                        Icon(IconProps{}.name(IconName::HomeFilled));
+                        Icon(IconProps{}.name(IconName::HeartTwoTone));
+                        Icon(IconProps{}
+                                 .name(IconName::WalletTwoTone)
+                                 .twoToneColor(
+                                     IconTwoToneColor{Color::rgba8(114, 46, 209), Color::rgba8(239, 219, 255)}));
+                        Icon(IconProps{}.source(state->icon_source).rotate(state->icon_angle));
+                        Icon(IconProps{}.name(IconName::LoadingOutlined).spin(state->icon_spin));
+                        Icon(IconProps{}.source(icon_vector_sample()));
+                        Icon(IconProps{}.source(icon_wide_sample()));
+                    }});
+          }});
+    Space(SpaceProps{}.wrap(true), SpaceContent{[state] {
+              Button(ButtonProps{}.onClick([state] { state->icon_spin.set(!state->icon_spin.get()); }),
+                     ButtonContent{[] { Text(u8"开始 / 停止 spin"); }});
+              Button(ButtonProps{}.onClick(
+                         [state] { state->icon_angle.set(std::fmod(state->icon_angle.get() + 45, 360.0F)); }),
+                     ButtonContent{[] { Text(u8"旋转 45°"); }});
+              Button(ButtonProps{}.onClick([state] {
+                  const auto step = ++state->icon_source_step % 3;
+                  state->icon_source.set(step == 0   ? IconSource{IconName::HeartTwoTone}
+                                         : step == 1 ? IconSource{IconName::WalletTwoTone}
+                                                     : icon_vector_sample());
+              }),
+                     ButtonContent{[] { Text(u8"切换内置 / 自定义"); }});
+          }});
+    state->telemetry.live_samples += 8;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1451,6 +1504,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_radio_samples(state);
                                                         add_flex_samples(state);
                                                         add_space_samples(state);
+                                                        add_icon_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
