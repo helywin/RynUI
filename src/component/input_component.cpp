@@ -75,6 +75,8 @@ struct InputState {
     bool autocorrect{true};
     std::shared_ptr<InputRefState> reference;
     bool allow_clear{};
+    bool clear_disabled{};
+    std::function<void()> on_clear;
     bool custom_suffix{};
     Signal<bool> clear_visible{false};
     bool show_count{};
@@ -91,6 +93,7 @@ struct InputState {
     std::uint64_t count_generation{};
     bool counting{};
     bool count_ready{};
+    bool search_control_height{};
     std::shared_ptr<void> password_lifetime;
     std::size_t hovering_pointers{};
     std::optional<input::PointerIdentity> selecting_pointer;
@@ -372,7 +375,10 @@ struct InputPropsAccess {
         state.password = props.password_visible_.has_value();
         state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
         state.allow_clear = props.common_.allow_clear_ && read_prop(*props.common_.allow_clear_);
-        state.custom_suffix = suffix.has_value();
+        state.clear_disabled = read_prop(props.common_.clear_disabled_);
+        state.on_clear = props.common_.on_clear_;
+        state.custom_suffix = props.suffix_presence_ ? read_prop(*props.suffix_presence_) : suffix.has_value();
+        state.search_control_height = props.common_.search_control_height_;
         state.show_count = props.common_.show_count_ && read_prop(*props.common_.show_count_);
         state.count_options = count_options;
         state.hard_max =
@@ -518,33 +524,35 @@ struct InputPropsAccess {
             const auto clear_visible = state.clear_visible;
             const bool has_clear = props.common_.allow_clear_.has_value();
             const bool has_count = props.common_.show_count_.has_value();
-            composed_suffix = InputSuffix{[&owner, component, clear_visible, suffix, count_text, has_clear, has_count] {
-                if (has_clear) {
-                    mount_input_affix_action(
-                        *owner.host_, IconName::CloseCircleFilled, false,
-                        [&owner, component] { owner.clear(component); }, clear_visible);
-                }
-                if (suffix) {
-                    SlotContentAccess::function (*suffix)();
-                }
-                if (!has_count) {
-                    return;
-                }
-                auto& build = runtime::require_component_build_context();
-                const auto counter = build.mount_component<InputSlotState>();
-                const auto node = build.root(counter);
-                owner.host_->components().state<InputState>(component)->count_node = node;
-                owner.host_->layout().set_layout(node, layout::BoxLayout{});
-                owner.host_->nodes().require(node).clip_content = true;
-                owner.host_->nodes().require(node).external_layout.width = 0.0F;
-                owner.host_->nodes().require(node).external_layout.height = 0.0F;
-                build.on_resource_cleanup(
-                    counter, [host = owner.host_, node] { static_cast<void>(host->layout().remove_layout(node)); });
-                build.mount_slot(counter, Content{[count_text] { Text(TextProps{}.content(count_text)); }});
-            }};
+            composed_suffix =
+                InputSuffix{[&owner, component, clear_visible, suffix, count_text, has_clear, has_count,
+                             clear_icon = props.common_.clear_icon_, clear_disabled = props.common_.clear_disabled_] {
+                    if (has_clear) {
+                        mount_input_affix_action(
+                            *owner.host_, clear_icon, clear_disabled, [&owner, component] { owner.clear(component); },
+                            clear_visible);
+                    }
+                    if (suffix) {
+                        SlotContentAccess::function (*suffix)();
+                    }
+                    if (!has_count) {
+                        return;
+                    }
+                    auto& build = runtime::require_component_build_context();
+                    const auto counter = build.mount_component<InputSlotState>();
+                    const auto node = build.root(counter);
+                    owner.host_->components().state<InputState>(component)->count_node = node;
+                    owner.host_->layout().set_layout(node, layout::BoxLayout{});
+                    owner.host_->nodes().require(node).clip_content = true;
+                    owner.host_->nodes().require(node).external_layout.width = 0.0F;
+                    owner.host_->nodes().require(node).external_layout.height = 0.0F;
+                    build.on_resource_cleanup(
+                        counter, [host = owner.host_, node] { static_cast<void>(host->layout().remove_layout(node)); });
+                    build.mount_slot(counter, Content{[count_text] { Text(TextProps{}.content(count_text)); }});
+                }};
         }
         state.layout.prefix = prefix.has_value();
-        state.layout.suffix = suffix.has_value() || state.clear_visible.get();
+        state.layout.suffix = state.custom_suffix || state.clear_visible.get();
         build.mount_slot(
             component, Content{[&] {
                 auto& slots = runtime::require_component_build_context();
@@ -732,6 +740,16 @@ struct InputPropsAccess {
                 owner.update_clear_visibility(current.mounted.component);
             });
         }
+        connect(props.common_.clear_disabled_,
+                [](auto&, auto& current, bool value) { current.clear_disabled = value; });
+        if (props.suffix_presence_) {
+            connect(*props.suffix_presence_, [](auto& owner, auto& current, bool value) {
+                if (current.custom_suffix != value) {
+                    current.custom_suffix = value;
+                    owner.update_suffix_layout(current.mounted.component);
+                }
+            });
+        }
         if (props.common_.max_length_) {
             connect(*props.common_.max_length_, [](auto& owner, auto& current, std::size_t value) {
                 auto& editor = owner.editors_.require(current.mounted.editor);
@@ -849,7 +867,8 @@ struct PasswordPropsAccess final {
         Scope scope;
     };
 
-    static void mount(PasswordProps props) {
+    static void mount(PasswordProps props, std::optional<InputPrefix> prefix,
+                      std::optional<InputSuffix> custom_suffix) {
         if (!active_input_host) {
             throw std::logic_error("Password requires an active InputComponentHost");
         }
@@ -861,6 +880,10 @@ struct PasswordPropsAccess final {
         }
         validate(read_prop(props.common_.size_));
         validate(read_prop(props.common_.status_));
+        const auto action = read_prop(props.action_);
+        if (action < PasswordAction::Click || action > PasswordAction::Hover) {
+            throw std::invalid_argument("Invalid Password action");
+        }
         const bool controlled = props.visible_.has_value();
         auto bridge = std::make_shared<VisibilityBridge>(controlled ? read_prop(*props.visible_)
                                                                     : props.default_visible_.value_or(false));
@@ -876,28 +899,48 @@ struct PasswordPropsAccess final {
         input.common_ = std::move(props.common_);
         input.password_visible_ = bridge->visible;
         input.password_lifetime_ = bridge;
-        std::optional<InputSuffix> suffix;
-        if (props.visibility_toggle_) {
+        std::optional<InputSuffix> suffix = custom_suffix;
+        const auto* fixed_toggle = PropAccess::static_value(props.visibility_toggle_);
+        if (!fixed_toggle || *fixed_toggle) {
+            input.suffix_presence_ = bind([toggle = props.visibility_toggle_, has_suffix = custom_suffix.has_value()] {
+                return read_prop(toggle) || has_suffix;
+            });
             suffix = InputSuffix{[bridge, controlled, disabled = input.common_.disabled_,
-                                  callback = std::move(props.on_visible_change_)] {
-                mount_input_affix_action(*active_input_host->host_, bind([bridge] {
-                    return bridge->visible.get() ? IconName::EyeInvisibleOutlined : IconName::EyeOutlined;
-                }),
-                                         disabled, [disabled, bridge, controlled, callback] {
-                                             if (read_prop(disabled)) {
-                                                 return;
-                                             }
-                                             const bool next = !bridge->visible.get();
-                                             if (!controlled) {
-                                                 bridge->visible.set(next);
-                                             }
-                                             if (callback) {
-                                                 callback(next);
-                                             }
-                                         });
+                                  callback = std::move(props.on_visible_change_), custom_suffix,
+                                  toggle = props.visibility_toggle_, focusable = props.toggle_focusable_,
+                                  action = props.action_, renderer = props.icon_render_] {
+                mount_input_affix_action(
+                    *active_input_host->host_, bind([bridge, renderer] {
+                        const auto visible = bridge->visible.get();
+                        return renderer ? renderer(visible)
+                                        : IconSource{visible ? IconName::EyeOutlined : IconName::EyeInvisibleOutlined};
+                    }),
+                    disabled,
+                    [disabled, bridge, controlled, callback] {
+                        if (read_prop(disabled)) {
+                            return;
+                        }
+                        const bool next = !bridge->visible.get();
+                        if (!controlled) {
+                            bridge->visible.set(next);
+                        }
+                        if (callback) {
+                            callback(next);
+                        }
+                    },
+                    toggle, focusable, focusable, bind([action] {
+                        const auto value = read_prop(action);
+                        if (value < PasswordAction::Click || value > PasswordAction::Hover) {
+                            throw std::invalid_argument("Invalid Password action");
+                        }
+                        return value == PasswordAction::Hover;
+                    }));
+                if (custom_suffix) {
+                    SlotContentAccess::function (*custom_suffix)();
+                }
             }};
         }
-        Input(std::move(input), {}, std::move(suffix));
+        Input(std::move(input), std::move(prefix), std::move(suffix));
     }
 };
 
@@ -1294,6 +1337,10 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     const auto& size_tokens = tokens.size(state->size);
     auto model = state->layout;
     model.control_height = size_tokens.control_height;
+    if (state->search_control_height && state->size == ControlSize::Small) {
+        model.control_height = std::max(
+            model.control_height, size_tokens.line_height + 2 * (size_tokens.padding_block + tokens.border_width));
+    }
     model.border_width = tokens.border_width;
     model.padding_inline = size_tokens.padding_inline;
     model.padding_block = size_tokens.padding_block;
@@ -1545,10 +1592,11 @@ bool InputComponentHost::update_count(runtime::ComponentId component) {
 
 void InputComponentHost::clear(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
-    if (!state || !state->allow_clear || state->disabled || state->read_only) {
+    if (!state || !state->allow_clear || state->clear_disabled || state->disabled || state->read_only) {
         return;
     }
     const auto editor_id = state->mounted.editor;
+    auto callback = state->on_clear;
     auto& editor = editors_.require(editor_id);
     if (editor.value().empty()) {
         return;
@@ -1560,6 +1608,9 @@ void InputComponentHost::clear(runtime::ComponentId component) {
     check(result);
     if (result.value_changed) {
         notify_change(editor_id);
+        if (callback) {
+            callback();
+        }
     }
 }
 
@@ -2182,7 +2233,7 @@ void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<In
     detail::InputPropsAccess::mount(*detail::active_input_host, props, prefix, suffix);
 }
 
-void Password(PasswordProps props) {
-    detail::PasswordPropsAccess::mount(std::move(props));
+void Password(PasswordProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {
+    detail::PasswordPropsAccess::mount(std::move(props), std::move(prefix), std::move(suffix));
 }
 } // namespace ryn

@@ -1,0 +1,20 @@
+{
+  "upstream_version": "6.6.5",
+  "upstream_commit": "4a39f54842eade4e565ab336ef6097cd7e723cdd",
+  "sources": {
+    "components/input/Search.tsx": "4e1a6334692efa297929c3a757e6c9cf9d38d870faf9c8e0f6086d0c7863791d",
+    "components/input/style/search.ts": "54806e345ed34f65a66cecc1e1bfe47b43142e76cb5a2a74e65586980386f3ef",
+    "components/input/Password.tsx": "08d38ba18ab44abd25915ded4b581c5657b0ff3d9d55963d28eac524b84eef85"
+  },
+  "verified": "2026-10-03",
+  "native_projection": {
+    "search_filled_action": "neutral fill tertiary/secondary/fill for normal/hover/pressed",
+    "search_underlined_action": "Text Button; underline belongs to Input only",
+    "search_small_height": "shared Input typography/padding/border minimum",
+    "search_clear": "empty candidate and Clear source; independent of controlled rewrite and loading submission gate",
+    "search_pointer": "preserve focused Input and IME; otherwise normal Button focus",
+    "password_default_icon": "hidden EyeInvisibleOutlined; visible EyeOutlined",
+    "password_toggle": "reactive visibilityToggle; default keyboard focusable; enter toggles once for Hover",
+    "custom_visuals": "typed IconSource/vector and typed input/button slots"
+  }
+}

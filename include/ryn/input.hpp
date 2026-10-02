@@ -3,6 +3,7 @@
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/input_types.hpp>
+#include <ryn/icon.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
@@ -31,6 +32,9 @@ struct InputPropsData final {
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
     std::optional<Prop<bool>> allow_clear_;
+    Prop<bool> clear_disabled_{false};
+    Prop<IconSource> clear_icon_{IconSource{IconName::CloseCircleFilled}};
+    std::function<void()> on_clear_;
     std::optional<Prop<std::size_t>> max_length_;
     std::optional<Prop<bool>> show_count_;
     Prop<InputCountOptions> count_{InputCountOptions{}};
@@ -45,6 +49,7 @@ struct InputPropsData final {
     Prop<InputCapitalization> capitalization_{InputCapitalization::None};
     Prop<bool> autocorrect_{true};
     bool auto_focus_{};
+    bool search_control_height_{};
     std::shared_ptr<InputRefState> reference_;
     LayoutStyle layout_;
 };
@@ -126,6 +131,21 @@ public:
 
     Derived& maxLength(Prop<std::size_t> value) {
         common_.max_length_ = std::move(value);
+        return self();
+    }
+
+    Derived& clearDisabled(Prop<bool> value) {
+        common_.clear_disabled_ = std::move(value);
+        return self();
+    }
+
+    Derived& clearIcon(Prop<IconSource> value) {
+        common_.clear_icon_ = std::move(value);
+        return self();
+    }
+
+    Derived& onClear(std::function<void()> callback) {
+        common_.on_clear_ = std::move(callback);
         return self();
     }
 
@@ -222,6 +242,7 @@ private:
     friend struct detail::PasswordPropsAccess;
     std::optional<Prop<bool>> password_visible_;
     std::shared_ptr<void> password_lifetime_;
+    std::optional<Prop<bool>> suffix_presence_;
 };
 
 struct InputPrefixSlot final {};

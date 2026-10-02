@@ -7,7 +7,7 @@ namespace detail {
 struct SearchPropsAccess;
 }
 
-enum class SearchSource { Input };
+enum class SearchSource { Input, Clear };
 
 class SearchProps final : public InputPropsBase<SearchProps> {
 public:
@@ -26,10 +26,16 @@ public:
         return *this;
     }
 
+    SearchProps& searchIcon(Prop<IconSource> value) {
+        search_icon_ = std::move(value);
+        return *this;
+    }
+
 private:
     friend struct detail::SearchPropsAccess;
     Prop<bool> loading_{false};
     Prop<bool> enter_button_{false};
+    Prop<IconSource> search_icon_{IconSource{IconName::SearchOutlined}};
     std::function<void(String, SearchSource)> on_search_;
 };
 
@@ -37,6 +43,7 @@ struct SearchButtonContentSlot final {};
 
 using SearchButtonContent = SlotContent<SearchButtonContentSlot>;
 
-void Search(SearchProps props, std::optional<SearchButtonContent> button = {});
+void Search(SearchProps props, std::optional<SearchButtonContent> button = {}, std::optional<InputPrefix> prefix = {},
+            std::optional<InputSuffix> suffix = {});
 
 } // namespace ryn

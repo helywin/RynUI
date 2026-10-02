@@ -1,4 +1,6 @@
 #include "component/button_component.hpp"
+#include "theme/input_tokens.hpp"
+#include "component/input_component.hpp"
 
 #include "animation/material_transition_channels.hpp"
 #include "component/space_compact.hpp"
@@ -48,6 +50,10 @@ struct ButtonPropsAccess final {
 
     [[nodiscard]] static const std::optional<Prop<ButtonVariant>>& variant(const ButtonProps& props) noexcept {
         return props.variant_;
+    }
+
+    static const std::optional<Prop<InputVariant>>& search_variant(const ButtonProps& props) {
+        return props.search_variant_;
     }
 
     [[nodiscard]] static const Prop<bool>& danger(const ButtonProps& props) noexcept {
@@ -115,6 +121,7 @@ struct ButtonComponentState final {
     ButtonType type{ButtonType::Default};
     std::optional<ButtonColor> color;
     std::optional<ButtonVariant> variant;
+    std::optional<InputVariant> search_variant;
     bool danger{};
     bool ghost{};
     ControlSize size{ControlSize::Middle};
@@ -1210,7 +1217,16 @@ void ButtonComponentHost::on_window_active(bool active) {
 void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
-    const auto& visual = visual_token(button, state);
+    auto visual = visual_token(button, state);
+    if (state.search_variant == InputVariant::Filled) {
+        const auto& input = derive_input_tokens(theme);
+        const auto neutral = theme.map().color_text_base;
+        const bool dark = std::ranges::find(theme.algorithms(), ThemeAlgorithm::Dark) != theme.algorithms().end();
+        visual.background = !state.disabled && state.press.pressed()
+                                ? Color(neutral.red(), neutral.green(), neutral.blue(), dark ? 0.18F : 0.15F)
+                            : !state.disabled && state.hovered ? input.colors.filled_hover_background
+                                                               : input.colors.filled_background;
+    }
     const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
     if (state.wave_active &&
         (!state.wave || state.disabled || state.loading || unbordered(state) || !policy.enabled() ||
@@ -1490,8 +1506,20 @@ void ButtonComponentHost::update_typography(ButtonComponentState& state) {
 }
 
 void ButtonComponentHost::update_layout(ButtonComponentState& state) {
-    const auto& button = components().theme_scope(state.component)->snapshot().button();
-    const auto candidate = content_layout(button, state);
+    const auto& theme = components().theme_scope(state.component)->snapshot();
+    const auto& button = theme.button();
+    auto candidate = content_layout(button, state);
+    if (state.search_variant) {
+        const auto& input = derive_input_tokens(theme);
+        const auto& size = input.size(state.size);
+        candidate.control_height =
+            state.size == ControlSize::Small
+                ? std::max(size.control_height, size.line_height + 2 * (size.padding_block + input.border_width))
+                : size.control_height;
+        if (state.icon_only) {
+            candidate.minimum_width = candidate.control_height;
+        }
+    }
     if (candidate == state.layout_model) {
         return;
     }
@@ -1509,9 +1537,12 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
                 update_visuals(*current);
             }
         },
-        [theme] {
+        [theme, search = state.search_variant.has_value()] {
             static_cast<void>(theme->button_colors());
             static_cast<void>(theme->focus_outline_color());
+            if (search) {
+                static_cast<void>(theme->input_colors());
+            }
         });
     state.effect_subscription = theme->capture(
         [this, component = state.component](theme_runtime::DirtyPhase) {
@@ -1534,11 +1565,15 @@ void ButtonComponentHost::subscribe_theme(ButtonComponentState& state) {
                 update_visuals(*current);
             }
         },
-        [theme] {
+        [theme, search = state.search_variant.has_value()] {
             static_cast<void>(theme->button_control_heights());
             static_cast<void>(theme->button_padding_inline());
             static_cast<void>(theme->button_border_width());
             static_cast<void>(theme->button_icon_gap());
+            if (search) {
+                static_cast<void>(theme->input_layout_metrics());
+                static_cast<void>(theme->input_typography());
+            }
         });
     state.typography_subscription = theme->capture(
         [this, component = state.component](theme_runtime::DirtyPhase) {
@@ -1863,6 +1898,9 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     state.type = initial_type;
     state.color = initial_color;
     state.variant = initial_variant;
+    state.search_variant = ButtonPropsAccess::search_variant(props)
+                               ? std::optional{read_prop(*ButtonPropsAccess::search_variant(props))}
+                               : std::nullopt;
     state.danger = initial_state.danger;
     state.ghost = initial_state.ghost;
     state.size = initial_size;
@@ -1881,6 +1919,7 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     state.on_click = ButtonPropsAccess::on_click(props);
     state.layout_model = content_layout(theme.button(), state);
     host.layout_->set_layout(state.node, state.layout_model);
+    host.update_layout(state);
     runtime::connect_layout_style(build.scope(component), ButtonPropsAccess::layout(props), state.node, *host.nodes_,
                                   *host.dirty_);
 
@@ -1908,6 +1947,23 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
         true,
         {},
     });
+    if (state.search_variant) {
+        static_cast<void>(host.interactions_.set_pointer_focus_predicate(state.interaction, [&host, component] {
+            const auto* state = host.find_state(component);
+            const auto* inputs = host.services_->input_runtime();
+            if (!state || !inputs) {
+                return false;
+            }
+            const auto parent = host.components().parent(component);
+            for (const auto& input : inputs->mounted_inputs()) {
+                if (host.components().parent(input.component) == parent &&
+                    host.focus_.state().focused == input.interaction) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+    }
     input::InteractionHandlers pointer_handlers;
     pointer_handlers.target = [&host, component](input::PointerDispatchContext& event) {
         host.handle_pointer(component, event);
@@ -1945,6 +2001,18 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     });
 
     auto& scope = build.scope(component);
+    if (const auto& search = ButtonPropsAccess::search_variant(props)) {
+        static_cast<void>(connect_prop(scope, *search, [&host, component](InputVariant value) {
+            if (value < InputVariant::Outlined || value > InputVariant::Underlined) {
+                throw std::invalid_argument("Invalid Search variant");
+            }
+            if (auto* state = host.find_state(component); state && state->search_variant != value) {
+                state->search_variant = value;
+                host.update_layout(*state);
+                host.update_visuals(*state);
+            }
+        }));
+    }
     static_cast<void>(connect_prop(scope, ButtonPropsAccess::type(props),
                                    [&host, component](ButtonType type) { host.apply_type(component, type); }));
     if (const auto& color = ButtonPropsAccess::color(props)) {

@@ -2,6 +2,7 @@
 
 #include <ryn/component.hpp>
 #include <ryn/button_types.hpp>
+#include <ryn/input_types.hpp>
 #include <ryn/control_size.hpp>
 #include <ryn/design_token.hpp>
 #include <ryn/layout_style.hpp>
@@ -16,6 +17,7 @@ namespace ryn {
 namespace detail {
 
 struct ButtonPropsAccess;
+struct SearchPropsAccess;
 struct ButtonRefState;
 
 } // namespace detail
@@ -122,6 +124,7 @@ public:
 
 private:
     friend struct detail::ButtonPropsAccess;
+    friend struct detail::SearchPropsAccess;
 
     Prop<ButtonType> type_{ButtonType::Default};
     std::optional<Prop<ButtonColor>> color_;
@@ -139,6 +142,7 @@ private:
     Prop<bool> wave_{true};
     std::optional<ButtonRef> ref_;
     bool auto_focus_{};
+    std::optional<Prop<InputVariant>> search_variant_;
     std::function<void()> on_click_;
     LayoutStyle layout_;
 };

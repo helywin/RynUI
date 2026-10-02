@@ -295,6 +295,12 @@ void layout_theme_and_scale() {
                             input_bounds.x + input_bounds.width <= button_bounds.x + 1.1F &&
                             button_bounds.x + button_bounds.width <= root_bounds.x + root_bounds.width + 0.1F,
                         "narrow Search geometry overlaps or escapes root");
+                if (std::fabs(input_bounds.height - button_bounds.height) >= 0.1F ||
+                    fixture.buttons.snapshot(button.component).size != size) {
+                    std::cerr << "Search height scale=" << scale << " algorithm=" << static_cast<int>(algorithm)
+                              << " size=" << static_cast<int>(size) << " input=" << input_bounds.height
+                              << " button=" << button_bounds.height << '\n';
+                }
                 require(std::fabs(input_bounds.height - button_bounds.height) < 0.1F &&
                             fixture.buttons.snapshot(button.component).size == size,
                         "Search Input/Button control heights or sizes differ");

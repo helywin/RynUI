@@ -20,6 +20,7 @@ struct InputAffixActionState {
     bool disabled{};
     bool visible{true};
     bool hovered{};
+    bool activate_on_hover{};
     input::FocusPresentation focus;
     Signal<TextTone> tone{TextTone::Secondary};
 };
@@ -47,13 +48,14 @@ void synchronize(InputAffixActionState& state, WindowComponentServices& host, bo
         host.pointer().cancel_interaction(state.interaction);
     }
     static_cast<void>(host.interactions().set_eligible(state.interaction, !state.disabled && state.visible));
-    host.focus().synchronize();
     update_tone(state);
+    host.focus().synchronize();
 }
 } // namespace
 
-void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon, Prop<bool> disabled,
-                              std::function<void()> activate, Prop<bool> visible) {
+void mount_input_affix_action(WindowComponentServices& host, Prop<IconSource> icon, Prop<bool> disabled,
+                              std::function<void()> activate, Prop<bool> visible, Prop<bool> focusable,
+                              Prop<bool> tab_stop, Prop<bool> activate_on_hover) {
     auto& build = runtime::require_component_build_context();
     const auto component = build.mount_component<InputAffixActionState>();
     auto& state = build.state<InputAffixActionState>(component);
@@ -62,6 +64,7 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon
     state.activate = std::move(activate);
     state.disabled = read_prop(disabled);
     state.visible = read_prop(visible);
+    state.activate_on_hover = read_prop(activate_on_hover);
     update_tone(state);
     build.on_resource_cleanup(component, [&host, component] {
         if (auto* current = host.components().state<InputAffixActionState>(component)) {
@@ -87,8 +90,14 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon
             }
         }
     }
-    state.interaction =
-        host.interactions().create({component, state.node, parent, !state.disabled && state.visible, true, {}, false});
+    state.interaction = host.interactions().create({component,
+                                                    state.node,
+                                                    parent,
+                                                    !state.disabled && state.visible,
+                                                    read_prop(focusable),
+                                                    {},
+                                                    false,
+                                                    read_prop(tab_stop)});
     state.fragment = build.register_scene_fragment(component, runtime::SceneFragmentPlacement::before_children);
     host.scene_composer().set_fragment(state.fragment, {}, state.interaction);
     host.mark_scene_structure_dirty();
@@ -98,6 +107,7 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon
         if (!current) {
             return;
         }
+        const bool entering = context.kind() == input::PointerEventKind::enter && !current->hovered;
         if (context.kind() == input::PointerEventKind::enter) {
             current->hovered = true;
         }
@@ -107,7 +117,8 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon
         const auto result = current->press.dispatch(context, current->interaction,
                                                     host.interactions().require(current->interaction).eligible);
         update_tone(*current);
-        if (result.activate) {
+        const bool eligible = host.interactions().require(current->interaction).eligible;
+        if ((result.activate && !current->activate_on_hover) || (entering && current->activate_on_hover && eligible)) {
             auto callback = current->activate;
             callback();
         }
@@ -151,8 +162,25 @@ void mount_input_affix_action(WindowComponentServices& host, Prop<IconName> icon
             synchronize(*current, host, true);
         }
     }));
+    static_cast<void>(connect_prop(build.scope(component), focusable, [&host, component](bool value) {
+        if (auto* current = host.components().state<InputAffixActionState>(component)) {
+            static_cast<void>(host.interactions().set_focusable(current->interaction, value));
+            host.focus().synchronize();
+        }
+    }));
+    static_cast<void>(connect_prop(build.scope(component), tab_stop, [&host, component](bool value) {
+        if (auto* current = host.components().state<InputAffixActionState>(component)) {
+            static_cast<void>(host.interactions().set_tab_stop(current->interaction, value));
+            host.focus().synchronize();
+        }
+    }));
+    static_cast<void>(connect_prop(build.scope(component), activate_on_hover, [&host, component](bool value) {
+        if (auto* current = host.components().state<InputAffixActionState>(component)) {
+            current->activate_on_hover = value;
+        }
+    }));
     build.mount_slot(component, Content{[icon = std::move(icon), visible = std::move(visible), tone = state.tone] {
-                         Icon(IconProps{}.name(icon).tone(tone).visible(visible));
+                         Icon(IconProps{}.source(icon).tone(tone).visible(visible));
                      }});
 }
 

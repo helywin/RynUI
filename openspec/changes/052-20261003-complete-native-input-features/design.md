@@ -36,6 +36,10 @@ Ref 操作验证活跃分支和 disabled，selection 使用现有 UTF-8 byte/gra
 
 InputAffixAction 扩展 IconSource、focusable、hover 通知，clearDisabled 与 editor disabled/readOnly 分离；保持一次内容挂载和 retained 更新。Password visibilityToggle 使用 Prop，controlled visibility 发出候选而不擅自回写，图标函数通过 bind 更新；prefix/suffix 和 clear 统一组合。Search 输入 value bridge 继续负责 accepted 值，clear 回调显式传空候选，复制回调以承受同步卸载。Web ReactNode 视觉槽映射为 typed prefix/suffix/button；动作图标映射为 051 typed IconSource/vector。
 
+实施核对固定 6.6.5：Underlined Search action 是 Text Button，底边只属于 Input；Filled action 额外使用 neutral 普通/hover/pressed 背景。Search 在 Button 内使用私有变体投影和 Input Token 依赖，不增加公共视觉 Modifier。Small Search 的两侧共享 max(controlHeightSM, lineHeight + 2 paddingBlock + 2 border) 最小高度。Password 默认 Eye 图标修正为隐藏 EyeInvisibleOutlined/显示 EyeOutlined，toggleFocusable 默认 true，Hover 每次 enter 切换一次。Search Clear 通知空候选，与 controlled 接受值分开，loading 仅阻止提交。
+
+Search action 的 pointer focus 条件在 PointerRouter 转移焦点前判断所属 Input 是否聚焦。InteractionRegistry 保存共享 predicate，执行后重新核对 target generation/branch；所属输入框聚焦时鼠标保留焦点/IME，其他情况维持 Button 的鼠标焦点，键盘策略独立。
+
 ### 4. 验证边界
 
 使用 CMakePresets 的 Ninja Multi-Config 和 MSVC：windows-msvc-headless Debug/Release 完成 common 合同和完整 CTest；windows-msvc Debug/Release 完成受影响集成测试及真实 D3D12/DXIL 窗口运行。native harness 覆盖四变体、三个尺寸、Theme/status/count、清空/密码/Search、自定义图标、焦点/IME stamp、缩放、resize、popup、idle/dispose，记录截图/hash/日志。Linux 窗口/GPU/system input 单列实际机器验收，本机缺证据则保持未勾选。

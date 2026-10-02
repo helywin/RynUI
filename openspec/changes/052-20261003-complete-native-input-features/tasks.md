@@ -14,7 +14,7 @@
 
 ## 4. 平台通用：清空、Password、Search 操作
 
-- [ ] 4.1 实现 clearDisabled/clearIcon/onClear、Password reactive 显隐开关/停靠/hover/custom IconSource/prefix/suffix、Search custom searchIcon/Clear 来源/全部共用属性与连接外观；补动作禁用/捕获/焦点/受控回写/卸载/组合输入/Compact 合同测试和文档，在 common Debug/Release 运行 affected input/password/search/icon/button/space_compact/typography tests，格式及规格校验通过后提交。
+- [x] 4.1 实现 clearDisabled/clearIcon/onClear、Password reactive 显隐开关/停靠/hover/custom IconSource/prefix/suffix、Search custom searchIcon/Clear 来源/全部共用属性与连接外观；补动作禁用/捕获/焦点/受控回写/卸载/组合输入/Compact 合同测试和文档，在 common Debug/Release 运行 affected input/password/search/icon/button/space_compact/typography tests，格式及规格校验通过后提交。
 
 ## 5. 平台通用：Gallery 集成
 

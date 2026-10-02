@@ -22,6 +22,7 @@ struct SearchPropsAccess final {
         result.common_.value_.reset();
         result.common_.default_value_.reset();
         result.common_.layout_ = {};
+        result.common_.search_control_height_ = true;
         return result;
     }
 
@@ -92,6 +93,18 @@ struct SearchPropsAccess final {
     [[nodiscard]] static const LayoutStyle& layout(const SearchProps& props) noexcept {
         return props.common_.layout_;
     }
+
+    static const Prop<IconSource>& search_icon(const SearchProps& props) {
+        return props.search_icon_;
+    }
+
+    static const std::function<void()>& on_clear(const SearchProps& props) {
+        return props.common_.on_clear_;
+    }
+
+    static void configure_action(ButtonProps& action, const SearchProps& props) {
+        action.search_variant_ = props.common_.variant_;
+    }
 };
 
 namespace {
@@ -121,7 +134,8 @@ void validate(InputStatus status) {
 
 namespace ryn {
 
-void Search(SearchProps props, std::optional<SearchButtonContent> button) {
+void Search(SearchProps props, std::optional<SearchButtonContent> button, std::optional<InputPrefix> prefix,
+            std::optional<InputSuffix> suffix) {
     if (detail::SearchPropsAccess::has_conflicting_value(props)) {
         throw std::invalid_argument("Search value and defaultValue are mutually exclusive");
     }
@@ -151,6 +165,14 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     auto on_search = detail::SearchPropsAccess::on_search(props);
 
     InputProps input = detail::SearchPropsAccess::input(props);
+    input.onClear([on_clear = detail::SearchPropsAccess::on_clear(props), on_search] {
+        if (on_clear) {
+            on_clear();
+        }
+        if (on_search) {
+            on_search(String{}, SearchSource::Clear);
+        }
+    });
     input.value(bridge->committed)
         .placeholder(detail::SearchPropsAccess::placeholder(props))
         .status(detail::SearchPropsAccess::status(props))
@@ -181,6 +203,7 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
     }
 
     ButtonProps action;
+    detail::SearchPropsAccess::configure_action(action, props);
     action
         .type(bind([enter = detail::SearchPropsAccess::enter_button(props)] {
             return detail::read_prop(enter) ? ButtonType::Primary : ButtonType::Default;
@@ -209,16 +232,15 @@ void Search(SearchProps props, std::optional<SearchButtonContent> button) {
         input.size(detail::SearchPropsAccess::size(props));
         action.size(detail::SearchPropsAccess::size(props));
     }
-    auto content = [bridge, input = std::move(input), action = std::move(action),
-                    button = std::move(button)]() mutable {
-        Input(std::move(input));
-        Button(std::move(action), ButtonContent{[button = std::move(button)] {
-                   if (button) {
-                       detail::SlotContentAccess::function (*button)();
-                   } else {
-                       Icon(IconProps{}.name(IconName::SearchOutlined));
-                   }
-               }});
+    auto content = [bridge, input = std::move(input), action = std::move(action), button = std::move(button),
+                    prefix = std::move(prefix), suffix = std::move(suffix),
+                    icon = detail::SearchPropsAccess::search_icon(props)]() mutable {
+        Input(std::move(input), std::move(prefix), std::move(suffix));
+        if (button) {
+            Button(std::move(action), ButtonContent{[button] { detail::SlotContentAccess::function (*button)(); }});
+        } else {
+            Button(std::move(action), ButtonSlots{.icon = ButtonIcon{[icon] { Icon(IconProps{}.source(icon)); }}});
+        }
     };
     SpaceCompact(SpaceCompactProps{}.layout(detail::SearchPropsAccess::layout(props)),
                  SpaceCompactContent{std::move(content)});

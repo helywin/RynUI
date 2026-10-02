@@ -3,6 +3,8 @@
 #include <ryn/input.hpp>
 
 namespace ryn {
+enum class PasswordAction { Click, Hover };
+
 namespace detail {
 struct PasswordPropsAccess;
 }
@@ -19,8 +21,23 @@ public:
         return *this;
     }
 
-    PasswordProps& visibilityToggle(bool value) {
-        visibility_toggle_ = value;
+    PasswordProps& visibilityToggle(Prop<bool> value) {
+        visibility_toggle_ = std::move(value);
+        return *this;
+    }
+
+    PasswordProps& toggleFocusable(Prop<bool> value) {
+        toggle_focusable_ = std::move(value);
+        return *this;
+    }
+
+    PasswordProps& action(Prop<PasswordAction> value) {
+        action_ = std::move(value);
+        return *this;
+    }
+
+    PasswordProps& iconRender(std::function<IconSource(bool)> callback) {
+        icon_render_ = std::move(callback);
         return *this;
     }
 
@@ -33,10 +50,13 @@ private:
     friend struct detail::PasswordPropsAccess;
     std::optional<Prop<bool>> visible_;
     std::optional<bool> default_visible_;
-    bool visibility_toggle_{true};
+    Prop<bool> visibility_toggle_{true};
+    Prop<bool> toggle_focusable_{true};
+    Prop<PasswordAction> action_{PasswordAction::Click};
+    std::function<IconSource(bool)> icon_render_;
     std::function<void(bool)> on_visible_change_;
 };
 
-void Password(PasswordProps props);
+void Password(PasswordProps props, std::optional<InputPrefix> prefix = {}, std::optional<InputSuffix> suffix = {});
 
 } // namespace ryn

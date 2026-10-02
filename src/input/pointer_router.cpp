@@ -114,7 +114,18 @@ void PointerRouter::dispatch(const PointerInputEvent& event) {
         const auto kind = event_kind(event.action);
 
         if (event.action == PointerAction::down && event.button == PointerButton::primary) {
-            if (focus_ != nullptr && (!actual_target || registry_->require(*actual_target).focus_on_pointer)) {
+            bool allow_focus = !actual_target || registry_->require(*actual_target).focus_on_pointer;
+            if (allow_focus && actual_target) {
+                const auto predicate = registry_->require(*actual_target).pointer_focus_predicate;
+                if (predicate) {
+                    allow_focus = (*predicate)();
+                    if (!registry_->contains(*actual_target) || !registry_->branch_active(*actual_target)) {
+                        actual_target.reset();
+                        allow_focus = false;
+                    }
+                }
+            }
+            if (focus_ != nullptr && allow_focus) {
                 static_cast<void>(focus_->focus_from_pointer(actual_target));
             }
             if (pointer->primary_down || pointer->capture.has_value() || pointer->press_origin.has_value()) {

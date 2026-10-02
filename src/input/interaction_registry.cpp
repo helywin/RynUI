@@ -74,6 +74,7 @@ InteractionId InteractionRegistry::create(InteractionRegistration registration) 
             next_declaration_order_,
             registration.focus_on_pointer,
             registration.tab_stop,
+            {},
         });
         declaration_order_.push_back(id);
     } catch (...) {
@@ -191,6 +192,15 @@ const InteractionRecord& InteractionRegistry::require(InteractionId id) const {
 
 bool InteractionRegistry::contains(InteractionId id) const {
     return find(id) != nullptr;
+}
+
+bool InteractionRegistry::set_pointer_focus_predicate(InteractionId id, std::function<bool()> predicate) {
+    if (auto* record = find(id)) {
+        record->pointer_focus_predicate =
+            predicate ? std::make_shared<const std::function<bool()>>(std::move(predicate)) : nullptr;
+        return true;
+    }
+    return false;
 }
 
 bool InteractionRegistry::is_owner_thread() const noexcept {
