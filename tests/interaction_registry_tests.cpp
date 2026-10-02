@@ -3,6 +3,7 @@
 #include <ryn/component.hpp>
 
 #include <atomic>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 #include <thread>
@@ -118,6 +119,18 @@ void test_create_find_remove_and_slot_reuse() {
         false,
         {},
     });
+    const std::array reordered{sibling, replacement};
+    registry.reorder_after(parent, reordered);
+    require(registry.declaration_order()[1] == sibling && registry.declaration_order()[2] == replacement,
+            "retained interaction order was not changed");
+    bool duplicate_rejected{};
+    try {
+        const std::array duplicate{replacement, replacement};
+        registry.reorder_after(parent, duplicate);
+    } catch (const std::invalid_argument&) {
+        duplicate_rejected = true;
+    }
+    require(duplicate_rejected && registry.declaration_order()[1] == sibling, "invalid reorder changed registry state");
     bool unrelated_parent_rejected = false;
     try {
         static_cast<void>(registry.create({

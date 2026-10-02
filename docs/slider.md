@@ -1,4 +1,4 @@
-# Slider 与 RangeSlider
+# Slider、RangeSlider 与 MultiSlider
 
 单值 `Slider` 与双端 `RangeSlider` 使用独立 typed Props。数值属性为 double，范围为 `SliderRange{lower, upper}`；通过 `value(Prop<T>)` 受控，或 `defaultValue(T)` 非受控，两者不能同时设置。颜色和尺寸通过 `ThemeConfig::slider` 的 Component Token 控制；`LayoutStyle` 只控制外部尺寸与位置。
 
@@ -29,4 +29,6 @@ controlled Slider 仅报告候选值，显示仍由 value 决定；拖动/按键
 
 Slider token 按锁定 [Ant Design 6.6.5 API](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/index.en-US.md) 与 [style 源码](https://github.com/ant-design/ant-design/blob/6.6.5/components/slider/style/index.ts) 映射 rail、track、handle、hover、active、disabled 及 dot/mark。新增 dot_size、dot_border_width、mark_gap、mark_font_size、mark_line_height 和 dot/mark 颜色；字体族/字重遵循 Typography Theme。支持 Default/Dark/Compact、嵌套继承、组件 algorithm/seed 与显式覆盖。颜色 token 只失效 material，metrics 触发布局/geometry。组件通过共同 logical quads 和 rounded focus effects 工作，不含 SDL/GPU 类型。
 
-整段轨道拖动、多端点与端点增删仍在桌面收尾范围内，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md) 和 [041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md)。
+`MultiSlider(MultiSliderProps)` 使用 `SliderValues`（`std::vector<double>`），最多 64 个端点，finite 输入归一化后排序并允许重合。未指定初值时为两个 minimum；显式空列表没有端点或伪焦点。`rangeOptions(Prop<SliderRangeOptions>)` 原子设置 count 约束，`0 <= min_count <= max_count <= 64`，当前 count 必须处于其间。插入/移除外部 value 时匹配未变值（包括重复值）并保留对应组件、Tooltip 和焦点；数量变化取消旧 gesture，Tab 顺序仍按排序后的端点遍历。相同数量更新保留原索引身份。受控候选和单值/双端模式遵循同一规则。
+
+整段轨道拖动与端点编辑正在 042 实施；range options 的 draggable_track/editable 字段尚未完成交互，Gallery 保持 partial。实施与分平台证据见 [039 清单](../openspec/changes/039-20261002-add-single-and-range-slider/tasks.md)、[041 清单](../openspec/changes/041-20261002-add-slider-marks-dots-and-value-tooltips/tasks.md) 和 [042 清单](../openspec/changes/042-20261002-complete-slider-range-editing/tasks.md)。

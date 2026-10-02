@@ -4,6 +4,7 @@
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
 #include <ryn/tooltip.hpp>
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <utility>
@@ -27,6 +28,16 @@ struct SliderRange final {
     double lower{};
     double upper{};
     friend constexpr bool operator==(SliderRange, SliderRange) = default;
+};
+
+using SliderValues = std::vector<double>;
+
+struct SliderRangeOptions final {
+    bool draggable_track{};
+    bool editable{};
+    std::size_t min_count{};
+    std::size_t max_count{64};
+    friend constexpr bool operator==(SliderRangeOptions, SliderRangeOptions) = default;
 };
 
 struct SliderMark final {
@@ -53,7 +64,7 @@ public:
     }
 
     Derived& defaultValue(Value value) {
-        default_value_ = value;
+        default_value_ = std::move(value);
         return self();
     }
 
@@ -129,6 +140,7 @@ public:
 
 private:
     friend struct detail::SliderPropsAccess;
+    friend Derived;
 
     Derived& self() {
         return static_cast<Derived&>(*this);
@@ -146,6 +158,8 @@ private:
     Prop<bool> dots_{false};
     Prop<bool> included_{true};
     Prop<SliderHintOptions> hint_{SliderHintOptions{}};
+    Prop<SliderRangeOptions> range_options_{SliderRangeOptions{}};
+    Prop<bool> draggable_track_{false};
     std::function<String(double)> hint_formatter_;
     std::function<void(Value)> on_change_;
     std::function<void(Value)> on_complete_;
@@ -154,9 +168,24 @@ private:
 
 class SliderProps final : public SliderPropsBase<double, SliderProps> {};
 
-class RangeSliderProps final : public SliderPropsBase<SliderRange, RangeSliderProps> {};
+class RangeSliderProps final : public SliderPropsBase<SliderRange, RangeSliderProps> {
+public:
+    RangeSliderProps& draggableTrack(Prop<bool> value) {
+        draggable_track_ = std::move(value);
+        return *this;
+    }
+};
+
+class MultiSliderProps final : public SliderPropsBase<SliderValues, MultiSliderProps> {
+public:
+    MultiSliderProps& rangeOptions(Prop<SliderRangeOptions> value) {
+        range_options_ = std::move(value);
+        return *this;
+    }
+};
 
 void Slider(SliderProps props);
 void RangeSlider(RangeSliderProps props);
+void MultiSlider(MultiSliderProps props);
 
 } // namespace ryn

@@ -5,11 +5,12 @@
 
 namespace ryn::detail {
 struct SliderState;
+struct SliderThumb;
 
 struct MountedSliderComponent final {
     runtime::ComponentId component;
     runtime::NodeId node;
-    std::array<input::InteractionId, 2> thumbs;
+    std::vector<input::InteractionId> thumbs;
     component::RetainedSurfaceId surface;
     bool range{};
 };
@@ -22,8 +23,9 @@ struct SliderSnapshot final {
     bool dragging{};
     bool reverse{};
     SliderOrientation orientation{};
-    std::array<runtime::Point, 2> centers;
-    std::array<input::FocusPresentation, 2> focus;
+    std::vector<runtime::Point> centers;
+    std::vector<input::FocusPresentation> focus;
+    SliderValues values;
 };
 
 class SliderComponentHost final : private WindowComponentParticipant {
@@ -57,6 +59,9 @@ private:
     void mount_labels(runtime::ComponentId, runtime::ComponentBuildContext&);
     void synchronize_labels(runtime::ComponentId);
     void update_hints(runtime::ComponentId);
+    void mount_thumb(runtime::ComponentId, SliderThumb&, runtime::ComponentBuildContext&);
+    void set_values(runtime::ComponentId, SliderValues);
+    std::optional<std::size_t> thumb_index(runtime::ComponentId, runtime::ComponentId) const;
     void change(runtime::ComponentId, std::size_t, double);
     void complete(runtime::ComponentId);
     void pointer(runtime::ComponentId, std::optional<std::size_t>, input::PointerDispatchContext&);

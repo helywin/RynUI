@@ -133,6 +133,26 @@ bool InteractionRegistry::set_focus_handlers(InteractionId id, FocusHandlers han
     return true;
 }
 
+void InteractionRegistry::reorder_after(InteractionId anchor, std::span<const InteractionId> interactions) {
+    static_cast<void>(require(anchor));
+    for (std::size_t i = 0; i < interactions.size(); ++i) {
+        static_cast<void>(require(interactions[i]));
+        if (interactions[i] == anchor ||
+            std::find(interactions.begin(), interactions.begin() + i, interactions[i]) != interactions.begin() + i) {
+            throw std::invalid_argument("Interaction reorder requires distinct live IDs excluding the anchor");
+        }
+    }
+    auto order = declaration_order_;
+    std::erase_if(order, [&](auto id) { return std::ranges::find(interactions, id) != interactions.end(); });
+    const auto position = std::ranges::find(order, anchor);
+    order.insert(position + 1, interactions.begin(), interactions.end());
+    declaration_order_ = std::move(order);
+    for (std::size_t i = 0; i < declaration_order_.size(); ++i) {
+        find_slot_record(declaration_order_[i])->declaration_order = i;
+    }
+    next_declaration_order_ = declaration_order_.size();
+}
+
 InteractionRecord* InteractionRegistry::find(InteractionId id) {
     ensure_owner_thread();
     auto* record = find_slot_record(id);

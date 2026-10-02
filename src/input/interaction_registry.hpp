@@ -94,6 +94,7 @@ public:
     bool set_focusable(InteractionId id, bool focusable);
     bool set_handlers(InteractionId id, InteractionHandlers handlers);
     bool set_focus_handlers(InteractionId id, FocusHandlers handlers);
+    void reorder_after(InteractionId anchor, std::span<const InteractionId> interactions);
 
     [[nodiscard]] InteractionRecord* find(InteractionId id);
     [[nodiscard]] const InteractionRecord* find(InteractionId id) const;

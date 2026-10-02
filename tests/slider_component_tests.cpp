@@ -175,6 +175,112 @@ void numeric_and_api() {
           "failed mount retained Slider resources");
 }
 
+void multiple_values_and_retained_topology() {
+    static_assert(std::is_same_v<decltype(MultiSliderProps{}.value(SliderValues{}).rangeOptions(SliderRangeOptions{})),
+                                 MultiSliderProps&>);
+    check(detail::normalize_slider_values(SliderValues{90, 21, 21, -1}, {0, 100, 10}) == SliderValues{0, 20, 20, 90},
+          "multiple values did not normalize and sort duplicates");
+    rejects([] { (void)detail::normalize_slider_values(SliderValues(65), {}); });
+    rejects([] { (void)detail::normalize_slider_values(SliderValues{1, NAN}, {}); });
+    for (auto options : {SliderRangeOptions{false, false, 3, 2}, SliderRangeOptions{false, false, 0, 65},
+                         SliderRangeOptions{true, true, 0, 64}}) {
+        rejects([&] { detail::validate_slider_range_options(options, false, 2); });
+    }
+    Fixture f;
+    Signal<SliderValues> values{SliderValues{20, 50, 80}};
+    Signal<SliderRangeOptions> options{SliderRangeOptions{false, false, 0, 64}};
+    std::vector<SliderValues> changes;
+    std::vector<SliderValues> completed;
+    int runs{};
+    f.services.mount(Content{[&] {
+        ++runs;
+        MultiSlider(MultiSliderProps{}
+                        .value(values)
+                        .rangeOptions(options)
+                        .onChange([&](SliderValues next) { changes.push_back(std::move(next)); })
+                        .onChangeComplete([&](SliderValues next) { completed.push_back(std::move(next)); }));
+        Slider(SliderProps{}.defaultValue(10));
+    }});
+    f.synchronize();
+    const auto mounted = f.services.slider().mounted()[0];
+    const auto sibling = f.services.slider().mounted()[1];
+    f.services.focus().request_focus(mounted.thumbs[1], FocusModality::keyboard);
+    key(f, Key::right);
+    key(f, Key::right, KeyAction::down, true);
+    key(f, Key::right, KeyAction::up);
+    check(changes == std::vector<SliderValues>{{20, 51, 80}, {20, 52, 80}} &&
+              completed.back() == SliderValues{20, 52, 80} &&
+              f.services.slider().snapshot(mounted.component).values == SliderValues{20, 50, 80},
+          "multiple controlled keyboard changed display or lost candidates");
+    values.set({20, 30, 50, 80});
+    f.synchronize();
+    auto handles = f.services.slider().mounted()[0].thumbs;
+    check(handles.size() == 4 && handles[0] == mounted.thumbs[0] && handles[2] == mounted.thumbs[1] &&
+              handles[3] == mounted.thumbs[2] && f.services.focus().state().focused == handles[2] && runs == 1,
+          "insertion replaced retained endpoints or focus");
+    f.services.focus().clear_focus();
+    for (auto handle : handles) {
+        key(f, Key::tab);
+        check(f.services.focus().state().focused == handle, "dynamic insertion did not preserve sorted Tab order");
+    }
+    key(f, Key::tab);
+    check(f.services.focus().state().focused == sibling.thumbs[0], "dynamic endpoints moved after sibling Tab stop");
+    values.set({20, 50, 80});
+    f.synchronize();
+    check(f.services.slider().mounted()[0].thumbs == mounted.thumbs && !f.services.interactions().contains(handles[1]),
+          "removal leaked endpoint or replaced unchanged handles");
+    const auto old = f.services.slider().snapshot(mounted.component).values;
+    rejects([&] { values.set(SliderValues(65)); });
+    check(f.services.slider().snapshot(mounted.component).values == old, "invalid count changed mounted topology");
+    values.set(old);
+    rejects([&] { options.set({false, false, 4, 64}); });
+    check(f.services.slider().mounted()[0].thumbs == mounted.thumbs, "invalid options changed mounted topology");
+    options.set({false, false, 0, 64});
+    values.set({});
+    f.synchronize();
+    check(f.services.slider().mounted()[0].thumbs.empty() && f.services.tooltip().mounted().size() == 1,
+          "empty multiple slider retained fake endpoints");
+    values.set({50, 50, 50});
+    f.synchronize();
+    handles = f.services.slider().mounted()[0].thumbs;
+    f.services.focus().request_focus(handles[0], FocusModality::keyboard);
+    pointer(f, PointerAction::down, at(f, mounted, 0.5));
+    pointer(f, PointerAction::move, at(f, mounted, 0.2));
+    pointer(f, PointerAction::up, at(f, mounted, 0.2));
+    check(changes.back() == SliderValues{20, 50, 50}, "multiple overlap changed wrong active endpoint");
+    values.set(SliderValues(64, 50));
+    f.synchronize();
+    check(f.services.slider().mounted()[0].thumbs.size() == 64, "64 endpoints rejected");
+    f.services.destroy(mounted.component);
+    f.synchronize();
+    check(f.services.slider().mounted().size() == 1 && f.services.tooltip().mounted().size() == 1 &&
+              f.services.interactions().size() == 3,
+          "multiple destroy leaked resources or damaged sibling");
+    Fixture defaults;
+    defaults.services.mount(Content{[] {
+        MultiSlider(MultiSliderProps{}.limits(SliderLimits{10, 100, 1}));
+        MultiSlider(MultiSliderProps{}.defaultValue({}));
+    }});
+    defaults.synchronize();
+    check(defaults.services.slider().snapshot(defaults.services.slider().mounted()[0].component).values ==
+                  SliderValues{10, 10} &&
+              defaults.services.slider().mounted()[1].thumbs.empty(),
+          "implicit defaults confused explicit empty values");
+    Fixture rollback;
+    bool failed{};
+    try {
+        rollback.services.mount(Content{[] {
+            MultiSlider(MultiSliderProps{}.defaultValue({20, 50, 80}));
+            throw std::runtime_error("abort");
+        }});
+    } catch (const std::runtime_error&) {
+        failed = true;
+    }
+    check(failed && rollback.services.slider().mounted().empty() && rollback.services.interactions().size() == 0 &&
+              rollback.services.tooltip().mounted().empty(),
+          "multiple mount rollback leaked endpoints");
+}
+
 void controlled_keyboard_and_limits() {
     Fixture f;
     Signal<double> value{30};
@@ -590,6 +696,7 @@ int main() {
     try {
         marks_numeric_contracts();
         numeric_and_api();
+        multiple_values_and_retained_topology();
         controlled_keyboard_and_limits();
         range_focus_pointer_cancel_and_lifecycle();
         geometry_theme_and_reentrancy();

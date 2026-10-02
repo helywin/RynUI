@@ -6,7 +6,7 @@
 
 ## 2. 共用动态端点（平台通用）
 
-- [ ] 2.1 新增 MultiSlider typed API 和 count/options 数值合同；统一保留 thumb 状态、动态 value topology/受控候选/独立焦点与提示，补旧 API 兼容、空/重合/64 上限/非法原子拒绝/增删 identity/cleanup 合同；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
+- [x] 2.1 新增 MultiSlider typed API 和 count/options 数值合同；统一保留 thumb 状态、动态 value topology/受控候选/独立焦点与提示，补旧 API 兼容、空/重合/64 上限/非法原子拒绝/增删 identity/cleanup 合同；headless Debug/Release focused CTest、格式/doctor/strict/diff 后记录文档/evidence 并提交。
 
 ## 3. 整段轨道（平台通用）
 

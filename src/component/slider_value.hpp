@@ -117,6 +117,27 @@ inline SliderRange normalize_slider_range(SliderRange value, SliderLimits limits
     return value;
 }
 
+inline void validate_slider_range_options(SliderRangeOptions options, bool marks_only, std::size_t count) {
+    if (options.min_count > options.max_count || options.max_count > 64 || count < options.min_count ||
+        count > options.max_count || (options.draggable_track && (options.editable || marks_only))) {
+        throw std::invalid_argument("Slider range options or count are invalid");
+    }
+}
+
+inline SliderValues normalize_slider_values(std::span<const double> values, SliderLimits limits,
+                                            std::span<const SliderMark> marks = {}, bool marks_only = false) {
+    if (values.size() > 64) {
+        throw std::invalid_argument("Slider supports at most 64 handles");
+    }
+    SliderValues result;
+    result.reserve(values.size());
+    for (double value : values) {
+        result.push_back(normalize_slider_value(value, limits, marks, marks_only));
+    }
+    std::ranges::sort(result);
+    return result;
+}
+
 inline double advance_slider_value(double value, SliderLimits limits, std::span<const SliderMark> marks,
                                    bool marks_only, int direction, int steps) {
     for (int step = 0; step < steps; ++step) {
