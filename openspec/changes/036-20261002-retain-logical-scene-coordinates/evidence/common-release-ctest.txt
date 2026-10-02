@@ -1,0 +1,59 @@
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.portable.logical_scene_packing
+ 1/27 Test  #1: rynui.portable.logical_scene_packing ..........   Passed    0.01 sec
+      Start  2: rynui.portable.quad_primitive
+ 2/27 Test  #2: rynui.portable.quad_primitive .................   Passed    0.01 sec
+      Start  3: rynui.portable.binding_quad_integration
+ 3/27 Test  #3: rynui.portable.binding_quad_integration .......   Passed    0.01 sec
+      Start  4: rynui.portable.button_scene_service
+ 4/27 Test  #4: rynui.portable.button_scene_service ...........   Passed    0.01 sec
+      Start  5: rynui.portable.font_runtime
+ 5/27 Test  #5: rynui.portable.font_runtime ...................   Passed    0.03 sec
+      Start  6: rynui.portable.text_engine
+ 6/27 Test  #6: rynui.portable.text_engine ....................   Passed    0.09 sec
+      Start  7: rynui.portable.text_state
+ 7/27 Test  #7: rynui.portable.text_state .....................   Passed    0.06 sec
+      Start  8: rynui.portable.text_scene_service
+ 8/27 Test  #8: rynui.portable.text_scene_service .............   Passed    0.14 sec
+      Start  9: rynui.portable.text_render_integration
+ 9/27 Test  #9: rynui.portable.text_render_integration ........   Passed    0.03 sec
+      Start 10: rynui.portable.glyph_atlas
+10/27 Test #10: rynui.portable.glyph_atlas ....................   Passed    0.01 sec
+      Start 11: rynui.portable.glyph_scene
+11/27 Test #11: rynui.portable.glyph_scene ....................   Passed    0.26 sec
+      Start 12: rynui.portable.glyph_gpu_resources
+12/27 Test #12: rynui.portable.glyph_gpu_resources ............   Passed    0.01 sec
+      Start 13: rynui.portable.rounded_effect_gpu_resources
+13/27 Test #13: rynui.portable.rounded_effect_gpu_resources ...   Passed    0.01 sec
+      Start 14: rynui.portable.input_component
+14/27 Test #14: rynui.portable.input_component ................   Passed    1.30 sec
+      Start 15: rynui.portable.input_gpu
+15/27 Test #15: rynui.portable.input_gpu ......................   Passed    0.09 sec
+      Start 16: rynui.portable.input_caret_blink
+16/27 Test #16: rynui.portable.input_caret_blink ..............   Passed    0.03 sec
+      Start 17: rynui.portable.text_component
+17/27 Test #17: rynui.portable.text_component .................   Passed    0.34 sec
+      Start 18: rynui.portable.button_component
+18/27 Test #18: rynui.portable.button_component ...............   Passed    0.32 sec
+      Start 19: rynui.portable.selection_component
+19/27 Test #19: rynui.portable.selection_component ............   Passed    0.37 sec
+      Start 20: rynui.portable.radio_component
+20/27 Test #20: rynui.portable.radio_component ................   Passed    0.33 sec
+      Start 21: rynui.portable.typography_component
+21/27 Test #21: rynui.portable.typography_component ...........   Passed    0.58 sec
+      Start 22: rynui.portable.typography_interaction
+22/27 Test #22: rynui.portable.typography_interaction .........   Passed    0.13 sec
+      Start 23: rynui.portable.divider_component
+23/27 Test #23: rynui.portable.divider_component ..............   Passed    0.09 sec
+      Start 24: rynui.portable.text_component_frame
+24/27 Test #24: rynui.portable.text_component_frame ...........   Passed    0.03 sec
+      Start 25: rynui.portable.frame_scheduler
+25/27 Test #25: rynui.portable.frame_scheduler ................   Passed    0.01 sec
+      Start 26: rynui.portable.scene_backend
+26/27 Test #26: rynui.portable.scene_backend ..................   Passed    0.18 sec
+      Start 27: rynui.portable.backend_boundaries
+27/27 Test #27: rynui.portable.backend_boundaries .............   Passed    0.74 sec
+
+100% tests passed out of 27
+
+Total Test time (real) =   5.25 sec

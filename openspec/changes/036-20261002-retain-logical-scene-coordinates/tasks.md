@@ -12,7 +12,7 @@
 
 ## 3. 集成收口（平台通用）
 
-- [ ] 3.1 在 Windows 的 `windows-msvc-headless-release` 构建并运行完整 headless CTest；在 native Debug 构建中运行现有组件、资源和 interaction/allocation benchmark 验收，确认新 staging 不引入热路径分配回归；将结果记录于本 change evidence，校验文档后提交。
+- [x] 3.1 在 Windows 的 `windows-msvc-headless-release` 构建并运行完整 headless CTest；在 native Debug 构建中运行现有组件、资源和 interaction/allocation benchmark 验收，确认新 staging 不引入热路径分配回归；将结果记录于本 change evidence，校验文档后提交。
 
 ## 4. Windows 原生验收
 
