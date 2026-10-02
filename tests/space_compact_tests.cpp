@@ -1,5 +1,7 @@
 #include "support/input_fixture.hpp"
 #include "component/space_compact.hpp"
+#include "component/space_addon.hpp"
+#include "component/selection_component.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -349,6 +351,13 @@ void compact_editors_keep_sessions_and_owned_slots() {
             "Compact size/direction replaced editor, IME, slot or effect identity");
     require(bool(fixture.inputs.dispatch(input::TextCommitted{String{u8"你"}, stamp})) && editor.value() == "原文你",
             "Compact Unicode commit failed");
+    fixture.services.focus().dispatch({input::Key::a, input::KeyAction::down, input::KeyModifier::control});
+    fixture.services.focus().dispatch({input::Key::c, input::KeyAction::down, input::KeyModifier::control});
+    require(fixture.platform.clipboard == String{u8"原文你"}, "Compact Unicode selection/copy failed");
+    fixture.platform.clipboard = String{u8"粘贴😀"};
+    fixture.services.focus().dispatch({input::Key::v, input::KeyAction::down, input::KeyModifier::control});
+    require(editor.value() == "粘贴😀" && fixture.inputs.sessions().active() == stamp,
+            "Compact Unicode paste replaced editing session");
     fixture.buttons.dispose();
     require(!fixture.inputs.sessions().active().valid() && fixture.inputs.editors().size() == 0 &&
                 fixture.platform.starts == fixture.platform.stops,
@@ -402,6 +411,214 @@ void compact_search_flex_distribution_and_popup_input() {
     require(!fixture.inputs.dispatch(input::TextCommitted{String{u8"迟到"}, stamp}),
             "closed popup accepted stale commit");
 }
+
+void compact_radio_and_addon_native_variants() {
+    Fixture fixture;
+    detail::SelectionComponentHost selections{fixture.services};
+    Signal<ControlSize> size{ControlSize::Large};
+    Signal<FlexDirection> direction{FlexDirection::LeftToRight};
+    Signal<InputStatus> status{InputStatus::Error};
+    Signal<bool> disabled{false};
+    Signal<InputVariant> variant{InputVariant::Outlined};
+    int slots{};
+    fixture.buttons.mount(Content{[&] {
+        SpaceCompact(
+            SpaceCompactProps{}.size(size).direction(direction), SpaceCompactContent{[&] {
+                SpaceAddon(SpaceAddonProps{}.variant(variant).status(status).disabled(disabled), SpaceAddonContent{[&] {
+                               ++slots;
+                               Text(u8"协议");
+                           }});
+                RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选项"); }});
+                RadioGroup(RadioGroupProps{}
+                               .size(RadioSize::Middle)
+                               .optionType(RadioOptionType::Button)
+                               .options(std::vector<RadioOption>{{true, String{u8"甲"}}, {false, String{u8"乙"}}}));
+                Input(InputProps{}.status(status).layout(LayoutStyle{}.width(dp(160))));
+            }});
+        for (const auto value :
+             {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+            SpaceAddon(SpaceAddonProps{}.variant(value).size(ControlSize::Small),
+                       SpaceAddonContent{[] { Text(u8"单项"); }});
+        }
+    }});
+    fixture.synchronize(720, {0, 0, 720, 240});
+    auto& components = fixture.services.components();
+    const auto root = components.root_components().front();
+    const auto addon = components.children(root).front();
+    const auto radio = selections.mounted()[0];
+    const auto grouped = selections.mounted()[1];
+    const auto context = components.state<detail::SpaceCompactState>(root)->context;
+    auto visual = fixture.services.space_addon().snapshot(addon);
+    const auto theme = components.theme_scope(addon)->snapshot();
+    require(visual.size == ControlSize::Large && visual.corners == std::array{true, false, false, true} &&
+                visual.border == theme.map().color_error && visual.foreground == theme.map().color_error &&
+                visual.border_width == theme.seed().line_width &&
+                selections.snapshot(radio.component).radio_size == RadioSize::Large &&
+                selections.snapshot(grouped.component).radio_size == RadioSize::Middle &&
+                selections.snapshot(radio.component).rounded_corners == std::array{false, false, false, false},
+            "Addon/RadioButton size, status, exterior corners or explicit group priority failed");
+    const std::array variants{InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless,
+                              InputVariant::Underlined};
+    for (std::size_t index = 0; index < variants.size(); ++index) {
+        const auto id = components.root_components()[index + 1];
+        const auto item = fixture.services.space_addon().snapshot(id);
+        require(item.variant == variants[index] && item.size == ControlSize::Small &&
+                    item.corners == std::array{true, true, true, true} &&
+                    item.border_width == (index < 2 ? theme.seed().line_width : 0) &&
+                    near(fixture.nodes.require(components.root(id)).bounds.height, theme.map().control_height_small),
+                "standalone Addon variant, size or exterior corners differ");
+    }
+    require(fixture.services.focus().request_focus(radio.interaction, input::FocusModality::keyboard),
+            "Compact Radio focus failed");
+    fixture.services.focus().dispatch({input::Key::space, input::KeyAction::down});
+    fixture.services.focus().dispatch({input::Key::space, input::KeyAction::up});
+    fixture.synchronize(720, {0, 0, 720, 240});
+    require(selections.snapshot(radio.component).checked && !context->seams().empty(),
+            "Compact Radio activation or mixed seam failed");
+    variant.set(InputVariant::Filled);
+    fixture.synchronize();
+    visual = fixture.services.space_addon().snapshot(addon);
+    require(visual.border.alpha() == 0 && visual.fill == Color::rgba8(255, 242, 240),
+            "Filled error Addon did not use semantic background and transparent border");
+    disabled.set(true);
+    fixture.synchronize();
+    visual = fixture.services.space_addon().snapshot(addon);
+    require(visual.border == theme.alias().color_border &&
+                visual.fill == theme.alias().color_background_container_disabled &&
+                visual.foreground == theme.alias().color_text_disabled,
+            "disabled Filled Addon lost disabled tokens");
+    disabled.set(false);
+    status.set(InputStatus::Warning);
+    variant.set(InputVariant::Underlined);
+    size.set(ControlSize::Small);
+    direction.set(FlexDirection::RightToLeft);
+    fixture.synchronize(720, {0, 0, 720, 240});
+    visual = fixture.services.space_addon().snapshot(addon);
+    require(visual.border_width == 0 && visual.fill.alpha() == 0 && visual.foreground == theme.map().color_warning &&
+                visual.size == ControlSize::Small && visual.corners == std::array{false, true, true, false} &&
+                slots == 1 && selections.snapshot(radio.component).radio_size == RadioSize::Small &&
+                selections.snapshot(grouped.component).radio_size == RadioSize::Middle,
+            "Addon reactive variant/status/RTL or Radio identity failed");
+    const auto updates = fixture.services.surfaces().effects().diagnostics().geometry_updates;
+    fixture.synchronize(720, {0, 0, 720, 240});
+    require(fixture.services.surfaces().effects().diagnostics().geometry_updates == updates,
+            "idle Addon repeated geometry publication");
+    const auto addon_measures = fixture.nodes.require(components.root(addon)).measure_count;
+    const auto radio_measures = fixture.nodes.require(grouped.node).measure_count;
+    direction.set(FlexDirection::LeftToRight);
+    fixture.synchronize(720, {0, 0, 720, 240});
+    require(fixture.nodes.require(components.root(addon)).measure_count == addon_measures &&
+                fixture.nodes.require(grouped.node).measure_count == radio_measures,
+            "pure Compact RTL repeated Addon or RadioGroup measurement");
+    variant.set(InputVariant::Filled);
+    fixture.synchronize(720, {0, 0, 720, 240});
+    require(fixture.services.space_addon().snapshot(addon).fill == Color::rgba8(255, 251, 230),
+            "warning Filled Addon palette differs");
+    const auto scene = fixture.services.text().mounted_texts().front().scene;
+    ThemeConfig dark;
+    dark.algorithms = {ThemeAlgorithm::Dark};
+    require(components.theme_scope(addon)->update(dark), "Addon Dark theme did not update");
+    fixture.synchronize(720, {0, 0, 720, 240});
+    require(fixture.services.space_addon().snapshot(addon).fill != Color::rgba8(255, 251, 230) && slots == 1 &&
+                fixture.services.text().mounted_texts().front().scene == scene,
+            "Addon Dark status background or retained text identity failed");
+    try {
+        static_cast<void>(fixture.layout.layout(components.root(root), layout::Constraints::fixed(0, 0)));
+    } catch (const std::exception& error) {
+        throw std::runtime_error(std::string{"zero Compact layout: "} + error.what());
+    }
+    try {
+        fixture.synchronize(720, {0, 0, 720, 240});
+    } catch (const std::exception& error) {
+        throw std::runtime_error(std::string{"zero Compact recovery: "} + error.what());
+    }
+    fixture.buttons.dispose();
+    require(fixture.nodes.size() == 0 && fixture.services.surfaces().effects().live_count() == 0 &&
+                fixture.services.surfaces().size() == 0,
+            "Addon/RadioButton disposal leaked effects");
+}
+
+void addon_invalid_mount_and_reactive_recovery() {
+    Fixture failed;
+    bool rejected{};
+    try {
+        failed.buttons.mount(Content{[] {
+            SpaceAddon(SpaceAddonProps{}.variant(static_cast<InputVariant>(99)),
+                       SpaceAddonContent{[] { Text(u8"非法"); }});
+        }});
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected && failed.nodes.size() == 0 && failed.services.surfaces().size() == 0,
+            "invalid Addon mount leaked resources");
+    Fixture fixture;
+    Signal<InputVariant> variant{InputVariant::Outlined};
+    fixture.buttons.mount(Content{[&] { SpaceAddon(SpaceAddonProps{}.variant(variant), SpaceAddonContent{[] {}}); }});
+    fixture.synchronize();
+    const auto id = fixture.services.components().root_components().front();
+    rejected = false;
+    try {
+        variant.set(static_cast<InputVariant>(99));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected && fixture.services.space_addon().snapshot(id).variant == InputVariant::Outlined,
+            "invalid Addon update replaced retained presentation");
+    variant.set(InputVariant::Borderless);
+    fixture.synchronize();
+    require(fixture.services.space_addon().snapshot(id).border_width == 0 && !fixture.services.next_frame_deadline(),
+            "Addon recovery or idle deadline failed");
+}
+
+void mixed_compact_orientation_size_and_direction() {
+    for (const auto size : {ControlSize::Small, ControlSize::Middle, ControlSize::Large}) {
+        for (const auto orientation : {SpaceOrientation::Horizontal, SpaceOrientation::Vertical}) {
+            for (const auto direction : {FlexDirection::LeftToRight, FlexDirection::RightToLeft}) {
+                Fixture fixture;
+                detail::SelectionComponentHost selections{fixture.services};
+                fixture.buttons.mount(Content{[=] {
+                    SpaceCompact(
+                        SpaceCompactProps{}.size(size).orientation(orientation).direction(direction).block(true),
+                        SpaceCompactContent{[] {
+                            SpaceAddon(SpaceAddonProps{}, SpaceAddonContent{[] { Text(u8"https://"); }});
+                            Password(PasswordProps{}.defaultValue(u8"口令"));
+                            Search(SearchProps{}.defaultValue(u8"查询"));
+                            RadioButton(RadioProps{}, RadioLabel{[] { Text(u8"选项"); }});
+                        }});
+                }});
+                fixture.synchronize(640, {0, 0, 640, 240});
+                const auto root = fixture.services.components().root_components().front();
+                const auto children = fixture.services.components().children(root);
+                const auto addon = fixture.services.space_addon().snapshot(children.front());
+                const auto radio = selections.snapshot(selections.mounted().front().component);
+                const auto first_corners =
+                    orientation == SpaceOrientation::Vertical ? std::array{true, true, false, false}
+                    : direction == FlexDirection::RightToLeft ? std::array{false, true, true, false}
+                                                              : std::array{true, false, false, true};
+                const auto last_corners =
+                    orientation == SpaceOrientation::Vertical ? std::array{false, false, true, true}
+                    : direction == FlexDirection::RightToLeft ? std::array{true, false, false, true}
+                                                              : std::array{false, true, true, false};
+                require(addon.size == size && addon.corners == first_corners && radio.rounded_corners == last_corners &&
+                            fixture.inputs.size(fixture.inputs.mounted_inputs()[0].component) == size &&
+                            fixture.inputs.size(fixture.inputs.mounted_inputs()[1].component) == size,
+                        "mixed Compact H/V/RTL/size did not retain exterior corners and inherited metrics");
+                require(near(fixture.nodes.require(fixture.services.components().root(root)).bounds.width, 640),
+                        "mixed Compact block did not fill its width");
+                for (std::size_t index = 1; index < children.size(); ++index) {
+                    const auto a =
+                        fixture.nodes.require(fixture.services.components().root(children[index - 1])).bounds;
+                    const auto b = fixture.nodes.require(fixture.services.components().root(children[index])).bounds;
+                    const float joined = orientation == SpaceOrientation::Vertical ? a.y + a.height - b.y
+                                         : direction == FlexDirection::RightToLeft ? b.x + b.width - a.x
+                                                                                   : a.x + a.width - b.x;
+                    require(near(joined, 1),
+                            "mixed Compact shared border overlap differs by orientation/size/direction");
+                }
+            }
+        }
+    }
+}
 } // namespace
 
 int main() {
@@ -413,6 +630,9 @@ int main() {
         overlay_controls_do_not_join_the_trigger_group();
         compact_editors_keep_sessions_and_owned_slots();
         compact_search_flex_distribution_and_popup_input();
+        compact_radio_and_addon_native_variants();
+        addon_invalid_mount_and_reactive_recovery();
+        mixed_compact_orientation_size_and_direction();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

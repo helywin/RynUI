@@ -8,6 +8,7 @@
 #include <ryn/switch.hpp>
 
 namespace ryn::detail {
+struct CompactBorder;
 
 struct SelectionState;
 struct RadioGroupState;
@@ -127,12 +128,13 @@ private:
     void update_radio_tab_stops(RadioGroupState&);
     bool handle_radio_key(runtime::ComponentId, const input::KeyboardInputEvent&);
     void update_group_layout(RadioGroupState&);
-    void refresh_radio_group(RadioGroupState&);
+    void refresh_radio_group(RadioGroupState&, bool measure = true);
     void apply_group_size(runtime::ComponentId, RadioSize);
     void apply_group_option_type(runtime::ComponentId, RadioOptionType);
     void apply_group_button_style(runtime::ComponentId, RadioButtonStyle);
     void apply_group_block(runtime::ComponentId, bool);
     void publish_radio_button(SelectionState&);
+    [[nodiscard]] CompactBorder compact_border(const SelectionState&) const;
     [[nodiscard]] runtime::Size measure_radio_group(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place_radio_group(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void retarget_handle(SelectionState&);

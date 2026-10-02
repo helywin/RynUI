@@ -2,6 +2,7 @@
 
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
+#include <ryn/input_types.hpp>
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
@@ -17,8 +18,6 @@ namespace detail {
 struct InputPropsAccess;
 struct PasswordPropsAccess;
 } // namespace detail
-
-enum class InputStatus { Default, Warning, Error };
 
 class InputProps final {
 public:

@@ -1,5 +1,6 @@
 #include <ryn/theme.hpp>
 #include "theme/input_tokens.hpp"
+#include "theme/semantic_background.hpp"
 
 #include <algorithm>
 #include <array>
@@ -2233,6 +2234,13 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
 }
 
 } // namespace
+
+Color detail::semantic_status_background(const ThemeSnapshot& theme, InputStatus status) {
+    const auto base = status == InputStatus::Error ? theme.seed().color_error : theme.seed().color_warning;
+    const bool dark = std::ranges::find(theme.algorithms(), ThemeAlgorithm::Dark) != theme.algorithms().end();
+    return dark ? mix(Color::rgba8(20, 20, 20), palette_variant(base, 2, false), 0.15F)
+                : palette_variant(base, 5, true);
+}
 
 ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,

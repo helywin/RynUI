@@ -20,6 +20,7 @@ namespace ryn::detail {
 class InputComponentHost;
 class TypographyComponentHost;
 class DividerComponentHost;
+class SpaceAddonHost;
 class SliderComponentHost;
 class TooltipComponentHost;
 
@@ -72,7 +73,7 @@ using AuxiliaryComponentSynchronizer = WindowComponentParticipant;
 struct WindowSyncProfile final {
     std::uint64_t text_nanoseconds{};
     std::uint64_t auxiliary_geometry_nanoseconds{};
-    std::array<std::uint64_t, 8> participant_geometry_nanoseconds{};
+    std::array<std::uint64_t, 16> participant_geometry_nanoseconds{};
     std::uint64_t participant_count{};
     std::uint64_t effect_nanoseconds{};
     std::uint64_t text_fragments_nanoseconds{};
@@ -167,6 +168,10 @@ public:
 
     [[nodiscard]] DividerComponentHost& divider() noexcept {
         return *divider_;
+    }
+
+    [[nodiscard]] SpaceAddonHost& space_addon() noexcept {
+        return *space_addon_;
     }
 
     [[nodiscard]] SliderComponentHost& slider() noexcept {
@@ -267,6 +272,7 @@ private:
     InputComponentHost* input_runtime_{};
     std::unique_ptr<TypographyComponentHost> typography_;
     std::unique_ptr<DividerComponentHost> divider_;
+    std::unique_ptr<SpaceAddonHost> space_addon_;
     std::unique_ptr<SliderComponentHost> slider_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
 };

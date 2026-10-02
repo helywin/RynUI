@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/input_types.hpp>
 
 #include <ryn/component.hpp>
 #include <ryn/control_size.hpp>
@@ -11,6 +12,7 @@
 
 namespace ryn {
 namespace detail {
+struct SpaceAddonPropsAccess;
 
 struct SpacePropsAccess;
 struct SpaceCompactPropsAccess;
@@ -144,5 +146,47 @@ struct SpaceCompactContentSlot final {};
 using SpaceCompactContent = SlotContent<SpaceCompactContentSlot>;
 
 void SpaceCompact(SpaceCompactProps props, SpaceCompactContent content);
+
+class SpaceAddonProps final {
+public:
+    SpaceAddonProps& size(Prop<ControlSize> value) {
+        size_ = std::move(value);
+        return *this;
+    }
+
+    SpaceAddonProps& variant(Prop<InputVariant> value) {
+        variant_ = std::move(value);
+        return *this;
+    }
+
+    SpaceAddonProps& status(Prop<InputStatus> value) {
+        status_ = std::move(value);
+        return *this;
+    }
+
+    SpaceAddonProps& disabled(Prop<bool> value) {
+        disabled_ = std::move(value);
+        return *this;
+    }
+
+    SpaceAddonProps& layout(LayoutStyle value) {
+        layout_ = std::move(value);
+        return *this;
+    }
+
+private:
+    friend struct detail::SpaceAddonPropsAccess;
+    std::optional<Prop<ControlSize>> size_;
+    Prop<InputVariant> variant_{InputVariant::Outlined};
+    Prop<InputStatus> status_{InputStatus::Default};
+    Prop<bool> disabled_{false};
+    LayoutStyle layout_;
+};
+
+struct SpaceAddonContentSlot final {};
+
+using SpaceAddonContent = SlotContent<SpaceAddonContentSlot>;
+
+void SpaceAddon(SpaceAddonProps props, SpaceAddonContent content);
 
 } // namespace ryn

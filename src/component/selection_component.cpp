@@ -1,4 +1,5 @@
 #include "component/selection_component.hpp"
+#include "component/space_compact.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -226,6 +227,8 @@ struct SelectionState final {
     bool block{};
     bool joined_vertical{};
     std::array<bool, 4> rounded_corners{true, true, true, true};
+    std::optional<CompactMetadata> compact;
+    std::weak_ptr<CompactContext> compact_context;
     runtime::SceneFragmentId button_fragment;
     component::RetainedSurfaceId button_range;
     Color button_fill;
@@ -303,6 +306,9 @@ struct RadioGroupState final {
     RadioGroupOrientation orientation{RadioGroupOrientation::Horizontal};
     RadioDirection direction{RadioDirection::LeftToRight};
     RadioSize size{RadioSize::Middle};
+    bool explicit_size{};
+    std::optional<CompactMetadata> compact;
+    std::weak_ptr<CompactContext> compact_context;
     RadioOptionType option_type{RadioOptionType::Default};
     RadioButtonStyle button_style{RadioButtonStyle::Outline};
     bool block{};
@@ -1098,7 +1104,7 @@ void SelectionComponentHost::place_radio_group(runtime::ComponentId id, layout::
     }
 }
 
-void SelectionComponentHost::refresh_radio_group(RadioGroupState& group) {
+void SelectionComponentHost::refresh_radio_group(RadioGroupState& group, bool measure) {
     group.joined =
         !group.options.empty() && services_->nodes().require(group.node).children.size() == group.options.size();
     for (const auto option : group.options) {
@@ -1125,6 +1131,13 @@ void SelectionComponentHost::refresh_radio_group(RadioGroupState& group) {
                                          : rtl    ? std::array{last, first, first, last}
                                                   : std::array{first, last, last, first};
             }
+            if (group.compact && state->radio_button) {
+                state->compact = group.compact;
+                state->compact_context = group.compact_context;
+                for (std::size_t corner = 0; corner < 4; ++corner) {
+                    state->rounded_corners[corner] = state->rounded_corners[corner] && group.compact->corners[corner];
+                }
+            }
             auto& style = services_->nodes().require(state->node).external_layout;
             style.order = !vertical && rtl ? -static_cast<int>(i) : static_cast<int>(i);
             style.flex_grow = group.block && !vertical && !group.joined ? 1.0F : 0.0F;
@@ -1134,7 +1147,8 @@ void SelectionComponentHost::refresh_radio_group(RadioGroupState& group) {
         }
     }
     update_group_layout(group);
-    services_->dirty().invalidate(group.node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+    services_->dirty().invalidate(group.node, (measure ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout
+                                                       : runtime::DirtyFlags::Placement) |
                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
 }
 
@@ -1927,13 +1941,31 @@ void SelectionComponentHost::publish_radio_button(SelectionState& state) {
     effects[8] = graphics::make_shadow_effect({seam, 0}, seam_layer, state.effects.translation, clip);
     effects[8].material.opacity = seam_opacity;
     services_->surfaces().update_content_effects(state.button_range, effects);
+    if (const auto compact = state.compact_context.lock()) {
+        compact->publish_seams();
+    }
+}
+
+CompactBorder SelectionComponentHost::compact_border(const SelectionState& state) const {
+    const auto& theme = services_->components().theme_scope(state.component)->snapshot().radio();
+    return {.shape = state.effects.shape,
+            .corners = state.rounded_corners,
+            .color = state.button_border,
+            .width = state.radio_button ? theme.line_width : 0,
+            .priority = state.disabled                                                  ? 0
+                        : state.hovered                                                 ? 4
+                        : state.focus.focused || state.checked || state.press.pressed() ? 3
+                                                                                        : 2,
+            .visible = state.radio_button && services_->components().branch_active(state.component),
+            .translation = state.effects.translation,
+            .clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt};
 }
 
 void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     viewport_ = viewport;
     window_clip_ = clip;
     for (const auto& item : mounted_) {
-        if (auto* state = find(item.component)) {
+        if (auto* state = find(item.component); state && services_->components().branch_active(item.component)) {
             update_geometry(*state, viewport);
         }
     }
@@ -2459,6 +2491,7 @@ struct RadioPropsAccess {
             throw std::invalid_argument("Radio checked and defaultChecked are mutually exclusive");
         }
         auto& build = runtime::require_component_build_context();
+        const auto compact = nearest_compact(build);
         const auto component = build.mount_component<SelectionState>();
         const auto group_id = host.parent_radio_group(component);
         if (group_id.valid() && (props.checked_ || props.default_checked_ || !props.value_)) {
@@ -2498,6 +2531,15 @@ struct RadioPropsAccess {
         state.own_radio_button = button;
         state.radio_button = button || (group && group->option_type == RadioOptionType::Button);
         state.radio_size = group ? group->size : RadioSize::Middle;
+        if (compact && state.radio_button && !group) {
+            compact->claim(component);
+            build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
+            state.compact = compact->metadata;
+            state.compact_context = compact;
+            state.radio_size = compact->metadata.size == ControlSize::Small   ? RadioSize::Small
+                               : compact->metadata.size == ControlSize::Large ? RadioSize::Large
+                                                                              : RadioSize::Middle;
+        }
         state.button_style = group ? group->button_style : RadioButtonStyle::Outline;
         state.block = group && group->block;
         state.wave = read_prop(props.wave_);
@@ -2584,6 +2626,27 @@ struct RadioPropsAccess {
             }
         }
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false, true});
+        if (compact && state.radio_button && !group) {
+            compact->attach(
+                component,
+                [&host, component](const CompactMetadata& value) {
+                    if (auto* current = host.find(component)) {
+                        current->compact = value;
+                        current->rounded_corners = value.corners;
+                        current->radio_size = value.size == ControlSize::Small   ? RadioSize::Small
+                                              : value.size == ControlSize::Large ? RadioSize::Large
+                                                                                 : RadioSize::Middle;
+                        host.update_layout(*current);
+                        host.update_visuals(*current);
+                        host.services_->dirty().invalidate(current->node, runtime::DirtyFlags::Geometry);
+                    }
+                },
+                [&host, component] {
+                    const auto* current = host.find(component);
+                    return current ? host.compact_border(*current) : CompactBorder{};
+                },
+                &host.services_->surfaces());
+        }
         if (group) {
             group->options.push_back(component);
             host.update_radio_tab_stops(*group);
@@ -2647,6 +2710,7 @@ struct RadioGroupPropsAccess {
         const auto button_style = read_prop(props.button_style_);
         validate(button_style);
         auto& build = runtime::require_component_build_context();
+        const auto compact = nearest_compact(build);
         const auto component = build.mount_component<RadioGroupState>();
         auto& state = build.state<RadioGroupState>(component);
         state.component = component;
@@ -2657,6 +2721,18 @@ struct RadioGroupPropsAccess {
         state.orientation = orientation;
         state.direction = direction;
         state.size = size;
+        state.explicit_size = props.explicit_size_;
+        if (compact) {
+            compact->claim(component);
+            state.compact = compact->metadata;
+            state.compact_context = compact;
+            if (!state.explicit_size) {
+                state.size = compact->metadata.size == ControlSize::Small   ? RadioSize::Small
+                             : compact->metadata.size == ControlSize::Large ? RadioSize::Large
+                                                                            : RadioSize::Middle;
+            }
+            build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
+        }
         state.option_type = option_type;
         state.button_style = button_style;
         state.block = read_prop(props.block_);
@@ -2723,8 +2799,10 @@ struct RadioGroupPropsAccess {
         static_cast<void>(connect_prop(scope, props.direction_, [&host, component](RadioDirection value) {
             host.apply_group_direction(component, value);
         }));
-        static_cast<void>(connect_prop(
-            scope, props.size_, [&host, component](RadioSize value) { host.apply_group_size(component, value); }));
+        if (!compact || state.explicit_size) {
+            static_cast<void>(connect_prop(
+                scope, props.size_, [&host, component](RadioSize value) { host.apply_group_size(component, value); }));
+        }
         static_cast<void>(connect_prop(scope, props.option_type_, [&host, component](RadioOptionType value) {
             host.apply_group_option_type(component, value);
         }));
@@ -2748,6 +2826,34 @@ struct RadioGroupPropsAccess {
             },
             [theme] { static_cast<void>(theme->radio_metrics()); });
         host.groups_.push_back(component);
+        if (compact) {
+            compact->attach_many(
+                component,
+                [&host, component](const CompactMetadata& value) {
+                    if (auto* current = host.services_->components().state<RadioGroupState>(component)) {
+                        const auto previous_size = current->size;
+                        current->compact = value;
+                        if (!current->explicit_size) {
+                            current->size = value.size == ControlSize::Small   ? RadioSize::Small
+                                            : value.size == ControlSize::Large ? RadioSize::Large
+                                                                               : RadioSize::Middle;
+                        }
+                        host.refresh_radio_group(*current, previous_size != current->size);
+                    }
+                },
+                [&host, component] {
+                    std::vector<CompactBorder> borders;
+                    if (const auto* current = host.services_->components().state<RadioGroupState>(component)) {
+                        for (const auto option : current->options) {
+                            if (const auto* item = host.find(option); item && item->radio_button) {
+                                borders.push_back(host.compact_border(*item));
+                            }
+                        }
+                    }
+                    return borders;
+                },
+                &host.services_->surfaces());
+        }
     }
 };
 

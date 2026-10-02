@@ -186,6 +186,7 @@ public:
 
     RadioGroupProps& size(Prop<RadioSize> value) {
         size_ = std::move(value);
+        explicit_size_ = true;
         return *this;
     }
 
@@ -221,6 +222,7 @@ private:
     std::function<void(const RadioValue&)> on_value_change_;
     Prop<RadioDirection> direction_{RadioDirection::LeftToRight};
     Prop<RadioSize> size_{RadioSize::Middle};
+    bool explicit_size_{};
     Prop<RadioOptionType> option_type_{RadioOptionType::Default};
     Prop<RadioButtonStyle> button_style_{RadioButtonStyle::Outline};
     Prop<bool> block_{false};

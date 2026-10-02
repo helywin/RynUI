@@ -14,7 +14,7 @@
 
 ## 4. 其它已有控件与 Addon（平台通用）
 
-- [ ] 4.1 接入 Input/Password/Search/RadioButton，保留 editor/IME/selection/ref 身份；实现 SpaceAddon typed 内容、四 variant、disabled/status、尺寸与 Theme 驱动视觉。加入 mixed group/H/V/RTL/三尺寸/block、嵌套、主题/状态边、键盘/clipboard/销毁合同和 docs；HEADLESS D/R 受影响测试及格式/OpenSpec/diff 通过后提交。
+- [x] 4.1 接入 Input/Password/Search/RadioButton，保留 editor/IME/selection/ref 身份；实现 SpaceAddon typed 内容、四 variant、disabled/status、尺寸与 Theme 驱动视觉。加入 mixed group/H/V/RTL/三尺寸/block、嵌套、主题/状态边、键盘/clipboard/销毁合同和 docs；HEADLESS D/R 受影响测试及格式/OpenSpec/diff 通过后提交。
 
 ## 5. 集成（平台通用）
 
