@@ -16,7 +16,7 @@
 
 ## 4. 平台通用：公开方向与Gallery收尾
 
-- [ ] 4.1 加入共享TextDirection与Text/Typography/Input family reactive direction API、非法枚举先验证及回退恢复，补standalone API/retained identity/无关slots测试、Gallery稳定ID、README/支持范围/architecture文档；common Debug/Release完整headless CTest与Gallery frame/catalog合同通过，记录平台/preset和库存，format-code/doctor/strict validate/diff/evidence后提交。
+- [x] 4.1 加入共享TextDirection与Text/Typography/Input family reactive direction API、非法枚举先验证及回退恢复，补standalone API/retained identity/无关slots测试、Gallery稳定ID、README/支持范围/architecture文档；common Debug/Release完整headless CTest与Gallery frame/catalog合同通过，记录平台/preset和库存，format-code/doctor/strict validate/diff/evidence后提交。
 
 ## 5. 原生分平台验收
 

@@ -7,6 +7,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -30,6 +31,7 @@ struct InputPropsData final {
     std::optional<Prop<String>> value_;
     std::optional<String> default_value_;
     Prop<String> placeholder_{String{}};
+    Prop<TextDirection> direction_{TextDirection::Auto};
     Prop<ControlSize> size_{ControlSize::Middle};
     bool explicit_size_{};
     Prop<InputStatus> status_{InputStatus::Default};
@@ -106,6 +108,11 @@ public:
     Derived& size(Prop<ControlSize> value) {
         common_.size_ = std::move(value);
         common_.explicit_size_ = true;
+        return self();
+    }
+
+    Derived& direction(Prop<TextDirection> value) {
+        common_.direction_ = std::move(value);
         return self();
     }
 

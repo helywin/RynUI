@@ -164,6 +164,67 @@ void wrapped_and_masked() {
     check(editor.selection().caret == editor.boundaries().grapheme_bytes()[2],
           "mask visual caret did not map grapheme to committed bytes");
 }
+
+void reactive_direction_and_invalid_configuration() {
+    Fixture f;
+    fonts(f);
+    Signal<TextDirection> direction{TextDirection::RightToLeft};
+    InputRef ref;
+    int runs{};
+    int affixes{};
+    f.inputs.mount(Content{[&] {
+        ++runs;
+        Text(TextProps{}.content(u8"A אבג 12").direction(direction));
+        Paragraph(TypographyProps{}.content(u8"A אבג 12").direction(direction));
+        Title(TitleProps{}.content(u8"A אבג 12").direction(direction));
+        Input(InputProps{}.defaultValue(u8"A אבג 12").direction(direction).ref(ref), InputPrefix{[&] {
+                  ++affixes;
+                  Text(u8"prefix");
+              }});
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto id = f.inputs.text_scene(mounted.component);
+    const auto layers = f.inputs.text_layers(mounted.component);
+    const auto texts = f.buttons.text().mounted_texts();
+    check(f.scene.text_state(id).direction() == TextDirection::RightToLeft &&
+              f.scene.text_state(texts[0].scene).direction() == TextDirection::RightToLeft &&
+              f.scene.text_state(texts[1].scene).direction() == TextDirection::RightToLeft &&
+              f.scene.text_state(texts[2].scene).direction() == TextDirection::RightToLeft,
+          "initial direction ignored");
+    check(ref.focus() && ref.select(0, 4), "direction ref");
+    const auto stamp = f.inputs.sessions().active();
+    const auto shapes = f.scene.text_state(id).counters().shape_count;
+    direction.set(TextDirection::LeftToRight);
+    f.synchronize();
+    check(f.scene.text_state(id).direction() == TextDirection::LeftToRight &&
+              f.scene.text_state(id).counters().shape_count == shapes + 1 &&
+              f.inputs.text_layers(mounted.component).selected == layers.selected && runs == 1 && affixes == 1 &&
+              f.inputs.editors().require(mounted.editor).selection() == input::TextSelection{0, 4} &&
+              f.inputs.sessions().active() == stamp,
+          "reactive direction replaced identities, selection or session");
+    bool rejected{};
+    try {
+        direction.set(static_cast<TextDirection>(99));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    f.synchronize();
+    check(rejected && f.scene.text_state(id).direction() == TextDirection::LeftToRight,
+          "invalid reactive direction published partial state");
+    direction.set(TextDirection::Auto);
+    f.synchronize();
+    check(f.scene.text_state(id).direction() == TextDirection::Auto && ref.bound() && runs == 1,
+          "valid direction did not recover");
+    Fixture invalid;
+    try {
+        invalid.inputs.mount(Content{[] { Input(InputProps{}.direction(static_cast<TextDirection>(99))); }});
+        check(false, "invalid initial direction accepted");
+    } catch (const std::invalid_argument&) {
+    }
+    check(invalid.inputs.editors().size() == 0 && invalid.scene.size() == 0 && invalid.nodes.size() == 0,
+          "invalid initial direction leaked resources");
+}
 } // namespace
 
 int main() {
@@ -171,6 +232,7 @@ int main() {
         visual_navigation_and_transactions();
         disjoint_selection_and_affinity();
         wrapped_and_masked();
+        reactive_direction_and_invalid_configuration();
         std::cout << "Bidi input navigation, selection, session, clipboard and mask contracts passed\n";
         return 0;
     } catch (const std::exception& error) {

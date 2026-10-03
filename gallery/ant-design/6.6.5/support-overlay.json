@@ -434,8 +434,8 @@
     },
     {
       "identity": "ant.component.input",
-      "status": "partial",
-      "summary": "Input、Password、Search、TextArea 和 OTP 已接入原生编辑；OTP 提供 grapheme 分格、粘贴/formatter/mask、组导航和动态长度。Input 家族仍待双向文字视觉导航，平台证据独立记录。",
+      "status": "implemented",
+      "summary": "Input、Password、Search、TextArea 和 OTP 已完成原生桌面功能；Unicode 17 双向排版、视觉 caret/不连续选择与逻辑 clipboard/history、reactive 段落方向共享编辑基础，分平台证据独立记录。",
       "supported_scope": [
         "typed Props and prefix/suffix slots",
         "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
@@ -455,16 +455,20 @@
         "retained wheel/caret reveal, native resize capture and safe onResize",
         "typed OTP, grapheme cells, partial/completion callbacks and transactional formatter",
         "OTP clipboard paste, custom mask, indexed separator and RTL group navigation",
-        "retained OTP dynamic length, focus refs and IME owner retirement"
+        "retained OTP dynamic length, focus refs and IME owner retirement",
+        "Unicode 17 bidi Arabic/Hebrew, visual navigation and disjoint selection/preedit",
+        "reactive TextDirection Auto/LTR/RTL with retained editor/ref/scene identity"
       ],
       "missing_scope": [
-        "visual bidi/RTL caret navigation",
-        "native Windows/Wayland IME and visual acceptance remain separate tasks",
+        "Linux native/Wayland acceptance remains an independent pending task; OS IME candidate UI is platform dependent",
         "DOM/CSS/React refs/events and HTML autofill APIs are outside native scope"
       ],
       "evidence_identifiers": [
         "openspec:010-20260831-build-text-input-foundation#8.1",
         "openspec:054-20261003-add-native-otp-input",
+        "openspec:055-20261003-complete-native-bidirectional-text",
+        "api:include/ryn/text_direction.hpp",
+        "test:rynui.bidi_input",
         "api:include/ryn/otp.hpp",
         "test:rynui.otp_model",
         "test:rynui.otp_component",

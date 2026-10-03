@@ -3,6 +3,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 
 #include <cstddef>
 #include <optional>
@@ -37,6 +38,11 @@ public:
         return *this;
     }
 
+    TextProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
     TextProps& layout(LayoutStyle value) {
         layout_ = std::move(value);
         return *this;
@@ -46,6 +52,7 @@ private:
     friend struct detail::TextPropsAccess;
 
     Prop<String> content_{String{}};
+    Prop<TextDirection> direction_{TextDirection::Auto};
     std::optional<Prop<TextTone>> tone_;
     LayoutStyle layout_;
 };

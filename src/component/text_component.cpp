@@ -24,6 +24,10 @@
 namespace ryn::detail {
 
 struct TextPropsAccess final {
+    [[nodiscard]] static const Prop<TextDirection>& direction(const TextProps& props) noexcept {
+        return props.direction_;
+    }
+
     [[nodiscard]] static const Prop<String>& content(const TextProps& props) noexcept {
         return props.content_;
     }
@@ -75,6 +79,10 @@ struct IconPropsAccess final {
 // host. Keeping them separate from `TextTone` lets the theme subscription
 // resolve the semantic colour without a second colour path.
 struct TypographyPropsAccess final {
+    [[nodiscard]] static const Prop<TextDirection>& direction(const TypographyProps& props) noexcept {
+        return props.direction_;
+    }
+
     static const std::optional<Prop<TypographyEllipsis>>& ellipsis(const TypographyProps& props) {
         return props.ellipsis_;
     }
@@ -1284,6 +1292,10 @@ void mount_text_component(const TextProps& props, bool icon_font) {
 
     auto& host = *active_text_host;
     auto& build = runtime::require_component_build_context();
+    const auto direction = read_prop(TextPropsAccess::direction(props));
+    if (!text::valid_text_direction(direction)) {
+        throw std::invalid_argument("Invalid Text direction");
+    }
     const auto component = build.mount_component<TextComponentState>();
     const auto node = build.root(component);
     host.layout_->set_layout(node, layout::LeafLayout{});
@@ -1354,6 +1366,16 @@ void mount_text_component(const TextProps& props, bool icon_font) {
                                         });
 
     auto& scope = build.scope(component);
+    static_cast<void>(connect_prop(
+        scope, TextPropsAccess::direction(props),
+        [text_scene = host.text_scene_, layout = host.layout_, dirty = host.dirty_, scene, node](TextDirection value) {
+            if (text_scene->set_direction(scene, value)) {
+                static_cast<void>(
+                    layout->set_intrinsic_revision(node, intrinsic_revision(text_scene->revisions(scene))));
+                dirty->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                            runtime::DirtyFlags::Geometry);
+            }
+        }));
     static_cast<void>(connect_prop(
         scope, TextPropsAccess::content(props),
         [text_scene = host.text_scene_, layout = host.layout_, dirty = host.dirty_, scene, node](String content) {
@@ -1509,6 +1531,10 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
 
     auto& host = *active_text_host;
     auto& build = runtime::require_component_build_context();
+    const auto direction = read_prop(TypographyPropsAccess::direction(props));
+    if (!text::valid_text_direction(direction)) {
+        throw std::invalid_argument("Invalid Typography direction");
+    }
     const auto component = build.mount_component<TextComponentState>();
     const auto node = build.root(component);
     host.layout_->set_layout(node, layout::LeafLayout{});
@@ -1594,6 +1620,16 @@ void mount_typography_component(const TypographyProps& props, TypographySemantic
     auto& scope = build.scope(component);
     // Content and layout first, then the initial theme application, so the first
     // frame already carries the semantic colour and the resolved face.
+    static_cast<void>(connect_prop(
+        scope, TypographyPropsAccess::direction(props), [&host, component, scene, node](TextDirection value) {
+            if (host.text_scene_->set_direction(scene, value)) {
+                static_cast<void>(host.layout_->set_intrinsic_revision(
+                    node, intrinsic_revision(host.text_scene_->revisions(scene)) +
+                              host.components_.state<TextComponentState>(component)->metric_revision));
+                host.dirty_->invalidate(node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                  runtime::DirtyFlags::Geometry);
+            }
+        }));
     if (const auto& ellipsis = TypographyPropsAccess::ellipsis(props)) {
         static_cast<void>(connect_prop(scope, *ellipsis, [&host, component, scene, node](TypographyEllipsis config) {
             if (!host.text_scene_->set_ellipsis(scene, {config.rows, config.suffix, config.expanded, 0})) {

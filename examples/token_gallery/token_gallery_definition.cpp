@@ -63,6 +63,7 @@ struct GalleryState final {
     ryn::Signal<bool> password_visible{false};
     ryn::Signal<ryn::String> otp_value{ryn::String{}};
     ryn::Signal<std::size_t> otp_length{6};
+    ryn::Signal<ryn::TextDirection> text_direction{ryn::TextDirection::Auto};
     ryn::OTPRef otp_ref;
     ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
@@ -244,6 +245,12 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.otp.disabled",
     "gallery.otp.focus-all",
     "gallery.otp.toggle-length",
+    "gallery.bidi.text",
+    "gallery.bidi.paragraph",
+    "gallery.bidi.input",
+    "gallery.bidi.text-area",
+    "gallery.bidi.password",
+    "gallery.bidi.toggle-direction",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -738,9 +745,9 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
             themed_button(state, "gallery.state.loading", "Loading / 加载", {}, ryn::ButtonType::Primary,
                           ryn::ControlSize::Middle, false, state->loading);
         });
-    ryn::Text(u8"Input / 输入家族 · partial");
+    ryn::Text(u8"Input / 输入家族 · 原生桌面功能");
     ryn::Text(u8"支持：四变体、统计/上限、ref/系统提示、清空、Unicode 编辑与 IME");
-    ryn::Text(u8"Input / Password / Search / TextArea / OTP 已接入；双向文字视觉导航继续收尾");
+    ryn::Text(u8"Input / Password / Search / TextArea / OTP：双向排版、视觉导航与逻辑编辑");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
                    .wrap(true)
@@ -1734,6 +1741,41 @@ void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
           }});
     state->telemetry.live_samples += 12;
 }
+
+void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"双向文字：Arabic / Hebrew / 数字 / 括号 · Auto / LTR / RTL");
+    Text(TextProps{}.content(u8"gallery.bidi.text · مرحبا (12) אבג RynUI").direction(state->text_direction));
+    Paragraph(TypographyProps{}
+                  .content(u8"gallery.bidi.paragraph · مرحبا 123 (אבג)\nאבג 12 مرحبا 中文")
+                  .direction(state->text_direction)
+                  .underline(true)
+                  .layout(LayoutStyle{}.width(state->cell_width)));
+    Text(u8"gallery.bidi.input");
+    Input(InputProps{}
+              .defaultValue(u8"A אבג 12 مرحبا")
+              .direction(state->text_direction)
+              .layout(LayoutStyle{}.width(state->cell_width)));
+    Text(u8"gallery.bidi.text-area");
+    TextArea(TextAreaProps{}
+                 .defaultValue(u8"אבג (12) مرحبا\nمرحبا 34 אבג 中文\n\n尾行")
+                 .direction(state->text_direction)
+                 .rows(3)
+                 .layout(LayoutStyle{}.width(state->cell_width)));
+    Text(u8"gallery.bidi.password");
+    Password(PasswordProps{}
+                 .defaultValue(u8"אבג مرحبا 👩‍💻")
+                 .direction(state->text_direction)
+                 .layout(LayoutStyle{}.width(state->cell_width)));
+    Button(ButtonProps{}.onClick([state] {
+        const auto current = state->text_direction.get();
+        state->text_direction.set(current == TextDirection::Auto          ? TextDirection::LeftToRight
+                                  : current == TextDirection::LeftToRight ? TextDirection::RightToLeft
+                                                                          : TextDirection::Auto);
+    }),
+           ButtonContent{[] { Text(u8"gallery.bidi.toggle-direction · 切换段落方向"); }});
+    state->telemetry.live_samples += 6;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1816,6 +1858,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_input_feature_samples(state);
                                                         add_text_area_samples(state);
                                                         add_otp_samples(state);
+                                                        add_bidi_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

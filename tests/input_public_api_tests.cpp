@@ -1,6 +1,10 @@
 #include <ryn/input.hpp>
 #include <ryn/password.hpp>
 #include <ryn/search.hpp>
+#include <ryn/text_area.hpp>
+#include <ryn/text.hpp>
+#include <ryn/typography.hpp>
+#include <ryn/text_direction.hpp>
 #include <concepts>
 #include <stdexcept>
 #include <string>
@@ -9,6 +13,14 @@ concept NarrowValue = requires(T value) { ryn::InputProps{}.value(value); };
 template <class T>
 concept NarrowCallback = requires(T callback) { ryn::InputProps{}.onChange(callback); };
 static_assert(!NarrowValue<const char*>);
+static_assert(std::same_as<decltype(ryn::InputProps{}.direction(ryn::TextDirection::RightToLeft)), ryn::InputProps&>);
+static_assert(std::same_as<decltype(ryn::PasswordProps{}.direction(ryn::TextDirection::Auto)), ryn::PasswordProps&>);
+static_assert(std::same_as<decltype(ryn::SearchProps{}.direction(ryn::TextDirection::LeftToRight)), ryn::SearchProps&>);
+static_assert(std::same_as<decltype(ryn::TextAreaProps{}.direction(ryn::TextDirection::Auto)), ryn::TextAreaProps&>);
+static_assert(std::same_as<decltype(ryn::TextProps{}.direction(ryn::TextDirection::Auto)), ryn::TextProps&>);
+static_assert(
+    std::same_as<decltype(ryn::TypographyProps{}.direction(ryn::TextDirection::Auto)), ryn::TypographyProps&>);
+static_assert(std::same_as<decltype(ryn::TitleProps{}.direction(ryn::TextDirection::Auto)), ryn::TitleProps&>);
 static_assert(!NarrowValue<std::string>);
 static_assert(!NarrowCallback<std::function<void(std::string)>>);
 static_assert(!std::constructible_from<ryn::InputPrefix, ryn::InputSuffix>);

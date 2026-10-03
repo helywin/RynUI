@@ -3,6 +3,7 @@
 #include <ryn/layout_style.hpp>
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
+#include <ryn/text_direction.hpp>
 #include <ryn/theme.hpp>
 
 #include <cstdint>
@@ -87,6 +88,11 @@ public:
         return *this;
     }
 
+    TypographyProps& direction(Prop<TextDirection> value) {
+        direction_ = std::move(value);
+        return *this;
+    }
+
     TypographyProps& code(Prop<bool> value) {
         code_ = std::move(value);
         return *this;
@@ -162,6 +168,7 @@ private:
     friend class detail::TypographyComponentHost;
 
     Prop<String> content_{String{}};
+    Prop<TextDirection> direction_{TextDirection::Auto};
     std::optional<Prop<TypographyType>> type_;
     std::optional<Prop<bool>> code_;
     std::optional<Prop<bool>> keyboard_;
@@ -194,6 +201,11 @@ public:
 
     TitleProps& level(Prop<TypographyLevel> value) {
         level_ = std::move(value);
+        return *this;
+    }
+
+    TitleProps& direction(Prop<TextDirection> value) {
+        typography_.direction(std::move(value));
         return *this;
     }
 

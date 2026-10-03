@@ -1,6 +1,8 @@
 # 双向文本
 
-055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping、逐行视觉布局、CaretMap 与 Input/选择场景已接入；公开方向配置和真实窗口按 change 的独立任务验收。
+055 已接入原生桌面双向文本的段落分析、逻辑 shaping、逐行视觉布局、CaretMap、Input/选择场景与公开方向配置。实际共同/原生验收按 change 的独立任务记录。
+
+`<ryn/text_direction.hpp>` 提供 `TextDirection { Auto, LeftToRight, RightToLeft }`；TextProps、TypographyProps、TitleProps 与 InputPropsBase 的 `.direction(Prop<TextDirection>)` 默认 Auto，Password/Search/TextArea 继承。动态改变仅刷新相关文本、必要布局和 input area，保留 editor/ref/scene/selection/history/session 与 slots；非法初值在资源创建前拒绝，非法 reactive 值保留已接受方向，后续合法值可继续更新。Typography 编辑器继承同一方向。该属性决定段落基础方向，不改变容器/affix 排列；OTPDirection 继续控制格子组方向，格子文本按 Auto 分析。
 
 ## 段落分析
 

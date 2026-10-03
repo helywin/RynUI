@@ -294,6 +294,20 @@ bool TextSceneService::set_font_chain(TextSceneId id, std::vector<font::FontIden
     return true;
 }
 
+bool TextSceneService::set_direction(TextSceneId id, TextDirection direction) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (record.view) {
+        throw std::logic_error("Text views cannot replace shared direction");
+    }
+    if (!record.state->set_direction(direction)) {
+        return false;
+    }
+    ++record.revisions.content;
+    record.content_dirty = true;
+    return true;
+}
+
 bool TextSceneService::set_pixel_size(TextSceneId id, std::uint32_t pixel_size) {
     ensure_owner_thread();
     auto& record = require_record(id);

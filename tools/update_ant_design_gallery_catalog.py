@@ -287,9 +287,21 @@ def validate_input_evidence(repo_root: Path, overlay: dict[str, dict[str, object
     entry = overlay["ant.component.input"]
     if entry["status"] not in {"partial", "implemented"}:
         return
-    if entry["status"] != "partial":
-        raise ValueError("Input subset must remain partial until missing variants and native acceptance are complete")
     evidence = set(entry["evidence_identifiers"])
+    if entry["status"] == "implemented":
+        completion = {
+            "openspec:052-20261003-complete-native-input-features",
+            "openspec:053-20261003-add-native-text-area",
+            "openspec:054-20261003-add-native-otp-input",
+            "openspec:055-20261003-complete-native-bidirectional-text",
+            "api:include/ryn/text_direction.hpp",
+            "test:rynui.bidi_input",
+        }
+        if not completion.issubset(evidence):
+            raise ValueError("native Input completion requires features, TextArea, OTP and bidi evidence")
+        bidi_tasks = (repo_root / "openspec/changes/055-20261003-complete-native-bidirectional-text/tasks.md").read_text(encoding="utf-8")
+        if not re.search(r"(?m)^- \[x\] 3\.2 ", bidi_tasks):
+            raise ValueError("native Input completion cannot use planning-only bidi integration")
     change = "010-20260831-build-text-input-foundation"
     required = {
         f"openspec:{change}#8.1",
@@ -502,7 +514,11 @@ def self_test(repo_root: Path) -> None:
     expect_invalid(lambda: validate_input_evidence(repo_root, missing_input_runtime), "Input unresolved runtime/API evidence")
     full_input = copy.deepcopy(input_overlay)
     full_input["ant.component.input"]["status"] = "implemented"
-    expect_invalid(lambda: validate_input_evidence(repo_root, full_input), "Input subset advertised as complete")
+    full_input["ant.component.input"]["evidence_identifiers"] = [
+        item for item in full_input["ant.component.input"]["evidence_identifiers"]
+        if not item.startswith("openspec:055-")
+    ]
+    expect_invalid(lambda: validate_input_evidence(repo_root, full_input), "Input completion without bidi evidence")
 
 
 def main(argv: Iterable[str] | None = None) -> int:

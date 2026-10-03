@@ -118,14 +118,25 @@ void test_typed_support_status() {
                 divider->missing_scope.find("DOM") != std::string_view::npos,
             "native Divider completion lost implementation evidence or Web boundary");
     require_partial("ant.component.typography");
+    const auto* input = find_ant_design_reference_entry("ant.component.input");
+    require(input && input->support_status == GallerySupportStatus::implemented &&
+                input->evidence_identifiers.find("openspec:055-") != std::string_view::npos &&
+                input->supported_scope.find("bidi") != std::string_view::npos &&
+                input->missing_scope.find("DOM") != std::string_view::npos,
+            "native Input completion lost bidi evidence or Web boundary");
     const auto* switch_entry = find_ant_design_reference_entry("ant.component.switch");
     require(switch_entry && switch_entry->support_status == GallerySupportStatus::implemented &&
                 switch_entry->evidence_identifiers.find("openspec:046-") != std::string_view::npos &&
                 switch_entry->supported_scope.find("retained") != std::string_view::npos &&
                 switch_entry->missing_scope.find("DOM") != std::string_view::npos,
             "native Switch completion lost implementation evidence or Web boundary");
-    require_partial("ant.component.flex");
-    require_partial("ant.component.space");
+    for (const auto identity : {"ant.component.flex", "ant.component.space"}) {
+        const auto* entry = find_ant_design_reference_entry(identity);
+        require(entry && entry->support_status == GallerySupportStatus::implemented &&
+                    entry->evidence_identifiers.find("openspec:") != std::string_view::npos &&
+                    entry->evidence_identifiers.find("test:") != std::string_view::npos,
+                "native Flex/Space completion lost implementation evidence");
+    }
     require_partial("ant.component.config-provider");
     require(gallery_support_status_name(GallerySupportStatus::implemented) == "implemented" &&
                 gallery_support_status_name(GallerySupportStatus::partial) == "partial" &&

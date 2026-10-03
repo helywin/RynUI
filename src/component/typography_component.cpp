@@ -308,6 +308,9 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     if (!props.ellipsis_ && !props.copyable_ && !props.editable_) {
         return false;
     }
+    if (!text::valid_text_direction(read_prop(props.direction_))) {
+        throw std::invalid_argument("Invalid Typography direction");
+    }
     auto& services = *services_;
     auto& build = runtime::require_component_build_context();
     const auto id = build.mount_component<TypographyState>();
@@ -414,9 +417,10 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
                 }});
         }});
     if (state.has_edit && services.input_runtime()) {
-        build.mount_slot(id, Content{[this, id] {
+        build.mount_slot(id, Content{[this, id, direction = props.direction_] {
                              auto& s = *services_->components().state<TypographyState>(id);
                              ryn::Input(InputProps{}
+                                            .direction(direction)
                                             .value(Prop<String>{s.draft})
                                             .maxLength(Prop<std::size_t>{s.max_length})
                                             .onChange([this, id](String value) {

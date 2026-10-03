@@ -32,9 +32,9 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
 | 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
 
-当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Table`、`Tree` 和多行编辑等仍未提供。
+当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Table`、`Tree` 和 Typography 多行编辑等仍未提供。
 
-已有组件按原生桌面范围持续收尾，Web 专用 API 不移植。单行家族见 [052 清单](openspec/changes/052-20261003-complete-native-input-features/tasks.md)；[053 TextArea](openspec/changes/053-20261003-add-native-text-area/tasks.md)已实现多行编辑、统计、autoSize、滚动与 resize；[054 OTP](openspec/changes/054-20261003-add-native-otp-input/tasks.md)已实现 Unicode 分格、粘贴/formatter/mask、组导航与动态长度。分平台验收独立记录，Input 家族保留 partial，双向文字视觉导航继续收尾。
+已有组件按原生桌面范围持续收尾，Web 专用 API 不移植。单行家族见 [052 清单](openspec/changes/052-20261003-complete-native-input-features/tasks.md)；[053 TextArea](openspec/changes/053-20261003-add-native-text-area/tasks.md)已实现多行编辑、统计、autoSize、滚动与 resize；[054 OTP](openspec/changes/054-20261003-add-native-otp-input/tasks.md)已实现 Unicode 分格、粘贴/formatter/mask、组导航与动态长度。[055 双向文本](openspec/changes/055-20261003-complete-native-bidirectional-text/tasks.md)补齐 Unicode 17 Arabic/Hebrew 排版、视觉 caret/不连续选区和 reactive 段落方向，Input 家族原生功能已实现；Linux 原生验收仍独立待完成。
 
 Typography 与 Divider 已完成实现及 Windows Debug/Release、D3D12/DXIL 真实窗口验收，覆盖系统缩放和四档渲染缩放。Linux 原生 Wayland 验收仍待完成；Tooltip 浮层、富文本与多行编辑未包含在本次能力中，见 [Typography / Divider 清单](openspec/changes/034-20261001-complete-typography-and-divider/tasks.md)与[Windows 证据](openspec/changes/034-20261001-complete-typography-and-divider/evidence/windows-typography.md)。
 

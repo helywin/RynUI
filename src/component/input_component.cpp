@@ -85,6 +85,7 @@ struct InputState {
     bool focused{};
     bool focus_visible{};
     bool active{true};
+    TextDirection direction{TextDirection::Auto};
     std::optional<runtime::SemanticTypography> inherited_typography;
     std::function<void(String)> on_internal_commit;
     std::function<void(String)> on_internal_blur;
@@ -365,6 +366,10 @@ struct InputPropsAccess {
         }
         const auto initial =
             props.common_.value_ ? read_prop(*props.common_.value_) : props.common_.default_value_.value_or(String{});
+        const auto direction = read_prop(props.common_.direction_);
+        if (!text::valid_text_direction(direction)) {
+            throw std::invalid_argument("Invalid Input text direction");
+        }
         if (props.otp_) {
             validate_otp_mask(read_prop(props.otp_->mask));
         }
@@ -423,6 +428,7 @@ struct InputPropsAccess {
             build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
         }
         state.controlled = props.common_.value_.has_value();
+        state.direction = direction;
         state.size = size;
         state.status = status;
         state.variant = variant;
@@ -653,6 +659,7 @@ struct InputPropsAccess {
                 }
             }});
         owner.update_theme(component);
+        static_cast<void>(host.text().scene_service().set_direction(state.text_scene, direction));
         state.transition = std::make_unique<InputMaterialTransition>(
             host.animations(),
             material_values(state, derive_input_tokens(host.components().theme_scope(component)->snapshot())),
@@ -686,6 +693,25 @@ struct InputPropsAccess {
                 }
             }));
         };
+        connect(props.common_.direction_, [](auto& owner, auto& current, TextDirection value) {
+            if (!text::valid_text_direction(value)) {
+                throw std::invalid_argument("Invalid Input text direction");
+            }
+            if (current.direction == value) {
+                return;
+            }
+            auto& scene = owner.host_->text().scene_service();
+            static_cast<void>(scene.set_direction(current.text_scene, value));
+            current.direction = value;
+            current.affinity = text::TextCaretAffinity::Downstream;
+            if (current.textarea) {
+                current.textarea->preferred_x.reset();
+                current.textarea->reveal_caret = true;
+            }
+            const auto revisions = scene.revisions(current.text_scene);
+            owner.host_->layout().set_intrinsic_revision(current.viewport, revisions.content + revisions.layout);
+            owner.invalidate(current.mounted.component, text_dirty);
+        });
         if (props.textarea_) {
             connect(props.textarea_->rows, [](auto& owner, auto& current, std::size_t rows) {
                 if (rows == 0) {
@@ -2506,6 +2532,26 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                                                                   1));
                 }
             }));
+        // Paragraph separators have no glyph width, but selected blank lines
+        // still need visible background coverage.
+        if (state->textarea && selection_visible) {
+            for (std::size_t line = 0; line + 1 < state->carets.line_count(); ++line) {
+                const auto bytes = state->carets.line_bytes(line, state->carets.revision()).value();
+                const auto next = state->carets.line_bytes(line + 1, state->carets.revision()).value();
+                if (next.first > bytes.second && display.selection.begin() <= bytes.second &&
+                    display.selection.end() > bytes.second) {
+                    const auto stop =
+                        state->carets.at(bytes.second, state->carets.revision(), text::TextCaretAffinity::Upstream)
+                            .value();
+                    const text::TextCoverageSegment marker{line, stop.x,
+                                                           std::max(thickness, state->typography.font_size * .5F)};
+                    state->selection_quads.push_back(clipped_quad(coverage_rect(marker), state->geometry.clip, window,
+                                                                  {selection_color.red(), selection_color.green(),
+                                                                   selection_color.blue(), selection_color.alpha()},
+                                                                  1));
+                }
+            }
+        }
         if (display.composing) {
             check(state->carets.visit_coverage(display.composition.begin(), display.composition.end(),
                                                state->carets.revision(), [&](const auto& piece) {

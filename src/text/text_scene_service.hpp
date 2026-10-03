@@ -88,6 +88,7 @@ public:
     bool place_after(TextSceneId id, TextSceneId previous);
 
     bool set_content(TextSceneId id, String content);
+    bool set_direction(TextSceneId id, TextDirection direction);
     bool set_font_chain(TextSceneId id, std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(TextSceneId id, std::uint32_t pixel_size);
     bool set_line_height(TextSceneId id, float line_height);

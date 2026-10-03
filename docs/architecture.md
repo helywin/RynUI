@@ -394,8 +394,9 @@ GPU 资源和 pipeline 必须在所属 renderer/binding 销毁前 retire；bindi
 
 ```text
 UTF-8
-  -> HarfBuzz shaping
-  -> glyph id + position
+  -> SheenBidi Unicode 17 paragraph analysis
+  -> logical direction/script/font runs + HarfBuzz shaping
+  -> logical wrapping + per-line L1/L2 visual glyph/cluster geometry
   -> FreeType rasterization
   -> GlyphAtlas
   -> logical GlyphInstance
@@ -409,7 +410,9 @@ UTF-8
 
 默认 UI font chain 必须服从当前桌面环境：Windows 通过 DirectWrite 的 system font collection 选择 Segoe UI 系列，并以 Microsoft YaHei UI 补足简体中文；Linux 通过 Fontconfig 对 generic `sans-serif` 分别执行 Latin 与 `zh-cn` 匹配，尊重用户和发行版的字体配置。应用显式配置的字体文件按声明顺序位于 chain 最前，系统字体只补足缺失 coverage，最后才使用锁定的 validation font 作为可诊断兜底。系统字体文件不随 RynUI 分发，也不写死路径；Linux Fontconfig 是显式 REQUIRED 的平台服务，不构成 FreeType/HarfBuzz `BUNDLED|SYSTEM` source mode 的隐式 system-first fallback。稳定公开配置最终由 Theme font token 承载；在 Theme API 发布前，内部 font-chain request 保留 typed custom file/face-index 接口，示例不得绕过该边界硬编码平台字体路径。
 
-单行编辑使用 internal `TextEditorState` 作为唯一事实来源。committed value 始终是有效 UTF-8；锁定的 utf8proc 2.11.3 / Unicode 17 `TextBoundaryMap` 决定 scalar 与 grapheme 边界，HarfBuzz `TextCaretMap` 只负责把合法编辑边界映射到 glyph cluster 的 logical x。selection 保存 grapheme-aligned byte offset，composition/candidates 是不进入 value/history 的临时状态；commit、clipboard 与 undo/redo 以原子 transaction 更新。history 受 128 transaction / 1 MiB 双上限约束，owner、editor 与迟到事件均使用 generation identity 校验。
+单行和多行编辑使用 internal `TextEditorState` 作为唯一事实来源。committed value 始终是有效 UTF-8；锁定的 utf8proc 2.11.3 / Unicode 17 `TextBoundaryMap` 决定 scalar 与 grapheme 边界。`TextCaretMap` 为合法逻辑 byte 建立 affinity 与视觉 line/x 双索引，方向交界和软换行允许双位置，selection/preedit 使用每行不连续 coverage。导航使用视觉次序，删除、clipboard、history 使用逻辑原文；composition/candidates 不进入 value/history。commit 与 history 以原子 transaction 更新，history 受 128 transaction / 1 MiB 双上限约束；owner、editor 与迟到事件使用 generation identity 校验。
+
+SheenBidi 3.0.0/Unicode 17 分析属于 Core，使用标准 C17 atomics，不链接 renderer、SDK 或 SDL。BidiAnalysis 拥有 immutable source/scalar/paragraph lifetime，以 UTF-32 scalar 调用算法并转换至原始 UTF-8 bytes；折行之后分别执行 L1/L2。HarfBuzz 接收完整 source 上下文和明确 direction/script，格式控制不触发 missing-glyph replacement。Text/Title/Paragraph/Input 家族 `.direction(Prop<TextDirection>)` 配置 Auto/LTR/RTL 段落基础方向，不改变容器与 affix 布局，OTPDirection 保持组排列职责。非法配置先验证；方向改变只重 shape 相关内容，width-only 重用 shaping。GlyphPrimitive 的 ownership 和 visual metadata 保持 CPU-only，不修改 renderer GPU ABI。详细合同见 [双向文本](bidirectional-text.md)。
 
 公开 `ryn::Input` 固定 controlled 或 uncontrolled 模式，同时提供 typed `InputProps`、prefix/suffix slots、placeholder、status、disabled/readOnly、Unicode scalar `maxLength`、`onChange` 与 `onSubmit`。`value` 与 `defaultValue` 冲突在 mount 时拒绝。root、editable viewport、三份 Text scene view、selection/caret Quad 和 19 个 rounded-effect slot 在 generation 生命周期内保持固定 identity；长文本仅在 editable viewport 内水平滚动。普通 selection/caret/material 更新不得 remount 或重跑 slots，caret 只由 deadline 驱动，失焦、disable、read-only 或销毁后必须恢复 blocking idle。
 
