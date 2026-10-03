@@ -79,7 +79,7 @@ OTP 按 grapheme 分格，去除 CR/LF，组合字与 ZWJ emoji 不拆开。单 
 
 `.size/.variant/.status/.disabled/.readOnly` 使用 reactive Input 合同，单格 padding/宽度、居中和组 gap 从 Theme 推导。`.direction(Prop<OTPDirection>)` 支持 LeftToRight/RightToLeft 组布局。可选第二参数 OTPSeparator 为 indexed 函数，接收前一格索引并返回 `optional<OTPSeparatorContent>`；空结果不挂载占位，内容必须被动，不允许创建 Button/Input 等 interaction。异常 separator 回滚本次新增资源，已有前缀保留。LayoutStyle 只控制组的外部布局。
 
-`.mask(bool)` 开启默认 bullet，`.mask(String)` 使用一个单行 grapheme，reactive 入口为 `Prop<OTPMask>`。mask 只改变 scene 显示与 byte 偏移映射；原值与明确的业务回调保持明文，copy/cut 按 Password 合同阻止原文导出。purpose/capitalization/autocorrect 是原生提示，mask 强制敏感用途并关闭 autocorrect。非法 length/mask/枚举配置拒绝且保留已接受状态，后续合法配置可继续应用。054 已接入公开 API、retained 格子、导航/IME、动态容量与十组 Gallery 样本；真实窗口证据独立验收，Input 家族仍待混合 bidi 收尾。
+`.mask(bool)` 开启默认 bullet，`.mask(String)` 使用一个单行 grapheme，reactive 入口为 `Prop<OTPMask>`。mask 只改变 scene 显示与 byte 偏移映射；原值与明确的业务回调保持明文，copy/cut 按 Password 合同阻止原文导出。purpose/capitalization/autocorrect 是原生提示，mask 强制敏感用途并关闭 autocorrect。非法 length/mask/枚举配置拒绝且保留已接受状态，后续合法配置可继续应用。054 已接入公开 API、retained 格子、导航/IME、动态容量与十组 Gallery 样本；[Windows 原生证据](../openspec/changes/054-20261003-add-native-otp-input/evidence/windows/README.md)记录 Debug/Release 24/24 native CTest、十轮 D3D12/DXIL 窗口与 180 张 GPU 读回；Linux 独立待验收，Input 家族仍待混合 bidi 收尾。
 
 053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同。
 

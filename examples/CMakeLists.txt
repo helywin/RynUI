@@ -192,6 +192,7 @@ add_executable(
     token_gallery/icon_acceptance.cpp
     token_gallery/input_acceptance.cpp
     token_gallery/text_area_acceptance.cpp
+    token_gallery/otp_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(
