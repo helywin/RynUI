@@ -8,6 +8,7 @@
 #include "theme/input_tokens.hpp"
 #include <ryn/password.hpp>
 #include <ryn/text.hpp>
+#include <ryn/text_area.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -53,6 +54,20 @@ struct InputContainerPresentation {
     float focus_width{};
     bool focus_visible{};
     friend bool operator==(const InputContainerPresentation&, const InputContainerPresentation&) = default;
+};
+
+struct TextAreaState {
+    std::size_t rows{4};
+    TextAreaAutoSize auto_size;
+    bool wrap{true};
+    TextAreaResize resize{TextAreaResize::Vertical};
+    std::function<void(TextAreaSize)> on_resize;
+    runtime::Size clear_size;
+    runtime::Size count_size;
+    float footer_height{};
+    float vertical_scroll{};
+    std::optional<float> resized_width;
+    std::optional<float> resized_height;
 };
 
 struct InputState {
@@ -135,6 +150,7 @@ struct InputState {
     std::unique_ptr<InputMaterialTransition> transition;
     text::TextCaretMap carets;
     std::uint64_t measured_value_revision{};
+    std::unique_ptr<TextAreaState> textarea;
 };
 
 struct InputSlotState {};
@@ -330,6 +346,15 @@ struct InputPropsAccess {
         }
         const auto initial =
             props.common_.value_ ? read_prop(*props.common_.value_) : props.common_.default_value_.value_or(String{});
+        if (props.textarea_) {
+            const auto rows = read_prop(props.textarea_->rows);
+            const auto autosize = read_prop(props.textarea_->auto_size);
+            const auto resize = read_prop(props.textarea_->resize);
+            if (rows == 0 || autosize.min_rows == 0 || (autosize.max_rows && *autosize.max_rows < autosize.min_rows) ||
+                resize < TextAreaResize::None || resize > TextAreaResize::Both) {
+                throw std::invalid_argument("Invalid TextArea sizing configuration");
+            }
+        }
         auto& build = runtime::require_component_build_context();
         const auto compact = nearest_compact(build);
         const auto size =
@@ -360,6 +385,14 @@ struct InputPropsAccess {
         auto& state = build.state<InputState>(component);
         state.mounted.component = component;
         state.mounted.node = build.root(component);
+        if (props.textarea_) {
+            state.textarea = std::make_unique<TextAreaState>();
+            state.textarea->rows = read_prop(props.textarea_->rows);
+            state.textarea->auto_size = read_prop(props.textarea_->auto_size);
+            state.textarea->wrap = read_prop(props.textarea_->wrap);
+            state.textarea->resize = read_prop(props.textarea_->resize);
+            state.textarea->on_resize = props.textarea_->on_resize;
+        }
         if (compact) {
             compact->claim(component);
             state.compact = compact->metadata;
@@ -432,7 +465,8 @@ struct InputPropsAccess {
             // Reserve before prefix/suffix content can reuse the same reference.
             state.reference->binding = component;
         }
-        state.mounted.editor = owner.editors_.create(initial.bytes(), limits);
+        state.mounted.editor = owner.editors_.create(
+            initial.bytes(), limits, state.textarea ? input::TextEditMode::MultiLine : input::TextEditMode::SingleLine);
         owner.editors_.require(state.mounted.editor).set_eligibility(disabled, read_only);
         std::optional<input::InteractionId> parent;
         for (auto ancestor = host.components().parent(component); ancestor && !parent;
@@ -601,13 +635,16 @@ struct InputPropsAccess {
         owner.configure_count_transform(component);
         owner.update_text(component);
         host.layout().set_intrinsic_measure(
-            state.viewport, 1, [&owner, component](layout::Constraints) -> layout::IntrinsicMeasurement {
+            state.viewport, 1, [&owner, component](layout::Constraints constraints) -> layout::IntrinsicMeasurement {
                 auto* current = owner.host_->components().state<InputState>(component);
                 if (!current) {
                     return runtime::Size{};
                 }
                 auto& scene = owner.host_->text().scene_service();
-                if (!scene.synchronize_measurement(current->text_scene, std::numeric_limits<float>::infinity())) {
+                const auto width = current->textarea && current->textarea->wrap
+                                       ? constraints.max_width
+                                       : std::numeric_limits<float>::infinity();
+                if (!scene.synchronize_measurement(current->text_scene, width)) {
                     throw std::runtime_error("Input intrinsic text measurement failed");
                 }
                 const auto& measurement = scene.text_state(current->text_scene).measurement();
@@ -622,6 +659,36 @@ struct InputPropsAccess {
                 }
             }));
         };
+        if (props.textarea_) {
+            connect(props.textarea_->rows, [](auto& owner, auto& current, std::size_t rows) {
+                if (rows == 0) {
+                    throw std::invalid_argument("TextArea rows must be positive");
+                }
+                current.textarea->rows = rows;
+                owner.invalidate(current.mounted.component, text_dirty);
+            });
+            connect(props.textarea_->auto_size, [](auto& owner, auto& current, TextAreaAutoSize value) {
+                if (value.min_rows == 0 || (value.max_rows && *value.max_rows < value.min_rows)) {
+                    throw std::invalid_argument("Invalid TextArea autoSize bounds");
+                }
+                current.textarea->auto_size = value;
+                current.textarea->resized_height.reset();
+                current.textarea->resized_width.reset();
+                owner.invalidate(current.mounted.component, text_dirty);
+            });
+            connect(props.textarea_->wrap, [](auto& owner, auto& current, bool value) {
+                current.textarea->wrap = value;
+                owner.invalidate(current.mounted.component, text_dirty);
+            });
+            connect(props.textarea_->resize, [](auto& owner, auto& current, TextAreaResize value) {
+                if (value < TextAreaResize::None || value > TextAreaResize::Both) {
+                    throw std::invalid_argument("Invalid TextArea resize direction");
+                }
+                current.textarea->resize = value;
+                owner.invalidate(current.mounted.component,
+                                 runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+            });
+        }
         if (props.common_.value_) {
             connect(*props.common_.value_, [](auto& owner, auto& current, String value) {
                 const auto result = owner.editors_.require(current.mounted.editor).reconcile(value.bytes());
@@ -856,6 +923,15 @@ struct InputPropsAccess {
         }
         owner.invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
         state.count_ready = true;
+    }
+};
+
+struct TextAreaPropsAccess final {
+    static void mount(TextAreaProps props) {
+        InputProps input;
+        input.common_ = std::move(props.common_);
+        input.textarea_ = std::make_shared<TextAreaPropsData>(std::move(props.textarea_));
+        Input(std::move(input));
     }
 };
 
@@ -1357,7 +1433,7 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     }
     if (!state->text_scene.valid() || model != state->layout) {
         state->layout = model;
-        host_->layout().set_layout(state->mounted.node, model);
+        configure_layout(component);
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
@@ -1378,6 +1454,119 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     }
     state->slot_typography.set(typography);
     invalidate(component, runtime::DirtyFlags::Material);
+}
+
+void InputComponentHost::configure_layout(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        return;
+    }
+    if (!state->textarea) {
+        host_->layout().set_layout(state->mounted.node, state->layout);
+        return;
+    }
+    const auto suffix = host_->nodes().require(state->mounted.node).children[2];
+    host_->layout().set_layout(
+        suffix,
+        layout::ComponentLayout{
+            [this, component](layout::LayoutEngine& engine, runtime::NodeId node, layout::Constraints constraints) {
+                auto& state = *host_->components().state<InputState>(component);
+                auto& area = *state.textarea;
+                area.clear_size = {};
+                area.count_size = {};
+                for (const auto child : host_->nodes().require(node).children) {
+                    const auto size = engine.measure_child(
+                        child, {0, constraints.max_width, 0, std::numeric_limits<float>::infinity()});
+                    if (child == state.count_node) {
+                        area.count_size = size;
+                    } else {
+                        area.clear_size = size;
+                    }
+                }
+                area.footer_height = area.count_size.height;
+                return runtime::Size{std::max(area.clear_size.width, area.count_size.width),
+                                     area.clear_size.height + area.footer_height};
+            },
+            [this, component](layout::LayoutEngine& engine, runtime::NodeId node, runtime::Rect) {
+                const auto& state = *host_->components().state<InputState>(component);
+                const auto& area = *state.textarea;
+                const auto root = host_->nodes().require(state.mounted.node).bounds;
+                const auto inline_inset = state.layout.padding_inline + state.layout.border_width;
+                const auto block_inset = state.layout.padding_block + state.layout.border_width;
+                for (const auto child : host_->nodes().require(node).children) {
+                    if (child == state.count_node) {
+                        engine.place_child(child, {root.x + root.width - area.count_size.width,
+                                                   root.y + root.height - area.footer_height, area.count_size.width,
+                                                   area.count_size.height});
+                    } else {
+                        engine.place_child(child,
+                                           {root.x + root.width - inline_inset - area.clear_size.width,
+                                            root.y + block_inset, area.clear_size.width, area.clear_size.height});
+                    }
+                }
+            }});
+    host_->layout().set_layout(
+        state->mounted.node,
+        layout::ComponentLayout{
+            [this, component](layout::LayoutEngine&, runtime::NodeId, layout::Constraints constraints) {
+                return measure_text_area(component, constraints);
+            },
+            [this, component](layout::LayoutEngine&, runtime::NodeId, runtime::Rect bounds) {
+                place_text_area(component, bounds);
+            }});
+}
+
+runtime::Size InputComponentHost::measure_text_area(runtime::ComponentId component, layout::Constraints constraints) {
+    auto& state = *host_->components().state<InputState>(component);
+    auto& area = *state.textarea;
+    auto& engine = host_->layout();
+    auto& root = host_->nodes().require(state.mounted.node);
+    const auto frame = 2 * (state.layout.padding_inline + state.layout.border_width);
+    const auto block_frame = 2 * (state.layout.padding_block + state.layout.border_width);
+    const auto requested =
+        area.resized_width.value_or(std::isfinite(constraints.max_width) ? constraints.max_width : 320.0F);
+    const auto width = std::clamp(requested, constraints.min_width, constraints.max_width);
+    static_cast<void>(engine.measure_child(root.children[0], layout::Constraints::fixed(0, 0)));
+    static_cast<void>(engine.measure_child(root.children[2], {0, width, 0, std::numeric_limits<float>::infinity()}));
+    const auto clear_inline = area.clear_size.width > 0 ? area.clear_size.width + state.layout.gap : 0;
+    const auto inner_width = std::max(0.0F, width - frame - clear_inline);
+    static_cast<void>(
+        engine.measure_child(state.viewport, {inner_width, inner_width, 0, std::numeric_limits<float>::infinity()}));
+    const auto& measurement = host_->text().scene_service().text_state(state.text_scene).measurement();
+    auto rows = area.rows;
+    if (area.auto_size.enabled) {
+        rows = std::max(area.auto_size.min_rows, measurement.lines.size());
+        if (area.auto_size.max_rows) {
+            rows = std::min(rows, *area.auto_size.max_rows);
+        }
+    }
+    const auto height =
+        std::max(state.layout.control_height, static_cast<float>(rows) * state.typography.line_height + block_frame);
+    if (!std::isfinite(height)) {
+        throw std::overflow_error("TextArea height exceeds logical range");
+    }
+    const auto body = area.auto_size.enabled ? height : area.resized_height.value_or(height);
+    const auto size = constraints.constrain({width, body + area.footer_height});
+    root.first_baseline =
+        std::min(size.height, state.layout.padding_block + state.layout.border_width + measurement.first_baseline);
+    return size;
+}
+
+void InputComponentHost::place_text_area(runtime::ComponentId component, runtime::Rect bounds) {
+    const auto& state = *host_->components().state<InputState>(component);
+    const auto& area = *state.textarea;
+    const auto& root = host_->nodes().require(state.mounted.node);
+    const auto inset = std::min(bounds.width * .5F, state.layout.padding_inline + state.layout.border_width);
+    const auto body_height = std::max(0.0F, bounds.height - area.footer_height);
+    const auto top = std::min(body_height * .5F, state.layout.padding_block + state.layout.border_width);
+    const auto clear_inline = area.clear_size.width > 0 ? area.clear_size.width + state.layout.gap : 0;
+    host_->layout().place_child(root.children[0], {bounds.x, bounds.y, 0, 0});
+    host_->layout().place_child(state.viewport,
+                                {bounds.x + inset, bounds.y + top,
+                                 std::max(0.0F, bounds.width - 2 * inset - clear_inline),
+                                 std::max(0.0F, body_height - 2 * top)},
+                                true, true);
+    host_->layout().place_child(root.children[2], bounds, true, true);
 }
 
 void InputComponentHost::update_text(runtime::ComponentId component, bool measure_layout, bool refresh_count) {
@@ -1462,7 +1651,7 @@ void InputComponentHost::update_suffix_layout(runtime::ComponentId component) {
         state->custom_suffix || state->clear_visible.get() || (state->show_count && !state->count_text.get().empty());
     if (state->layout.suffix != suffix) {
         state->layout.suffix = suffix;
-        host_->layout().set_layout(state->mounted.node, state->layout);
+        configure_layout(component);
         invalidate(component, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     }
@@ -1771,7 +1960,8 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         record_phase(update_started, sync_profile_.update_text_nanoseconds);
         auto& text_scene = host_->text().scene_service();
         if (state->carets.revision() != text_scene.text_state(state->text_scene).revision() &&
-            !text_scene.synchronize_caret_map(state->text_scene, state->carets)) {
+            !(state->textarea ? text_scene.synchronize_line_caret_map(state->text_scene, state->carets)
+                              : text_scene.synchronize_caret_map(state->text_scene, state->carets))) {
             throw std::runtime_error("Input caret mapping failed");
         }
         auto viewport = translated_bounds(host_->nodes(), state->viewport);
@@ -1809,14 +1999,22 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         };
         const auto caret_left = std::clamp(snap(state->geometry.caret_x), caret_clip.x,
                                            std::max(caret_clip.x, caret_clip.x + caret_clip.width - thickness));
-        state->geometry.caret = {caret_left, caret_clip.y, std::min(thickness, caret_clip.width), caret_clip.height};
+        const auto caret_stop = state->carets.at(display.caret, state->carets.revision()).value();
+        const auto caret_top = state->textarea
+                                   ? viewport.y + static_cast<float>(caret_stop.line) * state->typography.line_height
+                                   : caret_clip.y;
+        const auto caret_height = state->textarea ? state->typography.line_height : caret_clip.height;
+        state->geometry.caret = {caret_left, caret_top, std::min(thickness, caret_clip.width), caret_height};
         const auto underline_left = snap(state->geometry.composition_start);
         state->geometry.underline = {underline_left,
                                      std::max(caret_clip.y, caret_clip.y + caret_clip.height - thickness),
                                      std::max(0.0F, snap(state->geometry.composition_end) - underline_left),
                                      std::min(thickness, caret_clip.height)};
         const auto& theme = host_->components().theme_scope(mounted.component)->snapshot();
-        const auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
+        auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
+        if (state->textarea) {
+            root_bounds.height = std::max(0.0F, root_bounds.height - state->textarea->footer_height);
+        }
         state->next_container_clip = clip;
         const auto theme_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
@@ -2231,6 +2429,10 @@ void Input(InputProps props, std::optional<InputPrefix> prefix, std::optional<In
         throw std::logic_error("Input requires an active InputComponentHost");
     }
     detail::InputPropsAccess::mount(*detail::active_input_host, props, prefix, suffix);
+}
+
+void TextArea(TextAreaProps props) {
+    detail::TextAreaPropsAccess::mount(std::move(props));
 }
 
 void Password(PasswordProps props, std::optional<InputPrefix> prefix, std::optional<InputSuffix> suffix) {

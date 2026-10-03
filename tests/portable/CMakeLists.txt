@@ -18,7 +18,7 @@ foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logi
         rounded_effect_gpu_resources input_component input_variant input_count input_actions input_gpu input_caret_blink input_public_api password_component search_component search_public_api text_component
         button_component selection_component selection_controls_public_api switch_features switch_public_api checkbox_group checkbox_public_api theme_algorithm theme_runtime slider_component radio_component radio_features radio_public_api focus_order focus_state focus_lifecycle typography_component
         typography_interaction divider_component divider_public_api text_component_frame frame_scheduler window_overlay tooltip_component interaction_registry pointer_route text_input_session
-        text_editor text_history text_reconcile text_clipboard_command input_display text_caret_map)
+        text_editor text_history text_reconcile text_clipboard_command input_display text_caret_map text_area)
     rynui_portable_test(${name} "${name}_tests.cpp")
 endforeach()
 

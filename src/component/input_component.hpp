@@ -129,6 +129,9 @@ private:
     void invalidate(runtime::ComponentId, runtime::DirtyFlags);
     void update_text(runtime::ComponentId, bool measure_layout = true, bool refresh_count = true);
     void update_theme(runtime::ComponentId);
+    void configure_layout(runtime::ComponentId);
+    runtime::Size measure_text_area(runtime::ComponentId, layout::Constraints);
+    void place_text_area(runtime::ComponentId, runtime::Rect);
     void apply_material_transition(runtime::ComponentId);
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
     bool dispatch_keyboard(runtime::ComponentId, const input::KeyboardInputEvent&);

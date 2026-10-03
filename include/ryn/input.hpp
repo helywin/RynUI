@@ -20,6 +20,8 @@ struct InputPropsAccess;
 struct PasswordPropsAccess;
 struct SearchPropsAccess;
 struct InputRefState;
+struct TextAreaPropsAccess;
+struct TextAreaPropsData;
 
 struct InputPropsData final {
     std::optional<Prop<String>> value_;
@@ -228,6 +230,7 @@ protected:
     friend struct detail::InputPropsAccess;
     friend struct detail::PasswordPropsAccess;
     friend struct detail::SearchPropsAccess;
+    friend struct detail::TextAreaPropsAccess;
     detail::InputPropsData common_;
 
 private:
@@ -240,9 +243,11 @@ class InputProps final : public InputPropsBase<InputProps> {
 private:
     friend struct detail::InputPropsAccess;
     friend struct detail::PasswordPropsAccess;
+    friend struct detail::TextAreaPropsAccess;
     std::optional<Prop<bool>> password_visible_;
     std::shared_ptr<void> password_lifetime_;
     std::optional<Prop<bool>> suffix_presence_;
+    std::shared_ptr<detail::TextAreaPropsData> textarea_;
 };
 
 struct InputPrefixSlot final {};

@@ -69,6 +69,10 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 ## 收尾进度
 
-053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同，TextArea 公开组件、交互和窗口验收在后续阶段接入，尚不能将其描述为完整 TextArea。
+053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同。
+
+`<ryn/text_area.hpp>` 提供 TextAreaProps/TextArea/TextAreaRef（共享 InputRef 合同），继承全部 Input 共用属性。`.rows(Prop<size_t>)` 默认 4；`.autoSize(TextAreaAutoSize{true, min_rows, max_rows})` 按实际硬/软换行决定高度，默认不启用，min_rows=1/max_rows 不限。`.wrap(Prop<bool>)` 默认 true，无 wrap 时只按 LF 分行。rows/min_rows 必须正数，max_rows 不得小于 min_rows；非法 reactive 配置拒绝并保留当前尺寸。`.resize(Prop<TextAreaResize>)` 支持 None/Vertical/Horizontal/Both，默认 Vertical；`.onResize(function<void(TextAreaSize)>)` 用于实际逻辑尺寸通知，交互阶段接入。
+
+TextArea 使用 Input Theme/四变体/三个尺寸，clear 停靠右上，计数右对齐放在输入边框下方。LayoutStyle 控制整个组件的外部尺寸（包含可见计数占用）；显式高度优先于 rows/autoSize，编辑区保留上下 padding 后占据剩余高度。尺寸/换行更新不会重建 editor、scene 或 ref。多行键盘/选择/滚动/resize 与真实窗口验收仍在 053 后续任务，不能把当前 API/布局阶段描述为完整 TextArea。
 
 052 已实现单行家族的变体、统计及操作配置，平台通用 Debug/Release 85/85 与 Windows 原生 Debug/Release 20/20、十轮 D3D12 窗口及 230 张 GPU 读回已通过；[Windows 证据](../openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md)保存复核方式。Linux 保持独立待验收。Gallery 包含四变体、grapheme 超限、自定义裁剪、Email/ref、vector 清空、Hover Password、受控显隐以及 Dark Compact Filled/Small Underlined Search 的稳定 ID 样本。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：TextArea API 与尺寸
 
-- [ ] 2.1 增加 TextAreaProps/TextArea/TextAreaRef 和 Input 共用宿主多行挂载，实现 rows/wrap/autoSize/外部尺寸优先、Theme/四变体/size/status、统计及右上 clear/下方 count 布局；补值/焦点/ref/布局/软硬限制/controlled/重入/非法配置/retained 身份文档与测试，在 common Debug/Release 运行 text_area/input_public_api/input_count/input_variant/input_component/password/search/theme/布局合同，格式和规格校验后提交。
+- [x] 2.1 增加 TextAreaProps/TextArea/TextAreaRef 和 Input 共用宿主多行挂载，实现 rows/wrap/autoSize/外部尺寸优先、Theme/四变体/size/status、统计及右上 clear/下方 count 布局；补值/焦点/ref/布局/软硬限制/controlled/重入/非法配置/retained 身份文档与测试，在 common Debug/Release 运行 text_area/input_public_api/input_count/input_variant/input_component/password/search/theme/布局合同，格式和规格校验后提交。
 
 ## 3. 平台通用：多行交互与呈现
 
