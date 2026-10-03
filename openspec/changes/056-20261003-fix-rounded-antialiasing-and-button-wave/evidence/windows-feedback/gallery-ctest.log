@@ -1,0 +1,32 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/3] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Debug\token_gallery_frame_tests.cpp.obj
+[2/3] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[0/2] Re-checking globbed directories...
+[1/3] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Release\token_gallery_frame_tests.cpp.obj
+[2/3] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start  52: rynui.ant_design_gallery_catalog_contract
+1/3 Test  #52: rynui.ant_design_gallery_catalog_contract ...   Passed    0.11 sec
+    Start 170: rynui.token_gallery_frame
+2/3 Test #170: rynui.token_gallery_frame ...................   Passed   30.78 sec
+    Start 171: rynui.gallery_platform_generic_journey
+3/3 Test #171: rynui.gallery_platform_generic_journey ......   Passed   30.60 sec
+
+100% tests passed out of 3
+
+Total Test time (real) =  61.52 sec
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start  52: rynui.ant_design_gallery_catalog_contract
+1/3 Test  #52: rynui.ant_design_gallery_catalog_contract ...   Passed    0.11 sec
+    Start 170: rynui.token_gallery_frame
+2/3 Test #170: rynui.token_gallery_frame ...................   Passed    8.51 sec
+    Start 171: rynui.gallery_platform_generic_journey
+3/3 Test #171: rynui.gallery_platform_generic_journey ......   Passed    8.44 sec
+
+100% tests passed out of 3
+
+Total Test time (real) =  17.09 sec

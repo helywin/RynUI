@@ -10,6 +10,8 @@
 #include <ryn/rynui.hpp>
 
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 
 namespace rynui::example {
@@ -96,6 +98,8 @@ int run_switch_acceptance(int argc, char** argv) {
                                           .autoFocus(true)
                                           .disabled(disabled)
                                           .loading(loading)
+                                          .direction(direction)
+                                          .layout(LayoutStyle{}.width(dp(72)))
                                           .onChange([&](bool value) {
                                               checked.set(value);
                                               ++changes;
@@ -114,7 +118,10 @@ int run_switch_acceptance(int argc, char** argv) {
                                                       Text(u8"关闭");
                                                   }}});
                                Text(u8"Small 图标 / 可切换 RTL");
-                               Switch(SwitchProps{}.size(SwitchSize::Small).direction(direction),
+                               Switch(SwitchProps{}
+                                          .size(SwitchSize::Small)
+                                          .direction(direction)
+                                          .layout(LayoutStyle{}.width(dp(44))),
                                       SwitchSlots{SwitchCheckedContent{[&] {
                                                       ++slot_runs;
                                                       Icon(IconProps{}.name(IconName::CheckOutlined));
@@ -317,6 +324,53 @@ int run_switch_acceptance(int argc, char** argv) {
         draw("controlled-no-echo");
         require_switch(candidates == 1 && !host.snapshot(mounted[4].component).checked,
                        "Switch controlled authority failed");
+        std::ofstream geometry{directory / "handle-geometry.csv", std::ios::binary};
+        require_switch(bool(geometry), "Switch geometry evidence failed to open");
+        geometry << "name,size,rtl,cycle,phase,checked,time_us,x,y,width,height\n" << std::setprecision(9);
+        int continuous_releases{};
+        for (const auto rtl : {false, true}) {
+            direction.set(rtl ? SwitchDirection::RightToLeft : SwitchDirection::LeftToRight);
+            for (const auto index : {0, 1}) {
+                const auto item = mounted[index];
+                require_switch(services.focus().request_focus(item.interaction, input::FocusModality::keyboard),
+                               "Switch transition focus failed");
+                for (int cycle = 0; cycle < 2; ++cycle) {
+                    const auto prefix = std::string{rtl ? "rtl-" : "ltr-"} + (index == 0 ? "middle-" : "small-") +
+                                        std::to_string(cycle) + "-";
+                    const auto capture = [&](const char* phase, std::int64_t increment) {
+                        const auto name = prefix + phase;
+                        draw(name, increment);
+                        const auto range = services.surfaces().visual_range(item.surface);
+                        const auto bounds = services.surfaces().instances().at(range.first + 1).bounds;
+                        geometry << name << ',' << (index == 0 ? "middle" : "small") << ',' << rtl << ',' << cycle
+                                 << ',' << phase << ',' << host.snapshot(item.component).checked << ',' << microseconds;
+                        for (const auto value : bounds) {
+                            geometry << ',' << value;
+                        }
+                        geometry << '\n';
+                        return bounds;
+                    };
+                    const auto base = capture("base", 200000);
+                    key(SDL_EVENT_KEY_DOWN);
+                    require_switch(capture("press-0", 0) == base, "Switch native press jumped geometry");
+                    const auto partial = capture("press-50", 25000);
+                    require_switch(partial[2] > base[2] && partial[2] < base[2] * 1.3F,
+                                   "Switch native press did not stretch gradually");
+                    const auto held = capture("held-200", 75000);
+                    require_switch(std::abs(held[2] - base[2] * 1.3F) < 0.02F, "Switch native held stretch failed");
+                    key(SDL_EVENT_KEY_UP);
+                    require_switch(capture("release-0", 0) == held, "Switch native release instantly shrank");
+                    const auto moving = capture("release-50", 25000);
+                    require_switch(moving[2] < held[2] && moving[2] > base[2] && moving[0] != held[0],
+                                   "Switch native release did not shrink and move together");
+                    const auto settled = capture("settled-200", 75000);
+                    require_switch(std::abs(settled[2] - base[2]) < 0.02F && settled[0] != base[0],
+                                   "Switch native release did not settle to other circle");
+                    ++continuous_releases;
+                }
+            }
+        }
+        require_switch(bool(geometry), "Switch geometry evidence write failed");
         direction.set(SwitchDirection::RightToLeft);
         draw("rtl-small-icon");
         narrow_width.set(dp(40));
@@ -354,7 +408,7 @@ int run_switch_acceptance(int argc, char** argv) {
                   << " clicks=" << clicks << " candidates=" << candidates
                   << " submits=" << renderer.counters().frame_submissions
                   << " resize=1420x900 content_runs=" << content_runs << " slot_runs=" << slot_runs
-                  << " deadline=none disposed=1 exit_code=0\n";
+                  << " continuous_releases=" << continuous_releases << " deadline=none disposed=1 exit_code=0\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "switch_acceptance_error=" << error.what() << '\n';

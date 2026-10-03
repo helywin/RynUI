@@ -1,0 +1,1 @@
+switch_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=1.5 normalized_events=27 changes=6 clicks=6 candidates=1 submits=152 resize=1420x900 content_runs=1 slot_runs=12 continuous_releases=8 deadline=none disposed=1 exit_code=0

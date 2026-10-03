@@ -2,17 +2,17 @@
   "gallery_executables": [
     {
       "path": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
-      "sha256": "ef85ff0322d489f472498e210151b6c2a9ceb2571d874ab801ea5e391f2bdbc9"
+      "sha256": "d78606a866e82eaa0d0fd9dedb87af61f99d424df962a09ee7ec1d222c55c600"
     },
     {
       "path": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
-      "sha256": "b3d2fa15a01126f0a1b7bd20f6add790e786c9da9749c0e8c0f278045f4cd28c"
+      "sha256": "3e5015fd9531bcaa58ebe5d8fc61a07085e1d68e16745fb7f1c41d716e3d2b29"
     }
   ],
   "logs": [
     {
       "path": "gallery-debug-smoke.log",
-      "sha256": "6a683befde847295e8674bd729622f764061d4e0e493dbbf4c0d3c8fa6ca32c1",
+      "sha256": "c4791106c0e1a221fe9f93864aa130c001a9c7008f89a79217c074547ad16689",
       "required_fragments": [
         "gpu_driver=direct3d12 shader_format=DXIL",
         "content_runs=1",
@@ -29,7 +29,7 @@
     },
     {
       "path": "gallery-release-smoke.log",
-      "sha256": "3f075c47385b0637fbee52491bccb2cd18aa798904b107662079eb148bd3250f",
+      "sha256": "93258e8664a3213fa486bf8cc926c898c1e3562600bde187e233789ab7f5b2f2",
       "required_fragments": [
         "gpu_driver=direct3d12 shader_format=DXIL",
         "content_runs=1",

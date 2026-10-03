@@ -49,3 +49,5 @@ ThemeConfig.radio 支持 tokens/seed/algorithm，继承方式与其他组件相�
 `wave(Prop<bool>)` 默认打开，采用有限动画；圆形反馈仅覆盖指示器，按钮反馈保留连接角，重启复用范围。结束、禁用、wave=false、motion=false、reduced motion、窗口失活与销毁均取消 deadline。先停止反馈并取消焦点/capture，再释放背景/表面，允许通知安全完成。
 
 按钮背景与边界使用共同 logical rounded effects 的四个分区，保持 renderer packed GPU ABI。背景完整覆盖 border box，异色边框叠在背景之上；同色背景/边框仅绘制一次外缘，防止内部 AA 叠加露出浅色框。选中项拥有共享边，后项绘制裁到该边之外，避免覆盖后用另一层 AA 补回产生浅线。实现与平台证据以 [048 tasks](../openspec/changes/048-20261002-complete-native-radio-features/tasks.md) 与 [056补充修正](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/tasks.md) 为准。Web DOM/form/name/required/CSS/React 事件不移植。
+
+056的Windows补充矩阵实际检查浅/深、LTR/RTL、横/竖Solid填充80个样本的曲面与内部像素，详见 [Windows填充证据](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave/evidence/windows-feedback/README.md)；Linux原生项独立待完成。

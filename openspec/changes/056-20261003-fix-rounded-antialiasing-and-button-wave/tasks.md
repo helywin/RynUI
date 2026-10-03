@@ -26,7 +26,7 @@
 
 ### Windows
 
-- [ ] 5.1 windows-msvc Debug/Release真实D3D12窗口捕获Switch按压/释放中间帧与双向位置、RadioButton Solid填充（含混合圆角、浅/深、LTR/RTL、系统/1/1.25/1.5/2 scale），实际像素与连续几何检查、native smoke及图像目视审核通过，记录截图/log/hash并独立提交。
+- [x] 5.1 windows-msvc Debug/Release真实D3D12窗口捕获Switch按压/释放中间帧与双向位置、RadioButton Solid填充（含混合圆角、浅/深、LTR/RTL、系统/1/1.25/1.5/2 scale），实际像素与连续几何检查、native smoke及图像目视审核通过，记录截图/log/hash并独立提交。
 
 ### Linux
 

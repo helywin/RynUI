@@ -10,6 +10,8 @@
 #include <ryn/rynui.hpp>
 
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 
 namespace rynui::example {
@@ -349,6 +351,40 @@ int run_radio_acceptance(int argc, char** argv) {
         require_radio(nodes.require(recovered.node).bounds.height == 24 &&
                           host.snapshot(recovered.component).rounded_corners == std::array{true, true, false, false},
                       "Radio vertical small geometry failed");
+        std::ofstream fills{directory / "solid-fill.csv", std::ios::binary};
+        require_radio(bool(fills), "Radio fill evidence failed to open");
+        fills << "name,rtl,vertical,x,y,width,height,radius,red,green,blue,background_red,background_green,background_"
+                 "blue\n"
+              << std::setprecision(9);
+        int solid_samples{};
+        pointer(SDL_EVENT_MOUSE_MOTION, main);
+        for (const bool dark_theme : {false, true}) {
+            ThemeConfig config;
+            config.algorithms = {dark_theme ? ThemeAlgorithm::Dark : ThemeAlgorithm::Default};
+            theme.set(config);
+            for (const bool rtl : {false, true}) {
+                direction.set(rtl ? RadioDirection::RightToLeft : RadioDirection::LeftToRight);
+                for (const bool vertical : {false, true}) {
+                    orientation.set(vertical ? RadioGroupOrientation::Vertical : RadioGroupOrientation::Horizontal);
+                    size.set(RadioSize::Large);
+                    services.focus().clear_focus();
+                    const auto name = std::string{dark_theme ? "solid-dark-" : "solid-light-"} +
+                                      (rtl ? "rtl-" : "ltr-") + (vertical ? "vertical" : "horizontal");
+                    draw(name);
+                    require_radio(host.snapshot(recovered.component).checked, "Radio fill fixture lost selection");
+                    const auto rect = nodes.require(recovered.node).bounds;
+                    const auto resolved = resolve_theme(config);
+                    const auto color = resolved.radio().button_solid_checked_background;
+                    const auto background = resolved.alias().color_background_container;
+                    fills << name << ',' << rtl << ',' << vertical << ',' << rect.x << ',' << rect.y << ','
+                          << rect.width << ',' << rect.height << ',' << resolved.radio().button_radius_large << ','
+                          << color.red() << ',' << color.green() << ',' << color.blue() << ',' << background.red()
+                          << ',' << background.green() << ',' << background.blue() << '\n';
+                    ++solid_samples;
+                }
+            }
+        }
+        require_radio(bool(fills), "Radio fill evidence write failed");
         type.set(RadioOptionType::Default);
         draw("default-circles");
         require_radio(!host.snapshot(recovered.component).radio_button, "Radio type switch failed");
@@ -390,7 +426,7 @@ int run_radio_acceptance(int argc, char** argv) {
                   << " clicks=" << clicks << " candidates=" << candidates << " group_candidates=" << group_candidates
                   << " submits=" << renderer.counters().frame_submissions
                   << " resize=1420x900 content_runs=" << content_runs << " label_runs=" << label_runs
-                  << " idle_polls=3 deadline=none disposed=1 exit_code=0\n";
+                  << " solid_samples=" << solid_samples << " idle_polls=3 deadline=none disposed=1 exit_code=0\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "radio_acceptance_error=" << error.what() << '\n';
