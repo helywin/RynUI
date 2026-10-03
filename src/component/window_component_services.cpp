@@ -322,7 +322,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
             }
         }
     }
-    if (scene_structure_dirty_ || text_fragments_changed) {
+    if (scene_structure_dirty_ || text_fragments_changed || scene_composer_.needs_rebuild()) {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.composer_nanoseconds);
         scene_composer_.rebuild(clip);
         scene_structure_dirty_ = false;

@@ -35,12 +35,18 @@ void ComponentSceneComposer::set_fragment(runtime::SceneFragmentId fragment,
     if (bindings_.size() <= fragment.index) {
         bindings_.resize(static_cast<std::size_t>(fragment.index) + 1);
     }
+    const auto* previous = find_binding(fragment);
+    if (previous && previous->interaction == interaction && previous->interaction_clip == interaction_clip &&
+        std::ranges::equal(previous->commands, commands)) {
+        return;
+    }
     FragmentBinding replacement;
     replacement.generation = fragment.generation;
     replacement.commands.assign(commands.begin(), commands.end());
     replacement.interaction = interaction;
     replacement.interaction_clip = interaction_clip;
     bindings_[fragment.index] = std::move(replacement);
+    bindings_dirty_ = true;
 }
 
 bool ComponentSceneComposer::remove_fragment(runtime::SceneFragmentId fragment) {
@@ -50,6 +56,7 @@ bool ComponentSceneComposer::remove_fragment(runtime::SceneFragmentId fragment) 
         return false;
     }
     bindings_[fragment.index].reset();
+    bindings_dirty_ = true;
     return true;
 }
 
@@ -94,6 +101,7 @@ void ComponentSceneComposer::rebuild(runtime::Rect window_clip) {
     }
     hit_test_->rebuild(interaction_order_, window_clip);
     ++diagnostics_.rebuilds;
+    bindings_dirty_ = false;
 }
 
 VisibleSceneStats ComponentSceneComposer::build_visible_scene(const runtime::NodeStore& nodes,

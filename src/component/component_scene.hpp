@@ -36,6 +36,11 @@ public:
                       std::optional<runtime::Rect> interaction_clip = std::nullopt);
     bool remove_fragment(runtime::SceneFragmentId fragment);
     void rebuild(runtime::Rect window_clip);
+
+    [[nodiscard]] bool needs_rebuild() const noexcept {
+        return bindings_dirty_;
+    }
+
     [[nodiscard]] VisibleSceneStats build_visible_scene(const runtime::NodeStore& nodes, runtime::Rect window_clip,
                                                         graphics::OrderedScene& destination) const;
 
@@ -62,6 +67,7 @@ private:
     graphics::OrderedScene ordered_scene_;
     std::vector<input::HitTestPaintEntry> interaction_order_;
     ComponentSceneDiagnostics diagnostics_;
+    bool bindings_dirty_{};
 };
 
 } // namespace ryn::component

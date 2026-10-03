@@ -537,6 +537,40 @@ void multiline_ime_epochs_and_enter_history() {
     require(!f.inputs.dispatch(input::TextCommitted{String{u8"disposed"}, stamp}) && !reference.bound(),
             "disposed multiline session accepted event");
 }
+
+void ime_quad_topology_updates_ordered_scene() {
+    Fixture f;
+    TextAreaRef reference;
+    f.inputs.mount(Content{[&] {
+        TextArea(TextAreaProps{}.defaultValue(u8"a\nb").rows(4).ref(reference));
+        TextArea(TextAreaProps{}.defaultValue(u8"following").rows(2));
+    }});
+    f.synchronize();
+    require(reference.focus({InputFocusCursor::Start}), "quad topology fixture did not focus");
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto stamp = f.inputs.sessions().active();
+    require(bool(f.inputs.dispatch(input::CompositionChanged{String{u8"预\n编"}, {}, stamp})),
+            "topology preedit failed");
+    f.synchronize();
+    const auto count = f.scene.primitive(f.inputs.text_scene(mounted.component)).instances.count;
+    const auto before = f.services.scene_composer().diagnostics().rebuilds;
+    require(bool(f.inputs.dispatch(input::TextCommitted{String{u8"中\n文"}, stamp})), "topology commit failed");
+    f.synchronize();
+    require(f.scene.primitive(f.inputs.text_scene(mounted.component)).instances.count == count &&
+                f.services.scene_composer().diagnostics().rebuilds == before + 1,
+            "equal-glyph IME commit did not rebuild changed quad bindings");
+    for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+        if (command.kind == graphics::SceneDrawKind::quad) {
+            require(std::uint64_t{command.first_instance} + command.instance_count <=
+                        f.services.surfaces().instances().size(),
+                    "ordered scene retained stale quad range after IME commit");
+        }
+    }
+    const auto settled = f.services.scene_composer().diagnostics().rebuilds;
+    f.synchronize();
+    require(f.services.scene_composer().diagnostics().rebuilds == settled,
+            "equal retained bindings rebuilt ordered scene on idle synchronization");
+}
 } // namespace
 
 int main() {
@@ -549,6 +583,7 @@ int main() {
         cross_line_selection_and_pointer();
         soft_wrap_affinity_and_page_navigation();
         multiline_ime_epochs_and_enter_history();
+        ime_quad_topology_updates_ordered_scene();
         fractional_scroll_boundary_and_clipboard_unmount();
         resize_callback_can_unmount();
         std::cout << "TextArea sizing/props/retained multiline contracts passed\n";
