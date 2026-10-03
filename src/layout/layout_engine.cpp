@@ -311,6 +311,8 @@ void LayoutEngine::set_layout(runtime::NodeId id, LayoutModel layout) {
                 static_cast<void>(
                     non_negative_finite(model.gap, "Horizontal content gap must be finite and non-negative"));
                 if constexpr (std::is_same_v<Model, InputContentLayout>) {
+                    static_cast<void>(non_negative_finite(model.preferred_width,
+                                                          "Input preferred width must be finite and non-negative"));
                     static_cast<void>(non_negative_finite(model.padding_block,
                                                           "Input block padding must be finite and non-negative"));
                 }
@@ -831,7 +833,10 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                     throw std::logic_error("Input layout requires three slots");
                 }
                 const float frame = 2.0F * (current.padding_inline + current.border_width);
-                const float inner_width = subtract_extent(content_constraint.max_width, frame);
+                const float outer_width = current.preferred_width > 0
+                                              ? std::min(content_constraint.max_width, current.preferred_width)
+                                              : content_constraint.max_width;
+                const float inner_width = subtract_extent(outer_width, frame);
                 const float height = std::min(current.control_height, content_constraint.max_height);
                 const float inner_height =
                     subtract_extent(height, 2.0F * (current.border_width + current.padding_block));

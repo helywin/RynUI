@@ -121,6 +121,7 @@ private:
     friend struct InputPropsAccess;
     friend struct PasswordPropsAccess;
     void notify_change(input::TextInputOwnerId);
+    void notify_otp_edit(input::TextInputOwnerId, bool succeeded);
     void clear(runtime::ComponentId);
     void update_clear_visibility(runtime::ComponentId);
     bool update_count(runtime::ComponentId);

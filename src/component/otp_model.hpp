@@ -41,7 +41,12 @@ public:
     bool reconcile(std::string_view);
     bool set_length(std::size_t);
     [[nodiscard]] std::optional<OTPCandidate> prepare(std::size_t index, std::string_view cell_candidate);
-    bool commit(OTPCandidate);
+    bool commit(OTPCandidate&);
+
+    bool commit(OTPCandidate&& candidate) {
+        return commit(candidate);
+    }
+
     void retire() noexcept;
     static void validate_length(std::size_t);
 

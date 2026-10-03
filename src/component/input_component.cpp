@@ -6,6 +6,7 @@
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
+#include "component/otp_input_cell.hpp"
 #include <ryn/password.hpp>
 #include <ryn/text.hpp>
 #include <ryn/text_area.hpp>
@@ -161,6 +162,8 @@ struct InputState {
     text::TextCaretMap carets;
     std::uint64_t measured_value_revision{};
     std::unique_ptr<TextAreaState> textarea;
+    std::shared_ptr<OTPInputCellConfig> otp;
+    String mask_glyph{u8"•"};
 };
 
 struct InputSlotState {};
@@ -356,6 +359,9 @@ struct InputPropsAccess {
         }
         const auto initial =
             props.common_.value_ ? read_prop(*props.common_.value_) : props.common_.default_value_.value_or(String{});
+        if (props.otp_) {
+            validate_otp_mask(read_prop(props.otp_->mask));
+        }
         if (props.textarea_) {
             const auto rows = read_prop(props.textarea_->rows);
             const auto autosize = read_prop(props.textarea_->auto_size);
@@ -395,6 +401,7 @@ struct InputPropsAccess {
         auto& state = build.state<InputState>(component);
         state.mounted.component = component;
         state.mounted.node = build.root(component);
+        state.otp = props.otp_;
         if (props.textarea_) {
             state.textarea = std::make_unique<TextAreaState>();
             state.textarea->rows = read_prop(props.textarea_->rows);
@@ -417,6 +424,12 @@ struct InputPropsAccess {
         state.read_only = read_only;
         state.password = props.password_visible_.has_value();
         state.visible = props.password_visible_ ? read_prop(*props.password_visible_) : true;
+        if (state.otp) {
+            const auto mask = read_prop(state.otp->mask);
+            state.password = mask.enabled;
+            state.visible = !mask.enabled;
+            state.mask_glyph = mask.glyph;
+        }
         state.allow_clear = props.common_.allow_clear_ && read_prop(*props.common_.allow_clear_);
         state.clear_disabled = read_prop(props.common_.clear_disabled_);
         state.on_clear = props.common_.on_clear_;
@@ -895,6 +908,18 @@ struct InputPropsAccess {
                                static_cast<void>(theme->motion_enabled());
                            });
         owner.mounted_.push_back(state.mounted);
+        if (state.otp) {
+            static_cast<void>(
+                connect_prop(build.scope(component), state.otp->mask, [&owner, component](const OTPMask& mask) {
+                    validate_otp_mask(mask);
+                    if (auto* current = owner.host_->components().state<InputState>(component)) {
+                        current->password = mask.enabled;
+                        current->visible = !mask.enabled;
+                        current->mask_glyph = mask.glyph;
+                        owner.update_text(component);
+                    }
+                }));
+        }
         if (state.reference) {
             state.reference->binding = component;
             state.reference->focus = [&owner, component](InputFocusOptions options) {
@@ -1303,6 +1328,13 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
     if (state->disabled || !state->focused || (down && state->selecting_pointer && !owned)) {
         return;
     }
+    if (state->otp) {
+        auto callback = state->otp->clicked;
+        if (down && callback) {
+            callback();
+        }
+        return;
+    }
     const auto viewport = state->geometry.viewport;
     const auto clip = state->geometry.clip;
     // Affixes/padding may focus the Input, but are not editable text hit areas.
@@ -1472,6 +1504,16 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         // it commits or cancels. Never mutate committed text from these keys.
         return true;
     }
+    if (state->otp && state->otp->keyboard) {
+        auto callback = state->otp->keyboard;
+        if (callback(event)) {
+            return true;
+        }
+        state = host_->components().state<InputState>(component);
+        if (!state) {
+            return true;
+        }
+    }
     if (event.key == Key::escape) {
         if (event.action == input::KeyAction::down && !event.repeat && state->on_internal_cancel) {
             auto callback = state->on_internal_cancel;
@@ -1617,6 +1659,7 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         result = event.key == Key::backspace ? editor.erase_backward() : editor.erase_forward();
     }
     // Clipboard and onChange callbacks may synchronously destroy/reuse the owner.
+    notify_otp_edit(owner, bool(result));
     if (result.value_changed) {
         notify_change(owner);
     } else if (result) {
@@ -1641,6 +1684,13 @@ void InputComponentHost::update_theme(runtime::ComponentId component) {
     }
     model.border_width = tokens.border_width;
     model.padding_inline = size_tokens.padding_inline;
+    if (state->otp) {
+        const auto small_padding = theme.map().size_xs * .5F;
+        model.padding_inline = state->size == ControlSize::Small   ? small_padding * .5F
+                               : state->size == ControlSize::Large ? theme.map().size_xs
+                                                                   : small_padding;
+        model.preferred_width = size_tokens.font_size + 2 * (model.padding_inline + tokens.border_width);
+    }
     model.padding_block = size_tokens.padding_block;
     if (state->variant == InputVariant::Borderless || state->variant == InputVariant::Underlined) {
         model.border_width = 0;
@@ -1805,7 +1855,8 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     }
     const auto& editor = editors_.require(state->mounted.editor);
     update_clear_visibility(component);
-    const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible);
+    const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible,
+                                               state->mask_glyph.view());
     if (state->textarea && changed.geometry_changed) {
         state->textarea->reveal_caret = true;
         if (changed.text_changed) {
@@ -1892,7 +1943,9 @@ void InputComponentHost::configure_count_transform(runtime::ComponentId componen
         return;
     }
     input::TextEditorState::EditTransform transform;
-    if (state->exceed_formatter) {
+    if (state->otp) {
+        transform = state->otp->transform;
+    } else if (state->exceed_formatter) {
         transform = [this, component](std::string_view candidate) {
             const auto* state = host_->components().state<InputState>(component);
             if (!state) {
@@ -2224,6 +2277,10 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                       .value();
         // Whole physical pixels preserve the cached glyph raster phase.
         state->geometry.scroll_offset = std::ceil(scroll * display_scale_) / display_scale_;
+        if (state->otp && measurement.width < usable_width) {
+            state->geometry.scroll_offset =
+                -std::round((usable_width - measurement.width) * .5F * display_scale_) / display_scale_;
+        }
         const auto display = state->display.snapshot();
         const auto caret_stop =
             state->carets
@@ -2625,8 +2682,23 @@ void InputComponentHost::notify_change(input::TextInputOwnerId editor_id) {
     }
 }
 
+void InputComponentHost::notify_otp_edit(input::TextInputOwnerId editor_id, bool succeeded) {
+    const auto found = std::ranges::find(mounted_, editor_id, &MountedInputComponent::editor);
+    if (found == mounted_.end()) {
+        return;
+    }
+    const auto* state = host_->components().state<InputState>(found->component);
+    if (state && state->otp) {
+        auto callback = succeeded ? state->otp->committed : state->otp->aborted;
+        if (callback) {
+            callback();
+        }
+    }
+}
+
 input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& event) {
     auto result = sessions_.dispatch(event);
+    notify_otp_edit(event.session.owner, bool(result));
     if (result) {
         for (const auto& mounted : mounted_) {
             if (mounted.editor == event.session.owner) {

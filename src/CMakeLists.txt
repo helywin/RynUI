@@ -195,6 +195,7 @@ add_library(rynui_components STATIC
     component/input_material_transition.cpp
     component/input_display.cpp
     component/otp_model.cpp
+    component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp
     component/slider_component.cpp

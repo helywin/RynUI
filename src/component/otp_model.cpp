@@ -160,7 +160,7 @@ std::optional<OTPCandidate> OTPModel::prepare(std::size_t index, std::string_vie
                         owner_key_};
 }
 
-bool OTPModel::commit(OTPCandidate candidate) {
+bool OTPModel::commit(OTPCandidate& candidate) {
     require_owner();
     if (retired_ || candidate.owner_key != owner_key_ || candidate.source_revision != revision_ ||
         candidate.cells.size() != length_) {

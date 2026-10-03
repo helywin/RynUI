@@ -23,6 +23,7 @@ class DividerComponentHost;
 class SpaceAddonHost;
 class SliderComponentHost;
 class TooltipComponentHost;
+class OTPComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -184,6 +185,10 @@ public:
         return *tooltip_;
     }
 
+    [[nodiscard]] OTPComponentHost& otp() noexcept {
+        return *otp_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -277,6 +282,7 @@ private:
     std::unique_ptr<SpaceAddonHost> space_addon_;
     std::unique_ptr<SliderComponentHost> slider_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
+    std::unique_ptr<OTPComponentHost> otp_;
 };
 
 } // namespace ryn::detail

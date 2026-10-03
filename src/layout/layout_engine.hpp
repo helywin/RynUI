@@ -131,6 +131,7 @@ struct HorizontalContentGeometry final {
 // Affixes are measured first; the editable viewport receives remaining width.
 struct InputContentLayout final {
     float control_height{32.0F};
+    float preferred_width{};
     float padding_inline{11.0F};
     float padding_block{4.0F};
     float border_width{1.0F};

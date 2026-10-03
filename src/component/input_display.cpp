@@ -6,25 +6,25 @@
 
 namespace ryn::detail {
 namespace {
-constexpr std::string_view mask_glyph = "\xE2\x80\xA2";
-
-std::size_t mask_offset(std::span<const std::size_t> stops, std::size_t byte, bool trailing) noexcept {
+std::size_t mask_offset(std::span<const std::size_t> stops, std::size_t byte, bool trailing,
+                        std::size_t mask_bytes) noexcept {
     if (stops.empty()) {
         return 0;
     }
     const auto found = std::lower_bound(stops.begin(), stops.end(), byte);
     const auto index = static_cast<std::size_t>(found - stops.begin());
     if (found != stops.end() && *found == byte) {
-        return index * mask_glyph.size();
+        return index * mask_bytes;
     }
-    return (trailing ? index : index - 1) * mask_glyph.size();
+    return (trailing ? index : index - 1) * mask_bytes;
 }
 
-std::size_t unmask_offset(std::span<const std::size_t> stops, std::size_t byte, bool trailing) noexcept {
+std::size_t unmask_offset(std::span<const std::size_t> stops, std::size_t byte, bool trailing,
+                          std::size_t mask_bytes) noexcept {
     if (stops.empty()) {
         return 0;
     }
-    const auto index = std::min((byte + (trailing ? mask_glyph.size() - 1 : 0)) / mask_glyph.size(), stops.size() - 1);
+    const auto index = std::min((byte + (trailing ? mask_bytes - 1 : 0)) / mask_bytes, stops.size() - 1);
     return stops[index];
 }
 } // namespace
@@ -41,8 +41,9 @@ void InputDisplayState::reserve(std::size_t bytes) {
     pending_composition_boundaries_.reserve(bytes);
 }
 
-InputDisplayUpdate InputDisplayState::update(const input::TextEditorState& editor, StringView placeholder,
-                                             bool masked) {
+InputDisplayUpdate InputDisplayState::update(const input::TextEditorState& editor, StringView placeholder, bool masked,
+                                             StringView mask) {
+    const auto mask_glyph = mask.empty() ? std::string_view{"\xE2\x80\xA2"} : mask.bytes();
     const auto value = editor.value();
     const auto composition = editor.composition();
     const bool is_placeholder = value.empty() && !composition.active;
@@ -118,8 +119,10 @@ InputDisplayUpdate InputDisplayState::update(const input::TextEditorState& edito
     }
     if (masked && !is_placeholder) {
         const auto stops = boundaries.grapheme_bytes();
-        selection = {mask_offset(stops, selection.anchor, false), mask_offset(stops, selection.caret, true)};
-        underline = {mask_offset(stops, underline.anchor, false), mask_offset(stops, underline.caret, true)};
+        selection = {mask_offset(stops, selection.anchor, false, mask_glyph.size()),
+                     mask_offset(stops, selection.caret, true, mask_glyph.size())};
+        underline = {mask_offset(stops, underline.anchor, false, mask_glyph.size()),
+                     mask_offset(stops, underline.caret, true, mask_glyph.size())};
     }
     const bool geometry_changed = text_changed || selection != selection_ || underline != composition_ ||
                                   placeholder_ != is_placeholder || composing_ != composition.active ||
@@ -144,6 +147,7 @@ InputDisplayUpdate InputDisplayState::update(const input::TextEditorState& edito
     composing_ = composition.active;
     placeholder_ = is_placeholder;
     masked_ = masked;
+    mask_bytes_ = masked ? mask_glyph.size() : 3;
     return {text_changed, geometry_changed};
 }
 
@@ -168,7 +172,7 @@ std::size_t InputDisplayState::committed_to_display(std::size_t byte, bool trail
             logical = replacement_.begin() + (trailing ? inserted_size_ : 0);
         }
     }
-    return masked_ ? mask_offset(mask_boundaries_.grapheme_bytes(), logical, trailing) : logical;
+    return masked_ ? mask_offset(mask_boundaries_.grapheme_bytes(), logical, trailing, mask_bytes_) : logical;
 }
 
 std::size_t InputDisplayState::display_to_committed(std::size_t byte, bool trailing) const noexcept {
@@ -177,7 +181,7 @@ std::size_t InputDisplayState::display_to_committed(std::size_t byte, bool trail
         return 0;
     }
     if (masked_) {
-        byte = unmask_offset(mask_boundaries_.grapheme_bytes(), byte, trailing);
+        byte = unmask_offset(mask_boundaries_.grapheme_bytes(), byte, trailing, mask_bytes_);
     }
     if (!composing_ || byte <= replacement_.begin()) {
         return std::min(byte, committed_size_);

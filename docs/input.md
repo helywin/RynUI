@@ -4,8 +4,6 @@ Input、Password、Search 使用共用 typed Props 和长期编辑器。单行�
 
 ## 焦点引用与系统输入提示
 
-OTP 的组级候选模型按 grapheme 分格，去除 CR/LF，默认六格、容量 1–1024。单字符替换保留其他格，多字符粘贴保留前缀并替换尾部；外部值的暂不可见后缀在扩大容量时恢复，用户编辑按当前容量截断。formatter 在发布前收到以空格表示空洞的候选；异常、重入改写或退休组拒绝旧候选。authoritative 回写绕过 formatter，相同 controlled echo 保留格子空洞和本次事务。填满且不同的用户候选才标记完成。当前模型已实现，公开组件与窗口验收按 054 后续阶段推进。
-
 ```cpp
 ryn::InputRef input;
 ryn::Input(ryn::InputProps{}.ref(input)
@@ -70,6 +68,14 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 行为/样式基线核对 [6.6.5 Search](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Search.tsx)、[Search style](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/style/search.ts) 和 [Password](https://github.com/ant-design/ant-design/blob/4a39f54842eade4e565ab336ef6097cd7e723cdd/components/input/Password.tsx)，052 的 source-contract.json 保存内容 hash。HTML/DOM 事件对象由原生 typed 回调取代。
 
 ## 收尾进度
+
+`<ryn/otp.hpp>` 提供 OTPProps/OTP/OTPRef。默认六格，`.length(Prop<size_t>)` 支持 1–1024；每个格子复用长期 Input editor/IME owner，动态容量只增删尾部，保留前缀 editor、scene 和 separator 身份。`.value(Prop<String>)` 与 `.defaultValue(String)` 互斥，外部值的不可见后缀可在扩大容量时恢复，用户编辑按当前容量截断。
+
+OTP 按 grapheme 分格，去除 CR/LF，组合字与 ZWJ emoji 不拆开。单 grapheme 替换保留其他格，多 grapheme 粘贴保留前缀并替换尾部。`.formatter(function<String(String)>)` 在发布前收到以空格表示空洞的完整候选；初值也经过 formatter，后续 authoritative 回写绕过。formatter 异常、同步改写组值/容量或卸载拒绝旧候选；相同 controlled echo 保留空洞和事务。`.onInput(function<void(const vector<String>&)>)` 通知固定 length 的部分数组，`.onChange(function<void(String)>)` 仅在填满且不同于编辑前时通知完整值，两者按此顺序调用。当前格不变但尾部改变的粘贴也通知。
+
+`.size/.variant/.status/.disabled/.readOnly` 使用 reactive Input 合同，单格 padding/宽度、居中和组 gap 从 Theme 推导。`.direction(Prop<OTPDirection>)` 支持 LeftToRight/RightToLeft 组布局。可选第二参数 OTPSeparator 为 indexed 函数，接收前一格索引并返回 `optional<OTPSeparatorContent>`；空结果不挂载占位，内容必须被动，不允许创建 Button/Input 等 interaction。异常 separator 回滚本次新增资源，已有前缀保留。LayoutStyle 只控制组的外部布局。
+
+`.mask(bool)` 开启默认 bullet，`.mask(String)` 使用一个单行 grapheme，reactive 入口为 `Prop<OTPMask>`。mask 只改变 scene 显示与 byte 偏移映射；原值与明确的业务回调保持明文，copy/cut 按 Password 合同阻止原文导出。purpose/capitalization/autocorrect 是原生提示，mask 强制敏感用途并关闭 autocorrect。非法 length/mask/枚举配置拒绝且保留已接受状态，后续合法配置可继续应用。054 当前公开 API/retained 实现进入回归，真实窗口证据另行验收；Input 家族仍待混合 bidi 收尾。
 
 053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同。
 

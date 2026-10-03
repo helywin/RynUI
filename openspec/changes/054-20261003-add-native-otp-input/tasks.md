@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：公开 API 与 retained 格子
 
-- [ ] 2.1 增加 OTPProps/OTP/OTPRef/indexed typed separator，连接 OTP host、Input 单格成功编辑 hook/居中/padding/custom mask/敏感提示；实现初值/reactive Props、三尺寸/四变体/Theme/status、动态 length 前缀复用与资源清理，补 public API/布局/mask/容量/异常 separator/无关 Content 文档测试；common Debug/Release OTP/Input/Password/Search/TextArea/Theme/retained scene 及 input_scene_allocation 通过，格式和规格校验后提交。
+- [x] 2.1 增加 OTPProps/OTP/OTPRef/indexed typed separator，连接 OTP host、Input 单格成功编辑 hook/居中/padding/custom mask/敏感提示；实现初值/reactive Props、三尺寸/四变体/Theme/status、动态 length 前缀复用与资源清理，补 public API/布局/mask/容量/异常 separator/无关 Content 文档测试；common Debug/Release OTP/Input/Password/Search/TextArea/Theme/retained scene 及 input_scene_allocation 通过，格式和规格校验后提交。
 
 ## 3. 平台通用：导航与会话
 

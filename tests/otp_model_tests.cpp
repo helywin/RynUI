@@ -59,13 +59,13 @@ void edits_and_echo() {
     check(!model.commit(*single), "stale candidate committed twice");
     const auto equal = model.prepare(0, "a");
     check(equal && !equal->complete_changed, "equal edit completed again");
-    const auto tail = model.prepare(0, "ay");
+    auto tail = model.prepare(0, "ay");
     check(tail && tail->cells[0] == String{u8"a"} && tail->cells[1] == String{u8"y"} && tail->cells[2].empty() &&
               !tail->complete_changed,
           "same local character lost tail edit");
     check(model.commit(*tail), "tail commit");
     check(model.first_empty() == 2, "first empty");
-    const auto hole = model.prepare(0, "");
+    auto hole = model.prepare(0, "");
     check(hole && hole->cells[0].empty() && hole->cells[1] == String{u8"y"}, "delete shifted cells");
     model.commit(*hole);
     const auto before_echo = model.revision();

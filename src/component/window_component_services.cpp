@@ -4,6 +4,7 @@
 #include "component/space_addon.hpp"
 #include "component/slider_component.hpp"
 #include "component/tooltip_component.hpp"
+#include "component/otp_component.hpp"
 
 #include <chrono>
 
@@ -84,6 +85,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
+    otp_ = std::make_unique<OTPComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

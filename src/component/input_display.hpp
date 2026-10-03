@@ -20,7 +20,8 @@ struct InputDisplayUpdate {
 class InputDisplayState final {
 public:
     void reserve(std::size_t bytes);
-    [[nodiscard]] InputDisplayUpdate update(const input::TextEditorState&, StringView placeholder, bool masked = false);
+    [[nodiscard]] InputDisplayUpdate update(const input::TextEditorState&, StringView placeholder, bool masked = false,
+                                            StringView mask = {});
     [[nodiscard]] InputDisplaySnapshot snapshot() const noexcept;
 
     [[nodiscard]] std::uint64_t revision() const noexcept {
@@ -52,6 +53,7 @@ private:
     bool placeholder_{};
     bool composing_{};
     bool masked_{};
+    std::size_t mask_bytes_{3};
     std::uint64_t revision_{};
 };
 } // namespace ryn::detail
