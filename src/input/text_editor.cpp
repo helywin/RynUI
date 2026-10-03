@@ -6,8 +6,28 @@
 
 namespace ryn::input {
 
-TextEditorState::TextEditorState(TextInputOwnerId id, std::string_view initial, TextEditorLimits limits)
-    : id_(id), limits_(limits) {
+namespace {
+bool normalize_text(std::string& output, std::string_view text, TextEditMode mode) {
+    output.clear();
+    Utf8ScalarIterator iterator(text);
+    bool previous_cr{};
+    while (const auto scalar = iterator.next()) {
+        if (scalar->value == U'\r' || scalar->value == U'\n') {
+            if (mode == TextEditMode::MultiLine && (scalar->value == U'\r' || !previous_cr)) {
+                output.push_back('\n');
+            }
+        } else {
+            output.append(text.substr(scalar->byte_begin, scalar->byte_end - scalar->byte_begin));
+        }
+        previous_cr = scalar->value == U'\r';
+    }
+    return iterator.valid();
+}
+} // namespace
+
+TextEditorState::TextEditorState(TextInputOwnerId id, std::string_view initial, TextEditorLimits limits,
+                                 TextEditMode mode)
+    : id_(id), limits_(limits), mode_(mode) {
     const auto result = set_value(initial);
     if (!result) {
         throw std::invalid_argument("Invalid initial text editor value");
@@ -60,6 +80,11 @@ bool TextEditorState::disabled() const {
 bool TextEditorState::read_only() const {
     ensure_owner_thread();
     return read_only_;
+}
+
+TextEditMode TextEditorState::mode() const {
+    ensure_owner_thread();
+    return mode_;
 }
 
 void TextEditorState::set_eligibility(bool disabled, bool read_only) {
@@ -143,14 +168,7 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
     try {
         // Copy into a separate buffer before touching value_, so aliases into
         // the existing value (paste/replace snapshots) remain safe.
-        normalized_.clear();
-        Utf8ScalarIterator iterator(text);
-        while (const auto scalar = iterator.next()) {
-            if (scalar->value != U'\r' && scalar->value != U'\n') {
-                normalized_.append(text.substr(scalar->byte_begin, scalar->byte_end - scalar->byte_begin));
-            }
-        }
-        if (!iterator.valid()) {
+        if (!normalize_text(normalized_, text, mode_)) {
             return reject(TextEditError::invalid_utf8);
         }
         if (!inserted_boundaries_.assign(normalized_)) {
@@ -197,13 +215,8 @@ TextEditResult TextEditorState::replace(TextSelection range, std::string_view te
                 return reject(TextEditError::revision_conflict);
             }
             std::string normalized_result;
-            Utf8ScalarIterator result_iterator(formatted);
-            while (const auto scalar = result_iterator.next()) {
-                if (scalar->value != U'\r' && scalar->value != U'\n') {
-                    normalized_result.append(formatted, scalar->byte_begin, scalar->byte_end - scalar->byte_begin);
-                }
-            }
-            if (!result_iterator.valid() || !pending_boundaries_.assign(normalized_result)) {
+            if (!normalize_text(normalized_result, formatted, mode_) ||
+                !pending_boundaries_.assign(normalized_result)) {
                 return reject(TextEditError::invalid_utf8);
             }
             if (pending_boundaries_.scalar_count() > limits_.max_scalars) {
@@ -438,8 +451,11 @@ void TextEditorStore::reserve(std::size_t owners) {
     slots_.reserve(owners);
 }
 
-TextInputOwnerId TextEditorStore::create(std::string_view initial, TextEditorLimits limits) {
+TextInputOwnerId TextEditorStore::create(std::string_view initial, TextEditorLimits limits, TextEditMode mode) {
     ensure_owner_thread();
+    if (mode != TextEditMode::SingleLine && mode != TextEditMode::MultiLine) {
+        throw std::invalid_argument("Invalid text edit mode");
+    }
     std::size_t index = 0;
     while (index < slots_.size() && (slots_[index].state || slots_[index].generation == 0)) {
         ++index;
@@ -448,7 +464,7 @@ TextInputOwnerId TextEditorStore::create(std::string_view initial, TextEditorLim
         throw std::length_error("Text editor slots exhausted");
     }
     const TextInputOwnerId id{static_cast<std::uint32_t>(index), index < slots_.size() ? slots_[index].generation : 1};
-    auto state = std::shared_ptr<TextEditorState>(new TextEditorState(id, initial, limits));
+    auto state = std::shared_ptr<TextEditorState>(new TextEditorState(id, initial, limits, mode));
     if (index == slots_.size()) {
         slots_.emplace_back();
     }

@@ -57,6 +57,8 @@ struct TextReconcileResult {
 
 enum class TextCaretMove { left, right, home, end };
 
+enum class TextEditMode { SingleLine, MultiLine };
+
 struct TextEditorLimits final {
     std::size_t max_scalars{std::numeric_limits<std::size_t>::max()};
     std::size_t max_bytes{std::numeric_limits<std::size_t>::max()};
@@ -106,6 +108,7 @@ public:
     [[nodiscard]] TextEditorLimits limits() const;
     [[nodiscard]] bool disabled() const;
     [[nodiscard]] bool read_only() const;
+    [[nodiscard]] TextEditMode mode() const;
     void set_eligibility(bool disabled, bool read_only);
     void reserve(std::size_t bytes);
     [[nodiscard]] TextCompositionView composition() const;
@@ -142,7 +145,7 @@ public:
 
 private:
     friend class TextEditorStore;
-    TextEditorState(TextInputOwnerId id, std::string_view initial, TextEditorLimits limits);
+    TextEditorState(TextInputOwnerId id, std::string_view initial, TextEditorLimits limits, TextEditMode mode);
     void ensure_owner_thread() const;
     [[nodiscard]] TextEditResult reject(TextEditError error);
     [[nodiscard]] TextEditResult replace(TextSelection range, std::string_view text, bool authoritative,
@@ -162,6 +165,7 @@ private:
     TextBoundaryMap inserted_boundaries_;
     TextSelection selection_;
     TextEditorLimits limits_;
+    TextEditMode mode_{TextEditMode::SingleLine};
     TextEditorDiagnostics diagnostics_;
     TextHistory history_;
     std::string history_navigation_;
@@ -198,7 +202,8 @@ public:
     void attach_observer(TextEditorObserver& observer);
     void detach_observer(TextEditorObserver& observer);
     void reserve(std::size_t owners);
-    [[nodiscard]] TextInputOwnerId create(std::string_view initial = {}, TextEditorLimits limits = {});
+    [[nodiscard]] TextInputOwnerId create(std::string_view initial = {}, TextEditorLimits limits = {},
+                                          TextEditMode mode = TextEditMode::SingleLine);
     bool destroy(TextInputOwnerId id);
     [[nodiscard]] TextEditorState* find(TextInputOwnerId id);
     [[nodiscard]] const TextEditorState* find(TextInputOwnerId id) const;

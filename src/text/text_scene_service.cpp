@@ -674,6 +674,15 @@ bool TextSceneService::synchronize_caret_map(TextSceneId id, text::TextCaretMap&
                                output);
 }
 
+bool TextSceneService::synchronize_line_caret_map(TextSceneId id, text::TextCaretMap& output) {
+    ensure_owner_thread();
+    auto& state = *require_record(id).state;
+    if (!state.synchronize()) {
+        return false;
+    }
+    return engine_->map_carets(state.shaped(), state.content(), state.revision(), state.measurement(), output);
+}
+
 bool TextSceneService::synchronize_measurement(TextSceneId id, float width_constraint) {
     ensure_owner_thread();
     auto& record = require_record(id);

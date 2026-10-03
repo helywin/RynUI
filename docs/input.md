@@ -69,4 +69,6 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 ## 收尾进度
 
+053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同，TextArea 公开组件、交互和窗口验收在后续阶段接入，尚不能将其描述为完整 TextArea。
+
 052 已实现单行家族的变体、统计及操作配置，平台通用 Debug/Release 85/85 与 Windows 原生 Debug/Release 20/20、十轮 D3D12 窗口及 230 张 GPU 读回已通过；[Windows 证据](../openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md)保存复核方式。Linux 保持独立待验收。Gallery 包含四变体、grapheme 超限、自定义裁剪、Email/ref、vector 清空、Hover Password、受控显隐以及 Dark Compact Filled/Small Underlined Search 的稳定 ID 样本。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

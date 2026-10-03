@@ -1,5 +1,6 @@
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "text/text_scene_service.hpp"
+#include "text/text_caret_map.hpp"
 
 #include <array>
 #include <cstddef>
@@ -523,6 +524,26 @@ void test_culling_hides_coverage_without_shape_and_restores_pending_updates() {
     require(fixture.service.synchronize(id, placement) && fixture.service.primitive(id).instances.count == 0,
             "pending empty content restored old glyphs");
 }
+
+void test_line_caret_mapping_tracks_retained_measurement() {
+    Fixture fixture;
+    const auto id = fixture.create(ryn::String{u8"abcdefgh\n\nffi\n"});
+    ryn::text::TextCaretMap map;
+    require(fixture.service.synchronize_measurement(id, 30) && fixture.service.synchronize_line_caret_map(id, map),
+            "line scene caret mapping failed");
+    const auto& state = fixture.service.text_state(id);
+    const auto shapes = state.counters().shape_count;
+    const auto narrow_lines = map.line_count();
+    require(narrow_lines == state.measurement().lines.size() && narrow_lines > 4 &&
+                map.at(state.content().size_bytes(), state.revision())->line == narrow_lines - 1,
+            "line scene lost wrap/trailing empty paragraph");
+    require(fixture.service.synchronize_measurement(id, 300) && fixture.service.synchronize_line_caret_map(id, map) &&
+                map.line_count() == 4 && state.counters().shape_count == shapes,
+            "line map reflow reshaped or retained stale width");
+    require(fixture.service.set_content(id, ryn::String{}) && fixture.service.synchronize_line_caret_map(id, map) &&
+                map.line_count() == 1 && map.stops().size() == 1 && map.at(0, state.revision()),
+            "empty line map retained previous carets");
+}
 } // namespace
 
 int main() {
@@ -535,6 +556,7 @@ int main() {
         test_ordered_scene_batch_matches_serial_and_recovers_after_cancel();
         test_rotation_preserves_coverage_and_survives_rebuild();
         test_culling_hides_coverage_without_shape_and_restores_pending_updates();
+        test_line_caret_mapping_tracks_retained_measurement();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

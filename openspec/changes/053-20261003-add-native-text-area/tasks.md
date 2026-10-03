@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：多行编辑与光标基础
 
-- [ ] 1.1 增加固定 TextEditMode 和共用 LF 归一化，实现按实际 TextMeasurement 行映射的 caret affinity/二维查找/行移动；补 docs/input.md 与 CRLF/formatter/limits/history/controlled/empty/trailing LF/ligature/Unicode/wrap/异常原子性测试，在 Windows windows-msvc-headless Debug/Release 构建并运行 text_editor/text_history/text_reconcile/text_caret_map/text_scene_service/input_display/selection allocation 测试，format-code/doctor/strict validate/diff 通过后提交。
+- [x] 1.1 增加固定 TextEditMode 和共用 LF 归一化，实现按实际 TextMeasurement 行映射的 caret affinity/二维查找/行移动；补 docs/input.md 与 CRLF/formatter/limits/history/controlled/empty/trailing LF/ligature/Unicode/wrap/异常原子性测试，在 Windows windows-msvc-headless Debug/Release 构建并运行 text_editor/text_history/text_reconcile/text_caret_map/text_scene_service/input_display/selection allocation 测试，format-code/doctor/strict validate/diff 通过后提交。
 
 ## 2. 平台通用：TextArea API 与尺寸
 

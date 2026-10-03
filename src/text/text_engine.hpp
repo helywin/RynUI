@@ -169,6 +169,8 @@ public:
     explicit TextEngine(font::FontRuntime& fonts) noexcept;
     [[nodiscard]] bool map_carets(const ShapedText&, StringView source, std::uint64_t revision, float baseline,
                                   TextCaretMap& output) const;
+    [[nodiscard]] bool map_carets(const ShapedText&, StringView source, std::uint64_t revision, const TextMeasurement&,
+                                  TextCaretMap& output) const;
 
     [[nodiscard]] TextShapeResult shape(StringView text, std::span<const font::FontIdentity> fallback_chain) const;
 

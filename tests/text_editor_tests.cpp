@@ -176,6 +176,71 @@ void limits_and_words() {
     ok(editor.select_word(99));
     expected(editor, "", {});
 }
+
+void multiline_transactions() {
+    TextEditorStore store;
+    auto& single = store.require(store.create("a\r\nb\rc\n"));
+    check(single.mode() == TextEditMode::SingleLine && single.value() == "abc", "single-line compatibility");
+    auto& editor = store.require(store.create("a\r\nb\rc\n", {}, TextEditMode::MultiLine));
+    expected(editor, "a\nb\nc\n", {});
+    check(editor.mode() == TextEditMode::MultiLine, "multiline mode missing");
+    ok(editor.move(TextCaretMove::end));
+    const auto initial = std::string(editor.value());
+    ok(editor.commit_text(bytes(u8"中é\r\n🙂")));
+    check(editor.value() == initial + bytes(u8"中é\n🙂"), "multiline commit normalization");
+    ok(editor.undo());
+    expected(editor, initial, {initial.size(), initial.size()});
+    ok(editor.redo());
+    check(editor.value() == initial + bytes(u8"中é\n🙂"), "multiline redo");
+    ok(editor.note_emitted_value());
+    const auto echo = editor.reconcile(editor.value(), editor.edit_echo());
+    check(echo.echoed && editor.history().undo_count == 1, "multiline controlled echo lost history");
+    int calls{};
+    editor.set_edit_transform([&](std::string_view candidate) {
+        ++calls;
+        check(candidate.ends_with("\n"), "formatter received unnormalized CR");
+        return std::string{"X\r\nY\rZ"};
+    });
+    ok(editor.commit_text("\r\n"));
+    check(editor.value() == "X\nY\nZ" && calls == 1, "formatter result lost multiline normalization");
+    ok(editor.undo());
+    ok(editor.redo());
+    check(editor.value() == "X\nY\nZ" && calls == 1, "history reran formatter");
+    const auto value = std::string(editor.value());
+    const auto selection = editor.selection();
+    const auto history = editor.history();
+    editor.set_edit_transform([](std::string_view) { return std::string{"valid\n\xff"}; });
+    check(editor.commit_text("q").error == TextEditError::invalid_utf8, "invalid multiline formatter accepted");
+    expected(editor, value, selection);
+    check(editor.history().undo_count == history.undo_count && editor.history().redo_count == history.redo_count &&
+              editor.history().payload_bytes == history.payload_bytes,
+          "invalid multiline formatter changed history");
+    editor.set_edit_transform([&](std::string_view) {
+        ok(editor.set_value("external\r\nvalue"));
+        return std::string{"stale\r\nvalue"};
+    });
+    check(editor.commit_text("q").error == TextEditError::revision_conflict && editor.value() == "external\nvalue",
+          "multiline formatter overwrote authoritative reentry");
+    auto& limited = store.require(store.create({}, {3}, TextEditMode::MultiLine));
+    const auto truncated = limited.commit_text(bytes(u8"é\n🙂"));
+    check(truncated && truncated.truncated && limited.value() == bytes(u8"é\n"), "multiline grapheme/scalar limit");
+    const auto before = std::string(limited.value());
+    check(limited.commit_text("\n\xff").error == TextEditError::invalid_utf8 && limited.value() == before,
+          "invalid multiline input partially published");
+    auto& byte_limited = store.require(store.create("a\n", {99, 3}, TextEditMode::MultiLine));
+    ok(byte_limited.move(TextCaretMove::end));
+    check(byte_limited.commit_text(bytes(u8"中")).error == TextEditError::capacity_exceeded &&
+              byte_limited.value() == "a\n",
+          "multiline byte limit partially published");
+    const auto size = store.size();
+    bool rejected{};
+    try {
+        static_cast<void>(store.create("x", {}, static_cast<TextEditMode>(99)));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && store.size() == size, "invalid edit mode leaked owner");
+}
 } // namespace
 
 int main() {
@@ -183,6 +248,7 @@ int main() {
         lifecycle();
         selection_and_editing();
         limits_and_words();
+        multiline_transactions();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
