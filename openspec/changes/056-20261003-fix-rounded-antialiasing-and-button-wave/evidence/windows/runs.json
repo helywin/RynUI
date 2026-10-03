@@ -8,7 +8,7 @@
     "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
     "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
     "log": "debug-system.log",
-    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "log_sha256": "d6022462995677601c2b19ace8d9c4cffd0fe6f9b1ae0abd245f6cb20101be57",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -492,7 +492,7 @@
     "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
     "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
     "log": "debug-scale-1.log",
-    "log_sha256": "a0925db47389eba72076bb94e2a3ef5f926df530f8784f9332345d15f4463ae5",
+    "log_sha256": "76bcd5995ea93228130fcdd42feebb7f7ebcc7fc6288591264fc4c550b73ce72",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -976,7 +976,7 @@
     "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
     "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
     "log": "debug-scale-1.25.log",
-    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "log_sha256": "d6022462995677601c2b19ace8d9c4cffd0fe6f9b1ae0abd245f6cb20101be57",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -1460,7 +1460,7 @@
     "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
     "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
     "log": "debug-scale-1.5.log",
-    "log_sha256": "e982c2d0e14b9a9147145637faf54899bbb61843f338dccb5768316b1300b178",
+    "log_sha256": "0294be6cb62e115bd031ce42977550875cc349db7ebbbcbb27157414ae5078a8",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -1944,7 +1944,7 @@
     "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
     "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
     "log": "debug-scale-2.log",
-    "log_sha256": "206f8ef9966218ffe1d2bc46181cab87f51bc3cdd23597916e263548f65f74a0",
+    "log_sha256": "22cbb9fc68ec5790f39a2f3cbee58082a5031d1e9f09cd166122726bcb316e41",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -2428,7 +2428,7 @@
     "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
     "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
     "log": "release-system.log",
-    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "log_sha256": "d6022462995677601c2b19ace8d9c4cffd0fe6f9b1ae0abd245f6cb20101be57",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -2912,7 +2912,7 @@
     "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
     "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
     "log": "release-scale-1.log",
-    "log_sha256": "a0925db47389eba72076bb94e2a3ef5f926df530f8784f9332345d15f4463ae5",
+    "log_sha256": "76bcd5995ea93228130fcdd42feebb7f7ebcc7fc6288591264fc4c550b73ce72",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -3396,7 +3396,7 @@
     "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
     "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
     "log": "release-scale-1.25.log",
-    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "log_sha256": "d6022462995677601c2b19ace8d9c4cffd0fe6f9b1ae0abd245f6cb20101be57",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -3880,7 +3880,7 @@
     "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
     "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
     "log": "release-scale-1.5.log",
-    "log_sha256": "e982c2d0e14b9a9147145637faf54899bbb61843f338dccb5768316b1300b178",
+    "log_sha256": "0294be6cb62e115bd031ce42977550875cc349db7ebbbcbb27157414ae5078a8",
     "files": [
       {
         "path": "coverage-dark.csv",
@@ -4364,7 +4364,7 @@
     "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
     "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
     "log": "release-scale-2.log",
-    "log_sha256": "206f8ef9966218ffe1d2bc46181cab87f51bc3cdd23597916e263548f65f74a0",
+    "log_sha256": "22cbb9fc68ec5790f39a2f3cbee58082a5031d1e9f09cd166122726bcb316e41",
     "files": [
       {
         "path": "coverage-dark.csv",

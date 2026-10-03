@@ -125,7 +125,7 @@ def main():
             result = subprocess.run(arguments, cwd=ROOT, capture_output=True, timeout=90)
             log = (result.stdout + result.stderr).decode("utf-8", errors="replace").replace("\r\n", "\n")
             log_path = DEST / (identity + ".log")
-            log_path.write_text(log, encoding="utf-8")
+            log_path.write_text(log, encoding="utf-8", newline="\n")
             if result.returncode or before != digest(executable):
                 raise RuntimeError(identity + " failed: " + log)
             actual_scale = validate_log(log, scale)
@@ -161,7 +161,7 @@ def main():
                          "log": log_path.name, "log_sha256": digest(log_path), "files": files,
                          "pixel_tolerance": TOLERANCE, "pixel_checks": checks})
             print(f"{identity}: {len(NAMES)} GPU readbacks, {len(checks)} pixel regions passed", flush=True)
-    (DEST / "runs.json").write_text(json.dumps(runs, indent=2) + "\n", encoding="utf-8")
+    (DEST / "runs.json").write_text(json.dumps(runs, indent=2) + "\n", encoding="utf-8", newline="\n")
     verify_saved_runs()
     checks = [check for run in runs for check in run["pixel_checks"]]
     print(f"GPU pixels={sum(check['pixels'] for check in checks)} "
