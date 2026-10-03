@@ -1,0 +1,49 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   7: rynui.icon_component
+ 1/20 Test   #7: rynui.icon_component .............   Passed    0.21 sec
+      Start  10: rynui.text_input_session
+ 2/20 Test  #10: rynui.text_input_session .........   Passed    0.01 sec
+      Start  73: rynui.input_public_api
+ 3/20 Test  #73: rynui.input_public_api ...........   Passed    0.01 sec
+      Start  74: rynui.search_public_api
+ 4/20 Test  #74: rynui.search_public_api ..........   Passed    0.01 sec
+      Start  75: rynui.search_component
+ 5/20 Test  #75: rynui.search_component ...........   Passed    1.17 sec
+      Start 108: rynui.default_font_chain
+ 6/20 Test #108: rynui.default_font_chain .........   Passed    0.48 sec
+      Start 123: rynui.input_variant
+ 7/20 Test #123: rynui.input_variant ..............   Passed    1.99 sec
+      Start 124: rynui.input_count
+ 8/20 Test #124: rynui.input_count ................   Passed    0.15 sec
+      Start 125: rynui.input_actions
+ 9/20 Test #125: rynui.input_actions ..............   Passed    0.15 sec
+      Start 127: rynui.input_component
+10/20 Test #127: rynui.input_component ............   Passed    1.46 sec
+      Start 128: rynui.password_component
+11/20 Test #128: rynui.password_component .........   Passed    0.09 sec
+      Start 145: rynui.button_component
+12/20 Test #145: rynui.button_component ...........   Passed    0.75 sec
+      Start 150: rynui.space_compact
+13/20 Test #150: rynui.space_compact ..............   Passed    0.76 sec
+      Start 157: rynui.token_gallery_frame
+14/20 Test #157: rynui.token_gallery_frame ........   Passed    6.88 sec
+      Start 211: rynui.pointer_route
+15/20 Test #211: rynui.pointer_route ..............   Passed    0.01 sec
+      Start 218: rynui.focus_lifecycle
+16/20 Test #218: rynui.focus_lifecycle ............   Passed    0.01 sec
+      Start 224: rynui.text_scene_service
+17/20 Test #224: rynui.text_scene_service .........   Passed    0.19 sec
+      Start 226: rynui.text_component
+18/20 Test #226: rynui.text_component .............   Passed    0.32 sec
+      Start 228: rynui.typography_interaction
+19/20 Test #228: rynui.typography_interaction .....   Passed    0.14 sec
+      Start 231: rynui.text_component_frame
+20/20 Test #231: rynui.text_component_frame .......   Passed    0.04 sec
+
+100% tests passed out of 20
+
+Total Test time (real) =  14.89 sec

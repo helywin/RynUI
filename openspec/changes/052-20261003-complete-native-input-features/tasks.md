@@ -24,7 +24,7 @@
 
 ### Windows
 
-- [ ] 6.1 使用 windows-msvc Debug/Release 构建受影响 native tests 和 Gallery，运行原生 affected CTest、default smoke 及专用真实 D3D12/DXIL 窗口验收；记录四变体/Theme/status/count/自定义图标/清空/密码/Search/焦点与系统属性、1/1.25/1.5/2 和系统缩放、resize/popup/idle/dispose 的 GPU 读回 hash、截图及日志，审核图像并运行可复核脚本后独立提交 Windows evidence。
+- [x] 6.1 使用 windows-msvc Debug/Release 构建受影响 native tests 和 Gallery，运行原生 affected CTest、default smoke 及专用真实 D3D12/DXIL 窗口验收；记录四变体/Theme/status/count/自定义图标/清空/密码/Search/焦点与系统属性、1/1.25/1.5/2 和系统缩放、resize/popup/idle/dispose 的 GPU 读回 hash、截图及日志，审核图像并运行可复核脚本后独立提交 Windows evidence。
 
 ### Linux
 

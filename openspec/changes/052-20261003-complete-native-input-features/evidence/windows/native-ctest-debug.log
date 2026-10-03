@@ -1,0 +1,78 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/27] Linking CXX executable tests\Debug\rynui_input_public_api_tests.exe
+[2/27] Linking CXX executable tests\Debug\rynui_search_public_api_tests.exe
+[3/27] Building CXX object tests\CMakeFiles\rynui_text_component_frame_tests.dir\Debug\text_component_frame_tests.cpp.obj
+[4/27] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Debug\password_component_tests.cpp.obj
+[5/27] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Debug\token_gallery_frame_tests.cpp.obj
+[6/27] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Debug\typography_interaction_tests.cpp.obj
+[7/27] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Debug\search_component_tests.cpp.obj
+[8/27] Building CXX object tests\CMakeFiles\rynui_input_variant_tests.dir\Debug\input_variant_tests.cpp.obj
+[9/27] Building CXX object tests\CMakeFiles\rynui_icon_component_tests.dir\Debug\icon_component_tests.cpp.obj
+[10/27] Building CXX object tests\CMakeFiles\rynui_text_component_tests.dir\Debug\text_component_tests.cpp.obj
+[11/27] Building CXX object tests\CMakeFiles\rynui_input_actions_tests.dir\Debug\input_actions_tests.cpp.obj
+[12/27] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Debug\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(610): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(618): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[13/27] Building CXX object tests\CMakeFiles\rynui_space_compact_tests.dir\Debug\space_compact_tests.cpp.obj
+[14/27] Linking CXX executable tests\Debug\rynui_text_component_frame_tests.exe
+[15/27] Linking CXX executable tests\Debug\rynui_password_component_tests.exe
+[16/27] Linking CXX executable tests\Debug\rynui_typography_interaction_tests.exe
+[17/27] Linking CXX executable tests\Debug\rynui_search_component_tests.exe
+[18/27] Building CXX object tests\CMakeFiles\rynui_button_component_tests.dir\Debug\button_component_tests.cpp.obj
+[19/27] Linking CXX executable tests\Debug\rynui_input_variant_tests.exe
+[20/27] Linking CXX executable tests\Debug\rynui_icon_component_tests.exe
+[21/27] Linking CXX executable tests\Debug\rynui_text_component_tests.exe
+[22/27] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[23/27] Linking CXX executable tests\Debug\rynui_input_actions_tests.exe
+[24/27] Linking CXX executable tests\Debug\rynui_input_component_tests.exe
+[25/27] Linking CXX executable tests\Debug\rynui_space_compact_tests.exe
+[26/27] Linking CXX executable tests\Debug\rynui_button_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   7: rynui.icon_component
+ 1/20 Test   #7: rynui.icon_component .............   Passed    0.31 sec
+      Start  10: rynui.text_input_session
+ 2/20 Test  #10: rynui.text_input_session .........   Passed    0.01 sec
+      Start  73: rynui.input_public_api
+ 3/20 Test  #73: rynui.input_public_api ...........   Passed    0.03 sec
+      Start  74: rynui.search_public_api
+ 4/20 Test  #74: rynui.search_public_api ..........   Passed    0.03 sec
+      Start  75: rynui.search_component
+ 5/20 Test  #75: rynui.search_component ...........   Passed    1.86 sec
+      Start 108: rynui.default_font_chain
+ 6/20 Test #108: rynui.default_font_chain .........   Passed    0.57 sec
+      Start 123: rynui.input_variant
+ 7/20 Test #123: rynui.input_variant ..............   Passed    3.00 sec
+      Start 124: rynui.input_count
+ 8/20 Test #124: rynui.input_count ................   Passed    0.23 sec
+      Start 125: rynui.input_actions
+ 9/20 Test #125: rynui.input_actions ..............   Passed    0.25 sec
+      Start 127: rynui.input_component
+10/20 Test #127: rynui.input_component ............   Passed    2.16 sec
+      Start 128: rynui.password_component
+11/20 Test #128: rynui.password_component .........   Passed    0.14 sec
+      Start 145: rynui.button_component
+12/20 Test #145: rynui.button_component ...........   Passed    1.24 sec
+      Start 150: rynui.space_compact
+13/20 Test #150: rynui.space_compact ..............   Passed    1.10 sec
+      Start 157: rynui.token_gallery_frame
+14/20 Test #157: rynui.token_gallery_frame ........   Passed   25.65 sec
+      Start 211: rynui.pointer_route
+15/20 Test #211: rynui.pointer_route ..............   Passed    0.03 sec
+      Start 218: rynui.focus_lifecycle
+16/20 Test #218: rynui.focus_lifecycle ............   Passed    0.03 sec
+      Start 224: rynui.text_scene_service
+17/20 Test #224: rynui.text_scene_service .........   Passed    0.27 sec
+      Start 226: rynui.text_component
+18/20 Test #226: rynui.text_component .............   Passed    0.52 sec
+      Start 228: rynui.typography_interaction
+19/20 Test #228: rynui.typography_interaction .....   Passed    0.25 sec
+      Start 231: rynui.text_component_frame
+20/20 Test #231: rynui.text_component_frame .......   Passed    0.07 sec
+
+100% tests passed out of 20
+
+Total Test time (real) =  38.04 sec

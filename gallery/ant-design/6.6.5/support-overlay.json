@@ -478,7 +478,8 @@
         "test:rynui.input_variant",
         "test:rynui.input_count",
         "test:rynui.input_actions",
-        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/common/actions.md"
+        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/common/actions.md",
+        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md"
       ]
     },
     {
