@@ -8,7 +8,7 @@ Button 当前只有一个 wave_progress 通道，以 slow/ease_out 同时更新�
 
 ## Goals / Non-Goals
 
-Goals：修正共同 coverage 和 Button 官方默认反馈；一个物理像素的 AA 不能随 logical DPI 放大，动画只改既有 geometry/material，独立 fade 不提前移除 wave。具体范围与非目标见 proposal。
+Goals：修正共同 coverage、RadioButton 填充合成和 Button/Switch 官方反馈；一个物理像素的 AA 不能随 logical DPI 放大，动画只改既有 geometry/material，独立 fade 不提前移除 wave。具体范围与非目标见 proposal。
 
 ## Decisions
 
@@ -24,6 +24,16 @@ Goals：修正共同 coverage 和 Button 官方默认反馈；一个物理像素
 
 短时 ease_out + 固定厚度游离 ring 无法表达官方 box-shadow，不保留为默认。依赖 DOM/浏览器或自定义顶点路径都不必要。官方 raf 对尺寸同步的职责由原生 retained layout 后发布承担；无须复制 React。
 
+### RadioButton 连续填充
+
+旧实现将背景裁到内侧边界，边框在同一边界取互补覆盖。两者按 straight-alpha 分别叠加时，0.5与0.5合成只有0.75覆盖，会露出底色，形成偏移浅线。背景改为覆盖完整 border box，异色边框绘制在背景之上；同色边框隐藏，仅用一层背景表达完整外形，避免外侧 AA 重叠加深。四象限与连接边优先级、retained range 保持，零尺寸合法。测试取实际 scene 的填充/边框合成，检查边界内部颜色连续及混合圆角。
+
+### Switch 手柄连续按压反馈
+
+官方6.6.5的 handle 基础位置与 ::before 两个逻辑 inset 均使用 motionDurationMid/ease-in-out，active 将向轨道内侧的 inset 设为-30%。旧实现宽度按 pressed 布尔值立即变化，而位置独立动画，故释放时瞬间缩回圆形后才移动。保留基础手柄锚点，新增逻辑 start/end 两个0..1动画值，分别乘 handleSize×30%；unchecked 向 end 拉长、checked 向 start 拉长，RTL镜像。释放将两端目标归零，与 checked 位置通道同时过渡；中途重按、受控 checked 更新从当前呈现值 retarget。伸长限制在轨道合法宽度内，手柄阴影随同一几何更新；loading 图标仍以基础手柄中心定位。
+
+只更改 retained geometry，不重挂或重测内容。普通策略按压与释放都动画；reduced-motion/motion=false 直接到目标值并清理通道，disabled/loading/blur/失活取消按压目标，销毁清理整个 scope。平台通用测试覆盖两种尺寸、LTR/RTL、双向切换、快速重按、鼠标/键盘、策略/生命周期与 idle；Windows 实际窗口捕获按压/释放中间帧和 RadioButton 填充，Linux 独立记录。
+
 ## Risks / Trade-offs
 
 - [边缘变淡或出现漏色] → 一像素 AA、真实浅/深背景、细 border 与 fill 叠层、四象限 seam、ancestor clip 对照；校验实际像素不是仅 source 字串。
@@ -37,4 +47,4 @@ Goals：修正共同 coverage 和 Button 官方默认反馈；一个物理像素
 
 ## References
 
-2026-10-03核对官方版本6.6.5：[wave/style.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/style.ts)、[WaveEffect.tsx](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/WaveEffect.tsx)、[util.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/util.ts)、[Button.tsx](https://github.com/ant-design/ant-design/blob/6.6.5/components/button/Button.tsx)、[seed.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/theme/themes/seed.ts)。官方参考只证明设计，验收使用本 change 的实际测试与 GPU 证据。
+2026-10-03核对官方版本6.6.5：[wave/style.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/style.ts)、[WaveEffect.tsx](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/WaveEffect.tsx)、[util.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/util.ts)、[Button.tsx](https://github.com/ant-design/ant-design/blob/6.6.5/components/button/Button.tsx)、[Switch style/index.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/switch/style/index.ts)、[seed.ts](https://github.com/ant-design/ant-design/blob/6.6.5/components/theme/themes/seed.ts)。官方参考只证明设计，验收使用本 change 的实际测试与 GPU 证据。

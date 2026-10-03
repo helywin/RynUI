@@ -4,6 +4,14 @@
 
 ## ADDED Requirements
 
+### Requirement: RadioButton border-box fill stays continuous
+
+RadioButton 背景 SHALL 覆盖完整 border box，并在异色边框之下连续填充。同色背景/边框 MUST 以一次外缘覆盖呈现，避免内部 AA 叠加露出底色或外缘重复加深；混合圆角、连接边、主题与 retained 局部更新保持。
+
+#### Scenario: Solid selected mixed corners
+- **WHEN** Solid RadioButton 首尾、RTL或竖直连接按钮在分数坐标与DPI呈现
+- **THEN** 背景内部不存在偏移浅框，曲面外缘连续抗锯齿，连接边保留优先级，更新不重挂内容
+
 ### Requirement: Rounded zero-blur coverage is antialiased
 
 圆角填充与零 blur rounded effect SHALL 在曲面边界提供连续像素覆盖，不使用0/1硬阈值。覆盖过渡 MUST 使用固定物理像素尺度，不因 display scale 放大；效果不得改变 logical bounds、布局或命中。

@@ -10,6 +10,8 @@
 - Button 默认 wave 改为沿真实轮廓扩展的外侧色带，0→6 logical px / 400ms，opacity 0.2→0 / 2000ms，分别使用 motionEaseOutCirc；颜色按可见 border、background、theme primary 回退。保留 reactive 开关、typed token override、布局/焦点/生命周期和 reduced-motion 合同。
 - **BREAKING**：修正 Button wave 默认视觉与时序，wave_width 默认改为最终外扩色带的最大厚度 6，override 定义为随扩展增长的最终厚度（受 wave_spread 限制），不再是固定厚度的游离细环；公共类型与方法保持。
 - 增加共同数学/packed/retained/lifecycle 回归，Windows 独立真实 shader/GPU 截图与数值检查；Linux 独立验收项不以 Windows 结果代替。
+- 修正 RadioButton 背景与边框各自抗锯齿后叠加形成的浅色内框；背景覆盖完整 border box，同色边框避免重复覆盖外缘，保留混合圆角与连接边。
+- Switch 按官方保留向内拉长30%的按压反馈，将逻辑两端伸长与基础手柄位置同时按 motionDurationMid/ease-in-out 过渡，释放或中途反向从当前呈现值连续衔接。
 
 ## Capabilities
 
@@ -19,6 +21,7 @@
 
 - `shadow-rendering`：追加零 blur 圆角覆盖与 inset mask 的像素抗锯齿合同。
 - `button-native-variants`：追加锁定官方 wave 的形状、独立时序、颜色和 retained 生命周期合同。
+- `switch-presentation`：沿用046能力路径，追加按压/释放手柄连续过渡合同。
 
 ### Modified Capabilities
 
@@ -26,4 +29,4 @@
 
 ## Impact
 
-`graphics/rounded_effect`、renderer/common reference、`rounded_effect.hlsl` 与 source lock；Button component 的独立动画通道和 Theme token 默认；相应 tests、Gallery 专用 acceptance、渲染/按钮参考文档。不增加第三方依赖、MSAA 开关或组件私有上传；Core 保持平台/renderer 隔离。非目标为其他控件 wave 时序、Happy Work 特效、Web DOM API、色彩空间改造或新的 GPU backend。代码修复作用于共享路径，实际 GPU 证据分别记录平台。
+`graphics/rounded_effect`、renderer/common reference、`rounded_effect.hlsl` 与 source lock；Button component 的独立动画通道和 Theme token 默认；Selection component 的 RadioButton 填充合成及 Switch 手柄伸长动画；相应 tests、Gallery 专用 acceptance、渲染/按钮/开关参考文档。不增加第三方依赖、MSAA 开关或组件私有上传；Core 保持平台/renderer 隔离。非目标为其他控件 wave 时序、Happy Work 特效、Web DOM API、色彩空间改造或新的 GPU backend。代码修复作用于共享路径，实际 GPU 证据分别记录平台。
