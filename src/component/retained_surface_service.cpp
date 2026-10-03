@@ -346,8 +346,11 @@ std::size_t RetainedSurfaceService::update_content_range(RetainedSurfaceId id,
     ensure_owner_thread();
     auto& record = require_content(id);
     validate_content_visuals(visuals);
+    const auto old_range = record.range;
     const auto updates = republish_range(record.range, visuals);
-    publish_content(record);
+    if (old_range != record.range) {
+        publish_content(record);
+    }
     return updates;
 }
 

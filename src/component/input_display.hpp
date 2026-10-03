@@ -30,9 +30,10 @@ public:
 
     [[nodiscard]] std::size_t committed_to_display(std::size_t byte, bool trailing = false) const noexcept;
     [[nodiscard]] std::size_t display_to_committed(std::size_t byte, bool trailing = false) const noexcept;
-    [[nodiscard]] std::optional<float> scroll_for_caret(const text::TextCaretMap&, std::uint64_t revision,
-                                                        float viewport_width, float previous_offset,
-                                                        float caret_width = 1) const noexcept;
+    [[nodiscard]] std::optional<float>
+    scroll_for_caret(const text::TextCaretMap&, std::uint64_t revision, float viewport_width, float previous_offset,
+                     float caret_width = 1,
+                     text::TextCaretAffinity affinity = text::TextCaretAffinity::Downstream) const noexcept;
 
 private:
     std::string text_;

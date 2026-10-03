@@ -56,6 +56,14 @@ struct TextSceneServiceCounters final {
     std::uint64_t ordered_scene_rebuilds{};
 };
 
+struct TextCoverageClip final {
+    std::size_t line{};
+    std::size_t byte_begin{};
+    std::size_t byte_end{};
+    runtime::Rect rect;
+    friend bool operator==(const TextCoverageClip&, const TextCoverageClip&) = default;
+};
+
 class TextSceneService final {
 public:
     TextSceneService(font::FontRuntime& fonts, text::TextEngine& engine,
@@ -96,6 +104,9 @@ public:
     // World logical coverage per measured line; absent entries are hidden.
     // Empty span restores the common placement clip for all lines.
     bool set_line_clips(TextSceneId id, std::span<const runtime::Rect> clips);
+    // Logical ownership and visual coverage both restrict the shared selected view.
+    // Empty coverage hides every instance without rebuilding or reshaping.
+    bool set_coverage_clips(TextSceneId id, std::span<const TextCoverageClip> clips);
     // Pivot is relative to the content origin; rotation precedes scroll translation.
     bool set_transform(TextSceneId id, graphics::GlyphTransform transform);
     // Splits a requested translation into an aligned scroll patch and the

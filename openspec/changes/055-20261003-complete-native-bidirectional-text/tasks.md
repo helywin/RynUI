@@ -12,7 +12,7 @@
 ## 3. 平台通用：光标、选择与输入
 
 - [x] 3.1 实现CaretMap逻辑/视觉双索引、run/soft-wrap affinity、visual adjacent/edge/nearest和无分配range coverage；补RTL/混合/ligature/换行/相同x/非法revision/query allocation测试及文档，common Debug/Release caret/text/display/editor回归通过，格式/规格校验后提交。
-- [ ] 3.2 接入Input/TextArea共用affinity与视觉键盘/指针导航、非连续selection/preedit/selected view clip、IME area/display mask、logical clipboard/删除/history；补真实端口fixture、生命周期/受控/RTL/多行/Password/OTP/零分配idle测试与docs/input.md，common Debug/Release Input家族/interaction/session/clipboard/Typography及input_scene_allocation回归通过，格式/规格校验后提交。
+- [x] 3.2 接入Input/TextArea共用affinity与视觉键盘/指针导航、非连续selection/preedit/selected view clip、IME area/display mask、logical clipboard/删除/history；补真实端口fixture、生命周期/受控/RTL/多行/Password/OTP/零分配idle测试与docs/input.md，common Debug/Release Input家族/interaction/session/clipboard/Typography及input_scene_allocation回归通过，格式/规格校验后提交。
 
 ## 4. 平台通用：公开方向与Gallery收尾
 

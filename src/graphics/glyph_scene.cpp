@@ -17,6 +17,7 @@ struct PendingGlyphText final {
     std::vector<GlyphInstance> instances;
     std::vector<GlyphDrawRange> draw_ranges;
     std::vector<GlyphInstanceRange> line_ranges;
+    std::vector<GlyphCoverage> coverage;
     GlyphAtlasError error{};
 
     [[nodiscard]] explicit operator bool() const noexcept {
@@ -86,7 +87,9 @@ void validate_placement(const GlyphPlacement& placement) {
     const auto clip = clip_bounds(placement.clip_pixels, placement.viewport_pixels);
 
     PendingGlyphText pending;
-    for (const text::TextLine& line : measurement.lines) {
+    for (std::size_t line_index = 0; line_index < measurement.lines.size(); ++line_index) {
+        const auto& line = measurement.lines[line_index];
+        auto cluster_index = static_cast<std::size_t>(line.cluster_begin);
         const auto line_first = static_cast<std::uint32_t>(pending.instances.size());
         const std::uint64_t line_end = static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
         const auto available_glyphs =
@@ -142,6 +145,20 @@ void validate_placement(const GlyphPlacement& placement) {
                     placement.color,
                     {0.0F, 0.0F, placement.opacity, 0.0F},
                 });
+                while (cluster_index < static_cast<std::size_t>(line.cluster_begin) + line.cluster_count &&
+                       measurement.visual_clusters[cluster_index].glyph_begin +
+                               measurement.visual_clusters[cluster_index].glyph_count <=
+                           glyph_index) {
+                    ++cluster_index;
+                }
+                if (cluster_index < static_cast<std::size_t>(line.cluster_begin) + line.cluster_count) {
+                    const auto& cluster = measurement.visual_clusters[cluster_index];
+                    pending.coverage.push_back(
+                        {cluster.byte_start, cluster.byte_end, line_index, cluster.x, cluster.width});
+                } else {
+                    pending.coverage.push_back(
+                        {glyph.cluster, glyph.cluster + 1, line_index, pen_x, std::abs(glyph.advance_x)});
+                }
                 const std::uint32_t local_index = static_cast<std::uint32_t>(pending.instances.size() - 1);
                 if (!pending.draw_ranges.empty() && pending.draw_ranges.back().atlas_page == entry.page &&
                     pending.draw_ranges.back().instances.first + pending.draw_ranges.back().instances.count ==
@@ -400,7 +417,8 @@ GlyphSceneResult GlyphScene::append_text(font::FontRuntime& fonts, GlyphAtlas& a
     for (auto& line : pending.line_ranges) {
         line.first += inserted.first;
     }
-    return {{inserted, std::move(pending.draw_ranges), std::move(pending.line_ranges)}, {}};
+    return {{inserted, std::move(pending.draw_ranges), std::move(pending.line_ranges), std::move(pending.coverage)},
+            {}};
 }
 
 GlyphSceneResult GlyphScene::replace_text(GlyphInstanceRange range, font::FontRuntime& fonts, GlyphAtlas& atlas,
@@ -415,7 +433,8 @@ GlyphSceneResult GlyphScene::replace_text(GlyphInstanceRange range, font::FontRu
     for (auto& line : pending.line_ranges) {
         line.first += replaced.first;
     }
-    return {{replaced, std::move(pending.draw_ranges), std::move(pending.line_ranges)}, {}};
+    return {{replaced, std::move(pending.draw_ranges), std::move(pending.line_ranges), std::move(pending.coverage)},
+            {}};
 }
 
 std::size_t GlyphScene::update_geometry(GlyphInstanceRange range, GlyphPlacement placement) {

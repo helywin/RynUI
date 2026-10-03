@@ -69,16 +69,12 @@ struct TextAreaState {
     float vertical_scroll{};
     std::optional<float> resized_width;
     std::optional<float> resized_height;
-    text::TextCaretAffinity affinity{text::TextCaretAffinity::Downstream};
     std::optional<float> preferred_x;
     bool reveal_caret{true};
     std::optional<input::PointerIdentity> resizing_pointer;
     runtime::Point resize_start;
     TextAreaSize resize_initial;
     std::optional<TextAreaSize> published_size;
-    std::vector<runtime::Rect> selected_clips;
-    std::vector<graphics::QuadInstance> selection_quads;
-    std::vector<graphics::QuadInstance> overlay_quads;
 };
 
 struct InputState {
@@ -160,6 +156,10 @@ struct InputState {
     InputDisplayState display;
     std::unique_ptr<InputMaterialTransition> transition;
     text::TextCaretMap carets;
+    text::TextCaretAffinity affinity{text::TextCaretAffinity::Downstream};
+    std::vector<TextCoverageClip> selected_clips;
+    std::vector<graphics::QuadInstance> selection_quads;
+    std::vector<graphics::QuadInstance> overlay_quads;
     std::uint64_t measured_value_revision{};
     std::unique_ptr<TextAreaState> textarea;
     std::shared_ptr<OTPInputCellConfig> otp;
@@ -294,6 +294,12 @@ runtime::Rect pixel_clip(runtime::Rect clip, float scale) {
     const float right = std::floor((clip.x + clip.width) * scale) / scale;
     const float bottom = std::floor((clip.y + clip.height) * scale) / scale;
     return {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+}
+
+void check(bool result) {
+    if (!result) {
+        throw std::runtime_error("Input visual coverage mapping failed");
+    }
 }
 
 void check(input::TextEditResult result) {
@@ -469,13 +475,8 @@ struct InputPropsAccess {
                 host.pointer().cancel_interaction(mounted.interaction);
                 static_cast<void>(host.interactions().remove(mounted.interaction));
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
-                if (current->textarea) {
-                    static_cast<void>(host.surfaces().destroy_content_range(current->selection_surface));
-                    static_cast<void>(host.surfaces().destroy_content_range(current->overlay_surface));
-                } else {
-                    static_cast<void>(host.surfaces().destroy(current->selection_surface));
-                    static_cast<void>(host.surfaces().destroy(current->overlay_surface));
-                }
+                static_cast<void>(host.surfaces().destroy_content_range(current->selection_surface));
+                static_cast<void>(host.surfaces().destroy_content_range(current->overlay_surface));
                 for (const auto effect : current->container_effects) {
                     static_cast<void>(host.rounded_effects().remove(effect));
                 }
@@ -575,13 +576,9 @@ struct InputPropsAccess {
         }
         const auto overlay_fragment =
             build.register_scene_fragment(component, runtime::SceneFragmentPlacement::after_children);
-        component::RetainedSurfaceEffects no_effects;
-        no_effects.focus_enabled = false;
         const std::array<graphics::QuadInstance, 2> empty_overlays{};
-        state.overlay_surface = state.textarea
-                                    ? host.surfaces().create_content_range(overlay_fragment, {})
-                                    : host.surfaces().create_surface(component, state.mounted.node, overlay_fragment,
-                                                                     empty_overlays, no_effects);
+        state.overlay_surface = host.surfaces().create_content_range(
+            overlay_fragment, state.textarea ? std::span<const graphics::QuadInstance>{} : empty_overlays);
         const auto count_text = state.count_text;
         std::optional<InputSuffix> composed_suffix = suffix;
         if (props.common_.allow_clear_ || props.common_.show_count_) {
@@ -639,10 +636,8 @@ struct InputPropsAccess {
                 const auto selection_fragment =
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 const std::array<graphics::QuadInstance, 1> empty_selection{};
-                state.selection_surface =
-                    state.textarea ? host.surfaces().create_content_range(selection_fragment, {})
-                                   : host.surfaces().create_surface(editable, state.viewport, selection_fragment,
-                                                                    empty_selection, no_effects);
+                state.selection_surface = host.surfaces().create_content_range(
+                    selection_fragment, state.textarea ? std::span<const graphics::QuadInstance>{} : empty_selection);
                 state.text_fragment =
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 host.layout().set_layout(state.viewport, layout::LeafLayout{});
@@ -1116,8 +1111,8 @@ bool InputComponentHost::focus(runtime::ComponentId component, InputFocusOptions
     }
     const auto interaction = state->mounted.interaction;
     if (options.cursor != InputFocusCursor::Keep) {
+        state->affinity = text::TextCaretAffinity::Downstream;
         if (state->textarea) {
-            state->textarea->affinity = text::TextCaretAffinity::Downstream;
             state->textarea->preferred_x.reset();
             state->textarea->reveal_caret = true;
         }
@@ -1149,7 +1144,7 @@ bool InputComponentHost::blur(runtime::ComponentId component) {
 }
 
 bool InputComponentHost::select(runtime::ComponentId component, std::size_t anchor, std::size_t caret) {
-    const auto* state = host_->components().state<InputState>(component);
+    auto* state = host_->components().state<InputState>(component);
     if (!state || !state->active || state->disabled || !host_->components().branch_active(component)) {
         return false;
     }
@@ -1157,8 +1152,8 @@ bool InputComponentHost::select(runtime::ComponentId component, std::size_t anch
     if (!editor.boundaries().is_boundary(anchor) || !editor.boundaries().is_boundary(caret)) {
         return false;
     }
+    state->affinity = text::TextCaretAffinity::Downstream;
     if (state->textarea) {
-        state->textarea->affinity = text::TextCaretAffinity::Downstream;
         state->textarea->preferred_x.reset();
         state->textarea->reveal_caret = true;
     }
@@ -1357,11 +1352,8 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
     if (!stop) {
         return;
     }
+    state->affinity = stop->affinity;
     if (state->textarea) {
-        const auto upstream =
-            state->carets.at(stop->byte, state->carets.revision(), text::TextCaretAffinity::Upstream).value();
-        state->textarea->affinity =
-            upstream.line == stop->line ? text::TextCaretAffinity::Upstream : text::TextCaretAffinity::Downstream;
         state->textarea->preferred_x.reset();
         state->textarea->reveal_caret = true;
     }
@@ -1594,66 +1586,67 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
             }
         }
     } else if (navigation) {
-        if (state->textarea) {
+        update_text(component, false);
+        auto& scene = host_->text().scene_service();
+        if (state->carets.revision() != scene.text_state(state->text_scene).revision() &&
+            !(state->textarea ? scene.synchronize_line_caret_map(state->text_scene, state->carets)
+                              : scene.synchronize_caret_map(state->text_scene, state->carets))) {
+            throw std::runtime_error("Input navigation caret mapping failed");
+        }
+        const auto revision = state->carets.revision();
+        const auto current =
+            state->carets.at(state->display.committed_to_display(editor.selection().caret), revision, state->affinity)
+                .value();
+        std::optional<text::TextCaretStop> target;
+        if (state->textarea && (event.key == Key::up || event.key == Key::down || event.key == Key::page_up ||
+                                event.key == Key::page_down)) {
             auto& area = *state->textarea;
-            update_text(component, false);
-            auto& scene = host_->text().scene_service();
-            if (state->carets.revision() != scene.text_state(state->text_scene).revision() &&
-                !scene.synchronize_line_caret_map(state->text_scene, state->carets)) {
-                throw std::runtime_error("TextArea navigation caret mapping failed");
+            if (!area.preferred_x) {
+                area.preferred_x = current.x;
             }
-            const auto revision = state->carets.revision();
-            const auto current = state->carets.at(editor.selection().caret, revision, area.affinity).value();
-            std::optional<text::TextCaretStop> target;
-            if (event.key == Key::up || event.key == Key::down || event.key == Key::page_up ||
-                event.key == Key::page_down) {
-                if (!area.preferred_x) {
-                    area.preferred_x = current.x;
-                }
-                const auto page =
-                    std::max(1, static_cast<int>(state->geometry.viewport.height / state->typography.line_height));
-                const auto delta = event.key == Key::up        ? -1
-                                   : event.key == Key::down    ? 1
-                                   : event.key == Key::page_up ? -page
-                                                               : page;
-                target = state->carets.adjacent_line(current, delta, *area.preferred_x, revision);
-            } else {
-                area.preferred_x.reset();
-                if (event.key == Key::home || event.key == Key::end) {
-                    target = primary ? state->carets.at(event.key == Key::home ? 0 : editor.value().size(), revision)
-                                     : state->carets.line_edge(current.line, event.key == Key::end, revision);
-                } else {
-                    const auto upstream =
-                        state->carets.at(current.byte, revision, text::TextCaretAffinity::Upstream).value();
-                    const auto downstream = state->carets.at(current.byte, revision).value();
-                    if (editor.selection().empty() && upstream.line != downstream.line &&
-                        ((event.key == Key::left && current.line == downstream.line) ||
-                         (event.key == Key::right && current.line == upstream.line))) {
-                        target = event.key == Key::left ? upstream : downstream;
-                    } else {
-                        result = editor.move(
-                            event.key == Key::left ? input::TextCaretMove::left : input::TextCaretMove::right, shift);
-                        target = state->carets.at(editor.selection().caret, revision,
-                                                  event.key == Key::left ? text::TextCaretAffinity::Upstream
-                                                                         : text::TextCaretAffinity::Downstream);
+            const auto page =
+                std::max(1, static_cast<int>(state->geometry.viewport.height / state->typography.line_height));
+            const auto delta = event.key == Key::up        ? -1
+                               : event.key == Key::down    ? 1
+                               : event.key == Key::page_up ? -page
+                                                           : page;
+            target = state->carets.adjacent_line(current, delta, *area.preferred_x, revision);
+        } else {
+            if (state->textarea) {
+                state->textarea->preferred_x.reset();
+            }
+            if (event.key == Key::home || event.key == Key::end) {
+                target = primary ? state->carets.at(state->display.committed_to_display(
+                                                        event.key == Key::home ? 0 : editor.value().size()),
+                                                    revision)
+                                 : state->carets.line_edge(current.line, event.key == Key::end, revision);
+            } else if (!shift && !editor.selection().empty()) {
+                const auto selected = state->display.snapshot().selection;
+                const bool right = event.key == Key::right;
+                for (const auto& stop : state->carets.stops()) {
+                    if (stop.byte < selected.begin() || stop.byte > selected.end() ||
+                        (stop.byte == selected.begin() && stop != state->carets.at(stop.byte, revision).value()) ||
+                        (stop.byte == selected.end() &&
+                         stop != state->carets.at(stop.byte, revision, text::TextCaretAffinity::Upstream).value())) {
+                        continue;
+                    }
+                    if (!target ||
+                        (right ? stop.line > target->line || (stop.line == target->line && stop.x > target->x)
+                               : stop.line < target->line || (stop.line == target->line && stop.x < target->x))) {
+                        target = stop;
                     }
                 }
+            } else {
+                target = state->carets.adjacent_visual(current, event.key == Key::left ? -1 : 1, revision);
             }
-            if (target) {
-                result = editor.place(target->byte, shift);
-                const auto upstream =
-                    state->carets.at(target->byte, revision, text::TextCaretAffinity::Upstream).value();
-                area.affinity = upstream.line == target->line ? text::TextCaretAffinity::Upstream
-                                                              : text::TextCaretAffinity::Downstream;
-                area.reveal_caret = true;
-                invalidate(component, runtime::DirtyFlags::Geometry);
+        }
+        if (target) {
+            result = editor.place(state->display.display_to_committed(target->byte), shift);
+            state->affinity = target->affinity;
+            if (state->textarea) {
+                state->textarea->reveal_caret = true;
             }
-        } else {
-            const auto move = event.key == Key::left    ? input::TextCaretMove::left
-                              : event.key == Key::right ? input::TextCaretMove::right
-                              : event.key == Key::home  ? input::TextCaretMove::home
-                                                        : input::TextCaretMove::end;
-            result = editor.move(move, shift);
+            invalidate(component, runtime::DirtyFlags::Geometry);
         }
     } else if (deletion && !state->read_only) {
         result = event.key == Key::backspace ? editor.erase_backward() : editor.erase_forward();
@@ -1857,10 +1850,12 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     update_clear_visibility(component);
     const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible,
                                                state->mask_glyph.view());
+    if (changed.text_changed) {
+        state->affinity = text::TextCaretAffinity::Downstream;
+    }
     if (state->textarea && changed.geometry_changed) {
         state->textarea->reveal_caret = true;
         if (changed.text_changed) {
-            state->textarea->affinity = text::TextCaretAffinity::Downstream;
             state->textarea->preferred_x.reset();
         }
     }
@@ -2273,7 +2268,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 ? std::clamp(state->geometry.scroll_offset, 0.0F, std::max(0.0F, measurement.width - usable_width))
                 : state->display
                       .scroll_for_caret(state->carets, state->carets.revision(), usable_width,
-                                        state->geometry.scroll_offset, thickness)
+                                        state->geometry.scroll_offset, thickness, state->affinity)
                       .value();
         // Whole physical pixels preserve the cached glyph raster phase.
         state->geometry.scroll_offset = std::ceil(scroll * display_scale_) / display_scale_;
@@ -2282,11 +2277,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 -std::round((usable_width - measurement.width) * .5F * display_scale_) / display_scale_;
         }
         const auto display = state->display.snapshot();
-        const auto caret_stop =
-            state->carets
-                .at(display.caret, state->carets.revision(),
-                    state->textarea ? state->textarea->affinity : text::TextCaretAffinity::Downstream)
-                .value();
+        const auto caret_stop = state->carets.at(display.caret, state->carets.revision(), state->affinity).value();
         if (state->textarea) {
             auto& area = *state->textarea;
             const auto row_top = static_cast<float>(caret_stop.line) * state->typography.line_height;
@@ -2309,10 +2300,25 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                    state->geometry.scroll_offset;
         };
         state->geometry.caret_x = viewport.x + caret_stop.x - state->geometry.scroll_offset;
-        state->geometry.selection_start = x(display.selection.begin());
-        state->geometry.selection_end = x(display.selection.end());
-        state->geometry.composition_start = x(display.composition.begin());
-        state->geometry.composition_end = x(display.composition.end());
+        const auto range_extents = [&](input::TextSelection range) {
+            auto first = x(range.begin());
+            auto last = first;
+            bool covered{};
+            check(state->carets.visit_coverage(
+                range.begin(), range.end(), state->carets.revision(), [&](const auto& piece) {
+                    const auto left = viewport.x + piece.x - state->geometry.scroll_offset;
+                    first = covered ? std::min(first, left) : left;
+                    last = covered ? std::max(last, left + piece.width) : left + piece.width;
+                    covered = true;
+                }));
+            return std::pair{first, last};
+        };
+        const auto selected_extents = range_extents(display.selection);
+        const auto composition_extents = range_extents(display.composition);
+        state->geometry.selection_start = selected_extents.first;
+        state->geometry.selection_end = selected_extents.second;
+        state->geometry.composition_start = composition_extents.first;
+        state->geometry.composition_end = composition_extents.second;
         const auto snap = [&](float value) {
             return std::round(value * display_scale_) / display_scale_;
         };
@@ -2477,76 +2483,58 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         }
         const auto foreground = channels(presentation.colors[2]);
         const auto selection_color = presentation.colors[6];
-        const std::array<graphics::QuadInstance, 1> selection{clipped_quad(
-            {state->geometry.selection_start, viewport.y,
-             state->geometry.selection_end - state->geometry.selection_start, viewport.height},
-            state->geometry.clip, window,
-            {selection_color.red(), selection_color.green(), selection_color.blue(), selection_color.alpha()},
-            state->focused && !state->disabled && !display.placeholder ? 1.0F : 0.0F)};
-        if (!state->textarea) {
-            static_cast<void>(host_->surfaces().update_surface(state->selection_surface, selection));
+        state->selection_quads.clear();
+        state->overlay_quads.clear();
+        state->selected_clips.clear();
+        const auto coverage_rect = [&](const text::TextCoverageSegment& piece) {
+            return runtime::Rect{
+                viewport.x + piece.x - state->geometry.scroll_offset,
+                viewport.y + (state->textarea ? static_cast<float>(piece.line) * state->typography.line_height : 0) -
+                    state->geometry.vertical_scroll,
+                piece.width, state->textarea ? state->typography.line_height : viewport.height};
+        };
+        const bool selection_visible = state->focused && !state->disabled && !display.placeholder;
+        check(state->carets.visit_coverage(
+            display.selection.begin(), display.selection.end(), state->carets.revision(), [&](const auto& piece) {
+                const auto selected = graphics::intersect_effect_bounds(state->geometry.clip, coverage_rect(piece));
+                state->selected_clips.push_back(
+                    {piece.line, display.selection.begin(), display.selection.end(), selected});
+                if (selected.width > 0 && selected.height > 0 && selection_visible) {
+                    state->selection_quads.push_back(clipped_quad(selected, state->geometry.clip, window,
+                                                                  {selection_color.red(), selection_color.green(),
+                                                                   selection_color.blue(), selection_color.alpha()},
+                                                                  1));
+                }
+            }));
+        if (display.composing) {
+            check(state->carets.visit_coverage(display.composition.begin(), display.composition.end(),
+                                               state->carets.revision(), [&](const auto& piece) {
+                                                   auto underline = coverage_rect(piece);
+                                                   underline.y += std::max(0.0F, underline.height - thickness);
+                                                   underline.height = std::min(thickness, underline.height);
+                                                   underline = graphics::intersect_effect_bounds(state->geometry.clip,
+                                                                                                 underline);
+                                                   if (underline.width > 0 && underline.height > 0) {
+                                                       state->overlay_quads.push_back(clipped_quad(
+                                                           underline, state->geometry.clip, window, foreground, 1));
+                                                   }
+                                               }));
         }
-        const std::array<graphics::QuadInstance, 2> overlays{
-            clipped_quad(state->geometry.underline, state->geometry.clip, window, foreground,
-                         display.composing ? 1.0F : 0.0F),
+        if (!state->textarea && state->selection_quads.empty()) {
+            state->selection_quads.push_back(clipped_quad({}, state->geometry.clip, window, {}, 0));
+        }
+        if (!state->textarea && state->overlay_quads.empty()) {
+            state->overlay_quads.push_back(
+                clipped_quad(state->geometry.underline, state->geometry.clip, window, foreground, 0));
+        }
+        state->overlay_quads.push_back(
             clipped_quad(state->geometry.caret, state->geometry.clip, window, channels(presentation.colors[4]),
                          state->focused && !state->disabled && !state->read_only &&
                                  host_->focus().state().window_active && state->caret_blink.visible()
                              ? 1.0F
-                             : 0.0F),
-        };
-        if (!state->textarea) {
-            static_cast<void>(host_->surfaces().update_surface(state->overlay_surface, overlays));
-        } else {
+                             : 0.0F));
+        if (state->textarea) {
             auto& area = *state->textarea;
-            area.selection_quads.clear();
-            area.overlay_quads.clear();
-            area.selected_clips.assign(state->carets.line_count(), {});
-            const auto range_bounds = [&](input::TextSelection range, std::size_t line) {
-                const auto stops = state->carets.line_stops(line);
-                if (range.empty() || range.end() <= stops.front().byte || range.begin() > stops.back().byte) {
-                    return runtime::Rect{};
-                }
-                const auto first = std::clamp(range.begin(), stops.front().byte, stops.back().byte);
-                const auto last = std::clamp(range.end(), stops.front().byte, stops.back().byte);
-                const auto begin = std::lower_bound(stops.begin(), stops.end(), first,
-                                                    [](const auto& stop, auto byte) { return stop.byte < byte; });
-                const auto end = std::lower_bound(stops.begin(), stops.end(), last,
-                                                  [](const auto& stop, auto byte) { return stop.byte < byte; });
-                auto width = std::max(0.0F, end->x - begin->x);
-                if (line + 1 < state->carets.line_count() &&
-                    state->carets.line_stops(line + 1).front().byte > stops.back().byte &&
-                    range.end() > stops.back().byte) {
-                    width += std::max(thickness, state->typography.font_size * .5F);
-                }
-                return runtime::Rect{viewport.x + begin->x - state->geometry.scroll_offset,
-                                     viewport.y + static_cast<float>(line) * state->typography.line_height -
-                                         area.vertical_scroll,
-                                     width, state->typography.line_height};
-            };
-            const bool selection_visible = state->focused && !state->disabled && !display.placeholder;
-            for (std::size_t line = 0; line < state->carets.line_count(); ++line) {
-                const auto selected =
-                    graphics::intersect_effect_bounds(state->geometry.clip, range_bounds(display.selection, line));
-                area.selected_clips[line] = selected;
-                if (selected.width > 0 && selected.height > 0 && selection_visible) {
-                    area.selection_quads.push_back(clipped_quad(selected, state->geometry.clip, window,
-                                                                {selection_color.red(), selection_color.green(),
-                                                                 selection_color.blue(), selection_color.alpha()},
-                                                                1));
-                }
-                if (display.composing) {
-                    auto underline = range_bounds(display.composition, line);
-                    underline.y += std::max(0.0F, underline.height - thickness);
-                    underline.height = std::min(thickness, underline.height);
-                    underline = graphics::intersect_effect_bounds(state->geometry.clip, underline);
-                    if (underline.width > 0 && underline.height > 0) {
-                        area.overlay_quads.push_back(
-                            clipped_quad(underline, state->geometry.clip, window, foreground, 1));
-                    }
-                }
-            }
-            area.overlay_quads.push_back(overlays[1]);
             if (area.resize != TextAreaResize::None && !area.auto_size.enabled && !state->disabled) {
                 const auto grip_color = channels(tokens.colors.border);
                 for (int diagonal = 0; diagonal < 3; ++diagonal) {
@@ -2554,14 +2542,14 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                         const auto gx = root_bounds.x + root_bounds.width - 3 - static_cast<float>(point) * 3;
                         const auto gy =
                             root_bounds.y + root_bounds.height - 3 - static_cast<float>(diagonal - point) * 3;
-                        area.overlay_quads.push_back(clipped_quad({gx, gy, 1.5F, 1.5F}, clip, window, grip_color, 1));
+                        state->overlay_quads.push_back(clipped_quad({gx, gy, 1.5F, 1.5F}, clip, window, grip_color, 1));
                     }
                 }
             }
-            static_cast<void>(host_->surfaces().update_content_range(state->selection_surface, area.selection_quads));
-            static_cast<void>(host_->surfaces().update_content_range(state->overlay_surface, area.overlay_quads));
-            static_cast<void>(text_scene.set_line_clips(state->selected_scene, area.selected_clips));
         }
+        static_cast<void>(host_->surfaces().update_content_range(state->selection_surface, state->selection_quads));
+        static_cast<void>(host_->surfaces().update_content_range(state->overlay_surface, state->overlay_quads));
+        static_cast<void>(text_scene.set_coverage_clips(state->selected_scene, state->selected_clips));
         text_scene.set_color(state->text_scene, foreground);
         text_scene.set_color(state->selected_scene, channels(presentation.colors[7]));
         text_scene.set_color(state->placeholder_scene, channels(presentation.colors[5]));
@@ -2581,12 +2569,6 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 ++sync_profile_.text_scene_calls;
             }
             auto layer_placement = placement;
-            if (id == state->selected_scene && !state->textarea) {
-                layer_placement.clip_pixels = graphics::intersect_effect_bounds(
-                    state->geometry.clip,
-                    {state->geometry.selection_start, viewport.y,
-                     state->geometry.selection_end - state->geometry.selection_start, viewport.height});
-            }
             // Input's horizontal caret scroll is already aligned to the window
             // display scale; retain that exact offset when adding node motion.
             layer_placement.translation_pixels = text_scene.set_phase_preserving_scroll_translation(

@@ -33,6 +33,15 @@ target_compile_definitions(rynui_bidi_caret_tests PRIVATE
     "RYNUI_VALIDATION_ARABIC_FONT=\"${RYNUI_VALIDATION_ARABIC_FONT_FILE}\""
     "RYNUI_VALIDATION_HEBREW_FONT=\"${RYNUI_VALIDATION_HEBREW_FONT_FILE}\"")
 add_test(NAME rynui.bidi_caret COMMAND rynui_bidi_caret_tests)
+add_executable(rynui_bidi_input_tests bidi_input_tests.cpp)
+rynui_configure_cpp_target(rynui_bidi_input_tests)
+target_link_libraries(rynui_bidi_input_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_bidi_input_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+    "RYNUI_VALIDATION_ARABIC_FONT=\"${RYNUI_VALIDATION_ARABIC_FONT_FILE}\""
+    "RYNUI_VALIDATION_HEBREW_FONT=\"${RYNUI_VALIDATION_HEBREW_FONT_FILE}\"")
+add_test(NAME rynui.bidi_input COMMAND rynui_bidi_input_tests)
 add_test(NAME rynui.bidi_dependency
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_bidi_dependency.py"
         --source "${PROJECT_SOURCE_DIR}" --bidi-test "${RYNUI_BIDI_TEST_FILE}"

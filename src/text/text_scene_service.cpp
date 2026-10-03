@@ -39,6 +39,8 @@ struct TextSceneService::Record final {
     std::uint64_t observed_text_revision{};
     graphics::GlyphPrimitive primitive;
     std::vector<runtime::Rect> line_clips;
+    std::vector<TextCoverageClip> coverage_clips;
+    bool coverage_enabled{};
     std::optional<graphics::GlyphPlacement> placement;
     runtime::Point scroll_translation{};
     graphics::GlyphTransform transform;
@@ -500,7 +502,35 @@ std::size_t TextSceneService::patch_geometry(Record& record, const graphics::Gly
         updated += glyph_scene_.instances().update_geometry(range, {left, top, right, bottom},
                                                             {record.scroll_translation.x, record.scroll_translation.y});
     };
-    if (record.line_clips.empty()) {
+    if (record.coverage_enabled) {
+        for (std::size_t index = 0; index < record.primitive.coverage.size(); ++index) {
+            const auto& owner = record.primitive.coverage[index];
+            runtime::Rect covered{};
+            bool found{};
+            for (const auto& candidate : record.coverage_clips) {
+                const auto owner_x =
+                    placement.origin_pixels.x + placement.translation_pixels.x + record.scroll_translation.x + owner.x;
+                if (candidate.line != owner.line || candidate.byte_begin >= owner.byte_end ||
+                    candidate.byte_end <= owner.byte_begin ||
+                    candidate.rect.x + candidate.rect.width <= owner_x + 0.0001F ||
+                    candidate.rect.x >= owner_x + owner.width - 0.0001F) {
+                    continue;
+                }
+                if (!found) {
+                    covered = candidate.rect;
+                    found = true;
+                } else {
+                    const auto right = std::max(covered.x + covered.width, candidate.rect.x + candidate.rect.width);
+                    const auto bottom = std::max(covered.y + covered.height, candidate.rect.y + candidate.rect.height);
+                    covered.x = std::min(covered.x, candidate.rect.x);
+                    covered.y = std::min(covered.y, candidate.rect.y);
+                    covered.width = right - covered.x;
+                    covered.height = bottom - covered.y;
+                }
+            }
+            patch({record.primitive.instances.first + static_cast<std::uint32_t>(index), 1}, covered);
+        }
+    } else if (record.line_clips.empty()) {
         patch(record.primitive.instances, clip);
     } else {
         for (std::size_t line = 0; line < record.primitive.line_ranges.size(); ++line) {
@@ -529,6 +559,27 @@ bool TextSceneService::set_line_clips(TextSceneId id, std::span<const runtime::R
         return false;
     }
     record.line_clips.assign(clips.begin(), clips.end());
+    record.patchable_geometry_dirty = true;
+    ++record.revisions.placement;
+    frame_requests_->request_frame();
+    return true;
+}
+
+bool TextSceneService::set_coverage_clips(TextSceneId id, std::span<const TextCoverageClip> clips) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    for (const auto& coverage : clips) {
+        const auto rect = coverage.rect;
+        if (coverage.byte_end < coverage.byte_begin || !std::isfinite(rect.x) || !std::isfinite(rect.y) ||
+            !std::isfinite(rect.width) || !std::isfinite(rect.height) || rect.width < 0 || rect.height < 0) {
+            throw std::invalid_argument("Text coverage must have valid bytes and finite nonnegative dimensions");
+        }
+    }
+    if (record.coverage_enabled && std::ranges::equal(record.coverage_clips, clips)) {
+        return false;
+    }
+    record.coverage_clips.assign(clips.begin(), clips.end());
+    record.coverage_enabled = true;
     record.patchable_geometry_dirty = true;
     ++record.revisions.placement;
     frame_requests_->request_frame();
@@ -614,7 +665,7 @@ bool TextSceneService::synchronize(TextSceneId id) {
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
         if (record.scroll_translation != runtime::Point{} || record.transform != graphics::GlyphTransform{} ||
-            !record.line_clips.empty()) {
+            !record.line_clips.empty() || record.coverage_enabled) {
             static_cast<void>(patch_geometry(record, placement));
         }
         record.content_dirty = false;

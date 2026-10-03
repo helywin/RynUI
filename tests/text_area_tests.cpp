@@ -405,9 +405,9 @@ void cross_line_selection_and_pointer() {
     for (const auto line : {std::size_t{0}, std::size_t{2}}) {
         const auto range = primitive.line_ranges[line];
         require(range.count > 0, "selection line has no glyphs");
-        const auto& clip = instances.at(range.first).clip_bounds;
+        const auto& clip = instances.at(range.first + (line == 0 ? 1U : 0U)).clip_bounds;
         const auto start = line == 0 ? carets.line_stops(0)[1].x : 0;
-        const auto end = line == 0 ? carets.line_stops(0).back().x + 7 : carets.line_stops(2)[2].x;
+        const auto end = line == 0 ? carets.line_stops(0).back().x : carets.line_stops(2)[2].x;
         require(near(clip[0], viewport.x + start) && near(clip[1], viewport.y + static_cast<float>(line) * 22) &&
                     near(clip[2], viewport.x + end) && near(clip[3], viewport.y + static_cast<float>(line + 1) * 22),
                 "selected glyph coverage crossed line or covered unselected bytes");

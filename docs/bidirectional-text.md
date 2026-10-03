@@ -1,6 +1,6 @@
 # 双向文本
 
-055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping、逐行视觉布局和 CaretMap 已接入；Input/选择场景及公开组件接入仍按 change 的 tasks 实施，不能将 Core 测试当成输入组件已支持混合方向。
+055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping、逐行视觉布局、CaretMap 与 Input/选择场景已接入；公开方向配置和真实窗口按 change 的独立任务验收。
 
 ## 段落分析
 
@@ -33,6 +33,10 @@ CaretMap 的 `stops()` 按逻辑 byte/affinity 排序，`line_stops()` 按视觉
 TextMeasurement 的每行 glyph range 索引 `visual_glyphs`，再映射至 ShapedText 的原始 glyph。`visual_clusters` 保存逻辑 byte range、visual x/width 和该行 L1 后的 level。折行先遍历逻辑 cluster，行范围确定后调用该段落的 L1/L2 runs；每个 glyph 仅覆盖一次。GlyphScene 和文字 underline/strikeout 按同一视觉索引累计 pen，CPU metadata 不进入 renderer GPU ABI。旧人工 LTR measurement 缺少 visual metadata 时保留连续 glyph fallback。
 
 TextState 方向变化触发 shaping/layout；width-only 更新复用 source 分析及 shaped 数据，只重新 measure/reorder。ellipsis 每个合法前缀独立执行对应方向的分析、shaping 和 measurement，并保留最长合法前缀及非单调宽度校验。
+
+Input/TextArea 共用 run/line affinity；左右箭头沿视觉 stops，Home/End 使用当前行物理边缘，primary Home/End 使用逻辑文档端点。指针保留命中 stop 的精确 affinity。Shift 保留逻辑 anchor，删除、clipboard 与 history 使用原始逻辑 UTF-8；Password mask 在显示 grapheme 与 committed byte 之间转换。
+
+选区和 preedit 使用每行不连续 coverage。GlyphPrimitive 为可见实例保存 CPU cluster byte/line/x metadata，selected view 同时检查逻辑 ownership 与当前视觉片段，防止相邻未选 glyph 的 bearing 越界染色。clip/scroll 只 patch geometry，所有层共享 shaping；GPU ABI 不变。单行保留最低一个 selection、两个 overlay 槽位，双向额外片段按需要扩展；静止与既有连续选区保持局部更新合同。
 
 纯模型测试覆盖空段、分隔符、非法范围、复制 lifetime、重复赋值复用和查询零分配。全量 Unicode `BidiCharacterTest.txt` 与 `BidiTest.txt` 验证 paragraph base、逐行 levels 和 visual reorder，按 UTF-8 包装 API 运行。
 

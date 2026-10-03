@@ -2,6 +2,8 @@
 
 Input、Password、Search 使用共用 typed Props 和长期编辑器。单行编辑已支持受控/非受控值、Unicode scalar 硬 maxLength、grapheme 选择/移动、剪贴板、undo/redo 与平台组合输入。视觉来自 Theme；LayoutStyle 只控制外部布局。
 
+055 接入 Unicode 17 双向排版：左右键使用视觉位置，Home/End 使用当前行物理边缘，primary Home/End 使用逻辑文档起止；Shift 保留逻辑 anchor。同一 byte 在方向交界/软换行可以有两个视觉位置，点击保留精确 affinity。删除、clipboard、history 仍操作原始 UTF-8。选区和 preedit 按每行多个不连续片段绘制，selected glyph view 共享 shaping 并限制逻辑 cluster 与视觉 coverage；IME area 跟随当前视觉 caret。Password/OTP mask 保留原有敏感文本与 grapheme 映射合同。详见 [双向文本](bidirectional-text.md)。
+
 ## 焦点引用与系统输入提示
 
 ```cpp

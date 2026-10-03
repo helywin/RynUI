@@ -193,20 +193,24 @@ std::size_t InputDisplayState::display_to_committed(std::size_t byte, bool trail
 }
 
 std::optional<float> InputDisplayState::scroll_for_caret(const text::TextCaretMap& map, std::uint64_t revision,
-                                                         float viewport_width, float previous_offset,
-                                                         float caret_width) const noexcept {
+                                                         float viewport_width, float previous_offset, float caret_width,
+                                                         text::TextCaretAffinity affinity) const noexcept {
     if (!std::isfinite(viewport_width) || viewport_width < 0 || !std::isfinite(previous_offset) ||
         !std::isfinite(caret_width) || caret_width < 0) {
         return {};
     }
-    const auto caret = map.at(caret_, revision);
+    const auto caret = map.at(caret_, revision, affinity);
     if (!caret || map.stops().empty()) {
         return {};
     }
     if (placeholder_ || viewport_width == 0) {
-        return 0;
+        return 0.0F;
     }
-    const auto maximum = std::max(0.0F, map.stops().back().x + caret_width - viewport_width);
+    float right{};
+    for (std::size_t line = 0; line < map.line_count(); ++line) {
+        right = std::max(right, map.line_edge(line, true, revision)->x);
+    }
+    const auto maximum = std::max(0.0F, right + caret_width - viewport_width);
     auto offset = std::clamp(previous_offset, 0.0F, maximum);
     if (caret->x < offset) {
         offset = caret->x;

@@ -89,11 +89,21 @@ struct GlyphPlacement {
     friend bool operator==(const GlyphPlacement&, const GlyphPlacement&) = default;
 };
 
+struct GlyphCoverage {
+    std::size_t byte_begin{};
+    std::size_t byte_end{};
+    std::size_t line{};
+    float x{};
+    float width{};
+};
+
 struct GlyphPrimitive {
     GlyphInstanceRange instances{};
     std::vector<GlyphDrawRange> draw_ranges;
     // CPU metadata for each measured line; empty glyphs do not occupy instances.
     std::vector<GlyphInstanceRange> line_ranges;
+    // CPU-only logical ownership, aligned with visible instances.
+    std::vector<GlyphCoverage> coverage;
 };
 
 struct GlyphSceneResult {
