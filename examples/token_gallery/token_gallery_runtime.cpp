@@ -895,6 +895,9 @@ private:
 } // namespace
 
 int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) {
+    if (has_argument(argc, argv, "--rounded-acceptance")) {
+        return run_rounded_acceptance(argc, argv);
+    }
     if (has_argument(argc, argv, "--bidi-acceptance")) {
         return run_bidi_acceptance(argc, argv);
     }

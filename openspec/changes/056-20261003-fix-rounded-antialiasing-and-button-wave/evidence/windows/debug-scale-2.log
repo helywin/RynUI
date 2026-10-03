@@ -1,0 +1,1 @@
+rounded_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.25 render_scale=2 corner_masks=16 coverage_cases=22 normalized_events=34 clicks=4 content_runs=1 submits=38 wave_times=0,100,400,1000,2000 resize=1420x1000 reduced=passed inactive=passed idle_polls=3 deadline=none disposed=1 exit_code=0

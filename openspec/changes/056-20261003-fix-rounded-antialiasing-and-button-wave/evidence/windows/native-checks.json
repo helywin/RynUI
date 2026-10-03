@@ -1,0 +1,56 @@
+{
+  "gallery_executables": [
+    {
+      "path": "out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe",
+      "sha256": "ef85ff0322d489f472498e210151b6c2a9ceb2571d874ab801ea5e391f2bdbc9"
+    },
+    {
+      "path": "out/build/windows-msvc/examples/Release/rynui_token_gallery.exe",
+      "sha256": "b3d2fa15a01126f0a1b7bd20f6add790e786c9da9749c0e8c0f278045f4cd28c"
+    }
+  ],
+  "logs": [
+    {
+      "path": "gallery-debug-smoke.log",
+      "sha256": "6a683befde847295e8674bd729622f764061d4e0e493dbbf4c0d3c8fa6ca32c1",
+      "required_fragments": [
+        "gpu_driver=direct3d12 shader_format=DXIL",
+        "content_runs=1",
+        "exit_code=0"
+      ]
+    },
+    {
+      "path": "button-debug.log",
+      "sha256": "e55635df37a90840d32c1184cd19d127e798a8027ffe82f1c78a96273faf5be2",
+      "required_fragments": [
+        "button_acceptance=passed gpu_driver=direct3d12",
+        "exit_code=0"
+      ]
+    },
+    {
+      "path": "gallery-release-smoke.log",
+      "sha256": "3f075c47385b0637fbee52491bccb2cd18aa798904b107662079eb148bd3250f",
+      "required_fragments": [
+        "gpu_driver=direct3d12 shader_format=DXIL",
+        "content_runs=1",
+        "exit_code=0"
+      ]
+    },
+    {
+      "path": "button-release.log",
+      "sha256": "e55635df37a90840d32c1184cd19d127e798a8027ffe82f1c78a96273faf5be2",
+      "required_fragments": [
+        "button_acceptance=passed gpu_driver=direct3d12",
+        "exit_code=0"
+      ]
+    },
+    {
+      "path": "shader-and-boundary.log",
+      "sha256": "7d10b2790881a0777985946980b892741bc233fd1a14d75880b776125ab63a53",
+      "required_fragments": [
+        "100% tests passed out of 4",
+        "100% tests passed out of 1"
+      ]
+    }
+  ]
+}

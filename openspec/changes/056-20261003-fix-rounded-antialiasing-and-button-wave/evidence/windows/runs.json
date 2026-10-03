@@ -1,0 +1,4842 @@
+[
+  {
+    "id": "debug-system",
+    "configuration": "Debug",
+    "mode": "system",
+    "requested_scale": null,
+    "render_scale": 1.25,
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
+    "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
+    "log": "debug-system.log",
+    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "26babe198e1626844a990344def1f79b1362ec744d2b0fe2cf7e09232c4b8e71",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "13ecf5f2ba152e22eff4b12ef5504d0ae7c2593c2aec0e4d15dfbf51a7ab0f0f"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "353ef99a73612606fcc25403df8dfb968afb5025f65e60cac3e56a30d289e594",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "faffc28af7c87e1ef75ffad3aac3d383c544a2364580533e7a44e61f0256c29c"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "00f735e92570a5551be654944c5c881fea3700d5780a9cb91511216dc65b6759",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "1de3f162416b636190fbc0f0b3e89c556143028b4d5e78ad89bd7c6c99f6ddd7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "74190a52f17620605d6128e9e7d4fc87a2de6b8c5697fdd89a2b7391818833cc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "ab54a204ef6dc370b4662210996188f2d80e2b642e673c8a2073524dfefac2f1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8ba2e20501d4d2b0ed6e05be4203b66c7f99135a1d2fa0336bc7022e8386745b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "b2b729ab313074ee55642b969ee3c83843a8e4f4e105ea09193fb275d56946ad",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "d32705d33ae5594e17258dc61c748331870406d2eedc558395db20f610fc6e2c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "26ea68ce63fb85b86d8ff2411bdaf748de1942657379d2906d4445ed51501235",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "466393204f37fe403b490371dc0491cbba23f74073ca65214b0deeeff0eb32c2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "bf03357896e384d9b8345bc20b8e1912d0a731f8485a1ff8090f7266dc56ddd2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "3c18547ac07307e8c5e0079be30388eaf97f36d3a1fe51f146ba1eec6c8c8232",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "e6d184930e4367038b2c1046e06f4c85e7b33e49df524820f9d32c945c1e98ce",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "3482a88cd4601d2d25a94da951fb83a7ff082a5e1561174ff43b9a6bb58011be",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "bbc0a5dc4f9f75fa35fecd33f849bdf1886f1ad626c3b4f02abab588c082f416",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "98eece1145ecdab219a1a6fe5e3e07bce094847d5151cd09cc2783133812b2a9",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "024afa8617daa5ded8b49de3d1ba87ea0c86110eb714b7419cb75396b8bc4813",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      }
+    ]
+  },
+  {
+    "id": "debug-scale-1",
+    "configuration": "Debug",
+    "mode": "scale-1",
+    "requested_scale": "1",
+    "render_scale": 1.0,
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
+    "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
+    "log": "debug-scale-1.log",
+    "log_sha256": "a0925db47389eba72076bb94e2a3ef5f926df530f8784f9332345d15f4463ae5",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "d5c091f73404f0bcc20849642e040ad3f5ebd138e069d0cdaf0383e10addb4e1"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "6d6572bad3c870714bd457f864e304e6e0676146c6a4f8bb122ccb7d3714df57",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "e0e2d2ebd2b4968ed039550c5654b6f62dac5782ea8dd893c0ee80c33d949204"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "d5c091f73404f0bcc20849642e040ad3f5ebd138e069d0cdaf0383e10addb4e1"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "0a673bf586e1b2e6192f5e48a2386590a051ae29261abaf5d685e35f06c66a84",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "e43f6a9d1d97d9ef465471174d8946de8721b095ffefff49313dcbed03002275"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "8ab4ac563dc5871cccea84054b9f42177d2c1ab5386dfa5e76073fb3421ea516",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "ef86c7d7548b8b2e9c952b057711a73f89abc7615ec7579a9f0a534d4aeae7d3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "c159076af0043b6e33c865eddaea5ed6ef7dd565bf7fd127d0c128f3081efa3e",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "4f469c04f4dc5bb7a10f11f48451586cb18faff2eafd01b77c6ec1a0202e8fb2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8c386531ceba16ca91461a0e7094e778d4bdda0e0ab20fca2e5ea4012208f760",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "9c63d617621e88c3d82fb5c88f1f498f70d9d4e74f8e48effd61ab9878125001",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "2b5adc708b7c2869d0fe4c3d2a25948486d80078ce0cbf2861537657c8d82675",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "14402873c93090a1e496bbbe6e6e39e08c553c4bafdd2120677825a7f13f117e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "a16de8169461a3b4d81f219237d7d4a14b92b7eb069b4c365c7dad7d92616605",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "57efb35ede80be71a98170373ea2c2521bd343495aca91ec7a279ac401aa90ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "537a460adf17bda24952da82266d964444cd2fb04f3c5172bc595ec2ff06c60b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "36e6fcf0c062b83c0463bd14f59ff7ccaccd8caff87213a146a03e2143903f4d",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "5d2291640f12cb5c5941c8f521aaeda154ce920fa8ab08bc6db55e0e709313c4",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "86bc3bed676a2ad6ba9c05708e5d0eb0cc57914f70a6a2c1c8129f6e9b658284",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "15a5ea774663379ab6fa1d221e27aa3062572f19a18fb9286ca99eef14ede48d",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "5888358814fe4815d2251f1add91deaf159365e45c50bc7b50bccbaea3928fc4",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 444
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 2082
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 7552,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 223
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 211
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 231
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 216
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 444
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 2082
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 223
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 211
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 231
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 216
+      }
+    ]
+  },
+  {
+    "id": "debug-scale-1.25",
+    "configuration": "Debug",
+    "mode": "scale-1.25",
+    "requested_scale": "1.25",
+    "render_scale": 1.25,
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
+    "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
+    "log": "debug-scale-1.25.log",
+    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "26babe198e1626844a990344def1f79b1362ec744d2b0fe2cf7e09232c4b8e71",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "13ecf5f2ba152e22eff4b12ef5504d0ae7c2593c2aec0e4d15dfbf51a7ab0f0f"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "353ef99a73612606fcc25403df8dfb968afb5025f65e60cac3e56a30d289e594",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "faffc28af7c87e1ef75ffad3aac3d383c544a2364580533e7a44e61f0256c29c"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "00f735e92570a5551be654944c5c881fea3700d5780a9cb91511216dc65b6759",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "1de3f162416b636190fbc0f0b3e89c556143028b4d5e78ad89bd7c6c99f6ddd7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "74190a52f17620605d6128e9e7d4fc87a2de6b8c5697fdd89a2b7391818833cc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "ab54a204ef6dc370b4662210996188f2d80e2b642e673c8a2073524dfefac2f1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8ba2e20501d4d2b0ed6e05be4203b66c7f99135a1d2fa0336bc7022e8386745b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "b2b729ab313074ee55642b969ee3c83843a8e4f4e105ea09193fb275d56946ad",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "d32705d33ae5594e17258dc61c748331870406d2eedc558395db20f610fc6e2c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "26ea68ce63fb85b86d8ff2411bdaf748de1942657379d2906d4445ed51501235",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "466393204f37fe403b490371dc0491cbba23f74073ca65214b0deeeff0eb32c2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "bf03357896e384d9b8345bc20b8e1912d0a731f8485a1ff8090f7266dc56ddd2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "3c18547ac07307e8c5e0079be30388eaf97f36d3a1fe51f146ba1eec6c8c8232",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "e6d184930e4367038b2c1046e06f4c85e7b33e49df524820f9d32c945c1e98ce",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "3482a88cd4601d2d25a94da951fb83a7ff082a5e1561174ff43b9a6bb58011be",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "bbc0a5dc4f9f75fa35fecd33f849bdf1886f1ad626c3b4f02abab588c082f416",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "98eece1145ecdab219a1a6fe5e3e07bce094847d5151cd09cc2783133812b2a9",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "024afa8617daa5ded8b49de3d1ba87ea0c86110eb714b7419cb75396b8bc4813",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      }
+    ]
+  },
+  {
+    "id": "debug-scale-1.5",
+    "configuration": "Debug",
+    "mode": "scale-1.5",
+    "requested_scale": "1.5",
+    "render_scale": 1.5,
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
+    "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
+    "log": "debug-scale-1.5.log",
+    "log_sha256": "e982c2d0e14b9a9147145637faf54899bbb61843f338dccb5768316b1300b178",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "0748b323c58e6ec69e954b341e1f51d88372e6cc5b445e78ee637049917b64cb"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "7e54ca258815c12aeea7a52846e575f2751a48523852be31dd7404deaf898947",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "97d12015d9ec7577083c1c09c2f758d2a39507c629c204173fda04aa2f0c77d3"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "0748b323c58e6ec69e954b341e1f51d88372e6cc5b445e78ee637049917b64cb"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "077f4169d1781b23a116cd37b9a15a6d0b20df62bd14c7b1144d162b48274514",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "3cc629394134909ccd40c7910450dbb9fc2d76c1ede3a0e16ffe0e64b8ffc13d"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "2f550e8ab2875bfd0527504687023944032d1c23036b7685ef4822e4db7077c7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "ddf12a528b3a2cacf2dd4e0db9f91b7ab5e5ef69f87096705da8032b16c6d85e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "765d7b47b81d3cf8e7825ecc1be5228be8385315fdacd2eef9408fa12b1591a1",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "f32eaec682b8d5011c804930d3d7e5edaec7b7d875884a772d3e05ae0a45a51b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "c4dbdff5f5ecd1321c8bd1bb871d94441fdac9153627ca988e6d0b6eebfe8a6a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "68ee63509a15a144737efe8e2f91f824152522fb2197725f9dc6de302141689f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "282acc452302a11cab1257d07953b6c401b7875d1e4beeeaa215e1cb5a517f6a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "a35135d90c452c5ff60ec2cf99a95fbdbaec9159760ab1bc84b9d629d22292ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "46a94f2e5f65202e74b6d97c4ca61d787d860a24aff05608ae779ee31a1a4c70",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "c8098037fb523ad9c9337ef212b92d8c88eab0519b265027f7dc03134c626b4f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "cb044c32e8aaa67eaffbb38929be63acbc37a32c0d2503fcfa10adb21896c708",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "b33f3cae1fec49df4ecf224096111df5adc4e0b23822589aae27aa0174351afc",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "fea5b9e20e0951810c97f9e1e87c3d3b3f951a68d216509731a297d1ed0975ba",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "1bfe7e7774e3988891c99ab7df8c3c8413d45cabaa167de160a2be20e7f844c3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "1fd0aee37ee1224ed116500792cf5cfcfa7426301307951d5beb0280c3bbd0f3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "9e0990c6b1f6361108cfd47b6373ed0646701326f60dd4f2f38cc79a0fd16608",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 799
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 4662
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 501
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 482
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 485
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 480
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 382
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 799
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 4662
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 501
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 482
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 485
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 480
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 382
+      }
+    ]
+  },
+  {
+    "id": "debug-scale-2",
+    "configuration": "Debug",
+    "mode": "scale-2",
+    "requested_scale": "2",
+    "render_scale": 2.0,
+    "executable": "out/build/windows-msvc/examples/Debug/rynui_rounded_acceptance.exe",
+    "executable_sha256": "87331fe0ff27ba8730dc6511e1e0a23dc48c3d0d8ae1ccd1c51fa03031958db6",
+    "log": "debug-scale-2.log",
+    "log_sha256": "206f8ef9966218ffe1d2bc46181cab87f51bc3cdd23597916e263548f65f74a0",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "0535951612a2df00caa8ec6024c0964bfaf27d1ee11be26692b9ad7a269d1516"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "0dd0b6fd55a0f5b977524dcbfece3786ce850d4a788356d2143761b036066aeb",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "c3dab1a1fd236c2eb0d109d242ea4a02e418d074e103ea932bd7c96c5ffe8737"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "0535951612a2df00caa8ec6024c0964bfaf27d1ee11be26692b9ad7a269d1516"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "d5911ac9c543b0ac90ca060820559b01f38635f0558b21bba3a4d6faa8db3296",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "74c914afc00a3835de9cc17fcc503c8380da5f900765a1ff87729c113186e9f7"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "96699d52836e1f4b43d7b5b1f81f0b8e394b7fc48e1af599c959186f5ce07f69",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "7374c5f74283beaa98ec2a417704c4b09ac059d757dcd0cc4b5470ca9a049f63",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "52af4724ede635f64977b1e31ba55b40179a6c0f71880e701e894931f241babc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "e50f6a4af8252cbeedbf95b5c851718db22f2379451a5deb24c5bba544a4c167",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "569c39ee2e641db865231676d5a2abaae948185cd0a2f66c550f9783c21b8955",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "7d22ffd1302b29b7963a7b9692ded47625a862697ad8b37dac44d50447bbc66c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "f62630569ce634a27f733e0ecccff761568ccb4ba5a393026157140902a3bf0a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "8f77893bf7fcbeb686a534d7f2998e0c0d85820f7f815f9ce86588be368d406f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "2d5b2b06494f90a15876752ec8170eb8bcbc5948c7202717c0dd6cdc178c4ee1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "e2fe667b317362c7d365d60306f72eb75a8635c511943bc3a02ecd30b3bc66fe",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "58a0b4ffb11ebc01f6af3cd18395353fd680972a40a6106e6f916c6d6514f313",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "a3c2f65985d9339f3fbf1b7e2758317dcd20b277d66d8c7363d370e6f942e13e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "34fe2d5a9679cf06876b7aef3732887240ba067f4b532734e068e4d90b5c2f0e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "e3fa09a1f1c7f13b2c3e98a5ecea41445efb99ab383042809ba4658a496e3fbd",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "527061130280646947005d20526eb0a0dd8bca1a79ab2dc837ea96223e9e69ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "f663d3fbe04a2ab0f42583eb4a81b41deea0872ef8c77bee06fe945a56cf93c6",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 524
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 7907
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 29845,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 226
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 442
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 524
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 7907
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 226
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 442
+      }
+    ]
+  },
+  {
+    "id": "release-system",
+    "configuration": "Release",
+    "mode": "system",
+    "requested_scale": null,
+    "render_scale": 1.25,
+    "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
+    "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
+    "log": "release-system.log",
+    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "26babe198e1626844a990344def1f79b1362ec744d2b0fe2cf7e09232c4b8e71",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "13ecf5f2ba152e22eff4b12ef5504d0ae7c2593c2aec0e4d15dfbf51a7ab0f0f"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "353ef99a73612606fcc25403df8dfb968afb5025f65e60cac3e56a30d289e594",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "faffc28af7c87e1ef75ffad3aac3d383c544a2364580533e7a44e61f0256c29c"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "00f735e92570a5551be654944c5c881fea3700d5780a9cb91511216dc65b6759",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "1de3f162416b636190fbc0f0b3e89c556143028b4d5e78ad89bd7c6c99f6ddd7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "74190a52f17620605d6128e9e7d4fc87a2de6b8c5697fdd89a2b7391818833cc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "ab54a204ef6dc370b4662210996188f2d80e2b642e673c8a2073524dfefac2f1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8ba2e20501d4d2b0ed6e05be4203b66c7f99135a1d2fa0336bc7022e8386745b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "b2b729ab313074ee55642b969ee3c83843a8e4f4e105ea09193fb275d56946ad",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "d32705d33ae5594e17258dc61c748331870406d2eedc558395db20f610fc6e2c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "26ea68ce63fb85b86d8ff2411bdaf748de1942657379d2906d4445ed51501235",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "466393204f37fe403b490371dc0491cbba23f74073ca65214b0deeeff0eb32c2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "bf03357896e384d9b8345bc20b8e1912d0a731f8485a1ff8090f7266dc56ddd2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "3c18547ac07307e8c5e0079be30388eaf97f36d3a1fe51f146ba1eec6c8c8232",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "e6d184930e4367038b2c1046e06f4c85e7b33e49df524820f9d32c945c1e98ce",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "3482a88cd4601d2d25a94da951fb83a7ff082a5e1561174ff43b9a6bb58011be",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "bbc0a5dc4f9f75fa35fecd33f849bdf1886f1ad626c3b4f02abab588c082f416",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "98eece1145ecdab219a1a6fe5e3e07bce094847d5151cd09cc2783133812b2a9",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "024afa8617daa5ded8b49de3d1ba87ea0c86110eb714b7419cb75396b8bc4813",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      }
+    ]
+  },
+  {
+    "id": "release-scale-1",
+    "configuration": "Release",
+    "mode": "scale-1",
+    "requested_scale": "1",
+    "render_scale": 1.0,
+    "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
+    "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
+    "log": "release-scale-1.log",
+    "log_sha256": "a0925db47389eba72076bb94e2a3ef5f926df530f8784f9332345d15f4463ae5",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "d5c091f73404f0bcc20849642e040ad3f5ebd138e069d0cdaf0383e10addb4e1"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "6d6572bad3c870714bd457f864e304e6e0676146c6a4f8bb122ccb7d3714df57",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "e0e2d2ebd2b4968ed039550c5654b6f62dac5782ea8dd893c0ee80c33d949204"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "d5c091f73404f0bcc20849642e040ad3f5ebd138e069d0cdaf0383e10addb4e1"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "0a673bf586e1b2e6192f5e48a2386590a051ae29261abaf5d685e35f06c66a84",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "e43f6a9d1d97d9ef465471174d8946de8721b095ffefff49313dcbed03002275"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "8ab4ac563dc5871cccea84054b9f42177d2c1ab5386dfa5e76073fb3421ea516",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "ef86c7d7548b8b2e9c952b057711a73f89abc7615ec7579a9f0a534d4aeae7d3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "c159076af0043b6e33c865eddaea5ed6ef7dd565bf7fd127d0c128f3081efa3e",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "4f469c04f4dc5bb7a10f11f48451586cb18faff2eafd01b77c6ec1a0202e8fb2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8c386531ceba16ca91461a0e7094e778d4bdda0e0ab20fca2e5ea4012208f760",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "9c63d617621e88c3d82fb5c88f1f498f70d9d4e74f8e48effd61ab9878125001",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "2b5adc708b7c2869d0fe4c3d2a25948486d80078ce0cbf2861537657c8d82675",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "14402873c93090a1e496bbbe6e6e39e08c553c4bafdd2120677825a7f13f117e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "a16de8169461a3b4d81f219237d7d4a14b92b7eb069b4c365c7dad7d92616605",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "57efb35ede80be71a98170373ea2c2521bd343495aca91ec7a279ac401aa90ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "537a460adf17bda24952da82266d964444cd2fb04f3c5172bc595ec2ff06c60b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "36e6fcf0c062b83c0463bd14f59ff7ccaccd8caff87213a146a03e2143903f4d",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "5d2291640f12cb5c5941c8f521aaeda154ce920fa8ab08bc6db55e0e709313c4",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "86bc3bed676a2ad6ba9c05708e5d0eb0cc57914f70a6a2c1c8129f6e9b658284",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "15a5ea774663379ab6fa1d221e27aa3062572f19a18fb9286ca99eef14ede48d",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "5888358814fe4815d2251f1add91deaf159365e45c50bc7b50bccbaea3928fc4",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 444
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 2082
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 7552,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 223
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 211
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 231
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 216
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 444
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 2082
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 223
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 217
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 211
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 227
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 448
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 221
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 215
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 231
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 225
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 219
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 7552,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 216
+      }
+    ]
+  },
+  {
+    "id": "release-scale-1.25",
+    "configuration": "Release",
+    "mode": "scale-1.25",
+    "requested_scale": "1.25",
+    "render_scale": 1.25,
+    "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
+    "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
+    "log": "release-scale-1.25.log",
+    "log_sha256": "7c844639fa7524f2898b5441d793ce603b1e9c74ba6d4e4e3591d466d1381856",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "26babe198e1626844a990344def1f79b1362ec744d2b0fe2cf7e09232c4b8e71",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "13ecf5f2ba152e22eff4b12ef5504d0ae7c2593c2aec0e4d15dfbf51a7ab0f0f"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "71f93881f41cbdbe65bbd9a8bcd3424a6a46bbd3686e9ff82cd8469a5ec1094b"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "353ef99a73612606fcc25403df8dfb968afb5025f65e60cac3e56a30d289e594",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "faffc28af7c87e1ef75ffad3aac3d383c544a2364580533e7a44e61f0256c29c"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "00f735e92570a5551be654944c5c881fea3700d5780a9cb91511216dc65b6759",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "1de3f162416b636190fbc0f0b3e89c556143028b4d5e78ad89bd7c6c99f6ddd7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "74190a52f17620605d6128e9e7d4fc87a2de6b8c5697fdd89a2b7391818833cc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "ab54a204ef6dc370b4662210996188f2d80e2b642e673c8a2073524dfefac2f1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "8ba2e20501d4d2b0ed6e05be4203b66c7f99135a1d2fa0336bc7022e8386745b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "b2b729ab313074ee55642b969ee3c83843a8e4f4e105ea09193fb275d56946ad",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "d32705d33ae5594e17258dc61c748331870406d2eedc558395db20f610fc6e2c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "26ea68ce63fb85b86d8ff2411bdaf748de1942657379d2906d4445ed51501235",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "466393204f37fe403b490371dc0491cbba23f74073ca65214b0deeeff0eb32c2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "bf03357896e384d9b8345bc20b8e1912d0a731f8485a1ff8090f7266dc56ddd2",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "3c18547ac07307e8c5e0079be30388eaf97f36d3a1fe51f146ba1eec6c8c8232",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "e6d184930e4367038b2c1046e06f4c85e7b33e49df524820f9d32c945c1e98ce",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "3482a88cd4601d2d25a94da951fb83a7ff082a5e1561174ff43b9a6bb58011be",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "bbc0a5dc4f9f75fa35fecd33f849bdf1886f1ad626c3b4f02abab588c082f416",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "98eece1145ecdab219a1a6fe5e3e07bce094847d5151cd09cc2783133812b2a9",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "024afa8617daa5ded8b49de3d1ba87ea0c86110eb714b7419cb75396b8bc4813",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 671
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 3209
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 11760,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 416
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 409
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 411
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 403
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 687
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 408
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 684
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 395
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 401
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 394
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 396
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 388
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 11760,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 320
+      }
+    ]
+  },
+  {
+    "id": "release-scale-1.5",
+    "configuration": "Release",
+    "mode": "scale-1.5",
+    "requested_scale": "1.5",
+    "render_scale": 1.5,
+    "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
+    "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
+    "log": "release-scale-1.5.log",
+    "log_sha256": "e982c2d0e14b9a9147145637faf54899bbb61843f338dccb5768316b1300b178",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "0748b323c58e6ec69e954b341e1f51d88372e6cc5b445e78ee637049917b64cb"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "7e54ca258815c12aeea7a52846e575f2751a48523852be31dd7404deaf898947",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "97d12015d9ec7577083c1c09c2f758d2a39507c629c204173fda04aa2f0c77d3"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "0748b323c58e6ec69e954b341e1f51d88372e6cc5b445e78ee637049917b64cb"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "077f4169d1781b23a116cd37b9a15a6d0b20df62bd14c7b1144d162b48274514",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "3cc629394134909ccd40c7910450dbb9fc2d76c1ede3a0e16ffe0e64b8ffc13d"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "2f550e8ab2875bfd0527504687023944032d1c23036b7685ef4822e4db7077c7",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "ddf12a528b3a2cacf2dd4e0db9f91b7ab5e5ef69f87096705da8032b16c6d85e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "765d7b47b81d3cf8e7825ecc1be5228be8385315fdacd2eef9408fa12b1591a1",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "f32eaec682b8d5011c804930d3d7e5edaec7b7d875884a772d3e05ae0a45a51b",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "c4dbdff5f5ecd1321c8bd1bb871d94441fdac9153627ca988e6d0b6eebfe8a6a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "68ee63509a15a144737efe8e2f91f824152522fb2197725f9dc6de302141689f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "282acc452302a11cab1257d07953b6c401b7875d1e4beeeaa215e1cb5a517f6a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "a35135d90c452c5ff60ec2cf99a95fbdbaec9159760ab1bc84b9d629d22292ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "46a94f2e5f65202e74b6d97c4ca61d787d860a24aff05608ae779ee31a1a4c70",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "c8098037fb523ad9c9337ef212b92d8c88eab0519b265027f7dc03134c626b4f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "cb044c32e8aaa67eaffbb38929be63acbc37a32c0d2503fcfa10adb21896c708",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "b33f3cae1fec49df4ecf224096111df5adc4e0b23822589aae27aa0174351afc",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "fea5b9e20e0951810c97f9e1e87c3d3b3f951a68d216509731a297d1ed0975ba",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "1bfe7e7774e3988891c99ab7df8c3c8413d45cabaa167de160a2be20e7f844c3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "1fd0aee37ee1224ed116500792cf5cfcfa7426301307951d5beb0280c3bbd0f3",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "9e0990c6b1f6361108cfd47b6373ed0646701326f60dd4f2f38cc79a0fd16608",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 799
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 4662
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 501
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 482
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 485
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 480
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 382
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 799
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 4662
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 501
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 490
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 482
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 485
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 493
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 822
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 480
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 474
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 483
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 472
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 464
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 16992,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 382
+      }
+    ]
+  },
+  {
+    "id": "release-scale-2",
+    "configuration": "Release",
+    "mode": "scale-2",
+    "requested_scale": "2",
+    "render_scale": 2.0,
+    "executable": "out/build/windows-msvc/examples/Release/rynui_rounded_acceptance.exe",
+    "executable_sha256": "6b3740a0e6bdbb2b18b522009d19eb13951f64834f263aeadeba70e3f40b4fcf",
+    "log": "release-scale-2.log",
+    "log_sha256": "206f8ef9966218ffe1d2bc46181cab87f51bc3cdd23597916e263548f65f74a0",
+    "files": [
+      {
+        "path": "coverage-dark.csv",
+        "sha256": "0535951612a2df00caa8ec6024c0964bfaf27d1ee11be26692b9ad7a269d1516"
+      },
+      {
+        "path": "coverage-dark.png",
+        "sha256": "0dd0b6fd55a0f5b977524dcbfece3786ce850d4a788356d2143761b036066aeb",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-dark.rgb",
+        "sha256": "c3dab1a1fd236c2eb0d109d242ea4a02e418d074e103ea932bd7c96c5ffe8737"
+      },
+      {
+        "path": "coverage-light.csv",
+        "sha256": "0535951612a2df00caa8ec6024c0964bfaf27d1ee11be26692b9ad7a269d1516"
+      },
+      {
+        "path": "coverage-light.png",
+        "sha256": "d5911ac9c543b0ac90ca060820559b01f38635f0558b21bba3a4d6faa8db3296",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "coverage-light.rgb",
+        "sha256": "74c914afc00a3835de9cc17fcc503c8380da5f900765a1ff87729c113186e9f7"
+      },
+      {
+        "path": "inactive.png",
+        "sha256": "96699d52836e1f4b43d7b5b1f81f0b8e394b7fc48e1af599c959186f5ce07f69",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "reduced.png",
+        "sha256": "7374c5f74283beaa98ec2a417704c4b09ac059d757dcd0cc4b5470ca9a049f63",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "resized.png",
+        "sha256": "52af4724ede635f64977b1e31ba55b40179a6c0f71880e701e894931f241babc",
+        "size": [
+          1420,
+          1000
+        ]
+      },
+      {
+        "path": "textarea-dark.png",
+        "sha256": "e50f6a4af8252cbeedbf95b5c851718db22f2379451a5deb24c5bba544a4c167",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "textarea-light.png",
+        "sha256": "569c39ee2e641db865231676d5a2abaae948185cd0a2f66c550f9783c21b8955",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-0.png",
+        "sha256": "7d22ffd1302b29b7963a7b9692ded47625a862697ad8b37dac44d50447bbc66c",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-100.png",
+        "sha256": "f62630569ce634a27f733e0ecccff761568ccb4ba5a393026157140902a3bf0a",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-1000.png",
+        "sha256": "8f77893bf7fcbeb686a534d7f2998e0c0d85820f7f815f9ce86588be368d406f",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-2000.png",
+        "sha256": "2d5b2b06494f90a15876752ec8170eb8bcbc5948c7202717c0dd6cdc178c4ee1",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-dark-400.png",
+        "sha256": "e2fe667b317362c7d365d60306f72eb75a8635c511943bc3a02ecd30b3bc66fe",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-0.png",
+        "sha256": "58a0b4ffb11ebc01f6af3cd18395353fd680972a40a6106e6f916c6d6514f313",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-100.png",
+        "sha256": "a3c2f65985d9339f3fbf1b7e2758317dcd20b277d66d8c7363d370e6f942e13e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-1000.png",
+        "sha256": "34fe2d5a9679cf06876b7aef3732887240ba067f4b532734e068e4d90b5c2f0e",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-2000.png",
+        "sha256": "e3fa09a1f1c7f13b2c3e98a5ecea41445efb99ab383042809ba4658a496e3fbd",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-light-400.png",
+        "sha256": "527061130280646947005d20526eb0a0dd8bca1a79ab2dc837ea96223e9e69ac",
+        "size": [
+          1600,
+          1100
+        ]
+      },
+      {
+        "path": "wave-restart.png",
+        "sha256": "f663d3fbe04a2ab0f42583eb4a81b41deea0872ef8c77bee06fe945a56cf93c6",
+        "size": [
+          1600,
+          1100
+        ]
+      }
+    ],
+    "pixel_tolerance": 2,
+    "pixel_checks": [
+      {
+        "capture": "coverage-light",
+        "case": "fill",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-light",
+        "case": "thin-border",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 524
+      },
+      {
+        "capture": "coverage-light",
+        "case": "inset",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 7907
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-0",
+        "pixels": 29845,
+        "maximum_channel_error": 0,
+        "fractional_reference_pixels": 226
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-1",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-2",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-3",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-4",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-5",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-7",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-8",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "joined-border-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-10",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-11",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-12",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-13",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-14",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-light",
+        "case": "corners-15",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-light",
+        "case": "translated-clip",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 442
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "fill",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "thin-border",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 524
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "inset",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 7907
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-0",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 226
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-1",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-2",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-3",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-4",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-5",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-6",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-7",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-8",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 235
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "joined-border-9",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 492
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-10",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-11",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-12",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 244
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-13",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-14",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 253
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "corners-15",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 262
+      },
+      {
+        "capture": "coverage-dark",
+        "case": "translated-clip",
+        "pixels": 29845,
+        "maximum_channel_error": 1,
+        "fractional_reference_pixels": 442
+      }
+    ]
+  }
+]

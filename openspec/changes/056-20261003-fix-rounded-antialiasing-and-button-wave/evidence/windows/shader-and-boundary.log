@@ -1,0 +1,44 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 248: rynui.generated_shaders
+1/4 Test #248: rynui.generated_shaders ................   Passed    0.02 sec
+    Start 249: rynui.deployed_shaders
+2/4 Test #249: rynui.deployed_shaders .................   Passed    0.03 sec
+    Start 251: rynui.quad_shader_contract
+3/4 Test #251: rynui.quad_shader_contract .............   Passed    0.03 sec
+    Start 252: rynui.rounded_effect_shader_contract
+4/4 Test #252: rynui.rounded_effect_shader_contract ...   Passed    0.02 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =   0.14 sec
+Test project D:/code/RynUI/out/build/windows-msvc
+    Start 248: rynui.generated_shaders
+1/4 Test #248: rynui.generated_shaders ................   Passed    0.02 sec
+    Start 249: rynui.deployed_shaders
+2/4 Test #249: rynui.deployed_shaders .................   Passed    0.03 sec
+    Start 251: rynui.quad_shader_contract
+3/4 Test #251: rynui.quad_shader_contract .............   Passed    0.02 sec
+    Start 252: rynui.rounded_effect_shader_contract
+4/4 Test #252: rynui.rounded_effect_shader_contract ...   Passed    0.03 sec
+
+100% tests passed out of 4
+
+Total Test time (real) =   0.13 sec
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 98: rynui.portable.backend_boundaries
+1/1 Test #98: rynui.portable.backend_boundaries ...   Passed    1.46 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   1.47 sec
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+    Start 98: rynui.portable.backend_boundaries
+1/1 Test #98: rynui.portable.backend_boundaries ...   Passed    1.47 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   1.47 sec

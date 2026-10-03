@@ -194,6 +194,7 @@ add_executable(
     token_gallery/text_area_acceptance.cpp
     token_gallery/otp_acceptance.cpp
     token_gallery/bidi_acceptance.cpp
+    token_gallery/rounded_acceptance.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery)
 target_link_libraries(
@@ -240,3 +241,20 @@ add_custom_command(TARGET rynui_token_gallery POST_BUILD
         "${RYNUI_VALIDATION_CJK_FONT_FILE}"
         "$<TARGET_FILE_DIR:rynui_token_gallery>/fonts/cjk.otf"
 )
+
+add_executable(rynui_rounded_acceptance token_gallery/rounded_acceptance.cpp)
+rynui_configure_cpp_target(rynui_rounded_acceptance)
+target_compile_definitions(rynui_rounded_acceptance PRIVATE RYNUI_ROUNDED_ACCEPTANCE_STANDALONE)
+target_link_libraries(rynui_rounded_acceptance PRIVATE
+    rynui_components rynui_default_fonts rynui_renderer_sdl SDL3::SDL3)
+rynui_assert_no_link_dependency_matching(rynui_rounded_acceptance "[Ss]hader[Cc]ross")
+rynui_deploy_target_shaders(rynui_rounded_acceptance
+    quad.vertex.dxil quad.vertex.spv quad.fragment.dxil quad.fragment.spv
+    glyph.vertex.dxil glyph.vertex.spv glyph.fragment.dxil glyph.fragment.spv
+    rounded_effect.vertex.dxil rounded_effect.vertex.spv rounded_effect.fragment.dxil rounded_effect.fragment.spv)
+add_custom_command(TARGET rynui_rounded_acceptance POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:rynui_rounded_acceptance>/fonts"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${RYNUI_VALIDATION_LATIN_FONT_FILE}"
+        "$<TARGET_FILE_DIR:rynui_rounded_acceptance>/fonts/latin.ttf"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${RYNUI_VALIDATION_CJK_FONT_FILE}"
+        "$<TARGET_FILE_DIR:rynui_rounded_acceptance>/fonts/cjk.otf")

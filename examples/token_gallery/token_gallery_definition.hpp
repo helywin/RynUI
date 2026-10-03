@@ -84,5 +84,6 @@ int run_input_acceptance(int argc, char** argv);
 int run_text_area_acceptance(int argc, char** argv);
 int run_otp_acceptance(int argc, char** argv);
 int run_bidi_acceptance(int argc, char** argv);
+int run_rounded_acceptance(int argc, char** argv);
 
 } // namespace rynui::example

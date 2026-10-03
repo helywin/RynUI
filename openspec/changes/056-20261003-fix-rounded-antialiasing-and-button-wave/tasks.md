@@ -12,7 +12,7 @@
 
 ### Windows
 
-- [ ] 3.1 windows-msvc Debug/Release构建专用真实D3D12/DXIL窗口，在系统/1/1.25/1.5/2缩放捕获浅/深色圆角fill、细border、inset、Quad对照、TextArea截图复现及Button 0/100/400/1000/2000ms wave、resize/策略取消/idle/dispose；GPU readback逐像素与参考在声明容差内匹配且curve存在分数coverage、四象限无接缝，实际图像目视审核，native smoke/shader合同与PNG/log/EXE hashes核验通过，独立提交Windows evidence。
+- [x] 3.1 windows-msvc Debug/Release构建专用真实D3D12/DXIL窗口，在系统/1/1.25/1.5/2缩放捕获浅/深色圆角fill、细border、inset、Quad对照、TextArea截图复现及Button 0/100/400/1000/2000ms wave、resize/策略取消/idle/dispose；GPU readback逐像素与参考在声明容差内匹配且curve存在分数coverage、四象限无接缝，实际图像目视审核，native smoke/shader合同与PNG/log/EXE hashes核验通过，独立提交Windows evidence。
 
 ### Linux
 
