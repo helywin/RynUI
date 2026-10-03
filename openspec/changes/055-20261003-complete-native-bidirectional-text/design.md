@@ -42,6 +42,10 @@ selection/preedit使用每行visual cluster coverage，连续片段合并、视�
 
 新增共享 `<ryn/text_direction.hpp>` 的 `TextDirection { Auto, LeftToRight, RightToLeft }`，TextProps/TypographyProps/InputPropsBase的 `.direction(Prop<TextDirection>)`；Input子类型继承，默认Auto。无强方向默认LTR保持旧文本，现有纯RTL变为可编辑，混合文本不再报mixed_direction_unsupported。非法reactive枚举先验证再接受，可继续合法更新。Theme公共direction defaults在后续ConfigProvider收尾定义，本change不提前复制provider。
 
+### 5. 原生系统字体 coverage
+
+Windows 原生试跑发现 Segoe UI Variable Text 与 Microsoft YaHei UI 的默认链缺少 Arabic/Hebrew coverage。平台字体发现追加静态 Segoe UI、Tahoma、Arial 的阿拉伯文与希伯来文 probe，已有 chain 覆盖时跳过，文件与 face 仍由 DirectWrite 查询，不写死路径或借用 Core shaping。Linux 对同一缺口通过 Fontconfig 的 `ar`/`he` 匹配补足，实际系统字体/GPU验收仍留给 Linux 独立任务。尺寸、粗体/等宽与 DPI 刷新沿用 resolver 缓存及 fallback chain。
+
 ## Risks / Trade-offs
 
 - [逻辑/视觉范围不连续] → conformance与含embedding/isolate/Arabic/Hebrew/数字/括号/换行场景逐一验证，measure与GlyphScene通过同一visual order。

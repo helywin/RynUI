@@ -1,0 +1,46 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/21] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/21] Compiling glyph fragment shader to SPIRV
+[3/21] Compiling glyph vertex shader to SPIRV
+[4/21] Compiling rounded_effect vertex shader to SPIRV
+[5/21] Compiling rounded_effect fragment shader to SPIRV
+[6/21] Compiling glyph fragment shader to DXIL
+[7/21] Reflecting glyph fragment shader resources
+[8/21] Compiling glyph vertex shader to DXIL
+[9/21] Compiling quad fragment shader to DXIL
+[10/21] Reflecting glyph vertex shader resources
+[11/21] Compiling quad fragment shader to SPIRV
+[12/21] Reflecting rounded_effect fragment shader resources
+[13/21] Compiling quad vertex shader to SPIRV
+[14/21] Compiling quad vertex shader to DXIL
+[15/21] Reflecting rounded_effect vertex shader resources
+[16/21] Compiling rounded_effect vertex shader to DXIL
+[17/21] Compiling rounded_effect fragment shader to DXIL
+[18/21] Deploying shaders for rynui_token_gallery
+[19/21] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Debug\token_gallery\bidi_acceptance.cpp.obj
+[20/21] Linking CXX executable examples\Debug\rynui_token_gallery.exe
+[0/2] Re-checking globbed directories...
+[1/21] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[2/21] Compiling glyph vertex shader to SPIRV
+[3/21] Compiling glyph fragment shader to SPIRV
+[4/21] Compiling rounded_effect fragment shader to SPIRV
+[5/21] Compiling rounded_effect vertex shader to SPIRV
+[6/21] Compiling glyph fragment shader to DXIL
+[7/21] Compiling glyph vertex shader to DXIL
+[8/21] Reflecting glyph vertex shader resources
+[9/21] Compiling quad fragment shader to SPIRV
+[10/21] Compiling quad fragment shader to DXIL
+[11/21] Reflecting glyph fragment shader resources
+[12/21] Reflecting rounded_effect fragment shader resources
+[13/21] Compiling quad vertex shader to SPIRV
+[14/21] Compiling quad vertex shader to DXIL
+[15/21] Reflecting rounded_effect vertex shader resources
+[16/21] Compiling rounded_effect vertex shader to DXIL
+[17/21] Compiling rounded_effect fragment shader to DXIL
+[18/21] Deploying shaders for rynui_token_gallery
+[19/21] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\bidi_acceptance.cpp.obj
+[20/21] Linking CXX executable examples\Release\rynui_token_gallery.exe

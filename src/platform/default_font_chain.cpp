@@ -286,6 +286,16 @@ enum class PlatformFontRole {
         resolved->coverage_probe = U'中';
         result.push_back(std::move(*resolved));
     }
+    // Variable Segoe faces do not necessarily contain the Arabic/Hebrew
+    // repertoire of the static OS families. Load these only for missing coverage.
+    for (const auto probe : {U'م', U'א'}) {
+        for (const auto family : {L"Segoe UI", L"Tahoma", L"Arial"}) {
+            if (auto resolved = resolve_family(*collection.get(), family)) {
+                resolved->coverage_probe = probe;
+                result.push_back(std::move(*resolved));
+            }
+        }
+    }
     return result;
 }
 
@@ -569,6 +579,12 @@ resolve_fontconfig_family(FcConfig& config, const char* language, char32_t cover
     }
     if (auto cjk = resolve_fontconfig_default(*config, "zh-cn", U'中')) {
         result.push_back(std::move(*cjk));
+    }
+    if (auto arabic = resolve_fontconfig_default(*config, "ar", U'م')) {
+        result.push_back(std::move(*arabic));
+    }
+    if (auto hebrew = resolve_fontconfig_default(*config, "he", U'א')) {
+        result.push_back(std::move(*hebrew));
     }
     return result;
 }

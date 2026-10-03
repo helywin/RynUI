@@ -26,6 +26,8 @@ TextEngine 按 paragraph resolved level、script 和 fallback font 划分逻辑 
 
 锁定 Noto Sans Arabic/Hebrew fixture 验证真实 script coverage、Arabic 邻接上下文与 lam-alef ligature、RTL bracket mirror、混合数字/fallback、控制符不可见、hard paragraph 和非法方向。fixture 不进入 Git，也不替代 native 系统字体验收。
 
+原生默认系统链通过平台字体发现补足 Arabic/Hebrew coverage：Windows 在 Segoe UI Variable/YaHei 后按缺失 coverage 查询静态 Segoe UI、Tahoma、Arial；Linux 对 Fontconfig generic sans-serif 增加 `ar`/`he` 查询。文件与 face 不写死路径，Core 仍统一使用 FreeType/HarfBuzz shaping。Windows Debug/Release 已完成十组系统/指定缩放的 D3D12/DXIL 窗口、原生 clipboard/session/input area 与 190 张 GPU readback 核验，记录见该 change 的 `evidence/windows/README.md`；Linux 原生项待实际机器执行。
+
 ## 验证与后续
 
 CaretMap 的 `stops()` 按逻辑 byte/affinity 排序，`line_stops()` 按视觉 x/byte/affinity 排序。`Upstream` 来自前一逻辑 grapheme 的末端，`Downstream` 来自后一 grapheme 的起点；同一 byte 可以在方向交界或软换行具有两个位置。命中相同 x 时选择最早逻辑 byte，保持确定行为；视觉 adjacent/line edge/2D hit 和覆盖遍历均不分配。

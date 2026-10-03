@@ -22,7 +22,7 @@
 
 ### Windows
 
-- [ ] 5.1 windows-msvc Debug/Release构建affected native tests/Gallery、native affected CTest/default smoke及专用真实D3D12/DXIL双向窗口；系统/1/1.25/1.5/2缩放下验证Arabic/Hebrew/数字/括号与换行、direction更新、视觉caret/不连续selection/preedit、mask/IME area、resize后pointer命中及popup/idle/dispose，记录hash/尺寸并审核GPU截图，独立提交Windows evidence。
+- [x] 5.1 windows-msvc Debug/Release构建affected native tests/Gallery、native affected CTest/default smoke及专用真实D3D12/DXIL双向窗口；系统/1/1.25/1.5/2缩放下验证Arabic/Hebrew/数字/括号与换行、direction更新、视觉caret/不连续selection/preedit、mask/IME area、resize后pointer命中及popup/idle/dispose，记录hash/尺寸并审核GPU截图，独立提交Windows evidence。
 
 ### Linux
 

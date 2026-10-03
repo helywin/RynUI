@@ -60,6 +60,12 @@ void test_default_ui_font_chain() {
             const auto resized = resolver(family, weight, false, 16);
             require(static_cast<bool>(fonts->find_glyph(resized, U'\uFFFD', std::nullopt)),
                     "resized/styled default font resolver dropped the Unicode replacement glyph");
+#if defined(_WIN32)
+            for (const auto scalar : {U'م', U'ר', U'ب', U'א'}) {
+                require(static_cast<bool>(fonts->find_glyph(resized, scalar, std::nullopt)),
+                        "resized/styled default font resolver dropped Arabic/Hebrew coverage");
+            }
+#endif
         }
     }
     for (const auto identity : large_resolved) {
@@ -87,6 +93,11 @@ void test_default_ui_font_chain() {
         found_yahei = found_yahei || face.family_name == std::string_view{"Microsoft YaHei UI"};
     }
     require(found_yahei, "Windows default UI font chain did not include Microsoft YaHei UI");
+    for (const auto scalar : {U'م', U'ר', U'ب', U'א'}) {
+        require(static_cast<bool>(fonts->find_glyph(identities, scalar, std::nullopt)) &&
+                    static_cast<bool>(fonts->find_glyph(moved_resolved, scalar, std::nullopt)),
+                "Windows default UI font chain lost Arabic/Hebrew coverage at startup or after DPI refresh");
+    }
 #elif defined(__linux__)
     require(chain.uses_system_fonts, "Linux default UI font chain did not use Fontconfig system fonts");
 #else
