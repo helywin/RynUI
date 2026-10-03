@@ -1,6 +1,6 @@
 # 双向文本
 
-055 分阶段补齐原生桌面双向文本。段落分析与逻辑 shaping 已接入；视觉折行、光标、选择及公开组件接入仍按 change 的 tasks 实施，不能将分析/shaping 测试当成输入组件已支持混合方向。
+055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping 和逐行视觉布局已接入；光标、选择及公开组件接入仍按 change 的 tasks 实施，不能将布局测试当成输入组件已支持混合方向。
 
 ## 段落分析
 
@@ -25,6 +25,10 @@ TextEngine 按 paragraph resolved level、script 和 fallback font 划分逻辑 
 锁定 Noto Sans Arabic/Hebrew fixture 验证真实 script coverage、Arabic 邻接上下文与 lam-alef ligature、RTL bracket mirror、混合数字/fallback、控制符不可见、hard paragraph 和非法方向。fixture 不进入 Git，也不替代 native 系统字体验收。
 
 ## 验证与后续
+
+TextMeasurement 的每行 glyph range 索引 `visual_glyphs`，再映射至 ShapedText 的原始 glyph。`visual_clusters` 保存逻辑 byte range、visual x/width 和该行 L1 后的 level。折行先遍历逻辑 cluster，行范围确定后调用该段落的 L1/L2 runs；每个 glyph 仅覆盖一次。GlyphScene 和文字 underline/strikeout 按同一视觉索引累计 pen，CPU metadata 不进入 renderer GPU ABI。旧人工 LTR measurement 缺少 visual metadata 时保留连续 glyph fallback。
+
+TextState 方向变化触发 shaping/layout；width-only 更新复用 source 分析及 shaped 数据，只重新 measure/reorder。ellipsis 每个合法前缀独立执行对应方向的分析、shaping 和 measurement，并保留最长合法前缀及非单调宽度校验。
 
 纯模型测试覆盖空段、分隔符、非法范围、复制 lifetime、重复赋值复用和查询零分配。全量 Unicode `BidiCharacterTest.txt` 与 `BidiTest.txt` 验证 paragraph base、逐行 levels 和 visual reorder，按 UTF-8 包装 API 运行。
 

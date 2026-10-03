@@ -89,12 +89,14 @@ void validate_placement(const GlyphPlacement& placement) {
     for (const text::TextLine& line : measurement.lines) {
         const auto line_first = static_cast<std::uint32_t>(pending.instances.size());
         const std::uint64_t line_end = static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
-        if (line_end > shaped.glyphs.size()) {
+        const auto available_glyphs =
+            measurement.visual_glyphs.empty() ? shaped.glyphs.size() : measurement.visual_glyphs.size();
+        if (line_end > available_glyphs) {
             throw std::invalid_argument("TextMeasurement references glyphs outside ShapedText");
         }
         float pen_x = 0.0F;
         for (std::size_t glyph_index = line.glyph_begin; glyph_index < line_end; ++glyph_index) {
-            const text::ShapedGlyph& glyph = shaped.glyphs[glyph_index];
+            const text::ShapedGlyph& glyph = shaped.glyphs.at(measurement.glyph_index(glyph_index));
             const auto metrics = fonts.metrics(glyph.font);
             if (!metrics) {
                 pending.error = {

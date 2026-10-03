@@ -113,6 +113,7 @@ struct ClusterUnit {
             scalar != nullptr && (scalar->whitespace || scalar->cjk),
         });
     }
+    std::ranges::sort(units, {}, &ClusterUnit::byte_start);
     return units;
 }
 
@@ -326,16 +327,41 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
     const auto emit_line = [&](const ShapedParagraph& paragraph, const std::vector<ClusterUnit>& units,
                                std::size_t unit_begin, std::size_t unit_end, bool overflow, TextMeasurement& result,
                                float& top, bool& has_bounds) -> TextError {
-        const std::size_t glyph_begin = unit_begin < unit_end ? units[unit_begin].glyph_begin : paragraph.glyph_begin;
-        const std::size_t glyph_end = unit_begin < unit_end ? units[unit_end - 1].glyph_end : paragraph.glyph_begin;
+        const std::size_t glyph_begin = result.visual_glyphs.size();
+        const std::size_t cluster_begin = result.visual_clusters.size();
         std::size_t byte_start = paragraph.byte_start;
         std::size_t byte_end = paragraph.byte_end;
         if (unit_begin < unit_end) {
             byte_start = units[unit_begin].byte_start;
-            byte_end = units[unit_begin].byte_end;
-            for (std::size_t unit = unit_begin + 1; unit < unit_end; ++unit) {
-                byte_start = std::min(byte_start, units[unit].byte_start);
-                byte_end = std::max(byte_end, units[unit].byte_end);
+            byte_end = units[unit_end - 1].byte_end;
+        }
+
+        std::vector<std::pair<std::size_t, std::uint8_t>> visual_units;
+        visual_units.reserve(unit_end - unit_begin);
+        if (text.bidi.assigned() && byte_start != byte_end) {
+            const auto runs = text.bidi.line_runs(byte_start, byte_end);
+            if (!runs) {
+                return {TextErrorKind::shaping_failure, byte_start, {}};
+            }
+            for (const auto& run : *runs) {
+                const auto begin =
+                    std::lower_bound(units.begin() + unit_begin, units.begin() + unit_end, run.byte_begin,
+                                     [](const auto& unit, auto byte) { return unit.byte_start < byte; });
+                const auto end = std::lower_bound(begin, units.begin() + unit_end, run.byte_end,
+                                                  [](const auto& unit, auto byte) { return unit.byte_start < byte; });
+                if (run.right_to_left()) {
+                    for (auto current = end; current != begin;) {
+                        visual_units.emplace_back(static_cast<std::size_t>(--current - units.begin()), run.level);
+                    }
+                } else {
+                    for (auto current = begin; current != end; ++current) {
+                        visual_units.emplace_back(static_cast<std::size_t>(current - units.begin()), run.level);
+                    }
+                }
+            }
+        } else {
+            for (auto unit = unit_begin; unit < unit_end; ++unit) {
+                visual_units.emplace_back(unit, std::uint8_t{0});
             }
         }
 
@@ -345,20 +371,30 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
         for (std::size_t unit = unit_begin; unit < unit_end; ++unit) {
             width += units[unit].advance;
         }
-        for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {
-            const auto metrics = fonts_->metrics(text.glyphs[glyph].font);
-            if (!metrics) {
-                return font_error(metrics.error);
+        float x{};
+        for (const auto& [unit_index, level] : visual_units) {
+            const auto& unit = units[unit_index];
+            const auto begin = result.visual_glyphs.size();
+            for (auto glyph = unit.glyph_begin; glyph < unit.glyph_end; ++glyph) {
+                result.visual_glyphs.push_back(glyph);
+                const auto metrics = fonts_->metrics(text.glyphs[glyph].font);
+                if (!metrics) {
+                    return font_error(metrics.error);
+                }
+                ascent = std::max(ascent, metrics.metrics.ascent);
+                descent = std::max(descent, -metrics.metrics.descent);
             }
-            ascent = std::max(ascent, metrics.metrics.ascent);
-            descent = std::max(descent, -metrics.metrics.descent);
+            result.visual_clusters.push_back(
+                {unit.byte_start, unit.byte_end, begin, unit.glyph_end - unit.glyph_begin, x, unit.advance, level});
+            x += unit.advance;
         }
         const float content_height = ascent + descent;
         const float baseline = top + std::max(0.0F, (config.line_height - content_height) * 0.5F) + ascent;
 
         float pen_x = 0.0F;
+        const auto glyph_end = result.visual_glyphs.size();
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {
-            const ShapedGlyph& shaped = text.glyphs[glyph];
+            const ShapedGlyph& shaped = text.glyphs[result.visual_glyphs[glyph]];
             if (shaped.extent_width != 0.0F && shaped.extent_height != 0.0F) {
                 const float x1 = pen_x + shaped.offset_x + shaped.extent_x_bearing;
                 const float x2 = x1 + shaped.extent_width;
@@ -389,6 +425,8 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
             width,
             baseline,
             overflow,
+            cluster_begin,
+            result.visual_clusters.size() - cluster_begin,
         });
         result.width = std::max(result.width, width);
         result.overflow = result.overflow || overflow;
@@ -503,6 +541,18 @@ bool TextState::set_line_height(float line_height) {
     return true;
 }
 
+bool TextState::set_direction(TextDirection direction) {
+    if (!valid_text_direction(direction)) {
+        throw std::invalid_argument("Text direction must be Auto, LeftToRight or RightToLeft");
+    }
+    if (direction_ == direction) {
+        return false;
+    }
+    direction_ = direction;
+    invalidate_shape();
+    return true;
+}
+
 void TextState::request_reshape() {
     invalidate_shape();
 }
@@ -605,7 +655,7 @@ bool TextState::synchronize_ellipsis() {
     if (use_suffix) {
         ++counters_.shape_count;
         ++counters_.ellipsis_shapes;
-        auto suffix = engine_->shape(ellipsis_.suffix.view(), fallback_chain_);
+        auto suffix = engine_->shape(ellipsis_.suffix.view(), fallback_chain_, direction_);
         ++counters_.measure_count;
         auto measured =
             suffix ? engine_->measure(suffix.text, {layout_.line_height, std::numeric_limits<float>::infinity()})
@@ -634,7 +684,7 @@ bool TextState::synchronize_ellipsis() {
         value.content = std::move(String::from_utf8(bytes)).value();
         ++counters_.shape_count;
         ++counters_.ellipsis_shapes;
-        auto shape = engine_->shape(value.content.view(), fallback_chain_);
+        auto shape = engine_->shape(value.content.view(), fallback_chain_, direction_);
         if (!shape) {
             last_error_ = std::move(shape.error);
             return cache.emplace(index, std::move(value)).first->second;
@@ -688,7 +738,7 @@ bool TextState::synchronize() {
     }
     if (shape_dirty_) {
         ++counters_.shape_count;
-        TextShapeResult result = engine_->shape(content_.view(), fallback_chain_);
+        TextShapeResult result = engine_->shape(content_.view(), fallback_chain_, direction_);
         if (!result) {
             last_error_ = std::move(result.error);
             return false;

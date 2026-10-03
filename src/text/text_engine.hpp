@@ -136,6 +136,8 @@ struct TextLine {
     float width{};
     float baseline{};
     bool overflow{};
+    std::size_t cluster_begin{};
+    std::size_t cluster_count{};
 
     friend bool operator==(const TextLine&, const TextLine&) = default;
 };
@@ -156,6 +158,26 @@ struct TextMeasurement {
     float height{};
     float first_baseline{};
     bool overflow{};
+    // TextLine glyph ranges index this visual order. Empty metadata preserves
+    // manually constructed legacy LTR measurements with contiguous glyphs.
+    std::vector<std::size_t> visual_glyphs;
+
+    struct Cluster final {
+        std::size_t byte_start{};
+        std::size_t byte_end{};
+        std::size_t glyph_begin{};
+        std::size_t glyph_count{};
+        float x{};
+        float width{};
+        std::uint8_t level{};
+        friend bool operator==(const Cluster&, const Cluster&) = default;
+    };
+
+    std::vector<Cluster> visual_clusters;
+
+    [[nodiscard]] std::size_t glyph_index(std::size_t visual_index) const {
+        return visual_glyphs.empty() ? visual_index : visual_glyphs.at(visual_index);
+    }
 
     friend bool operator==(const TextMeasurement&, const TextMeasurement&) = default;
 };
@@ -216,6 +238,12 @@ public:
     bool set_font_chain(std::vector<font::FontIdentity> fallback_chain);
     bool set_pixel_size(std::uint32_t pixel_size);
     bool set_line_height(float line_height);
+    bool set_direction(TextDirection direction);
+
+    [[nodiscard]] TextDirection direction() const noexcept {
+        return direction_;
+    }
+
     void request_reshape();
     bool set_width_constraint(float max_width, bool request_frame = true);
     bool set_color(std::array<float, 4> color);
@@ -265,6 +293,7 @@ private:
     std::vector<font::FontIdentity> fallback_chain_;
     std::uint32_t pixel_size_{};
     TextLayoutConfig layout_;
+    TextDirection direction_{TextDirection::Auto};
     TextMaterial material_;
     std::function<void()> request_frame_callback_;
     ShapedText shaped_;

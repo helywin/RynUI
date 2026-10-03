@@ -7,7 +7,7 @@
 ## 2. 平台通用：shaping、折行与场景
 
 - [x] 2.1 增加 FontRuntime direction/script参数及TextEngine按level/script/font逻辑shaping、格式控制和replacement处理；补混合Arabic/Hebrew/数字/括号/fallback/ligature/控制字符测试及文档，common Debug/Release font/text/shaping回归通过，格式/规格校验后提交。
-- [ ] 2.2 增加逐行visual glyph/cluster geometry、逻辑折行后L1/L2与GlyphScene/text decoration消费，TextState direction invalidation与ellipsis前缀重新分析；补硬/软换行、空行、glyph唯一覆盖、width-only更新不shape、ellipsis/scene/cache测试文档，common Debug/Release text/glyph/scene/Typography回归通过，格式/规格校验后提交。
+- [x] 2.2 增加逐行visual glyph/cluster geometry、逻辑折行后L1/L2与GlyphScene/text decoration消费，TextState direction invalidation与ellipsis前缀重新分析；补硬/软换行、空行、glyph唯一覆盖、width-only更新不shape、ellipsis/scene/cache测试文档，common Debug/Release text/glyph/scene/Typography回归通过，格式/规格校验后提交。
 
 ## 3. 平台通用：光标、选择与输入
 

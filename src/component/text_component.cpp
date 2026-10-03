@@ -948,11 +948,11 @@ void TextComponentHost::synchronize_decorations(runtime::ComponentId component, 
         float pen = 0;
         const auto end = line.glyph_begin + line.glyph_count;
         for (std::size_t begin = line.glyph_begin; begin < end;) {
-            const auto font = shaped.glyphs[begin].font;
+            const auto font = shaped.glyphs[measurement.glyph_index(begin)].font;
             float width = 0;
             auto next = begin;
-            while (next < end && shaped.glyphs[next].font == font) {
-                width += shaped.glyphs[next++].advance_x;
+            while (next < end && shaped.glyphs[measurement.glyph_index(next)].font == font) {
+                width += std::abs(shaped.glyphs[measurement.glyph_index(next++)].advance_x);
             }
             const auto metrics = text_scene_->font_metrics(font);
             if (metrics) {
