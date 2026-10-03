@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：OTP 候选模型
 
-- [ ] 1.1 实现 grapheme/单行分格、容量/空洞、单格替换/整段粘贴、formatter prepare/版本校验、authoritative echo 与部分/完成判断；补 docs/input.md 和纯 model UTF-8/CRLF/组合字/emoji/截断/异常/重入/同本格不同尾部/controlled 测试，Windows windows-msvc-headless Debug/Release OTP model/text_editor/text_reconcile/input_display 回归通过，format-code/doctor/strict validate/diff 后提交。
+- [x] 1.1 实现 grapheme/单行分格、容量/空洞、单格替换/整段粘贴、formatter prepare/版本校验、authoritative echo 与部分/完成判断；补 docs/input.md 和纯 model UTF-8/CRLF/组合字/emoji/截断/异常/重入/同本格不同尾部/controlled 测试，Windows windows-msvc-headless Debug/Release OTP model/text_editor/text_reconcile/input_display 回归通过，format-code/doctor/strict validate/diff 后提交。
 
 ## 2. 平台通用：公开 API 与 retained 格子
 

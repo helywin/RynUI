@@ -4,6 +4,8 @@ Input、Password、Search 使用共用 typed Props 和长期编辑器。单行�
 
 ## 焦点引用与系统输入提示
 
+OTP 的组级候选模型按 grapheme 分格，去除 CR/LF，默认六格、容量 1–1024。单字符替换保留其他格，多字符粘贴保留前缀并替换尾部；外部值的暂不可见后缀在扩大容量时恢复，用户编辑按当前容量截断。formatter 在发布前收到以空格表示空洞的候选；异常、重入改写或退休组拒绝旧候选。authoritative 回写绕过 formatter，相同 controlled echo 保留格子空洞和本次事务。填满且不同的用户候选才标记完成。当前模型已实现，公开组件与窗口验收按 054 后续阶段推进。
+
 ```cpp
 ryn::InputRef input;
 ryn::Input(ryn::InputProps{}.ref(input)

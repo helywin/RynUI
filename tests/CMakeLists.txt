@@ -6,6 +6,11 @@ if(NOT RYNUI_HAS_SDL_GPU)
     return()
 endif()
 
+add_executable(rynui_otp_model_tests otp_model_tests.cpp)
+rynui_configure_cpp_target(rynui_otp_model_tests)
+target_link_libraries(rynui_otp_model_tests PRIVATE rynui_components)
+add_test(NAME rynui.otp_model COMMAND rynui_otp_model_tests)
+
 add_executable(rynui_text_area_tests text_area_tests.cpp)
 rynui_configure_cpp_target(rynui_text_area_tests)
 target_link_libraries(rynui_text_area_tests PRIVATE rynui_components)
