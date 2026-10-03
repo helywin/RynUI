@@ -14,7 +14,7 @@
 
 ## 4. 平台通用：Gallery 与完整回归
 
-- [ ] 4.1 加入 OTP 稳定 ID 样本（受控/部分完成/formatter/mask/separator/RTL/size/variant/动态 length），更新 README/Input 支持范围并保留 visual bidi 待收尾；common Debug/Release 完整 headless CTest、Gallery frame/catalog 合同通过，记录实际平台/preset与库存，format-code/doctor/strict validate/diff/evidence 后提交。
+- [x] 4.1 加入 OTP 稳定 ID 样本（受控/部分完成/formatter/mask/separator/RTL/size/variant/动态 length），更新 README/Input 支持范围并保留 visual bidi 待收尾；common Debug/Release 完整 headless CTest、Gallery frame/catalog 合同通过，记录实际平台/preset与库存，format-code/doctor/strict validate/diff/evidence 后提交。
 
 ## 5. 原生分平台验收
 

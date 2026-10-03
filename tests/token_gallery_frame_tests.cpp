@@ -3,6 +3,7 @@
 #include "component/selection_component.hpp"
 #include "component/typography_component.hpp"
 #include "component/divider_component.hpp"
+#include "component/otp_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -796,7 +797,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 141, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 153, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -809,7 +810,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 90,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 92,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -818,7 +819,7 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 255,
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 303,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -833,13 +834,13 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 234,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 282,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 62 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 63 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 160,
+                initial.reference_content_runs == 126 && initial.live_samples == 172,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -982,8 +983,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 35,
-            "Gallery Input/Search/Password/Typography/TextArea samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 81,
+            "Gallery Input/Search/Password/Typography/TextArea/OTP samples absent");
     const auto samples = fixture.inputs->mounted_inputs();
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
                                      ryn::InputVariant::Borderless, ryn::InputVariant::Underlined};
@@ -997,7 +998,7 @@ void test_live_input_samples() {
                 fixture.inputs->variant(samples[25].component) == ryn::InputVariant::Filled &&
                 fixture.inputs->variant(samples[26].component) == ryn::InputVariant::Underlined,
             "Gallery statistics or connected Search feature sample differs");
-    for (std::size_t index = 27; index < samples.size(); ++index) {
+    for (std::size_t index = 27; index < 35; ++index) {
         require(fixture.inputs->editors().require(samples[index].editor).mode() ==
                         ryn::input::TextEditMode::MultiLine &&
                     fixture.inputs->caret_map(samples[index].component).line_count() >= 2,
@@ -1008,6 +1009,11 @@ void test_live_input_samples() {
                 "Gallery TextArea variant sample differs");
     }
     const auto controlled = fixture.inputs->mounted_inputs()[0];
+    require(fixture.host->services().otp().mounted().size() == 10, "Gallery OTP group inventory differs");
+    for (std::size_t index = 35; index < samples.size(); ++index) {
+        require(fixture.inputs->editors().require(samples[index].editor).mode() == ryn::input::TextEditMode::SingleLine,
+                "Gallery OTP cell was not a retained single-line editor");
+    }
     const auto uncontrolled = fixture.inputs->mounted_inputs()[1];
     const auto controlled_layers = fixture.inputs->text_layers(controlled.component);
     const auto uncontrolled_layers = fixture.inputs->text_layers(uncontrolled.component);

@@ -61,6 +61,9 @@ struct GalleryState final {
     ryn::Signal<bool> input_clear_disabled{false};
     ryn::Signal<bool> password_toggle{true};
     ryn::Signal<bool> password_visible{false};
+    ryn::Signal<ryn::String> otp_value{ryn::String{}};
+    ryn::Signal<std::size_t> otp_length{6};
+    ryn::OTPRef otp_ref;
     ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
     ryn::Signal<double> slider_value{30};
@@ -229,6 +232,18 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.text-area.resize-nowrap",
     "gallery.text-area.readonly",
     "gallery.text-area.disabled",
+    "gallery.otp.outlined",
+    "gallery.otp.filled",
+    "gallery.otp.borderless",
+    "gallery.otp.underlined",
+    "gallery.otp.controlled",
+    "gallery.otp.formatter-mask",
+    "gallery.otp.separator-rtl",
+    "gallery.otp.dynamic-length",
+    "gallery.otp.readonly-mask",
+    "gallery.otp.disabled",
+    "gallery.otp.focus-all",
+    "gallery.otp.toggle-length",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -725,7 +740,7 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
         });
     ryn::Text(u8"Input / 输入家族 · partial");
     ryn::Text(u8"支持：四变体、统计/上限、ref/系统提示、清空、Unicode 编辑与 IME");
-    ryn::Text(u8"单行家族与 TextArea 已接入；OTP 与双向文字视觉导航继续收尾");
+    ryn::Text(u8"Input / Password / Search / TextArea / OTP 已接入；双向文字视觉导航继续收尾");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
                    .wrap(true)
@@ -1636,6 +1651,89 @@ void add_text_area_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 8;
 }
 
+void add_otp_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"OTP / 分格输入：grapheme、粘贴分发、formatter、mask 与动态长度");
+    Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+          SpaceContent{[state] {
+              for (const auto variant :
+                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                  const auto id = utf8(variant == InputVariant::Outlined     ? "gallery.otp.outlined"
+                                       : variant == InputVariant::Filled     ? "gallery.otp.filled"
+                                       : variant == InputVariant::Borderless ? "gallery.otp.borderless"
+                                                                             : "gallery.otp.underlined");
+                  Flex(FlexProps{}
+                           .vertical(true)
+                           .align(FlexAlign::Start)
+                           .gap(dp(4))
+                           .layout(LayoutStyle{}.width(state->cell_width)),
+                       FlexContent{[state, id, variant] {
+                           Text(id);
+                           OTP(OTPProps{}
+                                   .length(4)
+                                   .variant(variant)
+                                   .defaultValue(u8"12")
+                                   .onInput([state](const auto& cells) {
+                                       ++state->telemetry.input_changes;
+                                       const auto filled = std::ranges::count_if(
+                                           cells, [](const String& value) { return !value.empty(); });
+                                       state->input_feedback.set(utf8("OTP partial: " + std::to_string(filled) + "/" +
+                                                                      std::to_string(cells.size())));
+                                   })
+                                   .onChange([state](String value) { state->input_feedback.set(std::move(value)); }));
+                       }});
+              }
+              Text(u8"gallery.otp.controlled · 六格 / 填满通知");
+              OTP(OTPProps{}
+                      .value(state->otp_value)
+                      .ref(state->otp_ref)
+                      .onInput([state](const auto&) { ++state->telemetry.input_changes; })
+                      .onChange([state](String value) {
+                          state->otp_value.set(value);
+                          state->input_feedback.set(std::move(value));
+                      }));
+              Text(u8"gallery.otp.formatter-mask · 大写 / bullet / Large");
+              OTP(OTPProps{}.defaultValue(u8"rYnUI!").mask(true).size(ControlSize::Large).formatter([](String value) {
+                  std::string bytes{value.bytes()};
+                  for (auto& byte : bytes) {
+                      if (byte >= 'a' && byte <= 'z') {
+                          byte = static_cast<char>(byte - 'a' + 'A');
+                      }
+                  }
+                  return String::from_utf8(bytes).value();
+              }));
+              Text(u8"gallery.otp.separator-rtl · typed separator / RightToLeft");
+              OTP(OTPProps{}.length(4).defaultValue(u8"1234").direction(OTPDirection::RightToLeft),
+                  OTPSeparator{[](std::size_t index) -> std::optional<OTPSeparatorContent> {
+                      if (index != 1) {
+                          return {};
+                      }
+                      return OTPSeparatorContent{[] { Text(u8"-"); }};
+                  }});
+              Text(u8"gallery.otp.dynamic-length · 四/六格 / 前缀身份保留");
+              OTP(OTPProps{}.length(state->otp_length).defaultValue(u8"12345678"));
+              ThemeConfig dark;
+              dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+              Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
+                        ++state->telemetry.theme_content_runs;
+                        Text(u8"gallery.otp.readonly-mask · Dark Compact / Small / 自定义 mask");
+                        OTP(OTPProps{}
+                                .length(4)
+                                .defaultValue(u8"只读验证码")
+                                .mask(u8"*")
+                                .readOnly(true)
+                                .variant(InputVariant::Filled)
+                                .size(ControlSize::Small));
+                    }});
+              Text(u8"gallery.otp.disabled · Warning / 禁用");
+              OTP(OTPProps{}.length(4).defaultValue(u8"1234").disabled(true).status(InputStatus::Warning));
+              Button(ButtonProps{}.onClick([state] { static_cast<void>(state->otp_ref.focus()); }),
+                     ButtonContent{[] { Text(u8"gallery.otp.focus-all"); }});
+              Button(ButtonProps{}.onClick([state] { state->otp_length.set(state->otp_length.get() == 6 ? 4 : 6); }),
+                     ButtonContent{[] { Text(u8"gallery.otp.toggle-length"); }});
+          }});
+    state->telemetry.live_samples += 12;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1717,6 +1815,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_icon_samples(state);
                                                         add_input_feature_samples(state);
                                                         add_text_area_samples(state);
+                                                        add_otp_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
