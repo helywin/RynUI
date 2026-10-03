@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：导航与会话
 
-- [ ] 3.1 实现焦点/点击全选、第一空格重定向、自动前进、RTL 左右/空 Backspace、ref/autoFocus/indexed focus callbacks、IME ownership/stamp、clipboard/readonly/disabled/单格 undo 阻止、formatter/onInput/onChange/卸载重入保护；补相应文档与测试，common Debug/Release OTP/focus/interaction/clipboard/input/typography 回归通过，格式和规格校验后提交。
+- [x] 3.1 实现焦点/点击全选、第一空格重定向、自动前进、RTL 左右/空 Backspace、ref/autoFocus/indexed focus callbacks、IME ownership/stamp、clipboard/readonly/disabled/单格 undo 阻止、formatter/onInput/onChange/卸载重入保护；补相应文档与测试，common Debug/Release OTP/focus/interaction/clipboard/input/typography 回归通过，格式和规格校验后提交。
 
 ## 4. 平台通用：Gallery 与完整回归
 

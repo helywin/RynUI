@@ -3,6 +3,7 @@
 #include <ryn/string.hpp>
 
 #include <functional>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <thread>
@@ -38,6 +39,11 @@ public:
     [[nodiscard]] OTPCells projection() const;
     [[nodiscard]] String value() const;
     [[nodiscard]] std::size_t first_empty() const noexcept;
+
+    [[nodiscard]] bool cell_empty(std::size_t index) const noexcept {
+        return index >= source_.size() || source_[index].empty();
+    }
+
     bool reconcile(std::string_view);
     bool set_length(std::size_t);
     [[nodiscard]] std::optional<OTPCandidate> prepare(std::size_t index, std::string_view cell_candidate);

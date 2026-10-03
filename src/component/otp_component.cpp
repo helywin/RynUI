@@ -105,10 +105,10 @@ struct OTPPropsAccess final {
                 throw std::invalid_argument("OTPRef is already bound");
             }
         }
+        const auto initial = props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(String{});
+        auto model = std::make_shared<OTPModel>(read_prop(props.length_), initial.bytes(), props.formatter_);
         const auto length = read_prop(props.length_);
-        auto model = std::make_shared<OTPModel>(
-            length, (props.value_ ? read_prop(*props.value_) : props.default_value_.value_or(String{})).bytes(),
-            props.formatter_);
+        model->set_length(length);
         validate_otp_mask(read_prop(props.mask_));
         validate_direction(read_prop(props.direction_));
         validate_enum(read_prop(props.size_), ControlSize::Large, "Invalid OTP size");
@@ -217,8 +217,8 @@ struct OTPPropsAccess final {
             connect_prop(scope, props.length_, [&host, id](std::size_t value) { host.set_length(id, value); }));
         if (props.value_) {
             static_cast<void>(
-                connect_prop(scope, *props.value_, [&host, id, first = true](const String& value) mutable {
-                    if (std::exchange(first, false)) {
+                connect_prop(scope, *props.value_, [&host, id, first = true, initial](const String& value) mutable {
+                    if (std::exchange(first, false) && value == initial) {
                         return;
                     }
                     if (auto* state = host.find(id); state && state->model->reconcile(value.bytes())) {
@@ -425,7 +425,7 @@ void OTPComponentHost::set_length(runtime::ComponentId id, std::size_t length) {
     state->resizing = false;
     project(id);
     update_layout(id);
-    if (transfer) {
+    if (transfer && !services_->focus().state().focused) {
         static_cast<void>(focus(id, length - 1));
     }
 }
@@ -536,16 +536,9 @@ void OTPComponentHost::focused(runtime::ComponentId id, std::size_t index) {
     if (!state || state->resizing || index >= state->cells.size()) {
         return;
     }
-    const auto hole = state->model->first_empty();
-    if (hole < index) {
-        static_cast<void>(focus(id, hole));
-        return;
-    }
-    const auto reference = state->cells[index]->reference;
-    static_cast<void>(reference.focus({InputFocusCursor::All}));
-    state = find(id);
-    if (state && state->on_focus) {
-        auto callback = state->on_focus;
+    auto callback = state->on_focus;
+    static_cast<void>(focus(id, index));
+    if (find(id) && callback) {
         callback(index);
     }
 }
@@ -556,14 +549,18 @@ bool OTPComponentHost::keyboard(runtime::ComponentId id, std::size_t index, cons
     if (!state || state->resizing) {
         return true;
     }
-    const bool primary = input::has_modifier(event.modifiers, event.primary_modifier);
+    const auto other =
+        event.primary_modifier == input::KeyModifier::control ? input::KeyModifier::meta : input::KeyModifier::control;
+    const bool primary = input::has_modifier(event.modifiers, event.primary_modifier) &&
+                         !input::has_modifier(event.modifiers, other) &&
+                         !input::has_modifier(event.modifiers, input::KeyModifier::alt);
     const bool plain = !input::has_modifier(event.modifiers, input::KeyModifier::control) &&
                        !input::has_modifier(event.modifiers, input::KeyModifier::meta) &&
                        !input::has_modifier(event.modifiers, input::KeyModifier::alt);
     if (primary && (event.key == Key::z || event.key == Key::y)) {
         return true;
     }
-    const bool back = plain && event.key == Key::backspace && state->model->projection()[index].empty();
+    const bool back = plain && event.key == Key::backspace && state->model->cell_empty(index);
     if (!plain || (!back && event.key != Key::left && event.key != Key::right)) {
         return false;
     }

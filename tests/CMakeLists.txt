@@ -24,6 +24,19 @@ rynui_configure_cpp_target(rynui_otp_public_api_tests)
 target_link_libraries(rynui_otp_public_api_tests PRIVATE rynui_components)
 add_test(NAME rynui.otp_public_api COMMAND rynui_otp_public_api_tests)
 
+add_executable(rynui_otp_interaction_tests otp_interaction_tests.cpp)
+rynui_configure_cpp_target(rynui_otp_interaction_tests)
+target_link_libraries(rynui_otp_interaction_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_otp_interaction_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.otp_interaction COMMAND rynui_otp_interaction_tests)
+
+add_executable(rynui_reactive_source_lifecycle_tests reactive_source_lifecycle_tests.cpp)
+rynui_configure_cpp_target(rynui_reactive_source_lifecycle_tests)
+target_link_libraries(rynui_reactive_source_lifecycle_tests PRIVATE rynui_reactive)
+add_test(NAME rynui.reactive_source_lifecycle COMMAND rynui_reactive_source_lifecycle_tests)
+
 add_executable(rynui_text_area_tests text_area_tests.cpp)
 rynui_configure_cpp_target(rynui_text_area_tests)
 target_link_libraries(rynui_text_area_tests PRIVATE rynui_components)

@@ -20,7 +20,7 @@ public:
     ReactiveSource() = default;
     ReactiveSource(const ReactiveSource&) = delete;
     ReactiveSource& operator=(const ReactiveSource&) = delete;
-    virtual ~ReactiveSource() = default;
+    virtual ~ReactiveSource();
 
     void subscribe(const std::shared_ptr<ObserverNode>& observer);
     void unsubscribe(const ObserverNode* observer) noexcept;
@@ -46,9 +46,11 @@ public:
 
 private:
     friend class Scheduler;
+    friend class ReactiveSource;
     friend void record_dependency(ReactiveSource& source);
 
     void track(ReactiveSource& source);
+    void forget(ReactiveSource& source) noexcept;
 
     ObserverPhase phase_;
     std::function<void()> callback_;

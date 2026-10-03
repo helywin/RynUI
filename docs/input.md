@@ -69,6 +69,10 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 ## 收尾进度
 
+OTPRef 的 bound/focus/blur 共享线程绑定，卸载后失效；focus 请求第一格并全选，进入较后格而前方有空洞时重定向至第一空格。焦点及点击全选当前 grapheme，onFocus/onBlur 通知实际转换的格子索引，包括重定向过程。autoFocus 仅首次挂载第一格，初始禁用后再启用不会抢焦点。左右键按组方向移动，空格 Backspace 返回上一格全选；Tab/Shift Tab 沿正常资格遍历。单格 primary undo/redo 被消费，避免破坏组级一致性。
+
+OTP composition update 只显示在当前格，不分发或通知业务回调；IME 拥有导航/Enter/快捷键，提交后才分格、通知及前进。mask/native hint 在 preedit 期间变更时延后刷新 native session，提交或取消后生效。删除活跃尾部格子取消旧 session/stamp，并按剩余资格转移；显式 blur 回调请求优先于自动转移。readOnly 明文允许选择复制，disabled 清理焦点与会话。部分回调同步卸载或写入其他 authoritative 值会取消旧完成通知/前进，相同 echo 保留；formatter 异常后可继续合法输入。原生候选窗口的人工操作不由端口测试代替。
+
 `<ryn/otp.hpp>` 提供 OTPProps/OTP/OTPRef。默认六格，`.length(Prop<size_t>)` 支持 1–1024；每个格子复用长期 Input editor/IME owner，动态容量只增删尾部，保留前缀 editor、scene 和 separator 身份。`.value(Prop<String>)` 与 `.defaultValue(String)` 互斥，外部值的不可见后缀可在扩大容量时恢复，用户编辑按当前容量截断。
 
 OTP 按 grapheme 分格，去除 CR/LF，组合字与 ZWJ emoji 不拆开。单 grapheme 替换保留其他格，多 grapheme 粘贴保留前缀并替换尾部。`.formatter(function<String(String)>)` 在发布前收到以空格表示空洞的完整候选；初值也经过 formatter，后续 authoritative 回写绕过。formatter 异常、同步改写组值/容量或卸载拒绝旧候选；相同 controlled echo 保留空洞和事务。`.onInput(function<void(const vector<String>&)>)` 通知固定 length 的部分数组，`.onChange(function<void(String)>)` 仅在填满且不同于编辑前时通知完整值，两者按此顺序调用。当前格不变但尾部改变的粘贴也通知。

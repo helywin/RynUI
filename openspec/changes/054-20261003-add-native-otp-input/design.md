@@ -29,6 +29,7 @@
 - [动态 length 退休当前 IME owner] → 先取消资格/会话，删除尾部再按剩余资格转移焦点；prefix 身份不变。
 - [mask 长度不同于原值] → 复用逻辑与显示 byte 映射，单 grapheme mask 验证，原值不可泄漏到 glyph scene。
 - [多 editor 成本] → 明确容量与资源上限；共同测试覆盖 idle/无关内容与复用，不把单行 benchmark 当作 OTP 性能结论。
+- [动态格子 source 先于存活 observer 析构] → ReactiveSource 析构清理 observer 的借用依赖指针；覆盖 source 销毁后重算、排队通知、observer 内销毁以及无分配清理，避免卸载时悬空访问。
 
 ## Migration Plan
 

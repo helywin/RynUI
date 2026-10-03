@@ -40,6 +40,16 @@ private:
 
 void reactive_layer_anchor() noexcept {}
 
+ReactiveSource::~ReactiveSource() {
+    // Computation closures can retain observers longer than a dynamically
+    // removed source. Drop its borrowed pointer before the source is released.
+    for (const auto& subscriber : subscribers_) {
+        if (const auto observer = subscriber.lock()) {
+            observer->forget(*this);
+        }
+    }
+}
+
 void ReactiveSource::subscribe(const std::shared_ptr<ObserverNode>& observer) {
     for (auto iterator = subscribers_.begin(); iterator != subscribers_.end();) {
         const auto subscriber = iterator->lock();
@@ -131,6 +141,10 @@ void ObserverNode::track(ReactiveSource& source) {
     }
     dependencies_.push_back(&source);
     source.subscribe(shared_from_this());
+}
+
+void ObserverNode::forget(ReactiveSource& source) noexcept {
+    std::erase(dependencies_, &source);
 }
 
 Scheduler& Scheduler::current() noexcept {
