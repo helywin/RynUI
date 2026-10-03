@@ -81,5 +81,6 @@ int run_flex_acceptance(int argc, char** argv);
 int run_space_acceptance(int argc, char** argv);
 int run_icon_acceptance(int argc, char** argv);
 int run_input_acceptance(int argc, char** argv);
+int run_text_area_acceptance(int argc, char** argv);
 
 } // namespace rynui::example

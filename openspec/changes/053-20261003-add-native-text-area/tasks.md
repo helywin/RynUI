@@ -20,7 +20,7 @@
 
 ### Windows
 
-- [ ] 5.1 windows-msvc Debug/Release 构建 affected native tests/Gallery，运行 native affected CTest、default smoke 和专用真实 D3D12/DXIL TextArea 窗口；记录系统/1/1.25/1.5/2 缩放、四变体/Theme、换行/selection/IME区域、autoSize/count/clear、wheel/resize 后 pointer hit、popup/idle/dispose 的日志与 GPU readback hash/尺寸，审核截图并可复核后独立提交 Windows evidence。
+- [x] 5.1 windows-msvc Debug/Release 构建 affected native tests/Gallery，运行 native affected CTest、default smoke 和专用真实 D3D12/DXIL TextArea 窗口；记录系统/1/1.25/1.5/2 缩放、四变体/Theme、换行/selection/IME区域、autoSize/count/clear、wheel/resize 后 pointer hit、popup/idle/dispose 的日志与 GPU readback hash/尺寸，审核截图并可复核后独立提交 Windows evidence。
 
 ### Linux
 

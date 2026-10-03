@@ -1,0 +1,198 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/21] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Debug && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Debug"
+[2/21] Deploying shaders for rynui_token_gallery
+[3/21] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Debug\password_component_tests.cpp.obj
+[4/21] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Debug\input_gpu_tests.cpp.obj
+[5/21] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Debug\token_gallery_frame_tests.cpp.obj
+[6/21] Building CXX object tests\CMakeFiles\rynui_text_area_tests.dir\Debug\text_area_tests.cpp.obj
+[7/21] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Debug\search_component_tests.cpp.obj
+[8/21] Building CXX object tests\CMakeFiles\rynui_selection_component_tests.dir\Debug\selection_component_tests.cpp.obj
+[9/21] Building CXX object tests\CMakeFiles\rynui_typography_component_tests.dir\Debug\typography_component_tests.cpp.obj
+[10/21] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Debug\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(610): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(618): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[11/21] Linking CXX executable tests\Debug\rynui_password_component_tests.exe
+[12/21] Linking CXX executable tests\Debug\rynui_input_gpu_tests.exe
+[13/21] Linking CXX executable tests\Debug\rynui_text_area_tests.exe
+[14/21] Linking CXX executable tests\Debug\rynui_search_component_tests.exe
+[15/21] Linking CXX executable tests\Debug\rynui_selection_component_tests.exe
+[16/21] Linking CXX executable tests\Debug\rynui_input_component_tests.exe
+[17/21] Linking CXX executable tests\Debug\rynui_token_gallery_frame_tests.exe
+[18/21] Linking CXX executable tests\Debug\rynui_typography_component_tests.exe
+[19/21] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Debug\typography_interaction_tests.cpp.obj
+[20/21] Linking CXX executable tests\Debug\rynui_typography_interaction_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   1: rynui.text_area
+ 1/16 Test   #1: rynui.text_area ..................   Passed    0.76 sec
+      Start  76: rynui.search_component
+ 2/16 Test  #76: rynui.search_component ...........   Passed    2.28 sec
+      Start  82: rynui.selection_component
+ 3/16 Test  #82: rynui.selection_component ........   Passed    0.59 sec
+      Start 128: rynui.input_component
+ 4/16 Test #128: rynui.input_component ............   Passed    2.29 sec
+      Start 129: rynui.password_component
+ 5/16 Test #129: rynui.password_component .........   Passed    0.15 sec
+      Start 135: rynui.input_gpu
+ 6/16 Test #135: rynui.input_gpu ..................   Passed    0.16 sec
+      Start 158: rynui.token_gallery_frame
+ 7/16 Test #158: rynui.token_gallery_frame ........   Passed   32.87 sec
+      Start 194: rynui.glyph_scene
+ 8/16 Test #194: rynui.glyph_scene ................   Passed    0.35 sec
+      Start 207: rynui.interaction_registry
+ 9/16 Test #207: rynui.interaction_registry .......   Passed    0.03 sec
+      Start 212: rynui.pointer_route
+10/16 Test #212: rynui.pointer_route ..............   Passed    0.03 sec
+      Start 216: rynui.focus_order
+11/16 Test #216: rynui.focus_order ................   Passed    0.02 sec
+      Start 217: rynui.focus_state
+12/16 Test #217: rynui.focus_state ................   Passed    0.02 sec
+      Start 219: rynui.focus_lifecycle
+13/16 Test #219: rynui.focus_lifecycle ............   Passed    0.03 sec
+      Start 225: rynui.text_scene_service
+14/16 Test #225: rynui.text_scene_service .........   Passed    0.32 sec
+      Start 228: rynui.typography_component
+15/16 Test #228: rynui.typography_component .......   Passed    0.88 sec
+      Start 229: rynui.typography_interaction
+16/16 Test #229: rynui.typography_interaction .....   Passed    0.24 sec
+
+100% tests passed out of 16
+
+Total Test time (real) =  41.18 sec
+[0/2] Re-checking globbed directories...
+[1/89] Building CXX object _deps\rynui_spirv_cross-build\CMakeFiles\spirv-cross-c.dir\Release\spirv_cross_c.cpp.obj
+[2/89] Linking CXX static library _deps\rynui_spirv_cross-build\Release\spirv-cross-c.lib
+[3/89] Linking CXX executable Release\shadercross.exe
+[4/89] C:\Windows\system32\cmd.exe /C "cd /D D:\code\RynUI\out\build\windows-msvc && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxcompiler.dll D:/code/RynUI/out/build/windows-msvc/Release && C:\Users\jiang\scoop\apps\cmake\current\bin\cmake.exe -E copy_if_different D:/code/RynUI/out/build/windows-msvc/_deps/rynui_dxc-src/bin/x64/dxil.dll D:/code/RynUI/out/build/windows-msvc/Release"
+[5/89] Compiling glyph fragment shader to SPIRV
+[6/89] Compiling glyph vertex shader to SPIRV
+[7/89] Compiling rounded_effect fragment shader to SPIRV
+[8/89] Compiling rounded_effect vertex shader to SPIRV
+[9/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_affix_action.cpp.obj
+[10/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\window_component_services.cpp.obj
+[11/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\tooltip_component.cpp.obj
+[12/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\button_component.cpp.obj
+D:\code\RynUI\src\component\button_component.cpp(1745): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[13/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\component_scene.cpp.obj
+[14/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\retained_surface_service.cpp.obj
+[15/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_compact.cpp.obj
+[16/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\slider_component.cpp.obj
+[17/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\input_component.cpp.obj
+[18/89] Reflecting glyph fragment shader resources
+[19/89] Compiling glyph fragment shader to DXIL
+[20/89] Reflecting glyph vertex shader resources
+[21/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[22/89] Compiling glyph vertex shader to DXIL
+[23/89] Compiling quad fragment shader to DXIL
+[24/89] Compiling quad fragment shader to SPIRV
+[25/89] Compiling quad vertex shader to DXIL
+[26/89] Reflecting rounded_effect fragment shader resources
+[27/89] Compiling quad vertex shader to SPIRV
+[28/89] Compiling rounded_effect fragment shader to DXIL
+[29/89] Reflecting rounded_effect vertex shader resources
+[30/89] Compiling rounded_effect vertex shader to DXIL
+[31/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\space_addon.cpp.obj
+[32/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\search_component.cpp.obj
+[33/89] Deploying shaders for rynui_token_gallery
+[34/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\main.cpp.obj
+[35/89] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Release\renderer\sdl\quad_renderer.cpp.obj
+[36/89] Building CXX object src\CMakeFiles\rynui_renderer_sdl.dir\Release\renderer\sdl\scene_renderer.cpp.obj
+[37/89] Linking CXX static library src\Release\rynui_renderer_sdl.lib
+[38/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\text_component.cpp.obj
+D:\code\RynUI\src\component\text_component.cpp(870): warning C4100: 'viewport': 未引用的参数
+[39/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\typography_component.cpp.obj
+D:\code\RynUI\src\component\typography_component.cpp(759): warning C4189: “theme”: 局部变量已初始化但不引用
+[40/89] Building CXX object examples\CMakeFiles\rynui_token_gallery_reference_surface.dir\Release\token_gallery\reference_surface.cpp.obj
+[41/89] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\divider_component.cpp.obj
+D:\code\RynUI\src\component\divider_component.cpp(411): warning C4100: 'viewport': 未引用的参数
+[42/89] Linking CXX static library src\Release\rynui_components.lib
+[43/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\token_gallery_runtime.cpp.obj
+[44/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\typography_acceptance.cpp.obj
+[45/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\tooltip_acceptance.cpp.obj
+[46/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\divider_acceptance.cpp.obj
+[47/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\slider_acceptance.cpp.obj
+[48/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\switch_acceptance.cpp.obj
+[49/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\button_acceptance.cpp.obj
+[50/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\checkbox_acceptance.cpp.obj
+[51/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\flex_acceptance.cpp.obj
+[52/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\radio_acceptance.cpp.obj
+[53/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\space_acceptance.cpp.obj
+[54/89] Building CXX object tests\CMakeFiles\rynui_text_area_tests.dir\Release\text_area_tests.cpp.obj
+[55/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\icon_acceptance.cpp.obj
+[56/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\input_acceptance.cpp.obj
+[57/89] Building CXX object examples\CMakeFiles\rynui_token_gallery.dir\Release\token_gallery\text_area_acceptance.cpp.obj
+[58/89] Building CXX object examples\CMakeFiles\rynui_token_gallery_definition.dir\Release\token_gallery\token_gallery_definition.cpp.obj
+[59/89] Linking CXX static library examples\Release\rynui_token_gallery_definition.lib
+[60/89] Linking CXX static library examples\Release\rynui_token_gallery_reference_surface.lib
+[61/89] Building CXX object tests\CMakeFiles\rynui_interaction_registry_tests.dir\Release\interaction_registry_tests.cpp.obj
+[62/89] Building CXX object tests\CMakeFiles\rynui_search_component_tests.dir\Release\search_component_tests.cpp.obj
+[63/89] Building CXX object tests\CMakeFiles\rynui_glyph_scene_tests.dir\Release\glyph_scene_tests.cpp.obj
+D:\code\RynUI\tests\glyph_scene_tests.cpp(118): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+D:\code\RynUI\tests\glyph_scene_tests.cpp(119): warning C4244: “参数”: 从“const uint32_t”转换到“float”，可能丢失数据
+[64/89] Building CXX object tests\CMakeFiles\rynui_selection_component_tests.dir\Release\selection_component_tests.cpp.obj
+[65/89] Building CXX object tests\CMakeFiles\rynui_focus_order_tests.dir\Release\focus_order_tests.cpp.obj
+[66/89] Building CXX object tests\CMakeFiles\rynui_focus_state_tests.dir\Release\focus_state_tests.cpp.obj
+[67/89] Building CXX object tests\CMakeFiles\rynui_text_scene_service_tests.dir\Release\text_scene_service_tests.cpp.obj
+[68/89] Linking CXX executable tests\Release\rynui_text_area_tests.exe
+[69/89] Linking CXX executable examples\Release\rynui_token_gallery.exe
+[70/89] Building CXX object tests\CMakeFiles\rynui_password_component_tests.dir\Release\password_component_tests.cpp.obj
+[71/89] Building CXX object tests\CMakeFiles\rynui_input_gpu_tests.dir\Release\input_gpu_tests.cpp.obj
+[72/89] Linking CXX executable tests\Release\rynui_search_component_tests.exe
+[73/89] Building CXX object tests\CMakeFiles\rynui_token_gallery_frame_tests.dir\Release\token_gallery_frame_tests.cpp.obj
+[74/89] Linking CXX executable tests\Release\rynui_glyph_scene_tests.exe
+[75/89] Linking CXX executable tests\Release\rynui_password_component_tests.exe
+[76/89] Linking CXX executable tests\Release\rynui_selection_component_tests.exe
+[77/89] Linking CXX executable tests\Release\rynui_input_gpu_tests.exe
+[78/89] Linking CXX executable tests\Release\rynui_interaction_registry_tests.exe
+[79/89] Linking CXX executable tests\Release\rynui_focus_order_tests.exe
+[80/89] Linking CXX executable tests\Release\rynui_focus_state_tests.exe
+[81/89] Linking CXX executable tests\Release\rynui_text_scene_service_tests.exe
+[82/89] Linking CXX executable tests\Release\rynui_token_gallery_frame_tests.exe
+[83/89] Building CXX object tests\CMakeFiles\rynui_input_component_tests.dir\Release\input_component_tests.cpp.obj
+D:\code\RynUI\tests\input_component_tests.cpp(610): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+D:\code\RynUI\tests\input_component_tests.cpp(618): warning C4834: 放弃具有 [[nodiscard]] 属性的函数的返回值
+[84/89] Linking CXX executable tests\Release\rynui_input_component_tests.exe
+[85/89] Building CXX object tests\CMakeFiles\rynui_typography_interaction_tests.dir\Release\typography_interaction_tests.cpp.obj
+[86/89] Building CXX object tests\CMakeFiles\rynui_typography_component_tests.dir\Release\typography_component_tests.cpp.obj
+[87/89] Linking CXX executable tests\Release\rynui_typography_interaction_tests.exe
+[88/89] Linking CXX executable tests\Release\rynui_typography_component_tests.exe
+Test project D:/code/RynUI/out/build/windows-msvc
+      Start   1: rynui.text_area
+ 1/16 Test   #1: rynui.text_area ..................   Passed    0.40 sec
+      Start  76: rynui.search_component
+ 2/16 Test  #76: rynui.search_component ...........   Passed    1.27 sec
+      Start  82: rynui.selection_component
+ 3/16 Test  #82: rynui.selection_component ........   Passed    0.44 sec
+      Start 128: rynui.input_component
+ 4/16 Test #128: rynui.input_component ............   Passed    1.66 sec
+      Start 129: rynui.password_component
+ 5/16 Test #129: rynui.password_component .........   Passed    0.12 sec
+      Start 135: rynui.input_gpu
+ 6/16 Test #135: rynui.input_gpu ..................   Passed    0.12 sec
+      Start 158: rynui.token_gallery_frame
+ 7/16 Test #158: rynui.token_gallery_frame ........   Passed    7.53 sec
+      Start 194: rynui.glyph_scene
+ 8/16 Test #194: rynui.glyph_scene ................   Passed    0.28 sec
+      Start 207: rynui.interaction_registry
+ 9/16 Test #207: rynui.interaction_registry .......   Passed    0.03 sec
+      Start 212: rynui.pointer_route
+10/16 Test #212: rynui.pointer_route ..............   Passed    0.01 sec
+      Start 216: rynui.focus_order
+11/16 Test #216: rynui.focus_order ................   Passed    0.02 sec
+      Start 217: rynui.focus_state
+12/16 Test #217: rynui.focus_state ................   Passed    0.03 sec
+      Start 219: rynui.focus_lifecycle
+13/16 Test #219: rynui.focus_lifecycle ............   Passed    0.01 sec
+      Start 225: rynui.text_scene_service
+14/16 Test #225: rynui.text_scene_service .........   Passed    0.24 sec
+      Start 228: rynui.typography_component
+15/16 Test #228: rynui.typography_component .......   Passed    0.62 sec
+      Start 229: rynui.typography_interaction
+16/16 Test #229: rynui.typography_interaction .....   Passed    0.16 sec
+
+100% tests passed out of 16
+
+Total Test time (real) =  13.18 sec
