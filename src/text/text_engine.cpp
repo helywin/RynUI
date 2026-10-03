@@ -78,12 +78,14 @@ struct ClusterUnit {
     std::size_t byte_end{};
     float advance{};
     bool legal_break_after{};
+    bool grapheme_break_after{true};
 };
 
-[[nodiscard]] std::vector<ClusterUnit> make_cluster_units(const ShapedText& text, const ShapedParagraph& paragraph) {
-    std::vector<ClusterUnit> units;
+void make_cluster_units(const ShapedText& text, const ShapedParagraph& paragraph, std::vector<ClusterUnit>& units,
+                        std::span<const std::size_t> graphemes = {}) {
+    units.clear();
     const std::size_t glyph_end = paragraph.glyph_begin + paragraph.glyph_count;
-    std::vector<std::size_t> logical_clusters;
+    std::vector<std::size_t> logical_clusters(std::size_t{0});
     logical_clusters.reserve(paragraph.glyph_count);
     for (std::size_t glyph = paragraph.glyph_begin; glyph < glyph_end; ++glyph) {
         logical_clusters.push_back(text.glyphs[glyph].cluster);
@@ -104,20 +106,104 @@ struct ClusterUnit {
         const auto next_cluster = std::upper_bound(logical_clusters.begin(), logical_clusters.end(), cluster);
         const std::size_t byte_end = next_cluster == logical_clusters.end() ? paragraph.byte_end : *next_cluster;
         const Utf8Scalar* scalar = scalar_at_cluster(text, cluster);
+        const auto grapheme_end = graphemes.empty() || std::binary_search(graphemes.begin(), graphemes.end(), byte_end);
         units.push_back({
             begin,
             glyph,
             cluster,
             byte_end,
             advance,
-            scalar != nullptr && (scalar->whitespace || scalar->cjk),
+            grapheme_end && scalar != nullptr && (scalar->whitespace || scalar->cjk),
+            grapheme_end,
         });
     }
     std::ranges::sort(units, {}, &ClusterUnit::byte_start);
-    return units;
+}
+
+bool append_line_geometry(const ShapedText& text, const ShapedParagraph& paragraph, std::span<const ClusterUnit> units,
+                          TextMeasurement& result) {
+    const auto glyph_begin = result.visual_glyphs.size();
+    const auto cluster_begin = result.visual_clusters.size();
+    const auto byte_start = units.empty() ? paragraph.byte_start : units.front().byte_start;
+    const auto byte_end = units.empty() ? paragraph.byte_end : units.back().byte_end;
+    std::vector<std::pair<std::size_t, std::uint8_t>> visual_units(std::size_t{0});
+    visual_units.reserve(units.size());
+    if (text.bidi.assigned() && byte_start != byte_end) {
+        const auto runs = text.bidi.line_runs(byte_start, byte_end);
+        if (!runs) {
+            return false;
+        }
+        for (const auto& run : *runs) {
+            const auto begin = std::lower_bound(units.begin(), units.end(), run.byte_begin,
+                                                [](const auto& unit, auto byte) { return unit.byte_start < byte; });
+            const auto end = std::lower_bound(begin, units.end(), run.byte_end,
+                                              [](const auto& unit, auto byte) { return unit.byte_start < byte; });
+            if (run.right_to_left()) {
+                for (auto current = end; current != begin;) {
+                    visual_units.emplace_back(static_cast<std::size_t>(--current - units.begin()), run.level);
+                }
+            } else {
+                for (auto current = begin; current != end; ++current) {
+                    visual_units.emplace_back(static_cast<std::size_t>(current - units.begin()), run.level);
+                }
+            }
+        }
+    } else {
+        for (std::size_t unit = 0; unit < units.size(); ++unit) {
+            visual_units.emplace_back(unit, std::uint8_t{0});
+        }
+    }
+    if (visual_units.size() != units.size()) {
+        return false;
+    }
+    float x{};
+    for (const auto& [unit_index, level] : visual_units) {
+        const auto& unit = units[unit_index];
+        const auto begin = result.visual_glyphs.size();
+        for (auto glyph = unit.glyph_begin; glyph < unit.glyph_end; ++glyph) {
+            result.visual_glyphs.push_back(glyph);
+        }
+        result.visual_clusters.push_back(
+            {unit.byte_start, unit.byte_end, begin, unit.glyph_end - unit.glyph_begin, x, unit.advance, level});
+        x += unit.advance;
+    }
+    result.lines.push_back({glyph_begin, result.visual_glyphs.size() - glyph_begin, byte_start, byte_end, x, 0, false,
+                            cluster_begin, result.visual_clusters.size() - cluster_begin});
+    result.width = std::max(result.width, x);
+    return true;
 }
 
 } // namespace
+
+bool unwrapped_caret_geometry(const ShapedText& text, float baseline, TextMeasurement& result) {
+    if (!std::isfinite(baseline) || text.paragraphs.size() > 1 ||
+        (!text.bidi.assigned() && std::ranges::any_of(text.runs, [](const auto& run) { return run.right_to_left; }))) {
+        return false;
+    }
+    std::size_t previous_cluster{};
+    for (const auto& glyph : text.glyphs) {
+        if (glyph.cluster >= text.normalized_size_bytes || !std::isfinite(glyph.advance_x) ||
+            (glyph.advance_x < 0 && !text.bidi.assigned()) ||
+            (!text.bidi.assigned() && glyph.cluster < previous_cluster)) {
+            return false;
+        }
+        previous_cluster = glyph.cluster;
+    }
+    const ShapedParagraph paragraph{0, text.normalized_size_bytes, 0, text.glyphs.size()};
+    std::vector<ClusterUnit> units(std::size_t{0});
+    make_cluster_units(text, paragraph, units);
+    result.lines.clear();
+    result.visual_glyphs.clear();
+    result.visual_clusters.clear();
+    result.width = 0;
+    if (!append_line_geometry(text, paragraph, units, result)) {
+        return false;
+    }
+    result.lines.front().baseline = baseline;
+    result.first_baseline = baseline;
+    result.height = 1;
+    return true;
+}
 
 std::vector<Utf8Scalar> decode_utf8(StringView text) {
     std::vector<Utf8Scalar> result;
@@ -321,78 +407,41 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
     }
 
     TextMeasurement measurement;
+    input::TextBoundaryMap boundaries;
+    std::span<const std::size_t> graphemes;
+    if (text.bidi.assigned()) {
+        if (!boundaries.assign(text.bidi.source().bytes())) {
+            return {{}, {TextErrorKind::shaping_failure, 0, {}}};
+        }
+        graphemes = boundaries.grapheme_bytes();
+    }
     bool has_visible_bounds = false;
     float line_top = 0.0F;
 
     const auto emit_line = [&](const ShapedParagraph& paragraph, const std::vector<ClusterUnit>& units,
                                std::size_t unit_begin, std::size_t unit_end, bool overflow, TextMeasurement& result,
                                float& top, bool& has_bounds) -> TextError {
-        const std::size_t glyph_begin = result.visual_glyphs.size();
-        const std::size_t cluster_begin = result.visual_clusters.size();
-        std::size_t byte_start = paragraph.byte_start;
-        std::size_t byte_end = paragraph.byte_end;
-        if (unit_begin < unit_end) {
-            byte_start = units[unit_begin].byte_start;
-            byte_end = units[unit_end - 1].byte_end;
+        if (!append_line_geometry(text, paragraph, std::span{units}.subspan(unit_begin, unit_end - unit_begin),
+                                  result)) {
+            return {TextErrorKind::shaping_failure, paragraph.byte_start, {}};
         }
-
-        std::vector<std::pair<std::size_t, std::uint8_t>> visual_units;
-        visual_units.reserve(unit_end - unit_begin);
-        if (text.bidi.assigned() && byte_start != byte_end) {
-            const auto runs = text.bidi.line_runs(byte_start, byte_end);
-            if (!runs) {
-                return {TextErrorKind::shaping_failure, byte_start, {}};
-            }
-            for (const auto& run : *runs) {
-                const auto begin =
-                    std::lower_bound(units.begin() + unit_begin, units.begin() + unit_end, run.byte_begin,
-                                     [](const auto& unit, auto byte) { return unit.byte_start < byte; });
-                const auto end = std::lower_bound(begin, units.begin() + unit_end, run.byte_end,
-                                                  [](const auto& unit, auto byte) { return unit.byte_start < byte; });
-                if (run.right_to_left()) {
-                    for (auto current = end; current != begin;) {
-                        visual_units.emplace_back(static_cast<std::size_t>(--current - units.begin()), run.level);
-                    }
-                } else {
-                    for (auto current = begin; current != end; ++current) {
-                        visual_units.emplace_back(static_cast<std::size_t>(current - units.begin()), run.level);
-                    }
-                }
-            }
-        } else {
-            for (auto unit = unit_begin; unit < unit_end; ++unit) {
-                visual_units.emplace_back(unit, std::uint8_t{0});
-            }
-        }
-
+        auto& line = result.lines.back();
+        const auto glyph_begin = line.glyph_begin;
+        const auto glyph_end = glyph_begin + line.glyph_count;
         float ascent = text.default_metrics.ascent;
         float descent = -text.default_metrics.descent;
-        float width = 0.0F;
-        for (std::size_t unit = unit_begin; unit < unit_end; ++unit) {
-            width += units[unit].advance;
-        }
-        float x{};
-        for (const auto& [unit_index, level] : visual_units) {
-            const auto& unit = units[unit_index];
-            const auto begin = result.visual_glyphs.size();
-            for (auto glyph = unit.glyph_begin; glyph < unit.glyph_end; ++glyph) {
-                result.visual_glyphs.push_back(glyph);
-                const auto metrics = fonts_->metrics(text.glyphs[glyph].font);
-                if (!metrics) {
-                    return font_error(metrics.error);
-                }
-                ascent = std::max(ascent, metrics.metrics.ascent);
-                descent = std::max(descent, -metrics.metrics.descent);
+        for (auto glyph = glyph_begin; glyph < glyph_end; ++glyph) {
+            const auto metrics = fonts_->metrics(text.glyphs[result.visual_glyphs[glyph]].font);
+            if (!metrics) {
+                return font_error(metrics.error);
             }
-            result.visual_clusters.push_back(
-                {unit.byte_start, unit.byte_end, begin, unit.glyph_end - unit.glyph_begin, x, unit.advance, level});
-            x += unit.advance;
+            ascent = std::max(ascent, metrics.metrics.ascent);
+            descent = std::max(descent, -metrics.metrics.descent);
         }
         const float content_height = ascent + descent;
         const float baseline = top + std::max(0.0F, (config.line_height - content_height) * 0.5F) + ascent;
 
         float pen_x = 0.0F;
-        const auto glyph_end = result.visual_glyphs.size();
         for (std::size_t glyph = glyph_begin; glyph < glyph_end; ++glyph) {
             const ShapedGlyph& shaped = text.glyphs[result.visual_glyphs[glyph]];
             if (shaped.extent_width != 0.0F && shaped.extent_height != 0.0F) {
@@ -417,25 +466,16 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
             pen_x += std::abs(shaped.advance_x);
         }
 
-        result.lines.push_back({
-            glyph_begin,
-            glyph_end - glyph_begin,
-            byte_start,
-            byte_end,
-            width,
-            baseline,
-            overflow,
-            cluster_begin,
-            result.visual_clusters.size() - cluster_begin,
-        });
-        result.width = std::max(result.width, width);
+        line.baseline = baseline;
+        line.overflow = overflow;
         result.overflow = result.overflow || overflow;
         top += config.line_height;
         return {};
     };
 
     for (const ShapedParagraph& paragraph : text.paragraphs) {
-        const std::vector<ClusterUnit> units = make_cluster_units(text, paragraph);
+        std::vector<ClusterUnit> units(std::size_t{0});
+        make_cluster_units(text, paragraph, units, graphemes);
         if (units.empty()) {
             if (TextError error = emit_line(paragraph, units, 0, 0, false, measurement, line_top, has_visible_bounds)) {
                 return {{}, std::move(error)};
@@ -455,6 +495,7 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
         while (line_begin < units.size()) {
             float width = 0.0F;
             std::optional<std::size_t> last_legal_break;
+            std::optional<std::size_t> last_grapheme_break;
             std::size_t unit = line_begin;
             while (unit < units.size()) {
                 const float next_width = width + units[unit].advance;
@@ -466,6 +507,9 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
                 if (units[unit - 1].legal_break_after) {
                     last_legal_break = unit;
                 }
+                if (units[unit - 1].grapheme_break_after) {
+                    last_grapheme_break = unit;
+                }
             }
 
             if (unit == units.size()) {
@@ -475,16 +519,22 @@ TextMeasureResult TextEngine::measure(const ShapedText& text, TextLayoutConfig c
                 }
                 break;
             }
-            if (unit == line_begin) {
-                if (TextError error = emit_line(paragraph, units, line_begin, line_begin + 1, true, measurement,
-                                                line_top, has_visible_bounds)) {
+            if (!last_grapheme_break) {
+                while (unit < units.size()) {
+                    ++unit;
+                    if (units[unit - 1].grapheme_break_after) {
+                        break;
+                    }
+                }
+                if (TextError error = emit_line(paragraph, units, line_begin, unit, true, measurement, line_top,
+                                                has_visible_bounds)) {
                     return {{}, std::move(error)};
                 }
-                ++line_begin;
+                line_begin = unit;
                 continue;
             }
 
-            const std::size_t line_end = last_legal_break.value_or(unit);
+            const std::size_t line_end = last_legal_break.value_or(*last_grapheme_break);
             if (TextError error = emit_line(paragraph, units, line_begin, line_end, false, measurement, line_top,
                                             has_visible_bounds)) {
                 return {{}, std::move(error)};

@@ -1,6 +1,6 @@
 # 双向文本
 
-055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping 和逐行视觉布局已接入；光标、选择及公开组件接入仍按 change 的 tasks 实施，不能将布局测试当成输入组件已支持混合方向。
+055 分阶段补齐原生桌面双向文本。段落分析、逻辑 shaping、逐行视觉布局和 CaretMap 已接入；Input/选择场景及公开组件接入仍按 change 的 tasks 实施，不能将 Core 测试当成输入组件已支持混合方向。
 
 ## 段落分析
 
@@ -25,6 +25,10 @@ TextEngine 按 paragraph resolved level、script 和 fallback font 划分逻辑 
 锁定 Noto Sans Arabic/Hebrew fixture 验证真实 script coverage、Arabic 邻接上下文与 lam-alef ligature、RTL bracket mirror、混合数字/fallback、控制符不可见、hard paragraph 和非法方向。fixture 不进入 Git，也不替代 native 系统字体验收。
 
 ## 验证与后续
+
+CaretMap 的 `stops()` 按逻辑 byte/affinity 排序，`line_stops()` 按视觉 x/byte/affinity 排序。`Upstream` 来自前一逻辑 grapheme 的末端，`Downstream` 来自后一 grapheme 的起点；同一 byte 可以在方向交界或软换行具有两个位置。命中相同 x 时选择最早逻辑 byte，保持确定行为；视觉 adjacent/line edge/2D hit 和覆盖遍历均不分配。
+
+`visit_coverage` 遍历预备的 grapheme 视觉片段，将相邻片段合并，保留双向文本形成的间隙。单行 caret 与 layout 共用纯几何构造，ligature 按合法 grapheme 等比例分割；glyph 数量不决定编辑有效位置。紧急折行不能切开 grapheme，即使 fallback 和连接控制符让它包含多个 shaper clusters。准备失败保持已发布的 logical/visual/coverage/line 数据及 revision；MSVC Debug 分配探针下的临时容器采用可抛异常构造和已有 scratch storage，避免 noexcept iterator bookkeeping 终止进程。
 
 TextMeasurement 的每行 glyph range 索引 `visual_glyphs`，再映射至 ShapedText 的原始 glyph。`visual_clusters` 保存逻辑 byte range、visual x/width 和该行 L1 后的 level。折行先遍历逻辑 cluster，行范围确定后调用该段落的 L1/L2 runs；每个 glyph 仅覆盖一次。GlyphScene 和文字 underline/strikeout 按同一视觉索引累计 pen，CPU metadata 不进入 renderer GPU ABI。旧人工 LTR measurement 缺少 visual metadata 时保留连续 glyph fallback。
 

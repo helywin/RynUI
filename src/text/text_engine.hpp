@@ -191,6 +191,9 @@ struct TextMeasureResult {
     }
 };
 
+// Geometry-only single line for CaretMap; no font/resource query or line wrap.
+[[nodiscard]] bool unwrapped_caret_geometry(const ShapedText&, float baseline, TextMeasurement& output);
+
 class TextEngine final {
 public:
     explicit TextEngine(font::FontRuntime& fonts) noexcept;

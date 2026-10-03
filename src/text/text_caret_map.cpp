@@ -5,100 +5,40 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <tuple>
 
 namespace ryn::text {
+namespace {
+bool logical_less(const TextCaretStop& first, const TextCaretStop& second) {
+    return std::tie(first.byte, first.affinity) < std::tie(second.byte, second.affinity);
+}
+
+bool visual_less(const TextCaretStop& first, const TextCaretStop& second) {
+    return std::tie(first.line, first.x, first.byte, first.affinity) <
+           std::tie(second.line, second.x, second.byte, second.affinity);
+}
+
+bool same_position(const TextCaretStop& first, const TextCaretStop& second) {
+    return first.line == second.line && first.x == second.x && first.baseline == second.baseline;
+}
+} // namespace
+
 void TextCaretMap::reserve(std::size_t stops, std::size_t glyphs) {
-    stops_.reserve(stops);
-    pending_.reserve(stops);
+    stops_.reserve(stops * 2);
+    pending_.reserve(stops * 2);
+    visual_.reserve(stops * 2);
+    pending_visual_.reserve(stops * 2);
     clusters_.reserve(glyphs);
+    coverage_.reserve(stops + glyphs);
+    pending_coverage_.reserve(stops + glyphs);
+    used_glyphs_.reserve(glyphs);
     lines_.reserve(stops);
     pending_lines_.reserve(stops);
 }
 
 bool TextCaretMap::assign(const ShapedText& shaped, std::span<const std::size_t> boundaries, std::uint64_t revision,
                           float baseline) {
-    if (!revision || !std::isfinite(baseline) || boundaries.empty() || boundaries.front() != 0 ||
-        boundaries.back() != shaped.normalized_size_bytes || shaped.paragraphs.size() > 1) {
-        return false;
-    }
-    for (std::size_t i = 1; i < boundaries.size(); ++i) {
-        if (boundaries[i - 1] >= boundaries[i]) {
-            return false;
-        }
-    }
-    for (const auto& run : shaped.runs) {
-        if (run.right_to_left) {
-            return false;
-        }
-    }
-    clusters_.clear();
-    float advance{};
-    for (std::size_t i = 0; i < shaped.glyphs.size(); ++i) {
-        const auto& glyph = shaped.glyphs[i];
-        if (glyph.cluster >= shaped.normalized_size_bytes || !std::isfinite(glyph.advance_x) || glyph.advance_x < 0 ||
-            (!clusters_.empty() && glyph.cluster < clusters_.back().byte_begin)) {
-            return false;
-        }
-        if (clusters_.empty() || clusters_.back().byte_begin != glyph.cluster) {
-            if (!clusters_.empty()) {
-                clusters_.back().byte_end = glyph.cluster;
-            }
-            clusters_.push_back({glyph.cluster, shaped.normalized_size_bytes, i, 0, advance, 0});
-        }
-        auto& cluster = clusters_.back();
-        ++cluster.glyph_count;
-        cluster.advance += glyph.advance_x;
-        advance += glyph.advance_x;
-        if (!std::isfinite(advance)) {
-            return false;
-        }
-    }
-    pending_.clear();
-    pending_.reserve(boundaries.size());
-    std::size_t cluster_index{};
-    std::size_t range_index{};
-    for (std::size_t i = 0; i < boundaries.size(); ++i) {
-        const auto byte = boundaries[i];
-        TextCaretStop stop{byte, shaped.glyphs.size(), 0, 0, baseline};
-        if (byte == shaped.normalized_size_bytes) {
-            stop.x = advance;
-        } else if (!clusters_.empty() && byte >= clusters_.front().byte_begin) {
-            while (cluster_index + 1 < clusters_.size() && clusters_[cluster_index + 1].byte_begin <= byte) {
-                ++cluster_index;
-            }
-            const auto& cluster = clusters_[cluster_index];
-            const auto first = std::upper_bound(boundaries.begin(), boundaries.end(), cluster.byte_begin);
-            const auto last = std::lower_bound(first, boundaries.end(), cluster.byte_end);
-            const auto position = std::lower_bound(first, last, byte);
-            const auto pieces = static_cast<float>(last - first + 1);
-            const auto fraction = byte == cluster.byte_begin ? 0.0F : static_cast<float>(position - first + 1) / pieces;
-            stop.x = cluster.x + cluster.advance * fraction;
-        }
-        if (i + 1 < boundaries.size()) {
-            while (range_index < clusters_.size() && clusters_[range_index].byte_end <= byte) {
-                ++range_index;
-            }
-            auto last = range_index;
-            while (last < clusters_.size() && clusters_[last].byte_begin < boundaries[i + 1]) {
-                ++last;
-            }
-            if (last > range_index) {
-                stop.glyph_begin = clusters_[range_index].glyph_begin;
-                const auto& end = clusters_[last - 1];
-                stop.glyph_count = end.glyph_begin + end.glyph_count - stop.glyph_begin;
-            }
-        }
-        if (!pending_.empty() && stop.x < pending_.back().x) {
-            return false;
-        }
-        pending_.push_back(stop);
-    }
-    pending_lines_.clear();
-    pending_lines_.push_back({0, pending_.size(), 0, 0});
-    stops_.swap(pending_);
-    lines_.swap(pending_lines_);
-    revision_ = revision;
-    return true;
+    return unwrapped_caret_geometry(shaped, baseline, unwrapped_) && assign(shaped, unwrapped_, boundaries, revision);
 }
 
 bool TextCaretMap::assign(const ShapedText& shaped, const TextMeasurement& measurement,
@@ -109,20 +49,26 @@ bool TextCaretMap::assign(const ShapedText& shaped, const TextMeasurement& measu
         measurement.lines.back().byte_end != shaped.normalized_size_bytes) {
         return false;
     }
-    for (std::size_t i = 1; i < boundaries.size(); ++i) {
-        if (boundaries[i - 1] >= boundaries[i]) {
+    for (std::size_t index = 1; index < boundaries.size(); ++index) {
+        if (boundaries[index - 1] >= boundaries[index]) {
             return false;
         }
     }
-    for (const auto& run : shaped.runs) {
-        if (run.right_to_left) {
-            return false;
-        }
+    if (!measurement.visual_glyphs.empty() && measurement.visual_glyphs.size() != shaped.glyphs.size()) {
+        return false;
+    }
+    if (measurement.visual_clusters.empty() &&
+        std::ranges::any_of(shaped.runs, [](const auto& run) { return run.right_to_left; })) {
+        return false;
     }
     pending_.clear();
+    pending_visual_.clear();
     pending_lines_.clear();
+    pending_coverage_.clear();
+    used_glyphs_.assign(shaped.glyphs.size(), false);
     const auto height = measurement.height / static_cast<float>(measurement.lines.size());
     std::size_t expected_glyph{};
+    std::size_t expected_cluster{};
     std::size_t previous_end{};
     for (std::size_t index = 0; index < measurement.lines.size(); ++index) {
         const auto& line = measurement.lines[index];
@@ -135,87 +81,187 @@ bool TextCaretMap::assign(const ShapedText& shaped, const TextMeasurement& measu
             return false;
         }
         clusters_.clear();
-        float advance{};
         const auto glyph_end = line.glyph_begin + line.glyph_count;
-        for (std::size_t i = line.glyph_begin; i < glyph_end; ++i) {
-            const auto& glyph = shaped.glyphs[i];
-            if (glyph.cluster < line.byte_start || glyph.cluster >= line.byte_end || !std::isfinite(glyph.advance_x) ||
-                glyph.advance_x < 0 || (!clusters_.empty() && glyph.cluster < clusters_.back().byte_begin)) {
+        if (!measurement.visual_clusters.empty()) {
+            if (line.cluster_begin != expected_cluster ||
+                line.cluster_count > measurement.visual_clusters.size() -
+                                         std::min(expected_cluster, measurement.visual_clusters.size())) {
                 return false;
             }
-            if (clusters_.empty() || clusters_.back().byte_begin != glyph.cluster) {
-                if (!clusters_.empty()) {
-                    clusters_.back().byte_end = glyph.cluster;
+            float pen{};
+            auto next_glyph = line.glyph_begin;
+            for (auto cluster_index = line.cluster_begin; cluster_index < line.cluster_begin + line.cluster_count;
+                 ++cluster_index) {
+                const auto& cluster = measurement.visual_clusters[cluster_index];
+                if (cluster.byte_start < line.byte_start || cluster.byte_end > line.byte_end ||
+                    cluster.byte_end <= cluster.byte_start || cluster.glyph_begin != next_glyph ||
+                    cluster.glyph_count > glyph_end - std::min(next_glyph, glyph_end) || cluster.glyph_count == 0 ||
+                    !std::isfinite(cluster.x) || !std::isfinite(cluster.width) || cluster.width < 0 ||
+                    std::abs(cluster.x - pen) > .001F) {
+                    return false;
                 }
-                clusters_.push_back({glyph.cluster, line.byte_end, i, 0, advance, 0});
+                clusters_.push_back({cluster.byte_start, cluster.byte_end, cluster.glyph_begin, cluster.glyph_count,
+                                     cluster.x, cluster.width, cluster.level});
+                pen += cluster.width;
+                next_glyph += cluster.glyph_count;
             }
-            ++clusters_.back().glyph_count;
-            clusters_.back().advance += glyph.advance_x;
-            advance += glyph.advance_x;
-            if (!std::isfinite(advance)) {
+            if (next_glyph != glyph_end || std::abs(pen - line.width) > .001F) {
                 return false;
+            }
+            expected_cluster += line.cluster_count;
+        } else {
+            float pen{};
+            for (auto visual = line.glyph_begin; visual < glyph_end; ++visual) {
+                const auto glyph_index = measurement.glyph_index(visual);
+                if (glyph_index >= shaped.glyphs.size()) {
+                    return false;
+                }
+                const auto& glyph = shaped.glyphs[glyph_index];
+                if (glyph.cluster < line.byte_start || glyph.cluster >= line.byte_end ||
+                    !std::isfinite(glyph.advance_x) || glyph.advance_x < 0 ||
+                    (!clusters_.empty() && glyph.cluster < clusters_.back().byte_begin)) {
+                    return false;
+                }
+                if (clusters_.empty() || clusters_.back().byte_begin != glyph.cluster) {
+                    if (!clusters_.empty()) {
+                        clusters_.back().byte_end = glyph.cluster;
+                    }
+                    clusters_.push_back({glyph.cluster, line.byte_end, visual, 0, pen, 0, 0});
+                }
+                ++clusters_.back().glyph_count;
+                clusters_.back().advance += glyph.advance_x;
+                pen += glyph.advance_x;
+            }
+            if (!std::isfinite(pen) || std::abs(pen - line.width) > .001F) {
+                return false;
+            }
+        }
+        for (const auto& cluster : clusters_) {
+            float advance{};
+            for (auto visual = cluster.glyph_begin; visual < cluster.glyph_begin + cluster.glyph_count; ++visual) {
+                const auto glyph_index = measurement.glyph_index(visual);
+                if (glyph_index >= shaped.glyphs.size() || used_glyphs_[glyph_index]) {
+                    return false;
+                }
+                const auto& glyph = shaped.glyphs[glyph_index];
+                if (glyph.cluster != cluster.byte_begin || !std::isfinite(glyph.advance_x) ||
+                    (glyph.advance_x < 0 && !shaped.bidi.assigned())) {
+                    return false;
+                }
+                used_glyphs_[glyph_index] = true;
+                advance += std::abs(glyph.advance_x);
+            }
+            if (!std::isfinite(advance) || std::abs(advance - cluster.advance) > .001F) {
+                return false;
+            }
+        }
+        const auto coordinate = [&](const Cluster& cluster, std::size_t byte) {
+            const auto first = std::upper_bound(boundaries.begin(), boundaries.end(), cluster.byte_begin);
+            const auto last = std::lower_bound(first, boundaries.end(), cluster.byte_end);
+            const auto position = std::lower_bound(first, last, byte);
+            const auto pieces = static_cast<float>(last - first + 1);
+            const auto fraction = byte <= cluster.byte_begin ? 0.0F
+                                  : byte >= cluster.byte_end ? 1.0F
+                                                             : static_cast<float>(position - first + 1) / pieces;
+            return cluster.x + cluster.advance * ((cluster.level & 1) ? 1 - fraction : fraction);
+        };
+        for (const auto& cluster : clusters_) {
+            auto boundary = std::upper_bound(boundaries.begin(), boundaries.end(), cluster.byte_begin);
+            if (boundary != boundaries.begin()) {
+                --boundary;
+            }
+            for (; boundary + 1 != boundaries.end() && *boundary < cluster.byte_end; ++boundary) {
+                if (*(boundary + 1) <= cluster.byte_begin) {
+                    continue;
+                }
+                const auto first = coordinate(cluster, std::max(*boundary, cluster.byte_begin));
+                const auto last = coordinate(cluster, std::min(*(boundary + 1), cluster.byte_end));
+                pending_coverage_.push_back(
+                    {*boundary, *(boundary + 1), index, std::min(first, last), std::abs(last - first)});
             }
         }
         const auto first_boundary = std::lower_bound(boundaries.begin(), boundaries.end(), line.byte_start);
         const auto last_boundary = std::upper_bound(first_boundary, boundaries.end(), line.byte_end);
-        const auto stop_begin = pending_.size();
-        std::size_t cluster_index{};
-        std::size_t range_index{};
         for (auto boundary = first_boundary; boundary != last_boundary; ++boundary) {
             const auto byte = *boundary;
-            TextCaretStop stop{byte, glyph_end, 0, 0, line.baseline, index};
-            if (byte == line.byte_end) {
-                stop.x = advance;
-            } else if (!clusters_.empty() && byte >= clusters_.front().byte_begin) {
-                while (cluster_index + 1 < clusters_.size() && clusters_[cluster_index + 1].byte_begin <= byte) {
-                    ++cluster_index;
+            const Cluster* before{};
+            const Cluster* after{};
+            auto range_begin = glyph_end;
+            std::size_t range_end{};
+            for (const auto& cluster : clusters_) {
+                if (boundary != first_boundary && cluster.byte_begin < byte && cluster.byte_end > *(boundary - 1) &&
+                    (!before || cluster.byte_end > before->byte_end)) {
+                    before = &cluster;
                 }
-                const auto& cluster = clusters_[cluster_index];
-                const auto first = std::upper_bound(boundaries.begin(), boundaries.end(), cluster.byte_begin);
-                const auto last = std::lower_bound(first, boundaries.end(), cluster.byte_end);
-                const auto position = std::lower_bound(first, last, byte);
-                const auto pieces = static_cast<float>(last - first + 1);
-                const auto fraction =
-                    byte == cluster.byte_begin ? 0.0F : static_cast<float>(position - first + 1) / pieces;
-                stop.x = cluster.x + cluster.advance * fraction;
-            }
-            if (boundary + 1 != last_boundary) {
-                while (range_index < clusters_.size() && clusters_[range_index].byte_end <= byte) {
-                    ++range_index;
-                }
-                auto last = range_index;
-                while (last < clusters_.size() && clusters_[last].byte_begin < *(boundary + 1)) {
-                    ++last;
-                }
-                if (last > range_index) {
-                    stop.glyph_begin = clusters_[range_index].glyph_begin;
-                    const auto& end = clusters_[last - 1];
-                    stop.glyph_count = end.glyph_begin + end.glyph_count - stop.glyph_begin;
+                if (boundary + 1 != last_boundary && cluster.byte_end > byte && cluster.byte_begin < *(boundary + 1)) {
+                    if (!after || cluster.byte_begin < after->byte_begin) {
+                        after = &cluster;
+                    }
+                    range_begin = std::min(range_begin, cluster.glyph_begin);
+                    range_end = std::max(range_end, cluster.glyph_begin + cluster.glyph_count);
                 }
             }
-            if (pending_.size() > stop_begin && stop.x < pending_.back().x) {
-                return false;
+            if (range_begin == glyph_end) {
+                range_end = glyph_end;
             }
-            pending_.push_back(stop);
+            const auto stop = [&](const Cluster& cluster, TextCaretAffinity affinity) {
+                return TextCaretStop{
+                    byte,  range_begin, range_end - range_begin, coordinate(cluster, byte), line.baseline,
+                    index, affinity};
+            };
+            if (before && after) {
+                const auto upstream = stop(*before, TextCaretAffinity::Upstream);
+                const auto downstream = stop(*after, TextCaretAffinity::Downstream);
+                if (!same_position(upstream, downstream)) {
+                    pending_.push_back(upstream);
+                }
+                pending_.push_back(downstream);
+            } else if (before) {
+                pending_.push_back(stop(*before, TextCaretAffinity::Upstream));
+            } else if (after) {
+                pending_.push_back(stop(*after, TextCaretAffinity::Downstream));
+            } else {
+                pending_.push_back({byte, glyph_end, 0, 0, line.baseline, index});
+            }
+        }
+        std::uint8_t base_level{};
+        for (const auto& paragraph : shaped.bidi.paragraphs()) {
+            if (paragraph.byte_begin <= line.byte_start && line.byte_end <= paragraph.byte_end) {
+                base_level = paragraph.base_level;
+                break;
+            }
         }
         pending_lines_.push_back(
-            {stop_begin, pending_.size() - stop_begin, static_cast<float>(index) * height, height});
+            {0, 0, static_cast<float>(index) * height, height, line.byte_start, line.byte_end, base_level});
         expected_glyph = glyph_end;
         previous_end = line.byte_end;
     }
-    if (expected_glyph != shaped.glyphs.size()) {
+    if (expected_glyph != shaped.glyphs.size() || expected_cluster != measurement.visual_clusters.size()) {
         return false;
     }
-    std::size_t covered{};
-    for (const auto& stop : pending_) {
-        if (covered < boundaries.size() && stop.byte == boundaries[covered]) {
-            ++covered;
+    std::ranges::sort(pending_, logical_less);
+    for (const auto boundary : boundaries) {
+        const auto found = std::lower_bound(pending_.begin(), pending_.end(), boundary,
+                                            [](const auto& stop, auto byte) { return stop.byte < byte; });
+        if (found == pending_.end() || found->byte != boundary) {
+            return false;
         }
     }
-    if (covered != boundaries.size()) {
-        return false;
+    pending_visual_.assign(pending_.begin(), pending_.end());
+    std::ranges::sort(pending_visual_, visual_less);
+    for (std::size_t index = 0; index < pending_visual_.size(); ++index) {
+        auto& line = pending_lines_[pending_visual_[index].line];
+        if (line.stop_count == 0) {
+            line.stop_begin = index;
+        }
+        ++line.stop_count;
     }
+    std::ranges::sort(pending_coverage_, [](const auto& first, const auto& second) {
+        return std::tie(first.line, first.x, first.byte_begin) < std::tie(second.line, second.x, second.byte_begin);
+    });
     stops_.swap(pending_);
+    visual_.swap(pending_visual_);
+    coverage_.swap(pending_coverage_);
     lines_.swap(pending_lines_);
     revision_ = revision;
     return true;
@@ -226,28 +272,24 @@ std::optional<TextCaretStop> TextCaretMap::at(std::size_t byte, std::uint64_t re
     if (!revision || revision != revision_) {
         return {};
     }
-    const auto found = std::lower_bound(stops_.begin(), stops_.end(), byte,
+    const auto first = std::lower_bound(stops_.begin(), stops_.end(), byte,
                                         [](const auto& stop, auto value) { return stop.byte < value; });
-    if (found == stops_.end() || found->byte != byte) {
+    if (first == stops_.end() || first->byte != byte) {
         return {};
     }
-    if (affinity == TextCaretAffinity::Upstream) {
-        return *found;
-    }
-    const auto end =
-        std::upper_bound(found, stops_.end(), byte, [](auto value, const auto& stop) { return value < stop.byte; });
-    return *(end - 1);
+    const auto last =
+        std::upper_bound(first, stops_.end(), byte, [](auto value, const auto& stop) { return value < stop.byte; });
+    const auto exact = std::find_if(first, last, [&](const auto& stop) { return stop.affinity == affinity; });
+    return exact == last ? *first : *exact;
+}
+
+std::span<const TextCaretStop> TextCaretMap::line_stops(std::size_t line) const noexcept {
+    return line >= lines_.size() ? std::span<const TextCaretStop>{}
+                                 : std::span{visual_}.subspan(lines_[line].stop_begin, lines_[line].stop_count);
 }
 
 std::optional<TextCaretStop> TextCaretMap::nearest(float x, std::uint64_t revision) const noexcept {
     return nearest_on_line(x, 0, revision);
-}
-
-std::span<const TextCaretStop> TextCaretMap::line_stops(std::size_t line) const noexcept {
-    if (line >= lines_.size()) {
-        return {};
-    }
-    return std::span{stops_}.subspan(lines_[line].stop_begin, lines_[line].stop_count);
 }
 
 std::optional<TextCaretStop> TextCaretMap::nearest_on_line(float x, std::size_t line,
@@ -256,7 +298,7 @@ std::optional<TextCaretStop> TextCaretMap::nearest_on_line(float x, std::size_t 
     if (!revision || revision != revision_ || stops.empty() || !std::isfinite(x)) {
         return {};
     }
-    auto right =
+    const auto right =
         std::lower_bound(stops.begin(), stops.end(), x, [](const auto& stop, auto value) { return stop.x < value; });
     if (right == stops.begin()) {
         return *right;
@@ -289,14 +331,50 @@ std::optional<TextCaretStop> TextCaretMap::line_edge(std::size_t line, bool end,
     return end ? stops.back() : stops.front();
 }
 
+std::optional<std::pair<std::size_t, std::size_t>> TextCaretMap::line_bytes(std::size_t line,
+                                                                            std::uint64_t revision) const noexcept {
+    if (!revision || revision != revision_ || line >= lines_.size()) {
+        return {};
+    }
+    return std::pair{lines_[line].byte_begin, lines_[line].byte_end};
+}
+
 std::optional<TextCaretStop> TextCaretMap::adjacent_line(TextCaretStop current, int delta, float preferred_x,
                                                          std::uint64_t revision) const noexcept {
-    if (current.line >= lines_.size()) {
+    if (!at(current.byte, revision, current.affinity) || current.line >= lines_.size()) {
         return {};
     }
     const auto line = std::clamp(static_cast<std::int64_t>(current.line) + delta, std::int64_t{0},
                                  static_cast<std::int64_t>(lines_.size() - 1));
     return nearest_on_line(preferred_x, static_cast<std::size_t>(line), revision);
+}
+
+std::optional<TextCaretStop> TextCaretMap::adjacent_visual(TextCaretStop current, int delta,
+                                                           std::uint64_t revision) const noexcept {
+    const auto exact = at(current.byte, revision, current.affinity);
+    if (!exact || *exact != current) {
+        return {};
+    }
+    const auto stops = line_stops(current.line);
+    const auto found = std::lower_bound(stops.begin(), stops.end(), current, visual_less);
+    if (found == stops.end() || *found != current) {
+        return {};
+    }
+    if (delta == 0) {
+        return current;
+    }
+    if (delta < 0 && found != stops.begin()) {
+        return *(found - 1);
+    }
+    if (delta > 0 && found + 1 != stops.end()) {
+        return *(found + 1);
+    }
+    const auto next_line = static_cast<std::int64_t>(current.line) +
+                           ((lines_[current.line].base_level & 1) ? (delta < 0 ? 1 : -1) : (delta < 0 ? -1 : 1));
+    if (next_line < 0 || next_line >= static_cast<std::int64_t>(lines_.size())) {
+        return current;
+    }
+    return line_edge(static_cast<std::size_t>(next_line), delta < 0, revision);
 }
 
 bool TextEngine::map_carets(const ShapedText& shaped, StringView source, std::uint64_t revision, float baseline,
@@ -320,10 +398,7 @@ bool TextEngine::map_carets(const ShapedText& shaped, StringView source, std::ui
         return false;
     }
     input::TextBoundaryMap boundaries;
-    if (!boundaries.assign(source.bytes())) {
-        return false;
-    }
-    return output.assign(shaped, boundaries.grapheme_bytes(), revision, baseline);
+    return boundaries.assign(source.bytes()) && output.assign(shaped, boundaries.grapheme_bytes(), revision, baseline);
 }
 
 bool TextEngine::map_carets(const ShapedText& shaped, StringView source, std::uint64_t revision,
@@ -332,9 +407,7 @@ bool TextEngine::map_carets(const ShapedText& shaped, StringView source, std::ui
         return false;
     }
     input::TextBoundaryMap boundaries;
-    if (!boundaries.assign(source.bytes())) {
-        return false;
-    }
-    return output.assign(shaped, measurement, boundaries.grapheme_bytes(), revision);
+    return boundaries.assign(source.bytes()) &&
+           output.assign(shaped, measurement, boundaries.grapheme_bytes(), revision);
 }
 } // namespace ryn::text
