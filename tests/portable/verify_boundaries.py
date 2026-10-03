@@ -25,6 +25,15 @@ for command in commands:
     text = json.dumps(command).replace("\\\\", "/").lower()
     assert not any(name in text for name in ("sdl3", "shadercross", "default_font_chain", "fontconfig", "libdecor")), text
 assert any("component/" in entry["file"].replace("\\", "/") for entry in commands)
+sheen_commands = [entry for entry in commands
+                  if entry["file"].replace("\\", "/").endswith("/Source/SheenBidi.c")]
+assert sheen_commands, "Portable build did not compile the locked Unicode analysis source"
+for entry in sheen_commands:
+    command = entry["command"]
+    if "/std:c17" in command or "-std:c17" in command:
+        assert "/experimental:c11atomics" in command, "MSVC must avoid SheenBidi's Windows SDK atomic fallback"
+    else:
+        assert "-std=" in command and any(value in command for value in ("c17", "c18", "c23")), command
 effect_packing = [entry for entry in commands
                   if entry["file"].replace("\\", "/").endswith("/rounded_effect_packing.cpp")]
 assert effect_packing and all("rynui_renderer_common.dir" in entry["command"] for entry in effect_packing)

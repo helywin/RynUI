@@ -1,0 +1,13 @@
+Package: SheenBidi 3.0.0
+License expression: Apache-2.0
+Upstream license file: LICENSE in the locked source archive
+Upstream source: https://github.com/Tehreer/SheenBidi/tree/v3.0.0
+Upstream commit: cfe430e7375a7845b679adae9d51dac6deaa8858
+
+Unicode 17.0.0 BidiTest / BidiCharacterTest validation inputs:
+https://www.unicode.org/Public/17.0.0/ucd/BidiTest.txt
+https://www.unicode.org/Public/17.0.0/ucd/BidiCharacterTest.txt
+License: Unicode-3.0 (https://www.unicode.org/license.txt)
+
+Distribution must retain the upstream copyright and license notices from the
+locked archive and Unicode data. Conformance inputs remain in the build tree.

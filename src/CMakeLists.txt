@@ -59,6 +59,7 @@ target_link_libraries(
 endif()
 
 add_library(rynui_text STATIC
+    text/bidi_analysis.cpp
     text/text_engine.cpp
     text/text_caret_map.cpp
 )
@@ -67,7 +68,7 @@ target_include_directories(rynui_text PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(rynui_text PUBLIC rynui_font rynui_string)
-target_link_libraries(rynui_text PRIVATE rynui_text_boundary)
+target_link_libraries(rynui_text PRIVATE rynui_text_boundary RynUI::SheenBidi)
 
 add_library(rynui_reactive STATIC
     reactive/reactive.cpp
@@ -312,7 +313,7 @@ if(TARGET rynui_default_fonts)
     rynui_assert_direct_dependencies(
         rynui_default_fonts RynUI::PlatformFonts rynui_font rynui_theme)
 endif()
-rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string rynui_text_boundary)
+rynui_assert_direct_dependencies(rynui_text rynui_font rynui_string rynui_text_boundary RynUI::SheenBidi)
 rynui_assert_direct_dependencies(rynui_reactive)
 rynui_assert_direct_dependencies(rynui_input rynui_string)
 rynui_assert_direct_dependencies(

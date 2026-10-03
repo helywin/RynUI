@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：依赖与段落分析
 
-- [ ] 1.1 锁定 SheenBidi 3.0.0/Unicode17源与license、BUNDLED/SYSTEM resolver与fixtures，增加 Core BidiAnalysis所有权/byte边界/paragraph levels/line runs/script查询；补 docs/bidirectional-text.md、纯模型及Unicode BidiCharacterTest/BidiTest conformance、非法范围/空段/复制lifetime回归，windows-msvc-headless Debug/Release构建与相关CTest、dependency/Core guards、format-code/doctor/strict validate/diff/evidence通过后提交。
+- [x] 1.1 锁定 SheenBidi 3.0.0/Unicode17源与license、BUNDLED/SYSTEM resolver与fixtures，增加 Core BidiAnalysis所有权/byte边界/paragraph levels/line runs/script查询；补 docs/bidirectional-text.md、纯模型及Unicode BidiCharacterTest/BidiTest conformance、非法范围/空段/复制lifetime回归，windows-msvc-headless Debug/Release构建与相关CTest、dependency/Core guards、format-code/doctor/strict validate/diff/evidence通过后提交。
 
 ## 2. 平台通用：shaping、折行与场景
 

@@ -8,6 +8,7 @@ include(RynUIMsvcDependencies)
 include(RynUIArchitecture)
 include(RynUIDependencies)
 include(cmake/dependencies/RynUIUtf8proc.cmake)
+include(cmake/dependencies/RynUISheenBidi.cmake)
 include(RynUIShaders)
 include(CTest)
 
@@ -34,6 +35,7 @@ if(RYNUI_HAS_SDL_GPU)
 endif()
 rynui_resolve_text_dependencies()
 rynui_resolve_utf8proc()
+rynui_resolve_sheenbidi()
 rynui_resolve_validation_fonts(
     RYNUI_VALIDATION_LATIN_FONT_FILE
     RYNUI_VALIDATION_CJK_FONT_FILE

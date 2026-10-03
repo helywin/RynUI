@@ -1,6 +1,25 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_bidi_analysis_tests bidi_analysis_tests.cpp)
+rynui_configure_cpp_target(rynui_bidi_analysis_tests)
+target_link_libraries(rynui_bidi_analysis_tests PRIVATE rynui_text)
+target_compile_definitions(rynui_bidi_analysis_tests PRIVATE
+    "RYNUI_BIDI_TEST_FILE=\"${RYNUI_BIDI_TEST_FILE}\""
+    "RYNUI_BIDI_CHARACTER_TEST_FILE=\"${RYNUI_BIDI_CHARACTER_TEST_FILE}\"")
+add_test(NAME rynui.bidi_analysis COMMAND rynui_bidi_analysis_tests)
+add_test(NAME rynui.bidi_dependency
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_bidi_dependency.py"
+        --source "${PROJECT_SOURCE_DIR}" --bidi-test "${RYNUI_BIDI_TEST_FILE}"
+        --character-test "${RYNUI_BIDI_CHARACTER_TEST_FILE}")
+add_test(
+    NAME rynui.dependency_lock
+    COMMAND ${CMAKE_COMMAND}
+        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+        "-DTEST_GIT_EXECUTABLE=${GIT_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
+)
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_subdirectory(portable)
     return()
@@ -1899,14 +1918,6 @@ add_test(
         "-DSHADER_LOCK=${PROJECT_SOURCE_DIR}/shaders/rounded_effect.lock.yaml"
         "-DSHADER_DIRECTORY=${RYNUI_GENERATED_SHADER_DIRECTORY}"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_rounded_effect_shader_contract.cmake"
-)
-
-add_test(
-    NAME rynui.dependency_lock
-    COMMAND ${CMAKE_COMMAND}
-        "-DRYNUI_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-        "-DTEST_GIT_EXECUTABLE=${GIT_EXECUTABLE}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
 
 add_test(

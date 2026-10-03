@@ -1,5 +1,18 @@
 include_guard(GLOBAL)
 
+set(RYNUI_SHEENBIDI_VERSION "3.0.0")
+set(RYNUI_SHEENBIDI_COMMIT "cfe430e7375a7845b679adae9d51dac6deaa8858")
+set(RYNUI_SHEENBIDI_SOURCE_URL
+    "https://codeload.github.com/Tehreer/SheenBidi/tar.gz/refs/tags/v3.0.0")
+set(RYNUI_SHEENBIDI_SOURCE_SHA256
+    "86c56014034739ba39a24c23eb00323b0bf6f737354f665786015fca842af786")
+set(RYNUI_SHEENBIDI_LICENSE "Apache-2.0")
+set(RYNUI_BIDI_TEST_LICENSE "Unicode-3.0")
+set(RYNUI_BIDI_TEST_SOURCE_URL "https://www.unicode.org/Public/17.0.0/ucd/BidiTest.txt")
+set(RYNUI_BIDI_TEST_SOURCE_SHA256 "888bdfc8090652272d1f859cdb00ae659e2dc6c26740be61ef1d03998a687620")
+set(RYNUI_BIDI_CHARACTER_TEST_SOURCE_URL "https://www.unicode.org/Public/17.0.0/ucd/BidiCharacterTest.txt")
+set(RYNUI_BIDI_CHARACTER_TEST_SOURCE_SHA256 "a3e6e905ab5afbe318a96df5401d0372a04cd73ef139ab5e3cf0ae241c255488")
+
 # Checked-in icon artwork. No runtime download or system-font fallback.
 set(RYNUI_ANT_ICONS_VERSION "4.6.0")
 set(RYNUI_ANT_ICONS_COMMIT "7f2516ac91226d2b41f93b35cb5197c8d94f7189")

@@ -7,6 +7,16 @@ endif()
 include("${RYNUI_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
 
 set(required_variables
+    RYNUI_SHEENBIDI_VERSION
+    RYNUI_SHEENBIDI_COMMIT
+    RYNUI_SHEENBIDI_SOURCE_URL
+    RYNUI_SHEENBIDI_SOURCE_SHA256
+    RYNUI_SHEENBIDI_LICENSE
+    RYNUI_BIDI_TEST_SOURCE_URL
+    RYNUI_BIDI_TEST_SOURCE_SHA256
+    RYNUI_BIDI_CHARACTER_TEST_SOURCE_URL
+    RYNUI_BIDI_CHARACTER_TEST_SOURCE_SHA256
+    RYNUI_BIDI_TEST_LICENSE
     RYNUI_ANT_ICONS_VERSION
     RYNUI_ANT_ICONS_COMMIT
     RYNUI_ANT_ICONS_SOURCE_URL
@@ -84,6 +94,9 @@ foreach(required_variable IN LISTS required_variables)
 endforeach()
 
 foreach(hash_variable IN ITEMS
+        RYNUI_SHEENBIDI_SOURCE_SHA256
+        RYNUI_BIDI_TEST_SOURCE_SHA256
+        RYNUI_BIDI_CHARACTER_TEST_SOURCE_SHA256
         RYNUI_ANT_ICONS_SOURCE_SHA256
         RYNUI_ICON_FONTTOOLS_SOURCE_SHA256
         RYNUI_UTF8PROC_SOURCE_SHA256
@@ -186,7 +199,19 @@ foreach(font_prefix IN ITEMS RYNUI_NOTO_SANS RYNUI_NOTO_SANS_CJK_SC)
     endif()
 endforeach()
 
+if(NOT RYNUI_SHEENBIDI_VERSION STREQUAL "3.0.0"
+        OR NOT RYNUI_SHEENBIDI_SOURCE_URL MATCHES "tags/v3[.]0[.]0$"
+        OR NOT RYNUI_UNICODE_VERSION STREQUAL "17.0.0")
+    message(FATAL_ERROR "SheenBidi/Unicode source versions are not fixed to the audited release.")
+endif()
+foreach(name IN ITEMS BIDI_TEST BIDI_CHARACTER_TEST)
+    if(NOT RYNUI_${name}_SOURCE_URL MATCHES "/17[.]0[.]0/ucd/")
+        message(FATAL_ERROR "${name} is not tied to Unicode 17.0.0.")
+    endif()
+endforeach()
+
 set(license_records
+    "${RYNUI_SOURCE_DIR}/third_party/licenses/SheenBidi-3.0.0.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/utf8proc-2.11.3.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/libdecor-0.2.5.txt"
     "${RYNUI_SOURCE_DIR}/third_party/licenses/FreeType-2.14.3.txt"

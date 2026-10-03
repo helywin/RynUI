@@ -14,9 +14,11 @@ Non-Goals：见proposal。采用水平排版，不增加unicode editor之外的�
 
 ### 1. 锁定 SheenBidi，包装所有权及字节范围
 
-使用 SheenBidi 3.0.0、Unicode 17（源码 Tools/Unicode/BidiCharacterTest.txt已核实版本）、Apache-2.0。它只依赖标准C，已提供UTF-8 paragraph levels、line runs和script locator。BUNDLED锁定tag/archive SHA，SYSTEM严格要求版本及显式package，无回退。Unicode conformance数据单独锁定license/hash，validation fixtures保持构建树内。禁止修改用户的 unrelated token updater。
+使用 SheenBidi 3.0.0、Unicode 17（源码 Tools/Unicode/BidiCharacterTest.txt已核实版本）、Apache-2.0。BUNDLED锁定tag/archive SHA，SYSTEM严格要求版本及显式package，无回退。Unicode conformance数据单独锁定license/hash，validation fixtures保持构建树内。上游 MSVC atomic fallback 包含 Windows SDK；BUNDLED 强制标准 C17 atomics，MSVC 加 `/experimental:c11atomics` 并执行 configure probe，失败直接拒绝，不选 SDK fallback。
 
 Core新增 BidiAnalysis值：拥有原始String与不可变共享分析资源，复制保留安全lifetime，按内容/direction比较语义值；查询返回UTF-8边界/level/base level和script runs。SheenBidi类型只在内部实现使用，不泄漏公开headers，paragraph/algorithm资源按正确顺序释放。空文本/空行在包装层有效；非法范围/非scalar边界拒绝且不发布部分结果。line创建应用L1/L2，不能使用whole-paragraph视觉次序进行软折行。
+
+内部分析传入 UTF-32 scalar 序列，再映射到 UTF-8 offsets/levels。全量 conformance 发现 `S RLE PDI R` 的 UTF-8 code-unit L1 重置可能把多字节控制符切为不同 level 的 runs；scalar 编码可避免该问题，不需修改上游算法，也不改变公开 UTF-8 合同。
 
 备选：自写简化RTL检测不能满足弱类型、括号/isolate及逐行规则；ICU/FriBidi带来更多构建或license负担。HarfBuzz负责shaping，不替代UBA。
 
