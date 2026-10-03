@@ -1,0 +1,302 @@
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.10.3
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[0/2] Re-checking globbed directories...
+[1/95] Building CXX object tests\portable\CMakeFiles\rynui_portable_radio_features.dir\Release\__\radio_features_tests.cpp.obj
+[2/95] Building CXX object src\CMakeFiles\rynui_components.dir\Release\component\selection_component.cpp.obj
+[3/95] Linking CXX static library src\Release\rynui_components.lib
+[4/95] Linking CXX executable tests\portable\Release\rynui_portable_glyph_texture_upload.exe
+[5/95] Linking CXX executable tests\portable\Release\rynui_portable_prop.exe
+[6/95] Linking CXX executable tests\portable\Release\rynui_portable_texture_upload_batch_layout.exe
+[7/95] Linking CXX executable tests\portable\Release\rynui_portable_quad_primitive.exe
+[8/95] Linking CXX executable tests\portable\Release\rynui_portable_binding_quad_integration.exe
+[9/95] Linking CXX executable tests\portable\Release\rynui_portable_logical_scene_packing.exe
+[10/95] Linking CXX executable tests\portable\Release\rynui_portable_button_scene_service.exe
+[11/95] Linking CXX executable tests\portable\Release\rynui_portable_font_runtime.exe
+[12/95] Linking CXX executable tests\portable\Release\rynui_portable_text_engine.exe
+[13/95] Linking CXX executable tests\portable\Release\rynui_portable_text_state.exe
+[14/95] Linking CXX executable tests\portable\Release\rynui_portable_text_scene_service.exe
+[15/95] Linking CXX executable tests\portable\Release\rynui_portable_text_render_integration.exe
+[16/95] Linking CXX executable tests\portable\Release\rynui_portable_glyph_atlas.exe
+[17/95] Linking CXX executable tests\portable\Release\rynui_portable_glyph_scene.exe
+[18/95] Linking CXX executable tests\Release\rynui_bidi_input_tests.exe
+[19/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_math.exe
+[20/95] Linking CXX executable tests\portable\Release\rynui_portable_glyph_gpu_resources.exe
+[21/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_store.exe
+[22/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_scene.exe
+[23/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu.exe
+[24/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_gpu_resources.exe
+[25/95] Linking CXX executable tests\portable\Release\rynui_portable_icon_catalog.exe
+[26/95] Linking CXX executable tests\portable\Release\rynui_portable_icon_component.exe
+[27/95] Linking CXX executable tests\portable\Release\rynui_portable_icon_vector.exe
+[28/95] Linking CXX executable tests\portable\Release\rynui_portable_input_variant.exe
+[29/95] Linking CXX executable tests\portable\Release\rynui_portable_input_component.exe
+[30/95] Linking CXX executable tests\portable\Release\rynui_portable_input_count.exe
+[31/95] Linking CXX executable tests\portable\Release\rynui_portable_input_actions.exe
+[32/95] Linking CXX executable tests\portable\Release\rynui_portable_input_gpu.exe
+[33/95] Linking CXX executable tests\portable\Release\rynui_portable_input_caret_blink.exe
+[34/95] Linking CXX executable tests\portable\Release\rynui_portable_input_public_api.exe
+[35/95] Linking CXX executable tests\portable\Release\rynui_portable_password_component.exe
+[36/95] Linking CXX executable tests\portable\Release\rynui_portable_selection_controls_public_api.exe
+[37/95] Linking CXX executable tests\portable\Release\rynui_portable_search_public_api.exe
+[38/95] Linking CXX executable tests\portable\Release\rynui_portable_text_component.exe
+[39/95] Linking CXX executable tests\portable\Release\rynui_portable_search_component.exe
+[40/95] Linking CXX executable tests\portable\Release\rynui_portable_button_component.exe
+[41/95] Linking CXX executable tests\portable\Release\rynui_portable_selection_component.exe
+[42/95] Linking CXX executable tests\portable\Release\rynui_portable_theme_algorithm.exe
+[43/95] Linking CXX executable tests\portable\Release\rynui_portable_theme_runtime.exe
+[44/95] Linking CXX executable tests\portable\Release\rynui_portable_switch_public_api.exe
+[45/95] Linking CXX executable tests\portable\Release\rynui_portable_switch_features.exe
+[46/95] Linking CXX executable tests\portable\Release\rynui_portable_focus_order.exe
+[47/95] Linking CXX executable tests\portable\Release\rynui_portable_checkbox_group.exe
+[48/95] Linking CXX executable tests\portable\Release\rynui_portable_focus_state.exe
+[49/95] Linking CXX executable tests\portable\Release\rynui_portable_checkbox_public_api.exe
+[50/95] Linking CXX executable tests\portable\Release\rynui_portable_focus_lifecycle.exe
+[51/95] Linking CXX executable tests\portable\Release\rynui_portable_slider_component.exe
+[52/95] Linking CXX executable tests\portable\Release\rynui_portable_radio_public_api.exe
+[53/95] Linking CXX executable tests\portable\Release\rynui_portable_radio_component.exe
+[54/95] Linking CXX executable tests\portable\Release\rynui_portable_radio_features.exe
+[55/95] Linking CXX executable tests\portable\Release\rynui_portable_divider_public_api.exe
+[56/95] Linking CXX executable tests\portable\Release\rynui_portable_frame_scheduler.exe
+[57/95] Linking CXX executable tests\portable\Release\rynui_portable_interaction_registry.exe
+[58/95] Linking CXX executable tests\portable\Release\rynui_portable_typography_component.exe
+[59/95] Linking CXX executable tests\portable\Release\rynui_portable_window_overlay.exe
+[60/95] Linking CXX executable tests\portable\Release\rynui_portable_typography_interaction.exe
+[61/95] Linking CXX executable tests\portable\Release\rynui_portable_pointer_route.exe
+[62/95] Linking CXX executable tests\portable\Release\rynui_portable_divider_component.exe
+[63/95] Linking CXX executable tests\portable\Release\rynui_portable_text_input_session.exe
+[64/95] Linking CXX executable tests\portable\Release\rynui_portable_text_component_frame.exe
+[65/95] Linking CXX executable tests\portable\Release\rynui_portable_text_history.exe
+[66/95] Linking CXX executable tests\portable\Release\rynui_portable_text_reconcile.exe
+[67/95] Linking CXX executable tests\portable\Release\rynui_portable_text_editor.exe
+[68/95] Linking CXX executable tests\portable\Release\rynui_portable_text_clipboard_command.exe
+[69/95] Linking CXX executable tests\portable\Release\rynui_portable_otp_model.exe
+[70/95] Linking CXX executable tests\portable\Release\rynui_portable_input_display.exe
+[71/95] Linking CXX executable tests\portable\Release\rynui_portable_text_caret_map.exe
+[72/95] Linking CXX executable tests\portable\Release\rynui_portable_tooltip_component.exe
+[73/95] Linking CXX executable tests\portable\Release\rynui_portable_reactive_source_lifecycle.exe
+[74/95] Linking CXX executable tests\portable\Release\rynui_portable_layout_engine.exe
+[75/95] Linking CXX executable tests\portable\Release\rynui_portable_layout_style.exe
+[76/95] Linking CXX executable tests\portable\Release\rynui_portable_layout_style_public_api.exe
+[77/95] Linking CXX executable tests\portable\Release\rynui_portable_layout_allocation.exe
+[78/95] Linking CXX executable tests\portable\Release\rynui_portable_otp_public_api.exe
+[79/95] Linking CXX executable tests\portable\Release\rynui_portable_text_area.exe
+[80/95] Linking CXX executable tests\portable\Release\rynui_portable_flex_component.exe
+[81/95] Linking CXX executable tests\portable\Release\rynui_portable_flex_public_api.exe
+[82/95] Linking CXX executable tests\portable\Release\rynui_portable_otp_component.exe
+[83/95] Linking CXX executable tests\portable\Release\rynui_portable_otp_interaction.exe
+[84/95] Linking CXX executable tests\portable\Release\rynui_portable_flex_header_isolation.exe
+[85/95] Linking CXX executable tests\portable\Release\rynui_portable_space_header_isolation.exe
+[86/95] Linking CXX executable tests\portable\Release\rynui_portable_space_public_api.exe
+[87/95] Linking CXX executable tests\portable\Release\rynui_portable_rounded_effect_allocation.exe
+[88/95] Linking CXX executable tests\portable\Release\rynui_portable_text_editor_allocation.exe
+[89/95] Linking CXX executable tests\portable\Release\rynui_portable_flex_features.exe
+[90/95] Linking CXX executable tests\portable\Release\rynui_portable_space_component.exe
+[91/95] Linking CXX executable tests\portable\Release\rynui_portable_space_features.exe
+[92/95] Linking CXX executable tests\portable\Release\rynui_portable_input_scene_allocation.exe
+[93/95] Linking CXX executable tests\portable\Release\rynui_portable_space_compact.exe
+[94/95] Linking CXX executable tests\portable\Release\rynui_portable_scene_backend.exe
+Test project D:/code/RynUI/out/build/windows-msvc-headless
+      Start  1: rynui.bidi_analysis
+ 1/99 Test  #1: rynui.bidi_analysis ............................   Passed    1.23 sec
+      Start  2: rynui.bidi_shaping
+ 2/99 Test  #2: rynui.bidi_shaping .............................   Passed    0.03 sec
+      Start  3: rynui.bidi_layout
+ 3/99 Test  #3: rynui.bidi_layout ..............................   Passed    0.02 sec
+      Start  4: rynui.bidi_caret
+ 4/99 Test  #4: rynui.bidi_caret ...............................   Passed    0.02 sec
+      Start  5: rynui.bidi_input
+ 5/99 Test  #5: rynui.bidi_input ...............................   Passed    0.36 sec
+      Start  6: rynui.bidi_dependency
+ 6/99 Test  #6: rynui.bidi_dependency ..........................   Passed    1.08 sec
+      Start  7: rynui.dependency_lock
+ 7/99 Test  #7: rynui.dependency_lock ..........................   Passed    0.06 sec
+      Start  8: rynui.portable.prop
+ 8/99 Test  #8: rynui.portable.prop ............................   Passed    0.03 sec
+      Start  9: rynui.portable.glyph_texture_upload
+ 9/99 Test  #9: rynui.portable.glyph_texture_upload ............   Passed    0.03 sec
+      Start 10: rynui.portable.texture_upload_batch_layout
+10/99 Test #10: rynui.portable.texture_upload_batch_layout .....   Passed    0.03 sec
+      Start 11: rynui.portable.logical_scene_packing
+11/99 Test #11: rynui.portable.logical_scene_packing ...........   Passed    0.03 sec
+      Start 12: rynui.portable.quad_primitive
+12/99 Test #12: rynui.portable.quad_primitive ..................   Passed    0.03 sec
+      Start 13: rynui.portable.binding_quad_integration
+13/99 Test #13: rynui.portable.binding_quad_integration ........   Passed    0.03 sec
+      Start 14: rynui.portable.button_scene_service
+14/99 Test #14: rynui.portable.button_scene_service ............   Passed    0.03 sec
+      Start 15: rynui.portable.font_runtime
+15/99 Test #15: rynui.portable.font_runtime ....................   Passed    0.05 sec
+      Start 16: rynui.portable.text_engine
+16/99 Test #16: rynui.portable.text_engine .....................   Passed    0.11 sec
+      Start 17: rynui.portable.text_state
+17/99 Test #17: rynui.portable.text_state ......................   Passed    0.07 sec
+      Start 18: rynui.portable.text_scene_service
+18/99 Test #18: rynui.portable.text_scene_service ..............   Passed    0.24 sec
+      Start 19: rynui.portable.text_render_integration
+19/99 Test #19: rynui.portable.text_render_integration .........   Passed    0.05 sec
+      Start 20: rynui.portable.glyph_atlas
+20/99 Test #20: rynui.portable.glyph_atlas .....................   Passed    0.04 sec
+      Start 21: rynui.portable.glyph_scene
+21/99 Test #21: rynui.portable.glyph_scene .....................   Passed    0.30 sec
+      Start 22: rynui.portable.glyph_gpu_resources
+22/99 Test #22: rynui.portable.glyph_gpu_resources .............   Passed    0.03 sec
+      Start 23: rynui.portable.icon_catalog
+23/99 Test #23: rynui.portable.icon_catalog ....................   Passed    0.08 sec
+      Start 24: rynui.portable.icon_component
+24/99 Test #24: rynui.portable.icon_component ..................   Passed    0.25 sec
+      Start 25: rynui.portable.icon_vector
+25/99 Test #25: rynui.portable.icon_vector .....................   Passed    0.15 sec
+      Start 26: rynui.portable.rounded_effect_math
+26/99 Test #26: rynui.portable.rounded_effect_math .............   Passed    0.03 sec
+      Start 27: rynui.portable.rounded_effect_store
+27/99 Test #27: rynui.portable.rounded_effect_store ............   Passed    0.03 sec
+      Start 28: rynui.portable.rounded_effect_scene
+28/99 Test #28: rynui.portable.rounded_effect_scene ............   Passed    0.03 sec
+      Start 29: rynui.portable.rounded_effect_gpu
+29/99 Test #29: rynui.portable.rounded_effect_gpu ..............   Passed    0.03 sec
+      Start 30: rynui.portable.rounded_effect_gpu_resources
+30/99 Test #30: rynui.portable.rounded_effect_gpu_resources ....   Passed    0.03 sec
+      Start 31: rynui.portable.input_component
+31/99 Test #31: rynui.portable.input_component .................   Passed    1.52 sec
+      Start 32: rynui.portable.input_variant
+32/99 Test #32: rynui.portable.input_variant ...................   Passed    2.06 sec
+      Start 33: rynui.portable.input_count
+33/99 Test #33: rynui.portable.input_count .....................   Passed    0.17 sec
+      Start 34: rynui.portable.input_actions
+34/99 Test #34: rynui.portable.input_actions ...................   Passed    0.18 sec
+      Start 35: rynui.portable.input_gpu
+35/99 Test #35: rynui.portable.input_gpu .......................   Passed    0.11 sec
+      Start 36: rynui.portable.input_caret_blink
+36/99 Test #36: rynui.portable.input_caret_blink ...............   Passed    0.05 sec
+      Start 37: rynui.portable.input_public_api
+37/99 Test #37: rynui.portable.input_public_api ................   Passed    0.03 sec
+      Start 38: rynui.portable.password_component
+38/99 Test #38: rynui.portable.password_component ..............   Passed    0.11 sec
+      Start 39: rynui.portable.search_component
+39/99 Test #39: rynui.portable.search_component ................   Passed    1.18 sec
+      Start 40: rynui.portable.search_public_api
+40/99 Test #40: rynui.portable.search_public_api ...............   Passed    0.03 sec
+      Start 41: rynui.portable.text_component
+41/99 Test #41: rynui.portable.text_component ..................   Passed    0.34 sec
+      Start 42: rynui.portable.button_component
+42/99 Test #42: rynui.portable.button_component ................   Passed    0.86 sec
+      Start 43: rynui.portable.selection_component
+43/99 Test #43: rynui.portable.selection_component .............   Passed    0.41 sec
+      Start 44: rynui.portable.selection_controls_public_api
+44/99 Test #44: rynui.portable.selection_controls_public_api ...   Passed    0.03 sec
+      Start 45: rynui.portable.switch_features
+45/99 Test #45: rynui.portable.switch_features .................   Passed    0.96 sec
+      Start 46: rynui.portable.switch_public_api
+46/99 Test #46: rynui.portable.switch_public_api ...............   Passed    0.03 sec
+      Start 47: rynui.portable.checkbox_group
+47/99 Test #47: rynui.portable.checkbox_group ..................   Passed    0.33 sec
+      Start 48: rynui.portable.checkbox_public_api
+48/99 Test #48: rynui.portable.checkbox_public_api .............   Passed    0.03 sec
+      Start 49: rynui.portable.theme_algorithm
+49/99 Test #49: rynui.portable.theme_algorithm .................   Passed    0.04 sec
+      Start 50: rynui.portable.theme_runtime
+50/99 Test #50: rynui.portable.theme_runtime ...................   Passed    0.04 sec
+      Start 51: rynui.portable.slider_component
+51/99 Test #51: rynui.portable.slider_component ................   Passed    1.07 sec
+      Start 52: rynui.portable.radio_component
+52/99 Test #52: rynui.portable.radio_component .................   Passed    0.39 sec
+      Start 53: rynui.portable.radio_features
+53/99 Test #53: rynui.portable.radio_features ..................   Passed    0.80 sec
+      Start 54: rynui.portable.radio_public_api
+54/99 Test #54: rynui.portable.radio_public_api ................   Passed    0.03 sec
+      Start 55: rynui.portable.focus_order
+55/99 Test #55: rynui.portable.focus_order .....................   Passed    0.03 sec
+      Start 56: rynui.portable.focus_state
+56/99 Test #56: rynui.portable.focus_state .....................   Passed    0.03 sec
+      Start 57: rynui.portable.focus_lifecycle
+57/99 Test #57: rynui.portable.focus_lifecycle .................   Passed    0.03 sec
+      Start 58: rynui.portable.typography_component
+58/99 Test #58: rynui.portable.typography_component ............   Passed    0.65 sec
+      Start 59: rynui.portable.typography_interaction
+59/99 Test #59: rynui.portable.typography_interaction ..........   Passed    0.18 sec
+      Start 60: rynui.portable.divider_component
+60/99 Test #60: rynui.portable.divider_component ...............   Passed    0.49 sec
+      Start 61: rynui.portable.divider_public_api
+61/99 Test #61: rynui.portable.divider_public_api ..............   Passed    0.03 sec
+      Start 62: rynui.portable.text_component_frame
+62/99 Test #62: rynui.portable.text_component_frame ............   Passed    0.06 sec
+      Start 63: rynui.portable.frame_scheduler
+63/99 Test #63: rynui.portable.frame_scheduler .................   Passed    0.03 sec
+      Start 64: rynui.portable.window_overlay
+64/99 Test #64: rynui.portable.window_overlay ..................   Passed    0.03 sec
+      Start 65: rynui.portable.tooltip_component
+65/99 Test #65: rynui.portable.tooltip_component ...............   Passed    0.49 sec
+      Start 66: rynui.portable.interaction_registry
+66/99 Test #66: rynui.portable.interaction_registry ............   Passed    0.03 sec
+      Start 67: rynui.portable.pointer_route
+67/99 Test #67: rynui.portable.pointer_route ...................   Passed    0.03 sec
+      Start 68: rynui.portable.text_input_session
+68/99 Test #68: rynui.portable.text_input_session ..............   Passed    0.03 sec
+      Start 69: rynui.portable.text_editor
+69/99 Test #69: rynui.portable.text_editor .....................   Passed    0.03 sec
+      Start 70: rynui.portable.text_history
+70/99 Test #70: rynui.portable.text_history ....................   Passed    0.09 sec
+      Start 71: rynui.portable.text_reconcile
+71/99 Test #71: rynui.portable.text_reconcile ..................   Passed    0.03 sec
+      Start 72: rynui.portable.text_clipboard_command
+72/99 Test #72: rynui.portable.text_clipboard_command ..........   Passed    0.03 sec
+      Start 73: rynui.portable.input_display
+73/99 Test #73: rynui.portable.input_display ...................   Passed    0.03 sec
+      Start 74: rynui.portable.text_caret_map
+74/99 Test #74: rynui.portable.text_caret_map ..................   Passed    0.08 sec
+      Start 75: rynui.portable.text_area
+75/99 Test #75: rynui.portable.text_area .......................   Passed    0.41 sec
+      Start 76: rynui.portable.otp_model
+76/99 Test #76: rynui.portable.otp_model .......................   Passed    0.03 sec
+      Start 77: rynui.portable.otp_component
+77/99 Test #77: rynui.portable.otp_component ...................   Passed    0.27 sec
+      Start 78: rynui.portable.otp_public_api
+78/99 Test #78: rynui.portable.otp_public_api ..................   Passed    0.03 sec
+      Start 79: rynui.portable.otp_interaction
+79/99 Test #79: rynui.portable.otp_interaction .................   Passed    0.22 sec
+      Start 80: rynui.portable.reactive_source_lifecycle
+80/99 Test #80: rynui.portable.reactive_source_lifecycle .......   Passed    0.03 sec
+      Start 81: rynui.portable.layout_engine
+81/99 Test #81: rynui.portable.layout_engine ...................   Passed    0.04 sec
+      Start 82: rynui.portable.layout_style
+82/99 Test #82: rynui.portable.layout_style ....................   Passed    0.03 sec
+      Start 83: rynui.portable.layout_style_public_api
+83/99 Test #83: rynui.portable.layout_style_public_api .........   Passed    0.03 sec
+      Start 84: rynui.portable.layout_allocation
+84/99 Test #84: rynui.portable.layout_allocation ...............   Passed    0.03 sec
+      Start 85: rynui.portable.flex_component
+85/99 Test #85: rynui.portable.flex_component ..................   Passed    0.03 sec
+      Start 86: rynui.portable.flex_features
+86/99 Test #86: rynui.portable.flex_features ...................   Passed    0.13 sec
+      Start 87: rynui.portable.flex_public_api
+87/99 Test #87: rynui.portable.flex_public_api .................   Passed    0.03 sec
+      Start 88: rynui.portable.flex_header_isolation
+88/99 Test #88: rynui.portable.flex_header_isolation ...........   Passed    0.03 sec
+      Start 89: rynui.portable.space_component
+89/99 Test #89: rynui.portable.space_component .................   Passed    0.05 sec
+      Start 90: rynui.portable.space_features
+90/99 Test #90: rynui.portable.space_features ..................   Passed    0.16 sec
+      Start 91: rynui.portable.space_compact
+91/99 Test #91: rynui.portable.space_compact ...................   Passed    0.82 sec
+      Start 92: rynui.portable.space_public_api
+92/99 Test #92: rynui.portable.space_public_api ................   Passed    0.03 sec
+      Start 93: rynui.portable.space_header_isolation
+93/99 Test #93: rynui.portable.space_header_isolation ..........   Passed    0.03 sec
+      Start 94: rynui.portable.rounded_effect_allocation
+94/99 Test #94: rynui.portable.rounded_effect_allocation .......   Passed    0.03 sec
+      Start 95: rynui.portable.input_scene_allocation
+95/99 Test #95: rynui.portable.input_scene_allocation ..........   Passed    6.47 sec
+      Start 96: rynui.portable.text_editor_allocation
+96/99 Test #96: rynui.portable.text_editor_allocation ..........   Passed    0.05 sec
+      Start 97: rynui.portable.scene_backend
+97/99 Test #97: rynui.portable.scene_backend ...................   Passed    0.27 sec
+      Start 98: rynui.portable.backend_boundaries
+98/99 Test #98: rynui.portable.backend_boundaries ..............   Passed    1.53 sec
+      Start 99: rynui.portable.icon_asset_contract
+99/99 Test #99: rynui.portable.icon_asset_contract .............   Passed    0.22 sec
+
+100% tests passed out of 99
+
+Total Test time (real) =  30.14 sec

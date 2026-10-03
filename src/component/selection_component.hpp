@@ -138,6 +138,7 @@ private:
     [[nodiscard]] runtime::Size measure_radio_group(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
     void place_radio_group(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void retarget_handle(SelectionState&);
+    void retarget_handle_press(SelectionState&);
     void synchronize_spinner(SelectionState&);
     void apply(animation::AnimationId, animation::AnimationTargetId, const animation::AnimationValue&,
                animation::AnimationDirtyDomain) override;

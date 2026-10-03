@@ -21,8 +21,8 @@ checked/unchecked slots 支持 Text、Icon 和被动布局，分别挂载一次�
 
 Switch Theme token 支持四种 inner margin（普通/Small 的 min/max）、handle_shadow、wave_spread/wave_width/wave_opacity，以及原有 track/handle 大小与 handle_background。组件算法解析该组件的主色、尺寸、fontSizeSM 和 focus；`ThemeConfig.alias.opacity_loading` 在 [0, 1] 范围内控制 disabled/loading 的轨道、手柄、内容和 spinner 透明度，默认 0.65，同时抑制手柄阴影。无效 token 明确拒绝，不发布半完成主题。
 
-按压时手柄向轨道内部伸展 30%，cancel、blur、disabled/loading 后恢复。阴影与 focus 使用共同 RoundedEffect，手柄阴影插在轨道 fill 和手柄 fill 之间，保持原有十层 quad 的 identity。`wave(Prop<bool>)` 默认启用，只有用户有效激活产生有限反馈；外部 checked 更新不会产生 wave。重复激活复用一个 range，结束或 disabled/loading/窗口失活/motion=false/reduced motion/销毁后清空效果，稳态不请求下一帧。
+按压时手柄向轨道内部伸展30%，基础位置与逻辑两端伸长都使用 motionDurationMid（默认200ms）和 CSS ease-in-out（cubic-bezier(0.42,0,0.58,1)）。释放时收缩与移动同时过渡，快速重按或受控 checked 更新从当前呈现值衔接；LTR/RTL与Middle/Small保持一致。cancel、blur、disabled/loading 后恢复，reduced motion/motion=false直接到目标。阴影与 focus 使用共同 RoundedEffect，手柄阴影插在轨道 fill 和手柄 fill 之间，保持原有十层 quad 的 identity。`wave(Prop<bool>)` 默认启用，只有用户有效激活产生有限反馈；外部 checked 更新不会产生 wave。重复激活复用一个 range，结束或 disabled/loading/窗口失活/motion=false/reduced motion/销毁后清空效果，稳态不请求下一帧。
 
-设计来源：[锁定 Ant Design 6.6.5 Switch](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/switch/index.tsx)。DOM/HTML/CSS、React ref 与 Web value/defaultValue 兼容别名不移植。046 的任务与证据分别记录原生功能、共同合同和各平台验收。
+设计来源：[锁定 Ant Design 6.6.5 Switch](https://raw.githubusercontent.com/ant-design/ant-design/6.6.5/components/switch/index.tsx)、[手柄官方样式](https://github.com/ant-design/ant-design/blob/6.6.5/components/switch/style/index.ts)。官方样式使用字面量 CSS ease-in-out，区别于 Ant motionEaseInOut token。DOM/HTML/CSS、React ref 与 Web value/defaultValue 兼容别名不移植。046 的任务与证据分别记录原生功能、共同合同和各平台验收；056补充手柄按压/释放连续性回归。
 
 共同合同已通过 Windows MSVC headless Debug/Release；Windows 真窗口 D3D12/DXIL 十次缩放运行与 200 张 readback 见 [Windows 证据](../openspec/changes/046-20261002-complete-native-switch-features/evidence/windows/README.md)。Linux 原生验收独立待完成。

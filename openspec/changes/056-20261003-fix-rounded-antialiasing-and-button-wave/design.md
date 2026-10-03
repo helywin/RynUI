@@ -26,11 +26,11 @@ Goals：修正共同 coverage、RadioButton 填充合成和 Button/Switch 官方
 
 ### RadioButton 连续填充
 
-旧实现将背景裁到内侧边界，边框在同一边界取互补覆盖。两者按 straight-alpha 分别叠加时，0.5与0.5合成只有0.75覆盖，会露出底色，形成偏移浅线。背景改为覆盖完整 border box，异色边框绘制在背景之上；同色边框隐藏，仅用一层背景表达完整外形，避免外侧 AA 重叠加深。四象限与连接边优先级、retained range 保持，零尺寸合法。测试取实际 scene 的填充/边框合成，检查边界内部颜色连续及混合圆角。
+旧实现将背景裁到内侧边界，边框在同一边界取互补覆盖。两者按 straight-alpha 分别叠加时，0.5与0.5合成只有0.75覆盖，会露出底色，形成偏移浅线。背景改为覆盖完整 border box，异色边框绘制在背景之上；同色边框隐藏，仅用一层背景表达完整外形，避免外侧 AA 重叠加深。选中前项拥有共享边，后一未选中项的背景与边框裁到该边之外，避免先覆盖蓝边再用单独 AA 色带补回所产生的浅线；保留第九个透明占位以维持 range identity/capacity。四象限与连接边优先级、retained range 保持，零尺寸合法。测试取实际 scene 的填充/边框合成，检查全部内部颜色连续（含共享边）及混合圆角。
 
 ### Switch 手柄连续按压反馈
 
-官方6.6.5的 handle 基础位置与 ::before 两个逻辑 inset 均使用 motionDurationMid/ease-in-out，active 将向轨道内侧的 inset 设为-30%。旧实现宽度按 pressed 布尔值立即变化，而位置独立动画，故释放时瞬间缩回圆形后才移动。保留基础手柄锚点，新增逻辑 start/end 两个0..1动画值，分别乘 handleSize×30%；unchecked 向 end 拉长、checked 向 start 拉长，RTL镜像。释放将两端目标归零，与 checked 位置通道同时过渡；中途重按、受控 checked 更新从当前呈现值 retarget。伸长限制在轨道合法宽度内，手柄阴影随同一几何更新；loading 图标仍以基础手柄中心定位。
+官方6.6.5的 handle 基础位置与 ::before 两个逻辑 inset 均使用 motionDurationMid 与 CSS ease-in-out（cubic-bezier(0.42,0,0.58,1)，区别于 motionEaseInOut token），active 将向轨道内侧的 inset 设为-30%。旧实现宽度按 pressed 布尔值立即变化，而位置独立动画，故释放时瞬间缩回圆形后才移动。保留基础手柄锚点，新增逻辑 start/end 两个0..1动画值，分别乘 handleSize×30%；unchecked 向 end 拉长、checked 向 start 拉长，RTL镜像。释放将两端目标归零，与 checked 位置通道同时过渡；中途重按、受控 checked 更新从当前呈现值 retarget。伸长限制在轨道合法宽度内，手柄阴影随同一几何更新；loading 图标仍以基础手柄中心定位。
 
 只更改 retained geometry，不重挂或重测内容。普通策略按压与释放都动画；reduced-motion/motion=false 直接到目标值并清理通道，disabled/loading/blur/失活取消按压目标，销毁清理整个 scope。平台通用测试覆盖两种尺寸、LTR/RTL、双向切换、快速重按、鼠标/键盘、策略/生命周期与 idle；Windows 实际窗口捕获按压/释放中间帧和 RadioButton 填充，Linux 独立记录。
 

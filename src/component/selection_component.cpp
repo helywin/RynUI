@@ -249,6 +249,10 @@ struct SelectionState final {
     animation::AnimationScopeId animation_scope;
     animation::AnimationTargetId handle_target;
     animation::AnimationId handle_animation;
+    std::array<float, 2> presented_handle_insets{};
+    std::array<float, 2> handle_inset_values{};
+    std::array<animation::AnimationTargetId, 2> handle_inset_targets{};
+    std::array<animation::AnimationId, 2> handle_inset_animations{};
     animation::AnimationTargetId spinner_target;
     animation::AnimationId spinner_animation;
     float spinner_phase{};
@@ -489,6 +493,7 @@ void SelectionComponentHost::synchronize_auxiliary_motion() {
         }
         if (!state->checkbox && !state->radio) {
             synchronize_spinner(*state);
+            retarget_handle_press(*state);
         }
         if (state->wave_active &&
             !animation::resolve_motion_policy(services_->components().theme_scope(item.component)->snapshot(),
@@ -1200,7 +1205,10 @@ void SelectionComponentHost::retarget_handle(SelectionState& state) {
         state.presented_checked = target;
         return;
     }
-    const auto spec = policy.transition(animation::MotionDurationToken::mid, animation::MotionEasingToken::ease_in_out);
+    // Switch uses the CSS ease-in-out keyword, not Ant's motionEaseInOut token.
+    const animation::AnimationSpec spec{{},
+                                        policy.tokens().duration(animation::MotionDurationToken::mid),
+                                        animation::Easing::cubic_bezier({0.42F, 0.0F, 0.58F, 1.0F})};
     if (state.handle_animation.valid() && services_->animations().contains(state.handle_animation) &&
         services_->animations().retarget(state.handle_animation, target, spec, services_->animation_time())) {
         return;
@@ -1231,6 +1239,44 @@ void SelectionComponentHost::synchronize_spinner(SelectionState& state) {
         services_->animation_time());
 }
 
+void SelectionComponentHost::retarget_handle_press(SelectionState& state) {
+    const auto& theme = services_->components().theme_scope(state.component)->snapshot();
+    const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
+    const bool active = !state.disabled && !state.loading && services_->focus().state().window_active &&
+                        (state.press.pressed() || state.focus.keyboard_pressed);
+    // Logical start/end offsets of Ant's handle ::before, independent of its base position.
+    const std::array targets{active && state.checked ? 1.0F : 0.0F, active && !state.checked ? 1.0F : 0.0F};
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+        auto& animation = state.handle_inset_animations[i];
+        auto& presented = state.presented_handle_insets[i];
+        if (!policy.enabled() || !state.handle_inset_targets[i].valid()) {
+            if (animation.valid()) {
+                static_cast<void>(services_->animations().finish(animation));
+                animation = {};
+            }
+            if (presented != targets[i]) {
+                presented = targets[i];
+                services_->dirty().invalidate(state.node, runtime::DirtyFlags::Geometry);
+            }
+            state.handle_inset_values[i] = targets[i];
+            continue;
+        }
+        if (state.handle_inset_values[i] == targets[i]) {
+            continue;
+        }
+        state.handle_inset_values[i] = targets[i];
+        const animation::AnimationSpec spec{{},
+                                            policy.tokens().duration(animation::MotionDurationToken::mid),
+                                            animation::Easing::cubic_bezier({0.42F, 0.0F, 0.58F, 1.0F})};
+        if (animation.valid() && services_->animations().contains(animation) &&
+            services_->animations().retarget(animation, targets[i], spec, services_->animation_time())) {
+            continue;
+        }
+        animation = services_->animations().play(state.handle_inset_targets[i], presented, targets[i], spec,
+                                                 services_->animation_time());
+    }
+}
+
 void SelectionComponentHost::apply(animation::AnimationId, animation::AnimationTargetId target,
                                    const animation::AnimationValue& value, animation::AnimationDirtyDomain) {
     for (const auto& item : mounted_) {
@@ -1249,10 +1295,15 @@ void SelectionComponentHost::apply(animation::AnimationId, animation::AnimationT
             services_->dirty().invalidate(state->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
             return;
         }
-        if (state->handle_target != target) {
+        const auto inset = std::ranges::find(state->handle_inset_targets, target);
+        if (state->handle_target == target) {
+            state->presented_checked = std::get<float>(value);
+        } else if (inset != state->handle_inset_targets.end()) {
+            state->presented_handle_insets[std::distance(state->handle_inset_targets.begin(), inset)] =
+                std::clamp(std::get<float>(value), 0.0F, 1.0F);
+        } else {
             continue;
         }
-        state->presented_checked = std::get<float>(value);
         if (viewport_.width > 0.0F && viewport_.height > 0.0F) {
             update_geometry(*state, viewport_);
         }
@@ -1282,6 +1333,12 @@ void SelectionComponentHost::completed(animation::AnimationId animation, animati
         if (state->handle_target == target && state->handle_animation == animation) {
             state->handle_animation = {};
             return;
+        }
+        for (std::size_t i = 0; i < state->handle_inset_targets.size(); ++i) {
+            if (state->handle_inset_targets[i] == target && state->handle_inset_animations[i] == animation) {
+                state->handle_inset_animations[i] = {};
+                return;
+            }
         }
     }
 }
@@ -1635,6 +1692,7 @@ void SelectionComponentHost::update_visuals(SelectionState& state) {
     const bool faded = state.disabled || state.loading;
     const float opacity = faded ? theme.switch_token().loading_opacity : 1.0F;
     if (!state.checkbox && !state.radio) {
+        retarget_handle_press(state);
         const auto& switch_token = theme.switch_token();
         if (state.wave_active &&
             (!state.wave || state.disabled || state.loading || !services_->focus().state().window_active ||
@@ -1798,19 +1856,26 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         set_geometry(next[0], rect, viewport, std::min(rect.width, rect.height) / 2.0F, node.translation);
         const float checked = std::clamp(state.presented_checked, 0.0F, 1.0F);
         const float position = state.direction == SwitchDirection::RightToLeft ? 1 - checked : checked;
-        const bool active =
-            !state.disabled && !state.loading && (state.press.pressed() || state.focus.keyboard_pressed);
-        const float extra = active ? token.handle_size * 0.3F : 0;
-        const float handle_size =
-            std::min(token.handle_size + extra, std::max(0.0F, rect.width - 2 * token.track_padding));
-        const float x = rect.x + std::min(token.track_padding, rect.width / 2) +
-                        position * std::max(0.0F, rect.width - handle_size - 2 * token.track_padding);
+        const float available = std::max(0.0F, rect.width - 2 * token.track_padding);
+        const float base_size = std::min(token.handle_size, available);
+        const float anchor =
+            rect.x + std::min(token.track_padding, rect.width / 2) + position * std::max(0.0F, available - base_size);
+        float start_extra = base_size * 0.3F * state.presented_handle_insets[0];
+        float end_extra = base_size * 0.3F * state.presented_handle_insets[1];
+        const float extra = start_extra + end_extra;
+        if (extra > available - base_size && extra > 0) {
+            const float fraction = (available - base_size) / extra;
+            start_extra *= fraction;
+            end_extra *= fraction;
+        }
+        const float handle_size = base_size + start_extra + end_extra;
+        const float x = anchor - (state.direction == SwitchDirection::RightToLeft ? end_extra : start_extra);
         const runtime::Rect handle{x, rect.y + (rect.height - token.handle_size) / 2.0F, handle_size,
                                    token.handle_size};
         set_geometry(next[1], handle, viewport, std::min(handle.width, handle.height) / 2.0F, node.translation);
         const float dot = std::max(1.0F, token.handle_size * 0.13F);
         const float orbit = token.handle_size * 0.27F;
-        const float center_x = x + token.handle_size / 2.0F;
+        const float center_x = anchor + base_size / 2.0F;
         const float center_y = rect.y + rect.height / 2.0F;
         for (std::size_t segment = 0; segment < switch_loading_segments; ++segment) {
             const float angle = 2.0F * std::numbers::pi_v<float> * static_cast<float>(segment) /
@@ -1905,41 +1970,53 @@ void SelectionComponentHost::publish_radio_button(SelectionState& state) {
     }
     const auto& radio = services_->components().theme_scope(state.component)->snapshot().radio();
     const auto shape = state.effects.shape;
-    const auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
     const float stroke = std::min(radio.line_width, std::min(shape.rect.width, shape.rect.height) / 2);
     const graphics::LogicalRoundedRect inner{{shape.rect.x + stroke, shape.rect.y + stroke,
                                               std::max(0.0F, shape.rect.width - 2 * stroke),
                                               std::max(0.0F, shape.rect.height - 2 * stroke)},
                                              std::max(0.0F, shape.radius - stroke)};
-    std::array<graphics::RoundedEffectInstance, 9> effects;
-    const auto fill = graphics::make_corner_fill_effects(inner, state.rounded_corners, state.button_fill, 1,
-                                                         state.effects.translation, clip);
-    const auto border = graphics::make_corner_outline_effects(inner, state.rounded_corners, stroke, 0,
-                                                              state.button_border, 1, state.effects.translation, clip);
-    std::copy(fill.begin(), fill.end(), effects.begin());
-    std::copy(border.begin(), border.end(), effects.begin() + 4);
-    runtime::Rect seam{shape.rect.x, shape.rect.y, 0, 0};
-    Color seam_color = state.button_border;
-    float seam_opacity = 0;
     if (const auto* group = services_->components().state<RadioGroupState>(state.group); group && group->joined) {
         const auto found = std::ranges::find(group->options, state.component);
         if (found != group->options.end() && found != group->options.begin()) {
             const auto* previous = find(*std::prev(found));
             if (previous && previous->checked && !state.checked) {
-                seam_color = previous->button_border;
-                seam_opacity = 1;
                 const bool vertical = group->orientation == RadioGroupOrientation::Vertical;
                 const bool rtl = group->direction == RadioDirection::RightToLeft;
-                seam = vertical ? runtime::Rect{shape.rect.x, shape.rect.y, shape.rect.width, stroke}
-                                : runtime::Rect{rtl ? shape.rect.x + shape.rect.width - stroke : shape.rect.x,
-                                                shape.rect.y, stroke, shape.rect.height};
+                // The selected neighbor already owns this shared border. Clip this item's underpaint and
+                // border before that region, rather than covering it and restoring it with another AA layer.
+                const auto translation = state.effects.translation;
+                auto bounds = clip ? clip->bounds
+                                   : runtime::Rect{shape.rect.x + translation.x - 1, shape.rect.y + translation.y - 1,
+                                                   shape.rect.width + 2, shape.rect.height + 2};
+                const float right = bounds.x + bounds.width;
+                const float bottom = bounds.y + bounds.height;
+                if (vertical) {
+                    bounds.y = std::clamp(shape.rect.y + translation.y + stroke, bounds.y, bottom);
+                    bounds.height = bottom - bounds.y;
+                } else if (rtl) {
+                    bounds.width = std::max(
+                        0.0F, std::min(right, shape.rect.x + translation.x + shape.rect.width - stroke) - bounds.x);
+                } else {
+                    bounds.x = std::clamp(shape.rect.x + translation.x + stroke, bounds.x, right);
+                    bounds.width = right - bounds.x;
+                }
+                clip = graphics::EffectClip{1, bounds};
             }
         }
     }
-    ShadowLayer seam_layer;
-    seam_layer.color = seam_color;
-    effects[8] = graphics::make_shadow_effect({seam, 0}, seam_layer, state.effects.translation, clip);
-    effects[8].material.opacity = seam_opacity;
+    std::array<graphics::RoundedEffectInstance, 9> effects;
+    const auto fill = graphics::make_corner_fill_effects(shape, state.rounded_corners, state.button_fill, 1,
+                                                         state.effects.translation, clip);
+    const auto border = graphics::make_corner_outline_effects(
+        inner, state.rounded_corners, stroke, 0, state.button_border,
+        state.button_border == state.button_fill ? 0.0F : 1.0F, state.effects.translation, clip);
+    std::copy(fill.begin(), fill.end(), effects.begin());
+    std::copy(border.begin(), border.end(), effects.begin() + 4);
+    // Preserve the retained range's identity and capacity; border ownership needs no extra seam layer.
+    effects[8] = graphics::make_shadow_effect({{shape.rect.x, shape.rect.y, 0, 0}, 0}, ShadowLayer{},
+                                              state.effects.translation, clip);
+    effects[8].material.opacity = 0;
     services_->surfaces().update_content_effects(state.button_range, effects);
     if (const auto compact = state.compact_context.lock()) {
         compact->publish_seams();
@@ -2064,6 +2141,11 @@ struct SwitchPropsAccess {
         state.handle_target = host.services_->animations().register_target(state.animation_scope, host,
                                                                            animation::AnimationValueKind::scalar,
                                                                            animation::AnimationDirtyDomain::geometry);
+        for (auto& target : state.handle_inset_targets) {
+            target = host.services_->animations().register_target(state.animation_scope, host,
+                                                                  animation::AnimationValueKind::scalar,
+                                                                  animation::AnimationDirtyDomain::geometry);
+        }
         state.spinner_target = host.services_->animations().register_target(
             state.animation_scope, host, animation::AnimationValueKind::scalar,
             animation::AnimationDirtyDomain::material | animation::AnimationDirtyDomain::animation);

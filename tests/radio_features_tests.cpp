@@ -278,7 +278,7 @@ bool near(float left, float right) {
     return std::abs(left - right) < 0.02F;
 }
 
-std::array<float, 3> effect_color_at(Fixture& fixture, runtime::Point point) {
+std::array<float, 3> effect_color_at(Fixture& fixture, runtime::Point point, float scale = 1) {
     std::array<float, 3> result{1, 1, 1};
     const auto instances = fixture.services.surfaces().effects().packed_instances();
     for (const auto command : fixture.services.scene_composer().ordered_scene().commands()) {
@@ -294,7 +294,7 @@ std::array<float, 3> effect_color_at(Fixture& fixture, runtime::Point point) {
                     continue;
                 }
             }
-            const float alpha = graphics::rounded_effect_coverage(point, effect) * effect.material.opacity *
+            const float alpha = graphics::rounded_effect_coverage(point, effect, 1 / scale) * effect.material.opacity *
                                 effect.material.color.alpha();
             const std::array color{effect.material.color.red(), effect.material.color.green(),
                                    effect.material.color.blue()};
@@ -446,6 +446,56 @@ void dynamic_button_edges() {
     fixture.synchronize();
     require(host.mounted().empty() && fixture.services.surfaces().effects().live_count() == 0,
             "empty button options retained effects");
+}
+
+void solid_fill_has_no_inner_frame() {
+    for (const auto algorithm : {ThemeAlgorithm::Default, ThemeAlgorithm::Dark}) {
+        for (const auto direction : {RadioDirection::LeftToRight, RadioDirection::RightToLeft}) {
+            for (const auto orientation : {RadioGroupOrientation::Horizontal, RadioGroupOrientation::Vertical}) {
+                Fixture f;
+                detail::SelectionComponentHost host{f.services};
+                ThemeConfig config;
+                config.algorithms = {algorithm};
+                const auto primary = resolve_theme(config).radio().button_solid_checked_background;
+                host.mount(Content{[&] {
+                    Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                              RadioGroup(RadioGroupProps{}
+                                             .options({{1.0, String{u8"A"}}, {2.0, String{u8"B"}}})
+                                             .defaultValue(1.0)
+                                             .optionType(RadioOptionType::Button)
+                                             .buttonStyle(RadioButtonStyle::Solid)
+                                             .direction(direction)
+                                             .orientation(orientation));
+                          }});
+                }});
+                f.synchronize();
+                const auto item = host.mounted().front();
+                const auto rect = f.nodes.require(item.node).bounds;
+                const auto corners = host.snapshot(item.component).rounded_corners;
+                const auto radius = resolve_theme(config).radio().button_radius;
+                for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+                    std::size_t samples{};
+                    for (float y = rect.y + 0.5F / scale; y < rect.y + rect.height; y += 0.25F / scale) {
+                        for (float x = rect.x + 0.5F / scale; x < rect.x + rect.width; x += 0.25F / scale) {
+                            const auto corner = y < rect.y + rect.height / 2 ? (x < rect.x + rect.width / 2 ? 0 : 1)
+                                                                             : (x < rect.x + rect.width / 2 ? 3 : 2);
+                            if (graphics::rounded_rect_signed_distance({x, y}, {rect, corners[corner] ? radius : 0}) >
+                                -0.5F / scale) {
+                                continue;
+                            }
+                            const auto color = effect_color_at(f, {x, y}, scale);
+                            require(std::abs(color[0] - primary.red()) < 0.0001F &&
+                                        std::abs(color[1] - primary.green()) < 0.0001F &&
+                                        std::abs(color[2] - primary.blue()) < 0.0001F,
+                                    "Solid RadioButton exposed an inner frame or quadrant seam");
+                            ++samples;
+                        }
+                    }
+                    require(samples > 100, "Solid RadioButton fill regression missed its interior");
+                }
+            }
+        }
+    }
 }
 
 void radio_tokens_and_corner_math() {
@@ -626,6 +676,7 @@ int main() {
         invalid_and_reactive_rollback();
         buttons_and_local_theme();
         dynamic_button_edges();
+        solid_fill_has_no_inner_frame();
         radio_tokens_and_corner_math();
         constrained_button_geometry();
         finite_feedback();

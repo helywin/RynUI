@@ -20,7 +20,7 @@
 
 ## 4. 平台通用：填充接缝与 Switch 手柄
 
-- [ ] 4.1 修正 RadioButton border-box 填充与同色边缘合成；Switch 位置与逻辑两端30%伸长同时连续过渡，补正常/reduced/motion-off、双尺寸/LTR/RTL、快速反向、受控值、指针/键盘/取消/销毁/idle及内容局部性回归和参考文档；windows-msvc-headless Debug/Release完整CTest、format-code/doctor/strict validate/diff check通过，记录preset/evidence并提交。
+- [x] 4.1 修正 RadioButton border-box 填充与同色边缘合成；Switch 位置与逻辑两端30%伸长同时连续过渡，补正常/reduced/motion-off、双尺寸/LTR/RTL、快速反向、受控值、指针/键盘/取消/销毁/idle及内容局部性回归和参考文档；windows-msvc-headless Debug/Release完整CTest、format-code/doctor/strict validate/diff check通过，记录preset/evidence并提交。
 
 ## 5. 补充分平台验收
 

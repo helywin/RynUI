@@ -409,6 +409,7 @@ void theme_and_finite_wave() {
     const auto item = host.mounted().front();
     const auto range = f.services.surfaces().visual_range(item.surface);
     const auto label = f.services.text().mounted_texts().front().scene;
+    const auto targets = f.services.animations().diagnostics().targets;
     const auto shape_count = f.scene.text_state(label).counters().shape_count;
     const auto measures = f.nodes.require(item.node).measure_count;
     config.checkbox.tokens.primary = Color::rgba8(200, 100, 0);
@@ -476,7 +477,7 @@ void theme_and_finite_wave() {
     f.services.set_motion_preference(animation::MotionPreference::normal);
     activate(f, item.interaction);
     f.services.destroy(item.component);
-    require(f.services.animations().diagnostics().targets == 3 && !f.services.next_frame_deadline(),
+    require(f.services.animations().diagnostics().targets + 1 == targets && !f.services.next_frame_deadline(),
             "Checkbox destruction retained its wave target/deadline");
 }
 } // namespace

@@ -4,6 +4,7 @@
 #include <ryn/rynui.hpp>
 
 #include <cmath>
+#include <array>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -434,6 +435,169 @@ void wave_restarts_cancellation_and_idle() {
                 f.services.animations().diagnostics().targets == 0 && !f.services.next_frame_deadline(),
             "Switch wave destruction leaked resources");
 }
+
+void continuous_handle_feedback() {
+    for (const auto size : {SwitchSize::Middle, SwitchSize::Small}) {
+        for (const auto direction : {SwitchDirection::LeftToRight, SwitchDirection::RightToLeft}) {
+            for (const bool initially_checked : {false, true}) {
+                for (const bool pointer : {false, true}) {
+                    Fixture f;
+                    detail::SelectionComponentHost host{f.services};
+                    f.services.set_motion_preference(animation::MotionPreference::normal);
+                    int content_runs{};
+                    host.mount(Content{[&] {
+                        Switch(
+                            SwitchProps{}.size(size).direction(direction).defaultChecked(initially_checked).wave(false),
+                            SwitchSlots{SwitchCheckedContent{[&] {
+                                            ++content_runs;
+                                            Text(u8"开");
+                                        }},
+                                        SwitchUncheckedContent{[&] {
+                                            ++content_runs;
+                                            Text(u8"关");
+                                        }}});
+                    }});
+                    f.synchronize();
+                    const auto item = host.mounted().front();
+                    const auto range = f.services.surfaces().visual_range(item.surface);
+                    const auto bounds = [&] {
+                        return f.services.surfaces().instances().at(range.first + 1).bounds;
+                    };
+                    const auto base = bounds();
+                    const auto measures = f.nodes.require(item.node).measure_count;
+                    const auto mounts = f.services.components().mount_runs();
+                    const auto point = f.nodes.require(item.node).bounds;
+                    const auto press = [&](bool down) {
+                        if (pointer) {
+                            f.services.pointer().dispatch({input::PointerIdentity::mouse(),
+                                                           down ? input::PointerAction::down : input::PointerAction::up,
+                                                           input::PointerButton::primary, point.x + point.width / 2,
+                                                           point.y + point.height / 2});
+                        } else {
+                            f.services.focus().request_focus(item.interaction, input::FocusModality::keyboard);
+                            f.services.focus().dispatch(
+                                {input::Key::space, down ? input::KeyAction::down : input::KeyAction::up});
+                        }
+                        f.synchronize();
+                    };
+                    const auto tick = [&](std::int64_t time) {
+                        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(time)));
+                        f.synchronize();
+                    };
+                    press(true);
+                    require(bounds() == base, "Switch press jumped before animation advanced");
+                    tick(50000);
+                    require(near(bounds()[2], base[2] * (1 + 0.3F * 0.129162F)),
+                            "Switch press stretch did not interpolate");
+                    tick(200000);
+                    const auto held = bounds();
+                    const bool at_right = initially_checked != (direction == SwitchDirection::RightToLeft);
+                    require(near(held[2], base[2] * 1.3F) && near(held[3], base[3]) &&
+                                (at_right ? near(held[0] + held[2], base[0] + base[2]) : near(held[0], base[0])),
+                            "Switch held stretch changed its fixed outer edge");
+                    press(false);
+                    require(bounds() == held, "Switch release instantly shrank or moved the handle");
+                    tick(250000);
+                    const auto moving = bounds();
+                    require(near(moving[2], base[2] * (1 + 0.3F * (1 - 0.129162F))),
+                            "Switch release did not use CSS ease-in-out");
+                    require(moving[2] > base[2] && moving[2] < held[2] &&
+                                (at_right ? moving[0] < held[0] : moving[0] > held[0]),
+                            "Switch release did not shrink and move together");
+                    press(true);
+                    require(bounds() == moving, "Switch rapid re-press jumped geometry");
+                    tick(450000);
+                    const auto reverse_held = bounds();
+                    require(near(reverse_held[2], held[2]), "Switch reverse held stretch failed");
+                    press(false);
+                    require(bounds() == reverse_held, "Switch reverse release jumped geometry");
+                    tick(650000);
+                    require(bounds() == base && !f.services.next_frame_deadline(),
+                            "Switch reverse transition did not settle to original circle/idle");
+                    require(content_runs == 2 && f.nodes.require(item.node).measure_count == measures &&
+                                f.services.components().mount_runs() == mounts,
+                            "Switch handle animation measured or remounted retained content");
+                    press(true);
+                    tick(700000);
+                    f.services.set_motion_preference(animation::MotionPreference::reduced);
+                    f.synchronize();
+                    require(near(bounds()[2], held[2]) && !f.services.next_frame_deadline(),
+                            "Switch reduced motion did not finish stretch");
+                    press(false);
+                    require(near(bounds()[2], base[2]) && !f.services.next_frame_deadline(),
+                            "Switch reduced release retained stretch/deadline");
+                    f.services.set_motion_preference(animation::MotionPreference::normal);
+                    press(true);
+                    tick(750000);
+                    require(f.services.destroy(item.component) && f.services.animations().diagnostics().targets == 0 &&
+                                !f.services.next_frame_deadline(),
+                            "Switch disposal retained press channels/deadline");
+                }
+            }
+        }
+    }
+}
+
+void controlled_handle_and_press_cancellation() {
+    for (int cancel = 0; cancel < 5; ++cancel) {
+        Fixture f;
+        detail::SelectionComponentHost host{f.services};
+        f.services.set_motion_preference(animation::MotionPreference::normal);
+        Signal<bool> checked{false};
+        Signal<bool> disabled{false};
+        Signal<bool> loading{false};
+        Signal<ThemeConfig> theme{ThemeConfig{}};
+        host.mount(Content{[&] {
+            Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                      Switch(SwitchProps{}.checked(checked).disabled(disabled).loading(loading).wave(false));
+                  }});
+        }});
+        f.synchronize();
+        const auto item = host.mounted().front();
+        const auto range = f.services.surfaces().visual_range(item.surface);
+        const auto handle = [&] {
+            return f.services.surfaces().instances().at(range.first + 1).bounds;
+        };
+        const auto initial = handle();
+        f.services.focus().request_focus(item.interaction, input::FocusModality::keyboard);
+        f.services.focus().dispatch({input::Key::space, input::KeyAction::down});
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(200000)));
+        f.synchronize();
+        const auto held = handle();
+        checked.set(true);
+        f.synchronize();
+        require(handle() == held, "Controlled checked during press jumped geometry");
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(250000)));
+        f.synchronize();
+        require(near(handle()[2], held[2]) && handle()[0] > held[0],
+                "Controlled checked did not preserve stretch while moving");
+        if (cancel == 0) {
+            disabled.set(true);
+        } else if (cancel == 1) {
+            loading.set(true);
+        } else if (cancel == 2) {
+            f.services.focus().clear_focus();
+        } else if (cancel == 3) {
+            f.services.set_window_active(false);
+        } else {
+            auto config = theme.get();
+            config.seed.motion = false;
+            theme.set(config);
+            f.services.focus().dispatch({input::Key::space, input::KeyAction::up});
+        }
+        static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(1000000)));
+        loading.set(false);
+        f.synchronize();
+        require(near(handle()[2], initial[2]) && !host.snapshot(item.component).focus.keyboard_pressed &&
+                    !f.services.next_frame_deadline(),
+                "Switch cancellation retained stretch or animation deadline");
+        const auto settled = handle();
+        f.services.focus().dispatch({input::Key::space, input::KeyAction::up});
+        f.synchronize();
+        require(handle() == settled && host.snapshot(item.component).checked,
+                "Cancelled controlled Switch release changed authority/geometry");
+    }
+}
 } // namespace
 
 int main() {
@@ -443,6 +607,8 @@ int main() {
         invalid_content_and_reference();
         theme_and_handle_feedback();
         wave_restarts_cancellation_and_idle();
+        continuous_handle_feedback();
+        controlled_handle_and_press_cancellation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
