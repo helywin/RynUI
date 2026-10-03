@@ -1,6 +1,7 @@
 #pragma once
 
 #include "font/font_runtime.hpp"
+#include "text/bidi_analysis.hpp"
 
 #include <ryn/string.hpp>
 
@@ -39,6 +40,7 @@ enum class TextErrorKind : std::uint8_t {
     mixed_direction_unsupported,
     invalid_line_height,
     invalid_width_constraint,
+    invalid_direction,
 };
 
 struct TextError {
@@ -74,6 +76,8 @@ struct GlyphRun {
     std::size_t glyph_begin{};
     std::size_t glyph_count{};
     bool right_to_left{};
+    std::uint8_t level{};
+    std::uint32_t script{};
 
     friend bool operator==(const GlyphRun&, const GlyphRun&) = default;
 };
@@ -95,6 +99,7 @@ struct ShapedText {
     font::FontMetrics default_metrics{};
     std::size_t normalized_size_bytes{};
     std::size_t replacement_count{};
+    BidiAnalysis bidi;
 
     friend bool operator==(const ShapedText&, const ShapedText&) = default;
 };
@@ -172,10 +177,12 @@ public:
     [[nodiscard]] bool map_carets(const ShapedText&, StringView source, std::uint64_t revision, const TextMeasurement&,
                                   TextCaretMap& output) const;
 
-    [[nodiscard]] TextShapeResult shape(StringView text, std::span<const font::FontIdentity> fallback_chain) const;
+    [[nodiscard]] TextShapeResult shape(StringView text, std::span<const font::FontIdentity> fallback_chain,
+                                        TextDirection direction = TextDirection::Auto) const;
 
     [[nodiscard]] TextShapeResult shape_utf8_lossy(std::string_view bytes,
-                                                   std::span<const font::FontIdentity> fallback_chain) const;
+                                                   std::span<const font::FontIdentity> fallback_chain,
+                                                   TextDirection direction = TextDirection::Auto) const;
 
     [[nodiscard]] TextMeasureResult measure(const ShapedText& text, TextLayoutConfig config) const;
     [[nodiscard]] bool has_exact_glyphs(StringView text, std::span<const font::FontIdentity> fallback_chain) const;

@@ -238,6 +238,19 @@ struct FontShapeResult {
     }
 };
 
+enum class FontShapeDirection : std::uint8_t {
+    automatic,
+    left_to_right,
+    right_to_left,
+};
+
+struct FontShapeOptions final {
+    FontShapeDirection direction{FontShapeDirection::automatic};
+    // ISO 15924 tag; zero retains HarfBuzz's script inference.
+    std::uint32_t script{};
+    friend bool operator==(const FontShapeOptions&, const FontShapeOptions&) = default;
+};
+
 struct FontActionResult {
     FontError error{};
 
@@ -333,7 +346,8 @@ public:
                                               FontFailurePoint failure_point = FontFailurePoint::none);
 
     [[nodiscard]] FontShapeResult shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,
-                                                     std::size_t byte_offset, std::size_t byte_length) const;
+                                                     std::size_t byte_offset, std::size_t byte_length,
+                                                     FontShapeOptions options = {}) const;
 
     [[nodiscard]] FontActionResult remove_font(FontIdentity font);
     [[nodiscard]] FontActionResult shutdown();

@@ -704,7 +704,8 @@ GlyphRasterResult FontRuntime::rasterize(FontIdentity font, std::uint32_t glyph_
 }
 
 FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_view normalized_utf8,
-                                                std::size_t byte_offset, std::size_t byte_length) const {
+                                                std::size_t byte_offset, std::size_t byte_length,
+                                                FontShapeOptions options) const {
     if (!impl_->is_owner_thread()) {
         return {{}, false, impl_->owner_error(FontErrorStage::shaping)};
     }
@@ -717,7 +718,9 @@ FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_v
                        font),
         };
     }
-    if (byte_offset > normalized_utf8.size() || byte_length > normalized_utf8.size() - byte_offset ||
+    if ((options.direction != FontShapeDirection::automatic && options.direction != FontShapeDirection::left_to_right &&
+         options.direction != FontShapeDirection::right_to_left) ||
+        byte_offset > normalized_utf8.size() || byte_length > normalized_utf8.size() - byte_offset ||
         normalized_utf8.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
         byte_offset > std::numeric_limits<unsigned int>::max() ||
         byte_length > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
@@ -746,6 +749,13 @@ FontShapeResult FontRuntime::shape_utf8_segment(FontIdentity font, std::string_v
     hb_buffer_set_cluster_level(buffer.get(), HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
     hb_buffer_add_utf8(buffer.get(), normalized_utf8.data(), static_cast<int>(normalized_utf8.size()),
                        static_cast<unsigned int>(byte_offset), static_cast<int>(byte_length));
+    if (options.direction != FontShapeDirection::automatic) {
+        hb_buffer_set_direction(
+            buffer.get(), options.direction == FontShapeDirection::right_to_left ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
+    }
+    if (options.script != 0) {
+        hb_buffer_set_script(buffer.get(), hb_script_from_iso15924_tag(options.script));
+    }
     hb_buffer_guess_segment_properties(buffer.get());
     hb_shape(record->harfbuzz_font, buffer.get(), nullptr, 0);
 

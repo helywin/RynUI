@@ -7,6 +7,16 @@ endif()
 include("${RYNUI_SOURCE_DIR}/cmake/dependencies/RynUIDependencyLock.cmake")
 
 set(required_variables
+    RYNUI_NOTO_SANS_ARABIC_VERSION
+    RYNUI_NOTO_SANS_ARABIC_COMMIT
+    RYNUI_NOTO_SANS_ARABIC_SOURCE_URL
+    RYNUI_NOTO_SANS_ARABIC_SOURCE_SHA256
+    RYNUI_NOTO_SANS_ARABIC_LICENSE
+    RYNUI_NOTO_SANS_HEBREW_VERSION
+    RYNUI_NOTO_SANS_HEBREW_COMMIT
+    RYNUI_NOTO_SANS_HEBREW_SOURCE_URL
+    RYNUI_NOTO_SANS_HEBREW_SOURCE_SHA256
+    RYNUI_NOTO_SANS_HEBREW_LICENSE
     RYNUI_SHEENBIDI_VERSION
     RYNUI_SHEENBIDI_COMMIT
     RYNUI_SHEENBIDI_SOURCE_URL
@@ -94,6 +104,8 @@ foreach(required_variable IN LISTS required_variables)
 endforeach()
 
 foreach(hash_variable IN ITEMS
+        RYNUI_NOTO_SANS_ARABIC_SOURCE_SHA256
+        RYNUI_NOTO_SANS_HEBREW_SOURCE_SHA256
         RYNUI_SHEENBIDI_SOURCE_SHA256
         RYNUI_BIDI_TEST_SOURCE_SHA256
         RYNUI_BIDI_CHARACTER_TEST_SOURCE_SHA256
@@ -192,7 +204,7 @@ if(NOT RYNUI_HARFBUZZ_SOURCE_URL MATCHES "${RYNUI_HARFBUZZ_VERSION}"
     message(FATAL_ERROR "HarfBuzz source URL is not tied to its locked release.")
 endif()
 
-foreach(font_prefix IN ITEMS RYNUI_NOTO_SANS RYNUI_NOTO_SANS_CJK_SC)
+foreach(font_prefix IN ITEMS RYNUI_NOTO_SANS RYNUI_NOTO_SANS_CJK_SC RYNUI_NOTO_SANS_ARABIC RYNUI_NOTO_SANS_HEBREW)
     if(NOT "${${font_prefix}_SOURCE_URL}" MATCHES "${${font_prefix}_COMMIT}"
             OR "${${font_prefix}_SOURCE_URL}" MATCHES "latest|refs/heads|/main/")
         message(FATAL_ERROR "${font_prefix} source URL is not tied to its locked commit.")

@@ -21,13 +21,11 @@ namespace {
            (value >= 0xF900 && value <= 0xFAFF) || (value >= 0x20000 && value <= 0x2FA1F);
 }
 
-[[nodiscard]] bool is_rtl_strong(char32_t value) noexcept {
-    return (value >= 0x0590 && value <= 0x08FF) || (value >= 0xFB1D && value <= 0xFDFF) ||
-           (value >= 0xFE70 && value <= 0xFEFF);
-}
-
-[[nodiscard]] bool is_ltr_strong(char32_t value) noexcept {
-    return (value >= U'A' && value <= U'Z') || (value >= U'a' && value <= U'z') || is_cjk(value);
+[[nodiscard]] bool is_shaping_control(char32_t value) noexcept {
+    return value == 0x00AD || value == 0x034F || value == 0x061C || value == 0x180E ||
+           (value >= 0x200B && value <= 0x200F) || (value >= 0x202A && value <= 0x202E) ||
+           (value >= 0x2060 && value <= 0x206F) || (value >= 0xFE00 && value <= 0xFE0F) || value == 0xFEFF ||
+           (value >= 0xE0000 && value <= 0xE0FFF);
 }
 
 [[nodiscard]] TextError font_error(font::FontError error) {
@@ -158,9 +156,13 @@ std::vector<Utf8Scalar> decode_utf8(StringView text) {
 
 TextEngine::TextEngine(font::FontRuntime& fonts) noexcept : fonts_(&fonts) {}
 
-TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIdentity> fallback_chain) const {
+TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIdentity> fallback_chain,
+                                  TextDirection direction) const {
     if (fallback_chain.empty()) {
         return {{}, {TextErrorKind::empty_font_chain, 0, {}}};
+    }
+    if (!valid_text_direction(direction)) {
+        return {{}, {TextErrorKind::invalid_direction, 0, {}}};
     }
 
     const auto default_metrics = fonts_->metrics(fallback_chain.front());
@@ -172,36 +174,22 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
     output.scalars = decode_utf8(text);
     output.default_metrics = default_metrics.metrics;
     output.normalized_size_bytes = text.size_bytes();
-
-    bool paragraph_has_ltr = false;
-    bool paragraph_has_rtl = false;
-    for (const Utf8Scalar& scalar : output.scalars) {
-        if (scalar.newline) {
-            paragraph_has_ltr = false;
-            paragraph_has_rtl = false;
-            continue;
-        }
-        paragraph_has_ltr = paragraph_has_ltr || is_ltr_strong(scalar.value);
-        paragraph_has_rtl = paragraph_has_rtl || is_rtl_strong(scalar.value);
-        if (paragraph_has_ltr && paragraph_has_rtl) {
-            return {
-                {},
-                {TextErrorKind::mixed_direction_unsupported, scalar.byte_start, {}},
-            };
-        }
-    }
+    static_cast<void>(output.bidi.assign(String::from_utf8(text.utf8()).value(), direction));
 
     std::optional<font::FontIdentity> run_font;
     std::size_t run_start = 0;
     std::size_t run_end = 0;
-    std::size_t paragraph_start = 0;
-    std::size_t paragraph_glyph_start = 0;
+    std::uint8_t run_level{};
+    std::uint32_t run_script{};
 
     const auto append_shaped = [&](font::FontIdentity selected_font, std::string_view shaping_text,
                                    std::size_t shaping_offset, std::size_t shaping_length,
                                    std::size_t output_byte_start, std::size_t output_byte_end, bool remap_clusters,
-                                   ShapedText& shaped) -> TextError {
-        const auto font_shape = fonts_->shape_utf8_segment(selected_font, shaping_text, shaping_offset, shaping_length);
+                                   std::uint8_t level, std::uint32_t script, ShapedText& shaped) -> TextError {
+        const font::FontShapeOptions options{
+            (level & 1) ? font::FontShapeDirection::right_to_left : font::FontShapeDirection::left_to_right, script};
+        const auto font_shape =
+            fonts_->shape_utf8_segment(selected_font, shaping_text, shaping_offset, shaping_length, options);
         if (!font_shape) {
             return font_error(font_shape.error);
         }
@@ -236,6 +224,8 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
             glyph_begin,
             shaped.glyphs.size() - glyph_begin,
             font_shape.right_to_left,
+            level,
+            script,
         });
         return {};
     };
@@ -244,71 +234,78 @@ TextShapeResult TextEngine::shape(StringView text, std::span<const font::FontIde
         if (!run_font) {
             return {};
         }
-        const TextError error =
-            append_shaped(*run_font, text.bytes(), run_start, run_end - run_start, run_start, run_end, false, shaped);
+        const TextError error = append_shaped(*run_font, text.bytes(), run_start, run_end - run_start, run_start,
+                                              run_end, false, run_level, run_script, shaped);
         run_font.reset();
         return error;
     };
 
-    for (const Utf8Scalar& scalar : output.scalars) {
-        if (scalar.newline) {
-            if (TextError error = flush_run(output)) {
-                return {{}, std::move(error)};
+    std::size_t scalar_index{};
+    std::size_t script_index{};
+    const auto scripts = output.bidi.scripts();
+    for (const auto& paragraph : output.bidi.paragraphs()) {
+        const auto glyph_begin = output.glyphs.size();
+        while (scalar_index < output.scalars.size() &&
+               output.scalars[scalar_index].byte_start < paragraph.content_end) {
+            const auto& scalar = output.scalars[scalar_index++];
+            while (script_index + 1 < scripts.size() && scripts[script_index].byte_end <= scalar.byte_start) {
+                ++script_index;
             }
-            output.paragraphs.push_back({
-                paragraph_start,
-                scalar.byte_start,
-                paragraph_glyph_start,
-                output.glyphs.size() - paragraph_glyph_start,
-            });
-            paragraph_start = scalar.byte_end;
-            paragraph_glyph_start = output.glyphs.size();
-            continue;
+            const auto level = output.bidi.level_at(scalar.byte_start).value();
+            const auto script = scripts[script_index].unicode_tag;
+            font::GlyphSelection selected;
+            if (is_shaping_control(scalar.value)) {
+                // Default ignorables influence shaping/UBA without a coverage
+                // requirement or replacement glyph. Retain the adjacent font.
+                selected.font = run_font.value_or(fallback_chain.front());
+            } else {
+                const auto selection = fonts_->find_glyph(fallback_chain, scalar.value);
+                if (!selection) {
+                    TextError error = font_error(selection.error);
+                    error.byte_offset = scalar.byte_start;
+                    return {{}, std::move(error)};
+                }
+                selected = selection.glyph;
+            }
+            if (selected.used_replacement) {
+                if (TextError error = flush_run(output)) {
+                    return {{}, std::move(error)};
+                }
+                const std::u8string replacement = encode_utf8(selected.resolved_codepoint);
+                if (TextError error = append_shaped(selected.font, bytes(replacement), 0, replacement.size(),
+                                                    scalar.byte_start, scalar.byte_end, true, level, script, output)) {
+                    return {{}, std::move(error)};
+                }
+                continue;
+            }
+            if (!run_font || *run_font != selected.font || run_level != level || run_script != script) {
+                if (TextError error = flush_run(output)) {
+                    return {{}, std::move(error)};
+                }
+                run_font = selected.font;
+                run_start = scalar.byte_start;
+                run_level = level;
+                run_script = script;
+            }
+            run_end = scalar.byte_end;
         }
-
-        const auto selection = fonts_->find_glyph(fallback_chain, scalar.value);
-        if (!selection) {
-            TextError error = font_error(selection.error);
-            error.byte_offset = scalar.byte_start;
+        if (TextError error = flush_run(output)) {
             return {{}, std::move(error)};
         }
-        if (selection.glyph.used_replacement) {
-            if (TextError error = flush_run(output)) {
-                return {{}, std::move(error)};
-            }
-            const std::u8string replacement = encode_utf8(selection.glyph.resolved_codepoint);
-            if (TextError error = append_shaped(selection.glyph.font, bytes(replacement), 0, replacement.size(),
-                                                scalar.byte_start, scalar.byte_end, true, output)) {
-                return {{}, std::move(error)};
-            }
-            continue;
+        output.paragraphs.push_back(
+            {paragraph.byte_begin, paragraph.content_end, glyph_begin, output.glyphs.size() - glyph_begin});
+        while (scalar_index < output.scalars.size() && output.scalars[scalar_index].byte_start < paragraph.byte_end) {
+            ++scalar_index;
         }
-
-        if (!run_font || *run_font != selection.glyph.font) {
-            if (TextError error = flush_run(output)) {
-                return {{}, std::move(error)};
-            }
-            run_font = selection.glyph.font;
-            run_start = scalar.byte_start;
-        }
-        run_end = scalar.byte_end;
     }
-    if (TextError error = flush_run(output)) {
-        return {{}, std::move(error)};
-    }
-    output.paragraphs.push_back({
-        paragraph_start,
-        text.size_bytes(),
-        paragraph_glyph_start,
-        output.glyphs.size() - paragraph_glyph_start,
-    });
     return {std::move(output), {}};
 }
 
 TextShapeResult TextEngine::shape_utf8_lossy(std::string_view raw_bytes,
-                                             std::span<const font::FontIdentity> fallback_chain) const {
+                                             std::span<const font::FontIdentity> fallback_chain,
+                                             TextDirection direction) const {
     Utf8RepairResult repaired = String::from_utf8_lossy(raw_bytes);
-    TextShapeResult result = shape(repaired.value.view(), fallback_chain);
+    TextShapeResult result = shape(repaired.value.view(), fallback_chain, direction);
     result.text.replacement_count = repaired.replacement_count;
     result.text.normalized_size_bytes = repaired.value.size_bytes();
     return result;

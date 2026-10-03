@@ -21,6 +21,8 @@ RynUI 不强制绑定 vcpkg、Conan 或某个 Linux 发行版。CMake 通过 `RY
 | Unicode BidiCharacterTest | `17.0.0` | Unicode versioned conformance input | `a3e6e905ab5afbe318a96df5401d0372a04cd73ef139ab5e3cf0ae241c255488` | Unicode-3.0 | 仅构建树内验收 fixture |
 | Noto Sans | `2.008` / `ffebf8c1ee449e544955a7e813c54f9b73848eac` | 锁定 upstream font file | `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5` | OFL-1.1 | Latin fallback 验收 fixture |
 | Noto Sans CJK SC | `2.004` / `523d033d6cb47f4a80c58a35753646f5c3608a78` | 锁定 upstream font file | `2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b` | OFL-1.1 | 简体中文 fallback 验收 fixture |
+| Noto Sans Arabic | `2.009` / `ffebf8c1ee449e544955a7e813c54f9b73848eac` | 锁定 upstream font file | `ceea25b464a656dc3b26849bab9356740401af62aedf1bfa8b7f0d9b75925b1b` | OFL-1.1 | 仅测试的 Arabic 连接/ligature fixture |
+| Noto Sans Hebrew | `3.000` / `ffebf8c1ee449e544955a7e813c54f9b73848eac` | 锁定 upstream font file | `a7fa16fffb27bedb060a0866267c29e9859aeb9c21cc33f5b3aaf6eb062eca85` | OFL-1.1 | 仅测试的 Hebrew/混合方向 fixture |
 
 完整 URL 与机器可读值保存在 `cmake/dependencies/RynUIDependencyLock.cmake`。SDL3 的 license 来自其锁定 release；Linux bundled libdecor 固定 0.2.5 release，并依次应用仓库内独立 `.patch` 文件，不伪造 0.3 版本。SDL_shadercross 在锁定时没有正式 release 或 tag，因此使用官方仓库精确 commit，而不是把 `main` 当成版本。DXC binary archive 内含三份上游 license，故 lock 保留其组合说明而不伪装为单一 SPDX expression。libdecor、FreeType、HarfBuzz 与验收字体的仓库内 license 记录位于 `third_party/licenses/`；字体二进制只下载到 build tree，不进入 Git。
 
@@ -85,6 +87,8 @@ ctest --preset windows-msvc-system-debug
 SheenBidi 必须提供精确 `3.0.0` 的 config package 和 `SheenBidi::SheenBidi` target。启用测试时还需显式设置 `RYNUI_BIDI_TEST_FILE` / `RYNUI_BIDI_CHARACTER_TEST_FILE`，其 SHA256 必须与 Unicode 17 lock 完全匹配，不隐式下载。BUNDLED 使用锁定 archive 的 `Tools/Unicode/` 数据并校验相同 hash；license 记录见 `third_party/licenses/SheenBidi-3.0.0.txt`。
 
 SheenBidi 的 MSVC atomic fallback 包含 Windows SDK，因此 BUNDLED 强制标准 C17 atomics；MSVC 使用 `/experimental:c11atomics`，configure probe 失败则拒绝配置。SYSTEM 的提供方同样必须保持 Core 平台隔离。分析层包装和 UTF-8 byte 合同见 [双向文本](../bidirectional-text.md)。
+
+启用 `BUILD_TESTING` 时 BUNDLED 将额外下载锁定 Arabic/Hebrew 字体至 build tree；SYSTEM 需显式提供 `RYNUI_SYSTEM_ARABIC_FONT_FILE` / `RYNUI_SYSTEM_HEBREW_FONT_FILE`，测试验证其对应 script 的实际 coverage/连接能力。这两份字体只供确定性逻辑验收，生产环境继续使用平台字体链。
 
 ## Shader 工具边界
 

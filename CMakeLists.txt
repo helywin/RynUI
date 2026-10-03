@@ -51,5 +51,6 @@ if(RYNUI_BUILD_EXAMPLES)
 endif()
 
 if(BUILD_TESTING)
+    rynui_resolve_bidi_validation_fonts()
     add_subdirectory(tests)
 endif()

@@ -486,6 +486,20 @@ function(rynui_resolve_validation_fonts out_latin_font out_cjk_font)
     set(${out_cjk_font} "${cjk_font}" PARENT_SCOPE)
 endfunction()
 
+function(rynui_resolve_bidi_validation_fonts)
+    foreach(script IN ITEMS ARABIC HEBREW)
+        if(RYNUI_DEPENDENCY_MODE STREQUAL "BUNDLED")
+            set(font_file "${CMAKE_BINARY_DIR}/_deps/rynui-validation-fonts/NotoSans${script}-Regular.ttf")
+            rynui_download_locked_file("Noto Sans ${script} ${RYNUI_NOTO_SANS_${script}_VERSION}"
+                "${RYNUI_NOTO_SANS_${script}_SOURCE_URL}" "${RYNUI_NOTO_SANS_${script}_SOURCE_SHA256}" "${font_file}")
+        else()
+            rynui_require_system_font("${RYNUI_SYSTEM_${script}_FONT_FILE}"
+                "RYNUI_SYSTEM_${script}_FONT_FILE" font_file)
+        endif()
+        set(RYNUI_VALIDATION_${script}_FONT_FILE "${font_file}" PARENT_SCOPE)
+    endforeach()
+endfunction()
+
 function(rynui_resolve_shadercross_host_tool out_command out_dependency)
     if(RYNUI_SHADERCROSS_EXECUTABLE)
         if(NOT EXISTS "${RYNUI_SHADERCROSS_EXECUTABLE}")

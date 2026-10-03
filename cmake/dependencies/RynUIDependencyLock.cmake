@@ -12,6 +12,16 @@ set(RYNUI_BIDI_TEST_SOURCE_URL "https://www.unicode.org/Public/17.0.0/ucd/BidiTe
 set(RYNUI_BIDI_TEST_SOURCE_SHA256 "888bdfc8090652272d1f859cdb00ae659e2dc6c26740be61ef1d03998a687620")
 set(RYNUI_BIDI_CHARACTER_TEST_SOURCE_URL "https://www.unicode.org/Public/17.0.0/ucd/BidiCharacterTest.txt")
 set(RYNUI_BIDI_CHARACTER_TEST_SOURCE_SHA256 "a3e6e905ab5afbe318a96df5401d0372a04cd73ef139ab5e3cf0ae241c255488")
+set(RYNUI_NOTO_SANS_ARABIC_VERSION "2.009")
+set(RYNUI_NOTO_SANS_HEBREW_VERSION "3.000")
+foreach(script IN ITEMS ARABIC HEBREW)
+    set(RYNUI_NOTO_SANS_${script}_COMMIT "ffebf8c1ee449e544955a7e813c54f9b73848eac")
+    set(RYNUI_NOTO_SANS_${script}_LICENSE "OFL-1.1")
+endforeach()
+set(RYNUI_NOTO_SANS_ARABIC_SOURCE_URL "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf")
+set(RYNUI_NOTO_SANS_ARABIC_SOURCE_SHA256 "ceea25b464a656dc3b26849bab9356740401af62aedf1bfa8b7f0d9b75925b1b")
+set(RYNUI_NOTO_SANS_HEBREW_SOURCE_URL "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf")
+set(RYNUI_NOTO_SANS_HEBREW_SOURCE_SHA256 "a7fa16fffb27bedb060a0866267c29e9859aeb9c21cc33f5b3aaf6eb062eca85")
 
 # Checked-in icon artwork. No runtime download or system-font fallback.
 set(RYNUI_ANT_ICONS_VERSION "4.6.0")

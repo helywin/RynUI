@@ -8,6 +8,15 @@ target_compile_definitions(rynui_bidi_analysis_tests PRIVATE
     "RYNUI_BIDI_TEST_FILE=\"${RYNUI_BIDI_TEST_FILE}\""
     "RYNUI_BIDI_CHARACTER_TEST_FILE=\"${RYNUI_BIDI_CHARACTER_TEST_FILE}\"")
 add_test(NAME rynui.bidi_analysis COMMAND rynui_bidi_analysis_tests)
+add_executable(rynui_bidi_shaping_tests bidi_shaping_tests.cpp)
+rynui_configure_cpp_target(rynui_bidi_shaping_tests)
+target_link_libraries(rynui_bidi_shaping_tests PRIVATE rynui_text)
+target_compile_definitions(rynui_bidi_shaping_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\""
+    "RYNUI_VALIDATION_ARABIC_FONT=\"${RYNUI_VALIDATION_ARABIC_FONT_FILE}\""
+    "RYNUI_VALIDATION_HEBREW_FONT=\"${RYNUI_VALIDATION_HEBREW_FONT_FILE}\"")
+add_test(NAME rynui.bidi_shaping COMMAND rynui_bidi_shaping_tests)
 add_test(NAME rynui.bidi_dependency
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_bidi_dependency.py"
         --source "${PROJECT_SOURCE_DIR}" --bidi-test "${RYNUI_BIDI_TEST_FILE}"

@@ -130,10 +130,9 @@ void test_fallback_runs_clusters_and_ligatures() {
             "locked Latin font did not exercise a ligature cluster");
 
     const String mixed_direction = u8"Aא";
-    const auto unsupported = fixture.shape(mixed_direction);
-    require(!unsupported && unsupported.error.kind == TextErrorKind::mixed_direction_unsupported &&
-                unsupported.error.byte_offset == 1,
-            "mixed-direction paragraph did not return a capability diagnostic");
+    const auto supported = fixture.shape(mixed_direction);
+    require(supported && supported.text.runs.size() == 2 && supported.text.runs[1].right_to_left,
+            "mixed-direction paragraph did not retain a separate RTL run");
 }
 
 void test_measurement_uses_shaped_metrics() {

@@ -1,6 +1,6 @@
 # 双向文本
 
-055 分阶段补齐原生桌面双向文本。当前仅完成段落分析基础；shaping、视觉折行、光标、选择及公开组件接入仍按 change 的 tasks 实施，不能将分析测试当成输入组件已支持混合方向。
+055 分阶段补齐原生桌面双向文本。段落分析与逻辑 shaping 已接入；视觉折行、光标、选择及公开组件接入仍按 change 的 tasks 实施，不能将分析/shaping 测试当成输入组件已支持混合方向。
 
 ## 段落分析
 
@@ -15,6 +15,14 @@ SheenBidi 3.0.0 使用 Unicode 17.0.0。内部传入 UTF-32 scalar 序列，并�
 `RynUI::SheenBidi` 只链接标准 C runtime。BUNDLED 的 archive、版本、fixture SHA256 和 license 集中锁定；SYSTEM 严格要求 3.0.0 config package、规范 target，启用测试时显式提供两个锁定 Unicode 数据文件。
 
 上游 MSVC atomic 回退会包含 Windows SDK。BUNDLED 强制 C17，MSVC additionally 使用 `/experimental:c11atomics` 并执行标准 atomics configure probe；不支持时直接拒绝配置。实际 headless 构建及 Core include/link 守卫负责验证平台隔离。
+
+## 逻辑 shaping
+
+TextEngine 按 paragraph resolved level、script 和 fallback font 划分逻辑 runs，HarfBuzz 接收明确方向及 ISO 15924 script，并保留完整原始 source 的 offset/length 上下文。glyph 的顺序是各 run 的 shaper 输出，cluster 始终指向原始 UTF-8。数字的偶数 level 保持 LTR，即使段落基础方向为 RTL。
+
+方向/isolate/连接控制符及 variation selectors 不要求 font coverage，不被替换为 U+FFFD；HarfBuzz 处理其 shaping 作用和不可见 glyph。真正缺字使用已有 fallback/replacement，保留原始 cluster。软折行之后的逐行视觉次序由后续 measurement 阶段消费，而非预先反转 source。
+
+锁定 Noto Sans Arabic/Hebrew fixture 验证真实 script coverage、Arabic 邻接上下文与 lam-alef ligature、RTL bracket mirror、混合数字/fallback、控制符不可见、hard paragraph 和非法方向。fixture 不进入 Git，也不替代 native 系统字体验收。
 
 ## 验证与后续
 
