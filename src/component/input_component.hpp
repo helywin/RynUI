@@ -33,6 +33,8 @@ struct InputLayoutSnapshot {
     float selection_end{};
     float composition_start{};
     float composition_end{};
+    float vertical_scroll{};
+    float text_height{};
 };
 
 struct InputTextLayers {
@@ -93,6 +95,7 @@ public:
     [[nodiscard]] input::TextEditResult dispatch(const input::TextCommitted&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CompositionChanged&);
     [[nodiscard]] input::TextEditResult dispatch(const input::CandidatesChanged&);
+    [[nodiscard]] bool dispatch(const input::ScrollInputEvent&);
     void submit(runtime::ComponentId);
     void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>, Prop<bool> active,
                                      std::function<void(String)> commit, std::function<void()> cancel,
@@ -134,6 +137,7 @@ private:
     void place_text_area(runtime::ComponentId, runtime::Rect);
     void apply_material_transition(runtime::ComponentId);
     void dispatch_pointer(runtime::ComponentId, input::PointerDispatchContext&);
+    bool dispatch_text_area_resize(runtime::ComponentId, input::PointerDispatchContext&);
     bool dispatch_keyboard(runtime::ComponentId, const input::KeyboardInputEvent&);
     void* begin_mount() noexcept override;
     void end_mount(void* previous) noexcept override;

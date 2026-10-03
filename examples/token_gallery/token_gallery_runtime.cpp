@@ -274,6 +274,10 @@ private:
         const float ticks = event.delta_y != 0.0F ? -event.delta_y : -event.delta_x;
         const float x = token_gallery_pointer_to_render_logical(event.x, platform_->display_scale(), *render_scale_);
         const float y = token_gallery_pointer_to_render_logical(event.y, platform_->display_scale(), *render_scale_);
+        if (inputs_->dispatch(ryn::input::ScrollInputEvent{event.delta_x, event.delta_y, x, y})) {
+            ++scroll_events_;
+            return;
+        }
         bool changed = false;
         switch (gallery_scroll_target(x, y, scroll_presentation_->narrow, scroll_presentation_->navigation_lane,
                                       scroll_presentation_->document_lane)) {

@@ -16,6 +16,7 @@ namespace {
 struct PendingGlyphText final {
     std::vector<GlyphInstance> instances;
     std::vector<GlyphDrawRange> draw_ranges;
+    std::vector<GlyphInstanceRange> line_ranges;
     GlyphAtlasError error{};
 
     [[nodiscard]] explicit operator bool() const noexcept {
@@ -86,6 +87,7 @@ void validate_placement(const GlyphPlacement& placement) {
 
     PendingGlyphText pending;
     for (const text::TextLine& line : measurement.lines) {
+        const auto line_first = static_cast<std::uint32_t>(pending.instances.size());
         const std::uint64_t line_end = static_cast<std::uint64_t>(line.glyph_begin) + line.glyph_count;
         if (line_end > shaped.glyphs.size()) {
             throw std::invalid_argument("TextMeasurement references glyphs outside ShapedText");
@@ -149,6 +151,7 @@ void validate_placement(const GlyphPlacement& placement) {
             }
             pen_x += std::abs(glyph.advance_x);
         }
+        pending.line_ranges.push_back({line_first, static_cast<std::uint32_t>(pending.instances.size()) - line_first});
     }
     return pending;
 }
@@ -392,7 +395,10 @@ GlyphSceneResult GlyphScene::append_text(font::FontRuntime& fonts, GlyphAtlas& a
     }
     const GlyphInstanceRange inserted = instances_.append(pending.instances);
     offset_draw_ranges(pending.draw_ranges, inserted.first);
-    return {{inserted, std::move(pending.draw_ranges)}, {}};
+    for (auto& line : pending.line_ranges) {
+        line.first += inserted.first;
+    }
+    return {{inserted, std::move(pending.draw_ranges), std::move(pending.line_ranges)}, {}};
 }
 
 GlyphSceneResult GlyphScene::replace_text(GlyphInstanceRange range, font::FontRuntime& fonts, GlyphAtlas& atlas,
@@ -404,7 +410,10 @@ GlyphSceneResult GlyphScene::replace_text(GlyphInstanceRange range, font::FontRu
     }
     const GlyphInstanceRange replaced = instances_.replace(range, pending.instances);
     offset_draw_ranges(pending.draw_ranges, replaced.first);
-    return {{replaced, std::move(pending.draw_ranges)}, {}};
+    for (auto& line : pending.line_ranges) {
+        line.first += replaced.first;
+    }
+    return {{replaced, std::move(pending.draw_ranges), std::move(pending.line_ranges)}, {}};
 }
 
 std::size_t GlyphScene::update_geometry(GlyphInstanceRange range, GlyphPlacement placement) {

@@ -47,7 +47,7 @@ ryn::Input(ryn::InputProps{}.showCount()
 
 软 max 只提示超限，不截断值；未设显式 status 时超限显示 Error，显式 Warning/Error 优先。统计显示上限优先使用 count.max，否则使用 maxLength。maxLength 始终是 scalar 硬限制，且不切开 grapheme。clear、自定义 suffix、counter 从左至右布局，隐藏 counter 不占尺寸；窄宽度下编辑区可以收缩到零。
 
-exceedFormatter 接收用户候选和统计上限，只有超限时调用；其结果先去除 CR/LF、验证 UTF-8，再应用硬限制，然后作为一次历史事务发布。IME preedit 不统计或裁剪；提交、粘贴和删除使用同一入口。controlled authoritative 回写与 undo/redo 不经过该函数。formatter 可以重入或同步卸载；退休 owner 或被改写的事务不发布旧候选，异常保留原值/历史。自定义 formatter 不保证其返回值满足软上限，仍按返回值显示超限状态。
+exceedFormatter 接收用户候选和统计上限，只有超限时调用；其结果先按 editor 模式归一化换行（SingleLine 去除 CR/LF，MultiLine 将 CRLF/CR 转成 LF）、验证 UTF-8，再应用硬限制，然后作为一次历史事务发布。IME preedit 不统计或裁剪；提交、粘贴和删除使用同一入口。controlled authoritative 回写与 undo/redo 不经过该函数。formatter 可以重入或同步卸载；退休 owner 或被改写的事务不发布旧候选，异常保留原值/历史。自定义 formatter 不保证其返回值满足软上限，仍按返回值显示超限状态。
 
 计数策略和标签只在 committed 值或配置变化时计算，空闲帧不重复调用。countFormatter 的异常保留上一个标签，统计与输入值继续更新；countStrategy 的显示异常保留上次统计，不在每帧重试。下次值/配置变化会重新计算。明确设置的自定义函数可读取原值，包括 Password，应自行决定显示内容。
 
@@ -71,8 +71,12 @@ searchIcon 接收 reactive IconSource；未提供 SearchButtonContent 时 action
 
 053 的共享编辑基础增加固定 MultiLine 模式：初值、粘贴/提交、formatter 和 authoritative 值均将 CRLF/CR 规范为 LF；默认 SingleLine 合同不变。行光标映射按实际 TextMeasurement 生成，保留软折行的 upstream/downstream 位置，默认选择 downstream；二维命中、行边缘及保持期望 x 的行移动不在查询时分配。此基础仍是 LTR/CJK 合同。
 
-`<ryn/text_area.hpp>` 提供 TextAreaProps/TextArea/TextAreaRef（共享 InputRef 合同），继承全部 Input 共用属性。`.rows(Prop<size_t>)` 默认 4；`.autoSize(TextAreaAutoSize{true, min_rows, max_rows})` 按实际硬/软换行决定高度，默认不启用，min_rows=1/max_rows 不限。`.wrap(Prop<bool>)` 默认 true，无 wrap 时只按 LF 分行。rows/min_rows 必须正数，max_rows 不得小于 min_rows；非法 reactive 配置拒绝并保留当前尺寸。`.resize(Prop<TextAreaResize>)` 支持 None/Vertical/Horizontal/Both，默认 Vertical；`.onResize(function<void(TextAreaSize)>)` 用于实际逻辑尺寸通知，交互阶段接入。
+`<ryn/text_area.hpp>` 提供 TextAreaProps/TextArea/TextAreaRef（共享 InputRef 合同），继承全部 Input 共用属性。`.rows(Prop<size_t>)` 默认 4；`.autoSize(TextAreaAutoSize{true, min_rows, max_rows})` 按实际硬/软换行决定高度，默认不启用，min_rows=1/max_rows 不限。`.wrap(Prop<bool>)` 默认 true，无 wrap 时只按 LF 分行。rows/min_rows 必须正数，max_rows 不得小于 min_rows；非法 reactive 配置拒绝并保留当前尺寸。`.resize(Prop<TextAreaResize>)` 支持 None/Vertical/Horizontal/Both，默认 Vertical；右下角 grip 使用 PointerRouter capture，autoSize 启用时不允许手工 resize，资格变化/卸载取消 capture。`.onResize(function<void(TextAreaSize)>)` 在实际边框逻辑尺寸首次确定或改变后通知，尺寸不包含下方计数；同步完成后使用回调副本及存活身份校验，可安全卸载自身。
 
-TextArea 使用 Input Theme/四变体/三个尺寸，clear 停靠右上，计数右对齐放在输入边框下方。LayoutStyle 控制整个组件的外部尺寸（包含可见计数占用）；显式高度优先于 rows/autoSize，编辑区保留上下 padding 后占据剩余高度。尺寸/换行更新不会重建 editor、scene 或 ref。多行键盘/选择/滚动/resize 与真实窗口验收仍在 053 后续任务，不能把当前 API/布局阶段描述为完整 TextArea。
+TextArea 使用 Input Theme/四变体/三个尺寸，clear 停靠右上，计数右对齐放在输入边框下方。LayoutStyle 控制整个组件的外部尺寸（包含可见计数占用）；显式高度优先于 rows/autoSize，编辑区保留上下 padding 后占据剩余高度。尺寸/换行更新不会重建 editor、scene 或 ref。
+
+Plain Enter 插入独立 LF 历史事务，primary Enter 调用 onSubmit，Tab 沿用正常焦点遍历。Home/End 使用当前视觉行，primary Home/End 使用整篇文档；上下及 Page 移动保留期望 x，Shift 保留选择 anchor，软折行边界左右键先切换视觉 affinity。点击/拖选按二维行映射；跨行 selection 与 preedit 下划线分别生成每行 coverage，selected glyph view 使用行 clip，仍共享一次 shaping。readOnly 可选择、复制和滚动，disabled 禁止编辑与拖动。
+
+编辑/导航时露出 caret；用户 wheel 后保留所选滚动位置，直到下一次编辑/导航需要露出 caret。wrap=false 同时支持横向 wheel，边界未改变偏移时返回未消费，容器可继续滚动。滚动只修改 retained glyph geometry，不重复 shape/raster。IME 活跃时拥有导航/Enter/剪贴板快捷键，候选文本不进入 committed 计数；输入区域沿当前可见 caret 行同步。053 的 Gallery 和真实窗口验收仍待完成，OTP 与混合双向文字仍待后续 change。
 
 052 已实现单行家族的变体、统计及操作配置，平台通用 Debug/Release 85/85 与 Windows 原生 Debug/Release 20/20、十轮 D3D12 窗口及 230 张 GPU 读回已通过；[Windows 证据](../openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md)保存复核方式。Linux 保持独立待验收。Gallery 包含四变体、grapheme 超限、自定义裁剪、Email/ref、vector 清空、Hover Password、受控显隐以及 Dark Compact Filled/Small Underlined Search 的稳定 ID 样本。TextArea、OTP 和 RTL/混合文字视觉导航仍属于下一阶段原生收尾范围，整个 Input 家族尚未标为完成。DOM/CSS/React 和 HTML 自动填充 API 不移植。

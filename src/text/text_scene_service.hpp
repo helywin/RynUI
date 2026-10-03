@@ -93,6 +93,9 @@ public:
     // Post-rasterization scrolling; callers align the offset to physical pixels.
     // Unlike placement.translation_pixels, this never changes rasterization phase.
     bool set_scroll_translation(TextSceneId id, runtime::Point pixels);
+    // World logical coverage per measured line; absent entries are hidden.
+    // Empty span restores the common placement clip for all lines.
+    bool set_line_clips(TextSceneId id, std::span<const runtime::Rect> clips);
     // Pivot is relative to the content origin; rotation precedes scroll translation.
     bool set_transform(TextSceneId id, graphics::GlyphTransform transform);
     // Splits a requested translation into an aligned scroll patch and the

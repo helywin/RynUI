@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：多行交互与呈现
 
-- [ ] 3.1 实现二维点击/拖选、跨行 selection/preedit coverage、Enter/primary Enter、上下/Page/行与文档 Home/End、期望 x、caret reveal/wheel、resize capture 和安全 onResize；补 IME/stamp/clipboard/history/readOnly/disabled/卸载/无关内容/scroll 不 shape-raster 测试及文档，在 common Debug/Release 运行 text_area/selection/input_scene_allocation/focus/interaction/text_scene_service/typography 回归，格式和规格校验后提交。
+- [x] 3.1 实现二维点击/拖选、跨行 selection/preedit coverage、Enter/primary Enter、上下/Page/行与文档 Home/End、期望 x、caret reveal/wheel、resize capture 和安全 onResize；补 IME/stamp/clipboard/history/readOnly/disabled/卸载/无关内容/scroll 不 shape-raster 测试及文档，在 common Debug/Release 运行 text_area/selection/input_scene_allocation/focus/interaction/text_scene_service/typography 回归，格式和规格校验后提交。
 
 ## 4. 平台通用：Gallery 集成
 

@@ -38,6 +38,7 @@ struct TextSceneService::Record final {
     text::TextMaterial view_material;
     std::uint64_t observed_text_revision{};
     graphics::GlyphPrimitive primitive;
+    std::vector<runtime::Rect> line_clips;
     std::optional<graphics::GlyphPlacement> placement;
     runtime::Point scroll_translation{};
     graphics::GlyphTransform transform;
@@ -490,23 +491,48 @@ runtime::Point TextSceneService::set_phase_preserving_scroll_translation(TextSce
 
 std::size_t TextSceneService::patch_geometry(Record& record, const graphics::GlyphPlacement& placement) {
     const auto clip = placement.clip_pixels;
-    const auto updated = glyph_scene_.instances().update_geometry(record.primitive.instances,
-                                                                  {
-                                                                      clip.x,
-                                                                      clip.y,
-                                                                      clip.x + clip.width,
-                                                                      clip.y + clip.height,
-                                                                  },
-                                                                  {
-                                                                      record.scroll_translation.x,
-                                                                      record.scroll_translation.y,
-                                                                  });
+    std::size_t updated{};
+    const auto patch = [&](graphics::GlyphInstanceRange range, runtime::Rect coverage) {
+        const auto left = std::max(clip.x, coverage.x);
+        const auto top = std::max(clip.y, coverage.y);
+        const auto right = std::max(left, std::min(clip.x + clip.width, coverage.x + coverage.width));
+        const auto bottom = std::max(top, std::min(clip.y + clip.height, coverage.y + coverage.height));
+        updated += glyph_scene_.instances().update_geometry(range, {left, top, right, bottom},
+                                                            {record.scroll_translation.x, record.scroll_translation.y});
+    };
+    if (record.line_clips.empty()) {
+        patch(record.primitive.instances, clip);
+    } else {
+        for (std::size_t line = 0; line < record.primitive.line_ranges.size(); ++line) {
+            patch(record.primitive.line_ranges[line],
+                  line < record.line_clips.size() ? record.line_clips[line] : runtime::Rect{});
+        }
+    }
     auto transform = record.transform;
     if (transform != graphics::GlyphTransform{}) {
         transform.pivot.x += placement.origin_pixels.x + placement.translation_pixels.x;
         transform.pivot.y += placement.origin_pixels.y + placement.translation_pixels.y;
     }
     return updated + glyph_scene_.instances().update_transform(record.primitive.instances, transform);
+}
+
+bool TextSceneService::set_line_clips(TextSceneId id, std::span<const runtime::Rect> clips) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    for (const auto clip : clips) {
+        if (!std::isfinite(clip.x) || !std::isfinite(clip.y) || !std::isfinite(clip.width) ||
+            !std::isfinite(clip.height) || clip.width < 0 || clip.height < 0) {
+            throw std::invalid_argument("Text line coverage must be finite and nonnegative");
+        }
+    }
+    if (std::ranges::equal(record.line_clips, clips)) {
+        return false;
+    }
+    record.line_clips.assign(clips.begin(), clips.end());
+    record.patchable_geometry_dirty = true;
+    ++record.revisions.placement;
+    frame_requests_->request_frame();
+    return true;
 }
 
 bool TextSceneService::update_placement(TextSceneId id, graphics::GlyphPlacement placement, bool request_frame) {
@@ -587,7 +613,8 @@ bool TextSceneService::synchronize(TextSceneId id) {
         const std::int64_t offset = static_cast<std::int64_t>(result.primitive.instances.count) - old_range.count;
         record.primitive = std::move(result.primitive);
         remap_following(id, offset);
-        if (record.scroll_translation != runtime::Point{} || record.transform != graphics::GlyphTransform{}) {
+        if (record.scroll_translation != runtime::Point{} || record.transform != graphics::GlyphTransform{} ||
+            !record.line_clips.empty()) {
             static_cast<void>(patch_geometry(record, placement));
         }
         record.content_dirty = false;
@@ -892,6 +919,9 @@ void TextSceneService::shift_primitive(graphics::GlyphPrimitive& primitive, std:
     primitive.instances.first = shift(primitive.instances.first);
     for (auto& range : primitive.draw_ranges) {
         range.instances.first = shift(range.instances.first);
+    }
+    for (auto& range : primitive.line_ranges) {
+        range.first = shift(range.first);
     }
 }
 

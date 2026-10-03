@@ -544,6 +544,56 @@ void test_line_caret_mapping_tracks_retained_measurement() {
                 map.line_count() == 1 && map.stops().size() == 1 && map.at(0, state.revision()),
             "empty line map retained previous carets");
 }
+
+void test_line_coverage_patches_shared_views_and_survives_remap() {
+    Fixture fixture;
+    const auto first = fixture.create(ryn::String{u8"before"});
+    const auto id = fixture.create(ryn::String{u8"ab cd\n\nxyz"});
+    const auto view = fixture.service.create_view(id, fixture.service.node(id));
+    const auto placement = Fixture::placement(16);
+    require(fixture.service.synchronize(first, placement) && fixture.service.synchronize(id, placement) &&
+                fixture.service.synchronize(view, placement),
+            "line coverage fixture failed");
+    const auto shapes = fixture.service.text_state(id).counters().shape_count;
+    const auto rasters = fixture.fonts->counters().rasterizations;
+    const std::array clips{ryn::runtime::Rect{16, 24, 8, 20}, ryn::runtime::Rect{}, ryn::runtime::Rect{16, 64, 12, 20}};
+    require(fixture.service.set_line_clips(view, clips) && fixture.service.synchronize(view),
+            "line coverage patch failed");
+    const auto verify = [&] {
+        const auto& primitive = fixture.service.primitive(view);
+        require(primitive.line_ranges.size() == 3 && primitive.line_ranges[1].count == 0,
+                "empty glyph line lost metadata");
+        for (const auto line : {std::size_t{0}, std::size_t{2}}) {
+            const auto range = primitive.line_ranges[line];
+            for (auto i = range.first; i < range.first + range.count; ++i) {
+                const auto& glyph = fixture.service.glyph_scene().instances().at(i);
+                require(glyph.clip_bounds == std::array<float, 4>{clips[line].x, clips[line].y,
+                                                                  clips[line].x + clips[line].width,
+                                                                  clips[line].y + clips[line].height},
+                        "per-line selection clip changed/remapped incorrectly");
+            }
+        }
+    };
+    verify();
+    require(!fixture.service.set_line_clips(view, clips) &&
+                fixture.service.text_state(id).counters().shape_count == shapes &&
+                fixture.fonts->counters().rasterizations == rasters,
+            "line coverage repeated shape/raster");
+    const auto range = fixture.service.primitive(view).instances;
+    fixture.service.set_content(first, ryn::String{u8"before has substantially more glyphs"});
+    require(fixture.service.synchronize(first) && fixture.service.primitive(view).instances.first != range.first,
+            "line coverage remap not exercised");
+    verify();
+    require(fixture.service.set_scroll_translation(view, {0, -20}) && fixture.service.synchronize(view),
+            "line coverage scroll failed");
+    verify();
+    require(fixture.service.set_line_clips(view, {}) && fixture.service.synchronize(view),
+            "line coverage reset failed");
+    const auto reset = fixture.service.primitive(view).instances;
+    require(fixture.service.glyph_scene().instances().at(reset.first).clip_bounds ==
+                std::array<float, 4>{0, 0, 640, 360},
+            "empty line clip config did not restore placement coverage");
+}
 } // namespace
 
 int main() {
@@ -557,6 +607,7 @@ int main() {
         test_rotation_preserves_coverage_and_survives_rebuild();
         test_culling_hides_coverage_without_shape_and_restores_pending_updates();
         test_line_caret_mapping_tracks_retained_measurement();
+        test_line_coverage_patches_shared_views_and_survives_remap();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

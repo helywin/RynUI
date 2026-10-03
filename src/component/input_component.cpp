@@ -68,6 +68,16 @@ struct TextAreaState {
     float vertical_scroll{};
     std::optional<float> resized_width;
     std::optional<float> resized_height;
+    text::TextCaretAffinity affinity{text::TextCaretAffinity::Downstream};
+    std::optional<float> preferred_x;
+    bool reveal_caret{true};
+    std::optional<input::PointerIdentity> resizing_pointer;
+    runtime::Point resize_start;
+    TextAreaSize resize_initial;
+    std::optional<TextAreaSize> published_size;
+    std::vector<runtime::Rect> selected_clips;
+    std::vector<graphics::QuadInstance> selection_quads;
+    std::vector<graphics::QuadInstance> overlay_quads;
 };
 
 struct InputState {
@@ -446,8 +456,13 @@ struct InputPropsAccess {
                 host.pointer().cancel_interaction(mounted.interaction);
                 static_cast<void>(host.interactions().remove(mounted.interaction));
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
-                static_cast<void>(host.surfaces().destroy(current->selection_surface));
-                static_cast<void>(host.surfaces().destroy(current->overlay_surface));
+                if (current->textarea) {
+                    static_cast<void>(host.surfaces().destroy_content_range(current->selection_surface));
+                    static_cast<void>(host.surfaces().destroy_content_range(current->overlay_surface));
+                } else {
+                    static_cast<void>(host.surfaces().destroy(current->selection_surface));
+                    static_cast<void>(host.surfaces().destroy(current->overlay_surface));
+                }
                 for (const auto effect : current->container_effects) {
                     static_cast<void>(host.rounded_effects().remove(effect));
                 }
@@ -550,8 +565,10 @@ struct InputPropsAccess {
         component::RetainedSurfaceEffects no_effects;
         no_effects.focus_enabled = false;
         const std::array<graphics::QuadInstance, 2> empty_overlays{};
-        state.overlay_surface =
-            host.surfaces().create_surface(component, state.mounted.node, overlay_fragment, empty_overlays, no_effects);
+        state.overlay_surface = state.textarea
+                                    ? host.surfaces().create_content_range(overlay_fragment, {})
+                                    : host.surfaces().create_surface(component, state.mounted.node, overlay_fragment,
+                                                                     empty_overlays, no_effects);
         const auto count_text = state.count_text;
         std::optional<InputSuffix> composed_suffix = suffix;
         if (props.common_.allow_clear_ || props.common_.show_count_) {
@@ -609,8 +626,10 @@ struct InputPropsAccess {
                 const auto selection_fragment =
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 const std::array<graphics::QuadInstance, 1> empty_selection{};
-                state.selection_surface = host.surfaces().create_surface(editable, state.viewport, selection_fragment,
-                                                                         empty_selection, no_effects);
+                state.selection_surface =
+                    state.textarea ? host.surfaces().create_content_range(selection_fragment, {})
+                                   : host.surfaces().create_surface(editable, state.viewport, selection_fragment,
+                                                                    empty_selection, no_effects);
                 state.text_fragment =
                     slots.register_scene_fragment(editable, runtime::SceneFragmentPlacement::before_children);
                 host.layout().set_layout(state.viewport, layout::LeafLayout{});
@@ -674,6 +693,10 @@ struct InputPropsAccess {
                 current.textarea->auto_size = value;
                 current.textarea->resized_height.reset();
                 current.textarea->resized_width.reset();
+                if (value.enabled) {
+                    owner.host_->pointer().cancel_pointer_interaction(current.mounted.interaction);
+                    current.textarea->resizing_pointer.reset();
+                }
                 owner.invalidate(current.mounted.component, text_dirty);
             });
             connect(props.textarea_->wrap, [](auto& owner, auto& current, bool value) {
@@ -685,6 +708,8 @@ struct InputPropsAccess {
                     throw std::invalid_argument("Invalid TextArea resize direction");
                 }
                 current.textarea->resize = value;
+                owner.host_->pointer().cancel_pointer_interaction(current.mounted.interaction);
+                current.textarea->resizing_pointer.reset();
                 owner.invalidate(current.mounted.component,
                                  runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
             });
@@ -1066,6 +1091,11 @@ bool InputComponentHost::focus(runtime::ComponentId component, InputFocusOptions
     }
     const auto interaction = state->mounted.interaction;
     if (options.cursor != InputFocusCursor::Keep) {
+        if (state->textarea) {
+            state->textarea->affinity = text::TextCaretAffinity::Downstream;
+            state->textarea->preferred_x.reset();
+            state->textarea->reveal_caret = true;
+        }
         auto& editor = editors_.require(state->mounted.editor);
         if (editor.composition().active) {
             static_cast<void>(sessions_.cancel_composition());
@@ -1101,6 +1131,11 @@ bool InputComponentHost::select(runtime::ComponentId component, std::size_t anch
     auto& editor = editors_.require(state->mounted.editor);
     if (!editor.boundaries().is_boundary(anchor) || !editor.boundaries().is_boundary(caret)) {
         return false;
+    }
+    if (state->textarea) {
+        state->textarea->affinity = text::TextCaretAffinity::Downstream;
+        state->textarea->preferred_x.reset();
+        state->textarea->reveal_caret = true;
     }
     if (editor.composition().active) {
         static_cast<void>(sessions_.cancel_composition());
@@ -1162,7 +1197,13 @@ bool InputComponentHost::synchronize_input_area(double scale, int width, int hei
     for (const auto& mounted : mounted_) {
         if (mounted.editor == session.owner) {
             const auto geometry = layout_snapshot(mounted.component);
-            const auto bounds = geometry.viewport;
+            auto bounds = geometry.viewport;
+            if (const auto* state = host_->components().state<InputState>(mounted.component);
+                state && state->textarea) {
+                bounds.height = std::min(bounds.height, state->typography.line_height);
+                bounds.y = std::clamp(geometry.caret.y, geometry.viewport.y,
+                                      geometry.viewport.y + geometry.viewport.height - bounds.height);
+            }
             const auto clip = geometry.clip;
             return sessions_.set_input_area({{bounds.x, bounds.y, bounds.width, bounds.height},
                                              {clip.x, clip.y, clip.width, clip.height},
@@ -1241,6 +1282,9 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
     if (!state) {
         return;
     }
+    if (state->textarea && dispatch_text_area_resize(component, context)) {
+        return;
+    }
     const auto& event = context.event();
     const auto kind = context.kind();
     const bool owned = state->selecting_pointer == event.pointer;
@@ -1269,13 +1313,25 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
     update_text(component, false);
     auto& scene = host_->text().scene_service();
     if (state->carets.revision() != scene.text_state(state->text_scene).revision() &&
-        !scene.synchronize_caret_map(state->text_scene, state->carets)) {
+        !(state->textarea ? scene.synchronize_line_caret_map(state->text_scene, state->carets)
+                          : scene.synchronize_caret_map(state->text_scene, state->carets))) {
         throw std::runtime_error("Input pointer caret mapping failed");
     }
-    const auto stop =
-        state->carets.nearest(event.x - viewport.x + state->geometry.scroll_offset, state->carets.revision());
+    const auto x = event.x - viewport.x + state->geometry.scroll_offset;
+    const auto stop = state->textarea
+                          ? state->carets.nearest(x, event.y - viewport.y + state->textarea->vertical_scroll,
+                                                  state->carets.revision())
+                          : state->carets.nearest(x, state->carets.revision());
     if (!stop) {
         return;
+    }
+    if (state->textarea) {
+        const auto upstream =
+            state->carets.at(stop->byte, state->carets.revision(), text::TextCaretAffinity::Upstream).value();
+        state->textarea->affinity =
+            upstream.line == stop->line ? text::TextCaretAffinity::Upstream : text::TextCaretAffinity::Downstream;
+        state->textarea->preferred_x.reset();
+        state->textarea->reveal_caret = true;
     }
     const auto byte = state->display.display_to_committed(stop->byte);
     auto& editor = editors_.require(state->mounted.editor);
@@ -1301,6 +1357,102 @@ void InputComponentHost::dispatch_pointer(runtime::ComponentId component, input:
         }
     }
     update_text(component, false);
+}
+
+bool InputComponentHost::dispatch_text_area_resize(runtime::ComponentId component,
+                                                   input::PointerDispatchContext& context) {
+    auto& state = *host_->components().state<InputState>(component);
+    auto& area = *state.textarea;
+    const auto& event = context.event();
+    const auto kind = context.kind();
+    const bool owned = area.resizing_pointer == event.pointer;
+    if (kind == input::PointerEventKind::cancel && owned) {
+        area.resizing_pointer.reset();
+        static_cast<void>(context.release_pointer_capture());
+        return true;
+    }
+    const bool primary_up = kind == input::PointerEventKind::up && event.button == input::PointerButton::primary;
+    if (owned && (kind == input::PointerEventKind::move || primary_up)) {
+        if (!state.disabled && !area.auto_size.enabled && area.resize != TextAreaResize::None) {
+            if (area.resize == TextAreaResize::Horizontal || area.resize == TextAreaResize::Both) {
+                area.resized_width =
+                    std::max(state.layout.control_height, area.resize_initial.width + event.x - area.resize_start.x);
+            }
+            if (area.resize == TextAreaResize::Vertical || area.resize == TextAreaResize::Both) {
+                area.resized_height =
+                    std::max(state.layout.control_height, area.resize_initial.height + event.y - area.resize_start.y);
+            }
+            invalidate(component, text_dirty | runtime::DirtyFlags::HitTest);
+        }
+        if (primary_up) {
+            area.resizing_pointer.reset();
+            static_cast<void>(context.release_pointer_capture());
+        }
+        return true;
+    }
+    if (area.resizing_pointer) {
+        return true;
+    }
+    if (kind != input::PointerEventKind::down || event.button != input::PointerButton::primary || state.disabled ||
+        area.auto_size.enabled || area.resize == TextAreaResize::None || area.resizing_pointer) {
+        return false;
+    }
+    auto bounds = translated_bounds(host_->nodes(), state.mounted.node);
+    bounds.height = std::max(0.0F, bounds.height - area.footer_height);
+    const auto grip = std::min(12.0F, std::min(bounds.width, bounds.height));
+    if (event.x < bounds.x + bounds.width - grip || event.x > bounds.x + bounds.width ||
+        event.y < bounds.y + bounds.height - grip || event.y > bounds.y + bounds.height) {
+        return false;
+    }
+    if (context.capture_pointer()) {
+        area.resizing_pointer = event.pointer;
+        area.resize_start = {event.x, event.y};
+        area.resize_initial = {bounds.width, bounds.height};
+        context.stop_propagation();
+    }
+    return true;
+}
+
+bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
+    if (!input::is_valid(event) || !host_->focus().state().window_active) {
+        return false;
+    }
+    auto target = host_->hit_test().hit_test({event.x, event.y});
+    while (target) {
+        const auto& record = host_->interactions().require(*target);
+        auto* state = host_->components().state<InputState>(record.component);
+        if (state && state->textarea && !state->disabled && state->active &&
+            host_->components().branch_active(state->mounted.component)) {
+            auto& area = *state->textarea;
+            const auto& viewport = state->geometry.viewport;
+            if (event.x < viewport.x || event.x > viewport.x + viewport.width || event.y < viewport.y ||
+                event.y > viewport.y + viewport.height) {
+                return false;
+            }
+            const auto max_y =
+                std::ceil(std::max(0.0F, state->geometry.text_height - viewport.height) * display_scale_) /
+                display_scale_;
+            const auto next_y =
+                std::clamp(area.vertical_scroll - event.delta_y * state->typography.line_height * 3, 0.0F, max_y);
+            const auto max_x = std::ceil(std::max(0.0F, state->geometry.text_width - viewport.width) * display_scale_) /
+                               display_scale_;
+            const auto next_x =
+                area.wrap
+                    ? state->geometry.scroll_offset
+                    : std::clamp(state->geometry.scroll_offset - event.delta_x * state->typography.line_height * 3,
+                                 0.0F, max_x);
+            if (next_y == area.vertical_scroll && next_x == state->geometry.scroll_offset) {
+                return false;
+            }
+            area.vertical_scroll = next_y;
+            state->geometry.scroll_offset = next_x;
+            area.reveal_caret = false;
+            invalidate(state->mounted.component, runtime::DirtyFlags::Geometry);
+            return true;
+        }
+        target = record.parent;
+    }
+    return false;
 }
 
 bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const input::KeyboardInputEvent& event) {
@@ -1342,7 +1494,11 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
     const bool shortcut = primary && (event.key == Key::a || event.key == Key::c || event.key == Key::x ||
                                       event.key == Key::v || event.key == Key::z || event.key == Key::y);
     const bool navigation =
-        plain && (event.key == Key::left || event.key == Key::right || event.key == Key::home || event.key == Key::end);
+        (plain &&
+         (event.key == Key::left || event.key == Key::right || event.key == Key::home || event.key == Key::end ||
+          (state->textarea && (event.key == Key::up || event.key == Key::down || event.key == Key::page_up ||
+                               event.key == Key::page_down)))) ||
+        (state->textarea && primary && (event.key == Key::home || event.key == Key::end));
     const bool deletion = plain && (event.key == Key::backspace || event.key == Key::delete_forward);
     if (!shortcut && !navigation && !deletion && event.key != Key::enter && event.key != Key::space) {
         return false;
@@ -1355,7 +1511,17 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         return true; // Only TextCommitted inserts characters.
     }
     if (event.key == Key::enter) {
-        if (plain && !event.repeat) {
+        if (state->textarea && plain && !state->read_only) {
+            const auto owner = state->mounted.editor;
+            editor.break_history_merge();
+            const auto result = editor.commit_text("\n");
+            if (auto* current = editors_.find(owner)) {
+                current->break_history_merge();
+            }
+            if (result.value_changed) {
+                notify_change(owner);
+            }
+        } else if ((!state->textarea && plain || state->textarea && primary) && !event.repeat) {
             submit(component);
         }
         return true;
@@ -1386,11 +1552,67 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
             }
         }
     } else if (navigation) {
-        const auto move = event.key == Key::left    ? input::TextCaretMove::left
-                          : event.key == Key::right ? input::TextCaretMove::right
-                          : event.key == Key::home  ? input::TextCaretMove::home
-                                                    : input::TextCaretMove::end;
-        result = editor.move(move, shift);
+        if (state->textarea) {
+            auto& area = *state->textarea;
+            update_text(component, false);
+            auto& scene = host_->text().scene_service();
+            if (state->carets.revision() != scene.text_state(state->text_scene).revision() &&
+                !scene.synchronize_line_caret_map(state->text_scene, state->carets)) {
+                throw std::runtime_error("TextArea navigation caret mapping failed");
+            }
+            const auto revision = state->carets.revision();
+            const auto current = state->carets.at(editor.selection().caret, revision, area.affinity).value();
+            std::optional<text::TextCaretStop> target;
+            if (event.key == Key::up || event.key == Key::down || event.key == Key::page_up ||
+                event.key == Key::page_down) {
+                if (!area.preferred_x) {
+                    area.preferred_x = current.x;
+                }
+                const auto page =
+                    std::max(1, static_cast<int>(state->geometry.viewport.height / state->typography.line_height));
+                const auto delta = event.key == Key::up        ? -1
+                                   : event.key == Key::down    ? 1
+                                   : event.key == Key::page_up ? -page
+                                                               : page;
+                target = state->carets.adjacent_line(current, delta, *area.preferred_x, revision);
+            } else {
+                area.preferred_x.reset();
+                if (event.key == Key::home || event.key == Key::end) {
+                    target = primary ? state->carets.at(event.key == Key::home ? 0 : editor.value().size(), revision)
+                                     : state->carets.line_edge(current.line, event.key == Key::end, revision);
+                } else {
+                    const auto upstream =
+                        state->carets.at(current.byte, revision, text::TextCaretAffinity::Upstream).value();
+                    const auto downstream = state->carets.at(current.byte, revision).value();
+                    if (editor.selection().empty() && upstream.line != downstream.line &&
+                        ((event.key == Key::left && current.line == downstream.line) ||
+                         (event.key == Key::right && current.line == upstream.line))) {
+                        target = event.key == Key::left ? upstream : downstream;
+                    } else {
+                        result = editor.move(
+                            event.key == Key::left ? input::TextCaretMove::left : input::TextCaretMove::right, shift);
+                        target = state->carets.at(editor.selection().caret, revision,
+                                                  event.key == Key::left ? text::TextCaretAffinity::Upstream
+                                                                         : text::TextCaretAffinity::Downstream);
+                    }
+                }
+            }
+            if (target) {
+                result = editor.place(target->byte, shift);
+                const auto upstream =
+                    state->carets.at(target->byte, revision, text::TextCaretAffinity::Upstream).value();
+                area.affinity = upstream.line == target->line ? text::TextCaretAffinity::Upstream
+                                                              : text::TextCaretAffinity::Downstream;
+                area.reveal_caret = true;
+                invalidate(component, runtime::DirtyFlags::Geometry);
+            }
+        } else {
+            const auto move = event.key == Key::left    ? input::TextCaretMove::left
+                              : event.key == Key::right ? input::TextCaretMove::right
+                              : event.key == Key::home  ? input::TextCaretMove::home
+                                                        : input::TextCaretMove::end;
+            result = editor.move(move, shift);
+        }
     } else if (deletion && !state->read_only) {
         result = event.key == Key::backspace ? editor.erase_backward() : editor.erase_forward();
     }
@@ -1584,6 +1806,13 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
     const auto& editor = editors_.require(state->mounted.editor);
     update_clear_visibility(component);
     const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible);
+    if (state->textarea && changed.geometry_changed) {
+        state->textarea->reveal_caret = true;
+        if (changed.text_changed) {
+            state->textarea->affinity = text::TextCaretAffinity::Downstream;
+            state->textarea->preferred_x.reset();
+        }
+    }
     auto& scene = host_->text().scene_service();
     if (changed.text_changed &&
         scene.text_state(state->text_scene).content().bytes() != state->display.snapshot().text) {
@@ -1931,6 +2160,13 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
 }
 
 void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
+    struct ResizeNotification {
+        runtime::ComponentId component;
+        TextAreaSize size;
+        std::function<void(TextAreaSize)> callback;
+    };
+
+    std::optional<std::vector<ResizeNotification>> resize_notifications;
     if (!auto_focus_requests_.empty()) {
         const auto autofocus = std::exchange(auto_focus_requests_, {});
         for (const auto component : autofocus) {
@@ -1975,21 +2211,47 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             pixel_clip({left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)}, display_scale_);
         state->geometry.baseline = viewport.y + measurement.first_baseline;
         state->geometry.text_width = measurement.width;
+        state->geometry.text_height = measurement.height;
         const float thickness = std::max(1.0F, std::round(display_scale_)) / display_scale_;
         const auto caret_clip = pixel_clip(viewport, display_scale_);
         const float usable_width = std::max(0.0F, caret_clip.x + caret_clip.width - viewport.x);
-        const auto scroll = state->display
-                                .scroll_for_caret(state->carets, state->carets.revision(), usable_width,
-                                                  state->geometry.scroll_offset, thickness)
-                                .value();
+        const auto scroll =
+            state->textarea && !state->textarea->reveal_caret
+                ? std::clamp(state->geometry.scroll_offset, 0.0F, std::max(0.0F, measurement.width - usable_width))
+                : state->display
+                      .scroll_for_caret(state->carets, state->carets.revision(), usable_width,
+                                        state->geometry.scroll_offset, thickness)
+                      .value();
         // Whole physical pixels preserve the cached glyph raster phase.
         state->geometry.scroll_offset = std::ceil(scroll * display_scale_) / display_scale_;
         const auto display = state->display.snapshot();
+        const auto caret_stop =
+            state->carets
+                .at(display.caret, state->carets.revision(),
+                    state->textarea ? state->textarea->affinity : text::TextCaretAffinity::Downstream)
+                .value();
+        if (state->textarea) {
+            auto& area = *state->textarea;
+            const auto row_top = static_cast<float>(caret_stop.line) * state->typography.line_height;
+            auto scroll_y =
+                std::clamp(area.vertical_scroll, 0.0F, std::max(0.0F, measurement.height - viewport.height));
+            if (area.reveal_caret) {
+                if (row_top < scroll_y) {
+                    scroll_y = row_top;
+                } else if (row_top + state->typography.line_height > scroll_y + viewport.height) {
+                    scroll_y = row_top + state->typography.line_height - viewport.height;
+                }
+            }
+            area.vertical_scroll = std::ceil(std::max(0.0F, scroll_y) * display_scale_) / display_scale_;
+            area.reveal_caret = false;
+            state->geometry.vertical_scroll = area.vertical_scroll;
+            state->geometry.baseline = viewport.y + caret_stop.baseline - area.vertical_scroll;
+        }
         const auto x = [&](std::size_t byte) {
             return viewport.x + state->carets.at(byte, state->carets.revision()).value().x -
                    state->geometry.scroll_offset;
         };
-        state->geometry.caret_x = x(display.caret);
+        state->geometry.caret_x = viewport.x + caret_stop.x - state->geometry.scroll_offset;
         state->geometry.selection_start = x(display.selection.begin());
         state->geometry.selection_end = x(display.selection.end());
         state->geometry.composition_start = x(display.composition.begin());
@@ -1999,9 +2261,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         };
         const auto caret_left = std::clamp(snap(state->geometry.caret_x), caret_clip.x,
                                            std::max(caret_clip.x, caret_clip.x + caret_clip.width - thickness));
-        const auto caret_stop = state->carets.at(display.caret, state->carets.revision()).value();
         const auto caret_top = state->textarea
-                                   ? viewport.y + static_cast<float>(caret_stop.line) * state->typography.line_height
+                                   ? viewport.y + static_cast<float>(caret_stop.line) * state->typography.line_height -
+                                         state->textarea->vertical_scroll
                                    : caret_clip.y;
         const auto caret_height = state->textarea ? state->typography.line_height : caret_clip.height;
         state->geometry.caret = {caret_left, caret_top, std::min(thickness, caret_clip.width), caret_height};
@@ -2014,6 +2276,17 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         auto root_bounds = translated_bounds(host_->nodes(), mounted.node);
         if (state->textarea) {
             root_bounds.height = std::max(0.0F, root_bounds.height - state->textarea->footer_height);
+            const TextAreaSize actual{root_bounds.width, root_bounds.height};
+            auto& area = *state->textarea;
+            if (area.published_size != actual) {
+                area.published_size = actual;
+                if (area.on_resize) {
+                    if (!resize_notifications) {
+                        resize_notifications.emplace();
+                    }
+                    resize_notifications->push_back({mounted.component, actual, area.on_resize});
+                }
+            }
         }
         state->next_container_clip = clip;
         const auto theme_started =
@@ -2153,7 +2426,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             state->geometry.clip, window,
             {selection_color.red(), selection_color.green(), selection_color.blue(), selection_color.alpha()},
             state->focused && !state->disabled && !display.placeholder ? 1.0F : 0.0F)};
-        static_cast<void>(host_->surfaces().update_surface(state->selection_surface, selection));
+        if (!state->textarea) {
+            static_cast<void>(host_->surfaces().update_surface(state->selection_surface, selection));
+        }
         const std::array<graphics::QuadInstance, 2> overlays{
             clipped_quad(state->geometry.underline, state->geometry.clip, window, foreground,
                          display.composing ? 1.0F : 0.0F),
@@ -2163,7 +2438,73 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                              ? 1.0F
                              : 0.0F),
         };
-        static_cast<void>(host_->surfaces().update_surface(state->overlay_surface, overlays));
+        if (!state->textarea) {
+            static_cast<void>(host_->surfaces().update_surface(state->overlay_surface, overlays));
+        } else {
+            auto& area = *state->textarea;
+            area.selection_quads.clear();
+            area.overlay_quads.clear();
+            area.selected_clips.assign(state->carets.line_count(), {});
+            const auto range_bounds = [&](input::TextSelection range, std::size_t line) {
+                const auto stops = state->carets.line_stops(line);
+                if (range.empty() || range.end() <= stops.front().byte || range.begin() > stops.back().byte) {
+                    return runtime::Rect{};
+                }
+                const auto first = std::clamp(range.begin(), stops.front().byte, stops.back().byte);
+                const auto last = std::clamp(range.end(), stops.front().byte, stops.back().byte);
+                const auto begin = std::lower_bound(stops.begin(), stops.end(), first,
+                                                    [](const auto& stop, auto byte) { return stop.byte < byte; });
+                const auto end = std::lower_bound(stops.begin(), stops.end(), last,
+                                                  [](const auto& stop, auto byte) { return stop.byte < byte; });
+                auto width = std::max(0.0F, end->x - begin->x);
+                if (line + 1 < state->carets.line_count() &&
+                    state->carets.line_stops(line + 1).front().byte > stops.back().byte &&
+                    range.end() > stops.back().byte) {
+                    width += std::max(thickness, state->typography.font_size * .5F);
+                }
+                return runtime::Rect{viewport.x + begin->x - state->geometry.scroll_offset,
+                                     viewport.y + static_cast<float>(line) * state->typography.line_height -
+                                         area.vertical_scroll,
+                                     width, state->typography.line_height};
+            };
+            const bool selection_visible = state->focused && !state->disabled && !display.placeholder;
+            for (std::size_t line = 0; line < state->carets.line_count(); ++line) {
+                const auto selected =
+                    graphics::intersect_effect_bounds(state->geometry.clip, range_bounds(display.selection, line));
+                area.selected_clips[line] = selected;
+                if (selected.width > 0 && selected.height > 0 && selection_visible) {
+                    area.selection_quads.push_back(clipped_quad(selected, state->geometry.clip, window,
+                                                                {selection_color.red(), selection_color.green(),
+                                                                 selection_color.blue(), selection_color.alpha()},
+                                                                1));
+                }
+                if (display.composing) {
+                    auto underline = range_bounds(display.composition, line);
+                    underline.y += std::max(0.0F, underline.height - thickness);
+                    underline.height = std::min(thickness, underline.height);
+                    underline = graphics::intersect_effect_bounds(state->geometry.clip, underline);
+                    if (underline.width > 0 && underline.height > 0) {
+                        area.overlay_quads.push_back(
+                            clipped_quad(underline, state->geometry.clip, window, foreground, 1));
+                    }
+                }
+            }
+            area.overlay_quads.push_back(overlays[1]);
+            if (area.resize != TextAreaResize::None && !area.auto_size.enabled && !state->disabled) {
+                const auto grip_color = channels(tokens.colors.border);
+                for (int diagonal = 0; diagonal < 3; ++diagonal) {
+                    for (int point = 0; point <= diagonal; ++point) {
+                        const auto gx = root_bounds.x + root_bounds.width - 3 - static_cast<float>(point) * 3;
+                        const auto gy =
+                            root_bounds.y + root_bounds.height - 3 - static_cast<float>(diagonal - point) * 3;
+                        area.overlay_quads.push_back(clipped_quad({gx, gy, 1.5F, 1.5F}, clip, window, grip_color, 1));
+                    }
+                }
+            }
+            static_cast<void>(host_->surfaces().update_content_range(state->selection_surface, area.selection_quads));
+            static_cast<void>(host_->surfaces().update_content_range(state->overlay_surface, area.overlay_quads));
+            static_cast<void>(text_scene.set_line_clips(state->selected_scene, area.selected_clips));
+        }
         text_scene.set_color(state->text_scene, foreground);
         text_scene.set_color(state->selected_scene, channels(presentation.colors[7]));
         text_scene.set_color(state->placeholder_scene, channels(presentation.colors[5]));
@@ -2183,7 +2524,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 ++sync_profile_.text_scene_calls;
             }
             auto layer_placement = placement;
-            if (id == state->selected_scene) {
+            if (id == state->selected_scene && !state->textarea) {
                 layer_placement.clip_pixels = graphics::intersect_effect_bounds(
                     state->geometry.clip,
                     {state->geometry.selection_start, viewport.y,
@@ -2192,7 +2533,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             // Input's horizontal caret scroll is already aligned to the window
             // display scale; retain that exact offset when adding node motion.
             layer_placement.translation_pixels = text_scene.set_phase_preserving_scroll_translation(
-                id, viewport_node.translation, {-state->geometry.scroll_offset, 0.0F});
+                id, viewport_node.translation, {-state->geometry.scroll_offset, -state->geometry.vertical_scroll});
             if (!text_scene.synchronize(id, layer_placement)) {
                 throw std::runtime_error("Input glyph synchronization failed");
             }
@@ -2203,6 +2544,14 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         }
     }
     record_phase(profile_started, sync_profile_.total_nanoseconds);
+    if (resize_notifications) {
+        for (const auto& notification : *resize_notifications) {
+            if (host_->components().contains(notification.component) &&
+                host_->components().branch_active(notification.component)) {
+                notification.callback(notification.size);
+            }
+        }
+    }
 }
 
 bool InputComponentHost::synchronize_auxiliary_fragments() {

@@ -92,6 +92,8 @@ struct GlyphPlacement {
 struct GlyphPrimitive {
     GlyphInstanceRange instances{};
     std::vector<GlyphDrawRange> draw_ranges;
+    // CPU metadata for each measured line; empty glyphs do not occupy instances.
+    std::vector<GlyphInstanceRange> line_ranges;
 };
 
 struct GlyphSceneResult {
