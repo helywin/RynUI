@@ -135,6 +135,7 @@ add_library(
     token_gallery/token_gallery_definition.cpp
 )
 rynui_configure_cpp_target(rynui_token_gallery_definition)
+target_compile_options(rynui_token_gallery_definition PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 target_include_directories(
     rynui_token_gallery_definition
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/token_gallery"

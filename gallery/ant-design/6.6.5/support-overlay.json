@@ -435,7 +435,7 @@
     {
       "identity": "ant.component.input",
       "status": "partial",
-      "summary": "单行 Input、Password、Search 已补齐四变体、统计/软硬上限、焦点引用、系统提示与自定义图标操作；Input 家族仍待 TextArea、OTP 和双向文字视觉导航，平台证据独立记录。",
+      "summary": "Input、Password、Search 和 TextArea 已接入四变体、统计、焦点与系统提示；TextArea 提供多行编辑、autoSize、滚动与 resize。Input 家族仍待 OTP 和双向文字视觉导航，平台证据独立记录。",
       "supported_scope": [
         "typed Props and prefix/suffix slots",
         "controlled/uncontrolled single-line Unicode editing and scalar maxLength",
@@ -449,10 +449,13 @@
         "InputRef focus/blur/select, mount-only autoFocus and native input hints",
         "clearDisabled/custom vector clearIcon/onClear",
         "reactive Password visibility/toggle focusability, Hover and custom icon renderer",
-        "Search custom icon/content, Clear source and connected variant appearance"
+        "Search custom icon/content, Clear source and connected variant appearance",
+        "TextArea LF normalization, rows/wrap/autoSize and common Input props",
+        "two-dimensional selection, visual line/Page navigation, multiline IME coverage",
+        "retained wheel/caret reveal, native resize capture and safe onResize"
       ],
       "missing_scope": [
-        "native TextArea and OTP",
+        "native OTP",
         "visual bidi/RTL caret navigation",
         "native Windows/Wayland IME and visual acceptance remain separate tasks",
         "DOM/CSS/React refs/events and HTML autofill APIs are outside native scope"
@@ -479,7 +482,11 @@
         "test:rynui.input_count",
         "test:rynui.input_actions",
         "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/common/actions.md",
-        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md"
+        "evidence:openspec/changes/052-20261003-complete-native-input-features/evidence/windows/README.md",
+        "openspec:053-20261003-add-native-text-area",
+        "api:include/ryn/text_area.hpp",
+        "test:rynui.text_area",
+        "evidence:openspec/changes/053-20261003-add-native-text-area/evidence/common/interaction.md"
       ]
     },
     {

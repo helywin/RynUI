@@ -14,7 +14,7 @@
 
 ## 4. 平台通用：Gallery 集成
 
-- [ ] 4.1 添加稳定 ID 的 TextArea 多行/四变体/count/autoSize/resize/readOnly 样本，更新 README/Input 支持范围且仍明确 OTP/bidi 待收尾；common Debug/Release 完整 headless CTest 和 Gallery frame 合同通过，format-code/doctor/strict validate/diff 和 evidence 后提交。
+- [x] 4.1 添加稳定 ID 的 TextArea 多行/四变体/count/autoSize/resize/readOnly 样本，更新 README/Input 支持范围且仍明确 OTP/bidi 待收尾；common Debug/Release 完整 headless CTest 和 Gallery frame 合同通过，format-code/doctor/strict validate/diff 和 evidence 后提交。
 
 ## 5. 原生分平台验收
 

@@ -221,6 +221,14 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.icon.spin",
     "gallery.icon.custom-vector",
     "gallery.icon.wide-vector",
+    "gallery.text-area.outlined",
+    "gallery.text-area.filled",
+    "gallery.text-area.borderless",
+    "gallery.text-area.underlined",
+    "gallery.text-area.autosize",
+    "gallery.text-area.resize-nowrap",
+    "gallery.text-area.readonly",
+    "gallery.text-area.disabled",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -715,9 +723,9 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
             themed_button(state, "gallery.state.loading", "Loading / 加载", {}, ryn::ButtonType::Primary,
                           ryn::ControlSize::Middle, false, state->loading);
         });
-    ryn::Text(u8"Input / 单行输入 · partial");
+    ryn::Text(u8"Input / 输入家族 · partial");
     ryn::Text(u8"支持：四变体、统计/上限、ref/系统提示、清空、Unicode 编辑与 IME");
-    ryn::Text(u8"单行家族已补齐；TextArea、OTP 与双向文字视觉导航继续收尾");
+    ryn::Text(u8"单行家族与 TextArea 已接入；OTP 与双向文字视觉导航继续收尾");
     ryn::Space(ryn::SpaceProps{}
                    .align(ryn::SpaceAlign::Start)
                    .wrap(true)
@@ -1559,6 +1567,75 @@ void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 15;
 }
 
+void add_text_area_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"TextArea / 多行输入：换行、选择、统计、autoSize、滚动与 resize");
+    Space(SpaceProps{}.wrap(true).align(SpaceAlign::Start).layout(LayoutStyle{}.width(state->document_width)),
+          SpaceContent{[state] {
+              for (const auto variant :
+                   {InputVariant::Outlined, InputVariant::Filled, InputVariant::Borderless, InputVariant::Underlined}) {
+                  const auto id = utf8(variant == InputVariant::Outlined     ? "gallery.text-area.outlined"
+                                       : variant == InputVariant::Filled     ? "gallery.text-area.filled"
+                                       : variant == InputVariant::Borderless ? "gallery.text-area.borderless"
+                                                                             : "gallery.text-area.underlined");
+                  Flex(FlexProps{}.vertical(true).gap(dp(4)).layout(LayoutStyle{}.width(state->cell_width)),
+                       FlexContent{[state, id, variant] {
+                           Text(id);
+                           TextArea(TextAreaProps{}
+                                        .variant(variant)
+                                        .rows(3)
+                                        .defaultValue(u8"中文 / RynUI 🙂\n第二行\nEnter 换行")
+                                        .allowClear(true)
+                                        .showCount()
+                                        .count(InputCountOptions{40, InputCountUnit::Grapheme})
+                                        .onChange([state](String value) {
+                                            ++state->telemetry.input_changes;
+                                            state->input_feedback.set(std::move(value));
+                                        })
+                                        .layout(LayoutStyle{}.width(state->cell_width)));
+                       }});
+              }
+              Text(u8"gallery.text-area.autosize · minRows=2 / maxRows=5");
+              TextArea(TextAreaProps{}
+                           .defaultValue(u8"autoSize 随编辑与宽度换行扩展\n保留空行\n\n")
+                           .autoSize(TextAreaAutoSize{true, 2, 5})
+                           .allowClear(true)
+                           .showCount()
+                           .layout(LayoutStyle{}.width(state->cell_width)));
+              Text(u8"gallery.text-area.resize-nowrap · 双向拖动 / wheel");
+              TextArea(
+                  TextAreaProps{}
+                      .defaultValue(
+                          u8"No wrap: abcdefghijklmnopqrstuvwxyz 0123456789\n第二行\n第三行\n第四行\n第五行\n第六行")
+                      .rows(2)
+                      .wrap(false)
+                      .resize(TextAreaResize::Both)
+                      .layout(LayoutStyle{}.width(state->cell_width)));
+              ThemeConfig dark;
+              dark.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+              Theme(ThemeProps{}.config(dark), ThemeContent{[state] {
+                        ++state->telemetry.theme_content_runs;
+                        Text(u8"gallery.text-area.readonly · Dark Compact / 可选择复制");
+                        TextArea(TextAreaProps{}
+                                     .defaultValue(u8"只读可以选择、复制和滚动\n中文 / Latin 🙂\n第三行\n第四行")
+                                     .rows(2)
+                                     .readOnly(true)
+                                     .variant(InputVariant::Filled)
+                                     .size(ControlSize::Small)
+                                     .showCount()
+                                     .layout(LayoutStyle{}.width(state->cell_width)));
+                    }});
+              Text(u8"gallery.text-area.disabled · Warning / 禁用");
+              TextArea(TextAreaProps{}
+                           .defaultValue(u8"禁用输入\n不响应编辑或拖动")
+                           .rows(2)
+                           .disabled(true)
+                           .status(InputStatus::Warning)
+                           .layout(LayoutStyle{}.width(state->cell_width)));
+          }});
+    state->telemetry.live_samples += 8;
+}
+
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1639,6 +1716,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_space_samples(state);
                                                         add_icon_samples(state);
                                                         add_input_feature_samples(state);
+                                                        add_text_area_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

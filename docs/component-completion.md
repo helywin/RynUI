@@ -15,7 +15,7 @@
 | Checkbox | 047 已实现三类值、多选 Group、动态 options、最近组/skipGroup、RTL/ref/autoFocus/onClick、独立主题与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Radio | 048 已实现三类值、动态 options、最近 typed Group、单一 Tab 入口/方向键、RadioButton、outline/solid、三尺寸/block/H/V/RTL、ref/autoFocus/onClick、独立主题与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Switch | 046 已实现保留状态文字/图标、RTL、ref/autoFocus/onClick、加载透明度、主题/阴影、按压与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
-| Input / Search / Password | TextArea、OTP、Search 图标/Compact；visual bidi、系统输入属性 | 分独立 change；保留编辑会话/Unicode/IME/clipboard 合同 |
+| Input / Search / Password / TextArea | 052 已补齐单行四变体、计数/formatter、ref/系统提示、图标操作；053 已实现多行编辑、autoSize、scroll/resize。仍待 OTP 与 visual bidi | 分独立 change；保留编辑会话/Unicode/IME/clipboard 合同，平台证据独立记录 |
 | Theme（ConfigProvider 原生映射） | 原生公共配置覆盖需要审核 | 作为 Theme 收尾，Web ConfigProvider API 不照抄 |
 
 来源：`examples/token_gallery/generated_ant_design_reference_catalog.inc`、现有公开 headers、changes 003–039 的 tasks。每项开发前再次检查对应源码与锁定 Ant Design 6.6.5 合同，后续清单随已验证实现更新。
