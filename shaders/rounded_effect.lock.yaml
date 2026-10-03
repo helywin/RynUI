@@ -1,6 +1,6 @@
 schema_version: 1
 source: shaders/rounded_effect.hlsl
-sha256: 68f7d70864a790b2e317f675d4700237f3d8cf9651db165426379b3bd41c2a18
+sha256: 82960538d368e698eddeff4aed5c5d77945ea0b88401937a020e0a49ad5bb293
 hash_normalization: lf
 instance_size_bytes: 112
 entry_points:

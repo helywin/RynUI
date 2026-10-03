@@ -167,6 +167,29 @@ void test_bounds_and_validation() {
         "unknown rounded-effect kind was accepted");
 }
 
+void test_zero_blur_and_inset_curved_edges_are_antialiased() {
+    const LogicalRoundedRect shape{{0, 0, 20, 20}, 4};
+    const auto fill = outer(shape);
+    const float diagonal = std::sqrt(0.5F);
+    const float curve = 4 - 4 * diagonal;
+    const auto covered = [&](float distance) {
+        return ryn::graphics::rounded_effect_coverage({curve - diagonal * distance, curve - diagonal * distance}, fill);
+    };
+    require(near(covered(0), 0.5F) && covered(-0.25F) > 0.5F && covered(-0.25F) < 1 && covered(0.25F) > 0 &&
+                covered(0.25F) < 0.5F && near(covered(-1), 1) && near(covered(1), 0),
+            "zero-blur rounded fill lost its continuous one-pixel curve coverage");
+    const auto inset =
+        ryn::graphics::make_shadow_effect(shape, {ryn::ShadowKind::inset, {}, 8, 2, ryn::Color::rgba8(0, 0, 0)});
+    const float edge = ryn::graphics::rounded_effect_coverage({curve, curve}, inset);
+    const float outside =
+        ryn::graphics::rounded_effect_coverage({curve - diagonal * 0.25F, curve - diagonal * 0.25F}, inset);
+    require(edge > outside && outside > 0 && edge < 0.5F &&
+                near(ryn::graphics::rounded_effect_coverage({curve - diagonal, curve - diagonal}, inset), 0),
+            "inset rounded surface still used a binary clip at the curve");
+    require(ryn::graphics::rounded_effect_bounds(inset, 0.5F) == ryn::runtime::Rect{-0.5F, -0.5F, 21, 21},
+            "inset draw bounds clipped away surface antialiasing");
+}
+
 } // namespace
 
 int main() {
@@ -175,6 +198,7 @@ int main() {
         test_rounded_rect_signed_distance_and_golden_mask();
         test_shadow_and_outline_coverage();
         test_bounds_and_validation();
+        test_zero_blur_and_inset_curved_edges_are_antialiased();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

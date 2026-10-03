@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：圆角 coverage
 
-- [ ] 1.1 修正零 blur coverage、inset surface mask 与 AA bounds，同步 logical/packed reference、HLSL/source lock，补曲面边界/平移/fractional DPI/ancestor clip/四象限回归和 renderer 文档；windows-msvc-headless Debug/Release 的 rounded_effect math/store/scene/gpu/resources/allocation、Core boundary 通过，windows-msvc shader 生成/部署合同通过，format-code/doctor/strict validate/diff check 后记录实际 preset/evidence 并提交。
+- [x] 1.1 修正零 blur coverage、inset surface mask 与 AA bounds，同步 logical/packed reference、HLSL/source lock，补曲面边界/平移/fractional DPI/ancestor clip/四象限回归和 renderer 文档；windows-msvc-headless Debug/Release 的 rounded_effect math/store/scene/gpu/resources/allocation、Core boundary 通过，windows-msvc shader 生成/部署合同通过，format-code/doctor/strict validate/diff check 后记录实际 preset/evidence 并提交。
 
 ## 2. 平台通用：官方 Button wave
 

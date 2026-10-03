@@ -162,6 +162,44 @@ void test_invalid_metrics_rejected_and_clipped_pack_is_degenerate() {
             "fully clipped rounded effect did not preserve its slot as a degenerate quad");
 }
 
+void test_zero_blur_pixel_coverage_and_quadrant_seams() {
+    using namespace ryn;
+    const graphics::LogicalRoundedRect shape{{20.25F, 20.5F, 40, 24}, 6};
+    const auto fill = graphics::make_shadow_effect(shape, {ShadowKind::outer, {}, 0, 0, Color::rgba8(0, 0, 0)});
+    const auto inset = graphics::make_shadow_effect(shape, {ShadowKind::inset, {2, -1}, 4, 2, Color::rgba8(0, 0, 0)});
+    const auto corners = graphics::make_corner_fill_effects(shape, {true, true, true, true}, Color::rgba8(0, 0, 0));
+    for (const float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+        const detail::SceneDeviceMetrics metrics{160, 120, scale};
+        const auto packed = detail::pack_rounded_effect_instance(fill, metrics);
+        const auto packed_inset = detail::pack_rounded_effect_instance(inset, metrics);
+        std::size_t partial{};
+        for (int y = static_cast<int>(19 * scale); y < static_cast<int>(46 * scale); ++y) {
+            for (int x = static_cast<int>(19 * scale); x < static_cast<int>(62 * scale); ++x) {
+                const runtime::Point pixel{x + 0.5F, y + 0.5F};
+                const runtime::Point logical{pixel.x / scale, pixel.y / scale};
+                const float coverage = detail::rounded_effect_gpu_coverage_reference(pixel, packed);
+                partial += coverage > 0 && coverage < 1 ? 1U : 0U;
+                require(near(coverage, graphics::rounded_effect_coverage(logical, fill, 1 / scale), 0.00003F) &&
+                            near(detail::rounded_effect_gpu_coverage_reference(pixel, packed_inset),
+                                 graphics::rounded_effect_coverage(logical, inset, 1 / scale), 0.00003F),
+                        "fractional DPI rounded AA differs between logical and packed references");
+                // Exactly one quadrant owns a pixel, including half-pixel split lines.
+                const float center_x = (shape.rect.x + shape.rect.width / 2) * scale;
+                const float center_y = (shape.rect.y + shape.rect.height / 2) * scale;
+                const auto quadrant =
+                    pixel.y >= center_y ? (pixel.x >= center_x ? 2U : 3U) : (pixel.x >= center_x ? 1U : 0U);
+                const auto piece = detail::pack_rounded_effect_instance(corners[quadrant], metrics);
+                require(near(coverage, detail::rounded_effect_gpu_coverage_reference(pixel, piece)),
+                        "independent corner fill introduced a split-line seam or lost curve coverage");
+            }
+        }
+        require(partial > 4, "zero-blur GPU fill still has binary pixel coverage");
+        require(near(detail::rounded_effect_gpu_coverage_reference({40 * scale, 30 * scale}, packed), 1) &&
+                    near(detail::rounded_effect_gpu_coverage_reference({10 * scale, 10 * scale}, packed), 0),
+                "rounded AA softened the interior or leaked outside its envelope");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -172,6 +210,7 @@ int main() {
         test_inset_translation_and_density_reference();
         test_straight_alpha_and_overlapping_layer_contract();
         test_invalid_metrics_rejected_and_clipped_pack_is_degenerate();
+        test_zero_blur_pixel_coverage_and_quadrant_seams();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

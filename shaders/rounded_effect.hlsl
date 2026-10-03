@@ -42,9 +42,10 @@ float ErfApprox(float value) {
     return signValue * (1.0 - polynomial * exp(-absoluteValue * absoluteValue));
 }
 
-float GaussianEdge(float signedDistance, float sigma) {
+float GaussianEdge(float signedDistance, float sigma, float antialiasWidth) {
     if (sigma <= 0.0) {
-        return signedDistance <= 0.0 ? 1.0 : 0.0;
+        float halfAntialias = 0.5 * antialiasWidth;
+        return 1.0 - smoothstep(-halfAntialias, halfAntialias, signedDistance);
     }
     return saturate(0.5 * (1.0 - ErfApprox(signedDistance * 0.7071067811865475 / sigma)));
 }
@@ -71,13 +72,13 @@ float4 PSMain(VertexOutput input) : SV_Target0 {
         clip(min(shape.z, shape.w));
         radius = clamp(radius + spread, 0.0, 0.5 * min(shape.z, shape.w));
         shape.xy += offset;
-        coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur);
+        coverage = GaussianEdge(RoundedRectDistance(samplePosition, shape, radius), 0.5 * blur, input.materialParams.y);
     } else if (kind < 1.5) {
         float surfaceDistance = RoundedRectDistance(samplePosition, shape, radius);
-        clip(-surfaceDistance);
+        float surfaceCoverage = GaussianEdge(surfaceDistance, 0.0, input.materialParams.y);
         shape.xy += offset;
         float distanceInside = -RoundedRectDistance(samplePosition, shape, radius) - spread;
-        coverage = GaussianEdge(distanceInside, 0.5 * blur);
+        coverage = surfaceCoverage * GaussianEdge(distanceInside, 0.5 * blur, input.materialParams.y);
     } else {
         float distance = RoundedRectDistance(samplePosition, shape, radius);
         float halfAntialias = 0.5 * input.materialParams.y;

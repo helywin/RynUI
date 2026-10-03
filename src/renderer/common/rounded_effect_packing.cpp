@@ -32,9 +32,10 @@ namespace {
     return t * t * (3.0F - 2.0F * t);
 }
 
-[[nodiscard]] float gaussian_edge(float distance, float sigma) noexcept {
+[[nodiscard]] float gaussian_edge(float distance, float sigma, float antialias_width) noexcept {
     if (sigma <= 0.0F) {
-        return distance <= 0.0F ? 1.0F : 0.0F;
+        const float half_aa = 0.5F * antialias_width;
+        return 1.0F - smoothstep(-half_aa, half_aa, distance);
     }
     constexpr float inverse_sqrt_two = 0.7071067811865475F;
     const float value = distance * inverse_sqrt_two / sigma;
@@ -168,14 +169,15 @@ float rounded_effect_gpu_coverage_reference(runtime::Point point_pixels, const R
         shape.radius = std::clamp(shape.radius + spread, 0.0F, 0.5F * std::min(shape.rect.width, shape.rect.height));
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F);
-    case RoundedEffectKind::inset_shadow:
-        if (rounded_rect_signed_distance(point_pixels, shape) > 0.0F) {
-            return 0.0F;
-        }
+        return gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), blur * 0.5F, antialias_width);
+    case RoundedEffectKind::inset_shadow: {
+        const float surface_coverage =
+            gaussian_edge(rounded_rect_signed_distance(point_pixels, shape), 0.0F, antialias_width);
         shape.rect.x += offset_x;
         shape.rect.y += offset_y;
-        return gaussian_edge(-rounded_rect_signed_distance(point_pixels, shape) - spread, blur * 0.5F);
+        return surface_coverage *
+               gaussian_edge(-rounded_rect_signed_distance(point_pixels, shape) - spread, blur * 0.5F, antialias_width);
+    }
     case RoundedEffectKind::outline: {
         const float distance = rounded_rect_signed_distance(point_pixels, shape);
         const float half_aa = antialias_width * 0.5F;

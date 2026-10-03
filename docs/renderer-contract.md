@@ -22,6 +22,8 @@ CPU 类型没有 shader stride/offset 承诺，CPU bytes 不得直接作为 vert
 | 颜色 | RGBA 浮点 token 值直接传入现有 shader；RGB 使用 source-alpha 混合，alpha 使用 `one + one-minus-source-alpha`；现有路径未增加统一线性/sRGB 转换 |
 | 顺序 | OrderedScene 的 Quad/Glyph/RoundedEffect 顺序必须保持；仅已有场景合同允许合并相邻兼容 draw |
 
+RoundedEffect 的零 blur SDF 边缘使用固定一个物理像素的 smooth coverage，inset 以同一平滑 surface mask 限制 Gaussian 阴影；draw bounds 包含 AA guard，ancestor clip 仍为硬裁剪。四象限独立圆角 fill 共享同一 coverage，不对分割线 feather。logical reference 的 AA width 由调用者换算（1/display_scale），packed reference 与 HLSL 使用 material_params.y=1；blur>0 的 Gaussian 衰减保持。Quad 已按导数平滑圆角，outline 按同一物理 AA width 处理内外边界。此 coverage 修正来自共享 renderer，不能当作仅 Windows 的 MSAA 开关。
+
 NDC x 向右、y 向上；完整视口范围 [-1, 1]。Glyph packer 绕 logical pivot 旋转矩形原点，并打包 `[cos, sin*H/W, -sin*W/H, cos]`，H/W 为 logical viewport 比例；HLSL VS 和 packed_glyph_vertex reference 用同一两条基得到顶点，确保非正方形 viewport 不改变物理角度。clip 边界、atlas UV 和 glyph padding 保持现有 shader 合同。backend 在消费边界转换 GPU API 特有的坐标、格式、传输对齐，不能让组件选择 shader 或 OS 类型。
 
 `renderer/common/scene_metrics` 独立定义 SceneDeviceMetrics，三类 primitive 共用 physical pixel extent/display_scale，logical viewport = extent / scale；extent 必须正，scale 必须有限正，派生 viewport 也必须有限正。非法 metrics 在 begin upload 前拒绝；零尺寸/不可用 surface 留给宿主决定恢复时机。resources 复用 packed staging；首次、容量增长、metrics 改变全量重打包，普通更新只转换合并 dirty ranges，idle 不上传。resize 不改写 Quad/Glyph CPU store，不重建字体 atlas；Effect 继续按 logical viewport compact/cull。上传失败使资源 metrics 缓存失效，即使回到失败前的原 metrics 且无 CPU dirty，也完整重试。SceneResources 的提交失败还恢复所有参与数据。字体 DPI 变化所需的 shaping/raster 更新由文本服务现有机制负责，不能仅用重打包替代。

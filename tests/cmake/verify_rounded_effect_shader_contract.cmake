@@ -26,6 +26,8 @@ foreach(contract IN ITEMS
         "GaussianEdge"
         "clip(clipDistance)"
         "float surfaceDistance"
+        "float surfaceCoverage"
+        "float antialiasWidth"
         "float outlineOffset"
         "input.color.a * input.materialParams.x * coverage")
     string(FIND "${shader_source}" "${contract}" contract_offset)

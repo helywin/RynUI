@@ -42,20 +42,21 @@ void validate_rect(runtime::Rect rect, const char* message) {
     return shape;
 }
 
-[[nodiscard]] float gaussian_edge(float signed_distance, float sigma) noexcept {
-    if (sigma <= 0.0F) {
-        return signed_distance <= 0.0F ? 1.0F : 0.0F;
-    }
-    constexpr float inverse_sqrt_two = 0.7071067811865475F;
-    return std::clamp(0.5F * std::erfc(signed_distance * inverse_sqrt_two / sigma), 0.0F, 1.0F);
-}
-
 [[nodiscard]] float smoothstep(float edge0, float edge1, float value) noexcept {
     if (edge0 == edge1) {
         return value < edge0 ? 0.0F : 1.0F;
     }
     const float t = std::clamp((value - edge0) / (edge1 - edge0), 0.0F, 1.0F);
     return t * t * (3.0F - 2.0F * t);
+}
+
+[[nodiscard]] float gaussian_edge(float signed_distance, float sigma, float antialias_width) noexcept {
+    if (sigma <= 0.0F) {
+        const float half_aa = antialias_width * 0.5F;
+        return 1.0F - smoothstep(-half_aa, half_aa, signed_distance);
+    }
+    constexpr float inverse_sqrt_two = 0.7071067811865475F;
+    return std::clamp(0.5F * std::erfc(signed_distance * inverse_sqrt_two / sigma), 0.0F, 1.0F);
 }
 
 [[nodiscard]] bool empty(runtime::Rect rect) noexcept {
@@ -224,17 +225,15 @@ float rounded_effect_coverage(runtime::Point point, const RoundedEffectInstance&
         auto shadow = spread_shape(base, geometry.spread);
         shadow.rect.x += geometry.offset.x;
         shadow.rect.y += geometry.offset.y;
-        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F);
+        return gaussian_edge(rounded_rect_signed_distance(point, shadow), geometry.blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::inset_shadow: {
-        if (rounded_rect_signed_distance(point, base) > 0.0F) {
-            return 0.0F;
-        }
+        const float surface_coverage = gaussian_edge(rounded_rect_signed_distance(point, base), 0.0F, antialias_width);
         auto shifted = base;
         shifted.rect.x += geometry.offset.x;
         shifted.rect.y += geometry.offset.y;
         const float distance_inside = -rounded_rect_signed_distance(point, shifted) - geometry.spread;
-        return gaussian_edge(distance_inside, geometry.blur * 0.5F);
+        return surface_coverage * gaussian_edge(distance_inside, geometry.blur * 0.5F, antialias_width);
     }
     case RoundedEffectKind::outline: {
         const float distance = rounded_rect_signed_distance(point, base);
@@ -271,6 +270,7 @@ runtime::Rect rounded_effect_bounds(const RoundedEffectInstance& instance, float
         break;
     }
     case RoundedEffectKind::inset_shadow:
+        bounds = expand(bounds, antialias_guard);
         break;
     case RoundedEffectKind::outline:
         bounds = expand(bounds, geometry.outline_offset + geometry.outline_width + antialias_guard);
