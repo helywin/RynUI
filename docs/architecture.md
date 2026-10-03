@@ -345,7 +345,7 @@ Theme snapshot 解析 `motionBase`、`motionUnit`、fast/mid/slow duration 和�
 
 Button 是首个 consumer：hover、active、loading color/opacity 使用 `motionDurationMid` 与 `motionEaseInOut` 原地 retarget，focus-visible outline 保持 `0s`。loading indicator 始终保留固定八段 rounded-quad topology；normal motion 只更新 linear phase 派生的 Material opacity，disabled/reduced motion 使用固定静态分布。动画 tick 只能进入已声明的 Material、Transform、Geometry 或 Animation dirty domain，不得默认触发 Structure、Measure、Layout、HitTest、component remount 或无关 sibling upload。
 
-当前基础 Runtime 不包含 spring/physics、keyframe timeline、layout transition、shared element、path morph、gesture-driven animation、wave/ripple 或公开自定义动画 DSL。此类复杂动画必须通过后续 OpenSpec change 设计，不得以扩展 Button 私有接口的方式形成事实公共 ABI。
+基础 Runtime 的 typed scalar 通道也承载组件有限点击反馈：Button wave 使用独立的 400ms 扩展和 2000ms 淡出，保持 retained scene 和组件生命周期边界。当前 Runtime 不包含 spring/physics、keyframe timeline、layout transition、shared element、path morph、gesture-driven animation 或公开自定义动画 DSL。此类复杂动画必须通过后续 OpenSpec change 设计，不得以扩展 Button 私有接口的方式形成事实公共 ABI。
 
 ### 9.7 验收方式
 

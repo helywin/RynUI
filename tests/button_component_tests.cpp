@@ -1743,7 +1743,8 @@ void test_button_wave_finite_feedback_restarts_and_cleanup() {
     activate();
     require(clicks == 1 && fixture.host->snapshot(mounted.component).wave_active &&
                 near(fixture.host->snapshot(mounted.component).wave_progress, 0) &&
-                fixture.host->rounded_effects().live_count() == effects + 1 && fixture.dirty.layout_roots().empty() &&
+                near(fixture.host->snapshot(mounted.component).wave_fade, 0) &&
+                fixture.host->rounded_effects().live_count() == effects && fixture.dirty.layout_roots().empty() &&
                 fixture.host->next_deadline(),
             "Button wave did not start a single finite effect or changed layout");
     require(fixture.synchronize(), "Button initial wave failed scene publication");
@@ -1754,13 +1755,16 @@ void test_button_wave_finite_feedback_restarts_and_cleanup() {
                 fixture.host->button_scene().focus_effect(mounted.scene) == focus && runs == 1,
             "Button wave failed to progress without measure/focus/content changes");
     const auto& token = ryn::resolve_theme().button();
+    const auto easing = ryn::animation::ant_easing(ryn::animation::AntEasingPreset::ease_out_circ);
+    require(near(middle.wave_progress, easing.sample(0.25F)) && near(middle.wave_fade, easing.sample(0.05F)),
+            "Button wave did not use independent 400ms/2000ms motionEaseOutCirc channels");
     bool matched{};
     for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
         if (effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline &&
-            near(effect.geometry.outline_width, token.wave_width) &&
-            effect.material.color == token.default_hover_color) {
-            require(near(effect.geometry.outline_offset, token.wave_spread * middle.wave_progress) &&
-                        near(effect.material.opacity, token.wave_opacity * (1 - middle.wave_progress)),
+            near(effect.geometry.outline_width, token.wave_width * middle.wave_progress) &&
+            effect.material.color == token.default_border_color) {
+            require(near(effect.geometry.outline_offset, 0) &&
+                        near(effect.material.opacity, token.wave_opacity * (1 - middle.wave_fade)),
                     "Button wave spread/fade did not use Theme tokens");
             matched = true;
         }
@@ -1768,9 +1772,20 @@ void test_button_wave_finite_feedback_restarts_and_cleanup() {
     require(matched, "Button wave rounded effect missing from packed scene");
     activate();
     require(clicks == 2 && fixture.host->snapshot(mounted.component).wave_progress == 0 &&
-                fixture.host->rounded_effects().live_count() == effects + 1,
+                fixture.host->rounded_effects().live_count() == effects,
             "Button repeated activation accumulated effects or did not restart");
     fixture.tick(500000);
+    require(fixture.host->snapshot(mounted.component).wave_active &&
+                near(fixture.host->snapshot(mounted.component).wave_progress, 1) &&
+                fixture.host->snapshot(mounted.component).wave_fade < 1 && fixture.host->next_deadline() &&
+                fixture.host->rounded_effects().live_count() == effects + 1,
+            "Button removed its fading wave when 400ms spread completed");
+    fixture.tick(1100000);
+    activate();
+    require(clicks == 3 && near(fixture.host->snapshot(mounted.component).wave_progress, 0) &&
+                near(fixture.host->snapshot(mounted.component).wave_fade, 0),
+            "Button fade-stage click did not restart both wave channels");
+    fixture.tick(3100000);
     require(!fixture.host->snapshot(mounted.component).wave_active &&
                 fixture.host->rounded_effects().live_count() == effects && !fixture.host->next_deadline() && runs == 1,
             "Button completed wave left effect or deadline");
@@ -1866,11 +1881,12 @@ void test_button_wave_reactive_policy_and_theme_identity() {
     require(fixture.synchronize(), "Button themed wave scene publication failed");
     fixture.tick(60000);
     const auto progress = fixture.host->snapshot(mounted.component).wave_progress;
+    const auto fade = fixture.host->snapshot(mounted.component).wave_fade;
     require(fixture.synchronize(), "Button themed wave frame failed");
     bool matched{};
     for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
-        if (near(effect.geometry.outline_width, 4) && near(effect.material.opacity, 0.4F * (1 - progress))) {
-            require(near(effect.geometry.outline_offset, 10 * progress), "Button wave spread override missed geometry");
+        if (near(effect.geometry.outline_width, 4 * progress) && near(effect.material.opacity, 0.4F * (1 - fade))) {
+            require(near(effect.geometry.outline_offset, 6 * progress), "Button wave spread override missed geometry");
             matched = true;
         }
     }
@@ -1886,6 +1902,39 @@ void test_button_wave_reactive_policy_and_theme_identity() {
         rejected = true;
     }
     require(rejected, "Button accepted invalid wave opacity");
+}
+
+void test_button_wave_color_fallback_and_zero_spread() {
+    for (int color_case = 0; color_case < 3; ++color_case) {
+        Fixture fixture;
+        ryn::ThemeConfig config;
+        const auto green = ryn::Color::rgba8(40, 150, 60);
+        config.button.tokens.default_border_color = color_case == 0 ? green : ryn::Color::rgba8(255, 255, 255);
+        config.button.tokens.default_background = color_case == 1 ? green : ryn::Color::rgba8(255, 255, 255);
+        ryn::Signal<ryn::ThemeConfig> theme{config};
+        fixture.host->mount(ryn::Content{[&] {
+            ryn::Theme(ryn::ThemeProps{}.config(theme),
+                       ryn::ThemeContent{[] { ryn::Button(ryn::ButtonProps{}, [] { ryn::Text(u8"Wave color"); }); }});
+        }});
+        require(fixture.synchronize(), "Button wave color layout failed");
+        const auto mounted = fixture.host->mounted_buttons()[0];
+        require(fixture.host->focus().request_focus(mounted.interaction, ryn::input::FocusModality::keyboard),
+                "Button wave color focus failed");
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::down));
+        fixture.host->focus().dispatch(key(ryn::input::Key::enter, ryn::input::KeyAction::up));
+        fixture.tick(100000);
+        require(fixture.synchronize(), "Button wave color publication failed");
+        const auto expected = color_case < 2 ? green : ryn::resolve_theme(config).map().color_primary;
+        bool matched{};
+        for (const auto& effect : fixture.host->rounded_effects().packed_instances()) {
+            matched = matched || (effect.geometry.kind == ryn::graphics::RoundedEffectKind::outline &&
+                                  near(effect.geometry.outline_offset, 0) && effect.material.color == expected);
+        }
+        require(matched, "Button wave border/background/theme color fallback differs from official reference");
+        config.button.tokens.wave_spread = ryn::dp(0);
+        theme.set(config);
+        require(!fixture.host->snapshot(mounted.component).wave_active, "zero wave spread retained feedback");
+    }
 }
 
 } // namespace
@@ -1916,6 +1965,7 @@ int main() {
         test_button_loading_delay_cancellation_reconfiguration_and_idle();
         test_button_wave_finite_feedback_restarts_and_cleanup();
         test_button_wave_reactive_policy_and_theme_identity();
+        test_button_wave_color_fallback_and_zero_spread();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

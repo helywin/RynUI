@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：官方 Button wave
 
-- [ ] 2.1 加入独立400ms扩展与2000ms淡出通道、motionEaseOutCirc、实际颜色与外扩色带，修正默认 token/override 语义，补阶段时序、颜色fallback、重启/销毁/失活/策略与 retained 回归及官方参考文档；windows-msvc-headless Debug/Release 完整CTest（含allocation/idle）、相关Gallery frame/catalog通过，格式/规格校验和evidence后提交。
+- [x] 2.1 加入独立400ms扩展与2000ms淡出通道、motionEaseOutCirc、实际颜色与外扩色带，修正默认 token/override 语义，补阶段时序、颜色fallback、重启/销毁/失活/策略与 retained 回归及官方参考文档；windows-msvc-headless Debug/Release 完整CTest（含allocation/idle）、相关Gallery frame/catalog通过，格式/规格校验和evidence后提交。
 
 ## 3. 原生分平台验收
 

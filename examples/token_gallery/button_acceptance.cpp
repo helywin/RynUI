@@ -309,7 +309,7 @@ int run_button_acceptance(int argc, char** argv) {
         require_button(buttons.snapshot(wave.component).wave_active &&
                            buttons.snapshot(wave.component).wave_progress > first_progress,
                        "Button finite wave did not advance");
-        draw("wave-finished");
+        draw("wave-finished", 1000000);
         require_button(!buttons.snapshot(wave.component).wave_active, "Button finite wave did not finish");
         pointer(SDL_EVENT_MOUSE_MOTION, {4, 4});
         ThemeConfig dark;

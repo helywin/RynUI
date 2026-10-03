@@ -60,8 +60,10 @@ shape 支持 Default/Circle/Round/Square，三档 `ControlSize`；icon-only 默�
 
 ## 点击反馈
 
-有边框变体默认启用有限 wave，`.wave(false)` 可关闭。每次成功 activation 在共同 RoundedEffect 中扩散并淡出，重复点击重启一条 scalar 通道；不会累积多个波纹，不改变 measure、命中范围或焦点。默认中性色使用主题 hover 主色，彩色按钮使用当前主题颜色。`wave_spread` / `wave_width` / `wave_opacity` 控制几何与透明度；持续时间和 easing 采用 Theme 的 slow / ease_out motion token。
+有边框变体默认启用有限 wave，`.wave(false)` 可关闭。每次成功 activation 在共同 RoundedEffect 中产生贴着按钮外缘向外扩展的色带，扩展和淡出分别使用独立的 scalar 通道；重复点击重启当前波纹，不累积多个波纹，不改变 measure、命中范围或焦点。颜色依次选取点击时的非白色、非透明 border、background，最后回退到 Theme 的主色。
 
-disabled、loading、Text/Link、motion=false/reduced、窗口失活和销毁会取消 wave。opacity/width 为零也停止动画。结束或取消时移除波纹 effect 与未来 wave deadline，保留组件拥有的 range 供下一次点击复用；组件销毁时释放该 range。activation 回调可安全销毁本组件或父组件。
+实现以锁定的 [Ant Design 6.6.5 wave style](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/style.ts) 为基线：扩展持续 400ms，淡出持续 2000ms，两者采用 Theme 的 `ease_out_circ`（默认 `cubic-bezier(.08,.82,.17,1)`）。`wave_spread` 控制最终外扩距离，`wave_width` 控制最终色带厚度（不超过 spread），`wave_opacity` 控制初始透明度；默认值分别为 6dp、6dp、0.2。时刻零的宽度为零，400ms 时完成外扩，2000ms 时完成淡出。颜色选取对应官方 [wave util](https://github.com/ant-design/ant-design/blob/6.6.5/components/_util/wave/util.ts)，几何保持按钮的尺寸、圆角和 Compact 外侧角。
 
-公开 API 不移植 HTML/DOM/CSS 属性。完整计划和阶段证据见 [044](../openspec/changes/044-20261002-complete-native-button-variants)。
+disabled、loading、Text/Link、motion=false/reduced、窗口失活和销毁会取消 wave。opacity/width/spread 为零也停止动画。结束或取消时移除波纹 effect 与两条通道的未来 deadline，保留组件拥有的 range 供下一次点击复用；组件销毁时释放该 range。activation 回调可安全销毁本组件或父组件。
+
+公开 API 不移植 HTML/DOM/CSS 属性。组件完整计划见 [044](../openspec/changes/044-20261002-complete-native-button-variants)，本次渲染与 wave 修正及验收见 [056](../openspec/changes/056-20261003-fix-rounded-antialiasing-and-button-wave)。

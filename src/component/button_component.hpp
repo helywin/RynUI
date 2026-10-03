@@ -58,6 +58,7 @@ struct ButtonComponentSnapshot final {
     runtime::ComponentId loading_icon;
     bool wave_active{};
     float wave_progress{1};
+    float wave_fade{1};
     bool compact{};
     std::array<bool, 4> compact_corners{true, true, true, true};
 };
@@ -69,10 +70,11 @@ enum class ButtonAnimationChannel : std::uint8_t {
     loading_mix,
     spinner_phase,
     wave_progress,
+    wave_fade,
 };
 
 inline constexpr std::size_t button_animation_channel_count =
-    static_cast<std::size_t>(ButtonAnimationChannel::wave_progress) + 1;
+    static_cast<std::size_t>(ButtonAnimationChannel::wave_fade) + 1;
 
 struct ButtonAnimationBinding final {
     animation::AnimationTargetId target;

@@ -43,7 +43,8 @@ std::size_t drain_animation_frames(ryn::detail::ButtonComponentHost& host, ryn::
                                    const char* message) {
     const auto submissions = loop.counters().submissions;
     bool reached_idle = false;
-    for (std::size_t step = 0; step < 256; ++step) {
+    // The 5ms native wait must cover the Button's independent 2000ms fade.
+    for (std::size_t step = 0; step < 512; ++step) {
         const auto result = loop.step();
         require(result == ryn::runtime::FrameLoopStep::submitted || result == ryn::runtime::FrameLoopStep::idle,
                 message);

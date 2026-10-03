@@ -136,6 +136,7 @@ struct ButtonComponentState final {
     bool wave{true};
     bool wave_active{};
     float wave_progress{1};
+    float wave_fade{1};
     Color wave_color;
     runtime::SceneFragmentId wave_fragment;
     component::RetainedSurfaceId wave_range;
@@ -190,6 +191,10 @@ constexpr std::size_t animation_channel_index(ButtonAnimationChannel channel) no
 }
 
 constexpr animation::AnimationDuration spinner_period = animation::AnimationDuration::microseconds(800'000);
+
+bool usable_wave_color(Color color) noexcept {
+    return color.alpha() > 0 && !(color.red() == 1 && color.green() == 1 && color.blue() == 1);
+}
 
 float normalized_spinner_phase(float phase) noexcept {
     const float wrapped = phase - std::floor(phase);
@@ -818,6 +823,7 @@ ButtonComponentSnapshot ButtonComponentHost::snapshot(runtime::ComponentId compo
         state->loading_icon,
         state->wave_active,
         state->wave_progress,
+        state->wave_fade,
         state->compact.has_value(),
         state->compact ? state->compact->corners : std::array{true, true, true, true},
     };
@@ -1138,36 +1144,47 @@ void ButtonComponentHost::start_wave(ButtonComponentState& state) {
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& token = theme.button();
     const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
-    const auto spec = policy.transition(animation::MotionDurationToken::slow, animation::MotionEasingToken::ease_out);
     if (!state.wave || state.disabled || state.loading || unbordered(state) || !policy.enabled() ||
-        !focus_.state().window_active || token.wave_width <= 0 || token.wave_opacity <= 0 ||
-        spec.duration.count_microseconds() == 0) {
+        !focus_.state().window_active || token.wave_width <= 0 || token.wave_spread <= 0 || token.wave_opacity <= 0) {
         return;
     }
     stop_wave(state);
-    const auto visual = visual_token(token, state);
-    const auto selected = resolved_variant(state);
-    state.wave_color = selected.color == ButtonColor::Default     ? token.default_hover_color
-                       : selected.variant == ButtonVariant::Solid ? visual.background
-                                                                  : visual.foreground;
+    state.wave_color = usable_wave_color(state.presentation_border)       ? state.presentation_border
+                       : usable_wave_color(state.presentation_background) ? state.presentation_background
+                                                                          : theme.map().color_primary;
     state.wave_active = true;
     state.wave_progress = 0;
-    const auto index = animation_channel_index(ButtonAnimationChannel::wave_progress);
-    state.animations[index] =
-        animations_.play(state.animation_targets[index], 0.0F, 1.0F, spec, services_->animation_time());
+    state.wave_fade = 0;
+    const auto easing = policy.tokens().easing(animation::MotionEasingToken::ease_out_circ);
+    const auto spread_index = animation_channel_index(ButtonAnimationChannel::wave_progress);
+    const auto fade_index = animation_channel_index(ButtonAnimationChannel::wave_fade);
+    try {
+        state.animations[spread_index] = animations_.play(
+            state.animation_targets[spread_index], 0.0F, 1.0F,
+            {{}, animation::AnimationDuration::microseconds(400'000), easing}, services_->animation_time());
+        state.animations[fade_index] = animations_.play(
+            state.animation_targets[fade_index], 0.0F, 1.0F,
+            {{}, animation::AnimationDuration::microseconds(2'000'000), easing}, services_->animation_time());
+    } catch (...) {
+        stop_wave(state);
+        throw;
+    }
     publish_wave(state);
     dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
 }
 
 void ButtonComponentHost::stop_wave(ButtonComponentState& state) {
-    auto& active = state.animations[animation_channel_index(ButtonAnimationChannel::wave_progress)];
-    if (animations_.contains(active)) {
-        static_cast<void>(animations_.cancel(active, services_->animation_time()));
+    for (const auto channel : {ButtonAnimationChannel::wave_progress, ButtonAnimationChannel::wave_fade}) {
+        auto& active = state.animations[animation_channel_index(channel)];
+        if (animations_.contains(active)) {
+            static_cast<void>(animations_.cancel(active, services_->animation_time()));
+        }
+        active = {};
     }
-    active = {};
     const bool changed = state.wave_active;
     state.wave_active = false;
     state.wave_progress = 1;
+    state.wave_fade = 1;
     publish_wave(state);
     if (changed) {
         dirty_->invalidate(state.node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
@@ -1175,7 +1192,7 @@ void ButtonComponentHost::stop_wave(ButtonComponentState& state) {
 }
 
 void ButtonComponentHost::publish_wave(ButtonComponentState& state) {
-    if (!state.wave_active || state.wave_progress >= 1) {
+    if (!state.wave_active || state.wave_progress <= 0 || state.wave_fade >= 1) {
         if (state.wave_range.valid()) {
             button_scene_.update_content_effects(state.wave_range, {});
         }
@@ -1191,15 +1208,16 @@ void ButtonComponentHost::publish_wave(ButtonComponentState& state) {
     const graphics::LogicalRoundedRect shape{node.bounds,
                                              logical_radius(node.bounds, button_radius(state, node.bounds, token))};
     const auto clip = state.wave_clip ? std::optional{graphics::EffectClip{1, *state.wave_clip}} : std::nullopt;
+    const float width = std::min(token.wave_width, token.wave_spread) * state.wave_progress;
+    const float offset = token.wave_spread * state.wave_progress - width;
+    const float opacity = token.wave_opacity * (1.0F - state.wave_fade);
     if (state.compact) {
-        const auto effects = graphics::make_corner_outline_effects(
-            shape, state.compact->corners, token.wave_width, token.wave_spread * state.wave_progress, state.wave_color,
-            token.wave_opacity * (1.0F - state.wave_progress), node.translation, clip);
+        const auto effects = graphics::make_corner_outline_effects(shape, state.compact->corners, width, offset,
+                                                                   state.wave_color, opacity, node.translation, clip);
         button_scene_.update_content_effects(state.wave_range, effects);
     } else {
-        const auto effect = graphics::make_outline_effect(
-            shape, token.wave_width, token.wave_spread * state.wave_progress, state.wave_color,
-            token.wave_opacity * (1.0F - state.wave_progress), node.translation, clip);
+        const auto effect =
+            graphics::make_outline_effect(shape, width, offset, state.wave_color, opacity, node.translation, clip);
         button_scene_.update_content_effects(state.wave_range, std::span{&effect, 1});
     }
 }
@@ -1228,9 +1246,9 @@ void ButtonComponentHost::update_visuals(ButtonComponentState& state) {
                                                                : input.colors.filled_background;
     }
     const auto policy = animation::resolve_motion_policy(theme, services_->motion_preference());
-    if (state.wave_active &&
-        (!state.wave || state.disabled || state.loading || unbordered(state) || !policy.enabled() ||
-         !focus_.state().window_active || button.wave_opacity <= 0 || button.wave_width <= 0)) {
+    if (state.wave_active && (!state.wave || state.disabled || state.loading || unbordered(state) ||
+                              !policy.enabled() || !focus_.state().window_active || button.wave_opacity <= 0 ||
+                              button.wave_width <= 0 || button.wave_spread <= 0)) {
         stop_wave(state);
     }
     const auto spec = policy.transition(animation::MotionDurationToken::mid, animation::MotionEasingToken::ease_in_out);
@@ -1333,14 +1351,16 @@ void ButtonComponentHost::register_animation_targets(ButtonComponentState& state
         animation::AnimationValueKind::color,  animation::AnimationValueKind::color,
         animation::AnimationValueKind::color,  animation::AnimationValueKind::scalar,
         animation::AnimationValueKind::scalar, animation::AnimationValueKind::scalar,
+        animation::AnimationValueKind::scalar,
     };
     auto targets = std::make_unique<animation::MaterialTransitionTargets<button_animation_channel_count>>(
         animations_, static_cast<animation::AnimationTargetSink&>(*this), kinds, dirty);
     try {
         state.animation_targets = targets->targets();
-        for (const auto channel : {ButtonAnimationChannel::background, ButtonAnimationChannel::border,
-                                   ButtonAnimationChannel::foreground, ButtonAnimationChannel::loading_mix,
-                                   ButtonAnimationChannel::spinner_phase, ButtonAnimationChannel::wave_progress}) {
+        for (const auto channel :
+             {ButtonAnimationChannel::background, ButtonAnimationChannel::border, ButtonAnimationChannel::foreground,
+              ButtonAnimationChannel::loading_mix, ButtonAnimationChannel::spinner_phase,
+              ButtonAnimationChannel::wave_progress, ButtonAnimationChannel::wave_fade}) {
             animation_bindings_.push_back({
                 state.animation_targets[animation_channel_index(channel)],
                 state.component,
@@ -1396,6 +1416,9 @@ void ButtonComponentHost::retarget_channel(ButtonComponentState& state, ButtonAn
         break;
     case ButtonAnimationChannel::wave_progress:
         current = state.wave_progress;
+        break;
+    case ButtonAnimationChannel::wave_fade:
+        current = state.wave_fade;
         break;
     }
 
@@ -1470,6 +1493,11 @@ void ButtonComponentHost::apply(animation::AnimationId, animation::AnimationTarg
         publish_wave(*state);
         dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
         return;
+    case ButtonAnimationChannel::wave_fade:
+        state->wave_fade = std::clamp(std::get<float>(value), 0.0F, 1.0F);
+        publish_wave(*state);
+        dirty_->invalidate(state->node, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::Animation);
+        return;
     }
     apply_presentation(*state, true);
 }
@@ -1484,9 +1512,9 @@ void ButtonComponentHost::completed(animation::AnimationId animation, animation:
         auto& active = state->animations[animation_channel_index(binding->channel)];
         if (active == animation) {
             active = {};
-            if (binding->channel == ButtonAnimationChannel::wave_progress) {
+            if (binding->channel == ButtonAnimationChannel::wave_fade) {
                 state->wave_active = false;
-                state->wave_progress = 1;
+                state->wave_fade = 1;
                 publish_wave(*state);
             }
             if (binding->channel == ButtonAnimationChannel::spinner_phase) {

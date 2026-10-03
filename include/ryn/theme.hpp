@@ -674,7 +674,7 @@ struct ButtonThemeToken final {
     float dash_length{3.0F};
     float dash_gap{3.0F};
     float wave_spread{6.0F};
-    float wave_width{2.0F};
+    float wave_width{6.0F};
     float wave_opacity{0.2F};
 
     friend constexpr bool operator==(const ButtonThemeToken&, const ButtonThemeToken&) = default;
