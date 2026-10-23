@@ -549,7 +549,25 @@ HitTestRecord HitTestSnapshot::make_record(const HitTestPaintEntry& entry, std::
         };
     }
 
-    auto clip = parent == nullptr ? window_clip : parent->effective_clip;
+    auto clip = node ? nodes_->content_clip(interaction.node, window_clip) : window_clip;
+    bool independent_clip = false;
+    for (auto current = std::optional{interaction.node}; current;) {
+        if (parent && *current == parent->node) {
+            break;
+        }
+        const auto* ancestor = nodes_->find(*current);
+        if (!ancestor) {
+            break;
+        }
+        if (ancestor->clip_boundary) {
+            independent_clip = true;
+            break;
+        }
+        current = ancestor->parent;
+    }
+    if (parent && !independent_clip) {
+        clip = intersect(clip, parent->effective_clip);
+    }
     if (entry.clip.has_value()) {
         clip = intersect(clip, *entry.clip);
     }

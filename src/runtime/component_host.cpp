@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 namespace ryn::runtime {
@@ -42,6 +43,7 @@ struct ComponentHost::Record final {
     std::size_t declaration_order{0};
     bool branch_active{true};
     std::optional<int> window_layer;
+    std::optional<std::uint64_t> window_layer_stack;
 
     Record(std::optional<ComponentId> component_parent, NodeId component_root, std::shared_ptr<void> component_state,
            std::type_index component_state_type, std::size_t order,
@@ -311,12 +313,29 @@ std::span<const SceneFragmentPaintEntry> ComponentHost::paint_traversal() {
             layers.push_back({index, slot.generation});
         }
     }
-    std::sort(layers.begin(), layers.end(), [this](ComponentId left, ComponentId right) {
-        const auto& a = require_record(left);
-        const auto& b = require_record(right);
-        return a.window_layer == b.window_layer ? a.declaration_order < b.declaration_order
-                                                : a.window_layer < b.window_layer;
-    });
+    int modal_base = 0;
+    for (auto layer : layers) {
+        const auto& record = require_record(layer);
+        if (record.window_layer_stack && branch_active(layer)) {
+            modal_base = std::max(modal_base, *record.window_layer);
+        }
+    }
+    const auto key = [this, modal_base](ComponentId id) {
+        const auto& record = require_record(id);
+        std::uint64_t stack = 0;
+        bool child = false;
+        for (auto ancestor = std::optional{id}; ancestor; ancestor = require_record(*ancestor).parent) {
+            if (const auto order = require_record(*ancestor).window_layer_stack) {
+                stack = *order;
+                child = *ancestor != id;
+                break;
+            }
+        }
+        return std::tuple{stack ? modal_base : *record.window_layer, stack, child, *record.window_layer,
+                          record.declaration_order};
+    };
+    std::sort(layers.begin(), layers.end(),
+              [&](ComponentId left, ComponentId right) { return key(left) < key(right); });
     for (const auto layer : layers) {
         append_paint_subtree(layer, true);
     }
@@ -579,6 +598,9 @@ bool ComponentHost::set_window_layer(ComponentId id, std::optional<int> priority
         return false;
     }
     record.window_layer = priority;
+    if (!priority) {
+        record.window_layer_stack.reset();
+    }
     nodes_->require(record.root).clip_boundary = priority.has_value();
     paint_traversal_dirty_ = true;
     return true;
@@ -592,6 +614,30 @@ bool ComponentHost::in_window_layer(ComponentId id) const {
         }
     }
     return false;
+}
+
+bool ComponentHost::in_window_layer_stack(ComponentId id) const {
+    ensure_owner_thread();
+    for (auto current = std::optional{id}; current; current = require_record(*current).parent) {
+        if (require_record(*current).window_layer_stack) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ComponentHost::set_window_layer_stack(ComponentId id, std::optional<std::uint64_t> order) {
+    ensure_owner_thread();
+    auto& record = require_record(id);
+    if (order && (!record.window_layer || *order == 0)) {
+        throw std::invalid_argument("Window layer stack requires a layer root and a positive order");
+    }
+    if (record.window_layer_stack == order) {
+        return false;
+    }
+    record.window_layer_stack = order;
+    paint_traversal_dirty_ = true;
+    return true;
 }
 
 bool ComponentHost::is_window_layer_root(ComponentId id) const {

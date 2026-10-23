@@ -77,6 +77,8 @@ struct Node {
     bool clip_content{};
     // Window layers retain component ancestry but start a separate clip chain.
     bool clip_boundary{};
+    // Retained window-layer owners do not consume parent Box/Flex space or gaps.
+    bool out_of_flow{};
     float content_opacity{1.0F};
     std::uint64_t measure_count{0};
     std::uint64_t place_count{0};

@@ -14,7 +14,7 @@
 
 ## 4. 保留对话框和视口交互（平台通用）
 
-- [ ] 4.1 接入Modal host、正常流零占位/遮罩和独立窗口层、保留header/body/footer/close/default Button、自定义slots、受控取消确认/加载/关闭通知、最上层与焦点恢复、有限视口和正文滚动/焦点caret显露；补真实Input/TextArea/Select/Tooltip/Tabs、长正文/clip/resize/字形局部性、Tab环绕/无入口、嵌套与失效触发、回调重开/卸载/捕获/窗口失活、identity/idle/dispose测试和API文档；windows-msvc-headless Debug/Release完整CTest、格式/规格检查通过后记录平台/preset/evidence、提交并立即push、核对SHA。
+- [x] 4.1 接入Modal host、正常流零占位/遮罩和独立窗口层、保留header/body/footer/close/default Button、自定义slots、受控取消确认/加载/关闭通知、最上层与焦点恢复、有限视口和正文滚动/焦点caret显露；补真实Input/TextArea/Select/Tooltip/Tabs、长正文/clip/resize/字形局部性、Tab环绕/无入口、嵌套与失效触发、回调重开/卸载/捕获/窗口失活、identity/idle/dispose测试和API文档；windows-msvc-headless Debug/Release完整CTest、格式/规格检查通过后记录平台/preset/evidence、提交并立即push、核对SHA。
 
 ## 5. Gallery集成（平台通用）
 

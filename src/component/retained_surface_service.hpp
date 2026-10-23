@@ -101,7 +101,7 @@ public:
     bool destroy_content_range(RetainedSurfaceId id);
     std::size_t update_content_effects(RetainedSurfaceId id, std::span<const graphics::RoundedEffectInstance> effects);
     [[nodiscard]] std::size_t update_effects(RetainedSurfaceId id, const RetainedSurfaceEffects& effects);
-    [[nodiscard]] bool compact_effects(runtime::Rect window_clip);
+    [[nodiscard]] bool compact_effects(runtime::Rect window_clip, bool clip_window_layers = false);
 
     [[nodiscard]] graphics::QuadInstanceRange visual_range(RetainedSurfaceId id) const;
     [[nodiscard]] const graphics::RoundedEffectInstance& focus_effect(RetainedSurfaceId id) const;
@@ -126,6 +126,7 @@ private:
         graphics::RoundedEffectId focus_id;
         graphics::RoundedEffectPrimitive effect_primitive;
         std::vector<graphics::RoundedEffectId> corner_focus_ids;
+        std::vector<graphics::RoundedEffectId> clipped_fill_ids;
     };
 
     // A content range is owned by a caller-provided fragment instead of a
@@ -168,6 +169,8 @@ private:
     void bind_fragment(const Record& record);
     void create_effects(Record& record);
     void remove_effects(Record& record) noexcept;
+    std::size_t synchronize_effects(Record&, const RetainedSurfaceEffects&);
+    bool synchronize_clipped_fills(runtime::Rect window_clip);
     void ensure_owner_thread() const;
     static void validate_visuals(std::span<const graphics::QuadInstance> visuals);
     static void validate_content_visuals(std::span<const graphics::QuadInstance> visuals);

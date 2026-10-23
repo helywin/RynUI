@@ -408,12 +408,13 @@ void DividerComponentHost::mount(const DividerProps& props, const std::optional<
         });
 }
 
-void DividerComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
+void DividerComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
         auto* s = services_->components().state<DividerState>(id);
         if (!s) {
             continue;
         }
+        const auto clip = services_->component_clip(id, viewport, document_clip);
         const auto& node = services_->nodes().require(s->node);
         const auto color = services_->components().theme_scope(id)->snapshot().divider().colors.line;
         std::vector<graphics::QuadInstance> quads;

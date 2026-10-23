@@ -8,6 +8,7 @@
 #include "component/select_component.hpp"
 #include "component/card_component.hpp"
 #include "component/tabs_component.hpp"
+#include "component/modal_component.hpp"
 
 #include <chrono>
 
@@ -56,7 +57,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
                                                  runtime::DirtyQueues& dirty, TextSceneService& text_scene,
                                                  ThemeFontResolver font_resolver,
                                                  runtime::FrameRequestState& frame_requests)
-    : nodes_(&nodes), layout_(&layout), dirty_(&dirty),
+    : nodes_(&nodes), layout_(&layout), dirty_(&dirty), frame_requests_(&frame_requests),
       text_(nodes, layout, dirty, text_scene, std::move(font_resolver)), interactions_(text_.components(), nodes),
       hit_test_(interactions_, nodes), scene_composer_(text_.components(), interactions_, hit_test_),
       surfaces_(text_.components(), nodes, scene_composer_), focus_(interactions_, &frame_requests),
@@ -87,6 +88,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     divider_ = std::make_unique<DividerComponentHost>(*this);
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
+    modal_ = std::make_unique<ModalComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
@@ -164,6 +166,20 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
     const bool changed = interactions_.set_input_boundary(root);
     return reconcile_input_boundary() || changed;
+}
+
+void WindowComponentServices::request_frame() noexcept {
+    frame_requests_->request_frame();
+}
+
+runtime::Rect WindowComponentServices::component_clip(runtime::ComponentId id, runtime::Size viewport,
+                                                      runtime::Rect document_clip) const {
+    auto clip = components().in_window_layer(id) ? runtime::Rect{0, 0, viewport.width, viewport.height} : document_clip;
+    const auto& root = nodes_->require(components().root(id));
+    if (!root.clip_boundary && root.parent) {
+        clip = nodes_->content_clip(*root.parent, clip);
+    }
+    return clip;
 }
 
 bool WindowComponentServices::reconcile_input_boundary() {
@@ -374,7 +390,7 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
-        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height})) {
+        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, modal_->visible())) {
             scene_structure_dirty_ = true;
         }
     }
@@ -392,9 +408,14 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
             }
         }
     }
+    const auto hit_clip = modal_->visible() ? runtime::Rect{0, 0, viewport.width, viewport.height} : clip;
+    if (hit_clip_ != hit_clip) {
+        scene_structure_dirty_ = true;
+        hit_clip_ = hit_clip;
+    }
     if (scene_structure_dirty_ || text_fragments_changed || scene_composer_.needs_rebuild()) {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.composer_nanoseconds);
-        scene_composer_.rebuild(clip);
+        scene_composer_.rebuild(hit_clip);
         scene_structure_dirty_ = false;
     } else if (text_.layout_performed_last_sync()) {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.hit_nanoseconds);

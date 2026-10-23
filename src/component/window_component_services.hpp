@@ -27,6 +27,7 @@ class OTPComponentHost;
 class SelectComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
+class ModalComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -121,6 +122,9 @@ public:
     void set_window_active(bool active);
     bool dispatch_scroll(const input::ScrollInputEvent& event);
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
+    void request_frame() noexcept;
+    [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
+                                               runtime::Rect document_clip) const;
 
     void set_animation_time(animation::AnimationTime time) noexcept {
         animation_time_ = time;
@@ -212,6 +216,10 @@ public:
         return *tabs_;
     }
 
+    [[nodiscard]] ModalComponentHost& modal() noexcept {
+        return *modal_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -282,6 +290,7 @@ private:
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;
+    runtime::FrameRequestState* frame_requests_;
     TextComponentHost text_;
     input::InteractionRegistry interactions_;
     input::HitTestSnapshot hit_test_;
@@ -296,6 +305,7 @@ private:
     std::vector<WindowComponentParticipant*> pointer_participants_scratch_;
     WindowComponentParticipant* input_host_{nullptr};
     bool scene_structure_dirty_{true};
+    std::optional<runtime::Rect> hit_clip_;
     std::uint64_t hit_test_refresh_nanoseconds_{};
     bool sync_profiling_enabled_{};
     WindowSyncProfile sync_profile_{};
@@ -306,6 +316,7 @@ private:
     std::unique_ptr<DividerComponentHost> divider_;
     std::unique_ptr<SpaceAddonHost> space_addon_;
     std::unique_ptr<SliderComponentHost> slider_;
+    std::unique_ptr<ModalComponentHost> modal_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;

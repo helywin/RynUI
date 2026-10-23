@@ -254,7 +254,7 @@ void SpaceAddonHost::mount(const SpaceAddonProps& props, const SpaceAddonContent
     }
 }
 
-void SpaceAddonHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void SpaceAddonHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     for (const auto id : mounted_) {
         auto* state = services_->components().state<AddonState>(id);
         if (!state || !services_->components().branch_active(id)) {
@@ -269,7 +269,7 @@ void SpaceAddonHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect
                                                   std::max(0.0F, node.bounds.width - 2 * width),
                                                   std::max(0.0F, node.bounds.height - 2 * width)},
                                                  std::max(0.0F, visual.shape.radius - width)};
-        const auto clipping = graphics::EffectClip{1, clip};
+        const auto clipping = graphics::EffectClip{1, services_->component_clip(id, viewport, clip)};
         state->clip = clipping;
         const auto fill = graphics::make_corner_fill_effects(visual.shape, visual.corners, visual.fill, 1,
                                                              node.translation, clipping);

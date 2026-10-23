@@ -26,6 +26,10 @@ window-owned Modal host 为正常流挂载零占位 owner，并一次挂载屏�
 
 对话框自身提供无子入口时的焦点回退；有可用子入口时它不额外增加 Tab stop。默认 close 和页脚 Button 复用主题/加载/键盘合同。布局和绘制使用 Constraints/既有圆角、阴影、clip 和 opacity，不加GPU字段或shader。
 
+owner的内部out_of_flow标记让Box/Flex/Space和顶层正文忽略其尺寸与gap。overlay作为Modal层组根记录打开顺序，所属Select/Tooltip继承最近层组；活跃组以其中最高z-index作为共同的全局base，再按打开顺序排列整组；组内先绘制组根，再按priority绘制子层，不做可能溢出的z-index相加。对话框及正文等区域使用Node裁剪，经过独立clip_boundary时重置交互父clip，防止菜单被裁回对话框。默认页脚在对话框padding内保留完整focus轮廓。
+
+窗口层的视觉clip基准是整个窗口，普通组件保留文档clip；组件host再应用祖先内容clip。共享RetainedSurface只为活跃模态裁剪上下文把quad映射为既有四角fill effects，并同步focus/阴影clip，保留源索引和阴影前后顺序。不新增shader字段或GPU ABI，首次显示后的fill身份保留，滚动和颜色更新复用；无Modal不扫描该路径。模态命中覆盖全窗口，并在resize/clip变化时刷新全局命中范围。
+
 ### 3. 模态输入边界不改背景 disabled
 
 在内部 InteractionRegistry 中记录可选的模态逻辑根，将有效交互判定与组件绘制活动区分。无边界时完全沿用原行为；有边界时 pointer hit/capture、FocusManager 与引用聚焦、输入会话只接受该根及后代。对其他 host 的滚轮/延时弹层判定补相同的组件输入有效性，背景仍绘制，不逐项覆盖 eligible/disabled。
@@ -43,6 +47,8 @@ Modal participant 注册在 Tooltip/Select/Tabs 之前，使现有逆序命令�
 ### 5. 视口适配和正文滚动
 
 对话框水平居中；非centered优先top100，视口不足时夹紧到安全边距。width必须正且有限。标题/close和页脚先测量，正文限于剩余高度，长内容垂直滚动；极小视口安全裁剪，尺寸非负。body 保留自然内容高度，滚轮和焦点/caret 显露只改变像素对齐平移/clip；不重新放置全部字形，不平移 clip_boundary 的子窗口层。Select/Tooltip 后续按锚点定位，因此跟随滚动并夹紧到窗口。
+
+Input在辅助geometry阶段才发布新caret。Modal先按焦点节点显露，再在geometry完成后检查文本排版revision、caret byte及正文尺寸变化；必要时显式申请一次后续平移帧，不加轮询deadline，也不把未变化焦点反复显露而撤销手工滚轮。生命周期通知延后到prepare安全阶段，回调产生的新转换请求下一帧；已退休owner不再收到后续通知。
 
 ### 6. Token 与性能边界
 

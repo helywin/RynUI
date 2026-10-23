@@ -2242,7 +2242,7 @@ void InputComponentHost::set_horizontal_scroll(runtime::ComponentId component, f
     invalidate(component, runtime::DirtyFlags::Geometry);
 }
 
-void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect clip) {
+void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, runtime::Rect document_clip) {
     struct ResizeNotification {
         runtime::ComponentId component;
         TextAreaSize size;
@@ -2273,6 +2273,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         if (!state || !state->active || !host_->components().branch_active(mounted.component)) {
             continue;
         }
+        const auto clip = host_->component_clip(mounted.component, window, document_clip);
         const auto update_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         update_text(mounted.component, false, false);

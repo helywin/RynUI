@@ -535,6 +535,9 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 const auto child_constraints = content_constraints(content_constraint, current.padding);
                 runtime::Size content{};
                 for (const auto child : node.children) {
+                    if (nodes_->require(child).out_of_flow) {
+                        continue;
+                    }
                     const auto child_size = measure_node(child, child_constraints);
                     content.width = std::max(content.width, child_size.width);
                     content.height = std::max(content.height, child_size.height);
@@ -548,6 +551,9 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
                 measured = content_constraint.constrain(natural);
                 for (const auto child : node.children) {
                     const auto& child_node = nodes_->require(child);
+                    if (child_node.out_of_flow) {
+                        continue;
+                    }
                     if (child_node.first_baseline.has_value()) {
                         node.first_baseline = current.padding.top + outer_baseline(child_node);
                         break;
@@ -573,6 +579,9 @@ runtime::Size LayoutEngine::measure_node(runtime::NodeId id, Constraints constra
 
                 for (std::size_t ordinal = 0; ordinal < node.children.size(); ++ordinal) {
                     const auto child = node.children[ordinal];
+                    if (nodes_->require(child).out_of_flow) {
+                        continue;
+                    }
                     const auto& style = nodes_->require(child).external_layout;
                     const float margin_main = current.direction == FlexDirection::horizontal
                                                   ? horizontal_margin(style.margin)
@@ -935,6 +944,9 @@ void LayoutEngine::place_node(runtime::NodeId id, runtime::Rect bounds, bool str
             } else if constexpr (std::is_same_v<Model, BoxLayout>) {
                 const auto content = content_bounds(node.bounds, current.padding);
                 for (const auto child : node.children) {
+                    if (nodes_->require(child).out_of_flow) {
+                        continue;
+                    }
                     const auto child_size = nodes_->require(child).layout_size;
                     place_node(child, {
                                           content.x,

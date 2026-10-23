@@ -1500,7 +1500,7 @@ void SelectionComponentHost::publish_wave(SelectionState& state) {
                            : state.radio  ? radio.wave_opacity
                                           : token.wave_opacity) *
                           (1 - state.wave_progress);
-    const auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    const auto clip = resolved_clip(state);
     if (state.radio && state.radio_button) {
         const auto effects = graphics::make_corner_outline_effects(shape, state.rounded_corners, width, spread,
                                                                    state.wave_color, opacity, node.translation, clip);
@@ -1933,7 +1933,7 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         effects.shadow_shape = graphics::LogicalRoundedRect{{state.visuals[1].bounds[0], state.visuals[1].bounds[1],
                                                              state.visuals[1].bounds[2], state.visuals[1].bounds[3]},
                                                             state.visuals[1].corner_radius};
-        effects.ancestor_clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+        effects.ancestor_clip = resolved_clip(state);
     }
     const float indicator_size = state.radio ? theme.radio().size : theme.checkbox().size;
     const float indicator_x =
@@ -1970,7 +1970,7 @@ void SelectionComponentHost::publish_radio_button(SelectionState& state) {
     }
     const auto& radio = services_->components().theme_scope(state.component)->snapshot().radio();
     const auto shape = state.effects.shape;
-    auto clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt;
+    auto clip = resolved_clip(state);
     const float stroke = std::min(radio.line_width, std::min(shape.rect.width, shape.rect.height) / 2);
     const graphics::LogicalRoundedRect inner{{shape.rect.x + stroke, shape.rect.y + stroke,
                                               std::max(0.0F, shape.rect.width - 2 * stroke),
@@ -2035,7 +2035,7 @@ CompactBorder SelectionComponentHost::compact_border(const SelectionState& state
                                                                                         : 2,
             .visible = state.radio_button && services_->components().branch_active(state.component),
             .translation = state.effects.translation,
-            .clip = window_clip_ ? std::optional{graphics::EffectClip{1, *window_clip_}} : std::nullopt};
+            .clip = resolved_clip(state)};
 }
 
 void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
@@ -2046,6 +2046,13 @@ void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpo
             update_geometry(*state, viewport);
         }
     }
+}
+
+std::optional<graphics::EffectClip> SelectionComponentHost::resolved_clip(const SelectionState& state) const {
+    if (!window_clip_) {
+        return {};
+    }
+    return graphics::EffectClip{1, services_->component_clip(state.component, viewport_, *window_clip_)};
 }
 
 struct SwitchPropsAccess {

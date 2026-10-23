@@ -101,6 +101,7 @@ private:
     void connect_state(SelectionState&);
     void update_visuals(SelectionState&);
     void update_geometry(SelectionState&, runtime::Size);
+    [[nodiscard]] std::optional<graphics::EffectClip> resolved_clip(const SelectionState&) const;
     void update_layout(SelectionState&);
     void place_switch_content(SelectionState&, layout::LayoutEngine&, runtime::Rect);
     void synchronize_switch_content(SelectionState&);

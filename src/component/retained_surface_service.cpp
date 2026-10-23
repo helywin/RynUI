@@ -102,6 +102,9 @@ bool RetainedSurfaceService::destroy(RetainedSurfaceId id) {
     static_cast<void>(composer_->remove_fragment(record->fragment));
     static_cast<void>(instances_.replace(removed, {}));
     remove_effects(*record);
+    for (auto effect : record->clipped_fill_ids) {
+        static_cast<void>(effect_scene_.store().remove(effect));
+    }
 
     remap_after_replace(removed, 0, &record->range);
 
@@ -416,6 +419,13 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
                (effects.focus_enabled ? effects.rounded_corners ? 4U : 1U : 0U);
     }
 
+    const auto updates = synchronize_effects(record, effects);
+    record.effects = effects;
+    return updates;
+}
+
+std::size_t RetainedSurfaceService::synchronize_effects(Record& record, const RetainedSurfaceEffects& effects) {
+    const std::size_t shadow_stride = effects.rounded_corners ? 4 : 1;
     std::size_t updates = 0;
     for (std::size_t index = 0; index < record.shadow_ids.size(); ++index) {
         const auto shape = effects.shadow_shape.value_or(effects.shape);
@@ -460,13 +470,77 @@ std::size_t RetainedSurfaceService::update_effects(RetainedSurfaceId id, const R
                                          effects.focus_opacity, effects.translation, effects.ancestor_clip));
         }
     }
-    record.effects = effects;
     return updates;
 }
 
-bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip) {
+bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip) {
+    bool topology_changed = false;
+    for (auto& slot : slots_) {
+        if (!slot.record) {
+            continue;
+        }
+        auto& record = *slot.record;
+        if (!components_->branch_active(record.component) || !components_->in_window_layer_stack(record.component)) {
+            continue;
+        }
+        const auto& node = nodes_->require(record.node);
+        if (node.clip_boundary || !node.parent) {
+            continue;
+        }
+        bool clipped = false;
+        for (auto parent = node.parent; parent; parent = nodes_->require(*parent).parent) {
+            const auto& ancestor = nodes_->require(*parent);
+            clipped = clipped || ancestor.clip_content;
+            if (ancestor.clip_boundary) {
+                break;
+            }
+        }
+        if (!clipped && record.clipped_fill_ids.empty()) {
+            continue;
+        }
+        const auto clip = nodes_->content_clip(*node.parent, window_clip);
+        const auto clipping = graphics::EffectClip{1, clip};
+        auto effects = record.effects;
+        effects.ancestor_clip = clipping;
+        if (record.effects.ancestor_clip) {
+            effects.ancestor_clip->bounds =
+                graphics::intersect_effect_bounds(clip, record.effects.ancestor_clip->bounds);
+        }
+        static_cast<void>(synchronize_effects(record, effects));
+        const auto count = static_cast<std::size_t>(record.range.count) * 4;
+        if (record.clipped_fill_ids.empty()) {
+            record.clipped_fill_ids.reserve(count);
+        }
+        for (std::uint32_t index = 0; index < record.range.count; ++index) {
+            const auto& visual = instances_.at(record.range.first + index);
+            const auto radius = std::min(visual.corner_radius, std::min(visual.bounds[2], visual.bounds[3]) / 2);
+            const auto fills = graphics::make_corner_fill_effects(
+                {{visual.bounds[0], visual.bounds[1], visual.bounds[2], visual.bounds[3]}, radius},
+                {true, true, true, true}, Color{visual.color[0], visual.color[1], visual.color[2], visual.color[3]},
+                visual.opacity, {visual.translation[0], visual.translation[1]}, clipping);
+            for (std::size_t corner = 0; corner < fills.size(); ++corner) {
+                const auto position = static_cast<std::size_t>(index) * 4 + corner;
+                if (position == record.clipped_fill_ids.size()) {
+                    record.clipped_fill_ids.push_back(effect_scene_.store().add(fills[corner]));
+                    topology_changed = true;
+                } else {
+                    const auto id = record.clipped_fill_ids[position];
+                    diagnostics_.effect_geometry_updates +=
+                        effect_scene_.store().update_geometry(id, fills[corner].geometry);
+                    diagnostics_.effect_material_updates +=
+                        effect_scene_.store().update_material(id, fills[corner].material);
+                }
+            }
+        }
+    }
+    return topology_changed;
+}
+
+bool RetainedSurfaceService::compact_effects(runtime::Rect window_clip, bool clip_window_layers) {
     ensure_owner_thread();
-    if (!effect_scene_.store().compact(window_clip)) {
+    const bool fills_changed = clip_window_layers && synchronize_clipped_fills(window_clip);
+    const bool packed_changed = effect_scene_.store().compact(window_clip);
+    if (!fills_changed && !packed_changed) {
         return false;
     }
     for (const auto& slot : slots_) {
@@ -592,6 +666,25 @@ std::uint32_t RetainedSurfaceService::acquire_slot() {
 
 void RetainedSurfaceService::bind_fragment(const Record& record) {
     const auto offset = record.effects.shadow_fill_offset;
+    if (!record.clipped_fill_ids.empty()) {
+        std::vector<graphics::SceneDrawCommand> commands;
+        commands.reserve(record.clipped_fill_ids.size() + record.shadow_ids.size() + 4);
+        const auto append = [&](std::span<const graphics::RoundedEffectId> ids) {
+            for (auto id : ids) {
+                if (const auto index = effect_scene_.store().packed_index(id)) {
+                    commands.push_back(
+                        {graphics::SceneDrawKind::rounded_effect, *index, 1, graphics::invalid_glyph_atlas_page});
+                }
+            }
+        };
+        const auto fills = std::span{record.clipped_fill_ids};
+        append(fills.first(static_cast<std::size_t>(offset) * 4));
+        append(record.effect_primitive.before_fill);
+        append(fills.subspan(static_cast<std::size_t>(offset) * 4));
+        append(record.effect_primitive.after_fill);
+        composer_->set_fragment(record.fragment, commands, record.interaction);
+        return;
+    }
     const graphics::SceneDrawCommand fill{
         graphics::SceneDrawKind::quad,
         record.range.first + offset,

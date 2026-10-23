@@ -378,8 +378,9 @@ void CardComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
         if (!s) {
             continue;
         }
-        const bool hovered =
-            event.action != input::PointerAction::cancel && target && descendant(*services_, target->component, id);
+        const bool hovered = event.action != input::PointerAction::cancel && target &&
+                             services_->interactions().component_active(id) &&
+                             descendant(*services_, target->component, id);
         if (s->snapshot.hovered != hovered) {
             s->snapshot.hovered = hovered;
             refresh(id, false);
@@ -399,12 +400,13 @@ void CardComponentHost::on_window_active(bool active) {
     }
 }
 
-void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void CardComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
         auto* s = services_->components().state<CardState>(id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }
+        const auto clip = services_->component_clip(id, viewport, document_clip);
         const auto& node = services_->nodes().require(s->node);
         const auto bounds = node.bounds;
         const auto& token = services_->components().theme_scope(id)->snapshot().card();

@@ -737,6 +737,10 @@ bool TextComponentHost::layout_and_synchronize(runtime::Size viewport, runtime::
                 continue;
             }
             const auto node = components_.root(component);
+            if (nodes_->require(node).out_of_flow) {
+                static_cast<void>(layout_->layout(node, layout::Constraints::fixed(0, 0)));
+                continue;
+            }
             const auto remaining_width = std::max(0.0F, viewport.width - origin.x);
             const auto remaining_height = unbounded_root_height ? std::numeric_limits<float>::infinity()
                                                                 : std::max(0.0F, viewport.height - cursor_y);

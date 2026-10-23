@@ -113,6 +113,10 @@ public:
     bool set_branch_active(ComponentId id, bool active);
     [[nodiscard]] bool branch_active(ComponentId id) const;
     bool set_window_layer(ComponentId id, std::optional<int> priority);
+    // A modal's opening order groups its layer and all owned popups. The group
+    // root is painted first; child popup priorities remain local to that group.
+    bool set_window_layer_stack(ComponentId id, std::optional<std::uint64_t> order);
+    [[nodiscard]] bool in_window_layer_stack(ComponentId id) const;
     [[nodiscard]] bool in_window_layer(ComponentId id) const;
     [[nodiscard]] bool is_window_layer_root(ComponentId id) const;
     [[nodiscard]] std::size_t declaration_order(ComponentId id) const;

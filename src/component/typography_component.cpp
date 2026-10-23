@@ -807,7 +807,7 @@ std::optional<animation::AnimationTime> TypographyComponentHost::next_auxiliary_
     return result;
 }
 
-void TypographyComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void TypographyComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect clip) {
     for (auto id : mounted_) {
         if (auto* s = services_->components().state<TypographyState>(id)) {
             s->ellipsis_hint_available.set(s->has_ellipsis && !s->disabled && !s->editing.get() && !s->expanded &&
@@ -826,7 +826,7 @@ void TypographyComponentHost::synchronize_auxiliary_geometry(runtime::Size, runt
             effects.focus_width = scope->focus_outline_width();
             effects.focus_offset = scope->focus_outline_offset();
             effects.focus_opacity = s->visible && !s->disabled && s->focus.focus_visible ? 1.0F : 0.0F;
-            effects.ancestor_clip = graphics::EffectClip{1, clip};
+            effects.ancestor_clip = graphics::EffectClip{1, services_->component_clip(id, viewport, clip)};
             (void)services_->surfaces().update_effects(s->surface, effects);
         }
     }

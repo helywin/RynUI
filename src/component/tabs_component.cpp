@@ -154,6 +154,15 @@ void translate_subtree(runtime::NodeId node, runtime::Point value, WindowCompone
     }
 }
 
+std::optional<runtime::ComponentId> window_layer(WindowComponentServices& services, runtime::ComponentId id) {
+    for (auto current = std::optional{id}; current; current = services.components().parent(*current)) {
+        if (services.components().is_window_layer_root(*current)) {
+            return current;
+        }
+    }
+    return {};
+}
+
 auto fill(runtime::Rect rect, float radius, std::array<bool, 4> corners, Color color, float opacity,
           runtime::Point translation, graphics::EffectClip clip) {
     radius = std::min(radius, std::min(rect.width, rect.height) / 2);
@@ -823,9 +832,20 @@ void TabsComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
 }
 
 bool TabsComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+    if (mounted_.empty()) {
+        return false;
+    }
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    const auto hit_layer = target ? window_layer(*services_, target->component) : std::optional<runtime::ComponentId>{};
     for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
         auto* s = services_->components().state<TabsState>(*it);
         if (!s || !s->overflow || !services_->interactions().component_active(*it)) {
+            continue;
+        }
+        // A menu may cover the navigation rectangle. Its own layer receives
+        // the wheel before the header underneath, including inside a Modal.
+        if (target && hit_layer != window_layer(*services_, *it)) {
             continue;
         }
         const auto world = translated(s->navigation_bounds, services_->nodes().require(s->node).translation);
@@ -865,12 +885,13 @@ void TabsComponentHost::on_window_active(bool active) {
     }
 }
 
-void TabsComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+void TabsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, runtime::Rect document_clip) {
     for (auto id : mounted_) {
         auto* s = services_->components().state<TabsState>(id);
         if (!s || !services_->components().branch_active(id)) {
             continue;
         }
+        const auto clip = services_->component_clip(id, viewport, document_clip);
         s->clip = clip;
         const auto& token = services_->components().theme_scope(id)->snapshot().tabs();
         const auto& m = token.metrics;

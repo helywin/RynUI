@@ -711,7 +711,7 @@ void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             update_spinner(*state,
                            animation::resolve_motion_policy(components().theme_scope(state->component)->snapshot(),
                                                             services_->motion_preference()));
-            synchronize_geometry(*state, viewport, clip);
+            synchronize_geometry(*state, viewport, services_->component_clip(mounted.component, viewport, clip));
         }
     }
 }
@@ -1813,6 +1813,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     auto effects = state.effects;
     effects.shape = {node.bounds, logical_radius(node.bounds, radius)};
     effects.translation = node.translation;
+    effects.ancestor_clip = graphics::EffectClip{1, clip};
     if (effects != state.effects) {
         state.effects = std::move(effects);
         static_cast<void>(button_scene_.update_effects(state.scene, state.effects));

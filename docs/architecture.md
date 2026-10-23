@@ -337,6 +337,8 @@ Token 读取会在 reactive scope 记录 identity subscription。Theme 更新比
 
 模态输入限制与组件绘制活动分开：窗口的内部交互边界只允许指定逻辑根及后代接受pointer/focus/ref/输入和滚轮，不覆盖背景控件自身disabled值。窗口层保持逻辑owner，因此子Select/Tooltip沿用同一归属；边界切换清理外部捕获、会话和延时浮层，使用既有延迟焦点处理回调重入。内部合同见 [输入边界](interaction-boundaries.md)，具体Modal功能和平台状态仍由061记录。
 
+模态层按打开顺序分组，所属子层在组内排序；窗口层使用窗口clip，普通组件保留文档clip。正文裁剪及四角fill复用现有场景和effect合同，不改变CPU scene/GPU ABI；具体窗口层、命中和资源规则见同一内部合同。
+
 ### 9.6 Motion 与基础动画 Runtime
 
 基础动画由 internal `AnimationRuntime` 统一管理，不从 `rynui.hpp` 导出稳定 consumer DSL。Runtime 使用整数 microseconds、production steady clock 与 controlled test clock；动画、target 和 owner scope 都使用 slot + generation identity，并受 UI owner thread 约束。closed typed value 首批支持 `float`、`Color` 和 logical geometry，easing 使用 validated typed cubic-bezier，不接受 CSS transition string。
