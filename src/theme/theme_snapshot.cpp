@@ -3581,14 +3581,15 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
                              TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
-                             ProgressThemeToken progress)
+                             ProgressThemeToken progress, PaginationThemeToken pagination, TableThemeToken table)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
       drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      progress_(std::move(progress)), pagination_(std::move(pagination)), table_(std::move(table)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ =
         snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                           slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_, *input_, algorithms_);
@@ -3693,10 +3694,39 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     }
     hash_integer(identity_, progress_.metrics.font_family);
     status_json << "],\"fontFamily\":" << static_cast<int>(progress_.metrics.font_family) << '}';
+    status_json << ",\"pagination\":{\"colors\":[";
+    first = true;
+    for (auto value : pagination_.colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float value : pagination_.metrics.values()) {
+        metric(value);
+    }
+    status_json << "]},\"table\":{\"colors\":[";
+    first = true;
+    for (auto value : table_.colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float value : table_.metrics.values()) {
+        metric(value);
+    }
+    status_json << "]}";
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, *input_, algorithms_, identity_);
     diagnostic_json_.insert(diagnostic_json_.rfind('}'), status_json.str());
+}
+
+const PaginationThemeToken& ThemeSnapshot::pagination() const noexcept {
+    return pagination_;
+}
+
+const TableThemeToken& ThemeSnapshot::table() const noexcept {
+    return table_;
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -3799,8 +3829,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
            left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
            left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ &&
-           left.spin_ == right.spin_ && left.progress_ == right.progress_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_;
+           left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.pagination_ == right.pagination_ &&
+           left.table_ == right.table_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4162,12 +4192,140 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         progress = derive_progress(seed, map, alias, algorithms);
     }
     apply_progress_override(progress, config.progress.tokens);
+    PaginationThemeToken pagination;
+    if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+        config.algorithms.empty()) {
+        pagination = parent->pagination();
+    } else {
+        pagination.colors = {alias.color_background_container,
+                             alias.color_background_container,
+                             alias.color_text,
+                             map.color_primary,
+                             alias.color_text_disabled,
+                             map.color_primary};
+        pagination.metrics = {map.control_height, map.control_height_small, map.control_height_large, map.size_xs,
+                              map.border_radius};
+    }
+    const auto& p = config.pagination.tokens;
+    if (p.item_background) {
+        pagination.colors.item_background = *p.item_background;
+    }
+    if (p.active_background) {
+        pagination.colors.active_background = *p.active_background;
+    }
+    if (p.item) {
+        pagination.colors.item = *p.item;
+    }
+    if (p.active) {
+        pagination.colors.active = *p.active;
+    }
+    if (p.disabled) {
+        pagination.colors.disabled = *p.disabled;
+    }
+    if (p.border) {
+        pagination.colors.border = *p.border;
+    }
+    pagination.metrics.item_size =
+        fixed_length(p.item_size, pagination.metrics.item_size, "Pagination item_size must be positive", true);
+    pagination.metrics.item_size_small = fixed_length(p.item_size_small, pagination.metrics.item_size_small,
+                                                      "Pagination item_size_small must be positive", true);
+    pagination.metrics.item_size_large = fixed_length(p.item_size_large, pagination.metrics.item_size_large,
+                                                      "Pagination item_size_large must be positive", true);
+    pagination.metrics.gap = fixed_length(p.gap, pagination.metrics.gap, "Pagination gap must be non-negative");
+    pagination.metrics.border_radius = fixed_length(p.border_radius, pagination.metrics.border_radius,
+                                                    "Pagination border_radius must be non-negative");
+    if (!std::isfinite(std::max({pagination.metrics.item_size, pagination.metrics.item_size_small,
+                                 pagination.metrics.item_size_large}) *
+                           11 +
+                       pagination.metrics.gap * 10)) {
+        throw std::invalid_argument("Pagination combined extents must be finite");
+    }
+    TableThemeToken table;
+    if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+        config.algorithms.empty()) {
+        table = parent->table();
+    } else {
+        const bool dark = contains_dark(algorithms);
+        const auto alter =
+            mix(alias.color_background_container,
+                Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 1),
+                dark ? 0.04F : 0.02F);
+        const auto palette = button_palette(seed.color_primary, dark, alias.color_background_container);
+        table.colors = {alias.color_background_container, alter, alias.color_text, alias.color_text,
+                        alias.color_border_secondary,     alter, palette.light,    palette.light_hover};
+        table.metrics = {map.size,
+                         map.size_small,
+                         map.size_xs,
+                         map.size,
+                         map.size_xs,
+                         map.font_size,
+                         map.font_size * map.line_height,
+                         80,
+                         map.control_height,
+                         map.control_height * 3,
+                         seed.line_width};
+    }
+    const auto& t = config.table.tokens;
+    if (t.background) {
+        table.colors.background = *t.background;
+    }
+    if (t.header_background) {
+        table.colors.header_background = *t.header_background;
+    }
+    if (t.text) {
+        table.colors.text = *t.text;
+    }
+    if (t.header_text) {
+        table.colors.header_text = *t.header_text;
+    }
+    if (t.border) {
+        table.colors.border = *t.border;
+    }
+    if (t.hover) {
+        table.colors.hover = *t.hover;
+    }
+    if (t.selected) {
+        table.colors.selected = *t.selected;
+    }
+    if (t.selected_hover) {
+        table.colors.selected_hover = *t.selected_hover;
+    }
+    table.metrics.padding_block =
+        fixed_length(t.padding_block, table.metrics.padding_block, "Table padding_block must be non-negative");
+    table.metrics.padding_block_middle = fixed_length(t.padding_block_middle, table.metrics.padding_block_middle,
+                                                      "Table padding_block_middle must be non-negative");
+    table.metrics.padding_block_small = fixed_length(t.padding_block_small, table.metrics.padding_block_small,
+                                                     "Table padding_block_small must be non-negative");
+    table.metrics.padding_inline =
+        fixed_length(t.padding_inline, table.metrics.padding_inline, "Table padding_inline must be non-negative");
+    table.metrics.padding_inline_small = fixed_length(t.padding_inline_small, table.metrics.padding_inline_small,
+                                                      "Table padding_inline_small must be non-negative");
+    table.metrics.font_size =
+        fixed_length(t.font_size, table.metrics.font_size, "Table font_size must be positive", true);
+    table.metrics.line_height =
+        fixed_length(t.line_height, table.metrics.line_height, "Table line_height must be positive", true);
+    table.metrics.min_column_width = fixed_length(t.min_column_width, table.metrics.min_column_width,
+                                                  "Table min_column_width must be positive", true);
+    table.metrics.selection_width =
+        fixed_length(t.selection_width, table.metrics.selection_width, "Table selection_width must be positive", true);
+    table.metrics.empty_height =
+        fixed_length(t.empty_height, table.metrics.empty_height, "Table empty_height must be positive", true);
+    table.metrics.border_width =
+        fixed_length(t.border_width, table.metrics.border_width, "Table border_width must be non-negative");
+    if (!std::isfinite(table.metrics.line_height +
+                       std::max({table.metrics.padding_block, table.metrics.padding_block_middle,
+                                 table.metrics.padding_block_small}) *
+                           2 +
+                       table.metrics.padding_inline * 2)) {
+        throw std::invalid_argument("Table combined extents must be finite");
+    }
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
                          std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
-                         std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress));
+                         std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress),
+                         std::move(pagination), std::move(table));
 }
 
 } // namespace ryn

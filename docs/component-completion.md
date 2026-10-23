@@ -32,7 +32,7 @@
 | 2 | Tabs、Card | 059 Card 已实现五区域内容容器；060 Tabs 已实现保留面板/草稿、受控选择、Line/Card、三尺寸/上下/居中、键盘与溢出导航；共同验证已通过，Gallery/平台证据独立记录 |
 | 3 | Modal、Drawer、Popconfirm | 061 Modal、062 Drawer、064 Popconfirm 已提供可用首版和实际 Gallery：保留插槽、受控请求、焦点/输入边界、正文滚动与子浮层；Modal Windows 原生矩阵已通过，其他原生平台项独立记录 |
 | 4 | Tag、Badge、Alert、Spin、Progress | 063 Tag/CheckableTag 与 Badge、065 Alert/Spin/Progress 已提供保留内容、受控事件、状态色/计数、加载屏蔽和三种确定进度；共同 Debug/Release 验证通过，069 补齐交互 Gallery，原生视觉独立记录 |
-| 5 | Pagination、Table | 数据分页、表头/行/列、选择/排序等常用数据浏览流程 |
+| 5 | Pagination、Table | 066 已实现保留键控行、typed 列/插槽、受控排序/Checkbox 选择、有限滚动和可组合 Pagination；两轮 Astra 审查修复滚轮/子层/Tab 顺序/布局，Gallery 与原生平台验收另行集成 |
 | 6 | Menu、Dropdown | 应用导航与操作菜单，复用已验证的窗口层行为 |
 | 7 | InputNumber、DatePicker、TimePicker、Form | 数值/日期/时间录入和表单验证组合 |
 

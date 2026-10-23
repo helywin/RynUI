@@ -293,6 +293,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.radio().effects(), after.radio().effects(), TokenIdentity::radio_effects, changed, count);
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
+    append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
+    append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
     append_if_changed(before.tag().colors, after.tag().colors, TokenIdentity::tag_colors, changed, count);
     append_if_changed(before.tag().metrics, after.tag().metrics, TokenIdentity::tag_metrics, changed, count);
@@ -306,6 +308,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.progress().metrics, after.progress().metrics, TokenIdentity::progress_metrics, changed,
                       count);
+    append_if_changed(before.pagination().colors, after.pagination().colors, TokenIdentity::pagination_colors, changed,
+                      count);
+    append_if_changed(before.pagination().metrics, after.pagination().metrics, TokenIdentity::pagination_metrics,
+                      changed, count);
     append_if_changed(before.card().colors, after.card().colors, TokenIdentity::card_colors, changed, count);
     append_if_changed(before.card().metrics, after.card().metrics, TokenIdentity::card_metrics, changed, count);
     append_if_changed(before.card().typography, after.card().typography, TokenIdentity::card_typography, changed,
@@ -1209,6 +1215,30 @@ const TabsThemeToken& ThemeScope::tabs_effects() const {
     return snapshot_->tabs();
 }
 
+const PaginationThemeToken& ThemeScope::pagination_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::pagination_colors);
+    return snapshot_->pagination();
+}
+
+const PaginationThemeToken& ThemeScope::pagination_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::pagination_metrics);
+    return snapshot_->pagination();
+}
+
+const TableThemeToken& ThemeScope::table_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::table_colors);
+    return snapshot_->table();
+}
+
+const TableThemeToken& ThemeScope::table_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::table_metrics);
+    return snapshot_->table();
+}
+
 const CardThemeToken& ThemeScope::card_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::card_colors);
@@ -1404,6 +1434,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Spin.metrics",
         "Progress.colors",
         "Progress.metrics",
+        "Pagination.colors",
+        "Pagination.metrics",
+        "Table.colors",
+        "Table.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1463,6 +1497,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::alert_colors:
     case TokenIdentity::spin_colors:
     case TokenIdentity::progress_colors:
+    case TokenIdentity::pagination_colors:
+    case TokenIdentity::table_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1535,6 +1571,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::modal_metrics:
     case TokenIdentity::drawer_metrics:
     case TokenIdentity::popconfirm_metrics:
+    case TokenIdentity::pagination_metrics:
+    case TokenIdentity::table_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:
