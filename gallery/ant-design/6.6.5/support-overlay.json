@@ -1063,16 +1063,24 @@
     },
     {
       "identity": "ant.component.modal",
-      "status": "planned",
-      "summary": "对话框（Modal）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现受控对话框、保留内容、嵌套窗口层、焦点管理与有限视口正文滚动；平台通用验证与原生窗口验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive Props, retained ModalContent/title/footer slots and controlled OK/cancel requests",
+        "mask/keyboard/close/footer/loading states, lifecycle notifications and Modal Component Token",
+        "topmost logical input boundary, nested layers, focus trap/restoration and IME/popup Escape priority",
+        "window clipping, fixed header/footer, pixel-aligned body scroll and focused editor/caret reveal"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "static confirm/Promise services, lazy/destroyOnHidden and activation animation",
+        "drag/resize, mask blur, RTL, responsive breakpoint widths and native accessibility bridge",
+        "Web/DOM/CSS compatibility aliases"
       ],
       "evidence_identifiers": [
-        "source:components/modal/index.en-US.md"
+        "source:components/modal/index.en-US.md",
+        "openspec:061-20261023-add-native-modal",
+        "test:modal_model/modal_public_api/modal_theme/modal_boundary/modal_component/token_gallery_frame",
+        "docs:docs/modal.md"
       ]
     },
     {

@@ -18,7 +18,7 @@
 
 ## 5. Gallery集成（平台通用）
 
-- [ ] 5.1 接入实际Modal基础/受控拒绝/取消入口/加载/保留编辑/自定义页脚/无页脚/无遮罩/居中/长正文/嵌套/局部主题样例，更新supported/missing scope/catalog、README和常用组件清单；补完整Gallery整页滚动下的打开/编辑/子层/关闭/恢复/背景滚轮合同；generator check、受影响Gallery Recording测试和格式/规格检查通过后记录实际平台/preset/evidence、提交并立即push、核对SHA。
+- [x] 5.1 接入实际Modal基础/受控拒绝/取消入口/加载/保留编辑/自定义页脚/无页脚/无遮罩/居中/长正文/嵌套/局部主题样例，更新supported/missing scope/catalog、README和常用组件清单；补完整Gallery整页滚动下的打开/编辑/子层/关闭/恢复/背景滚轮合同；generator check、受影响Gallery Recording测试和格式/规格检查通过后记录实际平台/preset/evidence、提交并立即push、核对SHA。
 
 ## 6. 原生平台验收
 

@@ -78,6 +78,11 @@ struct GalleryState final {
     ryn::Signal<ryn::String> tabs_active{ryn::String{u8"draft"}};
     ryn::Signal<ryn::String> tabs_label{ryn::String{u8"设置 / Settings"}};
     ryn::Signal<bool> tabs_disabled{false};
+    ryn::Signal<int> modal_active{-1};
+    ryn::Signal<bool> modal_nested{false};
+    ryn::Signal<bool> modal_loading{true};
+    ryn::Signal<ryn::String> modal_feedback{ryn::String{u8"打开示例后查看确认与取消来源"}};
+    ryn::Signal<ryn::String> modal_lifecycle{ryn::String{u8"当前没有打开的对话框"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -302,6 +307,18 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.tabs.unknown-key",
     "gallery.tabs.component-theme",
     "gallery.tabs.toggle-label",
+    "gallery.modal.basic",
+    "gallery.modal.retained-edit",
+    "gallery.modal.controlled-refusal",
+    "gallery.modal.confirm-loading",
+    "gallery.modal.custom-footer",
+    "gallery.modal.no-footer",
+    "gallery.modal.maskless",
+    "gallery.modal.centered",
+    "gallery.modal.long-body",
+    "gallery.modal.nested",
+    "gallery.modal.nested-child",
+    "gallery.modal.component-theme",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1600,6 +1617,140 @@ void add_tabs_samples(const std::shared_ptr<GalleryState>& state) {
     ++state->telemetry.live_samples;
 }
 
+void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Modal · 确认取消 / 保留编辑 / 正文滚动 / 嵌套");
+    Text(TextProps{}.content(state->modal_feedback));
+    Text(TextProps{}.content(state->modal_lifecycle));
+    const auto sample = [state](int index, std::string_view identity, String title, ModalProps props,
+                                ModalContent content, ModalSlots slots = {}) {
+        Button(ButtonProps{}.onClick([state, index] {
+            state->modal_active.set(index);
+            ++state->telemetry.activations;
+        }),
+               ButtonContent{
+                   [identity, title] { Text(utf8(std::string{identity} + " · " + std::string{title.bytes()})); }});
+        props.open(Binding<bool>{[state, index] { return state->modal_active.get() == index; }})
+            .title(title)
+            .onOk([state, index] {
+                ++state->telemetry.activations;
+                state->modal_feedback.set(index == 2 ? String{u8"已收到确认请求，本例继续保持打开"}
+                                                     : String{u8"已确认"});
+                if (index != 2) {
+                    state->modal_active.set(-1);
+                }
+            })
+            .onCancel([state, index](ModalCancelReason reason) {
+                ++state->telemetry.activations;
+                const auto message = reason == ModalCancelReason::CancelButton  ? String{u8"取消来源：页脚按钮"}
+                                     : reason == ModalCancelReason::CloseButton ? String{u8"取消来源：右上角关闭"}
+                                     : reason == ModalCancelReason::Mask        ? String{u8"取消来源：遮罩"}
+                                                                                : String{u8"取消来源：Escape"};
+                state->modal_feedback.set(message);
+                if (index != 2) {
+                    state->modal_nested.set(false);
+                    state->modal_active.set(-1);
+                }
+            })
+            .afterOpenChange([state](bool shown) {
+                state->modal_lifecycle.set(shown ? String{u8"对话框已显示"} : String{u8"对话框已隐藏"});
+            })
+            .afterClose([state] { state->modal_lifecycle.set(String{u8"对话框已关闭，输入和浮层已清理"}); });
+        Modal(std::move(props), std::move(content), std::move(slots));
+        state->telemetry.live_samples += 2; // Dialog and its page trigger.
+    };
+    sample(0, "gallery.modal.basic", String{u8"基础确认"}, ModalProps{}, ModalContent{[] {
+               Text(u8"确认、取消、右上角关闭、Escape或点击遮罩。");
+               Text(u8"关闭后会返回原来的有效入口。");
+           }});
+    sample(1, "gallery.modal.retained-edit", String{u8"保留编辑草稿"}, ModalProps{}, ModalContent{[] {
+               Text(u8"修改内容后关闭再打开，草稿和选项继续保留。");
+               Input(InputProps{}.defaultValue(u8"RynUI account"));
+               TextArea(TextAreaProps{}.rows(3).defaultValue(u8"保留的多行备注\n中文 / English 🙂"));
+               Select(SelectProps{}
+                          .options({{u8"desktop", u8"桌面"}, {u8"service", u8"服务"}})
+                          .defaultValue(u8"desktop")
+                          .showSearch()
+                          .allowClear());
+               Tooltip(TooltipProps{}
+                           .title(String{u8"先按Escape关闭提示或菜单，再按一次取消对话框"})
+                           .trigger(TooltipTriggerMode::Click),
+                       TooltipTrigger{[] { Button(ButtonProps{}, [] { Text(u8"输入帮助"); }); }});
+           }});
+    sample(2, "gallery.modal.controlled-refusal", String{u8"父级保留打开状态"}, ModalProps{}, ModalContent{[state] {
+               Text(u8"确认与取消只发送请求。本例不会回写关闭状态。");
+               Text(TextProps{}.content(state->modal_feedback));
+               Button(ButtonProps{}.onClick([state] { state->modal_active.set(-1); }), [] { Text(u8"关闭本例"); });
+           }});
+    sample(3, "gallery.modal.confirm-loading", String{u8"确认加载中"},
+           ModalProps{}.confirmLoading(state->modal_loading), ModalContent{[state] {
+               Text(u8"确认在加载时禁用，取消仍可使用。");
+               Button(ButtonProps{}.onClick([state] { state->modal_loading.set(!state->modal_loading.get()); }),
+                      [] { Text(u8"切换确认加载状态"); });
+           }});
+    sample(4, "gallery.modal.custom-footer", String{u8"自定义标题与页脚"}, ModalProps{}.footer(ModalFooterMode::None),
+           ModalContent{[] { Text(u8"标题和页脚使用独立内容插槽。"); }},
+           ModalSlots{.title = ModalTitle{[] {
+                          Flex(FlexProps{}.gap(dp(8)).align(FlexAlign::Center), FlexContent{[] {
+                                   Icon(IconProps{}.name(IconName::EditOutlined));
+                                   Text(u8"自定义标题");
+                               }});
+                      }},
+                      .footer = ModalFooter{[state] {
+                          Flex(FlexProps{}.gap(dp(8)).justify(FlexJustify::End), FlexContent{[state] {
+                                   Button(ButtonProps{}.onClick([state] { state->modal_active.set(-1); }),
+                                          [] { Text(u8"返回"); });
+                                   Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                                       state->modal_feedback.set(String{u8"自定义页脚：已保存"});
+                                       state->modal_active.set(-1);
+                                   }),
+                                          [] { Text(u8"保存草稿"); });
+                               }});
+                      }}});
+    sample(5, "gallery.modal.no-footer", String{u8"无页脚"}, ModalProps{}.footer(ModalFooterMode::None),
+           ModalContent{[] { Text(u8"使用右上角关闭、Escape或点击遮罩取消。"); }});
+    sample(6, "gallery.modal.maskless", String{u8"无遮罩颜色"}, ModalProps{}.mask(ModalMask{false, true}),
+           ModalContent{[] { Text(u8"背景仍不可操作。点击对话框外部可以关闭。"); }});
+    sample(7, "gallery.modal.centered", String{u8"垂直居中"}, ModalProps{}.centered(),
+           ModalContent{[] { Text(u8"调整窗口大小，观察对话框在有限视口内居中。"); }});
+    sample(8, "gallery.modal.long-body", String{u8"长正文与焦点显露"}, ModalProps{}, ModalContent{[state] {
+               Button(ButtonProps{}.onClick([state] { state->modal_active.set(-1); }), [] { Text(u8"完成阅读"); });
+               Text(u8"使用滚轮浏览，或按Tab移动到末尾编辑框。");
+               for (int row = 1; row <= 28; ++row) {
+                   Text(utf8("第 " + std::to_string(row) + " 段 · 标题与页脚固定，正文保留并独立滚动。"));
+               }
+               Input(InputProps{}.defaultValue(u8"末尾保留的输入"));
+               Select(SelectProps{}.options({{1, u8"末尾选项一"}, {2, u8"末尾选项二"}}));
+               Tabs(TabsProps{}, {TabItem{u8"first", u8"保留面板一", TabContent{[] { Text(u8"面板一"); }}},
+                                  TabItem{u8"second", u8"保留面板二", TabContent{[] { Text(u8"面板二"); }}}});
+           }});
+    sample(9, "gallery.modal.nested", String{u8"嵌套对话框"}, ModalProps{}, ModalContent{[state] {
+               Input(InputProps{}.defaultValue(u8"父层保留的草稿"));
+               Button(ButtonProps{}.onClick([state] { state->modal_nested.set(true); }), [] { Text(u8"打开下一层"); });
+               Modal(ModalProps{}
+                         .open(state->modal_nested)
+                         .title(u8"二级确认")
+                         .onOk([state] { state->modal_nested.set(false); })
+                         .onCancel([state](ModalCancelReason) { state->modal_nested.set(false); }),
+                     ModalContent{[] {
+                         Text(u8"gallery.modal.nested-child · 关闭后返回父层有效入口");
+                         Input(InputProps{}.defaultValue(u8"子层保留的草稿"));
+                     }});
+               ++state->telemetry.live_samples;
+           }});
+    ThemeConfig custom;
+    custom.modal.algorithm = true;
+    custom.modal.seed.color_primary = Color::rgba8(114, 46, 209);
+    custom.modal.tokens.border_radius = dp(12);
+    custom.button.algorithm = true;
+    custom.button.seed.color_primary = Color::rgba8(114, 46, 209);
+    Theme(ThemeProps{}.config(custom), ThemeContent{[state, sample] {
+              ++state->telemetry.theme_content_runs;
+              sample(10, "gallery.modal.component-theme", String{u8"局部紫色与圆角"}, ModalProps{},
+                     ModalContent{[] { Text(u8"局部主题使用紫色焦点和12 dp圆角，跟随外部明暗主题。"); }});
+          }});
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2123,6 +2274,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_select_samples(state);
                                                         add_card_samples(state);
                                                         add_tabs_samples(state);
+                                                        add_modal_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

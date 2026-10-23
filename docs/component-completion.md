@@ -30,7 +30,7 @@
 | --- | --- | --- |
 | 1 | Select | 058已实现单选/搜索/清空/动态选项/键盘与窗口层，平台通用验证已通过；Gallery与原生证据独立记录，multiple/tags后续扩展 |
 | 2 | Tabs、Card | 059 Card 已实现五区域内容容器；060 Tabs 已实现保留面板/草稿、受控选择、Line/Card、三尺寸/上下/居中、键盘与溢出导航；共同验证已通过，Gallery/平台证据独立记录 |
-| 3 | Modal、Drawer、Popconfirm | 真实遮罩、焦点管理、确认/取消与关闭生命周期 |
+| 3 | Modal、Drawer、Popconfirm | 061 Modal 已实现受控请求、保留插槽、真实遮罩、嵌套焦点边界与正文滚动，共同验证已通过；Gallery/平台证据独立记录。继续 Drawer、Popconfirm |
 | 4 | Tag、Badge、Alert、Spin、Progress | 标签/计数、状态反馈、加载与任务进度 |
 | 5 | Pagination、Table | 数据分页、表头/行/列、选择/排序等常用数据浏览流程 |
 | 6 | Menu、Dropdown | 应用导航与操作菜单，复用已验证的窗口层行为 |

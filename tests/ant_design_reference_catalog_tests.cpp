@@ -139,6 +139,12 @@ void test_typed_support_status() {
     }
     require_partial("ant.component.config-provider");
     require_partial("ant.component.tabs");
+    require_partial("ant.component.modal");
+    const auto* modal = find_ant_design_reference_entry("ant.component.modal");
+    require(modal->supported_scope.find("retained") != std::string_view::npos &&
+                modal->missing_scope.find("static") != std::string_view::npos &&
+                modal->evidence_identifiers.find("modal_component") != std::string_view::npos,
+            "Modal catalog lost native scope or implementation evidence");
     const auto* tabs = find_ant_design_reference_entry("ant.component.tabs");
     require(tabs->supported_scope.find("retained") != std::string_view::npos &&
                 tabs->missing_scope.find("dynamic") != std::string_view::npos &&

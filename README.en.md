@@ -28,6 +28,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Typography and dividers | Five heading levels, inline semantics and decorations, grapheme-safe ellipsis and expansion, full-content copying, inline single-line editing, interactive Link; horizontal/vertical, labeled, dashed, and plain Divider |
 | Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
 | Tab panels | Tabs with fixed retained panels, controlled selection, draft restoration, Line/Card, three sizes, top/bottom/centered headers, keyboard and horizontal overflow navigation; see [Tabs](docs/tabs.md) |
+| Dialogs | Controlled Modal, retained body/title/footer slots, nested layers, focus restoration and scrolling within the window; see [Modal](docs/modal.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
 | Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
