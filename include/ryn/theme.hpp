@@ -1148,12 +1148,59 @@ struct ProgressThemeConfig final {
     friend bool operator==(const ProgressThemeConfig&, const ProgressThemeConfig&) = default;
 };
 
+struct InputNumberThemeToken final {
+    float control_width{90};
+    float handle_width{22};
+    float handle_font_size{7};
+    Color handle_background;
+    Color handle_active_background;
+    Color handle_hover_color;
+    Color handle_border_color;
+    Color filled_handle_background;
+    Color handle_color;
+    Color disabled_color;
+
+    [[nodiscard]] auto colors() const noexcept {
+        return std::array{handle_background,   handle_active_background, handle_hover_color,
+                          handle_border_color, filled_handle_background, handle_color,
+                          disabled_color};
+    }
+
+    [[nodiscard]] auto metrics() const noexcept {
+        return std::array{control_width, handle_width, handle_font_size};
+    }
+
+    friend bool operator==(const InputNumberThemeToken&, const InputNumberThemeToken&) = default;
+};
+
+struct InputNumberTokenOverride final {
+    std::optional<LogicalLength> control_width;
+    std::optional<LogicalLength> handle_width;
+    std::optional<LogicalLength> handle_font_size;
+    std::optional<Color> handle_background;
+    std::optional<Color> handle_active_background;
+    std::optional<Color> handle_hover_color;
+    std::optional<Color> handle_border_color;
+    std::optional<Color> filled_handle_background;
+    std::optional<Color> handle_color;
+    std::optional<Color> disabled_color;
+    friend bool operator==(const InputNumberTokenOverride&, const InputNumberTokenOverride&) = default;
+};
+
+struct InputNumberThemeConfig final {
+    InputNumberTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const InputNumberThemeConfig&, const InputNumberThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
     ButtonThemeConfig button;
     TextThemeConfig text;
     InputThemeConfig input;
+    InputNumberThemeConfig input_number;
     SwitchThemeConfig switch_;
     CheckboxThemeConfig checkbox;
     RadioThemeConfig radio;
@@ -1723,6 +1770,10 @@ public:
         return tag_;
     }
 
+    [[nodiscard]] const InputNumberThemeToken& input_number() const noexcept {
+        return input_number_;
+    }
+
     [[nodiscard]] const BadgeThemeToken& badge() const noexcept {
         return badge_;
     }
@@ -1763,7 +1814,8 @@ private:
                   TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
                   MenuThemeToken menu, DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
                   std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress);
+                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+                  InputNumberThemeToken input_number);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1790,6 +1842,7 @@ private:
     ProgressThemeToken progress_;
     MenuThemeToken menu_;
     DropdownThemeToken dropdown_;
+    InputNumberThemeToken input_number_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

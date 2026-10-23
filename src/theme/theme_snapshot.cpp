@@ -528,6 +528,53 @@ void apply_alias_override(ThemeAliasToken& alias, const AliasTokenOverride& over
     return input;
 }
 
+InputNumberThemeToken derive_input_number(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                          const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    // Ant Design 6.6.5 components/input-number/style/token.ts.
+    const bool dark = contains_dark(algorithms);
+    return {90,
+            map.control_height_small - 2 * seed.line_width,
+            map.font_size / 2,
+            alias.color_background_container,
+            mix(alias.color_background_container, map.color_text_base, dark ? .04F : .02F),
+            map.color_primary,
+            alias.color_border,
+            mix(alias.color_background_container, map.color_text_base, dark ? .12F : .06F),
+            Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), .45F),
+            alias.color_text_disabled};
+}
+
+void apply_input_number_override(InputNumberThemeToken& token, const InputNumberTokenOverride& o) {
+    const auto length = [](float& target, const std::optional<LogicalLength>& value) {
+        if (value) {
+            if (value->is_auto() || !std::isfinite(value->value()) || value->value() <= 0 || value->value() > 10000) {
+                throw std::invalid_argument("Invalid InputNumber token metric");
+            }
+            target = value->value();
+        }
+    };
+    length(token.control_width, o.control_width);
+    length(token.handle_width, o.handle_width);
+    length(token.handle_font_size, o.handle_font_size);
+    const auto color = [](Color& target, const std::optional<Color>& value) {
+        if (value) {
+            target = *value;
+        }
+    };
+    color(token.handle_background, o.handle_background);
+    color(token.handle_active_background, o.handle_active_background);
+    color(token.handle_hover_color, o.handle_hover_color);
+    color(token.handle_border_color, o.handle_border_color);
+    color(token.filled_handle_background, o.filled_handle_background);
+    color(token.handle_color, o.handle_color);
+    color(token.disabled_color, o.disabled_color);
+    for (const auto metric : token.metrics()) {
+        if (!std::isfinite(metric) || metric <= 0 || metric > 10000) {
+            throw std::invalid_argument("Invalid InputNumber token metric");
+        }
+    }
+}
+
 [[nodiscard]] TypographyThemeToken derive_typography(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
                                                      const ThemeAliasToken& alias) {
     // Heading sizes are the locked reference chain 38/30/24/20/16 at the default
@@ -3747,15 +3794,16 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
                              DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
                              std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                             AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress)
+                             AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+                             InputNumberThemeToken input_number)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
       drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -3860,6 +3908,17 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     }
     hash_integer(identity_, progress_.metrics.font_family);
     status_json << "],\"fontFamily\":" << static_cast<int>(progress_.metrics.font_family) << '}';
+    status_json << ",\"inputNumber\":{\"colors\":[";
+    first = true;
+    for (const auto v : input_number_.colors()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (const auto v : input_number_.metrics()) {
+        metric(v);
+    }
+    status_json << "]}";
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -3975,7 +4034,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
            left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ &&
            left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.menu_ == right.menu_ &&
-           left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ &&
+           left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4354,13 +4414,29 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         dropdown.z_index_popup = seed.z_index_popup_base + 50;
     }
     apply_dropdown_override(dropdown, config.dropdown.tokens);
+    InputNumberThemeToken input_number;
+    const bool inherit_number = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                !config.input_number.algorithm && config.input_number.seed == SeedTokenOverride{};
+    if (inherit_number) {
+        input_number = parent->input_number();
+    } else if (config.input_number.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.input_number.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        input_number = derive_input_number(component_seed, component_map,
+                                           derive_alias(component_seed, component_map, algorithms), algorithms);
+    } else {
+        input_number = derive_input_number(seed, map, alias, algorithms);
+    }
+    apply_input_number_override(input_number, config.input_number.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
                          std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm), std::move(menu),
                          std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(input)),
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
-                         std::move(progress));
+                         std::move(progress), std::move(input_number));
 }
 
 } // namespace ryn

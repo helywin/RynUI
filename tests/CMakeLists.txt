@@ -11,6 +11,23 @@ foreach(feedback_test IN ITEMS feedback_public_api feedback_theme feedback_compo
     add_test(NAME rynui.${feedback_test} COMMAND rynui_${feedback_test}_tests)
 endforeach()
 
+foreach(number_test IN ITEMS input_number_model input_number_public_api)
+    add_executable(rynui_${number_test}_tests ${number_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${number_test}_tests)
+    target_link_libraries(rynui_${number_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${number_test} COMMAND rynui_${number_test}_tests)
+endforeach()
+
+foreach(number_test IN ITEMS input_number_component input_number_theme)
+    add_executable(rynui_${number_test}_tests ${number_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${number_test}_tests)
+    target_link_libraries(rynui_${number_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${number_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${number_test} COMMAND rynui_${number_test}_tests)
+endforeach()
+
 foreach(status_test IN ITEMS tag_badge_public_api tag_badge_theme tag_badge_component)
     add_executable(rynui_${status_test}_tests ${status_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${status_test}_tests)

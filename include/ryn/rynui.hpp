@@ -16,6 +16,7 @@
 #include <ryn/flex.hpp>
 #include <ryn/icon.hpp>
 #include <ryn/input.hpp>
+#include <ryn/input_number.hpp>
 #include <ryn/otp.hpp>
 #include <ryn/text_area.hpp>
 #include <ryn/layout_style.hpp>

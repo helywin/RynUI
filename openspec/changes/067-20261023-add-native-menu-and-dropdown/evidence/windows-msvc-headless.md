@@ -71,7 +71,7 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "^rynui.portable.(m
 
 ## 独立 main 集成（2026-10-23）
 
-工作树 `t3-de868eb7` / 分支 `t3/de868eb7` 从 `69689046bc9a99b94c98086cb3c849b79015acbc` 合并本变更 `4fa26a9787c25a706ac1df39f687d856dd0c3851`。保留已有 Modal、Drawer、Popconfirm、Tag/Badge 与 Alert/Spin/Progress 的 Theme、service 和 CMake 接线；保留 main 的 ThemeScope 引用提交、reference_cell 默认主题栈占用修正与共同 popup child-layer 排序。未涉及父任务的 Table/Gallery/全局支持文档。
+工作树 `t3-de868eb7` / 分支 `t3/integrate-menu-input-number` 从 `69689046bc9a99b94c98086cb3c849b79015acbc` 合并本变更 `4fa26a9787c25a706ac1df39f687d856dd0c3851`。保留已有 Modal、Drawer、Popconfirm、Tag/Badge 与 Alert/Spin/Progress 的 Theme、service 和 CMake 接线；保留 main 的 ThemeScope 引用提交、reference_cell 默认主题栈占用修正与共同 popup child-layer 排序。未涉及父任务的 Table/Gallery/全局支持文档。
 
 - 使用新构建的 Debug Theme executable 重新生成五份 golden；与 `6968904` 的 JSON 语义比较：除 `identity` 外所有旧字段完全一致，仅增加 `menu` / `dropdown`。
 - `windows-msvc-headless` / MSVC 19.51.36256，Debug 七项聚焦 CTest 全部通过（6.02 秒）：Menu、Dropdown、Theme algorithm/runtime、Modal boundary/component、Popconfirm component。

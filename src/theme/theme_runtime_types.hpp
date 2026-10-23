@@ -151,6 +151,8 @@ enum class TokenIdentity : std::uint8_t {
     dropdown_metrics,
     dropdown_effects,
     dropdown_order,
+    input_number_colors,
+    input_number_metrics,
     count,
 };
 

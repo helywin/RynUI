@@ -194,6 +194,8 @@ add_library(rynui_components STATIC
     component/button_component.cpp
     component/window_component_services.cpp
     component/input_component.cpp
+    component/input_number_model.cpp
+    component/input_number_actions.cpp
     component/input_affix_action.cpp
     component/input_material_transition.cpp
     component/input_display.cpp
