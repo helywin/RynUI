@@ -198,6 +198,7 @@ add_library(rynui_components STATIC
     component/otp_model.cpp
     component/select_model.cpp
     component/select_component.cpp
+    component/menu_component.cpp
     component/card_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp

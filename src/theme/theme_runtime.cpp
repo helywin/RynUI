@@ -311,6 +311,18 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.modal().effects, after.modal().effects, TokenIdentity::modal_effects, changed, count);
     append_if_changed(before.modal().z_index_popup, after.modal().z_index_popup, TokenIdentity::modal_order, changed,
                       count);
+    append_if_changed(before.menu().colors, after.menu().colors, TokenIdentity::menu_colors, changed, count);
+    append_if_changed(before.menu().metrics, after.menu().metrics, TokenIdentity::menu_metrics, changed, count);
+    append_if_changed(before.menu().typography, after.menu().typography, TokenIdentity::menu_typography, changed,
+                      count);
+    append_if_changed(before.dropdown().background, after.dropdown().background, TokenIdentity::dropdown_colors,
+                      changed, count);
+    append_if_changed(before.dropdown().metrics, after.dropdown().metrics, TokenIdentity::dropdown_metrics, changed,
+                      count);
+    append_if_changed(before.dropdown().shadow, after.dropdown().shadow, TokenIdentity::dropdown_effects, changed,
+                      count);
+    append_if_changed(before.dropdown().z_index_popup, after.dropdown().z_index_popup, TokenIdentity::dropdown_order,
+                      changed, count);
     append_if_changed(before.select().colors, after.select().colors, TokenIdentity::select_colors, changed, count);
     append_if_changed(before.select().metrics, after.select().metrics, TokenIdentity::select_metrics, changed, count);
     append_if_changed(before.select().typography, after.select().typography, TokenIdentity::select_typography, changed,
@@ -1071,6 +1083,48 @@ const CardThemeToken& ThemeScope::card_effects() const {
     return snapshot_->card();
 }
 
+const MenuThemeToken& ThemeScope::menu_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::menu_colors);
+    return snapshot_->menu();
+}
+
+const MenuThemeToken& ThemeScope::menu_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::menu_metrics);
+    return snapshot_->menu();
+}
+
+const MenuThemeToken& ThemeScope::menu_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::menu_typography);
+    return snapshot_->menu();
+}
+
+const DropdownThemeToken& ThemeScope::dropdown_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::dropdown_colors);
+    return snapshot_->dropdown();
+}
+
+const DropdownThemeToken& ThemeScope::dropdown_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::dropdown_metrics);
+    return snapshot_->dropdown();
+}
+
+const DropdownThemeToken& ThemeScope::dropdown_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::dropdown_effects);
+    return snapshot_->dropdown();
+}
+
+const DropdownThemeToken& ThemeScope::dropdown_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::dropdown_order);
+    return snapshot_->dropdown();
+}
+
 const SelectThemeToken& ThemeScope::select_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::select_colors);
@@ -1222,6 +1276,14 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Modal.typography",
         "Modal.effects",
         "Modal.order",
+        "Menu.colors",
+        "Menu.metrics",
+        "Menu.typography",
+        "Dropdown.colors",
+        "Dropdown.metrics",
+        "Dropdown.effects",
+        "Dropdown.order",
+
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1270,10 +1332,13 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::slider_colors:
     case TokenIdentity::tooltip_colors:
     case TokenIdentity::tooltip_order:
+    case TokenIdentity::menu_colors:
+    case TokenIdentity::dropdown_colors:
     case TokenIdentity::select_colors:
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
     case TokenIdentity::modal_colors:
+    case TokenIdentity::dropdown_order:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1292,6 +1357,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::radio_effects:
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
+    case TokenIdentity::dropdown_effects:
     case TokenIdentity::select_effects:
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
@@ -1314,6 +1380,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_base_typography:
     case TokenIdentity::divider_typography:
     case TokenIdentity::tooltip_typography:
+    case TokenIdentity::menu_typography:
     case TokenIdentity::select_typography:
     case TokenIdentity::card_typography:
     case TokenIdentity::tabs_typography:
@@ -1329,6 +1396,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_control_height_large:
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
+    case TokenIdentity::menu_metrics:
+    case TokenIdentity::dropdown_metrics:
     case TokenIdentity::select_metrics:
     case TokenIdentity::card_metrics:
     case TokenIdentity::tabs_metrics:

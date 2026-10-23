@@ -6,7 +6,7 @@
 
 ## 2. 平台通用 Menu
 
-- [ ] 2.1 实现 typed Menu、retained 行、分组/Inline 子菜单、键盘与受控请求；同时交付 API 文档与选择/禁用/展开/identity/cleanup 聚焦测试，使用 windows-msvc-headless Debug 验证。
+- [x] 2.1 实现 typed Menu、retained 行、分组/Inline 子菜单、键盘与受控请求；同时交付 API 文档与选择/禁用/展开/identity/cleanup 聚焦测试，使用 windows-msvc-headless Debug 验证。
 
 ## 3. 平台通用 Dropdown
 

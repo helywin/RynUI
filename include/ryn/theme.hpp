@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ryn/menu_theme.hpp>
+
 #include <ryn/design_token.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
@@ -983,6 +985,8 @@ struct ThemeConfig final {
     CardThemeConfig card;
     TabsThemeConfig tabs;
     ModalThemeConfig modal;
+    MenuThemeConfig menu;
+    DropdownThemeConfig dropdown;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1527,6 +1531,8 @@ public:
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
+    [[nodiscard]] const MenuThemeToken& menu() const noexcept;
+    [[nodiscard]] const DropdownThemeToken& dropdown() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1543,8 +1549,8 @@ private:
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms);
+                  TabsThemeToken tabs, ModalThemeToken modal, MenuThemeToken menu, DropdownThemeToken dropdown,
+                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1562,6 +1568,8 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     ModalThemeToken modal_;
+    MenuThemeToken menu_;
+    DropdownThemeToken dropdown_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

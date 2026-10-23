@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ryn/menu.hpp>
+
 #include <ryn/button.hpp>
 #include <ryn/checkbox.hpp>
 #include <ryn/component.hpp>

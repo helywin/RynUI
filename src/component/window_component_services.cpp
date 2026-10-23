@@ -9,6 +9,7 @@
 #include "component/card_component.hpp"
 #include "component/tabs_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/menu_component.hpp"
 
 #include <chrono>
 
@@ -94,6 +95,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     select_ = std::make_unique<SelectComponentHost>(*this);
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
+    menu_ = std::make_unique<MenuComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {
