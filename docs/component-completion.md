@@ -20,4 +20,20 @@
 
 来源：`examples/token_gallery/generated_ant_design_reference_catalog.inc`、现有公开 headers、changes 003–039 的 tasks。每项开发前再次检查对应源码与锁定 Ant Design 6.6.5 合同，后续清单随已验证实现更新。
 
-平台缺口：历史 Windows tasks 存在系统 IME/人工视觉确认项，Linux 专属 tasks 需实际 native Linux 机器。已通过 Windows 与平台通用项保持完成；没有实际证据的 checkbox 保持未勾选。此清单不自动 push、archive 或将历史 evidence 升级为当前验收。
+平台缺口：历史 Windows tasks 存在系统 IME/人工视觉确认项，Linux 专属 tasks 需实际 native Linux 机器。已通过 Windows 与平台通用项保持完成；没有实际证据的 checkbox 保持未勾选。提交与推送遵循当前协作规则，不自动 archive 或将历史 evidence 升级为当前验收。
+
+## 常用业务组件优先级（2026-10-23 用户指示）
+
+优先补齐能组合业务页面的常用组件，Theme 全局配置与已有组件长尾 API 后置。每项先完成真实可用的首版和对应验证，明确未覆盖范围；规划不计入实现。每完成一次 commit 立即 push 并核验远端 SHA。
+
+| 顺序 | 组件 | 首轮可用目标 |
+| --- | --- | --- |
+| 1 | Select | 单选/搜索/清空/动态选项/键盘与窗口层，见058；multiple/tags后续扩展 |
+| 2 | Tabs、Card | 页面分区、内容切换与常见内容容器 |
+| 3 | Modal、Drawer、Popconfirm | 真实遮罩、焦点管理、确认/取消与关闭生命周期 |
+| 4 | Tag、Badge、Alert、Spin、Progress | 标签/计数、状态反馈、加载与任务进度 |
+| 5 | Pagination、Table | 数据分页、表头/行/列、选择/排序等常用数据浏览流程 |
+| 6 | Menu、Dropdown | 应用导航与操作菜单，复用已验证的窗口层行为 |
+| 7 | InputNumber、DatePicker、TimePicker、Form | 数值/日期/时间录入和表单验证组合 |
+
+这些为待实现顺序，不能据此提升 Gallery support status；现有 Button、Input 家族、布局、选择控件、Typography 等已实现能力继续保持可用。

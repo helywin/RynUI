@@ -57,7 +57,8 @@
 - Git commit message 必须使用英文 Conventional Commits，格式为 `type: description` 或 `type(scope): description`，例如 `refactor: isolate effect packing from Core`；不得只写无前缀的描述。
 - 一个提交只包含当前阶段相关文件，不混入用户的其他改动。
 - 提交前运行该阶段列出的测试和验收；未通过的任务不得勾选。
-- 不主动 push、创建 PR 或 archive change，除非用户明确要求。
+- 每完成一次 Git commit，立即安全 fetch/rebase、push，并核对远端 SHA；发生冲突或 push 失败时先处理或报告，不积累未推送提交。
+- 不主动创建 PR 或 archive change，除非用户明确要求。
 
 ## 最低验证
 
