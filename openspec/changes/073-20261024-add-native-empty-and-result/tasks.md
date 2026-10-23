@@ -14,8 +14,10 @@
 
 ## 4. 平台通用收口
 
-- [ ] 4.1 更新独立组件说明与 073 验收证据，运行 MSVC headless Debug/Release 完整 CTest、format check、doctor、strict validate 和 diff check；记录实际平台、命令、结果与未验证边界后本地提交。
+- [x] 4.1 更新独立组件说明与 073 验收证据，运行 MSVC headless Debug/Release 完整 CTest、format check、doctor、strict validate 和 diff check；记录实际平台、命令、结果与未验证边界后本地提交。
 
 本 change 的完成范围是平台通用静态展示。真实 GPU、Linux、系统 IME 和上游插画像素等价不属于本次验收，不作为未完成 checkbox，也不宣称已验证。仅本地提交，不 fetch/rebase/push、不创建 PR、不 archive。
 
 2026-10-24：1–3 已验收；Release 完整 142/142、Debug 073 专项/Theme algorithm/Switch features 5/5。4.1 因共享 Debug 的 Button/Popconfirm Theme 栈溢出及既有 Popconfirm vector copy 分配保持未勾选，详见 [验收与交接](evidence/platform-common-msvc-headless.md)，由父任务集成修复后收口。
+
+2026-10-24 后续收口：已合入 committed main c3190b0，保留共享 24 个和本 change 2 个 Theme IIFE；增加 Popconfirm 空集合 guard 并实际证明两种 20,000 次更新均为 0 dispatch / 0 sync allocations。Astra R1 两项 P2 先复现后修复，最终源代码 28bee9e 的 MSVC headless Debug/Release 完整测试均 148/148，五份 fresh golden 双基线旧字段保持，format/doctor/strict/diff 全通过，故 4.1 现勾选；详见 [集成收口](evidence/integration-c3190b0/closure.md)。原始成功与失败证据保持不变。
