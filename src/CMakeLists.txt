@@ -208,6 +208,8 @@ add_library(rynui_components STATIC
     component/selection_component.cpp
     component/slider_component.cpp
     component/tooltip_component.cpp
+    component/popconfirm_model.cpp
+    component/popconfirm_component.cpp
     component/search_component.cpp
     component/retained_surface_service.cpp
     component/component_scene.cpp

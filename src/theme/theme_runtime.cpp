@@ -305,6 +305,25 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
     append_if_changed(before.modal().colors, after.modal().colors, TokenIdentity::modal_colors, changed, count);
+    const auto& old_popconfirm = before.popconfirm();
+    const auto& new_popconfirm = after.popconfirm();
+    append_if_changed(old_popconfirm.colors(), new_popconfirm.colors(), TokenIdentity::popconfirm_colors, changed,
+                      count);
+    append_if_changed(old_popconfirm.metrics(), new_popconfirm.metrics(), TokenIdentity::popconfirm_metrics, changed,
+                      count);
+    append_if_changed(old_popconfirm.font_family, new_popconfirm.font_family, TokenIdentity::popconfirm_typography,
+                      changed, count);
+    append_if_changed(old_popconfirm.font_size, new_popconfirm.font_size, TokenIdentity::popconfirm_typography, changed,
+                      count);
+    append_if_changed(old_popconfirm.line_height, new_popconfirm.line_height, TokenIdentity::popconfirm_typography,
+                      changed, count);
+    append_if_changed(old_popconfirm.font_weight, new_popconfirm.font_weight, TokenIdentity::popconfirm_typography,
+                      changed, count);
+    append_if_changed(old_popconfirm.title_font_weight, new_popconfirm.title_font_weight,
+                      TokenIdentity::popconfirm_typography, changed, count);
+    append_if_changed(old_popconfirm.shadow, new_popconfirm.shadow, TokenIdentity::popconfirm_effects, changed, count);
+    append_if_changed(old_popconfirm.z_index_popup, new_popconfirm.z_index_popup, TokenIdentity::popconfirm_order,
+                      changed, count);
     append_if_changed(before.modal().metrics, after.modal().metrics, TokenIdentity::modal_metrics, changed, count);
     append_if_changed(before.modal().typography, after.modal().typography, TokenIdentity::modal_typography, changed,
                       count);
@@ -999,6 +1018,36 @@ const TabsThemeToken& ThemeScope::tabs_colors() const {
     return snapshot_->tabs();
 }
 
+const PopconfirmThemeToken& ThemeScope::popconfirm_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popconfirm_colors);
+    return snapshot_->popconfirm();
+}
+
+const PopconfirmThemeToken& ThemeScope::popconfirm_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popconfirm_metrics);
+    return snapshot_->popconfirm();
+}
+
+const PopconfirmThemeToken& ThemeScope::popconfirm_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popconfirm_typography);
+    return snapshot_->popconfirm();
+}
+
+const PopconfirmThemeToken& ThemeScope::popconfirm_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popconfirm_effects);
+    return snapshot_->popconfirm();
+}
+
+const PopconfirmThemeToken& ThemeScope::popconfirm_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::popconfirm_order);
+    return snapshot_->popconfirm();
+}
+
 const ModalThemeToken& ThemeScope::modal_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::modal_colors);
@@ -1222,6 +1271,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Modal.typography",
         "Modal.effects",
         "Modal.order",
+        "Popconfirm.colors",
+        "Popconfirm.metrics",
+        "Popconfirm.typography",
+        "Popconfirm.effects",
+        "Popconfirm.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1274,6 +1328,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
     case TokenIdentity::modal_colors:
+    case TokenIdentity::popconfirm_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1296,6 +1351,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
     case TokenIdentity::modal_effects:
+    case TokenIdentity::popconfirm_effects:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1318,6 +1374,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::card_typography:
     case TokenIdentity::tabs_typography:
     case TokenIdentity::modal_typography:
+    case TokenIdentity::popconfirm_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1333,6 +1390,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::card_metrics:
     case TokenIdentity::tabs_metrics:
     case TokenIdentity::modal_metrics:
+    case TokenIdentity::popconfirm_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:
@@ -1354,6 +1412,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_motion_enabled:
         return DirtyPhase::animation;
     case TokenIdentity::modal_order:
+    case TokenIdentity::popconfirm_order:
         return DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::count:
         return DirtyPhase::none;

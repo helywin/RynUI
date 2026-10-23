@@ -324,14 +324,24 @@ std::span<const SceneFragmentPaintEntry> ComponentHost::paint_traversal() {
         const auto& record = require_record(id);
         std::uint64_t stack = 0;
         bool child = false;
+        std::int64_t priority = *record.window_layer;
+        std::int64_t layer_depth = 0;
         for (auto ancestor = std::optional{id}; ancestor; ancestor = require_record(*ancestor).parent) {
-            if (const auto order = require_record(*ancestor).window_layer_stack) {
+            const auto& owner = require_record(*ancestor);
+            if (const auto order = owner.window_layer_stack) {
                 stack = *order;
                 child = *ancestor != id;
                 break;
             }
+            if (owner.window_layer) {
+                // Interactive child popups must cover their owner even when
+                // their independent token priority is lower (Select 1050
+                // inside Popconfirm 1060). Keep the Modal group base separate.
+                priority = std::max(priority, static_cast<std::int64_t>(*owner.window_layer) + layer_depth);
+                ++layer_depth;
+            }
         }
-        return std::tuple{stack ? modal_base : *record.window_layer, stack, child, *record.window_layer,
+        return std::tuple{stack ? static_cast<std::int64_t>(modal_base) : priority, stack, child, priority,
                           record.declaration_order};
     };
     std::sort(layers.begin(), layers.end(),

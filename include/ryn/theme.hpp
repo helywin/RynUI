@@ -966,6 +966,68 @@ struct ModalThemeConfig final {
     friend bool operator==(const ModalThemeConfig&, const ModalThemeConfig&) = default;
 };
 
+struct PopconfirmThemeToken final {
+    Color background;
+    Color title;
+    Color text;
+    Color warning;
+    float max_width{360};
+    float padding{12};
+    float message_gap{8};
+    float description_gap{4};
+    float button_gap{8};
+    float border_radius{8};
+    float arrow_size{8};
+    float gap{4};
+    float font_size{14};
+    float line_height{22};
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    std::uint32_t font_weight{400};
+    std::uint32_t title_font_weight{600};
+    ShadowList shadow;
+    std::int32_t z_index_popup{1060};
+
+    [[nodiscard]] std::array<Color, 4> colors() const {
+        return {background, title, text, warning};
+    }
+
+    [[nodiscard]] std::array<float, 8> metrics() const {
+        return {max_width, padding, message_gap, description_gap, button_gap, border_radius, arrow_size, gap};
+    }
+
+    friend bool operator==(const PopconfirmThemeToken&, const PopconfirmThemeToken&) = default;
+};
+
+struct PopconfirmTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> title;
+    std::optional<Color> text;
+    std::optional<Color> warning;
+    std::optional<LogicalLength> max_width;
+    std::optional<LogicalLength> padding;
+    std::optional<LogicalLength> message_gap;
+    std::optional<LogicalLength> description_gap;
+    std::optional<LogicalLength> button_gap;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> arrow_size;
+    std::optional<LogicalLength> gap;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> title_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const PopconfirmTokenOverride&, const PopconfirmTokenOverride&) = default;
+};
+
+struct PopconfirmThemeConfig final {
+    PopconfirmTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const PopconfirmThemeConfig&, const PopconfirmThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -983,6 +1045,7 @@ struct ThemeConfig final {
     CardThemeConfig card;
     TabsThemeConfig tabs;
     ModalThemeConfig modal;
+    PopconfirmThemeConfig popconfirm;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1527,6 +1590,7 @@ public:
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1543,8 +1607,8 @@ private:
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms);
+                  TabsThemeToken tabs, ModalThemeToken modal, PopconfirmThemeToken popconfirm,
+                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1562,6 +1626,7 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     ModalThemeToken modal_;
+    PopconfirmThemeToken popconfirm_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

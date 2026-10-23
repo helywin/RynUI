@@ -1775,6 +1775,80 @@ void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o
     }
 }
 
+PopconfirmThemeToken derive_popconfirm(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                       const ThemeAliasToken& alias) {
+    if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 60) {
+        throw std::invalid_argument("Popconfirm z-index exceeds the supported integer range");
+    }
+    PopconfirmThemeToken token;
+    token.background = alias.color_background_elevated;
+    token.title = alias.color_text;
+    token.text = alias.color_text;
+    token.warning = map.color_warning;
+    token.border_radius = map.border_radius_large;
+    token.message_gap = map.size_xs;
+    token.description_gap = map.size_xs / 2;
+    token.button_gap = map.size_xs;
+    token.font_family = seed.font_family;
+    token.font_size = map.font_size;
+    token.line_height = map.font_size * map.line_height;
+    token.shadow = alias.box_shadow_secondary;
+    token.z_index_popup = seed.z_index_popup_base + 60;
+    return token;
+}
+
+void apply_popconfirm_override(PopconfirmThemeToken& token, const PopconfirmTokenOverride& o) {
+    if (o.background) {
+        token.background = *o.background;
+    }
+    if (o.title) {
+        token.title = *o.title;
+    }
+    if (o.text) {
+        token.text = *o.text;
+    }
+    if (o.warning) {
+        token.warning = *o.warning;
+    }
+    if (o.shadow) {
+        token.shadow = *o.shadow;
+    }
+    if (o.font_family) {
+        token.font_family = *o.font_family;
+    }
+    token.max_width = fixed_length(o.max_width, token.max_width, "Popconfirm max_width is invalid", true);
+    token.padding = fixed_length(o.padding, token.padding, "Popconfirm padding is invalid");
+    token.message_gap = fixed_length(o.message_gap, token.message_gap, "Popconfirm message_gap is invalid");
+    token.description_gap =
+        fixed_length(o.description_gap, token.description_gap, "Popconfirm description_gap is invalid");
+    token.button_gap = fixed_length(o.button_gap, token.button_gap, "Popconfirm button_gap is invalid");
+    token.border_radius = fixed_length(o.border_radius, token.border_radius, "Popconfirm border_radius is invalid");
+    token.arrow_size = fixed_length(o.arrow_size, token.arrow_size, "Popconfirm arrow_size is invalid");
+    token.gap = fixed_length(o.gap, token.gap, "Popconfirm gap is invalid");
+    token.font_size = fixed_length(o.font_size, token.font_size, "Popconfirm font_size is invalid", true);
+    token.line_height = fixed_length(o.line_height, token.line_height, "Popconfirm line_height is invalid", true);
+    for (auto weight : {o.font_weight, o.title_font_weight}) {
+        if (weight && (*weight < 100 || *weight > 1000)) {
+            throw std::invalid_argument("Popconfirm font weight must be in [100, 1000]");
+        }
+    }
+    token.font_weight = o.font_weight.value_or(token.font_weight);
+    token.title_font_weight = o.title_font_weight.value_or(token.title_font_weight);
+    if (o.z_index_popup) {
+        if (*o.z_index_popup < 0) {
+            throw std::invalid_argument("Popconfirm z-index must be non-negative");
+        }
+        token.z_index_popup = *o.z_index_popup;
+    }
+    float extent{};
+    for (float value : token.metrics()) {
+        extent += value * 2;
+    }
+    if (!std::isfinite(extent + token.font_size + token.line_height)) {
+        throw std::invalid_argument("Popconfirm combined extents must be finite");
+    }
+}
+
 void apply_tooltip_override(TooltipThemeToken& token, const TooltipTokenOverride& o) {
     if (o.background) {
         token.background = *o.background;
@@ -2114,7 +2188,7 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
                                              const SelectThemeToken& select, const CardThemeToken& card,
                                              const TabsThemeToken& tabs, const ModalThemeToken& modal,
-                                             const detail::InputTokenSet& input,
+                                             const PopconfirmThemeToken& popconfirm, const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -2476,7 +2550,41 @@ void append_color(std::ostringstream& stream, Color color) {
         append_color(stream, shadow.color);
         stream << ']';
     }
-    stream << "],\"zIndexPopup\":" << modal.z_index_popup << "},\"text\":{\"color\":";
+    stream << "],\"zIndexPopup\":" << modal.z_index_popup << "},\"popconfirm\":{\"colors\":[";
+    bool first_popconfirm = true;
+    for (auto color : popconfirm.colors()) {
+        if (!first_popconfirm) {
+            stream << ',';
+        }
+        first_popconfirm = false;
+        append_color(stream, color);
+    }
+    stream << "],\"metrics\":[";
+    first_popconfirm = true;
+    for (auto value : popconfirm.metrics()) {
+        if (!first_popconfirm) {
+            stream << ',';
+        }
+        first_popconfirm = false;
+        stream << value;
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(popconfirm.font_family)
+           << ",\"fontSize\":" << popconfirm.font_size << ",\"lineHeight\":" << popconfirm.line_height
+           << ",\"fontWeight\":" << popconfirm.font_weight << ",\"titleFontWeight\":" << popconfirm.title_font_weight
+           << ",\"zIndexPopup\":" << popconfirm.z_index_popup << ",\"shadow\":[";
+    first_popconfirm = true;
+    for (std::size_t i = 0; i < popconfirm.shadow.size(); ++i) {
+        const auto& shadow = popconfirm.shadow[i];
+        if (!first_popconfirm) {
+            stream << ',';
+        }
+        first_popconfirm = false;
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << "]},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2687,7 +2795,8 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
                   const TypographyThemeToken& typography, const DividerThemeToken& divider,
                   const SliderThemeToken& slider, const TooltipThemeToken& tooltip, const SelectThemeToken& select,
                   const CardThemeToken& card, const TabsThemeToken& tabs, const ModalThemeToken& modal,
-                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
+                  const PopconfirmThemeToken& popconfirm, const detail::InputTokenSet& input,
+                  std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -2978,6 +3087,19 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     hash_shadow(hash, input.active_shadow);
     hash_shadow(hash, input.error_active_shadow);
     hash_shadow(hash, input.warning_active_shadow);
+    for (auto color : popconfirm.colors()) {
+        hash_color(hash, color);
+    }
+    for (auto value : popconfirm.metrics()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, popconfirm.font_family);
+    hash_float(hash, popconfirm.font_size);
+    hash_float(hash, popconfirm.line_height);
+    hash_integer(hash, popconfirm.font_weight);
+    hash_integer(hash, popconfirm.title_font_weight);
+    hash_integer(hash, popconfirm.z_index_popup);
+    hash_shadow(hash, popconfirm.shadow);
     for (const ThemeAlgorithm algorithm : algorithms) {
         hash_integer(hash, algorithm);
     }
@@ -3003,17 +3125,20 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
+                             PopconfirmThemeToken popconfirm, std::shared_ptr<const detail::InputTokenSet> input,
+                             std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
-    diagnostic_json_ =
-        serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                           slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
+      tabs_(std::move(tabs)), modal_(std::move(modal)), popconfirm_(std::move(popconfirm)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
+    identity_ =
+        snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
+                          slider_, tooltip_, select_, card_, tabs_, modal_, popconfirm_, *input_, algorithms_);
+    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
+                                          typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
+                                          popconfirm_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -3080,6 +3205,10 @@ const ModalThemeToken& ThemeSnapshot::modal() const noexcept {
     return modal_;
 }
 
+const PopconfirmThemeToken& ThemeSnapshot::popconfirm() const noexcept {
+    return popconfirm_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -3106,7 +3235,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.modal_ == right.modal_ && left.popconfirm_ == right.popconfirm_ && *left.input_ == *right.input_ &&
+           left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3358,10 +3488,26 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         modal = derive_modal(seed, map, alias, algorithms);
     }
     apply_modal_override(modal, config.modal.tokens);
+    PopconfirmThemeToken popconfirm;
+    const bool inherit_popconfirm = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                    !config.popconfirm.algorithm && config.popconfirm.seed == SeedTokenOverride{};
+    if (inherit_popconfirm) {
+        popconfirm = parent->popconfirm();
+    } else if (config.popconfirm.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.popconfirm.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        popconfirm =
+            derive_popconfirm(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+    } else {
+        popconfirm = derive_popconfirm(seed, map, alias);
+    }
+    apply_popconfirm_override(popconfirm, config.popconfirm.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal),
+                         std::move(tabs), std::move(modal), std::move(popconfirm),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 
