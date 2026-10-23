@@ -22,3 +22,17 @@
 - Pagination 根据 hidden 更新 root `out_of_flow`，可见性变化显式失效 parent Measure/Layout。隐藏时清零保留 root geometry 并短路内部 measure/place，外部 LayoutStyle 保留，显示时正常恢复。默认高度与显式 60dp 高度分别验证初始隐藏、显示→隐藏→显示、total/hideOnSinglePage 更新；Text/Pagination/Text 隐藏时只有一个 12dp gap，恢复时 Component/按钮身份和点击保持。
 - Table 以 stretch-height 放置 cell，使每个 cell 的实际 bounds 等于整行高度。回归包含同一行 Checkbox、单行 Text、三行 Text，断言全部 cell 的 y/height 与 row 一致，并检查实际 Checkbox/Text bounds 的中心与 row 中心一致。
 - 重新构建两项组件测试后，Debug 2/2（1.31s）、Release 2/2（0.37s）通过；日志 `out/066-review-layout-{debug,release}.log`。
+
+## 最终 focused 验证
+
+所有涉及的测试可执行文件均已按最终代码重新构建（`cmake --build --preset windows-msvc-headless-debug/release --parallel 4 --target …`）。随后执行：
+
+```text
+ctest --preset windows-msvc-headless-debug --parallel 4 -R '(table_|pagination|portable\.(select_component|tooltip_component|modal_component|modal_boundary|tabs_component|focus_order|focus_state|focus_lifecycle|interaction_registry|flex_features|layout_engine|theme_algorithm|prop|reactive_source_lifecycle|backend_boundaries)$)'
+ctest --preset windows-msvc-headless-release --parallel 4 -R '(table_|pagination|portable\.(select_component|tooltip_component|modal_component|modal_boundary|tabs_component|focus_order|focus_state|focus_lifecycle|interaction_registry|flex_features|layout_engine|theme_algorithm|prop|reactive_source_lifecycle|backend_boundaries)$)'
+```
+
+- Debug **19/19**（3.11s），Release **19/19**（2.51s）。包含 Table/Pagination 新回归、Table token/public API、Ant Design 6.6.5 全部 golden 主题兼容、相关 popup hosts、focus/registry、Flex/layout、reactive 生命周期及 portable backend boundary。没有重跑原先已通过的完整 119 项套件。
+- `python scripts/format-code.py --check --clang-format <clang-format-22>`：508 owned files，clang-format 22.1.3，0 failures。
+- `openspec doctor --json`：healthy；`openspec validate --all --strict --no-interactive`：62 passed，0 failed；`git diff --check` 通过。
+- 最终日志位于忽略的 `out/066-review-final-{debug,release}{,-build}.log`；每阶段 format/doctor/spec 日志亦位于该 worktree 的 out。源码未改 Theme、CMake、CPU scene v3、GPU ABI v2、全局 Gallery 或父工作区。
