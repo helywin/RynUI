@@ -1,5 +1,6 @@
 #include "component/modal_component.hpp"
 #include "component/modal_model.hpp"
+#include "component/drawer_model.hpp"
 #include "component/button_component.hpp"
 #include "component/input_component.hpp"
 #include "runtime/prop_connection.hpp"
@@ -16,6 +17,7 @@ struct ModalState final {
     explicit ModalState(ModalOptions options) : model(options) {}
 
     ModalModel model;
+    std::optional<DrawerGeometry> drawer;
     ModalSnapshot snapshot;
     runtime::NodeId node;
     runtime::ComponentId default_footer;
@@ -63,6 +65,28 @@ struct ModalState final {
     std::optional<input::InteractionId> trigger;
 };
 
+struct PanelThemeView final {
+    const ModalColorToken& colors;
+    ModalMetricToken metrics;
+    const ModalTypographyToken& typography;
+    const ModalEffectToken& effects;
+    std::int32_t z_index_popup;
+};
+
+PanelThemeView panel_theme(const ThemeSnapshot& theme, bool drawer) {
+    if (drawer) {
+        const auto& token = theme.drawer();
+        return {token.colors,
+                {token.metrics.padding_inline, token.metrics.padding_block, 0, 0, 0, 0, token.metrics.close_size,
+                 token.metrics.close_icon_size, 0, 0, 0},
+                token.typography,
+                token.effects,
+                token.z_index_popup};
+    }
+    const auto& token = theme.modal();
+    return {token.colors, token.metrics, token.typography, token.effects, token.z_index_popup};
+}
+
 runtime::SemanticForeground foreground(Color color) {
     return {color.red(), color.green(), color.blue(), color.alpha()};
 }
@@ -95,6 +119,20 @@ bool restorable(WindowComponentServices& services, input::InteractionId id,
     const auto* record = services.interactions().find(id);
     return record && record->eligible && record->focusable && services.components().branch_active(record->component) &&
            (!boundary || descendant(services, record->component, *boundary));
+}
+
+void settle_scroll_metrics(WindowComponentServices& services, ModalState& state) {
+    for (const auto& text : services.text().mounted_texts()) {
+        if (descendant(services, text.component, state.snapshot.body)) {
+            const auto scale =
+                services.text().scene_service().text_state(text.scene).shaped().default_metrics.display_scale;
+            state.scale = std::isfinite(scale) && scale > 0 ? scale : 1;
+            break;
+        }
+    }
+    state.snapshot.maximum_scroll =
+        std::ceil(std::max(0.0F, state.content_height - state.body_height) * state.scale) / state.scale;
+    state.snapshot.scroll = std::clamp(state.snapshot.scroll, 0.0F, state.snapshot.maximum_scroll);
 }
 
 runtime::Rect bounds(WindowComponentServices& services, runtime::ComponentId id) {
@@ -186,7 +224,7 @@ void ModalComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     if (!s || !services_->components().scope(id).active()) {
         return;
     }
-    const auto& token = services_->components().theme_scope(id)->snapshot().modal();
+    const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
     const auto& fonts = token.typography;
     s->text_color.set(foreground(token.colors.text));
     s->title_color.set(foreground(token.colors.title));
@@ -411,6 +449,54 @@ void ModalComponentHost::request_cancel(runtime::ComponentId id, ModalCancelReas
 }
 
 void ModalComponentHost::mount(const ModalProps& props, const ModalContent& content, const ModalSlots& slots) {
+    mount_panel(props, content, slots, nullptr);
+}
+
+void ModalComponentHost::mount(const DrawerProps& props, const DrawerContent& content, const DrawerSlots& slots) {
+    validate_drawer_geometry({read_prop(props.placement_), read_prop(props.width_), read_prop(props.height_)});
+    ModalProps panel;
+    panel.open(props.open_)
+        .title(props.title_)
+        .closable(props.closable_)
+        .keyboard(props.keyboard_)
+        .footer(ModalFooterMode::None)
+        .restoreFocusAfterClose(props.restore_focus_)
+        .mask(bind([mask = props.mask_] {
+            const auto value = read_prop(mask);
+            return ModalMask{value.enabled, value.closable};
+        }))
+        .afterClose(props.after_close_)
+        .afterOpenChange(props.after_open_change_)
+        .onCancel([callback = props.on_cancel_](ModalCancelReason reason) {
+            if (!callback) {
+                return;
+            }
+            switch (reason) {
+            case ModalCancelReason::CloseButton:
+                callback(DrawerCancelReason::CloseButton);
+                break;
+            case ModalCancelReason::Mask:
+                callback(DrawerCancelReason::Mask);
+                break;
+            case ModalCancelReason::Escape:
+                callback(DrawerCancelReason::Escape);
+                break;
+            case ModalCancelReason::CancelButton:
+                break;
+            }
+        });
+    ModalSlots regions;
+    if (slots.title) {
+        regions.title = ModalTitle{SlotContentAccess::function(*slots.title)};
+    }
+    if (slots.footer) {
+        regions.footer = ModalFooter{SlotContentAccess::function(*slots.footer)};
+    }
+    mount_panel(panel, ModalContent{SlotContentAccess::function(content)}, regions, &props);
+}
+
+void ModalComponentHost::mount_panel(const ModalProps& props, const ModalContent& content, const ModalSlots& slots,
+                                     const DrawerProps* drawer) {
     ModalOptions options{read_prop(props.open_), read_prop(props.closable_),        read_prop(props.keyboard_),
                          read_prop(props.mask_), read_prop(props.confirm_loading_), read_prop(props.footer_),
                          read_prop(props.width_)};
@@ -419,6 +505,10 @@ void ModalComponentHost::mount(const ModalProps& props, const ModalContent& cont
     auto& services = *services_;
     const auto id = build.mount_component<ModalState>(options);
     auto& s = build.state<ModalState>(id);
+    if (drawer) {
+        s.drawer = DrawerGeometry{read_prop(drawer->placement_), read_prop(drawer->width_), read_prop(drawer->height_)};
+        s.snapshot.drawer = true;
+    }
     s.node = build.root(id);
     s.title_slot = slots.title.has_value();
     s.footer_slot = slots.footer.has_value();
@@ -498,9 +588,10 @@ void ModalComponentHost::mount(const ModalProps& props, const ModalContent& cont
                     services.interactions().set_focus_handlers(s.dialog_hit, std::move(focus));
                     const auto dialog_fragment = overlay.register_scene_fragment(
                         s.snapshot.dialog, runtime::SceneFragmentPlacement::before_children);
-                    const std::array<graphics::QuadInstance, 3> visuals{initial, initial, initial};
-                    s.dialog_surface = services.surfaces().create(s.snapshot.dialog, dialog_node, dialog_fragment,
-                                                                  s.dialog_hit, visuals, no_effect);
+                    const std::array<graphics::QuadInstance, 5> visuals{initial, initial, initial, initial, initial};
+                    s.dialog_surface =
+                        services.surfaces().create(s.snapshot.dialog, dialog_node, dialog_fragment, s.dialog_hit,
+                                                   std::span{visuals}.first(s.drawer ? 5 : 3), no_effect);
                     overlay.on_resource_cleanup(s.snapshot.dialog, [&services, node = dialog_node, hit = s.dialog_hit,
                                                                     surface = s.dialog_surface] {
                         services.pointer().cancel_interaction(hit);
@@ -577,6 +668,9 @@ void ModalComponentHost::mount(const ModalProps& props, const ModalContent& cont
                                     });
                                     footer.mount_slot(
                                         s.default_footer, Content{[&] {
+                                            if (s.drawer) {
+                                                return;
+                                            }
                                             Button(ButtonProps{}.onClick([this, id] {
                                                 request_cancel(id, ModalCancelReason::CancelButton);
                                             }),
@@ -699,21 +793,137 @@ void ModalComponentHost::mount(const ModalProps& props, const ModalContent& cont
         }
     });
     const auto theme = build.theme_scope();
-    const std::array accessors{&theme_runtime::ThemeScope::modal_colors, &theme_runtime::ThemeScope::modal_metrics,
-                               &theme_runtime::ThemeScope::modal_typography, &theme_runtime::ThemeScope::modal_effects,
-                               &theme_runtime::ThemeScope::modal_order};
-    for (std::size_t index = 0; index < accessors.size(); ++index) {
-        s.subscriptions[index] = theme->capture(
-            [this, id, geometry = index == 1 || index == 2](theme_runtime::DirtyPhase) { refresh(id, geometry); },
-            [theme, accessor = accessors[index]] { static_cast<void>((theme.get()->*accessor)()); });
+    const auto subscribe = [&](const auto& accessors) {
+        for (std::size_t index = 0; index < accessors.size(); ++index) {
+            s.subscriptions[index] = theme->capture(
+                [this, id, geometry = index == 1 || index == 2](theme_runtime::DirtyPhase) { refresh(id, geometry); },
+                [theme, accessor = accessors[index]] { static_cast<void>((theme.get()->*accessor)()); });
+        }
+    };
+    if (drawer) {
+        const auto geometry = [&]<typename T>(const Prop<T>& prop, auto update) {
+            connect_prop(scope, prop, [this, id, update](T value) {
+                if (auto* state = services_->components().state<ModalState>(id)) {
+                    auto next = *state->drawer;
+                    update(next, value);
+                    validate_drawer_geometry(next);
+                    if (next != *state->drawer) {
+                        state->drawer = next;
+                        refresh(id, true);
+                    }
+                }
+            });
+        };
+        geometry(drawer->placement_, [](auto& next, DrawerPlacement value) { next.placement = value; });
+        geometry(drawer->width_, [](auto& next, float value) { next.width = value; });
+        geometry(drawer->height_, [](auto& next, float value) { next.height = value; });
+        subscribe(std::array{&theme_runtime::ThemeScope::drawer_colors, &theme_runtime::ThemeScope::drawer_metrics,
+                             &theme_runtime::ThemeScope::drawer_typography, &theme_runtime::ThemeScope::drawer_effects,
+                             &theme_runtime::ThemeScope::drawer_order});
+    } else {
+        subscribe(std::array{&theme_runtime::ThemeScope::modal_colors, &theme_runtime::ThemeScope::modal_metrics,
+                             &theme_runtime::ThemeScope::modal_typography, &theme_runtime::ThemeScope::modal_effects,
+                             &theme_runtime::ThemeScope::modal_order});
     }
     s.ready = true;
     refresh(id, true);
 }
 
+runtime::Size ModalComponentHost::measure_drawer(runtime::ComponentId id, layout::LayoutEngine& engine,
+                                                 layout::Constraints limits) {
+    auto& s = *services_->components().state<ModalState>(id);
+    const auto& m = services_->components().theme_scope(id)->snapshot().drawer().metrics;
+    const float width = limits.max_width;
+    const float height = limits.max_height;
+    const float infinity = std::numeric_limits<float>::infinity();
+    const auto node = [&](runtime::ComponentId component) {
+        return services_->components().root(component);
+    };
+    const float header_x = std::min(m.header_padding_inline, width / 2);
+    const float reserve = s.model.options().closable ? m.close_size + m.close_gap : 0;
+    float title_height{};
+    if (services_->components().branch_active(s.snapshot.title)) {
+        title_height =
+            engine
+                .measure_child(node(s.snapshot.title), {0, std::max(0.0F, width - header_x * 2 - reserve), 0, infinity})
+                .height;
+        if (s.model.options().closable) {
+            const float size = std::min(m.close_size, std::min(width, height));
+            static_cast<void>(engine.measure_child(node(s.snapshot.close), layout::Constraints::fixed(size, size)));
+            title_height = std::max(title_height, size);
+        }
+        s.header_height = std::min(height, title_height + m.header_padding_block * 2 + m.border_width);
+    } else {
+        s.header_height = 0;
+    }
+    s.footer_height = 0;
+    if (s.footer_slot) {
+        const float inner_width = std::max(0.0F, width - m.footer_padding_inline * 2);
+        const float natural =
+            engine.measure_child(node(s.snapshot.footer), {inner_width, inner_width, 0, infinity}).height;
+        s.footer_height =
+            std::min(std::max(0.0F, height - s.header_height), natural + m.footer_padding_block * 2 + m.border_width);
+    }
+    s.padding_x = std::min(m.padding_inline, width / 2);
+    const float remaining = std::max(0.0F, height - s.header_height - s.footer_height);
+    s.padding_y = std::min(m.padding_block, remaining / 2);
+    const float inner_width = std::max(0.0F, width - s.padding_x * 2);
+    const float content_height =
+        engine.measure_child(node(s.snapshot.body), {inner_width, inner_width, 0, infinity}).height;
+    s.reveal = s.reveal || s.content_height != content_height;
+    s.content_height = content_height;
+    s.body_height = std::max(0.0F, remaining - s.padding_y * 2);
+    static_cast<void>(
+        engine.measure_child(node(s.snapshot.body_viewport), layout::Constraints::fixed(inner_width, s.body_height)));
+    settle_scroll_metrics(*services_, s);
+    return limits.constrain({width, height});
+}
+
+void ModalComponentHost::place_drawer(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect rect) {
+    auto& s = *services_->components().state<ModalState>(id);
+    const auto& m = services_->components().theme_scope(id)->snapshot().drawer().metrics;
+    const auto node = [&](runtime::ComponentId component) {
+        return services_->components().root(component);
+    };
+    s.header_bounds = {rect.x, rect.y, rect.width, s.header_height};
+    s.footer_bounds = {rect.x, rect.y + rect.height - s.footer_height, rect.width, s.footer_height};
+    const float header_x = std::min(m.header_padding_inline, rect.width / 2);
+    const float header_y = std::min(m.header_padding_block, std::max(0.0F, s.header_height - m.border_width) / 2);
+    const float title_height = std::max(0.0F, s.header_height - m.border_width - header_y * 2);
+    const float reserve = s.model.options().closable ? m.close_size + m.close_gap : 0;
+    if (services_->components().branch_active(s.snapshot.title)) {
+        const float start = std::min(rect.width - header_x, header_x + reserve);
+        engine.place_child(node(s.snapshot.title), {rect.x + start, rect.y + header_y,
+                                                    std::max(0.0F, rect.width - start - header_x), title_height});
+    }
+    if (s.model.options().closable) {
+        const float size = std::min(m.close_size, std::min(rect.width, s.header_height));
+        const float top =
+            std::clamp(header_y + (title_height - size) / 2, 0.0F, std::max(0.0F, s.header_height - size));
+        engine.place_child(node(s.snapshot.close),
+                           {rect.x + std::min(header_x, rect.width - size), rect.y + top, size, size});
+    }
+    s.snapshot.body_bounds = {rect.x + s.padding_x, rect.y + s.header_height + s.padding_y,
+                              std::max(0.0F, rect.width - s.padding_x * 2), s.body_height};
+    engine.place_child(node(s.snapshot.body_viewport), s.snapshot.body_bounds);
+    engine.place_child(node(s.snapshot.body), {s.snapshot.body_bounds.x, s.snapshot.body_bounds.y,
+                                               s.snapshot.body_bounds.width, s.content_height});
+    if (s.footer_slot) {
+        const float padding_x = std::min(m.footer_padding_inline, rect.width / 2);
+        const float border = std::min(m.border_width, s.footer_height);
+        const float padding_y = std::min(m.footer_padding_block, (s.footer_height - border) / 2);
+        engine.place_child(node(s.snapshot.footer), {rect.x + padding_x, s.footer_bounds.y + border + padding_y,
+                                                     std::max(0.0F, rect.width - padding_x * 2),
+                                                     std::max(0.0F, s.footer_height - border - padding_y * 2)});
+    }
+}
+
 runtime::Size ModalComponentHost::measure(runtime::ComponentId id, layout::LayoutEngine& engine,
                                           layout::Constraints limits) {
     auto& s = *services_->components().state<ModalState>(id);
+    if (s.drawer) {
+        return measure_drawer(id, engine, limits);
+    }
     const auto& metrics = services_->components().theme_scope(id)->snapshot().modal().metrics;
     const float width = limits.max_width;
     s.padding_x = std::min(metrics.padding_inline, width / 2);
@@ -768,22 +978,17 @@ runtime::Size ModalComponentHost::measure(runtime::ComponentId id, layout::Layou
     s.body_height = std::min(s.content_height, remaining);
     static_cast<void>(
         engine.measure_child(node(s.snapshot.body_viewport), layout::Constraints::fixed(inner_width, s.body_height)));
-    for (const auto& text : services_->text().mounted_texts()) {
-        if (descendant(*services_, text.component, s.snapshot.body)) {
-            const auto scale =
-                services_->text().scene_service().text_state(text.scene).shaped().default_metrics.display_scale;
-            s.scale = std::isfinite(scale) && scale > 0 ? scale : 1;
-            break;
-        }
-    }
-    s.snapshot.maximum_scroll = std::ceil(std::max(0.0F, s.content_height - s.body_height) * s.scale) / s.scale;
-    s.snapshot.scroll = std::clamp(s.snapshot.scroll, 0.0F, s.snapshot.maximum_scroll);
+    settle_scroll_metrics(*services_, s);
     return limits.constrain(
         {width, s.padding_y * 2 + s.header_height + s.header_gap + s.body_height + s.footer_gap + s.footer_height});
 }
 
 void ModalComponentHost::place(runtime::ComponentId id, layout::LayoutEngine& engine, runtime::Rect rect) {
     auto& s = *services_->components().state<ModalState>(id);
+    if (s.drawer) {
+        place_drawer(id, engine, rect);
+        return;
+    }
     const auto& metrics = services_->components().theme_scope(id)->snapshot().modal().metrics;
     const auto node = [&](runtime::ComponentId component) {
         return services_->components().root(component);
@@ -924,7 +1129,7 @@ void ModalComponentHost::position_window_layers(runtime::Size, runtime::Rect cli
         if (!s || !s->model.visible()) {
             continue;
         }
-        const auto& token = services_->components().theme_scope(id)->snapshot().modal();
+        const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
         const auto overlay = services_->components().root(s->snapshot.overlay);
         const auto dialog = services_->components().root(s->snapshot.dialog);
         auto& engine = services_->layout();
@@ -937,12 +1142,19 @@ void ModalComponentHost::position_window_layers(runtime::Size, runtime::Rect cli
             const float maximum_height = std::max(0.0F, clip.height - margin_y * 2);
             static_cast<void>(engine.measure_child(overlay, layout::Constraints::fixed(clip.width, clip.height)));
             engine.place_child(overlay, clip);
-            const auto measured = engine.measure_child(dialog, {width, width, 0, maximum_height});
-            const float top = s->centered ? (clip.height - measured.height) / 2
-                                          : std::clamp(token.metrics.top_offset, margin_y,
-                                                       std::max(margin_y, clip.height - margin_y - measured.height));
-            s->snapshot.bounds = {clip.x + (clip.width - measured.width) / 2, clip.y + top, measured.width,
-                                  measured.height};
+            if (s->drawer) {
+                s->snapshot.bounds = drawer_bounds(*s->drawer, clip);
+                static_cast<void>(engine.measure_child(
+                    dialog, layout::Constraints::fixed(s->snapshot.bounds.width, s->snapshot.bounds.height)));
+            } else {
+                const auto measured = engine.measure_child(dialog, {width, width, 0, maximum_height});
+                const float top = s->centered
+                                      ? (clip.height - measured.height) / 2
+                                      : std::clamp(token.metrics.top_offset, margin_y,
+                                                   std::max(margin_y, clip.height - margin_y - measured.height));
+                s->snapshot.bounds = {clip.x + (clip.width - measured.width) / 2, clip.y + top, measured.width,
+                                      measured.height};
+            }
             engine.place_child(dialog, s->snapshot.bounds);
             s->needs_layout = false;
             s->reveal = s->reveal || s->layout_clip != clip;
@@ -960,7 +1172,7 @@ void ModalComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
         if (!s || !s->model.visible()) {
             continue;
         }
-        const auto& token = services_->components().theme_scope(id)->snapshot().modal();
+        const auto token = panel_theme(services_->components().theme_scope(id)->snapshot(), s->drawer.has_value());
         const auto shield =
             quad(window, s->model.options().mask.enabled ? token.colors.mask : Color::rgba8(0, 0, 0, 0));
         static_cast<void>(services_->surfaces().update_surface(s->shield_surface, std::span{&shield, 1}));
@@ -969,7 +1181,19 @@ void ModalComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
         const std::array visuals{quad(rect, token.colors.background, radius),
                                  quad(s->header_bounds, token.colors.header_background),
                                  quad(s->footer_bounds, token.colors.footer_background)};
-        static_cast<void>(services_->surfaces().update_surface(s->dialog_surface, visuals));
+        if (s->drawer) {
+            const auto& drawer = services_->components().theme_scope(id)->snapshot().drawer();
+            const float border = std::min(drawer.metrics.border_width, rect.height);
+            const std::array drawer_visuals{
+                visuals[0], visuals[1], visuals[2],
+                quad({rect.x, s->header_bounds.y + s->header_bounds.height - border, rect.width,
+                      s->header_height > 0 ? border : 0},
+                     drawer.border),
+                quad({rect.x, s->footer_bounds.y, rect.width, s->footer_height > 0 ? border : 0}, drawer.border)};
+            static_cast<void>(services_->surfaces().update_surface(s->dialog_surface, drawer_visuals));
+        } else {
+            static_cast<void>(services_->surfaces().update_surface(s->dialog_surface, visuals));
+        }
         component::RetainedSurfaceEffects effects;
         effects.shape = {rect, std::min(token.effects.focus_radius, std::min(rect.width, rect.height) / 2)};
         effects.shadow_shape = graphics::LogicalRoundedRect{rect, radius};
@@ -1028,6 +1252,13 @@ void ModalComponentHost::on_window_active(bool active) {
 } // namespace ryn::detail
 
 namespace ryn {
+void Drawer(DrawerProps props, DrawerContent content, DrawerSlots slots) {
+    if (!detail::active_modals) {
+        throw std::logic_error("Drawer requires window component services");
+    }
+    detail::active_modals->mount(props, content, slots);
+}
+
 void Modal(ModalProps props, ModalContent content, ModalSlots slots) {
     if (!detail::active_modals) {
         throw std::logic_error("Modal requires window component services");

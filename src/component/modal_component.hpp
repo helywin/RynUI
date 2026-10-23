@@ -1,6 +1,7 @@
 #pragma once
 #include "component/window_component_services.hpp"
 #include <ryn/modal.hpp>
+#include <ryn/drawer.hpp>
 
 namespace ryn::detail {
 struct ModalSnapshot final {
@@ -19,6 +20,7 @@ struct ModalSnapshot final {
     float maximum_scroll{};
     bool visible{};
     bool topmost{};
+    bool drawer{};
 };
 
 class ModalComponentHost final : public WindowComponentParticipant {
@@ -26,6 +28,7 @@ public:
     explicit ModalComponentHost(WindowComponentServices&);
     ~ModalComponentHost();
     void mount(const ModalProps&, const ModalContent&, const ModalSlots&);
+    void mount(const DrawerProps&, const DrawerContent&, const DrawerSlots&);
 
     [[nodiscard]] std::span<const runtime::ComponentId> mounted() const {
         return mounted_;
@@ -64,6 +67,9 @@ private:
     };
 
     void refresh(runtime::ComponentId, bool geometry);
+    void mount_panel(const ModalProps&, const ModalContent&, const ModalSlots&, const DrawerProps*);
+    [[nodiscard]] runtime::Size measure_drawer(runtime::ComponentId, layout::LayoutEngine&, layout::Constraints);
+    void place_drawer(runtime::ComponentId, layout::LayoutEngine&, runtime::Rect);
     void reconcile();
     void request_ok(runtime::ComponentId);
     void request_cancel(runtime::ComponentId, ModalCancelReason);
