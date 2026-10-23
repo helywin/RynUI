@@ -31,6 +31,7 @@ struct TooltipState final {
     bool hovered{};
     bool observed{};
     bool dismissed{};
+    bool boundary_suppressed{};
     bool arrow{true};
     bool point_at_center{};
     bool adjust{true};
@@ -218,8 +219,8 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
     if (!state) {
         return;
     }
-    const bool visible = state->open && !state->disabled && has_title(*state) && window_active_ &&
-                         services_->interactions().component_active(id);
+    const bool visible = state->open && !state->boundary_suppressed && !state->disabled && has_title(*state) &&
+                         window_active_ && services_->interactions().component_active(id);
     const bool closed = state->geometry.visible && !visible;
     if (state->geometry.visible != visible) {
         state->geometry.visible = visible;
@@ -258,7 +259,11 @@ void TooltipComponentHost::request_open(runtime::ComponentId id, bool open) {
         return;
     }
     state->deadline.reset();
+    if (open) {
+        state->boundary_suppressed = false;
+    }
     if (state->requested == open) {
+        synchronize_visibility(id);
         return;
     }
     const auto previous_request = state->requested;
@@ -286,6 +291,7 @@ void TooltipComponentHost::observe(runtime::ComponentId id, animation::Animation
         state->hovered = state->observed = state->action_open = false;
         state->deadline.reset();
         state->context_anchor.reset();
+        state->boundary_suppressed = true;
         if (requested) {
             request_open(id, false);
         } else {
@@ -614,6 +620,9 @@ void TooltipComponentHost::mount(const TooltipProps& props, const TooltipTrigger
             if (auto* state = services_->components().state<TooltipState>(id)) {
                 state->open = value;
                 state->requested = value;
+                if (services_->interactions().component_active(id)) {
+                    state->boundary_suppressed = false;
+                }
                 synchronize_visibility(id);
             }
         });

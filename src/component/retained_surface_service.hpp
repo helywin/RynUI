@@ -136,6 +136,7 @@ private:
         runtime::SceneFragmentId fragment;
         graphics::QuadInstanceRange range;
         std::vector<graphics::RoundedEffectId> effects;
+        std::vector<graphics::RoundedEffectId> clipped_fill_ids;
     };
 
     struct ContentSlot final {

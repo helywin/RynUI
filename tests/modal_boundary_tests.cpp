@@ -393,6 +393,42 @@ void delayed_tip_does_not_survive_boundary() {
     sync(f);
     check(!f.services.tooltip().snapshot(tip).visible, "stale hover reopened Tooltip after boundary");
 }
+
+void controlled_tip_refusal_across_boundary() {
+    Signal<bool> open{true};
+    runtime::ComponentId boundary;
+    int requests{};
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Tooltip(TooltipProps{}
+                    .title(String{u8"Background controlled"})
+                    .open(open)
+                    .trigger(TooltipTriggerMode::Manual)
+                    .onOpenChange([&](bool) { ++requests; }),
+                TooltipTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Tip"); }); }});
+        boundary = group(f, Content{[] { Input(InputProps{}); }});
+    }});
+    sync(f);
+    const auto tip = f.services.tooltip().mounted()[0];
+    key(f, Key::escape);
+    check(requests == 1 && f.services.tooltip().snapshot(tip).visible, "controlled refusal fixture failed");
+    for (int cycle = 0; cycle < 2; ++cycle) {
+        f.services.set_input_boundary(boundary);
+        sync(f);
+        check(!f.services.tooltip().snapshot(tip).visible && requests == 1,
+              "deduplicated Tooltip close skipped boundary hiding");
+        check(!f.services.tooltip().on_keyboard_input({Key::escape, KeyAction::down}),
+              "suppressed background Tooltip consumed Modal Escape");
+        f.services.set_input_boundary({});
+        sync(f);
+        check(!f.services.tooltip().snapshot(tip).visible && !f.services.next_frame_deadline(),
+              "old controlled Tooltip revived after boundary removal");
+    }
+    open.set(false);
+    open.set(true);
+    sync(f);
+    check(f.services.tooltip().snapshot(tip).visible, "explicit controlled Tooltip reopen stayed suppressed");
+}
 } // namespace
 
 int main() {
@@ -406,6 +442,7 @@ int main() {
         capture_and_reentrant_boundaries();
         blur_reentry_and_keyboard_cleanup();
         delayed_tip_does_not_survive_boundary();
+        controlled_tip_refusal_across_boundary();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

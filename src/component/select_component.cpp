@@ -774,7 +774,7 @@ void SelectComponentHost::position_window_layers(runtime::Size, runtime::Rect cl
             continue;
         }
         if (!services_->interactions().component_active(id)) {
-            refresh(id);
+            refresh(id, false);
         }
         if (!s->visible) {
             continue;

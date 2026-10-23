@@ -3,6 +3,7 @@
 #include "component/select_component.hpp"
 #include "component/tooltip_component.hpp"
 #include "component/tabs_component.hpp"
+#include "component/slider_component.hpp"
 #include "support/input_fixture.hpp"
 #include <cmath>
 #include <iostream>
@@ -847,6 +848,65 @@ void body_controls_clip_and_background_hover() {
     f.services.dispose();
     check(f.services.rounded_effects().live_count() == 0, "clipped surface fills leaked after disposal");
 }
+
+void slider_dots_clip_with_body() {
+    Fixture f;
+    f.services.mount(Content{[] {
+        Modal(ModalProps{}.open(true).title(u8"Clipped dots"), ModalContent{[] {
+                  Slider(
+                      SliderProps{}.dots(true).limits(SliderLimits{0, 100, 25}).layout(LayoutStyle{}.width(dp(240))));
+                  for (int row = 0; row < 15; ++row) {
+                      Text(u8"Retained scroll content");
+                  }
+              }});
+    }});
+    sync(f, 700, 300);
+    const auto id = f.services.modal().mounted()[0];
+    const auto modal = f.services.modal().snapshot(id);
+    const auto slider = f.services.slider().mounted()[0];
+    const auto dot_size = f.services.components().theme_scope(slider.component)->snapshot().slider().metrics.dot_size;
+    const auto verify_dots = [&] {
+        std::size_t dots{};
+        const auto& instances = f.services.surfaces().instances();
+        for (std::uint32_t index = 0; index < instances.size(); ++index) {
+            const auto& visual = instances.at(index);
+            if (visual.bounds[2] != dot_size || visual.bounds[3] != dot_size || visual.corner_radius != dot_size / 2 ||
+                visual.opacity == 0) {
+                continue;
+            }
+            ++dots;
+            for (const auto command : f.services.scene_composer().ordered_scene().commands()) {
+                check(command.kind != graphics::SceneDrawKind::quad || index < command.first_instance ||
+                          index >= command.first_instance + command.instance_count,
+                      "Slider dot emitted an unclipped content quad inside Modal");
+            }
+        }
+        check(dots >= 5, "Slider clipping fixture had no dots");
+    };
+    verify_dots();
+    check(f.inputs.dispatch(ScrollInputEvent{0, -1, modal.body_bounds.x + 4, modal.body_bounds.y + 4}),
+          "Slider body scroll failed");
+    sync(f, 700, 300);
+    verify_dots();
+    f.services.dispose();
+    check(f.services.rounded_effects().live_count() == 0, "clipped Slider dot effects leaked");
+}
+
+void hidden_select_does_not_request_frames() {
+    Signal<bool> open{false};
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Modal(ModalProps{}.open(open), ModalContent{[] { Select(SelectProps{}.options({{1, u8"Retained option"}})); }});
+    }});
+    for (int cycle = 0; cycle < 2; ++cycle) {
+        open.set(cycle == 0);
+        sync(f);
+    }
+    static_cast<void>(f.frames.consume_request());
+    sync(f);
+    check(!f.frames.pending() && !f.services.next_frame_deadline(),
+          "hidden Modal Select requested an idle geometry frame");
+}
 } // namespace
 
 int main() {
@@ -868,6 +928,8 @@ int main() {
         layer_base_and_notification_retirement();
         window_layer_escapes_document_clip();
         body_controls_clip_and_background_hover();
+        slider_dots_clip_with_body();
+        hidden_select_does_not_request_frames();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

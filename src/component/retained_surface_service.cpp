@@ -198,8 +198,14 @@ void RetainedSurfaceService::publish_content(ContentRecord& record) {
     // The fragment belongs to the caller, so the command list is replaced rather
     // than merged; the caller keeps sole ownership of that fragment's contents.
     std::vector<graphics::SceneDrawCommand> commands;
-    if (record.range.count) {
+    if (record.range.count && record.clipped_fill_ids.empty()) {
         commands.push_back(fill);
+    }
+    for (const auto effect : record.clipped_fill_ids) {
+        if (const auto packed = effect_scene_.store().packed_index(effect)) {
+            commands.push_back(
+                {graphics::SceneDrawKind::rounded_effect, *packed, 1, graphics::invalid_glyph_atlas_page});
+        }
     }
     for (const auto effect : record.effects) {
         if (const auto packed = effect_scene_.store().packed_index(effect)) {
@@ -313,6 +319,9 @@ bool RetainedSurfaceService::destroy_content_range(RetainedSurfaceId id) {
     const auto removed = slot.record->range;
     static_cast<void>(composer_->remove_fragment(slot.record->fragment));
     for (const auto effect : slot.record->effects) {
+        static_cast<void>(effect_scene_.store().remove(effect));
+    }
+    for (const auto effect : slot.record->clipped_fill_ids) {
         static_cast<void>(effect_scene_.store().remove(effect));
     }
     static_cast<void>(instances_.replace(removed, {}));
@@ -518,6 +527,60 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
                 {{visual.bounds[0], visual.bounds[1], visual.bounds[2], visual.bounds[3]}, radius},
                 {true, true, true, true}, Color{visual.color[0], visual.color[1], visual.color[2], visual.color[3]},
                 visual.opacity, {visual.translation[0], visual.translation[1]}, clipping);
+            for (std::size_t corner = 0; corner < fills.size(); ++corner) {
+                const auto position = static_cast<std::size_t>(index) * 4 + corner;
+                if (position == record.clipped_fill_ids.size()) {
+                    record.clipped_fill_ids.push_back(effect_scene_.store().add(fills[corner]));
+                    topology_changed = true;
+                } else {
+                    const auto id = record.clipped_fill_ids[position];
+                    diagnostics_.effect_geometry_updates +=
+                        effect_scene_.store().update_geometry(id, fills[corner].geometry);
+                    diagnostics_.effect_material_updates +=
+                        effect_scene_.store().update_material(id, fills[corner].material);
+                }
+            }
+        }
+    }
+    for (auto& slot : content_slots_) {
+        if (!slot.record || !components_->contains(slot.record->fragment)) {
+            continue;
+        }
+        auto& record = *slot.record;
+        const auto component = components_->fragment_component(record.fragment);
+        if (!components_->branch_active(component) || !components_->in_window_layer_stack(component)) {
+            continue;
+        }
+        const auto& node = nodes_->require(components_->root(component));
+        if (node.clip_boundary || !node.parent) {
+            continue;
+        }
+        bool clipped = false;
+        for (auto parent = node.parent; parent; parent = nodes_->require(*parent).parent) {
+            const auto& ancestor = nodes_->require(*parent);
+            clipped = clipped || ancestor.clip_content;
+            if (ancestor.clip_boundary) {
+                break;
+            }
+        }
+        if (!clipped && record.clipped_fill_ids.empty()) {
+            continue;
+        }
+        const auto clip = graphics::EffectClip{1, nodes_->content_clip(*node.parent, window_clip)};
+        const auto count = static_cast<std::size_t>(record.range.count) * 4;
+        while (record.clipped_fill_ids.size() > count) {
+            static_cast<void>(effect_scene_.store().remove(record.clipped_fill_ids.back()));
+            record.clipped_fill_ids.pop_back();
+            topology_changed = true;
+        }
+        record.clipped_fill_ids.reserve(count);
+        for (std::uint32_t index = 0; index < record.range.count; ++index) {
+            const auto& visual = instances_.at(record.range.first + index);
+            const auto radius = std::min(visual.corner_radius, std::min(visual.bounds[2], visual.bounds[3]) / 2);
+            const auto fills = graphics::make_corner_fill_effects(
+                {{visual.bounds[0], visual.bounds[1], visual.bounds[2], visual.bounds[3]}, radius},
+                {true, true, true, true}, Color{visual.color[0], visual.color[1], visual.color[2], visual.color[3]},
+                visual.opacity, {visual.translation[0], visual.translation[1]}, clip);
             for (std::size_t corner = 0; corner < fills.size(); ++corner) {
                 const auto position = static_cast<std::size_t>(index) * 4 + corner;
                 if (position == record.clipped_fill_ids.size()) {
