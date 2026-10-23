@@ -563,16 +563,27 @@
     },
     {
       "identity": "ant.component.select",
-      "status": "planned",
-      "summary": "选择器（Select）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供原生单选 Select：typed 字符串/int64 值、Unicode 搜索、清空、动态选项、窗口层与键盘导航；multiple/tags 等扩展尚未覆盖，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Props/options/selection/ref and decorative prefix/suffix slots",
+        "controlled/uncontrolled single selection and dynamic options with duplicate rejection",
+        "Unicode casefold/NFC search, native Input/IME and clear",
+        "window popup, keyboard navigation, scrolling, viewport flip/clamp and single Tab stop",
+        "three sizes, four variants, status, loading/disabled/empty and controlled open",
+        "Select Component Token, retained identity, lifecycle cleanup and idle"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "multiple/tags, grouped options and custom option rendering",
+        "virtual list, built-in asynchronous data source and interactive affix slots",
+        "complete Web Select API and DOM semantics"
       ],
       "evidence_identifiers": [
-        "source:components/select/index.en-US.md"
+        "source:components/select/index.en-US.md",
+        "openspec:058-20261023-add-native-select",
+        "test:rynui.select_model",
+        "test:rynui.select_theme",
+        "test:rynui.select_component"
       ]
     },
     {

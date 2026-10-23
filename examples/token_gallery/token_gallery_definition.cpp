@@ -68,6 +68,12 @@ struct GalleryState final {
     ryn::Signal<ryn::String> typography_value{ryn::String{u8"点击编辑 · 受控正文"}};
     ryn::Signal<ryn::String> typography_title{ryn::String{u8"标题编辑继承字号"}};
     ryn::Signal<double> slider_value{30};
+    ryn::Signal<ryn::SelectSelection> select_value{ryn::SelectSelection{u8"desktop"}};
+    ryn::Signal<std::vector<ryn::SelectOption>> select_options{
+        std::vector<ryn::SelectOption>{{u8"desktop", u8"桌面 / Desktop"}, {u8"service", u8"服务 / Service"}}};
+    ryn::Signal<bool> select_open{false};
+    ryn::SelectRef select_ref;
+    bool select_options_expanded{};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -251,6 +257,25 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.bidi.text-area",
     "gallery.bidi.password",
     "gallery.bidi.toggle-direction",
+    "gallery.select.controlled-search",
+    "gallery.select.numeric",
+    "gallery.select.disabled",
+    "gallery.select.loading",
+    "gallery.select.empty",
+    "gallery.select.controlled-open",
+    "gallery.select.outlined",
+    "gallery.select.filled",
+    "gallery.select.borderless",
+    "gallery.select.underlined",
+    "gallery.select.small",
+    "gallery.select.middle",
+    "gallery.select.large",
+    "gallery.select.warning",
+    "gallery.select.error",
+    "gallery.select.component-theme",
+    "gallery.select.focus",
+    "gallery.select.toggle-open",
+    "gallery.select.dynamic-options",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1777,6 +1802,86 @@ void add_bidi_samples(const std::shared_ptr<GalleryState>& state) {
            ButtonContent{[] { Text(u8"gallery.bidi.toggle-direction · 切换段落方向"); }});
     state->telemetry.live_samples += 6;
 }
+
+void add_select_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Select · 单选 / Unicode 搜索 / 清空 / 动态选项 / 键盘");
+    const std::vector<SelectOption> choices{
+        {u8"desktop", u8"桌面 / Desktop"}, {u8"service", u8"服务 / Service"}, {u8"unavailable", u8"禁用选项", true}};
+    const auto field = [&](SelectProps props, const char8_t* caption) {
+        Text(String::from_utf8(std::u8string_view{caption}).value());
+        Select(props.layout(LayoutStyle{}.width(state->cell_width)));
+        ++state->telemetry.live_samples;
+    };
+    field(SelectProps{}
+              .options(state->select_options)
+              .value(state->select_value)
+              .showSearch()
+              .allowClear()
+              .ref(state->select_ref)
+              .placeholder(u8"请选择 / Search")
+              .notFoundContent(u8"没有匹配项")
+              .onChange([state](SelectSelection value) {
+                  state->select_value.set(std::move(value));
+                  ++state->telemetry.activations;
+              }),
+          u8"gallery.select.controlled-search · 受控 / 清空 / 动态 options");
+    field(SelectProps{}.options({{1, u8"优先级 1"}, {42, u8"优先级 42"}, {99, u8"禁用", true}}).defaultValue(42),
+          u8"gallery.select.numeric · int64 value");
+    field(SelectProps{}.options(choices).defaultValue(u8"desktop").disabled(true), u8"gallery.select.disabled");
+    field(SelectProps{}.options(choices).loading(state->loading).showSearch(),
+          u8"gallery.select.loading · 保留搜索，阻止提交");
+    field(SelectProps{}.options({}).showSearch().notFoundContent(u8"暂无选项"), u8"gallery.select.empty");
+    field(SelectProps{}.options(choices).open(state->select_open).onOpenChange([state](bool value) {
+        state->select_open.set(value);
+    }),
+          u8"gallery.select.controlled-open");
+    for (const auto [variant, caption] :
+         std::array{std::pair{InputVariant::Outlined, u8"gallery.select.outlined"},
+                    std::pair{InputVariant::Filled, u8"gallery.select.filled"},
+                    std::pair{InputVariant::Borderless, u8"gallery.select.borderless"},
+                    std::pair{InputVariant::Underlined, u8"gallery.select.underlined"}}) {
+        field(SelectProps{}.options(choices).defaultValue(u8"desktop").variant(variant).allowClear(), caption);
+    }
+    for (const auto [size, caption] : std::array{std::pair{ControlSize::Small, u8"gallery.select.small"},
+                                                 std::pair{ControlSize::Middle, u8"gallery.select.middle"},
+                                                 std::pair{ControlSize::Large, u8"gallery.select.large"}}) {
+        field(SelectProps{}.options(choices).defaultValue(u8"desktop").size(size), caption);
+    }
+    field(SelectProps{}.options(choices).status(InputStatus::Warning).defaultValue(u8"desktop"),
+          u8"gallery.select.warning");
+    field(SelectProps{}.options(choices).status(InputStatus::Error).defaultValue(u8"desktop"),
+          u8"gallery.select.error");
+    ThemeConfig custom;
+    custom.select.algorithm = true;
+    custom.select.seed.color_primary = Color::rgba8(114, 46, 209);
+    custom.select.tokens.option_height = dp(36);
+    Theme(ThemeProps{}.config(custom), ThemeContent{[state, choices] {
+              ++state->telemetry.theme_content_runs;
+              Text(u8"gallery.select.component-theme · 独立颜色 / 36 dp 行高");
+              Select(SelectProps{}
+                         .options(choices)
+                         .defaultValue(u8"service")
+                         .showSearch()
+                         .layout(LayoutStyle{}.width(state->cell_width)),
+                     SelectPrefix{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }});
+              ++state->telemetry.live_samples;
+          }});
+    Button(ButtonProps{}.onClick([state] { static_cast<void>(state->select_ref.focus()); }),
+           ButtonContent{[] { Text(u8"gallery.select.focus"); }});
+    Button(ButtonProps{}.onClick([state] { state->select_open.set(!state->select_open.get()); }),
+           ButtonContent{[] { Text(u8"gallery.select.toggle-open"); }});
+    Button(ButtonProps{}.onClick([state] {
+        state->select_options_expanded = !state->select_options_expanded;
+        auto options = std::vector<SelectOption>{{u8"desktop", u8"桌面 / Desktop"}, {u8"service", u8"服务 / Service"}};
+        if (state->select_options_expanded) {
+            options.push_back({u8"device", u8"设备 / Device"});
+        }
+        state->select_options.set(std::move(options));
+    }),
+           ButtonContent{[] { Text(u8"gallery.select.dynamic-options"); }});
+    state->telemetry.live_samples += 3;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1860,6 +1965,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_text_area_samples(state);
                                                         add_otp_samples(state);
                                                         add_bidi_samples(state);
+                                                        add_select_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

@@ -28,7 +28,7 @@
 
 | 顺序 | 组件 | 首轮可用目标 |
 | --- | --- | --- |
-| 1 | Select | 单选/搜索/清空/动态选项/键盘与窗口层，见058；multiple/tags后续扩展 |
+| 1 | Select | 058已实现单选/搜索/清空/动态选项/键盘与窗口层，平台通用验证已通过；Gallery与原生证据独立记录，multiple/tags后续扩展 |
 | 2 | Tabs、Card | 页面分区、内容切换与常见内容容器 |
 | 3 | Modal、Drawer、Popconfirm | 真实遮罩、焦点管理、确认/取消与关闭生命周期 |
 | 4 | Tag、Badge、Alert、Spin、Progress | 标签/计数、状态反馈、加载与任务进度 |

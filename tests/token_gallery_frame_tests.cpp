@@ -4,6 +4,7 @@
 #include "component/typography_component.hpp"
 #include "component/divider_component.hpp"
 #include "component/otp_component.hpp"
+#include "component/select_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -438,15 +439,15 @@ void test_document_viewport_scrolls_long_content_without_remount() {
     const auto content_runs = definition.telemetry().content_runs;
     const auto ordered_rebuilds_before_scroll = fixture.text_scene.counters().ordered_scene_rebuilds;
     std::uint64_t text_rebuilds_before_scroll = 0;
-    std::uint64_t text_geometry_rebuilds_before_scroll = 0;
     std::vector<bool> realized_before_scroll;
     std::vector<std::uint64_t> rebuilds_before_scroll;
     std::vector<std::uint64_t> geometry_before_scroll;
+    std::vector<std::uint64_t> geometry_rebuilds_before_scroll;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_before_scroll += counters.instance_rebuilds;
         geometry_before_scroll.push_back(counters.geometry_updates);
-        text_geometry_rebuilds_before_scroll += counters.geometry_rebuilds;
+        geometry_rebuilds_before_scroll.push_back(counters.geometry_rebuilds);
         realized_before_scroll.push_back(fixture.text_scene.primitive(text.scene).instances.count > 0);
         rebuilds_before_scroll.push_back(counters.instance_rebuilds);
     }
@@ -464,13 +465,15 @@ void test_document_viewport_scrolls_long_content_without_remount() {
                 !visible_scene.commands().empty(),
             "Gallery scroll failed to cull offscreen fragments");
     std::uint64_t text_rebuilds_after_scroll = 0;
-    std::uint64_t text_geometry_rebuilds_after_scroll = 0;
     std::size_t newly_realized = 0;
     std::size_t text_index = 0;
     for (const auto& text : fixture.host->text().mounted_texts()) {
         const auto& counters = fixture.text_scene.record_counters(text.scene);
         text_rebuilds_after_scroll += counters.instance_rebuilds;
-        text_geometry_rebuilds_after_scroll += counters.geometry_rebuilds;
+        if (realized_before_scroll[text_index] || fixture.text_scene.primitive(text.scene).instances.count > 0) {
+            require(counters.geometry_rebuilds == geometry_rebuilds_before_scroll[text_index],
+                    "Gallery long jump rebuilt existing glyph geometry");
+        }
         bool has_content_clip = false;
         for (std::optional<ryn::runtime::NodeId> id = fixture.host->components().root(text.component); id;
              id = fixture.nodes.require(*id).parent) {
@@ -496,8 +499,6 @@ void test_document_viewport_scrolls_long_content_without_remount() {
             "Gallery scroll did not realize newly visible text");
     require(fixture.text_scene.counters().ordered_scene_rebuilds == ordered_rebuilds_before_scroll + 1,
             "Gallery long jump rebuilt text draw order more than once");
-    require(text_geometry_rebuilds_after_scroll == text_geometry_rebuilds_before_scroll,
-            "Gallery long jump rebuilt existing glyph geometry");
 
     const auto live_button = fixture.host->mounted_buttons()[definition.navigation_control_count];
     const auto& live_node = fixture.nodes.require(live_button.node);
@@ -798,7 +799,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 159, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 178, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -811,7 +812,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 93,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 96,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -820,8 +821,9 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    // Five retained Typography hints each add a non-Tab trigger and a popup hit region.
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 318,
+    // Select adds sixteen retained selectors/clear actions/popups, sixty
+    // candidate/empty rows and three demo buttons; closed popups remain retained.
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 429,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -836,14 +838,14 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
-    // Closed hint popups stay out of the visible scene; their five triggers remain.
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 292,
+    // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 327,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 63 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 64 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 178,
+                initial.reference_content_runs == 126 && initial.live_samples == 197,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -986,8 +988,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 84,
-            "Gallery Input/Search/Password/Typography/TextArea/OTP samples absent");
+    require(fixture.inputs->mounted_inputs().size() == 100 && fixture.host->services().select().mounted().size() == 16,
+            "Gallery Input/Search/Password/Typography/TextArea/OTP/Select samples absent");
     const auto samples = fixture.inputs->mounted_inputs();
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
                                      ryn::InputVariant::Borderless, ryn::InputVariant::Underlined};
@@ -1117,6 +1119,59 @@ void test_live_input_samples() {
             "Gallery Input retained submits/session");
 }
 
+void test_select_popup_after_document_scroll() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
+    const auto synchronize = [&] {
+        require(fixture.host->layout_and_synchronize({1200, 900}, {0, 0, 1200, 900}, {24, 20}, 0, true),
+                "Gallery Select synchronization failed");
+    };
+    synchronize();
+    auto& selects = fixture.host->services().select();
+    const auto id = selects.mounted().front();
+    const auto initial = selects.snapshot(id);
+    const auto selector_node = fixture.host->components().root(initial.selector);
+    const auto root = fixture.host->components().root(fixture.host->components().root_components().front());
+    const auto body = fixture.nodes.require(root).children.front();
+    const auto document = fixture.nodes.require(body).children[1];
+    rynui::example::GalleryScrollTranslation scroll;
+    require(scroll.apply(document, fixture.nodes.require(selector_node).bounds.y - 160, fixture.nodes, fixture.dirty)
+                .changed,
+            "Gallery Select document scroll failed");
+    synchronize();
+    const auto telemetry = definition.telemetry();
+    const auto mounts = fixture.host->components().mount_runs();
+    const auto click = [&](ryn::runtime::ComponentId component) {
+        const auto& node = fixture.nodes.require(fixture.host->components().root(component));
+        const ryn::runtime::Point point{node.bounds.x + node.translation.x + node.bounds.width / 2,
+                                        node.bounds.y + node.translation.y + node.bounds.height / 2};
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+        synchronize();
+    };
+    click(initial.selector);
+    const auto opened = selects.snapshot(id);
+    const auto& selector = fixture.nodes.require(selector_node);
+    require(opened.visible && opened.popup.y >= selector.bounds.y + selector.translation.y + selector.bounds.height &&
+                opened.popup.y < 240 && opened.rows == initial.rows,
+            "Gallery Select popup did not follow the translated selector");
+    require(fixture.nodes.require(fixture.host->components().root(opened.rows[1])).translation == ryn::runtime::Point{},
+            "Gallery document scroll translated a window-layer option twice");
+    click(opened.rows[1]);
+    const auto selected = selects.snapshot(id);
+    require(!selected.visible && selected.value == ryn::SelectSelection{u8"service"} &&
+                selected.selector == initial.selector && selected.rows == initial.rows &&
+                definition.telemetry().activations == telemetry.activations + 1 &&
+                definition.telemetry().content_runs == telemetry.content_runs &&
+                fixture.host->components().mount_runs() == mounts,
+            "Gallery translated option did not select through its controlled binding without remount");
+}
+
 } // namespace
 
 int main() {
@@ -1129,6 +1184,7 @@ int main() {
         test_responsive_navigation_and_document_reflow_preserves_identity();
         test_token_gallery_frame_contract();
         test_live_input_samples();
+        test_select_popup_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

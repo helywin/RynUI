@@ -127,12 +127,18 @@ void test_subtree_translation_is_generation_checked_and_minimal() {
     const auto root = nodes.create_root();
     const auto child = nodes.create_child(root);
     const auto grandchild = nodes.create_child(child);
+    const auto popup = nodes.create_child(child);
+    const auto popup_text = nodes.create_child(popup);
+    nodes.require(popup).clip_boundary = true;
     require(viewport.apply_subtree_translation(root, nodes, dirty), "live Gallery subtree was not translated");
     require(nodes.require(root).translation == ryn::runtime::Point{0.0F, -300.0F} &&
                 nodes.require(child).translation == ryn::runtime::Point{0.0F, -300.0F} &&
                 nodes.require(grandchild).translation == ryn::runtime::Point{0.0F, -300.0F} &&
                 dirty.transform_nodes().size() == 3 && dirty.hit_test_nodes().size() == 3,
             "Gallery subtree translation did not synchronize geometry and HitTest");
+    require(nodes.require(popup).translation == ryn::runtime::Point{} &&
+                nodes.require(popup_text).translation == ryn::runtime::Point{},
+            "Gallery scroll translated a window layer already positioned in window space");
 
     dirty.clear();
     require(viewport.apply_subtree_translation(root, nodes, dirty) && dirty.transform_nodes().empty() &&

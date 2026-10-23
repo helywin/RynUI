@@ -9,6 +9,9 @@ namespace {
 
 std::size_t translate_subtree(ryn::runtime::NodeId root, ryn::runtime::Point translation,
                               ryn::runtime::NodeStore& nodes, ryn::runtime::NodePropertyWriter& writer) {
+    if (nodes.require(root).clip_boundary) {
+        return 0;
+    }
     const auto& children = nodes.require(root).children;
     static_cast<void>(writer.set_translation(root, translation));
     std::size_t translated = 1;

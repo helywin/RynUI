@@ -14,7 +14,7 @@
 
 ## 4. Gallery 与公共集成（平台通用）
 
-- [ ] 4.1 接入单选/搜索/数值/禁用/clear/loading/空结果/三尺寸/四变体/status/controlled 的真实 Gallery 样例，更新 supported/missing scope/catalog、README 与文档；catalog check、受影响 Gallery Recording 合同和最终共同集成通过，记录平台/preset/evidence，提交并立即 push、核对 SHA。
+- [x] 4.1 接入单选/搜索/数值/禁用/clear/loading/空结果/三尺寸/四变体/status/controlled 的真实 Gallery 样例，更新 supported/missing scope/catalog、README 与文档；catalog check、受影响 Gallery Recording 合同和最终共同集成通过，记录平台/preset/evidence，提交并立即 push、核对 SHA。
 
 ## 5. 原生验收
 
