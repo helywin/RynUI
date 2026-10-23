@@ -90,6 +90,11 @@ public:
     [[nodiscard]] const TabsThemeToken& tabs_metrics() const;
     [[nodiscard]] const TabsThemeToken& tabs_typography() const;
     [[nodiscard]] const TabsThemeToken& tabs_effects() const;
+    [[nodiscard]] const ModalThemeToken& modal_colors() const;
+    [[nodiscard]] const ModalThemeToken& modal_metrics() const;
+    [[nodiscard]] const ModalThemeToken& modal_typography() const;
+    [[nodiscard]] const ModalThemeToken& modal_effects() const;
+    [[nodiscard]] const ModalThemeToken& modal_order() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

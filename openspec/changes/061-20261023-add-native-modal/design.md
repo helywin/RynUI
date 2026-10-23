@@ -46,7 +46,7 @@ Modal participant 注册在 Tooltip/Select/Tabs 与外部 Input host 之前，�
 
 ### 6. Token 与性能边界
 
-新增 Modal 独立 colors/metrics/typography/effects/层级 dirty domains，沿用 ThemeSnapshot/config/runtime/hash/序列化/golden与覆盖验证。配方使用固定6.6.5的 elevated背景、heading颜色/16px标题、strong字重、20垂直/24水平padding、header gap8/footer gap12、圆角8、close32与boxShadow；mask复用alias遮罩色，layer以popup base为基准并处理嵌套和子层顺序。
+新增 Modal 独立 colors/metrics/typography/effects/层级 dirty domains，沿用 ThemeSnapshot/config/runtime/hash/序列化/golden与覆盖验证。配方使用固定6.6.5的 elevated背景、heading颜色/16px标题、strong字重、20垂直/24水平padding、header gap8/footer gap12、圆角8、close32与boxShadow。现有ThemeAliasToken未暴露mask，使用固定6.6.5遮罩RGBA配方并允许Modal覆盖，不扩大本次全局alias范围；layer以popup base为基准并处理嵌套和子层顺序。
 
 背景/文字纯色只更新材料；字体和尺寸才测量/布局。滚动只平移和clip patch，首次显露可实现新字形；无动画意味着idle无持续截止时间。仅为本次 Modal 增加必要状态和边界，不抽象为通用dialog框架。
 

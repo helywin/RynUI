@@ -843,6 +843,129 @@ struct TabsThemeConfig final {
     friend bool operator==(const TabsThemeConfig&, const TabsThemeConfig&) = default;
 };
 
+struct ModalColorToken final {
+    Color background;
+    Color header_background;
+    Color footer_background;
+    Color title;
+    Color text;
+    Color close;
+    Color close_hover;
+    Color close_hover_background;
+    Color mask;
+    Color focus_outline;
+
+    [[nodiscard]] auto values() const {
+        return std::array{background, header_background, footer_background,      title, text,
+                          close,      close_hover,       close_hover_background, mask,  focus_outline};
+    }
+
+    friend bool operator==(const ModalColorToken&, const ModalColorToken&) = default;
+};
+
+struct ModalMetricToken final {
+    float padding_inline{24};
+    float padding_block{20};
+    float header_gap{8};
+    float footer_gap{12};
+    float button_gap{8};
+    float border_radius{8};
+    float close_size{32};
+    float close_icon_size{16};
+    float close_inset{12};
+    float viewport_margin{16};
+    float top_offset{100};
+
+    [[nodiscard]] auto values() const {
+        return std::array{padding_inline, padding_block,   header_gap,  footer_gap,      button_gap, border_radius,
+                          close_size,     close_icon_size, close_inset, viewport_margin, top_offset};
+    }
+
+    friend bool operator==(const ModalMetricToken&, const ModalMetricToken&) = default;
+};
+
+struct ModalTypographyToken final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    float font_size{14};
+    float line_height{22};
+    float title_font_size{16};
+    float title_line_height{24};
+    std::uint32_t font_weight{400};
+    std::uint32_t title_font_weight{600};
+
+    [[nodiscard]] auto values() const {
+        return std::array{font_size, line_height, title_font_size, title_line_height};
+    }
+
+    friend bool operator==(const ModalTypographyToken&, const ModalTypographyToken&) = default;
+};
+
+struct ModalEffectToken final {
+    float focus_width{3};
+    float focus_offset{1};
+    float focus_radius{8};
+    ShadowList shadow;
+
+    [[nodiscard]] auto values() const {
+        return std::array{focus_width, focus_offset, focus_radius};
+    }
+
+    friend bool operator==(const ModalEffectToken&, const ModalEffectToken&) = default;
+};
+
+struct ModalThemeToken final {
+    ModalColorToken colors;
+    ModalMetricToken metrics;
+    ModalTypographyToken typography;
+    ModalEffectToken effects;
+    std::int32_t z_index_popup{1000};
+    friend bool operator==(const ModalThemeToken&, const ModalThemeToken&) = default;
+};
+
+struct ModalTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> header_background;
+    std::optional<Color> footer_background;
+    std::optional<Color> title;
+    std::optional<Color> text;
+    std::optional<Color> close;
+    std::optional<Color> close_hover;
+    std::optional<Color> close_hover_background;
+    std::optional<Color> mask;
+    std::optional<Color> focus_outline;
+    std::optional<LogicalLength> padding_inline;
+    std::optional<LogicalLength> padding_block;
+    std::optional<LogicalLength> header_gap;
+    std::optional<LogicalLength> footer_gap;
+    std::optional<LogicalLength> button_gap;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> close_size;
+    std::optional<LogicalLength> close_icon_size;
+    std::optional<LogicalLength> close_inset;
+    std::optional<LogicalLength> viewport_margin;
+    std::optional<LogicalLength> top_offset;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> title_font_size;
+    std::optional<LogicalLength> title_line_height;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    std::optional<LogicalLength> focus_radius;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> title_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const ModalTokenOverride&, const ModalTokenOverride&) = default;
+};
+
+struct ModalThemeConfig final {
+    ModalTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const ModalThemeConfig&, const ModalThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -859,6 +982,7 @@ struct ThemeConfig final {
     SelectThemeConfig select;
     CardThemeConfig card;
     TabsThemeConfig tabs;
+    ModalThemeConfig modal;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1402,6 +1526,7 @@ public:
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
+    [[nodiscard]] const ModalThemeToken& modal() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1418,7 +1543,7 @@ private:
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, std::shared_ptr<const detail::InputTokenSet> input,
+                  TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
                   std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
@@ -1436,6 +1561,7 @@ private:
     SelectThemeToken select_;
     CardThemeToken card_;
     TabsThemeToken tabs_;
+    ModalThemeToken modal_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

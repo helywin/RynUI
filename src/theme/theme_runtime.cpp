@@ -304,6 +304,13 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.tabs().typography, after.tabs().typography, TokenIdentity::tabs_typography, changed,
                       count);
     append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
+    append_if_changed(before.modal().colors, after.modal().colors, TokenIdentity::modal_colors, changed, count);
+    append_if_changed(before.modal().metrics, after.modal().metrics, TokenIdentity::modal_metrics, changed, count);
+    append_if_changed(before.modal().typography, after.modal().typography, TokenIdentity::modal_typography, changed,
+                      count);
+    append_if_changed(before.modal().effects, after.modal().effects, TokenIdentity::modal_effects, changed, count);
+    append_if_changed(before.modal().z_index_popup, after.modal().z_index_popup, TokenIdentity::modal_order, changed,
+                      count);
     append_if_changed(before.select().colors, after.select().colors, TokenIdentity::select_colors, changed, count);
     append_if_changed(before.select().metrics, after.select().metrics, TokenIdentity::select_metrics, changed, count);
     append_if_changed(before.select().typography, after.select().typography, TokenIdentity::select_typography, changed,
@@ -992,6 +999,36 @@ const TabsThemeToken& ThemeScope::tabs_colors() const {
     return snapshot_->tabs();
 }
 
+const ModalThemeToken& ThemeScope::modal_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::modal_colors);
+    return snapshot_->modal();
+}
+
+const ModalThemeToken& ThemeScope::modal_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::modal_metrics);
+    return snapshot_->modal();
+}
+
+const ModalThemeToken& ThemeScope::modal_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::modal_typography);
+    return snapshot_->modal();
+}
+
+const ModalThemeToken& ThemeScope::modal_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::modal_effects);
+    return snapshot_->modal();
+}
+
+const ModalThemeToken& ThemeScope::modal_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::modal_order);
+    return snapshot_->modal();
+}
+
 const TabsThemeToken& ThemeScope::tabs_metrics() const {
     ensure_owner_thread();
     record(TokenIdentity::tabs_metrics);
@@ -1180,6 +1217,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Tabs.metrics",
         "Tabs.typography",
         "Tabs.effects",
+        "Modal.colors",
+        "Modal.metrics",
+        "Modal.typography",
+        "Modal.effects",
+        "Modal.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1231,6 +1273,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_colors:
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
+    case TokenIdentity::modal_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1252,6 +1295,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_effects:
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
+    case TokenIdentity::modal_effects:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1273,6 +1317,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_typography:
     case TokenIdentity::card_typography:
     case TokenIdentity::tabs_typography:
+    case TokenIdentity::modal_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1287,6 +1332,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_metrics:
     case TokenIdentity::card_metrics:
     case TokenIdentity::tabs_metrics:
+    case TokenIdentity::modal_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:
@@ -1307,6 +1353,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_motion_base:
     case TokenIdentity::map_motion_enabled:
         return DirtyPhase::animation;
+    case TokenIdentity::modal_order:
+        return DirtyPhase::paint_material | DirtyPhase::hit_test;
     case TokenIdentity::count:
         return DirtyPhase::none;
     }

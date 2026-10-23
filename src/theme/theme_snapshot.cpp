@@ -1247,6 +1247,147 @@ TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMa
     return result;
 }
 
+ModalThemeToken derive_modal(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                             std::span<const ThemeAlgorithm> algorithms) {
+    const bool dark = contains_dark(algorithms);
+    ModalThemeToken token;
+    token.colors = {
+        alias.color_background_elevated,
+        Color(0, 0, 0, 0),
+        Color(0, 0, 0, 0),
+        alias.color_text,
+        alias.color_text,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.45F),
+        alias.color_text,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.12F : 0.06F),
+        Color(0, 0, 0, 0.45F),
+        alias.color_focus_outline};
+    token.metrics = {map.size_large,
+                     (map.size + map.size_large) / 2,
+                     map.size_xs,
+                     map.size_small,
+                     map.size_xs,
+                     map.border_radius_large,
+                     map.control_height,
+                     map.font_size_large,
+                     map.size_small,
+                     map.size,
+                     100};
+    token.typography = {seed.font_family,
+                        map.font_size,
+                        map.font_size * map.line_height,
+                        map.font_size_large,
+                        map.font_size_large * map.line_height_large,
+                        400,
+                        600};
+    token.effects = {alias.line_width_focus, alias.focus_outline_offset, map.border_radius_large, alias.box_shadow};
+    token.z_index_popup = seed.z_index_popup_base;
+    return token;
+}
+
+void apply_modal_override(ModalThemeToken& token, const ModalTokenOverride& o) {
+    if (o.background) {
+        token.colors.background = *o.background;
+    }
+    if (o.header_background) {
+        token.colors.header_background = *o.header_background;
+    }
+    if (o.footer_background) {
+        token.colors.footer_background = *o.footer_background;
+    }
+    if (o.title) {
+        token.colors.title = *o.title;
+    }
+    if (o.text) {
+        token.colors.text = *o.text;
+    }
+    if (o.close) {
+        token.colors.close = *o.close;
+    }
+    if (o.close_hover) {
+        token.colors.close_hover = *o.close_hover;
+    }
+    if (o.close_hover_background) {
+        token.colors.close_hover_background = *o.close_hover_background;
+    }
+    if (o.mask) {
+        token.colors.mask = *o.mask;
+    }
+    if (o.focus_outline) {
+        token.colors.focus_outline = *o.focus_outline;
+    }
+    token.metrics.padding_inline =
+        fixed_length(o.padding_inline, token.metrics.padding_inline, "Modal padding_inline must be non-negative");
+    token.metrics.padding_block =
+        fixed_length(o.padding_block, token.metrics.padding_block, "Modal padding_block must be non-negative");
+    token.metrics.header_gap =
+        fixed_length(o.header_gap, token.metrics.header_gap, "Modal header_gap must be non-negative");
+    token.metrics.footer_gap =
+        fixed_length(o.footer_gap, token.metrics.footer_gap, "Modal footer_gap must be non-negative");
+    token.metrics.button_gap =
+        fixed_length(o.button_gap, token.metrics.button_gap, "Modal button_gap must be non-negative");
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Modal border_radius must be non-negative");
+    token.metrics.close_size =
+        fixed_length(o.close_size, token.metrics.close_size, "Modal close_size must be positive", true);
+    token.metrics.close_icon_size =
+        fixed_length(o.close_icon_size, token.metrics.close_icon_size, "Modal close_icon_size must be positive", true);
+    token.metrics.close_inset =
+        fixed_length(o.close_inset, token.metrics.close_inset, "Modal close_inset must be non-negative");
+    token.metrics.viewport_margin =
+        fixed_length(o.viewport_margin, token.metrics.viewport_margin, "Modal viewport_margin must be non-negative");
+    token.metrics.top_offset =
+        fixed_length(o.top_offset, token.metrics.top_offset, "Modal top_offset must be non-negative");
+    token.typography.font_size =
+        fixed_length(o.font_size, token.typography.font_size, "Modal font_size must be positive", true);
+    token.typography.line_height =
+        fixed_length(o.line_height, token.typography.line_height, "Modal line_height must be positive", true);
+    token.typography.title_font_size = fixed_length(o.title_font_size, token.typography.title_font_size,
+                                                    "Modal title_font_size must be positive", true);
+    token.typography.title_line_height = fixed_length(o.title_line_height, token.typography.title_line_height,
+                                                      "Modal title_line_height must be positive", true);
+    token.effects.focus_width =
+        fixed_length(o.focus_width, token.effects.focus_width, "Modal focus_width must be non-negative");
+    token.effects.focus_offset =
+        fixed_length(o.focus_offset, token.effects.focus_offset, "Modal focus_offset must be non-negative");
+    token.effects.focus_radius =
+        fixed_length(o.focus_radius, token.effects.focus_radius, "Modal focus_radius must be non-negative");
+    if (o.font_family) {
+        token.typography.font_family = *o.font_family;
+    }
+    for (const auto& [value, target] : {std::pair{o.font_weight, &token.typography.font_weight},
+                                        std::pair{o.title_font_weight, &token.typography.title_font_weight}}) {
+        if (value) {
+            if (*value < 100 || *value > 1000) {
+                throw std::invalid_argument("Modal font weight must be in [100, 1000]");
+            }
+            *target = *value;
+        }
+    }
+    if (o.shadow) {
+        token.effects.shadow = *o.shadow;
+    }
+    if (o.z_index_popup) {
+        if (*o.z_index_popup < 0) {
+            throw std::invalid_argument("Modal z-index must be non-negative");
+        }
+        token.z_index_popup = *o.z_index_popup;
+    }
+    float combined{};
+    for (float value : token.metrics.values()) {
+        combined += value * 2;
+    }
+    for (float value : token.typography.values()) {
+        combined += value * 2;
+    }
+    for (float value : token.effects.values()) {
+        combined += value * 2;
+    }
+    if (!std::isfinite(combined)) {
+        throw std::invalid_argument("Modal combined extents must be finite");
+    }
+}
+
 TabsThemeToken derive_tabs(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
                            std::span<const ThemeAlgorithm> algorithms) {
     TabsThemeToken token;
@@ -1972,7 +2113,8 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
                                              const SelectThemeToken& select, const CardThemeToken& card,
-                                             const TabsThemeToken& tabs, const detail::InputTokenSet& input,
+                                             const TabsThemeToken& tabs, const ModalThemeToken& modal,
+                                             const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -2289,7 +2431,52 @@ void append_color(std::ostringstream& stream, Color color) {
         }
         stream << tabs_effects[i];
     }
-    stream << "]},\"text\":{\"color\":";
+    stream << "]},\"modal\":{\"colors\":[";
+    const auto modal_colors = modal.colors.values();
+    for (std::size_t i = 0; i < modal_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, modal_colors[i]);
+    }
+    stream << "],\"metrics\":[";
+    const auto modal_metrics = modal.metrics.values();
+    for (std::size_t i = 0; i < modal_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << modal_metrics[i];
+    }
+    stream << "],\"typography\":[";
+    const auto modal_fonts = modal.typography.values();
+    for (std::size_t i = 0; i < modal_fonts.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << modal_fonts[i];
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(modal.typography.font_family)
+           << ",\"fontWeight\":" << modal.typography.font_weight
+           << ",\"titleFontWeight\":" << modal.typography.title_font_weight << ",\"effects\":[";
+    const auto modal_effects = modal.effects.values();
+    for (std::size_t i = 0; i < modal_effects.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << modal_effects[i];
+    }
+    stream << "],\"shadow\":[";
+    for (std::size_t i = 0; i < modal.effects.shadow.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        const auto& shadow = modal.effects.shadow[i];
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << "],\"zIndexPopup\":" << modal.z_index_popup << "},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2493,15 +2680,14 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
 }
 
-[[nodiscard]] std::uint64_t snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
-                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
-                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                                              const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
-                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                              const SelectThemeToken& select, const CardThemeToken& card,
-                                              const TabsThemeToken& tabs, const detail::InputTokenSet& input,
-                                              std::span<const ThemeAlgorithm> algorithms) noexcept {
+[[nodiscard]] std::uint64_t
+snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                  const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
+                  const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
+                  const TypographyThemeToken& typography, const DividerThemeToken& divider,
+                  const SliderThemeToken& slider, const TooltipThemeToken& tooltip, const SelectThemeToken& select,
+                  const CardThemeToken& card, const TabsThemeToken& tabs, const ModalThemeToken& modal,
+                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -2754,6 +2940,23 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     for (const auto value : tabs.effects.values()) {
         hash_float(hash, value);
     }
+    for (const auto color : modal.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (float value : modal.metrics.values()) {
+        hash_float(hash, value);
+    }
+    for (float value : modal.typography.values()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, modal.typography.font_family);
+    hash_integer(hash, modal.typography.font_weight);
+    hash_integer(hash, modal.typography.title_font_weight);
+    for (float value : modal.effects.values()) {
+        hash_float(hash, value);
+    }
+    hash_shadow(hash, modal.effects.shadow);
+    hash_integer(hash, modal.z_index_popup);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -2799,18 +3002,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                             SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
+                             SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), modal_(std::move(modal)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, select_, card_, tabs_, *input_, algorithms_);
+                                  divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                           slider_, tooltip_, select_, card_, tabs_, *input_, algorithms_, identity_);
+                           slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -2873,6 +3076,10 @@ const TabsThemeToken& ThemeSnapshot::tabs() const noexcept {
     return tabs_;
 }
 
+const ModalThemeToken& ThemeSnapshot::modal() const noexcept {
+    return modal_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -2899,7 +3106,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.modal_ == right.modal_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3135,11 +3342,27 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         tabs = derive_tabs(seed, map, alias, algorithms);
     }
     apply_tabs_override(tabs, config.tabs.tokens);
+    ModalThemeToken modal;
+    const bool inherit_modal = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                               !config.modal.algorithm && config.modal.seed == SeedTokenOverride{};
+    if (inherit_modal) {
+        modal = parent->modal();
+    } else if (config.modal.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.modal.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        modal = derive_modal(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                             algorithms);
+    } else {
+        modal = derive_modal(seed, map, alias, algorithms);
+    }
+    apply_modal_override(modal, config.modal.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::make_shared<const detail::InputTokenSet>(std::move(input)),
-                         std::move(algorithms));
+                         std::move(tabs), std::move(modal),
+                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 
 } // namespace ryn

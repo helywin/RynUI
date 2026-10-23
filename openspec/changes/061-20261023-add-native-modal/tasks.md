@@ -6,7 +6,7 @@
 
 ## 2. API、生命周期模型和Token（平台通用）
 
-- [ ] 2.1 实现typed ModalProps/ModalContent/ModalSlots/Mask/取消原因、受控请求和显示转换模型，以及Modal Token继承/reset/component算法/覆盖、dirty分组/hash/序列化/golden；补加载/取消入口/父级拒绝/重复状态/非法值原子拒绝、旧Token不变与API测试和阶段文档；windows-msvc-headless Debug/Release受影响测试、格式/规格检查通过后记录evidence、提交并立即push、核对SHA，声明不计作实际对话框完成。
+- [x] 2.1 实现typed ModalProps/ModalContent/ModalSlots/Mask/取消原因、受控请求和显示转换模型，以及Modal Token继承/reset/component算法/覆盖、dirty分组/hash/序列化/golden；补加载/取消入口/父级拒绝/重复状态/非法值原子拒绝、旧Token不变与API测试和阶段文档；windows-msvc-headless Debug/Release受影响测试、格式/规格检查通过后记录evidence、提交并立即push、核对SHA，声明不计作实际对话框完成。
 
 ## 3. 模态输入边界（平台通用）
 
