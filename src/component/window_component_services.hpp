@@ -29,6 +29,7 @@ class CardComponentHost;
 class TabsComponentHost;
 class ModalComponentHost;
 class TagBadgeComponentHost;
+class PopconfirmComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -225,6 +226,10 @@ public:
         return *tag_badge_;
     }
 
+    [[nodiscard]] PopconfirmComponentHost& popconfirm() noexcept {
+        return *popconfirm_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -322,6 +327,7 @@ private:
     std::unique_ptr<SpaceAddonHost> space_addon_;
     std::unique_ptr<SliderComponentHost> slider_;
     std::unique_ptr<ModalComponentHost> modal_;
+    std::unique_ptr<PopconfirmComponentHost> popconfirm_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;

@@ -104,6 +104,11 @@ public:
     [[nodiscard]] const DrawerThemeToken& drawer_typography() const;
     [[nodiscard]] const DrawerThemeToken& drawer_effects() const;
     [[nodiscard]] const DrawerThemeToken& drawer_order() const;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm_colors() const;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm_metrics() const;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm_typography() const;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm_effects() const;
+    [[nodiscard]] const PopconfirmThemeToken& popconfirm_order() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

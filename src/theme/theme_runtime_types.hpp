@@ -133,6 +133,11 @@ enum class TokenIdentity : std::uint8_t {
     drawer_typography,
     drawer_effects,
     drawer_order,
+    popconfirm_colors,
+    popconfirm_metrics,
+    popconfirm_typography,
+    popconfirm_effects,
+    popconfirm_order,
     count,
 };
 
