@@ -24,7 +24,7 @@
 
 ### Windows
 
-- [ ] 6.1 windows-msvc Debug/Release MSVC x64完整构建及受影响平台/SDL/input tests；实际D3D12/DXIL窗口验证Light/Dark、system/1/1.25/1.5/2缩放、遮罩/取消确认/加载、键盘焦点约束与恢复、Input自动composition/草稿、Select/Tooltip Escape、正文滚动/resize/嵌套、idle/dispose；核对PNG/log/系统字体/driver/exit/EXE hash，独立记录evidence后提交并立即push、核对SHA，不以自动事件代替人工系统IME。
+- [x] 6.1 windows-msvc Debug/Release MSVC x64完整构建及受影响平台/SDL/input tests；实际D3D12/DXIL窗口验证Light/Dark、system/1/1.25/1.5/2缩放、遮罩/取消确认/加载、键盘焦点约束与恢复、Input自动composition/草稿、Select/Tooltip Escape、正文滚动/resize/嵌套、idle/dispose；核对PNG/log/系统字体/driver/exit/EXE hash，独立记录evidence后提交并立即push、核对SHA，不以自动事件代替人工系统IME。
 
 ### Linux
 

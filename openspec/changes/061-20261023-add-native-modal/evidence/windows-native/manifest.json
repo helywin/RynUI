@@ -1,0 +1,3669 @@
+{
+  "source_commit": "df43421264731bae5c43939fdeaaddbcc3b9e5fb",
+  "runs": [
+    {
+      "run": "debug-dark-1",
+      "log_sha256": "209f77fa8049454a9dca79493f2a747d3d12e9fa4f813cc57100ff45d6f2da67",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "effac2d105f25b362bd1d6395afce675233908c9b24d627016a661983e4b1754"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "df8326c8bf8bf0df0dd62d4e76c751471f94ee8c0cb2cdee049b208fe0bc3c84"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "696563909a90ba1f8d8ba38d8bcf61ae341e05dc170bdb9f97aa54cd43ab1a97"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b5acab3473c1cc3468ddea847c2eeb9f56d02fc0853525b9202069684e2da5da"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4f9f5563aeaf78c83add9bc931f7af91fb7a495c5f009bd6d28f012abdac5630"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ba25b49eeb03fc60d0a8b76fd56d6ad353d70791707e9171dd2996cb793aac30"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "361a0ff0a6d4906efb5aeecb54c1cca2bb8259c1ea901c2f171d5e6a52083673"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "de1e66f0f786675dcb500b25c3175f9c05c57230aed2fe7a328924532838966b"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cbf49157a062280333479e6a08db43a3bdba6a43b67f97bf6ecb24842e9b8c95"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4474c1ec95d9cf746dc580717789dbf4a79a76824345d3e88168625caca3f43c"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4f9f5563aeaf78c83add9bc931f7af91fb7a495c5f009bd6d28f012abdac5630"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cc6180373c51e429e0c9f0b1a5de4940014824d896e557b76b8af3fc95305347"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "30a812a498666ae522505cfd4ecdcdb5c01cb3373b1125e5dcaf25498ef8db6f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5e11514c1797afb0d4e013584565adc4e8467e17ecb7cc56c3dd4d6de1985ae5"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "97eaf4ebbdc462cb72fe273c122d93cc128736e30713bfbd4d1a3fec2df5f637"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "517ff84a282eb2dac0021719c2e4163d561ed8f44f8097bf3d1af647f8226cf6"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3cc633f62a9e6928fee4ce51321b22f80ae00e3ea5e2e7b48731f39f748ff97"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3dd2f7d5ca74f0ff4db6cdc75e221bfd4ec4cd1adb07ab3dc6c807525eb87a4a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9d196c3da94050914b986e61c5f2d5221057ef6cf2baa51075caeb93d29a020b"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6e4d88a529a6c8c332421bb85cb45c96e66607795acffdf4a8485523bab7c8de"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "47a09d19fee78c841de07e0379d6e11d427b4bd2da15fd57fd3458e41b2edb66"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cf8cc4b4e63482cc19f2d83f8466ce6245189b37a7635ec031e8eb0164d51cf7"
+        }
+      ]
+    },
+    {
+      "run": "debug-dark-1.25",
+      "log_sha256": "96ee1b69b77872e4c3a6f5420b24f4cb17fc2a676fc3ceb45fd5dbe66813373c",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.25 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "95d96b03c45c9ded29bdd370df4b64942ebdee4550b595462176c99e4d84ecac"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4e5602adc29d0373d24180dc2a11ad2204a0db77b648aec6359d18676db2e490"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "43a208d3e6d8439b21d820297671220478b5a67b1428f610b84e909ca7282aad"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2f3dfc796b3e1fb18b68581ceaf64510d8d8f7c1f34dd61223ef87dc7eab9f9e"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "dc6200b57d3673b94b97958ca6e95212d31ef388445c77624a1c9203b8c8592e"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "72075c3edabb32603ab07930811aef1efa6323cd057ba7f9e19db79f9bc9b64b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b59220153e298dc25f79c571079b7be92c2a18f2a67ed2fdfdf1e376df159058"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "b28fe37fe11d3d10afe74a7fa39132c078fd63d5dda56209e5447c5b1a7d404e"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "996ae38e08de8af26b4b6259aebde37e423abe19b77921a4b8087aaf057c125a"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ef76488ff30876da1b90171527a15d60747f592f0e73e5a08dc8b23fff5edbaa"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "dc6200b57d3673b94b97958ca6e95212d31ef388445c77624a1c9203b8c8592e"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2cf285b287ffa8d9b1b18f4b9c71c80213617d64c83f3e290a495e7c90e3d069"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "170eaf92311db51896ec1f2cb6c7b77766bcd823d8e8ed4127b5fd494ff77aad"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "887c1652560e3802846d1397b9e3da07fecd47fea59fc945bc7456a2f7e389a6"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c4fbbf57bb54b8727d01f684535f26e1f1b41142068f63b6e8d73e6fda0a4cc0"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "acd768c85e2961d6290e90b2e4d4c7aa5ab54bba7dd23c95475d590123c5f9cc"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4900ed6f81886c03fc26feac157d78fc76a815b60b5cc93ec09fff365f67302e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "0305146970985115612002f140e8b21e571681d4398d7bfc5a8b6887101ffb1a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e3d1bb5f1485479c2ac6b5d604885396942a64c41a5b62193b4931ee13dee413"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8429a895707986050b94bcc499724a060b4e7305cc79d04454255f75c5ec2a46"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dbbd4a3b2d4bd45981934cebca41f9085220221ae5d3660df295e359305478b6"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "14c920c6dc7bc336cfdfa4a9ef5a172940032139b152b734d2be0ef5b16d1327"
+        }
+      ]
+    },
+    {
+      "run": "debug-dark-1.5",
+      "log_sha256": "e77fd4719799a4f8d4d5cfc39100f7183ed3c07e5d92239298983f39952ecc14",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "70cc0bd17b837a84dfe4fe0445ae822cce56cbdb7ddc402295551e67cbdb4f9d"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "eeb41379b9fc179669ca1cb2e9f2b6a0fb8d3e094ef85848287400c48c4b7240"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9c6a88e202da4b9767323851a2855aa31107c05bb8cd361bd5d6427ae1bfe803"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "357426f8bff4c735396b1be3934a265aa0a979fafab3c8173964ba2abad3a2f0"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "342b957015ca75116294fbac68520a08f42df6dab189462148044eb3b7b9e47b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "79b11140e16cb97ed3652741c4f4c6ab3dbc0bb6f711a5605674285fbd1e7fd6"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3a6b2bfab774f0a76d17edf8e1a52003f21d7a5317da64a2a952d25d959106bb"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "068b3a3ef58142e6b41d393ec2bb11600786b864535ede2fa39aa7d8125180d4"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "fdf78fd9420bcbe43e12589d2288784229e1f4d8df1be88e0d9589fed667c6e4"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b10261c906d9126e066c03e17c27ee29aa0857a9d517b3f03c5e8f94c15475df"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "574af28dd3c2e51751b01e6d24152c19a99a2fa921f7a3cc27ebd42e6483752f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1aeb75b856622bcb7c5fc9e68adc5a6f3d6706c8b09f4c6422751a98da8a479c"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "864fce75f650a5566bf7d7232faac22ed80b3f77934386e42f2a45db13f5b367"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d3854f2fa3dd0de8c7fe44138bbf14398ebc6c9fc5b097f5db33b4764ee0b939"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "02e76d4cb220bb1b12a9bad9ea9d2534e6b0faa132b1675a0544bbde6dd3760e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9b88b5a28078c950f15f0d41ec746f04e2339fdc67fff5ece1aa819455948403"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4012049988d76f00d85c192932ed8d7552766450d3c8675c0282e291ea5e25dc"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5d2953287ed4e1cd17118631ff9b7ad47d2c572f5d2af4d089781e9f97b8cf23"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dfacb29ad37d8ba9be29c36451167044b6d84f9015e3bf9c7f8c890bfcce26a5"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d364e816b9e51042862c9f372b7ce552905cba0b60ad12cb4224f82767011011"
+        }
+      ]
+    },
+    {
+      "run": "debug-dark-2",
+      "log_sha256": "cd7ca4e060f0fdbd823f5d4d44c0cf86ca8b5d3a7d9dc6b330ff2ad3968ffcdc",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=2 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "42fc487bba2da78bee3cf7a872b67fcae7b83b5020e3962346631cafd058c4c0"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3c90ba7e63cda6f618d9287e12e8f05ed5ebddbcf4f185d1ec02ca9c1be30b97"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1158bc16b74bd1082796eee69e605672eeaab87134733e477af8391671c2aa25"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8480ebd2bdb585335ef8f4378bf49a20e49cdb11bda944b84228782f9f25969c"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "c4bd258423055e81f83fce68c29f5995861a1edab3d47b12dacfbe71c643d566"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2fea8b9eee63666bb57d821c1a5aad0dc00497f1054043b964d1216d8799fe9e"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "348591aa9b03e55952f504715e7d6e1d93d684bb85aedb9a3d11a40ee5dfec1c"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "de9519f364e3dbadc6de967e04c405cdab7591273129cf8999418674555709ba"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2c5b6f2f58e29d878364f406427e43cffe3afca2e731f3b72bfcd15bb7b8cf6d"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e1f1ec71b17e35027a72cb77ffdefcc4aae310e945c31ee8285dbeb9676ac207"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "c4bd258423055e81f83fce68c29f5995861a1edab3d47b12dacfbe71c643d566"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "a55ecb9b6fb7f5c674b65bc568aa1b70c2492b766da399241f145035fc895b41"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "42218deca76c392e9dbc237591a944410d747f13a70490177a90627b76ff2297"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9267a6319507dc89f6bec2a716d749aae9181766ae1ca463eddecee6ba6d4c96"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "637e08f78248ce248028741bf5674d83604cce38e3d4896232f4b1be8f2ee89d"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "48825efff4a354f2f496b0d3084031bad5565d0fd31d81e1118a3ccd2a5fd86b"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3013ea191deaacfa23b96ca2d5d92806ff08c5cf788ae111ed22a0576e87d935"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "05f13e2cc5feabceb4a6d858001459373febab8fff4d6c11dac2343b79d2939a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "28f7d5a84d9c1286d60a91768386fd9669179bef6f4dbc85876ecceb2b2c762f"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e4e054afe7faa0c94d3a2bc0732be33458340964458f58fcb2dd4692b41b5cc7"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7ff976465bbb5b5844837d9096a666c687ecaa34bd0dfc9a00775c5c21b95551"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d65ba7050d900b6f9ac27ef1992515b11c2d01ce278e028ff965a0237ee9da7a"
+        }
+      ]
+    },
+    {
+      "run": "debug-dark-system",
+      "log_sha256": "e77fd4719799a4f8d4d5cfc39100f7183ed3c07e5d92239298983f39952ecc14",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "70cc0bd17b837a84dfe4fe0445ae822cce56cbdb7ddc402295551e67cbdb4f9d"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "eeb41379b9fc179669ca1cb2e9f2b6a0fb8d3e094ef85848287400c48c4b7240"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9c6a88e202da4b9767323851a2855aa31107c05bb8cd361bd5d6427ae1bfe803"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "357426f8bff4c735396b1be3934a265aa0a979fafab3c8173964ba2abad3a2f0"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "342b957015ca75116294fbac68520a08f42df6dab189462148044eb3b7b9e47b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "79b11140e16cb97ed3652741c4f4c6ab3dbc0bb6f711a5605674285fbd1e7fd6"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3a6b2bfab774f0a76d17edf8e1a52003f21d7a5317da64a2a952d25d959106bb"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "068b3a3ef58142e6b41d393ec2bb11600786b864535ede2fa39aa7d8125180d4"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "fdf78fd9420bcbe43e12589d2288784229e1f4d8df1be88e0d9589fed667c6e4"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b10261c906d9126e066c03e17c27ee29aa0857a9d517b3f03c5e8f94c15475df"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "574af28dd3c2e51751b01e6d24152c19a99a2fa921f7a3cc27ebd42e6483752f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1aeb75b856622bcb7c5fc9e68adc5a6f3d6706c8b09f4c6422751a98da8a479c"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "864fce75f650a5566bf7d7232faac22ed80b3f77934386e42f2a45db13f5b367"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d3854f2fa3dd0de8c7fe44138bbf14398ebc6c9fc5b097f5db33b4764ee0b939"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "02e76d4cb220bb1b12a9bad9ea9d2534e6b0faa132b1675a0544bbde6dd3760e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9b88b5a28078c950f15f0d41ec746f04e2339fdc67fff5ece1aa819455948403"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4012049988d76f00d85c192932ed8d7552766450d3c8675c0282e291ea5e25dc"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5d2953287ed4e1cd17118631ff9b7ad47d2c572f5d2af4d089781e9f97b8cf23"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dfacb29ad37d8ba9be29c36451167044b6d84f9015e3bf9c7f8c890bfcce26a5"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d364e816b9e51042862c9f372b7ce552905cba0b60ad12cb4224f82767011011"
+        }
+      ]
+    },
+    {
+      "run": "debug-light-1",
+      "log_sha256": "3632f048d5f93d186165f046775883d892ee8ece57360ac3ee74d4034d4f8c7b",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "22e7f70e0e721bef1521cbc0d7ee3eae16c27d0b399873feaea6eafd4cb29713"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "bb3170fd188065e73e32fee632b62a28abf77e58a78f1c261a92c6100bdc28ac"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9fafb3de7b9a022ab34cac714c3ba94495e277bdd3e976fa36fee31d588e0ade"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f8823c04d01f9f153e269d0c92dad24654e5e0679059e5b50ff875d376e6eaee"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "26073bae5d644b874bbd4b533029fafe0d24831d7688f089823f51277167f63b"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "582a585309d72d487c52304595c25cf7828432a65fb7e90c1eddff3a69f23e39"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e9fc2a669c00cc818b79c551b27b4a02dd07b2f73af3224b2cc76d8d6a779a49"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "8a470ad7e5da0d253bf002897da3fd84abbbe70ff7e23de607649dbe1f6ebe98"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9026a90f71e5259e0591f2b8f8f7c35cb9ae9f50ab42d033be0ea158c32fbc1b"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "959d67b73fd5fc6c9cc1f871174c4ec9a28ce3ac8c84fbd17324ec9ad246a12c"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "26073bae5d644b874bbd4b533029fafe0d24831d7688f089823f51277167f63b"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5e58bf8b7e4aa82ebad2979e5db3ae82a04d704e6f1eb69b13a27df5a8c39794"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f57a8164d7a4c7846b9333eeec06a337545d5fa3eaede72ebcb12337530c416d"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9129e20e143c10fa9bd4338c4cbb787b5a29982f317ea9d0e0f692c2dd2b1fa3"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "29c138528f042c555eb16ff62f2f6c99042ddefc79922630581c34a0d7173de5"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "0cb15682c485c9c6a5d2c0a2db00591db42c8800f98e32346b3eba048b27bded"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "8fd65bef915e72d50683f740224b19abb2df5ef05a0e843b85fbf03981f6f0b7"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20b44fc985c7dbc2762691bfafc6a6aadf5c6a08689abe51af5ddea5f15257fa"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "60e7bda40e6f622dab61ffa96a41ea6170bbff34fefa74e529a678b43dc0f860"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5913982703fb70a6a057e43c8ae0767c583262c2ac468db4ab5630622da39f37"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6105d39d78b8d533417d29b3e867cfaaa03b0540306d257380d0cc5390faaa85"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d52033419362290b0cca656c5cc4710b987374814bc357fc35291248d2da5cca"
+        }
+      ]
+    },
+    {
+      "run": "debug-light-1.25",
+      "log_sha256": "47441ab12b1b28ba07420e696bdc77feed93488245011596f928e79ba80836cd",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.25 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "bd5efa9bc2c6b91b1a0361357293053a46583b7bc96d40001d4bdc1974a5b34f"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "50727e2970963e0aeec6a089f4bb86cdf69d047c75b0ca4c735fb9cc6b9a049d"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d9108b53941b272c829a2a1f843b42ad1c5e79ff8345b1ad5088126d2f932645"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4d0aa2d31af8d95416535982858114b9b4155a05940705219ddf685190eb1033"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "183848154a945c2a8a197605f69e0b8932075a30ea8ec25bb1ad1d11cf301ab5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "53cea690a6aa5e819f988e1f03278c29319f87046a3f5abd3170e5853864a096"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1f69961d3b45c0a8abed12ba80c55e9601f4966ceda0c252ac16c782d8778255"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d8e190351028fdc462079facc4202e22f02ee2c63eb513e2c2ec9777a68e644a"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7318b96feef0226b6b456b2fd55080fb227567932cc5a7e0656b9ec5864b00f3"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4847c8102ebf8e6ed92d90470387d3b1373ebed90c06e1b56074aded8cb329ec"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "183848154a945c2a8a197605f69e0b8932075a30ea8ec25bb1ad1d11cf301ab5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "54a86088cabe6aaac2bd0017b480f953bfbcd6b901b2611f8553baf775a17477"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "55f1ba03e6b28097d2dd41df92e8a570d82a84d2c7fe023223d215f9ded33e51"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f4286089713cf513b029b062556d7807a4e0e65d6412b20ed3ea8b57700afa23"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d946e531500a0d0b1407e9e164b11325937cd40a23d6b3b8d12b084cd519ad9e"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d6a3f8fb3d21ba1e0ee6015e83c40b8e94a752129f1544443606d56343ba1ba2"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d7c47d506f239fe9a549a919b7ac439968c03265d169685851a89b1d74acfa58"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7575fcc06632d23ab6734c1e36afaf71f35b81fdf9e5712a85a1b1b92d12a3cf"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d08769ae57293c13a09736d865a3a178d9023b62d646138774f36792b35922b6"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2cd0e4d986f830355fda8d44fb746be895bb543ea75a5f7d19d5ae6a2f11e511"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d1de13505fb0c56b3a9cf3d2a7055b0cd86046932502a2c05140d1c440fd18c1"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2824c651a1f4b6bd7a66e02d6aec0f03c045734f70b00d9ce25a51fbadfcca09"
+        }
+      ]
+    },
+    {
+      "run": "debug-light-1.5",
+      "log_sha256": "556050b9ef4d16fe050bb506a75b2e3ca85c1d3f879f934ebf9916779b182c86",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "11a109a87f30b910a22d15b8621fb2a2f30e5d561a8c6ba622ebebaf8a6d197a"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad37bda1c7dc3cbce8b8bf554cb050873acafdc7c184b98eb110e02b823d1382"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d390453fe214c2a467514db6d8a74f2b31abb725a6f90618bfafb32e59653018"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5a6a261988347f85eda8438f5abc1370ce7f9a1560b8f9cebf1ab2cfaa98d644"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "35fb5ecf84a3212ebf52f21446eff4921a542b6983b0cd171bb4d48e986d01bc"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "674e1d702c3b934b75ee5dc1298d1a1ecc470f271408203bf88d929dff361637"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4e6db8dc8c0a9c85bb05bf8fbc304ee6a142014261c54036bbfd91f7c68d3eda"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7159f7b0081a1fc1f4ad989d26cc22f09475de75a8cc29e013622722de307579"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b269ac04ef920176f88a834a1bed7bd81cb95f1d01571aa07511c067e90a60fe"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4ecf2b9b528d57660e7bfe8f48142af277f6eb856438b913bc78c8fbfd0e85b2"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d5e6c5e8a98d445a9db04b0ba6a42bcea689a471dc3aa736f2bc2e788702879b"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "258ee993be7b682413ee9861f12614864b8226c6143162426756d7c57be2f2a9"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d02b04426586b5276a90dfa3ad496832e3f14d4693356e542fb5ae1e2e4a38f3"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a0f15bb8840f6cecffcf75d196c02f3be4425747417249e1555f39dce15e974d"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "834446b4d5625d2c20025d158177662ea539e145cabb544ea9e75faf8d360235"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad1f4595cbf34130d342333cf471e21e1c2d5b2e3db16d97a4542df8c88cf979"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2e27bf6a75942b4ffc5a75899991501357d55530fd3ac27d6fb63c0de2a6f63c"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20723c45d14d3448059ab2ce64b6ab14403e11250470c0a5154d7ac95935352c"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "afed8134379facd8b4ca7963cf567170157d91bef15a07b6d1bd5b30fe6e49b9"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c1d706db6675ec213217eaed2d6d84f937842e66a5ad01994131e81a247477b0"
+        }
+      ]
+    },
+    {
+      "run": "debug-light-2",
+      "log_sha256": "d197da2485c61566be5e18276848dbf41c30e390733c4b1b82cb00540b944b81",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=2 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "364cb2b7fa27280d744df56b716db9fcc7b0357da3e3da269bf16a3f00374494"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d93524c6029edd7bd9aab90380407d0e2a1181bb1e9738a5af1181f30a8eb3d5"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "395369887b726e9cd8023eb1ba6193b4ac854765746026602ff8cab6894a9923"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "369ac494846c1891a123083cd493a4ed1d7daf63da8bb08bac69582f1efc4d55"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "94294bc55f81098c37c7a21b7c5f0e7bcc4fe8514c3c65ffac15c731c92e4385"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ffd9767cf697c79f3a928c7236109497784b120e1bd7348e8086fed92bae3257"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7228981874530c57c1f02ad0d4fd3cad919007af57b69199ff8066dad36874fa"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "f72322d75218756d871e0de75970dfe802f4c7fad58faf68d427a4b44c5d074d"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2d8e2eb7bf74c20b5a81f863b3dff652442928c6416309f284d58324a7623962"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3426fde3c4dc3761ce49e367240ab0b8172768202a4c1654277cd3c2f259fa5b"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "94294bc55f81098c37c7a21b7c5f0e7bcc4fe8514c3c65ffac15c731c92e4385"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6f966550b3fe8287a6d2ab713dc8afbfddbfa6b76f98b2f8937c01de4246d535"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b0b97f05f0997d2ecb5165677921d91e2333bf0f360b87dd53cc46aeaf27272c"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "08485acba54512864426ece8073b21793521d2cfbe64933b774b09ae50eeafdb"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "87f9e74c46f3f9b11fb9b2bde1e7c3da58299ca8998d3e3397f4696d6b22afbb"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "66c777bb4f1b9222d86fc5bfc5d4b40195c7be6d4b270225159a2cbb34861091"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "81a10ed6c3a57a169da9ab0f3c5941cdf577b3feb733459c9bc4bab727895edf"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9fa6a3ca17bf90bd33998115d6fd4330c1407f88e9017d1d898ea073d588fccf"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "0ab1250a2687fc6abb16bf7f478ac5321947d6dca34653b836c7a18297b5c9f1"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cf03c4beebb2645f98d1eb144ef4a49a48f15434b535eaec24d1403e38db0679"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8407e753fb44a66c49a647eeb4d9da6928a4ab371c75eec3e2aef8e05dcc2607"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e1fa43eb90ce8b6aefe18fd59a17e1e26f76f6aa5523989b669c043afd18a3d0"
+        }
+      ]
+    },
+    {
+      "run": "debug-light-system",
+      "log_sha256": "556050b9ef4d16fe050bb506a75b2e3ca85c1d3f879f934ebf9916779b182c86",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "11a109a87f30b910a22d15b8621fb2a2f30e5d561a8c6ba622ebebaf8a6d197a"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad37bda1c7dc3cbce8b8bf554cb050873acafdc7c184b98eb110e02b823d1382"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d390453fe214c2a467514db6d8a74f2b31abb725a6f90618bfafb32e59653018"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5a6a261988347f85eda8438f5abc1370ce7f9a1560b8f9cebf1ab2cfaa98d644"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "35fb5ecf84a3212ebf52f21446eff4921a542b6983b0cd171bb4d48e986d01bc"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "674e1d702c3b934b75ee5dc1298d1a1ecc470f271408203bf88d929dff361637"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4e6db8dc8c0a9c85bb05bf8fbc304ee6a142014261c54036bbfd91f7c68d3eda"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7159f7b0081a1fc1f4ad989d26cc22f09475de75a8cc29e013622722de307579"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b269ac04ef920176f88a834a1bed7bd81cb95f1d01571aa07511c067e90a60fe"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4ecf2b9b528d57660e7bfe8f48142af277f6eb856438b913bc78c8fbfd0e85b2"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d5e6c5e8a98d445a9db04b0ba6a42bcea689a471dc3aa736f2bc2e788702879b"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "258ee993be7b682413ee9861f12614864b8226c6143162426756d7c57be2f2a9"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d02b04426586b5276a90dfa3ad496832e3f14d4693356e542fb5ae1e2e4a38f3"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a0f15bb8840f6cecffcf75d196c02f3be4425747417249e1555f39dce15e974d"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "834446b4d5625d2c20025d158177662ea539e145cabb544ea9e75faf8d360235"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad1f4595cbf34130d342333cf471e21e1c2d5b2e3db16d97a4542df8c88cf979"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2e27bf6a75942b4ffc5a75899991501357d55530fd3ac27d6fb63c0de2a6f63c"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20723c45d14d3448059ab2ce64b6ab14403e11250470c0a5154d7ac95935352c"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "afed8134379facd8b4ca7963cf567170157d91bef15a07b6d1bd5b30fe6e49b9"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c1d706db6675ec213217eaed2d6d84f937842e66a5ad01994131e81a247477b0"
+        }
+      ]
+    },
+    {
+      "run": "release-dark-1",
+      "log_sha256": "209f77fa8049454a9dca79493f2a747d3d12e9fa4f813cc57100ff45d6f2da67",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "effac2d105f25b362bd1d6395afce675233908c9b24d627016a661983e4b1754"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "df8326c8bf8bf0df0dd62d4e76c751471f94ee8c0cb2cdee049b208fe0bc3c84"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "696563909a90ba1f8d8ba38d8bcf61ae341e05dc170bdb9f97aa54cd43ab1a97"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b5acab3473c1cc3468ddea847c2eeb9f56d02fc0853525b9202069684e2da5da"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4f9f5563aeaf78c83add9bc931f7af91fb7a495c5f009bd6d28f012abdac5630"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ba25b49eeb03fc60d0a8b76fd56d6ad353d70791707e9171dd2996cb793aac30"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "361a0ff0a6d4906efb5aeecb54c1cca2bb8259c1ea901c2f171d5e6a52083673"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "de1e66f0f786675dcb500b25c3175f9c05c57230aed2fe7a328924532838966b"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cbf49157a062280333479e6a08db43a3bdba6a43b67f97bf6ecb24842e9b8c95"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4474c1ec95d9cf746dc580717789dbf4a79a76824345d3e88168625caca3f43c"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4f9f5563aeaf78c83add9bc931f7af91fb7a495c5f009bd6d28f012abdac5630"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cc6180373c51e429e0c9f0b1a5de4940014824d896e557b76b8af3fc95305347"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "30a812a498666ae522505cfd4ecdcdb5c01cb3373b1125e5dcaf25498ef8db6f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5e11514c1797afb0d4e013584565adc4e8467e17ecb7cc56c3dd4d6de1985ae5"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "97eaf4ebbdc462cb72fe273c122d93cc128736e30713bfbd4d1a3fec2df5f637"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "517ff84a282eb2dac0021719c2e4163d561ed8f44f8097bf3d1af647f8226cf6"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3cc633f62a9e6928fee4ce51321b22f80ae00e3ea5e2e7b48731f39f748ff97"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3dd2f7d5ca74f0ff4db6cdc75e221bfd4ec4cd1adb07ab3dc6c807525eb87a4a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9d196c3da94050914b986e61c5f2d5221057ef6cf2baa51075caeb93d29a020b"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6e4d88a529a6c8c332421bb85cb45c96e66607795acffdf4a8485523bab7c8de"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "47a09d19fee78c841de07e0379d6e11d427b4bd2da15fd57fd3458e41b2edb66"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cf8cc4b4e63482cc19f2d83f8466ce6245189b37a7635ec031e8eb0164d51cf7"
+        }
+      ]
+    },
+    {
+      "run": "release-dark-1.25",
+      "log_sha256": "96ee1b69b77872e4c3a6f5420b24f4cb17fc2a676fc3ceb45fd5dbe66813373c",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.25 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "95d96b03c45c9ded29bdd370df4b64942ebdee4550b595462176c99e4d84ecac"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4e5602adc29d0373d24180dc2a11ad2204a0db77b648aec6359d18676db2e490"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "43a208d3e6d8439b21d820297671220478b5a67b1428f610b84e909ca7282aad"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2f3dfc796b3e1fb18b68581ceaf64510d8d8f7c1f34dd61223ef87dc7eab9f9e"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "dc6200b57d3673b94b97958ca6e95212d31ef388445c77624a1c9203b8c8592e"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "72075c3edabb32603ab07930811aef1efa6323cd057ba7f9e19db79f9bc9b64b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b59220153e298dc25f79c571079b7be92c2a18f2a67ed2fdfdf1e376df159058"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "b28fe37fe11d3d10afe74a7fa39132c078fd63d5dda56209e5447c5b1a7d404e"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "996ae38e08de8af26b4b6259aebde37e423abe19b77921a4b8087aaf057c125a"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ef76488ff30876da1b90171527a15d60747f592f0e73e5a08dc8b23fff5edbaa"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "dc6200b57d3673b94b97958ca6e95212d31ef388445c77624a1c9203b8c8592e"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2cf285b287ffa8d9b1b18f4b9c71c80213617d64c83f3e290a495e7c90e3d069"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "170eaf92311db51896ec1f2cb6c7b77766bcd823d8e8ed4127b5fd494ff77aad"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "887c1652560e3802846d1397b9e3da07fecd47fea59fc945bc7456a2f7e389a6"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c4fbbf57bb54b8727d01f684535f26e1f1b41142068f63b6e8d73e6fda0a4cc0"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "acd768c85e2961d6290e90b2e4d4c7aa5ab54bba7dd23c95475d590123c5f9cc"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4900ed6f81886c03fc26feac157d78fc76a815b60b5cc93ec09fff365f67302e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "0305146970985115612002f140e8b21e571681d4398d7bfc5a8b6887101ffb1a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e3d1bb5f1485479c2ac6b5d604885396942a64c41a5b62193b4931ee13dee413"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8429a895707986050b94bcc499724a060b4e7305cc79d04454255f75c5ec2a46"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dbbd4a3b2d4bd45981934cebca41f9085220221ae5d3660df295e359305478b6"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "14c920c6dc7bc336cfdfa4a9ef5a172940032139b152b734d2be0ef5b16d1327"
+        }
+      ]
+    },
+    {
+      "run": "release-dark-1.5",
+      "log_sha256": "e77fd4719799a4f8d4d5cfc39100f7183ed3c07e5d92239298983f39952ecc14",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "70cc0bd17b837a84dfe4fe0445ae822cce56cbdb7ddc402295551e67cbdb4f9d"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "eeb41379b9fc179669ca1cb2e9f2b6a0fb8d3e094ef85848287400c48c4b7240"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9c6a88e202da4b9767323851a2855aa31107c05bb8cd361bd5d6427ae1bfe803"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "357426f8bff4c735396b1be3934a265aa0a979fafab3c8173964ba2abad3a2f0"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "342b957015ca75116294fbac68520a08f42df6dab189462148044eb3b7b9e47b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "79b11140e16cb97ed3652741c4f4c6ab3dbc0bb6f711a5605674285fbd1e7fd6"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3a6b2bfab774f0a76d17edf8e1a52003f21d7a5317da64a2a952d25d959106bb"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "068b3a3ef58142e6b41d393ec2bb11600786b864535ede2fa39aa7d8125180d4"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "fdf78fd9420bcbe43e12589d2288784229e1f4d8df1be88e0d9589fed667c6e4"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b10261c906d9126e066c03e17c27ee29aa0857a9d517b3f03c5e8f94c15475df"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "574af28dd3c2e51751b01e6d24152c19a99a2fa921f7a3cc27ebd42e6483752f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1aeb75b856622bcb7c5fc9e68adc5a6f3d6706c8b09f4c6422751a98da8a479c"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "864fce75f650a5566bf7d7232faac22ed80b3f77934386e42f2a45db13f5b367"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d3854f2fa3dd0de8c7fe44138bbf14398ebc6c9fc5b097f5db33b4764ee0b939"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "02e76d4cb220bb1b12a9bad9ea9d2534e6b0faa132b1675a0544bbde6dd3760e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9b88b5a28078c950f15f0d41ec746f04e2339fdc67fff5ece1aa819455948403"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4012049988d76f00d85c192932ed8d7552766450d3c8675c0282e291ea5e25dc"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5d2953287ed4e1cd17118631ff9b7ad47d2c572f5d2af4d089781e9f97b8cf23"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dfacb29ad37d8ba9be29c36451167044b6d84f9015e3bf9c7f8c890bfcce26a5"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d364e816b9e51042862c9f372b7ce552905cba0b60ad12cb4224f82767011011"
+        }
+      ]
+    },
+    {
+      "run": "release-dark-2",
+      "log_sha256": "cd7ca4e060f0fdbd823f5d4d44c0cf86ca8b5d3a7d9dc6b330ff2ad3968ffcdc",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=2 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "42fc487bba2da78bee3cf7a872b67fcae7b83b5020e3962346631cafd058c4c0"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3c90ba7e63cda6f618d9287e12e8f05ed5ebddbcf4f185d1ec02ca9c1be30b97"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1158bc16b74bd1082796eee69e605672eeaab87134733e477af8391671c2aa25"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8480ebd2bdb585335ef8f4378bf49a20e49cdb11bda944b84228782f9f25969c"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "c4bd258423055e81f83fce68c29f5995861a1edab3d47b12dacfbe71c643d566"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2fea8b9eee63666bb57d821c1a5aad0dc00497f1054043b964d1216d8799fe9e"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "348591aa9b03e55952f504715e7d6e1d93d684bb85aedb9a3d11a40ee5dfec1c"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "de9519f364e3dbadc6de967e04c405cdab7591273129cf8999418674555709ba"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2c5b6f2f58e29d878364f406427e43cffe3afca2e731f3b72bfcd15bb7b8cf6d"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e1f1ec71b17e35027a72cb77ffdefcc4aae310e945c31ee8285dbeb9676ac207"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "c4bd258423055e81f83fce68c29f5995861a1edab3d47b12dacfbe71c643d566"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "a55ecb9b6fb7f5c674b65bc568aa1b70c2492b766da399241f145035fc895b41"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "42218deca76c392e9dbc237591a944410d747f13a70490177a90627b76ff2297"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9267a6319507dc89f6bec2a716d749aae9181766ae1ca463eddecee6ba6d4c96"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "637e08f78248ce248028741bf5674d83604cce38e3d4896232f4b1be8f2ee89d"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "48825efff4a354f2f496b0d3084031bad5565d0fd31d81e1118a3ccd2a5fd86b"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3013ea191deaacfa23b96ca2d5d92806ff08c5cf788ae111ed22a0576e87d935"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "05f13e2cc5feabceb4a6d858001459373febab8fff4d6c11dac2343b79d2939a"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "28f7d5a84d9c1286d60a91768386fd9669179bef6f4dbc85876ecceb2b2c762f"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e4e054afe7faa0c94d3a2bc0732be33458340964458f58fcb2dd4692b41b5cc7"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7ff976465bbb5b5844837d9096a666c687ecaa34bd0dfc9a00775c5c21b95551"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d65ba7050d900b6f9ac27ef1992515b11c2d01ce278e028ff965a0237ee9da7a"
+        }
+      ]
+    },
+    {
+      "run": "release-dark-system",
+      "log_sha256": "e77fd4719799a4f8d4d5cfc39100f7183ed3c07e5d92239298983f39952ecc14",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=dark boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "70cc0bd17b837a84dfe4fe0445ae822cce56cbdb7ddc402295551e67cbdb4f9d"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "eeb41379b9fc179669ca1cb2e9f2b6a0fb8d3e094ef85848287400c48c4b7240"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9c6a88e202da4b9767323851a2855aa31107c05bb8cd361bd5d6427ae1bfe803"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "357426f8bff4c735396b1be3934a265aa0a979fafab3c8173964ba2abad3a2f0"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "342b957015ca75116294fbac68520a08f42df6dab189462148044eb3b7b9e47b"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "79b11140e16cb97ed3652741c4f4c6ab3dbc0bb6f711a5605674285fbd1e7fd6"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "3a6b2bfab774f0a76d17edf8e1a52003f21d7a5317da64a2a952d25d959106bb"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "068b3a3ef58142e6b41d393ec2bb11600786b864535ede2fa39aa7d8125180d4"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "fdf78fd9420bcbe43e12589d2288784229e1f4d8df1be88e0d9589fed667c6e4"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a3934b22d5d3f70ac4e0e05ade68eefbce32f1df33e3ccea2aecd4044f0f04e5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b10261c906d9126e066c03e17c27ee29aa0857a9d517b3f03c5e8f94c15475df"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "574af28dd3c2e51751b01e6d24152c19a99a2fa921f7a3cc27ebd42e6483752f"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1aeb75b856622bcb7c5fc9e68adc5a6f3d6706c8b09f4c6422751a98da8a479c"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "864fce75f650a5566bf7d7232faac22ed80b3f77934386e42f2a45db13f5b367"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d3854f2fa3dd0de8c7fe44138bbf14398ebc6c9fc5b097f5db33b4764ee0b939"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "02e76d4cb220bb1b12a9bad9ea9d2534e6b0faa132b1675a0544bbde6dd3760e"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9b88b5a28078c950f15f0d41ec746f04e2339fdc67fff5ece1aa819455948403"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4012049988d76f00d85c192932ed8d7552766450d3c8675c0282e291ea5e25dc"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5d2953287ed4e1cd17118631ff9b7ad47d2c572f5d2af4d089781e9f97b8cf23"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "dfacb29ad37d8ba9be29c36451167044b6d84f9015e3bf9c7f8c890bfcce26a5"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d364e816b9e51042862c9f372b7ce552905cba0b60ad12cb4224f82767011011"
+        }
+      ]
+    },
+    {
+      "run": "release-light-1",
+      "log_sha256": "3632f048d5f93d186165f046775883d892ee8ece57360ac3ee74d4034d4f8c7b",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "22e7f70e0e721bef1521cbc0d7ee3eae16c27d0b399873feaea6eafd4cb29713"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "bb3170fd188065e73e32fee632b62a28abf77e58a78f1c261a92c6100bdc28ac"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9fafb3de7b9a022ab34cac714c3ba94495e277bdd3e976fa36fee31d588e0ade"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f8823c04d01f9f153e269d0c92dad24654e5e0679059e5b50ff875d376e6eaee"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "26073bae5d644b874bbd4b533029fafe0d24831d7688f089823f51277167f63b"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "582a585309d72d487c52304595c25cf7828432a65fb7e90c1eddff3a69f23e39"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e9fc2a669c00cc818b79c551b27b4a02dd07b2f73af3224b2cc76d8d6a779a49"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "8a470ad7e5da0d253bf002897da3fd84abbbe70ff7e23de607649dbe1f6ebe98"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9026a90f71e5259e0591f2b8f8f7c35cb9ae9f50ab42d033be0ea158c32fbc1b"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "959d67b73fd5fc6c9cc1f871174c4ec9a28ce3ac8c84fbd17324ec9ad246a12c"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "26073bae5d644b874bbd4b533029fafe0d24831d7688f089823f51277167f63b"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5e58bf8b7e4aa82ebad2979e5db3ae82a04d704e6f1eb69b13a27df5a8c39794"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f57a8164d7a4c7846b9333eeec06a337545d5fa3eaede72ebcb12337530c416d"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9129e20e143c10fa9bd4338c4cbb787b5a29982f317ea9d0e0f692c2dd2b1fa3"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "29c138528f042c555eb16ff62f2f6c99042ddefc79922630581c34a0d7173de5"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "0cb15682c485c9c6a5d2c0a2db00591db42c8800f98e32346b3eba048b27bded"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "8fd65bef915e72d50683f740224b19abb2df5ef05a0e843b85fbf03981f6f0b7"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20b44fc985c7dbc2762691bfafc6a6aadf5c6a08689abe51af5ddea5f15257fa"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "60e7bda40e6f622dab61ffa96a41ea6170bbff34fefa74e529a678b43dc0f860"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5913982703fb70a6a057e43c8ae0767c583262c2ac468db4ab5630622da39f37"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6105d39d78b8d533417d29b3e867cfaaa03b0540306d257380d0cc5390faaa85"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d52033419362290b0cca656c5cc4710b987374814bc357fc35291248d2da5cca"
+        }
+      ]
+    },
+    {
+      "run": "release-light-1.25",
+      "log_sha256": "47441ab12b1b28ba07420e696bdc77feed93488245011596f928e79ba80836cd",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.25 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "bd5efa9bc2c6b91b1a0361357293053a46583b7bc96d40001d4bdc1974a5b34f"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "50727e2970963e0aeec6a089f4bb86cdf69d047c75b0ca4c735fb9cc6b9a049d"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d9108b53941b272c829a2a1f843b42ad1c5e79ff8345b1ad5088126d2f932645"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4d0aa2d31af8d95416535982858114b9b4155a05940705219ddf685190eb1033"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "183848154a945c2a8a197605f69e0b8932075a30ea8ec25bb1ad1d11cf301ab5"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "53cea690a6aa5e819f988e1f03278c29319f87046a3f5abd3170e5853864a096"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "1f69961d3b45c0a8abed12ba80c55e9601f4966ceda0c252ac16c782d8778255"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d8e190351028fdc462079facc4202e22f02ee2c63eb513e2c2ec9777a68e644a"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7318b96feef0226b6b456b2fd55080fb227567932cc5a7e0656b9ec5864b00f3"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4847c8102ebf8e6ed92d90470387d3b1373ebed90c06e1b56074aded8cb329ec"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "183848154a945c2a8a197605f69e0b8932075a30ea8ec25bb1ad1d11cf301ab5"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "54a86088cabe6aaac2bd0017b480f953bfbcd6b901b2611f8553baf775a17477"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "55f1ba03e6b28097d2dd41df92e8a570d82a84d2c7fe023223d215f9ded33e51"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "f4286089713cf513b029b062556d7807a4e0e65d6412b20ed3ea8b57700afa23"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d946e531500a0d0b1407e9e164b11325937cd40a23d6b3b8d12b084cd519ad9e"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d6a3f8fb3d21ba1e0ee6015e83c40b8e94a752129f1544443606d56343ba1ba2"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "d7c47d506f239fe9a549a919b7ac439968c03265d169685851a89b1d74acfa58"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7575fcc06632d23ab6734c1e36afaf71f35b81fdf9e5712a85a1b1b92d12a3cf"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d08769ae57293c13a09736d865a3a178d9023b62d646138774f36792b35922b6"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2cd0e4d986f830355fda8d44fb746be895bb543ea75a5f7d19d5ae6a2f11e511"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d1de13505fb0c56b3a9cf3d2a7055b0cd86046932502a2c05140d1c440fd18c1"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2824c651a1f4b6bd7a66e02d6aec0f03c045734f70b00d9ce25a51fbadfcca09"
+        }
+      ]
+    },
+    {
+      "run": "release-light-1.5",
+      "log_sha256": "556050b9ef4d16fe050bb506a75b2e3ca85c1d3f879f934ebf9916779b182c86",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "11a109a87f30b910a22d15b8621fb2a2f30e5d561a8c6ba622ebebaf8a6d197a"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad37bda1c7dc3cbce8b8bf554cb050873acafdc7c184b98eb110e02b823d1382"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d390453fe214c2a467514db6d8a74f2b31abb725a6f90618bfafb32e59653018"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5a6a261988347f85eda8438f5abc1370ce7f9a1560b8f9cebf1ab2cfaa98d644"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "35fb5ecf84a3212ebf52f21446eff4921a542b6983b0cd171bb4d48e986d01bc"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "674e1d702c3b934b75ee5dc1298d1a1ecc470f271408203bf88d929dff361637"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4e6db8dc8c0a9c85bb05bf8fbc304ee6a142014261c54036bbfd91f7c68d3eda"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7159f7b0081a1fc1f4ad989d26cc22f09475de75a8cc29e013622722de307579"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b269ac04ef920176f88a834a1bed7bd81cb95f1d01571aa07511c067e90a60fe"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4ecf2b9b528d57660e7bfe8f48142af277f6eb856438b913bc78c8fbfd0e85b2"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d5e6c5e8a98d445a9db04b0ba6a42bcea689a471dc3aa736f2bc2e788702879b"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "258ee993be7b682413ee9861f12614864b8226c6143162426756d7c57be2f2a9"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d02b04426586b5276a90dfa3ad496832e3f14d4693356e542fb5ae1e2e4a38f3"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a0f15bb8840f6cecffcf75d196c02f3be4425747417249e1555f39dce15e974d"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "834446b4d5625d2c20025d158177662ea539e145cabb544ea9e75faf8d360235"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad1f4595cbf34130d342333cf471e21e1c2d5b2e3db16d97a4542df8c88cf979"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2e27bf6a75942b4ffc5a75899991501357d55530fd3ac27d6fb63c0de2a6f63c"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20723c45d14d3448059ab2ce64b6ab14403e11250470c0a5154d7ac95935352c"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "afed8134379facd8b4ca7963cf567170157d91bef15a07b6d1bd5b30fe6e49b9"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c1d706db6675ec213217eaed2d6d84f937842e66a5ad01994131e81a247477b0"
+        }
+      ]
+    },
+    {
+      "run": "release-light-2",
+      "log_sha256": "d197da2485c61566be5e18276848dbf41c30e390733c4b1b82cb00540b944b81",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=2 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "364cb2b7fa27280d744df56b716db9fcc7b0357da3e3da269bf16a3f00374494"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d93524c6029edd7bd9aab90380407d0e2a1181bb1e9738a5af1181f30a8eb3d5"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "395369887b726e9cd8023eb1ba6193b4ac854765746026602ff8cab6894a9923"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "369ac494846c1891a123083cd493a4ed1d7daf63da8bb08bac69582f1efc4d55"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "94294bc55f81098c37c7a21b7c5f0e7bcc4fe8514c3c65ffac15c731c92e4385"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ffd9767cf697c79f3a928c7236109497784b120e1bd7348e8086fed92bae3257"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7228981874530c57c1f02ad0d4fd3cad919007af57b69199ff8066dad36874fa"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "f72322d75218756d871e0de75970dfe802f4c7fad58faf68d427a4b44c5d074d"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2d8e2eb7bf74c20b5a81f863b3dff652442928c6416309f284d58324a7623962"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "3426fde3c4dc3761ce49e367240ab0b8172768202a4c1654277cd3c2f259fa5b"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "94294bc55f81098c37c7a21b7c5f0e7bcc4fe8514c3c65ffac15c731c92e4385"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "6f966550b3fe8287a6d2ab713dc8afbfddbfa6b76f98b2f8937c01de4246d535"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b0b97f05f0997d2ecb5165677921d91e2333bf0f360b87dd53cc46aeaf27272c"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "08485acba54512864426ece8073b21793521d2cfbe64933b774b09ae50eeafdb"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "87f9e74c46f3f9b11fb9b2bde1e7c3da58299ca8998d3e3397f4696d6b22afbb"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "66c777bb4f1b9222d86fc5bfc5d4b40195c7be6d4b270225159a2cbb34861091"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "81a10ed6c3a57a169da9ab0f3c5941cdf577b3feb733459c9bc4bab727895edf"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "9fa6a3ca17bf90bd33998115d6fd4330c1407f88e9017d1d898ea073d588fccf"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "0ab1250a2687fc6abb16bf7f478ac5321947d6dca34653b836c7a18297b5c9f1"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "cf03c4beebb2645f98d1eb144ef4a49a48f15434b535eaec24d1403e38db0679"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "8407e753fb44a66c49a647eeb4d9da6928a4ab371c75eec3e2aef8e05dcc2607"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "e1fa43eb90ce8b6aefe18fd59a17e1e26f76f6aa5523989b669c043afd18a3d0"
+        }
+      ]
+    },
+    {
+      "run": "release-light-system",
+      "log_sha256": "556050b9ef4d16fe050bb506a75b2e3ca85c1d3f879f934ebf9916779b182c86",
+      "log": "modal_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.5 theme=light boundary=passed keyboard=passed controlled=passed automatic_ime=passed draft=passed popup_priority=passed nested=passed body_scroll=passed resize=passed idle=passed\nfont=400 family=Segoe UI Variable Text path=C:\\WINDOWS\\FONTS\\SEGUIVAR.TTF face_index=0\nfont=600 family=Segoe UI path=C:\\WINDOWS\\FONTS\\SEGUISB.TTF face_index=0\ndisposed=1 exit_code=0\n",
+      "images": [
+        {
+          "file": "body-end.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "11a109a87f30b910a22d15b8621fb2a2f30e5d561a8c6ba622ebebaf8a6d197a"
+        },
+        {
+          "file": "body-wheel.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad37bda1c7dc3cbce8b8bf554cb050873acafdc7c184b98eb110e02b823d1382"
+        },
+        {
+          "file": "centered-maskless.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d390453fe214c2a467514db6d8a74f2b31abb725a6f90618bfafb32e59653018"
+        },
+        {
+          "file": "composition.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "5a6a261988347f85eda8438f5abc1370ce7f9a1560b8f9cebf1ab2cfaa98d644"
+        },
+        {
+          "file": "confirmed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "controlled-refused.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "35fb5ecf84a3212ebf52f21446eff4921a542b6983b0cd171bb4d48e986d01bc"
+        },
+        {
+          "file": "edited.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "674e1d702c3b934b75ee5dc1298d1a1ecc470f271408203bf88d929dff361637"
+        },
+        {
+          "file": "inactive.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "4e6db8dc8c0a9c85bb05bf8fbc304ee6a142014261c54036bbfd91f7c68d3eda"
+        },
+        {
+          "file": "initial.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "7159f7b0081a1fc1f4ad989d26cc22f09475de75a8cc29e013622722de307579"
+        },
+        {
+          "file": "loading.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "b269ac04ef920176f88a834a1bed7bd81cb95f1d01571aa07511c067e90a60fe"
+        },
+        {
+          "file": "mask-closed.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "cd336b7a2146e4c5f247214275514b26993f5219b667ba355891147e38121327"
+        },
+        {
+          "file": "nested-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "4ecf2b9b528d57660e7bfe8f48142af277f6eb856438b913bc78c8fbfd0e85b2"
+        },
+        {
+          "file": "nested-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d5e6c5e8a98d445a9db04b0ba6a42bcea689a471dc3aa736f2bc2e788702879b"
+        },
+        {
+          "file": "nested.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "258ee993be7b682413ee9861f12614864b8226c6143162426756d7c57be2f2a9"
+        },
+        {
+          "file": "opened.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "d02b04426586b5276a90dfa3ad496832e3f14d4693356e542fb5ae1e2e4a38f3"
+        },
+        {
+          "file": "reopened.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "a0f15bb8840f6cecffcf75d196c02f3be4425747417249e1555f39dce15e974d"
+        },
+        {
+          "file": "resized.png",
+          "size": [
+            1100,
+            800
+          ],
+          "sha256": "834446b4d5625d2c20025d158177662ea539e145cabb544ea9e75faf8d360235"
+        },
+        {
+          "file": "select-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "ad1f4595cbf34130d342333cf471e21e1c2d5b2e3db16d97a4542df8c88cf979"
+        },
+        {
+          "file": "select.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "2e27bf6a75942b4ffc5a75899991501357d55530fd3ac27d6fb63c0de2a6f63c"
+        },
+        {
+          "file": "tooltip-closed.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "20723c45d14d3448059ab2ce64b6ab14403e11250470c0a5154d7ac95935352c"
+        },
+        {
+          "file": "tooltip-trigger.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "afed8134379facd8b4ca7963cf567170157d91bef15a07b6d1bd5b30fe6e49b9"
+        },
+        {
+          "file": "tooltip.png",
+          "size": [
+            1280,
+            1000
+          ],
+          "sha256": "c1d706db6675ec213217eaed2d6d84f937842e66a5ad01994131e81a247477b0"
+        }
+      ]
+    }
+  ],
+  "executables": {
+    "Debug": "b295db8ace1427aca3a5ec2f6795d1a3a11475490a74e3594e2ee3db24df8642",
+    "Release": "17e1b8aab2c3342e816ebcba982bb6a227279e1edb995ff77d610eeaab19c4c4"
+  }
+}
