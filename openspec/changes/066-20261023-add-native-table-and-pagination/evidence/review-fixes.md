@@ -36,3 +36,11 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R '(table_|pagination
 - `python scripts/format-code.py --check --clang-format <clang-format-22>`：508 owned files，clang-format 22.1.3，0 failures。
 - `openspec doctor --json`：healthy；`openspec validate --all --strict --no-interactive`：62 passed，0 failed；`git diff --check` 通过。
 - 最终日志位于忽略的 `out/066-review-final-{debug,release}{,-build}.log`；每阶段 format/doctor/spec 日志亦位于该 worktree 的 out。源码未改 Theme、CMake、CPU scene v3、GPU ABI v2、全局 Gallery 或父工作区。
+
+## R2：Modal → Table → popup host 顺序
+
+- 基于 `8187e35` 新增集成回归，旧代码实际失败于 `Modal consumed scrollable Table body wheel`（`out/066-r2-modal-before.log`）。Modal 与 Table 均有 overflow，正文滚轮事件经 `InputComponentHost::dispatch` 进入真实 reverse participant dispatch。
+- 仅将 Table 的 host 注册行移到 Modal 之后、Tooltip/Select 之前，保留全部 hosts。forward positioning 先完成 Modal 的布局/正文 translation，再应用 Table 的行滚动，最后定位子弹层；reverse wheel dispatch 则先 popup、再 Table、最后 Modal。父任务 main 的 Modal 在 Popconfirm/Tooltip/Select 之前这一相对合同保持不变。
+- open Modal 内 `scrollY(80)` 的多行 Table 验证：首帧 body clip 为 80；负 Y 增加 Table scroll 且 Modal scroll 不变；行实际 bounds/translation 在同帧及后续 sync 仍移动并保持 body clip/hit 裁剪；正 Y 恢复。保留 child Select 的 anchor 随 Table 与外层 Modal 滚动跟踪，重叠 popup 内滚轮只移动 Select。正文下部滚轮仍可滚动 Modal，销毁完整清理 Table/Select。既有普通 root Table/Select 回归同时执行。
+- 独立 MSVC headless Debug/Release、最多 4 jobs，重新构建并运行 5 项：`rynui.table_component`、`rynui.portable.modal_component`、`rynui.portable.modal_boundary`、`rynui.portable.select_component`、`rynui.portable.tooltip_component`。Debug **5/5**（2.64s），Release **5/5**（1.29s），日志 `out/066-r2-{debug,release}{,-build}.log`。未重复完整 119 项或上一轮 19 项套件。
+- format check：508 owned files、0 failures；doctor healthy；全量 strict validate：62 passed、0 failed；diff check 通过。仅本地提交，无 push/PR/子代理，无父工作区/Gallery 修改；验收仍仅限 Windows MSVC headless。

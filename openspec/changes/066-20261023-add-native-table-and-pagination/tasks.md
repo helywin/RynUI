@@ -19,3 +19,7 @@
 - [x] 4.2 同步保留行的逻辑交互顺序；验证 A/B → B/A、插入 Input 行位于外部 following control 之前，身份保持且真实 Tab 顺序正确，MSVC headless Debug/Release focused tests 后本地提交。
 - [x] 4.3 修复隐藏 Pagination 的外部布局占位与 Table 等高单元格；验证 Flex 单 gap、显式高度、动态恢复身份、短 Checkbox/Text 与多行内容垂直居中，MSVC headless Debug/Release focused tests 后本地提交。
 - [x] 4.4 运行规定 format、doctor、全量 strict validate、diff check 与相关 token/公开 API 回归，追加五项复现和验证证据；仅本地提交，不 push，不重复完整 119 项套件。
+
+## 5. 平台通用：R2 Modal 集成顺序
+
+- [x] 5.1 保留所有 hosts，将 Table 放在 Modal 之后、Tooltip/Select 等 popup hosts 之前；新增 open Modal 内 scrollY(80) Table 的实际滚轮、保留行 translation/clip、child Select anchor 和 popup wheel 回归。MSVC headless Debug/Release 仅运行相关 focused tests，执行 format/doctor/strict validate/diff check，追加证据并本地提交；不 push、不改父工作区或 Gallery。

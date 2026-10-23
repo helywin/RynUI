@@ -89,9 +89,9 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     typography_ = std::make_unique<TypographyComponentHost>(*this);
     divider_ = std::make_unique<DividerComponentHost>(*this);
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
-    table_ = std::make_unique<TableComponentHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
+    table_ = std::make_unique<TableComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);

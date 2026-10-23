@@ -1,5 +1,6 @@
 #include "component/table_component.hpp"
 #include "component/pagination_component.hpp"
+#include "component/modal_component.hpp"
 #include "component/selection_component.hpp"
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
@@ -557,6 +558,119 @@ void varying_height_cells_stretch_and_center() {
               "Table Checkbox/Text content was not vertically centered in full row");
     }
 }
+
+void modal_table_scroll_and_select_anchor() {
+    Fixture f;
+    int cell_runs{};
+    std::vector<SelectOption> options;
+    for (int i = 0; i < 20; ++i) {
+        options.push_back({i, String::from_utf8(std::to_string(i)).value()});
+    }
+    f.services.mount(Content{[&] {
+        Modal(ModalProps{}.open().title(u8"Orders").width(460).footer(ModalFooterMode::None), ModalContent{[&] {
+                  Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                           Table(TableProps<Row>{}
+                                     .dataSource(data())
+                                     .rowKey([](const Row& row) { return row.id; })
+                                     .columns({TableColumn<Row>{
+                                         u8"value", u8"Value",
+                                         [&](TableCell<Row> cell) {
+                                             ++cell_runs;
+                                             if (cell.key() == String{u8"a"}) {
+                                                 Select(
+                                                     SelectProps{}.options(options).open(true).listHeight(64.0F).layout(
+                                                         LayoutStyle{}.width(dp(200))));
+                                             } else {
+                                                 Text(TextProps{}.content(bind([cell] { return cell.value().name; })));
+                                             }
+                                         }}})
+                                     .scrollY(80.0F));
+                           Text(u8"Tail\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20");
+                       }});
+              }});
+    }});
+    const auto synchronize = [&] {
+        check(f.services.layout_and_synchronize({640, 480}, {0, 0, 640, 480}), "Modal Table synchronization");
+    };
+    synchronize();
+    check(f.services.table().snapshot(f.services.table().mounted().front()).body.height == 80,
+          "Modal Table body clip was not positioned in the first synchronization");
+    synchronize();
+    const auto modal = f.services.modal().mounted().front();
+    const auto table = f.services.table().mounted().front();
+    const auto select = f.services.select().mounted().front();
+    const auto original = f.services.table().snapshot(table);
+    const auto original_menu = f.services.select().snapshot(select);
+    const auto dialog = f.services.modal().snapshot(modal);
+    check(dialog.visible && dialog.maximum_scroll > 0 && original.maximum_y > 0 && original.body.height == 80 &&
+              original.scroll_y == 0 && dialog.scroll == 0 && original_menu.visible && !original_menu.above,
+          "Modal regression requires independent scrollable Modal/Table and open child Select");
+    const auto row = original.rows.front().component;
+    const auto row_node = f.services.components().root(row);
+    const auto first_bounds = bounds(f, row);
+    const auto check_anchor = [&] {
+        const auto menu = f.services.select().snapshot(select);
+        const auto anchor = bounds(f, select);
+        const auto gap = f.services.components().theme_scope(select)->snapshot().select().metrics.gap;
+        const auto y = menu.above ? anchor.y - gap - menu.popup.height : anchor.y + anchor.height + gap;
+        check(std::abs(menu.popup.y - y) < 0.01F && menu.selector == original_menu.selector &&
+                  menu.rows == original_menu.rows && cell_runs == 4,
+              "Modal/Table child Select lost retained identity or anchor tracking");
+    };
+    const auto wheel_x = original.body.x + original.body.width - 5;
+    const auto wheel_y = original.body.y + 10;
+    check(f.inputs.dispatch(ScrollInputEvent{0, -0.5F, wheel_x, wheel_y}), "Modal Table down wheel unhandled");
+    synchronize();
+    const auto scrolled = f.services.table().snapshot(table);
+    check(scrolled.scroll_y > 0 && f.services.modal().snapshot(modal).scroll == dialog.scroll,
+          "Modal consumed scrollable Table body wheel");
+    const auto check_row = [&] {
+        const auto table_translation = f.nodes.require(f.services.components().root(table)).translation;
+        check(std::abs(bounds(f, row).y - (first_bounds.y - scrolled.scroll_y)) < 0.01F &&
+                  std::abs(f.nodes.require(row_node).translation.y - (table_translation.y - scrolled.scroll_y)) < 0.01F,
+              "Modal positioning overwrote Table row translation");
+        const auto clip = f.nodes.content_clip(row_node, {0, 0, 640, 480});
+        check(clip.y >= original.body.y && clip.y + clip.height <= original.body.y + original.body.height &&
+                  bounds(f, row).y < clip.y,
+              "scrolled Modal Table row escaped body clipping");
+        const auto hit = f.services.hit_test().hit_test({wheel_x, original.body.y - 1});
+        check(!hit || f.services.interactions().require(*hit).component != row, "Modal Table row hit escaped clip");
+    };
+    check_row();
+    check_anchor();
+    synchronize();
+    check_row();
+    check_anchor();
+    auto menu = f.services.select().snapshot(select);
+    check(menu.popup.y + 10 >= original.body.y && menu.popup.y + 10 < original.body.y + original.body.height,
+          "child popup wheel must overlap Table body");
+    check(f.inputs.dispatch(ScrollInputEvent{0, -1, menu.popup.x + 10, menu.popup.y + 10}),
+          "Modal child popup wheel unhandled");
+    synchronize();
+    check(f.services.select().snapshot(select).scroll > menu.scroll &&
+              f.services.table().snapshot(table).scroll_y == scrolled.scroll_y &&
+              f.services.modal().snapshot(modal).scroll == dialog.scroll,
+          "Table/Modal stole child Select popup wheel");
+    check(f.inputs.dispatch(ScrollInputEvent{0, 0.5F, wheel_x, wheel_y}), "Modal Table up wheel unhandled");
+    synchronize();
+    check(f.services.table().snapshot(table).scroll_y == 0 && bounds(f, row).y == first_bounds.y,
+          "Modal Table up wheel failed to restore row");
+    check_anchor();
+    check(f.inputs.dispatch(ScrollInputEvent{0, -1, dialog.body_bounds.x + dialog.body_bounds.width - 5,
+                                             dialog.body_bounds.y + dialog.body_bounds.height - 5}),
+          "outer Modal body wheel unhandled");
+    synchronize();
+    const auto outer_scroll = f.services.modal().snapshot(modal).scroll;
+    check(outer_scroll > 0 && f.services.table().snapshot(table).scroll_y == 0 &&
+              std::abs(bounds(f, row).y - (first_bounds.y - outer_scroll)) < 0.01F,
+          "Modal outer scroll did not propagate through retained Table");
+    check_anchor();
+    f.services.destroy(modal);
+    synchronize();
+    check(f.services.table().mounted().empty() && f.services.select().mounted().empty() &&
+              f.services.interactions().size() == 0,
+          "Modal Table/Select cleanup leaked interactions");
+}
 } // namespace
 
 int main() {
@@ -569,6 +683,7 @@ int main() {
         inactive_new_rows_do_not_steal_focus();
         retained_row_tab_order();
         varying_height_cells_stretch_and_center();
+        modal_table_scroll_and_select_anchor();
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;
