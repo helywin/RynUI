@@ -518,6 +518,45 @@ void retained_row_tab_order() {
     expect_tabs({after}, "Table cleanup damaged external Input Tab order");
     check(f.inputs.mounted_inputs().size() == 2 && !f.services.interactions().find(c), "row interaction cleanup");
 }
+
+void varying_height_cells_stretch_and_center() {
+    Fixture f;
+    Signal<std::vector<Row>> source{std::vector<Row>{{u8"a", u8"Short", 1, false}}};
+    f.services.mount(Content{[&] {
+        Table(TableProps<Row>{}
+                  .dataSource(source)
+                  .rowKey([](const Row& row) { return row.id; })
+                  .columns({TableColumn<Row>{u8"short", u8"Short",
+                                             [](TableCell<Row> cell) {
+                                                 Text(TextProps{}.content(bind([cell] { return cell.value().name; })));
+                                             }}
+                                .width(180.0F),
+                            TableColumn<Row>{u8"multiline", u8"Multiline",
+                                             [](TableCell<Row>) { Text(u8"Line 1\nLine 2\nLine 3"); }}
+                                .width(220.0F)})
+                  .rowSelection({std::vector<String>{}, [](auto) {}, {}})
+                  .scrollY(180.0F));
+    }});
+    sync(f);
+    const auto table = f.services.table().mounted().front();
+    const auto row = f.services.table().snapshot(table).rows.front();
+    const auto full = bounds(f, row.component);
+    const auto short_region = f.services.components().children(row.cells[1]).front();
+    const auto tall_region = f.services.components().children(row.cells[2]).front();
+    const auto short_bounds = bounds(f, f.services.components().children(short_region).front());
+    const auto tall_bounds = bounds(f, f.services.components().children(tall_region).front());
+    const auto checkbox = bounds(f, row.checkbox);
+    check(tall_bounds.height > short_bounds.height + 20, "multiline fixture did not create unequal cell heights");
+    for (auto cell : row.cells) {
+        const auto cell_bounds = bounds(f, cell);
+        check(cell_bounds.y == full.y && cell_bounds.height == full.height,
+              "short Table cell did not stretch to full row height");
+    }
+    for (const auto content : {short_bounds, tall_bounds, checkbox}) {
+        check(std::abs(content.y + content.height / 2 - (full.y + full.height / 2)) < 0.01F,
+              "Table Checkbox/Text content was not vertically centered in full row");
+    }
+}
 } // namespace
 
 int main() {
@@ -529,6 +568,7 @@ int main() {
         callbacks_can_destroy_table();
         inactive_new_rows_do_not_steal_focus();
         retained_row_tab_order();
+        varying_height_cells_stretch_and_center();
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;

@@ -95,6 +95,22 @@ void PaginationComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     s->pages = std::max(std::size_t{1}, s->total / s->page_size + (s->total % s->page_size != 0));
     s->current = std::clamp(s->current, std::size_t{1}, s->pages);
     s->hidden = s->hide_single && s->pages == 1;
+    auto& root = services_->nodes().require(s->node);
+    if (root.out_of_flow != s->hidden) {
+        root.out_of_flow = s->hidden;
+        if (s->hidden) {
+            // Box/Flex skip out-of-flow children, including placement, so clear
+            // retained geometry here while preserving the external layout style.
+            root.measured_size = {};
+            root.layout_size = {};
+            root.bounds.width = 0;
+            root.bounds.height = 0;
+        }
+        if (root.parent) {
+            services_->dirty().invalidate(*root.parent, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout);
+        }
+        geometry = true;
+    }
     const auto& token = services_->components().theme_scope(id)->snapshot().pagination();
     s->extent = s->size == ControlSize::Small   ? token.metrics.item_size_small
                 : s->size == ControlSize::Large ? token.metrics.item_size_large
@@ -228,6 +244,9 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
         s.node, layout::ComponentLayout{
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
                         auto& s = *services_->components().state<PaginationState>(id);
+                        if (s.hidden) {
+                            return runtime::Size{};
+                        }
                         std::size_t count = 0;
                         for (const auto& item : s.items) {
                             if (item.shown && !s.hidden) {
@@ -242,6 +261,9 @@ void PaginationComponentHost::mount(const PaginationProps& props) {
                     },
                     [this, id](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect bounds) {
                         auto& s = *services_->components().state<PaginationState>(id);
+                        if (s.hidden) {
+                            return;
+                        }
                         float x = bounds.x;
                         for (const auto& item : s.items) {
                             if (item.shown && !s.hidden) {

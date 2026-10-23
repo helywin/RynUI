@@ -15,3 +15,10 @@
 - 每次 Table geometry refresh 收集保留行内的交互块，按可见行顺序及其余 inactive 行顺序调用既有 `InteractionRegistry::reorder_after`，锚定在表头交互之后。新增行即使较外部 following control 晚挂载，也回到 Table 的逻辑位置；不重建控件。
 - 实际按键验证外部 before → A → B → after、重排后 before → B → A → after、插入后 before → B → C → A → after，以及删除与 Table 销毁后的外部顺序。断言行 Component、Input Interaction、当前焦点与编辑 session 保留，只有新增 C 执行新 cell slot。
 - `rynui.table_component` Debug 1/1（0.69s）、Release 1/1（0.34s）通过；日志 `out/066-review-focus-{debug,release}.log`。
+
+## P2-4 / P2-5：隐藏布局和单元格高度
+
+- 两个新增回归在旧代码分别失败：`hidden Pagination introduced extra Flex gap/height` 和 `short Table cell did not stretch to full row height`。五项评审问题均已复现，无跳过项。
+- Pagination 根据 hidden 更新 root `out_of_flow`，可见性变化显式失效 parent Measure/Layout。隐藏时清零保留 root geometry 并短路内部 measure/place，外部 LayoutStyle 保留，显示时正常恢复。默认高度与显式 60dp 高度分别验证初始隐藏、显示→隐藏→显示、total/hideOnSinglePage 更新；Text/Pagination/Text 隐藏时只有一个 12dp gap，恢复时 Component/按钮身份和点击保持。
+- Table 以 stretch-height 放置 cell，使每个 cell 的实际 bounds 等于整行高度。回归包含同一行 Checkbox、单行 Text、三行 Text，断言全部 cell 的 y/height 与 row 一致，并检查实际 Checkbox/Text bounds 的中心与 row 中心一致。
+- 重新构建两项组件测试后，Debug 2/2（1.31s）、Release 2/2（0.37s）通过；日志 `out/066-review-layout-{debug,release}.log`。

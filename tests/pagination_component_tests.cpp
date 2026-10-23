@@ -177,6 +177,77 @@ void token_contracts_and_callback_cleanup() {
     check(f.services.pagination().mounted().empty() && f.services.interactions().size() == 0,
           "Pagination destruction callback leaked");
 }
+
+void hidden_pagination_flex_flow() {
+    for (bool explicit_height : {false, true}) {
+        Fixture f;
+        Signal<std::size_t> total{10};
+        Signal<bool> hide{true};
+        f.services.mount(Content{[&] {
+            Flex(FlexProps{}.vertical(true).gap(dp(12)), FlexContent{[&] {
+                     Text(u8"Before");
+                     auto props = PaginationProps{}.total(total).hideOnSinglePage(hide);
+                     if (explicit_height) {
+                         props.layout(LayoutStyle{}.height(dp(60)));
+                     }
+                     Pagination(props);
+                     Text(u8"After");
+                 }});
+        }});
+        f.synchronize(600, {0, 0, 600, 240});
+        const auto flex = f.services.components().root_components().front();
+        const auto children = f.services.components().children(flex);
+        const auto before = f.services.components().root(children[0]);
+        const auto pager = f.services.components().root(children[1]);
+        const auto after = f.services.components().root(children[2]);
+        const auto id = f.services.pagination().mounted().front();
+        check(f.services.pagination().snapshot(id).hidden && f.nodes.require(pager).out_of_flow &&
+                  std::abs(f.nodes.require(after).bounds.y -
+                           (f.nodes.require(before).bounds.y + f.nodes.require(before).bounds.height) - 12) < 0.01F,
+              "initially hidden Pagination consumed Flex space");
+        total.set(30);
+        f.synchronize(600, {0, 0, 600, 240});
+        const auto original = f.services.pagination().snapshot(id);
+        const auto count = f.services.components().component_count();
+        const auto shown_height = f.nodes.require(pager).bounds.height;
+        check(!original.hidden && (!explicit_height || shown_height == 60), "visible Pagination explicit height");
+        const auto check_hidden = [&] {
+            const auto& a = f.nodes.require(before).bounds;
+            const auto& b = f.nodes.require(after).bounds;
+            check(std::abs(b.y - (a.y + a.height) - 12) < 0.01F, "hidden Pagination introduced extra Flex gap/height");
+            const auto& root = f.nodes.require(pager);
+            check(root.out_of_flow && root.measured_size == runtime::Size{} && root.layout_size == runtime::Size{} &&
+                      root.bounds.width == 0 && root.bounds.height == 0,
+                  "hidden Pagination retained nonzero layout geometry");
+        };
+        const auto measures = f.nodes.require(f.services.components().root(flex)).measure_count;
+        total.set(10);
+        f.synchronize(600, {0, 0, 600, 240});
+        check_hidden();
+        check(f.nodes.require(f.services.components().root(flex)).measure_count > measures,
+              "visibility change did not invalidate parent measurement");
+        total.set(30);
+        f.synchronize(600, {0, 0, 600, 240});
+        const auto restored = f.services.pagination().snapshot(id);
+        const auto& a = f.nodes.require(before).bounds;
+        const auto& b = f.nodes.require(after).bounds;
+        check(!restored.hidden && restored.items == original.items &&
+                  f.services.components().component_count() == count && !f.nodes.require(pager).out_of_flow &&
+                  f.nodes.require(pager).bounds.height == shown_height &&
+                  std::abs(b.y - (a.y + a.height) - shown_height - 24) < 0.01F,
+              "Pagination visibility restoration lost retained identity or flow geometry");
+        click(f, restored.items[2]);
+        check(f.services.pagination().snapshot(id).current == 2, "restored Pagination lost interaction");
+        total.set(10);
+        f.synchronize(600, {0, 0, 600, 240});
+        check_hidden();
+        hide.set(false);
+        f.synchronize(600, {0, 0, 600, 240});
+        check(!f.services.pagination().snapshot(id).hidden && !f.nodes.require(pager).out_of_flow &&
+                  f.nodes.require(pager).bounds.height == shown_height,
+              "hideOnSinglePage change did not restore flow");
+    }
+}
 } // namespace
 
 int main() {
@@ -184,6 +255,7 @@ int main() {
         controlled();
         keyboard_and_theme();
         token_contracts_and_callback_cleanup();
+        hidden_pagination_flex_flow();
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;

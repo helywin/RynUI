@@ -407,7 +407,7 @@ runtime::ComponentId TableComponentHost::mount_row(runtime::ComponentId id, cons
                           float x = bounds.x;
                           for (std::size_t i = 0; i < row.cells.size(); ++i) {
                               engine.place_child(services_->components().root(row.cells[i]),
-                                                 {x, bounds.y, s.widths[i], bounds.height});
+                                                 {x, bounds.y, s.widths[i], bounds.height}, false, true);
                               x += s.widths[i];
                           }
                       }});
