@@ -66,3 +66,5 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "^rynui.portable.(m
 - 本地原始日志：`out/r1-reproductions.json`、`out/r1-fixed-cases.json`、`out/r1-debug.log`、`out/r1-release.log`、`out/r1-format.log`、`out/r1-doctor.json`、`out/r1-validate.log`。构建目录和日志保持 ignored，不作为仓库源码提交。
 
 依评审指示未重复原已通过的完整 117 项套件；不增加原生 GPU/Linux/IME 声明。所有三个 finding 均已复现并修复，无跳过项。本轮只作本地提交，不 push、PR、archive 或改动 root/Gallery。
+
+实现与测试的本地提交：`bedc46539fd65b751a84e48b5e39d2c527ed9a0c`（`fix: correct Menu popup scrolling and row layout`）；后续收口提交仅记录该 SHA 与任务完成状态。

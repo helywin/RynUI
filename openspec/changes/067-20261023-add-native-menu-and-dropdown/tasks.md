@@ -21,4 +21,4 @@
 - [x] 5.1 复现并修复重叠子 Select / Dropdown 的 wheel 优先级；验证子层先滚动、父菜单仅在所属区域滚动，使用 windows-msvc-headless Debug/Release 聚焦测试。
 - [x] 5.2 复现并修复短标签 Dropdown 行未填满 popup 内宽；验证真实行 bounds 与右侧 pointer 激活，使用同一 Debug/Release 聚焦测试。
 - [x] 5.3 复现并修复 End 后响应式禁用活动末行未触发布局 reveal；验证新活动行实际可见、Enter key 与节点 identity，使用同一 Debug/Release 聚焦测试。
-- [ ] 5.4 追加 R1 证据，通过 format-code、doctor、严格 validate 和 diff 检查，创建本地英文提交并报告 SHA；不重复原已通过的完整 117 项套件，不推送。
+- [x] 5.4 追加 R1 证据，通过 format-code、doctor、严格 validate 和 diff 检查，创建本地英文提交并报告 SHA；不重复原已通过的完整 117 项套件，不推送。
