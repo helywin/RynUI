@@ -1,0 +1,205 @@
+Start testing: Oct 23 23:00 中国标准时间
+----------------------------------------------------------
+46/130 Testing: rynui.portable.search_component
+46/130 Test: rynui.portable.search_component
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_search_component.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.search_component" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   2.13 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.search_component" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.search_component" time elapsed: 00:00:02
+----------------------------------------------------------
+
+129/130 Testing: rynui.portable.backend_boundaries
+129/130 Test: rynui.portable.backend_boundaries
+Command: "C:/Users/jiang/AppData/Local/Programs/Python/Python310/python3.exe" "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/tests/portable/verify_boundaries.py" "--source" "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110" "--build" "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.backend_boundaries" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Actual headless/Core build graph, negative renderer dependency guards and legal common dependencies passed
+<end of output>
+Test time =   2.16 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.backend_boundaries" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.backend_boundaries" time elapsed: 00:00:02
+----------------------------------------------------------
+
+41/130 Testing: rynui.portable.input_actions
+41/130 Test: rynui.portable.input_actions
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_actions.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_actions" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Native Input family actions passed
+<end of output>
+Test time =   0.30 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_actions" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.input_actions" time elapsed: 00:00:00
+----------------------------------------------------------
+
+56/130 Testing: rynui.portable.theme_algorithm
+56/130 Test: rynui.portable.theme_algorithm
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_theme_algorithm.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.theme_algorithm" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.theme_algorithm" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.theme_algorithm" time elapsed: 00:00:00
+----------------------------------------------------------
+
+45/130 Testing: rynui.portable.password_component
+45/130 Test: rynui.portable.password_component
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_password_component.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.password_component" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Password component and editing passed
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.password_component" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.password_component" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/130 Testing: rynui.portable.input_component
+38/130 Test: rynui.portable.input_component
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_component.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_component" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Input layout simulated-scale cases=768
+Input lifecycle, layout and controlled callbacks passed
+<end of output>
+Test time =   2.73 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_component" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.input_component" time elapsed: 00:00:02
+----------------------------------------------------------
+
+57/130 Testing: rynui.portable.theme_runtime
+57/130 Test: rynui.portable.theme_runtime
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_theme_runtime.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.theme_runtime" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.theme_runtime" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.theme_runtime" time elapsed: 00:00:00
+----------------------------------------------------------
+
+75/130 Testing: rynui.portable.text_input_session
+75/130 Test: rynui.portable.text_input_session
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_text_input_session.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.text_input_session" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Text session, composition and area passed
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.text_input_session" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.text_input_session" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/130 Testing: rynui.input_number_public_api
+2/130 Test: rynui.input_number_public_api
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/Release/rynui_input_number_public_api_tests.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests
+"rynui.input_number_public_api" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.input_number_public_api" end time: Oct 23 23:00 中国标准时间
+"rynui.input_number_public_api" time elapsed: 00:00:00
+----------------------------------------------------------
+
+1/130 Testing: rynui.input_number_model
+1/130 Test: rynui.input_number_model
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/Release/rynui_input_number_model_tests.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests
+"rynui.input_number_model" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.input_number_model" end time: Oct 23 23:00 中国标准时间
+"rynui.input_number_model" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/130 Testing: rynui.input_number_theme
+4/130 Test: rynui.input_number_theme
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/Release/rynui_input_number_theme_tests.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests
+"rynui.input_number_theme" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.10 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.input_number_theme" end time: Oct 23 23:00 中国标准时间
+"rynui.input_number_theme" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/130 Testing: rynui.input_number_component
+3/130 Test: rynui.input_number_component
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/Release/rynui_input_number_component_tests.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests
+"rynui.input_number_component" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   1.40 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.input_number_component" end time: Oct 23 23:00 中国标准时间
+"rynui.input_number_component" time elapsed: 00:00:01
+----------------------------------------------------------
+
+39/130 Testing: rynui.portable.input_variant
+39/130 Test: rynui.portable.input_variant
+Command: "C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable/Release/rynui_portable_input_variant.exe"
+Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-e1b1d110/out/build/windows-msvc-headless/tests/portable
+"rynui.portable.input_variant" start time: Oct 23 23:00 中国标准时间
+Output:
+----------------------------------------------------------
+Native Input variants, tokens, retained state and Compact passed
+<end of output>
+Test time =   3.59 sec
+----------------------------------------------------------
+Test Passed.
+"rynui.portable.input_variant" end time: Oct 23 23:00 中国标准时间
+"rynui.portable.input_variant" time elapsed: 00:00:03
+----------------------------------------------------------
+
+End testing: Oct 23 23:00 中国标准时间

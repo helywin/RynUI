@@ -10,6 +10,6 @@
 
 ## 3. 集成核验（平台通用）
 
-- [ ] 3.1 在 Windows `windows-msvc-headless` MSVC/Ninja Multi-Config 完成 Debug/Release 聚焦数值、Input 家族回归、Theme golden 和 backend boundary 检查；执行格式、OpenSpec doctor/strict validate、diff check，记录实际命令与限制并本地提交。
+- [x] 3.1 在 Windows `windows-msvc-headless` MSVC/Ninja Multi-Config 完成 Debug/Release 聚焦数值、Input 家族回归、Theme golden 和 backend boundary 检查；执行格式、OpenSpec doctor/strict validate、diff check，记录实际命令与限制并本地提交。
 
 本 change 不将真实窗口 GPU、系统 IME 或 Linux 人工验收作为已完成结果；这些工作由父任务后续独立集成。本工作树禁止 push、PR 与 archive。
