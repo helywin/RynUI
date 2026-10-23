@@ -21,6 +21,10 @@ ryn::InputNumber(ryn::InputNumberProps{}
 
 文本语法为 ASCII 数字、可选正负号和 `.` 小数点；不解析指数、分组符或本地化小数点。此类草稿暂存并在提交时恢复权威值。格式化数值不补齐尾零；precision 表达最大小数位数。
 
+步进先计算十进制候选，再按 precision 最近舍入；如果舍入会跨过当前权威值并反向，则沿请求方向量化。边界夹取也不得让非空值反向；该方向没有合法值时保持原值，不发 change/step。这同样适用于外部 value、precision 或范围动态变更后尚未位于精度网格的值；空值仍按 0 起步再夹取到范围。
+
+preedit 的进入和取消按编辑器 composition 状态刷新按钮资格，包括 ref selection、focus cursor、pointer selection、Escape、commit 及资格变更；取消不发布预编辑文本。真实 disabled/readOnly 与共同逻辑输入门禁继续独立生效。
+
 控件直接挂载现有 Input：复用唯一 TextEditorState、TextInputSessionHost、selection/clipboard/history、`InputRef`（focus/blur/select）、placeholder、status、disabled/readOnly，以及 `InputPrefix`/`InputSuffix` typed slots。三种 `ControlSize` 和 Outlined/Filled/Borderless/Underlined 继承 Input 表面 Theme。Up/Down 步进，`.keyboard(false)` 可关闭；`.controls(false)` 关闭按钮但保留键盘。按钮保持编辑器焦点，preedit 期间不解析或步进，只有 TextCommitted 进入数值处理。默认滚轮只经过共同滚动路径。
 
 `onStep(double, InputNumberStepInfo)` 提供候选值、正数 step magnitude、Up/Down direction 和 Button/Keyboard source；边界或舍入后无变化不通知。`onSubmit(InputNumberValue)` 在 Enter 规范化后提供权威值。控件移除时清理 ref、焦点、session、捕获及两个按钮，销毁期间不提交草稿。

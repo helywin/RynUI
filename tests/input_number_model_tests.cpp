@@ -1,5 +1,6 @@
 #include "component/input_number_model.hpp"
 
+#include <array>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -22,6 +23,52 @@ template <class F> void rejects(F action) {
         rejected = true;
     }
     check(rejected, "invalid InputNumber value/config accepted");
+}
+
+void precision_step_direction() {
+    struct Case {
+        double value;
+        InputNumberOptions options;
+        double up;
+        double down;
+    };
+
+    const std::array cases{
+        Case{.26, {-1, 1, .01, 1}, .3, .2},
+        Case{-.26, {-1, 1, .01, 1}, -.2, -.3},
+        Case{.24, {-1, 1, .01, 1}, .3, .2},
+        Case{-.24, {-1, 1, .01, 1}, -.2, -.3},
+        Case{.01, {-1, 1, .01, 1}, .1, 0},
+        Case{-.01, {-1, 1, .01, 1}, 0, -.1},
+        Case{.5, {-1, 1, .1, 0}, 1, 0},
+        Case{-.5, {-1, 1, .1, 0}, 0, -1},
+        Case{.26, {.27, 1, .01, 1}, .3, .26},
+        Case{.74, {-1, .73, .01, 1}, .74, .7},
+        Case{-.26, {-1, -.27, .01, 1}, -.26, -.3},
+        Case{-.74, {-.73, 1, .01, 1}, -.7, -.74},
+        Case{.3, {-1, .3, .1, 1}, .3, .2},
+        Case{-.3, {-.3, 1, .1, 1}, -.2, -.3},
+        Case{.3, {-1, 1, .01, 1}, .3, .3},
+    };
+    for (const auto& test : cases) {
+        InputNumberModel model{test.options, test.value, false};
+        const auto up = model.stepped(InputNumberStepDirection::Up);
+        const auto down = model.stepped(InputNumberStepDirection::Down);
+        check(up && *up >= test.value && down && *down <= test.value,
+              "precision quantization reversed the requested step direction");
+        check(up == test.up && down == test.down, "precision step missed the expected decimal/boundary");
+    }
+    InputNumberModel external{{-1, 1, .01, 2}, .2, true};
+    external.reconcile(.26);
+    check(external.stepped(InputNumberStepDirection::Down) == .25, "external precision-2 step failed");
+    external.configure({-1, 1, .01, 1});
+    check(external.value() == .26 && external.stepped(InputNumberStepDirection::Down) == .2 &&
+              external.stepped(InputNumberStepDirection::Up) == .3,
+          "precision update reversed a step or rewrote authority");
+    external.reconcile(-.26);
+    check(external.stepped(InputNumberStepDirection::Up) == -.2 &&
+              external.stepped(InputNumberStepDirection::Down) == -.3,
+          "external negative value did not preserve step symmetry");
 }
 
 void arithmetic_and_drafts() {
@@ -85,6 +132,7 @@ void precision_and_atomicity() {
 
 int main() {
     try {
+        precision_step_direction();
         arithmetic_and_drafts();
         precision_and_atomicity();
     } catch (const std::exception& error) {

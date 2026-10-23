@@ -26,6 +26,10 @@
 - **WHEN** 0.1 以 0.1 连续步进，或在边界、空值、负数和 precision 下步进
 - **THEN** 返回规范十进制结果，不越过边界；空值从 0 开始计算；边界无变化时不发 change/step
 
+#### Scenario: Precision cannot reverse a step
+- **WHEN** 非空权威值因初值、外部回写或 precision/范围变更而不在精度网格，用户请求 Up 或 Down
+- **THEN** 舍入和夹取结果不得反向；有合法结果时沿请求方向变化，否则保持原值且不发 change/step
+
 ### Requirement: Retained native input lifecycle
 
 组件 MUST 复用既有单个 Input/editor/session、focus/ref 及 typed slots，支持按钮、Up/Down、disabled/readOnly、三尺寸与四种 Input variants。preedit MUST 不解析或发布，销毁后 session/ref/actions 全部失效；普通属性更新 MUST 保留身份。
@@ -33,6 +37,10 @@
 #### Scenario: IME and disposal
 - **WHEN** 组合输入进行中执行步进，随后 commit 并销毁
 - **THEN** preedit 不改变数值，commit 按文本编辑合同处理，销毁清理焦点/session/ref 并拒绝迟到事件
+
+#### Scenario: Selection cancels preedit
+- **WHEN** ref selection、focus cursor 或 pointer selection 取消 preedit
+- **THEN** 不发布预编辑文本，按钮资格反映最新编辑器状态并保留 disabled/readOnly 和逻辑输入门禁；门禁允许后按钮和键盘步进可用
 
 ### Requirement: Theme isolation
 

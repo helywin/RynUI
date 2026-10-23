@@ -51,6 +51,190 @@ void click(Fixture& f, InteractionId id) {
     pointer(f, id, PointerAction::up);
 }
 
+void composition_selection_cancellation() {
+    enum class Path { ReferenceSelection, FocusCursor, Pointer };
+    for (const auto path : {Path::ReferenceSelection, Path::FocusCursor, Path::Pointer}) {
+        Fixture f;
+        InputRef ref;
+        int changes{};
+        f.inputs.mount(Content{[&] {
+            InputNumber(InputNumberProps{}.defaultValue(.2).min(0).max(1).step(.1).ref(ref).onChange(
+                [&](InputNumberValue) { ++changes; }));
+        }});
+        f.synchronize();
+        const auto mounted = f.inputs.mounted_inputs().front();
+        const auto up = action(f, mounted.component, 0);
+        const auto down = action(f, mounted.component, 1);
+        check(ref.focus({InputFocusCursor::All}), "cancel fixture focus failed");
+        const auto stamp = f.inputs.sessions().active();
+        check(bool(f.inputs.dispatch(CompositionChanged{String{u8"0.9"}, {3, 0}, stamp})), "cancel preedit failed");
+        f.synchronize();
+        check(!f.services.interactions().require(up).eligible && !f.services.interactions().require(down).eligible &&
+                  changes == 0,
+              "preedit did not suspend numeric actions");
+        if (path == Path::ReferenceSelection) {
+            check(ref.select(0, 0), "ref selection did not cancel preedit");
+        } else if (path == Path::FocusCursor) {
+            check(ref.focus({InputFocusCursor::Start}), "focus cursor did not cancel preedit");
+        } else {
+            const auto viewport = f.inputs.layout_snapshot(mounted.component).viewport;
+            for (const auto action : {PointerAction::down, PointerAction::up}) {
+                f.services.pointer().dispatch({PointerIdentity::mouse(), action, PointerButton::primary, viewport.x + 1,
+                                               viewport.y + viewport.height / 2, 1});
+            }
+        }
+        f.synchronize();
+        check(!f.inputs.editors().require(mounted.editor).composition().active && changes == 0 &&
+                  f.inputs.number_value(mounted.component) == .2 &&
+                  f.inputs.editors().require(mounted.editor).value() == "0.2",
+              "cancel published preedit or changed value");
+        const char* message = path == Path::ReferenceSelection ? "ref.select cancellation left actions disabled"
+                              : path == Path::FocusCursor      ? "focus cursor cancellation left actions disabled"
+                                                               : "pointer cancellation left actions disabled";
+        check(f.services.interactions().require(up).eligible && f.services.interactions().require(down).eligible,
+              message);
+        click(f, up);
+        check(changes == 1 && f.inputs.number_value(mounted.component) == .3, "button step after cancel failed");
+        key(f, Key::down);
+        check(changes == 2 && f.inputs.number_value(mounted.component) == .2, "keyboard step after cancel failed");
+    }
+}
+
+void precision_step_direction() {
+    {
+        Fixture initial;
+        InputRef ref;
+        InputNumberValue changed;
+        initial.inputs.mount(Content{[&] {
+            InputNumber(InputNumberProps{}.defaultValue(.26).step(.01).precision(1).ref(ref).onChange(
+                [&](InputNumberValue next) { changed = next; }));
+        }});
+        initial.synchronize();
+        const auto number = initial.inputs.mounted_inputs().front();
+        check(ref.focus(), "default precision fixture focus failed");
+        key(initial, Key::down);
+        check(changed == .2 && initial.inputs.number_value(number.component) == .2,
+              "defaultValue 0.26 Down step increased after rounding");
+    }
+    Fixture f;
+    InputRef ref;
+    Signal<InputNumberValue> value{.26};
+    Signal<std::optional<unsigned>> precision{2};
+    Signal<double> minimum{-1};
+    Signal<double> maximum{1};
+    int changes{};
+    std::vector<InputNumberStepDirection> directions;
+    f.inputs.mount(Content{[&] {
+        InputNumber(InputNumberProps{}
+                        .value(value)
+                        .min(minimum)
+                        .max(maximum)
+                        .step(.01)
+                        .precision(precision)
+                        .ref(ref)
+                        .onChange([&](InputNumberValue next) {
+                            ++changes;
+                            value.set(next);
+                        })
+                        .onStep([&](double, InputNumberStepInfo info) { directions.push_back(info.direction); }));
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    check(ref.focus(), "precision fixture focus failed");
+    precision.set(1);
+    check(changes == 0 && value.get() == .26, "precision update rewrote controlled authority");
+    key(f, Key::down);
+    check(value.get() == .2 && changes == 1 && directions.back() == InputNumberStepDirection::Down,
+          "native Down step emitted a precision-induced increase");
+    value.set(-.26);
+    f.synchronize();
+    click(f, action(f, mounted.component, 0));
+    check(value.get() == -.2 && changes == 2 && directions.back() == InputNumberStepDirection::Up,
+          "native Up step emitted a precision-induced decrease");
+    value.set(.26);
+    minimum.set(.27);
+    check(changes == 2 && value.get() == .26, "range update rewrote authority");
+    key(f, Key::down);
+    check(changes == 2 && value.get() == .26, "minimum quantization reversed Down");
+    key(f, Key::up);
+    check(changes == 3 && value.get() == .3, "minimum quantization blocked the allowed Up step");
+    minimum.set(-1);
+    maximum.set(.73);
+    value.set(.74);
+    key(f, Key::up);
+    check(changes == 3 && value.get() == .74, "maximum quantization reversed Up");
+    key(f, Key::down);
+    check(changes == 4 && value.get() == .7 && directions.back() == InputNumberStepDirection::Down,
+          "maximum quantization blocked the allowed Down step");
+}
+
+void composition_cancellation_gates() {
+    Fixture f;
+    InputRef ref;
+    Signal<bool> disabled{false};
+    Signal<bool> read_only{false};
+    int changes{};
+    f.inputs.mount(Content{[&] {
+        InputNumber(InputNumberProps{}
+                        .defaultValue(.2)
+                        .min(0)
+                        .max(1)
+                        .step(.1)
+                        .ref(ref)
+                        .disabled(disabled)
+                        .readOnly(read_only)
+                        .onChange([&](InputNumberValue) { ++changes; }));
+        Input(InputProps{}.defaultValue(u8"boundary"));
+    }});
+    f.synchronize();
+    const auto mounted = f.inputs.mounted_inputs().front();
+    const auto other = f.inputs.mounted_inputs().back();
+    const auto up = action(f, mounted.component, 0);
+    const auto down = action(f, mounted.component, 1);
+    for (int gate = 0; gate < 4; ++gate) {
+        check(ref.focus({InputFocusCursor::All}), "gate fixture focus failed");
+        const auto count = changes;
+        check(bool(f.inputs.dispatch(CompositionChanged{String{u8"0.9"}, {3, 0}, f.inputs.sessions().active()})),
+              "gated preedit failed");
+        if (gate == 0) {
+            disabled.set(true);
+        } else if (gate == 1) {
+            read_only.set(true);
+            check(ref.select(0, 0), "readonly selection should still be available");
+        } else if (gate == 2) {
+            f.services.components().set_branch_active(mounted.component, false);
+            f.services.mark_scene_structure_dirty();
+            f.services.focus().synchronize();
+        } else {
+            f.services.set_input_boundary(other.component);
+        }
+        f.synchronize();
+        if (gate < 2) {
+            check(!f.services.interactions().require(up).eligible && !f.services.interactions().require(down).eligible,
+                  "composition cancellation lifted disabled/readonly eligibility");
+        } else {
+            check(!f.services.interactions().component_active(mounted.component) && !ref.select(0, 0) && !ref.focus(),
+                  "composition cancellation lifted a logical interaction gate");
+        }
+        click(f, up);
+        key(f, Key::up);
+        check(!f.inputs.editors().require(mounted.editor).composition().active && changes == count &&
+                  f.inputs.number_value(mounted.component) == .2,
+              "gate allowed preedit publication or stepping");
+        disabled.set(false);
+        read_only.set(false);
+        f.services.components().set_branch_active(mounted.component, true);
+        f.services.mark_scene_structure_dirty();
+        f.services.set_input_boundary({});
+        f.synchronize();
+        check(ref.focus(), "restored numeric gate did not focus");
+        click(f, up);
+        key(f, Key::down);
+        check(changes == count + 2 && f.inputs.number_value(mounted.component) == .2,
+              "restored gate did not resume button/keyboard stepping");
+    }
+}
+
 void controlled_draft_and_writeback() {
     Fixture f;
     Signal<InputNumberValue> value{1.0};
@@ -303,6 +487,9 @@ void range_atomicity_and_sizes() {
     Fixture conflict;
     bool rejected{};
     try {
+        composition_selection_cancellation();
+        precision_step_direction();
+        composition_cancellation_gates();
         conflict.inputs.mount(Content{[] { InputNumber(InputNumberProps{}.value(1).defaultValue(2)); }});
     } catch (const std::invalid_argument&) {
         rejected = true;

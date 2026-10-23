@@ -89,6 +89,7 @@ struct InputNumberState final {
     std::optional<InputNumberValue> emitted;
     bool controls{true};
     bool keyboard{true};
+    bool composition_active{};
     bool edited{};
 };
 
@@ -1624,7 +1625,6 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         if (event.key == Key::escape && event.action == input::KeyAction::down && !event.repeat) {
             static_cast<void>(sessions_.cancel_composition());
             update_text(component, false);
-            refresh_number(component);
         }
         // IME owns navigation, deletion, candidate Tab/Enter and shortcuts until
         // it commits or cancels. Never mutate committed text from these keys.
@@ -1997,6 +1997,11 @@ void InputComponentHost::update_text(runtime::ComponentId component, bool measur
         return;
     }
     const auto& editor = editors_.require(state->mounted.editor);
+    // Ref selection, focus cursor, pointer placement and session eligibility can
+    // all cancel preedit. Refresh from the editor transition, not its entry point.
+    if (state->number && state->number->composition_active != editor.composition().active) {
+        refresh_number(component);
+    }
     update_clear_visibility(component);
     const auto changed = state->display.update(editor, state->placeholder.view(), state->password && !state->visible,
                                                state->mask_glyph.view());
@@ -2839,8 +2844,9 @@ void InputComponentHost::refresh_number(runtime::ComponentId component) {
     }
     auto& number = *state->number;
     const auto* editor = editors_.find(state->mounted.editor);
+    number.composition_active = editor && editor->composition().active;
     const bool editable =
-        state->active && !state->disabled && !state->read_only && editor && !editor->composition().active;
+        state->active && !state->disabled && !state->read_only && editor && !number.composition_active;
     const auto& theme = host_->components().theme_scope(component)->snapshot();
     const auto& tokens = theme.input_number();
     const auto height =
@@ -3003,7 +3009,6 @@ input::TextEditResult InputComponentHost::dispatch(const input::TextCommitted& e
         for (const auto& mounted : mounted_) {
             if (mounted.editor == event.session.owner) {
                 update_text(mounted.component, false);
-                refresh_number(mounted.component);
             }
         }
     }
@@ -3017,7 +3022,6 @@ input::TextEditResult InputComponentHost::dispatch(const input::CompositionChang
             if (mounted.editor == event.session.owner) {
                 update_caret(mounted.component, true);
                 update_text(mounted.component, false);
-                refresh_number(mounted.component);
             }
         }
     }

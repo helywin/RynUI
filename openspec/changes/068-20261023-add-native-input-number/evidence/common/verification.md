@@ -46,3 +46,7 @@ Theme golden 通过 `rynui_portable_theme_algorithm --write-goldens` 生成，�
 以上是平台通用 headless 合同。未运行真实 GPU 窗口、系统 IME、Linux、人工视觉或原生 DPI 验收。首版语法为 ASCII 普通小数，安全整数范围内最多 12 位小数；不提供 stringMode、任意精度、formatter/parser、wheel stepping、spinner、长按连发或 hover reveal 动画。按钮复用 Input affix 布局，表面继承 Input tokens。
 
 父任务负责 Gallery、支持矩阵、README、已知 Alert/Popconfirm P2、跨组件集成和最终平台验收。本工作树只创建本地英文 Conventional Commits；没有 push、PR 或 archive。
+
+## Astra R1 补充
+
+在 `91f1019` 后复核两项数值/IME P2，失败复现、修复策略、三条取消路径与受影响 Debug/Release 合同见 [R1 专项证据](astra-r1/verification.md)。本节以上保留首次实现的验收记录。

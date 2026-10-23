@@ -234,12 +234,20 @@ InputNumberValue InputNumberModel::stepped(InputNumberStepDirection direction) c
     offset.negative = direction == InputNumberStepDirection::Down;
     auto next = add(current, offset);
     if (options_.precision) {
+        const auto unrounded = next;
         next = round(next, *options_.precision);
+        // Nearest rounding can cross an authoritative value that is not on the
+        // current precision grid. Quantize along the requested direction then.
+        if ((direction == InputNumberStepDirection::Up && compare(next, current) < 0) ||
+            (direction == InputNumberStepDirection::Down && compare(next, current) > 0)) {
+            next = round(unrounded, *options_.precision, direction == InputNumberStepDirection::Up ? 1 : -1);
+        }
     }
     next = compare(next, min_) < 0 ? min_ : compare(next, max_) > 0 ? max_ : next;
-    // A value supplied outside the range may only move towards it.
-    if (value_ && ((direction == InputNumberStepDirection::Up && compare(current, max_) >= 0) ||
-                   (direction == InputNumberStepDirection::Down && compare(current, min_) <= 0))) {
+    // Clamping an external value outside the effective range must not reverse
+    // the direction either. A bound may leave no allowed step in that direction.
+    if (value_ && ((direction == InputNumberStepDirection::Up && compare(next, current) < 0) ||
+                   (direction == InputNumberStepDirection::Down && compare(next, current) > 0))) {
         return value_;
     }
     return number(next);
