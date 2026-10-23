@@ -24,6 +24,7 @@
 #include <ryn/select.hpp>
 #include <ryn/card.hpp>
 #include <ryn/tabs.hpp>
+#include <ryn/segmented.hpp>
 #include <ryn/modal.hpp>
 #include <ryn/drawer.hpp>
 #include <ryn/popconfirm.hpp>

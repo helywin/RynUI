@@ -1,6 +1,7 @@
 #include <ryn/theme.hpp>
 #include "theme/input_tokens.hpp"
 #include "theme/semantic_background.hpp"
+#include "theme/segmented_theme.hpp"
 
 #include <algorithm>
 #include <array>
@@ -3581,14 +3582,15 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
                              TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
-                             ProgressThemeToken progress)
+                             ProgressThemeToken progress, SegmentedThemeToken segmented)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), segmented_(std::move(segmented)), modal_(std::move(modal)), tag_(std::move(tag)),
+      badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ =
         snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                           slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_, *input_, algorithms_);
@@ -3693,6 +3695,36 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     }
     hash_integer(identity_, progress_.metrics.font_family);
     status_json << "],\"fontFamily\":" << static_cast<int>(progress_.metrics.font_family) << '}';
+    status_json << ",\"segmented\":{\"colors\":[";
+    first = true;
+    for (auto v : segmented_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : segmented_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, segmented_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(segmented_.metrics.font_family) << ",\"effects\":[";
+    first = true;
+    metric(segmented_.effects.focus_width);
+    metric(segmented_.effects.focus_offset);
+    status_json << "],\"shadow\":";
+    status_json << '[';
+    for (std::size_t i = 0; i < segmented_.effects.selected_shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = segmented_.effects.selected_shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << ']';
+    hash_shadow(identity_, segmented_.effects.selected_shadow);
+    status_json << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, *input_, algorithms_, identity_);
@@ -3797,10 +3829,10 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
-           left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ &&
-           left.spin_ == right.spin_ && left.progress_ == right.progress_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_;
+           left.segmented_ == right.segmented_ && left.modal_ == right.modal_ && left.tag_ == right.tag_ &&
+           left.badge_ == right.badge_ && left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ &&
+           left.alert_ == right.alert_ && left.spin_ == right.spin_ && left.progress_ == right.progress_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4162,12 +4194,28 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         progress = derive_progress(seed, map, alias, algorithms);
     }
     apply_progress_override(progress, config.progress.tokens);
-    return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-                         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
-                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
-                         std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress));
+    SegmentedThemeToken segmented;
+    const bool inherit_segmented = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                   !config.segmented.algorithm && config.segmented.seed == SeedTokenOverride{};
+    if (inherit_segmented) {
+        segmented = parent->segmented();
+    } else if (config.segmented.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.segmented.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        segmented = detail::derive_segmented(component_seed, component_map,
+                                             derive_alias(component_seed, component_map, algorithms), algorithms);
+    } else {
+        segmented = detail::derive_segmented(seed, map, alias, algorithms);
+    }
+    detail::apply_segmented_override(segmented, config.segmented.tokens);
+    return ThemeSnapshot(
+        std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text), std::move(switch_token),
+        std::move(checkbox), std::move(radio), std::move(typography), std::move(divider), std::move(slider),
+        std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal), std::move(drawer),
+        std::move(popconfirm), std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
+        std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress), std::move(segmented));
 }
 
 } // namespace ryn

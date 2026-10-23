@@ -27,6 +27,7 @@ class OTPComponentHost;
 class SelectComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
+class SegmentedComponentHost;
 class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
@@ -220,6 +221,10 @@ public:
         return *tabs_;
     }
 
+    [[nodiscard]] SegmentedComponentHost& segmented() noexcept {
+        return *segmented_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -339,6 +344,7 @@ private:
     std::unique_ptr<SelectComponentHost> select_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<TabsComponentHost> tabs_;
+    std::unique_ptr<SegmentedComponentHost> segmented_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
 };

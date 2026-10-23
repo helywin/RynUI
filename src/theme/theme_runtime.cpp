@@ -316,6 +316,12 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.tabs().typography, after.tabs().typography, TokenIdentity::tabs_typography, changed,
                       count);
     append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
+    append_if_changed(before.segmented().colors, after.segmented().colors, TokenIdentity::segmented_colors, changed,
+                      count);
+    append_if_changed(before.segmented().metrics, after.segmented().metrics, TokenIdentity::segmented_metrics, changed,
+                      count);
+    append_if_changed(before.segmented().effects, after.segmented().effects, TokenIdentity::segmented_effects, changed,
+                      count);
     append_if_changed(before.modal().colors, after.modal().colors, TokenIdentity::modal_colors, changed, count);
     const auto& old_popconfirm = before.popconfirm();
     const auto& new_popconfirm = after.popconfirm();
@@ -1209,6 +1215,24 @@ const TabsThemeToken& ThemeScope::tabs_effects() const {
     return snapshot_->tabs();
 }
 
+const SegmentedThemeToken& ThemeScope::segmented_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::segmented_colors);
+    return snapshot_->segmented();
+}
+
+const SegmentedThemeToken& ThemeScope::segmented_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::segmented_metrics);
+    return snapshot_->segmented();
+}
+
+const SegmentedThemeToken& ThemeScope::segmented_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::segmented_effects);
+    return snapshot_->segmented();
+}
+
 const CardThemeToken& ThemeScope::card_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::card_colors);
@@ -1379,6 +1403,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Tabs.metrics",
         "Tabs.typography",
         "Tabs.effects",
+        "Segmented.colors",
+        "Segmented.metrics",
+        "Segmented.effects",
         "Modal.colors",
         "Modal.metrics",
         "Modal.typography",
@@ -1455,6 +1482,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_colors:
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
+    case TokenIdentity::segmented_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::badge_colors:
@@ -1484,6 +1512,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_effects:
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
+    case TokenIdentity::segmented_effects:
     case TokenIdentity::modal_effects:
     case TokenIdentity::drawer_effects:
     case TokenIdentity::popconfirm_effects:
@@ -1513,6 +1542,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::popconfirm_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::tag_metrics:
+    case TokenIdentity::segmented_metrics:
     case TokenIdentity::alert_metrics:
     case TokenIdentity::spin_metrics:
     case TokenIdentity::progress_metrics:

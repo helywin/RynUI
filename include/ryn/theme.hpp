@@ -3,6 +3,7 @@
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
 #include <ryn/feedback_tokens.hpp>
+#include <ryn/segmented_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -838,6 +839,13 @@ struct TabsTokenOverride final {
     friend bool operator==(const TabsTokenOverride&, const TabsTokenOverride&) = default;
 };
 
+struct SegmentedThemeConfig final {
+    SegmentedTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SegmentedThemeConfig&, const SegmentedThemeConfig&) = default;
+};
+
 struct TabsThemeConfig final {
     TabsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1162,6 +1170,7 @@ struct ThemeConfig final {
     SelectThemeConfig select;
     CardThemeConfig card;
     TabsThemeConfig tabs;
+    SegmentedThemeConfig segmented;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -1713,6 +1722,11 @@ public:
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
+
+    [[nodiscard]] const SegmentedThemeToken& segmented() const noexcept {
+        return segmented_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -1757,7 +1771,7 @@ private:
                   TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
                   std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
                   TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
-                  ProgressThemeToken progress);
+                  ProgressThemeToken progress, SegmentedThemeToken segmented);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1774,6 +1788,7 @@ private:
     SelectThemeToken select_;
     CardThemeToken card_;
     TabsThemeToken tabs_;
+    SegmentedThemeToken segmented_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

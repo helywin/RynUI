@@ -90,6 +90,9 @@ public:
     [[nodiscard]] const TabsThemeToken& tabs_metrics() const;
     [[nodiscard]] const TabsThemeToken& tabs_typography() const;
     [[nodiscard]] const TabsThemeToken& tabs_effects() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_colors() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_metrics() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const ModalThemeToken& modal_metrics() const;
     [[nodiscard]] const ModalThemeToken& modal_typography() const;

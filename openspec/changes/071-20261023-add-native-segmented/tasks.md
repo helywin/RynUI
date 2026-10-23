@@ -6,7 +6,7 @@
 
 ## 2. 平台通用实现
 
-- [ ] 2.1 实现 public API、tokens、retained host、最小 services/CMake 注册和使用文档；以 windows-msvc-headless Debug/Release 定向 tests 验证 controlled refusal/default、响应属性、实际横纵/等宽几何、键盘焦点、富标签与 icon、Modal/Spin、销毁安全和纯颜色局部失效，通过后本地提交。
+- [x] 2.1 实现 public API、tokens、retained host、最小 services/CMake 注册和使用文档；以 windows-msvc-headless Debug/Release 定向 tests 验证 controlled refusal/default、响应属性、实际横纵/等宽几何、键盘焦点、富标签与 icon、Modal/Spin、销毁安全和纯颜色局部失效，通过后本地提交。
 
 ## 3. 平台通用收口
 
