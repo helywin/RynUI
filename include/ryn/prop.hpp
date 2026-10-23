@@ -12,6 +12,7 @@ namespace ryn {
 namespace detail {
 
 struct PropAccess;
+struct TablePropBridge;
 
 } // namespace detail
 
@@ -35,6 +36,7 @@ public:
 
 private:
     friend struct detail::PropAccess;
+    friend struct detail::TablePropBridge;
 
     static StaticValue store_value(T value) {
         if constexpr (indirect_static_value) {

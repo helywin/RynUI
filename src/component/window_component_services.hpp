@@ -29,6 +29,7 @@ class CardComponentHost;
 class TabsComponentHost;
 class ModalComponentHost;
 class PaginationComponentHost;
+class TableComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -221,6 +222,10 @@ public:
         return *modal_;
     }
 
+    [[nodiscard]] TableComponentHost& table() noexcept {
+        return *table_;
+    }
+
     [[nodiscard]] PaginationComponentHost& pagination() noexcept {
         return *pagination_;
     }
@@ -328,6 +333,7 @@ private:
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<PaginationComponentHost> pagination_;
+    std::unique_ptr<TableComponentHost> table_;
 };
 
 } // namespace ryn::detail

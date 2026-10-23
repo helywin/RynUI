@@ -1,0 +1,406 @@
+#include "component/table_component.hpp"
+#include "component/pagination_component.hpp"
+#include "component/selection_component.hpp"
+#include "support/input_fixture.hpp"
+#include <iostream>
+#include <map>
+
+namespace {
+using namespace ryn;
+using namespace ryn::input;
+
+struct Fixture final : ryn_test::input_component::Fixture {
+    detail::SelectionComponentHost selections{services};
+};
+
+struct Row final {
+    String id;
+    String name;
+    int amount{};
+    bool locked{};
+    friend bool operator==(const Row&, const Row&) = default;
+};
+
+void check(bool value, const char* message) {
+    if (!value) {
+        throw std::runtime_error(message);
+    }
+}
+
+void sync(Fixture& f) {
+    f.synchronize(640, {0, 0, 640, 240});
+}
+
+runtime::Rect bounds(Fixture& f, runtime::ComponentId id) {
+    const auto& n = f.nodes.require(f.services.components().root(id));
+    return {n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width, n.bounds.height};
+}
+
+void click(Fixture& f, runtime::ComponentId id) {
+    const auto b = bounds(f, id);
+    for (auto action : {PointerAction::down, PointerAction::up}) {
+        f.services.pointer().dispatch(
+            {PointerIdentity::mouse(), action, PointerButton::primary, b.x + b.width / 2, b.y + b.height / 2});
+    }
+    sync(f);
+}
+
+std::vector<Row> data() {
+    return {{u8"a", u8"Alpha", 30, false},
+            {u8"b", u8"Beta", 10, false},
+            {u8"c", u8"Gamma", 10, true},
+            {u8"d", u8"Delta", 20, false}};
+}
+
+std::vector<TableColumn<Row>> columns(std::map<std::string, int>* runs = nullptr) {
+    return {TableColumn<Row>{u8"name", u8"Name",
+                             [runs](TableCell<Row> cell) {
+                                 if (runs) {
+                                     ++(*runs)[std::string{cell.key().bytes()}];
+                                 }
+                                 Text(TextProps{}.content(bind([cell] { return cell.value().name; })));
+                             }}
+                .width(150.0F),
+            TableColumn<Row>{u8"amount", u8"Amount",
+                             [](TableCell<Row> cell) {
+                                 Text(TextProps{}.content(bind([cell] {
+                                     return String::from_utf8(std::to_string(cell.value().amount)).value();
+                                 })));
+                             }}
+                .width(120.0F)
+                .align(TableAlign::Right)
+                .sorter([](const Row& a, const Row& b) { return a.amount < b.amount; })};
+}
+
+void retained_business_rows() {
+    Fixture f;
+    Signal<std::vector<Row>> source{data()};
+    std::map<std::string, int> runs;
+    int outside{};
+    int header_runs{};
+    Signal<String> header_label{String{u8"Customer"}};
+    f.services.mount(Content{[&] {
+        auto schema = columns(&runs);
+        schema[0].header(TableHeader{[&] {
+            ++header_runs;
+            Text(TextProps{}.content(header_label));
+        }});
+        Table(TableProps<Row>{}
+                  .dataSource(source)
+                  .rowKey([](const Row& row) { return row.id; })
+                  .columns(schema)
+                  .scrollY(100.0F)
+                  .bordered());
+        ++outside;
+        Text(u8"Sibling");
+    }});
+    sync(f);
+    const auto id = f.services.table().mounted()[0];
+    auto original = f.services.table().snapshot(id);
+    check(original.visible_keys == std::vector<String>{u8"a", u8"b", u8"c", u8"d"} && runs.size() == 4,
+          "initial business rows");
+    const auto count = f.services.components().component_count();
+    const auto amount_cell = original.rows.front().cells[1];
+    const auto amount_region = f.services.components().children(amount_cell).front();
+    const auto cell_bounds = bounds(f, amount_cell);
+    const auto content_bounds = bounds(f, amount_region);
+    check(std::abs(content_bounds.x + content_bounds.width - (cell_bounds.x + cell_bounds.width - 16)) < 0.01F,
+          "column right alignment");
+    auto next = data();
+    next[0].name = String{u8"Alpha / 更新"};
+    next[0].amount = 42;
+    std::swap(next[0], next[3]);
+    source.set(next);
+    header_label.set(String{u8"客户 / Updated"});
+    sync(f);
+    auto s = f.services.table().snapshot(id);
+    check(s.rows.back().component == original.rows.front().component &&
+              s.rows.back().cells == original.rows.front().cells && runs["a"] == 1 && runs["b"] == 1 && outside == 1 &&
+              header_runs == 1 && f.services.components().component_count() == count,
+          "data update/reorder remounted cell");
+    bool fresh_text{};
+    for (const auto& text : f.services.text().mounted_texts()) {
+        if (f.scene.text_state(text.scene).content().bytes() == String{u8"Alpha / 更新"}.bytes()) {
+            fresh_text = true;
+        }
+    }
+    check(fresh_text, "reactive cell did not display updated data");
+    next.erase(next.begin() + 1);
+    next.push_back({u8"e", u8"Epsilon", 5, false});
+    source.set(next);
+    sync(f);
+    s = f.services.table().snapshot(id);
+    check(!f.services.components().contains(original.rows[1].component) && runs["e"] == 1 && runs["a"] == 1 &&
+              s.rows.size() == 4,
+          "row add/remove cleanup");
+    const auto valid = s;
+    next[0].id = next[1].id;
+    bool rejected{};
+    try {
+        source.set(next);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.table().snapshot(id).rows[0].component == valid.rows[0].component &&
+              f.services.table().snapshot(id).rows.size() == valid.rows.size(),
+          "duplicate row keys changed retained structure");
+    source.set({});
+    sync(f);
+    check(f.services.table().snapshot(id).rows.empty() && f.services.table().snapshot(id).visible_keys.empty(),
+          "empty data");
+    check(f.services.destroy(id), "Table destroy");
+    sync(f);
+    check(f.services.table().mounted().empty() && f.services.interactions().size() == 0 &&
+              f.services.components().component_count() == 1 && f.scene.size() == 1,
+          "Table leaked resources or destroyed sibling");
+}
+
+void controlled_sort_selection_pages() {
+    Fixture f;
+    Signal<std::vector<Row>> source{data()};
+    Signal<TableSort> sort{TableSort{}};
+    Signal<std::vector<String>> selected{std::vector<String>{}};
+    Signal<std::size_t> page{1};
+    Signal<bool> loading{false};
+    bool accept{};
+    std::vector<TableSort> sorts;
+    std::vector<std::vector<String>> selections;
+    f.services.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                 Table(TableProps<Row>{}
+                           .dataSource(source)
+                           .rowKey([](const auto& row) { return row.id; })
+                           .columns(columns())
+                           .sort(sort)
+                           .onSortChange([&](TableSort next) {
+                               sorts.push_back(next);
+                               if (accept) {
+                                   sort.set(next);
+                               }
+                           })
+                           .rowSelection({selected,
+                                          [&](auto next) {
+                                              selections.push_back(next);
+                                              if (accept) {
+                                                  selected.set(next);
+                                              }
+                                          },
+                                          [](const Row& row) { return row.locked; }})
+                           .current(page)
+                           .pageSize(std::size_t{2})
+                           .loading(loading)
+                           .size(ControlSize::Small)
+                           .scrollY(88.0F));
+                 Pagination(PaginationProps{}
+                                .total(std::size_t{4})
+                                .current(page)
+                                .pageSize(std::size_t{2})
+                                .onChange([page](auto next, auto) { page.set(next); }));
+             }});
+    }});
+    sync(f);
+    const auto id = f.services.table().mounted()[0];
+    auto s = f.services.table().snapshot(id);
+    click(f, s.sort_buttons[1]);
+    check(sorts.size() == 1 && f.services.table().snapshot(id).sort.order == TableSortOrder::None,
+          "sort controlled refusal");
+    click(f, s.rows[0].checkbox);
+    check(selections == std::vector<std::vector<String>>{{u8"a"}} && selected.get().empty(),
+          "selection controlled refusal");
+    accept = true;
+    click(f, s.sort_buttons[1]);
+    s = f.services.table().snapshot(id);
+    check(s.visible_keys == std::vector<String>{u8"b", u8"c"}, "stable ascending sort/page");
+    check(bounds(f, s.rows[1].component).y == s.body.y && bounds(f, s.rows[2].component).y > s.body.y,
+          "sorted rows were not placed in display order");
+    click(f, s.select_all);
+    check(selected.get() == std::vector<String>{u8"b"}, "selectAll included disabled row");
+    check(f.selections.snapshot(s.rows[1].checkbox).checked && !f.selections.snapshot(s.rows[2].checkbox).checked &&
+              f.selections.snapshot(s.rows[2].checkbox).disabled,
+          "controlled checkbox presentation did not match selected/disabled rows");
+    const auto pager = f.services.pagination().mounted()[0];
+    click(f, f.services.pagination().snapshot(pager).items.back());
+    s = f.services.table().snapshot(id);
+    check(page.get() == 2 && s.current == 2 && s.visible_keys == std::vector<String>{u8"d", u8"a"},
+          "composed pagination");
+    click(f, s.select_all);
+    check(selected.get() == std::vector<String>{u8"b", u8"d", u8"a"}, "selection did not preserve other page");
+    loading.set(true);
+    sync(f);
+    const auto selection_count = selections.size();
+    const auto sort_count = sorts.size();
+    click(f, s.select_all);
+    click(f, s.sort_buttons[1]);
+    check(selections.size() == selection_count && sorts.size() == sort_count && f.services.table().snapshot(id).loading,
+          "loading controls still active");
+    loading.set(false);
+    sync(f);
+    click(f, s.sort_buttons[1]);
+    check(f.services.table().snapshot(id).sort.order == TableSortOrder::Descend &&
+              f.services.table().snapshot(id).visible_keys == std::vector<String>{u8"b", u8"c"},
+          "descending sort/page");
+    click(f, s.sort_buttons[1]);
+    check(f.services.table().snapshot(id).sort.order == TableSortOrder::None, "sort cycle did not clear");
+}
+
+void scroll_theme_and_nested_cleanup() {
+    Fixture f;
+    Signal<ThemeConfig> config{ThemeConfig{}};
+    Signal<std::vector<Row>> source{data()};
+    std::map<std::string, int> runs;
+    Signal<float> name_width{240.0F};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                  auto schema = columns(&runs);
+                  schema[0].width(name_width);
+                  schema[1].width(180.0F);
+                  schema.emplace_back(u8"action", u8"Action",
+                                      [](TableCell<Row> cell) { Input(InputProps{}.defaultValue(cell.key())); });
+                  schema.back().width(160.0F);
+                  Table(TableProps<Row>{}
+                            .dataSource(source)
+                            .rowKey([](const Row& row) { return row.id; })
+                            .columns(schema)
+                            .layout(LayoutStyle{}.width(dp(320)).height(dp(230)))
+                            .scrollY(80.0F));
+              }});
+    }});
+    sync(f);
+    const auto id = f.services.table().mounted()[0];
+    auto s = f.services.table().snapshot(id);
+    check(s.maximum_x == 260 && s.maximum_y > 0 && s.body.height == 80, "finite viewport geometry");
+    const auto first = s.rows[0].cells;
+    const auto alpha_text = f.services.text().mounted_texts().front().scene;
+    const auto shapes = f.scene.text_state(alpha_text).counters().shape_count;
+    check(f.inputs.dispatch(ScrollInputEvent{100, 100, s.body.x + 10, s.body.y + 10}), "Table wheel was not consumed");
+    sync(f);
+    s = f.services.table().snapshot(id);
+    check(s.scroll_x == s.maximum_x && s.scroll_y == s.maximum_y && runs["a"] == 1 && s.rows[0].cells == first,
+          "scroll clamp or retained identity");
+    check(std::abs(bounds(f, s.rows[0].component).y - (s.body.y - s.scroll_y)) < 0.001F,
+          "scroll did not translate retained row geometry");
+    check(f.scene.text_state(alpha_text).counters().shape_count == shapes, "scroll reshaped retained text");
+    name_width.set(150.0F);
+    sync(f);
+    s = f.services.table().snapshot(id);
+    check(s.maximum_x == 170 && s.scroll_x == 170 && s.widths.front() == 150 &&
+              bounds(f, s.rows[0].cells[0]).width == 150 && runs["a"] == 1,
+          "reactive column width did not clamp scroll");
+    const auto hit = f.services.hit_test().hit_test({s.body.x + 10, s.body.y - 1});
+    check(!hit || f.services.interactions().require(*hit).component != f.inputs.mounted_inputs()[0].component,
+          "body hit escaped clip");
+    const auto root_node = f.services.components().root(id);
+    const auto before = f.nodes.require(root_node).measure_count;
+    ThemeConfig color;
+    color.table.tokens.border = Color::rgba8(255, 0, 0);
+    config.set(color);
+    sync(f);
+    check(runs["a"] == 1 && f.nodes.require(root_node).measure_count == before,
+          "Table color update measured/remounted content");
+    color.algorithms = {ThemeAlgorithm::Dark, ThemeAlgorithm::Compact};
+    color.table.tokens.padding_block = dp(10);
+    config.set(color);
+    sync(f);
+    check(runs["a"] == 1 && f.inputs.mounted_inputs().size() == 4, "Table theme remounted nested Input");
+    const auto focused_input = f.inputs.mounted_inputs().back();
+    check(f.services.focus().request_focus(focused_input.interaction, FocusModality::keyboard), "Table cell focus");
+    sync(f);
+    const auto focused_bounds = bounds(f, focused_input.component);
+    s = f.services.table().snapshot(id);
+    check(focused_bounds.y >= s.body.y && focused_bounds.y + focused_bounds.height <= s.body.y + s.body.height + 0.01F,
+          "focused row did not reveal inside finite viewport");
+    check(f.inputs.sessions().active().valid(), "nested Input session not started");
+    auto remaining = data();
+    remaining.pop_back();
+    source.set(remaining);
+    sync(f);
+    check(f.inputs.mounted_inputs().size() == 3 && !f.inputs.sessions().active().valid(),
+          "removed focused row leaked input session");
+    check(f.services.destroy(id), "nested Table destroy");
+    sync(f);
+    check(f.inputs.mounted_inputs().empty() && f.services.table().mounted().empty() &&
+              f.services.interactions().size() == 0 && f.scene.size() == 0 && f.services.surfaces().size() == 0,
+          "nested Table resources leaked");
+}
+
+void callbacks_can_destroy_table() {
+    for (bool selection : {false, true}) {
+        Fixture f;
+        runtime::ComponentId id;
+        f.services.mount(Content{[&] {
+            auto props = TableProps<Row>{}
+                             .dataSource(data())
+                             .rowKey([](const Row& row) { return row.id; })
+                             .columns(columns())
+                             .scrollY(150.0F);
+            if (selection) {
+                props.rowSelection({std::vector<String>{}, [&](auto) { f.services.destroy(id); }, {}});
+            } else {
+                props.onSortChange([&](auto) { f.services.destroy(id); });
+            }
+            Table(props);
+        }});
+        sync(f);
+        id = f.services.table().mounted()[0];
+        const auto s = f.services.table().snapshot(id);
+        click(f, selection ? s.select_all : s.sort_buttons[1]);
+        check(f.services.table().mounted().empty() && f.services.interactions().size() == 0 && f.scene.size() == 0,
+              "Table destruction callback leaked");
+    }
+}
+
+void inactive_new_rows_do_not_steal_focus() {
+    Fixture f;
+    Signal<std::vector<Row>> source{std::vector<Row>{{u8"a", u8"Active", 1, false}}};
+    Signal<String> incidental{String{u8"One-time setup"}};
+    int key_reads{};
+    f.services.mount(Content{[&] {
+        Table(TableProps<Row>{}
+                  .dataSource(source)
+                  .rowKey([&](const Row& row) {
+                      ++key_reads;
+                      return row.id;
+                  })
+                  .columns({TableColumn<Row>{u8"editor", u8"Editor",
+                                             [incidental](TableCell<Row> cell) {
+                                                 static_cast<void>(incidental.get());
+                                                 Input(InputProps{}.defaultValue(cell.value().name).autoFocus());
+                                             }}})
+                  .current(std::size_t{1})
+                  .pageSize(std::size_t{1}),
+              TableEmpty{[] { Input(InputProps{}.defaultValue(u8"Empty editor").autoFocus()); }});
+    }});
+    sync(f);
+    const auto original = f.inputs.mounted_inputs().front();
+    check(f.services.focus().state().focused == original.interaction, "active row autofocus");
+    const auto starts = f.platform.starts;
+    const auto session = f.inputs.sessions().active();
+    source.set({{u8"a", u8"Active", 1, false}, {u8"b", u8"Hidden", 2, false}});
+    sync(f);
+    check(f.services.focus().state().focused == original.interaction && f.inputs.sessions().active() == session &&
+              f.platform.starts == starts,
+          "inactive new row stole active editor focus/session");
+    check(f.inputs.mounted_inputs().size() == 3, "inactive row/empty content was not retained");
+    source.set({{u8"a", u8"Updated", 3, false}, {u8"b", u8"Updated hidden", 4, false}});
+    sync(f);
+    const auto reads = key_reads;
+    incidental.set(String{u8"Changed independently"});
+    sync(f);
+    check(key_reads == reads && f.services.focus().state().focused == original.interaction,
+          "one-time cell reads contaminated data source dependencies");
+}
+} // namespace
+
+int main() {
+    try {
+        retained_business_rows();
+        controlled_sort_selection_pages();
+        scroll_theme_and_nested_cleanup();
+        callbacks_can_destroy_table();
+        inactive_new_rows_do_not_steal_focus();
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
+    return 0;
+}

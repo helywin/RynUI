@@ -3004,13 +3004,13 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                             PaginationThemeToken pagination)
+                             PaginationThemeToken pagination, TableThemeToken table)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), pagination_(std::move(pagination)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), modal_(std::move(modal)), pagination_(std::move(pagination)), table_(std::move(table)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
     for (auto color : pagination_.colors.values()) {
@@ -3019,31 +3019,59 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     for (auto value : pagination_.metrics.values()) {
         hash_float(identity_, value);
     }
+    for (auto color : table_.colors.values()) {
+        hash_color(identity_, color);
+    }
+    for (auto value : table_.metrics.values()) {
+        hash_float(identity_, value);
+    }
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                            slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
     diagnostic_json_.resize(diagnostic_json_.size() - 2);
-    std::ostringstream pagination_json;
-    pagination_json << ",\"pagination\":{\"colors\":[";
+    std::ostringstream component_json;
+    component_json << ",\"pagination\":{\"colors\":[";
     bool first = true;
     for (auto color : pagination_.colors.values()) {
         if (!first) {
-            pagination_json << ',';
+            component_json << ',';
         }
         first = false;
-        append_color(pagination_json, color);
+        append_color(component_json, color);
     }
-    pagination_json << "],\"metrics\":[";
+    component_json << "],\"metrics\":[";
     first = true;
     for (auto value : pagination_.metrics.values()) {
         if (!first) {
-            pagination_json << ',';
+            component_json << ',';
         }
         first = false;
-        pagination_json << value;
+        component_json << value;
     }
-    pagination_json << "]}}\n";
-    diagnostic_json_ += pagination_json.str();
+    component_json << "]},\"table\":{\"colors\":[";
+    first = true;
+    for (auto color : table_.colors.values()) {
+        if (!first) {
+            component_json << ',';
+        }
+        first = false;
+        append_color(component_json, color);
+    }
+    component_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : table_.metrics.values()) {
+        if (!first) {
+            component_json << ',';
+        }
+        first = false;
+        component_json << value;
+    }
+    component_json << "]}}\n";
+    diagnostic_json_ += component_json.str();
+}
+
+const TableThemeToken& ThemeSnapshot::table() const noexcept {
+    return table_;
 }
 
 const PaginationThemeToken& ThemeSnapshot::pagination() const noexcept {
@@ -3140,8 +3168,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && left.pagination_ == right.pagination_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_;
+           left.modal_ == right.modal_ && left.pagination_ == right.pagination_ && left.table_ == right.table_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3441,11 +3469,91 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                        pagination.metrics.gap * 10)) {
         throw std::invalid_argument("Pagination combined extents must be finite");
     }
-    return ThemeSnapshot(
-        std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text), std::move(switch_token),
-        std::move(checkbox), std::move(radio), std::move(typography), std::move(divider), std::move(slider),
-        std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal),
-        std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms), std::move(pagination));
+    TableThemeToken table;
+    if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+        config.algorithms.empty()) {
+        table = parent->table();
+    } else {
+        const bool dark = contains_dark(algorithms);
+        const auto alter =
+            mix(alias.color_background_container,
+                Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 1),
+                dark ? 0.04F : 0.02F);
+        const auto palette = button_palette(seed.color_primary, dark, alias.color_background_container);
+        table.colors = {alias.color_background_container, alter, alias.color_text, alias.color_text,
+                        alias.color_border_secondary,     alter, palette.light,    palette.light_hover};
+        table.metrics = {map.size,
+                         map.size_small,
+                         map.size_xs,
+                         map.size,
+                         map.size_xs,
+                         map.font_size,
+                         map.font_size * map.line_height,
+                         80,
+                         map.control_height,
+                         map.control_height * 3,
+                         seed.line_width};
+    }
+    const auto& t = config.table.tokens;
+    if (t.background) {
+        table.colors.background = *t.background;
+    }
+    if (t.header_background) {
+        table.colors.header_background = *t.header_background;
+    }
+    if (t.text) {
+        table.colors.text = *t.text;
+    }
+    if (t.header_text) {
+        table.colors.header_text = *t.header_text;
+    }
+    if (t.border) {
+        table.colors.border = *t.border;
+    }
+    if (t.hover) {
+        table.colors.hover = *t.hover;
+    }
+    if (t.selected) {
+        table.colors.selected = *t.selected;
+    }
+    if (t.selected_hover) {
+        table.colors.selected_hover = *t.selected_hover;
+    }
+    table.metrics.padding_block =
+        fixed_length(t.padding_block, table.metrics.padding_block, "Table padding_block must be non-negative");
+    table.metrics.padding_block_middle = fixed_length(t.padding_block_middle, table.metrics.padding_block_middle,
+                                                      "Table padding_block_middle must be non-negative");
+    table.metrics.padding_block_small = fixed_length(t.padding_block_small, table.metrics.padding_block_small,
+                                                     "Table padding_block_small must be non-negative");
+    table.metrics.padding_inline =
+        fixed_length(t.padding_inline, table.metrics.padding_inline, "Table padding_inline must be non-negative");
+    table.metrics.padding_inline_small = fixed_length(t.padding_inline_small, table.metrics.padding_inline_small,
+                                                      "Table padding_inline_small must be non-negative");
+    table.metrics.font_size =
+        fixed_length(t.font_size, table.metrics.font_size, "Table font_size must be positive", true);
+    table.metrics.line_height =
+        fixed_length(t.line_height, table.metrics.line_height, "Table line_height must be positive", true);
+    table.metrics.min_column_width = fixed_length(t.min_column_width, table.metrics.min_column_width,
+                                                  "Table min_column_width must be positive", true);
+    table.metrics.selection_width =
+        fixed_length(t.selection_width, table.metrics.selection_width, "Table selection_width must be positive", true);
+    table.metrics.empty_height =
+        fixed_length(t.empty_height, table.metrics.empty_height, "Table empty_height must be positive", true);
+    table.metrics.border_width =
+        fixed_length(t.border_width, table.metrics.border_width, "Table border_width must be non-negative");
+    if (!std::isfinite(table.metrics.line_height +
+                       std::max({table.metrics.padding_block, table.metrics.padding_block_middle,
+                                 table.metrics.padding_block_small}) *
+                           2 +
+                       table.metrics.padding_inline * 2)) {
+        throw std::invalid_argument("Table combined extents must be finite");
+    }
+    return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
+                         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
+                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
+                         std::move(tabs), std::move(modal),
+                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
+                         std::move(pagination), std::move(table));
 }
 
 } // namespace ryn

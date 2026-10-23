@@ -10,6 +10,7 @@
 #include "component/tabs_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/pagination_component.hpp"
+#include "component/table_component.hpp"
 
 #include <chrono>
 
@@ -96,6 +97,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     pagination_ = std::make_unique<PaginationComponentHost>(*this);
+    table_ = std::make_unique<TableComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

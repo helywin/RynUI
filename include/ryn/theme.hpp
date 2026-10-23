@@ -1021,6 +1021,79 @@ struct PaginationThemeConfig final {
     friend bool operator==(const PaginationThemeConfig&, const PaginationThemeConfig&) = default;
 };
 
+struct TableColorToken final {
+    Color background;
+    Color header_background;
+    Color text;
+    Color header_text;
+    Color border;
+    Color hover;
+    Color selected;
+    Color selected_hover;
+
+    auto values() const {
+        return std::array{background, header_background, text, header_text, border, hover, selected, selected_hover};
+    }
+
+    friend bool operator==(const TableColorToken&, const TableColorToken&) = default;
+};
+
+struct TableMetricToken final {
+    float padding_block{16};
+    float padding_block_middle{12};
+    float padding_block_small{8};
+    float padding_inline{16};
+    float padding_inline_small{8};
+    float font_size{14};
+    float line_height{22};
+    float min_column_width{80};
+    float selection_width{32};
+    float empty_height{96};
+    float border_width{1};
+
+    auto values() const {
+        return std::array{
+            padding_block, padding_block_middle, padding_block_small, padding_inline, padding_inline_small, font_size,
+            line_height,   min_column_width,     selection_width,     empty_height,   border_width};
+    }
+
+    friend bool operator==(const TableMetricToken&, const TableMetricToken&) = default;
+};
+
+struct TableThemeToken final {
+    TableColorToken colors;
+    TableMetricToken metrics;
+    friend bool operator==(const TableThemeToken&, const TableThemeToken&) = default;
+};
+
+struct TableTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> header_background;
+    std::optional<Color> text;
+    std::optional<Color> header_text;
+    std::optional<Color> border;
+    std::optional<Color> hover;
+    std::optional<Color> selected;
+    std::optional<Color> selected_hover;
+    std::optional<LogicalLength> padding_block;
+    std::optional<LogicalLength> padding_block_middle;
+    std::optional<LogicalLength> padding_block_small;
+    std::optional<LogicalLength> padding_inline;
+    std::optional<LogicalLength> padding_inline_small;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> min_column_width;
+    std::optional<LogicalLength> selection_width;
+    std::optional<LogicalLength> empty_height;
+    std::optional<LogicalLength> border_width;
+    friend bool operator==(const TableTokenOverride&, const TableTokenOverride&) = default;
+};
+
+struct TableThemeConfig final {
+    TableTokenOverride tokens;
+    friend bool operator==(const TableThemeConfig&, const TableThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -1039,6 +1112,7 @@ struct ThemeConfig final {
     TabsThemeConfig tabs;
     ModalThemeConfig modal;
     PaginationThemeConfig pagination;
+    TableThemeConfig table;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1584,6 +1658,7 @@ public:
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
     [[nodiscard]] const PaginationThemeToken& pagination() const noexcept;
+    [[nodiscard]] const TableThemeToken& table() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1601,7 +1676,7 @@ private:
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms, PaginationThemeToken pagination);
+                  std::vector<ThemeAlgorithm> algorithms, PaginationThemeToken pagination, TableThemeToken table);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1620,6 +1695,7 @@ private:
     TabsThemeToken tabs_;
     ModalThemeToken modal_;
     PaginationThemeToken pagination_;
+    TableThemeToken table_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

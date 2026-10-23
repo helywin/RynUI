@@ -20,6 +20,7 @@
 #include <ryn/card.hpp>
 #include <ryn/tabs.hpp>
 #include <ryn/pagination.hpp>
+#include <ryn/table.hpp>
 #include <ryn/modal.hpp>
 #include <ryn/space.hpp>
 #include <ryn/slider.hpp>

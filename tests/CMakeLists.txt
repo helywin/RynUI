@@ -54,7 +54,7 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
 
-foreach(name IN ITEMS pagination_component)
+foreach(name IN ITEMS pagination_component table_component table_theme table_public_api)
     add_executable(rynui_${name}_tests ${name}_tests.cpp)
     rynui_configure_cpp_target(rynui_${name}_tests)
     target_link_libraries(rynui_${name}_tests PRIVATE rynui_components)

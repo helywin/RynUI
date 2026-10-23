@@ -10,11 +10,12 @@
 
 ## Decisions
 
-- `Table<Row>` 的轻量模板适配层将每行保存为 typed Signal，cell 收到 `TableCell<Row>`（只读 Prop<Row> 与稳定 key），内部 host 只管理 key/列/已挂载行。不使用 any 字符串字段或 VDOM。比较器在 typed 层执行，不把 Row 类型泄漏进公共非模板运行时。
+- `Table<Row>` 的轻量模板适配层将 Row 复制为不可变记录，由每行独立 Signal 保留；cell 收到 `TableCell<Row>`（只读 Prop<Row>、响应 value() 与稳定 key），内部 host 只管理 key/列/已挂载行。唯一的 TablePropBridge friend 负责 typed Prop 投影，不暴露通用转换框架。不使用 any 字符串字段或 VDOM。比较器在 typed 层执行，不把 Row 类型泄漏进非模板运行时。
 - 每次源变化先验证 key，再更新保留的行 Signal、增删对应 scope，排序与分页仅改变布局顺序/branch。cell 与 header slot 只挂载一次，依赖值通过 Prop/Binding 更新。删除即销毁；同 key 删除后重新插入是新生命周期。
+- 数据源 apply 用一个内部 `run_untracked` guard 隔离子内容的单次 setup 读取，嵌套 Binding 仍各自正常收集依赖；避免新增行的 cell.value()/普通 Signal 快照读取污染上游数据绑定或产生自依赖。仅增加既有 reactive runtime 的局部 guard，不引入通用列表框架。
 - 排序单个受控 `TableSort`（columnKey/order），提供列 comparator 时本地 stable_sort，无 comparator 时仅输出状态与请求，应用自行重排数据；不实现网络管线。
 - 选择只受控 `selectedRowKeys`，Checkbox 支持 row disabled predicate；全选保留当前页以外 key。loading 保留数据单元格但阻止排序/选择并显示独立文案。
-- Table 外层 ComponentLayout 分配固定 header 和有限 body；按列 width，未设宽的列均分剩余宽度且有最小宽度。每格 box 裁剪内容，正文 clip 与节点 translation 复用现有 scene。首版滚轮支持双轴，不增加全局 Scroll 框架。
+- Table 外层 ComponentLayout 分配固定 header 和有限 body；按列 width，未设宽的列均分剩余宽度且有最小宽度。每格 box 裁剪内容，正文 clip 与节点 translation 复用现有 scene。首版滚轮支持双轴，焦点首次进入 cell 时显露控件，不含拖拽滚动条，不增加全局 Scroll 框架。
 - Pagination 保留有限数量的按钮，reactive 文案/目标页/禁用，不按 total 创建全部页。Button 复用既有 focus/键盘/输入边界行为。Table 与 Pagination 分别有 typed token，颜色与度量独立订阅。
 
 ## Risks / Trade-offs
