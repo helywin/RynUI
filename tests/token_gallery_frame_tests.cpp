@@ -11,6 +11,10 @@
 #include "component/popconfirm_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/feedback_component.hpp"
+#include "component/table_component.hpp"
+#include "component/pagination_component.hpp"
+#include "component/menu_component.hpp"
+#include "component/dropdown_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -826,7 +830,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 235, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 251, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -839,17 +843,17 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 182,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 204,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
-    require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
+    require(fixture.selections->mounted().size() == 45 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 662) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 782) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -868,7 +872,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 411) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 464) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -877,7 +881,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 262,
+                initial.reference_content_runs == 126 && initial.live_samples == 269,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1020,7 +1024,7 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 116 &&
+    require(fixture.inputs->mounted_inputs().size() == 131 &&
                 fixture.host->services().select().mounted().size() == 20 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -1467,7 +1471,7 @@ void test_common_component_gallery_after_document_scroll() {
     const auto count = services.components().component_count();
     const auto telemetry = definition.telemetry();
     auto& tags = services.tag_badge();
-    require(tags.tags().size() == 4 && tags.badges().size() == 5, "Gallery Tag/Badge samples absent");
+    require(tags.tags().size() >= 4 && tags.badges().size() == 5, "Gallery Tag/Badge samples absent");
     const auto closable = tags.tags()[2], checkable = tags.tags()[3];
     const auto tag_content = tags.tag_snapshot(closable).content;
     reveal(checkable);
@@ -1578,6 +1582,231 @@ void test_common_component_gallery_after_document_scroll() {
             "common Gallery interactions remounted content");
 }
 
+void test_data_and_selection_gallery_after_document_scroll() {
+    using namespace ryn;
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({1200, 900}, {0, 0, 1200, 900}, {24, 20}, 0, true),
+                    "data Gallery layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto document = f.nodes.require(f.nodes.require(root).children.front()).children[1];
+    rynui::example::GalleryScrollTranslation scroll;
+    const auto reveal = [&](runtime::ComponentId id) {
+        scroll.apply(document, f.nodes.require(services.components().root(id)).bounds.y - 120, f.nodes, f.dirty);
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id, input::PointerButton button = input::PointerButton::primary) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        const runtime::Point point{node.bounds.x + node.translation.x + node.bounds.width / 2,
+                                   node.bounds.y + node.translation.y + node.bounds.height / 2};
+        for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, button));
+        }
+        sync();
+    };
+    const auto page_button = [&](std::string_view label) {
+        const auto id = button_with_label(f, label).component;
+        reveal(id);
+        click(id);
+    };
+    const auto key = [&](input::Key value) {
+        f.host->focus().dispatch({value, input::KeyAction::down});
+        f.host->focus().dispatch({value, input::KeyAction::up});
+        sync();
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto editor_in = [&](runtime::ComponentId ancestor) {
+        for (const auto& editor : f.inputs->mounted_inputs()) {
+            if (descendant(editor.component, ancestor)) {
+                return editor;
+            }
+        }
+        throw std::runtime_error("data Gallery editor absent");
+    };
+    const auto labelled_editor = [&](std::string_view label) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(text.scene).content().bytes().starts_with(label)) {
+                const auto parent = services.components().parent(text.component);
+                require(parent.has_value(), "numeric Gallery caption parent absent");
+                return editor_in(*parent);
+            }
+        }
+        throw std::runtime_error("numeric Gallery caption absent");
+    };
+    auto& tables = services.table();
+    auto& pagination = services.pagination();
+    require(tables.mounted().size() == 1 && pagination.mounted().size() == 1 && services.menu().mounted().size() == 2 &&
+                services.dropdown().mounted().size() == 1,
+            "data Gallery examples absent");
+    const auto table = tables.mounted().front();
+    const auto row = [&](String key) {
+        const auto snapshot = tables.snapshot(table);
+        const auto found = std::ranges::find(snapshot.rows, key, &detail::TableRowSnapshot::key);
+        require(found != snapshot.rows.end(), "data Gallery row absent");
+        return *found;
+    };
+    const auto original_row = row(u8"record-1");
+    const auto original_editor = editor_in(original_row.component);
+    const auto telemetry = definition.telemetry();
+    reveal(table);
+    require(tables.snapshot(table).visible_keys ==
+                std::vector<String>{u8"record-1", u8"record-2", u8"record-3", u8"record-4"},
+            "data Gallery initial page incorrect");
+    require(f.host->focus().request_focus(original_editor.interaction, input::FocusModality::keyboard),
+            "table Gallery cell editor focus failed");
+    key(input::Key::up);
+    require(f.inputs->number_value(original_editor.component) == 4 &&
+                f.inputs->editors().require(original_editor.editor).value() == "4",
+            "table Gallery cell did not write its numeric value back");
+    page_button("gallery.table.update");
+    bool updated_text = false;
+    for (const auto& text : f.host->text().mounted_texts()) {
+        if (descendant(text.component, original_row.component) &&
+            f.text_scene.text_state(text.scene).content().bytes() == String{u8"已更新任务"}.bytes()) {
+            updated_text = true;
+        }
+    }
+    require(updated_text && row(u8"record-1").component == original_row.component &&
+                editor_in(original_row.component).editor == original_editor.editor,
+            "table Gallery external update remounted the row or missed text");
+    reveal(table);
+    const auto sort = tables.snapshot(table).sort_buttons[1];
+    click(sort);
+    require(tables.snapshot(table).sort == TableSort{u8"quantity", TableSortOrder::Ascend},
+            "table Gallery ascending sort write-back failed");
+    click(sort);
+    require(tables.snapshot(table).sort.order == TableSortOrder::Descend &&
+                tables.snapshot(table).visible_keys.front() == String{u8"record-12"},
+            "table Gallery descending sort did not reorder rows");
+    click(sort);
+    require(tables.snapshot(table).sort.order == TableSortOrder::None, "table Gallery sort reset failed");
+    click(original_row.checkbox);
+    require(f.selections->snapshot(original_row.checkbox).checked, "table Gallery selection write-back failed");
+    const auto pager = pagination.mounted().front();
+    const auto page = [&](std::size_t target) {
+        reveal(pager);
+        const auto snapshot = pagination.snapshot(pager);
+        const auto found = std::ranges::find(snapshot.targets, target);
+        require(found != snapshot.targets.end(), "Gallery pagination target absent");
+        click(snapshot.items[static_cast<std::size_t>(found - snapshot.targets.begin())]);
+    };
+    page(2);
+    require(tables.snapshot(table).current == 2 && tables.snapshot(table).visible_keys.front() == String{u8"record-5"},
+            "Gallery Pagination did not update Table");
+    page(1);
+    require(editor_in(original_row.component).editor == original_editor.editor &&
+                f.inputs->number_value(original_editor.component) == 4 &&
+                f.selections->snapshot(original_row.checkbox).checked,
+            "Gallery pagination lost retained edit/selection");
+    page_button("gallery.table.loading");
+    require(tables.snapshot(table).loading, "Gallery Table loading toggle failed");
+    reveal(table);
+    click(sort);
+    require(tables.snapshot(table).sort.order == TableSortOrder::None, "loading Table accepted sort");
+    page_button("gallery.table.loading");
+    page_button("gallery.table.remove");
+    require(tables.snapshot(table).rows.size() == 11, "Gallery Table removal failed");
+    page_button("gallery.table.reverse");
+    require(tables.snapshot(table).visible_keys.front() == String{u8"record-11"}, "Gallery source reorder failed");
+    page_button("gallery.table.restore");
+    require(tables.snapshot(table).rows.size() == 12 && row(u8"record-1").component == original_row.component &&
+                editor_in(original_row.component).editor == original_editor.editor &&
+                f.inputs->number_value(original_editor.component) == 3,
+            "Gallery data restoration remounted existing keys");
+    reveal(table);
+    click(original_row.checkbox);
+    require(f.selections->snapshot(original_row.checkbox).checked, "Gallery command selection setup failed");
+
+    auto& menus = services.menu();
+    const auto menu = menus.mounted().front();
+    const auto initial_menu = menus.snapshot(menu);
+    reveal(menu);
+    click(initial_menu.rows[1]);
+    require(menus.snapshot(menu).selected_keys == MenuKeys{u8"tasks"}, "Gallery Menu selection failed");
+    page_button("gallery.menu.label");
+    bool updated_label = false;
+    for (const auto& text : f.host->text().mounted_texts()) {
+        updated_label |= descendant(text.component, initial_menu.rows[1]) &&
+                         f.text_scene.text_state(text.scene).content().bytes() == String{u8"任务 / 已更新"}.bytes();
+    }
+    require(updated_label && menus.snapshot(menu).rows == initial_menu.rows,
+            "Gallery menu label update missed text or remounted rows");
+    reveal(menu);
+    click(initial_menu.rows[2]);
+    require(menus.snapshot(menu).open_keys.empty(), "Gallery inline submenu close write-back failed");
+    click(initial_menu.rows[2]);
+    require(menus.snapshot(menu).open_keys == MenuKeys{u8"tools"}, "Gallery inline submenu reopen failed");
+    page_button("gallery.menu.disabled");
+    reveal(menu);
+    click(initial_menu.rows.front());
+    require(menus.snapshot(menu).selected_keys == MenuKeys{u8"tasks"}, "disabled Gallery Menu accepted activation");
+    page_button("gallery.menu.disabled");
+    reveal(menu);
+    menus.focus_menu(menu);
+    key(input::Key::home);
+    key(input::Key::enter);
+    require(menus.snapshot(menu).selected_keys == MenuKeys{u8"overview"}, "Gallery Menu keyboard navigation failed");
+    const auto dropdown = services.dropdown().mounted().front();
+    page_button("gallery.dropdown.actions");
+    auto popup = services.dropdown().snapshot(dropdown);
+    require(popup.geometry.visible && popup.geometry.bounds.y < 900, "translated Gallery Dropdown did not open");
+    const auto command_rows = menus.snapshot(popup.menu).rows;
+    click(command_rows[1]);
+    require(!services.dropdown().snapshot(dropdown).geometry.visible &&
+                !f.selections->snapshot(original_row.checkbox).checked,
+            "Gallery Dropdown command did not clear selection and close");
+    reveal(popup.trigger);
+    click(popup.trigger, input::PointerButton::secondary);
+    require(services.dropdown().snapshot(dropdown).geometry.visible, "Gallery context Dropdown did not open");
+    key(input::Key::escape);
+    require(!services.dropdown().snapshot(dropdown).geometry.visible, "Gallery context Dropdown Escape failed");
+
+    const auto number = labelled_editor("gallery.number.controlled");
+    const auto disabled = labelled_editor("gallery.number.disabled");
+    const auto readonly = labelled_editor("gallery.number.readonly");
+    page_button("gallery.number.focus");
+    require(f.host->focus().state().focused == number.interaction, "Gallery InputRef focus failed");
+    key(input::Key::up);
+    require(f.inputs->number_value(number.component) == 1.3, "Gallery controlled decimal step failed");
+    static_cast<void>(f.inputs->editors().require(number.editor).select_all());
+    require(bool(f.inputs->dispatch(input::TextCommitted{String{u8"9.75"}, f.inputs->sessions().active()})),
+            "Gallery decimal input failed");
+    key(input::Key::enter);
+    require(f.inputs->number_value(number.component) == 9.75, "Gallery decimal submission failed");
+    require(!f.host->focus().request_focus(disabled.interaction, input::FocusModality::keyboard),
+            "disabled Gallery number accepted focus");
+    page_button("gallery.number.toggle-disabled");
+    reveal(disabled.component);
+    require(f.host->focus().request_focus(disabled.interaction, input::FocusModality::keyboard),
+            "Gallery number did not become enabled");
+    key(input::Key::up);
+    require(f.inputs->number_value(disabled.component) == 6, "Gallery enabled number did not step");
+    require(f.host->focus().request_focus(readonly.interaction, input::FocusModality::keyboard),
+            "Gallery read-only number could not focus");
+    key(input::Key::up);
+    require(f.inputs->number_value(readonly.component) == 10 &&
+                definition.telemetry().content_runs == telemetry.content_runs &&
+                definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+            "Gallery read-only number changed or content remounted");
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -1593,7 +1822,10 @@ void print_gallery_inventory() {
               << " live_samples=" << telemetry.live_samples << " theme_content=" << telemetry.theme_content_runs
               << " inputs=" << f.inputs->mounted_inputs().size()
               << " selects=" << f.host->services().select().mounted().size()
-              << " modal_drawer=" << f.host->services().modal().mounted().size() << '\n';
+              << " modal_drawer=" << f.host->services().modal().mounted().size()
+              << " selection=" << f.selections->mounted().size()
+              << " menu=" << f.host->services().menu().mounted().size()
+              << " dropdown=" << f.host->services().dropdown().mounted().size() << '\n';
 }
 } // namespace
 
@@ -1605,6 +1837,10 @@ int main(int argc, char** argv) {
         }
         if (argc == 2 && std::string_view{argv[1]} == "--common-only") {
             test_common_component_gallery_after_document_scroll();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--data-only") {
+            test_data_and_selection_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--modal-only") {
@@ -1624,6 +1860,7 @@ int main(int argc, char** argv) {
         test_tabs_gallery_retains_scrolled_panel();
         test_modal_gallery_after_document_scroll();
         test_common_component_gallery_after_document_scroll();
+        test_data_and_selection_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

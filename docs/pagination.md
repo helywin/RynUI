@@ -2,6 +2,8 @@
 
 原生分页使用 `PaginationProps`，可与 Table 或普通列表共享受控页码：
 
+Token Gallery 的 LiveSamples 末尾将 Pagination 与实际可编辑 Table 共享页码，每页四条记录。翻页保留已有行的编辑值与选择；数据恢复同时重置页码和排序。
+
 ```cpp
 ryn::Signal<std::size_t> page{1};
 ryn::Pagination(ryn::PaginationProps{}

@@ -266,44 +266,59 @@
     },
     {
       "identity": "ant.component.dropdown",
-      "status": "planned",
-      "summary": "下拉菜单（Dropdown）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Dropdown 已提供点击/右键触发、受控显示、键盘关闭、窗口定位及焦点恢复；Gallery 可执行数据命令，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "retained Menu with click/context-menu triggers and controlled visibility",
+        "keyboard/outside close, popup positioning and focus restoration"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "hover trigger, split button and custom popup renderer",
+        "native Windows/Linux GPU/input acceptance remains independent"
       ],
       "evidence_identifiers": [
-        "source:components/dropdown/index.en-US.md"
+        "openspec:067-20261023-add-native-menu-and-dropdown",
+        "openspec:072-20261023-add-data-and-selection-gallery",
+        "test:rynui.dropdown_component",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
       "identity": "ant.component.menu",
-      "status": "planned",
-      "summary": "导航菜单（Menu）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Menu 已提供保留选项、受控选择/Inline 子菜单、禁用、键盘与有限滚动；Gallery 可切换选择、文字和禁用状态，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "fixed keyed items, controlled selection/open keys and inline submenus",
+        "reactive labels/disabled state, roving keyboard focus and finite scrolling"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "horizontal overflow, vertical flyout submenus and dynamic topology",
+        "native Windows/Linux GPU/input acceptance remains independent"
       ],
       "evidence_identifiers": [
-        "source:components/menu/index.en-US.md"
+        "openspec:067-20261023-add-native-menu-and-dropdown",
+        "openspec:072-20261023-add-data-and-selection-gallery",
+        "test:rynui.menu_component",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
       "identity": "ant.component.pagination",
-      "status": "planned",
-      "summary": "分页（Pagination）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Pagination 已提供受控/默认页码、页数与页大小、跳段按钮和单页隐藏；Gallery 与实际 Table 联动，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "controlled/default current page, total and page size, page/jump buttons",
+        "reactive updates, disabled state, hide-on-single-page layout and Table composition"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "page-size selector, quick jumper and simple mode",
+        "native Windows/Linux GPU/input acceptance remains independent"
       ],
       "evidence_identifiers": [
-        "source:components/pagination/index.en-US.md"
+        "openspec:066-20261023-add-native-table-and-pagination",
+        "openspec:072-20261023-add-data-and-selection-gallery",
+        "test:rynui.pagination_component",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -514,16 +529,21 @@
     },
     {
       "identity": "ant.component.input-number",
-      "status": "planned",
-      "summary": "数字输入框（InputNumber）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 InputNumber 已提供数值草稿、受控回写、精度/范围/步长、按钮/键盘和 IME 门禁；Gallery 包含表格编辑、小数、禁用和只读，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "nullable double values, retained drafts, controlled/default values and submit",
+        "bounds/precision/step, step buttons/keyboard, InputRef, disabled/readOnly and IME gates"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "stringMode, custom formatter/parser, hold repeat and wheel stepping",
+        "native Windows/Linux GPU/system IME acceptance remains independent"
       ],
       "evidence_identifiers": [
-        "source:components/input-number/index.en-US.md"
+        "openspec:068-20261023-add-native-input-number",
+        "openspec:072-20261023-add-data-and-selection-gallery",
+        "test:rynui.input_number_component",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -932,16 +952,21 @@
     },
     {
       "identity": "ant.component.table",
-      "status": "planned",
-      "summary": "表格（Table）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Table 已提供保留键控行、typed 列/插槽、受控排序/选择及有限滚动；Gallery 可编辑数值、更新/重排/增删数据并分页，平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "retained keyed rows with reactive typed cell slots and fixed columns",
+        "controlled sorting/Checkbox selection, finite scroll, loading/empty states and Pagination"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "virtualization, expandable/tree rows, filters, fixed columns and draggable scrollbars",
+        "native Windows/Linux GPU/input acceptance remains independent"
       ],
       "evidence_identifiers": [
-        "source:components/table/index.en-US.md"
+        "openspec:066-20261023-add-native-table-and-pagination",
+        "openspec:072-20261023-add-data-and-selection-gallery",
+        "test:rynui.table_component",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {

@@ -21,6 +21,24 @@
 namespace rynui::example {
 namespace {
 
+struct GalleryRecord final {
+    ryn::String key;
+    ryn::String name;
+    std::optional<double> quantity;
+    bool locked{};
+    friend bool operator==(const GalleryRecord&, const GalleryRecord&) = default;
+};
+
+std::vector<GalleryRecord> gallery_records() {
+    std::vector<GalleryRecord> result;
+    for (int index = 1; index <= 12; ++index) {
+        result.push_back({ryn::String::from_utf8("record-" + std::to_string(index)).value(),
+                          ryn::String::from_utf8("任务 " + std::to_string(index)).value(),
+                          static_cast<double>(index * 3), index == 12});
+    }
+    return result;
+}
+
 struct GalleryState final {
     ryn::Signal<ryn::ThemeConfig> theme{ryn::ThemeConfig{}};
     ryn::Color background_color{ryn::Color::rgba8(255, 255, 255)};
@@ -95,6 +113,20 @@ struct GalleryState final {
     ryn::Signal<float> feedback_percent{35};
     ryn::Signal<ryn::ProgressStatus> feedback_status{ryn::ProgressStatus::Normal};
     ryn::Signal<ryn::String> common_feedback{ryn::String{u8"操作下面的组件查看状态变化"}};
+    ryn::Signal<std::vector<GalleryRecord>> records{gallery_records()};
+    ryn::Signal<std::size_t> table_page{1};
+    ryn::Signal<ryn::TableSort> table_sort{ryn::TableSort{}};
+    ryn::Signal<std::vector<ryn::String>> table_selected{std::vector<ryn::String>{}};
+    ryn::Signal<bool> table_loading{false};
+    ryn::Signal<ryn::MenuKeys> menu_selected{ryn::MenuKeys{ryn::String{u8"overview"}}};
+    ryn::Signal<ryn::MenuKeys> menu_open{ryn::MenuKeys{ryn::String{u8"tools"}}};
+    ryn::Signal<ryn::String> menu_label{ryn::String{u8"任务"}};
+    ryn::Signal<bool> menu_disabled{false};
+    ryn::Signal<bool> dropdown_open{false};
+    ryn::Signal<ryn::InputNumberValue> number_value{ryn::InputNumberValue{1.2}};
+    ryn::Signal<bool> number_disabled{true};
+    ryn::InputRef number_ref;
+    ryn::Signal<ryn::String> data_feedback{ryn::String{u8"编辑数量、选择记录或执行菜单命令"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -354,6 +386,22 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.spin.action",
     "gallery.progress.advance",
     "gallery.progress.status",
+    "gallery.table.editable",
+    "gallery.table.update",
+    "gallery.table.reverse",
+    "gallery.table.remove",
+    "gallery.table.restore",
+    "gallery.table.loading",
+    "gallery.pagination.controlled",
+    "gallery.menu.inline",
+    "gallery.menu.label",
+    "gallery.menu.disabled",
+    "gallery.dropdown.actions",
+    "gallery.number.controlled",
+    "gallery.number.disabled",
+    "gallery.number.readonly",
+    "gallery.number.toggle-disabled",
+    "gallery.number.focus",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1945,6 +1993,209 @@ void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 20;
 }
 
+void add_data_and_selection_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"gallery.table.editable · Table / Pagination · 编辑、排序、选择与分页");
+    Text(TextProps{}.content(state->data_feedback));
+    Text(TextProps{}.content(bind([state] {
+        return utf8("当前第 " + std::to_string(state->table_page.get()) + " 页，已选 " +
+                    std::to_string(state->table_selected.get().size()) + " 项");
+    })));
+    Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+              Button(ButtonProps{}.onClick([state] {
+                  auto rows = state->records.get();
+                  if (!rows.empty()) {
+                      rows.front().name = String{u8"已更新任务"};
+                      state->records.set(std::move(rows));
+                  }
+              }),
+                     [] { Text(u8"gallery.table.update · 更新首行"); });
+              Button(ButtonProps{}.onClick([state] {
+                  auto rows = state->records.get();
+                  std::ranges::reverse(rows);
+                  state->records.set(std::move(rows));
+              }),
+                     [] { Text(u8"gallery.table.reverse · 反转数据顺序"); });
+              Button(ButtonProps{}.onClick([state] {
+                  auto rows = state->records.get();
+                  if (!rows.empty()) {
+                      const auto removed = rows.back().key;
+                      rows.pop_back();
+                      auto selected = state->table_selected.get();
+                      std::erase(selected, removed);
+                      state->table_selected.set(std::move(selected));
+                      state->records.set(std::move(rows));
+                      state->table_page.set(1);
+                  }
+              }),
+                     [] { Text(u8"gallery.table.remove · 删除末行"); });
+              Button(ButtonProps{}.onClick([state] {
+                  state->records.set(gallery_records());
+                  state->table_page.set(1);
+                  state->table_sort.set(TableSort{});
+                  state->table_selected.set({});
+              }),
+                     [] { Text(u8"gallery.table.restore · 恢复数据"); });
+              Button(ButtonProps{}.onClick([state] { state->table_loading.set(!state->table_loading.get()); }),
+                     [] { Text(u8"gallery.table.loading · 切换加载"); });
+          }});
+    Table(TableProps<GalleryRecord>{}
+              .dataSource(state->records)
+              .rowKey([](const GalleryRecord& row) { return row.key; })
+              .columns(
+                  {TableColumn<GalleryRecord>{u8"name", u8"任务",
+                                              [](TableCell<GalleryRecord> cell) {
+                                                  Text(TextProps{}.content(bind([cell] { return cell.value().name; })));
+                                              }}
+                       .width(220),
+                   TableColumn<GalleryRecord>{u8"quantity", u8"数量",
+                                              [state](TableCell<GalleryRecord> cell) {
+                                                  InputNumber(
+                                                      InputNumberProps{}
+                                                          .value(bind([cell] { return cell.value().quantity; }))
+                                                          .min(0)
+                                                          .max(1000)
+                                                          .precision(0)
+                                                          .disabled(bind([cell] { return cell.value().locked; }))
+                                                          .onChange([state, key = cell.key()](InputNumberValue value) {
+                                                              auto rows = state->records.get();
+                                                              const auto found =
+                                                                  std::ranges::find(rows, key, &GalleryRecord::key);
+                                                              if (found != rows.end()) {
+                                                                  found->quantity = value;
+                                                                  state->records.set(std::move(rows));
+                                                              }
+                                                          }));
+                                              }}
+                       .width(160)
+                       .sorter([](const GalleryRecord& a, const GalleryRecord& b) {
+                           return a.quantity.value_or(0) < b.quantity.value_or(0);
+                       }),
+                   TableColumn<GalleryRecord>{u8"status", u8"状态",
+                                              [](TableCell<GalleryRecord> cell) {
+                                                  Tag(TagProps{}.color(bind([cell] {
+                                                      return TagColor{cell.value().locked ? Status::Warning
+                                                                                          : Status::Success};
+                                                  })),
+                                                      TagContent{[cell] {
+                                                          Text(TextProps{}.content(bind([cell] {
+                                                              return cell.value().locked ? String{u8"已锁定"}
+                                                                                         : String{u8"可编辑"};
+                                                          })));
+                                                      }});
+                                              }}})
+              .sort(state->table_sort)
+              .onSortChange([state](TableSort sort) {
+                  state->table_sort.set(std::move(sort));
+                  state->table_page.set(1);
+              })
+              .rowSelection({state->table_selected, [state](auto keys) { state->table_selected.set(std::move(keys)); },
+                             [](const GalleryRecord& row) { return row.locked; }})
+              .current(state->table_page)
+              .pageSize(std::size_t{4})
+              .scrollY(180)
+              .loading(state->table_loading)
+              .bordered(),
+          TableEmpty{[] { Text(u8"暂无记录，点击恢复数据继续体验。"); }});
+    Text(u8"gallery.pagination.controlled · 每页四项");
+    Pagination(PaginationProps{}
+                   .total(bind([state] { return state->records.get().size(); }))
+                   .current(state->table_page)
+                   .pageSize(std::size_t{4})
+                   .hideOnSinglePage()
+                   .onChange([state](std::size_t page, std::size_t) { state->table_page.set(page); }));
+
+    Text(u8"gallery.menu.inline · Menu / Dropdown · 导航与命令");
+    Text(TextProps{}.content(state->data_feedback));
+    Menu(MenuProps{}
+             .mode(MenuMode::Inline)
+             .items({{u8"overview", u8"概览"},
+                     {u8"tasks", state->menu_label},
+                     {u8"tools",
+                      u8"工具",
+                      false,
+                      false,
+                      MenuItemKind::SubMenu,
+                      {{u8"logs", u8"日志"}, {u8"settings", u8"设置"}, {u8"unavailable", u8"不可用", true}}},
+                     {u8"divider", u8"", false, false, MenuItemKind::Divider},
+                     {u8"reset", u8"重置", false, true}})
+             .selectedKeys(state->menu_selected)
+             .openKeys(state->menu_open)
+             .disabled(state->menu_disabled)
+             .onSelect([state](MenuSelectInfo info) { state->menu_selected.set(std::move(info.selected_keys)); })
+             .onOpenChange([state](MenuKeys keys) { state->menu_open.set(std::move(keys)); })
+             .onClick([state](MenuClickInfo info) {
+                 state->data_feedback.set(utf8("已选择菜单：" + std::string{info.key.bytes()}));
+             })
+             .layout(LayoutStyle{}.width(dp(260)).height(dp(280))));
+    Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+              Button(ButtonProps{}.onClick([state] {
+                  state->menu_label.set(state->menu_label.get() == String{u8"任务"} ? String{u8"任务 / 已更新"}
+                                                                                    : String{u8"任务"});
+              }),
+                     [] { Text(u8"gallery.menu.label · 更新菜单文字"); });
+              Button(ButtonProps{}.onClick([state] { state->menu_disabled.set(!state->menu_disabled.get()); }),
+                     [] { Text(u8"gallery.menu.disabled · 切换菜单禁用"); });
+          }});
+    Dropdown(DropdownProps{}
+                 .open(state->dropdown_open)
+                 .onOpenChange([state](DropdownOpenInfo info) { state->dropdown_open.set(info.open); })
+                 .trigger(DropdownTriggerMode::ClickContextMenu)
+                 .menu(MenuProps{}
+                           .items({{u8"refresh", u8"刷新数据"},
+                                   {u8"clear-selection", u8"清空选择"},
+                                   {u8"disabled", u8"不可用命令", true}})
+                           .onClick([state](MenuClickInfo info) {
+                               if (info.key == String{u8"refresh"}) {
+                                   state->records.set(gallery_records());
+                                   state->table_page.set(1);
+                               } else if (info.key == String{u8"clear-selection"}) {
+                                   state->table_selected.set({});
+                               }
+                               state->data_feedback.set(utf8("已执行命令：" + std::string{info.key.bytes()}));
+                           })),
+             DropdownTrigger{
+                 [] { Button(ButtonProps{}, [] { Text(u8"gallery.dropdown.actions · 点击或右键打开命令"); }); }});
+
+    Text(u8"InputNumber · 小数、范围、禁用与只读");
+    Text(TextProps{}.content(state->data_feedback));
+    Space(
+        SpaceProps{}.wrap(true).size(dp(16)), SpaceContent{[state] {
+            Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state] {
+                     Text(u8"gallery.number.controlled · 受控小数 0..10");
+                     InputNumber(InputNumberProps{}
+                                     .value(state->number_value)
+                                     .min(0)
+                                     .max(10)
+                                     .step(0.1)
+                                     .precision(2)
+                                     .ref(state->number_ref)
+                                     .onChange([state](InputNumberValue value) { state->number_value.set(value); })
+                                     .onSubmit([state](InputNumberValue value) {
+                                         state->data_feedback.set(value ? utf8("已提交数值：" + std::to_string(*value))
+                                                                        : String{u8"已提交空值"});
+                                     }));
+                 }});
+            Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[state] {
+                     Text(u8"gallery.number.disabled · 禁用切换");
+                     InputNumber(
+                         InputNumberProps{}.defaultValue(5).disabled(state->number_disabled).size(ControlSize::Small));
+                 }});
+            Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
+                     Text(u8"gallery.number.readonly · 只读");
+                     InputNumber(
+                         InputNumberProps{}.defaultValue(10).readOnly(true).controls(false).size(ControlSize::Large));
+                 }});
+        }});
+    Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+              Button(ButtonProps{}.onClick([state] { state->number_disabled.set(!state->number_disabled.get()); }),
+                     [] { Text(u8"gallery.number.toggle-disabled · 切换数值禁用"); });
+              Button(ButtonProps{}.onClick([state] { static_cast<void>(state->number_ref.focus()); }),
+                     [] { Text(u8"gallery.number.focus · 聚焦小数编辑"); });
+          }});
+    state->telemetry.live_samples += 7;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2470,6 +2721,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_tabs_samples(state);
                                                         add_modal_samples(state);
                                                         add_common_component_samples(state);
+                                                        add_data_and_selection_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

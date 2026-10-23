@@ -1,5 +1,7 @@
 # Menu 与 Dropdown
 
+Token Gallery 的 LiveSamples 末尾提供 Inline 导航、响应式文字和禁用切换，以及点击/右键打开的 Dropdown。菜单选择会更新反馈；Dropdown 的刷新和清空选择命令会操作同页 Table 数据。
+
 设计参考固定为 Ant Design 6.6.5；组件使用 `ryn` typed Props、`Prop<T>` 与 retained logical scene，不依赖 React/DOM。
 
 ```cpp

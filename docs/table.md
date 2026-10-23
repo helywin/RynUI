@@ -2,6 +2,8 @@
 
 `Table<Row>` 用固定的强类型列显示有限业务数据。Row 可为自己的可复制 C++ 业务类型，不需要继承框架类或转成字符串字段字典。
 
+Token Gallery 的 LiveSamples 末尾提供 12 条业务记录：行内 InputNumber 编辑、受控排序/Checkbox 选择、四项分页，以及更新、重排、删除、恢复和 loading 操作。相同业务 key 保留编辑器身份；锁定行禁止编辑与选择。
+
 ```cpp
 struct Order {
     ryn::String id;

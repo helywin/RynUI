@@ -1,5 +1,7 @@
 # InputNumber
 
+Token Gallery 的 LiveSamples 末尾提供受控小数、禁用切换、只读与 InputRef 聚焦，并在 Table 单元格内直接编辑业务数值。排序、翻页和同 key 数据更新保留编辑器身份。
+
 `<ryn/input_number.hpp>` 提供允许空值的 `InputNumber`。`InputNumberValue` 为 `optional<double>`；`.value()` 固定受控模式，`.defaultValue()` 仅初始化非受控模式，两者互斥。typed `onChange(InputNumberValue)` 接收候选值；受控调用方需要回写 Signal 才接受。
 
 ```cpp
