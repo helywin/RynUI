@@ -6,7 +6,7 @@
 
 ## 2. 平台通用实现（Windows MSVC headless）
 
-- [ ] 2.1 实现 Tag/CheckableTag、Badge 与主题 Token、局部窗口注册和组件文档；通过专用 public API、theme、component tests 的 Debug/Release 构建及 CTest，验证响应、保留身份、颜色不测量、布局、指针/键盘/焦点、销毁和空闲。
+- [x] 2.1 实现 Tag/CheckableTag、Badge 与主题 Token、局部窗口注册和组件文档；通过专用 public API、theme、component tests 的 Debug/Release 构建及 CTest，验证响应、保留身份、颜色不测量、布局、指针/键盘/焦点、销毁和空闲。
 
 ## 3. 集成检查
 

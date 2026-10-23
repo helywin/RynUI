@@ -2060,6 +2060,168 @@ void apply_button_override(ButtonThemeToken& button, const ButtonTokenOverride& 
     }
 }
 
+TagThemeToken derive_tag(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                         std::span<const ThemeAlgorithm> algorithms) {
+    TagThemeToken token;
+    const bool dark = contains_dark(algorithms);
+    auto& c = token.colors;
+    c.normal = {mix(alias.color_background_container, map.color_text_base, dark ? 0.08F : 0.04F), alias.color_border,
+                alias.color_text};
+    const auto palette = [&](Color base) {
+        return TagPalette{dark ? mix(Color::rgba8(20, 20, 20), palette_variant(base, 2, false), 0.15F)
+                               : palette_variant(base, 5, true),
+                          dark ? mix(Color::rgba8(20, 20, 20), palette_variant(base, 1, false), 0.65F)
+                               : palette_variant(base, 3, true),
+                          dark ? semantic_text_color(base, 6, true) : palette_variant(base, 1, false)};
+    };
+    constexpr std::array seeds{Color{},
+                               Color::rgba8(235, 47, 150),
+                               Color::rgba8(245, 34, 45),
+                               Color::rgba8(250, 84, 28),
+                               Color::rgba8(250, 140, 22),
+                               Color::rgba8(250, 173, 20),
+                               Color::rgba8(160, 217, 17),
+                               Color::rgba8(82, 196, 26),
+                               Color::rgba8(19, 194, 194),
+                               Color::rgba8(22, 119, 255),
+                               Color::rgba8(47, 84, 235),
+                               Color::rgba8(114, 46, 209),
+                               Color::rgba8(235, 47, 150)};
+    c.presets[0] = c.normal;
+    for (std::size_t i = 1; i < seeds.size(); ++i) {
+        c.presets[i] = palette(seeds[i]);
+    }
+    c.statuses = {c.normal,
+                  c.normal,
+                  palette(seed.color_success),
+                  palette(seed.color_info),
+                  palette(seed.color_error),
+                  palette(seed.color_warning)};
+    c.statuses[2].text = map.color_success;
+    c.statuses[3].text = map.color_info;
+    c.statuses[4].text = map.color_error;
+    c.statuses[5].text = map.color_warning;
+    c.primary = map.color_primary;
+    c.primary_hover = map.color_primary_hover;
+    c.primary_active = map.color_primary_active;
+    c.checked_text = Color::rgba8(255, 255, 255);
+    c.hover_background =
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.06F);
+    c.disabled_background = alias.color_background_container_disabled;
+    c.disabled_text = alias.color_text_disabled;
+    c.close = alias.color_text_secondary;
+    c.close_hover = alias.color_text;
+    c.focus = alias.color_focus_outline;
+    token.metrics.font_family = seed.font_family;
+    token.metrics.font_size = map.font_size_small;
+    token.metrics.line_height = map.line_height_small * map.font_size_small;
+    token.metrics.border_width = seed.line_width;
+    token.metrics.border_radius = map.border_radius_small;
+    token.metrics.padding_inline = std::max(0.0F, 8 - seed.line_width);
+    token.metrics.icon_gap = token.metrics.padding_inline;
+    token.metrics.close_gap = std::max(0.0F, 4 - seed.line_width);
+    token.metrics.close_size = std::max(0.0F, map.font_size_small - 2 * seed.line_width);
+    token.metrics.focus_width = alias.line_width_focus;
+    token.metrics.focus_offset = alias.focus_outline_offset;
+    return token;
+}
+
+void apply_tag_override(TagThemeToken& t, const TagTokenOverride& o) {
+    if (o.default_background) {
+        t.colors.normal.background = *o.default_background;
+    }
+    if (o.default_color) {
+        t.colors.normal.text = *o.default_color;
+    }
+    if (o.default_border) {
+        t.colors.normal.border = *o.default_border;
+    }
+    if (o.checked_background) {
+        t.colors.primary = *o.checked_background;
+    }
+    if (o.checked_color) {
+        t.colors.checked_text = *o.checked_color;
+    }
+    if (o.close_color) {
+        t.colors.close = *o.close_color;
+    }
+    t.colors.presets[0] = t.colors.normal;
+    t.colors.statuses[0] = t.colors.statuses[1] = t.colors.normal;
+    auto& m = t.metrics;
+    m.padding_inline = fixed_length(o.padding_inline, m.padding_inline, "Tag padding must be non-negative");
+    m.icon_gap = fixed_length(o.icon_gap, m.icon_gap, "Tag gap must be non-negative");
+    m.close_size = fixed_length(o.close_size, m.close_size, "Tag close size must be non-negative");
+    m.border_width = fixed_length(o.border_width, m.border_width, "Tag border must be non-negative");
+    m.border_radius = fixed_length(o.border_radius, m.border_radius, "Tag radius must be non-negative");
+    m.font_size = fixed_length(o.font_size, m.font_size, "Tag font size must be positive", true);
+    m.line_height = fixed_length(o.line_height, m.line_height, "Tag line height must be positive", true);
+    float total = 0;
+    for (float v : m.values()) {
+        total += v;
+    }
+    if (!std::isfinite(total)) {
+        throw std::invalid_argument("Tag combined metrics overflow");
+    }
+}
+
+BadgeThemeToken derive_badge(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias) {
+    BadgeThemeToken t;
+    t.colors = {map.color_error,
+                Color::rgba8(255, 255, 255),
+                alias.color_text,
+                alias.color_background_container,
+                {map.color_error, alias.color_text_disabled, map.color_success, map.color_info, map.color_error,
+                 map.color_warning}};
+    auto& m = t.metrics;
+    m.indicator_height = std::round(map.font_size * map.line_height) - 2 * seed.line_width;
+    m.indicator_height_small = map.font_size;
+    m.dot_size = m.status_size = map.font_size_small / 2;
+    m.padding_inline = map.size_xs;
+    m.text_gap = map.size_xs;
+    m.font_size = map.font_size_small;
+    m.text_font_size = map.font_size;
+    m.text_line_height = map.line_height * map.font_size;
+    m.outline_width = seed.line_width;
+    m.font_family = seed.font_family;
+    return t;
+}
+
+void apply_badge_override(BadgeThemeToken& t, const BadgeTokenOverride& o) {
+    if (o.background) {
+        t.colors.background = *o.background;
+    }
+    if (o.count_color) {
+        t.colors.count_text = *o.count_color;
+    }
+    if (o.text_color) {
+        t.colors.text = *o.text_color;
+    }
+    if (o.outline_color) {
+        t.colors.outline = *o.outline_color;
+    }
+    auto& m = t.metrics;
+    m.indicator_height = fixed_length(o.indicator_height, m.indicator_height, "Badge height must be positive", true);
+    m.indicator_height_small =
+        fixed_length(o.indicator_height_small, m.indicator_height_small, "Badge small height must be positive", true);
+    m.dot_size = fixed_length(o.dot_size, m.dot_size, "Badge dot must be non-negative");
+    m.status_size = fixed_length(o.status_size, m.status_size, "Badge status size must be non-negative");
+    m.padding_inline = fixed_length(o.padding_inline, m.padding_inline, "Badge padding must be non-negative");
+    m.font_size = fixed_length(o.font_size, m.font_size, "Badge font must be positive", true);
+    if (o.font_weight) {
+        if (*o.font_weight < 100 || *o.font_weight > 1000) {
+            throw std::invalid_argument("Badge font weight invalid");
+        }
+        m.font_weight = *o.font_weight;
+    }
+    float total = 0;
+    for (float v : m.values()) {
+        total += v;
+    }
+    if (!std::isfinite(total)) {
+        throw std::invalid_argument("Badge combined metrics overflow");
+    }
+}
+
 [[nodiscard]] TextThemeToken derive_text(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
                                          const ThemeAliasToken& alias) {
     return {
@@ -3003,17 +3165,81 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
+                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
+                             TagThemeToken tag, BadgeThemeToken badge)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
+    std::ostringstream status_json;
+    status_json.imbue(std::locale::classic());
+    status_json << std::fixed << std::setprecision(6);
+    status_json << ",\"tag\":{\"colors\":[";
+    bool first = true;
+    const auto color = [&](Color c) {
+        if (!first) {
+            status_json << ',';
+        }
+        first = false;
+        append_color(status_json, c);
+        hash_color(identity_, c);
+    };
+    const auto palette = [&](const TagPalette& p) {
+        color(p.background);
+        color(p.border);
+        color(p.text);
+    };
+    palette(tag_.colors.normal);
+    for (const auto& p : tag_.colors.presets) {
+        palette(p);
+    }
+    for (const auto& p : tag_.colors.statuses) {
+        palette(p);
+    }
+    const auto& c = tag_.colors;
+    for (Color v : {c.primary, c.primary_hover, c.primary_active, c.checked_text, c.hover_background,
+                    c.disabled_background, c.disabled_text, c.close, c.close_hover, c.focus}) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    const auto metric = [&](float v) {
+        if (!first) {
+            status_json << ',';
+        }
+        first = false;
+        status_json << v;
+        hash_float(identity_, v);
+    };
+    for (float v : tag_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, tag_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(tag_.metrics.font_family) << "},\"badge\":{\"colors\":[";
+    first = true;
+    for (Color v : {badge_.colors.background, badge_.colors.count_text, badge_.colors.text, badge_.colors.outline}) {
+        color(v);
+    }
+    for (Color v : badge_.colors.statuses) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float v : badge_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, badge_.metrics.font_family);
+    hash_integer(identity_, badge_.metrics.font_weight);
+    status_json << "],\"fontFamily\":" << static_cast<int>(badge_.metrics.font_family)
+                << ",\"fontWeight\":" << badge_.metrics.font_weight << '}';
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                            slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
+    diagnostic_json_.insert(diagnostic_json_.rfind('}'), status_json.str());
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -3106,7 +3332,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3358,11 +3585,43 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         modal = derive_modal(seed, map, alias, algorithms);
     }
     apply_modal_override(modal, config.modal.tokens);
+    TagThemeToken tag;
+    const bool inherit_tag = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.tag.algorithm && config.tag.seed == SeedTokenOverride{};
+    if (inherit_tag) {
+        tag = parent->tag();
+    } else if (config.tag.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.tag.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        tag = derive_tag(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                         algorithms);
+    } else {
+        tag = derive_tag(seed, map, alias, algorithms);
+    }
+    apply_tag_override(tag, config.tag.tokens);
+    BadgeThemeToken badge;
+    const bool inherit_badge = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                               !config.badge.algorithm && config.badge.seed == SeedTokenOverride{};
+    if (inherit_badge) {
+        badge = parent->badge();
+    } else if (config.badge.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.badge.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        badge = derive_badge(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+    } else {
+        badge = derive_badge(seed, map, alias);
+    }
+    apply_badge_override(badge, config.badge.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
                          std::move(tabs), std::move(modal),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
+                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
+                         std::move(tag), std::move(badge));
 }
 
 } // namespace ryn

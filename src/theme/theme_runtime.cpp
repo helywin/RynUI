@@ -294,6 +294,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
+    append_if_changed(before.tag().colors, after.tag().colors, TokenIdentity::tag_colors, changed, count);
+    append_if_changed(before.tag().metrics, after.tag().metrics, TokenIdentity::tag_metrics, changed, count);
+    append_if_changed(before.badge().colors, after.badge().colors, TokenIdentity::badge_colors, changed, count);
+    append_if_changed(before.badge().metrics, after.badge().metrics, TokenIdentity::badge_metrics, changed, count);
     append_if_changed(before.card().colors, after.card().colors, TokenIdentity::card_colors, changed, count);
     append_if_changed(before.card().metrics, after.card().metrics, TokenIdentity::card_metrics, changed, count);
     append_if_changed(before.card().typography, after.card().typography, TokenIdentity::card_typography, changed,
@@ -999,6 +1003,30 @@ const TabsThemeToken& ThemeScope::tabs_colors() const {
     return snapshot_->tabs();
 }
 
+const TagThemeToken& ThemeScope::tag_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tag_colors);
+    return snapshot_->tag();
+}
+
+const TagThemeToken& ThemeScope::tag_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tag_metrics);
+    return snapshot_->tag();
+}
+
+const BadgeThemeToken& ThemeScope::badge_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::badge_colors);
+    return snapshot_->badge();
+}
+
+const BadgeThemeToken& ThemeScope::badge_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::badge_metrics);
+    return snapshot_->badge();
+}
+
 const ModalThemeToken& ThemeScope::modal_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::modal_colors);
@@ -1222,6 +1250,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Modal.typography",
         "Modal.effects",
         "Modal.order",
+        "Tag.colors",
+        "Tag.metrics",
+        "Badge.colors",
+        "Badge.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1274,6 +1306,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
     case TokenIdentity::modal_colors:
+    case TokenIdentity::tag_colors:
+    case TokenIdentity::badge_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1319,6 +1353,10 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_typography:
     case TokenIdentity::modal_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
+    case TokenIdentity::tag_metrics:
+        return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
+    case TokenIdentity::badge_metrics:
+        return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
     case TokenIdentity::map_size_small:

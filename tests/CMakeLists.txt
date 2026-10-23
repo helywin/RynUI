@@ -1,6 +1,16 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(status_test IN ITEMS tag_badge_public_api tag_badge_theme tag_badge_component)
+    add_executable(rynui_${status_test}_tests ${status_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${status_test}_tests)
+    target_link_libraries(rynui_${status_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${status_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${status_test} COMMAND rynui_${status_test}_tests)
+endforeach()
+
 add_executable(rynui_bidi_analysis_tests bidi_analysis_tests.cpp)
 rynui_configure_cpp_target(rynui_bidi_analysis_tests)
 target_link_libraries(rynui_bidi_analysis_tests PRIVATE rynui_text)
