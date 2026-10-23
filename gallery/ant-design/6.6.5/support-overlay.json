@@ -322,16 +322,28 @@
     },
     {
       "identity": "ant.component.tabs",
-      "status": "planned",
-      "summary": "标签页（Tabs）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供原生 Tabs：固定 typed 面板、受控选择、保留草稿、Line/Card、三尺寸/上下/居中、键盘与横向溢出；动态结构等扩展尚未覆盖，原生平台证据独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive Props/TabItem labels/disabled and prebuilt retained TabContent panels",
+        "controlled/default String keys, disabled navigation, single Tab entry and pointer/keyboard activation",
+        "Line/Card, three sizes, Top/Bottom, centered and clipped arrow/wheel overflow navigation",
+        "retained Input/Select state, hidden panel focus/IME/popup cleanup and Tabs Component Token"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "dynamic items/reorder, editable-card, lazy/destroyOnHidden and activation animation",
+        "vertical/RTL, rich labels/extra content, overflow popup and custom indicator",
+        "Web/DOM/CSS compatibility aliases"
       ],
       "evidence_identifiers": [
-        "source:components/tabs/index.en-US.md"
+        "source:components/tabs/index.en-US.md",
+        "openspec:060-20261023-add-native-tabs",
+        "test:tabs_model",
+        "test:tabs_theme",
+        "test:tabs_public_api",
+        "test:tabs_component",
+        "test:token_gallery_frame",
+        "docs:docs/tabs.md"
       ]
     },
     {

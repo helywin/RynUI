@@ -75,6 +75,9 @@ struct GalleryState final {
     ryn::SelectRef select_ref;
     bool select_options_expanded{};
     ryn::Signal<bool> card_loading{false};
+    ryn::Signal<ryn::String> tabs_active{ryn::String{u8"draft"}};
+    ryn::Signal<ryn::String> tabs_label{ryn::String{u8"设置 / Settings"}};
+    ryn::Signal<bool> tabs_disabled{false};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -285,6 +288,20 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.card.loading",
     "gallery.card.component-theme",
     "gallery.card.toggle-loading",
+    "gallery.tabs.controlled-retained",
+    "gallery.tabs.disabled",
+    "gallery.tabs.dynamic-label",
+    "gallery.tabs.card",
+    "gallery.tabs.small",
+    "gallery.tabs.large",
+    "gallery.tabs.bottom",
+    "gallery.tabs.bottom-card",
+    "gallery.tabs.centered",
+    "gallery.tabs.overflow",
+    "gallery.tabs.empty",
+    "gallery.tabs.unknown-key",
+    "gallery.tabs.component-theme",
+    "gallery.tabs.toggle-label",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1510,6 +1527,79 @@ void add_icon_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 8;
 }
 
+void add_tabs_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Tabs · 键盘导航 / 保留草稿 / 溢出滚动");
+    const auto sample = [&](const char8_t* caption, TabsProps props, std::vector<TabItem> items) {
+        Text(String::from_utf8(std::u8string_view{caption}).value());
+        Tabs(props.layout(LayoutStyle{}.width(state->cell_width)), std::move(items));
+        ++state->telemetry.live_samples;
+    };
+    const auto basic = [] {
+        return std::vector<TabItem>{TabItem{u8"draft", u8"草稿", TabContent{[] { Text(u8"内容 / Content"); }}},
+                                    TabItem{u8"settings", u8"设置", TabContent{[] { Text(u8"Settings content"); }}}};
+    };
+    sample(
+        u8"gallery.tabs.controlled-retained · 受控 / 切换保留编辑",
+        TabsProps{}.activeKey(state->tabs_active).onChange([state](String key) {
+            state->tabs_active.set(std::move(key));
+            ++state->telemetry.activations;
+        }),
+        {TabItem{
+             u8"draft", u8"草稿", TabContent{[] {
+                 Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[] {
+                          Input(InputProps{}.defaultValue(u8"切换后保留 / Draft").layout(LayoutStyle{}.width(dp(140))));
+                          Select(SelectProps{}
+                                     .options({{1, u8"桌面"}, {2, u8"服务"}})
+                                     .defaultValue(1)
+                                     .layout(LayoutStyle{}.width(dp(140))));
+                      }});
+             }}},
+         TabItem{u8"settings", u8"设置", TabContent{[] {
+                     Input(InputProps{}.defaultValue(u8"另一份草稿").layout(LayoutStyle{}.width(dp(140))));
+                 }}},
+         TabItem{u8"locked", u8"禁用", TabContent{[] { Text(u8"Locked"); }}}.disabled()});
+    auto disabled = basic();
+    disabled.push_back(TabItem{u8"locked", u8"禁用", TabContent{[] { Text(u8"Locked"); }}}.disabled());
+    sample(u8"gallery.tabs.disabled", TabsProps{}, std::move(disabled));
+    auto dynamic = basic();
+    dynamic[1].label(state->tabs_label).disabled(state->tabs_disabled);
+    sample(u8"gallery.tabs.dynamic-label · 响应标签 / 禁用", TabsProps{}, std::move(dynamic));
+    sample(u8"gallery.tabs.card", TabsProps{}.type(TabsType::Card), basic());
+    sample(u8"gallery.tabs.small", TabsProps{}.size(ControlSize::Small), basic());
+    sample(u8"gallery.tabs.large", TabsProps{}.size(ControlSize::Large), basic());
+    sample(u8"gallery.tabs.bottom", TabsProps{}.placement(TabsPlacement::Bottom), basic());
+    sample(u8"gallery.tabs.bottom-card", TabsProps{}.type(TabsType::Card).placement(TabsPlacement::Bottom), basic());
+    sample(u8"gallery.tabs.centered", TabsProps{}.centered(), basic());
+    std::vector<TabItem> many;
+    for (int i = 1; i <= 8; ++i) {
+        auto key = String::from_utf8(std::to_string(i)).value();
+        many.emplace_back(key, String::from_utf8("项目 / Tab " + std::to_string(i)).value(),
+                          TabContent{[key] { Text(key); }});
+    }
+    sample(u8"gallery.tabs.overflow · 箭头 / 滚轮", TabsProps{}, std::move(many));
+    sample(u8"gallery.tabs.empty", TabsProps{}, {});
+    sample(u8"gallery.tabs.unknown-key · 未知 key 不显示面板", TabsProps{}.activeKey(u8"unknown"), basic());
+    ThemeConfig custom;
+    custom.tabs.algorithm = true;
+    custom.tabs.seed.color_primary = Color::rgba8(114, 46, 209);
+    custom.tabs.tokens.horizontal_gutter = dp(16);
+    Theme(ThemeProps{}.config(custom), ThemeContent{[state, basic] {
+              ++state->telemetry.theme_content_runs;
+              Text(u8"gallery.tabs.component-theme · 局部颜色 / 16 dp 间距");
+              Tabs(TabsProps{}.layout(LayoutStyle{}.width(state->cell_width)), basic());
+              ++state->telemetry.live_samples;
+          }});
+    Button(ButtonProps{}.onClick([state] {
+        const bool disabled = !state->tabs_disabled.get();
+        state->tabs_disabled.set(disabled);
+        state->tabs_label.set(disabled ? String{u8"暂不可用"} : String{u8"设置 / Settings"});
+        ++state->telemetry.activations;
+    }),
+           [] { Text(u8"gallery.tabs.toggle-label · 切换标签 / 禁用"); });
+    ++state->telemetry.live_samples;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2032,6 +2122,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_bidi_samples(state);
                                                         add_select_samples(state);
                                                         add_card_samples(state);
+                                                        add_tabs_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

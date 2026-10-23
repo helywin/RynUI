@@ -138,6 +138,12 @@ void test_typed_support_status() {
                 "native Flex/Space completion lost implementation evidence");
     }
     require_partial("ant.component.config-provider");
+    require_partial("ant.component.tabs");
+    const auto* tabs = find_ant_design_reference_entry("ant.component.tabs");
+    require(tabs->supported_scope.find("retained") != std::string_view::npos &&
+                tabs->missing_scope.find("dynamic") != std::string_view::npos &&
+                tabs->evidence_identifiers.find("test:tabs_component") != std::string_view::npos,
+            "Tabs catalog lost native scope or implementation evidence");
     require(gallery_support_status_name(GallerySupportStatus::implemented) == "implemented" &&
                 gallery_support_status_name(GallerySupportStatus::partial) == "partial" &&
                 gallery_support_status_name(GallerySupportStatus::planned) == "planned" &&

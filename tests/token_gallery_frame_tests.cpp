@@ -6,6 +6,7 @@
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
 #include "component/card_component.hpp"
+#include "component/tabs_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -800,7 +801,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 186, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 200, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -813,7 +814,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 101,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 102,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -822,9 +823,8 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    // Closed Select menus remain retained; Card adds seven container hits,
-    // five buttons and one editor, with no extra Tab entries for its containers.
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 442,
+    // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 509,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -840,13 +840,16 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 340,
-            "Token Gallery visible action inventory drifted");
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 378) {
+        throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
+                                 std::to_string(fixture.host->scene_composer().interaction_order().size()) +
+                                 " navigation=" + std::to_string(definition.navigation_control_count));
+    }
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 65 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 66 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 205,
+                initial.reference_content_runs == 126 && initial.live_samples == 219,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -989,9 +992,10 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 101 &&
-                fixture.host->services().select().mounted().size() == 16 &&
-                fixture.host->services().card().mounted().size() == 7,
+    require(fixture.inputs->mounted_inputs().size() == 104 &&
+                fixture.host->services().select().mounted().size() == 17 &&
+                fixture.host->services().card().mounted().size() == 7 &&
+                fixture.host->services().tabs().mounted().size() == 13,
             "Gallery Input/Search/Password/Typography/TextArea/OTP/Select samples absent");
     const auto samples = fixture.inputs->mounted_inputs();
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
@@ -1201,9 +1205,9 @@ void test_card_gallery_loading_restores_editor() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Card Gallery edit frame failed");
     const auto telemetry = definition.telemetry();
     const auto components = fixture.host->components().component_count();
-    // The two site-header buttons mount after the live document samples.
+    // The Tabs toggle and two site-header buttons mount after the Card toggle.
     const auto buttons = fixture.host->mounted_buttons();
-    const auto toggle = buttons[buttons.size() - 3];
+    const auto toggle = buttons[buttons.size() - 4];
     const auto click_toggle = [&] {
         const auto& node = fixture.nodes.require(toggle.node);
         const ryn::runtime::Point point{node.bounds.x + node.bounds.width / 2, node.bounds.y + node.bounds.height / 2};
@@ -1230,6 +1234,62 @@ void test_card_gallery_loading_restores_editor() {
     static_cast<void>(drain_animation_frames(*fixture.host, loop, "Card Gallery did not settle idle"));
 }
 
+void test_tabs_gallery_retains_scrolled_panel() {
+    using namespace ryn;
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    const auto synchronize = [&] {
+        require(f.host->layout_and_synchronize({1200, 900}, {0, 0, 1200, 900}, {24, 20}, 0, true),
+                "Tabs Gallery synchronization failed");
+    };
+    synchronize();
+    auto& tabs = f.host->services().tabs();
+    const auto id = tabs.mounted().front();
+    const auto original = tabs.snapshot(id);
+    const auto editor = f.inputs->mounted_inputs()[101];
+    const auto select = f.host->services().select().mounted().back();
+    const auto root = f.host->components().root(f.host->components().root_components().front());
+    const auto document = f.nodes.require(f.nodes.require(root).children.front()).children[1];
+    rynui::example::GalleryScrollTranslation scroll;
+    static_cast<void>(
+        scroll.apply(document, f.nodes.require(f.host->components().root(id)).bounds.y - 120, f.nodes, f.dirty));
+    synchronize();
+    const auto click = [&](runtime::ComponentId component) {
+        const auto& node = f.nodes.require(f.host->components().root(component));
+        const runtime::Point point{node.bounds.x + node.translation.x + node.bounds.width / 2,
+                                   node.bounds.y + node.translation.y + node.bounds.height / 2};
+        f.host->pointer().dispatch(pointer_event(input::PointerAction::down, point, input::PointerButton::primary));
+        f.host->pointer().dispatch(pointer_event(input::PointerAction::up, point, input::PointerButton::primary));
+        synchronize();
+    };
+    require(f.host->focus().request_focus(editor.interaction, input::FocusModality::keyboard),
+            "Tabs Gallery focus failed");
+    static_cast<void>(f.inputs->editors().require(editor.editor).select_all());
+    require(bool(f.inputs->dispatch(input::TextCommitted{String{u8"跨标签保留的草稿"}, f.inputs->sessions().active()})),
+            "Tabs Gallery edit failed");
+    synchronize();
+    click(f.host->services().select().snapshot(select).selector);
+    require(f.host->services().select().snapshot(select).visible, "Tabs Gallery nested Select did not open");
+    const auto telemetry = definition.telemetry();
+    const auto mounts = f.host->components().mount_runs();
+    click(original.headers[1]);
+    require(tabs.snapshot(id).active == 1 && !f.host->services().select().snapshot(select).visible &&
+                !f.inputs->sessions().active().valid(),
+            "Tabs Gallery switch retained old popup/session");
+    click(original.headers[0]);
+    require(tabs.snapshot(id).active == 0 && tabs.snapshot(id).panels == original.panels &&
+                f.inputs->mounted_inputs()[101].editor == editor.editor &&
+                f.inputs->editors().require(editor.editor).value() == String{u8"跨标签保留的草稿"}.bytes() &&
+                f.host->components().mount_runs() == mounts &&
+                definition.telemetry().activations == telemetry.activations + 2 &&
+                definition.telemetry().content_runs == telemetry.content_runs &&
+                definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+            "Tabs Gallery controlled binding remounted or lost the draft");
+}
+
 } // namespace
 
 int main() {
@@ -1244,6 +1304,7 @@ int main() {
         test_live_input_samples();
         test_select_popup_after_document_scroll();
         test_card_gallery_loading_restores_editor();
+        test_tabs_gallery_retains_scrolled_panel();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

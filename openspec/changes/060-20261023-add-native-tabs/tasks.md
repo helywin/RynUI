@@ -14,7 +14,7 @@
 
 ## 4. Gallery与共同集成（平台通用）
 
-- [ ] 4.1 接入真实Tabs基础/受控/禁用/label/两类型/三尺寸/上下/居中/溢出/保留编辑/局部主题样例，更新supported/missing scope/catalog、README及常用组件清单；catalog generator check、受影响Gallery Recording合同和格式/规格检查通过，记录实际平台/preset/evidence后提交并立即push、核对SHA。
+- [x] 4.1 接入真实Tabs基础/受控/禁用/label/两类型/三尺寸/上下/居中/溢出/保留编辑/局部主题样例，更新supported/missing scope/catalog、README及常用组件清单；catalog generator check、受影响Gallery Recording合同和格式/规格检查通过，记录实际平台/preset/evidence后提交并立即push、核对SHA。
 
 ## 5. 原生平台验收
 
