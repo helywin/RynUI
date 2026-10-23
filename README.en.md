@@ -29,6 +29,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
 | Tab panels | Tabs with fixed retained panels, controlled selection, draft restoration, Line/Card, three sizes, top/bottom/centered headers, keyboard and horizontal overflow navigation; see [Tabs](docs/tabs.md) |
 | Collapsible panels | Collapse with fixed keyed panels, controlled/default expansion, accordion, independent extra slots, keyboard and retained body drafts; see [Collapse](docs/collapse.md) |
+| Segmented selection | Segmented with fixed options, controlled/default selection, icons/rich labels, horizontal/vertical and equal-width block layouts, three sizes and keyboard navigation; see [Segmented](docs/segmented.md) |
 | Dialogs | Controlled Modal, retained body/title/footer slots, nested layers, focus restoration and scrolling within the window; see [Modal](docs/modal.md) |
 | Drawers | Four-edge Drawer panels, controlled close, retained slots, fixed header/footer, body scrolling and shared Modal focus layers; see [Drawer](docs/drawer.md) |
 | Confirmation popups | Popconfirm with retained trigger/title/description, real confirm/cancel buttons, controlled or default visibility, keyboard/outside close, focus restoration and child popups; see [Popconfirm](docs/popconfirm.md) |

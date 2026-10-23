@@ -101,6 +101,9 @@ public:
     [[nodiscard]] const CollapseThemeToken& collapse_metrics() const;
     [[nodiscard]] const CollapseThemeToken& collapse_typography() const;
     [[nodiscard]] const CollapseThemeToken& collapse_effects() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_colors() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_metrics() const;
+    [[nodiscard]] const SegmentedThemeToken& segmented_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;

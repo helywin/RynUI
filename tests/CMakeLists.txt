@@ -11,6 +11,16 @@ foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_compo
     add_test(NAME rynui.${collapse_test} COMMAND rynui_${collapse_test}_tests)
 endforeach()
 
+foreach(segmented_test IN ITEMS segmented_public_api segmented_theme segmented_component)
+    add_executable(rynui_${segmented_test}_tests ${segmented_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${segmented_test}_tests)
+    target_link_libraries(rynui_${segmented_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${segmented_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${segmented_test} COMMAND rynui_${segmented_test}_tests)
+endforeach()
+
 foreach(feedback_test IN ITEMS feedback_public_api feedback_theme feedback_component)
     add_executable(rynui_${feedback_test}_tests ${feedback_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${feedback_test}_tests)

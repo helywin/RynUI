@@ -1,6 +1,7 @@
 #include <ryn/theme.hpp>
 #include "theme/input_tokens.hpp"
 #include "theme/semantic_background.hpp"
+#include "theme/segmented_theme.hpp"
 
 #include <algorithm>
 #include <array>
@@ -3922,16 +3923,17 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
                              AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                              InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                             CollapseThemeToken collapse)
+                             CollapseThemeToken collapse, SegmentedThemeToken segmented)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
-      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
-      collapse_(std::move(collapse)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), segmented_(std::move(segmented)), modal_(std::move(modal)), tag_(std::move(tag)),
+      badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
+      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
+      table_(std::move(table)), collapse_(std::move(collapse)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4092,6 +4094,34 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
         metric(value);
     }
     status_json << "]}";
+    status_json << ",\"segmented\":{\"colors\":[";
+    first = true;
+    for (auto v : segmented_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : segmented_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, segmented_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(segmented_.metrics.font_family) << ",\"effects\":[";
+    first = true;
+    metric(segmented_.effects.focus_width);
+    metric(segmented_.effects.focus_offset);
+    status_json << "],\"shadow\":[";
+    for (std::size_t i = 0; i < segmented_.effects.selected_shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = segmented_.effects.selected_shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << "]}";
+    hash_shadow(identity_, segmented_.effects.selected_shadow);
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4217,7 +4247,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.menu_ == right.menu_ &&
            left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ &&
            left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_ &&
-           left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.collapse_ == right.collapse_;
+           left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.collapse_ == right.collapse_ &&
+           left.segmented_ == right.segmented_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4243,358 +4274,427 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     }
     apply_alias_override(alias, config.alias);
 
-    ButtonThemeToken button;
-    const bool inherit_parent_button = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
-                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                       !config.button.algorithm && config.button.seed == SeedTokenOverride{};
-    if (inherit_parent_button) {
-        button = parent->button();
-    } else if (config.button.algorithm) {
-        AntDesignDefaultSeed component_seed = seed;
-        apply_seed_override(component_seed, config.button.seed);
-        const ThemeMapToken component_map = derive_map(component_seed, algorithms);
-        const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
-        button = derive_button(component_seed, component_map, component_alias, algorithms);
-    } else {
-        button = derive_button(seed, map, alias, algorithms);
-    }
-    apply_button_override(button, config.button.tokens);
+    // Resolve components in separate calls so Debug builds do not reserve every
+    // seed/map/alias temporary in this frame at once.
+    auto button = [&] {
+        ButtonThemeToken button;
+        const bool inherit_parent_button = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
+                                           config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                           !config.button.algorithm && config.button.seed == SeedTokenOverride{};
+        if (inherit_parent_button) {
+            button = parent->button();
+        } else if (config.button.algorithm) {
+            AntDesignDefaultSeed component_seed = seed;
+            apply_seed_override(component_seed, config.button.seed);
+            const ThemeMapToken component_map = derive_map(component_seed, algorithms);
+            const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
+            button = derive_button(component_seed, component_map, component_alias, algorithms);
+        } else {
+            button = derive_button(seed, map, alias, algorithms);
+        }
+        apply_button_override(button, config.button.tokens);
+        return button;
+    }();
 
-    TextThemeToken text;
-    const bool inherit_parent_text = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
-                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                     !config.text.algorithm && config.text.seed == SeedTokenOverride{};
-    if (inherit_parent_text) {
-        text = parent->text();
-    } else if (config.text.algorithm) {
-        AntDesignDefaultSeed component_seed = seed;
-        apply_seed_override(component_seed, config.text.seed);
-        const ThemeMapToken component_map = derive_map(component_seed, algorithms);
-        const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
-        text = derive_text(component_seed, component_map, component_alias);
-    } else {
-        text = derive_text(seed, map, alias);
-    }
-    apply_text_override(text, config.text.tokens);
-    detail::InputTokenSet input;
-    const bool inherit_parent_input = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
+    auto text = [&] {
+        TextThemeToken text;
+        const bool inherit_parent_text = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
+                                         config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                         !config.text.algorithm && config.text.seed == SeedTokenOverride{};
+        if (inherit_parent_text) {
+            text = parent->text();
+        } else if (config.text.algorithm) {
+            AntDesignDefaultSeed component_seed = seed;
+            apply_seed_override(component_seed, config.text.seed);
+            const ThemeMapToken component_map = derive_map(component_seed, algorithms);
+            const ThemeAliasToken component_alias = derive_alias(component_seed, component_map, algorithms);
+            text = derive_text(component_seed, component_map, component_alias);
+        } else {
+            text = derive_text(seed, map, alias);
+        }
+        apply_text_override(text, config.text.tokens);
+        return text;
+    }();
+    auto input = [&] {
+        detail::InputTokenSet input;
+        const bool inherit_parent_input = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
+                                          config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                          !config.input.algorithm && config.input.seed == SeedTokenOverride{};
+        if (inherit_parent_input) {
+            input = detail::InputTokenAccess::get(*parent);
+        } else if (config.input.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.input.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            input = derive_input_theme(component_seed, component_map,
+                                       derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            input = derive_input_theme(seed, map, alias, algorithms);
+        }
+        detail::apply_input_override(input, config.input.tokens);
+        return input;
+    }();
+    auto switch_token = [&] {
+        SwitchThemeToken switch_token;
+        const bool inherit_parent_switch = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
+                                           config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                           !config.switch_.algorithm && config.switch_.seed == SeedTokenOverride{};
+        if (inherit_parent_switch) {
+            switch_token = parent->switch_token();
+        } else if (config.switch_.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.switch_.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            auto component_alias = derive_alias(component_seed, component_map, algorithms);
+            component_alias.opacity_loading = alias.opacity_loading;
+            switch_token = derive_switch(component_map, component_alias);
+        } else {
+            switch_token = derive_switch(map, alias);
+        }
+        apply_switch_override(switch_token, config.switch_.tokens);
+        return switch_token;
+    }();
+    auto checkbox = [&] {
+        CheckboxThemeToken checkbox;
+        const bool inherit_checkbox = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                      !config.input.algorithm && config.input.seed == SeedTokenOverride{};
-    if (inherit_parent_input) {
-        input = detail::InputTokenAccess::get(*parent);
-    } else if (config.input.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.input.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        input = derive_input_theme(component_seed, component_map,
-                                   derive_alias(component_seed, component_map, algorithms), algorithms);
-    } else {
-        input = derive_input_theme(seed, map, alias, algorithms);
-    }
-    detail::apply_input_override(input, config.input.tokens);
-    SwitchThemeToken switch_token;
-    const bool inherit_parent_switch = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
-                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                       !config.switch_.algorithm && config.switch_.seed == SeedTokenOverride{};
-    if (inherit_parent_switch) {
-        switch_token = parent->switch_token();
-    } else if (config.switch_.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.switch_.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        auto component_alias = derive_alias(component_seed, component_map, algorithms);
-        component_alias.opacity_loading = alias.opacity_loading;
-        switch_token = derive_switch(component_map, component_alias);
-    } else {
-        switch_token = derive_switch(map, alias);
-    }
-    apply_switch_override(switch_token, config.switch_.tokens);
-    CheckboxThemeToken checkbox;
-    const bool inherit_checkbox = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                  !config.checkbox.algorithm && config.checkbox.seed == SeedTokenOverride{};
-    if (inherit_checkbox) {
-        checkbox = parent->checkbox();
-    } else if (config.checkbox.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.checkbox.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        checkbox =
-            derive_checkbox(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        checkbox = derive_checkbox(seed, map, alias);
-    }
-    apply_checkbox_override(checkbox, config.checkbox.tokens);
-    RadioThemeToken radio;
-    const bool inherit_radio = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                               !config.radio.algorithm && config.radio.seed == SeedTokenOverride{};
-    if (inherit_radio) {
-        radio = parent->radio();
-    } else if (config.radio.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.radio.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        radio = derive_radio(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                             algorithms);
-    } else {
-        radio = derive_radio(seed, map, alias, algorithms);
-    }
-    apply_radio_override(radio, config.radio.tokens);
+                                      !config.checkbox.algorithm && config.checkbox.seed == SeedTokenOverride{};
+        if (inherit_checkbox) {
+            checkbox = parent->checkbox();
+        } else if (config.checkbox.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.checkbox.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            checkbox =
+                derive_checkbox(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        } else {
+            checkbox = derive_checkbox(seed, map, alias);
+        }
+        apply_checkbox_override(checkbox, config.checkbox.tokens);
+        return checkbox;
+    }();
+    auto radio = [&] {
+        RadioThemeToken radio;
+        const bool inherit_radio = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                   !config.radio.algorithm && config.radio.seed == SeedTokenOverride{};
+        if (inherit_radio) {
+            radio = parent->radio();
+        } else if (config.radio.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.radio.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            radio = derive_radio(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                                 algorithms);
+        } else {
+            radio = derive_radio(seed, map, alias, algorithms);
+        }
+        apply_radio_override(radio, config.radio.tokens);
+        return radio;
+    }();
     const bool inherit_parent_typography = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                            config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                            !config.typography.algorithm &&
                                            config.typography.seed == SeedTokenOverride{};
-    TypographyThemeToken typography;
-    if (inherit_parent_typography) {
-        typography = parent->typography();
-    } else if (config.typography.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.typography.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        typography =
-            derive_typography(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        typography = derive_typography(seed, map, alias);
-    }
-    apply_typography_override(typography, config.typography.tokens);
+    auto typography = [&] {
+        TypographyThemeToken typography;
+        if (inherit_parent_typography) {
+            typography = parent->typography();
+        } else if (config.typography.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.typography.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            typography = derive_typography(component_seed, component_map,
+                                           derive_alias(component_seed, component_map, algorithms));
+        } else {
+            typography = derive_typography(seed, map, alias);
+        }
+        apply_typography_override(typography, config.typography.tokens);
+        return typography;
+    }();
     const bool inherit_parent_divider = parent != nullptr && config.inherit && config.seed == SeedTokenOverride{} &&
                                         config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
                                         !config.divider.algorithm && config.divider.seed == SeedTokenOverride{};
-    DividerThemeToken divider;
-    if (inherit_parent_divider) {
-        divider = parent->divider();
-    } else if (config.divider.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.divider.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        divider =
-            derive_divider(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        divider = derive_divider(seed, map, alias);
-    }
-    apply_divider_override(divider, config.divider.tokens);
-    SliderThemeToken slider;
-    const bool inherit_slider = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                !config.slider.algorithm && config.slider.seed == SeedTokenOverride{};
-    if (inherit_slider) {
-        slider = parent->slider();
-    } else if (config.slider.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.slider.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        slider = derive_slider(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                               algorithms);
-    } else {
-        slider = derive_slider(seed, map, alias, algorithms);
-    }
-    apply_slider_override(slider, config.slider.tokens);
-    TooltipThemeToken tooltip;
-    const bool inherit_tooltip = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                 config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                 !config.tooltip.algorithm && config.tooltip.seed == SeedTokenOverride{};
-    if (inherit_tooltip) {
-        tooltip = parent->tooltip();
-    } else if (config.tooltip.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.tooltip.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        tooltip = derive_tooltip(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                                 algorithms);
-    } else {
-        tooltip = derive_tooltip(seed, map, alias, algorithms);
-    }
-    apply_tooltip_override(tooltip, config.tooltip.tokens);
-    SelectThemeToken select;
-    const bool inherit_select = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                !config.select.algorithm && config.select.seed == SeedTokenOverride{};
-    if (inherit_select) {
-        select = parent->select();
-    } else if (config.select.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.select.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        select = derive_select(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                               algorithms);
-    } else {
-        select = derive_select(seed, map, alias, algorithms);
-    }
-    apply_select_override(select, config.select.tokens);
-    CardThemeToken card;
-    const bool inherit_card = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                              !config.card.algorithm && config.card.seed == SeedTokenOverride{};
-    if (inherit_card) {
-        card = parent->card();
-    } else if (config.card.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.card.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        card = derive_card(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        card = derive_card(seed, map, alias);
-    }
-    apply_card_override(card, config.card.tokens);
-    TabsThemeToken tabs;
-    const bool inherit_tabs = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                              !config.tabs.algorithm && config.tabs.seed == SeedTokenOverride{};
-    if (inherit_tabs) {
-        tabs = parent->tabs();
-    } else if (config.tabs.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.tabs.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        tabs = derive_tabs(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                           algorithms);
-    } else {
-        tabs = derive_tabs(seed, map, alias, algorithms);
-    }
-    apply_tabs_override(tabs, config.tabs.tokens);
-    CollapseThemeToken collapse;
-    const bool inherit_collapse = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                  !config.collapse.algorithm && config.collapse.seed == SeedTokenOverride{};
-    if (inherit_collapse) {
-        collapse = parent->collapse();
-    } else if (config.collapse.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.collapse.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        collapse = derive_collapse(component_seed, component_map,
-                                   derive_alias(component_seed, component_map, algorithms), algorithms);
-    } else {
-        collapse = derive_collapse(seed, map, alias, algorithms);
-    }
-    apply_collapse_override(collapse, config.collapse.tokens);
-    ModalThemeToken modal;
-    const bool inherit_modal = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                               !config.modal.algorithm && config.modal.seed == SeedTokenOverride{};
-    if (inherit_modal) {
-        modal = parent->modal();
-    } else if (config.modal.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.modal.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        modal = derive_modal(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                             algorithms);
-    } else {
-        modal = derive_modal(seed, map, alias, algorithms);
-    }
-    apply_modal_override(modal, config.modal.tokens);
-    TagThemeToken tag;
-    const bool inherit_tag = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                             !config.tag.algorithm && config.tag.seed == SeedTokenOverride{};
-    if (inherit_tag) {
-        tag = parent->tag();
-    } else if (config.tag.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.tag.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        tag = derive_tag(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                         algorithms);
-    } else {
-        tag = derive_tag(seed, map, alias, algorithms);
-    }
-    apply_tag_override(tag, config.tag.tokens);
-    BadgeThemeToken badge;
-    const bool inherit_badge = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                               !config.badge.algorithm && config.badge.seed == SeedTokenOverride{};
-    if (inherit_badge) {
-        badge = parent->badge();
-    } else if (config.badge.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.badge.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        badge = derive_badge(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        badge = derive_badge(seed, map, alias);
-    }
-    apply_badge_override(badge, config.badge.tokens);
-    DrawerThemeToken drawer;
-    const bool inherit_drawer = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                !config.drawer.algorithm && config.drawer.seed == SeedTokenOverride{};
-    if (inherit_drawer) {
-        drawer = parent->drawer();
-    } else if (config.drawer.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.drawer.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        drawer = derive_drawer(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                               algorithms);
-    } else {
-        drawer = derive_drawer(seed, map, alias, algorithms);
-    }
-    apply_drawer_override(drawer, config.drawer.tokens);
-    PopconfirmThemeToken popconfirm;
-    const bool inherit_popconfirm = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+    auto divider = [&] {
+        DividerThemeToken divider;
+        if (inherit_parent_divider) {
+            divider = parent->divider();
+        } else if (config.divider.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.divider.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            divider =
+                derive_divider(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        } else {
+            divider = derive_divider(seed, map, alias);
+        }
+        apply_divider_override(divider, config.divider.tokens);
+        return divider;
+    }();
+    auto slider = [&] {
+        SliderThemeToken slider;
+        const bool inherit_slider = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                    !config.popconfirm.algorithm && config.popconfirm.seed == SeedTokenOverride{};
-    if (inherit_popconfirm) {
-        popconfirm = parent->popconfirm();
-    } else if (config.popconfirm.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.popconfirm.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        popconfirm =
-            derive_popconfirm(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        popconfirm = derive_popconfirm(seed, map, alias);
-    }
-    apply_popconfirm_override(popconfirm, config.popconfirm.tokens);
-    AlertThemeToken alert;
-    const bool inherit_alert = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                               !config.alert.algorithm && config.alert.seed == SeedTokenOverride{};
-    if (inherit_alert) {
-        alert = parent->alert();
-    } else if (config.alert.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.alert.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        alert = derive_alert(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
-                             algorithms);
-    } else {
-        alert = derive_alert(seed, map, alias, algorithms);
-    }
-    apply_alert_override(alert, config.alert.tokens);
-    SpinThemeToken spin;
-    const bool inherit_spin = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                              !config.spin.algorithm && config.spin.seed == SeedTokenOverride{};
-    if (inherit_spin) {
-        spin = parent->spin();
-    } else if (config.spin.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.spin.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        spin = derive_spin(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
-    } else {
-        spin = derive_spin(seed, map, alias);
-    }
-    apply_spin_override(spin, config.spin.tokens);
-    ProgressThemeToken progress;
-    const bool inherit_progress = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                  !config.progress.algorithm && config.progress.seed == SeedTokenOverride{};
-    if (inherit_progress) {
-        progress = parent->progress();
-    } else if (config.progress.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.progress.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        progress = derive_progress(component_seed, component_map,
+                                    !config.slider.algorithm && config.slider.seed == SeedTokenOverride{};
+        if (inherit_slider) {
+            slider = parent->slider();
+        } else if (config.slider.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.slider.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            slider = derive_slider(component_seed, component_map,
                                    derive_alias(component_seed, component_map, algorithms), algorithms);
-    } else {
-        progress = derive_progress(seed, map, alias, algorithms);
-    }
-    apply_progress_override(progress, config.progress.tokens);
+        } else {
+            slider = derive_slider(seed, map, alias, algorithms);
+        }
+        apply_slider_override(slider, config.slider.tokens);
+        return slider;
+    }();
+    auto tooltip = [&] {
+        TooltipThemeToken tooltip;
+        const bool inherit_tooltip = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                     config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                     !config.tooltip.algorithm && config.tooltip.seed == SeedTokenOverride{};
+        if (inherit_tooltip) {
+            tooltip = parent->tooltip();
+        } else if (config.tooltip.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.tooltip.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            tooltip = derive_tooltip(component_seed, component_map,
+                                     derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            tooltip = derive_tooltip(seed, map, alias, algorithms);
+        }
+        apply_tooltip_override(tooltip, config.tooltip.tokens);
+        return tooltip;
+    }();
+    auto select = [&] {
+        SelectThemeToken select;
+        const bool inherit_select = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                    !config.select.algorithm && config.select.seed == SeedTokenOverride{};
+        if (inherit_select) {
+            select = parent->select();
+        } else if (config.select.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.select.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            select = derive_select(component_seed, component_map,
+                                   derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            select = derive_select(seed, map, alias, algorithms);
+        }
+        apply_select_override(select, config.select.tokens);
+        return select;
+    }();
+    auto card = [&] {
+        CardThemeToken card;
+        const bool inherit_card = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.card.algorithm && config.card.seed == SeedTokenOverride{};
+        if (inherit_card) {
+            card = parent->card();
+        } else if (config.card.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.card.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            card = derive_card(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        } else {
+            card = derive_card(seed, map, alias);
+        }
+        apply_card_override(card, config.card.tokens);
+        return card;
+    }();
+    auto tabs = [&] {
+        TabsThemeToken tabs;
+        const bool inherit_tabs = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.tabs.algorithm && config.tabs.seed == SeedTokenOverride{};
+        if (inherit_tabs) {
+            tabs = parent->tabs();
+        } else if (config.tabs.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.tabs.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            tabs = derive_tabs(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                               algorithms);
+        } else {
+            tabs = derive_tabs(seed, map, alias, algorithms);
+        }
+        apply_tabs_override(tabs, config.tabs.tokens);
+        return tabs;
+    }();
+    auto collapse = [&] {
+        CollapseThemeToken collapse;
+        const bool inherit_collapse = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                      config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                      !config.collapse.algorithm && config.collapse.seed == SeedTokenOverride{};
+        if (inherit_collapse) {
+            collapse = parent->collapse();
+        } else if (config.collapse.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.collapse.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            collapse = derive_collapse(component_seed, component_map,
+                                       derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            collapse = derive_collapse(seed, map, alias, algorithms);
+        }
+        apply_collapse_override(collapse, config.collapse.tokens);
+        return collapse;
+    }();
+    auto modal = [&] {
+        ModalThemeToken modal;
+        const bool inherit_modal = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                   !config.modal.algorithm && config.modal.seed == SeedTokenOverride{};
+        if (inherit_modal) {
+            modal = parent->modal();
+        } else if (config.modal.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.modal.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            modal = derive_modal(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                                 algorithms);
+        } else {
+            modal = derive_modal(seed, map, alias, algorithms);
+        }
+        apply_modal_override(modal, config.modal.tokens);
+        return modal;
+    }();
+    auto tag = [&] {
+        TagThemeToken tag;
+        const bool inherit_tag = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                 config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                 !config.tag.algorithm && config.tag.seed == SeedTokenOverride{};
+        if (inherit_tag) {
+            tag = parent->tag();
+        } else if (config.tag.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.tag.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            tag = derive_tag(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                             algorithms);
+        } else {
+            tag = derive_tag(seed, map, alias, algorithms);
+        }
+        apply_tag_override(tag, config.tag.tokens);
+        return tag;
+    }();
+    auto badge = [&] {
+        BadgeThemeToken badge;
+        const bool inherit_badge = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                   !config.badge.algorithm && config.badge.seed == SeedTokenOverride{};
+        if (inherit_badge) {
+            badge = parent->badge();
+        } else if (config.badge.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.badge.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            badge =
+                derive_badge(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        } else {
+            badge = derive_badge(seed, map, alias);
+        }
+        apply_badge_override(badge, config.badge.tokens);
+        return badge;
+    }();
+    auto drawer = [&] {
+        DrawerThemeToken drawer;
+        const bool inherit_drawer = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                    !config.drawer.algorithm && config.drawer.seed == SeedTokenOverride{};
+        if (inherit_drawer) {
+            drawer = parent->drawer();
+        } else if (config.drawer.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.drawer.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            drawer = derive_drawer(component_seed, component_map,
+                                   derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            drawer = derive_drawer(seed, map, alias, algorithms);
+        }
+        apply_drawer_override(drawer, config.drawer.tokens);
+        return drawer;
+    }();
+    auto popconfirm = [&] {
+        PopconfirmThemeToken popconfirm;
+        const bool inherit_popconfirm = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                        config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                        !config.popconfirm.algorithm && config.popconfirm.seed == SeedTokenOverride{};
+        if (inherit_popconfirm) {
+            popconfirm = parent->popconfirm();
+        } else if (config.popconfirm.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.popconfirm.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            popconfirm = derive_popconfirm(component_seed, component_map,
+                                           derive_alias(component_seed, component_map, algorithms));
+        } else {
+            popconfirm = derive_popconfirm(seed, map, alias);
+        }
+        apply_popconfirm_override(popconfirm, config.popconfirm.tokens);
+        return popconfirm;
+    }();
+    auto alert = [&] {
+        AlertThemeToken alert;
+        const bool inherit_alert = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                   config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                   !config.alert.algorithm && config.alert.seed == SeedTokenOverride{};
+        if (inherit_alert) {
+            alert = parent->alert();
+        } else if (config.alert.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.alert.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            alert = derive_alert(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                                 algorithms);
+        } else {
+            alert = derive_alert(seed, map, alias, algorithms);
+        }
+        apply_alert_override(alert, config.alert.tokens);
+        return alert;
+    }();
+    auto spin = [&] {
+        SpinThemeToken spin;
+        const bool inherit_spin = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.spin.algorithm && config.spin.seed == SeedTokenOverride{};
+        if (inherit_spin) {
+            spin = parent->spin();
+        } else if (config.spin.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.spin.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            spin = derive_spin(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        } else {
+            spin = derive_spin(seed, map, alias);
+        }
+        apply_spin_override(spin, config.spin.tokens);
+        return spin;
+    }();
+    auto progress = [&] {
+        ProgressThemeToken progress;
+        const bool inherit_progress = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                      config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                      !config.progress.algorithm && config.progress.seed == SeedTokenOverride{};
+        if (inherit_progress) {
+            progress = parent->progress();
+        } else if (config.progress.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.progress.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            progress = derive_progress(component_seed, component_map,
+                                       derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            progress = derive_progress(seed, map, alias, algorithms);
+        }
+        apply_progress_override(progress, config.progress.tokens);
+        return progress;
+    }();
     const bool inherit_navigation = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                     config.alias == AliasTokenOverride{} && config.algorithms.empty();
     auto menu = inherit_navigation ? parent->menu() : derive_menu(seed, map, alias, algorithms);
@@ -4612,22 +4712,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         dropdown.z_index_popup = seed.z_index_popup_base + 50;
     }
     apply_dropdown_override(dropdown, config.dropdown.tokens);
-    InputNumberThemeToken input_number;
-    const bool inherit_number = parent && config.inherit && config.seed == SeedTokenOverride{} &&
-                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                                !config.input_number.algorithm && config.input_number.seed == SeedTokenOverride{};
-    if (inherit_number) {
-        input_number = parent->input_number();
-    } else if (config.input_number.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.input_number.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        input_number = derive_input_number(component_seed, component_map,
-                                           derive_alias(component_seed, component_map, algorithms), algorithms);
-    } else {
-        input_number = derive_input_number(seed, map, alias, algorithms);
-    }
-    apply_input_number_override(input_number, config.input_number.tokens);
+    auto input_number = [&] {
+        InputNumberThemeToken input_number;
+        const bool inherit_number = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                    config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                    !config.input_number.algorithm && config.input_number.seed == SeedTokenOverride{};
+        if (inherit_number) {
+            input_number = parent->input_number();
+        } else if (config.input_number.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.input_number.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            input_number = derive_input_number(component_seed, component_map,
+                                               derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            input_number = derive_input_number(seed, map, alias, algorithms);
+        }
+        apply_input_number_override(input_number, config.input_number.tokens);
+        return input_number;
+    }();
     PaginationThemeToken pagination;
     if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
         config.algorithms.empty()) {
@@ -4755,6 +4858,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                        table.metrics.padding_inline * 2)) {
         throw std::invalid_argument("Table combined extents must be finite");
     }
+    auto segmented = [&] {
+        SegmentedThemeToken segmented;
+        const bool inherit_segmented = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                       config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                       !config.segmented.algorithm && config.segmented.seed == SeedTokenOverride{};
+        if (inherit_segmented) {
+            segmented = parent->segmented();
+        } else if (config.segmented.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.segmented.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            segmented = detail::derive_segmented(component_seed, component_map,
+                                                 derive_alias(component_seed, component_map, algorithms), algorithms);
+        } else {
+            segmented = detail::derive_segmented(seed, map, alias, algorithms);
+        }
+        detail::apply_segmented_override(segmented, config.segmented.tokens);
+        return segmented;
+    }();
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
@@ -4762,7 +4884,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(input)),
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
                          std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
-                         std::move(collapse));
+                         std::move(collapse), std::move(segmented));
 }
 
 } // namespace ryn
