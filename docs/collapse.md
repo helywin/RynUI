@@ -46,3 +46,9 @@ extra 内 Button/Input 等原生交互保持独立，不触发 header toggle；�
 固定面板拓扑，只提供 bordered 外观、全 header 点击和静态箭头。暂不提供动态增删/重排 reconciliation、lazy/销毁正文策略、开合动画、自定义 expand icon/位置、borderless/ghost、drag、服务、RTL 布局、辅助功能平台桥接或完整 Ant Design Web aliases。正文内部可自行使用已有的响应式组件。
 
 验证范围为 Windows 实跑的 MSVC `windows-msvc-headless` Debug/Release 平台通用合同；不代表 GPU、Linux、真实窗口视觉或人工 IME 验收。实际命令和结果见 [070 evidence](../openspec/changes/070-20261023-add-native-collapse/evidence/windows-headless.md)。
+
+## Gallery
+
+Token Gallery 的 LiveSamples 末尾提供 `gallery.collapse.retained` 设置面板：基本设置保留真实 Input 草稿和受控 Select 浮层，高级设置保留独立草稿并默认禁用。外部按钮切换 accordion、启用高级面板、收起全部或展示正文选项；header 操作回写受控展开值，独立帮助 Button 更新反馈且不切换面板。关闭后正文退出输入和子浮层，重新展开继续编辑原草稿。
+
+074 的 `token_gallery_frame --panels-only` 源码场景覆盖 1200×900 整页滚动后的操作、未聚焦浮层通过外部按钮键盘关闭、重复开合、主题/宽度变化与保留身份；源码就绪不代表运行通过，实际构建、inventory 和测试结果由 074 验收记录确认。原生 GPU、Linux 和人工 IME/视觉仍独立验收。

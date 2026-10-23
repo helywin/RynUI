@@ -812,16 +812,27 @@
     },
     {
       "identity": "ant.component.collapse",
-      "status": "planned",
-      "summary": "折叠面板（Collapse）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Collapse 已提供固定键控面板、受控多开/accordion、保留编辑与独立 extra；Gallery 提供实际设置组合，动态拓扑、动画和更多外观尚未覆盖，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "fixed keyed title/body/extra slots, mounted once with retained editors",
+        "controlled activeKeys and uncontrolled defaults, multiple/accordion and reactive disabled",
+        "pointer/keyboard headers, hidden body focus/input/capture/child-popup cleanup",
+        "Small/Middle/Large bordered panels and typed Theme tokens",
+        "interactive Gallery settings with retained Input/Select and independent extra Button"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "dynamic panel topology, lazy/destroy body policies and expand/collapse animation",
+        "borderless/ghost, custom expand icon/position, RTL and complete Web aliases",
+        "native GPU/system-font/input, Linux and manual visual/IME acceptance remain independent pending"
       ],
       "evidence_identifiers": [
-        "source:components/collapse/index.en-US.md"
+        "source:components/collapse/index.en-US.md",
+        "openspec:070-20261023-add-native-collapse",
+        "openspec:074-20261024-add-collapse-and-segmented-gallery",
+        "test:rynui.collapse_component",
+        "test:rynui.collapse_theme",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {
@@ -924,16 +935,27 @@
     },
     {
       "identity": "ant.component.segmented",
-      "status": "planned",
-      "summary": "分段控制器（Segmented）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Segmented 已提供固定选项单选、横纵向/等宽、图标富标签、三尺寸与键盘；Gallery 提供共享受控值和响应式标签/禁用操作，动画及动态拓扑尚未覆盖，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "fixed keyed controlled/uncontrolled single selection and reactive labels/disabled",
+        "horizontal/vertical, equal-width block and Small/Middle/Large sizes",
+        "retained passive icon/rich-label slots and typed Theme tokens",
+        "pointer and single-Tab-entry keyboard navigation skipping disabled options",
+        "interactive Gallery shared horizontal/vertical selection and uncontrolled rich labels"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "pill animation, dynamic option topology, RTL and complete Web aliases",
+        "platform accessibility adapter and OS screen-reader integration",
+        "native GPU/system-font/input, Linux and manual visual/IME acceptance remain independent pending"
       ],
       "evidence_identifiers": [
-        "source:components/segmented/index.en-US.md"
+        "source:components/segmented/index.en-US.md",
+        "openspec:071-20261023-add-native-segmented",
+        "openspec:074-20261024-add-collapse-and-segmented-gallery",
+        "test:rynui.segmented_component",
+        "test:rynui.segmented_theme",
+        "test:rynui.token_gallery_frame"
       ]
     },
     {

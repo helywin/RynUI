@@ -35,6 +35,6 @@
 | 5 | Pagination、Table | 066 已实现保留键控行、typed 列/插槽、受控排序/Checkbox 选择、有限滚动和可组合 Pagination；072 提供实际数据编辑/排序/选择/翻页 Gallery，原生平台验收独立记录 |
 | 6 | Menu、Dropdown | 067 已实现保留菜单、受控选择/Inline 子菜单、键盘/滚动、点击/右键 Dropdown、子浮层与焦点恢复；072 提供导航/命令 Gallery，平台证据独立记录 |
 | 7 | InputNumber、DatePicker、TimePicker、Form | 068 InputNumber 已实现数值草稿、受控回写、范围/精度/步长、按钮/键盘和 IME 门禁，072 提供实际 Gallery；日期/时间和表单组合后续实施 |
-| 8 | Collapse、Segmented | 070 Collapse 已提供固定键控面板、受控展开/accordion、保留草稿及输入/子浮层清理；071 Segmented 已实现受控固定选项、横纵向/等宽、图标富标签、三尺寸与键盘，三轮 Astra 已通过；Gallery 与原生平台证据独立记录 |
+| 8 | Collapse、Segmented | 070/071 提供保留面板与固定分段选项；074 Gallery 源码补齐受控设置、保留 Input/Select、独立 extra、共享横纵选择、等宽/富标签和响应式标签/禁用。聚焦场景与完整 inventory/Recording 验收待 074 实跑收口，原生 GPU/Linux/人工视觉独立记录 |
 
 这些为待实现顺序，不能据此提升 Gallery support status；现有 Button、Input 家族、布局、选择控件、Typography 等已实现能力继续保持可用。

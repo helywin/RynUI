@@ -127,6 +127,14 @@ struct GalleryState final {
     ryn::Signal<bool> number_disabled{true};
     ryn::InputRef number_ref;
     ryn::Signal<ryn::String> data_feedback{ryn::String{u8"编辑数量、选择记录或执行菜单命令"}};
+    ryn::Signal<ryn::CollapseKeys> collapse_keys{ryn::CollapseKeys{ryn::String{u8"general"}}};
+    ryn::Signal<bool> collapse_accordion{false};
+    ryn::Signal<bool> collapse_disabled{true};
+    ryn::Signal<bool> collapse_select_open{false};
+    ryn::Signal<ryn::String> segment_value{ryn::String{u8"day"}};
+    ryn::Signal<ryn::String> segment_label{ryn::String{u8"日视图"}};
+    ryn::Signal<bool> segment_disabled{false};
+    ryn::Signal<ryn::String> panel_feedback{ryn::String{u8"展开面板或选择视图"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -402,6 +410,17 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.number.readonly",
     "gallery.number.toggle-disabled",
     "gallery.number.focus",
+    "gallery.collapse.retained",
+    "gallery.collapse.accordion",
+    "gallery.collapse.disabled",
+    "gallery.collapse.close",
+    "gallery.collapse.options",
+    "gallery.collapse.help",
+    "gallery.segmented.controlled",
+    "gallery.segmented.vertical",
+    "gallery.segmented.rich",
+    "gallery.segmented.label",
+    "gallery.segmented.disabled",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -2196,6 +2215,93 @@ void add_data_and_selection_samples(const std::shared_ptr<GalleryState>& state) 
     state->telemetry.live_samples += 7;
 }
 
+void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"gallery.collapse.retained · Collapse · 保留编辑与独立操作");
+    Text(TextProps{}.content(state->panel_feedback));
+    Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[state] {
+              Button(
+                  ButtonProps{}.onClick([state] { state->collapse_accordion.set(!state->collapse_accordion.get()); }),
+                  [] { Text(u8"gallery.collapse.accordion · 切换手风琴模式"); });
+              Button(ButtonProps{}.onClick([state] { state->collapse_disabled.set(!state->collapse_disabled.get()); }),
+                     [] { Text(u8"gallery.collapse.disabled · 切换高级面板禁用"); });
+              Button(ButtonProps{}.onClick([state] { state->collapse_keys.set({}); }),
+                     [] { Text(u8"gallery.collapse.close · 收起全部"); });
+              Button(ButtonProps{}.onClick([state] {
+                  state->collapse_keys.set(CollapseKeys{String{u8"general"}});
+                  state->collapse_select_open.set(true);
+              }),
+                     [] { Text(u8"gallery.collapse.options · 展示面板内选项"); });
+          }});
+    Collapse(
+        CollapseProps{}
+            .activeKeys(state->collapse_keys)
+            .accordion(state->collapse_accordion)
+            .onChange([state](CollapseKeys keys) { state->collapse_keys.set(std::move(keys)); }),
+        {CollapsePanel{u8"general", CollapseTitle{[] { Text(u8"基本设置"); }}, CollapseBody{[state] {
+                           Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                                    Input(InputProps{}.defaultValue(u8"gallery.collapse.draft · 保留的设置草稿"));
+                                    Select(SelectProps{}
+                                               .options({{u8"draft", u8"草稿"}, {u8"service", u8"服务"}})
+                                               .defaultValue(u8"draft")
+                                               .open(state->collapse_select_open)
+                                               .onOpenChange(
+                                                   [state](bool open) { state->collapse_select_open.set(open); }));
+                                }});
+                       }}}
+             .extra(CollapseExtra{[state] {
+                 Button(ButtonProps{}.onClick([state] { state->panel_feedback.set(String{u8"已执行独立帮助操作"}); }),
+                        [] { Text(u8"gallery.collapse.help · 帮助"); });
+             }}),
+         CollapsePanel{u8"advanced", CollapseTitle{[] { Text(u8"高级设置"); }},
+                       CollapseBody{[] { Input(InputProps{}.defaultValue(u8"gallery.collapse.advanced · 高级草稿")); }}}
+             .disabled(state->collapse_disabled)});
+
+    Text(u8"gallery.segmented.controlled · Segmented · 横向等宽视图");
+    Text(TextProps{}.content(
+        bind([state] { return utf8("当前视图：" + std::string{state->segment_value.get().bytes()}); })));
+    Segmented(SegmentedProps{}
+                  .value(state->segment_value)
+                  .block()
+                  .layout(LayoutStyle{}.width(state->document_width))
+                  .onChange([state](String value) { state->segment_value.set(std::move(value)); }),
+              {SegmentedOption{u8"day", u8"日视图"}.label(state->segment_label).icon(SegmentedIcon{[] {
+                   Icon(IconProps{}.name(IconName::SearchOutlined));
+               }}),
+               SegmentedOption{u8"week", u8"周视图"}.disabled(state->segment_disabled),
+               {u8"month", u8"月视图"}});
+    Text(u8"gallery.segmented.vertical · 纵向小尺寸，共享受控值");
+    Segmented(SegmentedProps{}
+                  .value(state->segment_value)
+                  .vertical()
+                  .size(ControlSize::Small)
+                  .layout(LayoutStyle{}.width(dp(240)))
+                  .onChange([state](String value) { state->segment_value.set(std::move(value)); }),
+              {{u8"day", u8"日视图"},
+               SegmentedOption{u8"week", u8"周视图"}.disabled(state->segment_disabled),
+               {u8"month", u8"月视图"}});
+    Text(u8"gallery.segmented.rich · 大尺寸富标签");
+    Segmented(SegmentedProps{}.size(ControlSize::Large),
+              {SegmentedOption{u8"list", u8"列表"}.content(SegmentedLabel{[] {
+                   Flex(FlexProps{}.gap(dp(6)).align(FlexAlign::Center), FlexContent{[] {
+                            Icon(IconProps{}.name(IconName::SearchOutlined));
+                            Text(u8"列表");
+                        }});
+               }}),
+               {u8"detail", u8"详情"}});
+    Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[state] {
+              Button(ButtonProps{}.onClick([state] {
+                  state->segment_label.set(state->segment_label.get() == String{u8"日视图"}
+                                               ? String{u8"日视图 / 已更新"}
+                                               : String{u8"日视图"});
+              }),
+                     [] { Text(u8"gallery.segmented.label · 更新分段标签"); });
+              Button(ButtonProps{}.onClick([state] { state->segment_disabled.set(!state->segment_disabled.get()); }),
+                     [] { Text(u8"gallery.segmented.disabled · 切换周视图禁用"); });
+          }});
+    state->telemetry.live_samples += 4;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2722,6 +2828,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_modal_samples(state);
                                                         add_common_component_samples(state);
                                                         add_data_and_selection_samples(state);
+                                                        add_panel_and_selection_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

@@ -33,3 +33,9 @@ ryn::Segmented(
 `ThemeConfig::segmented` 提供独立颜色、metrics 与 effects tokens；支持父主题继承、`inherit=false` 和组件 algorithm/seed。selected 阴影继承 `box_shadow_tertiary`，focus-visible 使用共同 hollow ring。纯颜色更新只改变 Material，不重跑 slot、测量或重建 scene。所有视觉使用共同 logical scene 与 retained effects。
 
 首版没有滑块/pill 动画、动态增删/重排选项、RTL 容器排列、平台 accessibility adapter 或完整 Web Props/Token aliases。这里的键盘可操作性不代表已接入 OS screen reader。平台通用证据在 change 071；未声明 native GPU、Linux、系统字体或人工 IME 验收。
+
+## Gallery
+
+LiveSamples 末尾的 `gallery.segmented.controlled` 展示带图标的横向等宽选择，与小尺寸纵向 `gallery.segmented.vertical` 共享受控 day/week/month 值和实际反馈。外部按钮原地更新日视图标签、切换周视图禁用；大尺寸 `gallery.segmented.rich` 展示保留图标/文字组合及独立非受控选择。
+
+074 的 `token_gallery_frame --panels-only` 源码场景覆盖真实指针、横纵键盘跳过响应式禁用项、共享回写、实际等宽与可见标签、主题/宽度变化和保留 item/文字身份。实际运行结果、inventory 和 Recording 的验证边界由 074 验收记录确认；不据此声明原生 GPU、Linux 或人工视觉通过。

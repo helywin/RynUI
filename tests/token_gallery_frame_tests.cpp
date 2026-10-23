@@ -15,6 +15,8 @@
 #include "component/pagination_component.hpp"
 #include "component/menu_component.hpp"
 #include "component/dropdown_component.hpp"
+#include "component/collapse_component.hpp"
+#include "component/segmented_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -844,7 +846,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 251, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 262, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -857,7 +859,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 204,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 211,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -867,7 +869,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 782) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 807) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -886,7 +888,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 464) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 484) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -895,7 +897,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 269,
+                initial.reference_content_runs == 126 && initial.live_samples == 273,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1038,8 +1040,9 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 131 &&
-                fixture.host->services().select().mounted().size() == 20 &&
+    // Collapse adds two draft editors plus the Select's retained Input selector.
+    require(fixture.inputs->mounted_inputs().size() == 134 &&
+                fixture.host->services().select().mounted().size() == 21 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
                 fixture.host->services().modal().mounted().size() == 13,
@@ -1486,7 +1489,8 @@ void test_common_component_gallery_after_document_scroll() {
     const auto telemetry = definition.telemetry();
     auto& tags = services.tag_badge();
     require(tags.tags().size() >= 4 && tags.badges().size() == 5, "Gallery Tag/Badge samples absent");
-    const auto closable = tags.tags()[2], checkable = tags.tags()[3];
+    const auto closable = tags.tags()[2];
+    const auto checkable = tags.tags()[3];
     const auto tag_content = tags.tag_snapshot(closable).content;
     reveal(checkable);
     click(checkable);
@@ -1821,6 +1825,310 @@ void test_data_and_selection_gallery_after_document_scroll() {
             "Gallery read-only number changed or content remounted");
 }
 
+void test_panel_and_selection_gallery_after_document_scroll() {
+    using namespace ryn;
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {0, 0, width, 900}, {24, 20}, 0, true),
+                    "panel Gallery layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto document = f.nodes.require(f.nodes.require(root).children.front()).children[1];
+    rynui::example::GalleryScrollTranslation scroll;
+    const auto reveal = [&](runtime::ComponentId id) {
+        scroll.apply(document, f.nodes.require(services.components().root(id)).bounds.y - 120, f.nodes, f.dirty);
+        sync();
+    };
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto click = [&](runtime::ComponentId id, bool leading = false) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + (leading ? 3 : r.width / 2), r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 0 && point.x < width && point.y >= 0 && point.y < 900,
+                "panel Gallery pointer target is outside the translated viewport");
+        for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto page_button = [&](std::string_view label) {
+        const auto button = button_with_label(f, label);
+        reveal(button.component);
+        click(button.component);
+    };
+    const auto key = [&](input::Key value) {
+        f.host->focus().dispatch({value, input::KeyAction::down});
+        f.host->focus().dispatch({value, input::KeyAction::up});
+        sync();
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto editor = [&](std::string_view prefix) {
+        for (const auto& mounted : f.inputs->mounted_inputs()) {
+            if (f.inputs->editors().require(mounted.editor).value().starts_with(prefix)) {
+                return mounted;
+            }
+        }
+        throw std::runtime_error("panel Gallery draft absent");
+    };
+    const auto label_text = [&](runtime::ComponentId owner, String label) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, owner) &&
+                f.text_scene.text_state(text.scene).content().bytes() == label.bytes()) {
+                return text;
+            }
+        }
+        throw std::runtime_error("panel Gallery actual label text absent");
+    };
+    const auto require_visible_label = [&](runtime::ComponentId owner, String label) {
+        const auto text = label_text(owner, label);
+        const auto range = f.text_scene.primitive(text.scene).instances;
+        bool visible = false;
+        const auto item = bounds(owner);
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto& glyph = f.text_scene.glyph_scene().instances().at(range.first + index);
+            const auto& p = glyph.position_size;
+            const auto& t = glyph.translation_opacity;
+            const auto& c = glyph.clip_bounds;
+            const float left = std::max(p[0] + t[0], c[0]);
+            const float top = std::max(p[1] + t[1], c[1]);
+            const float right = std::min(p[0] + t[0] + p[2], c[2]);
+            const float bottom = std::min(p[1] + t[1] + p[3], c[3]);
+            if (right > left && bottom > top && t[2] > 0 && glyph.color[3] > 0) {
+                require(left >= item.x - .01F && right <= item.x + item.width + .01F && top >= item.y - .01F &&
+                            bottom <= item.y + item.height + .01F,
+                        "panel Gallery label glyph escaped its allocated item");
+                visible = true;
+            }
+        }
+        require(visible, "panel Gallery label has no visible glyphs after document translation");
+    };
+    auto& collapse = services.collapse();
+    auto& segmented = services.segmented();
+    require(collapse.mounted().size() == 1 && segmented.mounted().size() == 3,
+            "Collapse/Segmented Gallery samples absent");
+    const auto panel = collapse.mounted().front();
+    const auto original = collapse.snapshot(panel);
+    require(original.panels.size() == 2 && original.active_keys == CollapseKeys{u8"general"} &&
+                original.panels[1].disabled,
+            "Collapse Gallery initial controlled/disabled state differs");
+    const auto draft = editor("gallery.collapse.draft");
+    const auto advanced = editor("gallery.collapse.advanced");
+    const auto select = services.select().mounted().back();
+    require(descendant(select, original.panels[0].body), "Collapse Gallery child Select belongs to another sample");
+    const auto original_select = services.select().snapshot(select);
+    const auto horizontal = segmented.mounted()[0];
+    const auto vertical = segmented.mounted()[1];
+    const auto rich = segmented.mounted()[2];
+    const auto h = segmented.snapshot(horizontal);
+    const auto v = segmented.snapshot(vertical);
+    const auto r = segmented.snapshot(rich);
+    require(h.items.size() == 3 && v.items.size() == 3 && r.items.size() == 2 && h.value == String{u8"day"} &&
+                v.value == h.value && r.value == String{u8"list"} && h.selected == 0 && v.selected == 0 &&
+                r.selected == 0,
+            "Segmented Gallery initial selection differs");
+    const auto day_label = label_text(h.items[0], u8"日视图");
+    const auto old_editor = f.inputs->mounted_inputs().front();
+    const auto count = services.components().component_count();
+    const auto mounts = services.components().mount_runs();
+    const auto telemetry = definition.telemetry();
+
+    reveal(draft.component);
+    require(f.nodes.require(services.components().root(draft.component)).translation.y < -900,
+            "Collapse Gallery fixture did not translate the actual long document");
+    click(draft.component);
+    require(f.host->focus().state().focused == draft.interaction && f.inputs->sessions().active().valid(),
+            "Collapse Gallery pointer did not focus its actual editor");
+    static_cast<void>(f.inputs->editors().require(draft.editor).select_all());
+    const auto session = f.inputs->sessions().active();
+    require(bool(f.inputs->dispatch(input::TextCommitted{String{u8"保留的 Gallery 草稿"}, session})),
+            "Collapse Gallery draft edit failed");
+    const auto close = button_with_label(f, "gallery.collapse.close");
+    const auto close_by_keyboard = [&] {
+        reveal(close.component);
+        require(f.host->focus().request_focus(close.interaction, input::FocusModality::keyboard),
+                "Collapse Gallery external close button could not focus");
+        sync();
+        key(input::Key::enter);
+    };
+    close_by_keyboard();
+    require(collapse.snapshot(panel).active_keys.empty() &&
+                !services.components().branch_active(original.panels[0].body) &&
+                !f.inputs->sessions().active().valid() &&
+                !bool(f.inputs->dispatch(input::TextCommitted{String{u8"late"}, session})),
+            "Collapse Gallery external write-back kept a hidden editor/session active");
+    reveal(original.panels[0].header);
+    click(original.panels[0].header, true);
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"general"} &&
+                f.inputs->editors().require(draft.editor).value() == String{u8"保留的 Gallery 草稿"}.bytes() &&
+                !f.inputs->sessions().active().valid(),
+            "Collapse Gallery reopen lost its draft or restored an old session");
+    page_button("gallery.collapse.help");
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"general"},
+            "Collapse Gallery independent extra Button toggled its header");
+    static_cast<void>(label_text(panel, u8"基本设置"));
+    bool help_feedback = false;
+    for (const auto& text : f.host->text().mounted_texts()) {
+        help_feedback |=
+            f.text_scene.text_state(text.scene).content().bytes() == String{u8"已执行独立帮助操作"}.bytes();
+    }
+    require(help_feedback, "Collapse Gallery extra action did not update feedback");
+    reveal(original.panels[1].header);
+    click(original.panels[1].header, true);
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"general"},
+            "Collapse Gallery disabled header accepted a pointer activation");
+    page_button("gallery.collapse.disabled");
+    reveal(original.panels[1].header);
+    click(original.panels[1].header, true);
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"general", u8"advanced"} &&
+                !collapse.snapshot(panel).panels[1].disabled,
+            "Collapse Gallery enabled header did not refresh its actual hit target/write-back");
+    page_button("gallery.collapse.accordion");
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"general"},
+            "Collapse Gallery multiple-to-accordion did not normalize the controlled keys");
+    reveal(original.panels[1].header);
+    click(original.panels[1].header, true);
+    require(collapse.snapshot(panel).active_keys == CollapseKeys{u8"advanced"},
+            "Collapse Gallery accordion kept the previous panel");
+    key(input::Key::space);
+    require(collapse.snapshot(panel).active_keys.empty(), "Collapse Gallery keyboard could not close its panel");
+    reveal(original.panels[0].header);
+    click(original.panels[0].header, true);
+    for (int cycle = 0; cycle < 3; ++cycle) {
+        const auto options = button_with_label(f, "gallery.collapse.options");
+        page_button("gallery.collapse.options");
+        require(services.select().snapshot(select).visible && f.host->focus().state().focused == options.interaction &&
+                    !f.inputs->sessions().active().valid(),
+                "Collapse Gallery options button did not open an unfocused controlled child popup");
+        reveal(close.component);
+        require(f.host->focus().request_focus(close.interaction, input::FocusModality::keyboard),
+                "Collapse Gallery unfocused-popup close button could not focus");
+        sync();
+        require(services.select().snapshot(select).visible,
+                "Collapse Gallery popup closed before the actual keyboard hide operation");
+        key(input::Key::enter);
+        require(collapse.snapshot(panel).active_keys.empty() && !services.select().snapshot(select).visible &&
+                    !f.inputs->sessions().active().valid() && f.host->focus().state().focused == close.interaction,
+                "Collapse Gallery external keyboard hide retained the unfocused child popup or stole focus");
+        reveal(original.panels[0].header);
+        click(original.panels[0].header, true);
+        const auto reopened = services.select().snapshot(select);
+        require(!reopened.visible && reopened.selector == original_select.selector &&
+                    reopened.rows == original_select.rows &&
+                    f.inputs->editors().require(draft.editor).value() == String{u8"保留的 Gallery 草稿"}.bytes() &&
+                    !f.inputs->sessions().active().valid(),
+                "Collapse Gallery reopen resurrected a popup/session or replaced retained descendants");
+    }
+
+    reveal(horizontal);
+    click(h.items[1]);
+    require(segmented.snapshot(horizontal).value == String{u8"week"} &&
+                segmented.snapshot(vertical).value == String{u8"week"} &&
+                segmented.snapshot(horizontal).selected == 1 && segmented.snapshot(vertical).selected == 1,
+            "Segmented Gallery horizontal pointer failed shared controlled write-back");
+    static_cast<void>(label_text(services.components().root_components().front(), u8"当前视图：week"));
+    reveal(vertical);
+    click(v.items[2]);
+    require(segmented.snapshot(horizontal).value == String{u8"month"} &&
+                segmented.snapshot(vertical).value == String{u8"month"},
+            "Segmented Gallery vertical pointer failed shared controlled write-back");
+    reveal(rich);
+    require_visible_label(r.items[0], u8"列表");
+    click(r.items[1]);
+    require(segmented.snapshot(rich).value == String{u8"detail"} && segmented.snapshot(rich).selected == 1 &&
+                segmented.snapshot(horizontal).value == String{u8"month"},
+            "Segmented Gallery rich-label uncontrolled selection changed a different group");
+    page_button("gallery.segmented.disabled");
+    reveal(horizontal);
+    click(h.items[0]);
+    click(h.items[1]);
+    require(segmented.snapshot(horizontal).value == String{u8"day"},
+            "Segmented Gallery disabled option accepted pointer input");
+    click(h.items[0]);
+    key(input::Key::right);
+    require(segmented.snapshot(horizontal).value == String{u8"month"} &&
+                segmented.snapshot(vertical).value == String{u8"month"},
+            "Segmented Gallery horizontal keyboard did not skip the reactive disabled week");
+    key(input::Key::left);
+    reveal(vertical);
+    click(v.items[0]);
+    key(input::Key::down);
+    require(segmented.snapshot(vertical).value == String{u8"month"} &&
+                segmented.snapshot(horizontal).value == String{u8"month"},
+            "Segmented Gallery vertical keyboard did not skip the reactive disabled week");
+    key(input::Key::up);
+    require(segmented.snapshot(horizontal).value == String{u8"day"},
+            "Segmented Gallery vertical Up did not write back");
+    page_button("gallery.segmented.label");
+    const auto updated_label = label_text(h.items[0], u8"日视图 / 已更新");
+    require(updated_label.component == day_label.component && updated_label.scene == day_label.scene,
+            "Segmented Gallery reactive label replaced its retained Text identity");
+    for (std::size_t theme = 0; theme < 3; ++theme) {
+        definition.smoke_step(theme);
+        width = theme == 1 ? 560 : 1200;
+        definition.set_viewport_width(width);
+        sync();
+        reveal(horizontal);
+        require(bounds(h.items[0]).width > 0 && near(bounds(h.items[0]).width, bounds(h.items[1]).width) &&
+                    near(bounds(h.items[1]).width, bounds(h.items[2]).width),
+                "Segmented Gallery block item widths are not actually equal");
+        require_visible_label(h.items[0], u8"日视图 / 已更新");
+        require_visible_label(h.items[1], u8"周视图");
+        require_visible_label(h.items[2], u8"月视图");
+        reveal(vertical);
+        require(near(bounds(v.items[0]).width, bounds(v.items[1]).width) &&
+                    near(bounds(v.items[1]).width, bounds(v.items[2]).width) &&
+                    bounds(v.items[0]).y < bounds(v.items[1]).y && bounds(v.items[1]).y < bounds(v.items[2]).y,
+                "Segmented Gallery vertical geometry differs from its actual layout");
+        require_visible_label(v.items[0], u8"日视图");
+        reveal(rich);
+        require_visible_label(r.items[0], u8"列表");
+        require(segmented.snapshot(horizontal).items == h.items && segmented.snapshot(vertical).items == v.items &&
+                    segmented.snapshot(rich).items == r.items && segmented.snapshot(rich).value == String{u8"detail"},
+                "Segmented Gallery theme/width changes replaced options or lost uncontrolled selection");
+    }
+    page_button("gallery.segmented.disabled");
+    reveal(horizontal);
+    click(h.items[1]);
+    require(segmented.snapshot(horizontal).value == String{u8"week"} &&
+                segmented.snapshot(vertical).value == String{u8"week"},
+            "Segmented Gallery re-enabled option did not refresh its pointer target");
+    const auto final_panel = collapse.snapshot(panel);
+    for (std::size_t index = 0; index < original.panels.size(); ++index) {
+        require(final_panel.panels[index].header == original.panels[index].header &&
+                    final_panel.panels[index].title == original.panels[index].title &&
+                    final_panel.panels[index].extra == original.panels[index].extra &&
+                    final_panel.panels[index].body == original.panels[index].body,
+                "Collapse Gallery updates replaced a retained panel slot");
+    }
+    require(f.inputs->editors().require(draft.editor).value() == String{u8"保留的 Gallery 草稿"}.bytes() &&
+                f.inputs->editors().require(advanced.editor).value().starts_with("gallery.collapse.advanced") &&
+                f.inputs->mounted_inputs().front().editor == old_editor.editor &&
+                services.components().component_count() == count && services.components().mount_runs() == mounts &&
+                definition.telemetry().content_runs == telemetry.content_runs &&
+                definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+            "panel Gallery interactions/theme/width changes remounted existing content or lost drafts");
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -1839,7 +2147,9 @@ void print_gallery_inventory() {
               << " modal_drawer=" << f.host->services().modal().mounted().size()
               << " selection=" << f.selections->mounted().size()
               << " menu=" << f.host->services().menu().mounted().size()
-              << " dropdown=" << f.host->services().dropdown().mounted().size() << '\n';
+              << " dropdown=" << f.host->services().dropdown().mounted().size()
+              << " collapse=" << f.host->services().collapse().mounted().size()
+              << " segmented=" << f.host->services().segmented().mounted().size() << '\n';
 }
 } // namespace
 
@@ -1855,6 +2165,10 @@ int main(int argc, char** argv) {
         }
         if (argc == 2 && std::string_view{argv[1]} == "--data-only") {
             test_data_and_selection_gallery_after_document_scroll();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--panels-only") {
+            test_panel_and_selection_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--frame-only") {
@@ -1879,6 +2193,7 @@ int main(int argc, char** argv) {
         test_modal_gallery_after_document_scroll();
         test_common_component_gallery_after_document_scroll();
         test_data_and_selection_gallery_after_document_scroll();
+        test_panel_and_selection_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
