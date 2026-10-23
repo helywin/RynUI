@@ -920,9 +920,11 @@ void ThemeScope::recompute_from_parent() {
     commit_snapshot(config_, std::move(next));
 }
 
-void ThemeScope::commit_snapshot(ThemeConfig config, ThemeSnapshot next) {
+void ThemeScope::commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next) {
     const auto changed = collect_changed(*snapshot_, next, changed_identities_);
-    config_ = std::move(config);
+    if (&config != &config_) {
+        config_ = config;
+    }
     if (next == *snapshot_) {
         ++diagnostics_.snapshot_reuses;
         changed_identity_count_ = 0;

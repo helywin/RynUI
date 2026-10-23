@@ -19,3 +19,11 @@ catalog generator/contract、reference catalog、document model/contract、viewp
 ## 验收边界
 
 本阶段完成聚焦交互和目录合同，完整 token_gallery_frame 留在 task 2.2 单独运行。没有声称这七个新增组件的 Windows 原生 GPU/DPI、Linux、人工系统 IME 或人工视觉通过；Modal 自身的原生证据仍由 change061 独立记录。
+
+## 完整回归与主题传播修复
+
+后续完整回归的首次运行在 Theme 更新向子 Theme 传播时再次捕获 Debug 栈溢出。CDB 调用栈为 resolve_theme ← recompute_from_parent ← notify_children ← commit_snapshot ← update；commit_snapshot 的按值参数令 ThemeConfig 和 ThemeSnapshot 在传播链上重复复制。内部签名改为 const ThemeConfig& 与 ThemeSnapshot&&，配置未指向自身时才复制；此修改复用并行 Menu 分支 89998f8 中相同的最小修复，不修改公开 API 或扩大栈容量。
+
+源码基于 0dd71e8 加上述 Theme 引用修复，重新构建 windows-msvc Debug 的 token_gallery、token_gallery_frame 和 theme_runtime。实际完整 token_gallery_frame 通过（166.24s），Theme runtime 通过（0.24s），合计2/2、166.50s；日志 `out/gallery-common-full.log`。原生 Gallery `--smoke` 实际返回0，driver=direct3d12、shader_format=DXIL、stable_test_ids=235、live_samples=262，日志 `out/gallery-common-native-smoke.log`。此 smoke 只证明完整原生程序启动、运行与退出，不替代新增组件逐项视觉/DPI验收。
+
+目录与文档合同此前8/8通过，已有 common-only 覆盖完整新增操作；此阶段不重复整套跨平台合同。格式、doctor、strict validate 与 diff check 独立执行；task2.2完成。
