@@ -1,6 +1,6 @@
 # Drawer
 
-原生 Drawer 提供四边停靠面板、受控取消、保留内容和真实模态输入边界。首版静态呈现；Gallery 与真实平台集成由父任务记录。
+原生 Drawer 提供四边停靠面板、受控取消、保留内容和真实模态输入边界。首版静态呈现；Token Gallery 的 LiveSamples 末尾可打开四边示例、编辑保留草稿并在抽屉内使用 Popconfirm。Gallery Recording 与真实平台验收独立记录。
 
 ```cpp
 ryn::Signal<bool> open{false};

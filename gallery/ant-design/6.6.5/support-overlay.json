@@ -723,16 +723,21 @@
     },
     {
       "identity": "ant.component.badge",
-      "status": "planned",
-      "summary": "徽标数（Badge）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现原生计数、溢出、零值、圆点与状态 Badge，可包裹保留内容；Gallery 展示响应式通知计数，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "integer count/overflowCount/showZero, dot/status/text and two sizes",
+        "retained optional BadgeContent, logical offset and Badge Component Token"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Ribbon/group, number and processing animations",
+        "arbitrary text count and complete Web/DOM compatibility"
       ],
       "evidence_identifiers": [
-        "source:components/badge/index.en-US.md"
+        "source:components/badge/index.en-US.md",
+        "openspec:063-20261023-add-native-tag-and-badge",
+        "test:tag_badge_component/tag_badge_theme/tag_badge_public_api/token_gallery_frame",
+        "docs:docs/tag-and-badge.md"
       ]
     },
     {
@@ -941,16 +946,21 @@
     },
     {
       "identity": "ant.component.tag",
-      "status": "planned",
-      "summary": "标签（Tag）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现 Tag/CheckableTag 的保留内容、状态色、受控关闭与选择；Gallery 可操作关闭、恢复和选择，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Tag/CheckableTag, preset/status/custom colors, borders and decorative icon slot",
+        "controlled visible/closable/checked, disabled and retained content with sibling reflow"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "close/enter animations and drag/reorder groups",
+        "complete Web/DOM compatibility and native accessibility bridge"
       ],
       "evidence_identifiers": [
-        "source:components/tag/index.en-US.md"
+        "source:components/tag/index.en-US.md",
+        "openspec:063-20261023-add-native-tag-and-badge",
+        "test:tag_badge_component/tag_badge_theme/tag_badge_public_api/token_gallery_frame",
+        "docs:docs/tag-and-badge.md"
       ]
     },
     {
@@ -1021,30 +1031,41 @@
     },
     {
       "identity": "ant.component.alert",
-      "status": "planned",
-      "summary": "警告提示（Alert）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现原生状态提示、描述、图标、action 与受控关闭，隐藏后兄弟内容重新排布；Gallery 提供实际关闭和恢复入口。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "reactive Status/message/description/visible/closable and onClose requests",
+        "retained typed message/description/icon/action/close slots and Alert Component Token"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "banner/marquee and exit animation",
+        "complete Web/DOM compatibility and native accessibility bridge"
       ],
       "evidence_identifiers": [
-        "source:components/alert/index.en-US.md"
+        "source:components/alert/index.en-US.md",
+        "openspec:065-20261023-add-native-feedback-components",
+        "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
+        "docs:docs/feedback.md"
       ]
     },
     {
       "identity": "ant.component.drawer",
-      "status": "planned",
-      "summary": "抽屉（Drawer）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现四边停靠 Drawer、受控关闭、保留插槽、正文滚动与模态焦点边界；Gallery 可切换四边并保留编辑草稿，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "controlled open, four placements, finite width/height and retained typed title/content/footer",
+        "fixed header/footer, scrolling body, focus reveal/restoration and shared Modal nesting",
+        "mask/keyboard/close controls, lifecycle callbacks and independent Drawer Component Token"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "loading/Skeleton, animation, push/drag/resize and static service",
+        "extra slot, directional shadow mapping, lazy/destroyOnHidden, RTL and native accessibility bridge"
       ],
       "evidence_identifiers": [
-        "source:components/drawer/index.en-US.md"
+        "source:components/drawer/index.en-US.md",
+        "openspec:062-20261023-add-native-drawer",
+        "test:drawer_model/drawer_public_api/drawer_theme/drawer_component/token_gallery_frame",
+        "docs:docs/drawer.md"
       ]
     },
     {
@@ -1099,30 +1120,42 @@
     },
     {
       "identity": "ant.component.popconfirm",
-      "status": "planned",
-      "summary": "气泡确认框（Popconfirm）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现点击/键盘触发的保留式气泡确认、真实确认取消按钮、加载与焦点恢复；Gallery 包含受控完成和 Drawer 内组合，原生平台验收独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "controlled/default visibility, disabled, confirmLoading/showCancel and typed trigger/title/description slots",
+        "real small Buttons, native trigger activation, outside/Escape closing and focus restoration",
+        "twelve placements, arrow/flip/clamp, Modal and child popup ownership with Component Token"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Promise/static service, hover/contextMenu triggers and arbitrary ButtonProps forwarding",
+        "activation animation, RTL and native accessibility bridge"
       ],
       "evidence_identifiers": [
-        "source:components/popconfirm/index.en-US.md"
+        "source:components/popconfirm/index.en-US.md",
+        "openspec:064-20261023-add-native-popconfirm",
+        "test:popconfirm_model/popconfirm_public_api/popconfirm_theme/popconfirm_component/token_gallery_frame",
+        "docs:docs/popconfirm.md"
       ]
     },
     {
       "identity": "ant.component.progress",
-      "status": "planned",
-      "summary": "进度条（Progress）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现 line/circle/dashboard 确定进度、三尺寸与完成/错误状态；圆弧使用有限采样，Gallery 可同步更新三种进度。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "reactive finite percent/status/showInfo, three sizes and Progress Component Token",
+        "retained line fill, sampled circle/dashboard arcs and fixed dashboard gap"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "active shimmer, steps/gradient/success segment and arbitrary gap",
+        "exact vector arc, translucent sample overlap and dashboard rail endpoint refinements",
+        "native GPU/DPI visual and accessibility acceptance"
       ],
       "evidence_identifiers": [
-        "source:components/progress/index.en-US.md"
+        "source:components/progress/index.en-US.md",
+        "openspec:065-20261023-add-native-feedback-components",
+        "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
+        "docs:docs/feedback.md"
       ]
     },
     {
@@ -1155,16 +1188,22 @@
     },
     {
       "identity": "ant.component.spin",
-      "status": "planned",
-      "summary": "加载中（Spin）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "已实现独立或包裹内容的加载提示、保留内容和逻辑子树输入屏蔽；动画随可见性与窗口活动停止，Gallery 可切换加载并保留草稿。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "reactive spinning/size/description, retained content/custom indicator and Spin Component Token",
+        "dim shield, nested input/capture/focus/session cleanup and recovery without disabled mutation",
+        "finite LoadingOutlined motion with reduced/offscreen/inactive/hidden lifetime handling"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "fullscreen, delay and automatic percent",
+        "complete Web/DOM compatibility and native accessibility bridge"
       ],
       "evidence_identifiers": [
-        "source:components/spin/index.en-US.md"
+        "source:components/spin/index.en-US.md",
+        "openspec:065-20261023-add-native-feedback-components",
+        "test:feedback_component/feedback_theme/feedback_public_api/token_gallery_frame",
+        "docs:docs/feedback.md"
       ]
     },
     {

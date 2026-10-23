@@ -83,6 +83,18 @@ struct GalleryState final {
     ryn::Signal<bool> modal_loading{true};
     ryn::Signal<ryn::String> modal_feedback{ryn::String{u8"打开示例后查看确认与取消来源"}};
     ryn::Signal<ryn::String> modal_lifecycle{ryn::String{u8"当前没有打开的对话框"}};
+    ryn::Signal<bool> drawer_open{false};
+    ryn::Signal<ryn::DrawerPlacement> drawer_placement{ryn::DrawerPlacement::Right};
+    ryn::Signal<bool> tag_visible{true};
+    ryn::Signal<bool> tag_checked{false};
+    ryn::Signal<int> badge_count{3};
+    ryn::Signal<bool> popconfirm_open{false};
+    ryn::Signal<bool> popconfirm_loading{false};
+    ryn::Signal<bool> alert_visible{true};
+    ryn::Signal<bool> feedback_loading{false};
+    ryn::Signal<float> feedback_percent{35};
+    ryn::Signal<ryn::ProgressStatus> feedback_status{ryn::ProgressStatus::Normal};
+    ryn::Signal<ryn::String> common_feedback{ryn::String{u8"操作下面的组件查看状态变化"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -319,6 +331,29 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.modal.nested",
     "gallery.modal.nested-child",
     "gallery.modal.component-theme",
+    "gallery.tag.closable",
+    "gallery.tag.checkable",
+    "gallery.tag.restore",
+    "gallery.badge.clear",
+    "gallery.badge.increment",
+    "gallery.drawer.right",
+    "gallery.drawer.left",
+    "gallery.drawer.top",
+    "gallery.drawer.bottom",
+    "gallery.drawer.draft",
+    "gallery.drawer.confirm",
+    "gallery.drawer.end",
+    "gallery.drawer.done",
+    "gallery.popconfirm.controlled",
+    "gallery.popconfirm.finish",
+    "gallery.popconfirm.single",
+    "gallery.alert.retry",
+    "gallery.alert.restore",
+    "gallery.spin.toggle",
+    "gallery.spin.draft",
+    "gallery.spin.action",
+    "gallery.progress.advance",
+    "gallery.progress.status",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -554,8 +589,7 @@ void design_values(const std::shared_ptr<GalleryState>& state) {
 }
 
 void reference_cell(const std::shared_ptr<GalleryState>& state, std::string_view test_id, std::string_view caption,
-                    ryn::ThemeConfig config = {}, std::optional<ryn::Color> swatch = std::nullopt,
-                    bool elevated = false) {
+                    ryn::ThemeConfig config, std::optional<ryn::Color> swatch = std::nullopt, bool elevated = false) {
     const auto title = label(test_id, caption);
     const auto identity = utf8(test_id);
     ryn::Theme(ryn::ThemeProps{}.config(std::move(config)),
@@ -575,17 +609,22 @@ void reference_cell(const std::shared_ptr<GalleryState>& state, std::string_view
                }});
 }
 
+void reference_cell(const std::shared_ptr<GalleryState>& state, std::string_view test_id, std::string_view caption,
+                    std::optional<ryn::Color> swatch = std::nullopt) {
+    reference_cell(state, test_id, caption, ryn::ThemeConfig{}, swatch);
+}
+
 void add_palette_cells(const std::shared_ptr<GalleryState>& state) {
-    reference_cell(state, "ant.map.colorPrimary", "Primary / 主色", {}, ryn::Color::rgba8(22, 119, 255));
-    reference_cell(state, "ant.map.colorSuccess", "Success / 成功", {}, ryn::Color::rgba8(82, 196, 26));
-    reference_cell(state, "ant.map.colorWarning", "Warning / 警告", {}, ryn::Color::rgba8(250, 173, 20));
-    reference_cell(state, "ant.map.colorError", "Error / 错误", {}, ryn::Color::rgba8(255, 77, 79));
-    reference_cell(state, "ant.map.colorInfo", "Info / 信息", {}, ryn::Color::rgba8(22, 119, 255));
-    reference_cell(state, "ant.map.blue6", "Blue 6", {}, ryn::Color::rgba8(22, 119, 255));
-    reference_cell(state, "ant.map.green6", "Green 6", {}, ryn::Color::rgba8(82, 196, 26));
-    reference_cell(state, "ant.map.red5", "Red 5", {}, ryn::Color::rgba8(255, 77, 79));
-    reference_cell(state, "ant.map.gold6", "Gold 6", {}, ryn::Color::rgba8(250, 173, 20));
-    reference_cell(state, "ant.map.purple6", "Purple 6", {}, ryn::Color::rgba8(114, 46, 209));
+    reference_cell(state, "ant.map.colorPrimary", "Primary / 主色", ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.colorSuccess", "Success / 成功", ryn::Color::rgba8(82, 196, 26));
+    reference_cell(state, "ant.map.colorWarning", "Warning / 警告", ryn::Color::rgba8(250, 173, 20));
+    reference_cell(state, "ant.map.colorError", "Error / 错误", ryn::Color::rgba8(255, 77, 79));
+    reference_cell(state, "ant.map.colorInfo", "Info / 信息", ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.blue6", "Blue 6", ryn::Color::rgba8(22, 119, 255));
+    reference_cell(state, "ant.map.green6", "Green 6", ryn::Color::rgba8(82, 196, 26));
+    reference_cell(state, "ant.map.red5", "Red 5", ryn::Color::rgba8(255, 77, 79));
+    reference_cell(state, "ant.map.gold6", "Gold 6", ryn::Color::rgba8(250, 173, 20));
+    reference_cell(state, "ant.map.purple6", "Purple 6", ryn::Color::rgba8(114, 46, 209));
 }
 
 void add_scale_cells(const std::shared_ptr<GalleryState>& state) {
@@ -1751,6 +1790,161 @@ void add_modal_samples(const std::shared_ptr<GalleryState>& state) {
           }});
 }
 
+void add_common_component_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Tag / Badge · 状态、选择与计数");
+    Text(TextProps{}.content(state->common_feedback));
+    Space(SpaceProps{}.wrap(true).size(dp(12)), SpaceContent{[state] {
+              Tag(TagProps{}, TagContent{[] { Text(u8"默认标签"); }});
+              Tag(TagProps{}.color(Status::Success), TagContent{[] { Text(u8"运行正常"); }});
+              Tag(TagProps{}.color(PresetColor::Blue).closable().visible(state->tag_visible).onClose([state] {
+                  state->tag_visible.set(false);
+              }),
+                  TagContent{[] { Text(u8"gallery.tag.closable · 关闭标签"); }});
+              CheckableTag(CheckableTagProps{}.checked(state->tag_checked).onChange([state](bool checked) {
+                  state->tag_checked.set(checked);
+              }),
+                           TagContent{[] { Text(u8"gallery.tag.checkable · 选择标签"); }});
+              Button(ButtonProps{}.onClick([state] { state->tag_visible.set(true); }),
+                     [] { Text(u8"gallery.tag.restore · 恢复标签"); });
+          }});
+    Space(SpaceProps{}.wrap(true).size(dp(20)), SpaceContent{[state] {
+              Badge(BadgeProps{}.count(state->badge_count), BadgeContent{[state] {
+                        Button(ButtonProps{}.onClick([state] { state->badge_count.set(0); }),
+                               [] { Text(u8"gallery.badge.clear · 已读"); });
+                    }});
+              Badge(BadgeProps{}.count(120));
+              Badge(BadgeProps{}.count(0).showZero());
+              Badge(BadgeProps{}.dot(), BadgeContent{[] { Button(ButtonProps{}, [] { Text(u8"圆点通知"); }); }});
+              Badge(BadgeProps{}.status(Status::Success).text(u8"服务正常"));
+              Button(ButtonProps{}.onClick([state] { state->badge_count.set(state->badge_count.get() + 1); }),
+                     [] { Text(u8"gallery.badge.increment · 添加通知"); });
+          }});
+
+    Text(u8"Drawer · 四边停靠 / 保留草稿 / 正文滚动");
+    Space(SpaceProps{}.wrap(true).size(dp(8)), SpaceContent{[state] {
+              for (auto placement :
+                   {DrawerPlacement::Right, DrawerPlacement::Left, DrawerPlacement::Top, DrawerPlacement::Bottom}) {
+                  const auto label = placement == DrawerPlacement::Right  ? u8"gallery.drawer.right · 从右打开"
+                                     : placement == DrawerPlacement::Left ? u8"gallery.drawer.left · 从左打开"
+                                     : placement == DrawerPlacement::Top  ? u8"gallery.drawer.top · 从上打开"
+                                                                          : u8"gallery.drawer.bottom · 从下打开";
+                  Button(ButtonProps{}.onClick([state, placement] {
+                      state->drawer_placement.set(placement);
+                      state->drawer_open.set(true);
+                  }),
+                         [label] { Text(String::from_utf8(std::u8string_view{label}).value()); });
+              }
+          }});
+    Drawer(DrawerProps{}
+               .open(state->drawer_open)
+               .placement(state->drawer_placement)
+               .width(420)
+               .height(340)
+               .title(u8"编辑账户 / Edit account")
+               .onCancel([state](DrawerCancelReason) { state->drawer_open.set(false); }),
+           DrawerContent{[state] {
+               Input(InputProps{}.defaultValue(u8"gallery.drawer.draft · 保留的抽屉草稿"));
+               TextArea(TextAreaProps{}.defaultValue(u8"抽屉中的多行备注\n关闭后重新打开仍然保留"));
+               Select(SelectProps{}.options({{1, u8"桌面"}, {2, u8"服务"}}).defaultValue(1));
+               Popconfirm(PopconfirmProps{}.title(u8"保存当前草稿？").onConfirm([state] {
+                   state->common_feedback.set(String{u8"抽屉草稿已确认保存"});
+               }),
+                          PopconfirmTrigger{
+                              [] { Button(ButtonProps{}, [] { Text(u8"gallery.drawer.confirm · 确认保存"); }); }});
+               for (int row = 1; row <= 20; ++row) {
+                   Text(utf8("抽屉正文 " + std::to_string(row) + " · 标题和页脚固定，正文独立滚动。"));
+               }
+               Input(InputProps{}.defaultValue(u8"gallery.drawer.end · 末尾编辑"));
+           }},
+           {.footer = DrawerFooter{[state] {
+                Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] { state->drawer_open.set(false); }),
+                       [] { Text(u8"gallery.drawer.done · 完成并关闭"); });
+            }}});
+
+    Text(u8"Popconfirm · 确认 / 加载 / 取消");
+    Popconfirm(
+        PopconfirmProps{}
+            .open(state->popconfirm_open)
+            .confirmLoading(state->popconfirm_loading)
+            .title(u8"执行这项操作？")
+            .onOpenChange([state](bool open) {
+                state->popconfirm_open.set(open);
+                if (!open) {
+                    state->popconfirm_loading.set(false);
+                }
+            })
+            .onConfirm([state] { state->popconfirm_loading.set(true); })
+            .onCancel([state] { state->common_feedback.set(String{u8"已取消操作"}); }),
+        PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.controlled · 执行操作"); }); }},
+        {.description = PopconfirmDescription{[state] {
+             Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                      Text(u8"点击确定进入加载状态，再点击下方按钮完成。");
+                      Button(ButtonProps{}.onClick([state] {
+                          state->popconfirm_loading.set(false);
+                          state->popconfirm_open.set(false);
+                          state->common_feedback.set(String{u8"操作已完成"});
+                      }),
+                             [] { Text(u8"gallery.popconfirm.finish · 完成操作"); });
+                  }});
+         }}});
+    Popconfirm(
+        PopconfirmProps{}.title(u8"只显示确认按钮").showCancel(false).onConfirm([state] {
+            state->badge_count.set(state->badge_count.get() + 1);
+        }),
+        PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"gallery.popconfirm.single · 快速确认"); }); }});
+
+    Text(u8"Alert / Spin / Progress · 反馈与进度");
+    Alert(AlertProps{}
+              .status(Status::Warning)
+              .message(u8"连接不稳定")
+              .description(u8"请检查连接后重试，也可以关闭此提示。")
+              .showIcon()
+              .visible(state->alert_visible)
+              .closable()
+              .onClose([state] { state->alert_visible.set(false); }),
+          {.action = AlertAction{[state] {
+               Button(ButtonProps{}.onClick([state] { state->common_feedback.set(String{u8"已请求重新连接"}); }),
+                      [] { Text(u8"gallery.alert.retry · 重试"); });
+           }}});
+    Alert(AlertProps{}.status(Status::Success).message(u8"数据已保存").showIcon());
+    Alert(AlertProps{}.status(Status::Error).message(u8"操作失败，请稍后重试").showIcon());
+    Button(ButtonProps{}.onClick([state] { state->alert_visible.set(true); }),
+           [] { Text(u8"gallery.alert.restore · 恢复提示"); });
+    Button(ButtonProps{}.onClick([state] { state->feedback_loading.set(!state->feedback_loading.get()); }),
+           [] { Text(u8"gallery.spin.toggle · 切换加载"); });
+    Spin(SpinProps{}.spinning(state->feedback_loading).description(u8"正在读取"), SpinContent{[state] {
+             Flex(FlexProps{}.vertical(true).gap(dp(8)), FlexContent{[state] {
+                      Input(InputProps{}.defaultValue(u8"gallery.spin.draft · 加载前后保留内容"));
+                      Button(ButtonProps{}.onClick(
+                                 [state] { state->common_feedback.set(String{u8"加载区域中的操作已执行"}); }),
+                             [] { Text(u8"gallery.spin.action · 内容操作"); });
+                  }});
+         }});
+    Button(ButtonProps{}.onClick([state] {
+        state->feedback_percent.set(state->feedback_percent.get() >= 100 ? 0 : state->feedback_percent.get() + 25);
+    }),
+           [] { Text(u8"gallery.progress.advance · 推进进度"); });
+    Button(ButtonProps{}.onClick([state] {
+        state->feedback_status.set(state->feedback_status.get() == ProgressStatus::Exception
+                                       ? ProgressStatus::Normal
+                                       : ProgressStatus::Exception);
+    }),
+           [] { Text(u8"gallery.progress.status · 切换异常状态"); });
+    Progress(ProgressProps{}.percent(state->feedback_percent).status(state->feedback_status));
+    Space(SpaceProps{}.size(dp(24)), SpaceContent{[state] {
+              Progress(ProgressProps{}
+                           .type(ProgressType::Circle)
+                           .percent(state->feedback_percent)
+                           .status(state->feedback_status));
+              Progress(ProgressProps{}
+                           .type(ProgressType::Dashboard)
+                           .percent(state->feedback_percent)
+                           .status(state->feedback_status));
+          }});
+    state->telemetry.live_samples += 20;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2275,6 +2469,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_card_samples(state);
                                                         add_tabs_samples(state);
                                                         add_modal_samples(state);
+                                                        add_common_component_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

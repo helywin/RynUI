@@ -57,4 +57,4 @@ ryn::Progress(ryn::ProgressProps{}.type(ryn::ProgressType::Dashboard).percent(pe
 
 基线为 Ant Design 6.6.5，commit `4a39f54842eade4e565ab336ef6097cd7e723cdd`；alert/spin/progress style source 的 SHA256 与 `sources.lock.yaml` 一致。Context7 当前文档只用于补充语义，未升级锁定输入。
 
-首批范围不含 Alert banner/marquee/退出动画、Spin fullscreen/delay/percent、Progress active shimmer/steps/渐变/success segment/任意 gap、平台 accessibility adapter。没有声明原生 GPU、Linux、系统 IME 或人工视觉通过；实际 headless 测试及证据位于 change 065 的 validation.md。Gallery 与全局支持状态由父任务整合。
+首批范围不含 Alert banner/marquee/退出动画、Spin fullscreen/delay/percent、Progress active shimmer/steps/渐变/success segment/任意 gap、平台 accessibility adapter。没有声明原生 GPU、Linux、系统 IME 或人工视觉通过；实际 headless 测试及证据位于 change 065 的 validation.md。Token Gallery 的 LiveSamples 末尾提供 Alert 关闭/恢复、Spin 加载屏蔽/草稿保留，以及三种 Progress 的进度/异常状态联动示例；Gallery Recording 证据见 change 069。

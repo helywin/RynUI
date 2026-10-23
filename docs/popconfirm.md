@@ -2,6 +2,8 @@
 
 原生 Popconfirm 提供靠近操作入口的二次确认，使用保留式标题/说明和真实小尺寸 Button。默认关闭、点击触发、顶部定位；也支持 Enter/Space 触发与 Escape 关闭。
 
+Token Gallery 的 LiveSamples 末尾提供受控确认加载/完成、仅确认按钮和 Drawer 内组合示例。关闭的内容保持身份，隐藏 Cancel 不占据页脚宽度。
+
 ```cpp
 ryn::Popconfirm(
     ryn::PopconfirmProps{}.title(u8"删除这份草稿？")
