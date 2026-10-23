@@ -15,7 +15,7 @@
 ## Decisions
 
 1. `CardProps` 提供 title、CardSize(Default/Small)、CardVariant(Outlined/Borderless)、hoverable、loading、layout；使用 `CardContent` 与 `CardSlots` 中的可选 CardTitle/CardExtra/CardCover/CardActions。title slot 存在时优先于 title 文本，避免额外动态重建入口。任意原生控件可放进 slot；Card 只提供语义文字默认值，不改写其视觉 Props。
-2. WindowComponentServices 拥有 Card participant；root 自定义 Constraints 布局。预建 header/title/extra、cover、body、占位和 actions 分支。header title 占剩余宽度，extra 先受可用宽度约束，header 高度取 Token 最小值和子内容实际高度的最大值；无标题/extra 时去掉 header。内间距来自 Card Token，body/cover/actions 自然高度；最小尺寸受 constraints 约束。
+2. WindowComponentServices 拥有 Card participant；root 自定义 Constraints 布局。预建 header/title/extra、cover、body、占位和 actions 分支。header title 占剩余宽度，extra 先受可用宽度约束，普通标题按锁定上游单行省略，typed 富标题保留应用自己的排版；header 高度取 Token 最小值和子内容实际高度的最大值。无标题/extra 时去掉 header，actions 内容默认居中。内间距来自 Card Token，body/cover/actions 自然高度；最小尺寸受 constraints 约束。
 3. loading 只切换 body 与静态占位分支，保留 cover/header/actions 与用户 body owner。分支隐藏后使用共同焦点协调完成 blur/输入会话清理；恢复时不自动夺焦点。用真实编辑值与 identity 验证，避免单纯核对内部 bool。
 4. 使用共同 retained surface 创建背景/边框、header/actions 分隔线、占位条与多层 shadow；无通用 Modifier、无私有 GPU 路径。Card 背景 interaction 非 focusable，fragment 在 children 前面；pointer participant 根据当前命中组件祖先判断 hover，所以内部 Button 仍能命中和激活。视觉有限更新不创建动画轮询。
 5. Card Token 分 colors/metrics/typography/effects，包含 header/extra/body/actions/placeholder 颜色、尺寸与圆角、两尺寸字体/字重、普通/hover shadow。复用既有 snapshot、主题继承与 component seed/algorithm 管线，添加4个精确 dirty identity；颜色不 remeasure，effects 不改变布局。

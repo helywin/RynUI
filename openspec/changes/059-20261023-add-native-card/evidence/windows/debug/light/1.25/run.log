@@ -1,0 +1,4 @@
+card_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=1.25 theme=light nested_input=passed automatic_ime=passed hover=passed loading=passed restoration=passed actions=passed narrow=passed resize=passed idle_polls=3 identity=passed submits=36
+font=400 family=Segoe UI Variable Text path=C:\WINDOWS\FONTS\SEGUIVAR.TTF face_index=0 weight=400
+font=600 family=Segoe UI path=C:\WINDOWS\FONTS\SEGUISB.TTF face_index=0 weight=600
+disposed=1 exit_code=0

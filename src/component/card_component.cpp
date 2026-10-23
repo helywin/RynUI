@@ -121,7 +121,14 @@ void CardComponentHost::refresh(runtime::ComponentId id, bool geometry) {
                                        layout::BoxLayout{{padding, padding, padding, padding}, true});
         services_->layout().set_layout(
             services_->components().root(s->snapshot.actions),
-            layout::BoxLayout{{0, token.metrics.actions_padding, 0, token.metrics.actions_padding}, true});
+            layout::FlexLayout{layout::FlexDirection::horizontal,
+                               0,
+                               {0, token.metrics.actions_padding, 0, token.metrics.actions_padding},
+                               true,
+                               false,
+                               layout::FlexWrap::no_wrap,
+                               layout::FlexJustify::center,
+                               layout::FlexAlign::center});
         services_->layout().set_layout(
             services_->components().root(s->snapshot.placeholder),
             layout::LeafLayout{{padding * 2 + 160,
@@ -200,6 +207,13 @@ void CardComponentHost::mount(const CardProps& props, const CardContent& content
                                           }
                                       }},
                                       s.title_color, s.title_font);
+            if (!slots.title) {
+                const auto& title_text = services.text().mounted_texts().back();
+                services.text().scene_service().set_ellipsis(title_text.scene, {1, String{u8"…"}, false, 0});
+                const auto revisions = services.text().scene_service().revisions(title_text.scene);
+                services.layout().set_intrinsic_revision(services.components().root(title_text.component),
+                                                         revisions.content + revisions.layout);
+            }
             s.snapshot.extra = region(s.snapshot.header, Content{[extra = slots.extra] {
                                           if (extra) {
                                               SlotContentAccess::function (*extra)();

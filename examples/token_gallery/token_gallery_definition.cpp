@@ -1932,6 +1932,8 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
     ThemeConfig custom;
     custom.card.tokens.background = Color::rgba8(238, 246, 255);
     custom.card.tokens.header_background = Color::rgba8(220, 235, 255);
+    custom.card.tokens.text = Color(0, 0, 0, 0.88F);
+    custom.card.tokens.header_text = Color(0, 0, 0, 0.88F);
     custom.card.tokens.body_padding = dp(16);
     Theme(ThemeProps{}.config(custom), ThemeContent{[state, props] {
               ++state->telemetry.theme_content_runs;

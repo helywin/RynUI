@@ -86,6 +86,9 @@ void regions_loading_and_nested_controls() {
               initial.actions_bounds.y == initial.body_bounds.y + initial.body_bounds.height &&
               input_bounds.x == initial.body_bounds.x + 24 && input_bounds.y == initial.body_bounds.y + 24,
           "Card regions/padding/order differ");
+    const auto footer = bounds(f, f.buttons.mounted_buttons()[1].component);
+    check(footer.x + footer.width / 2 == initial.actions_bounds.x + initial.actions_bounds.width / 2,
+          "Card footer actions did not center their content");
     check(std::ranges::count_if(f.services.interactions().declaration_order(),
                                 [&](auto hit) {
                                     const auto& record = f.services.interactions().require(hit);
@@ -186,6 +189,7 @@ void narrow_empty_titles_and_typed_title() {
                            Text(u8"Rich title");
                        }},
                        .extra = CardExtra{[] { Button(ButtonProps{}, [] { Text(u8"Extra"); }); }}});
+        Card(CardProps{}.layout(LayoutStyle{}.width(dp(0)).height(dp(0))), CardContent{[] { Text(u8"Zero extent"); }});
     }});
     f.synchronize();
     const auto first = f.services.card().mounted()[0];
@@ -194,9 +198,17 @@ void narrow_empty_titles_and_typed_title() {
     title.set(String{u8"Long header that wraps within constrained width"});
     f.synchronize();
     check(f.services.card().snapshot(first).has_header &&
-              f.services.card().snapshot(first).header_bounds.height >= 56 && bounds(f, first).width == 100 &&
+              f.services.card().snapshot(first).header_bounds.height == 56 && bounds(f, first).width == 100 &&
               bounds(f, second).width == 24 && rich_runs == 1,
           "Card dynamic title/narrow layout failed");
+    const auto header_title = f.services.card().snapshot(first).title;
+    const auto texts = f.services.text().mounted_texts();
+    const auto plain_title = std::find_if(texts.begin(), texts.end(), [&](const auto& text) {
+        return f.services.components().parent(text.component) == header_title;
+    });
+    check(plain_title != texts.end() && f.scene.text_state(plain_title->scene).truncated() &&
+              f.scene.text_state(plain_title->scene).content().bytes() == title.get().bytes(),
+          "Card plain title did not ellipsize while preserving full content");
     const auto rich = f.services.card().snapshot(second);
     check(bounds(f, rich.title).width >= 0 && bounds(f, rich.extra).width >= 0 &&
               bounds(f, rich.extra).x + bounds(f, rich.extra).width <= bounds(f, second).x + 24,
