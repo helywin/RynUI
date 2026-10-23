@@ -32,3 +32,10 @@
 ## 范围边界
 
 此证据为平台通用窗口服务 fixture，使用锁定验证字体；没有启动原生窗口/GPU，也没有人工系统 IME 验收。Windows 原生/DPI、Linux 原生保持独立 pending；Release 未在此子任务执行。Gallery、support overlay、README 和父任务完成状态未修改。未改变 logical CPU scene v3、GPU ABI v2 或 SDL 公开边界。
+
+## 校验与交付
+
+- `python scripts/format-code.py --check --clang-format <clang-format 22.1.3>`：505个自有源文件，0失败。
+- `openspec doctor --json`：healthy=true；`openspec validate --all --strict --no-interactive`：62/62通过；`git diff --check` 与 staged 检查通过。
+- 实现提交：`0167e823350b29e7d219e84b7d942a6a9aacf494`，`feat: implement native Popconfirm with retained interactive layers`。
+- 提交后安全 fetch，推送 `origin/t3/native-popconfirm`；`git ls-remote origin refs/heads/t3/native-popconfirm` 与实现 HEAD 一致。后续本记录/任务勾选提交继续按相同流程推送；未创建 PR 或 archive。

@@ -3,7 +3,7 @@
 ## 1. 平台通用实现与合同
 
 - [x] 1.1 实现 typed API、model、Theme、保留式 host、焦点/Modal/子层行为和 docs/popconfirm.md；以 windows-msvc-headless / MSVC Debug 的 Popconfirm 聚焦测试及相关 Modal/Select/Tooltip 回归验证。
-- [ ] 1.2 运行格式检查、openspec doctor/strict validate、git diff --check，记录实际证据并提交推送、核对远端 SHA。
+- [x] 1.2 运行格式检查、openspec doctor/strict validate、git diff --check，记录实际证据并提交推送、核对远端 SHA。
 
 ## 2. Windows 原生验收
 
