@@ -75,7 +75,7 @@
     {
       "identity": "ant.component.typography",
       "status": "partial",
-      "summary": "RynUI 已提供五级 Title、Text、Paragraph、Link、行内语义、省略展开、全文复制与真实 Input 原地编辑；Tooltip 浮层及完整 Web API 尚未覆盖。",
+      "summary": "RynUI 已提供五级 Title、Text、Paragraph、Link、行内语义、省略展开、全文复制、操作与截断提示，以及真实 TextArea 多行原地编辑；富文本及完整 Web API 尚未覆盖，平台验收独立记录。",
       "supported_scope": [
         "typed Text props",
         "CJK/Latin shaping and rendering",
@@ -85,13 +85,12 @@
         "strong/italic/code/keyboard/mark/underline/strikethrough",
         "grapheme-safe ellipsis with expand/collapse",
         "full-content copy with independent late-bound clipboard",
-        "persistent Input editing with controlled draft and IME lifecycle",
+        "copy/edit and actual-ellipsis Tooltip hints with reactive text",
+        "persistent TextArea editing with autoSize, controlled draft and IME lifecycle",
         "Link pointer/keyboard/focus-visible interaction"
       ],
       "missing_scope": [
-        "Tooltip floating layer",
         "rich text and HTML clipboard format",
-        "TextArea multiline editing",
         "complete Ant Design Web API"
       ],
       "evidence_identifiers": [
@@ -99,6 +98,7 @@
         "test:rynui.text_component",
         "test:rynui.text_component_frame",
         "openspec:034-20261001-complete-typography-and-divider",
+        "openspec:057-20261023-complete-typography-hints-and-editor",
         "test:rynui.typography_component",
         "test:rynui.typography_interaction"
       ]

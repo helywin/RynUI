@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Tooltip（新增共用基础） | 040/043 已实现文字/富标题、hover/focus/click/context menu/组合/controlled/手动、Escape/外部关闭、主题、12 方位、pointAtCenter 和向量箭头 | 原生功能 implemented；043 平台通用和 Windows/Linux 原生证据独立记录 |
 | Slider / RangeSlider / MultiSlider | 041/042 已补齐原生 marks/dots/提示、动态多端点、整段拖动/编辑、逐端点禁用与 ref | 原生功能 implemented；042 Windows/GPU 与 Linux 验收独立记录 |
-| Typography | 复制/编辑/省略的提示；多行编辑依赖 TextArea | Tooltip 后补提示，TextArea 后补多行编辑 |
+| Typography | 057 已接入复制/编辑/实际截断提示，编辑态复用 TextArea/autoSize 并保留完整换行 | 功能与平台通用、Windows/Linux 原生验收独立记录；富文本仍未覆盖 |
 | Divider | 045 补齐 dotted、尺寸、Start/End 与 scoped RTL、逻辑长度间距；重新审计发现这些是实际原生缺口 | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Button | 044 已实现颜色/六变体/ghost/真实虚线、保留 icon/loading slots、形状/block、ref/autoFocus/延迟加载与有限 wave | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |
 | Icon | 051 已实现完整 848 离线图标、三类/逐层双色、typed 自定义贝塞尔与 holes、保留 rotate/spin、Theme/motion/DPI 与窗口缓存清理 | 原生功能 implemented；共同合同与 Windows/Linux 原生证据独立记录 |

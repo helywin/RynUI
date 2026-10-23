@@ -10,6 +10,7 @@ file(READ "${SHADER_SOURCE}" glyph_source)
 foreach(binding IN ITEMS
         "SamplerState AtlasSampler : register(s0, space2)"
         "Texture2D<float> AtlasTexture : register(t0, space2)"
+        "float4 rotationBasis : TEXCOORD5"
         "input.color.a * input.opacity * coverage")
     string(FIND "${glyph_source}" "${binding}" binding_offset)
     if(binding_offset EQUAL -1)
@@ -20,11 +21,11 @@ endforeach()
 file(READ "${SHADER_DIRECTORY}/glyph.vertex.json" vertex_reflection)
 string(JSON vertex_input_count ERROR_VARIABLE vertex_error
     LENGTH "${vertex_reflection}" inputs)
-if(vertex_error OR NOT vertex_input_count EQUAL 5)
+if(vertex_error OR NOT vertex_input_count EQUAL 6)
     message(FATAL_ERROR
-        "Glyph vertex reflection must contain five instance attributes: ${vertex_error}")
+        "Glyph vertex reflection must contain six packed-ABI instance attributes: ${vertex_error}")
 endif()
-foreach(attribute_index RANGE 0 4)
+foreach(attribute_index RANGE 0 5)
     string(JSON attribute_location ERROR_VARIABLE location_error
         GET "${vertex_reflection}" inputs ${attribute_index} location)
     string(JSON attribute_type ERROR_VARIABLE type_error

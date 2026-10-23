@@ -1,6 +1,7 @@
 #include "component/divider_component.hpp"
 #include "component/input_component.hpp"
 #include "component/typography_component.hpp"
+#include "component/tooltip_component.hpp"
 #include "platform/default_font_chain.hpp"
 #include "platform/sdl/platform_state.hpp"
 #include "renderer/sdl/scene_renderer.hpp"
@@ -12,6 +13,7 @@
 #include <map>
 #include <ryn/rynui.hpp>
 #include <thread>
+#include <SDL3/SDL_video.h>
 
 namespace rynui::example {
 namespace {
@@ -59,7 +61,7 @@ int run_typography_acceptance(int argc, char** argv) {
         auto created = detail::PlatformState::create(config);
         require(bool(created), "native window creation failed");
         auto& platform = *created.state;
-        const auto metrics = platform.window_metrics();
+        auto metrics = platform.window_metrics();
         const float scale = requested_scale.value_or(metrics.display_scale);
         require(scale == 1 || scale == 1.25F || scale == 1.5F || scale == 2, "acceptance scale is invalid");
         const auto executable = std::filesystem::absolute(argv[0]).parent_path();
@@ -112,7 +114,7 @@ int run_typography_acceptance(int argc, char** argv) {
             value.algorithms = {ThemeAlgorithm::Dark};
             theme.set(value);
         }
-        Signal<String> edited{String{u8"标题草稿 / Heading draft"}};
+        Signal<String> edited{String{u8"标题草稿 / Heading draft\n第二行 / Second line"}};
         int edits{};
         int links{};
         const String original{u8"Copy must retain the original complete text. "
@@ -157,7 +159,7 @@ int run_typography_acceptance(int argc, char** argv) {
                             TypographyProps{}.content(u8"Disabled / 禁用").disabled(true).type(TypographyType::Danger));
                         Text(TypographyProps{}
                                  .content(original)
-                                 .ellipsis(TypographyEllipsis{.expandable = true})
+                                 .ellipsis(TypographyEllipsis{.expandable = true, .tooltip = original})
                                  .copyable(TypographyCopyable{})
                                  .layout(LayoutStyle{}.width(dp(300))));
                         Paragraph(TypographyProps{}
@@ -228,13 +230,17 @@ int run_typography_acceptance(int argc, char** argv) {
                 "native backend accepted stale, foreign, wrong-kind or out-of-range handle");
         backend.release_buffer(fresh_buffer);
         detail::SceneResources resources{renderer};
-        const runtime::Size viewport{static_cast<float>(metrics.pixel_width) / scale,
-                                     static_cast<float>(metrics.pixel_height) / scale};
-        const runtime::Rect clip{0, 0, viewport.width, viewport.height};
+        runtime::Size viewport{static_cast<float>(metrics.pixel_width) / scale,
+                               static_cast<float>(metrics.pixel_height) / scale};
+        runtime::Rect clip{0, 0, viewport.width, viewport.height};
         std::size_t frame_number{};
         const auto draw = [&](std::string name) {
             for (int settle = 0; settle < 2; ++settle) {
                 (void)platform.poll_events();
+                metrics = platform.window_metrics();
+                viewport = {static_cast<float>(metrics.pixel_width) / scale,
+                            static_cast<float>(metrics.pixel_height) / scale};
+                clip = {0, 0, viewport.width, viewport.height};
                 const auto time = animation::AnimationTime::microseconds(++frame_number * 250'000);
                 (void)services.tick_animations(time);
                 require(services.layout_and_synchronize(viewport, clip, {16, 12}), "acceptance layout failed");
@@ -290,6 +296,26 @@ int run_typography_acceptance(int argc, char** argv) {
             }
             return result;
         };
+        const auto tooltips = [&](runtime::ComponentId owner) {
+            std::vector<runtime::ComponentId> result;
+            for (const auto tip : services.tooltip().mounted()) {
+                for (auto parent = services.components().parent(tip); parent;
+                     parent = services.components().parent(*parent)) {
+                    if (*parent == owner) {
+                        result.push_back(tip);
+                        break;
+                    }
+                }
+            }
+            return result;
+        };
+        const auto hover = [&](runtime::ComponentId tip) {
+            services.focus().clear_focus();
+            const auto bounds = nodes.require(services.components().root(tip)).bounds;
+            services.pointer().dispatch({input::PointerIdentity::mouse(), input::PointerAction::move,
+                                         input::PointerButton::none, bounds.x + bounds.width / 2,
+                                         bounds.y + bounds.height / 2});
+        };
         select_page(0);
         draw("headings");
         select_page(1);
@@ -302,15 +328,27 @@ int run_typography_acceptance(int argc, char** argv) {
         const auto multi_actions = actions(multi);
         require(services.typography().snapshot(single).truncated, "single-line ellipsis did not truncate");
         require(services.typography().snapshot(multi).truncated, "multi-line ellipsis did not truncate");
+        const auto single_tips = tooltips(single);
+        require(single_tips.size() == 2, "native typography hints missing");
+        hover(single_tips[0]);
+        draw("ellipsis-hint");
+        require(services.tooltip().snapshot(single_tips[0]).visible, "native ellipsis hint did not open");
+        hover(single_tips[1]);
+        draw("copy-hint");
+        require(services.tooltip().snapshot(single_tips[1]).visible &&
+                    !services.tooltip().snapshot(single_tips[0]).visible,
+                "native action hover opened text hint");
         const auto previous = platform.read_text();
         activate(single_actions[1]);
         const auto copied = platform.read_text();
         require(copied && *copied.text == original && services.typography().snapshot(single).copied,
                 "native clipboard did not copy full content");
         draw("copied");
+        require(services.tooltip().snapshot(single_tips[1]).visible, "native copied hint missing");
         activate(single_actions[0]);
         require(services.typography().snapshot(single).expanded, "single expand failed");
         draw("expanded");
+        require(!services.tooltip().snapshot(single_tips[0]).visible, "native expanded hint remained open");
         activate(single_actions[0]);
         activate(multi_actions[0]);
         draw("multiline-expanded");
@@ -319,10 +357,16 @@ int run_typography_acceptance(int argc, char** argv) {
             const auto editable = mounted[2];
             const auto edit_actions = actions(editable);
             const auto editor = input->mounted_inputs().front();
+            const auto edit_tip = tooltips(editable).front();
+            (void)services.focus().request_focus(edit_actions[0], input::FocusModality::keyboard);
+            draw("edit-hint");
+            require(services.tooltip().snapshot(edit_tip).visible, "native edit focus hint missing");
             activate(edit_actions[0]);
             require(services.focus().state().focused == editor.interaction && input->sessions().active().valid(),
                     "native edit did not start IME session");
             draw("editing");
+            require(nodes.require(editor.node).bounds.height > 40 && !services.tooltip().snapshot(edit_tip).visible,
+                    "native multiline editor lost line height or retained hint");
             require(input->layout_snapshot(editor.component).baseline > 20, "native heading edit lost typography");
             require(
                 bool(input->dispatch(input::CompositionChanged{String{u8"输入"}, {2, 0}, input->sessions().active()})),
@@ -337,8 +381,22 @@ int run_typography_acceptance(int argc, char** argv) {
             require(
                 bool(input->dispatch(input::TextCommitted{String{u8"Committed / 已提交"}, input->sessions().active()})),
                 "native draft update failed");
+            services.focus().dispatch({input::Key::enter, input::KeyAction::down, input::KeyModifier::shift});
+            require(bool(input->dispatch(
+                        input::TextCommitted{String{u8"Second line / 第二行"}, input->sessions().active()})),
+                    "native second line input failed");
+            draw("multiline-editing");
+            require(std::ranges::any_of(services.rounded_effects().packed_instances(),
+                                        [&](const auto& effect) {
+                                            return effect.geometry.shape.rect == nodes.require(editor.node).bounds &&
+                                                   effect.material.visible && effect.material.opacity > 0;
+                                        }),
+                    "native reactivated editor shell remained hidden");
+            const auto shell = nodes.require(editor.node).bounds;
+            std::cout << "editor_shell=" << shell.x << ',' << shell.y << ',' << shell.width << ',' << shell.height
+                      << '\n';
             keyboard(input::Key::enter);
-            require(edits == 1 && edited.get() == String{u8"Committed / 已提交"} &&
+            require(edits == 1 && edited.get() == String{u8"Committed / 已提交\nSecond line / 第二行"} &&
                         !services.typography().snapshot(editable).editing,
                     "native controlled commit failed");
             draw("committed");
@@ -370,6 +428,29 @@ int run_typography_acceptance(int argc, char** argv) {
                 "native Link pointer/disabled failed");
         (void)services.focus().request_focus(link_actions[0], input::FocusModality::keyboard);
         draw("link-focus");
+        require(SDL_SetWindowSize(static_cast<SDL_Window*>(platform.window()), 1100, 900),
+                "native typography window resize failed");
+        platform.delay(100);
+        select_page(1);
+        hover(single_tips[0]);
+        draw("resized-hint");
+        const auto hint_bounds = services.tooltip().snapshot(single_tips[0]).bounds;
+        require(hint_bounds.x >= 0 && hint_bounds.y >= 0 &&
+                    hint_bounds.x + hint_bounds.width <= viewport.width + 0.01F &&
+                    hint_bounds.y + hint_bounds.height <= viewport.height + 0.01F,
+                "native resized hint escaped viewport");
+        services.set_window_active(false);
+        draw("inactive");
+        (void)frames.consume_request();
+        const auto submissions = renderer.counters().frame_submissions;
+        for (int idle = 0; idle < 3; ++idle) {
+            platform.delay(25);
+            (void)platform.poll_events();
+            (void)services.tick_animations(animation::AnimationTime::microseconds(++frame_number * 250'000));
+            require(!frames.pending() && !services.next_frame_deadline() &&
+                        renderer.counters().frame_submissions == submissions,
+                    "native typography did not settle idle");
+        }
         if (previous && previous.text) {
             (void)platform.write_text(previous.text->view());
         }
@@ -394,6 +475,8 @@ int run_typography_acceptance(int argc, char** argv) {
                   << " quad_draws=" << renderer.counters().quad_draws
                   << " glyph_draws=" << renderer.counters().glyph_draws
                   << " effect_draws=" << renderer.counters().effect_draws
+                  << " hints=passed multiline_edit=" << (input ? "passed" : "not-applicable")
+                  << " resize=passed idle_polls=3"
                   << " components=" << services.components().component_count()
                   << " rasterizations=" << fonts->counters().rasterizations << "\n";
         for (const auto& pair : {std::pair{"regular", *regular}, std::pair{"strong", *strong},
@@ -405,8 +488,11 @@ int run_typography_acceptance(int argc, char** argv) {
         for (const auto& note : font_chain.diagnostic_fallbacks) {
             std::cout << "font_fallback=" << note << '\n';
         }
-        std::cout << "exit_code=0\n";
         services.dispose();
+        require(services.tooltip().mounted().empty() && services.interactions().size() == 0 && scene.size() == 0 &&
+                    nodes.size() == 0 && !services.next_frame_deadline(),
+                "native typography disposal leaked resources");
+        std::cout << "disposed=1 exit_code=0\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "typography_acceptance_error=" << error.what() << "\nexit_code=1\n";

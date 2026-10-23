@@ -10,7 +10,7 @@
 
 ## 3. 多行编辑（平台通用）
 
-- [ ] 3.1 使用预建 TextArea 和 reactive typed autoSize，保留 Enter 提交/Shift+Enter 换行、IME/Escape/blur、controlled/方向/字体/maxLength/动态配置与生命周期；补普通 TextArea Enter 不变和 Typography 多行集成回归、用户文档与 Gallery 样例/目录，windows-msvc-headless Debug/Release 完整 CTest、Gallery 合同、格式与规格校验通过后记录 evidence 并独立提交。
+- [x] 3.1 使用预建 TextArea 和 reactive typed autoSize，保留 Enter 提交/Shift+Enter 换行、IME/Escape/blur、controlled/方向/字体/maxLength/动态配置与生命周期；补普通 TextArea Enter 不变和 Typography 多行集成回归、用户文档与 Gallery 样例/目录，windows-msvc-headless Debug/Release 完整 CTest、Gallery 合同、格式与规格校验通过后记录 evidence 并独立提交。最终Debug/Release各99/99、Gallery 6/6，含Escape优先级与shell重入修复，见 evidence/common-editor.md。
 
 ## 4. 原生验收
 

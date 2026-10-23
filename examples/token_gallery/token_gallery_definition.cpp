@@ -935,9 +935,10 @@ void add_basic_live_samples(const std::shared_ptr<GalleryState>& state) {
 
 void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& state) {
     ryn::Text(u8"Typography · 省略、复制与原地编辑");
+    const ryn::String full{u8"原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。"};
     ryn::Text(ryn::TypographyProps{}
-                  .content(u8"原始全文保持完整：省略显示时复制仍写入全部内容；点击展开查看全文，再次点击收起。")
-                  .ellipsis(ryn::TypographyEllipsis{.expandable = true})
+                  .content(full)
+                  .ellipsis(ryn::TypographyEllipsis{.expandable = true, .tooltip = full})
                   .copyable(ryn::TypographyCopyable{})
                   .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     ryn::Paragraph(ryn::TypographyProps{}
@@ -945,11 +946,11 @@ void add_typography_layout_slider_samples(const std::shared_ptr<GalleryState>& s
                                 u8"和中文均复用同一文本测量通道。\n显式换行也计入行数。\n展开后显示全部行。")
                        .ellipsis(ryn::TypographyEllipsis{.rows = 2, .expandable = true})
                        .layout(ryn::LayoutStyle{}.width(state->cell_width)));
-    ryn::Text(ryn::TypographyProps{}
-                  .content(state->typography_value)
-                  .editable(ryn::TypographyEditable{.max_length = 64})
-                  .onEdit([state](ryn::String value) { state->typography_value.set(std::move(value)); })
-                  .layout(ryn::LayoutStyle{}.width(state->cell_width)));
+    ryn::Paragraph(ryn::TypographyProps{}
+                       .content(state->typography_value)
+                       .editable(ryn::TypographyEditable{.max_length = 64, .auto_size = {true, 1, 4}})
+                       .onEdit([state](ryn::String value) { state->typography_value.set(std::move(value)); })
+                       .layout(ryn::LayoutStyle{}.width(state->cell_width)));
     ryn::Title(ryn::TitleProps{}
                    .level(ryn::TypographyLevel::H3)
                    .content(state->typography_title)

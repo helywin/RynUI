@@ -392,6 +392,122 @@ void typography_hints() {
     require(f.services.tooltip().mounted().empty() && !f.services.next_frame_deadline(),
             "hint owner destroy leaked popups or deadlines");
 }
+
+void multiline_editing() {
+    Fixture f;
+    const String original{u8"第一行 / First line\n第二行 / Second line"};
+    Signal<TypographyEditable> config{TypographyEditable{}};
+    Signal<TypographyLevel> level{TypographyLevel::H4};
+    Signal<TextDirection> direction{TextDirection::LeftToRight};
+    String committed;
+    int commits{};
+    f.services.mount(Content{[&] {
+        Title(
+            TitleProps{}.level(level).direction(direction).content(original).editable(config).onEdit([&](String value) {
+                ++commits;
+                committed = std::move(value);
+            }));
+        TextArea(TextAreaProps{}.defaultValue(u8"ordinary"));
+    }});
+    f.synchronize(180);
+    const auto id = f.services.typography().mounted().front();
+    const auto editor = f.inputs.mounted_inputs()[0];
+    const auto ordinary = f.inputs.mounted_inputs()[1];
+    const auto edit_action = focusable(f.services)[0];
+    const auto count = f.services.components().component_count();
+    const auto runs = f.services.components().mount_runs();
+    activate(f.services, edit_action);
+    f.synchronize(180);
+    const auto shell_visible = [&] {
+        const auto bounds = f.nodes.require(editor.node).bounds;
+        return std::ranges::any_of(f.services.rounded_effects().packed_instances(), [&](const auto& effect) {
+            return effect.geometry.shape.rect == bounds && effect.material.visible && effect.material.opacity > 0;
+        });
+    };
+    require(shell_visible(), "initial Typography editor shell missing");
+    require(f.inputs.editors().require(editor.editor).value() == original.bytes(),
+            "Typography editor discarded original newlines");
+    const auto initial_height = f.nodes.require(editor.node).bounds.height;
+    (void)f.inputs.editors().require(editor.editor).select_all();
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"first"}, f.inputs.sessions().active()})),
+            "multiline replacement failed");
+    f.services.focus().dispatch({Key::enter, KeyAction::down, KeyModifier::shift});
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"second"}, f.inputs.sessions().active()})),
+            "second line insertion failed");
+    f.synchronize(180);
+    require(commits == 0 && f.services.typography().snapshot(id).draft == String{u8"first\nsecond"},
+            "Shift+Enter submitted or lost newline");
+    config.set(TypographyEditable{.auto_size = TextAreaAutoSize{true, 2, 2}});
+    f.synchronize(180);
+    const auto capped_height = f.nodes.require(editor.node).bounds.height;
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"\nthird\nfourth\nfifth"}, f.inputs.sessions().active()})),
+            "multiline text commit failed");
+    f.synchronize(180);
+    require(f.nodes.require(editor.node).bounds.height == capped_height && initial_height > 30,
+            "Typography autoSize row bounds not applied");
+    direction.set(TextDirection::RightToLeft);
+    level.set(TypographyLevel::H2);
+    f.synchronize(180);
+    require(f.inputs.layout_snapshot(editor.component).baseline > 20, "multiline editor lost heading typography");
+    key(f.services, Key::enter);
+    f.synchronize(180);
+    require(commits == 1 && committed == String{u8"first\nsecond\nthird\nfourth\nfifth"} &&
+                !f.services.typography().snapshot(id).editing && f.services.focus().state().focused == edit_action,
+            "multiline Enter failed submit and focus return");
+    activate(f.services, edit_action);
+    f.synchronize(180);
+    require(shell_visible(), "reactivated Typography editor shell remained hidden");
+    require(bool(f.inputs.dispatch(TextCommitted{String{u8"cancel me"}, f.inputs.sessions().active()})),
+            "multiline cancel draft insertion failed");
+    key(f.services, Key::escape);
+    f.synchronize(180);
+    require(commits == 1 && f.services.typography().snapshot(id).original == committed &&
+                f.services.typography().snapshot(id).draft == committed,
+            "multiline cancel changed original content");
+    activate(f.services, edit_action);
+    require(f.services.focus().request_focus(ordinary.interaction, FocusModality::keyboard),
+            "ordinary TextArea focus failed");
+    require(commits == 2 && !f.services.typography().snapshot(id).editing,
+            "multiline blur did not preserve existing commit behavior");
+    (void)f.inputs.editors().require(ordinary.editor).select({8, 8});
+    key(f.services, Key::enter);
+    require(f.inputs.editors().require(ordinary.editor).value() == "ordinary\n" && commits == 2,
+            "Typography Enter override changed ordinary TextArea");
+    require(f.services.components().component_count() == count && f.services.components().mount_runs() == runs,
+            "multiline editor remounted subtree");
+}
+
+void ime_before_other_hints() {
+    Fixture f;
+    f.services.mount(Content{[] {
+        Text(TypographyProps{}.content(u8"Copy").copyable(TypographyCopyable{}));
+        Paragraph(TypographyProps{}.content(u8"Edit\nsecond line").editable(TypographyEditable{}));
+    }});
+    f.synchronize();
+    const auto copy_tip = f.services.tooltip().mounted()[0];
+    const auto owner = f.services.typography().mounted()[1];
+    const auto actions = focusable(f.services);
+    const auto editor = f.inputs.mounted_inputs()[0];
+    const auto bounds = f.nodes.require(f.services.interactions().require(actions[0]).node).bounds;
+    f.services.pointer().dispatch({PointerIdentity::mouse(), PointerAction::move, PointerButton::none,
+                                   bounds.x + bounds.width / 2, bounds.y + bounds.height / 2});
+    (void)f.services.tick_animations(animation::AnimationTime::microseconds(0));
+    (void)f.services.tick_animations(animation::AnimationTime::microseconds(100000));
+    f.synchronize();
+    require(f.services.tooltip().snapshot(copy_tip).visible, "unrelated copy hint did not open");
+    activate(f.services, actions[1]);
+    require(bool(f.inputs.dispatch(CompositionChanged{String{u8"输入"}, {2, 0}, f.inputs.sessions().active()})),
+            "IME priority test composition failed");
+    key(f.services, Key::escape);
+    require(!f.inputs.editors().require(editor.editor).composition().active &&
+                f.services.typography().snapshot(owner).editing && f.services.tooltip().snapshot(copy_tip).visible,
+            "unrelated Tooltip consumed Escape before active IME");
+    key(f.services, Key::escape);
+    require(!f.services.typography().snapshot(owner).editing, "unrelated Tooltip consumed draft cancellation");
+    (void)f.services.focus().request_focus(actions[0], FocusModality::keyboard);
+    key(f.services, Key::escape);
+    require(!f.services.tooltip().snapshot(copy_tip).visible, "unhandled Escape no longer dismisses Tooltip");
+}
 } // namespace
 
 int main() {
@@ -401,6 +517,8 @@ int main() {
         controlled_and_link();
         limits_and_lifecycle();
         typography_hints();
+        multiline_editing();
+        ime_before_other_hints();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

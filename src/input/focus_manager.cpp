@@ -40,7 +40,9 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
         }
 
         const auto filter = command_filter_;
-        if (filter && filter(event)) {
+        // Escape belongs to the focused editor's IME/draft transaction first.
+        // Other commands retain the window filter's existing priority.
+        if (event.key != Key::escape && filter && filter(event)) {
             sanitize_internal();
             end_operation();
             return;
@@ -64,6 +66,12 @@ void FocusManager::dispatch(const KeyboardInputEvent& event) {
                     return;
                 }
             }
+        }
+
+        if (event.key == Key::escape && filter && filter(event)) {
+            sanitize_internal();
+            end_operation();
+            return;
         }
 
         if (event.key == Key::tab) {

@@ -57,6 +57,7 @@ struct TypographyState {
     Signal<String> edit_hint{String{}};
     Signal<String> ellipsis_hint{String{}};
     Signal<std::size_t> max_length{std::numeric_limits<std::size_t>::max()};
+    Signal<TextAreaAutoSize> auto_size{TextAreaAutoSize{true}};
     Signal<TypographyEllipsis> ellipsis{TypographyEllipsis{}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
     String original;
@@ -452,17 +453,20 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     if (state.has_edit && services.input_runtime()) {
         build.mount_slot(id, Content{[this, id, direction = props.direction_] {
                              auto& s = *services_->components().state<TypographyState>(id);
-                             ryn::Input(InputProps{}
-                                            .direction(direction)
-                                            .value(Prop<String>{s.draft})
-                                            .maxLength(Prop<std::size_t>{s.max_length})
-                                            .onChange([this, id](String value) {
-                                                if (auto* current =
-                                                        services_->components().state<TypographyState>(id)) {
-                                                    current->draft.set(std::move(value));
-                                                    current->pending = false;
-                                                }
-                                            }));
+                             ryn::TextArea(TextAreaProps{}
+                                               .direction(direction)
+                                               .rows(std::size_t{1})
+                                               .autoSize(Prop<TextAreaAutoSize>{s.auto_size})
+                                               .resize(TextAreaResize::None)
+                                               .value(Prop<String>{s.draft})
+                                               .maxLength(Prop<std::size_t>{s.max_length})
+                                               .onChange([this, id](String value) {
+                                                   if (auto* current =
+                                                           services_->components().state<TypographyState>(id)) {
+                                                       current->draft.set(std::move(value));
+                                                       current->pending = false;
+                                                   }
+                                               }));
                          }});
         const auto input = services.input_runtime()->mounted_inputs().back();
         state.editor = input.component;
@@ -650,6 +654,7 @@ void TypographyComponentHost::refresh(runtime::ComponentId id) {
         s->ellipsis_hint_available.set(false);
     }
     s->max_length.set(s->edit_config.max_length);
+    s->auto_size.set(s->edit_config.auto_size);
     auto ellipsis = s->ellipsis_config;
     ellipsis.expanded = s->expanded;
     s->ellipsis.set(std::move(ellipsis));

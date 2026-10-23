@@ -17,6 +17,9 @@
 3. `TypographyEditable` 尾部增加 `TextAreaAutoSize auto_size{true}`，兼容既有聚合初始化。预建 rows=1、resize=None 的 TextArea，绑定 reactive autoSize。Input 宿主仅为配置了内部 Typography commit 的编辑器优先处理无修饰 Enter；Shift+Enter 走既有多行插入，Ctrl+Enter 保留 TextArea 的提交入口。IME 处理先于提交。
 4. 保留 RynUI 原文和换行，不复制 Web 编辑器删除换行和 trim 的行为。Ant Design 6.6.5 的 Editable 使用 rows=1/autoSize TextArea，当前上游却在 onChange 删除换行；原生多行支持是收尾清单要求的桌面映射，文档明确此边界。其他 commit/cancel/controlled 语义沿用 034。
 5. Common 在 Windows `windows-msvc-headless` Debug/Release 实际构建并运行完整 CTest；Windows native 使用 `windows-msvc` Debug/Release 的 MSVC x64、Ninja Multi-Config、D3D12/DXIL 窗口验证提示、编辑、DPI、resize/idle/dispose；Linux native 单列 pending，不用 WSLg/Windows 替代。
+6. 原生实测发现其他组件的 hover Tooltip 会先消费 Escape：FocusManager 对 Escape 先询问 focused text-edit handler，未消费才交给窗口 filter。其他按键维持原顺序；覆盖 IME→草稿→普通 Tooltip 的三级回归。Gallery 文档静态 Button 数量检查的旧值18与远端基线12100f1的26不符；核对已存在的原生样例后同步计数，不把该既存失败归因于新增 Typography。
+7. 第二次进入编辑的 GPU 图像暴露既存 shell visibility 缓存问题：set_active(false) 隐藏 effect 后，几何相同会命中旧 presentation 缓存。active 切换时清理该缓存，使下一次同步恢复 shell；共同与原生回归都检查重新进入后的实际可见 effect。
+8. 原生受影响测试发现 Glyph shader 合同仍断言旧的5项输入，而当前锁定源码与生成 reflection 已有 TEXCOORD5 rotationBasis（6项 packed ABI）。仅同步合同为6个 float4 并显式检查 rotationBasis 声明，不改 shader 或 GPU ABI。
 
 参考：Context7 `/ant-design/ant-design` Typography 文档；固定版本源码 [Base](https://github.com/ant-design/ant-design/blob/6.6.5/components/typography/Base/index.tsx)、[Editable](https://github.com/ant-design/ant-design/blob/6.6.5/components/typography/Editable.tsx)。当前文档只辅助发现 API，版本行为以固定源码与本地合同为准。
 

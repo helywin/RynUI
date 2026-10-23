@@ -820,7 +820,8 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 308,
+    // Five retained Typography hints each add a non-Tab trigger and a popup hit region.
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 318,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -835,7 +836,8 @@ void test_token_gallery_frame_contract() {
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 287,
+    // Closed hint popups stay out of the visible scene; their five triggers remain.
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 292,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();

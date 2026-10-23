@@ -4,6 +4,7 @@
 #include <ryn/prop.hpp>
 #include <ryn/string.hpp>
 #include <ryn/text_direction.hpp>
+#include <ryn/text_area.hpp>
 #include <ryn/theme.hpp>
 
 #include <cstdint>
@@ -66,6 +67,7 @@ struct TypographyEditable final {
     bool enabled{true};
     std::size_t max_length{std::numeric_limits<std::size_t>::max()};
     String tooltip{u8"编辑"};
+    TextAreaAutoSize auto_size{true};
     friend bool operator==(const TypographyEditable&, const TypographyEditable&) = default;
 };
 

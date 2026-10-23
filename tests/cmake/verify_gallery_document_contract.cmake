@@ -34,7 +34,8 @@ endforeach()
 
 string(REGEX MATCHALL "ryn::Button\\(" button_calls "${definition_source}")
 list(LENGTH button_calls button_call_count)
-if(NOT button_call_count EQUAL 18)
+# Includes the native Button/Compact/Tooltip demos already present in the Gallery.
+if(NOT button_call_count EQUAL 26)
     message(FATAL_ERROR
         "Gallery must keep Button call sites limited to navigation/filter/live helpers, Tooltip anchors, the native Button matrix, header directory and theme toggle; found ${button_call_count}")
 endif()

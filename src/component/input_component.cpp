@@ -1571,7 +1571,11 @@ bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const
         return true; // Only TextCommitted inserts characters.
     }
     if (event.key == Key::enter) {
-        if (state->textarea && plain && !state->read_only) {
+        if (state->on_internal_commit && plain && !shift) {
+            if (!event.repeat) {
+                submit(component);
+            }
+        } else if (state->textarea && plain && !state->read_only) {
             const auto owner = state->mounted.editor;
             editor.break_history_merge();
             const auto result = editor.commit_text("\n");
@@ -2769,6 +2773,9 @@ void InputComponentHost::set_active(runtime::ComponentId component, bool active)
         return;
     }
     state->active = active;
+    // Hiding clears effect visibility; reactivation must republish the shell
+    // even when its geometry and presentation are otherwise unchanged.
+    state->container_presentation.reset();
     host_->components().set_branch_active(component, active);
     editors_.require(state->mounted.editor).set_eligibility(state->disabled || !active, state->read_only);
     static_cast<void>(host_->interactions().set_eligible(state->mounted.interaction, active && !state->disabled));
