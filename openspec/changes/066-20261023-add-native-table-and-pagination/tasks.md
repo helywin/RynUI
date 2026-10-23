@@ -11,4 +11,4 @@
 ## 3. 平台通用：Table
 
 - [x] 3.1 实现 typed retained Table、列内容、排序、多选、有限滚动与分页组合，附业务示例及 focused tests；MSVC headless Debug/Release 验证真实数据更新/重排/增删、无关 slot 不重跑、受控排序选择、翻页、clip、加载、主题和清理。
-- [ ] 3.2 在相同 Windows MSVC headless preset 运行 Debug/Release 完整通用 CTest、格式、doctor、全量 strict validate 和 diff check，记录准确证据、限制并创建本地提交。遵循用户最新指令，不再 push，父任务负责合并并推送 main。原生 GPU/Linux/人工验收交由父任务，不在本 change 声称完成。
+- [x] 3.2 在相同 Windows MSVC headless preset 运行 Debug/Release 完整通用 CTest、格式、doctor、全量 strict validate 和 diff check，记录准确证据、限制并创建本地提交。遵循用户最新指令，不再 push，父任务负责合并并推送 main。原生 GPU/Linux/人工验收交由父任务，不在本 change 声称完成。

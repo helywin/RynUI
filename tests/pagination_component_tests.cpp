@@ -103,12 +103,18 @@ void keyboard_and_theme() {
     const auto next_wrapper = s.items.back();
     std::optional<InteractionId> next;
     for (auto hit : f.services.interactions().declaration_order()) {
-        for (auto ancestor = std::optional{f.services.interactions().require(hit).component}; ancestor; ancestor = f.services.components().parent(*ancestor)) {
-            if (*ancestor == next_wrapper) { next = hit; break; }
+        for (auto ancestor = std::optional{f.services.interactions().require(hit).component}; ancestor;
+             ancestor = f.services.components().parent(*ancestor)) {
+            if (*ancestor == next_wrapper) {
+                next = hit;
+                break;
+            }
         }
     }
     check(next && f.services.focus().request_focus(*next, FocusModality::keyboard), "focus next page");
-    for (auto action : {KeyAction::down, KeyAction::up}) { f.services.focus().dispatch({Key::space, action}); }
+    for (auto action : {KeyAction::down, KeyAction::up}) {
+        f.services.focus().dispatch({Key::space, action});
+    }
     f.synchronize(600, {0, 0, 600, 240});
     check(f.services.pagination().snapshot(id).current == 3, "keyboard page navigation");
     ThemeConfig custom;
@@ -130,28 +136,46 @@ void keyboard_and_theme() {
 
 void token_contracts_and_callback_cleanup() {
     const auto token = resolve_theme();
-    check(token.pagination().metrics.item_size == token.map().control_height && token.pagination().metrics.item_size_small == token.map().control_height_small && token.pagination().colors.active == token.map().color_primary, "locked Pagination token defaults");
+    check(token.pagination().metrics.item_size == token.map().control_height &&
+              token.pagination().metrics.item_size_small == token.map().control_height_small &&
+              token.pagination().colors.active == token.map().color_primary,
+          "locked Pagination token defaults");
     const auto scope = theme_runtime::ThemeScope::create_default();
     int colors{};
     int metrics{};
-    auto color_subscription = scope->capture([&](auto phase) { check(phase == theme_runtime::DirtyPhase::paint_material, "Pagination color phase"); ++colors; }, [&] { static_cast<void>(scope->pagination_colors()); });
-    auto metric_subscription = scope->capture([&](auto) { ++metrics; }, [&] { static_cast<void>(scope->pagination_metrics()); });
+    auto color_subscription = scope->capture(
+        [&](auto phase) {
+            check(phase == theme_runtime::DirtyPhase::paint_material, "Pagination color phase");
+            ++colors;
+        },
+        [&] { static_cast<void>(scope->pagination_colors()); });
+    auto metric_subscription =
+        scope->capture([&](auto) { ++metrics; }, [&] { static_cast<void>(scope->pagination_metrics()); });
     ThemeConfig config;
     config.pagination.tokens.active = Color::rgba8(2, 3, 4);
-    check(scope->update(config) && colors == 1 && metrics == 0 && scope->snapshot().identity() != token.identity(), "Pagination token isolation/identity");
-    check(scope->snapshot().diagnostic_json().find("\"pagination\"") != std::string::npos, "Pagination token serialization");
+    check(scope->update(config) && colors == 1 && metrics == 0 && scope->snapshot().identity() != token.identity(),
+          "Pagination token isolation/identity");
+    check(scope->snapshot().diagnostic_json().find("\"pagination\"") != std::string::npos,
+          "Pagination token serialization");
     const auto identity = scope->snapshot().identity();
     config.pagination.tokens.item_size = dp(-1);
     bool rejected{};
-    try { scope->update(config); } catch (const std::invalid_argument&) { rejected = true; }
+    try {
+        scope->update(config);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
     check(rejected && scope->snapshot().identity() == identity, "Pagination token validation rollback");
     Fixture f;
     runtime::ComponentId id;
-    f.services.mount(Content{[&] { Pagination(PaginationProps{}.total(std::size_t{30}).onChange([&](auto, auto) { f.services.destroy(id); })); }});
+    f.services.mount(Content{[&] {
+        Pagination(PaginationProps{}.total(std::size_t{30}).onChange([&](auto, auto) { f.services.destroy(id); }));
+    }});
     id = f.services.pagination().mounted()[0];
     f.synchronize(600, {0, 0, 600, 240});
     click(f, f.services.pagination().snapshot(id).items.back());
-    check(f.services.pagination().mounted().empty() && f.services.interactions().size() == 0, "Pagination destruction callback leaked");
+    check(f.services.pagination().mounted().empty() && f.services.interactions().size() == 0,
+          "Pagination destruction callback leaked");
 }
 } // namespace
 
