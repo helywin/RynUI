@@ -37,3 +37,7 @@ clang-format **22.1.3** 的 `python scripts/format-code.py --check --clang-forma
 ## 限制
 
 首版无loading、动画、push位移、service、extra slot、resize/drag、动态销毁/懒加载、mask blur、RTL、平台可访问性桥接。阴影暂用可覆盖的全局elevated shadow，未映射四向专用shadow。没有原生Windows窗口/GPU/人工视觉、系统IME或Linux/Wayland验收；Gallery及真实平台证据由父任务集成。CPU scene v3/GPU ABI v2和renderer未修改。
+
+## 提交与远端核对
+
+实现提交：`e182b6a9f733d768843120add7987a077e455bb6`（`feat: implement retained native Drawer on shared modal runtime`）。提交后安全fetch；远端无同名分支时直接新建push，随后 `git ls-remote --heads origin refs/heads/t3/native-drawer-component` 返回相同SHA。此后仅补齐本证据与tasks完成标记，不改变实现或测试。
