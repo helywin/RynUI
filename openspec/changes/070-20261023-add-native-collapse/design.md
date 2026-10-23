@@ -15,6 +15,7 @@
 - API 使用 CollapseProps、CollapsePanel、CollapseTitle/CollapseBody/CollapseExtra；activeKeys 是 `Prop<std::vector<String>>`，defaultActiveKeys 为 mount-only，accordion/size/disabled 可响应。key 集合按输入顺序归一化，accordion 留首个已知 key，用户 toggle 输出规范集合。相比动态列表，固定拓扑使生命周期与成本确定。
 - 每个 panel 保留 header、title、arrow、extra、body。根自定义 measure/place 只测可见正文并更新 sibling 流布局；隐藏 branch active 交给共同机制，不自行复制输入会话/浮层清理逻辑。所有 header 是正常 Tab stop；方向导航只移动焦点。
 - header 仅 target handler 切换，extra 原生交互独立；不对 header 子树整体 disabled，避免误禁用 extra。只在共同 interaction eligibility 和 component_active 均允许时响应。所有外部回调前复制值，后续访问重新校验 owner；branch 切换回调重入同样重新查找 state。
+- extra 与 header 在 Collapse 下保持逻辑 sibling，由同一 retained layout 放置到 header 区域；避免共同 pointer route 因 disabled header 祖先而阻止原生 extra。二者仍保留 Collapse/Modal/Spin 的逻辑祖先，不重设全局 input gate。
 - 复用 Icon 的响应式 name 显示 Right/Down，不动画。bordered 首版采用圆角根背景/outline、header/body fill、分隔线及 focus outline，不扩展 borderless/ghost aliases。
 - 新增独立 CollapseThemeToken 分组与 typed overrides，按现有 ThemeScope subscription 接入。保留完整现有 snapshot 成员、serialization、hash 和订阅；只追加 Collapse 数据与必要黄金结果。
 - Windows 在本 worktree 的 `out/build/windows-msvc-headless` 使用正式 preset、Ninja Multi-Config、MSVC，最多 4 编译 jobs；不使用根目录 build。平台通用 focused contracts 在 Windows Debug/Release 实跑一次；不创建重复 Linux 或 GPU/manual IME 验收任务。

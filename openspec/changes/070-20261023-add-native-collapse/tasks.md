@@ -6,4 +6,4 @@
 
 ## 2. 平台通用收口
 
-- [ ] 2.1 补充 docs/collapse.md 和实际 Windows MSVC/Ninja Multi-Config Debug/Release focused evidence，运行受影响的既有 Theme/Tabs/Modal/Spin 回归以及 format-code.py --check、openspec doctor --json、openspec validate --all --strict --no-interactive、git diff --check；仅本地提交，无 GPU/Linux/manual IME 声明。
+- [x] 2.1 补充 docs/collapse.md 和实际 Windows MSVC/Ninja Multi-Config Debug/Release focused evidence，运行受影响的既有 Theme/Tabs/Modal/Spin 回归以及 format-code.py --check、openspec doctor --json、openspec validate --all --strict --no-interactive、git diff --check；仅本地提交，无 GPU/Linux/manual IME 声明。
