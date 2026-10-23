@@ -128,6 +128,11 @@ enum class TokenIdentity : std::uint8_t {
     tag_metrics,
     badge_colors,
     badge_metrics,
+    drawer_colors,
+    drawer_metrics,
+    drawer_typography,
+    drawer_effects,
+    drawer_order,
     count,
 };
 

@@ -99,6 +99,11 @@ public:
     [[nodiscard]] const TagThemeToken& tag_metrics() const;
     [[nodiscard]] const BadgeThemeToken& badge_colors() const;
     [[nodiscard]] const BadgeThemeToken& badge_metrics() const;
+    [[nodiscard]] const DrawerThemeToken& drawer_colors() const;
+    [[nodiscard]] const DrawerThemeToken& drawer_metrics() const;
+    [[nodiscard]] const DrawerThemeToken& drawer_typography() const;
+    [[nodiscard]] const DrawerThemeToken& drawer_effects() const;
+    [[nodiscard]] const DrawerThemeToken& drawer_order() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

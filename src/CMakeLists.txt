@@ -202,6 +202,7 @@ add_library(rynui_components STATIC
     component/card_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp
+    component/drawer_model.cpp
     component/modal_component.cpp
     component/tabs_component.cpp
     component/otp_component.cpp

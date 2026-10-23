@@ -981,6 +981,87 @@ struct BadgeThemeConfig final {
     friend bool operator==(const BadgeThemeConfig&, const BadgeThemeConfig&) = default;
 };
 
+// Drawer shares the strongly typed overlay color, typography and effect values;
+// its layout and component override remain independent from Modal.
+using DrawerColorToken = ModalColorToken;
+using DrawerTypographyToken = ModalTypographyToken;
+using DrawerEffectToken = ModalEffectToken;
+
+struct DrawerMetricToken final {
+    float padding_inline{24};
+    float padding_block{24};
+    float header_padding_inline{24};
+    float header_padding_block{16};
+    float footer_padding_inline{16};
+    float footer_padding_block{8};
+    float close_size{24};
+    float close_icon_size{16};
+    float close_gap{8};
+    float border_width{1};
+
+    [[nodiscard]] auto values() const {
+        return std::array{padding_inline,       padding_block,         header_padding_inline,
+                          header_padding_block, footer_padding_inline, footer_padding_block,
+                          close_size,           close_icon_size,       close_gap,
+                          border_width};
+    }
+
+    friend bool operator==(const DrawerMetricToken&, const DrawerMetricToken&) = default;
+};
+
+struct DrawerThemeToken final {
+    DrawerColorToken colors;
+    Color border;
+    DrawerMetricToken metrics;
+    DrawerTypographyToken typography;
+    DrawerEffectToken effects;
+    std::int32_t z_index_popup{1000};
+    friend bool operator==(const DrawerThemeToken&, const DrawerThemeToken&) = default;
+};
+
+struct DrawerTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> header_background;
+    std::optional<Color> footer_background;
+    std::optional<Color> title;
+    std::optional<Color> text;
+    std::optional<Color> close;
+    std::optional<Color> close_hover;
+    std::optional<Color> close_hover_background;
+    std::optional<Color> mask;
+    std::optional<Color> focus_outline;
+    std::optional<Color> border;
+    std::optional<LogicalLength> padding_inline;
+    std::optional<LogicalLength> padding_block;
+    std::optional<LogicalLength> header_padding_inline;
+    std::optional<LogicalLength> header_padding_block;
+    std::optional<LogicalLength> footer_padding_inline;
+    std::optional<LogicalLength> footer_padding_block;
+    std::optional<LogicalLength> close_size;
+    std::optional<LogicalLength> close_icon_size;
+    std::optional<LogicalLength> close_gap;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> title_font_size;
+    std::optional<LogicalLength> title_line_height;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> title_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const DrawerTokenOverride&, const DrawerTokenOverride&) = default;
+};
+
+struct DrawerThemeConfig final {
+    DrawerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DrawerThemeConfig&, const DrawerThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -1000,6 +1081,7 @@ struct ThemeConfig final {
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
+    DrawerThemeConfig drawer;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1553,6 +1635,7 @@ public:
         return badge_;
     }
 
+    [[nodiscard]] const DrawerThemeToken& drawer() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1569,8 +1652,9 @@ private:
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge);
+                  TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer,
+                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
+                  TagThemeToken tag, BadgeThemeToken badge);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1590,6 +1674,7 @@ private:
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;
+    DrawerThemeToken drawer_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

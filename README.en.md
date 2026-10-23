@@ -29,6 +29,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Single-line editing | Input / Password / Search, four variants, statistics and soft/hard limits, focus refs, native hints and custom actions; grapheme-safe selection, clipboard, history and IME; see [Input](docs/input.md) |
 | Tab panels | Tabs with fixed retained panels, controlled selection, draft restoration, Line/Card, three sizes, top/bottom/centered headers, keyboard and horizontal overflow navigation; see [Tabs](docs/tabs.md) |
 | Dialogs | Controlled Modal, retained body/title/footer slots, nested layers, focus restoration and scrolling within the window; see [Modal](docs/modal.md) |
+| Drawers | Four-edge Drawer panels, controlled close, retained slots, fixed header/footer, body scrolling and shared Modal focus layers; see [Drawer](docs/drawer.md) |
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |

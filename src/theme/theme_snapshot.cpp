@@ -1388,6 +1388,97 @@ void apply_modal_override(ModalThemeToken& token, const ModalTokenOverride& o) {
     }
 }
 
+DrawerThemeToken derive_drawer(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                               std::span<const ThemeAlgorithm> algorithms) {
+    const auto panel = derive_modal(seed, map, alias, algorithms);
+    DrawerThemeToken token;
+    token.colors = panel.colors;
+    token.border = alias.color_split;
+    token.metrics = {map.size_large,
+                     map.size_large,
+                     map.size_large,
+                     map.size,
+                     map.size,
+                     map.size_xs,
+                     map.font_size_large + map.size_xs,
+                     map.font_size_large,
+                     map.size_xs,
+                     seed.line_width};
+    token.typography = panel.typography;
+    token.effects = panel.effects;
+    token.effects.focus_radius = 0;
+    token.z_index_popup = seed.z_index_popup_base;
+    return token;
+}
+
+void apply_drawer_override(DrawerThemeToken& token, const DrawerTokenOverride& o) {
+    ModalThemeToken panel;
+    panel.colors = token.colors;
+    panel.typography = token.typography;
+    panel.effects = token.effects;
+    panel.z_index_popup = token.z_index_popup;
+    ModalTokenOverride common;
+    common.background = o.background;
+    common.header_background = o.header_background;
+    common.footer_background = o.footer_background;
+    common.title = o.title;
+    common.text = o.text;
+    common.close = o.close;
+    common.close_hover = o.close_hover;
+    common.close_hover_background = o.close_hover_background;
+    common.mask = o.mask;
+    common.focus_outline = o.focus_outline;
+    common.font_size = o.font_size;
+    common.line_height = o.line_height;
+    common.title_font_size = o.title_font_size;
+    common.title_line_height = o.title_line_height;
+    common.focus_width = o.focus_width;
+    common.focus_offset = o.focus_offset;
+    common.font_family = o.font_family;
+    common.font_weight = o.font_weight;
+    common.title_font_weight = o.title_font_weight;
+    common.shadow = o.shadow;
+    common.z_index_popup = o.z_index_popup;
+    apply_modal_override(panel, common);
+    token.colors = panel.colors;
+    token.typography = panel.typography;
+    token.effects = panel.effects;
+    token.z_index_popup = panel.z_index_popup;
+    if (o.border) {
+        token.border = *o.border;
+    }
+    token.metrics.padding_inline =
+        fixed_length(o.padding_inline, token.metrics.padding_inline, "Drawer padding_inline must be non-negative");
+    token.metrics.padding_block =
+        fixed_length(o.padding_block, token.metrics.padding_block, "Drawer padding_block must be non-negative");
+    token.metrics.header_padding_inline = fixed_length(o.header_padding_inline, token.metrics.header_padding_inline,
+                                                       "Drawer header_padding_inline must be non-negative");
+    token.metrics.header_padding_block = fixed_length(o.header_padding_block, token.metrics.header_padding_block,
+                                                      "Drawer header_padding_block must be non-negative");
+    token.metrics.footer_padding_inline = fixed_length(o.footer_padding_inline, token.metrics.footer_padding_inline,
+                                                       "Drawer footer_padding_inline must be non-negative");
+    token.metrics.footer_padding_block = fixed_length(o.footer_padding_block, token.metrics.footer_padding_block,
+                                                      "Drawer footer_padding_block must be non-negative");
+    token.metrics.close_size =
+        fixed_length(o.close_size, token.metrics.close_size, "Drawer close_size must be positive", true);
+    token.metrics.close_icon_size =
+        fixed_length(o.close_icon_size, token.metrics.close_icon_size, "Drawer close_icon_size must be positive", true);
+    token.metrics.close_gap =
+        fixed_length(o.close_gap, token.metrics.close_gap, "Drawer close_gap must be non-negative");
+    token.metrics.border_width =
+        fixed_length(o.border_width, token.metrics.border_width, "Drawer border_width must be non-negative");
+    float combined{};
+    for (float value : token.metrics.values()) {
+        combined += value * 2;
+    }
+    for (float value : token.typography.values()) {
+        combined += value * 2;
+    }
+    if (!std::isfinite(combined)) {
+        throw std::invalid_argument("Drawer combined extents must be finite");
+    }
+}
+
 TabsThemeToken derive_tabs(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
                            std::span<const ThemeAlgorithm> algorithms) {
     TabsThemeToken token;
@@ -2276,7 +2367,7 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
                                              const SelectThemeToken& select, const CardThemeToken& card,
                                              const TabsThemeToken& tabs, const ModalThemeToken& modal,
-                                             const detail::InputTokenSet& input,
+                                             const DrawerThemeToken& drawer, const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -2638,7 +2729,59 @@ void append_color(std::ostringstream& stream, Color color) {
         append_color(stream, shadow.color);
         stream << ']';
     }
-    stream << "],\"zIndexPopup\":" << modal.z_index_popup << "},\"text\":{\"color\":";
+    stream << "],\"zIndexPopup\":" << modal.z_index_popup << "},\"drawer\":{\"colors\":[";
+    bool separator{};
+    for (const auto color : drawer.colors.values()) {
+        if (separator) {
+            stream << ',';
+        }
+        separator = true;
+        append_color(stream, color);
+    }
+    stream << "],\"border\":";
+    append_color(stream, drawer.border);
+    stream << ",\"metrics\":[";
+    separator = false;
+    for (float value : drawer.metrics.values()) {
+        if (separator) {
+            stream << ',';
+        }
+        separator = true;
+        stream << value;
+    }
+    stream << "],\"typography\":[";
+    separator = false;
+    for (float value : drawer.typography.values()) {
+        if (separator) {
+            stream << ',';
+        }
+        separator = true;
+        stream << value;
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(drawer.typography.font_family)
+           << ",\"fontWeight\":" << drawer.typography.font_weight
+           << ",\"titleFontWeight\":" << drawer.typography.title_font_weight << ",\"effects\":[";
+    separator = false;
+    for (float value : drawer.effects.values()) {
+        if (separator) {
+            stream << ',';
+        }
+        separator = true;
+        stream << value;
+    }
+    stream << "],\"shadow\":[";
+    separator = false;
+    for (const auto& shadow : drawer.effects.shadow.layers()) {
+        if (separator) {
+            stream << ',';
+        }
+        separator = true;
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << "],\"zIndexPopup\":" << drawer.z_index_popup << "},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2842,14 +2985,16 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     }
 }
 
-[[nodiscard]] std::uint64_t
-snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
-                  const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
-                  const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
-                  const TypographyThemeToken& typography, const DividerThemeToken& divider,
-                  const SliderThemeToken& slider, const TooltipThemeToken& tooltip, const SelectThemeToken& select,
-                  const CardThemeToken& card, const TabsThemeToken& tabs, const ModalThemeToken& modal,
-                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
+[[nodiscard]] std::uint64_t snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                              const ThemeAliasToken& alias, const ButtonThemeToken& button,
+                                              const TextThemeToken& text, const SwitchThemeToken& switch_token,
+                                              const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
+                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
+                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
+                                              const SelectThemeToken& select, const CardThemeToken& card,
+                                              const TabsThemeToken& tabs, const ModalThemeToken& modal,
+                                              const DrawerThemeToken& drawer, const detail::InputTokenSet& input,
+                                              std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -3119,6 +3264,24 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     }
     hash_shadow(hash, modal.effects.shadow);
     hash_integer(hash, modal.z_index_popup);
+    for (const auto color : drawer.colors.values()) {
+        hash_color(hash, color);
+    }
+    hash_color(hash, drawer.border);
+    for (float value : drawer.metrics.values()) {
+        hash_float(hash, value);
+    }
+    for (float value : drawer.typography.values()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, drawer.typography.font_family);
+    hash_integer(hash, drawer.typography.font_weight);
+    hash_integer(hash, drawer.typography.title_font_weight);
+    for (float value : drawer.effects.values()) {
+        hash_float(hash, value);
+    }
+    hash_shadow(hash, drawer.effects.shadow);
+    hash_integer(hash, drawer.z_index_popup);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -3165,16 +3328,17 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                             TagThemeToken tag, BadgeThemeToken badge)
+                             DrawerThemeToken drawer, std::shared_ptr<const detail::InputTokenSet> input,
+                             std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
-    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
+      drawer_(std::move(drawer)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+    identity_ =
+        snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
+                          slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, *input_, algorithms_);
     std::ostringstream status_json;
     status_json.imbue(std::locale::classic());
     status_json << std::fixed << std::setprecision(6);
@@ -3238,7 +3402,7 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                 << ",\"fontWeight\":" << badge_.metrics.font_weight << '}';
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                           slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
+                           slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, *input_, algorithms_, identity_);
     diagnostic_json_.insert(diagnostic_json_.rfind('}'), status_json.str());
 }
 
@@ -3306,6 +3470,10 @@ const ModalThemeToken& ThemeSnapshot::modal() const noexcept {
     return modal_;
 }
 
+const DrawerThemeToken& ThemeSnapshot::drawer() const noexcept {
+    return drawer_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -3333,7 +3501,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
            left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
-           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.drawer_ == right.drawer_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3616,10 +3784,26 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         badge = derive_badge(seed, map, alias);
     }
     apply_badge_override(badge, config.badge.tokens);
+    DrawerThemeToken drawer;
+    const bool inherit_drawer = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                !config.drawer.algorithm && config.drawer.seed == SeedTokenOverride{};
+    if (inherit_drawer) {
+        drawer = parent->drawer();
+    } else if (config.drawer.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.drawer.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        drawer = derive_drawer(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                               algorithms);
+    } else {
+        drawer = derive_drawer(seed, map, alias, algorithms);
+    }
+    apply_drawer_override(drawer, config.drawer.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal),
+                         std::move(tabs), std::move(modal), std::move(drawer),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
                          std::move(tag), std::move(badge));
 }
