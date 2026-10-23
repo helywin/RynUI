@@ -6,7 +6,7 @@
 
 ## 2. Token、公开 API 与选择模型（平台通用）
 
-- [ ] 2.1 实现 typed SelectValue/SelectOption/Props/slots/ref 与选择/搜索模型，加入 Select Token、override/算法/继承、dirty identity、snapshot/hash/序列化/golden；补 String/int64/空值/未知值、重复选项原子拒绝、controlled 拒绝与 Unicode 搜索、Token 域与旧值保持测试及阶段文档，windows-msvc-headless Debug/Release 受影响 tests、格式/规格检查通过后提交并立即 push、验证 SHA。
+- [x] 2.1 实现 typed SelectValue/SelectOption/Props/slots/ref 与选择/搜索模型，加入 Select Token、override/算法/继承、dirty identity、snapshot/hash/序列化/golden；补 String/int64/空值/未知值、重复选项原子拒绝、controlled 拒绝与 Unicode 搜索、Token 域与旧值保持测试及阶段文档，windows-msvc-headless Debug/Release 受影响 tests、格式/规格检查通过后提交并立即 push、验证 SHA。
 
 ## 3. 完整单选交互（平台通用）
 

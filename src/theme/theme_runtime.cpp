@@ -294,6 +294,13 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
+    append_if_changed(before.select().colors, after.select().colors, TokenIdentity::select_colors, changed, count);
+    append_if_changed(before.select().metrics, after.select().metrics, TokenIdentity::select_metrics, changed, count);
+    append_if_changed(before.select().typography, after.select().typography, TokenIdentity::select_typography, changed,
+                      count);
+    append_if_changed(before.select().shadow, after.select().shadow, TokenIdentity::select_effects, changed, count);
+    append_if_changed(before.select().z_index_popup, after.select().z_index_popup, TokenIdentity::select_order, changed,
+                      count);
     const auto& new_tooltip = after.tooltip();
     append_if_changed(old_tooltip.background, new_tooltip.background, TokenIdentity::tooltip_colors, changed, count);
     append_if_changed(old_tooltip.text, new_tooltip.text, TokenIdentity::tooltip_colors, changed, count);
@@ -969,6 +976,36 @@ const TooltipThemeToken& ThemeScope::tooltip_order() const {
     return snapshot_->tooltip();
 }
 
+const SelectThemeToken& ThemeScope::select_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::select_colors);
+    return snapshot_->select();
+}
+
+const SelectThemeToken& ThemeScope::select_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::select_metrics);
+    return snapshot_->select();
+}
+
+const SelectThemeToken& ThemeScope::select_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::select_typography);
+    return snapshot_->select();
+}
+
+const SelectThemeToken& ThemeScope::select_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::select_effects);
+    return snapshot_->select();
+}
+
+const SelectThemeToken& ThemeScope::select_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::select_order);
+    return snapshot_->select();
+}
+
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
@@ -1072,6 +1109,11 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Radio.metrics",
         "Radio.colors",
         "Radio.effects",
+        "Select.colors",
+        "Select.metrics",
+        "Select.typography",
+        "Select.effects",
+        "Select.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1120,6 +1162,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::slider_colors:
     case TokenIdentity::tooltip_colors:
     case TokenIdentity::tooltip_order:
+    case TokenIdentity::select_colors:
+    case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
@@ -1137,6 +1181,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::radio_effects:
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
+    case TokenIdentity::select_effects:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1155,6 +1200,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::typography_base_typography:
     case TokenIdentity::divider_typography:
     case TokenIdentity::tooltip_typography:
+    case TokenIdentity::select_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1166,6 +1212,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::map_control_height_large:
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
+    case TokenIdentity::select_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:

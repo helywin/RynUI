@@ -3,10 +3,27 @@
 #include <utf8proc.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 
 namespace ryn::input {
+std::string text_search_key(std::string_view bytes) {
+    if (bytes.size() > static_cast<std::size_t>(std::numeric_limits<utf8proc_ssize_t>::max())) {
+        throw std::length_error("Search text exceeds utf8proc length");
+    }
+    utf8proc_uint8_t* mapped{};
+    const auto length = utf8proc_map(
+        reinterpret_cast<const utf8proc_uint8_t*>(bytes.data()), static_cast<utf8proc_ssize_t>(bytes.size()), &mapped,
+        static_cast<utf8proc_option_t>(UTF8PROC_STABLE | UTF8PROC_COMPOSE | UTF8PROC_CASEFOLD));
+    const std::unique_ptr<utf8proc_uint8_t, decltype(&std::free)> owned{mapped, &std::free};
+    if (length < 0) {
+        throw std::invalid_argument(utf8proc_errmsg(length));
+    }
+    return {reinterpret_cast<const char*>(mapped), static_cast<std::size_t>(length)};
+}
+
 TextWordClass text_word_class(char32_t scalar) noexcept {
     const auto category = utf8proc_category(static_cast<utf8proc_int32_t>(scalar));
     if ((scalar >= U'\t' && scalar <= U'\r') || scalar == U'\u0085' || category == UTF8PROC_CATEGORY_ZS ||

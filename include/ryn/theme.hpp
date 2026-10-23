@@ -497,6 +497,100 @@ struct TooltipThemeToken final {
     friend bool operator==(const TooltipThemeToken&, const TooltipThemeToken&) = default;
 };
 
+struct SelectColorToken final {
+    Color popup_background;
+    Color option_color;
+    Color option_disabled_color;
+    Color option_selected_color;
+    Color option_selected_background;
+    Color option_active_background;
+    Color selector_background;
+    Color clear_background;
+    Color hover_border_color;
+    Color active_border_color;
+    Color active_outline_color;
+
+    [[nodiscard]] auto values() const noexcept {
+        return std::array{popup_background,           option_color,
+                          option_disabled_color,      option_selected_color,
+                          option_selected_background, option_active_background,
+                          selector_background,        clear_background,
+                          hover_border_color,         active_border_color,
+                          active_outline_color};
+    }
+
+    friend bool operator==(const SelectColorToken&, const SelectColorToken&) = default;
+};
+
+struct SelectMetricToken final {
+    float option_height{};
+    float option_padding_inline{};
+    float option_padding_block{};
+    float popup_padding{};
+    float border_radius{};
+    float gap{};
+
+    [[nodiscard]] auto values() const noexcept {
+        return std::array{option_height, option_padding_inline, option_padding_block,
+                          popup_padding, border_radius,         gap};
+    }
+
+    friend bool operator==(const SelectMetricToken&, const SelectMetricToken&) = default;
+};
+
+struct SelectTypographyToken final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    float font_size{14};
+    float line_height{22};
+    std::uint32_t font_weight{400};
+    std::uint32_t selected_font_weight{600};
+    friend bool operator==(const SelectTypographyToken&, const SelectTypographyToken&) = default;
+};
+
+struct SelectThemeToken final {
+    SelectColorToken colors;
+    SelectMetricToken metrics;
+    SelectTypographyToken typography;
+    ShadowList shadow;
+    std::int32_t z_index_popup{1050};
+    friend bool operator==(const SelectThemeToken&, const SelectThemeToken&) = default;
+};
+
+struct SelectTokenOverride final {
+    std::optional<Color> popup_background;
+    std::optional<Color> option_color;
+    std::optional<Color> option_disabled_color;
+    std::optional<Color> option_selected_color;
+    std::optional<Color> option_selected_background;
+    std::optional<Color> option_active_background;
+    std::optional<Color> selector_background;
+    std::optional<Color> clear_background;
+    std::optional<Color> hover_border_color;
+    std::optional<Color> active_border_color;
+    std::optional<Color> active_outline_color;
+    std::optional<LogicalLength> option_height;
+    std::optional<LogicalLength> option_padding_inline;
+    std::optional<LogicalLength> option_padding_block;
+    std::optional<LogicalLength> popup_padding;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> gap;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> selected_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<std::int32_t> z_index_popup;
+    friend bool operator==(const SelectTokenOverride&, const SelectTokenOverride&) = default;
+};
+
+struct SelectThemeConfig final {
+    SelectTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -510,6 +604,7 @@ struct ThemeConfig final {
     DividerThemeConfig divider;
     SliderThemeConfig slider;
     TooltipThemeConfig tooltip;
+    SelectThemeConfig select;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1050,6 +1145,7 @@ public:
     [[nodiscard]] const DividerThemeToken& divider() const noexcept;
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
+    [[nodiscard]] const SelectThemeToken& select() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1065,7 +1161,7 @@ private:
     ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
-                  SliderThemeToken slider, TooltipThemeToken tooltip,
+                  SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select,
                   std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
@@ -1080,6 +1176,7 @@ private:
     DividerThemeToken divider_;
     SliderThemeToken slider_;
     TooltipThemeToken tooltip_;
+    SelectThemeToken select_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

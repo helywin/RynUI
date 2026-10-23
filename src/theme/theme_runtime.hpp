@@ -77,6 +77,11 @@ public:
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
+    [[nodiscard]] const SelectThemeToken& select_colors() const;
+    [[nodiscard]] const SelectThemeToken& select_metrics() const;
+    [[nodiscard]] const SelectThemeToken& select_typography() const;
+    [[nodiscard]] const SelectThemeToken& select_effects() const;
+    [[nodiscard]] const SelectThemeToken& select_order() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

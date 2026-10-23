@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -10,6 +11,8 @@ namespace ryn::input {
 
 enum class TextWordClass { word, whitespace, punctuation, symbol };
 [[nodiscard]] TextWordClass text_word_class(char32_t scalar) noexcept;
+// Canonical normalization and full Unicode case folding, preserving embedded NUL.
+[[nodiscard]] std::string text_search_key(std::string_view bytes);
 
 struct TextScalar {
     char32_t value{};

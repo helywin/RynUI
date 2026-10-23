@@ -106,6 +106,11 @@ enum class TokenIdentity : std::uint8_t {
     radio_metrics,
     radio_colors,
     radio_effects,
+    select_colors,
+    select_metrics,
+    select_typography,
+    select_effects,
+    select_order,
     count,
 };
 

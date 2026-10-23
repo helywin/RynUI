@@ -1247,6 +1247,107 @@ TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMa
     return result;
 }
 
+SelectThemeToken derive_select(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                               std::span<const ThemeAlgorithm> algorithms) {
+    const bool dark = std::ranges::find(algorithms, ThemeAlgorithm::Dark) != algorithms.end();
+    if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 50) {
+        throw std::invalid_argument("Select z-index exceeds the supported integer range");
+    }
+    SelectThemeToken token;
+    token.colors = {
+        alias.color_background_elevated,
+        alias.color_text,
+        alias.color_text_disabled,
+        alias.color_text,
+        button_palette(seed.color_primary, dark, alias.color_background_container).light,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.08F : 0.04F),
+        alias.color_background_container,
+        alias.color_background_container,
+        map.color_primary_hover,
+        map.color_primary,
+        alias.color_focus_outline};
+    token.typography = {seed.font_family, map.font_size, map.font_size * map.line_height, 400, 600};
+    token.metrics = {
+        map.control_height, map.size_small,    std::max(0.0F, (map.control_height - token.typography.line_height) / 2),
+        map.size_xs / 2,    map.border_radius, seed.size_unit};
+    token.shadow = alias.box_shadow_secondary;
+    token.z_index_popup = seed.z_index_popup_base + 50;
+    return token;
+}
+
+void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o) {
+    if (o.popup_background) {
+        token.colors.popup_background = *o.popup_background;
+    }
+    if (o.option_color) {
+        token.colors.option_color = *o.option_color;
+    }
+    if (o.option_disabled_color) {
+        token.colors.option_disabled_color = *o.option_disabled_color;
+    }
+    if (o.option_selected_color) {
+        token.colors.option_selected_color = *o.option_selected_color;
+    }
+    if (o.option_selected_background) {
+        token.colors.option_selected_background = *o.option_selected_background;
+    }
+    if (o.option_active_background) {
+        token.colors.option_active_background = *o.option_active_background;
+    }
+    if (o.selector_background) {
+        token.colors.selector_background = *o.selector_background;
+    }
+    if (o.clear_background) {
+        token.colors.clear_background = *o.clear_background;
+    }
+    if (o.hover_border_color) {
+        token.colors.hover_border_color = *o.hover_border_color;
+    }
+    if (o.active_border_color) {
+        token.colors.active_border_color = *o.active_border_color;
+    }
+    if (o.active_outline_color) {
+        token.colors.active_outline_color = *o.active_outline_color;
+    }
+    token.metrics.option_height =
+        fixed_length(o.option_height, token.metrics.option_height, "Select option_height must be positive", true);
+    token.metrics.option_padding_inline = fixed_length(o.option_padding_inline, token.metrics.option_padding_inline,
+                                                       "Select option_padding_inline must be non-negative");
+    token.metrics.option_padding_block = fixed_length(o.option_padding_block, token.metrics.option_padding_block,
+                                                      "Select option_padding_block must be non-negative");
+    token.metrics.popup_padding =
+        fixed_length(o.popup_padding, token.metrics.popup_padding, "Select popup_padding must be non-negative");
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Select border_radius must be non-negative");
+    token.metrics.gap = fixed_length(o.gap, token.metrics.gap, "Select gap must be non-negative");
+    if (o.font_family) {
+        token.typography.font_family = *o.font_family;
+    }
+    token.typography.font_size =
+        fixed_length(o.font_size, token.typography.font_size, "Select font size must be positive", true);
+    token.typography.line_height =
+        fixed_length(o.line_height, token.typography.line_height, "Select line height must be positive", true);
+    const auto weight = [](std::optional<std::uint32_t> value, std::uint32_t fallback) {
+        if (value && (*value < 100 || *value > 1000)) {
+            throw std::invalid_argument("Select font weight must be in [100, 1000]");
+        }
+        return value.value_or(fallback);
+    };
+    token.typography.font_weight = weight(o.font_weight, token.typography.font_weight);
+    token.typography.selected_font_weight = weight(o.selected_font_weight, token.typography.selected_font_weight);
+    if (o.shadow) {
+        token.shadow = *o.shadow;
+    }
+    if (o.z_index_popup) {
+        token.z_index_popup = *o.z_index_popup;
+    }
+    if (!std::isfinite(token.metrics.option_height + token.metrics.option_padding_block * 2 +
+                       token.metrics.popup_padding * 2 + token.typography.line_height + token.metrics.gap +
+                       token.metrics.option_padding_inline * 2 + token.metrics.border_radius)) {
+        throw std::invalid_argument("Select visual extents must be finite");
+    }
+}
+
 void apply_tooltip_override(TooltipThemeToken& token, const TooltipTokenOverride& o) {
     if (o.background) {
         token.background = *o.background;
@@ -1584,7 +1685,7 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                             const detail::InputTokenSet& input,
+                                             const SelectThemeToken& select, const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -1798,7 +1899,38 @@ void append_color(std::ostringstream& stream, Color color) {
     }
     stream << "],\"fontSize\":" << tooltip.font_size << ",\"lineHeight\":" << tooltip.line_height
            << ",\"zIndexPopup\":" << tooltip.z_index_popup << ",\"shadowLayers\":" << tooltip.shadow.size()
-           << "},\"text\":{\"color\":";
+           << "},\"select\":{\"colors\":[";
+    const auto select_colors = select.colors.values();
+    for (std::size_t i = 0; i < select_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, select_colors[i]);
+    }
+    stream << "],\"metrics\":[";
+    const auto select_metrics = select.metrics.values();
+    for (std::size_t i = 0; i < select_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << select_metrics[i];
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(select.typography.font_family)
+           << ",\"fontSize\":" << select.typography.font_size << ",\"lineHeight\":" << select.typography.line_height
+           << ",\"fontWeight\":" << select.typography.font_weight
+           << ",\"selectedFontWeight\":" << select.typography.selected_font_weight
+           << ",\"zIndexPopup\":" << select.z_index_popup << ",\"shadow\":[";
+    for (std::size_t i = 0; i < select.shadow.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        const auto& shadow = select.shadow[i];
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << "]},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2008,7 +2140,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
                                               const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
                                               const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                               const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                              const detail::InputTokenSet& input,
+                                              const SelectThemeToken& select, const detail::InputTokenSet& input,
                                               std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
@@ -2218,6 +2350,19 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_float(hash, tooltip.line_height);
     hash_integer(hash, tooltip.z_index_popup);
     hash_shadow(hash, tooltip.shadow);
+    for (const auto color : select.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (const auto value : select.metrics.values()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, select.typography.font_family);
+    hash_float(hash, select.typography.font_size);
+    hash_float(hash, select.typography.line_height);
+    hash_integer(hash, select.typography.font_weight);
+    hash_integer(hash, select.typography.selected_font_weight);
+    hash_integer(hash, select.z_index_popup);
+    hash_shadow(hash, select.shadow);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -2263,16 +2408,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
+                             SelectThemeToken select, std::shared_ptr<const detail::InputTokenSet> input,
+                             std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
-      slider_(std::move(slider)), tooltip_(std::move(tooltip)), input_(std::move(input)),
+      slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), input_(std::move(input)),
       algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, *input_, algorithms_);
-    diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
-                                          typography_, divider_, slider_, tooltip_, *input_, algorithms_, identity_);
+                                  divider_, slider_, tooltip_, select_, *input_, algorithms_);
+    diagnostic_json_ =
+        serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
+                           slider_, tooltip_, select_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -2323,6 +2470,10 @@ const TooltipThemeToken& ThemeSnapshot::tooltip() const noexcept {
     return tooltip_;
 }
 
+const SelectThemeToken& ThemeSnapshot::select() const noexcept {
+    return select_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -2348,7 +2499,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
-           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.select_ == right.select_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -2537,9 +2688,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         tooltip = derive_tooltip(seed, map, alias, algorithms);
     }
     apply_tooltip_override(tooltip, config.tooltip.tokens);
+    SelectThemeToken select;
+    const bool inherit_select = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                !config.select.algorithm && config.select.seed == SeedTokenOverride{};
+    if (inherit_select) {
+        select = parent->select();
+    } else if (config.select.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.select.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        select = derive_select(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                               algorithms);
+    } else {
+        select = derive_select(seed, map, alias, algorithms);
+    }
+    apply_select_override(select, config.select.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
-                         std::move(divider), std::move(slider), std::move(tooltip),
+                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 

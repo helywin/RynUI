@@ -196,6 +196,7 @@ add_library(rynui_components STATIC
     component/input_material_transition.cpp
     component/input_display.cpp
     component/otp_model.cpp
+    component/select_model.cpp
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp
@@ -221,6 +222,7 @@ target_include_directories(rynui_components PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(rynui_components PRIVATE
+    rynui_text_boundary
     rynui_text_input_session
     rynui_text_clipboard_commands
     rynui_graphics
@@ -331,6 +333,7 @@ rynui_assert_direct_dependencies(
 )
 rynui_assert_direct_dependencies(
     rynui_components
+    rynui_text_boundary
     rynui_text_input_session
     rynui_text_clipboard_commands
     rynui_graphics
