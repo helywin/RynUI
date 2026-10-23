@@ -943,6 +943,9 @@ int run_token_gallery(int argc, char** argv, TokenGalleryDefinition definition) 
     if (has_argument(argc, argv, "--card-acceptance")) {
         return run_card_acceptance(argc, argv);
     }
+    if (has_argument(argc, argv, "--tabs-acceptance")) {
+        return run_tabs_acceptance(argc, argv);
+    }
     if (has_argument(argc, argv, "--slider-acceptance") || has_argument(argc, argv, "--slider-marks-acceptance") ||
         has_argument(argc, argv, "--slider-editing-acceptance")) {
         return run_slider_acceptance(argc, argv);

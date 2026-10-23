@@ -20,7 +20,7 @@
 
 ### Windows
 
-- [ ] 5.1 windows-msvc Debug/Release MSVC x64完整构建及受影响native tests；实际D3D12/DXIL窗口验证Light/Dark、system/1/1.25/1.5/2 scale、标签键盘/指针/溢出/resize、面板Input自动IME/恢复与Select清理、idle/dispose，核验PNG/log/系统字体/driver/exit/EXE hash，独立记录evidence后提交并立即push、核对SHA；不以自动事件代替人工系统IME。
+- [x] 5.1 windows-msvc Debug/Release MSVC x64完整构建及受影响native tests；实际D3D12/DXIL窗口验证Light/Dark、system/1/1.25/1.5/2 scale、标签键盘/指针/溢出/resize、面板Input自动IME/恢复与Select清理、idle/dispose，核验PNG/log/系统字体/driver/exit/EXE hash，独立记录evidence后提交并立即push、核对SHA；不以自动事件代替人工系统IME。
 
 ### Linux
 

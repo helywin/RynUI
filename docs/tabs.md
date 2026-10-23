@@ -1,6 +1,6 @@
 # Tabs
 
-060已实现可挂载的原生Tabs、选择模型和Tabs Token，并接入Gallery。原生平台验收按tasks单独推进。
+060已实现可挂载的原生Tabs、选择模型和Tabs Token，并接入Gallery。平台通用和Windows原生验收已完成，Linux原生验收按tasks单独推进；证据见060的evidence目录。
 
 ```cpp
 ryn::Signal<ryn::String> active{ryn::String{u8"account"}};
