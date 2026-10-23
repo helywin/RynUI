@@ -25,6 +25,7 @@ struct DropdownState final {
     bool focus_pending{};
     bool focus_last{};
     bool restore{true};
+    bool native_trigger{};
     DropdownTriggerMode mode{DropdownTriggerMode::Click};
     DropdownPlacement placement{DropdownPlacement::BottomLeft};
     runtime::Size viewport;
@@ -52,6 +53,24 @@ bool inside(runtime::Rect rect, float x, float y) {
 bool can_focus(WindowComponentServices& services, input::InteractionId hit) {
     const auto* record = services.interactions().find(hit);
     return record && record->eligible && record->focusable && services.interactions().branch_active(hit);
+}
+
+bool trigger_can_activate(WindowComponentServices& services, const DropdownState& state,
+                          std::optional<input::InteractionId> hit) {
+    if (!state.native_trigger) {
+        return true;
+    }
+    const auto* record = hit ? services.interactions().find(*hit) : nullptr;
+    for (auto candidate : services.interactions().declaration_order()) {
+        const auto* control = services.interactions().find(candidate);
+        if (control && control->focusable && control->eligible &&
+            descendant(services, control->component, state.snapshot.trigger) && record &&
+            descendant(services, record->component, control->component)) {
+            const auto handlers = control->focus_handlers;
+            return !handlers || !handlers->activation_allowed || handlers->activation_allowed();
+        }
+    }
+    return false;
 }
 
 std::optional<input::InteractionId> trigger_focus(WindowComponentServices& services, runtime::ComponentId root) {
@@ -273,6 +292,7 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
                     (!record || !record->focusable || !descendant(services, record->component, s.snapshot.trigger))) {
                     continue;
                 }
+                s.native_trigger |= interaction != s.trigger_hit;
                 auto handlers = record && record->focus_handlers ? *record->focus_handlers : input::FocusHandlers{};
                 const auto original = handlers.activate;
                 handlers.activate = [this, id, original] {
@@ -287,6 +307,8 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
                 };
                 services.interactions().set_focus_handlers(interaction, std::move(handlers));
             }
+            services.interactions().set_focusable(s.trigger_hit, !s.native_trigger);
+            services.interactions().set_tab_stop(s.trigger_hit, !s.native_trigger);
             s.snapshot.popup = group(services, layout::BoxLayout{});
             const auto popup_node = build.root(s.snapshot.popup);
             services.components().set_window_layer(s.snapshot.popup,
@@ -447,6 +469,13 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
             focus == s->trigger_hit || (component && descendant(*services_, *component, s->snapshot.trigger));
         if (in_trigger && event.modifiers == input::KeyModifier::none &&
             (event.key == input::Key::down || event.key == input::Key::up) && s->mode != DropdownTriggerMode::Manual) {
+            if (!trigger_can_activate(*services_, *s, focus)) {
+                return false;
+            }
+            s = services_->components().state<DropdownState>(id);
+            if (!s || !services_->components().scope(id).active()) {
+                return true;
+            }
             s->focus_last = event.key == input::Key::up;
             s->context_anchor.reset();
             request_open(id, true, DropdownOpenSource::Trigger);
@@ -511,6 +540,14 @@ void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& eve
         if (event.action == input::PointerAction::down && s->snapshot.geometry.visible && !in_trigger && !in_popup) {
             request_open(id, false, DropdownOpenSource::Outside, false);
         } else if (event.action == input::PointerAction::up && in_trigger && hit) {
+            // A disabled native control may leave the wrapper as the hit.
+            if (!trigger_can_activate(*services_, *s, hit)) {
+                continue;
+            }
+            s = services_->components().state<DropdownState>(id);
+            if (!s || !services_->components().scope(id).active()) {
+                continue;
+            }
             if (event.button == input::PointerButton::primary && origin == hit && click_trigger(s->mode)) {
                 s->context_anchor.reset();
                 request_open(id, !s->snapshot.geometry.visible, DropdownOpenSource::Trigger);

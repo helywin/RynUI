@@ -46,6 +46,8 @@ ryn::Dropdown(
 
 默认 click 打开；可选 ContextMenu、ClickContextMenu 或 Manual。右键使用 logical pointer 坐标；Up/Down 从 trigger 打开并聚焦首/末项。原生 Button 的 Enter/Space 与 pointer `onClick` 保留且只执行一次。静态 Text trigger 则由 wrapper 提供焦点和键盘激活。运行时增加的 trigger 结构应通过 Dropdown 所属结构 scope 重挂载，以重新建立原生 activation 装饰。
 
+内嵌原生 trigger 的 disabled/loading activation gate 同时约束 pointer、右键与方向键；禁用 Button 不会通过 wrapper 重新获得 Tab stop 或绕过禁用打开菜单。Dropdown 自身 `.disabled()` 只控制菜单触发，不改写子控件的业务回调。
+
 `open(Prop<bool>)` 与 `defaultOpen(bool)` 互斥。`onOpenChange(DropdownOpenInfo)` 携带 open 与 Trigger/Menu/Escape/Outside/Environment 来源；正常用户请求被拒绝时不私自提交。默认命令菜单不选择项目，可显式 `.menu(MenuProps{}.selectable(true)...)` 开启选择；命令后默认请求关闭，`.closeOnSelect(false)` 可保持打开。子菜单需要 `.menu(MenuProps{}.mode(MenuMode::Inline)...)`，在同一 viewport 内展开。
 
 默认使用窗口 clip 做十二方向 placement、翻转和钳制；popup 不参与 trigger 的外部尺寸，不继承 trigger/document clip。内部 Menu 独立滚动、裁剪并保留节点。`ThemeConfig::dropdown.tokens` 控制背景、padding、命令行高、最小宽度、最大高度、gap、radius、shadow 与 popup priority；Menu Token 继续控制行的颜色/字体。没有任意视觉 style 参数。

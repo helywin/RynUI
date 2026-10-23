@@ -347,6 +347,46 @@ void menu_in_scrolling_modal() {
     }
     check(clicks == 1, "translated Menu row pointer activation failed");
 }
+
+void native_trigger_gates() {
+    Fixture f;
+    Signal<bool> disabled{true};
+    Signal<bool> loading{false};
+    int clicks = 0;
+    f.services.mount(Content{[&] {
+        Dropdown(DropdownProps{}
+                     .trigger(DropdownTriggerMode::ClickContextMenu)
+                     .menu(MenuProps{}.items({{u8"a", u8"Action"}})),
+                 DropdownTrigger{[&] {
+                     Button(ButtonProps{}.disabled(disabled).loading(loading).onClick([&] { ++clicks; }),
+                            [] { Text(u8"Native gate"); });
+                 }});
+    }});
+    sync(f);
+    const auto id = f.services.dropdown().mounted()[0];
+    const auto button = f.buttons.mounted_buttons()[0];
+    click(f, button.component);
+    click(f, button.component, PointerButton::secondary);
+    check(clicks == 0 && !f.services.dropdown().snapshot(id).geometry.visible,
+          "disabled Button wrapper opened Dropdown");
+    disabled.set(false);
+    loading.set(true);
+    sync(f);
+    click(f, button.component);
+    check(f.services.focus().request_focus(button.interaction, FocusModality::keyboard),
+          "loading trigger focus failed");
+    key(f, Key::enter);
+    key(f, Key::space);
+    check(clicks == 0 && !f.services.dropdown().snapshot(id).geometry.visible, "loading Button gate opened Dropdown");
+    key(f, Key::down);
+    key(f, Key::up);
+    check(!f.services.dropdown().snapshot(id).geometry.visible, "loading Button arrow bypassed activation gate");
+    loading.set(false);
+    sync(f);
+    key(f, Key::enter);
+    check(clicks == 1 && f.services.dropdown().snapshot(id).geometry.visible,
+          "enabled Button did not recover trigger activation");
+}
 } // namespace
 
 int main() {
@@ -361,6 +401,7 @@ int main() {
         retirement_and_validation();
         nested_select();
         menu_in_scrolling_modal();
+        native_trigger_gates();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
