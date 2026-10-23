@@ -2,6 +2,7 @@
 #include "component/menu_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/select_component.hpp"
+#include "component/table_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
 #include <string_view>
@@ -508,6 +509,119 @@ void overlapping_dropdown_wheel() {
     overlapping_popup_wheel(false);
 }
 
+void dropdown_over_table_wheel(bool long_menu, bool sibling) {
+    Fixture f;
+    ThemeConfig config;
+    config.dropdown.tokens.max_height = dp(80);
+    std::vector<MenuItem> items{{u8"action", u8"Action"}};
+    if (long_menu) {
+        for (int i = 0; i < 12; ++i) {
+            const auto label = String::from_utf8(std::to_string(i)).value();
+            items.push_back({label, label});
+        }
+    }
+    std::vector<int> data;
+    for (int i = 0; i < 12; ++i) {
+        data.push_back(i);
+    }
+    const auto mount_dropdown = [&] {
+        Dropdown(DropdownProps{}
+                     .defaultOpen(true)
+                     .placement(sibling ? DropdownPlacement::TopLeft : DropdownPlacement::BottomLeft)
+                     .menu(MenuProps{}.items(items)),
+                 DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Actions"); }); }});
+    };
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                  Table(TableProps<int>{}
+                            .dataSource(data)
+                            .rowKey([](int row) { return String::from_utf8(std::to_string(row)).value(); })
+                            .columns({TableColumn<int>{
+                                u8"value", u8"Value",
+                                [&](TableCell<int> cell) {
+                                    if (!sibling && cell.value() == 0) {
+                                        mount_dropdown();
+                                    } else {
+                                        Text(u8"Row");
+                                    }
+                                }}.width(300)})
+                            .scrollY(160)
+                            .layout(LayoutStyle{}.width(dp(300))));
+                  if (sibling) {
+                      mount_dropdown();
+                  }
+              }});
+    }});
+    sync(f, 640, 400);
+    const auto table = f.services.table().mounted()[0];
+    const auto dropdown = f.services.dropdown().mounted()[0];
+    const auto popup = f.services.dropdown().snapshot(dropdown);
+    const auto original_table = f.services.table().snapshot(table);
+    const auto original_menu = f.services.menu().snapshot(popup.menu);
+    const auto menu_bounds = bounds(f, popup.menu);
+    check(popup.geometry.visible && original_table.maximum_y > 0 && descendant(f, dropdown, table) != sibling,
+          "Dropdown/Table wheel fixture lost visibility, scroll or logical ownership");
+    const float x = menu_bounds.x + 12;
+    const float y = std::max(menu_bounds.y, original_table.body.y) + 12;
+    check(x < original_table.body.x + original_table.body.width &&
+              y < std::min(menu_bounds.y + menu_bounds.height, original_table.body.y + original_table.body.height),
+          "Dropdown/Table wheel fixture lacks overlapping menu/body");
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && descendant(f, f.services.interactions().require(*hit).component, popup.menu),
+          "covered Table wheel did not hit the topmost Dropdown menu");
+    if (long_menu) {
+        check(f.services.dispatch_scroll({0, -1000, x, y}), "long Dropdown wheel was not consumed");
+        sync(f, 640, 400);
+        check(f.services.menu().snapshot(popup.menu).scroll > 0 &&
+                  f.services.table().snapshot(table).scroll_y == original_table.scroll_y,
+              "covered Table stole a scrolling Dropdown wheel");
+    }
+    const auto boundary = f.services.menu().snapshot(popup.menu).scroll;
+    check(f.services.dispatch_scroll({0, -1, x, y}), "Dropdown boundary wheel was not consumed");
+    sync(f, 640, 400);
+    check(f.services.table().snapshot(table).scroll_y == original_table.scroll_y &&
+              f.services.menu().snapshot(popup.menu).scroll == boundary,
+          "Dropdown boundary wheel scrolled covered Table");
+    const float padding_x = popup.geometry.bounds.x + 1;
+    const auto padding_hit = f.services.hit_test().hit_test({padding_x, y});
+    check(padding_hit && f.services.interactions().require(*padding_hit).component == popup.popup,
+          "Dropdown/Table padding wheel did not hit popup background");
+    check(f.services.dispatch_scroll({0, -1, padding_x, y}), "Dropdown padding wheel was not consumed");
+    sync(f, 640, 400);
+    check(f.services.table().snapshot(table).scroll_y == original_table.scroll_y &&
+              f.services.menu().snapshot(popup.menu).scroll == boundary,
+          "Dropdown padding wheel scrolled covered Table or menu");
+    const float exposed_x = original_table.body.x + original_table.body.width - 5;
+    check(exposed_x > popup.geometry.bounds.x + popup.geometry.bounds.width,
+          "Dropdown/Table wheel fixture lacks exposed Table body");
+    check(f.services.dispatch_scroll({0, -1, exposed_x, original_table.body.y + 12}),
+          "exposed Table body wheel was not consumed");
+    sync(f, 640, 400);
+    check(f.services.table().snapshot(table).scroll_y > original_table.scroll_y &&
+              f.services.menu().snapshot(popup.menu).rows == original_menu.rows &&
+              f.services.table().snapshot(table).rows[0].component == original_table.rows[0].component,
+          "popup wheel boundary swallowed exposed Table input or lost retained identity");
+    f.services.dispose();
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0,
+          "Dropdown/Table wheel fixture cleanup leaked");
+}
+
+void short_dropdown_over_table_wheel() {
+    dropdown_over_table_wheel(false, false);
+}
+
+void dropdown_boundary_over_table_wheel() {
+    dropdown_over_table_wheel(true, false);
+}
+
+void sibling_short_dropdown_over_table_wheel() {
+    dropdown_over_table_wheel(false, true);
+}
+
+void sibling_dropdown_boundary_over_table_wheel() {
+    dropdown_over_table_wheel(true, true);
+}
+
 void short_label_full_width() {
     Fixture f;
     int clicks = 0;
@@ -562,6 +676,10 @@ int main(int argc, char** argv) {
         run("trigger-gates", native_trigger_gates);
         run("wheel-select", overlapping_select_wheel);
         run("wheel-dropdown", overlapping_dropdown_wheel);
+        run("wheel-table-short", short_dropdown_over_table_wheel);
+        run("wheel-table-boundary", dropdown_boundary_over_table_wheel);
+        run("wheel-sibling-table-short", sibling_short_dropdown_over_table_wheel);
+        run("wheel-sibling-table-boundary", sibling_dropdown_boundary_over_table_wheel);
         run("short-label-width", short_label_full_width);
         check(ran > 0, "unknown Dropdown test case");
     } catch (const std::exception& error) {

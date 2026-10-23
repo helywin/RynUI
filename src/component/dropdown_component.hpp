@@ -33,6 +33,7 @@ public:
     void on_window_active(bool active) override;
     void on_input_boundary_changed() override;
     bool on_keyboard_input(const input::KeyboardInputEvent&) override;
+    bool on_scroll_input(const input::ScrollInputEvent&) override;
     void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                           std::optional<input::InteractionId>) override;
     void position_window_layers(runtime::Size, runtime::Rect) override;

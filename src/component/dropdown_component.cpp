@@ -518,6 +518,27 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
     return false;
 }
 
+bool DropdownComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+    if (mounted_.empty()) {
+        return false;
+    }
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    if (!target) {
+        return false;
+    }
+    // Menu and child popup hosts run first. Consume their unhandled boundary or
+    // popup padding wheel here so covered content cannot scroll through the layer.
+    for (auto id : mounted_) {
+        const auto* s = services_->components().state<DropdownState>(id);
+        if (s && s->snapshot.geometry.visible && services_->interactions().component_active(s->snapshot.popup) &&
+            descendant(*services_, target->component, s->snapshot.popup)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& event,
                                              std::optional<input::InteractionId> hit,
                                              std::optional<input::InteractionId> origin) {

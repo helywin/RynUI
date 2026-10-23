@@ -53,3 +53,28 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "<上述 filter>" -
 - 保留 main 的 popup child-layer 排序、ThemeScope 引用提交与 reference_cell 默认主题栈占用修正。`README.md`、`README.en.md`、`docs/component-completion.md` 自动合并后与 `b27651d` 完全一致；没有自行编辑全局 Gallery、support overlay 或这些文档。
 
 本地原始记录位于 ignored `out/integration-final-{debug,release}-{build,relink,ctest}.log`、`out/integration-final-golden-comparison.log` 和 `out/integration-switch-stack*.log`。只创建本地英文提交；没有 push、PR、archive、子任务或远端 t3 分支操作。原生 Gallery 和最终 main 推送仍由父任务执行。
+
+## Astra integration R1：Dropdown wheel 边界（2026-10-24）
+
+在同一干净本地分支 `3b719286911b5496eb7fa0ae6d72050901d0013f` 上处理 P2；没有合并 root main 或触碰其他工作树。先仅增加真实 Dropdown-over-Table 测试，保持生产代码不变，四个独立 Debug case 均 exit 1，失败断言均为 `Dropdown boundary wheel scrolled covered Table`：
+
+| case | 菜单 | 逻辑归属 |
+| --- | --- | --- |
+| `wheel-table-short` | 单项、无需滚动 | Table cell 内 |
+| `wheel-table-boundary` | 长列表到达滚动下限 | Table cell 内 |
+| `wheel-sibling-table-short` | 单项、无需滚动 | 与 Table 无祖先关系的 sibling |
+| `wheel-sibling-table-boundary` | 长列表到达滚动下限 | 与 Table 无祖先关系的 sibling |
+
+修复仅新增 Dropdown host 的 `on_scroll_input` fallback：Menu 和 child popup hosts 先处理 wheel；未消费的事件只有在 topmost hit 属于实际可见且可交互的 Dropdown popup 逻辑子树时才被该 popup 消费。这样菜单无法继续滚动或命中 popup padding 时，wheel 不再传给被遮挡的 Table。没有修改 Menu 的普通 inline ancestor handoff、Table 的滚动实现、Theme bridge 或 `Modal → Table → Popconfirm → Dropdown → Tooltip → Select` 关键 host 顺序。
+
+四个组合场景同时检查：真实 topmost hit 与 popup/menu owner、长菜单先滚动且 Table 不变、边界不再滚动、popup padding 不滚动下面的 Table、露出 Table 区域仍能实际滚动、菜单和 Table row identity 保留、dispose 释放全部 interaction/surface。原有 child Select 与 nested Dropdown 在重叠区域和滚动边界的优先级，以及 inline Menu → Modal 的正常 ancestor scroll handoff 继续通过。
+
+实际使用 MSVC 19.51.36256 / Ninja Multi-Config / `windows-msvc-headless`，Debug 与 Release 顺序构建、每次最多 4 compile jobs，targets 为 `rynui_portable_menu_component`、`rynui_portable_dropdown_component`、`rynui_table_component_tests`、`rynui_portable_select_component`、`rynui_portable_modal_component`、`rynui_portable_modal_boundary`。两种 configuration 使用相同 CTest filter：
+
+```text
+^rynui\.(table_component|portable\.(menu_component|dropdown_component|select_component|modal_component|modal_boundary))$
+```
+
+- Debug：**6/6**，2.96 秒；Release：**6/6**，1.37 秒。Dropdown executable 不带参数运行全部 case，包含上述四个新增 case。
+- clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
+- 原始本地记录：ignored `out/integration-r1-reproductions.json`、`out/integration-r1-{debug,release}-{build,ctest}.log`。没有重跑完整套件，没有修改 Gallery/global docs/goldens 或 root 的未提交内容；只作本地英文提交，不 push、t3 remote、PR、archive 或创建子任务。
