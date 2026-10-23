@@ -156,6 +156,7 @@ void PopconfirmComponentHost::refresh(runtime::ComponentId id) {
     bool structure = services_->components().set_branch_active(s->snapshot.popup, visible);
     structure |= services_->components().set_branch_active(s->arrow_component, visible && s->arrow);
     structure |= services_->components().set_branch_active(s->snapshot.cancel, s->show_cancel);
+    services_->nodes().require(services_->components().root(s->snapshot.cancel)).out_of_flow = !s->show_cancel;
     structure |= services_->components().set_branch_active(s->snapshot.description, description);
     structure |= services_->components().set_branch_active(s->title_component, title);
     services_->interactions().set_eligible(s->trigger_hit, !s->disabled);

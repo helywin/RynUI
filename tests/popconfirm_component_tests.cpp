@@ -424,6 +424,50 @@ void keyboard_preserves_native_trigger_activation() {
     check(clicks == 2 && f.services.popconfirm().snapshot(id).geometry.visible,
           "Popconfirm swallowed native Button Space activation");
 }
+
+void hidden_cancel_releases_footer_space() {
+    Signal<bool> show_cancel{false};
+    Fixture f;
+    f.services.mount(Content{[&] {
+        ThemeConfig config;
+        config.popconfirm.tokens.max_width = dp(100);
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                  Popconfirm(PopconfirmProps{}
+                                 .defaultOpen()
+                                 .showCancel(show_cancel)
+                                 .cancelText(u8"Cancel this unusually long operation")
+                                 .title(u8"Confirm?"),
+                             PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Action"); }); }});
+              }});
+    }});
+    sync(f);
+    const auto id = f.services.popconfirm().mounted()[0];
+    const auto original = f.services.popconfirm().snapshot(id);
+    const auto count = f.services.components().component_count();
+    const auto check_confirm = [&] {
+        const auto snapshot = f.services.popconfirm().snapshot(id);
+        const auto popup = snapshot.geometry.bounds;
+        const auto confirm = bounds(f, snapshot.confirm);
+        const auto padding = f.services.components().theme_scope(id)->snapshot().popconfirm().padding;
+        check(confirm.width > 0 && confirm.x >= popup.x + padding - 0.01F &&
+                  confirm.x + confirm.width <= popup.x + popup.width - padding + 0.01F,
+              "hidden Cancel clipped the actual confirm Button");
+        check(!f.services.components().branch_active(snapshot.cancel) &&
+                  f.nodes.require(f.services.components().root(snapshot.cancel)).out_of_flow,
+              "hidden Cancel retained footer layout participation");
+        check(snapshot.cancel == original.cancel && snapshot.confirm == original.confirm &&
+                  f.services.components().component_count() == count,
+              "showCancel rebuilt retained footer Buttons");
+    };
+    check_confirm();
+    show_cancel.set(true);
+    sync(f);
+    check(!f.nodes.require(f.services.components().root(original.cancel)).out_of_flow,
+          "visible Cancel did not return to footer flow");
+    show_cancel.set(false);
+    sync(f);
+    check_confirm();
+}
 } // namespace
 
 int main() {
@@ -439,6 +483,7 @@ int main() {
         invalid_declarations();
         initially_open_inside_modal();
         keyboard_preserves_native_trigger_activation();
+        hidden_cancel_releases_footer_space();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

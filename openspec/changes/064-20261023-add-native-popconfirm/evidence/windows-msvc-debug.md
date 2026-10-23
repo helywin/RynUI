@@ -46,3 +46,9 @@
 Astra xhigh/priority 发现并在主分支集成时修复两项问题：有效 Modal 输入边界建立后重新计算 Popconfirm 可见性，首次挂载的 defaultOpen/open(true) 正常显示而旧 suppressed popup 不复活；键盘触发仅消费 wrapper 自身命令，保留原生 Button Enter/Space 激活，Space 松开后再打开，随后定位阶段转移焦点。新增默认/受控初始 Modal、关闭重开抑制、显式重开、Button onClick 与逐帧 Space 按压测试。
 
 实际 Windows MSVC headless Debug 的 Popconfirm/Drawer/Modal/Tag/Badge/Select/Tooltip/Theme/backend boundaries 聚焦16/16通过（3.90s）；日志 `out/popconfirm-merge-debug-tests.log`。README与常用组件清单同步；没有增加 Release、原生 GPU、Linux 或人工 IME 结论。
+
+## 隐藏取消按钮的布局回归修复
+
+Astra 后续审查发现 showCancel(false) 只隐藏分支，Cancel 仍参与 footer Flex 测量。主分支将隐藏 Cancel 的 root 标为 out_of_flow，保持真实 Button 及其内容身份，恢复显示时重新参与布局。
+
+新增回归使用 max_width=100dp、长 cancelText 与初始 showCancel(false)，检查实际确认 Button 的左右边界落在 popup padding 内；再切换 true/false，检查正常流恢复、再次隐藏及两个 Button 身份和组件数量不变。Windows/MSVC、windows-msvc-headless Debug 的 popconfirm_component 1/1通过（1.17s），日志 `out/popconfirm-hidden-cancel-debug.log`。该记录不增加原生窗口、Linux 或人工 IME 结论。
