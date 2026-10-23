@@ -1239,7 +1239,16 @@ bool ModalComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     }
     const auto id = stack_.back().owner;
     const auto* s = services_->components().state<ModalState>(id);
-    if (s && inside(s->snapshot.body_bounds, event.x, event.y)) {
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    auto layer = target ? std::optional{target->component} : std::nullopt;
+    while (layer && !services_->components().is_window_layer_root(*layer)) {
+        layer = services_->components().parent(*layer);
+    }
+    if (!s || !layer || *layer != s->snapshot.overlay) {
+        return false;
+    }
+    if (inside(s->snapshot.body_bounds, event.x, event.y)) {
         static_cast<void>(scroll_to(id, s->snapshot.scroll - event.delta_y * 48));
     }
     return true;

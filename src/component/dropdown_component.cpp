@@ -518,7 +518,7 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
     return false;
 }
 
-bool DropdownComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+bool DropdownComponentHost::consume_scroll_boundary(const input::ScrollInputEvent& event) {
     if (mounted_.empty()) {
         return false;
     }
@@ -527,8 +527,8 @@ bool DropdownComponentHost::on_scroll_input(const input::ScrollInputEvent& event
     if (!target) {
         return false;
     }
-    // Menu and child popup hosts run first. Consume their unhandled boundary or
-    // popup padding wheel here so covered content cannot scroll through the layer.
+    // All content scroll owners run first, including controls in child popups.
+    // Only then contain unhandled wheel input within the logical popup subtree.
     for (auto id : mounted_) {
         const auto* s = services_->components().state<DropdownState>(id);
         if (s && s->snapshot.geometry.visible && services_->interactions().component_active(s->snapshot.popup) &&

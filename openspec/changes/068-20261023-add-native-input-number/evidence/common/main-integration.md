@@ -107,3 +107,29 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "<上述 filter>" -
 - Debug：**8/8**，2.97 秒；Release：**8/8**，1.56 秒。Dropdown executable 全量运行，包含本轮四个新增 case 与 R1 四个 Table case。
 - clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
 - 本地原始记录：ignored `out/integration-r2-reproductions.json`、`out/integration-r2-{debug,release}-{build,ctest}.log`。没有重跑完整套件，没有改 Theme bridge、goldens、Gallery/global docs 或 root，只作本地英文提交；没有 push、remote 操作、PR、archive 或创建子任务。
+
+## Astra integration R3：child popup content 与 wheel boundary（2026-10-24）
+
+本轮准确基线为干净本地分支 `t3/integrate-menu-input-number` 的 `38ad2d2b1cff9d4c915385dd3ebc56a46d416a9f`，没有合并更新的 root main `c3190b0`，也没有修改其 Theme 24-resolution-lambda stack fix、Collapse、Segmented 或其他 host。先增加真实组合测试、保持生产代码不变，`wheel-popconfirm-table` Debug exit 1：`Dropdown boundary fallback swallowed child Popconfirm Table wheel`。
+
+三个 case 都使用实际组件：可滚动 Modal 内先挂载被覆盖的 sibling Table，再显示 Dropdown；其 MenuIcon 包含 Popconfirm，description slot 挂载 20 行、`scrollY(96)` 的 Table。测试显示 Popconfirm 并完成 layout，确认实际 topmost hit 属于 child Table 或 Popconfirm padding，同时该点覆盖 sibling Table 与 Modal body。新增 case 为 `wheel-popconfirm-table`、`wheel-popconfirm-boundary`、`wheel-popconfirm-padding`。
+
+分阶段验证暴露了两个需要一起处理的边界：
+
+- 只把 Dropdown fallback 延后，padding case exit 1：`child Popconfirm boundary/padding scrolled covered sibling Table`，child Table content case 也仍未通过。
+- 增加 Table 的实际 hit 祖先与 window-layer 边界检查后，content case exit 0；boundary 与 padding case 均 exit 1：`child Popconfirm boundary/padding scrolled underlying Modal`。
+- 再增加 Modal 的最近 window-layer ownership 检查，三条 case 与整个 Dropdown executable 通过。初始 boundary setup 曾因布局后的 scroll maximum 变化而失败；最终测试在同步后与当前 maximum 比较，不把 setup 失败当作目标回归证据。
+
+最终局部修复：Dropdown 的 `consume_scroll_boundary` 只在全部 participant content handlers 执行后调用，仍按实际 hit 的逻辑 popup 子树消费剩余 boundary/padding；Table 从实际 clipped topmost hit 沿真实组件祖先查找 scroll owner，在最近 window-layer root 停止，仅允许同层真实祖先接收边界 handoff；Modal 只处理最近 layer 为其自身 overlay 的 hit。Table wheel 不再按 sibling mount 顺序和矩形重叠挑选 owner，亦不重复使用缓存 clip 判断已通过 hit-test 的目标。没有重排 forward geometry 或 reverse content dispatch，保持 Modal → Table → popup hosts，保留最终 input-boundary shield。
+
+每条新增测试都检查 covered Table 与 Modal 不动、露出区域仍可独立滚动、retained Table row identity 不变和 dispose 后 interaction/surface 清零。boundary case 仅用真实 Table handler 建立滚动下限，目标 wheel 仍经完整 `WindowComponentServices::dispatch_scroll`；另外验证同一 Modal layer 内 Table 到达下限后仍正常交给祖先 Modal。保留并通过此前四条 Dropdown/Table、四条 Dropdown/Select 回归，以及 child Select、nested Dropdown 优先级与 inline Menu → Modal handoff。
+
+使用 MSVC / Ninja Multi-Config / `windows-msvc-headless`，Debug/Release 顺序构建、每次最多 4 compile jobs。targets 为 R2 的八个 executable，另加 `rynui_portable_popconfirm_component`、`rynui_portable_drawer_component`、`rynui_feedback_component_tests`；相同 CTest filter：
+
+```text
+^rynui\.(table_component|feedback_component|portable\.(menu_component|dropdown_component|select_component|modal_component|modal_boundary|tabs_component|text_area|popconfirm_component|drawer_component))$
+```
+
+- Debug：**11/11**，4.43 秒；Release：**11/11**，3.10 秒。Dropdown executable 无参数执行全部 case，包含此前八条与本轮三条回归。
+- clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
+- 本地原始记录：ignored `out/integration-r3-reproductions.json`、`out/integration-r3-deferred-reproductions.json`、`out/integration-r3-table-guard-reproductions.json`、`out/integration-r3-{debug,release}-{build,ctest}.log`。没有重跑完整套件，未验证更新 main 的组合上下文或 native/GPU/Linux；没有修改 Gallery、global docs、goldens、root 或其他 worktree，没有 push、remote 操作、PR、archive 或创建子任务。

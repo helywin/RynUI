@@ -1,6 +1,7 @@
 #include "component/dropdown_component.hpp"
 #include "component/menu_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/popconfirm_component.hpp"
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
 #include "support/input_fixture.hpp"
@@ -772,6 +773,139 @@ void sibling_select_topmost_wheel() {
           "sibling Select wheel fixture cleanup leaked");
 }
 
+void nested_popconfirm_table_wheel(int path) {
+    Fixture f;
+    Signal<bool> confirm_open{false};
+    std::vector<int> data;
+    for (int i = 0; i < 20; ++i) {
+        data.push_back(i);
+    }
+    const auto mount_table = [&](float width, float height) {
+        Table(TableProps<int>{}
+                  .dataSource(data)
+                  .rowKey([](int row) { return String::from_utf8(std::to_string(row)).value(); })
+                  .columns({TableColumn<int>{u8"value", u8"Value", [](TableCell<int>) { Text(u8"Row"); }}.width(width)})
+                  .scrollY(height)
+                  .layout(LayoutStyle{}.width(dp(width))));
+    };
+    f.services.mount(Content{[&] {
+        Modal(ModalProps{}.open().title(u8"Popup routing").width(600).footer(ModalFooterMode::None), ModalContent{[&] {
+                  mount_table(500, 260);
+                  MenuItem item{u8"host", u8"Host"};
+                  item.icon = MenuIcon{[&] {
+                      Popconfirm(
+                          PopconfirmProps{}.open(confirm_open).title(u8"Rows").placement(PopconfirmPlacement::TopLeft),
+                          PopconfirmTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Inspect"); }); }},
+                          {.description = PopconfirmDescription{[&] { mount_table(220, 96); }}});
+                  }};
+                  Dropdown(DropdownProps{}
+                               .defaultOpen(true)
+                               .placement(DropdownPlacement::TopLeft)
+                               .menu(MenuProps{}.items({item})),
+                           DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Actions"); }); }});
+                  Text(TextProps{}.content(u8"Outer scroll content").layout(LayoutStyle{}.height(dp(600))));
+              }});
+    }});
+    sync(f, 720, 800);
+    confirm_open.set(true);
+    sync(f, 720, 800);
+    const auto modal = f.services.modal().mounted()[0];
+    const auto dropdown = f.services.dropdown().mounted()[0];
+    const auto confirm = f.services.popconfirm().mounted()[0];
+    const auto popup = f.services.popconfirm().snapshot(confirm);
+    const auto menu = f.services.dropdown().snapshot(dropdown);
+    const auto covered = f.services.table().mounted()[0];
+    const auto inner = f.services.table().mounted()[1];
+    const auto outer_before = f.services.modal().snapshot(modal);
+    const auto covered_before = f.services.table().snapshot(covered);
+    const auto inner_before = f.services.table().snapshot(inner);
+    check(popup.geometry.visible && menu.geometry.visible && outer_before.maximum_scroll > 0 &&
+              covered_before.maximum_y > 0 && inner_before.maximum_y > 0 && descendant(f, inner, popup.popup) &&
+              descendant(f, confirm, menu.popup) && !descendant(f, covered, menu.popup),
+          "Popconfirm/Table fixture lost visible popup ownership or independent scroll ranges");
+    const float body_x = inner_before.body.x + 12;
+    const float y = inner_before.body.y + 12;
+    const float x = path == 2 ? popup.geometry.bounds.x + 1 : body_x;
+    const auto contains_point = [&](runtime::Rect r) {
+        return x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height;
+    };
+    check(contains_point(covered_before.body) && contains_point(outer_before.body_bounds),
+          "Popconfirm/Table fixture does not cover sibling Table and Modal body");
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && (path == 2 ? f.services.interactions().require(*hit).component == popup.popup
+                            : descendant(f, f.services.interactions().require(*hit).component, inner)),
+          "Popconfirm/Table wheel did not hit the actual child Table or popup padding");
+    if (path == 1) {
+        // Establish the boundary through the real Table handler; the event under
+        // test still uses the complete window dispatch below.
+        check(f.services.table().on_scroll_input({0, -1000, body_x, y}), "child Table boundary setup failed");
+        sync(f, 720, 800);
+        check(f.services.table().snapshot(inner).scroll_y == f.services.table().snapshot(inner).maximum_y,
+              "child Table boundary setup did not reach its scroll limit");
+        check(f.services.table().snapshot(covered).scroll_y == covered_before.scroll_y,
+              "child Table boundary setup scrolled covered sibling");
+        check(f.services.modal().snapshot(modal).scroll == outer_before.scroll,
+              "child Table boundary setup scrolled Modal");
+    }
+    const auto inner_scroll = f.services.table().snapshot(inner).scroll_y;
+    check(f.services.dispatch_scroll({0, -1, x, y}), "child Popconfirm wheel was not handled");
+    sync(f, 720, 800);
+    check(path != 0 || f.services.table().snapshot(inner).scroll_y > inner_scroll,
+          "Dropdown boundary fallback swallowed child Popconfirm Table wheel");
+    check(path == 0 || f.services.table().snapshot(inner).scroll_y == inner_scroll,
+          "child Popconfirm boundary/padding changed inner Table scroll");
+    check(f.services.table().snapshot(covered).scroll_y == covered_before.scroll_y,
+          "child Popconfirm boundary/padding scrolled covered sibling Table");
+    check(f.services.modal().snapshot(modal).scroll == outer_before.scroll,
+          "child Popconfirm boundary/padding scrolled underlying Modal");
+    const auto settled_inner = f.services.table().snapshot(inner).scroll_y;
+    const float exposed_x = covered_before.body.x + covered_before.body.width - 8;
+    check(exposed_x > popup.geometry.bounds.x + popup.geometry.bounds.width,
+          "Popconfirm/Table fixture lacks exposed sibling Table body");
+    check(f.services.dispatch_scroll({0, -1, exposed_x, covered_before.body.y + 12}),
+          "exposed sibling Table wheel was not handled");
+    sync(f, 720, 800);
+    check(f.services.table().snapshot(covered).scroll_y > covered_before.scroll_y &&
+              f.services.table().snapshot(inner).scroll_y == settled_inner &&
+              f.services.modal().snapshot(modal).scroll == outer_before.scroll,
+          "popup guard blocked exposed sibling Table or crossed scroll ownership");
+    if (path == 1) {
+        check(f.services.table().on_scroll_input({0, -1000, exposed_x, covered_before.body.y + 12}),
+              "same-layer Table boundary setup failed");
+        sync(f, 720, 800);
+        const auto at_end = f.services.table().snapshot(covered).scroll_y;
+        check(at_end == f.services.table().snapshot(covered).maximum_y, "same-layer Table did not reach its boundary");
+        check(f.services.dispatch_scroll({0, -1, exposed_x, covered_before.body.y + 12}),
+              "same-layer Table boundary did not hand off to Modal");
+        sync(f, 720, 800);
+        check(f.services.table().snapshot(covered).scroll_y == at_end, "same-layer Table moved past its boundary");
+    } else {
+        check(f.services.dispatch_scroll({0, -1, outer_before.body_bounds.x + outer_before.body_bounds.width - 4,
+                                          outer_before.body_bounds.y + outer_before.body_bounds.height - 4}),
+              "exposed Modal body wheel was not handled");
+    }
+    sync(f, 720, 800);
+    check(f.services.modal().snapshot(modal).scroll > outer_before.scroll &&
+              f.services.table().snapshot(inner).rows[0].component == inner_before.rows[0].component &&
+              f.services.table().snapshot(covered).rows[0].component == covered_before.rows[0].component,
+          "popup guard blocked Modal scrolling or lost retained Table rows");
+    f.services.dispose();
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0,
+          "nested Popconfirm/Table wheel fixture cleanup leaked");
+}
+
+void child_popconfirm_table_wheel() {
+    nested_popconfirm_table_wheel(0);
+}
+
+void child_popconfirm_table_boundary_wheel() {
+    nested_popconfirm_table_wheel(1);
+}
+
+void child_popconfirm_padding_wheel() {
+    nested_popconfirm_table_wheel(2);
+}
+
 void short_label_full_width() {
     Fixture f;
     int clicks = 0;
@@ -834,6 +968,9 @@ int main(int argc, char** argv) {
         run("wheel-sibling-select-boundary", sibling_dropdown_boundary_over_select_wheel);
         run("wheel-sibling-select-padding", sibling_dropdown_padding_over_select_wheel);
         run("wheel-select-topmost", sibling_select_topmost_wheel);
+        run("wheel-popconfirm-table", child_popconfirm_table_wheel);
+        run("wheel-popconfirm-boundary", child_popconfirm_table_boundary_wheel);
+        run("wheel-popconfirm-padding", child_popconfirm_padding_wheel);
         run("short-label-width", short_label_full_width);
         check(ran > 0, "unknown Dropdown test case");
     } catch (const std::exception& error) {
