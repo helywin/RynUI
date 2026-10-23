@@ -183,6 +183,7 @@ add_executable(
     token_gallery/select_acceptance.cpp
     token_gallery/card_acceptance.cpp
     token_gallery/tabs_acceptance.cpp
+    token_gallery/modal_acceptance.cpp
     token_gallery/slider_acceptance.cpp
     token_gallery/tooltip_acceptance.cpp
     token_gallery/button_acceptance.cpp
