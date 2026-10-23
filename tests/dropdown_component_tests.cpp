@@ -510,7 +510,7 @@ void overlapping_dropdown_wheel() {
     overlapping_popup_wheel(false);
 }
 
-void dropdown_over_table_wheel(bool long_menu, bool sibling) {
+void dropdown_over_table_wheel(bool long_menu, bool sibling, bool empty = false) {
     Fixture f;
     ThemeConfig config;
     config.dropdown.tokens.max_height = dp(80);
@@ -525,6 +525,9 @@ void dropdown_over_table_wheel(bool long_menu, bool sibling) {
     for (int i = 0; i < 12; ++i) {
         data.push_back(i);
     }
+    if (empty) {
+        data.clear();
+    }
     const auto mount_dropdown = [&] {
         Dropdown(DropdownProps{}
                      .defaultOpen(true)
@@ -534,20 +537,25 @@ void dropdown_over_table_wheel(bool long_menu, bool sibling) {
     };
     f.services.mount(Content{[&] {
         Theme(ThemeProps{}.config(config), ThemeContent{[&] {
-                  Table(TableProps<int>{}
-                            .dataSource(data)
-                            .rowKey([](int row) { return String::from_utf8(std::to_string(row)).value(); })
-                            .columns({TableColumn<int>{
-                                u8"value", u8"Value",
-                                [&](TableCell<int> cell) {
-                                    if (!sibling && cell.value() == 0) {
-                                        mount_dropdown();
-                                    } else {
-                                        Text(u8"Row");
-                                    }
-                                }}.width(300)})
-                            .scrollY(160)
-                            .layout(LayoutStyle{}.width(dp(300))));
+                  auto props = TableProps<int>{}
+                                   .dataSource(data)
+                                   .rowKey([](int row) { return String::from_utf8(std::to_string(row)).value(); })
+                                   .columns({TableColumn<int>{
+                                       u8"value", u8"Value",
+                                       [&](TableCell<int> cell) {
+                                           if (!sibling && cell.value() == 0) {
+                                               mount_dropdown();
+                                           } else {
+                                               Text(u8"Row");
+                                           }
+                                       }}.width(empty ? 600 : 300)})
+                                   .scrollY(160)
+                                   .layout(LayoutStyle{}.width(dp(300)));
+                  if (empty && !sibling) {
+                      Table(props, TableEmpty{mount_dropdown});
+                  } else {
+                      Table(props);
+                  }
                   if (sibling) {
                       mount_dropdown();
                   }
@@ -560,7 +568,8 @@ void dropdown_over_table_wheel(bool long_menu, bool sibling) {
     const auto original_table = f.services.table().snapshot(table);
     const auto original_menu = f.services.menu().snapshot(popup.menu);
     const auto menu_bounds = bounds(f, popup.menu);
-    check(popup.geometry.visible && original_table.maximum_y > 0 && descendant(f, dropdown, table) != sibling,
+    check(popup.geometry.visible && (empty ? original_table.maximum_x > 0 : original_table.maximum_y > 0) &&
+              descendant(f, dropdown, table) != sibling,
           "Dropdown/Table wheel fixture lost visibility, scroll or logical ownership");
     const float x = menu_bounds.x + 12;
     const float y = std::max(menu_bounds.y, original_table.body.y) + 12;
@@ -578,29 +587,36 @@ void dropdown_over_table_wheel(bool long_menu, bool sibling) {
               "covered Table stole a scrolling Dropdown wheel");
     }
     const auto boundary = f.services.menu().snapshot(popup.menu).scroll;
-    check(f.services.dispatch_scroll({0, -1, x, y}), "Dropdown boundary wheel was not consumed");
+    check(f.services.dispatch_scroll({empty ? 1.0F : 0.0F, empty ? 0.0F : -1.0F, x, y}),
+          "Dropdown boundary wheel was not consumed");
     sync(f, 640, 400);
     check(f.services.table().snapshot(table).scroll_y == original_table.scroll_y &&
+              f.services.table().snapshot(table).scroll_x == original_table.scroll_x &&
               f.services.menu().snapshot(popup.menu).scroll == boundary,
           "Dropdown boundary wheel scrolled covered Table");
     const float padding_x = popup.geometry.bounds.x + 1;
     const auto padding_hit = f.services.hit_test().hit_test({padding_x, y});
     check(padding_hit && f.services.interactions().require(*padding_hit).component == popup.popup,
           "Dropdown/Table padding wheel did not hit popup background");
-    check(f.services.dispatch_scroll({0, -1, padding_x, y}), "Dropdown padding wheel was not consumed");
+    check(f.services.dispatch_scroll({empty ? 1.0F : 0.0F, empty ? 0.0F : -1.0F, padding_x, y}),
+          "Dropdown padding wheel was not consumed");
     sync(f, 640, 400);
     check(f.services.table().snapshot(table).scroll_y == original_table.scroll_y &&
+              f.services.table().snapshot(table).scroll_x == original_table.scroll_x &&
               f.services.menu().snapshot(popup.menu).scroll == boundary,
           "Dropdown padding wheel scrolled covered Table or menu");
     const float exposed_x = original_table.body.x + original_table.body.width - 5;
     check(exposed_x > popup.geometry.bounds.x + popup.geometry.bounds.width,
           "Dropdown/Table wheel fixture lacks exposed Table body");
-    check(f.services.dispatch_scroll({0, -1, exposed_x, original_table.body.y + 12}),
-          "exposed Table body wheel was not consumed");
+    check(
+        f.services.dispatch_scroll({empty ? 1.0F : 0.0F, empty ? 0.0F : -1.0F, exposed_x, original_table.body.y + 12}),
+        "exposed Table body wheel was not consumed");
     sync(f, 640, 400);
-    check(f.services.table().snapshot(table).scroll_y > original_table.scroll_y &&
+    check((empty ? f.services.table().snapshot(table).scroll_x > original_table.scroll_x
+                 : f.services.table().snapshot(table).scroll_y > original_table.scroll_y) &&
               f.services.menu().snapshot(popup.menu).rows == original_menu.rows &&
-              f.services.table().snapshot(table).rows[0].component == original_table.rows[0].component,
+              (empty ? f.services.table().snapshot(table).rows.empty()
+                     : f.services.table().snapshot(table).rows[0].component == original_table.rows[0].component),
           "popup wheel boundary swallowed exposed Table input or lost retained identity");
     f.services.dispose();
     check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0,
@@ -621,6 +637,14 @@ void sibling_short_dropdown_over_table_wheel() {
 
 void sibling_dropdown_boundary_over_table_wheel() {
     dropdown_over_table_wheel(true, true);
+}
+
+void child_dropdown_over_empty_table_wheel() {
+    dropdown_over_table_wheel(false, false, true);
+}
+
+void sibling_dropdown_over_empty_table_wheel() {
+    dropdown_over_table_wheel(false, true, true);
 }
 
 void sibling_dropdown_over_select_wheel(bool long_menu, bool padding) {
@@ -971,6 +995,8 @@ int main(int argc, char** argv) {
         run("wheel-popconfirm-table", child_popconfirm_table_wheel);
         run("wheel-popconfirm-boundary", child_popconfirm_table_boundary_wheel);
         run("wheel-popconfirm-padding", child_popconfirm_padding_wheel);
+        run("wheel-child-empty-table", child_dropdown_over_empty_table_wheel);
+        run("wheel-sibling-empty-table", sibling_dropdown_over_empty_table_wheel);
         run("short-label-width", short_label_full_width);
         check(ran > 0, "unknown Dropdown test case");
     } catch (const std::exception& error) {
