@@ -10,6 +10,6 @@
 
 ## 3. 集成检查
 
-- [ ] 3.1 通过格式检查、openspec doctor、全量严格规范校验、git diff --check 与相关既有窗口/主题合同回归，记录证据后英文提交并推送、核对远端 SHA。
+- [x] 3.1 通过格式检查、openspec doctor、全量严格规范校验、git diff --check 与相关既有窗口/主题合同回归，记录证据后英文提交并推送、核对远端 SHA。
 
 Gallery 与综合目录由父任务处理。Linux/Wayland、真实 GPU 人工视觉、系统 IME 不在本次已验证范围。

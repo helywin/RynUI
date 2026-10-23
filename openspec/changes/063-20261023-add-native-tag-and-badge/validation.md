@@ -3,6 +3,7 @@
 ## 环境与范围
 
 - 基点：`4e258e2afe832323c934e4ebfc3fb2144fc1608f`；独立分支 `t3/native-tag-badge`。
+- 规划提交：`37a0df71ffafce4275ad0152ade7ce0ef210bb8e`；实现提交：`56764b7b4a2735d0d97a484dcc84df097899f434`。两次提交后均 fetch/push 并核对远端；实现提交安全 rebase 至本分支上游，远端 SHA 与本地一致。
 - Windows x64，MSVC 19.51.36256，`windows-msvc-headless`，Ninja Multi-Config，Debug/Release；编译命令使用 `--parallel 4`。
 - 仅使用本工作树的 `out/build/windows-msvc-headless`。本地 helper 由获准的 root helper 复制，并调整并发为 4；未提交 helper、构建产物或本机路径配置。
 
