@@ -36,6 +36,7 @@ class MenuComponentHost;
 class DropdownComponentHost;
 class PaginationComponentHost;
 class TableComponentHost;
+class EmptyResultComponentHost;
 class CollapseComponentHost;
 
 class WindowComponentParticipant {
@@ -262,6 +263,10 @@ public:
         return *table_;
     }
 
+    [[nodiscard]] EmptyResultComponentHost& empty_result() noexcept {
+        return *empty_result_;
+    }
+
     [[nodiscard]] PaginationComponentHost& pagination() noexcept {
         return *pagination_;
     }
@@ -368,6 +373,7 @@ private:
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
     std::unique_ptr<CardComponentHost> card_;
+    std::unique_ptr<EmptyResultComponentHost> empty_result_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<CollapseComponentHost> collapse_;
     std::unique_ptr<SegmentedComponentHost> segmented_;

@@ -616,6 +616,9 @@ void PopconfirmComponentHost::on_pointer_input(const input::PointerInputEvent& e
 }
 
 void PopconfirmComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
+    if (mounted_.empty()) {
+        return;
+    }
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!services_->components().contains(id)) {

@@ -295,6 +295,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
+    append_if_changed(before.empty().colors, after.empty().colors, TokenIdentity::empty_colors, changed, count);
+    append_if_changed(before.empty().metrics, after.empty().metrics, TokenIdentity::empty_metrics, changed, count);
+    append_if_changed(before.result().colors, after.result().colors, TokenIdentity::result_colors, changed, count);
+    append_if_changed(before.result().metrics, after.result().metrics, TokenIdentity::result_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
     append_if_changed(before.tag().colors, after.tag().colors, TokenIdentity::tag_colors, changed, count);
     append_if_changed(before.input_number().colors(), after.input_number().colors(), TokenIdentity::input_number_colors,
@@ -1305,6 +1309,30 @@ const TableThemeToken& ThemeScope::table_metrics() const {
     return snapshot_->table();
 }
 
+const EmptyThemeToken& ThemeScope::empty_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::empty_colors);
+    return snapshot_->empty();
+}
+
+const EmptyThemeToken& ThemeScope::empty_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::empty_metrics);
+    return snapshot_->empty();
+}
+
+const ResultThemeToken& ThemeScope::result_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::result_colors);
+    return snapshot_->result();
+}
+
+const ResultThemeToken& ThemeScope::result_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::result_metrics);
+    return snapshot_->result();
+}
+
 const SegmentedThemeToken& ThemeScope::segmented_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::segmented_colors);
@@ -1577,6 +1605,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Pagination.metrics",
         "Table.colors",
         "Table.metrics",
+        "Empty.colors",
+        "Empty.metrics",
+        "Result.colors",
+        "Result.metrics",
         "Collapse.colors",
         "Collapse.metrics",
         "Collapse.typography",
@@ -1589,6 +1621,9 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::empty_metrics:
+    case TokenIdentity::result_metrics:
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::text | DirtyPhase::hit_test;
     case TokenIdentity::alias_color_text:
     case TokenIdentity::alias_color_text_secondary:
     case TokenIdentity::alias_color_text_disabled:
@@ -1648,6 +1683,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::dropdown_order:
     case TokenIdentity::pagination_colors:
     case TokenIdentity::table_colors:
+    case TokenIdentity::empty_colors:
+    case TokenIdentity::result_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
