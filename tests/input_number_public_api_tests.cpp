@@ -16,4 +16,5 @@ static_assert(requires(ryn::InputNumberProps props, ryn::Signal<ryn::InputNumber
 int main() {
     ryn::InputNumberProps props;
     props.value(1.25).defaultValue(std::nullopt);
+    props.value(std::nullopt).precision(std::nullopt);
 }

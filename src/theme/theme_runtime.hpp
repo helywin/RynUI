@@ -96,6 +96,8 @@ public:
     [[nodiscard]] const ModalThemeToken& modal_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_order() const;
     [[nodiscard]] const TagThemeToken& tag_colors() const;
+    [[nodiscard]] const InputNumberThemeToken& input_number_colors() const;
+    [[nodiscard]] const InputNumberThemeToken& input_number_metrics() const;
     [[nodiscard]] const TagThemeToken& tag_metrics() const;
     [[nodiscard]] const BadgeThemeToken& badge_colors() const;
     [[nodiscard]] const BadgeThemeToken& badge_metrics() const;

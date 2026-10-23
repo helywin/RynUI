@@ -6,7 +6,7 @@
 
 ## 2. Retained 组件（平台通用）
 
-- [ ] 2.1 复用 Input/editor/session，接入 retained 按钮、键盘、ref/slots、主题及规范化；组件测试覆盖受控拒绝/回写、空/partial、bounds/step/precision、非法配置原子性、preedit/commit、身份、焦点和销毁，Theme 测试覆盖继承、dirty 分组及旧 golden 字段；更新 docs/input-number.md，Debug 聚焦测试通过后本地提交。
+- [x] 2.1 复用 Input/editor/session，接入 retained 按钮、键盘、ref/slots、主题及规范化；组件测试覆盖受控拒绝/回写、空/partial、bounds/step/precision、非法配置原子性、preedit/commit、身份、焦点和销毁，Theme 测试覆盖继承、dirty 分组及旧 golden 字段；更新 docs/input-number.md，Debug 聚焦测试通过后本地提交。
 
 ## 3. 集成核验（平台通用）
 

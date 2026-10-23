@@ -138,6 +138,8 @@ enum class TokenIdentity : std::uint8_t {
     popconfirm_typography,
     popconfirm_effects,
     popconfirm_order,
+    input_number_colors,
+    input_number_metrics,
     count,
 };
 

@@ -31,6 +31,10 @@ public:
         return this->value(InputNumberValue{value});
     }
 
+    InputNumberProps& value(InputNumberValue value) {
+        return this->value(Prop<InputNumberValue>{value});
+    }
+
     InputNumberProps& defaultValue(InputNumberValue value) {
         default_value_ = value;
         return *this;
@@ -58,6 +62,10 @@ public:
 
     InputNumberProps& precision(unsigned value) {
         return precision(std::optional<unsigned>{value});
+    }
+
+    InputNumberProps& precision(std::optional<unsigned> value) {
+        return precision(Prop<std::optional<unsigned>>{value});
     }
 
     InputNumberProps& controls(Prop<bool> value) {

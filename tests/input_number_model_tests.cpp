@@ -56,6 +56,9 @@ void precision_and_atomicity() {
           "precision rounding escaped range");
     model.configure({-1, 1, .01, 2});
     check(model.parse("-.125") == std::optional<InputNumberValue>{-.13}, "negative half rounding failed");
+    model.configure({-10, 10, .01, 2});
+    check(model.parse("1.005") == std::optional<InputNumberValue>{1.01}, "decimal half rounded through binary float");
+    model.configure({-1, 1, .01, 2});
     const auto before = model.options();
     rejects([&] { model.configure({1, -1, 1, {}}); });
     rejects([&] { model.configure({0, 1, 0, {}}); });

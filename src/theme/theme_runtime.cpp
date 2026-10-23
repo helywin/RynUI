@@ -295,6 +295,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
     append_if_changed(before.tag().colors, after.tag().colors, TokenIdentity::tag_colors, changed, count);
+    append_if_changed(before.input_number().colors(), after.input_number().colors(), TokenIdentity::input_number_colors,
+                      changed, count);
+    append_if_changed(before.input_number().metrics(), after.input_number().metrics(),
+                      TokenIdentity::input_number_metrics, changed, count);
     append_if_changed(before.tag().metrics, after.tag().metrics, TokenIdentity::tag_metrics, changed, count);
     append_if_changed(before.badge().colors, after.badge().colors, TokenIdentity::badge_colors, changed, count);
     append_if_changed(before.badge().metrics, after.badge().metrics, TokenIdentity::badge_metrics, changed, count);
@@ -1037,6 +1041,18 @@ const TagThemeToken& ThemeScope::tag_colors() const {
     return snapshot_->tag();
 }
 
+const InputNumberThemeToken& ThemeScope::input_number_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::input_number_colors);
+    return snapshot_->input_number();
+}
+
+const InputNumberThemeToken& ThemeScope::input_number_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::input_number_metrics);
+    return snapshot_->input_number();
+}
+
 const TagThemeToken& ThemeScope::tag_metrics() const {
     ensure_owner_thread();
     record(TokenIdentity::tag_metrics);
@@ -1352,6 +1368,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Popconfirm.typography",
         "Popconfirm.effects",
         "Popconfirm.order",
+        "InputNumber.colors",
+        "InputNumber.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1405,6 +1423,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
+    case TokenIdentity::input_number_colors:
     case TokenIdentity::badge_colors:
     case TokenIdentity::drawer_colors:
     case TokenIdentity::popconfirm_colors:
@@ -1458,6 +1477,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::popconfirm_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::tag_metrics:
+    case TokenIdentity::input_number_metrics:
         return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::badge_metrics:
         return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry;

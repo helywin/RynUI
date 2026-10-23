@@ -3,6 +3,7 @@
 #include "component/window_component_services.hpp"
 #include "component/input_display.hpp"
 #include <ryn/input.hpp>
+#include <ryn/input_number.hpp>
 
 namespace ryn::detail {
 
@@ -109,6 +110,8 @@ public:
     [[nodiscard]] InputStatus status(runtime::ComponentId) const;
     [[nodiscard]] ControlSize size(runtime::ComponentId) const;
     [[nodiscard]] InputVariant variant(runtime::ComponentId) const;
+    [[nodiscard]] InputNumberValue number_value(runtime::ComponentId) const;
+    [[nodiscard]] std::array<runtime::ComponentId, 2> number_actions(runtime::ComponentId) const;
     [[nodiscard]] String count_text(runtime::ComponentId) const;
     [[nodiscard]] std::size_t count_value(runtime::ComponentId) const;
     [[nodiscard]] std::optional<std::array<bool, 4>> compact_corners(runtime::ComponentId) const;
@@ -121,6 +124,10 @@ private:
     friend struct InputPropsAccess;
     friend struct PasswordPropsAccess;
     void notify_change(input::TextInputOwnerId);
+    void refresh_number(runtime::ComponentId);
+    void finish_number(runtime::ComponentId);
+    void publish_number(runtime::ComponentId, std::optional<double>);
+    void step_number(runtime::ComponentId, InputNumberStepDirection, InputNumberStepSource);
     void notify_otp_edit(input::TextInputOwnerId, bool succeeded);
     void clear(runtime::ComponentId);
     void update_clear_visibility(runtime::ComponentId);
