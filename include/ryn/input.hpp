@@ -25,6 +25,8 @@ struct TextAreaPropsAccess;
 struct TextAreaPropsData;
 struct OTPPropsAccess;
 struct OTPInputCellConfig;
+struct InputNumberPropsAccess;
+struct InputNumberConfig;
 class OTPComponentHost;
 
 struct InputPropsData final {
@@ -242,6 +244,7 @@ protected:
     friend struct detail::SearchPropsAccess;
     friend struct detail::TextAreaPropsAccess;
     friend struct detail::OTPPropsAccess;
+    friend struct detail::InputNumberPropsAccess;
     detail::InputPropsData common_;
 
 private:
@@ -257,11 +260,13 @@ private:
     friend struct detail::PasswordPropsAccess;
     friend struct detail::TextAreaPropsAccess;
     friend struct detail::OTPPropsAccess;
+    friend struct detail::InputNumberPropsAccess;
     std::optional<Prop<bool>> password_visible_;
     std::shared_ptr<void> password_lifetime_;
     std::optional<Prop<bool>> suffix_presence_;
     std::shared_ptr<detail::TextAreaPropsData> textarea_;
     std::shared_ptr<detail::OTPInputCellConfig> otp_;
+    std::shared_ptr<detail::InputNumberConfig> number_;
 };
 
 struct InputPrefixSlot final {};

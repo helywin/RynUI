@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ryn/menu_theme.hpp>
+
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
 #include <ryn/feedback_tokens.hpp>
@@ -1146,6 +1148,52 @@ struct ProgressThemeConfig final {
     friend bool operator==(const ProgressThemeConfig&, const ProgressThemeConfig&) = default;
 };
 
+struct InputNumberThemeToken final {
+    float control_width{90};
+    float handle_width{22};
+    float handle_font_size{7};
+    Color handle_background;
+    Color handle_active_background;
+    Color handle_hover_color;
+    Color handle_border_color;
+    Color filled_handle_background;
+    Color handle_color;
+    Color disabled_color;
+
+    [[nodiscard]] auto colors() const noexcept {
+        return std::array{handle_background,   handle_active_background, handle_hover_color,
+                          handle_border_color, filled_handle_background, handle_color,
+                          disabled_color};
+    }
+
+    [[nodiscard]] auto metrics() const noexcept {
+        return std::array{control_width, handle_width, handle_font_size};
+    }
+
+    friend bool operator==(const InputNumberThemeToken&, const InputNumberThemeToken&) = default;
+};
+
+struct InputNumberTokenOverride final {
+    std::optional<LogicalLength> control_width;
+    std::optional<LogicalLength> handle_width;
+    std::optional<LogicalLength> handle_font_size;
+    std::optional<Color> handle_background;
+    std::optional<Color> handle_active_background;
+    std::optional<Color> handle_hover_color;
+    std::optional<Color> handle_border_color;
+    std::optional<Color> filled_handle_background;
+    std::optional<Color> handle_color;
+    std::optional<Color> disabled_color;
+    friend bool operator==(const InputNumberTokenOverride&, const InputNumberTokenOverride&) = default;
+};
+
+struct InputNumberThemeConfig final {
+    InputNumberTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const InputNumberThemeConfig&, const InputNumberThemeConfig&) = default;
+};
+
 struct PaginationColorToken final {
     Color item_background;
     Color active_background;
@@ -1280,6 +1328,7 @@ struct ThemeConfig final {
     ButtonThemeConfig button;
     TextThemeConfig text;
     InputThemeConfig input;
+    InputNumberThemeConfig input_number;
     SwitchThemeConfig switch_;
     CheckboxThemeConfig checkbox;
     RadioThemeConfig radio;
@@ -1298,6 +1347,8 @@ struct ThemeConfig final {
     AlertThemeConfig alert;
     SpinThemeConfig spin;
     ProgressThemeConfig progress;
+    MenuThemeConfig menu;
+    DropdownThemeConfig dropdown;
     PaginationThemeConfig pagination;
     TableThemeConfig table;
     std::vector<ThemeAlgorithm> algorithms;
@@ -1849,6 +1900,10 @@ public:
         return tag_;
     }
 
+    [[nodiscard]] const InputNumberThemeToken& input_number() const noexcept {
+        return input_number_;
+    }
+
     [[nodiscard]] const BadgeThemeToken& badge() const noexcept {
         return badge_;
     }
@@ -1868,6 +1923,8 @@ public:
         return progress_;
     }
 
+    [[nodiscard]] const MenuThemeToken& menu() const noexcept;
+    [[nodiscard]] const DropdownThemeToken& dropdown() const noexcept;
     [[nodiscard]] const PaginationThemeToken& pagination() const noexcept;
     [[nodiscard]] const TableThemeToken& table() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
@@ -1887,9 +1944,10 @@ private:
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
-                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                  TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
-                  ProgressThemeToken progress, PaginationThemeToken pagination, TableThemeToken table);
+                  MenuThemeToken menu, DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
+                  AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1914,6 +1972,9 @@ private:
     AlertThemeToken alert_;
     SpinThemeToken spin_;
     ProgressThemeToken progress_;
+    MenuThemeToken menu_;
+    DropdownThemeToken dropdown_;
+    InputNumberThemeToken input_number_;
     PaginationThemeToken pagination_;
     TableThemeToken table_;
     std::shared_ptr<const detail::InputTokenSet> input_;

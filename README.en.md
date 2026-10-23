@@ -34,12 +34,14 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
 | Data browsing | Table with retained keyed rows, typed columns/slots, controlled sorting/selection and finite scrolling, composed with controlled or default Pagination; see [Table](docs/table.md) and [Pagination](docs/pagination.md) |
+| Menus and commands | Menu with controlled selection, inline submenus and keyboard navigation; Dropdown with click/context-menu triggers, window layers and focus restoration; see [Menu / Dropdown](docs/menu-dropdown.md) |
+| Numeric editing | InputNumber with retained drafts, controlled values, bounds/precision/steps, keyboard and step buttons, using Input selection and IME; see [InputNumber](docs/input-number.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
 | Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |
 | Portable framework foundation | Separate host/GPU ownership, shared scene upload transactions, owned Recording data, SDL-free HEADLESS builds, and nonblocking frame entry points |
 
-The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Table`, `Tree`, and multiline editing are not available yet.
+The current components cover a subset of Ant Design. The Gallery's 73 entries across seven categories form a **reference catalog**, with support recorded for each entry; they are not 73 implemented components. Upstream `List` is marked deprecated and `Listy` is a new reference entry. `Tree` and Typography rich text are not available yet.
 
 Existing components are being completed for native desktops; Web-specific APIs are outside scope. See the [052 checklist](openspec/changes/052-20261003-complete-native-input-features/tasks.md) for single-line features and platform evidence. The Input family remains partial until TextArea, OTP and visual bidi caret navigation are complete.
 

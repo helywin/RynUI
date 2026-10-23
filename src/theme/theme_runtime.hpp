@@ -77,6 +77,13 @@ public:
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
+    [[nodiscard]] const MenuThemeToken& menu_colors() const;
+    [[nodiscard]] const MenuThemeToken& menu_metrics() const;
+    [[nodiscard]] const MenuThemeToken& menu_typography() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_colors() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_metrics() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_effects() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_order() const;
     [[nodiscard]] const SelectThemeToken& select_colors() const;
     [[nodiscard]] const SelectThemeToken& select_metrics() const;
     [[nodiscard]] const SelectThemeToken& select_typography() const;
@@ -100,6 +107,8 @@ public:
     [[nodiscard]] const ModalThemeToken& modal_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_order() const;
     [[nodiscard]] const TagThemeToken& tag_colors() const;
+    [[nodiscard]] const InputNumberThemeToken& input_number_colors() const;
+    [[nodiscard]] const InputNumberThemeToken& input_number_metrics() const;
     [[nodiscard]] const TagThemeToken& tag_metrics() const;
     [[nodiscard]] const BadgeThemeToken& badge_colors() const;
     [[nodiscard]] const BadgeThemeToken& badge_metrics() const;

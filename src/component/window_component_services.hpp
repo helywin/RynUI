@@ -31,6 +31,8 @@ class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
 class FeedbackComponentHost;
+class MenuComponentHost;
+class DropdownComponentHost;
 class PaginationComponentHost;
 class TableComponentHost;
 
@@ -238,6 +240,14 @@ public:
         return *feedback_;
     }
 
+    [[nodiscard]] MenuComponentHost& menu() noexcept {
+        return *menu_;
+    }
+
+    [[nodiscard]] DropdownComponentHost& dropdown() noexcept {
+        return *dropdown_;
+    }
+
     [[nodiscard]] TableComponentHost& table() noexcept {
         return *table_;
     }
@@ -351,6 +361,8 @@ private:
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
+    std::unique_ptr<MenuComponentHost> menu_;
+    std::unique_ptr<DropdownComponentHost> dropdown_;
     std::unique_ptr<PaginationComponentHost> pagination_;
     std::unique_ptr<TableComponentHost> table_;
 };

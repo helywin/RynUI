@@ -36,12 +36,14 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 标签与计数 | Tag/CheckableTag 状态色、受控关闭与选择；Badge 计数/溢出/圆点/状态、独立或包裹保留内容；见 [Tag / Badge](docs/tag-and-badge.md) |
 | 状态与进度 | Alert 受控关闭与内容插槽、Spin 保留内容及加载屏蔽、Progress 条形/圆形/仪表盘进度；见 [反馈组件](docs/feedback.md) |
 | 数据浏览 | Table 保留键控行、typed 列/插槽、受控排序/选择及有限滚动，搭配受控或默认 Pagination；见 [Table](docs/table.md) 和 [Pagination](docs/pagination.md) |
+| 菜单与命令 | Menu 受控选择、Inline 子菜单和键盘导航；Dropdown 点击/右键触发、窗口层与焦点恢复；见 [Menu / Dropdown](docs/menu-dropdown.md) |
+| 数值输入 | InputNumber 保留数值草稿、受控回写、范围/精度/步长、键盘与步进按钮，复用 Input 的选区和 IME；见 [InputNumber](docs/input-number.md) |
 | 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |
 | 提示浮层 | 基础文字 Tooltip、受控显示、hover/focus 延迟、Escape、十二种位置、边缘翻转与箭头；范围与验收见 [Tooltip](docs/tooltip.md) |
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
 | 可移植框架基础 | 独立宿主/GPU 所有权、共同场景上传事务、Recording 数据验收、无 SDL 的 HEADLESS 构建和非阻塞帧入口 |
 
-当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Table`、`Tree` 和 Typography 富文本等仍未提供。
+当前组件仅覆盖 Ant Design 的部分能力。Gallery 的七类 73 项是**参考目录**，每项单独标注支持范围，并不表示已实现 73 个组件。`List` 已按上游标记 deprecated，`Listy` 是新加入的参考项；`Tree` 和 Typography 富文本等仍未提供。
 
 已有组件按原生桌面范围持续收尾，Web 专用 API 不移植。单行家族见 [052 清单](openspec/changes/052-20261003-complete-native-input-features/tasks.md)；[053 TextArea](openspec/changes/053-20261003-add-native-text-area/tasks.md)已实现多行编辑、统计、autoSize、滚动与 resize；[054 OTP](openspec/changes/054-20261003-add-native-otp-input/tasks.md)已实现 Unicode 分格、粘贴/formatter/mask、组导航与动态长度。[055 双向文本](openspec/changes/055-20261003-complete-native-bidirectional-text/tasks.md)补齐 Unicode 17 Arabic/Hebrew 排版、视觉 caret/不连续选区和 reactive 段落方向，Input 家族原生功能已实现；Linux 原生验收仍独立待完成。
 

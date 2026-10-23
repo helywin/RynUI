@@ -12,6 +12,8 @@
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
 #include "component/feedback_component.hpp"
+#include "component/menu_component.hpp"
+#include "component/dropdown_component.hpp"
 #include "component/pagination_component.hpp"
 #include "component/table_component.hpp"
 
@@ -96,6 +98,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);
     popconfirm_ = std::make_unique<PopconfirmComponentHost>(*this);
+    dropdown_ = std::make_unique<DropdownComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
@@ -103,6 +106,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     tag_badge_ = std::make_unique<TagBadgeComponentHost>(*this);
     feedback_ = std::make_unique<FeedbackComponentHost>(*this);
+    menu_ = std::make_unique<MenuComponentHost>(*this);
     pagination_ = std::make_unique<PaginationComponentHost>(*this);
 }
 

@@ -11,6 +11,23 @@ foreach(feedback_test IN ITEMS feedback_public_api feedback_theme feedback_compo
     add_test(NAME rynui.${feedback_test} COMMAND rynui_${feedback_test}_tests)
 endforeach()
 
+foreach(number_test IN ITEMS input_number_model input_number_public_api)
+    add_executable(rynui_${number_test}_tests ${number_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${number_test}_tests)
+    target_link_libraries(rynui_${number_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${number_test} COMMAND rynui_${number_test}_tests)
+endforeach()
+
+foreach(number_test IN ITEMS input_number_component input_number_theme)
+    add_executable(rynui_${number_test}_tests ${number_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${number_test}_tests)
+    target_link_libraries(rynui_${number_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${number_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${number_test} COMMAND rynui_${number_test}_tests)
+endforeach()
+
 foreach(status_test IN ITEMS tag_badge_public_api tag_badge_theme tag_badge_component)
     add_executable(rynui_${status_test}_tests ${status_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${status_test}_tests)
@@ -88,6 +105,16 @@ if(NOT RYNUI_HAS_SDL_GPU)
     add_subdirectory(portable)
     return()
 endif()
+
+foreach(menu_dropdown_test IN ITEMS menu_component dropdown_component)
+    add_executable(rynui_${menu_dropdown_test}_tests ${menu_dropdown_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${menu_dropdown_test}_tests)
+    target_link_libraries(rynui_${menu_dropdown_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${menu_dropdown_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${menu_dropdown_test} COMMAND rynui_${menu_dropdown_test}_tests)
+endforeach()
 
 foreach(select_test IN ITEMS select_model select_theme select_public_api select_component card_theme card_public_api card_component tabs_model tabs_theme tabs_public_api tabs_component modal_model modal_public_api modal_theme modal_boundary modal_component drawer_model drawer_public_api drawer_theme drawer_component popconfirm_model popconfirm_public_api popconfirm_theme popconfirm_component)
     add_executable(rynui_${select_test}_tests ${select_test}_tests.cpp)

@@ -194,12 +194,16 @@ add_library(rynui_components STATIC
     component/button_component.cpp
     component/window_component_services.cpp
     component/input_component.cpp
+    component/input_number_model.cpp
+    component/input_number_actions.cpp
     component/input_affix_action.cpp
     component/input_material_transition.cpp
     component/input_display.cpp
     component/otp_model.cpp
     component/select_model.cpp
     component/select_component.cpp
+    component/menu_component.cpp
+    component/dropdown_component.cpp
     component/card_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp

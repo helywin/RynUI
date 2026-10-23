@@ -33,7 +33,7 @@
 | 3 | Modal、Drawer、Popconfirm | 061 Modal、062 Drawer、064 Popconfirm 已提供可用首版和实际 Gallery：保留插槽、受控请求、焦点/输入边界、正文滚动与子浮层；Modal Windows 原生矩阵已通过，其他原生平台项独立记录 |
 | 4 | Tag、Badge、Alert、Spin、Progress | 063 Tag/CheckableTag 与 Badge、065 Alert/Spin/Progress 已提供保留内容、受控事件、状态色/计数、加载屏蔽和三种确定进度；共同 Debug/Release 验证通过，069 补齐交互 Gallery，原生视觉独立记录 |
 | 5 | Pagination、Table | 066 已实现保留键控行、typed 列/插槽、受控排序/Checkbox 选择、有限滚动和可组合 Pagination；两轮 Astra 审查修复滚轮/子层/Tab 顺序/布局，Gallery 与原生平台验收另行集成 |
-| 6 | Menu、Dropdown | 应用导航与操作菜单，复用已验证的窗口层行为 |
-| 7 | InputNumber、DatePicker、TimePicker、Form | 数值/日期/时间录入和表单验证组合 |
+| 6 | Menu、Dropdown | 067 已实现保留菜单、受控选择/Inline 子菜单、键盘/滚动、点击/右键 Dropdown、子浮层与焦点恢复；两轮 Astra 修复及共同 Debug/Release 验证通过，Gallery/平台证据另行记录 |
+| 7 | InputNumber、DatePicker、TimePicker、Form | 068 InputNumber 已实现数值草稿、受控回写、范围/精度/步长、按钮/键盘和 IME 门禁；两轮 Astra 修复及直接 Spin 集成验证通过，日期/时间和表单组合后续实施 |
 
 这些为待实现顺序，不能据此提升 Gallery support status；现有 Button、Input 家族、布局、选择控件、Typography 等已实现能力继续保持可用。
