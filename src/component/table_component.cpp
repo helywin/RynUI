@@ -698,7 +698,16 @@ void TableComponentHost::mount(TableOptions options, const Prop<std::vector<Tabl
             s.body = context.mount_component<int>(0);
             const auto body_node = context.root(s.body);
             services.nodes().require(body_node).clip_content = true;
-            context.on_resource_cleanup(s.body, [&services, body_node] { services.layout().remove_layout(body_node); });
+            const auto body_hit = services.interactions().create({s.body, body_node, {}, true, false, {}, true, false});
+            const auto body_fragment =
+                context.register_scene_fragment(s.body, runtime::SceneFragmentPlacement::before_children);
+            services.scene_composer().set_fragment(body_fragment, {}, body_hit);
+            context.on_resource_cleanup(s.body, [&services, body_node, body_hit, body_fragment] {
+                services.pointer().cancel_interaction(body_hit);
+                services.interactions().remove(body_hit);
+                services.scene_composer().remove_fragment(body_fragment);
+                services.layout().remove_layout(body_node);
+            });
             context.mount_slot(s.body, Content{[&] {
                                    for (const auto& record : records) {
                                        const auto row =
