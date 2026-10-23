@@ -128,6 +128,12 @@ enum class TokenIdentity : std::uint8_t {
     tag_metrics,
     badge_colors,
     badge_metrics,
+    alert_colors,
+    alert_metrics,
+    spin_colors,
+    spin_metrics,
+    progress_colors,
+    progress_metrics,
     count,
 };
 

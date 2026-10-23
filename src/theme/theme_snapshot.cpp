@@ -2126,6 +2126,138 @@ TagThemeToken derive_tag(const AntDesignDefaultSeed& seed, const ThemeMapToken& 
     return token;
 }
 
+AlertThemeToken derive_alert(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                             std::span<const ThemeAlgorithm> algorithms) {
+    AlertThemeToken t;
+    const auto palette = [&](Color base, Color icon) {
+        const bool dark = contains_dark(algorithms);
+        return AlertPalette{dark ? mix(Color::rgba8(20, 20, 20), palette_variant(base, 2, false), .15F)
+                                 : palette_variant(base, 5, true),
+                            dark ? mix(Color::rgba8(20, 20, 20), palette_variant(base, 1, false), .65F)
+                                 : palette_variant(base, 3, true),
+                            icon};
+    };
+    const auto info = palette(seed.color_info, map.color_info);
+    t.colors = {{info, info, palette(seed.color_success, map.color_success), info,
+                 palette(seed.color_error, map.color_error), palette(seed.color_warning, map.color_warning)},
+                alias.color_text,
+                alias.color_text,
+                alias.color_text_secondary,
+                alias.color_text,
+                alias.color_focus_outline};
+    auto& m = t.metrics;
+    m.padding_block = map.size_xs;
+    m.description_padding_inline = map.size_large;
+    m.description_padding_block = (map.size + map.size_large) / 2;
+    m.gap = map.size_xs;
+    m.description_gap = map.size_xs;
+    m.icon_size = map.font_size;
+    m.description_icon_size = derive_typography(seed, map, alias).headings[2].font_size;
+    m.border_width = seed.line_width;
+    m.border_radius = map.border_radius_large;
+    m.font_size = map.font_size;
+    m.line_height = map.font_size * map.line_height;
+    m.message_font_size = map.font_size_large;
+    m.message_line_height = map.font_size_large * map.line_height_large;
+    m.focus_width = alias.line_width_focus;
+    m.focus_offset = alias.focus_outline_offset;
+    m.font_family = seed.font_family;
+    return t;
+}
+
+void apply_alert_override(AlertThemeToken& t, const AlertTokenOverride& o) {
+    if (o.message_color) {
+        t.colors.message = *o.message_color;
+    }
+    if (o.description_color) {
+        t.colors.description = *o.description_color;
+    }
+    if (o.close_color) {
+        t.colors.close = *o.close_color;
+    }
+    auto& m = t.metrics;
+    m.padding_inline = fixed_length(o.padding_inline, m.padding_inline, "Alert padding invalid");
+    m.padding_block = fixed_length(o.padding_block, m.padding_block, "Alert padding invalid");
+    m.description_padding_inline =
+        fixed_length(o.description_padding_inline, m.description_padding_inline, "Alert padding invalid");
+    m.description_padding_block =
+        fixed_length(o.description_padding_block, m.description_padding_block, "Alert padding invalid");
+    m.icon_size = fixed_length(o.icon_size, m.icon_size, "Alert icon size invalid", true);
+    m.description_icon_size =
+        fixed_length(o.description_icon_size, m.description_icon_size, "Alert icon size invalid", true);
+    m.border_radius = fixed_length(o.border_radius, m.border_radius, "Alert radius invalid");
+    m.font_size = fixed_length(o.font_size, m.font_size, "Alert font invalid", true);
+}
+
+SpinThemeToken derive_spin(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias) {
+    SpinThemeToken t;
+    const auto bg = alias.color_background_container;
+    t.colors = {map.color_primary, Color(bg.red(), bg.green(), bg.blue(), .55F)};
+    auto& m = t.metrics;
+    m.dot_size = map.control_height_large / 2;
+    m.dot_size_small = map.control_height_large * .35F;
+    m.dot_size_large = map.control_height;
+    m.description_gap = map.size_xs;
+    m.font_size = map.font_size;
+    m.line_height = map.font_size * map.line_height;
+    m.font_family = seed.font_family;
+    return t;
+}
+
+void apply_spin_override(SpinThemeToken& t, const SpinTokenOverride& o) {
+    if (o.indicator_color) {
+        t.colors.indicator = *o.indicator_color;
+    }
+    if (o.mask_color) {
+        t.colors.mask = *o.mask_color;
+    }
+    auto& m = t.metrics;
+    m.dot_size = fixed_length(o.dot_size, m.dot_size, "Spin dot size invalid", true);
+    m.dot_size_small = fixed_length(o.dot_size_small, m.dot_size_small, "Spin dot size invalid", true);
+    m.dot_size_large = fixed_length(o.dot_size_large, m.dot_size_large, "Spin dot size invalid", true);
+}
+
+ProgressThemeToken derive_progress(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                   const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    ProgressThemeToken t;
+    const auto base = map.color_text_base;
+    t.colors = {map.color_info, map.color_success, map.color_error,
+                Color(base.red(), base.green(), base.blue(), contains_dark(algorithms) ? .12F : .06F),
+                alias.color_text};
+    t.metrics.font_family = seed.font_family;
+    t.metrics.font_size = map.font_size;
+    t.metrics.line_height = map.font_size * map.line_height;
+    t.metrics.info_gap = map.size_xs;
+    return t;
+}
+
+void apply_progress_override(ProgressThemeToken& t, const ProgressTokenOverride& o) {
+    if (o.default_color) {
+        t.colors.normal = *o.default_color;
+    }
+    if (o.remaining_color) {
+        t.colors.remaining = *o.remaining_color;
+    }
+    if (o.text_color) {
+        t.colors.text = *o.text_color;
+    }
+    auto& m = t.metrics;
+    m.line_width = fixed_length(o.line_width, m.line_width, "Progress line width invalid", true);
+    m.line_width_small = fixed_length(o.line_width_small, m.line_width_small, "Progress line width invalid", true);
+    m.line_width_large = fixed_length(o.line_width_large, m.line_width_large, "Progress line width invalid", true);
+    m.circle_size = fixed_length(o.circle_size, m.circle_size, "Progress circle size invalid", true);
+    m.circle_size_small = fixed_length(o.circle_size_small, m.circle_size_small, "Progress circle size invalid", true);
+    m.circle_size_large = fixed_length(o.circle_size_large, m.circle_size_large, "Progress circle size invalid", true);
+    m.line_radius = fixed_length(o.line_border_radius, m.line_radius, "Progress radius invalid");
+    if (o.circle_stroke_ratio) {
+        const auto v = *o.circle_stroke_ratio;
+        if (!std::isfinite(v) || v <= 0 || v > 1) {
+            throw std::invalid_argument("Progress circle stroke ratio invalid");
+        }
+        m.circle_stroke_ratio = v;
+    }
+}
+
 void apply_tag_override(TagThemeToken& t, const TagTokenOverride& o) {
     if (o.default_background) {
         t.colors.normal.background = *o.default_background;
@@ -3166,13 +3298,15 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                             TagThemeToken tag, BadgeThemeToken badge)
+                             TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
+                             ProgressThemeToken progress)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
     std::ostringstream status_json;
@@ -3236,6 +3370,46 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     hash_integer(identity_, badge_.metrics.font_weight);
     status_json << "],\"fontFamily\":" << static_cast<int>(badge_.metrics.font_family)
                 << ",\"fontWeight\":" << badge_.metrics.font_weight << '}';
+    status_json << ",\"alert\":{\"colors\":[";
+    first = true;
+    for (const auto& p : alert_.colors.statuses) {
+        color(p.background);
+        color(p.border);
+        color(p.icon);
+    }
+    for (auto entry : {alert_.colors.message, alert_.colors.description, alert_.colors.close, alert_.colors.close_hover,
+                       alert_.colors.focus}) {
+        color(entry);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float v : alert_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, alert_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(alert_.metrics.font_family) << "},\"spin\":{\"colors\":[";
+    first = true;
+    color(spin_.colors.indicator);
+    color(spin_.colors.mask);
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float v : spin_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, spin_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(spin_.metrics.font_family) << "},\"progress\":{\"colors\":[";
+    first = true;
+    for (auto entry : {progress_.colors.normal, progress_.colors.success, progress_.colors.exception,
+                       progress_.colors.remaining, progress_.colors.text}) {
+        color(entry);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (float v : progress_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, progress_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(progress_.metrics.font_family) << '}';
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                            slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
@@ -3333,6 +3507,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
            left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
+           left.alert_ == right.alert_ && left.spin_ == right.spin_ && left.progress_ == right.progress_ &&
            *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
@@ -3616,12 +3791,59 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         badge = derive_badge(seed, map, alias);
     }
     apply_badge_override(badge, config.badge.tokens);
+    AlertThemeToken alert;
+    const bool inherit_alert = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                               config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                               !config.alert.algorithm && config.alert.seed == SeedTokenOverride{};
+    if (inherit_alert) {
+        alert = parent->alert();
+    } else if (config.alert.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.alert.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        alert = derive_alert(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                             algorithms);
+    } else {
+        alert = derive_alert(seed, map, alias, algorithms);
+    }
+    apply_alert_override(alert, config.alert.tokens);
+    SpinThemeToken spin;
+    const bool inherit_spin = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                              !config.spin.algorithm && config.spin.seed == SeedTokenOverride{};
+    if (inherit_spin) {
+        spin = parent->spin();
+    } else if (config.spin.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.spin.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        spin = derive_spin(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+    } else {
+        spin = derive_spin(seed, map, alias);
+    }
+    apply_spin_override(spin, config.spin.tokens);
+    ProgressThemeToken progress;
+    const bool inherit_progress = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.progress.algorithm && config.progress.seed == SeedTokenOverride{};
+    if (inherit_progress) {
+        progress = parent->progress();
+    } else if (config.progress.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.progress.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        progress = derive_progress(component_seed, component_map,
+                                   derive_alias(component_seed, component_map, algorithms), algorithms);
+    } else {
+        progress = derive_progress(seed, map, alias, algorithms);
+    }
+    apply_progress_override(progress, config.progress.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
                          std::move(tabs), std::move(modal),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
-                         std::move(tag), std::move(badge));
+                         std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress));
 }
 
 } // namespace ryn

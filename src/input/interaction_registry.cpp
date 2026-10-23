@@ -317,6 +317,27 @@ std::optional<runtime::ComponentId> InteractionRegistry::input_boundary() const 
     return input_boundary_;
 }
 
+bool InteractionRegistry::set_input_blocked(runtime::ComponentId root, bool blocked) {
+    ensure_owner_thread();
+    const auto found = std::find(blocked_roots_.begin(), blocked_roots_.end(), root);
+    if (blocked) {
+        if (!components_->contains(root)) {
+            throw std::invalid_argument("Input block requires a live component");
+        }
+        if (found != blocked_roots_.end()) {
+            return false;
+        }
+        blocked_roots_.push_back(root);
+    } else {
+        if (found == blocked_roots_.end()) {
+            return false;
+        }
+        blocked_roots_.erase(found);
+    }
+    ++input_boundary_revision_;
+    return true;
+}
+
 std::uint64_t InteractionRegistry::input_boundary_revision() const {
     ensure_owner_thread();
     return input_boundary_revision_;
@@ -325,6 +346,10 @@ std::uint64_t InteractionRegistry::input_boundary_revision() const {
 bool InteractionRegistry::component_active(runtime::ComponentId component) const {
     ensure_owner_thread();
     return components_->branch_active(component) &&
+           std::none_of(blocked_roots_.begin(), blocked_roots_.end(),
+                        [&](auto root) {
+                            return components_->contains(root) && component_is_same_or_ancestor(root, component);
+                        }) &&
            (!input_boundary_ ||
             (components_->contains(*input_boundary_) && component_is_same_or_ancestor(*input_boundary_, component)));
 }

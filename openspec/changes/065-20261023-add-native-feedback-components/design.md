@@ -13,8 +13,8 @@
 - 公共 API 使用独立 AlertProps/SpinProps/ProgressProps 和 typed slots。Alert 使用 Tag 的 Status（None/Default 为 info，Processing 为 info）；Progress 使用专用 ProgressStatus Normal/Success/Exception，避免假装支持 active shimmer。
 - Alert close 只请求 onClose，visible 由调用者写回；message/description 默认文本与可选 slot 共用语义字体，action/close 始终保留。
 - Spin 在内容后绘制 Theme dim mask 和 indicator，内容不失活、不重建；给 InteractionRegistry 增加有生命周期的 blocked subtree 记录，沿用 input boundary revision 的捕获/焦点/编辑会话清理。避免篡改子控件 disabled/eligible 值，支持嵌套和动态内容。
-- Spin 默认四圆点，以 finite AnimationRuntime 周期驱动 opacity；离屏、祖先隐藏、window inactive、spinning=false、reduced/Theme motion=false 撤销 deadline。无内容可独立使用。
-- Progress line 用 rounded surface；circle/dashboard 用固定数量的 round dots 构成圆弧，共同 CPU quad store 保持稳定 topology。percent clamp 到 0..100，非有限值拒绝；100 默认完成态，Exception 优先。代价是圆弧为有限采样，后续 GPU 人工视觉单独验证。
+- Spin 默认 LoadingOutlined，复用 Icon 的 finite AnimationRuntime 旋转周期；离屏、祖先隐藏、window inactive、spinning=false、reduced/Theme motion=false 撤销 deadline。无内容可独立使用。
+- Progress line 用 rounded fill；circle/dashboard 用固定数量的 round dots 构成圆弧，共同 CPU RoundedEffect store 保持稳定 topology。零模糊 fill 复用已有祖先裁剪合同，避免扩大 Surface 的 16 层上限。percent clamp 到 0..100，非有限值拒绝；100 默认完成态，Exception 优先。代价是圆弧为有限采样，后续 GPU 人工视觉单独验证。
 - 三组 typed component token 解析 Default/Dark/Compact、nested override/algorithm、identity serialization 和按颜色/metrics 分开的精确失效；扩展 golden 时比较全部旧字段（identity 除外）。
 
 ## Risks / Trade-offs
@@ -25,4 +25,4 @@
 
 ## Migration Plan
 
-新增 API，无旧调用迁移。独立工作树 `windows-msvc-headless` preset、Ninja Multi-Config/MSVC，Debug/Release 定向 CTest；本机 helper 和构建目录仅在忽略的 out 下，最多 4 compile jobs。分阶段英文提交并立即推送；可逐提交回滚。
+新增 API，无旧调用迁移。独立工作树 `windows-msvc-headless` preset、Ninja Multi-Config/MSVC，Debug/Release 定向 CTest；本机 helper 和构建目录仅在忽略的 out 下，最多 4 compile jobs。分阶段英文本地提交；根据用户最新策略，不再推送工作树分支，由父任务合并、验证并推送 main。规划提交曾在策略变更前推送，可逐提交回滚。
