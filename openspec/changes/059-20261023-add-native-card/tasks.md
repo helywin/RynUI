@@ -14,7 +14,7 @@
 
 ## 4. Gallery 与共同集成（平台通用）
 
-- [ ] 4.1 接入真实 Card 基础/标题/extra/cover/actions/小号/borderless/hover/loading/局部主题样例与切换操作，更新 supported/missing scope/catalog、README；catalog generator check、受影响 Gallery Recording 合同及格式/规格校验通过，记录实际平台/preset/evidence后提交并立即 push、核对 SHA。
+- [x] 4.1 接入真实 Card 基础/标题/extra/cover/actions/小号/borderless/hover/loading/局部主题样例与切换操作，更新 supported/missing scope/catalog、README；catalog generator check、受影响 Gallery Recording 合同及格式/规格校验通过，记录实际平台/preset/evidence后提交并立即 push、核对 SHA。
 
 ## 5. 原生平台验收
 

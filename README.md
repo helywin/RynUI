@@ -28,6 +28,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 排版与分割线 | 五级标题、行内语义与装饰、字素安全省略和展开、全文复制、操作提示、TextArea 多行原地编辑、Link 交互；范围见 [Typography](docs/typography.md) 与 [Divider](docs/divider.md) |
 | 单行编辑 | Input / Password / Search、四变体、统计与软硬上限、焦点引用、原生用途提示、自定义图标和清空；字素安全选区、剪贴板、撤销/重做与 IME，见 [Input](docs/input.md) |
 | 下拉选择 | Select 单选、字符串/int64 值、Unicode 搜索、清空、动态选项、受控回写、键盘与窗口层；范围和验收见 [Select](docs/select.md) |
+| 内容容器 | Card 标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留编辑状态的 loading；见 [Card](docs/card.md) |
 | 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |
 | 提示浮层 | 基础文字 Tooltip、受控显示、hover/focus 延迟、Escape、十二种位置、边缘翻转与箭头；范围与验收见 [Tooltip](docs/tooltip.md) |
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
@@ -110,6 +111,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [Icon](docs/icon.md)：完整离线目录、双色、旋转动画与 typed 自定义向量。
 - [Input](docs/input.md)：单行输入家族、公开焦点引用与原生系统输入提示。
 - [Select](docs/select.md)：单选/搜索/动态选项、键盘与窗口层、主题和首版范围。
+- [Card](docs/card.md)：内容区域组合、尺寸与主题、loading 保留状态和子控件交互。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
 - [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。

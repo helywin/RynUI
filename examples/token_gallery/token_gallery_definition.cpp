@@ -74,6 +74,7 @@ struct GalleryState final {
     ryn::Signal<bool> select_open{false};
     ryn::SelectRef select_ref;
     bool select_options_expanded{};
+    ryn::Signal<bool> card_loading{false};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -276,6 +277,14 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.select.focus",
     "gallery.select.toggle-open",
     "gallery.select.dynamic-options",
+    "gallery.card.basic",
+    "gallery.card.account",
+    "gallery.card.cover-actions",
+    "gallery.card.small",
+    "gallery.card.borderless",
+    "gallery.card.loading",
+    "gallery.card.component-theme",
+    "gallery.card.toggle-loading",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -1882,6 +1891,60 @@ void add_select_samples(const std::shared_ptr<GalleryState>& state) {
            ButtonContent{[] { Text(u8"gallery.select.dynamic-options"); }});
     state->telemetry.live_samples += 3;
 }
+
+void add_card_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"Card · 标题 / 区域组合 / 保留编辑状态 / 加载");
+    const auto props = [state] {
+        return CardProps{}.layout(LayoutStyle{}.width(state->cell_width));
+    };
+    Text(u8"gallery.card.basic · 无标题内容容器");
+    Card(props(), CardContent{[] { Text(u8"Business content / 业务内容"); }});
+    Text(u8"gallery.card.account · 标题 / extra / 编辑状态");
+    Card(props().title(u8"Account / 账户").loading(state->card_loading), CardContent{[] {
+             Input(InputProps{}.defaultValue(u8"保留草稿 / Draft").layout(LayoutStyle{}.width(dp(140))));
+         }},
+         CardSlots{.extra = CardExtra{[state] {
+                       Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
+                              [] { Text(u8"Edit"); });
+                   }}});
+    Text(u8"gallery.card.cover-actions · 富标题 / cover / actions");
+    Card(props(), CardContent{[] { Text(u8"Retained content / 保留内容"); }},
+         CardSlots{.title = CardTitle{[] { Text(TextProps{}.content(u8"Native composition / 原生组合")); }},
+                   .cover = CardCover{[] { Text(u8"Cover slot / 封面内容区域"); }},
+                   .actions = CardActions{[state] {
+                       Space(SpaceProps{}, SpaceContent{[state] {
+                                 Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
+                                        [] { Text(u8"Save"); });
+                                 Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
+                                        [] { Text(u8"More"); });
+                             }});
+                   }}});
+    Text(u8"gallery.card.small · 小号尺寸");
+    Card(props().title(u8"Small / 小号").size(CardSize::Small), CardContent{[] { Text(u8"12 dp padding"); }});
+    Text(u8"gallery.card.borderless · 无边框 / 子控件 hover");
+    Card(props().title(u8"Hover / 悬停").variant(CardVariant::Borderless).hoverable(), CardContent{[state] {
+             Button(ButtonProps{}.onClick([state] { ++state->telemetry.activations; }),
+                    [] { Text(u8"Nested action"); });
+         }});
+    Text(u8"gallery.card.loading · 静态占位");
+    Card(props().title(u8"Loading / 加载").loading(), CardContent{[] { Text(u8"Data remains mounted"); }});
+    ThemeConfig custom;
+    custom.card.tokens.background = Color::rgba8(238, 246, 255);
+    custom.card.tokens.header_background = Color::rgba8(220, 235, 255);
+    custom.card.tokens.body_padding = dp(16);
+    Theme(ThemeProps{}.config(custom), ThemeContent{[state, props] {
+              ++state->telemetry.theme_content_runs;
+              Text(u8"gallery.card.component-theme · 局部背景 / 16 dp padding");
+              Card(props().title(u8"Component Token"), CardContent{[] { Text(u8"Scoped presentation / 局部主题"); }});
+          }});
+    Button(ButtonProps{}.onClick([state] {
+        state->card_loading.set(!state->card_loading.get());
+        ++state->telemetry.activations;
+    }),
+           [] { Text(u8"gallery.card.toggle-loading · 切换账户卡片加载"); });
+    state->telemetry.live_samples += 8;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -1966,6 +2029,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_otp_samples(state);
                                                         add_bidi_samples(state);
                                                         add_select_samples(state);
+                                                        add_card_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

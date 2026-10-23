@@ -25,3 +25,5 @@ loading 保留已挂载正文的编辑状态并切换静态三行占位，隐藏
 背景、分隔线、占位和边框复用共同 rounded effects，保留逻辑平移、透明度和祖先矩形裁剪，不增加 renderer ABI 或私有上传。销毁会清理子组件、interaction、订阅与效果资源；静态占位不持续请求动画帧。
 
 首版不包含 Grid、Meta、内置 Tabs、异步图片加载、骨架动画或 Web/DOM 样式接口。cover 可放应用自己的原生内容；Card 未提供对任意后代内容的圆角遮罩。
+
+Gallery 已提供7个真实 Card 和 loading 切换操作；平台通用完整 headless 与 Gallery Recording 回归已通过。实际 GPU、系统字体/输入和分平台验收以059的 tasks/evidence为准。

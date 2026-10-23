@@ -739,16 +739,24 @@
     },
     {
       "identity": "ant.component.card",
-      "status": "planned",
-      "summary": "卡片（Card）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供原生 Card：标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留正文状态的 loading；Grid/Meta/内置 Tabs 等扩展尚未覆盖，原生平台证据独立记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive Props and body/title/extra/cover/actions slots",
+        "default/small, outlined/borderless and hover across nested controls",
+        "retained loading placeholder with body focus/input/popup cleanup and editor state restoration",
+        "Card Component Token, precise invalidation, logical translation/clipping and idle cleanup"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "Card.Grid/Card.Meta and built-in Tabs/tabList",
+        "asynchronous image loading, animated skeleton and arbitrary descendant rounded mask",
+        "complete Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/card/index.en-US.md"
+        "source:components/card/index.en-US.md",
+        "openspec:059-20261023-add-native-card",
+        "test:rynui.card_theme",
+        "test:rynui.card_component"
       ]
     },
     {

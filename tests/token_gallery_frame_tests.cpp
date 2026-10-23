@@ -5,6 +5,7 @@
 #include "component/divider_component.hpp"
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
+#include "component/card_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -799,7 +800,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 178, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 186, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -812,7 +813,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 96,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 101,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -821,9 +822,9 @@ void test_token_gallery_frame_contract() {
     require(fixture.selections->mounted().size() == 32 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
-    // Select adds sixteen retained selectors/clear actions/popups, sixty
-    // candidate/empty rows and three demo buttons; closed popups remain retained.
-    require(fixture.host->interactions().size() == definition.navigation_control_count + 429,
+    // Closed Select menus remain retained; Card adds seven container hits,
+    // five buttons and one editor, with no extra Tab entries for its containers.
+    require(fixture.host->interactions().size() == definition.navigation_control_count + 442,
             "Token Gallery control and Typography interaction inventory drifted");
     require(fixture.host->services().typography().mounted().size() == 4 &&
                 fixture.host->services().divider().mounted().size() == 11,
@@ -839,13 +840,13 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 327,
+    require(fixture.host->scene_composer().interaction_order().size() == definition.navigation_control_count + 340,
             "Token Gallery visible action inventory drifted");
 
     const auto initial = definition.telemetry();
-    require(initial.content_runs == 1 && initial.theme_content_runs == 64 && initial.document_sections == 6 &&
+    require(initial.content_runs == 1 && initial.theme_content_runs == 65 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 197,
+                initial.reference_content_runs == 126 && initial.live_samples == 205,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -988,7 +989,9 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    require(fixture.inputs->mounted_inputs().size() == 100 && fixture.host->services().select().mounted().size() == 16,
+    require(fixture.inputs->mounted_inputs().size() == 101 &&
+                fixture.host->services().select().mounted().size() == 16 &&
+                fixture.host->services().card().mounted().size() == 7,
             "Gallery Input/Search/Password/Typography/TextArea/OTP/Select samples absent");
     const auto samples = fixture.inputs->mounted_inputs();
     const auto variants = std::array{ryn::InputVariant::Outlined, ryn::InputVariant::Filled,
@@ -1172,6 +1175,61 @@ void test_select_popup_after_document_scroll() {
             "Gallery translated option did not select through its controlled binding without remount");
 }
 
+void test_card_gallery_loading_restores_editor() {
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200.0F);
+    Fixture fixture;
+    fixture.host->set_motion_preference(ryn::animation::MotionPreference::reduced);
+    fixture.surfaces->mount(definition.content, fixture.inputs.get());
+    RecordingGpuApi gpu;
+    RecordingDrawApi draw;
+    IdleEvents events;
+    HeadlessSubmitter submitter(*fixture.host, fixture.text_scene, fixture.frames, gpu, draw);
+    ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, *fixture.host, 5);
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Card Gallery initial frame failed");
+    auto& cards = fixture.host->services().card();
+    require(cards.mounted().size() == 7, "Card Gallery samples are missing");
+    const auto account = cards.mounted()[1];
+    const auto before = cards.snapshot(account);
+    const auto input = fixture.inputs->mounted_inputs()[100];
+    require(fixture.host->focus().request_focus(input.interaction, ryn::input::FocusModality::keyboard),
+            "Card Gallery editor focus failed");
+    static_cast<void>(fixture.inputs->editors().require(input.editor).select_all());
+    require(bool(fixture.inputs->dispatch(ryn::input::TextCommitted{ryn::String{u8"保留账户编辑 / Saved draft"},
+                                                                    fixture.inputs->sessions().active()})),
+            "Card Gallery editor input failed");
+    require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Card Gallery edit frame failed");
+    const auto telemetry = definition.telemetry();
+    const auto components = fixture.host->components().component_count();
+    // The two site-header buttons mount after the live document samples.
+    const auto buttons = fixture.host->mounted_buttons();
+    const auto toggle = buttons[buttons.size() - 3];
+    const auto click_toggle = [&] {
+        const auto& node = fixture.nodes.require(toggle.node);
+        const ryn::runtime::Point point{node.bounds.x + node.bounds.width / 2, node.bounds.y + node.bounds.height / 2};
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
+        fixture.host->pointer().dispatch(
+            pointer_event(ryn::input::PointerAction::up, point, ryn::input::PointerButton::primary));
+        require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Card Gallery loading frame failed");
+    };
+    click_toggle();
+    require(cards.snapshot(account).loading && !fixture.host->components().branch_active(before.body) &&
+                !fixture.inputs->sessions().active().valid(),
+            "Card Gallery loading retained its editor session");
+    click_toggle();
+    require(!cards.snapshot(account).loading && cards.snapshot(account).body == before.body &&
+                fixture.inputs->mounted_inputs()[100].editor == input.editor &&
+                fixture.inputs->editors().require(input.editor).value() ==
+                    ryn::String{u8"保留账户编辑 / Saved draft"}.bytes() &&
+                fixture.host->components().component_count() == components &&
+                definition.telemetry().content_runs == telemetry.content_runs &&
+                definition.telemetry().theme_content_runs == telemetry.theme_content_runs &&
+                definition.telemetry().activations == telemetry.activations + 2,
+            "Card Gallery loading remounted content or lost its draft");
+    static_cast<void>(drain_animation_frames(*fixture.host, loop, "Card Gallery did not settle idle"));
+}
+
 } // namespace
 
 int main() {
@@ -1185,6 +1243,7 @@ int main() {
         test_token_gallery_frame_contract();
         test_live_input_samples();
         test_select_popup_after_document_scroll();
+        test_card_gallery_loading_restores_editor();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;
