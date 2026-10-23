@@ -1,6 +1,13 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(form_test IN ITEMS form_model form_public_api)
+    add_executable(rynui_${form_test}_tests ${form_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${form_test}_tests)
+    target_link_libraries(rynui_${form_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
+endforeach()
+
 foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_component)
     add_executable(rynui_${collapse_test}_tests ${collapse_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${collapse_test}_tests)

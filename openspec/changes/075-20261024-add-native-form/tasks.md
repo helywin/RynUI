@@ -6,7 +6,7 @@
 
 ## 2. 平台通用模型与 API
 
-- [ ] 2.1 实现 typed field、注册/卸载/保留值、受控 authority、初值 reset、required/custom、快照与 reentrancy；通过官方 windows-msvc-headless 独立 MSVC Debug/Release 构建的 focused model/public API CTest 后本地提交。
+- [x] 2.1 实现 typed field、注册/卸载/保留值、受控 authority、初值 reset、required/custom、快照与 reentrancy；通过官方 windows-msvc-headless 独立 MSVC Debug/Release 构建的 focused model/public API CTest 后本地提交。
 
 ## 3. 平台通用 retained 集成
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <ryn/form.hpp>
 #include <ryn/alert.hpp>
 #include <ryn/spin.hpp>
 #include <ryn/progress.hpp>

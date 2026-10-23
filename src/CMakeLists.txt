@@ -190,6 +190,7 @@ target_link_libraries(rynui_text_scene PRIVATE
 )
 
 add_library(rynui_components STATIC
+    component/form_model.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp
     component/button_component.cpp
