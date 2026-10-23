@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/design_token.hpp>
+#include <ryn/tag_badge_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -966,6 +967,20 @@ struct ModalThemeConfig final {
     friend bool operator==(const ModalThemeConfig&, const ModalThemeConfig&) = default;
 };
 
+struct TagThemeConfig final {
+    TagTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TagThemeConfig&, const TagThemeConfig&) = default;
+};
+
+struct BadgeThemeConfig final {
+    BadgeTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const BadgeThemeConfig&, const BadgeThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -983,6 +998,8 @@ struct ThemeConfig final {
     CardThemeConfig card;
     TabsThemeConfig tabs;
     ModalThemeConfig modal;
+    TagThemeConfig tag;
+    BadgeThemeConfig badge;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1527,6 +1544,15 @@ public:
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
+
+    [[nodiscard]] const TagThemeToken& tag() const noexcept {
+        return tag_;
+    }
+
+    [[nodiscard]] const BadgeThemeToken& badge() const noexcept {
+        return badge_;
+    }
+
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1544,7 +1570,7 @@ private:
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms);
+                  std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1562,6 +1588,8 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     ModalThemeToken modal_;
+    TagThemeToken tag_;
+    BadgeThemeToken badge_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

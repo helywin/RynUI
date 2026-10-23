@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ryn/button.hpp>
+#include <ryn/tag.hpp>
+#include <ryn/badge.hpp>
 #include <ryn/checkbox.hpp>
 #include <ryn/component.hpp>
 #include <ryn/design_token.hpp>

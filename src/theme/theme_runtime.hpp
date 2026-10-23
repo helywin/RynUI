@@ -95,6 +95,10 @@ public:
     [[nodiscard]] const ModalThemeToken& modal_typography() const;
     [[nodiscard]] const ModalThemeToken& modal_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_order() const;
+    [[nodiscard]] const TagThemeToken& tag_colors() const;
+    [[nodiscard]] const TagThemeToken& tag_metrics() const;
+    [[nodiscard]] const BadgeThemeToken& badge_colors() const;
+    [[nodiscard]] const BadgeThemeToken& badge_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

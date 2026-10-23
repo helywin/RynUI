@@ -31,6 +31,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 内容容器 | Card 标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留编辑状态的 loading；见 [Card](docs/card.md) |
 | 标签面板 | Tabs 固定面板、受控选择、保留草稿、Line/Card、三尺寸/上下/居中、键盘和横向溢出导航；见 [Tabs](docs/tabs.md) |
 | 对话框 | 受控 Modal、保留正文/标题/页脚插槽、嵌套窗口层、焦点恢复与视口内正文滚动；见 [Modal](docs/modal.md) |
+| 标签与计数 | Tag/CheckableTag 状态色、受控关闭与选择；Badge 计数/溢出/圆点/状态、独立或包裹保留内容；见 [Tag / Badge](docs/tag-and-badge.md) |
 | 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |
 | 提示浮层 | 基础文字 Tooltip、受控显示、hover/focus 延迟、Escape、十二种位置、边缘翻转与箭头；范围与验收见 [Tooltip](docs/tooltip.md) |
 | 示例与参考 | 可交互组件示例，以及基于 Ant Design 6.6.5 的离线组件目录和 Token Gallery |
