@@ -622,6 +622,156 @@ void sibling_dropdown_boundary_over_table_wheel() {
     dropdown_over_table_wheel(true, true);
 }
 
+void sibling_dropdown_over_select_wheel(bool long_menu, bool padding) {
+    Fixture f;
+    ThemeConfig config;
+    config.dropdown.tokens.z_index_popup = 2000;
+    config.dropdown.tokens.max_height = dp(80);
+    Signal<bool> open{false};
+    std::vector<MenuItem> items{{u8"action", u8"Action"}};
+    if (long_menu) {
+        for (int i = 0; i < 12; ++i) {
+            const auto label = String::from_utf8(std::to_string(i)).value();
+            items.push_back({label, label});
+        }
+    }
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                  Select(SelectProps{}
+                             .open(true)
+                             .options({{0, u8"Zero"},
+                                       {1, u8"One"},
+                                       {2, u8"Two"},
+                                       {3, u8"Three"},
+                                       {4, u8"Four"},
+                                       {5, u8"Five"},
+                                       {6, u8"Six"},
+                                       {7, u8"Seven"}})
+                             .listHeight(96)
+                             .layout(LayoutStyle{}.width(dp(240))));
+                  Dropdown(DropdownProps{}.open(open).menu(MenuProps{}.items(items)),
+                           DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Actions"); }); }});
+              }});
+    }});
+    sync(f);
+    const auto select = f.services.select().mounted()[0];
+    const auto original = f.services.select().snapshot(select);
+    check(original.visible && original.scroll == 0, "covered Select did not open at start");
+    open.set(true);
+    sync(f);
+    const auto dropdown = f.services.dropdown().mounted()[0];
+    const auto popup = f.services.dropdown().snapshot(dropdown);
+    const auto original_menu = f.services.menu().snapshot(popup.menu);
+    const auto menu = bounds(f, popup.menu);
+    const float x = padding ? popup.geometry.bounds.x + 1 : menu.x + 12;
+    const float y = std::max(menu.y, original.popup.y) + 12;
+    check(popup.geometry.visible && f.services.select().snapshot(select).visible && !descendant(f, dropdown, select) &&
+              !descendant(f, select, dropdown) && x >= original.popup.x &&
+              x < original.popup.x + original.popup.width &&
+              y < std::min(menu.y + menu.height, original.popup.y + original.popup.height),
+          "sibling Dropdown/Select fixture lacks overlapping visible popups");
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && (padding ? f.services.interactions().require(*hit).component == popup.popup
+                          : descendant(f, f.services.interactions().require(*hit).component, popup.menu)),
+          "covered Select wheel did not hit the topmost Dropdown row/padding");
+    if (long_menu) {
+        check(f.services.dispatch_scroll({0, -1000, x, y}), "long sibling Dropdown wheel was not handled");
+        sync(f);
+        check(f.services.menu().snapshot(popup.menu).scroll > 0 &&
+                  f.services.select().snapshot(select).scroll == original.scroll,
+              "covered Select stole scrolling sibling Dropdown wheel");
+    }
+    const auto boundary = f.services.menu().snapshot(popup.menu).scroll;
+    check(f.services.dispatch_scroll({0, -1, x, y}), "sibling Dropdown boundary/padding wheel was not handled");
+    sync(f);
+    check(f.services.select().snapshot(select).scroll == original.scroll &&
+              f.services.menu().snapshot(popup.menu).scroll == boundary,
+          "sibling Dropdown boundary/padding wheel scrolled covered Select");
+    const float exposed_x = original.popup.x + original.popup.width - 8;
+    check(exposed_x > popup.geometry.bounds.x + popup.geometry.bounds.width,
+          "sibling Dropdown/Select fixture lacks exposed Select popup");
+    check(f.services.dispatch_scroll({0, -1, exposed_x, y}), "exposed Select popup wheel was not handled");
+    sync(f);
+    check(f.services.select().snapshot(select).scroll > original.scroll &&
+              f.services.menu().snapshot(popup.menu).scroll == boundary &&
+              f.services.select().snapshot(select).rows == original.rows &&
+              f.services.menu().snapshot(popup.menu).rows == original_menu.rows,
+          "foreign popup guard blocked owned Select wheel or changed retained identity");
+    f.services.dispose();
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0,
+          "sibling Dropdown/Select wheel fixture cleanup leaked");
+}
+
+void short_sibling_dropdown_over_select_wheel() {
+    sibling_dropdown_over_select_wheel(false, false);
+}
+
+void sibling_dropdown_boundary_over_select_wheel() {
+    sibling_dropdown_over_select_wheel(true, false);
+}
+
+void sibling_dropdown_padding_over_select_wheel() {
+    sibling_dropdown_over_select_wheel(false, true);
+}
+
+void sibling_select_topmost_wheel() {
+    Fixture f;
+    ThemeConfig higher;
+    higher.select.tokens.z_index_popup = 2000;
+    Signal<bool> covered_open{false};
+    const std::vector<SelectOption> options{{0, u8"Zero"}, {1, u8"One"},  {2, u8"Two"}, {3, u8"Three"},
+                                            {4, u8"Four"}, {5, u8"Five"}, {6, u8"Six"}, {7, u8"Seven"}};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(higher), ThemeContent{[&] {
+                  Select(SelectProps{}.open(true).options(options).listHeight(96).layout(LayoutStyle{}.width(dp(240))));
+              }});
+        Select(SelectProps{}.open(covered_open).options(options).listHeight(96).layout(LayoutStyle{}.width(dp(240))));
+    }});
+    sync(f);
+    const auto owner = f.services.select().mounted()[0];
+    const auto covered = f.services.select().mounted()[1];
+    covered_open.set(true);
+    sync(f);
+    const auto owner_before = f.services.select().snapshot(owner);
+    const auto covered_before = f.services.select().snapshot(covered);
+    const float x = owner_before.popup.x + 12;
+    const float y = std::max(owner_before.popup.y, covered_before.popup.y) + 12;
+    check(owner_before.visible && covered_before.visible &&
+              y < std::min(owner_before.popup.y + owner_before.popup.height,
+                           covered_before.popup.y + covered_before.popup.height),
+          "sibling Select wheel fixture lacks overlapping popups");
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && descendant(f, f.services.interactions().require(*hit).component, owner),
+          "sibling Select wheel fixture did not hit the higher earlier-mounted popup");
+    check(f.services.dispatch_scroll({0, -1, x, y}), "topmost sibling Select wheel was not handled");
+    sync(f);
+    check(f.services.select().snapshot(owner).scroll > owner_before.scroll &&
+              f.services.select().snapshot(covered).scroll == covered_before.scroll,
+          "Select mount order overrode topmost popup wheel ownership");
+    check(f.services.dispatch_scroll({0, -1000, x, y}), "topmost Select boundary setup was not handled");
+    sync(f);
+    const auto boundary = f.services.select().snapshot(owner).scroll;
+    const float padding_x = owner_before.popup.x + 1;
+    check(f.services.dispatch_scroll({0, -1, padding_x, y}), "topmost Select padding boundary was not handled");
+    sync(f);
+    check(f.services.select().snapshot(owner).scroll == boundary &&
+              f.services.select().snapshot(covered).scroll == covered_before.scroll,
+          "Select popup padding boundary leaked wheel to covered sibling");
+    const float exposed_y = owner_before.popup.y + owner_before.popup.height + 8;
+    check(exposed_y < covered_before.popup.y + covered_before.popup.height,
+          "sibling Select fixture lacks exposed lower popup");
+    check(f.services.dispatch_scroll({0, -1, x, exposed_y}), "exposed sibling Select wheel was not handled");
+    sync(f);
+    check(f.services.select().snapshot(covered).scroll > covered_before.scroll &&
+              f.services.select().snapshot(owner).scroll == boundary &&
+              f.services.select().snapshot(owner).rows == owner_before.rows &&
+              f.services.select().snapshot(covered).rows == covered_before.rows,
+          "topmost Select guard blocked exposed sibling wheel or lost retained rows");
+    f.services.dispose();
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0,
+          "sibling Select wheel fixture cleanup leaked");
+}
+
 void short_label_full_width() {
     Fixture f;
     int clicks = 0;
@@ -680,6 +830,10 @@ int main(int argc, char** argv) {
         run("wheel-table-boundary", dropdown_boundary_over_table_wheel);
         run("wheel-sibling-table-short", sibling_short_dropdown_over_table_wheel);
         run("wheel-sibling-table-boundary", sibling_dropdown_boundary_over_table_wheel);
+        run("wheel-sibling-select-short", short_sibling_dropdown_over_select_wheel);
+        run("wheel-sibling-select-boundary", sibling_dropdown_boundary_over_select_wheel);
+        run("wheel-sibling-select-padding", sibling_dropdown_padding_over_select_wheel);
+        run("wheel-select-topmost", sibling_select_topmost_wheel);
         run("short-label-width", short_label_full_width);
         check(ran > 0, "unknown Dropdown test case");
     } catch (const std::exception& error) {

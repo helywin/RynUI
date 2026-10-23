@@ -29,6 +29,8 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 单行编辑 | Input / Password / Search、四变体、统计与软硬上限、焦点引用、原生用途提示、自定义图标和清空；字素安全选区、剪贴板、撤销/重做与 IME，见 [Input](docs/input.md) |
 | 下拉选择 | Select 单选、字符串/int64 值、Unicode 搜索、清空、动态选项、受控回写、键盘与窗口层；范围和验收见 [Select](docs/select.md) |
 | 内容容器 | Card 标题/extra/cover/正文/actions、两尺寸/两变体、hover 与保留编辑状态的 loading；见 [Card](docs/card.md) |
+| 折叠面板 | Collapse 固定键控面板、受控/默认展开、accordion、独立 extra、键盘和保留正文草稿；见 [Collapse](docs/collapse.md) |
+| 分段选择 | Segmented 固定选项、受控/默认选择、图标/富标签、横纵向与等宽 block、三尺寸和键盘导航；见 [Segmented](docs/segmented.md) |
 | 标签面板 | Tabs 固定面板、受控选择、保留草稿、Line/Card、三尺寸/上下/居中、键盘和横向溢出导航；见 [Tabs](docs/tabs.md) |
 | 对话框 | 受控 Modal、保留正文/标题/页脚插槽、嵌套窗口层、焦点恢复与视口内正文滚动；见 [Modal](docs/modal.md) |
 | 抽屉 | Drawer 四边面板、受控关闭、保留插槽、固定标题/页脚、正文滚动与 Modal 混合焦点层；见 [Drawer](docs/drawer.md) |

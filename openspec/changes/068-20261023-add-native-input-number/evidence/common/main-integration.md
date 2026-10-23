@@ -78,3 +78,32 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "<上述 filter>" -
 - Debug：**6/6**，2.96 秒；Release：**6/6**，1.37 秒。Dropdown executable 不带参数运行全部 case，包含上述四个新增 case。
 - clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
 - 原始本地记录：ignored `out/integration-r1-reproductions.json`、`out/integration-r1-{debug,release}-{build,ctest}.log`。没有重跑完整套件，没有修改 Gallery/global docs/goldens 或 root 的未提交内容；只作本地英文提交，不 push、t3 remote、PR、archive 或创建子任务。
+
+## Astra integration R2：Select topmost wheel ownership（2026-10-24）
+
+从同一干净本地分支 `e5c3a4a75918a9546bf4a9ff2acbe6b6deec9002` 继续，没有合并 root main。先仅增加测试、保持生产代码不变，以下四个独立 Debug case 均 exit 1：
+
+| case | 实际失败断言 |
+| --- | --- |
+| `wheel-sibling-select-short` | `sibling Dropdown boundary/padding wheel scrolled covered Select` |
+| `wheel-sibling-select-boundary` | `sibling Dropdown boundary/padding wheel scrolled covered Select` |
+| `wheel-sibling-select-padding` | `sibling Dropdown boundary/padding wheel scrolled covered Select` |
+| `wheel-select-topmost` | `Select mount order overrode topmost popup wheel ownership` |
+
+前三个 case 先显示八个 options、`listHeight(96)` 的 Select，再打开 sibling Dropdown，设置 `Dropdown.z_index_popup=2000`，分别覆盖单项菜单、长菜单滚动下限与 popup padding。测试确认实际 topmost hit 属于 Dropdown row/padding，wheel 不改变被遮挡的 Select；露出的 Select popup 仍能滚动，双方 retained rows 不变并完整清理资源。
+
+第四个 case 检查相同 Select handler 的相关 owner 路径：较早 mount 的高 z-index Select popup 覆盖较晚 mount 的 sibling Select，真实 topmost popup 必须先滚动；其 padding 与滚动边界不能传给下面的 Select，下面露出的区域仍能独立滚动且 retained rows 不变。
+
+生产修复仅在 `src/component/select_component.cpp::on_scroll_input` 增加 topmost hit 的最近 window-layer root 检查，必须与实际可见且 active 的 Select popup 匹配，随后才使用原 bounds/scroll 逻辑。这样 sibling 或 child popup 的归属不再由几何重叠和 mount 顺序决定；没有重排 host、改动 child Select 优先级或增加通用路由框架。
+
+相关 scroll-owner 源码检查：Menu 在最近 window layer 边界停止，Tabs 已比较 hit/window layer，TextArea 从 topmost hit 路由，Spin 检查实际 shield hit。Dropdown R1 fallback 已按 topmost popup 子树消费本次边界事件；Table/Modal 位于这些 popup handlers 之后。本次具体 Dropdown/Select 事件由所属 popup 消费，保留 Table/Modal 的正常祖先滚动合同。既有 child Select/nested Dropdown 优先级、四个 Dropdown/Table 回归、inline Menu → Modal handoff、Tabs 与 TextArea 的实际合同均在本轮聚焦测试通过。
+
+使用 MSVC 19.51.36256 / Ninja Multi-Config / `windows-msvc-headless`，Debug/Release 顺序构建，每次最多 4 compile jobs。targets 为 R1 的六个 executable，加 `rynui_portable_tabs_component`、`rynui_portable_text_area`；两种 configuration 使用相同 CTest filter：
+
+```text
+^rynui\.(table_component|portable\.(menu_component|dropdown_component|select_component|modal_component|modal_boundary|tabs_component|text_area))$
+```
+
+- Debug：**8/8**，2.97 秒；Release：**8/8**，1.56 秒。Dropdown executable 全量运行，包含本轮四个新增 case 与 R1 四个 Table case。
+- clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
+- 本地原始记录：ignored `out/integration-r2-reproductions.json`、`out/integration-r2-{debug,release}-{build,ctest}.log`。没有重跑完整套件，没有改 Theme bridge、goldens、Gallery/global docs 或 root，只作本地英文提交；没有 push、remote 操作、PR、archive 或创建子任务。

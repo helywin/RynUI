@@ -32,6 +32,8 @@
 #include <ryn/tabs.hpp>
 #include <ryn/pagination.hpp>
 #include <ryn/table.hpp>
+#include <ryn/collapse.hpp>
+#include <ryn/segmented.hpp>
 #include <ryn/modal.hpp>
 #include <ryn/drawer.hpp>
 #include <ryn/popconfirm.hpp>

@@ -8,6 +8,8 @@
 #include "component/select_component.hpp"
 #include "component/card_component.hpp"
 #include "component/tabs_component.hpp"
+#include "component/collapse_component.hpp"
+#include "component/segmented_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
@@ -105,6 +107,8 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     select_ = std::make_unique<SelectComponentHost>(*this);
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
+    collapse_ = std::make_unique<CollapseComponentHost>(*this);
+    segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     tag_badge_ = std::make_unique<TagBadgeComponentHost>(*this);
     feedback_ = std::make_unique<FeedbackComponentHost>(*this);
     menu_ = std::make_unique<MenuComponentHost>(*this);

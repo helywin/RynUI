@@ -119,6 +119,9 @@ enum class TokenIdentity : std::uint8_t {
     tabs_metrics,
     tabs_typography,
     tabs_effects,
+    segmented_colors,
+    segmented_metrics,
+    segmented_effects,
     modal_colors,
     modal_metrics,
     modal_typography,
@@ -161,6 +164,10 @@ enum class TokenIdentity : std::uint8_t {
     empty_metrics,
     result_colors,
     result_metrics,
+    collapse_colors,
+    collapse_metrics,
+    collapse_typography,
+    collapse_effects,
     count,
 };
 

@@ -27,6 +27,7 @@ class OTPComponentHost;
 class SelectComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
+class SegmentedComponentHost;
 class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
@@ -36,6 +37,7 @@ class DropdownComponentHost;
 class PaginationComponentHost;
 class TableComponentHost;
 class EmptyResultComponentHost;
+class CollapseComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -225,6 +227,14 @@ public:
         return *tabs_;
     }
 
+    [[nodiscard]] CollapseComponentHost& collapse() noexcept {
+        return *collapse_;
+    }
+
+    [[nodiscard]] SegmentedComponentHost& segmented() noexcept {
+        return *segmented_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -365,6 +375,8 @@ private:
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<EmptyResultComponentHost> empty_result_;
     std::unique_ptr<TabsComponentHost> tabs_;
+    std::unique_ptr<CollapseComponentHost> collapse_;
+    std::unique_ptr<SegmentedComponentHost> segmented_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

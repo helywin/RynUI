@@ -6,6 +6,7 @@
 #include <ryn/tag_badge_tokens.hpp>
 #include <ryn/feedback_tokens.hpp>
 #include <ryn/empty_result_tokens.hpp>
+#include <ryn/segmented_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -708,6 +709,127 @@ struct CardThemeConfig final {
     friend bool operator==(const CardThemeConfig&, const CardThemeConfig&) = default;
 };
 
+struct CollapseColorToken final {
+    Color header_background;
+    Color body_background;
+    Color header_text;
+    Color body_text;
+    Color disabled_text;
+    Color border;
+    Color focus_outline;
+
+    [[nodiscard]] auto values() const {
+        return std::array{header_background, body_background, header_text,  body_text,
+                          disabled_text,     border,          focus_outline};
+    }
+
+    friend bool operator==(const CollapseColorToken&, const CollapseColorToken&) = default;
+};
+
+struct CollapseMetricToken final {
+    float header_block_small{8};
+    float header_block{12};
+    float header_block_large{16};
+    float header_start_small{8};
+    float header_start{16};
+    float header_start_large{16};
+    float header_end_small{12};
+    float header_end{16};
+    float header_end_large{24};
+    float body_padding_small{12};
+    float body_padding{16};
+    float body_padding_large{24};
+    float arrow_size{12};
+    float header_gap{12};
+    float border_width{1};
+    float border_radius{8};
+
+    [[nodiscard]] auto values() const {
+        return std::array{header_block_small, header_block,       header_block_large, header_start_small,
+                          header_start,       header_start_large, header_end_small,   header_end,
+                          header_end_large,   body_padding_small, body_padding,       body_padding_large,
+                          arrow_size,         header_gap,         border_width,       border_radius};
+    }
+
+    friend bool operator==(const CollapseMetricToken&, const CollapseMetricToken&) = default;
+};
+
+struct CollapseTypographyToken final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    std::uint32_t font_weight{400};
+    float font_size{14};
+    float line_height{22};
+    float header_font_size_large{16};
+    float header_line_height_large{24};
+
+    [[nodiscard]] auto values() const {
+        return std::array{font_size, line_height, header_font_size_large, header_line_height_large};
+    }
+
+    friend bool operator==(const CollapseTypographyToken&, const CollapseTypographyToken&) = default;
+};
+
+struct CollapseEffectToken final {
+    float focus_width{3};
+    float focus_offset{1};
+
+    [[nodiscard]] auto values() const {
+        return std::array{focus_width, focus_offset};
+    }
+
+    friend bool operator==(const CollapseEffectToken&, const CollapseEffectToken&) = default;
+};
+
+struct CollapseThemeToken final {
+    CollapseColorToken colors;
+    CollapseMetricToken metrics;
+    CollapseTypographyToken typography;
+    CollapseEffectToken effects;
+    friend bool operator==(const CollapseThemeToken&, const CollapseThemeToken&) = default;
+};
+
+struct CollapseTokenOverride final {
+    std::optional<Color> header_background;
+    std::optional<Color> body_background;
+    std::optional<Color> header_text;
+    std::optional<Color> body_text;
+    std::optional<Color> disabled_text;
+    std::optional<Color> border;
+    std::optional<Color> focus_outline;
+    std::optional<LogicalLength> header_block_small;
+    std::optional<LogicalLength> header_block;
+    std::optional<LogicalLength> header_block_large;
+    std::optional<LogicalLength> header_start_small;
+    std::optional<LogicalLength> header_start;
+    std::optional<LogicalLength> header_start_large;
+    std::optional<LogicalLength> header_end_small;
+    std::optional<LogicalLength> header_end;
+    std::optional<LogicalLength> header_end_large;
+    std::optional<LogicalLength> body_padding_small;
+    std::optional<LogicalLength> body_padding;
+    std::optional<LogicalLength> body_padding_large;
+    std::optional<LogicalLength> arrow_size;
+    std::optional<LogicalLength> header_gap;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> border_radius;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> header_font_size_large;
+    std::optional<LogicalLength> header_line_height_large;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    friend bool operator==(const CollapseTokenOverride&, const CollapseTokenOverride&) = default;
+};
+
+struct CollapseThemeConfig final {
+    CollapseTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CollapseThemeConfig&, const CollapseThemeConfig&) = default;
+};
+
 struct TabsColorToken final {
     Color item;
     Color item_selected;
@@ -839,6 +961,13 @@ struct TabsTokenOverride final {
     std::optional<SystemFontFamily> font_family;
     std::optional<std::uint32_t> font_weight;
     friend bool operator==(const TabsTokenOverride&, const TabsTokenOverride&) = default;
+};
+
+struct SegmentedThemeConfig final {
+    SegmentedTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SegmentedThemeConfig&, const SegmentedThemeConfig&) = default;
 };
 
 struct TabsThemeConfig final {
@@ -1354,6 +1483,7 @@ struct ThemeConfig final {
     SelectThemeConfig select;
     CardThemeConfig card;
     TabsThemeConfig tabs;
+    SegmentedThemeConfig segmented;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -1368,6 +1498,7 @@ struct ThemeConfig final {
     TableThemeConfig table;
     EmptyThemeConfig empty;
     ResultThemeConfig result;
+    CollapseThemeConfig collapse;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1911,6 +2042,15 @@ public:
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
+
+    [[nodiscard]] const CollapseThemeToken& collapse() const noexcept {
+        return collapse_;
+    }
+
+    [[nodiscard]] const SegmentedThemeToken& segmented() const noexcept {
+        return segmented_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -1974,7 +2114,8 @@ private:
                   std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                  EmptyThemeToken empty, ResultThemeToken result);
+                  CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
+                  ResultThemeToken result);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1991,6 +2132,7 @@ private:
     SelectThemeToken select_;
     CardThemeToken card_;
     TabsThemeToken tabs_;
+    SegmentedThemeToken segmented_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;
@@ -2004,6 +2146,7 @@ private:
     InputNumberThemeToken input_number_;
     PaginationThemeToken pagination_;
     TableThemeToken table_;
+    CollapseThemeToken collapse_;
     EmptyThemeToken empty_;
     ResultThemeToken result_;
     std::shared_ptr<const detail::InputTokenSet> input_;
