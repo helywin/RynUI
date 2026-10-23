@@ -16,7 +16,7 @@
 
 ### Windows
 
-- [ ] 4.1 windows-msvc Debug/Release MSVC x64 构建和受影响 native CTest，真实 D3D12/DXIL 窗口验证浅/深色提示、复制反馈、截断/展开/resize、多行编辑/提交/取消、系统与 1/1.25/1.5/2 scale、idle/dispose，核对截图/readback、字体/driver/退出码/log/hash，独立记录并提交 Windows evidence。
+- [x] 4.1 windows-msvc Debug/Release MSVC x64 构建和受影响 native CTest，真实 D3D12/DXIL 窗口验证浅/深色提示、复制反馈、截断/展开/resize、多行编辑/提交/取消、系统与 1/1.25/1.5/2 scale、idle/dispose，核对截图/readback、字体/driver/退出码/log/hash，独立记录并提交 Windows evidence。20次窗口运行、300张PNG、两configuration各10/10 native CTest，见 evidence/windows.md；自动输入不替代人工系统IME。
 
 ### Linux
 
