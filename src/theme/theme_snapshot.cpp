@@ -1247,6 +1247,160 @@ TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMa
     return result;
 }
 
+TabsThemeToken derive_tabs(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                           std::span<const ThemeAlgorithm> algorithms) {
+    TabsThemeToken token;
+    const bool dark = contains_dark(algorithms);
+    token.colors = {
+        alias.color_text,
+        map.color_primary,
+        map.color_primary_hover,
+        map.color_primary_active,
+        alias.color_text_disabled,
+        alias.color_border_secondary,
+        map.color_primary,
+        Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), dark ? 0.04F : 0.02F),
+        alias.color_background_container,
+        alias.color_border_secondary,
+        alias.color_focus_outline};
+    token.metrics = {map.size_xs,
+                     map.size_small,
+                     map.size,
+                     map.control_height,
+                     map.control_height_large,
+                     map.control_height_large + map.size_xs,
+                     map.size_xs,
+                     map.size,
+                     map.size,
+                     32,
+                     seed.size_unit / 2,
+                     map.size,
+                     seed.line_width * 2,
+                     seed.line_width,
+                     map.border_radius_large,
+                     map.size_large,
+                     seed.size_unit};
+    token.typography = {seed.font_family,
+                        map.font_size,
+                        map.font_size,
+                        map.font_size_large,
+                        map.font_size * map.line_height,
+                        map.font_size * map.line_height,
+                        map.font_size_large * map.line_height_large,
+                        400};
+    token.effects = {alias.line_width_focus, alias.focus_outline_offset, map.border_radius_small};
+    return token;
+}
+
+void apply_tabs_override(TabsThemeToken& token, const TabsTokenOverride& o) {
+    if (o.item) {
+        token.colors.item = *o.item;
+    }
+    if (o.item_selected) {
+        token.colors.item_selected = *o.item_selected;
+    }
+    if (o.item_hover) {
+        token.colors.item_hover = *o.item_hover;
+    }
+    if (o.item_active) {
+        token.colors.item_active = *o.item_active;
+    }
+    if (o.item_disabled) {
+        token.colors.item_disabled = *o.item_disabled;
+    }
+    if (o.rail) {
+        token.colors.rail = *o.rail;
+    }
+    if (o.indicator) {
+        token.colors.indicator = *o.indicator;
+    }
+    if (o.card_background) {
+        token.colors.card_background = *o.card_background;
+    }
+    if (o.card_selected_background) {
+        token.colors.card_selected_background = *o.card_selected_background;
+    }
+    if (o.card_border) {
+        token.colors.card_border = *o.card_border;
+    }
+    if (o.focus_outline) {
+        token.colors.focus_outline = *o.focus_outline;
+    }
+    token.metrics.line_padding_small = fixed_length(o.line_padding_small, token.metrics.line_padding_small,
+                                                    "Tabs line_padding_small must be non-negative");
+    token.metrics.line_padding =
+        fixed_length(o.line_padding, token.metrics.line_padding, "Tabs line_padding must be non-negative");
+    token.metrics.line_padding_large = fixed_length(o.line_padding_large, token.metrics.line_padding_large,
+                                                    "Tabs line_padding_large must be non-negative");
+    token.metrics.card_height_small = fixed_length(o.card_height_small, token.metrics.card_height_small,
+                                                   "Tabs card_height_small must be positive", true);
+    token.metrics.card_height =
+        fixed_length(o.card_height, token.metrics.card_height, "Tabs card_height must be positive", true);
+    token.metrics.card_height_large = fixed_length(o.card_height_large, token.metrics.card_height_large,
+                                                   "Tabs card_height_large must be positive", true);
+    token.metrics.card_padding_small = fixed_length(o.card_padding_small, token.metrics.card_padding_small,
+                                                    "Tabs card_padding_small must be non-negative");
+    token.metrics.card_padding =
+        fixed_length(o.card_padding, token.metrics.card_padding, "Tabs card_padding must be non-negative");
+    token.metrics.card_padding_large = fixed_length(o.card_padding_large, token.metrics.card_padding_large,
+                                                    "Tabs card_padding_large must be non-negative");
+    token.metrics.horizontal_gutter = fixed_length(o.horizontal_gutter, token.metrics.horizontal_gutter,
+                                                   "Tabs horizontal_gutter must be non-negative");
+    token.metrics.card_gutter =
+        fixed_length(o.card_gutter, token.metrics.card_gutter, "Tabs card_gutter must be non-negative");
+    token.metrics.body_gap = fixed_length(o.body_gap, token.metrics.body_gap, "Tabs body_gap must be non-negative");
+    token.metrics.indicator_width =
+        fixed_length(o.indicator_width, token.metrics.indicator_width, "Tabs indicator_width must be non-negative");
+    token.metrics.border_width =
+        fixed_length(o.border_width, token.metrics.border_width, "Tabs border_width must be non-negative");
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Tabs border_radius must be non-negative");
+    token.metrics.scroll_button_width = fixed_length(o.scroll_button_width, token.metrics.scroll_button_width,
+                                                     "Tabs scroll_button_width must be positive", true);
+    token.metrics.focus_inset =
+        fixed_length(o.focus_inset, token.metrics.focus_inset, "Tabs focus_inset must be non-negative");
+    token.typography.font_size_small = fixed_length(o.font_size_small, token.typography.font_size_small,
+                                                    "Tabs font_size_small must be positive", true);
+    token.typography.font_size =
+        fixed_length(o.font_size, token.typography.font_size, "Tabs font_size must be positive", true);
+    token.typography.font_size_large = fixed_length(o.font_size_large, token.typography.font_size_large,
+                                                    "Tabs font_size_large must be positive", true);
+    token.typography.line_height_small = fixed_length(o.line_height_small, token.typography.line_height_small,
+                                                      "Tabs line_height_small must be positive", true);
+    token.typography.line_height =
+        fixed_length(o.line_height, token.typography.line_height, "Tabs line_height must be positive", true);
+    token.typography.line_height_large = fixed_length(o.line_height_large, token.typography.line_height_large,
+                                                      "Tabs line_height_large must be positive", true);
+    token.effects.focus_width =
+        fixed_length(o.focus_width, token.effects.focus_width, "Tabs focus_width must be non-negative");
+    token.effects.focus_offset =
+        fixed_length(o.focus_offset, token.effects.focus_offset, "Tabs focus_offset must be non-negative");
+    token.effects.focus_radius =
+        fixed_length(o.focus_radius, token.effects.focus_radius, "Tabs focus_radius must be non-negative");
+    if (o.font_family) {
+        token.typography.font_family = *o.font_family;
+    }
+    if (o.font_weight) {
+        if (*o.font_weight < 100 || *o.font_weight > 1000) {
+            throw std::invalid_argument("Tabs font weight must be in [100, 1000]");
+        }
+        token.typography.font_weight = *o.font_weight;
+    }
+    float combined = 0;
+    for (const auto value : token.metrics.values()) {
+        combined += value * 2;
+    }
+    for (const auto value : token.typography.values()) {
+        combined += value * 2;
+    }
+    for (const auto value : token.effects.values()) {
+        combined += value * 2;
+    }
+    if (!std::isfinite(combined)) {
+        throw std::invalid_argument("Tabs combined extents must be finite");
+    }
+}
+
 CardThemeToken derive_card(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias) {
     CardThemeToken token;
     token.colors = {alias.color_background_container,
@@ -1818,7 +1972,7 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
                                              const SelectThemeToken& select, const CardThemeToken& card,
-                                             const detail::InputTokenSet& input,
+                                             const TabsThemeToken& tabs, const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -2102,7 +2256,40 @@ void append_color(std::ostringstream& stream, Color color) {
         }
         stream << ']';
     }
-    stream << "},\"text\":{\"color\":";
+    stream << "},\"tabs\":{\"colors\":[";
+    const auto tabs_colors = tabs.colors.values();
+    for (std::size_t i = 0; i < tabs_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, tabs_colors[i]);
+    }
+    stream << "],\"metrics\":[";
+    const auto tabs_metrics = tabs.metrics.values();
+    for (std::size_t i = 0; i < tabs_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << tabs_metrics[i];
+    }
+    stream << "],\"typography\":[";
+    const auto tabs_fonts = tabs.typography.values();
+    for (std::size_t i = 0; i < tabs_fonts.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << tabs_fonts[i];
+    }
+    stream << "],\"fontFamily\":" << static_cast<int>(tabs.typography.font_family)
+           << ",\"fontWeight\":" << tabs.typography.font_weight << ",\"effects\":[";
+    const auto tabs_effects = tabs.effects.values();
+    for (std::size_t i = 0; i < tabs_effects.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << tabs_effects[i];
+    }
+    stream << "]},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2313,7 +2500,7 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
                                               const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                               const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
                                               const SelectThemeToken& select, const CardThemeToken& card,
-                                              const detail::InputTokenSet& input,
+                                              const TabsThemeToken& tabs, const detail::InputTokenSet& input,
                                               std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
@@ -2553,6 +2740,20 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_integer(hash, card_fonts.header_font_weight);
     hash_shadow(hash, card.effects.shadow);
     hash_shadow(hash, card.effects.hover_shadow);
+    for (const auto color : tabs.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (const auto value : tabs.metrics.values()) {
+        hash_float(hash, value);
+    }
+    for (const auto value : tabs.typography.values()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, tabs.typography.font_family);
+    hash_integer(hash, tabs.typography.font_weight);
+    for (const auto value : tabs.effects.values()) {
+        hash_float(hash, value);
+    }
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -2598,18 +2799,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                             SelectThemeToken select, CardThemeToken card,
+                             SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs,
                              std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, select_, card_, *input_, algorithms_);
+                                  divider_, slider_, tooltip_, select_, card_, tabs_, *input_, algorithms_);
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                           slider_, tooltip_, select_, card_, *input_, algorithms_, identity_);
+                           slider_, tooltip_, select_, card_, tabs_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -2668,6 +2869,10 @@ const CardThemeToken& ThemeSnapshot::card() const noexcept {
     return card_;
 }
 
+const TabsThemeToken& ThemeSnapshot::tabs() const noexcept {
+    return tabs_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -2693,8 +2898,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
-           left.select_ == right.select_ && left.card_ == right.card_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_;
+           left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
+           *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -2914,10 +3119,27 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         card = derive_card(seed, map, alias);
     }
     apply_card_override(card, config.card.tokens);
+    TabsThemeToken tabs;
+    const bool inherit_tabs = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                              !config.tabs.algorithm && config.tabs.seed == SeedTokenOverride{};
+    if (inherit_tabs) {
+        tabs = parent->tabs();
+    } else if (config.tabs.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.tabs.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        tabs = derive_tabs(component_seed, component_map, derive_alias(component_seed, component_map, algorithms),
+                           algorithms);
+    } else {
+        tabs = derive_tabs(seed, map, alias, algorithms);
+    }
+    apply_tabs_override(tabs, config.tabs.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
+                         std::move(tabs), std::make_shared<const detail::InputTokenSet>(std::move(input)),
+                         std::move(algorithms));
 }
 
 } // namespace ryn

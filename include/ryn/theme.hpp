@@ -703,6 +703,146 @@ struct CardThemeConfig final {
     friend bool operator==(const CardThemeConfig&, const CardThemeConfig&) = default;
 };
 
+struct TabsColorToken final {
+    Color item;
+    Color item_selected;
+    Color item_hover;
+    Color item_active;
+    Color item_disabled;
+    Color rail;
+    Color indicator;
+    Color card_background;
+    Color card_selected_background;
+    Color card_border;
+    Color focus_outline;
+
+    [[nodiscard]] auto values() const {
+        return std::array{item,        item_selected,   item_hover,
+                          item_active, item_disabled,   rail,
+                          indicator,   card_background, card_selected_background,
+                          card_border, focus_outline};
+    }
+
+    friend bool operator==(const TabsColorToken&, const TabsColorToken&) = default;
+};
+
+struct TabsMetricToken final {
+    float line_padding_small{8};
+    float line_padding{12};
+    float line_padding_large{16};
+    float card_height_small{32};
+    float card_height{40};
+    float card_height_large{48};
+    float card_padding_small{8};
+    float card_padding{16};
+    float card_padding_large{16};
+    float horizontal_gutter{32};
+    float card_gutter{2};
+    float body_gap{16};
+    float indicator_width{2};
+    float border_width{1};
+    float border_radius{8};
+    float scroll_button_width{24};
+    float focus_inset{4};
+
+    [[nodiscard]] auto values() const {
+        return std::array{
+            line_padding_small, line_padding, line_padding_large, card_height_small,   card_height, card_height_large,
+            card_padding_small, card_padding, card_padding_large, horizontal_gutter,   card_gutter, body_gap,
+            indicator_width,    border_width, border_radius,      scroll_button_width, focus_inset};
+    }
+
+    friend bool operator==(const TabsMetricToken&, const TabsMetricToken&) = default;
+};
+
+struct TabsTypographyToken final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    float font_size_small{14};
+    float font_size{14};
+    float font_size_large{16};
+    float line_height_small{22};
+    float line_height{22};
+    float line_height_large{24};
+    std::uint32_t font_weight{400};
+
+    [[nodiscard]] auto values() const {
+        return std::array{font_size_small,   font_size,   font_size_large,
+                          line_height_small, line_height, line_height_large};
+    }
+
+    friend bool operator==(const TabsTypographyToken&, const TabsTypographyToken&) = default;
+};
+
+struct TabsEffectToken final {
+    float focus_width{3};
+    float focus_offset{1};
+    float focus_radius{4};
+
+    [[nodiscard]] auto values() const {
+        return std::array{focus_width, focus_offset, focus_radius};
+    }
+
+    friend bool operator==(const TabsEffectToken&, const TabsEffectToken&) = default;
+};
+
+struct TabsThemeToken final {
+    TabsColorToken colors;
+    TabsMetricToken metrics;
+    TabsTypographyToken typography;
+    TabsEffectToken effects;
+    friend bool operator==(const TabsThemeToken&, const TabsThemeToken&) = default;
+};
+
+struct TabsTokenOverride final {
+    std::optional<Color> item;
+    std::optional<Color> item_selected;
+    std::optional<Color> item_hover;
+    std::optional<Color> item_active;
+    std::optional<Color> item_disabled;
+    std::optional<Color> rail;
+    std::optional<Color> indicator;
+    std::optional<Color> card_background;
+    std::optional<Color> card_selected_background;
+    std::optional<Color> card_border;
+    std::optional<Color> focus_outline;
+    std::optional<LogicalLength> line_padding_small;
+    std::optional<LogicalLength> line_padding;
+    std::optional<LogicalLength> line_padding_large;
+    std::optional<LogicalLength> card_height_small;
+    std::optional<LogicalLength> card_height;
+    std::optional<LogicalLength> card_height_large;
+    std::optional<LogicalLength> card_padding_small;
+    std::optional<LogicalLength> card_padding;
+    std::optional<LogicalLength> card_padding_large;
+    std::optional<LogicalLength> horizontal_gutter;
+    std::optional<LogicalLength> card_gutter;
+    std::optional<LogicalLength> body_gap;
+    std::optional<LogicalLength> indicator_width;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> scroll_button_width;
+    std::optional<LogicalLength> focus_inset;
+    std::optional<LogicalLength> font_size_small;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> font_size_large;
+    std::optional<LogicalLength> line_height_small;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> line_height_large;
+    std::optional<LogicalLength> focus_width;
+    std::optional<LogicalLength> focus_offset;
+    std::optional<LogicalLength> focus_radius;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<std::uint32_t> font_weight;
+    friend bool operator==(const TabsTokenOverride&, const TabsTokenOverride&) = default;
+};
+
+struct TabsThemeConfig final {
+    TabsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TabsThemeConfig&, const TabsThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -718,6 +858,7 @@ struct ThemeConfig final {
     TooltipThemeConfig tooltip;
     SelectThemeConfig select;
     CardThemeConfig card;
+    TabsThemeConfig tabs;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1260,6 +1401,7 @@ public:
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
     [[nodiscard]] const CardThemeToken& card() const noexcept;
+    [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1276,7 +1418,8 @@ private:
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
-                  std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
+                  TabsThemeToken tabs, std::shared_ptr<const detail::InputTokenSet> input,
+                  std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1292,6 +1435,7 @@ private:
     TooltipThemeToken tooltip_;
     SelectThemeToken select_;
     CardThemeToken card_;
+    TabsThemeToken tabs_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

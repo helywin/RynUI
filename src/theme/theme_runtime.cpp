@@ -299,6 +299,11 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.card().typography, after.card().typography, TokenIdentity::card_typography, changed,
                       count);
     append_if_changed(before.card().effects, after.card().effects, TokenIdentity::card_effects, changed, count);
+    append_if_changed(before.tabs().colors, after.tabs().colors, TokenIdentity::tabs_colors, changed, count);
+    append_if_changed(before.tabs().metrics, after.tabs().metrics, TokenIdentity::tabs_metrics, changed, count);
+    append_if_changed(before.tabs().typography, after.tabs().typography, TokenIdentity::tabs_typography, changed,
+                      count);
+    append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
     append_if_changed(before.select().colors, after.select().colors, TokenIdentity::select_colors, changed, count);
     append_if_changed(before.select().metrics, after.select().metrics, TokenIdentity::select_metrics, changed, count);
     append_if_changed(before.select().typography, after.select().typography, TokenIdentity::select_typography, changed,
@@ -981,6 +986,30 @@ const TooltipThemeToken& ThemeScope::tooltip_order() const {
     return snapshot_->tooltip();
 }
 
+const TabsThemeToken& ThemeScope::tabs_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tabs_colors);
+    return snapshot_->tabs();
+}
+
+const TabsThemeToken& ThemeScope::tabs_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tabs_metrics);
+    return snapshot_->tabs();
+}
+
+const TabsThemeToken& ThemeScope::tabs_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tabs_typography);
+    return snapshot_->tabs();
+}
+
+const TabsThemeToken& ThemeScope::tabs_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::tabs_effects);
+    return snapshot_->tabs();
+}
+
 const CardThemeToken& ThemeScope::card_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::card_colors);
@@ -1147,6 +1176,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Card.metrics",
         "Card.typography",
         "Card.effects",
+        "Tabs.colors",
+        "Tabs.metrics",
+        "Tabs.typography",
+        "Tabs.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1197,6 +1230,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_order:
     case TokenIdentity::select_colors:
     case TokenIdentity::card_colors:
+    case TokenIdentity::tabs_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1217,6 +1251,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_shadow:
     case TokenIdentity::select_effects:
     case TokenIdentity::card_effects:
+    case TokenIdentity::tabs_effects:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1237,6 +1272,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_typography:
     case TokenIdentity::select_typography:
     case TokenIdentity::card_typography:
+    case TokenIdentity::tabs_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1250,6 +1286,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_layout_metrics:
     case TokenIdentity::select_metrics:
     case TokenIdentity::card_metrics:
+    case TokenIdentity::tabs_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:

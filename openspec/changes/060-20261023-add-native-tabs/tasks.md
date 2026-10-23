@@ -6,7 +6,7 @@
 
 ## 2. API、选择模型与Token（平台通用）
 
-- [ ] 2.1 实现typed TabsProps/TabItem/TabContent、选择/禁用/导航模型与Tabs Token、继承/reset/component算法/覆盖、dirty分组、hash/序列化/golden；补空/重复key、控制冲突、未知key、拒绝回写、disabled导航、旧Token保持/局部性/非法配置原子拒绝与API编译测试和文档，windows-msvc-headless Debug/Release受影响测试、格式/规格校验通过后记录evidence、提交并立即push、核对SHA。
+- [x] 2.1 实现typed TabsProps/TabItem/TabContent、选择/禁用/导航模型与Tabs Token、继承/reset/component算法/覆盖、dirty分组、hash/序列化/golden；补空/重复key、控制冲突、未知key、拒绝回写、disabled导航、旧Token保持/局部性/非法配置原子拒绝与API编译测试和文档，windows-msvc-headless Debug/Release受影响测试、格式/规格校验通过后记录evidence、提交并立即push、核对SHA。
 
 ## 3. 保留面板与真实导航（平台通用）
 

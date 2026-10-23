@@ -86,6 +86,10 @@ public:
     [[nodiscard]] const CardThemeToken& card_metrics() const;
     [[nodiscard]] const CardThemeToken& card_typography() const;
     [[nodiscard]] const CardThemeToken& card_effects() const;
+    [[nodiscard]] const TabsThemeToken& tabs_colors() const;
+    [[nodiscard]] const TabsThemeToken& tabs_metrics() const;
+    [[nodiscard]] const TabsThemeToken& tabs_typography() const;
+    [[nodiscard]] const TabsThemeToken& tabs_effects() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;
