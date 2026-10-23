@@ -33,6 +33,8 @@ class PopconfirmComponentHost;
 class FeedbackComponentHost;
 class MenuComponentHost;
 class DropdownComponentHost;
+class PaginationComponentHost;
+class TableComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -246,6 +248,14 @@ public:
         return *dropdown_;
     }
 
+    [[nodiscard]] TableComponentHost& table() noexcept {
+        return *table_;
+    }
+
+    [[nodiscard]] PaginationComponentHost& pagination() noexcept {
+        return *pagination_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -353,6 +363,8 @@ private:
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;
     std::unique_ptr<DropdownComponentHost> dropdown_;
+    std::unique_ptr<PaginationComponentHost> pagination_;
+    std::unique_ptr<TableComponentHost> table_;
 };
 
 } // namespace ryn::detail

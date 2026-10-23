@@ -77,3 +77,5 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "^rynui.portable.(m
 - `windows-msvc-headless` / MSVC 19.51.36256，Debug 七项聚焦 CTest 全部通过（6.02 秒）：Menu、Dropdown、Theme algorithm/runtime、Modal boundary/component、Popconfirm component。
 - clang-format 22.1.3 检查 540 个自有源文件，0 failures；doctor healthy；strict validate 67/67；diff check 通过。
 - 此阶段仅作本地合并提交；后续 InputNumber 合并后单独记录最终 Debug/Release 集成结果，不重复完整套件。
+
+随后合并 InputNumber `8cea30f` 和父任务授权的 Table/Pagination main `b27651d`。最终 Debug/Release 各 34/34，通过五份 golden 的双基线语义比较，并修复共同 Theme binding 的实际 Windows stack overflow；完整集成记录见 [main 共同集成验收](../../068-20261023-add-native-input-number/evidence/common/main-integration.md)。本分支未改全局 Gallery 或 main 的 README/完成清单内容。

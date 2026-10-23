@@ -33,6 +33,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Confirmation popups | Popconfirm with retained trigger/title/description, real confirm/cancel buttons, controlled or default visibility, keyboard/outside close, focus restoration and child popups; see [Popconfirm](docs/popconfirm.md) |
 | Tags and counts | Tag/CheckableTag colors, controlled close/selection; standalone or wrapped Badge count/overflow/dot/status with retained contents; see [Tag / Badge](docs/tag-and-badge.md) |
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
+| Data browsing | Table with retained keyed rows, typed columns/slots, controlled sorting/selection and finite scrolling, composed with controlled or default Pagination; see [Table](docs/table.md) and [Pagination](docs/pagination.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
 | Sliders | Typed Slider / RangeSlider, controlled values and steps, mouse/touch capture, independent thumb focus, keyboard, vertical and reverse modes; see [Slider contracts](docs/slider.md) |
 | Tooltips | Text Tooltip, controlled visibility, hover/focus delays, Escape, twelve placements, overflow adjustment and arrows; see [Tooltip contracts](docs/tooltip.md) |

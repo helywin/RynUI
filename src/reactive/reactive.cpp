@@ -2,6 +2,7 @@
 #include <ryn/version.hpp>
 
 #include "internal/layer_anchors.hpp"
+#include "reactive/untracked.hpp"
 
 #include <algorithm>
 #include <stdexcept>
@@ -267,6 +268,11 @@ void record_dependency(ReactiveSource& source) {
     if (active_observer != nullptr) {
         active_observer->track(source);
     }
+}
+
+void run_untracked(const std::function<void()>& callback) {
+    ActiveObserverGuard guard(nullptr);
+    callback();
 }
 
 } // namespace detail

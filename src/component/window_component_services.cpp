@@ -14,6 +14,8 @@
 #include "component/feedback_component.hpp"
 #include "component/menu_component.hpp"
 #include "component/dropdown_component.hpp"
+#include "component/pagination_component.hpp"
+#include "component/table_component.hpp"
 
 #include <chrono>
 
@@ -94,6 +96,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
+    table_ = std::make_unique<TableComponentHost>(*this);
     popconfirm_ = std::make_unique<PopconfirmComponentHost>(*this);
     dropdown_ = std::make_unique<DropdownComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
@@ -104,6 +107,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tag_badge_ = std::make_unique<TagBadgeComponentHost>(*this);
     feedback_ = std::make_unique<FeedbackComponentHost>(*this);
     menu_ = std::make_unique<MenuComponentHost>(*this);
+    pagination_ = std::make_unique<PaginationComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

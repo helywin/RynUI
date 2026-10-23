@@ -61,3 +61,5 @@ Theme golden 通过 `rynui_portable_theme_algorithm --write-goldens` 生成，�
 - clang-format 22.1.3 检查 549 个自有源文件，0 failures。保留已有 ThemeScope 引用提交、reference_cell 默认主题栈占用修正、popup child-layer 排序、blocked subtree 输入与全部参与者生命周期。
 
 父任务随后授权合并已提交 main `b27651db3b8e2b6ca1edae01b722390819385e24`；最终 Table/Pagination 共同集成结果另行记录。本阶段仅本地提交，不重复完整 117/119 套件、不重复 Astra 评审，也不改 Gallery/全局支持文档。
+
+Table-inclusive 最终 Debug/Release 各 34/34、Spin 回归、实际 Theme binding 栈溢出修复和双基线 golden 比较见 [main 共同集成验收](main-integration.md)。
