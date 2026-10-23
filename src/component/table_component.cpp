@@ -973,25 +973,32 @@ void TableComponentHost::position_window_layers(runtime::Size viewport, runtime:
 }
 
 bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
-    for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
-        auto* s = services_->components().state<TableState>(*it);
-        if (!s || !services_->interactions().component_active(*it)) {
-            continue;
+    if (mounted_.empty()) {
+        return false;
+    }
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    if (!target) {
+        return false;
+    }
+    // The hit snapshot already applies clipping. Follow its actual ancestors,
+    // handing off at a limit only within the same popup layer.
+    for (auto current = std::optional{target->component}; current; current = services_->components().parent(*current)) {
+        auto* s = services_->components().state<TableState>(*current);
+        if (s && services_->interactions().component_active(*current) &&
+            contains(translated(s->body_bounds, services_->nodes().require(s->node).translation), event.x, event.y)) {
+            const auto x = std::clamp(s->scroll_x + event.delta_x * 32.0F, 0.0F, s->maximum_x);
+            const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
+            if (x != s->scroll_x || y != s->scroll_y) {
+                s->scroll_x = x;
+                s->scroll_y = y;
+                services_->dirty().invalidate(s->node, runtime::DirtyFlags::Transform | runtime::DirtyFlags::HitTest);
+                return true;
+            }
         }
-        const auto body = graphics::intersect_effect_bounds(
-            translated(s->body_bounds, services_->nodes().require(s->node).translation), s->clip);
-        if (!contains(body, event.x, event.y)) {
-            continue;
-        }
-        const auto x = std::clamp(s->scroll_x + event.delta_x * 32.0F, 0.0F, s->maximum_x);
-        const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
-        if (x == s->scroll_x && y == s->scroll_y) {
+        if (services_->components().is_window_layer_root(*current)) {
             return false;
         }
-        s->scroll_x = x;
-        s->scroll_y = y;
-        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Transform | runtime::DirtyFlags::HitTest);
-        return true;
     }
     return false;
 }
