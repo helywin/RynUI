@@ -14,4 +14,4 @@
 
 ## 4. 平台通用集成
 
-- [ ] 4.1 windows-msvc-headless Debug/Release 完整 CTest、format-code --check、doctor、严格 validate、diff 检查；保存真实证据与明确限制，提交推送并核对远端 SHA。不包含原生 GPU/Linux/IME 验收。
+- [x] 4.1 windows-msvc-headless Debug/Release 完整 CTest、format-code --check、doctor、严格 validate、diff 检查；保存真实证据与明确限制，提交并记录本地 SHA。依最新用户策略不推送，由父任务合并和推送 main。不包含原生 GPU/Linux/IME 验收。
