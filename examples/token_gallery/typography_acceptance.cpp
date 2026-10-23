@@ -275,7 +275,11 @@ int run_typography_acceptance(int argc, char** argv) {
         const auto actions = [&](runtime::ComponentId parent) {
             std::vector<input::InteractionId> result;
             for (auto id : services.interactions().declaration_order()) {
-                auto component = services.interactions().require(id).component;
+                const auto& record = services.interactions().require(id);
+                if (!record.focusable) {
+                    continue;
+                }
+                auto component = record.component;
                 for (auto current = services.components().parent(component); current;
                      current = services.components().parent(*current)) {
                     if (*current == parent) {

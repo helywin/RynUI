@@ -1,5 +1,6 @@
 #include "component/typography_component.hpp"
 #include "component/input_component.hpp"
+#include "component/tooltip_component.hpp"
 #include "input/pressable_behavior.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
@@ -31,6 +32,7 @@ struct ActionState {
 struct TypographyState {
     runtime::ComponentId component;
     runtime::ComponentId display;
+    runtime::ComponentId display_container;
     runtime::ComponentId row;
     runtime::ComponentId editor;
     input::InteractionId editor_interaction;
@@ -48,6 +50,12 @@ struct TypographyState {
     Signal<bool> edit_visible{false};
     Signal<bool> copy_disabled{true};
     Signal<bool> actions_disabled{false};
+    Signal<bool> copy_hint_available{false};
+    Signal<bool> edit_hint_available{false};
+    Signal<bool> ellipsis_hint_available{false};
+    Signal<String> copy_hint{String{}};
+    Signal<String> edit_hint{String{}};
+    Signal<String> ellipsis_hint{String{}};
     Signal<std::size_t> max_length{std::numeric_limits<std::size_t>::max()};
     Signal<TypographyEllipsis> ellipsis{TypographyEllipsis{}};
     Signal<runtime::SemanticTypography> typography{runtime::SemanticTypography{}};
@@ -337,9 +345,24 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
     if (state.has_ellipsis) {
         display.ellipsis_ = Prop<TypographyEllipsis>{state.ellipsis};
     }
-    build.mount_slot(id, Content{[display, role, level] { mount_typography_component(display, role, level); }});
-    state.display = services.text().mounted_texts().back().component;
-    state.scene = services.text().mounted_texts().back().scene;
+    build.mount_slot(id, Content{[&] {
+                         const auto mount_display = [&] {
+                             mount_typography_component(display, role, level);
+                             state.display = services.text().mounted_texts().back().component;
+                             state.scene = services.text().mounted_texts().back().scene;
+                         };
+                         if (state.has_ellipsis) {
+                             Tooltip(TooltipProps{}
+                                         .title(state.ellipsis_hint)
+                                         .titleAvailable(state.ellipsis_hint_available)
+                                         .trigger(TooltipTriggerMode::Hover),
+                                     TooltipTrigger{mount_display});
+                             state.display_container = services.tooltip().mounted().back();
+                         } else {
+                             mount_display();
+                             state.display_container = state.display;
+                         }
+                     }});
     state.typography.set(services.text().resolved_typography(state.display));
     build.mount_slot(
         id, Content{[this, id] {
@@ -401,17 +424,27 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
                         actions_.push_back(s.expand_action);
                     }
                     if (s.has_copy) {
-                        s.copy_action =
-                            mount_action(*services_, String{}, Prop<IconName>{s.copy_icon}, Prop<bool>{s.copy_visible},
-                                         Prop<bool>{s.copy_disabled}, TypographyType::Default,
-                                         Prop<runtime::SemanticTypography>{s.typography}, [this, id] { copy(id); });
+                        Tooltip(TooltipProps{}.title(s.copy_hint).titleAvailable(s.copy_hint_available),
+                                TooltipTrigger{[this, id] {
+                                    auto& current = *services_->components().state<TypographyState>(id);
+                                    current.copy_action = mount_action(
+                                        *services_, String{}, Prop<IconName>{current.copy_icon},
+                                        Prop<bool>{current.copy_visible}, Prop<bool>{current.copy_disabled},
+                                        TypographyType::Default, Prop<runtime::SemanticTypography>{current.typography},
+                                        [this, id] { copy(id); });
+                                }});
                         actions_.push_back(s.copy_action);
                     }
                     if (s.has_edit) {
-                        s.edit_action =
-                            mount_action(*services_, String{}, IconName::EditOutlined, Prop<bool>{s.edit_visible},
-                                         Prop<bool>{s.actions_disabled}, TypographyType::Default,
-                                         Prop<runtime::SemanticTypography>{s.typography}, [this, id] { edit(id); });
+                        Tooltip(TooltipProps{}.title(s.edit_hint).titleAvailable(s.edit_hint_available),
+                                TooltipTrigger{[this, id] {
+                                    auto& current = *services_->components().state<TypographyState>(id);
+                                    current.edit_action = mount_action(
+                                        *services_, String{}, IconName::EditOutlined, Prop<bool>{current.edit_visible},
+                                        Prop<bool>{current.actions_disabled}, TypographyType::Default,
+                                        Prop<runtime::SemanticTypography>{current.typography},
+                                        [this, id] { edit(id); });
+                                }});
                         actions_.push_back(s.edit_action);
                     }
                 }});
@@ -464,8 +497,8 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
                     services_->text().reserve_ellipsis_inline(s.display, reserve);
                     const float width =
                         s.has_ellipsis && !s.expanded ? limits.max_width : std::max(0.0F, limits.max_width - reserve);
-                    s.display_size =
-                        engine.measure_child(services_->components().root(s.display), {0, width, 0, limits.max_height});
+                    s.display_size = engine.measure_child(services_->components().root(s.display_container),
+                                                          {0, width, 0, limits.max_height});
                     s.display_width = std::isfinite(width) ? width : s.display_size.width;
                 };
                 measure(!s.expanded);
@@ -490,7 +523,7 @@ bool TypographyComponentHost::mount(const TypographyProps& props, TypographySema
                     engine.place_child(services_->components().root(s.editor), bounds);
                     return;
                 }
-                engine.place_child(services_->components().root(s.display),
+                engine.place_child(services_->components().root(s.display_container),
                                    {bounds.x, bounds.y, s.display_width, s.display_size.height});
                 engine.place_child(services_->components().root(s.row),
                                    {bounds.x + std::max(0.0F, bounds.width - s.action_size.width),
@@ -591,6 +624,11 @@ void TypographyComponentHost::refresh(runtime::ComponentId id) {
         return;
     }
     const bool editing = s->editing.get();
+    if (s->disabled || editing || !s->copy_config.enabled) {
+        s->copied = false;
+        s->copy_failed = false;
+        s->copied_until.reset();
+    }
     s->typography.set(services_->text().resolved_typography(s->display));
     s->actions_disabled.set(s->disabled);
     s->copy_disabled.set(s->disabled || !services_->clipboard());
@@ -603,11 +641,19 @@ void TypographyComponentHost::refresh(runtime::ComponentId id) {
     }
     s->expand_label.set(s->expanded ? s->ellipsis_config.collapse_text : s->ellipsis_config.expand_text);
     s->copy_icon.set(s->copied ? IconName::CheckOutlined : IconName::CopyOutlined);
+    s->copy_hint.set(s->copied ? s->copy_config.copied_tooltip : s->copy_config.tooltip);
+    s->edit_hint.set(s->edit_config.tooltip);
+    s->ellipsis_hint.set(s->ellipsis_config.tooltip.value_or(String{}));
+    s->copy_hint_available.set(s->copy_visible.get() && !s->copy_disabled.get());
+    s->edit_hint_available.set(s->edit_visible.get() && !s->disabled);
+    if (editing || s->disabled || s->expanded) {
+        s->ellipsis_hint_available.set(false);
+    }
     s->max_length.set(s->edit_config.max_length);
     auto ellipsis = s->ellipsis_config;
     ellipsis.expanded = s->expanded;
     s->ellipsis.set(std::move(ellipsis));
-    if (services_->components().set_branch_active(s->display, !editing)) {
+    if (services_->components().set_branch_active(s->display_container, !editing)) {
         services_->mark_scene_structure_dirty();
     }
     if (services_->components().set_branch_active(s->row, !editing)) {
@@ -757,6 +803,12 @@ std::optional<animation::AnimationTime> TypographyComponentHost::next_auxiliary_
 }
 
 void TypographyComponentHost::synchronize_auxiliary_geometry(runtime::Size, runtime::Rect clip) {
+    for (auto id : mounted_) {
+        if (auto* s = services_->components().state<TypographyState>(id)) {
+            s->ellipsis_hint_available.set(s->has_ellipsis && !s->disabled && !s->editing.get() && !s->expanded &&
+                                           services_->text().scene_service().text_state(s->scene).truncated());
+        }
+    }
     for (auto id : actions_) {
         if (auto* s = services_->components().state<ActionState>(id)) {
             const auto& node = services_->nodes().require(s->node);

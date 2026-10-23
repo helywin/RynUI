@@ -6,7 +6,7 @@
 
 ## 2. 提示（平台通用）
 
-- [ ] 2.1 接入复制/成功/编辑与实际截断提示，补响应式文案/空文案、hover/focus、操作命中隔离、resize/展开、禁用/失活/销毁/idle 与 retained identity 回归和用户文档；Windows windows-msvc-headless Debug/Release 完整 CTest、格式与规格校验通过，记录实际 evidence 后独立提交。
+- [x] 2.1 接入复制/成功/编辑与实际截断提示，补响应式文案/空文案、hover/focus、操作命中隔离、resize/展开、禁用/失活/销毁/idle 与 retained identity 回归和用户文档；Windows windows-msvc-headless Debug/Release 完整 CTest、格式与规格校验通过，记录实际 evidence 后独立提交。Debug 首轮98/99、修正新增测试时钟后失败项1/1复测通过；Release完整99/99，见 evidence/common-hints.md。
 
 ## 3. 多行编辑（平台通用）
 
