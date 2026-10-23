@@ -745,9 +745,26 @@ void SelectComponentHost::on_pointer_input(const input::PointerInputEvent& event
 }
 
 bool SelectComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+    if (mounted_.empty()) {
+        return false;
+    }
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    if (!target) {
+        return false;
+    }
+    // The closest layer owns the wheel, independent of popup bounds or mount order.
+    auto layer = std::optional{target->component};
+    while (layer && !services_->components().is_window_layer_root(*layer)) {
+        layer = services_->components().parent(*layer);
+    }
+    if (!layer) {
+        return false;
+    }
     for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
         auto* s = services_->components().state<SelectState>(*it);
-        if (!s || !s->visible || !inside(s->popup_bounds, event.x, event.y)) {
+        if (!s || !s->visible || s->popup != *layer || !services_->interactions().component_active(s->popup) ||
+            !inside(s->popup_bounds, event.x, event.y)) {
             continue;
         }
         const auto& token = services_->components().theme_scope(*it)->snapshot().select();
