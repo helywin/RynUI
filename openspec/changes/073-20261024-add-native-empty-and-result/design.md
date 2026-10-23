@@ -24,6 +24,7 @@
 - 文本/原生控件自身最小尺寸超出短区域 → 区域 clip 限制实际 glyph 与 surface；正常高度额外保留装饰空间，测试实际覆盖率与 clip。
 - Theme 大量已有诊断字段 → 从新可执行文件重建五份 golden，递归比较旧字段（identity 除外）。
 - 原生图示与上游插画不同 → 独立说明其语义映射，拒绝声称视觉等价或 native GPU 验收。
+- 组合 ThemeConfig 的 MSVC Debug 栈预算 → 073 新增两处局部派生采用立即调用的引用捕获 lambda，保留父任务负责的既有共享派生块；剩余全量 Debug 问题按 evidence 交接，任务 4.1 不提前勾选。
 
 ## Migration Plan
 
