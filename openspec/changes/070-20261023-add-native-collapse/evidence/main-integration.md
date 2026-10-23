@@ -8,3 +8,9 @@
 - R2 已确认 R1 三项修复，另有两个焦点呈现 P2（extra 的 tight clip 截断 Button focus ring；pointer→Space/Enter 没有切换 keyboard modality）正在原实现工作树独立修复。此提交不声称 R2 全部关闭。
 
 实际输出为 ignored `out/collapse-root-{debug,release}-{build,ctest}.log` 与 `out/collapse-root-{format,doctor,validate}.log`。未运行 Collapse Gallery、GPU、Linux、人工视觉或系统 IME 验收。
+
+## R2 焦点修复集成
+
+在 `17fa86606d890fd3afb5b6e1b884691ed8f7229f`（包含逐组件主题解析栈占用修复）合并 `bfe3562a9a229a731176f1b2df5d2fe67c9d686f`。extra 使用 header 范围裁剪以保留独立 Button 的 focus ring；pointer→Space/Enter 切换 keyboard focus-visible，repeat/keyup 不重复触发。
+
+同一 MSVC headless Debug **6/6**（7.19 秒）、Release **6/6**（4.14 秒）：Collapse 三项、Button component、Switch features 和 Theme algorithm。原工作树记录的 Button Debug 基线栈溢出在此组合下也恢复通过。原始输出为 ignored `out/collapse-r2-root-{debug,release}-{build,ctest}.log`。R3 独立审查与共享 Theme 调用分离复核并行进行，不在此预先宣称结果。

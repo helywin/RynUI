@@ -670,6 +670,104 @@ void popup_cleanup_matches_modal_and_spin() {
               "popup close callback disposal retained resources");
     }
 }
+
+void extra_button_focus_ring_uses_header_clip() {
+    Fixture f;
+    Signal<bool> disabled{false};
+    Signal<ControlSize> size{ControlSize::Middle};
+    int actions{};
+    int mounts{};
+    f.services.mount(Content{[&] {
+        Collapse(CollapseProps{}.size(size), {plain(u8"a").disabled(disabled).extra(CollapseExtra{[&] {
+                     ++mounts;
+                     Button(ButtonProps{}.onClick([&] { ++actions; }), [] { Text(u8"Action"); });
+                 }})});
+    }});
+    sync(f);
+    const auto id = f.services.collapse().mounted().front();
+    const auto header = f.services.collapse().snapshot(id).panels[0].header;
+    const auto button = f.buttons.mounted_buttons().front();
+    key(f, Key::tab);
+    key(f, Key::tab);
+    check(f.services.focus().state().focused == button.interaction &&
+              f.buttons.snapshot(button.component).focus.focus_visible,
+          "extra native Button did not receive visible keyboard focus");
+    for (auto value : {ControlSize::Middle, ControlSize::Small, ControlSize::Large}) {
+        size.set(value);
+        sync(f);
+        const auto effects = f.services.rounded_effects().packed_instances();
+        const auto effect = std::ranges::find_if(effects, [](const auto& e) {
+            return e.geometry.kind == graphics::RoundedEffectKind::outline && e.geometry.outline_width == 3 &&
+                   e.geometry.outline_offset == 1 && e.material.opacity > 0 && e.material.visible;
+        });
+        check(effect != effects.end() && effect->geometry.ancestor_clip.has_value(),
+              "extra Button focus effect missing");
+        auto unclipped = *effect;
+        unclipped.geometry.ancestor_clip.reset();
+        const auto outer = graphics::rounded_effect_bounds(unclipped, 0);
+        const auto clip = effect->geometry.ancestor_clip->bounds;
+        const auto contains = [](runtime::Rect bounds, runtime::Rect rect) {
+            return rect.x >= bounds.x && rect.y >= bounds.y && rect.x + rect.width <= bounds.x + bounds.width &&
+                   rect.y + rect.height <= bounds.y + bounds.height;
+        };
+        check(contains(clip, outer) && contains(bounds(f, header), clip),
+              "extra Button focus ring clipped by tight content bounds");
+        const auto b = bounds(f, button.component);
+        const runtime::Point point{b.x - 2.5F, b.y + b.height / 2};
+        check(point.x >= clip.x && point.x <= clip.x + clip.width && point.y >= clip.y &&
+                  point.y <= clip.y + clip.height && graphics::rounded_effect_coverage(point, *effect) > .5F,
+              "extra Button focus ring does not paint outside control");
+    }
+    disabled.set(true);
+    sync(f);
+    click(f, button.component);
+    key(f, Key::enter);
+    check(actions == 2 && mounts == 1 && f.services.collapse().snapshot(id).active_keys.empty(),
+          "extra viewport changed native activation or remounted slot");
+    check(f.services.destroy(id), "extra focus fixture cleanup failed");
+}
+
+void pointer_header_keyboard_focus_paints() {
+    Fixture f;
+    int changes{};
+    f.services.mount(
+        Content{[&] { Collapse(CollapseProps{}.onChange([&](CollapseKeys) { ++changes; }), {plain(u8"a")}); }});
+    sync(f);
+    const auto id = f.services.collapse().mounted().front();
+    const auto header = f.services.collapse().snapshot(id).panels[0].header;
+    const auto painted = [&] {
+        const auto h = bounds(f, header);
+        return std::ranges::any_of(f.services.rounded_effects().packed_instances(), [&](const auto& e) {
+            return e.geometry.kind == graphics::RoundedEffectKind::outline && e.geometry.outline_width == 3 &&
+                   e.material.opacity > 0 && e.material.visible &&
+                   graphics::rounded_effect_coverage({h.x + 1.5F, h.y + h.height / 2}, e) > .5F;
+        });
+    };
+    for (auto value : {Key::space, Key::enter}) {
+        click(f, header);
+        check(f.services.focus().state().modality == FocusModality::pointer &&
+                  !f.services.focus().state().focus_visible && !painted(),
+              "pointer header unexpectedly has a keyboard focus ring");
+        const auto before = changes;
+        f.services.focus().dispatch({value, KeyAction::down});
+        sync(f);
+        check(changes == before + 1 && f.services.focus().state().focused == interaction(f, header) &&
+                  f.services.focus().state().modality == FocusModality::keyboard &&
+                  f.services.focus().state().focus_visible && painted(),
+              "pointer-to-keyboard header activation did not paint focus ring");
+        f.services.focus().dispatch({value, KeyAction::down, KeyModifier::none, true});
+        f.services.focus().dispatch({value, KeyAction::up});
+        sync(f);
+        check(changes == before + 1 && !f.services.focus().state().keyboard_pressed && painted(),
+              "consumed repeat/keyup activated header again or removed focus ring");
+        click(f, header);
+        const auto after_click = changes;
+        f.services.focus().dispatch({value, KeyAction::up});
+        sync(f);
+        check(changes == after_click && f.services.focus().state().modality == FocusModality::keyboard && painted(),
+              "consumed keyup did not update header keyboard presentation");
+    }
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -687,6 +785,10 @@ int main(int argc, char** argv) {
             } else if (repro == "popup") {
                 unfocused_popup_does_not_resurrect();
                 popup_cleanup_matches_modal_and_spin();
+            } else if (repro == "extra-focus") {
+                extra_button_focus_ring_uses_header_clip();
+            } else if (repro == "keyboard-focus") {
+                pointer_header_keyboard_focus_paints();
             } else {
                 throw std::runtime_error("unknown Collapse regression");
             }
@@ -696,6 +798,8 @@ int main(int argc, char** argv) {
         constrained_headers_clip_actual_scene();
         unfocused_popup_does_not_resurrect();
         popup_cleanup_matches_modal_and_spin();
+        extra_button_focus_ring_uses_header_clip();
+        pointer_header_keyboard_focus_paints();
         controlled_and_accordion();
         retained_drafts_reflow_and_cleanup();
         keyboard_extra_and_disabled_capture();

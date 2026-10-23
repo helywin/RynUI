@@ -1,6 +1,6 @@
 # Collapse 平台通用验收
 
-首版记录保留如下；2026-10-24 的 Astra R1 复现、修复和最新验收见文末独立章节。
+首版记录保留如下；2026-10-24 的 Astra R1/R2 复现、修复和后续验收见文末独立章节。
 
 ## 实际环境与范围
 
@@ -96,4 +96,36 @@ popup: unfocused hidden popup resurrected on placeholder update
 ```powershell
 $targets += @('rynui_portable_select_component', 'rynui_portable_card_component', 'rynui_portable_tooltip_component')
 $filter = 'rynui\.(collapse_.*|feedback_(theme|component)|tag_badge_theme|portable\.(theme_(algorithm|runtime)|tabs_(component|theme)|modal_(component|boundary|theme)|drawer_(component|theme)|popconfirm_(component|theme)|select_component|card_component|tooltip_component|backend_boundaries))$'
+```
+
+## 2026-10-24 Astra R2：两项焦点 P2 已复现并修复
+
+从干净的 `815a509dc468628145030ca96f2fef2c65bae9c8` 继续，没有合并根分支。本轮唯一修改的生产源为 `collapse_component.cpp`，保持原有 MSVC x64/Ninja Multi-Config `windows-msvc-headless`、独立构建目录及最多 4 jobs。
+
+先仅新增测试，两个独立 Debug 入口均在原实现上退出 1：
+
+```text
+extra-focus: extra Button focus ring clipped by tight content bounds
+keyboard-focus: pointer-to-keyboard header activation did not paint focus ring
+```
+
+- **extra 焦点环**：仅在存在 extra 时增加被动 header viewport，仍是 Collapse 下的独立逻辑 sibling；内容保持原尺寸与位置，descendant clip 改为可用 header rectangle。测试用真实 Tab 聚焦原生 Button，核对 width=3/offset=1 的实际 rounded effect；去除 clip 后求完整 outline bounds，确认原 clip 完整包含它，并检查控制外侧采样点位于 clip 内且 coverage > 0.5。覆盖 Middle/Small/Large、disabled header 下独立 pointer/Enter 激活以及 slot 只挂载一次；R1 的短/零高度实际 glyph/quad 裁剪测试保留并通过。
+- **pointer 转 keyboard**：header 的已识别键盘命令先 defer 当前 header 为 keyboard focus，再处理激活或导航；repeat/keyup 保持消费且不重复激活。测试从真实 pointer click 开始分别发送 Space/Enter，检查 modality、focus-visible 及实际 outline 绘制；重复 keydown 和 keyup 不增加切换，单独消费 keyup 仍更新 keyboard presentation。
+
+实际检查结果：
+
+- Debug affected suite **13/13 通过**，3.91 秒。包含 Collapse public/theme/component、Focus order/state/lifecycle、Modal boundary/component、feedback component、Tabs/Select/Tooltip component、backend boundaries。
+- Release expanded suite **14/14 通过**，3.00 秒；在上述 13 项之外包含 standalone `portable.button_component`。
+- 扩展的 standalone Button **Debug 基线失败**：最初 14 项运行中其余 13 项通过，该项退出 `0xC00000FD`。在本工作区临时恢复 `815a509` 的原始 Collapse 源码，重建并运行未修改的 Button test，得到相同退出码；随后恢复 R2 源码并重新构建、运行上述 Debug 13 项。没有修改 Button 测试、提高其 stack 或把该项记为通过；这不是本轮 R2 新增失败，保留给父任务处理。
+- clang-format 22.1.3：`format-code.py --check` **537 文件、0 failures**；doctor 健康、strict **67/67**、`git diff --check` 通过。
+- 本轮不改 Select/Tooltip cleanup、Theme/goldens、renderer/scene ABI、根工作区、Gallery 或全局文档；不 push、PR、archive 或创建子任务。仍不声称 GPU/Linux/人工 IME 验收。
+
+重现本轮检查使用以下 targets/filter，Debug 运行 13 项；Release 将 `rynui_portable_button_component` 加入 targets、`button_component|` 加入 portable filter 后运行 14 项。构建及 CTest 仍使用上方的正式 preset 命令与 `--parallel 4`。
+
+```powershell
+$targets = @('rynui_collapse_component_tests', 'rynui_collapse_public_api_tests', 'rynui_collapse_theme_tests',
+  'rynui_portable_focus_order', 'rynui_portable_focus_state', 'rynui_portable_focus_lifecycle',
+  'rynui_portable_modal_boundary', 'rynui_portable_modal_component', 'rynui_feedback_component_tests',
+  'rynui_portable_tabs_component', 'rynui_portable_select_component', 'rynui_portable_tooltip_component')
+$filter = 'rynui\.(collapse_.*|feedback_component|portable\.(focus_(order|state|lifecycle)|modal_(boundary|component)|tabs_component|select_component|tooltip_component|backend_boundaries))$'
 ```
