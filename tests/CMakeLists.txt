@@ -79,6 +79,16 @@ if(NOT RYNUI_HAS_SDL_GPU)
     return()
 endif()
 
+foreach(menu_dropdown_test IN ITEMS menu_component dropdown_component)
+    add_executable(rynui_${menu_dropdown_test}_tests ${menu_dropdown_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${menu_dropdown_test}_tests)
+    target_link_libraries(rynui_${menu_dropdown_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${menu_dropdown_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${menu_dropdown_test} COMMAND rynui_${menu_dropdown_test}_tests)
+endforeach()
+
 foreach(select_test IN ITEMS select_model select_theme select_public_api select_component card_theme card_public_api card_component tabs_model tabs_theme tabs_public_api tabs_component modal_model modal_public_api modal_theme modal_boundary modal_component drawer_model drawer_public_api drawer_theme drawer_component popconfirm_model popconfirm_public_api popconfirm_theme popconfirm_component)
     add_executable(rynui_${select_test}_tests ${select_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${select_test}_tests)

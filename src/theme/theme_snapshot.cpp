@@ -1793,6 +1793,112 @@ SelectThemeToken derive_select(const AntDesignDefaultSeed& seed, const ThemeMapT
     return token;
 }
 
+MenuThemeToken derive_menu(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                           std::span<const ThemeAlgorithm> algorithms) {
+    const auto base = derive_select(seed, map, alias, algorithms);
+    MenuThemeToken token;
+    token.colors = {alias.color_background_container,
+                    alias.color_text,
+                    alias.color_text_disabled,
+                    map.color_primary,
+                    base.colors.option_selected_background,
+                    base.colors.option_active_background,
+                    map.color_error,
+                    alias.color_border_secondary,
+                    alias.color_text_secondary,
+                    alias.color_focus_outline};
+    token.metrics = {map.control_height_large,
+                     map.size_xs / 2,
+                     map.size,
+                     map.size_large,
+                     map.border_radius_large,
+                     map.control_height,
+                     map.size_xs + seed.line_width};
+    token.typography = {seed.font_family, map.font_size, map.font_size * map.line_height, 400};
+    return token;
+}
+
+void apply_menu_override(MenuThemeToken& token, const MenuTokenOverride& o) {
+    if (o.background) {
+        token.colors.background = *o.background;
+    }
+    if (o.text) {
+        token.colors.text = *o.text;
+    }
+    if (o.disabled) {
+        token.colors.disabled = *o.disabled;
+    }
+    if (o.selected) {
+        token.colors.selected = *o.selected;
+    }
+    if (o.selected_background) {
+        token.colors.selected_background = *o.selected_background;
+    }
+    if (o.hover_background) {
+        token.colors.hover_background = *o.hover_background;
+    }
+    if (o.danger) {
+        token.colors.danger = *o.danger;
+    }
+    if (o.divider) {
+        token.colors.divider = *o.divider;
+    }
+    if (o.group) {
+        token.colors.group = *o.group;
+    }
+    if (o.focus) {
+        token.colors.focus = *o.focus;
+    }
+    token.metrics.item_height =
+        fixed_length(o.item_height, token.metrics.item_height, "Menu item_height is invalid", true);
+    token.metrics.item_margin =
+        fixed_length(o.item_margin, token.metrics.item_margin, "Menu item_margin is invalid", false);
+    token.metrics.padding_inline =
+        fixed_length(o.padding_inline, token.metrics.padding_inline, "Menu padding_inline is invalid", false);
+    token.metrics.inline_indent =
+        fixed_length(o.inline_indent, token.metrics.inline_indent, "Menu inline_indent is invalid", false);
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Menu border_radius is invalid", false);
+    token.metrics.group_height =
+        fixed_length(o.group_height, token.metrics.group_height, "Menu group_height is invalid", true);
+    token.metrics.divider_height =
+        fixed_length(o.divider_height, token.metrics.divider_height, "Menu divider_height is invalid", true);
+    if (o.font_family) {
+        token.typography.font_family = *o.font_family;
+    }
+    token.typography.font_size =
+        fixed_length(o.font_size, token.typography.font_size, "Menu font size is invalid", true);
+    token.typography.line_height =
+        fixed_length(o.line_height, token.typography.line_height, "Menu line height is invalid", true);
+    if (o.font_weight) {
+        if (*o.font_weight < 100 || *o.font_weight > 1000) {
+            throw std::invalid_argument("Menu font weight is invalid");
+        }
+        token.typography.font_weight = *o.font_weight;
+    }
+}
+
+void apply_dropdown_override(DropdownThemeToken& token, const DropdownTokenOverride& o) {
+    if (o.background) {
+        token.background = *o.background;
+    }
+    token.metrics.padding = fixed_length(o.padding, token.metrics.padding, "Dropdown padding is invalid", false);
+    token.metrics.item_height =
+        fixed_length(o.item_height, token.metrics.item_height, "Dropdown item_height is invalid", true);
+    token.metrics.min_width = fixed_length(o.min_width, token.metrics.min_width, "Dropdown min_width is invalid", true);
+    token.metrics.max_height =
+        fixed_length(o.max_height, token.metrics.max_height, "Dropdown max_height is invalid", true);
+    token.metrics.gap = fixed_length(o.gap, token.metrics.gap, "Dropdown gap is invalid", false);
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Dropdown border_radius is invalid", false);
+    if (o.shadow) {
+        token.shadow = *o.shadow;
+    }
+    if (o.z_index_popup) {
+        token.z_index_popup = *o.z_index_popup;
+    }
+}
+
 void apply_select_override(SelectThemeToken& token, const SelectTokenOverride& o) {
     if (o.popup_background) {
         token.colors.popup_background = *o.popup_background;
@@ -2565,14 +2671,16 @@ void append_color(std::ostringstream& stream, Color color) {
     stream << '[' << color.red() << ',' << color.green() << ',' << color.blue() << ',' << color.alpha() << ']';
 }
 
-[[nodiscard]] std::string serialize_snapshot(
-    const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
-    const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
-    const CheckboxThemeToken& checkbox, const RadioThemeToken& radio, const TypographyThemeToken& typography,
-    const DividerThemeToken& divider, const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-    const SelectThemeToken& select, const CardThemeToken& card, const TabsThemeToken& tabs,
-    const ModalThemeToken& modal, const DrawerThemeToken& drawer, const PopconfirmThemeToken& popconfirm,
-    const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
+[[nodiscard]] std::string
+serialize_snapshot(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
+                   const ButtonThemeToken& button, const TextThemeToken& text, const SwitchThemeToken& switch_token,
+                   const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
+                   const TypographyThemeToken& typography, const DividerThemeToken& divider,
+                   const SliderThemeToken& slider, const TooltipThemeToken& tooltip, const SelectThemeToken& select,
+                   const CardThemeToken& card, const TabsThemeToken& tabs, const ModalThemeToken& modal,
+                   const DrawerThemeToken& drawer, const PopconfirmThemeToken& popconfirm, const MenuThemeToken& menu,
+                   const DropdownThemeToken& dropdown, const detail::InputTokenSet& input,
+                   std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
     stream << std::fixed << std::setprecision(6);
@@ -3022,8 +3130,49 @@ void append_color(std::ostringstream& stream, Color color) {
     stream << "]},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
-           << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
-           << "},\"input\":{\"sizes\":[";
+           << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height;
+    stream << "},\"menu\":{\"colors\":[";
+    const auto colors = menu.colors.values();
+    for (std::size_t i = 0; i < colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, colors[i]);
+    }
+    stream << "],\"metrics\":[";
+    const auto menu_metrics = menu.metrics.values();
+    for (std::size_t i = 0; i < menu_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << menu_metrics[i];
+    }
+    stream << "],\"typography\":[" << static_cast<int>(menu.typography.font_family) << ',' << menu.typography.font_size
+           << ',' << menu.typography.line_height << ',' << menu.typography.font_weight
+           << "]},\"dropdown\":{\"background\":";
+    append_color(stream, dropdown.background);
+    stream << ",\"metrics\":[";
+    const auto dropdown_metrics = dropdown.metrics.values();
+    for (std::size_t i = 0; i < dropdown_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << dropdown_metrics[i];
+    }
+    stream << "],\"zIndexPopup\":" << dropdown.z_index_popup << ",\"shadow\":";
+    stream << '[';
+    for (std::size_t i = 0; i < dropdown.shadow.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        const auto& shadow = dropdown.shadow[i];
+        stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+               << shadow.blur << ',' << shadow.spread << ',';
+        append_color(stream, shadow.color);
+        stream << ']';
+    }
+    stream << ']';
+    stream << "},\"input\":{\"sizes\":[";
     for (std::size_t i = 0; i < input.sizes.size(); ++i) {
         if (i) {
             stream << ',';
@@ -3230,8 +3379,9 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
                   const TypographyThemeToken& typography, const DividerThemeToken& divider,
                   const SliderThemeToken& slider, const TooltipThemeToken& tooltip, const SelectThemeToken& select,
                   const CardThemeToken& card, const TabsThemeToken& tabs, const ModalThemeToken& modal,
-                  const DrawerThemeToken& drawer, const PopconfirmThemeToken& popconfirm,
-                  const detail::InputTokenSet& input, std::span<const ThemeAlgorithm> algorithms) noexcept {
+                  const DrawerThemeToken& drawer, const PopconfirmThemeToken& popconfirm, const MenuThemeToken& menu,
+                  const DropdownThemeToken& dropdown, const detail::InputTokenSet& input,
+                  std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
         hash_byte(hash, static_cast<std::uint8_t>(character));
@@ -3519,6 +3669,22 @@ snapshot_identity(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, co
     }
     hash_shadow(hash, drawer.effects.shadow);
     hash_integer(hash, drawer.z_index_popup);
+    for (const auto color : menu.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (float value : menu.metrics.values()) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, menu.typography.font_family);
+    hash_integer(hash, menu.typography.font_weight);
+    hash_float(hash, menu.typography.font_size);
+    hash_float(hash, menu.typography.line_height);
+    hash_color(hash, dropdown.background);
+    for (float value : dropdown.metrics.values()) {
+        hash_float(hash, value);
+    }
+    hash_shadow(hash, dropdown.shadow);
+    hash_integer(hash, dropdown.z_index_popup);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -3578,20 +3744,21 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                             TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
-                             ProgressThemeToken progress)
+                             DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
+                             DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
+                             std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
+                             AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
       drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
-    identity_ =
-        snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                          slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_, *input_, algorithms_);
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
+    identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
+                                  divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
+                                  menu_, dropdown_, *input_, algorithms_);
     std::ostringstream status_json;
     status_json.imbue(std::locale::classic());
     status_json << std::fixed << std::setprecision(6);
@@ -3695,7 +3862,7 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     status_json << "],\"fontFamily\":" << static_cast<int>(progress_.metrics.font_family) << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
-                                          drawer_, popconfirm_, *input_, algorithms_, identity_);
+                                          drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
     diagnostic_json_.insert(diagnostic_json_.rfind('}'), status_json.str());
 }
 
@@ -3759,6 +3926,14 @@ const TabsThemeToken& ThemeSnapshot::tabs() const noexcept {
     return tabs_;
 }
 
+const MenuThemeToken& ThemeSnapshot::menu() const noexcept {
+    return menu_;
+}
+
+const DropdownThemeToken& ThemeSnapshot::dropdown() const noexcept {
+    return dropdown_;
+}
+
 const ModalThemeToken& ThemeSnapshot::modal() const noexcept {
     return modal_;
 }
@@ -3799,8 +3974,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
            left.modal_ == right.modal_ && left.tag_ == right.tag_ && left.badge_ == right.badge_ &&
            left.drawer_ == right.drawer_ && left.popconfirm_ == right.popconfirm_ && left.alert_ == right.alert_ &&
-           left.spin_ == right.spin_ && left.progress_ == right.progress_ && *left.input_ == *right.input_ &&
-           left.algorithms_ == right.algorithms_;
+           left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.menu_ == right.menu_ &&
+           left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4162,12 +4337,30 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         progress = derive_progress(seed, map, alias, algorithms);
     }
     apply_progress_override(progress, config.progress.tokens);
+    const bool inherit_navigation = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                    config.alias == AliasTokenOverride{} && config.algorithms.empty();
+    auto menu = inherit_navigation ? parent->menu() : derive_menu(seed, map, alias, algorithms);
+    apply_menu_override(menu, config.menu.tokens);
+    DropdownThemeToken dropdown;
+    if (inherit_navigation) {
+        dropdown = parent->dropdown();
+    } else {
+        if (seed.z_index_popup_base > std::numeric_limits<std::int32_t>::max() - 50) {
+            throw std::invalid_argument("Dropdown z-index exceeds supported range");
+        }
+        dropdown.background = alias.color_background_elevated;
+        dropdown.metrics = {map.size_xs / 2, map.control_height, 160, 320, seed.size_unit, map.border_radius_large};
+        dropdown.shadow = alias.box_shadow_secondary;
+        dropdown.z_index_popup = seed.z_index_popup_base + 50;
+    }
+    apply_dropdown_override(dropdown, config.dropdown.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms),
-                         std::move(tag), std::move(badge), std::move(alert), std::move(spin), std::move(progress));
+                         std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm), std::move(menu),
+                         std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(input)),
+                         std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
+                         std::move(progress));
 }
 
 } // namespace ryn

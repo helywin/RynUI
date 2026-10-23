@@ -77,6 +77,13 @@ public:
     [[nodiscard]] const SliderThemeToken& slider_colors() const;
     [[nodiscard]] const SliderThemeToken& slider_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_colors() const;
+    [[nodiscard]] const MenuThemeToken& menu_colors() const;
+    [[nodiscard]] const MenuThemeToken& menu_metrics() const;
+    [[nodiscard]] const MenuThemeToken& menu_typography() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_colors() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_metrics() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_effects() const;
+    [[nodiscard]] const DropdownThemeToken& dropdown_order() const;
     [[nodiscard]] const SelectThemeToken& select_colors() const;
     [[nodiscard]] const SelectThemeToken& select_metrics() const;
     [[nodiscard]] const SelectThemeToken& select_typography() const;

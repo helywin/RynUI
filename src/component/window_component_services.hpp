@@ -31,6 +31,8 @@ class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
 class FeedbackComponentHost;
+class MenuComponentHost;
+class DropdownComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -236,6 +238,14 @@ public:
         return *feedback_;
     }
 
+    [[nodiscard]] MenuComponentHost& menu() noexcept {
+        return *menu_;
+    }
+
+    [[nodiscard]] DropdownComponentHost& dropdown() noexcept {
+        return *dropdown_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -341,6 +351,8 @@ private:
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
+    std::unique_ptr<MenuComponentHost> menu_;
+    std::unique_ptr<DropdownComponentHost> dropdown_;
 };
 
 } // namespace ryn::detail

@@ -3,6 +3,9 @@
 #include <ryn/spin.hpp>
 #include <ryn/progress.hpp>
 
+#include <ryn/menu.hpp>
+#include <ryn/dropdown.hpp>
+
 #include <ryn/button.hpp>
 #include <ryn/tag.hpp>
 #include <ryn/badge.hpp>
