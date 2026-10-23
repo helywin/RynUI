@@ -11,6 +11,7 @@
 #include "component/modal_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
+#include "component/feedback_component.hpp"
 
 #include <chrono>
 
@@ -98,6 +99,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     card_ = std::make_unique<CardComponentHost>(*this);
     tabs_ = std::make_unique<TabsComponentHost>(*this);
     tag_badge_ = std::make_unique<TagBadgeComponentHost>(*this);
+    feedback_ = std::make_unique<FeedbackComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {
@@ -169,6 +171,11 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
     const bool changed = interactions_.set_input_boundary(root);
+    return reconcile_input_boundary() || changed;
+}
+
+bool WindowComponentServices::set_input_blocked(runtime::ComponentId root, bool blocked) {
+    const bool changed = interactions_.set_input_blocked(root, blocked);
     return reconcile_input_boundary() || changed;
 }
 

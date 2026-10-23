@@ -298,6 +298,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.tag().metrics, after.tag().metrics, TokenIdentity::tag_metrics, changed, count);
     append_if_changed(before.badge().colors, after.badge().colors, TokenIdentity::badge_colors, changed, count);
     append_if_changed(before.badge().metrics, after.badge().metrics, TokenIdentity::badge_metrics, changed, count);
+    append_if_changed(before.alert().colors, after.alert().colors, TokenIdentity::alert_colors, changed, count);
+    append_if_changed(before.alert().metrics, after.alert().metrics, TokenIdentity::alert_metrics, changed, count);
+    append_if_changed(before.spin().colors, after.spin().colors, TokenIdentity::spin_colors, changed, count);
+    append_if_changed(before.spin().metrics, after.spin().metrics, TokenIdentity::spin_metrics, changed, count);
+    append_if_changed(before.progress().colors, after.progress().colors, TokenIdentity::progress_colors, changed,
+                      count);
+    append_if_changed(before.progress().metrics, after.progress().metrics, TokenIdentity::progress_metrics, changed,
+                      count);
     append_if_changed(before.card().colors, after.card().colors, TokenIdentity::card_colors, changed, count);
     append_if_changed(before.card().metrics, after.card().metrics, TokenIdentity::card_metrics, changed, count);
     append_if_changed(before.card().typography, after.card().typography, TokenIdentity::card_typography, changed,
@@ -1085,6 +1093,42 @@ const PopconfirmThemeToken& ThemeScope::popconfirm_order() const {
     return snapshot_->popconfirm();
 }
 
+const AlertThemeToken& ThemeScope::alert_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alert_colors);
+    return snapshot_->alert();
+}
+
+const AlertThemeToken& ThemeScope::alert_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::alert_metrics);
+    return snapshot_->alert();
+}
+
+const SpinThemeToken& ThemeScope::spin_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::spin_colors);
+    return snapshot_->spin();
+}
+
+const SpinThemeToken& ThemeScope::spin_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::spin_metrics);
+    return snapshot_->spin();
+}
+
+const ProgressThemeToken& ThemeScope::progress_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::progress_colors);
+    return snapshot_->progress();
+}
+
+const ProgressThemeToken& ThemeScope::progress_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::progress_metrics);
+    return snapshot_->progress();
+}
+
 const ModalThemeToken& ThemeScope::modal_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::modal_colors);
@@ -1352,6 +1396,12 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Popconfirm.typography",
         "Popconfirm.effects",
         "Popconfirm.order",
+        "Alert.colors",
+        "Alert.metrics",
+        "Spin.colors",
+        "Spin.metrics",
+        "Progress.colors",
+        "Progress.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1408,6 +1458,9 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::badge_colors:
     case TokenIdentity::drawer_colors:
     case TokenIdentity::popconfirm_colors:
+    case TokenIdentity::alert_colors:
+    case TokenIdentity::spin_colors:
+    case TokenIdentity::progress_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1458,6 +1511,9 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::popconfirm_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::tag_metrics:
+    case TokenIdentity::alert_metrics:
+    case TokenIdentity::spin_metrics:
+    case TokenIdentity::progress_metrics:
         return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::badge_metrics:
         return DirtyPhase::text | DirtyPhase::measure_layout | DirtyPhase::geometry;

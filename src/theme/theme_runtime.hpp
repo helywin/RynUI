@@ -109,6 +109,12 @@ public:
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_typography() const;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_effects() const;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm_order() const;
+    [[nodiscard]] const AlertThemeToken& alert_colors() const;
+    [[nodiscard]] const AlertThemeToken& alert_metrics() const;
+    [[nodiscard]] const SpinThemeToken& spin_colors() const;
+    [[nodiscard]] const SpinThemeToken& spin_metrics() const;
+    [[nodiscard]] const ProgressThemeToken& progress_colors() const;
+    [[nodiscard]] const ProgressThemeToken& progress_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

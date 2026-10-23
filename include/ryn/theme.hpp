@@ -2,6 +2,7 @@
 
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
+#include <ryn/feedback_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1124,6 +1125,27 @@ struct PopconfirmThemeConfig final {
     friend bool operator==(const PopconfirmThemeConfig&, const PopconfirmThemeConfig&) = default;
 };
 
+struct AlertThemeConfig final {
+    AlertTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const AlertThemeConfig&, const AlertThemeConfig&) = default;
+};
+
+struct SpinThemeConfig final {
+    SpinTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SpinThemeConfig&, const SpinThemeConfig&) = default;
+};
+
+struct ProgressThemeConfig final {
+    ProgressTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const ProgressThemeConfig&, const ProgressThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -1145,6 +1167,9 @@ struct ThemeConfig final {
     BadgeThemeConfig badge;
     DrawerThemeConfig drawer;
     PopconfirmThemeConfig popconfirm;
+    AlertThemeConfig alert;
+    SpinThemeConfig spin;
+    ProgressThemeConfig progress;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1700,6 +1725,19 @@ public:
 
     [[nodiscard]] const DrawerThemeToken& drawer() const noexcept;
     [[nodiscard]] const PopconfirmThemeToken& popconfirm() const noexcept;
+
+    [[nodiscard]] const AlertThemeToken& alert() const noexcept {
+        return alert_;
+    }
+
+    [[nodiscard]] const SpinThemeToken& spin() const noexcept {
+        return spin_;
+    }
+
+    [[nodiscard]] const ProgressThemeToken& progress() const noexcept {
+        return progress_;
+    }
+
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1718,7 +1756,8 @@ private:
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer, PopconfirmThemeToken popconfirm,
                   std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
-                  TagThemeToken tag, BadgeThemeToken badge);
+                  TagThemeToken tag, BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin,
+                  ProgressThemeToken progress);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1740,6 +1779,9 @@ private:
     BadgeThemeToken badge_;
     DrawerThemeToken drawer_;
     PopconfirmThemeToken popconfirm_;
+    AlertThemeToken alert_;
+    SpinThemeToken spin_;
+    ProgressThemeToken progress_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

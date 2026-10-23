@@ -109,6 +109,7 @@ public:
     [[nodiscard]] bool branch_active(InteractionId id) const;
     // Input confinement does not change component paint activity or eligibility.
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
+    bool set_input_blocked(runtime::ComponentId root, bool blocked);
     [[nodiscard]] std::optional<runtime::ComponentId> input_boundary() const;
     [[nodiscard]] std::uint64_t input_boundary_revision() const;
     [[nodiscard]] bool component_active(runtime::ComponentId component) const;
@@ -142,6 +143,7 @@ private:
     std::size_t live_records_{0};
     std::size_t next_declaration_order_{0};
     std::optional<runtime::ComponentId> input_boundary_;
+    std::vector<runtime::ComponentId> blocked_roots_;
     std::uint64_t input_boundary_revision_{};
 };
 

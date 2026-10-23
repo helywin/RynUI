@@ -30,6 +30,7 @@ class TabsComponentHost;
 class ModalComponentHost;
 class TagBadgeComponentHost;
 class PopconfirmComponentHost;
+class FeedbackComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -124,6 +125,7 @@ public:
     void set_window_active(bool active);
     bool dispatch_scroll(const input::ScrollInputEvent& event);
     bool set_input_boundary(std::optional<runtime::ComponentId> root);
+    bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
     [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
                                                runtime::Rect document_clip) const;
@@ -230,6 +232,10 @@ public:
         return *popconfirm_;
     }
 
+    [[nodiscard]] FeedbackComponentHost& feedback() noexcept {
+        return *feedback_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -334,6 +340,7 @@ private:
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
+    std::unique_ptr<FeedbackComponentHost> feedback_;
 };
 
 } // namespace ryn::detail
