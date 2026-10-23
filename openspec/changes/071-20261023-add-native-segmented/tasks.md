@@ -11,3 +11,7 @@
 ## 3. 平台通用收口
 
 - [x] 3.1 运行旧 Theme 定向回归、所有旧 golden 字段比较（仅忽略 identity）、format check、doctor、全量 strict validate、diff check，记录 MSVC preset 和真实范围，提交证据并交付干净分支。没有 native GPU、Linux 或人工 IME 验收声明。
+
+## 4. P2 内容测量修复
+
+- [x] 4.1 先用实际 text 宽度、glyph 可见性与内容居中断言复现 icon/label 填充错误，再将 slots 改为受约束的 intrinsic wrapper 测量；验证 300 宽双选项 block、纯文本、富标签/图标、resize 与既有交互在 MSVC headless Debug/Release 通过，更新 071 evidence，并通过 format、doctor、全量 strict validate、diff check 后本地英文提交。

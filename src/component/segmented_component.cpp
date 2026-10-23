@@ -321,7 +321,8 @@ void SegmentedComponentHost::mount(const SegmentedProps& props, const std::vecto
                         const auto wrapper = [&](const Content& content) {
                             const auto child = children.mount_component<int>(0);
                             const auto node = children.root(child);
-                            services.layout().set_layout(node, layout::BoxLayout{{}, true});
+                            // Only the item fills its allocation; slots report their constrained intrinsic size.
+                            services.layout().set_layout(node, layout::BoxLayout{});
                             children.on_resource_cleanup(child,
                                                          [&services, node] { services.layout().remove_layout(node); });
                             children.mount_slot(child, content);

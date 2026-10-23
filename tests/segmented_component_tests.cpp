@@ -85,6 +85,96 @@ std::vector<SegmentedOption> options() {
     return {{u8"a", u8"A"}, SegmentedOption{u8"locked", u8"Locked"}.disabled(), {u8"b", u8"Longer label"}};
 }
 
+const detail::MountedTextComponent& label_text(Fixture& f, StringView content) {
+    for (const auto& text : f.services.text().mounted_texts()) {
+        if (f.scene.text_state(text.scene).content() == content) {
+            return text;
+        }
+    }
+    throw std::runtime_error("Segmented label Text was not mounted");
+}
+
+runtime::Rect visible_glyph_bounds(Fixture& f, const detail::MountedTextComponent& text) {
+    const auto range = f.scene.primitive(text.scene).instances;
+    std::optional<runtime::Rect> result;
+    for (std::uint32_t i = 0; i < range.count; ++i) {
+        const auto& glyph = f.scene.glyph_scene().instances().at(range.first + i);
+        const auto& p = glyph.position_size;
+        const auto& c = glyph.clip_bounds;
+        const auto& t = glyph.translation_opacity;
+        const auto visible = graphics::intersect_effect_bounds({p[0] + t[0], p[1] + t[1], p[2], p[3]},
+                                                               {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+        if (visible.width <= 0 || visible.height <= 0 || t[2] <= 0 || glyph.color[3] <= 0) {
+            continue;
+        }
+        if (result) {
+            const float right = std::max(result->x + result->width, visible.x + visible.width);
+            const float bottom = std::max(result->y + result->height, visible.y + visible.height);
+            result->x = std::min(result->x, visible.x);
+            result->y = std::min(result->y, visible.y);
+            result->width = right - result->x;
+            result->height = bottom - result->y;
+        } else {
+            result = visible;
+        }
+    }
+    check(result.has_value(), "Segmented label has no visible glyphs");
+    return *result;
+}
+
+void intrinsic_content_geometry(float scale) {
+    Signal<LogicalLength> width{dp(300)};
+    Signal<ControlSize> size{ControlSize::Middle};
+    int icon_runs{};
+    Fixture f;
+    f.font_scale = scale;
+    f.services.mount(Content{[&] {
+        Segmented(SegmentedProps{}.block().size(size).layout(LayoutStyle{}.width(width)),
+                  {SegmentedOption{u8"icon", u8"Alpha"}.icon(SegmentedIcon{[&] {
+                       ++icon_runs;
+                       Icon(IconProps{}.name(IconName::SearchOutlined));
+                   }}),
+                   {u8"text", u8"MMMM"}});
+    }});
+    sync(f);
+    const auto id = f.services.segmented().mounted()[0];
+    const auto original = f.services.segmented().snapshot(id);
+    const auto icon_node = f.nodes.require(f.services.components().root(original.items[0])).children.front();
+    const auto alpha_id = label_text(f, String{u8"Alpha"}.view()).component;
+    const auto plain_id = label_text(f, String{u8"MMMM"}.view()).component;
+    for (float available_width : {300.0F, 220.0F}) {
+        width.set(dp(available_width));
+        for (auto control_size : {ControlSize::Middle, ControlSize::Small, ControlSize::Large}) {
+            size.set(control_size);
+            sync(f);
+            const auto icon = f.nodes.require(icon_node).bounds;
+            const auto alpha = bounds(f, alpha_id);
+            const auto plain = bounds(f, plain_id);
+            const auto first = bounds(f, original.items[0]);
+            const auto second = bounds(f, original.items[1]);
+            const auto alpha_range = f.scene.primitive(label_text(f, String{u8"Alpha"}.view()).scene).instances;
+            const float plain_offset = plain.x + plain.width / 2 - (second.x + second.width / 2);
+            std::cout << "content geometry scale=" << scale << " width=" << available_width
+                      << " size=" << static_cast<int>(control_size) << " icon=" << icon.width
+                      << " label=" << alpha.width << " label_glyphs=" << alpha_range.count
+                      << " text_center_offset=" << plain_offset << '\n';
+            check(alpha.width > 0 && alpha_range.count > 0, "icon consumed the label width or culled label glyphs");
+            check(std::abs(alpha.x - (icon.x + icon.width + 6)) < .001F &&
+                      std::abs((icon.x + alpha.x + alpha.width) / 2 - (first.x + first.width / 2)) < .001F,
+                  "intrinsic icon/label group gap or center drifted");
+            check(plain.width > 0 && plain.width < second.width - 22 && std::abs(plain_offset) < .001F,
+                  "text-only label did not retain intrinsic width and center");
+            const auto alpha_ink = visible_glyph_bounds(f, label_text(f, String{u8"Alpha"}.view()));
+            const auto plain_ink = visible_glyph_bounds(f, label_text(f, String{u8"MMMM"}.view()));
+            check(std::abs((icon.x + alpha_ink.x + alpha_ink.width) / 2 - (first.x + first.width / 2)) < 2 &&
+                      std::abs(plain_ink.x + plain_ink.width / 2 - (second.x + second.width / 2)) < 2,
+                  "actual visible label glyphs are not centered");
+            check(f.services.segmented().snapshot(id).items == original.items && icon_runs == 1,
+                  "content geometry updates remounted options or icon");
+        }
+    }
+}
+
 void controlled_and_keyboard() {
     Signal<String> value{String{u8"a"}};
     Signal<bool> vertical{false};
@@ -291,6 +381,9 @@ void rich_labels_and_theme_locality() {
     const auto s = f.services.segmented().snapshot(id);
     const auto initial = bounds(f, s.items[0]);
     check(initial.height > 32 && rich_runs == 1 && icon_runs == 1, "rich label did not wrap beside icon");
+    const auto& rich_label = label_text(f, text.get().view());
+    check(bounds(f, rich_label.component).width > 0 && visible_glyph_bounds(f, rich_label).width > 0,
+          "wrapped rich label has no actual text width or glyphs beside icon");
     const auto components = f.services.components().component_count();
     const auto effects = f.services.rounded_effects().live_count();
     const auto root = f.services.components().root(id);
@@ -529,6 +622,7 @@ int main() {
         reactive_identity_and_capture();
         std::cout << "reactive identity and capture passed\n";
         for (float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
+            intrinsic_content_geometry(scale);
             real_geometry(scale);
         }
         rich_labels_and_theme_locality();
