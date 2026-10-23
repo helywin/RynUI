@@ -285,11 +285,11 @@ public:
         }
         if (quads_ == nullptr) {
             quads_ = std::make_unique<ryn::detail::QuadGpuBuffer>(*gpu_, host_->button_scene().instances(),
-                                                                  ryn::detail::SceneDeviceMetrics{1200, 40000, 1});
+                                                                  ryn::detail::SceneDeviceMetrics{1200, 60000, 1});
         } else {
-            quads_->synchronize(host_->button_scene().instances(), {1200, 40000, 1});
+            quads_->synchronize(host_->button_scene().instances(), {1200, 60000, 1});
         }
-        glyphs_.synchronize(text_scene_->atlas(), text_scene_->glyph_scene().instances(), {1200, 40000, 1});
+        glyphs_.synchronize(text_scene_->atlas(), text_scene_->glyph_scene().instances(), {1200, 60000, 1});
         effects_.synchronize(host_->rounded_effects(), {
                                                            static_cast<std::uint32_t>(viewport_.width),
                                                            static_cast<std::uint32_t>(viewport_.height),
@@ -307,7 +307,9 @@ private:
     ryn::detail::GlyphGpuResources glyphs_;
     ryn::detail::RoundedEffectGpuResources effects_;
     RecordingDrawApi* draw_;
-    ryn::runtime::Size viewport_{1200.0F, 40000.0F};
+    // This fixture paints the entire catalog; narrow reflow exceeds 40k logical px.
+    // Real scrolling and input tests below retain their 900px viewport.
+    ryn::runtime::Size viewport_{1200.0F, 60000.0F};
     std::unique_ptr<ryn::detail::QuadGpuBuffer> quads_;
 };
 
@@ -317,7 +319,19 @@ void require_all_cells_reachable(const Fixture& fixture, ryn::runtime::Size view
             continue;
         }
         const auto bounds = fixture.nodes.require(mounted.node).bounds;
-        require(bounds.width > 0.0F && bounds.height > 0.0F, "Token Gallery produced an empty cell");
+        if (bounds.width <= 0 || bounds.height <= 0) {
+            std::string label;
+            for (const auto& text : fixture.host->text().mounted_texts()) {
+                for (auto current = std::optional{text.component}; current;
+                     current = fixture.host->components().parent(*current)) {
+                    if (*current == mounted.component) {
+                        label += fixture.text_scene.text_state(text.scene).content().bytes();
+                    }
+                }
+            }
+            throw std::runtime_error("Token Gallery produced an empty cell: " + label + " " +
+                                     std::to_string(bounds.width) + "x" + std::to_string(bounds.height));
+        }
         require(bounds.x >= 23.75F && bounds.x + bounds.width <= viewport.width - 23.75F,
                 "Token Gallery cell escaped the horizontal viewport");
         require(bounds.y >= 19.75F && bounds.y + bounds.height <= viewport.height - 19.75F,
@@ -567,8 +581,8 @@ void test_navigation_and_filter_controls_preserve_catalog_identity() {
     definition.set_viewport_width(1200.0F);
     Fixture fixture;
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    constexpr ryn::runtime::Size viewport{1200.0F, 40000.0F};
-    constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 40000.0F};
+    constexpr ryn::runtime::Size viewport{1200.0F, 60000.0F};
+    constexpr ryn::runtime::Rect clip{0.0F, 0.0F, 1200.0F, 60000.0F};
     require(fixture.host->layout_and_synchronize(viewport, clip, {24.0F, 20.0F}, 0.0F, true),
             "Gallery navigation fixture did not layout");
 
@@ -706,7 +720,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     const auto first_surface = fixture.surfaces->mounted_surfaces().front().component;
     const auto first_control = fixture.host->mounted_buttons().front().component;
 
-    require(fixture.host->layout_and_synchronize({1200.0F, 40000.0F}, {0.0F, 0.0F, 1200.0F, 40000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({1200.0F, 60000.0F}, {0.0F, 0.0F, 1200.0F, 60000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "wide responsive Gallery layout failed");
     const auto root_children = fixture.nodes.require(root).children;
@@ -762,7 +776,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
             "Gallery active section did not move the rendered navigation highlight");
 
     definition.set_viewport_width(560.0F);
-    require(fixture.host->layout_and_synchronize({560.0F, 40000.0F}, {0.0F, 0.0F, 560.0F, 40000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({560.0F, 60000.0F}, {0.0F, 0.0F, 560.0F, 60000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "narrow responsive Gallery layout failed");
     const auto narrow_children = fixture.nodes.require(body).children;
@@ -776,7 +790,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     require(shared_scroll.set_extents(600.0F, narrow_extent) &&
                 shared_scroll.scroll_to(shared_scroll.snapshot().maximum_offset) &&
                 shared_scroll.apply_subtree_translation(body, fixture.nodes, fixture.dirty) &&
-                fixture.host->layout_and_synchronize({560.0F, 40000.0F}, {0.0F, 0.0F, 560.0F, 40000.0F}, {24.0F, 20.0F},
+                fixture.host->layout_and_synchronize({560.0F, 60000.0F}, {0.0F, 0.0F, 560.0F, 60000.0F}, {24.0F, 20.0F},
                                                      0.0F, true) &&
                 fixture.nodes.require(narrow_children[0]).translation.y == -shared_scroll.snapshot().offset &&
                 fixture.nodes.require(narrow_children[1]).translation.y == -shared_scroll.snapshot().offset &&
@@ -808,7 +822,7 @@ void test_responsive_navigation_and_document_reflow_preserves_identity() {
     }
 
     definition.set_viewport_width(1200.0F);
-    require(fixture.host->layout_and_synchronize({1200.0F, 40000.0F}, {0.0F, 0.0F, 1200.0F, 40000.0F}, {24.0F, 20.0F},
+    require(fixture.host->layout_and_synchronize({1200.0F, 60000.0F}, {0.0F, 0.0F, 1200.0F, 60000.0F}, {24.0F, 20.0F},
                                                  0.0F, true),
             "wide Gallery restoration failed");
     const auto restored_navigation = fixture.nodes.require(wide_children[0]).bounds;
@@ -870,7 +884,7 @@ void test_token_gallery_frame_contract() {
     ryn::runtime::OnDemandFrameLoop loop(fixture.frames, events, submitter, animation_deadlines, 5);
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted,
             "Token Gallery initial wide frame was not submitted");
-    require_all_cells_reachable(fixture, {1200.0F, 40000.0F});
+    require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
     if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 464) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
@@ -915,12 +929,12 @@ void test_token_gallery_frame_contract() {
             "Token Gallery focus cell does not use a 1px gap and 3px hollow ring");
 
     definition.set_viewport_width(560.0F);
-    submitter.set_viewport({560.0F, 40000.0F});
+    submitter.set_viewport({560.0F, 60000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Token Gallery narrow frame was not submitted");
-    require_all_cells_reachable(fixture, {560.0F, 40000.0F});
+    require_all_cells_reachable(fixture, {560.0F, 60000.0F});
 
     definition.set_viewport_width(1200.0F);
-    submitter.set_viewport({1200.0F, 40000.0F});
+    submitter.set_viewport({1200.0F, 60000.0F});
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Token Gallery wide restoration was not submitted");
     const auto component_count = fixture.host->components().component_count();
     const std::vector<ryn::detail::MountedButtonComponent> retained_buttons{fixture.host->mounted_buttons().begin(),
@@ -1083,7 +1097,7 @@ void test_live_input_samples() {
                 definition.telemetry().input_changes == 1,
             "Gallery controlled echo failed");
     require(loop.step() == ryn::runtime::FrameLoopStep::submitted, "Gallery Input editing frame failed");
-    require(fixture.inputs->synchronize_input_area(1, 1200, 40000) && fixture.platform.areas > 0,
+    require(fixture.inputs->synchronize_input_area(1, 1200, 60000) && fixture.platform.areas > 0,
             "Gallery Input area failed");
     fixture.host->focus().dispatch({ryn::input::Key::enter, ryn::input::KeyAction::down});
     require(definition.telemetry().input_submits == 1, "Gallery Input submit callback absent");
@@ -1813,7 +1827,7 @@ void print_gallery_inventory() {
     definition.set_motion_enabled(false);
     Fixture f;
     f.surfaces->mount(definition.content, f.inputs.get());
-    require(f.host->layout_and_synchronize({1200, 40000}, {0, 0, 1200, 40000}, {24, 20}), "inventory layout failed");
+    require(f.host->layout_and_synchronize({1200, 60000}, {0, 0, 1200, 60000}, {24, 20}), "inventory layout failed");
     const auto telemetry = definition.telemetry();
     std::cout << "stable_ids=" << definition.stable_test_ids.size()
               << " navigation=" << definition.navigation_control_count
@@ -1841,6 +1855,10 @@ int main(int argc, char** argv) {
         }
         if (argc == 2 && std::string_view{argv[1]} == "--data-only") {
             test_data_and_selection_gallery_after_document_scroll();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--frame-only") {
+            test_token_gallery_frame_contract();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--modal-only") {
