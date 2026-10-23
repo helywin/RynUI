@@ -1,0 +1,39 @@
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-2306ffb8/out/build/windows-msvc-headless
+      Start 131: rynui.portable.backend_boundaries
+      Start 100: rynui.portable.tabs_component
+      Start  93: rynui.portable.select_component
+      Start  61: rynui.portable.radio_component
+ 1/17 Test  #93: rynui.portable.select_component .....   Passed    0.63 sec
+      Start   3: rynui.segmented_component
+ 2/17 Test  #61: rynui.portable.radio_component ......   Passed    0.66 sec
+      Start  58: rynui.portable.theme_algorithm
+ 3/17 Test  #58: rynui.portable.theme_algorithm ......   Passed    0.06 sec
+      Start  59: rynui.portable.theme_runtime
+ 4/17 Test  #59: rynui.portable.theme_runtime ........   Passed    0.05 sec
+      Start 103: rynui.portable.modal_theme
+ 5/17 Test #100: rynui.portable.tabs_component .......   Passed    0.81 sec
+      Start  98: rynui.portable.tabs_theme
+ 6/17 Test #103: rynui.portable.modal_theme ..........   Passed    0.04 sec
+      Start  94: rynui.portable.card_theme
+ 7/17 Test  #98: rynui.portable.tabs_theme ...........   Passed    0.03 sec
+      Start 112: rynui.portable.popconfirm_theme
+ 8/17 Test  #94: rynui.portable.card_theme ...........   Passed    0.03 sec
+      Start 108: rynui.portable.drawer_theme
+ 9/17 Test #112: rynui.portable.popconfirm_theme .....   Passed    0.04 sec
+      Start  91: rynui.portable.select_theme
+10/17 Test #108: rynui.portable.drawer_theme .........   Passed    0.05 sec
+      Start   8: rynui.tag_badge_theme
+11/17 Test  #91: rynui.portable.select_theme .........   Passed    0.04 sec
+      Start   5: rynui.feedback_theme
+12/17 Test   #8: rynui.tag_badge_theme ...............   Passed    0.04 sec
+      Start   2: rynui.segmented_theme
+13/17 Test   #5: rynui.feedback_theme ................   Passed    0.04 sec
+      Start   1: rynui.segmented_public_api
+14/17 Test   #1: rynui.segmented_public_api ..........   Passed    0.02 sec
+15/17 Test   #2: rynui.segmented_theme ...............   Passed    0.04 sec
+16/17 Test   #3: rynui.segmented_component ...........   Passed    0.76 sec
+17/17 Test #131: rynui.portable.backend_boundaries ...   Passed    2.17 sec
+
+100% tests passed, 0 tests failed out of 17
+
+Total Test time (real) =   2.19 sec
