@@ -29,6 +29,7 @@ class CardComponentHost;
 class TabsComponentHost;
 class ModalComponentHost;
 class MenuComponentHost;
+class DropdownComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -225,6 +226,10 @@ public:
         return *menu_;
     }
 
+    [[nodiscard]] DropdownComponentHost& dropdown() noexcept {
+        return *dropdown_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -328,6 +333,7 @@ private:
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<MenuComponentHost> menu_;
+    std::unique_ptr<DropdownComponentHost> dropdown_;
 };
 
 } // namespace ryn::detail

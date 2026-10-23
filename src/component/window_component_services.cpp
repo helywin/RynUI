@@ -10,6 +10,7 @@
 #include "component/tabs_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/menu_component.hpp"
+#include "component/dropdown_component.hpp"
 
 #include <chrono>
 
@@ -90,6 +91,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
+    dropdown_ = std::make_unique<DropdownComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);

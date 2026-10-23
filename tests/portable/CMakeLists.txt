@@ -12,6 +12,7 @@ function(rynui_portable_test name source)
 endfunction()
 
 rynui_portable_test(menu_component "menu_component_tests.cpp")
+rynui_portable_test(dropdown_component "dropdown_component_tests.cpp")
 
 foreach(name IN ITEMS prop glyph_texture_upload texture_upload_batch_layout logical_scene_packing quad_primitive binding_quad_integration button_scene_service
         font_runtime text_engine text_state text_scene_service

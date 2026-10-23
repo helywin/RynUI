@@ -10,7 +10,7 @@
 
 ## 3. 平台通用 Dropdown
 
-- [ ] 3.1 实现 typed trigger、命令菜单、右键定位、受控请求、焦点与边界；同时更新文档并通过 Button onClick、clip、翻转、外部关闭、初始 Modal、nested popup 和回调卸载聚焦测试。
+- [x] 3.1 实现 typed trigger、命令菜单、右键定位、受控请求、焦点与边界；同时更新文档并通过 Button onClick、clip、翻转、外部关闭、初始 Modal、nested popup 和回调卸载聚焦测试。
 
 ## 4. 平台通用集成
 

@@ -32,11 +32,10 @@ struct MenuItem final {
         : key(std::move(key)), label(std::move(label)), disabled(std::move(disabled)), danger(std::move(danger)),
           kind(kind), children(std::move(children)), icon(std::move(icon)) {}
 
-    template <std::size_t N>
-    MenuItem(String key, const char8_t (&label)[N], Prop<bool> disabled = false, Prop<bool> danger = false,
+    MenuItem(String key, String label, Prop<bool> disabled = false, Prop<bool> danger = false,
              MenuItemKind kind = MenuItemKind::Item, std::vector<MenuItem> children = {},
              std::optional<MenuIcon> icon = {})
-        : MenuItem(std::move(key), Prop<String>{String{label}}, std::move(disabled), std::move(danger), kind,
+        : MenuItem(std::move(key), Prop<String>{std::move(label)}, std::move(disabled), std::move(danger), kind,
                    std::move(children), std::move(icon)) {}
 
     String key;
@@ -98,6 +97,7 @@ public:
 
     MenuProps& selectable(Prop<bool> value) {
         selectable_ = std::move(value);
+        explicit_selectable_ = true;
         return *this;
     }
 
@@ -137,6 +137,7 @@ private:
     std::optional<MenuKeys> default_open_;
     Prop<bool> disabled_{false};
     Prop<bool> selectable_{true};
+    bool explicit_selectable_{};
     Prop<bool> multiple_{false};
     std::function<void(MenuClickInfo)> on_click_;
     std::function<void(MenuSelectInfo)> on_select_;

@@ -55,8 +55,7 @@ void navigation() {
                                     }}}}},
                          MenuItem{u8"disabled", u8"Disabled", true},
                          MenuItem{u8"divider", String{}, false, false, MenuItemKind::Divider},
-                         MenuItem{u8"sub", u8"Tools", false, false, MenuItemKind::SubMenu,
-                                  std::vector<MenuItem>{MenuItem{u8"child", u8"Child"}}},
+                         MenuItem{u8"sub", u8"Tools", false, false, MenuItemKind::SubMenu, {{u8"child", u8"Child"}}},
                          MenuItem{u8"z", u8"Last"}})
                  .selectedKeys(selected)
                  .openKeys(open)

@@ -75,6 +75,14 @@ bool inside(runtime::Rect rect, float x, float y) {
     return x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height;
 }
 
+runtime::Rect translated_bounds(WindowComponentServices& services, runtime::NodeId id) {
+    const auto& node = services.nodes().require(id);
+    auto rect = node.bounds;
+    rect.x += node.translation.x;
+    rect.y += node.translation.y;
+    return rect;
+}
+
 runtime::Rect intersect(runtime::Rect a, runtime::Rect b) {
     const float x = std::max(a.x, b.x);
     const float y = std::max(a.y, b.y);
@@ -334,9 +342,9 @@ void MenuComponentHost::mount_rows(runtime::ComponentId id, const std::vector<Me
                 event.stop_propagation();
             }
             if (event.kind() == input::PointerEventKind::up) {
-                const auto rect = services_->nodes().require(row->node).bounds;
+                const auto rect = translated_bounds(*services_, row->node);
                 const auto clip =
-                    services_->nodes().content_clip(row->node, services_->nodes().require(state->node).bounds);
+                    services_->nodes().content_clip(row->node, translated_bounds(*services_, state->node));
                 const bool hit = event.press_origin() == row->interaction &&
                                  inside(rect, event.event().x, event.event().y) &&
                                  inside(clip, event.event().x, event.event().y);
@@ -707,8 +715,9 @@ bool MenuComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
         if (!s || !services_->interactions().component_active(*it)) {
             continue;
         }
-        const auto rect = services_->nodes().require(s->node).bounds;
-        if (!inside(rect, event.x, event.y)) {
+        const auto rect = translated_bounds(*services_, s->node);
+        const auto clip = services_->nodes().content_clip(s->node, rect);
+        if (!inside(clip, event.x, event.y)) {
             continue;
         }
         const float next =
@@ -717,8 +726,8 @@ bool MenuComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
             s->scroll = next;
             s->reveal = false;
             services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::HitTest);
+            return true;
         }
-        return true;
     }
     return false;
 }
@@ -730,20 +739,20 @@ void MenuComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, r
             continue;
         }
         const auto& token = services_->components().theme_scope(id)->snapshot().menu();
-        const auto rect = services_->nodes().require(s->node).bounds;
-        auto background = quad(rect, token.colors.background);
+        const auto rect = translated_bounds(*services_, s->node);
+        const auto clip =
+            services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
+        auto background = quad(intersect(rect, clip), token.colors.background);
         if (s->action_menu) {
             background.opacity = 0;
         }
         static_cast<void>(services_->surfaces().update_surface(s->background, std::span{&background, 1}));
-        const auto clip =
-            services_->nodes().content_clip(s->node, services_->component_clip(id, viewport, document_clip));
         for (std::size_t i = 0; i < s->rows.size(); ++i) {
             const auto* row = services_->components().state<MenuRow>(s->rows[i]);
             if (!row->shown) {
                 continue;
             }
-            auto bounds = services_->nodes().require(row->node).bounds;
+            auto bounds = translated_bounds(*services_, row->node);
             const bool selected = row->kind == MenuItemKind::Item && contains(s->selected, row->key);
             const bool active = s->active == i && row->eligible;
             if (row->kind == MenuItemKind::Divider) {
