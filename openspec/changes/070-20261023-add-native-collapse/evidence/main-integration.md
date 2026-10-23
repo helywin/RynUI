@@ -14,3 +14,5 @@
 在 `17fa86606d890fd3afb5b6e1b884691ed8f7229f`（包含逐组件主题解析栈占用修复）合并 `bfe3562a9a229a731176f1b2df5d2fe67c9d686f`。extra 使用 header 范围裁剪以保留独立 Button 的 focus ring；pointer→Space/Enter 切换 keyboard focus-visible，repeat/keyup 不重复触发。
 
 同一 MSVC headless Debug **6/6**（7.19 秒）、Release **6/6**（4.14 秒）：Collapse 三项、Button component、Switch features 和 Theme algorithm。原工作树记录的 Button Debug 基线栈溢出在此组合下也恢复通过。原始输出为 ignored `out/collapse-r2-root-{debug,release}-{build,ctest}.log`。R3 独立审查与共享 Theme 调用分离复核并行进行，不在此预先宣称结果。
+
+R3 随后完成：在 `bfe3562` 上两项焦点修复及原 clipping/popup/lifetime 检查均通过独立复核，无可操作 P1/P2；既有 Debug/Release 五组 regression selectors 和 component/public API/Theme targets 通过。共享主题调用分离在 `17fa866` 也未发现 P1/P2。此审查只读，合并基线执行由上面的父任务实跑证据提供。

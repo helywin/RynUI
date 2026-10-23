@@ -8,3 +8,5 @@
 - clang-format 575 文件，0 failures；doctor healthy；strict validate **73/73**（工作树同时有 074 Gallery 规划）；diff check 通过。
 
 原始日志位于 ignored `out/segmented-switch-stack.log`、`out/segmented-resolve-frame.log`、`out/segmented-stack-fix-*.log` 与 `out/segmented-root-*.log`。本集成没有运行 Segmented 原生窗口/GPU/Linux/系统 IME 验收；新的共享主题调用分离另交 Astra 复核。
+
+后续 Astra 已复核 `17fa866` 相对 `810b161` 的调用分离、构造、serialization/identity、equality 与 dirty plumbing；未发现 semantic、lifetime 或 performance correctness 的可操作 P1/P2。五份已提交 golden 的旧字段全部保留，只有 identity 与新增 Segmented 变化。审查未修改或构建；运行证据仍以上述父任务 MSVC Debug/Release 10/10 为准。
