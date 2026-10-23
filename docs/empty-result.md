@@ -32,6 +32,8 @@ description、title、subtitle、image、status 和 Theme 更新不重新执行�
 
 视觉设置使用 `ThemeConfig.empty.tokens` 与 `ThemeConfig.result.tokens`，包括颜色、图示尺寸、文字度量、间距和内容 padding；LayoutStyle 仅控制外部尺寸/布局。组件支持默认、Dark、Compact、父 Theme 继承、inherit=false、局部 component seed/algorithm 和 typed override。颜色与度量独立订阅；颜色不触发布局。
 
+图示尺寸 token 允许零：内置图示休眠且不占空间，恢复正值时复用原有 Icon。小于 1 dp 的正值保留请求的布局尺寸，并用至少 1 个逻辑像素的字体生成 glyph 后裁剪；极小区域可能没有可见墨迹。自定义 image/icon slot 保留自己的外部尺寸和 margin，按含 margin 的外框居中；零尺寸 token 不隐藏自定义 slot。
+
 参考为本地锁定 Ant Design **6.6.5**，commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 Empty/Result style 与 index。遵循原生语义及主要 token 默认值；内置图示使用现有 Icon，不复刻上游 Empty/exception 大型 SVG 插画。没有图片 URL、栅格资源、网络请求、动画、状态服务、动态 slot 拓扑、DOM/CSS/Web aliases 或屏幕阅读器语义桥接。
 
 本次通过 Windows MSVC headless 的平台通用场景与交互验证。真实 GPU、Linux 和系统 IME 没有在此 change 验证；测试中的输入会话来自现有 headless fixture，不能替代系统 IME 证据。

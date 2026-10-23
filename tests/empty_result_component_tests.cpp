@@ -63,23 +63,29 @@ void click(Fixture& f, runtime::ComponentId component) {
 
 std::size_t visible_glyphs_inside(Fixture& f, runtime::Rect allocated) {
     std::size_t visible = 0;
-    for (const auto& glyph : f.scene.glyph_scene().instances().instances()) {
-        for (float v : glyph.position_size) {
-            check(std::isfinite(v), "nonfinite glyph geometry");
-        }
-        if (glyph.translation_opacity[2] <= 0 || glyph.color[3] <= 0) {
+    for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+        if (command.kind != graphics::SceneDrawKind::glyph) {
             continue;
         }
-        const auto& p = glyph.position_size;
-        const auto& c = glyph.clip_bounds;
-        const float left = std::max(p[0] + glyph.translation_opacity[0], c[0]);
-        const float top = std::max(p[1] + glyph.translation_opacity[1], c[1]);
-        const float right = std::min(p[0] + glyph.translation_opacity[0] + p[2], c[2]);
-        const float bottom = std::min(p[1] + glyph.translation_opacity[1] + p[3], c[3]);
-        if (right > left && bottom > top) {
-            ++visible;
-            check(inside({left, top, right - left, bottom - top}, allocated),
-                  "actual visible glyph/Icon escaped allocated content");
+        for (std::uint32_t index = 0; index < command.instance_count; ++index) {
+            const auto& glyph = f.scene.glyph_scene().instances().at(command.first_instance + index);
+            for (float v : glyph.position_size) {
+                check(std::isfinite(v), "nonfinite glyph geometry");
+            }
+            if (glyph.translation_opacity[2] <= 0 || glyph.color[3] <= 0) {
+                continue;
+            }
+            const auto& p = glyph.position_size;
+            const auto& c = glyph.clip_bounds;
+            const float left = std::max(p[0] + glyph.translation_opacity[0], c[0]);
+            const float top = std::max(p[1] + glyph.translation_opacity[1], c[1]);
+            const float right = std::min(p[0] + glyph.translation_opacity[0] + p[2], c[2]);
+            const float bottom = std::min(p[1] + glyph.translation_opacity[1] + p[3], c[3]);
+            if (right > left && bottom > top) {
+                ++visible;
+                check(inside({left, top, right - left, bottom - top}, allocated),
+                      "actual visible glyph/Icon escaped allocated content");
+            }
         }
     }
     return visible;
@@ -384,6 +390,125 @@ void short_text_clips_and_invalid_roll_back() {
               "invalid props partially mounted presentation");
     }
 }
+
+void custom_visual_margins(bool result) {
+    Fixture f;
+    f.services.mount(Content{[&] {
+        const auto visual = [] {
+            Icon(IconProps{}
+                     .name(IconName::SmileOutlined)
+                     .layout(LayoutStyle{}
+                                 .width(dp(100))
+                                 .height(dp(80))
+                                 .margin_left(dp(50))
+                                 .margin_right(dp(50))
+                                 .margin_top(dp(10))
+                                 .margin_bottom(dp(20))));
+        };
+        if (result) {
+            Result(ResultProps{}, {.icon = ResultIcon{visual}});
+        } else {
+            Empty(EmptyProps{}.description(u8""), {.image = EmptyImageContent{visual}});
+        }
+    }});
+    synchronize(f);
+    const auto id = result ? f.services.empty_result().results()[0] : f.services.empty_result().empties()[0];
+    const auto snapshot = f.services.empty_result().snapshot(id);
+    const auto icon = text_child(f, snapshot.image);
+    const auto allocated = bounds(f, icon.component);
+    std::cout << (result ? "Result" : "Empty") << " margin child=" << allocated.width << 'x' << allocated.height
+              << " region=" << snapshot.image_bounds.width << 'x' << snapshot.image_bounds.height << '\n';
+    check(allocated.width == 100 && allocated.height == 80 && snapshot.image_bounds.width == 200 &&
+              snapshot.image_bounds.height == 110 && std::abs(allocated.x + allocated.width / 2 - 240) < .01F,
+          "custom visual margins were subtracted twice or outer box was not centered");
+    check(f.scene.primitive(icon.scene).instances.count > 0 && visible_glyphs_inside(f, snapshot.image_bounds) > 0,
+          "custom visual margins hid actual Icon glyphs");
+}
+
+ThemeConfig visual_size_config(float size) {
+    ThemeConfig config;
+    config.empty.tokens.image_size = dp(size);
+    config.empty.tokens.compact_image_size = dp(size);
+    config.result.tokens.icon_size = dp(size);
+    return config;
+}
+
+void zero_and_subpixel_visual(bool result, bool initial, float size, bool compact = false) {
+    Signal<ThemeConfig> theme{visual_size_config(initial ? size : 72)};
+    Signal<ResultStatus> status{ResultStatus{Status::Success}};
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                  if (result) {
+                      Result(ResultProps{}.status(status));
+                  } else {
+                      Empty(EmptyProps{}.description(u8"").image(compact ? EmptyImage::Compact : EmptyImage::Default));
+                  }
+              }});
+    }});
+    synchronize(f);
+    const auto id = result ? f.services.empty_result().results()[0] : f.services.empty_result().empties()[0];
+    const auto original = f.services.empty_result().snapshot(id);
+    const auto icon = text_child(f, original.image);
+    const auto count = f.services.components().component_count();
+    if (!initial) {
+        try {
+            theme.set(visual_size_config(size));
+        } catch (...) {
+            const auto& published = f.services.components().theme_scope(id)->snapshot();
+            std::cout << "Theme callback threw after published visual size="
+                      << (result ? published.result().metrics.icon_size : published.empty().metrics.image_size) << '\n';
+            throw;
+        }
+        synchronize(f);
+    }
+    const auto scope = f.services.components().theme_scope(id);
+    check(scope->snapshot().empty().metrics.image_size == size && scope->snapshot().result().metrics.icon_size == size,
+          "valid visual size did not publish atomically");
+    auto snapshot = f.services.empty_result().snapshot(id);
+    check(f.services.components().branch_active(snapshot.image) == (size > 0), "zero built-in visual remained active");
+    if (size == 0) {
+        status.set(ResultException::ServerError);
+        synchronize(f);
+        check(snapshot.image_bounds.width == 0 && snapshot.image_bounds.height == 0 &&
+                  visible_glyphs_inside(f, bounds(f, id)) == 0,
+              "zero built-in visual retained geometry or visible glyphs");
+    } else {
+        check(std::abs(snapshot.image_bounds.width - size) < .001F &&
+                  std::abs(snapshot.image_bounds.height - size) < .001F,
+              "subpixel built-in visual lost its requested logical bounds");
+        (void)visible_glyphs_inside(f, bounds(f, id));
+        check(!f.scene.text_state(icon.scene).shaped().glyphs.empty() &&
+                  f.scene.primitive(icon.scene).instances.count > 0,
+              "subpixel Icon did not produce a safe actual glyph");
+    }
+    const auto before = scope->snapshot().identity();
+    auto invalid = visual_size_config(size);
+    invalid.result.tokens.icon_size = dp(-1);
+    bool rejected = false;
+    try {
+        theme.set(invalid);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && scope->snapshot().identity() == before && scope->snapshot().empty().metrics.image_size == size,
+          "invalid Theme update partially published after a zero/subpixel visual");
+    f.font_scale = 2;
+    f.chains.clear();
+    check(f.services.text().set_font_resolver(
+              [&](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) { return f.resolve(pixels); }),
+          "DPI font resolver did not refresh retained visual");
+    synchronize(f);
+    theme.set(visual_size_config(72));
+    synchronize(f);
+    snapshot = f.services.empty_result().snapshot(id);
+    const auto& glyphs = f.scene.text_state(icon.scene).shaped().glyphs;
+    check(snapshot.image == original.image && f.services.components().component_count() == count &&
+              snapshot.image_bounds.width == 72 && snapshot.image_bounds.height == 72 && !glyphs.empty() &&
+              f.fonts->metrics(glyphs.front().font).metrics.display_scale == 2 &&
+              visible_glyphs_inside(f, bounds(f, id)) > 0,
+          "zero/subpixel visual failed retained glyph recovery at new DPI");
+}
 } // namespace
 
 int main() {
@@ -391,16 +516,35 @@ int main() {
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
-    try {
+    int failures = 0;
+    const auto run = [&](const char* name, const auto& test) {
+        try {
+            test();
+            std::cout << "PASS " << name << '\n';
+        } catch (const std::exception& error) {
+            ++failures;
+            std::cerr << "FAIL " << name << ": " << error.what() << '\n';
+        }
+    };
+    run("existing presentation contracts", [&] {
         retained_actions_and_editors(false);
         retained_actions_and_editors(true);
         typed_slots_and_statuses();
         constrained_geometry(false);
         constrained_geometry(true);
         short_text_clips_and_invalid_roll_back();
-    } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
-        return 1;
+    });
+    for (bool result : {false, true}) {
+        run(result ? "Result custom margins" : "Empty custom margins", [&] { custom_visual_margins(result); });
+        for (bool initial : {true, false}) {
+            for (float size : {0.0F, .01F, .49F}) {
+                std::cout << "CASE " << (result ? "Result" : "Empty") << ' ' << (initial ? "initial" : "reactive")
+                          << " size=" << size << '\n';
+                run("zero/subpixel visual", [&] { zero_and_subpixel_visual(result, initial, size); });
+            }
+        }
     }
-    return 0;
+    run("compact Empty initial zero visual", [&] { zero_and_subpixel_visual(false, true, 0, true); });
+    run("compact Empty reactive zero visual", [&] { zero_and_subpixel_visual(false, false, 0, true); });
+    return failures == 0 ? 0 : 1;
 }

@@ -1,0 +1,44 @@
+PASS existing presentation contracts
+Empty margin child=0x50 region=200x110
+rynui_empty_result_component_tests.exe : FAIL Empty custom margins: custom visual margins were subtracted twice or oute
+r box was not centered
+所在位置 行:2 字符: 201
++ ... EXITCODE }; & out/build/empty-result-headless/tests/Debug/rynui_empty ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL Empty cust...as not centered:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+CASE Empty initial size=0
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Empty initial size=0.01
+FAIL zero/subpixel visual: Input validation fonts failed to load
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Empty initial size=0.49
+CASE Empty reactive size=0
+Theme callback threw after published visual size=0
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Empty reactive size=0.01
+Theme callback threw after published visual size=0.01
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Empty reactive size=0.49
+Theme callback threw after published visual size=0.49
+FAIL zero/subpixel visual: Input validation fonts failed to load
+Result margin child=0x50 region=200x110
+FAIL Result custom margins: custom visual margins were subtracted twice or outer box was not centered
+CASE Result initial size=0
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Result initial size=0.01
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Result initial size=0.49
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Result reactive size=0
+Theme callback threw after published visual size=0
+FAIL zero/subpixel visual: Input validation fonts failed to load
+CASE Result reactive size=0.01
+FAIL zero/subpixel visual: Input validation fonts failed to load
+Theme callback threw after published visual size=0.01
+CASE Result reactive size=0.49
+Theme callback threw after published visual size=0.49
+FAIL zero/subpixel visual: Input validation fonts failed to load
+Theme callback threw after published visual size=0
+FAIL compact Empty zero visual: Input validation fonts failed to load

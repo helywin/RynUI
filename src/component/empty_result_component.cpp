@@ -31,6 +31,7 @@ struct PresentationState final {
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> title_font{runtime::SemanticTypography{}};
     Signal<runtime::SemanticTypography> icon_font{runtime::SemanticTypography{}};
+    Signal<float> visual_size{1};
     std::array<theme_runtime::Subscription, 2> subscriptions;
 };
 
@@ -166,9 +167,14 @@ void EmptyResultComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->extra_color.set(foreground(t.colors.extra));
         s->font.set({m.font_family, 400, false, m.font_size, m.line_height});
         s->title_font.set({m.font_family, 400, false, m.title_font_size, m.title_line_height});
-        s->icon_font.set({m.font_family, 400, false, std::max(0.01F, m.icon_size), std::max(0.01F, m.icon_size)});
+        s->visual_size.set(m.icon_size);
+        // Icon fonts require a positive integral logical pixel size. Keep a valid
+        // retained font even while the built-in visual is hidden or subpixel.
+        const float font_size = std::max(1.0F, m.icon_size);
+        s->icon_font.set({m.font_family, 400, false, font_size, font_size});
         s->gaps = {0, m.icon_gap, m.title_gap, m.extra_gap, m.content_gap};
-        s->shown = {true, !s->label.get().empty(), !s->subtitle.get().empty(), s->has_extra, s->has_content};
+        s->shown = {s->custom_visual || m.icon_size > 0, !s->label.get().empty(), !s->subtitle.get().empty(),
+                    s->has_extra, s->has_content};
         if (!s->shown[1]) {
             s->gaps[2] = m.icon_gap;
         }
@@ -195,9 +201,12 @@ void EmptyResultComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->extra_color.set(foreground(t.colors.extra));
         s->font.set({m.font_family, 400, false, m.font_size, m.line_height});
         s->title_font.set({m.font_family, 400, false, m.font_size, m.line_height});
-        s->icon_font.set({m.font_family, 400, false, std::max(0.01F, size), std::max(0.01F, size)});
+        s->visual_size.set(size);
+        const float font_size = std::max(1.0F, size);
+        s->icon_font.set({m.font_family, 400, false, font_size, font_size});
         s->gaps = {0, m.image_gap, 0, m.extra_gap, 0};
-        s->shown = {s->snapshot.empty_image != EmptyImage::None, !s->label.get().empty(), false, s->has_extra, false};
+        s->shown = {s->snapshot.empty_image != EmptyImage::None && (s->custom_visual || size > 0),
+                    !s->label.get().empty(), false, s->has_extra, false};
         action_gap = m.action_gap;
         decoration = m.decoration_padding;
     }
@@ -272,7 +281,7 @@ runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, 
                         },
                         [&services](layout::LayoutEngine& engine, runtime::NodeId node, runtime::Rect bounds) {
                             for (auto child : services.nodes().require(node).children) {
-                                const auto size = services.nodes().require(child).measured_size;
+                                const auto size = services.nodes().require(child).layout_size;
                                 const float width = std::min(size.width, bounds.width);
                                 const float height = std::min(size.height, bounds.height);
                                 engine.place_child(child, {bounds.x + (bounds.width - width) / 2,
@@ -284,14 +293,16 @@ runtime::ComponentId EmptyResultComponentHost::mount(bool result, String label, 
                                                             Prop<runtime::SemanticTypography>{font});
                 return part;
             };
-            s.snapshot.image = region(Content{[&s, visual] {
-                                          if (visual) {
-                                              SlotContentAccess::function (*visual)();
-                                          } else {
-                                              Icon(IconProps{}.name(s.icon));
-                                          }
-                                      }},
-                                      s.visual_color, s.icon_font);
+            s.snapshot.image =
+                region(Content{[&s, visual] {
+                           if (visual) {
+                               SlotContentAccess::function (*visual)();
+                           } else {
+                               const auto size = bind([size = s.visual_size] { return dp(size.get()); });
+                               Icon(IconProps{}.name(s.icon).layout(LayoutStyle{}.width(size).height(size)));
+                           }
+                       }},
+                       s.visual_color, s.icon_font);
             s.snapshot.label =
                 region(Content{[label = s.label] { Text(TextProps{}.content(label)); }}, s.label_color, s.title_font);
             s.snapshot.subtitle =
