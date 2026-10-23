@@ -6,7 +6,7 @@
 
 ## 2. 平台通用 API 与 Theme
 
-- [ ] 2.1 添加独立公开 typed API、Empty/Result Theme 默认/暗色/紧凑/继承/override/equality/hash/dirty，加入有意义的 public API/theme 测试；在独立 windows-msvc-headless MSVC Ninja Multi-Config 构建树以最多 4 jobs 构建并通过 Debug/Release 相关测试，从新 executable 生成五份 golden 并证明旧字段除 identity 外保持，再格式检查和本地提交。
+- [x] 2.1 添加独立公开 typed API、Empty/Result Theme 默认/暗色/紧凑/继承/override/equality/hash/dirty，加入有意义的 public API/theme 测试；在独立 windows-msvc-headless MSVC Ninja Multi-Config 构建树以最多 4 jobs 构建并通过 Debug/Release 相关测试，从新 executable 生成五份 golden 并证明旧字段除 identity 外保持，再格式检查和本地提交。
 
 ## 3. 平台通用 retained 实现
 

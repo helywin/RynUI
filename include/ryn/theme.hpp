@@ -5,6 +5,7 @@
 #include <ryn/design_token.hpp>
 #include <ryn/tag_badge_tokens.hpp>
 #include <ryn/feedback_tokens.hpp>
+#include <ryn/empty_result_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1322,6 +1323,20 @@ struct TableThemeConfig final {
     friend bool operator==(const TableThemeConfig&, const TableThemeConfig&) = default;
 };
 
+struct EmptyThemeConfig final {
+    EmptyTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const EmptyThemeConfig&, const EmptyThemeConfig&) = default;
+};
+
+struct ResultThemeConfig final {
+    ResultTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const ResultThemeConfig&, const ResultThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -1351,6 +1366,8 @@ struct ThemeConfig final {
     DropdownThemeConfig dropdown;
     PaginationThemeConfig pagination;
     TableThemeConfig table;
+    EmptyThemeConfig empty;
+    ResultThemeConfig result;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1927,6 +1944,15 @@ public:
     [[nodiscard]] const DropdownThemeToken& dropdown() const noexcept;
     [[nodiscard]] const PaginationThemeToken& pagination() const noexcept;
     [[nodiscard]] const TableThemeToken& table() const noexcept;
+
+    [[nodiscard]] const EmptyThemeToken& empty() const noexcept {
+        return empty_;
+    }
+
+    [[nodiscard]] const ResultThemeToken& result() const noexcept {
+        return result_;
+    }
+
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1947,7 +1973,8 @@ private:
                   MenuThemeToken menu, DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
                   std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table);
+                  InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+                  EmptyThemeToken empty, ResultThemeToken result);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1977,6 +2004,8 @@ private:
     InputNumberThemeToken input_number_;
     PaginationThemeToken pagination_;
     TableThemeToken table_;
+    EmptyThemeToken empty_;
+    ResultThemeToken result_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};
