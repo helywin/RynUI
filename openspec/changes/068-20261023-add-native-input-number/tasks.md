@@ -2,7 +2,7 @@
 
 ## 1. 数值合同（平台通用）
 
-- [ ] 1.1 新增 typed API 和十进制模型，文档化域/舍入/受控草稿规则；独立 MSVC headless Debug 模型及 public API 测试通过后本地提交。
+- [x] 1.1 新增 typed API 和十进制模型，文档化域/舍入/受控草稿规则；独立 MSVC headless Debug 模型及 public API 测试通过后本地提交。
 
 ## 2. Retained 组件（平台通用）
 
