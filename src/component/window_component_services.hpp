@@ -35,6 +35,7 @@ class MenuComponentHost;
 class DropdownComponentHost;
 class PaginationComponentHost;
 class TableComponentHost;
+class CollapseComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -224,6 +225,10 @@ public:
         return *tabs_;
     }
 
+    [[nodiscard]] CollapseComponentHost& collapse() noexcept {
+        return *collapse_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -359,6 +364,7 @@ private:
     std::unique_ptr<SelectComponentHost> select_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<TabsComponentHost> tabs_;
+    std::unique_ptr<CollapseComponentHost> collapse_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

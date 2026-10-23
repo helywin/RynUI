@@ -1680,6 +1680,132 @@ void apply_tabs_override(TabsThemeToken& token, const TabsTokenOverride& o) {
     }
 }
 
+CollapseThemeToken derive_collapse(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
+                                   const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
+    CollapseThemeToken t;
+    t.colors = {Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(),
+                      contains_dark(algorithms) ? 0.04F : 0.02F),
+                alias.color_background_container,
+                alias.color_text,
+                alias.color_text,
+                alias.color_text_disabled,
+                alias.color_border,
+                alias.color_focus_outline};
+    t.metrics = {map.size_xs,
+                 map.size_small,
+                 map.size,
+                 map.size_xs,
+                 map.size,
+                 map.size,
+                 map.size_small,
+                 map.size,
+                 map.size_large,
+                 map.size_small,
+                 16,
+                 map.size_large,
+                 map.font_size_small,
+                 map.size_small,
+                 seed.line_width,
+                 map.border_radius_large};
+    t.typography = {seed.font_family,    400,
+                    map.font_size,       map.font_size * map.line_height,
+                    map.font_size_large, map.font_size_large * map.line_height_large};
+    t.effects = {seed.focus_outline ? alias.line_width_focus : 0, alias.focus_outline_offset};
+    return t;
+}
+
+void apply_collapse_override(CollapseThemeToken& t, const CollapseTokenOverride& o) {
+    if (o.header_background) {
+        t.colors.header_background = *o.header_background;
+    }
+    if (o.body_background) {
+        t.colors.body_background = *o.body_background;
+    }
+    if (o.header_text) {
+        t.colors.header_text = *o.header_text;
+    }
+    if (o.body_text) {
+        t.colors.body_text = *o.body_text;
+    }
+    if (o.disabled_text) {
+        t.colors.disabled_text = *o.disabled_text;
+    }
+    if (o.border) {
+        t.colors.border = *o.border;
+    }
+    if (o.focus_outline) {
+        t.colors.focus_outline = *o.focus_outline;
+    }
+    t.metrics.header_block_small = fixed_length(o.header_block_small, t.metrics.header_block_small,
+                                                "Collapse header_block_small must be non-negative");
+    t.metrics.header_block =
+        fixed_length(o.header_block, t.metrics.header_block, "Collapse header_block must be non-negative");
+    t.metrics.header_block_large = fixed_length(o.header_block_large, t.metrics.header_block_large,
+                                                "Collapse header_block_large must be non-negative");
+    t.metrics.header_start_small = fixed_length(o.header_start_small, t.metrics.header_start_small,
+                                                "Collapse header_start_small must be non-negative");
+    t.metrics.header_start =
+        fixed_length(o.header_start, t.metrics.header_start, "Collapse header_start must be non-negative");
+    t.metrics.header_start_large = fixed_length(o.header_start_large, t.metrics.header_start_large,
+                                                "Collapse header_start_large must be non-negative");
+    t.metrics.header_end_small =
+        fixed_length(o.header_end_small, t.metrics.header_end_small, "Collapse header_end_small must be non-negative");
+    t.metrics.header_end = fixed_length(o.header_end, t.metrics.header_end, "Collapse header_end must be non-negative");
+    t.metrics.header_end_large =
+        fixed_length(o.header_end_large, t.metrics.header_end_large, "Collapse header_end_large must be non-negative");
+    t.metrics.body_padding_small = fixed_length(o.body_padding_small, t.metrics.body_padding_small,
+                                                "Collapse body_padding_small must be non-negative");
+    t.metrics.body_padding =
+        fixed_length(o.body_padding, t.metrics.body_padding, "Collapse body_padding must be non-negative");
+    t.metrics.body_padding_large = fixed_length(o.body_padding_large, t.metrics.body_padding_large,
+                                                "Collapse body_padding_large must be non-negative");
+    t.metrics.arrow_size =
+        fixed_length(o.arrow_size, t.metrics.arrow_size, "Collapse arrow_size must be positive", true);
+    t.metrics.header_gap = fixed_length(o.header_gap, t.metrics.header_gap, "Collapse header_gap must be non-negative");
+    t.metrics.border_width =
+        fixed_length(o.border_width, t.metrics.border_width, "Collapse border_width must be non-negative");
+    t.metrics.border_radius =
+        fixed_length(o.border_radius, t.metrics.border_radius, "Collapse border_radius must be non-negative");
+    t.typography.font_size =
+        fixed_length(o.font_size, t.typography.font_size, "Collapse font_size must be positive", true);
+    t.typography.line_height =
+        fixed_length(o.line_height, t.typography.line_height, "Collapse line_height must be positive", true);
+    t.typography.header_font_size_large = fixed_length(o.header_font_size_large, t.typography.header_font_size_large,
+                                                       "Collapse header_font_size_large must be positive", true);
+    t.typography.header_line_height_large =
+        fixed_length(o.header_line_height_large, t.typography.header_line_height_large,
+                     "Collapse header_line_height_large must be positive", true);
+    if (o.font_family) {
+        if (*o.font_family != SystemFontFamily::ui_sans && *o.font_family != SystemFontFamily::ui_monospace) {
+            throw std::invalid_argument("Collapse font_family is invalid");
+        }
+        t.typography.font_family = *o.font_family;
+    }
+    if (o.font_weight) {
+        if (*o.font_weight < 100 || *o.font_weight > 1000) {
+            throw std::invalid_argument("Collapse font_weight must be in [100, 1000]");
+        }
+        t.typography.font_weight = *o.font_weight;
+    }
+    t.effects.focus_width =
+        fixed_length(o.focus_width, t.effects.focus_width, "Collapse focus_width must be non-negative");
+    t.effects.focus_offset =
+        fixed_length(o.focus_offset, t.effects.focus_offset, "Collapse focus_offset must be non-negative");
+    float combined = 0;
+    for (auto value : t.metrics.values()) {
+        combined += value * 2;
+    }
+    for (auto value : t.typography.values()) {
+        combined += value;
+    }
+    for (auto value : t.effects.values()) {
+        combined += value * 2;
+    }
+    if (!std::isfinite(combined)) {
+        throw std::invalid_argument("Collapse combined extents must be finite");
+    }
+}
+
 CardThemeToken derive_card(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias) {
     CardThemeToken token;
     token.colors = {alias.color_background_container,
@@ -3795,7 +3921,8 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
                              std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
                              AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                             InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table)
+                             InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+                             CollapseThemeToken collapse)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
@@ -3804,7 +3931,7 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
       drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
       progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
       input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      collapse_(std::move(collapse)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -3941,6 +4068,30 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
         metric(value);
     }
     status_json << "]}";
+    status_json << ",\"collapse\":{\"colors\":[";
+    first = true;
+    for (auto entry : collapse_.colors.values()) {
+        color(entry);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : collapse_.metrics.values()) {
+        metric(value);
+    }
+    status_json << "],\"typography\":[";
+    first = true;
+    for (auto value : collapse_.typography.values()) {
+        metric(value);
+    }
+    hash_integer(identity_, collapse_.typography.font_family);
+    hash_integer(identity_, collapse_.typography.font_weight);
+    status_json << "],\"fontFamily\":" << static_cast<int>(collapse_.typography.font_family)
+                << ",\"fontWeight\":" << collapse_.typography.font_weight << ",\"effects\":[";
+    first = true;
+    for (auto value : collapse_.effects.values()) {
+        metric(value);
+    }
+    status_json << "]}";
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4066,7 +4217,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.spin_ == right.spin_ && left.progress_ == right.progress_ && left.menu_ == right.menu_ &&
            left.dropdown_ == right.dropdown_ && *left.input_ == *right.input_ &&
            left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_ &&
-           left.pagination_ == right.pagination_ && left.table_ == right.table_;
+           left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.collapse_ == right.collapse_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -4302,6 +4453,22 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         tabs = derive_tabs(seed, map, alias, algorithms);
     }
     apply_tabs_override(tabs, config.tabs.tokens);
+    CollapseThemeToken collapse;
+    const bool inherit_collapse = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.collapse.algorithm && config.collapse.seed == SeedTokenOverride{};
+    if (inherit_collapse) {
+        collapse = parent->collapse();
+    } else if (config.collapse.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.collapse.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        collapse = derive_collapse(component_seed, component_map,
+                                   derive_alias(component_seed, component_map, algorithms), algorithms);
+    } else {
+        collapse = derive_collapse(seed, map, alias, algorithms);
+    }
+    apply_collapse_override(collapse, config.collapse.tokens);
     ModalThemeToken modal;
     const bool inherit_modal = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                                config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
@@ -4594,7 +4761,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(tabs), std::move(modal), std::move(drawer), std::move(popconfirm), std::move(menu),
                          std::move(dropdown), std::make_shared<const detail::InputTokenSet>(std::move(input)),
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
-                         std::move(progress), std::move(input_number), std::move(pagination), std::move(table));
+                         std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
+                         std::move(collapse));
 }
 
 } // namespace ryn

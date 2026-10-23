@@ -157,6 +157,10 @@ enum class TokenIdentity : std::uint8_t {
     pagination_metrics,
     table_colors,
     table_metrics,
+    collapse_colors,
+    collapse_metrics,
+    collapse_typography,
+    collapse_effects,
     count,
 };
 

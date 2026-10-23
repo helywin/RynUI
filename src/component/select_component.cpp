@@ -649,12 +649,24 @@ void SelectComponentHost::on_input_boundary_changed() {
     const auto ids = mounted_;
     for (auto id : ids) {
         if (auto* s = services_->components().state<SelectState>(id);
-            s && s->visible && !services_->interactions().component_active(id)) {
+            s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
             s->suppressed = true;
             request_open(id, false);
         } else {
             refresh(id);
         }
+    }
+}
+
+void SelectComponentHost::prepare_auxiliary_layout() {
+    // Retained branch hiding changes input activity without changing the Modal/Spin boundary revision.
+    // Use the same suppression and close intent before layout can merely clear `visible`.
+    const bool inactive_popup = std::ranges::any_of(mounted_, [this](auto id) {
+        const auto* s = services_->components().state<SelectState>(id);
+        return s && s->open && !s->suppressed && !services_->interactions().component_active(id);
+    });
+    if (inactive_popup) {
+        on_input_boundary_changed();
     }
 }
 
