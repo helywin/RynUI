@@ -7,6 +7,7 @@
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
 #include "component/card_component.hpp"
+#include "component/tabs_component.hpp"
 
 #include <chrono>
 
@@ -90,6 +91,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
     card_ = std::make_unique<CardComponentHost>(*this);
+    tabs_ = std::make_unique<TabsComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

@@ -10,7 +10,7 @@
 
 ## 3. 保留面板与真实导航（平台通用）
 
-- [ ] 3.1 接入retained header/所有预建面板、line/card、三尺寸/top/bottom/centered、单Tab入口/keyboard/pointer/callback、overflow箭头/wheel/显露/clip/resize与旧面板输入/窗口层清理；补真实Input/Select草稿恢复、受控拒绝、禁用/焦点/捕获/回调卸载、label更新/identity/字形滚动局部性/idle/dispose测试和文档；windows-msvc-headless Debug/Release完整CTest、格式/规格检查通过后记录平台/preset/evidence并提交、立即push、核对SHA。
+- [x] 3.1 接入retained header/所有预建面板、line/card、三尺寸/top/bottom/centered、单Tab入口/keyboard/pointer/callback、overflow箭头/wheel/显露/clip/resize与旧面板输入/窗口层清理；补真实Input/Select草稿恢复、受控拒绝、禁用/焦点/捕获/回调卸载、label更新/identity/字形滚动局部性/idle/dispose测试和文档；windows-msvc-headless Debug/Release完整CTest、格式/规格检查通过后记录平台/preset/evidence并提交、立即push、核对SHA。
 
 ## 4. Gallery与共同集成（平台通用）
 

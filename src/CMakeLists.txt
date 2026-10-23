@@ -200,6 +200,7 @@ add_library(rynui_components STATIC
     component/select_component.cpp
     component/card_component.cpp
     component/tabs_model.cpp
+    component/tabs_component.cpp
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp

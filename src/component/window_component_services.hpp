@@ -26,6 +26,7 @@ class TooltipComponentHost;
 class OTPComponentHost;
 class SelectComponentHost;
 class CardComponentHost;
+class TabsComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -204,6 +205,10 @@ public:
         return *card_;
     }
 
+    [[nodiscard]] TabsComponentHost& tabs() noexcept {
+        return *tabs_;
+    }
+
     [[nodiscard]] TextComponentHost& text() noexcept {
         return text_;
     }
@@ -300,6 +305,7 @@ private:
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
     std::unique_ptr<CardComponentHost> card_;
+    std::unique_ptr<TabsComponentHost> tabs_;
 };
 
 } // namespace ryn::detail
