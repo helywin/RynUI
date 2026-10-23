@@ -487,6 +487,40 @@ void TableComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     for (const auto& key : project_records(*s, records)) {
         s->visible.push_back(s->by_key.at(std::string{key.bytes()}));
     }
+    if (geometry) {
+        // Keep every retained row's interaction block in display order, including
+        // newly appended controls that were declared after external siblings.
+        auto anchor = services_->components().state<RowState>(s->header)->interaction;
+        std::map<std::uint32_t, std::vector<input::InteractionId>> row_interactions;
+        for (auto row : s->source_order) {
+            row_interactions.try_emplace(row.index);
+        }
+        for (auto interaction : services_->interactions().declaration_order()) {
+            for (auto ancestor = std::optional{services_->interactions().require(interaction).component};
+                 ancestor && *ancestor != id; ancestor = services_->components().parent(*ancestor)) {
+                if (*ancestor == s->header) {
+                    anchor = interaction;
+                    break;
+                }
+                if (auto found = row_interactions.find(ancestor->index); found != row_interactions.end()) {
+                    found->second.push_back(interaction);
+                    break;
+                }
+            }
+        }
+        std::vector<input::InteractionId> order;
+        auto rows = s->visible;
+        for (auto row : s->source_order) {
+            if (std::ranges::find(s->visible, row) == s->visible.end()) {
+                rows.push_back(row);
+            }
+        }
+        for (auto row : rows) {
+            const auto& interactions = row_interactions.at(row.index);
+            order.insert(order.end(), interactions.begin(), interactions.end());
+        }
+        services_->interactions().reorder_after(anchor, order);
+    }
     std::size_t selectable = 0;
     std::size_t checked = 0;
     for (auto row_id : s->source_order) {

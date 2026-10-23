@@ -457,6 +457,67 @@ void inactive_new_rows_do_not_steal_focus() {
     check(key_reads == reads && f.services.focus().state().focused == original.interaction,
           "one-time cell reads contaminated data source dependencies");
 }
+
+void retained_row_tab_order() {
+    Fixture f;
+    Signal<std::vector<Row>> source{std::vector<Row>{{u8"a", u8"Alpha", 1, false}, {u8"b", u8"Beta", 2, false}}};
+    int cell_runs{};
+    f.services.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                 Input(InputProps{}.defaultValue(u8"Before"));
+                 Table(TableProps<Row>{}
+                           .dataSource(source)
+                           .rowKey([](const Row& row) { return row.id; })
+                           .columns({TableColumn<Row>{u8"editor", u8"Editor",
+                                                      [&](TableCell<Row> cell) {
+                                                          ++cell_runs;
+                                                          Input(InputProps{}.defaultValue(cell.key()));
+                                                      }}})
+                           .scrollY(100.0F));
+                 Input(InputProps{}.defaultValue(u8"After"));
+             }});
+    }});
+    sync(f);
+    const auto table = f.services.table().mounted().front();
+    const auto original = f.services.table().snapshot(table);
+    const auto before = f.inputs.mounted_inputs()[0].interaction;
+    const auto a = f.inputs.mounted_inputs()[1].interaction;
+    const auto b = f.inputs.mounted_inputs()[2].interaction;
+    const auto after = f.inputs.mounted_inputs()[3].interaction;
+    const auto expect_tabs = [&](std::vector<InteractionId> expected, const char* message) {
+        check(f.services.focus().request_focus(before, FocusModality::keyboard), "focus preceding control");
+        for (auto interaction : expected) {
+            f.services.focus().dispatch(KeyboardInputEvent{Key::tab, KeyAction::down});
+            f.services.focus().dispatch(KeyboardInputEvent{Key::tab, KeyAction::up});
+            sync(f);
+            check(f.services.focus().state().focused == interaction, message);
+        }
+    };
+    expect_tabs({a, b, after}, "initial Input Tab order");
+    check(f.services.focus().request_focus(a, FocusModality::keyboard), "focus retained row before reorder");
+    const auto session = f.inputs.sessions().active();
+    source.set({{u8"b", u8"Beta", 2, false}, {u8"a", u8"Alpha", 1, false}});
+    sync(f);
+    const auto reordered = f.services.table().snapshot(table);
+    check(reordered.rows[0].component == original.rows[1].component &&
+              reordered.rows[1].component == original.rows[0].component && cell_runs == 2 &&
+              f.services.focus().state().focused == a && f.inputs.sessions().active() == session,
+          "row reorder replaced identity or focused editor session");
+    expect_tabs({b, a, after}, "A/B to B/A did not update actual Tab order");
+    source.set({{u8"b", u8"Beta", 2, false}, {u8"c", u8"New", 3, false}, {u8"a", u8"Alpha", 1, false}});
+    sync(f);
+    const auto c = f.inputs.mounted_inputs().back().interaction;
+    check(cell_runs == 3 && f.services.interactions().find(a) && f.services.interactions().find(b),
+          "insertion rebuilt retained Inputs");
+    expect_tabs({b, c, a, after}, "inserted row Input was not before external following control");
+    source.set({{u8"c", u8"New", 3, false}});
+    sync(f);
+    expect_tabs({c, after}, "removed row remained in Tab order");
+    f.services.destroy(table);
+    sync(f);
+    expect_tabs({after}, "Table cleanup damaged external Input Tab order");
+    check(f.inputs.mounted_inputs().size() == 2 && !f.services.interactions().find(c), "row interaction cleanup");
+}
 } // namespace
 
 int main() {
@@ -467,6 +528,7 @@ int main() {
         retained_select_popup_wheel_and_anchor();
         callbacks_can_destroy_table();
         inactive_new_rows_do_not_steal_focus();
+        retained_row_tab_order();
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;
