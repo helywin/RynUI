@@ -180,6 +180,7 @@ add_executable(
     token_gallery/main.cpp
     token_gallery/token_gallery_runtime.cpp
     token_gallery/typography_acceptance.cpp
+    token_gallery/select_acceptance.cpp
     token_gallery/slider_acceptance.cpp
     token_gallery/tooltip_acceptance.cpp
     token_gallery/button_acceptance.cpp

@@ -33,3 +33,5 @@ Select Component Token 通过 `ThemeConfig::select` 配置，覆盖菜单颜色�
 prefix/suffix 为装饰性 typed slots，可放文字与图标；首版拒绝额外 focusable 控件，保证内置 Select 只有一个 Tab 入口。普通 query、活动项、值、主题和尺寸变化保留选择器/候选 identity；只有显式 options 更新才替换候选子树。销毁或回调内卸载后，旧输入会话、捕获和 ref 均失效。
 
 Theme 支持继承、inherit=false、独立 component seed/algorithm 和显式 override；colors、metrics、typography、effects、order 分开订阅失效域。新增 Select 的 snapshot identity 会变化，既有组件的 resolved Token 值必须保持。
+
+Gallery 提供16个真实 Select 示例。058 的平台通用验证及 Windows MSVC Debug/Release、D3D12/DXIL 的20次主题/缩放窗口验收已通过；证据见 [Windows 验收](../openspec/changes/058-20261023-add-native-select/evidence/windows.md)。自动输入事件不替代人工系统IME；Linux 原生验收仍独立待完成。

@@ -1,0 +1,3 @@
+select_acceptance=passed gpu_driver=direct3d12 shader_format=DXIL system_display_scale=1.5 render_scale=2 theme=dark selection=passed clear=passed search=passed automatic_ime=passed keyboard=passed scroll=passed edge=passed resize=passed idle_polls=3 identity=passed submits=36
+font=regular family=Segoe UI Variable Text path=C:\WINDOWS\FONTS\SEGUIVAR.TTF face_index=0 weight=400
+disposed=1 exit_code=0
