@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：Pagination
 
-- [ ] 2.1 实现 native Pagination、typed token、文档和 focused tests；在独立 Windows MSVC headless Debug/Release 构建树验证受控拒绝/回写、边界、总数收缩、禁用、键盘、主题和销毁，format/check/strict validate 后提交推送。
+- [x] 2.1 实现 native Pagination、typed token、文档和 focused tests；在独立 Windows MSVC headless Debug/Release 构建树验证受控拒绝/回写、边界、总数收缩、禁用、键盘、主题和销毁，format/check/strict validate 后提交推送。
 
 ## 3. 平台通用：Table
 

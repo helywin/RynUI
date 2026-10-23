@@ -124,6 +124,8 @@ enum class TokenIdentity : std::uint8_t {
     modal_typography,
     modal_effects,
     modal_order,
+    pagination_colors,
+    pagination_metrics,
     count,
 };
 

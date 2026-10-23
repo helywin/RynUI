@@ -54,6 +54,16 @@ add_test(
         -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/verify_dependency_lock.cmake"
 )
 
+foreach(name IN ITEMS pagination_component)
+    add_executable(rynui_${name}_tests ${name}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${name}_tests)
+    target_link_libraries(rynui_${name}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${name}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${name} COMMAND rynui_${name}_tests)
+endforeach()
+
 if(NOT RYNUI_HAS_SDL_GPU)
     add_subdirectory(portable)
     return()

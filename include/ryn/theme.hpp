@@ -966,6 +966,61 @@ struct ModalThemeConfig final {
     friend bool operator==(const ModalThemeConfig&, const ModalThemeConfig&) = default;
 };
 
+struct PaginationColorToken final {
+    Color item_background;
+    Color active_background;
+    Color item;
+    Color active;
+    Color disabled;
+    Color border;
+
+    auto values() const {
+        return std::array{item_background, active_background, item, active, disabled, border};
+    }
+
+    friend bool operator==(const PaginationColorToken&, const PaginationColorToken&) = default;
+};
+
+struct PaginationMetricToken final {
+    float item_size{32};
+    float item_size_small{24};
+    float item_size_large{40};
+    float gap{8};
+    float border_radius{6};
+
+    auto values() const {
+        return std::array{item_size, item_size_small, item_size_large, gap, border_radius};
+    }
+
+    friend bool operator==(const PaginationMetricToken&, const PaginationMetricToken&) = default;
+};
+
+struct PaginationThemeToken final {
+    PaginationColorToken colors;
+    PaginationMetricToken metrics;
+    friend bool operator==(const PaginationThemeToken&, const PaginationThemeToken&) = default;
+};
+
+struct PaginationTokenOverride final {
+    std::optional<Color> item_background;
+    std::optional<Color> active_background;
+    std::optional<Color> item;
+    std::optional<Color> active;
+    std::optional<Color> disabled;
+    std::optional<Color> border;
+    std::optional<LogicalLength> item_size;
+    std::optional<LogicalLength> item_size_small;
+    std::optional<LogicalLength> item_size_large;
+    std::optional<LogicalLength> gap;
+    std::optional<LogicalLength> border_radius;
+    friend bool operator==(const PaginationTokenOverride&, const PaginationTokenOverride&) = default;
+};
+
+struct PaginationThemeConfig final {
+    PaginationTokenOverride tokens;
+    friend bool operator==(const PaginationThemeConfig&, const PaginationThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -983,6 +1038,7 @@ struct ThemeConfig final {
     CardThemeConfig card;
     TabsThemeConfig tabs;
     ModalThemeConfig modal;
+    PaginationThemeConfig pagination;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1527,6 +1583,7 @@ public:
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
+    [[nodiscard]] const PaginationThemeToken& pagination() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1544,7 +1601,7 @@ private:
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
                   SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   TabsThemeToken tabs, ModalThemeToken modal, std::shared_ptr<const detail::InputTokenSet> input,
-                  std::vector<ThemeAlgorithm> algorithms);
+                  std::vector<ThemeAlgorithm> algorithms, PaginationThemeToken pagination);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -1562,6 +1619,7 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     ModalThemeToken modal_;
+    PaginationThemeToken pagination_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

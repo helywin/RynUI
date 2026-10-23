@@ -203,6 +203,7 @@ add_library(rynui_components STATIC
     component/modal_model.cpp
     component/modal_component.cpp
     component/tabs_component.cpp
+    component/pagination_component.cpp
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp

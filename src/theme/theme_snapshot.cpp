@@ -3003,17 +3003,51 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
                              SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
+                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms,
+                             PaginationThemeToken pagination)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), modal_(std::move(modal)), input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), modal_(std::move(modal)), pagination_(std::move(pagination)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_);
+    for (auto color : pagination_.colors.values()) {
+        hash_color(identity_, color);
+    }
+    for (auto value : pagination_.metrics.values()) {
+        hash_float(identity_, value);
+    }
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
                            slider_, tooltip_, select_, card_, tabs_, modal_, *input_, algorithms_, identity_);
+    diagnostic_json_.resize(diagnostic_json_.size() - 2);
+    std::ostringstream pagination_json;
+    pagination_json << ",\"pagination\":{\"colors\":[";
+    bool first = true;
+    for (auto color : pagination_.colors.values()) {
+        if (!first) {
+            pagination_json << ',';
+        }
+        first = false;
+        append_color(pagination_json, color);
+    }
+    pagination_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : pagination_.metrics.values()) {
+        if (!first) {
+            pagination_json << ',';
+        }
+        first = false;
+        pagination_json << value;
+    }
+    pagination_json << "]}}\n";
+    diagnostic_json_ += pagination_json.str();
+}
+
+const PaginationThemeToken& ThemeSnapshot::pagination() const noexcept {
+    return pagination_;
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -3106,7 +3140,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
            left.select_ == right.select_ && left.card_ == right.card_ && left.tabs_ == right.tabs_ &&
-           left.modal_ == right.modal_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.modal_ == right.modal_ && left.pagination_ == right.pagination_ && *left.input_ == *right.input_ &&
+           left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -3358,11 +3393,59 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         modal = derive_modal(seed, map, alias, algorithms);
     }
     apply_modal_override(modal, config.modal.tokens);
-    return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
-                         std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
-                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
-                         std::move(tabs), std::move(modal),
-                         std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
+    PaginationThemeToken pagination;
+    if (parent && config.inherit && config.seed == SeedTokenOverride{} && config.alias == AliasTokenOverride{} &&
+        config.algorithms.empty()) {
+        pagination = parent->pagination();
+    } else {
+        pagination.colors = {alias.color_background_container,
+                             alias.color_background_container,
+                             alias.color_text,
+                             map.color_primary,
+                             alias.color_text_disabled,
+                             map.color_primary};
+        pagination.metrics = {map.control_height, map.control_height_small, map.control_height_large, map.size_xs,
+                              map.border_radius};
+    }
+    const auto& p = config.pagination.tokens;
+    if (p.item_background) {
+        pagination.colors.item_background = *p.item_background;
+    }
+    if (p.active_background) {
+        pagination.colors.active_background = *p.active_background;
+    }
+    if (p.item) {
+        pagination.colors.item = *p.item;
+    }
+    if (p.active) {
+        pagination.colors.active = *p.active;
+    }
+    if (p.disabled) {
+        pagination.colors.disabled = *p.disabled;
+    }
+    if (p.border) {
+        pagination.colors.border = *p.border;
+    }
+    pagination.metrics.item_size =
+        fixed_length(p.item_size, pagination.metrics.item_size, "Pagination item_size must be positive", true);
+    pagination.metrics.item_size_small = fixed_length(p.item_size_small, pagination.metrics.item_size_small,
+                                                      "Pagination item_size_small must be positive", true);
+    pagination.metrics.item_size_large = fixed_length(p.item_size_large, pagination.metrics.item_size_large,
+                                                      "Pagination item_size_large must be positive", true);
+    pagination.metrics.gap = fixed_length(p.gap, pagination.metrics.gap, "Pagination gap must be non-negative");
+    pagination.metrics.border_radius = fixed_length(p.border_radius, pagination.metrics.border_radius,
+                                                    "Pagination border_radius must be non-negative");
+    if (!std::isfinite(std::max({pagination.metrics.item_size, pagination.metrics.item_size_small,
+                                 pagination.metrics.item_size_large}) *
+                           11 +
+                       pagination.metrics.gap * 10)) {
+        throw std::invalid_argument("Pagination combined extents must be finite");
+    }
+    return ThemeSnapshot(
+        std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text), std::move(switch_token),
+        std::move(checkbox), std::move(radio), std::move(typography), std::move(divider), std::move(slider),
+        std::move(tooltip), std::move(select), std::move(card), std::move(tabs), std::move(modal),
+        std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms), std::move(pagination));
 }
 
 } // namespace ryn
