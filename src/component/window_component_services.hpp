@@ -24,6 +24,7 @@ class SpaceAddonHost;
 class SliderComponentHost;
 class TooltipComponentHost;
 class OTPComponentHost;
+class SelectComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -49,6 +50,10 @@ public:
 
     virtual void on_pointer_input(const input::PointerInputEvent&, std::optional<input::InteractionId>,
                                   std::optional<input::InteractionId>) {}
+
+    virtual bool on_scroll_input(const input::ScrollInputEvent&) {
+        return false;
+    }
 
     virtual void position_window_layers(runtime::Size, runtime::Rect) {}
 
@@ -110,6 +115,7 @@ public:
     void append_slot(runtime::ComponentId parent, const Content& content);
     void dispose() noexcept;
     void set_window_active(bool active);
+    bool dispatch_scroll(const input::ScrollInputEvent& event);
 
     void set_animation_time(animation::AnimationTime time) noexcept {
         animation_time_ = time;
@@ -187,6 +193,10 @@ public:
 
     [[nodiscard]] OTPComponentHost& otp() noexcept {
         return *otp_;
+    }
+
+    [[nodiscard]] SelectComponentHost& select() noexcept {
+        return *select_;
     }
 
     [[nodiscard]] TextComponentHost& text() noexcept {
@@ -283,6 +293,7 @@ private:
     std::unique_ptr<SliderComponentHost> slider_;
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
+    std::unique_ptr<SelectComponentHost> select_;
 };
 
 } // namespace ryn::detail

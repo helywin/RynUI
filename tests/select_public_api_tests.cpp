@@ -39,8 +39,14 @@ int main() {
     auto defaults =
         ryn::SelectProps{}.defaultValue(42).defaultOpen(false).options({{u8"one", u8"One"}, {42, u8"Answer"}});
     auto string_value = ryn::SelectProps{}.value(ryn::SelectValue{u8"one"});
+    auto literal_value = ryn::SelectProps{}.value(u8"one").notFoundContent(u8"No results");
+    auto number_value = ryn::SelectProps{}.value(42);
+    auto empty_value = ryn::SelectProps{}.value(std::nullopt);
     static_cast<void>(props);
     static_cast<void>(defaults);
     static_cast<void>(string_value);
+    static_cast<void>(literal_value);
+    static_cast<void>(number_value);
+    static_cast<void>(empty_value);
     return reference.bound() ? 1 : 0;
 }

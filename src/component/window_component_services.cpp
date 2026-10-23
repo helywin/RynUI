@@ -5,6 +5,7 @@
 #include "component/slider_component.hpp"
 #include "component/tooltip_component.hpp"
 #include "component/otp_component.hpp"
+#include "component/select_component.hpp"
 
 #include <chrono>
 
@@ -86,6 +87,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     slider_ = std::make_unique<SliderComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
+    select_ = std::make_unique<SelectComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {
@@ -141,6 +143,18 @@ void WindowComponentServices::bind_clipboard(input::TextClipboard& clipboard) {
 
 void WindowComponentServices::detach(WindowComponentParticipant& participant) noexcept {
     std::erase(participants_, &participant);
+}
+
+bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& event) {
+    if (!input::is_valid(event) || !focus_.state().window_active) {
+        return false;
+    }
+    for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
+        if ((*it)->on_scroll_input(event)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void WindowComponentServices::mount(const Content& content) {

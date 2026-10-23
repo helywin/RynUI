@@ -10,15 +10,17 @@ namespace ryn::runtime {
 Rect NodeStore::content_clip(NodeId id, Rect clip) const {
     for (auto current = std::optional{id}; current; current = require(*current).parent) {
         const auto& node = require(*current);
-        if (!node.clip_content) {
-            continue;
+        if (node.clip_content) {
+            const auto& bounds = node.bounds;
+            const float left = std::max(clip.x, bounds.x + node.translation.x);
+            const float top = std::max(clip.y, bounds.y + node.translation.y);
+            const float right = std::min(clip.x + clip.width, bounds.x + node.translation.x + bounds.width);
+            const float bottom = std::min(clip.y + clip.height, bounds.y + node.translation.y + bounds.height);
+            clip = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
         }
-        const auto& bounds = node.bounds;
-        const float left = std::max(clip.x, bounds.x + node.translation.x);
-        const float top = std::max(clip.y, bounds.y + node.translation.y);
-        const float right = std::min(clip.x + clip.width, bounds.x + node.translation.x + bounds.width);
-        const float bottom = std::min(clip.y + clip.height, bounds.y + node.translation.y + bounds.height);
-        clip = {left, top, std::max(0.0F, right - left), std::max(0.0F, bottom - top)};
+        if (node.clip_boundary) {
+            break;
+        }
     }
     return clip;
 }

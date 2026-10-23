@@ -34,6 +34,10 @@ Select SHALL 提供指针、ArrowUp/Down、Home/End、Enter、Escape、Tab 与�
 
 Select SHALL 提供三尺寸、四变体、status、loading、disabled、placeholder、prefix/suffix slots、ref 和打开状态控制。更新 MUST 保持组件与输入 identity；禁用、窗口失活和销毁关闭弹层并清理捕获/会话/计时。
 
+#### Scenario: 装饰性 slots
+- **WHEN** prefix/suffix slot 包含额外的 focusable 控件
+- **THEN** 首版在挂载时拒绝该组合并清理已分配资源，保持 Select 单一 Tab 入口；文字与图标装饰保留支持
+
 #### Scenario: 更新和清理
 - **WHEN** 挂载后变更选项、主题、尺寸或禁用状态，随后失活或销毁
 - **THEN** 仅更新相关候选/布局/材质，不重跑兄弟组件，清理后无可命中遗留项或持续空闲帧

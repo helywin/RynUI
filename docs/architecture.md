@@ -349,7 +349,7 @@ Button 是首个 consumer：hover、active、loading color/opacity 使用 `motio
 
 ### 9.7 验收方式
 
-窗口浮层保持 Component 的 scope、theme 和父子生命周期，内部 window layer root 只改变 paint traversal：普通子树先输出，浮层子树按 priority 与声明顺序整体输出。浮层不参与 trigger 的外部布局尺寸；共同服务在布局后、文字同步前定位，文字与可见 scene 使用窗口范围。共同 interaction 在未显式指定 parent 时解析最近 Component 祖先，窗口键盘 filter 先处理浮层命令，再保留 child 的正常输入。
+窗口浮层保持 Component 的 scope、theme 和父子生命周期，内部 window layer root 改变 paint traversal 并建立独立 clip 边界：普通子树先输出，浮层子树按 priority 与声明顺序整体输出；浮层文字不继承 trigger 祖先的 content clip，菜单内部 viewport 继续裁切自己的行内容。浮层不参与 trigger 的外部布局尺寸；共同服务在布局后、文字同步前定位，文字与可见 scene 使用窗口范围。共同 interaction 在未显式指定 parent 时解析最近 Component 祖先。窗口键盘 filter 处理浮层命令并保留 child 的正常输入；Escape 先给当前文本编辑器取消 IME，再交给浮层关闭。滚轮先询问窗口 participant，未消费时继续现有输入滚动路径。
 
 每个基础组件在进入稳定 API 前必须提供：
 

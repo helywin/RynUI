@@ -13,7 +13,7 @@
 ## Decisions
 
 1. `SelectValue` 保存 String/int64，`SelectOption` 保存 value/label/disabled。`SelectProps` 用 `Prop<T>`、optional value、defaultValue、options、showSearch、allowClear、disabled/loading、ControlSize/InputVariant/InputStatus、open/defaultOpen 及回调；value/defaultValue 和 open/defaultOpen 冲突均拒绝。未知选中值暂存并显示序列化值，适应外部动态 options。
-2. 预建 Input 和弹层子树。Input 负责选择器文本、真实搜索与 IME；非搜索时 readOnly。输入文本和 query/selected 分离，搜索不会隐式提交 value；通过 prefix/suffix typed slots 支持原生组合，默认离线 Down/Loading 图标。SelectRef 复用 InputRef 的 focus/blur/搜索选区。
+2. 预建 Input 和弹层子树。Input 负责选择器文本、真实搜索与 IME；非搜索时 readOnly。输入文本和 query/selected 分离，搜索不会隐式提交 value；通过装饰性 prefix/suffix typed slots 支持原生组合，默认离线 Down/Loading 图标。为维持单一 Tab 入口，首版拒绝 slot 中额外的 focusable 控件；交互式附件后续扩展。SelectRef 复用 InputRef 的 focus/blur/搜索选区。
 3. Select 自有窗口层菜单与 retained surface，行 interaction 不增加 Tab 入口，焦点指向 selector Input，避免选项点击先触发 blur。窗口层定位基于 selector bounds+translation，选择可用的上/下空间并约束 viewport；菜单内部独立 clip 与滚动。只在 options 显式变化时更新候选子树，query/hover/活动项/选择只修改对应状态与可见性。
 4. 新增 participant scroll 钩子及窗口服务分发，从既有 Input scroll 入口先询问弹层，未消费继续原来的 TextArea 路径。键盘 participant 只处理当前 selector；组合期间不截获 IME 键。其他组件或窗口不受影响，Escape 沿用057的文本编辑优先级。
 5. Select Component Token 定义菜单颜色/行高/字体/间距/圆角/shadow/order，以及 selectorBg、clearBg、hoverBorderColor、activeBorderColor、activeOutlineColor。selector 复用 Input Component Token 的尺寸、变体与 status 配方，Select 的对应覆盖在内部 Theme 隔离；不开放 Props 视觉样式入口。按 colors/metrics/typography/effects/order 分组捕获 dirty domain，同步序列化/hash/golden。

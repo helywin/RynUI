@@ -480,6 +480,9 @@ struct InputPropsAccess {
                 host.focus().cancel_interaction(mounted.interaction);
                 host.pointer().cancel_interaction(mounted.interaction);
                 static_cast<void>(host.interactions().remove(mounted.interaction));
+                if (owner.sessions_.active().owner == mounted.editor) {
+                    static_cast<void>(owner.sessions_.blur());
+                }
                 static_cast<void>(owner.editors_.destroy(mounted.editor));
                 static_cast<void>(host.surfaces().destroy_content_range(current->selection_surface));
                 static_cast<void>(host.surfaces().destroy_content_range(current->overlay_surface));
@@ -1466,6 +1469,9 @@ bool InputComponentHost::dispatch_text_area_resize(runtime::ComponentId componen
 bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
     if (!input::is_valid(event) || !host_->focus().state().window_active) {
         return false;
+    }
+    if (host_->dispatch_scroll(event)) {
+        return true;
     }
     auto target = host_->hit_test().hit_test({event.x, event.y});
     while (target) {

@@ -182,7 +182,10 @@ public:
 
     constexpr ShadowList() noexcept = default;
 
-    constexpr ShadowList(std::initializer_list<ShadowLayer> layers) {
+    constexpr ShadowList(std::initializer_list<ShadowLayer> layers)
+        : ShadowList(std::span<const ShadowLayer>{layers.begin(), layers.size()}) {}
+
+    constexpr explicit ShadowList(std::span<const ShadowLayer> layers) {
         if (layers.size() > capacity) {
             throw std::invalid_argument("shadow list exceeds its fixed capacity");
         }

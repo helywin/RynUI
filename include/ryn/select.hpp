@@ -11,7 +11,8 @@
 namespace ryn {
 namespace detail {
 struct SelectPropsAccess;
-}
+class SelectComponentHost;
+} // namespace detail
 
 class SelectValue final {
 public:
@@ -61,8 +62,8 @@ public:
         return *this;
     }
 
-    SelectProps& value(SelectValue value) {
-        return this->value(Prop<SelectSelection>{SelectSelection{std::move(value)}});
+    SelectProps& value(SelectSelection value) {
+        return this->value(Prop<SelectSelection>{std::move(value)});
     }
 
     SelectProps& defaultValue(SelectValue value) {
@@ -129,6 +130,10 @@ public:
         return *this;
     }
 
+    template <std::size_t N> SelectProps& notFoundContent(const char8_t (&value)[N]) {
+        return notFoundContent(String{value});
+    }
+
     SelectProps& listHeight(Prop<float> value) {
         list_height_ = std::move(value);
         return *this;
@@ -176,6 +181,7 @@ public:
 
 private:
     friend struct detail::SelectPropsAccess;
+    friend class detail::SelectComponentHost;
     Prop<std::vector<SelectOption>> options_{std::vector<SelectOption>{}};
     std::optional<Prop<SelectSelection>> value_;
     SelectSelection default_value_;

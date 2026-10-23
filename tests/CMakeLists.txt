@@ -59,10 +59,13 @@ if(NOT RYNUI_HAS_SDL_GPU)
     return()
 endif()
 
-foreach(select_test IN ITEMS select_model select_theme select_public_api)
+foreach(select_test IN ITEMS select_model select_theme select_public_api select_component)
     add_executable(rynui_${select_test}_tests ${select_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${select_test}_tests)
     target_link_libraries(rynui_${select_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${select_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
     add_test(NAME rynui.${select_test} COMMAND rynui_${select_test}_tests)
 endforeach()
 

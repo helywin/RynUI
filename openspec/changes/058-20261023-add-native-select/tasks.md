@@ -10,7 +10,7 @@
 
 ## 3. 完整单选交互（平台通用）
 
-- [ ] 3.1 接入预建 Input、独立窗口层菜单与 retained 行、单 Tab 入口、pointer/keyboard/IME/外部关闭、滚动和边缘定位、disabled/loading/clear/empty/open 控制与生命周期；补真实组件、焦点/捕获/回调销毁、TextArea scroll 未变、identity/局部性/idle 回归及使用文档，windows-msvc-headless Debug/Release 完整 CTest 与格式/规格检查通过后记录 evidence、提交并立即 push、核对 SHA。
+- [x] 3.1 接入预建 Input、独立窗口层菜单与 retained 行、单 Tab 入口、pointer/keyboard/IME/外部关闭、滚动和边缘定位、disabled/loading/clear/empty/open 控制与生命周期；补真实组件、焦点/捕获/回调销毁、TextArea scroll 未变、identity/局部性/idle 回归及使用文档，windows-msvc-headless Debug/Release 完整 CTest 与格式/规格检查通过后记录 evidence、提交并立即 push、核对 SHA。
 
 ## 4. Gallery 与公共集成（平台通用）
 

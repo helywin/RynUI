@@ -197,6 +197,7 @@ add_library(rynui_components STATIC
     component/input_display.cpp
     component/otp_model.cpp
     component/select_model.cpp
+    component/select_component.cpp
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp

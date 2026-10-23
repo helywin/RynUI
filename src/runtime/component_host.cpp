@@ -579,6 +579,7 @@ bool ComponentHost::set_window_layer(ComponentId id, std::optional<int> priority
         return false;
     }
     record.window_layer = priority;
+    nodes_->require(record.root).clip_boundary = priority.has_value();
     paint_traversal_dirty_ = true;
     return true;
 }
