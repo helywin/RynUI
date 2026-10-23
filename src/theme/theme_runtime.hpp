@@ -157,7 +157,7 @@ private:
     void ensure_owner_thread() const;
     void record(TokenIdentity identity) const;
     void recompute_from_parent();
-    void commit_snapshot(ThemeConfig config, ThemeSnapshot next);
+    void commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next);
     void notify_subscribers();
     void notify_children();
     [[nodiscard]] std::size_t live_subscriber_count() const noexcept;

@@ -401,6 +401,9 @@ void DropdownComponentHost::mount(const DropdownProps& props, const DropdownTrig
 
 void DropdownComponentHost::on_window_active(bool active) {
     window_active_ = active;
+    if (mounted_.empty()) {
+        return;
+    }
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!active) {
@@ -412,6 +415,9 @@ void DropdownComponentHost::on_window_active(bool active) {
 }
 
 void DropdownComponentHost::on_input_boundary_changed() {
+    if (mounted_.empty()) {
+        return;
+    }
     const auto ids = mounted_;
     for (auto id : ids) {
         const auto* s = services_->components().state<DropdownState>(id);
@@ -424,7 +430,7 @@ void DropdownComponentHost::on_input_boundary_changed() {
 }
 
 bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event) {
-    if (!window_active_ || event.action != input::KeyAction::down) {
+    if (mounted_.empty() || !window_active_ || event.action != input::KeyAction::down) {
         return false;
     }
     const auto focus = services_->focus().state().focused;
@@ -486,7 +492,8 @@ bool DropdownComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
 void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& event,
                                              std::optional<input::InteractionId> hit,
                                              std::optional<input::InteractionId> origin) {
-    if (!window_active_ || (event.action != input::PointerAction::down && event.action != input::PointerAction::up)) {
+    if (mounted_.empty() || !window_active_ ||
+        (event.action != input::PointerAction::down && event.action != input::PointerAction::up)) {
         return;
     }
     const auto ids = mounted_;
@@ -517,6 +524,9 @@ void DropdownComponentHost::on_pointer_input(const input::PointerInputEvent& eve
 }
 
 void DropdownComponentHost::position_window_layers(runtime::Size viewport, runtime::Rect clip) {
+    if (mounted_.empty()) {
+        return;
+    }
     auto ids = mounted_;
     // Child components finish mounting before their parent. Position the owner
     // first so nested triggers have committed coordinates in this same frame.

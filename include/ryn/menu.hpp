@@ -15,7 +15,9 @@ class DropdownComponentHost;
 } // namespace detail
 
 using MenuKeys = std::vector<String>;
+
 enum class MenuMode { Vertical, Inline };
+
 enum class MenuItemKind { Item, Group, Divider, SubMenu };
 
 struct MenuIconSlot final {};
