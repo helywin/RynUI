@@ -591,6 +591,118 @@ struct SelectThemeConfig final {
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
 };
 
+struct CardColorToken final {
+    Color background;
+    Color header_background;
+    Color actions_background;
+    Color text;
+    Color header_text;
+    Color extra;
+    Color border;
+    Color separator;
+    Color placeholder;
+
+    [[nodiscard]] auto values() const {
+        return std::array{background, header_background, actions_background, text, header_text, extra,
+                          border,     separator,         placeholder};
+    }
+
+    friend bool operator==(const CardColorToken&, const CardColorToken&) = default;
+};
+
+struct CardMetricToken final {
+    float header_height{56};
+    float header_height_small{38};
+    float body_padding{24};
+    float body_padding_small{12};
+    float header_padding{24};
+    float header_padding_small{12};
+    float actions_padding{12};
+    float border_width{1};
+    float border_radius{8};
+    float loading_line_height{16};
+    float loading_gap{12};
+    float header_gap{16};
+
+    [[nodiscard]] auto values() const {
+        return std::array{header_height,  header_height_small,  body_padding,    body_padding_small,
+                          header_padding, header_padding_small, actions_padding, border_width,
+                          border_radius,  loading_line_height,  loading_gap,     header_gap};
+    }
+
+    friend bool operator==(const CardMetricToken&, const CardMetricToken&) = default;
+};
+
+struct CardTypographyToken final {
+    SystemFontFamily font_family{SystemFontFamily::ui_sans};
+    float font_size{14};
+    float line_height{22};
+    float header_font_size{16};
+    float header_line_height{24};
+    float header_font_size_small{14};
+    float header_line_height_small{22};
+    std::uint32_t font_weight{400};
+    std::uint32_t header_font_weight{600};
+    friend bool operator==(const CardTypographyToken&, const CardTypographyToken&) = default;
+};
+
+struct CardEffectToken final {
+    ShadowList shadow;
+    ShadowList hover_shadow;
+    friend bool operator==(const CardEffectToken&, const CardEffectToken&) = default;
+};
+
+struct CardThemeToken final {
+    CardColorToken colors;
+    CardMetricToken metrics;
+    CardTypographyToken typography;
+    CardEffectToken effects;
+    friend bool operator==(const CardThemeToken&, const CardThemeToken&) = default;
+};
+
+struct CardTokenOverride final {
+    std::optional<Color> background;
+    std::optional<Color> header_background;
+    std::optional<Color> actions_background;
+    std::optional<Color> text;
+    std::optional<Color> header_text;
+    std::optional<Color> extra;
+    std::optional<Color> border;
+    std::optional<Color> separator;
+    std::optional<Color> placeholder;
+    std::optional<LogicalLength> header_height;
+    std::optional<LogicalLength> header_height_small;
+    std::optional<LogicalLength> body_padding;
+    std::optional<LogicalLength> body_padding_small;
+    std::optional<LogicalLength> header_padding;
+    std::optional<LogicalLength> header_padding_small;
+    std::optional<LogicalLength> actions_padding;
+    std::optional<LogicalLength> border_width;
+    std::optional<LogicalLength> border_radius;
+    std::optional<LogicalLength> loading_line_height;
+    std::optional<LogicalLength> loading_gap;
+    std::optional<LogicalLength> header_gap;
+    std::optional<SystemFontFamily> font_family;
+    std::optional<LogicalLength> font_size;
+    std::optional<LogicalLength> line_height;
+    std::optional<LogicalLength> header_font_size;
+    std::optional<LogicalLength> header_line_height;
+    std::optional<LogicalLength> header_font_size_small;
+    std::optional<LogicalLength> header_line_height_small;
+    std::optional<std::uint32_t> font_weight;
+    std::optional<std::uint32_t> header_font_weight;
+    std::optional<ShadowList> shadow;
+    std::optional<ShadowList> hover_shadow;
+    friend bool operator==(const CardTokenOverride&, const CardTokenOverride&) = default;
+};
+
+struct CardThemeConfig final {
+    CardTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const CardThemeConfig&, const CardThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -605,6 +717,7 @@ struct ThemeConfig final {
     SliderThemeConfig slider;
     TooltipThemeConfig tooltip;
     SelectThemeConfig select;
+    CardThemeConfig card;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -1146,6 +1259,7 @@ public:
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
+    [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] std::span<const ThemeAlgorithm> algorithms() const noexcept;
     [[nodiscard]] std::string_view source_version() const noexcept;
     [[nodiscard]] std::string_view source_commit() const noexcept;
@@ -1161,7 +1275,7 @@ private:
     ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button,
                   TextThemeToken text, SwitchThemeToken switch_token, CheckboxThemeToken checkbox,
                   RadioThemeToken radio, TypographyThemeToken typography, DividerThemeToken divider,
-                  SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select,
+                  SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select, CardThemeToken card,
                   std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms);
 
     AntDesignDefaultSeed seed_;
@@ -1177,6 +1291,7 @@ private:
     SliderThemeToken slider_;
     TooltipThemeToken tooltip_;
     SelectThemeToken select_;
+    CardThemeToken card_;
     std::shared_ptr<const detail::InputTokenSet> input_;
     std::vector<ThemeAlgorithm> algorithms_;
     std::uint64_t identity_{};

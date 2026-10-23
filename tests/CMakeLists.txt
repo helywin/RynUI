@@ -59,7 +59,7 @@ if(NOT RYNUI_HAS_SDL_GPU)
     return()
 endif()
 
-foreach(select_test IN ITEMS select_model select_theme select_public_api select_component)
+foreach(select_test IN ITEMS select_model select_theme select_public_api select_component card_theme card_public_api)
     add_executable(rynui_${select_test}_tests ${select_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${select_test}_tests)
     target_link_libraries(rynui_${select_test}_tests PRIVATE rynui_components)

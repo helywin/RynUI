@@ -111,6 +111,10 @@ enum class TokenIdentity : std::uint8_t {
     select_typography,
     select_effects,
     select_order,
+    card_colors,
+    card_metrics,
+    card_typography,
+    card_effects,
     count,
 };
 

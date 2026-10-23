@@ -1247,6 +1247,138 @@ TooltipThemeToken derive_tooltip(const AntDesignDefaultSeed& seed, const ThemeMa
     return result;
 }
 
+CardThemeToken derive_card(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias) {
+    CardThemeToken token;
+    token.colors = {alias.color_background_container,
+                    Color(0, 0, 0, 0),
+                    alias.color_background_container,
+                    alias.color_text,
+                    alias.color_text,
+                    alias.color_text,
+                    alias.color_border_secondary,
+                    alias.color_border_secondary,
+                    Color(map.color_text_base.red(), map.color_text_base.green(), map.color_text_base.blue(), 0.06F)};
+    token.typography = {seed.font_family,
+                        map.font_size,
+                        map.font_size * map.line_height,
+                        map.font_size_large,
+                        map.font_size_large * map.line_height_large,
+                        map.font_size,
+                        map.font_size * map.line_height,
+                        400,
+                        600};
+    token.metrics = {token.typography.header_line_height + map.size * 2,
+                     token.typography.header_line_height_small + map.size_xs * 2,
+                     map.size_large,
+                     12,
+                     map.size_large,
+                     12,
+                     map.size_small,
+                     seed.line_width,
+                     map.border_radius_large,
+                     map.size,
+                     map.size_small,
+                     map.size};
+    token.effects = {alias.box_shadow_tertiary, ant_design_default_shadows().card};
+    return token;
+}
+
+void apply_card_override(CardThemeToken& token, const CardTokenOverride& o) {
+    if (o.background) {
+        token.colors.background = *o.background;
+    }
+    if (o.header_background) {
+        token.colors.header_background = *o.header_background;
+    }
+    if (o.actions_background) {
+        token.colors.actions_background = *o.actions_background;
+    }
+    if (o.text) {
+        token.colors.text = *o.text;
+    }
+    if (o.header_text) {
+        token.colors.header_text = *o.header_text;
+    }
+    if (o.extra) {
+        token.colors.extra = *o.extra;
+    }
+    if (o.border) {
+        token.colors.border = *o.border;
+    }
+    if (o.separator) {
+        token.colors.separator = *o.separator;
+    }
+    if (o.placeholder) {
+        token.colors.placeholder = *o.placeholder;
+    }
+    token.metrics.header_height =
+        fixed_length(o.header_height, token.metrics.header_height, "Card header_height must be non-negative");
+    token.metrics.header_height_small = fixed_length(o.header_height_small, token.metrics.header_height_small,
+                                                     "Card header_height_small must be non-negative");
+    token.metrics.body_padding =
+        fixed_length(o.body_padding, token.metrics.body_padding, "Card body_padding must be non-negative");
+    token.metrics.body_padding_small = fixed_length(o.body_padding_small, token.metrics.body_padding_small,
+                                                    "Card body_padding_small must be non-negative");
+    token.metrics.header_padding =
+        fixed_length(o.header_padding, token.metrics.header_padding, "Card header_padding must be non-negative");
+    token.metrics.header_padding_small = fixed_length(o.header_padding_small, token.metrics.header_padding_small,
+                                                      "Card header_padding_small must be non-negative");
+    token.metrics.actions_padding =
+        fixed_length(o.actions_padding, token.metrics.actions_padding, "Card actions_padding must be non-negative");
+    token.metrics.border_width =
+        fixed_length(o.border_width, token.metrics.border_width, "Card border_width must be non-negative");
+    token.metrics.border_radius =
+        fixed_length(o.border_radius, token.metrics.border_radius, "Card border_radius must be non-negative");
+    token.metrics.loading_line_height = fixed_length(o.loading_line_height, token.metrics.loading_line_height,
+                                                     "Card loading_line_height must be non-negative");
+    token.metrics.loading_gap =
+        fixed_length(o.loading_gap, token.metrics.loading_gap, "Card loading_gap must be non-negative");
+    token.metrics.header_gap =
+        fixed_length(o.header_gap, token.metrics.header_gap, "Card header_gap must be non-negative");
+    if (o.font_family) {
+        token.typography.font_family = *o.font_family;
+    }
+    token.typography.font_size =
+        fixed_length(o.font_size, token.typography.font_size, "Card font_size must be positive", true);
+    token.typography.line_height =
+        fixed_length(o.line_height, token.typography.line_height, "Card line_height must be positive", true);
+    token.typography.header_font_size = fixed_length(o.header_font_size, token.typography.header_font_size,
+                                                     "Card header_font_size must be positive", true);
+    token.typography.header_line_height = fixed_length(o.header_line_height, token.typography.header_line_height,
+                                                       "Card header_line_height must be positive", true);
+    token.typography.header_font_size_small =
+        fixed_length(o.header_font_size_small, token.typography.header_font_size_small,
+                     "Card header_font_size_small must be positive", true);
+    token.typography.header_line_height_small =
+        fixed_length(o.header_line_height_small, token.typography.header_line_height_small,
+                     "Card header_line_height_small must be positive", true);
+    if (o.font_weight) {
+        if (*o.font_weight < 100 || *o.font_weight > 1000) {
+            throw std::invalid_argument("Card font_weight must be in [100, 1000]");
+        }
+        token.typography.font_weight = *o.font_weight;
+    }
+    if (o.header_font_weight) {
+        if (*o.header_font_weight < 100 || *o.header_font_weight > 1000) {
+            throw std::invalid_argument("Card header_font_weight must be in [100, 1000]");
+        }
+        token.typography.header_font_weight = *o.header_font_weight;
+    }
+    if (o.shadow) {
+        token.effects.shadow = *o.shadow;
+    }
+    if (o.hover_shadow) {
+        token.effects.hover_shadow = *o.hover_shadow;
+    }
+    float combined = 0;
+    for (const auto value : token.metrics.values()) {
+        combined += value * 2;
+    }
+    if (!std::isfinite(combined)) {
+        throw std::invalid_argument("Card combined visual extents must be finite");
+    }
+}
+
 SelectThemeToken derive_select(const AntDesignDefaultSeed& seed, const ThemeMapToken& map, const ThemeAliasToken& alias,
                                std::span<const ThemeAlgorithm> algorithms) {
     const bool dark = std::ranges::find(algorithms, ThemeAlgorithm::Dark) != algorithms.end();
@@ -1685,7 +1817,8 @@ void append_color(std::ostringstream& stream, Color color) {
                                              const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
                                              const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                              const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                             const SelectThemeToken& select, const detail::InputTokenSet& input,
+                                             const SelectThemeToken& select, const CardThemeToken& card,
+                                             const detail::InputTokenSet& input,
                                              std::span<const ThemeAlgorithm> algorithms, std::uint64_t identity) {
     std::ostringstream stream;
     stream.imbue(std::locale::classic());
@@ -1930,7 +2063,46 @@ void append_color(std::ostringstream& stream, Color color) {
         append_color(stream, shadow.color);
         stream << ']';
     }
-    stream << "]},\"text\":{\"color\":";
+    stream << "]},\"card\":{\"colors\":[";
+    const auto card_colors = card.colors.values();
+    for (std::size_t i = 0; i < card_colors.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        append_color(stream, card_colors[i]);
+    }
+    stream << "],\"metrics\":[";
+    const auto card_metrics = card.metrics.values();
+    for (std::size_t i = 0; i < card_metrics.size(); ++i) {
+        if (i) {
+            stream << ',';
+        }
+        stream << card_metrics[i];
+    }
+    const auto& card_fonts = card.typography;
+    stream << "],\"fontFamily\":" << static_cast<int>(card_fonts.font_family)
+           << ",\"fontSize\":" << card_fonts.font_size << ",\"lineHeight\":" << card_fonts.line_height
+           << ",\"headerFontSize\":" << card_fonts.header_font_size
+           << ",\"headerLineHeight\":" << card_fonts.header_line_height
+           << ",\"headerFontSizeSmall\":" << card_fonts.header_font_size_small
+           << ",\"headerLineHeightSmall\":" << card_fonts.header_line_height_small
+           << ",\"fontWeight\":" << card_fonts.font_weight << ",\"headerFontWeight\":" << card_fonts.header_font_weight;
+    for (const auto& [name, shadows] :
+         {std::pair{"shadow", &card.effects.shadow}, std::pair{"hoverShadow", &card.effects.hover_shadow}}) {
+        stream << ",\"" << name << "\":[";
+        for (std::size_t i = 0; i < shadows->size(); ++i) {
+            if (i) {
+                stream << ',';
+            }
+            const auto& shadow = (*shadows)[i];
+            stream << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                   << shadow.blur << ',' << shadow.spread << ',';
+            append_color(stream, shadow.color);
+            stream << ']';
+        }
+        stream << ']';
+    }
+    stream << "},\"text\":{\"color\":";
     append_color(stream, text.color);
     stream << ",\"fontFamily\":" << static_cast<int>(text.font_family) << ",\"fontWeight\":" << text.font_weight
            << ",\"fontSize\":" << text.font_size << ",\"lineHeight\":" << text.line_height
@@ -2140,7 +2312,8 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
                                               const CheckboxThemeToken& checkbox, const RadioThemeToken& radio,
                                               const TypographyThemeToken& typography, const DividerThemeToken& divider,
                                               const SliderThemeToken& slider, const TooltipThemeToken& tooltip,
-                                              const SelectThemeToken& select, const detail::InputTokenSet& input,
+                                              const SelectThemeToken& select, const CardThemeToken& card,
+                                              const detail::InputTokenSet& input,
                                               std::span<const ThemeAlgorithm> algorithms) noexcept {
     std::uint64_t hash = 14695981039346656037ULL;
     for (const char character : ant_design_commit) {
@@ -2363,6 +2536,23 @@ void hash_shadow(std::uint64_t& hash, const ShadowList& shadows) noexcept {
     hash_integer(hash, select.typography.selected_font_weight);
     hash_integer(hash, select.z_index_popup);
     hash_shadow(hash, select.shadow);
+    for (const auto color : card.colors.values()) {
+        hash_color(hash, color);
+    }
+    for (const auto value : card.metrics.values()) {
+        hash_float(hash, value);
+    }
+    const auto& card_fonts = card.typography;
+    hash_integer(hash, card_fonts.font_family);
+    for (const auto value :
+         {card_fonts.font_size, card_fonts.line_height, card_fonts.header_font_size, card_fonts.header_line_height,
+          card_fonts.header_font_size_small, card_fonts.header_line_height_small}) {
+        hash_float(hash, value);
+    }
+    hash_integer(hash, card_fonts.font_weight);
+    hash_integer(hash, card_fonts.header_font_weight);
+    hash_shadow(hash, card.effects.shadow);
+    hash_shadow(hash, card.effects.hover_shadow);
     for (const auto& size : input.sizes) {
         hash_float(hash, size.control_height);
         hash_float(hash, size.font_size);
@@ -2408,18 +2598,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
                              CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
                              DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                             SelectThemeToken select, std::shared_ptr<const detail::InputTokenSet> input,
-                             std::vector<ThemeAlgorithm> algorithms)
+                             SelectThemeToken select, CardThemeToken card,
+                             std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
-      slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
-                                  divider_, slider_, tooltip_, select_, *input_, algorithms_);
+                                  divider_, slider_, tooltip_, select_, card_, *input_, algorithms_);
     diagnostic_json_ =
         serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_, divider_,
-                           slider_, tooltip_, select_, *input_, algorithms_, identity_);
+                           slider_, tooltip_, select_, card_, *input_, algorithms_, identity_);
 }
 
 const AntDesignDefaultSeed& ThemeSnapshot::seed() const noexcept {
@@ -2474,6 +2664,10 @@ const SelectThemeToken& ThemeSnapshot::select() const noexcept {
     return select_;
 }
 
+const CardThemeToken& ThemeSnapshot::card() const noexcept {
+    return card_;
+}
+
 std::span<const ThemeAlgorithm> ThemeSnapshot::algorithms() const noexcept {
     return algorithms_;
 }
@@ -2499,7 +2693,8 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.button_ == right.button_ && left.text_ == right.text_ && left.switch_token_ == right.switch_token_ &&
            left.checkbox_ == right.checkbox_ && left.radio_ == right.radio_ && left.typography_ == right.typography_ &&
            left.divider_ == right.divider_ && left.slider_ == right.slider_ && left.tooltip_ == right.tooltip_ &&
-           left.select_ == right.select_ && *left.input_ == *right.input_ && left.algorithms_ == right.algorithms_;
+           left.select_ == right.select_ && left.card_ == right.card_ && *left.input_ == *right.input_ &&
+           left.algorithms_ == right.algorithms_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -2704,9 +2899,24 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         select = derive_select(seed, map, alias, algorithms);
     }
     apply_select_override(select, config.select.tokens);
+    CardThemeToken card;
+    const bool inherit_card = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                              !config.card.algorithm && config.card.seed == SeedTokenOverride{};
+    if (inherit_card) {
+        card = parent->card();
+    } else if (config.card.algorithm) {
+        auto component_seed = seed;
+        apply_seed_override(component_seed, config.card.seed);
+        const auto component_map = derive_map(component_seed, algorithms);
+        card = derive_card(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+    } else {
+        card = derive_card(seed, map, alias);
+    }
+    apply_card_override(card, config.card.tokens);
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
-                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select),
+                         std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
                          std::make_shared<const detail::InputTokenSet>(std::move(input)), std::move(algorithms));
 }
 

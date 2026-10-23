@@ -82,6 +82,10 @@ public:
     [[nodiscard]] const SelectThemeToken& select_typography() const;
     [[nodiscard]] const SelectThemeToken& select_effects() const;
     [[nodiscard]] const SelectThemeToken& select_order() const;
+    [[nodiscard]] const CardThemeToken& card_colors() const;
+    [[nodiscard]] const CardThemeToken& card_metrics() const;
+    [[nodiscard]] const CardThemeToken& card_typography() const;
+    [[nodiscard]] const CardThemeToken& card_effects() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_metrics() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_typography() const;
     [[nodiscard]] const TooltipThemeToken& tooltip_shadow() const;

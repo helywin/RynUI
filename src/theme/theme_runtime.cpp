@@ -294,6 +294,11 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().colors, after.slider().colors, TokenIdentity::slider_colors, changed, count);
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     const auto& old_tooltip = before.tooltip();
+    append_if_changed(before.card().colors, after.card().colors, TokenIdentity::card_colors, changed, count);
+    append_if_changed(before.card().metrics, after.card().metrics, TokenIdentity::card_metrics, changed, count);
+    append_if_changed(before.card().typography, after.card().typography, TokenIdentity::card_typography, changed,
+                      count);
+    append_if_changed(before.card().effects, after.card().effects, TokenIdentity::card_effects, changed, count);
     append_if_changed(before.select().colors, after.select().colors, TokenIdentity::select_colors, changed, count);
     append_if_changed(before.select().metrics, after.select().metrics, TokenIdentity::select_metrics, changed, count);
     append_if_changed(before.select().typography, after.select().typography, TokenIdentity::select_typography, changed,
@@ -976,6 +981,30 @@ const TooltipThemeToken& ThemeScope::tooltip_order() const {
     return snapshot_->tooltip();
 }
 
+const CardThemeToken& ThemeScope::card_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::card_colors);
+    return snapshot_->card();
+}
+
+const CardThemeToken& ThemeScope::card_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::card_metrics);
+    return snapshot_->card();
+}
+
+const CardThemeToken& ThemeScope::card_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::card_typography);
+    return snapshot_->card();
+}
+
+const CardThemeToken& ThemeScope::card_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::card_effects);
+    return snapshot_->card();
+}
+
 const SelectThemeToken& ThemeScope::select_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::select_colors);
@@ -1114,6 +1143,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Select.typography",
         "Select.effects",
         "Select.order",
+        "Card.colors",
+        "Card.metrics",
+        "Card.typography",
+        "Card.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1163,6 +1196,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tooltip_colors:
     case TokenIdentity::tooltip_order:
     case TokenIdentity::select_colors:
+    case TokenIdentity::card_colors:
     case TokenIdentity::select_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
@@ -1182,6 +1216,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::input_shadows:
     case TokenIdentity::tooltip_shadow:
     case TokenIdentity::select_effects:
+    case TokenIdentity::card_effects:
         return DirtyPhase::geometry | DirtyPhase::paint_material;
     case TokenIdentity::map_font_size_small:
     case TokenIdentity::map_font_size:
@@ -1201,6 +1236,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::divider_typography:
     case TokenIdentity::tooltip_typography:
     case TokenIdentity::select_typography:
+    case TokenIdentity::card_typography:
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::map_size_xs:
     case TokenIdentity::seed_line_width:
@@ -1213,6 +1249,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::button_control_heights:
     case TokenIdentity::input_layout_metrics:
     case TokenIdentity::select_metrics:
+    case TokenIdentity::card_metrics:
     case TokenIdentity::switch_geometry:
     case TokenIdentity::checkbox_metrics:
     case TokenIdentity::radio_metrics:

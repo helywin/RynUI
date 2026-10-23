@@ -6,7 +6,7 @@
 
 ## 2. API 与 Token（平台通用）
 
-- [ ] 2.1 实现 Card typed Props/slots/枚举及 Card Token、继承/reset/component seed/algorithm/override、四组 dirty identity、hash/序列化/golden；补公开 API 与默认值/无关 Token 保持/局部失效/非法配置原子拒绝测试和使用文档，windows-msvc-headless Debug/Release 受影响测试、格式/规格检查通过后提交并立即 push、核对 SHA。
+- [x] 2.1 实现 Card typed Props/slots/枚举及 Card Token、继承/reset/component seed/algorithm/override、四组 dirty identity、hash/序列化/golden；补公开 API 与默认值/无关 Token 保持/局部失效/非法配置原子拒绝测试和使用文档，windows-msvc-headless Debug/Release 受影响测试、格式/规格检查通过后提交并立即 push、核对 SHA。
 
 ## 3. 原生内容容器（平台通用）
 
