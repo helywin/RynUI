@@ -11,3 +11,7 @@
 ## 3. Astra R1 修复与平台通用回归
 
 - [x] 3.1 分别实跑复现并修复 disabled→enabled 缓存命中、受限 header 子绘制越界、未聚焦 Select 隐藏后旧 popup 复活；补充真实 pointer、quad/glyph、受控拒绝及重复隐藏/重开、Modal/Spin 与回调销毁测试，Windows MSVC headless Debug/Release affected tests、format、doctor、strict、diff 通过并更新本 change evidence；只做本地英文提交，不合并根分支。
+
+## 4. Astra R2 焦点回归
+
+- [x] 4.1 实跑复现并修复 extra 原生 Button 焦点环被紧内容 clip 裁掉、pointer header 转 Space/Enter 后缺失 keyboard focus-visible；检查实际 rounded-effect bounds/clip/coverage、keydown/repeat/keyup 语义，保留 R1 裁剪与独立 extra 合同，完成 MSVC headless Debug/Release affected tests、format、doctor、strict、diff 并更新 070 evidence，仅本地英文提交。

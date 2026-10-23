@@ -12,6 +12,7 @@ thread_local CollapseComponentHost* active_collapse{};
 struct PanelState final {
     String key;
     CollapsePanelSnapshot snapshot;
+    runtime::ComponentId extra_viewport;
     input::InteractionId interaction;
     input::PressableBehavior press;
     component::RetainedSurfaceId header_effects;
@@ -331,13 +332,23 @@ void CollapseComponentHost::mount(const CollapseProps& props, const std::vector<
                     region(header, Content{[title = panel.title_] { SlotContentAccess::function(title)(); }},
                            row.foreground, s.header_font);
                 // Keep native extra controls outside the disabled header interaction ancestry.
-                row.snapshot.extra = region(id, Content{[extra = panel.extra_] {
+                auto extra_parent = id;
+                if (row.has_extra) {
+                    row.extra_viewport = context.mount_component<int>(0);
+                    extra_parent = row.extra_viewport;
+                    const auto viewport_node = context.root(row.extra_viewport);
+                    services.nodes().require(viewport_node).clip_content = true;
+                    services.layout().set_layout(viewport_node, layout::LeafLayout{});
+                    context.on_resource_cleanup(row.extra_viewport, [&services, viewport_node] {
+                        services.layout().remove_layout(viewport_node);
+                    });
+                }
+                row.snapshot.extra = region(extra_parent, Content{[extra = panel.extra_] {
                                                 if (extra) {
                                                     SlotContentAccess::function (*extra)();
                                                 }
                                             }},
                                             row.foreground, s.header_font);
-                services.nodes().require(context.root(row.snapshot.extra)).clip_content = true;
                 row.snapshot.body =
                     region(id, Content{[body = panel.body_] { SlotContentAccess::function(body)(); }}, s.body_color,
                            s.body_font, std::ranges::find(initially_active, row.key) != initially_active.end());
@@ -435,6 +446,11 @@ runtime::Size CollapseComponentHost::measure(runtime::ComponentId id, layout::La
         static_cast<void>(
             engine.measure_child(services_->components().root(row.snapshot.header),
                                  layout::Constraints::fixed(row.header_size.width, row.header_size.height)));
+        if (row.has_extra) {
+            static_cast<void>(
+                engine.measure_child(services_->components().root(row.extra_viewport),
+                                     layout::Constraints::fixed(row.header_size.width, row.header_size.height)));
+        }
         static_cast<void>(engine.measure_child(row.snapshot.arrow, layout::Constraints::fixed(arrow, arrow)));
         row.body_size = row.snapshot.expanded
                             ? engine.measure_child(
@@ -477,6 +493,8 @@ void CollapseComponentHost::place(runtime::ComponentId id, layout::LayoutEngine&
                            {x + start + arrow + arrow_gap, y + (height - title_height) / 2,
                             std::max(0.0F, content - extra - extra_gap), title_height});
         if (row.has_extra) {
+            // Clip to the available header while retaining space around native focus outlines.
+            engine.place_child(services_->components().root(row.extra_viewport), {x, y, width, height});
             engine.place_child(services_->components().root(row.snapshot.extra),
                                {x + width - end - extra, y + (height - extra_height) / 2, extra, extra_height});
         }
@@ -507,6 +525,7 @@ bool CollapseComponentHost::on_keyboard_input(const input::KeyboardInputEvent& e
             if (!activation && !navigation) {
                 return false;
             }
+            services_->focus().defer_focus(row.interaction, input::FocusModality::keyboard);
             if (event.action != input::KeyAction::down || event.repeat) {
                 return true;
             }
