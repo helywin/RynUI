@@ -1,5 +1,7 @@
 # Collapse 平台通用验收
 
+首版记录保留如下；2026-10-24 的 Astra R1 复现、修复和最新验收见文末独立章节。
+
 ## 实际环境与范围
 
 - 日期：2026-10-23；实际主机 `Microsoft Windows NT 10.0.26300.0`。
@@ -57,3 +59,41 @@ foreach ($config in @('debug', 'release')) {
 ## 明确未声称的结果
 
 这是平台通用合同在 Windows MSVC 上的实际 headless 证据，不是全仓 CTest、GPU、Linux、真实窗口视觉或人工 IME 验收。首版不含 motion、动态 panel topology/reconciliation、drag、服务、RTL/辅助功能桥接或完整 Web aliases；详细公共边界见 [Collapse API](../../../../docs/collapse.md)。未修改 Gallery、README、组件完成表或 support overlay，未合并 Table/Menu/InputNumber，未 push、PR、archive 或创建子任务。
+
+## 2026-10-24 Astra R1：三项 P2 均已实跑复现并修复
+
+本轮从干净的 `389bc8841e5ed3f529190d8c77a4e777dc9cca85` 继续，仍使用同一隔离工作区、独立构建目录及 `windows-msvc-headless` MSVC x64/Ninja Multi-Config preset，最多 4 编译 jobs。没有合并根 main（包括后续 Table/Menu/InputNumber 和 Theme binding bridge）。上方 `711800b` 与 18/18 只表示首版历史验收，本节记录本轮结果。
+
+### 原实现上的实际失败
+
+先只增加 regression tests，再编译原实现，分别直接运行 Debug `rynui_collapse_component_tests.exe eligibility|clipping|popup`，三项各自失败：
+
+```text
+eligibility: enabled header retained stale pointer eligibility
+clipping: constrained header glyph painted into sibling
+popup: unfocused hidden popup resurrected on placeholder update
+```
+
+这些是本轮实际运行结果，不再仅依赖审查时的 source trace。新增用例保留三个命令行入口，默认 component test 同样执行全部用例。
+
+### 修复与对应合同
+
+1. **HitTest 缓存失效**：`set_eligible` 真正改变 header eligibility 时，对该 header 追加 `HitTest` dirty。测试从 `disabled=true` 开始，重复两轮 enable/sync/真实 pointer click、键盘关闭、disable/sync/pointer 不激活；单次 eligibility 更新不增加 header measure_count。
+2. **受限 header 绘制**：在居中前夹紧 arrow/title/extra 尺寸，并为 Collapse、header 及逻辑 sibling extra 设置现有 descendant clip。测试两个关闭的 Middle panel，在高度 `48/55/32/0/48` 下保留原 slot，检查 following sibling 的实际 y、arrow/title/extra bounds、ordered scene 实际 glyph 的 clip 交集与实际 mark 背景 quad；覆盖第二个 header 剩余 0px 和 7px，未用“节点高度已夹紧”替代绘制验证。
+3. **未聚焦 popup 清理**：Select 的 pre-layout hook 识别 inactive owner 上仍 open 且未 suppressed 的 popup，走既有 `on_input_boundary_changed` 关闭/suppression/close intent 流程；判断不再依赖 `visible` 或 blur。uncontrolled open 被清除，controlled parent 拒绝关闭时保持其值并持续 suppressed，显式重新打开仍可用。覆盖未聚焦 `defaultOpen(true)` 和受控 `open=true`、三轮 Collapse 隐藏/重开/placeholder 更新、Modal/Spin 一致性，以及 close callback 销毁整个 Collapse 后零遗留 interactions/editors。
+
+### 最新实际结果
+
+- Debug affected CTest：**21/21 通过**，5.06 秒。
+- Release affected CTest：**21/21 通过**，2.89 秒。
+- 在首版 18 项的基础上增加既有 `portable.select_component`、`portable.card_component`、`portable.tooltip_component` 回归，覆盖共享 Select hook 与裁剪；Modal/Spin、Tabs、Popconfirm、Theme 与 backend boundary 回归保留。
+- clang-format 22.1.3，`python scripts/format-code.py --check`：**537 个文件，0 failures**。
+- `openspec doctor --json` 健康；`openspec validate --all --strict --no-interactive` **67/67 通过**；`git diff --check` 通过。
+- 本轮不改变 Theme members、subscriptions、goldens、renderer 或 scene ABI；仅本地英文提交，不改 Gallery 或全局文档，不 push/PR/archive/创建子任务。不增加 GPU/Linux/人工 IME 声明。
+
+重现最新 affected suite：沿用上面的 `$targets`，追加三个既有 targets，并用以下 filter 替换原 filter，然后分别执行 Debug/Release build/CTest；`--parallel 4` 保持不变。
+
+```powershell
+$targets += @('rynui_portable_select_component', 'rynui_portable_card_component', 'rynui_portable_tooltip_component')
+$filter = 'rynui\.(collapse_.*|feedback_(theme|component)|tag_badge_theme|portable\.(theme_(algorithm|runtime)|tabs_(component|theme)|modal_(component|boundary|theme)|drawer_(component|theme)|popconfirm_(component|theme)|select_component|card_component|tooltip_component|backend_boundaries))$'
+```

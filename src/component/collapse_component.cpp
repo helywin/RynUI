@@ -138,7 +138,10 @@ void CollapseComponentHost::refresh(runtime::ComponentId id, bool geometry) {
     std::vector<input::InteractionId> disabled;
     for (auto& row : s->panels) {
         row.foreground.set(foreground(row.snapshot.disabled ? t.colors.disabled_text : t.colors.header_text));
-        services_->interactions().set_eligible(row.interaction, !row.snapshot.disabled);
+        if (services_->interactions().set_eligible(row.interaction, !row.snapshot.disabled)) {
+            services_->dirty().invalidate(services_->components().root(row.snapshot.header),
+                                          runtime::DirtyFlags::HitTest);
+        }
         if (row.snapshot.disabled) {
             static_cast<void>(row.press.reset());
             disabled.push_back(row.interaction);
@@ -219,6 +222,7 @@ void CollapseComponentHost::mount(const CollapseProps& props, const std::vector<
     const auto id = build.mount_component<CollapseState>();
     auto& s = build.state<CollapseState>(id);
     s.node = build.root(id);
+    services.nodes().require(s.node).clip_content = true;
     s.controlled = props.active_keys_.has_value();
     s.keys = props.active_keys_ ? read_prop(*props.active_keys_) : props.default_keys_.value_or(CollapseKeys{});
     s.accordion = read_prop(props.accordion_);
@@ -276,6 +280,7 @@ void CollapseComponentHost::mount(const CollapseProps& props, const std::vector<
                 row.snapshot.header = context.mount_component<int>(0);
                 const auto header = row.snapshot.header;
                 const auto node = context.root(header);
+                services.nodes().require(node).clip_content = true;
                 services.layout().set_layout(node, layout::LeafLayout{});
                 row.interaction =
                     services.interactions().create({header, node, {}, !row.snapshot.disabled, true, {}, true, true});
@@ -332,6 +337,7 @@ void CollapseComponentHost::mount(const CollapseProps& props, const std::vector<
                                                 }
                                             }},
                                             row.foreground, s.header_font);
+                services.nodes().require(context.root(row.snapshot.extra)).clip_content = true;
                 row.snapshot.body =
                     region(id, Content{[body = panel.body_] { SlotContentAccess::function(body)(); }}, s.body_color,
                            s.body_font, std::ranges::find(initially_active, row.key) != initially_active.end());
@@ -457,19 +463,22 @@ void CollapseComponentHost::place(runtime::ComponentId id, layout::LayoutEngine&
     const float bottom = bounds.y + bounds.height - border;
     for (auto& row : s.panels) {
         const float height = std::min(row.header_size.height, std::max(0.0F, bottom - y));
+        const float arrow_size = std::min(arrow, height);
+        const float title_height = std::min(height, row.title_size.height);
+        const float extra_height = std::min(height, row.extra_size.height);
         const float x = bounds.x + border;
         engine.place_child(services_->components().root(row.snapshot.header), {x, y, width, height});
-        engine.place_child(row.snapshot.arrow, {x + start, y + (height - arrow) / 2, arrow, arrow});
+        engine.place_child(row.snapshot.arrow, {x + start + (arrow - arrow_size) / 2, y + (height - arrow_size) / 2,
+                                                arrow_size, arrow_size});
         const float content = std::max(0.0F, available - arrow - arrow_gap);
         const float extra = std::min(content, row.extra_size.width);
         const float extra_gap = row.has_extra ? std::min(m.header_gap, content - extra) : 0;
         engine.place_child(services_->components().root(row.snapshot.title),
-                           {x + start + arrow + arrow_gap, y + (height - row.title_size.height) / 2,
-                            std::max(0.0F, content - extra - extra_gap), std::min(height, row.title_size.height)});
+                           {x + start + arrow + arrow_gap, y + (height - title_height) / 2,
+                            std::max(0.0F, content - extra - extra_gap), title_height});
         if (row.has_extra) {
             engine.place_child(services_->components().root(row.snapshot.extra),
-                               {x + width - end - extra, y + (height - row.extra_size.height) / 2, extra,
-                                std::min(height, row.extra_size.height)});
+                               {x + width - end - extra, y + (height - extra_height) / 2, extra, extra_height});
         }
         y += height;
         if (row.snapshot.expanded) {

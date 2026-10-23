@@ -4,6 +4,7 @@
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
+#include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -407,14 +408,294 @@ void callbacks_and_validation() {
     sync(empty);
     check(empty.services.interactions().size() == 0, "empty Collapse has interactions");
 }
+
+void enabled_header_refreshes_pointer_hit() {
+    Fixture f;
+    Signal<bool> disabled{true};
+    f.services.mount(Content{[&] { Collapse(CollapseProps{}, {plain(u8"a").disabled(disabled)}); }});
+    sync(f);
+    const auto id = f.services.collapse().mounted()[0];
+    const auto header = f.services.collapse().snapshot(id).panels[0].header;
+    const auto node = f.services.components().root(header);
+    click(f, header);
+    check(f.services.collapse().snapshot(id).active_keys.empty(), "initial disabled header activated");
+    for (int cycle = 0; cycle < 2; ++cycle) {
+        const auto measures = f.nodes.require(node).measure_count;
+        disabled.set(false);
+        sync(f);
+        check(f.nodes.require(node).measure_count == measures, "eligibility update unnecessarily measured header");
+        click(f, header);
+        check(f.services.collapse().snapshot(id).panels[0].expanded,
+              "enabled header retained stale pointer eligibility");
+        key(f, Key::space);
+        check(!f.services.collapse().snapshot(id).panels[0].expanded, "enabled header keyboard failed");
+        disabled.set(true);
+        sync(f);
+        click(f, header);
+        check(!f.services.collapse().snapshot(id).panels[0].expanded, "disabled header retained pointer eligibility");
+    }
+}
+
+void constrained_headers_clip_actual_scene() {
+    Fixture f;
+    Signal<LogicalLength> height{dp(200)};
+    int mounts{};
+    f.services.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                 std::vector<CollapsePanel> panels;
+                 for (int index = 0; index < 2; ++index) {
+                     panels.emplace_back(index == 0 ? String{u8"a"} : String{u8"b"}, CollapseTitle{[&] {
+                                             ++mounts;
+                                             Text(TypographyProps{}.content(u8"Title").mark(true));
+                                         }},
+                                         CollapseBody{[] { Text(u8"Body"); }});
+                     panels.back().extra(CollapseExtra{[] { Text(TypographyProps{}.content(u8"Extra").mark(true)); }});
+                 }
+                 Collapse(CollapseProps{}.layout(LayoutStyle{}.height(height)), panels);
+                 Flex(FlexProps{}.layout(LayoutStyle{}.height(dp(32))), FlexContent{[] {}});
+             }});
+    }});
+    sync(f);
+    const auto id = f.services.collapse().mounted()[0];
+    const auto initial = f.services.collapse().snapshot(id);
+    const auto parent = f.services.components().parent(id).value();
+    const auto sibling = f.services.components().children(parent).back();
+    check(std::ranges::any_of(f.buttons.button_scene().instances().instances(),
+                              [](const auto& quad) {
+                                  return quad.opacity > 0 && quad.color[3] > 0 && quad.bounds[2] > 0 &&
+                                         quad.bounds[3] > 0;
+                              }),
+          "clipping fixture lacks real decoration quads");
+    const auto inside = [](runtime::Rect visible, runtime::Rect clip) {
+        return visible.width <= 0 || visible.height <= 0 ||
+               (visible.x >= clip.x - .001F && visible.y >= clip.y - .001F &&
+                visible.x + visible.width <= clip.x + clip.width + .001F &&
+                visible.y + visible.height <= clip.y + clip.height + .001F);
+    };
+    for (float value : {48.0F, 55.0F, 32.0F, 0.0F, 48.0F}) {
+        height.set(dp(value));
+        sync(f);
+        const auto clip = bounds(f, id);
+        check(clip.height == value && bounds(f, sibling).y == clip.y + value, "constrained Collapse displaced sibling");
+        for (const auto& command : f.services.scene_composer().ordered_scene().commands()) {
+            for (std::uint32_t index = command.first_instance; index < command.first_instance + command.instance_count;
+                 ++index) {
+                if (command.kind == graphics::SceneDrawKind::glyph) {
+                    const auto& glyph = f.scene.glyph_scene().instances().at(index);
+                    if (glyph.translation_opacity[2] <= 0 || glyph.color[3] <= 0) {
+                        continue;
+                    }
+                    const runtime::Rect rect{glyph.position_size[0] + glyph.translation_opacity[0],
+                                             glyph.position_size[1] + glyph.translation_opacity[1],
+                                             glyph.position_size[2], glyph.position_size[3]};
+                    const runtime::Rect glyph_clip{glyph.clip_bounds[0], glyph.clip_bounds[1],
+                                                   glyph.clip_bounds[2] - glyph.clip_bounds[0],
+                                                   glyph.clip_bounds[3] - glyph.clip_bounds[1]};
+                    check(inside(graphics::intersect_effect_bounds(rect, glyph_clip), clip),
+                          "constrained header glyph painted into sibling");
+                } else if (command.kind == graphics::SceneDrawKind::quad) {
+                    const auto& quad = f.buttons.button_scene().instances().at(index);
+                    if (quad.opacity > 0 && quad.color[3] > 0) {
+                        check(inside({quad.bounds[0] + quad.translation[0], quad.bounds[1] + quad.translation[1],
+                                      quad.bounds[2], quad.bounds[3]},
+                                     clip),
+                              "constrained header decoration quad painted into sibling");
+                    }
+                }
+            }
+        }
+        for (const auto& panel : initial.panels) {
+            const auto header = bounds(f, panel.header);
+            const auto& arrow = f.nodes.require(panel.arrow).bounds;
+            check(inside(arrow, header), "arrow was centered using unclamped height");
+            check(inside(bounds(f, panel.title), header) && inside(bounds(f, panel.extra), header),
+                  "title/extra centered outside constrained header");
+        }
+    }
+    check(mounts == 2, "constrained resize remounted titles");
+}
+
+void unfocused_popup_does_not_resurrect() {
+    for (bool controlled : {false, true}) {
+        Fixture f;
+        Signal<CollapseKeys> active{CollapseKeys{String{u8"a"}}};
+        Signal<String> placeholder{String{u8"Choose"}};
+        Signal<bool> open{true};
+        std::vector<bool> intents;
+        f.services.mount(Content{[&] {
+            Collapse(CollapseProps{}.activeKeys(active),
+                     {CollapsePanel{u8"a", CollapseTitle{[] { Text(u8"A"); }}, CollapseBody{[&] {
+                                        SelectProps props;
+                                        props.options({{1, u8"One"}, {2, u8"Two"}})
+                                            .placeholder(placeholder)
+                                            .onOpenChange([&](bool value) { intents.push_back(value); });
+                                        if (controlled) {
+                                            props.open(open);
+                                        } else {
+                                            props.defaultOpen(true);
+                                        }
+                                        Select(props);
+                                    }}}});
+        }});
+        sync(f);
+        const auto id = f.services.select().mounted()[0];
+        const auto selector = f.services.select().snapshot(id).selector;
+        check(f.services.select().snapshot(id).visible && !f.services.focus().state().focused,
+              "unfocused popup fixture failed");
+        for (int cycle = 0; cycle < 3; ++cycle) {
+            const auto before = intents.size();
+            active.set({});
+            sync(f);
+            check(!f.services.select().snapshot(id).visible, "hidden body popup remained visible");
+            active.set({String{u8"a"}});
+            sync(f);
+            placeholder.set(cycle % 2 == 0 ? String{u8"Changed"} : String{u8"Again"});
+            sync(f);
+            check(!f.services.select().snapshot(id).visible,
+                  "unfocused hidden popup resurrected on placeholder update");
+            check(intents.size() > before && !intents.back(), "hidden popup did not issue a close intent");
+            if (controlled) {
+                check(open.get(), "cleanup changed controlled owner value");
+            }
+            if (controlled) {
+                open.set(false);
+                open.set(true);
+            } else {
+                click(f, selector);
+            }
+            sync(f);
+            check(f.services.select().snapshot(id).visible, "explicit popup reopen failed");
+        }
+        check(f.services.destroy(f.services.collapse().mounted().front()), "popup fixture cleanup failed");
+    }
+}
+
+void popup_cleanup_matches_modal_and_spin() {
+    for (bool controlled : {false, true}) {
+        for (bool modal_boundary : {false, true}) {
+            Fixture f;
+            Signal<bool> modal{false};
+            Signal<bool> spinning{false};
+            Signal<bool> open{true};
+            Signal<String> placeholder{String{u8"Choose"}};
+            int closes{};
+            f.services.mount(Content{[&] {
+                Spin(SpinProps{}.spinning(spinning), SpinContent{[&] {
+                         Collapse(CollapseProps{}.defaultActiveKeys({String{u8"a"}}),
+                                  {CollapsePanel{u8"a", CollapseTitle{[] { Text(u8"A"); }}, CollapseBody{[&] {
+                                                     SelectProps props;
+                                                     props.options({{1, u8"One"}})
+                                                         .placeholder(placeholder)
+                                                         .onOpenChange([&](bool value) {
+                                                             if (!value) {
+                                                                 ++closes;
+                                                             }
+                                                         });
+                                                     if (controlled) {
+                                                         props.open(open);
+                                                     } else {
+                                                         props.defaultOpen(true);
+                                                     }
+                                                     Select(props);
+                                                 }}}});
+                     }});
+                Modal(ModalProps{}.open(modal).footer(ModalFooterMode::None), ModalContent{[] { Text(u8"Modal"); }});
+            }});
+            sync(f);
+            const auto id = f.services.select().mounted()[0];
+            check(f.services.select().snapshot(id).visible && !f.services.focus().state().focused,
+                  "boundary popup fixture was already focused");
+            for (int cycle = 0; cycle < 2; ++cycle) {
+                const auto before = closes;
+                if (modal_boundary) {
+                    modal.set(true);
+                } else {
+                    spinning.set(true);
+                }
+                sync(f);
+                check(!f.services.select().snapshot(id).visible && closes > before,
+                      "boundary failed to suppress unfocused popup");
+                if (modal_boundary) {
+                    modal.set(false);
+                } else {
+                    spinning.set(false);
+                }
+                sync(f);
+                placeholder.set(cycle == 0 ? String{u8"Changed"} : String{u8"Again"});
+                sync(f);
+                check(!f.services.select().snapshot(id).visible && (!controlled || open.get()),
+                      "boundary cleanup resurrected popup or changed controlled parent");
+                if (controlled) {
+                    open.set(false);
+                    open.set(true);
+                    sync(f);
+                } else {
+                    click(f, f.services.select().snapshot(id).selector);
+                }
+                check(f.services.select().snapshot(id).visible, "boundary recovery prevented explicit open");
+            }
+            check(f.services.destroy(f.services.feedback().spins().front()), "boundary popup cleanup failed");
+        }
+    }
+    for (bool controlled : {false, true}) {
+        Fixture f;
+        Signal<CollapseKeys> active{CollapseKeys{String{u8"a"}}};
+        Signal<bool> open{true};
+        runtime::ComponentId owner;
+        int closes{};
+        f.services.mount(Content{[&] {
+            Collapse(CollapseProps{}.activeKeys(active),
+                     {CollapsePanel{u8"a", CollapseTitle{[] { Text(u8"A"); }}, CollapseBody{[&] {
+                                        SelectProps props;
+                                        props.options({{1, u8"One"}}).onOpenChange([&](bool value) {
+                                            if (!value) {
+                                                ++closes;
+                                                static_cast<void>(f.services.destroy(owner));
+                                            }
+                                        });
+                                        if (controlled) {
+                                            props.open(open);
+                                        } else {
+                                            props.defaultOpen(true);
+                                        }
+                                        Select(props);
+                                    }}}});
+        }});
+        sync(f);
+        owner = f.services.collapse().mounted().front();
+        active.set({});
+        sync(f);
+        check(closes == 1 && f.services.collapse().mounted().empty() && f.services.select().mounted().empty() &&
+                  f.inputs.mounted_inputs().empty() && f.services.interactions().size() == 0,
+              "popup close callback disposal retained resources");
+    }
+}
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
+        if (argc > 1) {
+            const std::string_view repro{argv[1]};
+            if (repro == "eligibility") {
+                enabled_header_refreshes_pointer_hit();
+            } else if (repro == "clipping") {
+                constrained_headers_clip_actual_scene();
+            } else if (repro == "popup") {
+                unfocused_popup_does_not_resurrect();
+                popup_cleanup_matches_modal_and_spin();
+            } else {
+                throw std::runtime_error("unknown Collapse regression");
+            }
+            return 0;
+        }
+        enabled_header_refreshes_pointer_hit();
+        constrained_headers_clip_actual_scene();
+        unfocused_popup_does_not_resurrect();
+        popup_cleanup_matches_modal_and_spin();
         controlled_and_accordion();
         retained_drafts_reflow_and_cleanup();
         keyboard_extra_and_disabled_capture();
