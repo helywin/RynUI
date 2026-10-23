@@ -218,7 +218,8 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
     if (!state) {
         return;
     }
-    const bool visible = state->open && !state->disabled && has_title(*state) && window_active_;
+    const bool visible = state->open && !state->disabled && has_title(*state) && window_active_ &&
+                         services_->interactions().component_active(id);
     const bool closed = state->geometry.visible && !visible;
     if (state->geometry.visible != visible) {
         state->geometry.visible = visible;
@@ -238,17 +239,22 @@ void TooltipComponentHost::synchronize_visibility(runtime::ComponentId id) {
         // finish every state access before cancelling retained interactions.
         const auto order = services_->interactions().declaration_order();
         const std::vector<input::InteractionId> interactions{order.begin(), order.end()};
+        const auto popup = state->popup;
         for (const auto interaction : interactions) {
-            if (!services_->interactions().branch_active(interaction)) {
-                services_->pointer().cancel_interaction(interaction);
+            const auto* record = services_->interactions().find(interaction);
+            if (record && descendant(*services_, record->component, popup) &&
+                !services_->interactions().branch_active(interaction)) {
+                services_->pointer().cancel_pointer_interaction(interaction);
             }
         }
+        services_->focus().synchronize();
     }
 }
 
 void TooltipComponentHost::request_open(runtime::ComponentId id, bool open) {
     auto* state = services_->components().state<TooltipState>(id);
-    if (!state) {
+    if (!state || !services_->components().scope(id).active() ||
+        (open && !services_->interactions().component_active(id))) {
         return;
     }
     state->deadline.reset();
@@ -263,7 +269,8 @@ void TooltipComponentHost::request_open(runtime::ComponentId id, bool open) {
         state->open = open;
     }
     synchronize_visibility(id);
-    if ((changed || previous_request.has_value()) && callback) {
+    if ((changed || previous_request.has_value()) && callback && services_->components().contains(id) &&
+        services_->components().scope(id).active()) {
         callback(open);
     }
 }
@@ -271,6 +278,19 @@ void TooltipComponentHost::request_open(runtime::ComponentId id, bool open) {
 void TooltipComponentHost::observe(runtime::ComponentId id, animation::AnimationTime time) {
     auto* state = services_->components().state<TooltipState>(id);
     if (!state) {
+        return;
+    }
+    if (!services_->interactions().component_active(id)) {
+        const bool requested =
+            state->geometry.visible || state->deadline || state->action_open || state->hovered || state->observed;
+        state->hovered = state->observed = state->action_open = false;
+        state->deadline.reset();
+        state->context_anchor.reset();
+        if (requested) {
+            request_open(id, false);
+        } else {
+            synchronize_visibility(id);
+        }
         return;
     }
     const auto focus = services_->focus().state();
@@ -321,6 +341,13 @@ std::size_t TooltipComponentHost::tick_auxiliary(animation::AnimationTime time) 
         }
     }
     return changed;
+}
+
+void TooltipComponentHost::on_input_boundary_changed() {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        observe(id, services_->animation_time());
+    }
 }
 
 std::optional<animation::AnimationTime> TooltipComponentHost::next_auxiliary_deadline() const {

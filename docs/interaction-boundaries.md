@@ -1,0 +1,13 @@
+# 内部模态输入边界
+
+061引入窗口内的输入限制机制，供后续Modal host使用。这里描述内部合同；可挂载Modal的实施状态见其tasks和API文档。
+
+`InteractionRegistry::set_input_boundary(optional<ComponentId>)`只保存有效逻辑根和revision，不调用用户代码。`component_active`把组件原有branch activity与根/后代约束组合，`branch_active(InteractionId)`复用该判定。边界不改控件自身eligible/disabled，不隐藏背景绘制。命中查询逐项跳过边界外候选，继续查找下方可用目标；FocusManager、引用聚焦、输入会话和控件滚轮使用相同约束。
+
+正常调用使用`WindowComponentServices::set_input_boundary`：请求HitTest帧，取消外部指针状态，安全同步焦点，然后通知组件清理派生状态。焦点使用既有sanitize/defer机制；在键盘回调内不直接cancel focused interaction，保证外部Input收到blur并结束IME。边界revision在回调中改变时停止旧一轮通知，避免覆盖新边界。组件销毁后检查过期根；未来Modal host可在无用户回调的on_destroy中指定仍存活的父模态根，窗口服务在销毁结束后统一协调。
+
+Select会关闭并抑制已显示的外部菜单，不改应用的open值；Tooltip清理外部hover/action/deadline并限制显示，受控open保持应用权威。Tooltip关闭只取消其自身popup后代的指针，焦点交给安全同步点，避免清理无关编辑器。Slider在边界切换时取消外部gesture/capture及hover，包括在onChange回调内打开边界的情况。Button/Input/选择控件/Slider等ref在边界外返回false。
+
+滚轮先依据顶层命中尝试TextArea，未消费再按既有participants逆序处理Select/Tabs和容器。菜单覆盖编辑器时，顶层命中自然排除下方编辑器；编辑器边缘的未消费滚轮仍可向父容器传递。存在边界时窗口服务最终消费未处理滚轮，防止外部Gallery文档滚动。无边界时保持既有外部滚动回退。
+
+边界变化允许一次按现存interaction/participant扫描和临时身份快照，防止回调卸载使迭代失效；等值边界直接返回，稳定帧和普通指针查询不新增分配或定时器。不引入SDL或renderer类型，也不改变场景GPU ABI。

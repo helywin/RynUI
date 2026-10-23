@@ -107,6 +107,11 @@ public:
     [[nodiscard]] const InteractionRecord& require(InteractionId id) const;
     [[nodiscard]] bool contains(InteractionId id) const;
     [[nodiscard]] bool branch_active(InteractionId id) const;
+    // Input confinement does not change component paint activity or eligibility.
+    bool set_input_boundary(std::optional<runtime::ComponentId> root);
+    [[nodiscard]] std::optional<runtime::ComponentId> input_boundary() const;
+    [[nodiscard]] std::uint64_t input_boundary_revision() const;
+    [[nodiscard]] bool component_active(runtime::ComponentId component) const;
     [[nodiscard]] bool is_owner_thread() const noexcept;
     [[nodiscard]] std::size_t size() const;
     [[nodiscard]] std::span<const InteractionId> declaration_order() const;
@@ -136,6 +141,8 @@ private:
     std::vector<InteractionId> declaration_order_;
     std::size_t live_records_{0};
     std::size_t next_declaration_order_{0};
+    std::optional<runtime::ComponentId> input_boundary_;
+    std::uint64_t input_boundary_revision_{};
 };
 
 struct HitTestPaintEntry final {

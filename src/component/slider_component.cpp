@@ -244,6 +244,22 @@ void SliderComponentHost::on_window_active(bool active) {
     }
 }
 
+void SliderComponentHost::on_input_boundary_changed() {
+    for (std::size_t i = 0; i < mounted_.size();) {
+        const auto id = mounted_[i].component;
+        if (auto* state = find(id); state && !services_->interactions().component_active(id)) {
+            state->rail_hover = false;
+            for (auto& thumb : state->handles) {
+                thumb->hover = false;
+            }
+            cancel(id);
+        }
+        if (i < mounted_.size() && mounted_[i].component == id) {
+            ++i;
+        }
+    }
+}
+
 void SliderComponentHost::release(SliderState& s) {
     s.disposing = true;
     if (s.ref) {
@@ -1524,7 +1540,8 @@ struct SliderPropsAccess {
         host.mounted_.push_back({id, s.node, std::move(thumbs), s.surface, range});
         const auto focus = [&host, id] {
             auto* state = host.find(id);
-            if (!state || state->disposing || !host.services_->focus().state().window_active) {
+            if (!state || state->disposing || !host.services_->interactions().component_active(id) ||
+                !host.services_->focus().state().window_active) {
                 return false;
             }
             for (std::size_t i = 0; i < state->count(); ++i) {

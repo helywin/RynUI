@@ -2151,7 +2151,8 @@ void mount_button_component(const ButtonProps& props, const ButtonSlots& slots) 
     });
     const auto focus = [&host, component] {
         const auto* state = host.find_state(component);
-        if (!state || state->disabled || !host.focus_.state().window_active) {
+        if (!state || state->disabled || !host.interactions_.component_active(component) ||
+            !host.focus_.state().window_active) {
             return false;
         }
         host.focus_.defer_focus(state->interaction, input::FocusModality::keyboard);

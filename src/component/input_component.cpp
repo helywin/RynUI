@@ -1134,7 +1134,7 @@ bool InputComponentHost::focus(runtime::ComponentId component, InputFocusOptions
         throw std::invalid_argument("Invalid Input focus cursor");
     }
     auto* state = host_->components().state<InputState>(component);
-    if (!state || !state->active || state->disabled || !host_->components().branch_active(component) ||
+    if (!state || !state->active || state->disabled || !host_->interactions().component_active(component) ||
         !host_->focus().state().window_active) {
         return false;
     }
@@ -1174,7 +1174,7 @@ bool InputComponentHost::blur(runtime::ComponentId component) {
 
 bool InputComponentHost::select(runtime::ComponentId component, std::size_t anchor, std::size_t caret) {
     auto* state = host_->components().state<InputState>(component);
-    if (!state || !state->active || state->disabled || !host_->components().branch_active(component)) {
+    if (!state || !state->active || state->disabled || !host_->interactions().component_active(component)) {
         return false;
     }
     auto& editor = editors_.require(state->mounted.editor);
@@ -1470,20 +1470,19 @@ bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
     if (!input::is_valid(event) || !host_->focus().state().window_active) {
         return false;
     }
-    if (host_->dispatch_scroll(event)) {
-        return true;
-    }
+    // The top hit excludes covered editors. Let an editor consume its wheel
+    // before an enclosing scroll container or the modal's background shield.
     auto target = host_->hit_test().hit_test({event.x, event.y});
     while (target) {
         const auto& record = host_->interactions().require(*target);
         auto* state = host_->components().state<InputState>(record.component);
         if (state && state->textarea && !state->disabled && state->active &&
-            host_->components().branch_active(state->mounted.component)) {
+            host_->interactions().component_active(state->mounted.component)) {
             auto& area = *state->textarea;
             const auto& viewport = state->geometry.viewport;
             if (event.x < viewport.x || event.x > viewport.x + viewport.width || event.y < viewport.y ||
                 event.y > viewport.y + viewport.height) {
-                return false;
+                return host_->dispatch_scroll(event);
             }
             const auto max_y =
                 std::ceil(std::max(0.0F, state->geometry.text_height - viewport.height) * display_scale_) /
@@ -1498,7 +1497,7 @@ bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
                     : std::clamp(state->geometry.scroll_offset - event.delta_x * state->typography.line_height * 3,
                                  0.0F, max_x);
             if (next_y == area.vertical_scroll && next_x == state->geometry.scroll_offset) {
-                return false;
+                return host_->dispatch_scroll(event);
             }
             area.vertical_scroll = next_y;
             state->geometry.scroll_offset = next_x;
@@ -1508,7 +1507,7 @@ bool InputComponentHost::dispatch(const input::ScrollInputEvent& event) {
         }
         target = record.parent;
     }
-    return false;
+    return host_->dispatch_scroll(event);
 }
 
 bool InputComponentHost::dispatch_keyboard(runtime::ComponentId component, const input::KeyboardInputEvent& event) {

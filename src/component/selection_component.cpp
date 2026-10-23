@@ -2195,7 +2195,8 @@ struct SwitchPropsAccess {
         host.mounted_.push_back({component, state.node, state.interaction, state.surface, false});
         const auto focus = [&host, component] {
             const auto* state = host.find(component);
-            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+            if (!state || state->disabled || !host.services_->interactions().component_active(component) ||
+                !host.services_->focus().state().window_active) {
                 return false;
             }
             host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);
@@ -2354,7 +2355,8 @@ struct CheckboxPropsAccess {
         }
         const auto focus = [&host, component] {
             const auto* state = host.find(component);
-            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+            if (!state || state->disabled || !host.services_->interactions().component_active(component) ||
+                !host.services_->focus().state().window_active) {
                 return false;
             }
             host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);
@@ -2735,7 +2737,8 @@ struct RadioPropsAccess {
         }
         const auto focus = [&host, component] {
             const auto* state = host.find(component);
-            if (!state || state->disabled || !host.services_->focus().state().window_active) {
+            if (!state || state->disabled || !host.services_->interactions().component_active(component) ||
+                !host.services_->focus().state().window_active) {
                 return false;
             }
             host.services_->focus().defer_focus(state->interaction, input::FocusModality::keyboard);

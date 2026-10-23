@@ -158,7 +158,54 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
             return true;
         }
     }
-    return false;
+    return interactions_.input_boundary().has_value();
+}
+
+bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
+    const bool changed = interactions_.set_input_boundary(root);
+    return reconcile_input_boundary() || changed;
+}
+
+bool WindowComponentServices::reconcile_input_boundary() {
+    if (const auto root = interactions_.input_boundary(); root && !components().contains(*root)) {
+        interactions_.set_input_boundary({});
+    }
+    const auto revision = interactions_.input_boundary_revision();
+    if (revision == reconciled_input_boundary_revision_) {
+        return false;
+    }
+    reconciled_input_boundary_revision_ = revision;
+    scene_structure_dirty_ = true;
+    for (auto root : components().root_components()) {
+        dirty_->invalidate(components().root(root), runtime::DirtyFlags::HitTest);
+    }
+    // Cancel pointer state without silently removing focus inside a keyboard
+    // command. FocusManager's outer sanitize/deferred transfer delivers blur.
+    const auto order = interactions_.declaration_order();
+    const std::vector<input::InteractionId> interactions{order.begin(), order.end()};
+    for (auto interaction : interactions) {
+        if (!interactions_.branch_active(interaction)) {
+            pointer_.cancel_pointer_interaction(interaction);
+            if (interactions_.input_boundary_revision() != revision) {
+                return true;
+            }
+        }
+    }
+    focus_.synchronize();
+    if (interactions_.input_boundary_revision() != revision) {
+        return true;
+    }
+    const auto participants = participants_;
+    for (auto* participant : participants) {
+        if (std::find(participants_.begin(), participants_.end(), participant) != participants_.end()) {
+            participant->on_input_boundary_changed();
+            if (interactions_.input_boundary_revision() != revision) {
+                return true;
+            }
+        }
+    }
+    focus_.synchronize();
+    return true;
 }
 
 void WindowComponentServices::mount(const Content& content) {
@@ -214,6 +261,7 @@ bool WindowComponentServices::destroy(runtime::ComponentId id) {
     for (auto* participant : participants_) {
         participant->on_destroy();
     }
+    reconcile_input_boundary();
     scene_structure_dirty_ = true;
     return true;
 }
@@ -230,6 +278,8 @@ void WindowComponentServices::dispose() noexcept {
     for (auto* participant : participants_) {
         participant->on_dispose();
     }
+    interactions_.set_input_boundary({});
+    reconciled_input_boundary_revision_ = interactions_.input_boundary_revision();
     scene_structure_dirty_ = true;
 }
 

@@ -51,6 +51,7 @@ private:
     }
 
     void on_window_active(bool) override;
+    void on_input_boundary_changed() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
     SliderState* find(runtime::ComponentId) noexcept;
     void release(SliderState&);

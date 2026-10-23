@@ -296,7 +296,37 @@ const InteractionRecord* InteractionRegistry::find_slot_record(InteractionId id)
 
 bool InteractionRegistry::branch_active(InteractionId id) const {
     const auto* record = find(id);
-    return record && components_->branch_active(record->component);
+    return record && component_active(record->component);
+}
+
+bool InteractionRegistry::set_input_boundary(std::optional<runtime::ComponentId> root) {
+    ensure_owner_thread();
+    if (root && !components_->contains(*root)) {
+        throw std::invalid_argument("Input boundary requires a live ComponentId");
+    }
+    if (root == input_boundary_) {
+        return false;
+    }
+    input_boundary_ = root;
+    ++input_boundary_revision_;
+    return true;
+}
+
+std::optional<runtime::ComponentId> InteractionRegistry::input_boundary() const {
+    ensure_owner_thread();
+    return input_boundary_;
+}
+
+std::uint64_t InteractionRegistry::input_boundary_revision() const {
+    ensure_owner_thread();
+    return input_boundary_revision_;
+}
+
+bool InteractionRegistry::component_active(runtime::ComponentId component) const {
+    ensure_owner_thread();
+    return components_->branch_active(component) &&
+           (!input_boundary_ ||
+            (components_->contains(*input_boundary_) && component_is_same_or_ancestor(*input_boundary_, component)));
 }
 
 bool InteractionRegistry::associations_are_live(const InteractionRecord& record) const {
@@ -469,7 +499,8 @@ std::optional<InteractionId> HitTestSnapshot::hit_test(runtime::Point point) {
             continue;
         }
         if (!iterator->has_committed_layout || !iterator->effective_eligible || !interaction->eligible ||
-            !contains(iterator->effective_clip, point) || !contains(iterator->translated_bounds, point)) {
+            !registry_->branch_active(iterator->interaction) || !contains(iterator->effective_clip, point) ||
+            !contains(iterator->translated_bounds, point)) {
             continue;
         }
         ++diagnostics_.hits;

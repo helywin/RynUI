@@ -802,7 +802,7 @@ void TabsComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
         }
         std::optional<std::size_t> hovered;
         std::optional<std::size_t> arrow_hovered;
-        if (event.action != input::PointerAction::cancel && services_->components().branch_active(id)) {
+        if (event.action != input::PointerAction::cancel && services_->interactions().component_active(id)) {
             for (std::size_t index = 0; index < s->headers.size(); ++index) {
                 if (services_->components().state<TabHeaderState>(s->headers[index])->interaction == hit) {
                     hovered = index;
@@ -825,7 +825,7 @@ void TabsComponentHost::on_pointer_input(const input::PointerInputEvent& event, 
 bool TabsComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
     for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
         auto* s = services_->components().state<TabsState>(*it);
-        if (!s || !s->overflow || !services_->components().branch_active(*it)) {
+        if (!s || !s->overflow || !services_->interactions().component_active(*it)) {
             continue;
         }
         const auto world = translated(s->navigation_bounds, services_->nodes().require(s->node).translation);

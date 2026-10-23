@@ -36,7 +36,7 @@ Modal host 维护活跃对话框的打开顺序与失效检查，最上层为唯
 
 ### 4. 子控件优先与焦点顺序
 
-Modal participant 注册在 Tooltip/Select/Tabs 与外部 Input host 之前，使现有逆序输入分发先处理编辑器与子弹层，Modal 再处理未消费的 Escape/正文滚轮。背景 host 的输入有效性加入边界检查。Escape 继续保持 FocusManager 的 IME 优先逻辑。
+Modal participant 注册在 Tooltip/Select/Tabs 之前，使现有逆序命令分发先处理子弹层，Modal 再处理未消费的 Escape/正文滚轮。Input的滚轮入口先依据最上层命中尝试TextArea滚动，未消费才进入participants；覆盖在编辑器上的Select菜单仍由顶层命中排除下方编辑器。所有participants都未消费且存在模态边界时，窗口服务消费剩余滚轮，阻止Gallery等外部滚动。背景 host 的输入有效性加入边界检查，Escape保持 FocusManager 的 IME 优先逻辑。
 
 打开记录有效触发 interaction；先聚焦正文可用入口，之后默认 OK、其他入口、对话框。Tab 顺序复用过滤后的 FocusManager 环绕，支持子 Tabs/Radio 的既有 roving tab stop。关闭恢复仍有效/未禁用/可见且在新边界内的触发入口；无效则安全降级到下一 Modal 或无焦点。用户可关闭自动恢复。restore 不恢复旧输入组合事务。
 

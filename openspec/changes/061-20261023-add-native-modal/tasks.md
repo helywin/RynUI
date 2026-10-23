@@ -10,7 +10,7 @@
 
 ## 3. 模态输入边界（平台通用）
 
-- [ ] 3.1 实现内部逻辑子树交互边界并接入pointer/capture/focus/ref/session、背景滚轮和外部Select/Tooltip抑制；保持绘制及控件自身disabled值，边界内子窗口层继续可用；补无边界兼容、背景引用聚焦/Tab/捕获取消、动态挂载/失效root、子层与IME Escape优先测试及内部文档；windows-msvc-headless Debug/Release受影响测试、格式/规格检查通过后记录evidence、提交并立即push、核对SHA。
+- [x] 3.1 实现内部逻辑子树交互边界并接入pointer/capture/focus/ref/session、背景滚轮和外部Select/Tooltip抑制；保持绘制及控件自身disabled值，边界内子窗口层继续可用；补无边界兼容、背景引用聚焦/Tab/捕获取消、动态挂载/失效root、子层与IME Escape优先测试及内部文档；windows-msvc-headless Debug/Release受影响测试、格式/规格检查通过后记录evidence、提交并立即push、核对SHA。
 
 ## 4. 保留对话框和视口交互（平台通用）
 

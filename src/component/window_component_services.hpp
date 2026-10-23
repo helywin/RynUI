@@ -46,6 +46,8 @@ public:
 
     virtual void on_window_active(bool) {}
 
+    virtual void on_input_boundary_changed() {}
+
     virtual bool on_keyboard_input(const input::KeyboardInputEvent&) {
         return false;
     }
@@ -118,6 +120,7 @@ public:
     void dispose() noexcept;
     void set_window_active(bool active);
     bool dispatch_scroll(const input::ScrollInputEvent& event);
+    bool set_input_boundary(std::optional<runtime::ComponentId> root);
 
     void set_animation_time(animation::AnimationTime time) noexcept {
         animation_time_ = time;
@@ -274,6 +277,8 @@ public:
     }
 
 private:
+    bool reconcile_input_boundary();
+    std::uint64_t reconciled_input_boundary_revision_{};
     runtime::NodeStore* nodes_;
     layout::LayoutEngine* layout_;
     runtime::DirtyQueues* dirty_;

@@ -153,7 +153,7 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         return;
     }
     const bool visible =
-        s->open && !s->suppressed && !s->disabled && window_active_ && services_->components().branch_active(id);
+        s->open && !s->suppressed && !s->disabled && window_active_ && services_->interactions().component_active(id);
     const bool changed = s->visible != visible;
     s->visible = visible;
     if (services_->components().set_branch_active(s->popup, visible)) {
@@ -211,7 +211,8 @@ void SelectComponentHost::refresh(runtime::ComponentId id, bool geometry) {
 
 void SelectComponentHost::request_open(runtime::ComponentId id, bool open) {
     auto* s = services_->components().state<SelectState>(id);
-    if (!s || !services_->components().scope(id).active() || (open && (s->disabled || !window_active_))) {
+    if (!s || !services_->components().scope(id).active() ||
+        (open && (s->disabled || !window_active_ || !services_->interactions().component_active(id)))) {
         return;
     }
     const bool changed = s->open != open;
@@ -226,7 +227,7 @@ void SelectComponentHost::request_open(runtime::ComponentId id, bool open) {
         s->model.search({});
     }
     refresh(id);
-    if (changed && callback) {
+    if (changed && callback && services_->components().contains(id) && services_->components().scope(id).active()) {
         callback(open);
     }
 }
@@ -644,6 +645,19 @@ void SelectComponentHost::on_window_active(bool active) {
     }
 }
 
+void SelectComponentHost::on_input_boundary_changed() {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        if (auto* s = services_->components().state<SelectState>(id);
+            s && s->visible && !services_->interactions().component_active(id)) {
+            s->suppressed = true;
+            request_open(id, false);
+        } else {
+            refresh(id);
+        }
+    }
+}
+
 bool SelectComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event) {
     if (event.action != input::KeyAction::down || !window_active_) {
         return false;
@@ -759,7 +773,7 @@ void SelectComponentHost::position_window_layers(runtime::Size, runtime::Rect cl
         if (!s) {
             continue;
         }
-        if (!services_->components().branch_active(id)) {
+        if (!services_->interactions().component_active(id)) {
             refresh(id);
         }
         if (!s->visible) {

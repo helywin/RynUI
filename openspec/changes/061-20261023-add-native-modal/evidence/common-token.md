@@ -8,7 +8,7 @@
 
 ```text
 windows-msvc-headless Debug/Release complete builds: passed
-affected API/model/theme/public API/boundary CTest: 23/23 each (1.54s / 1.53s)
+affected API/model/theme/public API/backend boundary CTest: 23/23 each (1.54s / 1.53s)
 five goldens regenerated; every previous Token value equal to d1365a5 (excluding identity and added modal group)
 clang-format 22.1.3: 492 owned source files, 0 failures
 openspec doctor: healthy; strict: 61/61; git diff --check: passed
