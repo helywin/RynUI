@@ -2,7 +2,7 @@
 
 ## 1. 平台通用实现与合同
 
-- [ ] 1.1 实现 typed API、固定 panels、retained layout/interaction 和独立 Theme tokens；新增 public API、component、theme tests，通过本 worktree windows-msvc-headless Debug focused CTest 验证受控拒绝、accordion、reflow、真实草稿、disabled/extra、Modal/Spin、callback 销毁与 material 局部更新。
+- [x] 1.1 实现 typed API、固定 panels、retained layout/interaction 和独立 Theme tokens；新增 public API、component、theme tests，通过本 worktree windows-msvc-headless Debug focused CTest 验证受控拒绝、accordion、reflow、真实草稿、disabled/extra、Modal/Spin、callback 销毁与 material 局部更新。
 
 ## 2. 平台通用收口
 

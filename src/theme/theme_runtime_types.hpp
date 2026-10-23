@@ -144,6 +144,10 @@ enum class TokenIdentity : std::uint8_t {
     spin_metrics,
     progress_colors,
     progress_metrics,
+    collapse_colors,
+    collapse_metrics,
+    collapse_typography,
+    collapse_effects,
     count,
 };
 

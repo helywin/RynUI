@@ -316,6 +316,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.tabs().typography, after.tabs().typography, TokenIdentity::tabs_typography, changed,
                       count);
     append_if_changed(before.tabs().effects, after.tabs().effects, TokenIdentity::tabs_effects, changed, count);
+    append_if_changed(before.collapse().colors, after.collapse().colors, TokenIdentity::collapse_colors, changed,
+                      count);
+    append_if_changed(before.collapse().metrics, after.collapse().metrics, TokenIdentity::collapse_metrics, changed,
+                      count);
+    append_if_changed(before.collapse().typography, after.collapse().typography, TokenIdentity::collapse_typography,
+                      changed, count);
+    append_if_changed(before.collapse().effects, after.collapse().effects, TokenIdentity::collapse_effects, changed,
+                      count);
     append_if_changed(before.modal().colors, after.modal().colors, TokenIdentity::modal_colors, changed, count);
     const auto& old_popconfirm = before.popconfirm();
     const auto& new_popconfirm = after.popconfirm();
@@ -1035,6 +1043,30 @@ const TooltipThemeToken& ThemeScope::tooltip_order() const {
     return snapshot_->tooltip();
 }
 
+const CollapseThemeToken& ThemeScope::collapse_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::collapse_colors);
+    return snapshot_->collapse();
+}
+
+const CollapseThemeToken& ThemeScope::collapse_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::collapse_metrics);
+    return snapshot_->collapse();
+}
+
+const CollapseThemeToken& ThemeScope::collapse_typography() const {
+    ensure_owner_thread();
+    record(TokenIdentity::collapse_typography);
+    return snapshot_->collapse();
+}
+
+const CollapseThemeToken& ThemeScope::collapse_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::collapse_effects);
+    return snapshot_->collapse();
+}
+
 const TabsThemeToken& ThemeScope::tabs_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::tabs_colors);
@@ -1404,6 +1436,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Spin.metrics",
         "Progress.colors",
         "Progress.metrics",
+        "Collapse.colors",
+        "Collapse.metrics",
+        "Collapse.typography",
+        "Collapse.effects",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1455,6 +1491,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_colors:
     case TokenIdentity::card_colors:
     case TokenIdentity::tabs_colors:
+    case TokenIdentity::collapse_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::badge_colors:
@@ -1484,6 +1521,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_effects:
     case TokenIdentity::card_effects:
     case TokenIdentity::tabs_effects:
+    case TokenIdentity::collapse_effects:
     case TokenIdentity::modal_effects:
     case TokenIdentity::drawer_effects:
     case TokenIdentity::popconfirm_effects:
@@ -1508,6 +1546,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_typography:
     case TokenIdentity::card_typography:
     case TokenIdentity::tabs_typography:
+    case TokenIdentity::collapse_typography:
     case TokenIdentity::modal_typography:
     case TokenIdentity::drawer_typography:
     case TokenIdentity::popconfirm_typography:
@@ -1532,6 +1571,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::select_metrics:
     case TokenIdentity::card_metrics:
     case TokenIdentity::tabs_metrics:
+    case TokenIdentity::collapse_metrics:
     case TokenIdentity::modal_metrics:
     case TokenIdentity::drawer_metrics:
     case TokenIdentity::popconfirm_metrics:
