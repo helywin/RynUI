@@ -26,6 +26,10 @@ Menu SHALL 支持 selectedKeys/openKeys 的独立受控请求与默认值，Up/D
 - **WHEN** 键盘展开并选择子项
 - **THEN** 方向键进入/返回子树，Enter 只执行合法活动项并保留稳定 key
 
+#### Scenario: Reactive active row reveal
+- **WHEN** 有限 viewport 中 End 到达末行后，该活动行被响应式禁用
+- **THEN** 新活动行通过 Layout 更新实际进入 viewport，Enter 执行该行且所有行保持 identity
+
 ### Requirement: Theme and cleanup
 
 Menu SHALL 通过 Theme/Component Token 控制视觉，LayoutStyle 仅控制外部布局；卸载 SHALL 释放 interaction、surface 与订阅，不改变 CPU scene v3/GPU ABI v2。

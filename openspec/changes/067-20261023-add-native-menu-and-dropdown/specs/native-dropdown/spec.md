@@ -30,6 +30,14 @@ Dropdown SHALL 使用窗口 clip 翻转/钳制位置，支持右键坐标锚点�
 - **WHEN** 用户操作所属子 popup 或在外部点击
 - **THEN** 子 popup 操作不误关父菜单，外部关闭不抢回外部焦点，Escape 从最深层开始恢复 trigger 焦点
 
+#### Scenario: Overlapping child popup scrolling
+- **WHEN** 可滚动 Dropdown 与所属 Select 或 Dropdown 的 popup 重叠，wheel 位于子 popup 命中区域
+- **THEN** 子 popup 优先滚动，父 Menu 保持原滚动位置，包括子层已到滚动边界时；露出的父菜单区域仍可接收 wheel
+
+#### Scenario: Minimum width action row
+- **WHEN** 短标签的自然宽度小于 popup 最小宽度
+- **THEN** Menu 填满 popup 内宽，行背景和命中范围扣除 token padding/margin 后覆盖整行，右侧 pointer 可执行该命令
+
 ### Requirement: Retained resource lifetime
 
 Dropdown SHALL 保留关闭菜单的资源以供复用，禁用/窗口失活/卸载 SHALL 撤销可交互状态，回调可安全卸载本组件。

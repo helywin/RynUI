@@ -4,6 +4,7 @@
 #include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
+#include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -387,21 +388,182 @@ void native_trigger_gates() {
     check(clicks == 1 && f.services.dropdown().snapshot(id).geometry.visible,
           "enabled Button did not recover trigger activation");
 }
+
+bool descendant(Fixture& f, runtime::ComponentId id, runtime::ComponentId ancestor) {
+    for (auto current = std::optional{id}; current; current = f.services.components().parent(*current)) {
+        if (*current == ancestor) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void overlapping_popup_wheel(bool use_select) {
+    Fixture f;
+    ThemeConfig config;
+    config.dropdown.tokens.max_height = dp(160);
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                  MenuItem host{u8"host", u8"Host"};
+                  host.icon = MenuIcon{[&] {
+                      if (use_select) {
+                          Select(SelectProps{}
+                                     .options({{1, u8"One"},
+                                               {2, u8"Two"},
+                                               {3, u8"Three"},
+                                               {4, u8"Four"},
+                                               {5, u8"Five"},
+                                               {6, u8"Six"},
+                                               {7, u8"Seven"},
+                                               {8, u8"Eight"}})
+                                     .listHeight(96)
+                                     .layout(LayoutStyle{}.width(dp(120))));
+                      } else {
+                          Dropdown(DropdownProps{}.defaultOpen(true).menu(MenuProps{}.items({{u8"a", u8"A"},
+                                                                                             {u8"b", u8"B"},
+                                                                                             {u8"c", u8"C"},
+                                                                                             {u8"d", u8"D"},
+                                                                                             {u8"e", u8"E"},
+                                                                                             {u8"f", u8"F"},
+                                                                                             {u8"g", u8"G"},
+                                                                                             {u8"h", u8"H"}})),
+                                   DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Child"); }); }});
+                      }
+                  }};
+                  Dropdown(DropdownProps{}.defaultOpen(true).menu(MenuProps{}.items({host,
+                                                                                     {u8"b", u8"B"},
+                                                                                     {u8"c", u8"C"},
+                                                                                     {u8"d", u8"D"},
+                                                                                     {u8"e", u8"E"},
+                                                                                     {u8"f", u8"F"},
+                                                                                     {u8"g", u8"G"},
+                                                                                     {u8"h", u8"H"}})),
+                           DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Parent"); }); }});
+              }});
+    }});
+    sync(f);
+    const auto parent = f.services.dropdown().mounted().back();
+    const auto parent_menu = f.services.dropdown().snapshot(parent).menu;
+    runtime::Rect child_bounds;
+    runtime::ComponentId child;
+    runtime::ComponentId child_menu;
+    if (use_select) {
+        child = f.services.select().mounted()[0];
+        click(f, f.services.select().snapshot(child).selector);
+        check(f.services.select().snapshot(child).visible, "overlapping Select did not open");
+        child_bounds = f.services.select().snapshot(child).popup;
+    } else {
+        child = f.services.dropdown().mounted()[0];
+        const auto state = f.services.dropdown().snapshot(child);
+        check(state.geometry.visible, "overlapping child Dropdown did not open");
+        child_menu = state.menu;
+        child_bounds = state.geometry.bounds;
+    }
+    const auto parent_bounds = bounds(f, parent_menu);
+    const float left = std::max(parent_bounds.x, child_bounds.x);
+    const float top = std::max(parent_bounds.y, child_bounds.y);
+    const float right = std::min(parent_bounds.x + parent_bounds.width, child_bounds.x + child_bounds.width);
+    const float bottom = std::min(parent_bounds.y + parent_bounds.height, child_bounds.y + child_bounds.height);
+    check(right - left > 16 && bottom - top > 16, "wheel fixture popups do not overlap");
+    const float x = left + 12;
+    const float y = top + 12;
+    const auto hit = f.services.hit_test().hit_test({x, y});
+    check(hit && descendant(f, f.services.interactions().find(*hit)->component, child),
+          "overlap does not hit topmost child popup");
+    const auto parent_rows = f.services.menu().snapshot(parent_menu).rows;
+    const auto parent_scroll = f.services.menu().snapshot(parent_menu).scroll;
+    check(f.services.dispatch_scroll({0, -1, x, y}), "child wheel was not handled");
+    sync(f);
+    const float child_scroll =
+        use_select ? f.services.select().snapshot(child).scroll : f.services.menu().snapshot(child_menu).scroll;
+    check(child_scroll > 0 && f.services.menu().snapshot(parent_menu).scroll == parent_scroll,
+          use_select ? "parent Menu stole overlapping Select wheel" : "parent Menu stole nested Dropdown wheel");
+    check(f.services.menu().snapshot(parent_menu).rows == parent_rows, "child wheel remounted parent rows");
+    // A child at its scroll boundary must not leak wheel input to the parent.
+    static_cast<void>(f.services.dispatch_scroll({0, -1000, x, y}));
+    sync(f);
+    const float at_end =
+        use_select ? f.services.select().snapshot(child).scroll : f.services.menu().snapshot(child_menu).scroll;
+    static_cast<void>(f.services.dispatch_scroll({0, -1, x, y}));
+    sync(f);
+    check((use_select ? f.services.select().snapshot(child).scroll : f.services.menu().snapshot(child_menu).scroll) ==
+                  at_end &&
+              f.services.menu().snapshot(parent_menu).scroll == parent_scroll,
+          "child popup boundary leaked wheel input to parent Menu");
+    // The parent still owns the exposed strip to the left of the child popup.
+    const float parent_x = parent_bounds.x + 1;
+    check(parent_x < child_bounds.x, "parent wheel fixture lacks exposed area");
+    check(f.services.dispatch_scroll({0, -1, parent_x, parent_bounds.y + 12}), "exposed parent wheel not handled");
+    sync(f);
+    check(f.services.menu().snapshot(parent_menu).scroll > parent_scroll, "exposed parent Menu did not scroll");
+    f.services.dispose();
+    check(f.services.interactions().size() == 0 && f.services.surfaces().size() == 0, "wheel fixture cleanup leaked");
+}
+
+void overlapping_select_wheel() {
+    overlapping_popup_wheel(true);
+}
+
+void overlapping_dropdown_wheel() {
+    overlapping_popup_wheel(false);
+}
+
+void short_label_full_width() {
+    Fixture f;
+    int clicks = 0;
+    f.services.mount(Content{[&] {
+        Dropdown(
+            DropdownProps{}.defaultOpen(true).menu(MenuProps{}.items({{u8"a", u8"A"}}).onClick([&](MenuClickInfo info) {
+                check(info.key == String{u8"a"}, "right-side activation used wrong key");
+                ++clicks;
+            })),
+            DropdownTrigger{[] { Button(ButtonProps{}, [] { Text(u8"Open"); }); }});
+    }});
+    sync(f);
+    const auto id = f.services.dropdown().mounted()[0];
+    const auto state = f.services.dropdown().snapshot(id);
+    const auto row = f.services.menu().snapshot(state.menu).rows[0];
+    const auto& theme = f.services.components().theme_scope(id)->snapshot();
+    const float padding = theme.dropdown().metrics.padding;
+    const float margin = theme.menu().metrics.item_margin;
+    const auto menu_bounds = bounds(f, state.menu);
+    const auto row_bounds = bounds(f, row);
+    check(state.geometry.bounds.width == theme.dropdown().metrics.min_width, "short label fixture lost min width");
+    check(menu_bounds.width == state.geometry.bounds.width - padding * 2 &&
+              row_bounds.x == state.geometry.bounds.x + padding + margin &&
+              row_bounds.width == state.geometry.bounds.width - (padding + margin) * 2,
+          "short label row did not fill popup inner width");
+    click_at(f, state.geometry.bounds.x + state.geometry.bounds.width - padding - margin - 2,
+             row_bounds.y + row_bounds.height / 2);
+    check(clicks == 1 && !f.services.dropdown().snapshot(id).geometry.visible,
+          "right side of short-label row did not activate");
+}
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
-        trigger_actions_and_focus();
-        controlled_and_clipping();
-        modal_initial_and_nested();
-        retirement_and_validation();
-        nested_select();
-        menu_in_scrolling_modal();
-        native_trigger_gates();
+        int ran = 0;
+        const auto run = [&](std::string_view name, void (*test)()) {
+            if (argc == 1 || name == argv[1]) {
+                test();
+                ++ran;
+            }
+        };
+        run("trigger", trigger_actions_and_focus);
+        run("controlled", controlled_and_clipping);
+        run("modal-nested", modal_initial_and_nested);
+        run("retirement", retirement_and_validation);
+        run("select", nested_select);
+        run("scroll-modal", menu_in_scrolling_modal);
+        run("trigger-gates", native_trigger_gates);
+        run("wheel-select", overlapping_select_wheel);
+        run("wheel-dropdown", overlapping_dropdown_wheel);
+        run("short-label-width", short_label_full_width);
+        check(ran > 0, "unknown Dropdown test case");
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

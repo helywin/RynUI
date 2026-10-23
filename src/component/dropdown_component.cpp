@@ -589,6 +589,12 @@ void DropdownComponentHost::position_window_layers(runtime::Size viewport, runti
             engine.set_layout(popup, layout::BoxLayout{{padding, padding, padding, padding}});
             s->popup_size = engine.measure_child(popup, {std::min(token.metrics.min_width, clip.width), clip.width, 0,
                                                          std::min(token.metrics.max_height, clip.height)});
+            // BoxLayout discovers the natural popup size, but does not stretch
+            // its child when the popup minimum width exceeds the Menu's width.
+            static_cast<void>(
+                engine.measure_child(services_->components().root(s->snapshot.menu),
+                                     layout::Constraints::fixed(std::max(0.0F, s->popup_size.width - padding * 2),
+                                                                std::max(0.0F, s->popup_size.height - padding * 2))));
             s->needs_measure = false;
             s->viewport = viewport;
         }

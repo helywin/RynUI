@@ -1,6 +1,7 @@
 #include "component/menu_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
+#include <string_view>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -196,17 +197,61 @@ void callback_retirement() {
               f.services.interactions().size() == 0,
           "callback destroy leaked");
 }
+
+void reactive_active_reveal() {
+    Fixture f;
+    Signal<bool> last_disabled{false};
+    std::vector<MenuClickInfo> clicks;
+    f.services.mount(Content{[&] {
+        Menu(MenuProps{}
+                 .items({{u8"a", u8"First"},
+                         {u8"b", u8"Second"},
+                         {u8"c", u8"Third"},
+                         {u8"d", u8"Fourth"},
+                         {u8"e", u8"Last", last_disabled}})
+                 .onClick([&](MenuClickInfo info) { clicks.push_back(std::move(info)); })
+                 .layout(LayoutStyle{}.width(dp(200)).height(dp(96))));
+    }});
+    f.synchronize();
+    const auto id = f.services.menu().mounted()[0];
+    const auto rows = f.services.menu().snapshot(id).rows;
+    f.services.menu().focus_menu(id);
+    key(f, Key::end);
+    check(f.services.menu().snapshot(id).active_key == String{u8"e"} && f.services.menu().snapshot(id).scroll > 0,
+          "reactive reveal fixture did not reach last row");
+    last_disabled.set(true);
+    f.synchronize();
+    const auto state = f.services.menu().snapshot(id);
+    check(state.active_key == String{u8"a"} && state.rows == rows, "active reconciliation changed row identity");
+    const auto viewport = f.nodes.require(f.services.components().root(id)).bounds;
+    const auto first = f.nodes.require(f.services.components().root(rows[0])).bounds;
+    check(first.y >= viewport.y && first.y + first.height <= viewport.y + viewport.height,
+          "reconciled active row stayed outside Menu viewport");
+    key(f, Key::enter);
+    check(clicks.size() == 1 && clicks[0].key == String{u8"a"} &&
+              f.services.menu().snapshot(id).selected_keys == MenuKeys{String{u8"a"}},
+          "Enter did not activate revealed reconciled row");
+}
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
 #if defined(_MSC_VER) && defined(_DEBUG)
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
     try {
-        navigation();
-        uncontrolled_theme_validation();
-        callback_retirement();
+        int ran = 0;
+        const auto run = [&](std::string_view name, void (*test)()) {
+            if (argc == 1 || name == argv[1]) {
+                test();
+                ++ran;
+            }
+        };
+        run("navigation", navigation);
+        run("theme", uncontrolled_theme_validation);
+        run("retirement", callback_retirement);
+        run("reactive-reveal", reactive_active_reveal);
+        check(ran > 0, "unknown Menu test case");
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;

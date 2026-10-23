@@ -211,13 +211,18 @@ void MenuComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             row->arrow_label.set(contains(s->open, row->key) ? String{u8"⌄"} : String{u8"›"});
         }
     }
+    bool reveal = false;
     if (!s->active || *s->active >= s->rows.size() ||
         !services_->components().state<MenuRow>(s->rows[*s->active])->eligible) {
         s->active = first;
         s->reveal = true;
+        reveal = true;
     }
-    services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::HitTest
-                                                    : runtime::DirtyFlags::Material);
+    auto dirty = geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::HitTest : runtime::DirtyFlags::Material;
+    if (reveal) {
+        dirty = dirty | runtime::DirtyFlags::Layout | runtime::DirtyFlags::HitTest;
+    }
+    services_->dirty().invalidate(s->node, dirty);
 }
 
 void MenuComponentHost::update_theme(runtime::ComponentId id, bool geometry) {
@@ -710,15 +715,31 @@ bool MenuComponentHost::on_keyboard_input(const input::KeyboardInputEvent& event
 }
 
 bool MenuComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
-    for (auto it = mounted_.rbegin(); it != mounted_.rend(); ++it) {
-        auto* s = services_->components().state<MenuState>(*it);
-        if (!s || !services_->interactions().component_active(*it)) {
+    if (mounted_.empty()) {
+        return false;
+    }
+    const auto hit = services_->hit_test().hit_test({event.x, event.y});
+    const auto* target = hit ? services_->interactions().find(*hit) : nullptr;
+    if (!target) {
+        return false;
+    }
+    // Registration order is unrelated to popup ownership. Only the closest Menu
+    // in the topmost hit's layer may scroll; a child popup belongs to its own host.
+    for (auto current = std::optional{target->component}; current; current = services_->components().parent(*current)) {
+        auto* s = services_->components().state<MenuState>(*current);
+        if (!s) {
+            if (services_->components().is_window_layer_root(*current)) {
+                return false;
+            }
             continue;
+        }
+        if (!services_->interactions().component_active(*current)) {
+            return false;
         }
         const auto rect = translated_bounds(*services_, s->node);
         const auto clip = services_->nodes().content_clip(s->node, rect);
         if (!inside(clip, event.x, event.y)) {
-            continue;
+            return false;
         }
         const float next =
             std::clamp(s->scroll - event.delta_y * 96, 0.0F, std::max(0.0F, s->content_height - rect.height));
@@ -728,6 +749,7 @@ bool MenuComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
             services_->dirty().invalidate(s->node, runtime::DirtyFlags::Layout | runtime::DirtyFlags::HitTest);
             return true;
         }
+        return false;
     }
     return false;
 }

@@ -35,3 +35,34 @@
 Horizontal overflow、vertical flyout、hover delay、split Button、popup renderer 与 Web/DOM/CSS API 不在首版内；Inline 子菜单、固定拓扑与响应式项状态的具体边界见 `docs/menu-dropdown.md`。
 
 依最新用户策略，后续提交仅保留本地，父任务负责合并、最终验证和推送 main；无 PR 或 archive。
+
+## Astra R1 回归修复（2026-10-23）
+
+针对 `644a0ecbbecc426ebb69a354db07f4a0f7d1624b` 的三个 P2，先仅增加测试、保持实现不变，逐例执行 Debug binary：
+
+| 独立 case | 修复前 exit | 实际失败断言 |
+| --- | --- | --- |
+| Dropdown `wheel-select` | 1 | `parent Menu stole overlapping Select wheel` |
+| Dropdown `wheel-dropdown` | 1 | `parent Menu stole nested Dropdown wheel` |
+| Dropdown `short-label-width` | 1 | `short label row did not fill popup inner width` |
+| Menu `reactive-reveal` | 1 | `reconciled active row stayed outside Menu viewport` |
+
+修复范围仅为两个 component 及其测试：Menu 根据最上层 hit 的 component owner 链处理 wheel，跨子 window layer 时留给其 host；Dropdown 在自然 popup 测量后以最终内宽/内高测量 Menu；Menu 活动行重新协调请求 reveal 时增加 Layout/HitTest invalidation。未修改共享 paint 排序、service dispatch 或 renderer。
+
+回归验证直接检查重叠位置的真实 topmost hit、子层 scroll 增加且父层不变、子层滚动边界不泄漏给父 Menu、露出父菜单区域可滚动及 cleanup；短标签检查实际 Menu/行 node bounds 与右侧 pointer 命令；禁用末行检查新活动首行完整位于 viewport、Enter key 正确、行 identity 不变。既有受控拒绝、初始 Modal、嵌套 popup、Button onClick、clip/focus/cleanup 测试继续通过。
+
+最终格式化源码使用同一 MSVC headless preset、每次最多 4 jobs：
+
+```text
+cmake --build --preset windows-msvc-headless-debug --parallel 4 --target rynui_portable_menu_component rynui_portable_dropdown_component
+ctest --preset windows-msvc-headless-debug --parallel 4 -R "^rynui.portable.(menu_component|dropdown_component)$"
+cmake --build --preset windows-msvc-headless-release --parallel 4 --target rynui_portable_menu_component rynui_portable_dropdown_component
+ctest --preset windows-msvc-headless-release --parallel 4 -R "^rynui.portable.(menu_component|dropdown_component)$"
+```
+
+- Debug：2/2 通过，0.83 秒；Release：2/2 通过，0.49 秒。
+- 四个独立 case 另在 Debug/Release 各执行一次，8/8 exit 0。可向上述测试 executable 传入表中 case 名单独复核；不带参数执行全部组件合同。
+- `format-code.py --check`：clang-format 22.1.3，506 files，0 failures；doctor healthy；严格 validate 62/62；`git diff --check` 通过。
+- 本地原始日志：`out/r1-reproductions.json`、`out/r1-fixed-cases.json`、`out/r1-debug.log`、`out/r1-release.log`、`out/r1-format.log`、`out/r1-doctor.json`、`out/r1-validate.log`。构建目录和日志保持 ignored，不作为仓库源码提交。
+
+依评审指示未重复原已通过的完整 117 项套件；不增加原生 GPU/Linux/IME 声明。所有三个 finding 均已复现并修复，无跳过项。本轮只作本地提交，不 push、PR、archive 或改动 root/Gallery。
