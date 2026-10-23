@@ -10,7 +10,7 @@
 
 ## 3. 原生内容容器（平台通用）
 
-- [ ] 3.1 接入 retained Card、五区域布局、两尺寸/两变体、hover 祖先识别、静态 loading 分支与焦点清理；补窄宽度/空标题/富 slots、嵌套 Button/Input/Select、loading 恢复编辑值/identity、局部性/idle/dispose 回归与文档；windows-msvc-headless Debug/Release 完整 CTest、格式/规格检查通过，记录平台/preset/evidence后提交并立即 push、核对 SHA。
+- [x] 3.1 接入 retained Card、五区域布局、两尺寸/两变体、hover 祖先识别、静态 loading 分支与焦点清理；补窄宽度/空标题/富 slots、嵌套 Button/Input/Select、loading 恢复编辑值/identity、局部性/idle/dispose 回归与文档；windows-msvc-headless Debug/Release 完整 CTest、格式/规格检查通过，记录平台/preset/evidence后提交并立即 push、核对 SHA。
 
 ## 4. Gallery 与共同集成（平台通用）
 

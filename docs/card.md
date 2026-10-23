@@ -1,6 +1,6 @@
 # Card
 
-059 正在实现原生 Card。当前阶段先提供 typed API 和完整 Card Token；容器挂载、Gallery 和原生平台验收按 tasks 分阶段记录，不能把公开声明视为可运行组件。
+059 提供原生 Card 容器，复用窗口服务、保留子树与共同 logical scene。平台通用、Gallery 和原生平台验收按 tasks 分阶段记录，未通过的平台项保持待验收。
 
 ```cpp
 ryn::Card(ryn::CardProps{}.title(u8"账户").hoverable()
@@ -18,4 +18,10 @@ CardSize 为 Default/Small，CardVariant 为 Outlined/Borderless；title、size�
 
 视觉覆盖使用 `ThemeConfig::card.tokens`，包括背景/标题/extra/边框/分隔线/占位颜色、两尺寸 header/body padding 与高度、字体/字重、圆角和普通/hover shadow；不放入 LayoutStyle。默认配方来自锁定 Ant Design 6.6.5，small body/header padding 固定12；主题支持继承/reset、独立 component seed/algorithm 与四组精确失效域。
 
-首版目标是内容容器，不包含 Grid、Meta、内置 Tabs、异步图片加载、骨架动画或 Web/DOM 样式接口。cover 可放应用自己的原生内容。loading 后续将保留已挂载正文的编辑状态并切换静态占位，恢复不自动夺焦点。
+header、cover、body、actions 按顺序自然布局，header 只有标题或 extra 时出现；extra 先测量自身宽度，title 使用剩余空间，长标题允许换行。正文使用对应尺寸的 padding；包含多个子控件时，可在 CardContent 中使用 Flex/Space 排列。
+
+loading 保留已挂载正文的编辑状态并切换静态三行占位，隐藏正文焦点、输入会话、命中与嵌套弹层；header/cover/actions 继续显示。恢复后保留原 Input/Select 等子组件 identity 和数据，不自动夺焦点。hoverable 在指针进入卡片背景或任意子控件时显示悬停阴影，不拦截内部 Button/Link；Card 本身没有 Tab 入口。普通标题、主题、尺寸和状态更新不会重新执行 slots。
+
+背景、分隔线、占位和边框复用共同 rounded effects，保留逻辑平移、透明度和祖先矩形裁剪，不增加 renderer ABI 或私有上传。销毁会清理子组件、interaction、订阅与效果资源；静态占位不持续请求动画帧。
+
+首版不包含 Grid、Meta、内置 Tabs、异步图片加载、骨架动画或 Web/DOM 样式接口。cover 可放应用自己的原生内容；Card 未提供对任意后代内容的圆角遮罩。

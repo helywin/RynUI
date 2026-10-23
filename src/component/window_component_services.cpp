@@ -6,6 +6,7 @@
 #include "component/tooltip_component.hpp"
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
+#include "component/card_component.hpp"
 
 #include <chrono>
 
@@ -88,6 +89,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
     otp_ = std::make_unique<OTPComponentHost>(*this);
     select_ = std::make_unique<SelectComponentHost>(*this);
+    card_ = std::make_unique<CardComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {
