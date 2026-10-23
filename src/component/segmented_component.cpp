@@ -323,6 +323,8 @@ void SegmentedComponentHost::mount(const SegmentedProps& props, const std::vecto
                             const auto node = children.root(child);
                             // Only the item fills its allocation; slots report their constrained intrinsic size.
                             services.layout().set_layout(node, layout::BoxLayout{});
+                            // Crop slot descendants without clipping the item's shadow or focus decorations.
+                            services.nodes().require(node).clip_content = true;
                             children.on_resource_cleanup(child,
                                                          [&services, node] { services.layout().remove_layout(node); });
                             children.mount_slot(child, content);

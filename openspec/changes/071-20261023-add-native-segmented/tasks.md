@@ -15,3 +15,7 @@
 ## 4. P2 内容测量修复
 
 - [x] 4.1 先用实际 text 宽度、glyph 可见性与内容居中断言复现 icon/label 填充错误，再将 slots 改为受约束的 intrinsic wrapper 测量；验证 300 宽双选项 block、纯文本、富标签/图标、resize 与既有交互在 MSVC headless Debug/Release 通过，更新 071 evidence，并通过 format、doctor、全量 strict validate、diff check 后本地英文提交。
+
+## 5. P2 受限高度内容裁剪
+
+- [x] 5.1 先复现多行 label 的可见 glyph 越过 item，再裁剪 slot 内容到实际分配区域且保留 row focus/shadow；增加受限横纵布局、短/零剩余高度与 rich icon+label 的可见 glyph containment 断言，完成 MSVC headless Debug/Release 定向测试、format、doctor、strict validate、diff check，更新 071 evidence 并本地英文提交。

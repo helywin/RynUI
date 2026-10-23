@@ -175,6 +175,126 @@ void intrinsic_content_geometry(float scale) {
     }
 }
 
+std::size_t check_glyph_containment(Fixture& f, detail::TextSceneId scene, runtime::Rect allowed) {
+    const auto range = f.scene.primitive(scene).instances;
+    std::size_t visible_count = 0;
+    for (std::uint32_t i = 0; i < range.count; ++i) {
+        const auto& glyph = f.scene.glyph_scene().instances().at(range.first + i);
+        const auto& p = glyph.position_size;
+        const auto& c = glyph.clip_bounds;
+        const auto& t = glyph.translation_opacity;
+        const auto visible = graphics::intersect_effect_bounds({p[0] + t[0], p[1] + t[1], p[2], p[3]},
+                                                               {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+        if (visible.width <= 0 || visible.height <= 0 || t[2] <= 0 || glyph.color[3] <= 0) {
+            continue;
+        }
+        ++visible_count;
+        const bool contained = visible.x >= allowed.x - .001F && visible.y >= allowed.y - .001F &&
+                               visible.x + visible.width <= allowed.x + allowed.width + .001F &&
+                               visible.y + visible.height <= allowed.y + allowed.height + .001F;
+        if (!contained) {
+            std::cout << "escaped visible glyph x=[" << visible.x << ',' << visible.x + visible.width << "] y=["
+                      << visible.y << ',' << visible.y + visible.height << "] allowed_y=[" << allowed.y << ','
+                      << allowed.y + allowed.height << "]\n";
+        }
+        check(contained, "constrained Segmented glyph escaped its allocated slot/item");
+    }
+    return visible_count;
+}
+
+void constrained_content_clipping(bool rich) {
+    const String multiline{u8"Alpha\nBeta\nGamma"};
+    Signal<LogicalLength> height{dp(32)};
+    Signal<bool> vertical{false};
+    std::optional<runtime::ComponentId> icon;
+    int rich_runs{};
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true), FlexContent{[&] {
+                 auto first = SegmentedOption{u8"a", multiline};
+                 if (rich) {
+                     first
+                         .content(SegmentedLabel{[&] {
+                             ++rich_runs;
+                             Flex(FlexProps{}.vertical(true), FlexContent{[&] { Text(multiline); }});
+                         }})
+                         .icon(SegmentedIcon{[&] {
+                             Icon(IconProps{}.name(IconName::SearchOutlined));
+                             icon = f.services.text().mounted_texts().back().component;
+                         }});
+                 }
+                 Segmented(
+                     SegmentedProps{}.block().vertical(vertical).layout(LayoutStyle{}.width(dp(300)).height(height)),
+                     {first, {u8"b", u8"B"}});
+                 Text(u8"Following content");
+             }});
+    }});
+    sync(f);
+    const auto id = f.services.segmented().mounted()[0];
+    const auto original = f.services.segmented().snapshot(id);
+    const auto& label = label_text(f, multiline.view());
+    const auto& second = label_text(f, String{u8"B"}.view());
+    for (bool orientation : {false, true}) {
+        vertical.set(orientation);
+        for (float allocated_height : {32.0F, 12.0F, 4.0F, 0.0F, 96.0F}) {
+            height.set(dp(allocated_height));
+            sync(f);
+            const auto item = bounds(f, original.items[0]);
+            const auto& wrappers = f.nodes.require(f.services.components().root(original.items[0])).children;
+            const auto slot = f.nodes.require(wrappers.back()).bounds;
+            const auto allowed = graphics::intersect_effect_bounds(item, slot);
+            std::cout << "glyph clipping rich=" << rich << " vertical=" << orientation << " height=" << allocated_height
+                      << " item_height=" << item.height << '\n';
+            static_cast<void>(check_glyph_containment(f, label.scene, item));
+            const auto visible = check_glyph_containment(f, label.scene, allowed);
+            const auto second_item = bounds(f, original.items[1]);
+            const auto second_wrapper =
+                f.nodes.require(f.services.components().root(original.items[1])).children.back();
+            static_cast<void>(check_glyph_containment(
+                f, second.scene,
+                graphics::intersect_effect_bounds(second_item, f.nodes.require(second_wrapper).bounds)));
+            if (icon) {
+                const auto icon_slot = f.nodes.require(wrappers.front()).bounds;
+                for (auto layer : f.services.text().icon_snapshot(*icon).layers) {
+                    const auto icon_visible =
+                        check_glyph_containment(f, layer, graphics::intersect_effect_bounds(item, icon_slot));
+                    check(icon_slot.height > 0 || icon_visible == 0, "zero-height icon slot retained visible glyphs");
+                }
+            }
+            check(slot.height > 0 || visible == 0, "zero-height label slot retained visible glyphs");
+            if (allocated_height == 32 || allocated_height == 96) {
+                check(visible > 0, "clipping hid all label glyphs with available content height");
+            }
+            if (allocated_height == 32) {
+                static_cast<void>(
+                    f.services.focus().request_focus(interaction(f, original.items[0]), FocusModality::keyboard));
+                sync(f);
+                check(std::ranges::any_of(f.services.rounded_effects().packed_instances(),
+                                          [&](const auto& effect) {
+                                              const auto& g = effect.geometry;
+                                              return g.shape.rect == item &&
+                                                     g.kind == graphics::RoundedEffectKind::outline &&
+                                                     g.outline_width == 3 && effect.material.opacity > 0 &&
+                                                     (!g.ancestor_clip || g.ancestor_clip->bounds.height > item.height);
+                                          }),
+                      "slot clipping removed or clipped the item's focus ring");
+                check(std::ranges::any_of(f.services.rounded_effects().packed_instances(),
+                                          [&](const auto& effect) {
+                                              const auto& g = effect.geometry;
+                                              return g.shape.rect == item &&
+                                                     g.kind == graphics::RoundedEffectKind::outer_shadow &&
+                                                     g.blur > 0 && effect.material.opacity > 0 &&
+                                                     effect.material.color.alpha() > 0 &&
+                                                     (!g.ancestor_clip || g.ancestor_clip->bounds.height > item.height);
+                                          }),
+                      "slot clipping removed or clipped the item's selected shadow");
+            }
+            check(f.services.segmented().snapshot(id).items == original.items && rich_runs == (rich ? 1 : 0),
+                  "height/clip updates remounted item content");
+        }
+    }
+}
+
 void controlled_and_keyboard() {
     Signal<String> value{String{u8"a"}};
     Signal<bool> vertical{false};
@@ -621,6 +741,8 @@ int main() {
         std::cout << "controlled/default keyboard focus passed\n";
         reactive_identity_and_capture();
         std::cout << "reactive identity and capture passed\n";
+        constrained_content_clipping(false);
+        constrained_content_clipping(true);
         for (float scale : {1.0F, 1.25F, 1.5F, 2.0F}) {
             intrinsic_content_geometry(scale);
             real_geometry(scale);

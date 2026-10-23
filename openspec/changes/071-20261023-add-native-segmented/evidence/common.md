@@ -2,6 +2,8 @@
 
 2026-10-24 P2 复核补充：首次验收的 wrapper containment 和可继承颜色断言不足以证明 icon 旁的 label 实际可见或纯文本居中；该缺口已通过实际 Text/glyph 几何回归复现并修复，见 [P2 内容测量验收](p2-content-measurement.md)。以下首次验收数据保留为历史记录。
 
+随后 R2 发现受限高度下多行 glyph 可越过 item；已先复现，再通过 slot content clip 修复，并验证 focus/shadow 不受该 clip 限制，见 [R2 受限高度裁剪](r2-constrained-content.md)。
+
 ## 检出与环境
 
 - 从已提交的 `69689046bc9a99b94c98086cb3c849b79015acbc` 开始，独立分支 `t3/native-segmented-component`。
