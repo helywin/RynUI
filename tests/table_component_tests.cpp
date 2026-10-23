@@ -1,6 +1,7 @@
 #include "component/table_component.hpp"
 #include "component/pagination_component.hpp"
 #include "component/selection_component.hpp"
+#include "component/select_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
 #include <map>
@@ -272,7 +273,8 @@ void scroll_theme_and_nested_cleanup() {
     const auto first = s.rows[0].cells;
     const auto alpha_text = f.services.text().mounted_texts().front().scene;
     const auto shapes = f.scene.text_state(alpha_text).counters().shape_count;
-    check(f.inputs.dispatch(ScrollInputEvent{100, 100, s.body.x + 10, s.body.y + 10}), "Table wheel was not consumed");
+    check(f.inputs.dispatch(ScrollInputEvent{100, -100, s.body.x + 10, s.body.y + 10}),
+          "Table down wheel was not consumed");
     sync(f);
     s = f.services.table().snapshot(id);
     check(s.scroll_x == s.maximum_x && s.scroll_y == s.maximum_y && runs["a"] == 1 && s.rows[0].cells == first,
@@ -280,6 +282,9 @@ void scroll_theme_and_nested_cleanup() {
     check(std::abs(bounds(f, s.rows[0].component).y - (s.body.y - s.scroll_y)) < 0.001F,
           "scroll did not translate retained row geometry");
     check(f.scene.text_state(alpha_text).counters().shape_count == shapes, "scroll reshaped retained text");
+    check(f.inputs.dispatch(ScrollInputEvent{0, 100, s.body.x + 10, s.body.y + 10}), "Table up wheel was not consumed");
+    sync(f);
+    check(f.services.table().snapshot(id).scroll_y == 0, "positive Y wheel did not return body to top");
     name_width.set(150.0F);
     sync(f);
     s = f.services.table().snapshot(id);
@@ -321,6 +326,69 @@ void scroll_theme_and_nested_cleanup() {
     check(f.inputs.mounted_inputs().empty() && f.services.table().mounted().empty() &&
               f.services.interactions().size() == 0 && f.scene.size() == 0 && f.services.surfaces().size() == 0,
           "nested Table resources leaked");
+}
+
+void retained_select_popup_wheel_and_anchor() {
+    Fixture f;
+    Signal<std::vector<Row>> source{data()};
+    int cell_runs{};
+    std::vector<SelectOption> options;
+    for (int i = 0; i < 20; ++i) {
+        options.push_back({i, String::from_utf8(std::to_string(i)).value()});
+    }
+    f.services.mount(Content{[&] {
+        Table(TableProps<Row>{}
+                  .dataSource(source)
+                  .rowKey([](const Row& row) { return row.id; })
+                  .columns({TableColumn<Row>{
+                      u8"value", u8"Value",
+                      [&](TableCell<Row> cell) {
+                          ++cell_runs;
+                          if (cell.key() == String{u8"a"}) {
+                              Select(SelectProps{}.options(options).open(true).listHeight(64.0F).layout(
+                                  LayoutStyle{}.width(dp(200))));
+                          } else {
+                              Text(TextProps{}.content(bind([cell] { return cell.value().name; })));
+                          }
+                      }}.width(400.0F)})
+                  .layout(LayoutStyle{}.width(dp(400)))
+                  .scrollY(180.0F));
+    }});
+    sync(f);
+    const auto table = f.services.table().mounted().front();
+    const auto select = f.services.select().mounted().front();
+    const auto original = f.services.select().snapshot(select);
+    auto next = data();
+    next[0].amount = 99;
+    source.set(next);
+    sync(f);
+    auto menu = f.services.select().snapshot(select);
+    const auto body = f.services.table().snapshot(table).body;
+    check(menu.visible && !menu.above && menu.popup.y + 10 < body.y + body.height &&
+              menu.selector == original.selector && menu.rows == original.rows && cell_runs == 4,
+          "Select popup regression requires retained overlapping popup/body");
+    check(f.inputs.dispatch(ScrollInputEvent{0, -1, menu.popup.x + 10, menu.popup.y + 10}), "popup wheel unhandled");
+    sync(f);
+    check(f.services.select().snapshot(select).scroll > menu.scroll && f.services.table().snapshot(table).scroll_y == 0,
+          "Table consumed Select popup wheel");
+    const auto anchor = bounds(f, select);
+    check(f.inputs.dispatch(ScrollInputEvent{0, -0.5F, body.x + body.width - 5, body.y + 10}), "body wheel unhandled");
+    sync(f);
+    menu = f.services.select().snapshot(select);
+    const auto moved_anchor = bounds(f, select);
+    const auto gap = f.services.components().theme_scope(select)->snapshot().select().metrics.gap;
+    check(moved_anchor.y < anchor.y && std::abs(menu.popup.y - (moved_anchor.y + moved_anchor.height + gap)) < 0.01F,
+          "Select popup did not follow Table transform in the same synchronization");
+    check(f.inputs.dispatch(ScrollInputEvent{0, 0.5F, body.x + body.width - 5, body.y + 10}),
+          "body up wheel unhandled");
+    sync(f);
+    check(f.services.table().snapshot(table).scroll_y == 0 &&
+              std::abs(f.services.select().snapshot(select).popup.y - original.popup.y) < 0.01F,
+          "Select popup anchor did not return with body");
+    f.services.destroy(table);
+    sync(f);
+    check(f.services.select().mounted().empty() && f.services.interactions().size() == 0,
+          "retained Select popup leaked after Table cleanup");
 }
 
 void callbacks_can_destroy_table() {
@@ -396,6 +464,7 @@ int main() {
         retained_business_rows();
         controlled_sort_selection_pages();
         scroll_theme_and_nested_cleanup();
+        retained_select_popup_wheel_and_anchor();
         callbacks_can_destroy_table();
         inactive_new_rows_do_not_steal_focus();
     } catch (const std::exception& e) {

@@ -950,7 +950,7 @@ bool TableComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
             continue;
         }
         const auto x = std::clamp(s->scroll_x + event.delta_x * 32.0F, 0.0F, s->maximum_x);
-        const auto y = std::clamp(s->scroll_y + event.delta_y * 32.0F, 0.0F, s->maximum_y);
+        const auto y = std::clamp(s->scroll_y - event.delta_y * 32.0F, 0.0F, s->maximum_y);
         if (x == s->scroll_x && y == s->scroll_y) {
             return false;
         }
