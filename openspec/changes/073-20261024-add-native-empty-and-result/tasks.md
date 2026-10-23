@@ -10,7 +10,7 @@
 
 ## 3. 平台通用 retained 实现
 
-- [ ] 3.1 实现固定 slot 身份、reactive 标签/状态/主题、有限宽度居中换行、短/零约束裁剪与原生 extra 操作；使用实际 node/text/glyph/surface、Button 激活、Input 编辑保持与释放测试，在同一 MSVC headless 构建树通过 Debug/Release 后格式检查和本地提交。
+- [x] 3.1 实现固定 slot 身份、reactive 标签/状态/主题、有限宽度居中换行、短/零约束裁剪与原生 extra 操作；使用实际 node/text/glyph/surface、Button 激活、Input 编辑保持与释放测试，在同一 MSVC headless 构建树通过 Debug/Release 后格式检查和本地提交。
 
 ## 4. 平台通用收口
 

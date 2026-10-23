@@ -9,6 +9,14 @@ foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_test(NAME rynui.${presentation_test} COMMAND rynui_${presentation_test}_tests)
 endforeach()
 
+add_executable(rynui_empty_result_component_tests empty_result_component_tests.cpp)
+rynui_configure_cpp_target(rynui_empty_result_component_tests)
+target_link_libraries(rynui_empty_result_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_empty_result_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.empty_result_component COMMAND rynui_empty_result_component_tests)
+
 foreach(feedback_test IN ITEMS feedback_public_api feedback_theme feedback_component)
     add_executable(rynui_${feedback_test}_tests ${feedback_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${feedback_test}_tests)

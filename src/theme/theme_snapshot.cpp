@@ -4775,10 +4775,12 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     if (inherit_empty) {
         empty = parent->empty();
     } else if (config.empty.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.empty.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        empty = derive_empty(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        empty = [&] {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.empty.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            return derive_empty(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        }();
     } else {
         empty = derive_empty(seed, map, alias);
     }
@@ -4790,10 +4792,13 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
     if (inherit_result) {
         result = parent->result();
     } else if (config.result.algorithm) {
-        auto component_seed = seed;
-        apply_seed_override(component_seed, config.result.seed);
-        const auto component_map = derive_map(component_seed, algorithms);
-        result = derive_result(component_seed, component_map, derive_alias(component_seed, component_map, algorithms));
+        result = [&] {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.result.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            return derive_result(component_seed, component_map,
+                                 derive_alias(component_seed, component_map, algorithms));
+        }();
     } else {
         result = derive_result(seed, map, alias);
     }
