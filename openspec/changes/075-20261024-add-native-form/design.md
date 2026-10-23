@@ -1,0 +1,33 @@
+# Design
+
+## Context
+
+参见 proposal.md。发现结果：Input/Select 使用 InputRef；Checkbox 有独立 CheckboxRef；InputNumber 与 Input 共用 editor 和 ref。控件的 value/checked 与 onChange 必须显式连接，且 InputNumber 保留未完成数字草稿。WindowComponentServices 共同管理组件生命周期、branch active、Modal 边界和 Spin input block；新 host 应复用这些能力，不注册窗口 Enter filter。Form support overlay 当前为 planned；本次按委派范围保留它供父线程整合。
+
+视觉基线锁定 Ant Design 6.6.5 commit `4a39f54842eade4e565ab336ef6097cd7e723cdd`，来源 `components/form/style/index.ts` 及已有 sources.lock/catalog。Context7 查询提供行为参考，版本锁定源优先。
+
+## Goals / Non-Goals
+
+**Goals:** 完整纵向原生表单、可编译显式绑定示例、增量状态与真实控件端到端 headless 验证。
+
+**Non-Goals:** proposal 列出的扩展不进入首版；不修改现有控件默认键盘行为，不提供隐式全树采值、自动禁用任意 slot 或完整 Web name/required 语义。
+
+## Decisions
+
+1. `FormField<T>` 支持闭合类型集合 String、optional<double>、bool、SelectSelection。值由 field handle 保留，初值在创建时固定；可选择 Prop<T> 与 onChange 的外部受控模式。`value()`、`onChange()`、`status()`、`disabled()`、`readOnly()`/`uneditable()` 是显式适配入口。拒绝不同 field 重复 name、同一 field 同时重复注册和嵌套 Form。比任意 JSON/store 反射更贴合既有 typed API。
+2. `FormItemProps::field(name, field)` 在最近的 Form scope 中注册；注册序列决定结果和焦点顺序。卸载立即移除结果和错误，handle 保留值；再次挂载创建新 registration ticket。隐藏/被阻止的已注册字段保留值及校验，但不获得焦点；整个表单被隐藏/Modal 排除/Spin 阻止时 ref 验证与提交拒绝执行。disabled 阻止提交及编辑回调，readOnly 阻止编辑但允许提交；程序 set/reset 不受编辑 gate 限制。
+3. required 对 String 检查空串，对 optional 检查空值，对 bool 要求 true；数字必须有限。custom validator 返回空 String 表示通过，异常向调用者传播且不提交部分错误。校验只在 validate/submit 显式触发；值改变清除该字段错误，不重跑 validator。校验 snapshot + revision 防止回调改值/卸载后提交旧结果；旧事务返回 out_of_date，仍存活时进入失败回调。递归 validate/submit/reset 拒绝执行。
+4. FormRef 为带弱生命周期的命令对象，提供 bound/validate/submit/reset；提交回调取得拥有值的结果快照。FormItem 的 focus 回调显式调用真实 InputRef/CheckboxRef；submit 依次尝试无效且可交互字段，不能越过 branch/input/Modal 边界。保持控件自身焦点资格检查，不增加私有路由。
+5. Form/FormItem 使用 retained wrapper 和原生 Text；标签、必填标记、help/error 通过 Signal/Prop 更新，不重执行 content slots。空标签/反馈行退出布局流，真实 node 的 layout_size/out_of_flow、branch visibility 与 ancestor clip 一致。只实现纵向布局；外部尺寸由 LayoutStyle 控制。
+6. 新增 typed Form Theme colors/metrics、override/algorithm、subscription/serialization，新增 snapshot 解析块使用引用捕获 IIFE，保留既有 24 顺序块及 Theme bridge/commit_snapshot 栈修复。金样除 identity 和新 Form keys 外所有值语义相等。
+
+## Risks / Trade-offs
+
+- 用户回调可重入及同步销毁 → 复制 callback/value snapshot，shared model + weak host lifetime、registration generation 和 revision 校验；销毁后 held refs/旧 change callbacks 惰性失效。
+- 受控 reset 依赖应用回写 → 仅发初值 callback，不伪造外部 authority；文档和测试明确拒绝回写的行为。
+- required 与自定义规则跨字段读依赖 → 校验事务检测改值，不提供自动 dependencies 或异步调度。
+- 首版布局覆盖有限 → 明确纵向与无自动滚动边界；仍验证实际节点/glyph clip、窄宽及 token 更新。
+
+## Migration Plan
+
+纯新增 API，无依赖/ABI 后端修改。按规划、模型、集成验收分阶段本地英文 Conventional Commits；用户明确禁止 push/远端分支/PR/archive，父线程负责合并。独立构建树使用官方 windows-msvc-headless、MSVC、Ninja Multi-Config，Debug/Release 定向 CTest，最多 4 jobs；只可复用依赖源缓存，不复用其他构建树二进制。无 native GPU/Linux/系统 IME 验收声明。
