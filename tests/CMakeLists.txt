@@ -1,6 +1,41 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_time_picker_review_tests time_picker_review_tests.cpp)
+rynui_configure_cpp_target(rynui_time_picker_review_tests)
+target_link_libraries(rynui_time_picker_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_time_picker_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(review_case IN ITEMS open activation reset cycles focus row_focus)
+    add_test(NAME rynui.time_picker_review_${review_case} COMMAND rynui_time_picker_review_tests ${review_case})
+endforeach()
+
+add_executable(rynui_time_navigation_merge_tests time_navigation_merge_tests.cpp)
+rynui_configure_cpp_target(rynui_time_navigation_merge_tests)
+target_link_libraries(rynui_time_navigation_merge_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_time_navigation_merge_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.time_navigation_merge COMMAND rynui_time_navigation_merge_tests)
+
+foreach(time_test IN ITEMS time_picker_model time_picker_public_api)
+    add_executable(rynui_${time_test}_tests ${time_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${time_test}_tests)
+    target_link_libraries(rynui_${time_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
+endforeach()
+
+foreach(time_test IN ITEMS time_picker_component time_picker_theme time_picker_integration)
+    add_executable(rynui_${time_test}_tests ${time_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${time_test}_tests)
+    target_link_libraries(rynui_${time_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${time_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
+endforeach()
+
 foreach(date_test IN ITEMS date_picker_model date_picker_public_api)
     add_executable(rynui_${date_test}_tests ${date_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${date_test}_tests)

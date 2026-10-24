@@ -110,6 +110,7 @@ public:
     [[nodiscard]] InputTextLayers text_layers(runtime::ComponentId) const;
     [[nodiscard]] InputDisplaySnapshot display_snapshot(runtime::ComponentId) const;
     [[nodiscard]] InputStatus status(runtime::ComponentId) const;
+    [[nodiscard]] bool focused(runtime::ComponentId) const;
     [[nodiscard]] ControlSize size(runtime::ComponentId) const;
     [[nodiscard]] InputVariant variant(runtime::ComponentId) const;
     [[nodiscard]] InputNumberValue number_value(runtime::ComponentId) const;

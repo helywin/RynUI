@@ -124,6 +124,7 @@ Linux 也提供 `linux-clang` presets。Release 构建和更多环境配置见[�
 - [Select](docs/select.md)：单选/搜索/动态选项、键盘与窗口层、主题和首版范围。
 - [Card](docs/card.md)：内容区域组合、尺寸与主题、loading 保留状态和子控件交互。
 - [Breadcrumb](docs/breadcrumb.md)、[Steps](docs/steps.md)：保留富内容的层级导航、步骤状态与原生键盘交互。
+- [Form](docs/form.md)、[DatePicker](docs/date-picker.md)、[TimePicker](docs/time-picker.md)：显式字段绑定、同步校验与单日期/时间输入的原生首版范围。
 - [组件收尾](docs/component-completion.md)：已有组件的原生功能缺口与实施顺序。
 - [第三方依赖与锁定规则](docs/development/third-party.md)：版本、来源、校验与许可证信息。
 - [OpenSpec 开发工具](docs/development/openspec.md)：pnpm 全局安装、配套版本与校验命令。

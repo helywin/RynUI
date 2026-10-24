@@ -180,6 +180,10 @@ enum class TokenIdentity : std::uint8_t {
     steps_colors,
     steps_metrics,
     steps_effects,
+    time_picker_colors,
+    time_picker_metrics,
+    time_picker_effects,
+    time_picker_order,
     count,
 };
 

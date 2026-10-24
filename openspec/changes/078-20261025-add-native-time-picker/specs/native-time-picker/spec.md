@@ -26,6 +26,10 @@
 - **WHEN** 分钟步长为 15，用户选择一个允许的小时和 30 分；随后禁用规则变为全部不可选
 - **THEN** 前一选择可提交，之后确认不可提交，键盘与滚轮操作不会无限搜索或产生持续空闲帧
 
+#### Scenario: 合法但未改变待选值的行激活
+- **WHEN** 空选择的即时模式激活合法 00 行，或用户点击已选分钟行后按 Down
+- **THEN** 前者 SHALL 请求有效 00:00:00；后者 SHALL 由分钟列处理导航；合法激活不依赖待选值差异，禁用行不激活
+
 ### Requirement: 确认、取消与受控 authority
 
 系统 SHALL 支持受控/默认值与开合。默认确认模式中面板选择仅修改待提交时间，确认或 Enter 才请求值并关闭；Escape/外部关闭放弃未提交面板改动。可选即时模式 SHALL 在合法列选择时请求值并保持面板可继续选择。受控值始终以父级为准。
@@ -34,6 +38,14 @@
 - **WHEN** 受控值为 08:00:00，用户在面板改为 09:15:00 后按 Escape，或确认后父级拒绝回写
 - **THEN** 取消不发值变更；受控拒绝后公开值与显示仍为父级接受值，不把内部待提交值冒充已接受值
 
+#### Scenario: 受控开合 authority 与强制边界
+- **WHEN** 受控 open=true 的父级拒绝 Escape、OK、Cancel 或外部点击发出的关闭请求
+- **THEN** 弹层 SHALL 保持打开且允许重试；只有 Modal/Spin、祖先隐藏、禁用或窗口失活等强制边界独立抑制旧弹层，边界恢复后必须有显式打开请求才能恢复
+
+#### Scenario: 程序化新开合周期
+- **WHEN** 一个已聚焦的周期关闭后，父级再次程序化打开且本周期尚未获得焦点
+- **THEN** 弹层 SHALL 保持打开，不使用前一周期的 focus tracking 解释一次不存在的新失焦
+
 ### Requirement: 保留控件与输入边界
 
 系统 SHALL 支持清空、禁用、只读输入、三尺寸、已有 Input 变体/状态、typed footer 与安全 ref。普通更新 SHALL 保持 Input、编辑会话和 footer 身份；隐藏、Modal/Spin 边界及销毁 SHALL 清理或抑制旧弹层，子 popup 和 footer 滚动控件先处理其输入。
@@ -41,6 +53,18 @@
 #### Scenario: footer 与隐藏恢复
 - **WHEN** footer 放置 Input、Select 或有限滚动 Table，随后隐藏并恢复 TimePicker 或切换 Modal/Spin 边界
 - **THEN** footer 的正常输入与子浮层优先处理，旧弹层不会无请求复活，保留内容身份和已接受草稿，失效 ref 安全失败
+
+#### Scenario: 同值 Form reset 与 retained 草稿
+- **WHEN** String field adapter 的接受值仍为 08:00:00，而用户留下完整/未完成输入、preedit 或被受控父级拒绝的面板待选值后执行 Form reset
+- **THEN** TimePicker SHALL 无值回调地重置自身 model、文本与待确认值；随后 Enter 不复活旧草稿；普通 validation/help/Theme 更新仍保留编辑草稿，过期 reset generation 不作用于新控件；authority Binding 读取时同步销毁 owner SHALL 安全返回
+
+#### Scenario: 关闭 footer 的焦点交付
+- **WHEN** NORMAL motion 下聚焦的 footer Input 因 Escape 关闭弹层
+- **THEN** 正常 deferred focus/blur 交付 SHALL 使 onBlur 恰好一次、Input 内部焦点与 text session 一致，结束隐藏 caret deadline 并恢复 selector；同步销毁或重新打开不得复用过期焦点 generation
+
+#### Scenario: 行点击期间 footer 失焦改变面板
+- **WHEN** 用户编辑 footer Input 后点击可见小时行，而 onBlur 卸载、重建、隐藏或禁用 TimePicker，或更新受控值、rules、needConfirm
+- **THEN** 行激活 SHALL 在焦点交付后重新检查同一 generation 的有效状态；卸载或不可交互时不提交，复用 ref 的新组件不受旧事件影响；有效面板只使用回调后的 model 与确认方式
 
 ### Requirement: Theme 与有限可见范围
 

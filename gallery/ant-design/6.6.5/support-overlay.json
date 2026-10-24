@@ -739,16 +739,33 @@
     },
     {
       "identity": "ant.component.time-picker",
-      "status": "planned",
-      "summary": "时间选择框（TimePicker）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 TimePicker 首版提供 typed 单时间、严格 24 小时输入、保留时分秒列、确认/即时提交、步长与禁用规则；支持受控开合、键盘、Form String 适配重置及 Theme，范围和复杂格式后续扩展。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed optional TimeOfDay, strict HH:mm:ss and minute-only HH:mm parsing/formatting",
+        "retained Input and scrollable hour/minute/second columns, pointer/keyboard selection and wheel-only scrolling",
+        "pending confirmation or immediate legal-row commit, controlled/default value and open authority",
+        "finite step/range/disabled rules, clear, inputReadOnly, three sizes and four Input variants/status",
+        "typed retained footer/ref, explicit String Form adapter reset and ordinary-update draft preservation",
+        "child DatePicker/Select/Dropdown/Table ownership, Modal/Spin/hidden suppression and footer blur/session cleanup",
+        "component Theme inheritance/algorithm/overrides with final metric and descendant publication validation"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "RangePicker, 12-hour/millisecond modes, locale/free formats, Now/presets and changeOnScroll",
+        "animations and full Ant Design Web/DOM/CSS API",
+        "interactive TimePicker Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/time-picker/index.en-US.md"
+        "source:components/time-picker/index.en-US.md",
+        "openspec:078-20261025-add-native-time-picker",
+        "api:include/ryn/time_picker.hpp",
+        "runtime:src/component/time_picker_component.cpp",
+        "test:rynui.time_picker_model",
+        "test:rynui.time_picker_public_api",
+        "test:rynui.time_picker_component",
+        "test:rynui.time_picker_theme",
+        "test:rynui.time_picker_integration",
+        "test:rynui.time_picker_review_reset"
       ]
     },
     {

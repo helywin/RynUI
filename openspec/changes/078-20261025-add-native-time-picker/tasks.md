@@ -2,12 +2,40 @@
 
 ## 1. 平台通用：时间值、模型与 API
 
-- [ ] 1.1 实现有效时间值、可空选择、严格两种格式、有限步长/范围/禁用、待提交与受控模型、typed Props/ref/footer API；编写 docs/time-picker.md 的模型合同与首版限制，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug、Release 通过 model/public API tests，覆盖 00/23:59:59、非法/未完成输入、分钟精度、全禁用、受控拒绝和取消。
+- [x] 1.1 实现有效时间值、可空选择、严格两种格式、有限步长/范围/禁用、待提交与受控模型、typed Props/ref/footer API；编写 docs/time-picker.md 的模型合同与首版限制，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug、Release 通过 model/public API tests，覆盖 00/23:59:59、非法/未完成输入、分钟精度、全禁用、受控拒绝和取消。
 
 ## 2. 平台通用：保留面板与 Theme
 
-- [ ] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
+- [x] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
 
 ## 3. 平台通用：集成收口
 
-- [ ] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
+- [x] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
+
+## 4. 平台通用：合并已验收 DatePicker / Form 基线
+
+- [x] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，并在 R1 已验证提交 `21c863c` 后显式 merge Date reset worker `0e0f11f7cb903f6b629ce02d5561621fbdb5cee4`；保留 Date/Form/Time 的 API、Theme/IIFE/identity、宿主与内容先行的 Date/Time/Dropdown 边界链，合并后只有一个共享 reset hook，保留 focused 诊断。以 `78c4adf` 和 `0fdefbae` 双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests 与新增 Date/Time review tests，记录实际复现、工具检查和独立本地 merge commit；不 push，Gallery 仅随干净父提交进入，不自行修改。
+
+## 5. 平台通用：Astra R1 五项 P2 修复
+
+- [x] 5.1 先复现受控 open 关闭请求被私自隐藏；区分普通关闭与强制边界 suppression，验证 Escape/OK/Cancel/outside 的接受、拒绝及重试。
+- [x] 5.2 先复现空值即时模式激活合法 00 行未发布、已选分钟行未切换 active column；验证真实 pointer、后续键盘、禁用行与受控拒绝。
+- [x] 5.3 先复现同一接受值的实际 String Form adapter reset 保留未提交草稿；通过最小内部 owner reset hook 清理 model/显示/preedit/待确认值，保留普通 validation/help/Theme 更新的草稿与失效 generation 安全；验证读取 authority 时同步销毁 owner 后安全返回。
+- [x] 5.4 先复现关闭后 stale focus tracking 使程序化新 open 周期立即关闭；验证重复程序化打开、defaultOpen 与边界恢复。
+- [x] 5.5 先复现 footer Input Escape 缺失 onBlur；保留正常 deferred focus/blur 交付，验证 NORMAL motion 的内部焦点、session/caret 清理、selector restore、同步销毁/重新打开与 generation。
+
+## 6. 平台通用：Astra R2 行激活焦点回调生命周期
+
+- [x] 6.1 先用真实 pointer 行点击与 footer Input onBlur 复现 focus 转移后访问旧 owner/失效提交；在 choose 的 focus 回调后重取同一 generation，校验当前 scope、visible、disabled、窗口和输入边界，使用新的 model/needConfirm。覆盖即时/确认模式销毁、复用 ref 创建新 generation，以及存活 owner 的关闭、禁用、Spin/Modal/窗口/祖先阻断、受控值/rules/needConfirm 更新；保留全部 R1/Date reset 回归，定向 Debug/Release、fresh goldens 与工具检查通过后本地提交，不运行无关完整矩阵或合入新 main。
+
+## 7. 平台通用：已发布 Nav 与 Time 的独立合并验收
+
+- [x] 7.1 从干净 `1116a99` 显式 merge `c083fed5a72f644b491118c6440908e0354d241e`，保留双方 API/host/测试与父 Gallery 原文；语义合并完整 Theme 链和 main 既有 TokenIdentity，Time 只追加在 Breadcrumb/Steps 之后，保留 main 30 个 IIFE 原文/顺序及静态默认参数、heap preflight/self guard/binding bridge、唯一 Input reset hook、popup 相对合同。官方 MSVC windows-msvc-headless Ninja Multi-Config、max4jobs 实际构建 Debug/Release，共同的去重定向 union 各跑一次，含 Time 全集、Date/Form、Nav component/Theme/R1 富子控件与 focus、两种 hidden_blur lifetime、Theme/默认scope/Button/Modal/Spin/backend guard；从新 binary 生成五份 goldens，深比较 main 全部旧值与 Time 基线全部旧值（只允许 identity 和各自新组件），完成源/API 保留检查、format/doctor/strict/diff 和冲突证据后创建本地 merge commit。旧独立 Astra 结论不代替新合并审查；不重跑 Gallery 长用例、无关完整矩阵，不 push 或修改父树。
+
+实际 44 项清单、双配置构建/执行、同窗口共存例、双基线 typed values 与源/API 保留证据见 [nav-merge.md](evidence/nav-merge.md)。新合并独立审查仍由父线程安排。
+
+## 8. 父线程 main 交付
+
+- [x] 8.1 全新独立 Astra R4 通过后，将 `a671835` 合入含 082 导航 Gallery 的 main，保持已审查 Core/Theme/host/测试与已发布 Gallery，引用 worker 实际 Debug/Release 44 项及独立复验；更新 TimePicker partial 目录与文档入口，在父树重建 Gallery/frame/catalog targets 并通过 inventory、八项 contracts、generator、格式、doctor/strict/diff 后提交推送 main，核对远端 SHA。079 时间 Gallery 与最终完整 frame/native 保持独立，不推送 t3 分支。
+
+独立 R4、父树实际构建与 inventory/contracts、源码/金样保留及平台边界见 [main-integration.md](evidence/main-integration.md)。

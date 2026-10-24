@@ -85,6 +85,10 @@ public:
     [[nodiscard]] const DropdownThemeToken& dropdown_effects() const;
     [[nodiscard]] const DropdownThemeToken& dropdown_order() const;
     [[nodiscard]] const SelectThemeToken& select_colors() const;
+    [[nodiscard]] const TimePickerThemeToken& time_picker_colors() const;
+    [[nodiscard]] const TimePickerThemeToken& time_picker_metrics() const;
+    [[nodiscard]] const TimePickerThemeToken& time_picker_effects() const;
+    [[nodiscard]] const TimePickerThemeToken& time_picker_order() const;
     [[nodiscard]] const SelectThemeToken& select_metrics() const;
     [[nodiscard]] const SelectThemeToken& select_typography() const;
     [[nodiscard]] const SelectThemeToken& select_effects() const;

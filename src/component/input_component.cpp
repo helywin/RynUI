@@ -2943,6 +2943,14 @@ bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
     return true;
 }
 
+bool InputComponentHost::focused(runtime::ComponentId component) const {
+    const auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::out_of_range("Input focus owner is stale");
+    }
+    return state->focused;
+}
+
 std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>>
 capture_form_input(const InputRef& reference) {
     if (!reference.state_ || !reference.state_->binding) {
