@@ -2,7 +2,9 @@
 
 ## 1. 平台通用：Form 样例
 
-- [ ] 1.1 在已合入的 075 上追加真实 Form 和四种已有字段类型、提交/失败聚焦/重置/禁用/只读操作及稳定标识；Form 目录直达样例，增加聚焦 Recording 入口并纳入完整 frame，验证真实输入和错误/结果、同值数字草稿 reset、身份及三个 Theme/两种宽度 clip；实测 inventory，更新 Form API docs/支持范围，通过 generator/八项 contracts、格式、doctor、strict 与 diff check。
+- [x] 1.1 在已合入的 075 上追加真实 Form 和四种已有字段类型、提交/失败聚焦/重置/禁用/只读操作及稳定标识；Form 目录直达样例，增加聚焦 Recording 入口并纳入完整 frame，验证真实输入和错误/结果、同值数字草稿 reset、身份及三个 Theme/两种宽度 clip；实测 inventory，更新 Form API docs/支持范围，通过 generator/八项 contracts、格式、doctor、strict 与 diff check。
+
+验收证据：[Form 阶段 MSVC Recording](evidence/stage1-form-msvc-recording.md)。平台通用验证实际使用 Windows / `windows-msvc-debug`；整体进度仅 1/4。
 
 ## 2. 平台通用：DatePicker 样例
 
