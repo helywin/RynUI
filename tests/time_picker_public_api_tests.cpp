@@ -1,4 +1,6 @@
 #include <ryn/time_picker.hpp>
+#include <ryn/button.hpp>
+#include <ryn/text.hpp>
 #include <type_traits>
 
 using namespace ryn;
@@ -27,6 +29,22 @@ static_assert(std::same_as<decltype(TimePickerProps{}
                            TimePickerProps&>);
 static_assert(!std::constructible_from<TimePickerFooter, InputSuffix>);
 static_assert(TimeOfDay{23, 59, 59}.second() == 59);
+
+// Kept in sync with docs/time-picker.md; this compiles and links the real API.
+void time_picker_example(Signal<TimePickerValue> value, TimePickerRef reference) {
+    TimePickerRules rules;
+    rules.minute_step = 15;
+    rules.min = TimeOfDay{8};
+    rules.max = TimeOfDay{18};
+    TimePicker(TimePickerProps{}
+                   .value(value)
+                   .ref(reference)
+                   .precision(TimePickerPrecision::Minute)
+                   .rules(rules)
+                   .onChange([value](TimePickerValue next) mutable { value.set(next); })
+                   .layout(LayoutStyle{}.width(dp(240))),
+               TimePickerFooter{[] { Text(u8"Business hours: 08:00–18:00"); }});
+}
 
 int main() {
     Signal<TimePickerValue> value{TimeOfDay{9, 30}};

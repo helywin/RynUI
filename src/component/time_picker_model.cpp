@@ -120,7 +120,6 @@ TimePickerValue TimePickerModel::candidate(TimeColumn column, int value) const {
     const TimeOfDay result{column == TimeColumn::Hour ? value : pending_.hour(),
                            column == TimeColumn::Minute ? value : pending_.minute(),
                            column == TimeColumn::Second ? value : pending_.second()};
-    // Only change this column. Other columns stay visible and can be corrected independently.
     // A row is enabled if at least one completion of its prefix is selectable.
     if (column == TimeColumn::Second) {
         return allowed(result) ? TimePickerValue{result} : TimePickerValue{};

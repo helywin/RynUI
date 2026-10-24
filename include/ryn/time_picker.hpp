@@ -49,6 +49,12 @@ struct TimePickerRules final {
     TimePickerValue min;
     TimePickerValue max;
     TimePickerDisabledTime disabled;
+
+    // Predicates cannot be compared: conservatively refresh when either is present.
+    friend bool operator==(const TimePickerRules& a, const TimePickerRules& b) {
+        return a.hour_step == b.hour_step && a.minute_step == b.minute_step && a.second_step == b.second_step &&
+               a.min == b.min && a.max == b.max && !a.disabled && !b.disabled;
+    }
 };
 
 [[nodiscard]] std::optional<TimeOfDay> parse_time_of_day(std::string_view,

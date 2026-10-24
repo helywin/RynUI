@@ -296,6 +296,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
     append_if_changed(before.empty().colors, after.empty().colors, TokenIdentity::empty_colors, changed, count);
+    append_if_changed(before.time_picker().colors, after.time_picker().colors, TokenIdentity::time_picker_colors,
+                      changed, count);
+    append_if_changed(before.time_picker().metrics, after.time_picker().metrics, TokenIdentity::time_picker_metrics,
+                      changed, count);
+    append_if_changed(before.time_picker().effects, after.time_picker().effects, TokenIdentity::time_picker_effects,
+                      changed, count);
+    append_if_changed(before.time_picker().z_index_popup, after.time_picker().z_index_popup,
+                      TokenIdentity::time_picker_order, changed, count);
     append_if_changed(before.empty().metrics, after.empty().metrics, TokenIdentity::empty_metrics, changed, count);
     append_if_changed(before.result().colors, after.result().colors, TokenIdentity::result_colors, changed, count);
     append_if_changed(before.result().metrics, after.result().metrics, TokenIdentity::result_metrics, changed, count);
@@ -1337,6 +1345,30 @@ const EmptyThemeToken& ThemeScope::empty_colors() const {
     return snapshot_->empty();
 }
 
+const TimePickerThemeToken& ThemeScope::time_picker_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::time_picker_colors);
+    return snapshot_->time_picker();
+}
+
+const TimePickerThemeToken& ThemeScope::time_picker_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::time_picker_metrics);
+    return snapshot_->time_picker();
+}
+
+const TimePickerThemeToken& ThemeScope::time_picker_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::time_picker_effects);
+    return snapshot_->time_picker();
+}
+
+const TimePickerThemeToken& ThemeScope::time_picker_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::time_picker_order);
+    return snapshot_->time_picker();
+}
+
 const EmptyThemeToken& ThemeScope::empty_metrics() const {
     ensure_owner_thread();
     record(TokenIdentity::empty_metrics);
@@ -1635,6 +1667,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Collapse.metrics",
         "Collapse.typography",
         "Collapse.effects",
+        "TimePicker.colors",
+        "TimePicker.metrics",
+        "TimePicker.effects",
+        "TimePicker.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1645,6 +1681,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
     case TokenIdentity::empty_metrics:
     case TokenIdentity::result_metrics:
+    case TokenIdentity::time_picker_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::text | DirtyPhase::hit_test;
     case TokenIdentity::alias_color_text:
     case TokenIdentity::alias_color_text_secondary:
@@ -1708,6 +1745,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::empty_colors:
     case TokenIdentity::result_colors:
     case TokenIdentity::select_order:
+    case TokenIdentity::time_picker_colors:
+    case TokenIdentity::time_picker_order:
         return DirtyPhase::paint_material;
     case TokenIdentity::alias_color_focus_outline:
         return DirtyPhase::paint_material;
@@ -1731,6 +1770,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
     case TokenIdentity::segmented_effects:
+    case TokenIdentity::time_picker_effects:
     case TokenIdentity::modal_effects:
     case TokenIdentity::drawer_effects:
     case TokenIdentity::popconfirm_effects:

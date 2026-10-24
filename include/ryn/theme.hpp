@@ -7,6 +7,7 @@
 #include <ryn/feedback_tokens.hpp>
 #include <ryn/empty_result_tokens.hpp>
 #include <ryn/segmented_tokens.hpp>
+#include <ryn/time_picker_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -595,6 +596,13 @@ struct SelectThemeConfig final {
     SeedTokenOverride seed;
     bool algorithm{};
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
+};
+
+struct TimePickerThemeConfig final {
+    TimePickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TimePickerThemeConfig&, const TimePickerThemeConfig&) = default;
 };
 
 struct CardColorToken final {
@@ -1481,6 +1489,7 @@ struct ThemeConfig final {
     SliderThemeConfig slider;
     TooltipThemeConfig tooltip;
     SelectThemeConfig select;
+    TimePickerThemeConfig time_picker;
     CardThemeConfig card;
     TabsThemeConfig tabs;
     SegmentedThemeConfig segmented;
@@ -2040,6 +2049,11 @@ public:
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
+
+    [[nodiscard]] const TimePickerThemeToken& time_picker() const noexcept {
+        return *time_picker_;
+    }
+
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
 
@@ -2115,7 +2129,7 @@ private:
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result);
+                  ResultThemeToken result, std::shared_ptr<const TimePickerThemeToken> time_picker);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2130,6 +2144,7 @@ private:
     SliderThemeToken slider_;
     TooltipThemeToken tooltip_;
     SelectThemeToken select_;
+    std::shared_ptr<const TimePickerThemeToken> time_picker_;
     CardThemeToken card_;
     TabsThemeToken tabs_;
     SegmentedThemeToken segmented_;
@@ -2155,7 +2170,13 @@ private:
     std::string diagnostic_json_;
 };
 
-[[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = {}, const ThemeSnapshot* parent = nullptr);
+namespace detail {
+// Avoid a full ThemeConfig temporary at every call site in Debug builds.
+[[nodiscard]] const ThemeConfig& default_theme_config();
+} // namespace detail
+
+[[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = detail::default_theme_config(),
+                                          const ThemeSnapshot* parent = nullptr);
 
 class ThemeProps final {
 public:

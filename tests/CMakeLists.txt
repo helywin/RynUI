@@ -8,6 +8,16 @@ foreach(time_test IN ITEMS time_picker_model time_picker_public_api)
     add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
 endforeach()
 
+foreach(time_test IN ITEMS time_picker_component time_picker_theme time_picker_integration)
+    add_executable(rynui_${time_test}_tests ${time_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${time_test}_tests)
+    target_link_libraries(rynui_${time_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${time_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
+endforeach()
+
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${presentation_test}_tests)

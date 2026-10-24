@@ -16,6 +16,32 @@
 
 小时行可用性检查该小时是否存在合法完成，分钟行检查当前小时/该分钟是否存在合法秒。选中时优先保留其他列；若不可选则使用该前缀下最早合法完成。秒列只改变秒。每次搜索至多遍历一天的 24×60×60 域，全禁用时不提交、不循环重试。导航在列端点停止。
 
+## 示例
+
+在窗口的 `Content` 中调用；`value` Signal 与 ref 由页面持有。相同 API 示例由 `time_picker_public_api_tests.cpp` 编译和链接。
+
+```cpp
+void time_picker_example(ryn::Signal<ryn::TimePickerValue> value, ryn::TimePickerRef reference) {
+    using namespace ryn;
+    TimePickerRules rules;
+    rules.minute_step = 15;
+    rules.min = TimeOfDay{8};
+    rules.max = TimeOfDay{18};
+    TimePicker(TimePickerProps{}.value(value).ref(reference).precision(TimePickerPrecision::Minute)
+        .rules(rules).onChange([value](TimePickerValue next) mutable { value.set(next); })
+        .layout(LayoutStyle{}.width(dp(240))),
+        TimePickerFooter{[] { Text(u8"Business hours: 08:00–18:00"); }});
+}
+```
+
+## 外观与交互
+
+`size` 为 Small/Middle/Large，`variant` 为 Outlined/Filled/Borderless/Underlined，`status` 使用现有 `InputStatus`。`inputReadOnly` 只禁止文本编辑，仍可使用面板；`disabled` 同时阻止面板、编辑及清空。
+
+点击或 Down/Up 打开；面板打开时 Left/Right 切换列，Up/Down 跳过禁用项，Home/End 定位首末可选项，Enter 确认，Escape 取消。footer 内的编辑器、按钮、Table 与子 popup 保留其原生行为；preedit 优先交给当前编辑器。Tab 可访问 footer 和确认/取消按钮，离开整个组件后取消未提交改动。`TimePickerRef` 的 focus 不隐式打开。
+
+`ThemeConfig::time_picker` 提供 `tokens`、`seed` 和 `algorithm`。panel 的 colors/metrics/effects/order 独立追踪；`column_width`、`column_height`、`cell_height`、padding、footer_padding、gap、border_radius、border_width、font_size、line_height、font_family、shadow、z_index_popup 均为 typed component token。Input 三尺寸、变体及错误状态继续复用 Input token；time_picker 的 input_background/hover_border/active_border/active_outline 覆盖对应 selector 外观。局部 seed 仅在 `algorithm=true` 时生效；非法最终派生尺寸或不可渲染字号在发布前拒绝。
+
 ## 首版范围
 
 保留 Input、时/分/可选秒列和 typed `TimePickerFooter`，安全 `TimePickerRef` 复用 Input 的 focus/blur/select/bound 生命周期。支持 clear、disabled、inputReadOnly、三尺寸、Input 四变体及状态。footer 只挂载一次，普通更新保持编辑器及子内容身份。

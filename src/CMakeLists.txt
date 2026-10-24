@@ -8,6 +8,7 @@ add_library(rynui_theme STATIC
     theme/theme_runtime.cpp
     theme/theme_snapshot.cpp
     theme/segmented_theme.cpp
+    theme/time_picker_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -204,6 +205,7 @@ add_library(rynui_components STATIC
     component/select_model.cpp
     component/select_component.cpp
     component/time_picker_model.cpp
+    component/time_picker_component.cpp
     component/menu_component.cpp
     component/dropdown_component.cpp
     component/card_component.cpp

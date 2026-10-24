@@ -25,6 +25,7 @@ class SliderComponentHost;
 class TooltipComponentHost;
 class OTPComponentHost;
 class SelectComponentHost;
+class TimePickerComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
 class SegmentedComponentHost;
@@ -219,6 +220,10 @@ public:
         return *select_;
     }
 
+    [[nodiscard]] TimePickerComponentHost& time_picker() noexcept {
+        return *time_picker_;
+    }
+
     [[nodiscard]] CardComponentHost& card() noexcept {
         return *card_;
     }
@@ -372,6 +377,7 @@ private:
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
+    std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<EmptyResultComponentHost> empty_result_;
     std::unique_ptr<TabsComponentHost> tabs_;
