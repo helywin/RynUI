@@ -851,16 +851,30 @@
     },
     {
       "identity": "ant.component.empty",
-      "status": "planned",
-      "summary": "空状态（Empty）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供原生 Empty：默认/紧凑/隐藏图示、响应式说明、保留 image/extra slots 与 Theme；076 追加可操作 Gallery，运行验收单独记录，内置 Icon 不等同上游大型 SVG 插画。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed EmptyProps, reactive description/image and retained image/extra slots",
+        "Default/Compact/None native Icon presentation, empty-description collapse and finite glyph clipping",
+        "Theme component colors/metrics, zero/subpixel built-in image sizes and custom visual margins",
+        "retained native Button/Input identities across presentation and Theme updates",
+        "076 Gallery source: default create action, image hide/recovery, Compact and custom 100 dp Icon with 50 dp side margins"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "upstream large SVG illustration parity, image URLs/raster assets and network loading",
+        "animation, network/state services and dynamic slot topology",
+        "Web DOM/CSS/React aliases and screen-reader semantic bridge",
+        "076 Gallery runtime acceptance, component GPU/manual visual, Linux and system IME evidence are recorded independently"
       ],
       "evidence_identifiers": [
-        "source:components/empty/index.en-US.md"
+        "source:components/empty/index.en-US.md",
+        "openspec:073-20261024-add-native-empty-and-result",
+        "openspec:076-20261024-add-empty-and-result-gallery",
+        "api:include/ryn/empty.hpp",
+        "test:rynui.empty_result_public_api",
+        "test:rynui.empty_result_theme",
+        "test:rynui.empty_result_component",
+        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll"
       ]
     },
     {
@@ -1207,16 +1221,30 @@
     },
     {
       "identity": "ant.component.result",
-      "status": "planned",
-      "summary": "结果（Result）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "RynUI 已提供原生 Result：语义状态与 403/404/500、响应式标题/说明、保留 icon/content/extra slots 和实际编辑控件；076 追加状态循环与草稿 Gallery，运行验收单独记录。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed ResultProps/ResultStatus, reactive title/subtitle/status and retained icon/content/extra slots",
+        "Success/Warning/Error/info and Forbidden/NotFound/ServerError mapped to existing native Icons",
+        "Theme component colors/metrics, finite text/Icon clipping, wrapped native actions and content surface",
+        "retained Button interaction, Input editor/draft and Text scene identity across status/Theme updates",
+        "076 Gallery source: seven-state cycle, native continue action/draft, static 404 and custom Icon/Text Flex"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "upstream large exception SVG illustration parity and image URL/raster/network APIs",
+        "animation, network/state services and dynamic slot topology",
+        "Web DOM/CSS/React aliases and screen-reader semantic bridge",
+        "076 Gallery runtime acceptance, component GPU/manual visual, Linux and system IME evidence are recorded independently"
       ],
       "evidence_identifiers": [
-        "source:components/result/index.en-US.md"
+        "source:components/result/index.en-US.md",
+        "openspec:073-20261024-add-native-empty-and-result",
+        "openspec:076-20261024-add-empty-and-result-gallery",
+        "api:include/ryn/result.hpp",
+        "test:rynui.empty_result_public_api",
+        "test:rynui.empty_result_theme",
+        "test:rynui.empty_result_component",
+        "test:tests/token_gallery_frame_tests.cpp#test_empty_and_result_gallery_after_document_scroll"
       ]
     },
     {

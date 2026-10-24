@@ -1,0 +1,226 @@
+PASS existing presentation contracts
+Empty margin child=100x80 region=200x110
+PASS Empty custom margins
+CASE Empty initial size=0
+PASS zero/subpixel visual
+CASE Empty initial size=0.00999999978
+PASS zero/subpixel visual
+CASE Empty initial size=0.49000001
+PASS zero/subpixel visual
+CASE Empty reactive size=0
+PASS zero/subpixel visual
+CASE Empty reactive size=0.00999999978
+PASS zero/subpixel visual
+CASE Empty reactive size=0.49000001
+PASS zero/subpixel visual
+Result margin child=100x80 region=200x110
+PASS Result custom margins
+CASE Result initial size=0
+PASS zero/subpixel visual
+CASE Result initial size=0.00999999978
+PASS zero/subpixel visual
+CASE Result initial size=0.49000001
+PASS zero/subpixel visual
+CASE Result reactive size=0
+PASS zero/subpixel visual
+CASE Result reactive size=0.00999999978
+PASS zero/subpixel visual
+CASE Result reactive size=0.49000001
+PASS zero/subpixel visual
+PASS compact Empty initial zero visual
+PASS compact Empty reactive zero visual
+CASE font=0 initial=1 size=0
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=1 size=-1
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=1 size=inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=1 size=-inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=1 size=nan
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=1 size=1.40129846e-45
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=0 initial=1 size=1.17549435e-38
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=0 initial=1 size=0.00999999978
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=0 initial=1 size=0.49000001
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=0 initial=1 size=0.49999997
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=0 initial=0 size=0
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=0 size=-1
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=0 size=inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=0 size=-inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=0 size=nan
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=0 initial=0 size=1.40129846e-45
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=0 initial=0 size=1.17549435e-38
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=0 initial=0 size=0.00999999978
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=0 initial=0 size=0.49000001
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=0 initial=0 size=0.49999997
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable font was not rejected during Theme resolution
+FAIL usable font threshold and DPI recovery: Input validation fonts failed to load
+CASE font=1 initial=1 size=0
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=1 size=-1
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=1 size=inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=1 size=-inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=1 size=nan
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=1 size=1.40129846e-45
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=1 initial=1 size=1.17549435e-38
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=1 initial=1 size=0.00999999978
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=1 initial=1 size=0.49000001
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=1 initial=1 size=0.49999997
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=1 initial=0 size=0
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=0 size=-1
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=0 size=inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=0 size=-inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=0 size=nan
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=1 initial=0 size=1.40129846e-45
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=1 initial=0 size=1.17549435e-38
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=1 initial=0 size=0.00999999978
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=1 initial=0 size=0.49000001
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=1 initial=0 size=0.49999997
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable font was not rejected during Theme resolution
+FAIL usable font threshold and DPI recovery: Input validation fonts failed to load
+CASE font=2 initial=1 size=0
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=1 size=-1
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=1 size=inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=1 size=-inf
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=1 size=nan
+initial rejected=1 slot_runs=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=1 size=1.40129846e-45
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=2 initial=1 size=1.17549435e-38
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=2 initial=1 size=0.00999999978
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=2 initial=1 size=0.49000001
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=2 initial=1 size=0.49999997
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable initial font reached child mounting instead of rejecting Theme resolution
+initial rejected=0 slot_runs=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable initial font reached child mounting instead of rejecting Theme resolution
+CASE font=2 initial=0 size=0
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=0 size=-1
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=0 size=inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=0 size=-inf
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=0 size=nan
+reactive rejected=1 published_changed=0 error=
+PASS font publication rejects unusable size
+CASE font=2 initial=0 size=1.40129846e-45
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=2 initial=0 size=1.17549435e-38
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=2 initial=0 size=0.00999999978
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=2 initial=0 size=0.49000001
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+CASE font=2 initial=0 size=0.49999997
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL font publication rejects unusable size: unusable font was not rejected during Theme resolution
+reactive rejected=0 published_changed=1 error=Input validation fonts failed to load
+FAIL hidden label rejects unusable font: unusable font was not rejected during Theme resolution
+FAIL usable font threshold and DPI recovery: Input validation fonts failed to load

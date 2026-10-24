@@ -5,9 +5,13 @@
 
 #include <ryn/theme.hpp>
 
+#include <algorithm>
+#include <array>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 namespace {
 
@@ -367,6 +371,99 @@ void test_typography_and_divider_subscription_domains() {
     }
 }
 
+void test_descendant_validation_before_parent_publication() {
+    using Scope = ryn::theme_runtime::ThemeScope;
+    for (const bool result : {false, true}) {
+        for (const bool indirect : {false, true}) {
+            const auto root = Scope::create_default();
+            auto initial = std::make_unique<ryn::ThemeConfig>();
+            initial->seed.color_primary = ryn::Color::rgba8(41, 93, 160);
+            require(root->update(*initial), "Theme rollback fixture did not establish its initial change list");
+            const auto sibling = Scope::create(root, ryn::ThemeConfig{});
+            const auto middle = indirect ? Scope::create(root, ryn::ThemeConfig{}) : root;
+            auto local = std::make_unique<ryn::ThemeConfig>();
+            if (result) {
+                local->result.algorithm = true;
+                local->result.seed.font_size = ryn::dp(1);
+            } else {
+                local->empty.algorithm = true;
+                local->empty.seed.font_size = ryn::dp(1);
+            }
+            const auto child = Scope::create(middle, *local);
+            const std::array scopes{root, sibling, middle, child};
+            std::array<const ryn::ThemeSnapshot*, 4> snapshots{};
+            std::array<std::uint64_t, 4> generations{};
+            std::array<std::uint64_t, 4> identities{};
+            std::array<std::vector<ryn::theme_runtime::TokenIdentity>, 4> changes;
+            for (std::size_t i = 0; i < scopes.size(); ++i) {
+                snapshots[i] = &scopes[i]->snapshot();
+                generations[i] = scopes[i]->generation();
+                identities[i] = scopes[i]->snapshot().identity();
+                const auto changed = scopes[i]->changed_identities();
+                changes[i].assign(changed.begin(), changed.end());
+            }
+            std::array<int, 4> notifications{};
+            std::array<ryn::theme_runtime::Subscription, 4> subscriptions;
+            for (std::size_t i = 0; i < scopes.size(); ++i) {
+                subscriptions[i] = scopes[i]->capture([&, i](ryn::theme_runtime::DirtyPhase) { ++notifications[i]; },
+                                                      [&, i] {
+                                                          static_cast<void>(scopes[i]->text_font_size());
+                                                          static_cast<void>(scopes[i]->text_color());
+                                                      });
+            }
+            auto compact = std::make_unique<ryn::ThemeConfig>();
+            compact->algorithms = {ryn::ThemeAlgorithm::Compact};
+            for (int attempt = 0; attempt < 2; ++attempt) {
+                bool rejected = false;
+                try {
+                    static_cast<void>(root->update(*compact));
+                } catch (const std::invalid_argument&) {
+                    rejected = true;
+                }
+                require(rejected, "invalid inherited font update was accepted or its failed config was cached");
+                for (std::size_t i = 0; i < scopes.size(); ++i) {
+                    require(&scopes[i]->snapshot() == snapshots[i] &&
+                                scopes[i]->snapshot().identity() == identities[i] &&
+                                scopes[i]->generation() == generations[i] && notifications[i] == 0 &&
+                                std::ranges::equal(scopes[i]->changed_identities(), changes[i]),
+                            "failed descendant Theme resolution published a parent/sibling snapshot or notification");
+                }
+            }
+            initial->alias.color_text = ryn::Color::rgba8(36, 48, 60);
+            require(root->update(*initial), "Theme hierarchy did not recover after rejected inherited fonts");
+            for (std::size_t i = 0; i < scopes.size(); ++i) {
+                require(scopes[i]->generation() == generations[i] + 1 && notifications[i] == 1 &&
+                            scopes[i]->text_color() == *initial->alias.color_text,
+                        "valid recovery did not update each retained Theme scope exactly once");
+            }
+        }
+    }
+}
+
+void test_descendant_validation_respects_reset_and_expired_scopes() {
+    using Scope = ryn::theme_runtime::ThemeScope;
+    const auto root = Scope::create_default();
+    auto isolated_config = std::make_unique<ryn::ThemeConfig>();
+    isolated_config->inherit = false;
+    isolated_config->empty.algorithm = true;
+    isolated_config->empty.seed.font_size = ryn::dp(1);
+    const auto isolated = Scope::create(root, *isolated_config);
+    const auto grandchild = Scope::create(isolated, ryn::ThemeConfig{});
+    const auto isolated_identity = isolated->snapshot().identity();
+    const auto grandchild_identity = grandchild->snapshot().identity();
+    auto compact = std::make_unique<ryn::ThemeConfig>();
+    compact->algorithms = {ryn::ThemeAlgorithm::Compact};
+    require(root->update(*compact) && isolated->snapshot().identity() == isolated_identity &&
+                grandchild->snapshot().identity() == grandchild_identity,
+            "inherit=false did not stop parent validation and propagation");
+
+    const auto second_root = Scope::create_default();
+    isolated_config->inherit = true;
+    auto expired_child = Scope::create(second_root, *isolated_config);
+    expired_child.reset();
+    require(second_root->update(*compact), "expired child blocked an otherwise valid parent update");
+}
+
 void test_focus_outline_seed_invalidation() {
     const auto scope = ryn::theme_runtime::ThemeScope::create_default();
     int notifications = 0;
@@ -396,6 +493,8 @@ int main() {
         test_motion_subscription_is_animation_only();
         test_typography_and_divider_subscription_domains();
         test_error_rollback_and_cross_thread_failure();
+        test_descendant_validation_before_parent_publication();
+        test_descendant_validation_respects_reset_and_expired_scopes();
         test_focus_outline_seed_invalidation();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

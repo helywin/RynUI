@@ -195,6 +195,7 @@ private:
     ThemeScope(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config);
     void ensure_owner_thread() const;
     void record(TokenIdentity identity) const;
+    void validate_children(const ThemeSnapshot& parent_snapshot) const;
     void recompute_from_parent();
     void commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next);
     void notify_subscribers();
