@@ -14,7 +14,9 @@
 
 ## 3. 平台通用：TimePicker 样例
 
-- [ ] 3.1 078 独立验收并合入后追加真实时间列/输入/清空、确认/取消与限制样例，提供显式 Form String 时间适配；目录直达，聚焦 Recording 检查真实目录/列滚动/键盘/指针、提交和重置、草稿/身份/有限 glyph/hit clip，覆盖三个 Theme/两种宽度；更新文档/partial 范围与实际 inventory，通过 generator/contracts、格式、doctor、strict 与 diff check。
+- [x] 3.1 078 独立验收并合入后追加真实时间列/输入/清空、确认/取消与限制样例，提供显式 Form String 时间适配；目录直达，聚焦 Recording 检查真实目录/列滚动/键盘/指针、提交和重置、草稿/身份/有限 glyph/hit clip，覆盖三个 Theme/两种宽度；更新文档/partial 范围与实际 inventory，通过 generator/contracts、格式、doctor、strict 与 diff check。
+
+验收证据：[TimePicker 阶段 MSVC Recording](evidence/stage3-time-gallery.md)。从指定 `580a8c3` 基线追加，平台通用验证实际使用 Windows / `windows-msvc-debug`；TimePicker、navigation、DatePicker、Form、panels、states 聚焦及八项 contracts 通过，实测 334 稳定 IDs。整体进度为 3/4，最终完整 frame/原生 smoke 与独立复核仍属 4.1。
 
 ## 4. 集成验收
 

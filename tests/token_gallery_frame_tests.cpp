@@ -20,6 +20,7 @@
 #include "component/empty_result_component.hpp"
 #include "component/form_component.hpp"
 #include "component/date_picker_component.hpp"
+#include "component/time_picker_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
@@ -852,7 +853,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 319, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 334, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -865,7 +866,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 244,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 257,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -875,7 +876,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 979) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 1287) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -894,7 +895,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 541) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 554) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -903,7 +904,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 284,
+                initial.reference_content_runs == 126 && initial.live_samples == 286,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1047,7 +1048,7 @@ void test_live_input_samples() {
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
     // DatePicker and the appended navigation slots retain their own editors after Form.
-    require(fixture.inputs->mounted_inputs().size() == 144 &&
+    require(fixture.inputs->mounted_inputs().size() == 147 &&
                 fixture.host->services().select().mounted().size() == 22 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -2570,9 +2571,10 @@ void test_empty_and_result_gallery_after_document_scroll() {
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
-                const auto heading = entry.identity == "ant.component.breadcrumb" ? "gallery.breadcrumb.trail "
-                                     : entry.identity == "ant.component.steps"    ? "gallery.steps.workflow "
-                                                                                  : "";
+                const auto heading = entry.identity == "ant.component.breadcrumb"    ? "gallery.breadcrumb.trail "
+                                     : entry.identity == "ant.component.steps"       ? "gallery.steps.workflow "
+                                     : entry.identity == "ant.component.time-picker" ? "gallery.time-picker.controlled "
+                                                                                     : "";
                 if (std::string_view{heading}.size() > 0) {
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
@@ -2744,9 +2746,11 @@ void test_form_gallery_after_document_scroll() {
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 auto expected = reference->node;
-                if (entry.identity == "ant.component.breadcrumb" || entry.identity == "ant.component.steps") {
+                if (entry.identity == "ant.component.breadcrumb" || entry.identity == "ant.component.steps" ||
+                    entry.identity == "ant.component.time-picker") {
                     const auto heading = entry.identity == "ant.component.breadcrumb" ? "gallery.breadcrumb.trail "
-                                                                                      : "gallery.steps.workflow ";
+                                         : entry.identity == "ant.component.steps" ? "gallery.steps.workflow "
+                                                                                   : "gallery.time-picker.controlled ";
                     const auto texts = f.host->text().mounted_texts();
                     const auto target = std::ranges::find_if(texts, [&](const auto& t) {
                         return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
@@ -3218,6 +3222,676 @@ void test_form_gallery_after_document_scroll() {
                  "preedit, retained identity and Default/Dark/Compact x 1200/560 x 900 passed\n";
 }
 
+void test_time_picker_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    auto& times = services.time_picker();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                    "TimePicker Gallery finite layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text_with_prefix = [&](std::string_view prefix) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
+                return text;
+            }
+        }
+        throw std::runtime_error("TimePicker Gallery actual Text absent: " + std::string{prefix});
+    };
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "TimePicker Gallery document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "TimePicker Gallery navigation translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(surfaces, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == entry.identity;
+            });
+            require(reference != surfaces.end(), "TimePicker Gallery lost an existing reference card");
+            const auto anchor = gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                    f.nodes, scroll_root);
+            std::string_view heading;
+            if (entry.identity == "ant.component.empty") {
+                heading = "gallery.empty.default";
+            } else if (entry.identity == "ant.component.result") {
+                heading = "gallery.result.controlled";
+            } else if (entry.identity == "ant.component.form") {
+                heading = "gallery.form.workflow";
+            } else if (entry.identity == "ant.component.date-picker") {
+                heading = "gallery.date-picker.controlled";
+            } else if (entry.identity == "ant.component.breadcrumb") {
+                heading = "gallery.breadcrumb.trail";
+            } else if (entry.identity == "ant.component.steps") {
+                heading = "gallery.steps.workflow";
+            } else if (entry.identity == "ant.component.time-picker") {
+                heading = "gallery.time-picker.controlled";
+            }
+            const auto expected =
+                heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
+            require(near(anchor.offset,
+                         std::max(0.0F, f.nodes.require(expected).bounds.y - f.nodes.require(scroll_root).bounds.y)),
+                    "TimePicker Gallery changed an existing anchor or missed its actual heading");
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == GalleryNavigationTargetKind::component,
+                    "TimePicker real catalog request kind differs");
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                    f.nodes.require(scroll_root).bounds.y - 80));
+        reconcile();
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        f.host->focus().dispatch({value, input::KeyAction::down, modifiers});
+        f.host->focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 16 && point.x < width - 16 && point.y >= 12 && point.y < 888,
+                "TimePicker Gallery pointer target is outside its finite viewport");
+        for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+               a.y + a.height <= b.y + b.height + .02F;
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allocation) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto instance = range.first + index;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(instance);
+            for (const auto& values : {g.position_size, g.translation_opacity, g.clip_bounds}) {
+                for (const auto value : values) {
+                    require(std::isfinite(value), "TimePicker Gallery nonfinite actual glyph/clip");
+                }
+            }
+            const float left = std::max(g.position_size[0] + g.translation_opacity[0], g.clip_bounds[0]);
+            const float top = std::max(g.position_size[1] + g.translation_opacity[1], g.clip_bounds[1]);
+            const float right =
+                std::min(g.position_size[0] + g.translation_opacity[0] + g.position_size[2], g.clip_bounds[2]);
+            const float bottom =
+                std::min(g.position_size[1] + g.translation_opacity[1] + g.position_size[3], g.clip_bounds[3]);
+            if (right > left && bottom > top && g.translation_opacity[2] > 0 && g.color[3] > 0) {
+                require(within({left, top, right - left, bottom - top}, allocation) &&
+                            within({left, top, right - left, bottom - top}, {16, 12, width - 32, 876}),
+                        "TimePicker Gallery actual glyph escaped its allocation/finite viewport");
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto editor_in = [&](runtime::ComponentId owner) {
+        for (const auto& editor : f.inputs->mounted_inputs()) {
+            if (descendant(editor.component, owner)) {
+                return editor;
+            }
+        }
+        throw std::runtime_error("TimePicker Gallery actual editor absent");
+    };
+    const auto heading = text_with_prefix("gallery.time-picker.controlled");
+    const auto demo_owner = services.components().parent(heading.component);
+    require(demo_owner.has_value(), "TimePicker sample owner absent");
+    const auto demo_match = std::ranges::find_if(times.mounted(), [&](auto id) { return descendant(id, *demo_owner); });
+    require(demo_match != times.mounted().end(), "TimePicker standalone sample absent");
+    const auto demo = *demo_match;
+    const auto label = text_with_prefix("gallery.time-picker.field");
+    const auto item_match =
+        std::ranges::find_if(services.form().items(), [&](auto id) { return descendant(label.component, id); });
+    require(item_match != services.form().items().end(), "TimePicker owned String FormItem absent");
+    const auto item = *item_match;
+    const auto parts = services.form().snapshot(item);
+    const auto form_match =
+        std::ranges::find_if(services.form().mounted(), [&](auto id) { return descendant(item, id); });
+    require(form_match != services.form().mounted().end(), "TimePicker owned Form absent");
+    const auto form = *form_match;
+    const auto bound_match =
+        std::ranges::find_if(times.mounted(), [&](auto id) { return descendant(id, parts.control); });
+    require(bound_match != times.mounted().end(), "TimePicker String adapter absent");
+    const auto bound = *bound_match;
+    const auto original_demo = times.snapshot(demo);
+    const auto original_bound = times.snapshot(bound);
+    const auto demo_editor = editor_in(original_demo.selector);
+    const auto bound_editor = editor_in(original_bound.selector);
+    const auto footer_editor = editor_in(original_demo.footer);
+    const auto input_layers = f.inputs->text_layers(bound_editor.component);
+    const auto footer_layers = f.inputs->text_layers(footer_editor.component);
+    const auto mounts = services.components().mount_runs();
+    const auto count = services.components().component_count();
+    const auto telemetry = definition.telemetry();
+    const auto retained = [&] {
+        for (const auto& pair : {std::pair{demo, original_demo}, std::pair{bound, original_bound}}) {
+            const auto current = times.snapshot(pair.first);
+            const auto& original = pair.second;
+            require(current.selector == original.selector && current.popup == original.popup &&
+                        current.footer == original.footer && current.confirm == original.confirm &&
+                        current.cancel == original.cancel && current.clear == original.clear &&
+                        current.columns == original.columns && current.rows == original.rows,
+                    "TimePicker replaced retained selector/popup/footer/actions/columns/rows");
+        }
+        const auto current_parts = services.form().snapshot(item);
+        require(current_parts.control == parts.control && current_parts.label == parts.label &&
+                    current_parts.feedback == parts.feedback && descendant(item, form) &&
+                    editor_in(original_demo.selector).editor == demo_editor.editor &&
+                    editor_in(original_bound.selector).editor == bound_editor.editor &&
+                    editor_in(original_demo.footer).editor == footer_editor.editor &&
+                    f.inputs->text_layers(bound_editor.component).base == input_layers.base &&
+                    f.inputs->text_layers(footer_editor.component).base == footer_layers.base &&
+                    services.components().mount_runs() == mounts && services.components().component_count() == count &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "TimePicker Gallery replaced Form/control/editor/scene identity");
+    };
+    const auto hit_in = [&](runtime::Point p, runtime::ComponentId owner) {
+        const auto hit = services.hit_test().hit_test(p);
+        const auto* record = hit ? services.interactions().find(*hit) : nullptr;
+        return record && descendant(record->component, owner);
+    };
+    const auto actual_click = [&](runtime::ComponentId id) {
+        const auto b = bounds(id);
+        require(hit_in({b.x + b.width / 2, b.y + b.height / 2}, id),
+                "TimePicker pointer target is obscured by another hit region");
+        click(id);
+    };
+    const auto action = [&](std::string_view prefix) {
+        const auto button = button_with_label(f, prefix);
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(button.node).bounds.y - 780));
+        reconcile();
+        require(glyphs(text_with_prefix(prefix).scene, bounds(button.component)) > 0,
+                "TimePicker real Button label did not render");
+        actual_click(button.component);
+    };
+    const auto command_without_blur = [&](std::string_view prefix) {
+        const auto button = button_with_label(f, prefix);
+        const auto handler = services.interactions().require(button.interaction).focus_handlers;
+        require(handler && handler->activate, "TimePicker real Button command handler absent");
+        handler->activate();
+        sync();
+    };
+    const auto type = [&](const auto& editor, String value) {
+        if (!descendant(editor.component, original_demo.popup)) {
+            reveal(editor.component);
+        }
+        actual_click(editor.component);
+        require(f.host->focus().state().focused == editor.interaction, "TimePicker actual Input did not focus");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "TimePicker TextCommitted failed");
+        sync();
+    };
+    const auto open = [&](runtime::ComponentId picker) {
+        reveal(picker);
+        actual_click(times.snapshot(picker).selector);
+        require(times.snapshot(picker).visible, "TimePicker actual popup did not open");
+    };
+    const auto feedback = [&](std::string_view prefix, std::string_view expected) {
+        require(f.text_scene.text_state(text_with_prefix(prefix).scene).content().bytes().find(expected) !=
+                    std::string_view::npos,
+                "TimePicker actual accepted/request/Form feedback differs");
+    };
+    const auto clear = [&](runtime::ComponentId picker) {
+        reveal(picker);
+        const auto owner = times.snapshot(picker).clear;
+        for (const auto hit : services.interactions().declaration_order()) {
+            const auto& record = services.interactions().require(hit);
+            if (record.eligible && descendant(record.component, owner)) {
+                actual_click(record.component);
+                require(!times.snapshot(picker).value && times.snapshot(picker).draft.empty(),
+                        "TimePicker native clear did not update accepted value/display");
+                return;
+            }
+        }
+        throw std::runtime_error("TimePicker actual clear action absent");
+    };
+    const auto wheel = [&](runtime::ComponentId picker, int column, float delta) {
+        const auto before = times.snapshot(picker);
+        const auto c = before.column_clips[column];
+        const runtime::Point p{c.x + c.width / 2, c.y + c.height / 2};
+        require(hit_in(p, before.popup), "TimePicker wheel target does not hit actual popup");
+        const auto document_offset = document_scroll.snapshot().offset;
+        require(services.dispatch_scroll({0, delta, p.x, p.y}), "TimePicker actual column wheel unhandled");
+        sync();
+        const auto after = times.snapshot(picker);
+        require(after.value == before.value && after.pending == before.pending && after.draft == before.draft &&
+                    document_scroll.snapshot().offset == document_offset && after.visible,
+                "TimePicker wheel selected/published a value or scrolled the document");
+        for (int other = 0; other < 3; ++other) {
+            if (other != column) {
+                require(after.scroll[other] == before.scroll[other], "TimePicker wheel scrolled another column");
+            }
+        }
+    };
+    const auto row = [&](runtime::ComponentId picker, int column, int value, bool enabled = true) {
+        const auto target = times.snapshot(picker).rows[column].at(value);
+        runtime::Rect visible;
+        for (int attempt = 0; attempt < 40; ++attempt) {
+            const auto c = times.snapshot(picker).column_clips[column];
+            const auto b = bounds(target);
+            visible = graphics::intersect_effect_bounds(b, c);
+            if (visible.height >= b.height - .02F && b.height > 0) {
+                break;
+            }
+            wheel(picker, column, b.y < c.y ? 1.0F / 3 : -1.0F / 3);
+        }
+        require(visible.width > 0 && visible.height >= bounds(target).height - .02F,
+                "TimePicker row not reachable by actual column wheel");
+        const runtime::Point p{visible.x + visible.width / 2, visible.y + visible.height / 2};
+        require(hit_in(p, times.snapshot(picker).popup) && hit_in(p, target) == enabled,
+                "TimePicker actual row hit eligibility/ownership differs");
+        for (const auto event : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(event, p, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto popup_clip = [&](runtime::ComponentId picker, int columns) {
+        const auto s = times.snapshot(picker);
+        require(s.visible && s.bounds.width > 0 && s.bounds.height > 0 && within(s.bounds, {16, 12, width - 32, 876}),
+                "TimePicker popup escaped actual finite window");
+        for (int col = 0; col < columns; ++col) {
+            require(s.column_clips[col].width > 0 && s.column_clips[col].height > 0 &&
+                        within(s.column_clips[col], s.bounds),
+                    "TimePicker column has no finite visible allocation");
+            std::size_t painted = 0;
+            for (const auto& text : f.host->text().mounted_texts()) {
+                if (descendant(text.component, s.columns[col])) {
+                    painted += glyphs(text.scene, s.column_clips[col]);
+                }
+            }
+            require(painted >= 4, "TimePicker actual column glyphs absent");
+        }
+        std::size_t panel_text = 0;
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, s.footer) || descendant(text.component, s.confirm) ||
+                descendant(text.component, s.cancel)) {
+                panel_text += glyphs(text.scene, s.bounds);
+            }
+        }
+        require(panel_text > 0, "TimePicker actual footer/actions glyphs absent");
+        if (picker == demo) {
+            require(glyphs(footer_layers.base, bounds(footer_editor.component)) > 0,
+                    "TimePicker retained footer Input glyphs absent");
+        }
+        bool background = false;
+        for (const auto& command : services.scene_composer().ordered_scene().commands()) {
+            if (command.kind != graphics::SceneDrawKind::quad) {
+                continue;
+            }
+            for (std::uint32_t index = 0; index < command.instance_count; ++index) {
+                const auto& q = services.surfaces().instances().at(command.first_instance + index);
+                const runtime::Rect shape{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                          q.bounds[3]};
+                if (shape == s.bounds && q.opacity > 0 && q.color[3] > 0) {
+                    for (const auto value : q.bounds) {
+                        require(std::isfinite(value), "TimePicker nonfinite actual popup quad");
+                    }
+                    require(within(shape, {16, 12, width - 32, 876}),
+                            "TimePicker actual popup quad escaped window clip");
+                    background = true;
+                }
+            }
+        }
+        require(background, "TimePicker exact actual popup background quad absent from ordered scene");
+        const std::array selected{s.pending.hour(), s.pending.minute(), s.pending.second()};
+        for (int col = 0; col < columns; ++col) {
+            const auto expected =
+                graphics::intersect_effect_bounds(bounds(s.rows[col].at(selected[col])), s.column_clips[col]);
+            if (expected.width <= 0 || expected.height <= 0) {
+                continue;
+            }
+            bool highlight = false;
+            for (const auto& command : services.scene_composer().ordered_scene().commands()) {
+                if (command.kind != graphics::SceneDrawKind::quad) {
+                    continue;
+                }
+                for (std::uint32_t index = 0; index < command.instance_count; ++index) {
+                    const auto& q = services.surfaces().instances().at(command.first_instance + index);
+                    const runtime::Rect shape{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1],
+                                              q.bounds[2], q.bounds[3]};
+                    if (shape == expected && q.opacity > 0 && q.color[3] > 0) {
+                        require(within(shape, s.column_clips[col]) && within(shape, s.bounds),
+                                "TimePicker actual selected row quad escaped column/popup clip");
+                        highlight = true;
+                    }
+                }
+            }
+            require(highlight, "TimePicker actual selected row highlight quad absent");
+        }
+        std::size_t hits = 0;
+        for (const auto& hit : services.hit_test().records()) {
+            const auto* record = services.interactions().find(hit.interaction);
+            if (!record || !hit.effective_eligible || !descendant(record->component, s.popup)) {
+                continue;
+            }
+            auto allocation = s.bounds;
+            for (int col = 0; col < columns; ++col) {
+                if (descendant(record->component, s.columns[col])) {
+                    allocation = s.column_clips[col];
+                }
+            }
+            const auto visible = graphics::intersect_effect_bounds(hit.translated_bounds, hit.effective_clip);
+            require(visible.width <= 0 || visible.height <= 0 ||
+                        (within(visible, allocation) && within(visible, s.bounds)),
+                    "TimePicker actual row/footer hit escaped column/popup clip");
+            hits += visible.width > 0 && visible.height > 0;
+        }
+        require(hits > 2, "TimePicker actual popup hit regions absent");
+    };
+    const auto navigate = [&] {
+        const auto button = button_with_label(f, "TimePicker");
+        const auto metrics = gallery_layout_metrics({width, 900});
+        auto parent = f.nodes.require(button.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "TimePicker catalog ownership differs");
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(button.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(button.component), metrics.navigation_lane) &&
+                    glyphs(text_with_prefix("TimePicker").scene, bounds(button.component)) > 0,
+                "TimePicker real catalog Button is not visible");
+        require(!definition.take_navigation_request(), "TimePicker stale navigation request");
+        actual_click(button.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == "ant.component.time-picker",
+                "TimePicker actual catalog identity differs");
+        reconcile(request);
+        require(glyphs(heading.scene, bounds(*demo_owner)) > 0 &&
+                    within(bounds(original_demo.selector), metrics.document_lane),
+                "TimePicker production request/anchor/jump missed actual sample");
+        actual_click(original_demo.selector);
+        require(times.snapshot(demo).visible && f.host->focus().state().focused == demo_editor.interaction,
+                "TimePicker catalog destination has no functioning picker");
+    };
+    navigate();
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{8}},
+            "TimePicker deterministic initial authority differs");
+    const auto initial_scroll = times.snapshot(demo).scroll[0];
+    wheel(demo, 0, -1);
+    require(times.snapshot(demo).scroll[0] > initial_scroll, "TimePicker real wheel did not scroll hour column");
+    row(demo, 0, 9);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{8}} && times.snapshot(demo).pending == TimeOfDay{9},
+            "TimePicker pointer row prematurely published confirmation draft");
+    row(demo, 0, 12, false);
+    require(times.snapshot(demo).pending == TimeOfDay{9}, "TimePicker disabled hour pointer changed pending");
+    key(input::Key::down);
+    require(times.snapshot(demo).pending == TimeOfDay{10}, "TimePicker keyboard hour navigation failed");
+    key(input::Key::right);
+    key(input::Key::down);
+    require(times.snapshot(demo).pending == TimeOfDay{10, 15}, "TimePicker keyboard minute step failed");
+    actual_click(times.snapshot(demo).confirm);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{10, 15}} && !times.snapshot(demo).visible &&
+                times.snapshot(demo).draft == String{u8"10:15"},
+            "TimePicker real OK did not accept controlled time/display");
+    feedback("gallery.time-picker.value", "已接受 10:15");
+    open(demo);
+    row(demo, 0, 11);
+    actual_click(times.snapshot(demo).cancel);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{10, 15}} &&
+                times.snapshot(demo).pending == TimeOfDay{10, 15} && !times.snapshot(demo).visible,
+            "TimePicker real Cancel retained pending or changed authority");
+    open(demo);
+    row(demo, 0, 11);
+    key(input::Key::down);
+    require(times.snapshot(demo).pending.hour() == 13, "TimePicker keyboard did not skip disabled hour 12");
+    key(input::Key::escape);
+    require(!times.snapshot(demo).visible && times.snapshot(demo).draft == String{u8"10:15"},
+            "TimePicker Escape failed to cancel");
+    for (const auto invalid : {String{u8"7:00"}, String{u8"24:00"}, String{u8"07:45"}, String{u8"18:15"},
+                               String{u8"12:00"}, String{u8"09:10"}, String{u8"09:15:00"}}) {
+        type(demo_editor, invalid);
+        key(input::Key::enter);
+        require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{10, 15}},
+                "TimePicker strict format/range/step/predicate accepted invalid input");
+    }
+    type(demo_editor, u8"09:30");
+    key(input::Key::enter);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{9, 30}} &&
+                f.inputs->editors().require(demo_editor.editor).value() == "09:30",
+            "TimePicker real minute input failed");
+    action("gallery.time-picker.authority");
+    type(demo_editor, u8"10:45");
+    key(input::Key::enter);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{9, 30}} &&
+                times.snapshot(demo).draft == String{u8"09:30"},
+            "TimePicker controlled authority did not reject request");
+    feedback("gallery.time-picker.value", "已拒绝 10:45");
+    action("gallery.time-picker.authority");
+    open(demo);
+    action("gallery.time-picker.mode");
+    open(demo);
+    row(demo, 0, 11);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{11, 30}} && times.snapshot(demo).visible,
+            "TimePicker immediate row failed or closed popup");
+    wheel(demo, 0, -1);
+    action("gallery.time-picker.input-readonly");
+    open(demo);
+    require(f.inputs->editors().require(demo_editor.editor).read_only(),
+            "TimePicker inputReadOnly did not gate typing");
+    row(demo, 0, 10);
+    require(times.snapshot(demo).value == TimePickerValue{TimeOfDay{10, 30}},
+            "TimePicker inputReadOnly incorrectly blocked column selection");
+    clear(demo);
+    action("gallery.time-picker.restore");
+    clear(bound);
+    action("gallery.time-picker.submit");
+    require(services.form().snapshot(item).error == String{u8"请选择时间"} &&
+                f.host->focus().state().focused == bound_editor.interaction &&
+                f.inputs->status(bound_editor.component) == InputStatus::Error,
+            "TimePicker String required/status/owned ref focus failed");
+    type(bound_editor, u8"09:30:15");
+    key(input::Key::enter);
+    action("gallery.time-picker.submit");
+    feedback("gallery.time-picker.status", "时间保存成功 · 09:30:15");
+    action("gallery.time-picker.reset");
+    require(times.snapshot(bound).value == TimePickerValue{TimeOfDay{8}} &&
+                times.snapshot(bound).draft == String{u8"08:00:00"} && services.form().snapshot(item).error.empty(),
+            "TimePicker String Form reset did not restore initial value/error");
+    std::cout << "TimePicker real catalog/columns/pointer/keyboard/wheel/strict "
+                 "input/authority/OK/Cancel/Escape/clear/String Form passed"
+              << std::endl;
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            navigate();
+            popup_clip(demo, 2);
+            wheel(demo, 0, -1);
+            popup_clip(demo, 2);
+            type(footer_editor, u8"Retained time note");
+            key(input::Key::enter);
+            require(times.snapshot(demo).visible &&
+                        f.inputs->editors().require(footer_editor.editor).value() == "Retained time note",
+                    "TimePicker footer editor lost native Enter/draft ownership");
+            key(input::Key::escape);
+            clear(bound);
+            type(bound_editor, u8"09:");
+            require(bool(f.inputs->dispatch(
+                        input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+                    "TimePicker actual preedit failed");
+            command_without_blur("gallery.time-picker.help");
+            command_without_blur("gallery.time-picker.submit");
+            require(times.snapshot(bound).draft == String{u8"09:"} && !times.snapshot(bound).value &&
+                        f.inputs->editors().require(bound_editor.editor).composition().active,
+                    "TimePicker ordinary help/validation cleared draft/preedit or published it");
+            const auto item_bounds = bounds(item);
+            const auto document_bounds = f.nodes.require(document).bounds;
+            const runtime::Rect allocation{document_bounds.x, item_bounds.y, document_bounds.width, item_bounds.height};
+            require(glyphs(input_layers.base, bounds(bound_editor.component)) > 0 &&
+                        glyphs(label.scene, allocation) > 0,
+                    "TimePicker Form actual draft/label glyphs absent");
+            bool error_glyph = false;
+            for (const auto& text : f.host->text().mounted_texts()) {
+                if (descendant(text.component, parts.feedback) &&
+                    f.text_scene.text_state(text.scene).content().bytes() ==
+                        services.form().snapshot(item).error.bytes()) {
+                    error_glyph |= glyphs(text.scene, allocation) > 0;
+                }
+            }
+            require(error_glyph, "TimePicker actual required error glyph absent");
+            definition.smoke_step(theme_step == 0U ? 1U : 0U);
+            width = viewport_width == 1200.0F ? 560.0F : 1200.0F;
+            definition.set_viewport_width(width);
+            reconcile();
+            reveal(bound);
+            require(times.snapshot(bound).draft == String{u8"09:"} &&
+                        f.inputs->editors().require(bound_editor.editor).composition().active,
+                    "TimePicker Theme/width update discarded draft/preedit");
+            definition.smoke_step(theme_step);
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            reveal(bound);
+            retained();
+            action("gallery.time-picker.reset");
+            require(times.snapshot(bound).value == TimePickerValue{TimeOfDay{8}} &&
+                        !f.inputs->editors().require(bound_editor.editor).composition().active &&
+                        services.form().snapshot(item).error.empty(),
+                    "TimePicker actual reset failed to clear preedit/error");
+            for (const auto gate : {"gallery.time-picker.disabled", "gallery.time-picker.readonly"}) {
+                action(gate);
+                reveal(bound);
+                click(original_bound.selector);
+                require(!times.snapshot(bound).visible && f.inputs->editors().require(bound_editor.editor).disabled(),
+                        "TimePicker Form gate allowed text/columns/clear");
+                if (std::string_view{gate} == "gallery.time-picker.disabled") {
+                    action("gallery.time-picker.submit");
+                    feedback("gallery.time-picker.status", "当前禁用，时间提交未执行");
+                } else {
+                    action("gallery.time-picker.submit");
+                    feedback("gallery.time-picker.status", "时间保存成功 · 08:00:00");
+                }
+                action(gate);
+            }
+            type(bound_editor, u8"10:15:30");
+            key(input::Key::enter);
+            open(bound);
+            popup_clip(bound, 3);
+            key(input::Key::escape);
+            action("gallery.time-picker.submit");
+            feedback("gallery.time-picker.status", "时间保存成功 · 10:15:30");
+            const auto status = text_with_prefix("gallery.time-picker.status");
+            reveal(status.component);
+            require(glyphs(status.scene, bounds(*services.components().parent(status.component))) > 0,
+                    "TimePicker actual result glyphs absent");
+            action("gallery.time-picker.reset");
+            // Execute the same public reset Button command without pointer blur.
+            // Both complete and incomplete drafts, plus preedit, must reset at identical String authority.
+            for (const auto draft : {String{u8"09:30:00"}, String{u8"09:"}}) {
+                type(bound_editor, draft);
+                require(bool(f.inputs->dispatch(
+                            input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+                        "TimePicker same-value reset preedit fixture failed");
+                const auto before = times.snapshot(bound);
+                require(before.value == TimePickerValue{TimeOfDay{8}} && before.draft == draft && before.visible,
+                        "TimePicker no-blur draft fixture changed authority/open");
+                command_without_blur("gallery.time-picker.reset");
+                const auto after = times.snapshot(bound);
+                require(after.value == TimePickerValue{TimeOfDay{8}} && after.pending == TimeOfDay{8} &&
+                            after.draft == String{u8"08:00:00"} &&
+                            f.inputs->editors().require(bound_editor.editor).value() == "08:00:00" &&
+                            !f.inputs->editors().require(bound_editor.editor).composition().active &&
+                            f.host->focus().state().focused == bound_editor.interaction &&
+                            after.visible == before.visible && services.form().snapshot(item).error.empty(),
+                        "TimePicker same-value String Form reset retained draft/preedit/pending or changed focus/open");
+                retained();
+                key(input::Key::enter);
+                require(times.snapshot(bound).value == TimePickerValue{TimeOfDay{8}} &&
+                            times.snapshot(bound).draft == String{u8"08:00:00"},
+                        "TimePicker Enter resurrected reset draft");
+                action("gallery.time-picker.submit");
+                feedback("gallery.time-picker.status", "时间保存成功 · 08:00:00");
+            }
+            retained();
+            std::cout << "TimePicker theme_step=" << theme_step << " viewport=" << viewport_width
+                      << " finite clip/draft/gates/no-blur reset passed" << std::endl;
+        }
+    }
+    std::cout << "TimePicker Default/Dark/Compact x 1200/560 x 900 actual glyph/quad/hit clip, gates, draft/preedit "
+                 "and retained identity passed\n";
+    std::cout << "TimePicker same-value String Form no-blur reset restored accepted/pending/display, cleared "
+                 "complete/incomplete draft/preedit, retained focus/open/identity and prevented Enter revival\n";
+}
+
 void test_date_picker_gallery_after_document_scroll() {
     using namespace ryn;
     using namespace rynui::example;
@@ -3306,6 +3980,8 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.breadcrumb.trail";
             } else if (entry.identity == "ant.component.steps") {
                 heading = "gallery.steps.workflow";
+            } else if (entry.identity == "ant.component.time-picker") {
+                heading = "gallery.time-picker.controlled";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -4301,6 +4977,7 @@ void print_gallery_inventory() {
               << " forms=" << f.host->services().form().mounted().size()
               << " form_items=" << f.host->services().form().items().size()
               << " date_pickers=" << f.host->services().date_picker().mounted().size()
+              << " time_pickers=" << f.host->services().time_picker().mounted().size()
               << " breadcrumbs=" << f.host->services().breadcrumb().mounted().size()
               << " steps=" << f.host->services().steps().mounted().size() << '\n';
 }
@@ -4336,6 +5013,10 @@ int main(int argc, char** argv) {
             test_form_gallery_after_document_scroll();
             return 0;
         }
+        if (argc == 2 && std::string_view{argv[1]} == "--time-picker-only") {
+            test_time_picker_gallery_after_document_scroll();
+            return 0;
+        }
         if (argc == 2 && std::string_view{argv[1]} == "--date-picker-only") {
             test_date_picker_gallery_after_document_scroll();
             return 0;
@@ -4364,6 +5045,7 @@ int main(int argc, char** argv) {
         test_data_and_selection_gallery_after_document_scroll();
         test_form_gallery_after_document_scroll();
         test_date_picker_gallery_after_document_scroll();
+        test_time_picker_gallery_after_document_scroll();
         test_navigation_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
