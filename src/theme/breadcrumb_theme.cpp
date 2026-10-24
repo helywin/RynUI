@@ -1,5 +1,7 @@
 #include "theme/breadcrumb_theme.hpp"
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
 
 namespace ryn::detail {
@@ -87,7 +89,10 @@ void apply_breadcrumb_override(BreadcrumbThemeToken& t, const BreadcrumbTokenOve
         }
         extent += value * 4;
     }
-    if (!std::isfinite(extent) || t.metrics.font_size < .5F || t.metrics.icon_size < .5F ||
+    const auto renderable_font = [](float value) {
+        return value >= .5F && value < static_cast<float>(std::numeric_limits<std::int32_t>::max());
+    };
+    if (!std::isfinite(extent) || !renderable_font(t.metrics.font_size) || !renderable_font(t.metrics.icon_size) ||
         t.metrics.line_height <= 0) {
         throw std::invalid_argument("Breadcrumb final typography or extent is invalid");
     }

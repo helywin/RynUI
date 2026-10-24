@@ -71,29 +71,40 @@ inline std::size_t glyphs_inside(Fixture& f, runtime::ComponentId ancestor, runt
         if (!descendant(f, t.component, ancestor) || !f.services.components().branch_active(t.component)) {
             continue;
         }
-        const auto range = f.scene.primitive(t.scene).instances;
-        for (std::uint32_t i = 0; i < range.count; ++i) {
-            const auto& g = f.scene.glyph_scene().instances().at(range.first + i);
-            const auto& p = g.position_size;
-            const auto& c = g.clip_bounds;
-            const auto& tr = g.translation_opacity;
-            const auto r = graphics::intersect_effect_bounds({p[0] + tr[0], p[1] + tr[1], p[2], p[3]},
-                                                             {c[0], c[1], c[2] - c[0], c[3] - c[1]});
-            if (r.width <= 0 || r.height <= 0 || tr[2] <= 0 || g.color[3] <= 0) {
-                continue;
+        std::vector<detail::TextSceneId> scenes{t.scene};
+        try {
+            for (auto scene : f.services.text().icon_snapshot(t.component).layers) {
+                if (scene != t.scene) {
+                    scenes.push_back(scene);
+                }
             }
-            ++visible;
-            if (!(r.x >= allowed.x - .01F && r.y >= allowed.y - .01F &&
-                  r.x + r.width <= allowed.x + allowed.width + .01F &&
-                  r.y + r.height <= allowed.y + allowed.height + .01F)) {
-                std::cerr << "escaped text=" << f.scene.text_state(t.scene).content().bytes() << " visible=" << r.x
-                          << ',' << r.y << ',' << r.width << ',' << r.height << " allowed=" << allowed.x << ','
-                          << allowed.y << ',' << allowed.width << ',' << allowed.height << '\n';
-            }
-            check(r.x >= allowed.x - .01F && r.y >= allowed.y - .01F &&
+        } catch (const std::out_of_range&) {
+        }
+        for (auto scene : scenes) {
+            const auto range = f.scene.primitive(scene).instances;
+            for (std::uint32_t i = 0; i < range.count; ++i) {
+                const auto& g = f.scene.glyph_scene().instances().at(range.first + i);
+                const auto& p = g.position_size;
+                const auto& c = g.clip_bounds;
+                const auto& tr = g.translation_opacity;
+                const auto r = graphics::intersect_effect_bounds({p[0] + tr[0], p[1] + tr[1], p[2], p[3]},
+                                                                 {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+                if (r.width <= 0 || r.height <= 0 || tr[2] <= 0 || g.color[3] <= 0) {
+                    continue;
+                }
+                ++visible;
+                if (!(r.x >= allowed.x - .01F && r.y >= allowed.y - .01F &&
                       r.x + r.width <= allowed.x + allowed.width + .01F &&
-                      r.y + r.height <= allowed.y + allowed.height + .01F,
-                  "actual navigation glyph escaped allocation");
+                      r.y + r.height <= allowed.y + allowed.height + .01F)) {
+                    std::cerr << "escaped text=" << f.scene.text_state(t.scene).content().bytes() << " visible=" << r.x
+                              << ',' << r.y << ',' << r.width << ',' << r.height << " allowed=" << allowed.x << ','
+                              << allowed.y << ',' << allowed.width << ',' << allowed.height << '\n';
+                }
+                check(r.x >= allowed.x - .01F && r.y >= allowed.y - .01F &&
+                          r.x + r.width <= allowed.x + allowed.width + .01F &&
+                          r.y + r.height <= allowed.y + allowed.height + .01F,
+                      "actual navigation glyph escaped allocation");
+            }
         }
     }
     return visible;

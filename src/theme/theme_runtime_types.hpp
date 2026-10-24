@@ -177,6 +177,9 @@ enum class TokenIdentity : std::uint8_t {
     breadcrumb_colors,
     breadcrumb_metrics,
     breadcrumb_effects,
+    steps_colors,
+    steps_metrics,
+    steps_effects,
     count,
 };
 

@@ -10,6 +10,7 @@
 #include <ryn/date_picker_tokens.hpp>
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
+#include <ryn/steps_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1490,7 +1491,15 @@ struct BreadcrumbThemeConfig final {
     friend bool operator==(const BreadcrumbThemeConfig&, const BreadcrumbThemeConfig&) = default;
 };
 
+struct StepsThemeConfig final {
+    StepsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const StepsThemeConfig&, const StepsThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
+    StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
     DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
@@ -2082,6 +2091,10 @@ public:
         return breadcrumb_;
     }
 
+    [[nodiscard]] const StepsThemeToken& steps() const noexcept {
+        return steps_;
+    }
+
     [[nodiscard]] const DatePickerThemeToken& date_picker() const noexcept {
         return date_picker_;
     }
@@ -2155,7 +2168,7 @@ private:
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  BreadcrumbThemeToken breadcrumb);
+                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2176,6 +2189,7 @@ private:
     DatePickerThemeToken date_picker_;
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
+    StepsThemeToken steps_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

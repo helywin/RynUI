@@ -13,6 +13,7 @@
 #include "component/segmented_component.hpp"
 #include "component/form_component.hpp"
 #include "component/breadcrumb_component.hpp"
+#include "component/steps_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
@@ -115,6 +116,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     form_ = std::make_unique<FormComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
+    steps_ = std::make_unique<StepsComponentHost>(*this);
     tag_badge_ = std::make_unique<TagBadgeComponentHost>(*this);
     feedback_ = std::make_unique<FeedbackComponentHost>(*this);
     menu_ = std::make_unique<MenuComponentHost>(*this);

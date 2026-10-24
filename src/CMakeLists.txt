@@ -11,6 +11,7 @@ add_library(rynui_theme STATIC
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
     theme/breadcrumb_theme.cpp
+    theme/steps_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -224,6 +225,7 @@ add_library(rynui_components STATIC
     component/collapse_component.cpp
     component/segmented_component.cpp
     component/breadcrumb_component.cpp
+    component/steps_component.cpp
     component/otp_component.cpp
     component/icon_vector.cpp
     component/selection_component.cpp

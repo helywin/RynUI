@@ -10,7 +10,7 @@
 
 ## 3. 平台通用：Steps
 
-- [ ] 3.1 实现真实 Steps host、四状态/连接线/编号及富 slots、横纵/两尺寸、controlled/default current、roving focus 和正确键盘/指针激活；补全 docs/steps.md 与 Theme，Debug/Release component/Theme tests 覆盖 current/状态推导、拒绝/重试、隐藏/重新启用、实际子控件激活、焦点来源、短/零几何 clip、Modal/Spin/回调销毁、身份与 dirty 局部性，fresh goldens 证明旧值保持。
+- [x] 3.1 实现真实 Steps host、四状态/连接线/编号及富 slots、横纵/两尺寸、controlled/default current、roving focus 和正确键盘/指针激活；补全 docs/steps.md 与 Theme，Debug/Release component/Theme tests 覆盖 current/状态推导、拒绝/重试、隐藏/重新启用、实际子控件激活、焦点来源、短/零几何 clip、Modal/Spin/回调销毁、身份与 dirty 局部性，fresh goldens 证明旧值保持。
 
 ## 4. 平台通用：组合验收
 

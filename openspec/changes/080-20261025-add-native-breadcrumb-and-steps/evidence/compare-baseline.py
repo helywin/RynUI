@@ -30,8 +30,10 @@ assert len(files) == 5
 for file in files:
     old = json.loads(committed(file.relative_to(ROOT)))
     new = json.loads(file.read_text(encoding="utf-8"))
-    assert set(new) - set(old) in ({"breadcrumb"}, {"breadcrumb", "steps"})
-    assert type(old.pop("identity")) is type(new.pop("identity"))
+    assert set(new) - set(old) == {"breadcrumb", "steps"}
+    old_identity = old.pop("identity")
+    new_identity = new.pop("identity")
+    assert type(old_identity) is type(new_identity) and old_identity != new_identity
     count = compare(old, new)
     total += count
     print(f"{file.stem}: {count} old typed leaf values preserved")

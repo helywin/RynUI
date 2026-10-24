@@ -72,7 +72,7 @@ void atomic_and_dirty() {
     config->breadcrumb.tokens.separator_margin = dp(9);
     scope->update(*config);
     const auto* before = &scope->snapshot();
-    for (int mode = 0; mode < 8; ++mode) {
+    for (int mode = 0; mode < 9; ++mode) {
         auto invalid = std::make_unique<ThemeConfig>(*config);
         if (mode == 0) {
             invalid->breadcrumb.tokens.font_size = dp(.49F);
@@ -100,6 +100,9 @@ void atomic_and_dirty() {
         }
         if (mode == 7) {
             invalid->breadcrumb.tokens.separator_margin = dp(std::numeric_limits<float>::quiet_NaN());
+        }
+        if (mode == 8) {
+            invalid->breadcrumb.tokens.font_size = dp(2147483648.0F);
         }
         bool rejected = false;
         try {
