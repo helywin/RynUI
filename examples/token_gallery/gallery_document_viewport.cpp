@@ -1,4 +1,5 @@
 #include "gallery_document_viewport.hpp"
+#include "component/text_component.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -20,6 +21,28 @@ void advance_generation(std::uint32_t& generation) noexcept {
 }
 
 } // namespace
+
+GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view identity,
+                                                           ryn::runtime::NodeId reference_node,
+                                                           const ryn::detail::TextComponentHost& text,
+                                                           const ryn::runtime::NodeStore& nodes,
+                                                           ryn::runtime::NodeId scroll_root) {
+    const std::string_view sample = identity == "ant.component.empty"    ? "gallery.empty.default "
+                                    : identity == "ant.component.result" ? "gallery.result.controlled "
+                                                                         : "";
+    auto node = reference_node;
+    if (!sample.empty()) {
+        const auto mounted = text.mounted_texts();
+        const auto found = std::ranges::find_if(mounted, [&](const auto& item) {
+            return text.scene_service().text_state(item.scene).content().bytes().starts_with(sample);
+        });
+        if (found == mounted.end()) {
+            throw std::logic_error("Token Gallery interactive component heading is missing");
+        }
+        node = text.components().root(found->component);
+    }
+    return {identity, std::max(0.0F, nodes.require(node).bounds.y - nodes.require(scroll_root).bounds.y)};
+}
 
 bool GalleryDocumentViewport::set_extents(float viewport_extent, float content_extent) {
     const bool changed = scroll_.set_extents(viewport_extent, content_extent);
@@ -175,6 +198,14 @@ bool GalleryDocumentViewport::jump_to(GalleryDocumentAnchorId value) {
         ++diagnostics_.navigation_jumps;
     }
     return changed;
+}
+
+bool GalleryDocumentViewport::jump_to_component(std::string_view identity) {
+    const auto target = component_anchor(identity);
+    if (!target) {
+        throw std::logic_error("Token Gallery component anchor is missing");
+    }
+    return jump_to(*target);
 }
 
 GalleryDocumentResizeAnchor GalleryDocumentViewport::capture_resize_anchor() const {

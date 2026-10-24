@@ -26,3 +26,11 @@
 完整 Gallery frame 与八项合同尚待最终运行收口，不提前勾选 2.1。
 
 Windows 原生 `rynui_token_gallery --smoke` 已实际执行：**D3D12/DXIL，display scale 1.5，273 IDs、279 live，7 frames，exit 0**。日志为 ignored `out/states-gallery-native-smoke.log`。这只证明实际窗口启动、自动主题切换与退出；不代表新增组件逐项 GPU/人工视觉、系统 IME、Linux 或屏幕阅读器验收。
+
+## Astra R1：实际目录入口
+
+`15c356c` 的完整 Gallery **9/9，226.90 秒**（frame 226.37 秒）随后通过，但 Astra R1 发现目录仍定位参考卡片，原聚焦测试通过手工平移进入样例，遗漏 spec 的实际目录流程。先恢复 1.1 未完成，再补齐生产导航；不把原成功结果作为新入口的证据。
+
+Empty/Result 保留原目录按钮和 identity，组件锚点改为实际交互样例的稳定标题；其他组件、分类及章节保留原参考目标。运行时与测试共用组件锚点解析和跳转。聚焦测试实际点击可见目录 Button，消费其生产导航请求，到达样例后操作图示/状态按钮及真实 Input，并检查草稿、身份和可见 glyph；覆盖 Default/Dark/Compact × 1200/560 宽。另通过原 Button 目录验证既有参考卡片定位。
+
+基于已集成 `6f1b38a` 的源代码重新构建 Gallery、frame、reference catalog 及 document model/viewport targets；`--states-only` **退出 0**，document model/viewport 加原八项 Gallery 合同 **10/10，0.52 秒**。clang-format 22.1.3 检查 **583 文件零失败**，doctor、strict **76/76** 和 diff check 通过。ignored 输出：`out/states-gallery-navigation-{build,model-build,focused,contracts}.log`。本修复不增加控件或稳定标识，inventory 计数保持不变；本次最终完整 Gallery、原生 smoke 与 Astra R2 仍待收口。

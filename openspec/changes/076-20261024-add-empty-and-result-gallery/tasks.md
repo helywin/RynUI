@@ -7,3 +7,7 @@
 ## 2. 集成验收
 
 - [ ] 2.1 在 Windows MSVC windows-msvc preset 实际构建 Gallery，运行完整 token_gallery_frame 与八项 Gallery contracts，并运行原生 --smoke 检查启动、主题切换及正常退出；记录完整 inventory、准确命令与平台边界，更新完成清单。原生 smoke 仅为 Windows 启动证据，不代表组件人工视觉、系统 IME 或 Linux 验收。
+
+2026-10-25：15c356c 的聚焦、八项合同及完整 Gallery 9/9（frame 226.37 秒）已实际通过，但 Astra R1 发现目录只能到参考卡片，尚不能直达 Empty/Result 实际样例，未满足 spec 的目录定位要求。1.1 恢复未完成，保留原成功证据；补通实际目录操作并验证后再勾选，不把旧测试通过等同完整实现。
+
+同日 R1 修复：原目录按钮已定位实际 Empty/Result 样例；真实点击→导航请求→生产共用锚点/跳转→实际按钮及 Input 操作的聚焦测试通过，覆盖三个 Theme 与两种宽度。文档 model/viewport 与八项合同共 10/10 通过；格式、doctor、strict 76/76、diff check 通过，因此重新完成 1.1。2.1 等待本次导航修复后的完整 Gallery 与原生 smoke。

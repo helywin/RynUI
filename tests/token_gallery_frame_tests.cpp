@@ -2516,6 +2516,155 @@ void test_empty_and_result_gallery_after_document_scroll() {
     require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
             "Empty Gallery actual image did not recover after Theme changes");
     require_retained();
+
+    // Exercise the same component-anchor resolution and deferred jump as the
+    // native runtime. Only scroll the navigation lane to expose its real Button;
+    // the destination must be reached by the emitted component request.
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    rynui::example::GalleryDocumentViewport navigation_document;
+    rynui::example::GalleryScrollRange navigation_scroll;
+    rynui::example::GalleryScrollTranslation navigation_translation;
+    const auto reconcile_navigation = [&](std::optional<rynui::example::GalleryNavigationTarget> request = {}) {
+        const auto metrics = rynui::example::gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        const auto translate = [&] {
+            require(navigation_document.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Gallery navigation document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Gallery navigation lane translation failed");
+            }
+        };
+        const auto layout = [&] {
+            for (int frame = 0; frame < 3; ++frame) {
+                require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                        "Gallery production navigation layout failed");
+            }
+        };
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        translate();
+        layout();
+        std::vector<rynui::example::GalleryComponentAnchor> anchors;
+        const auto surfaces = f.surfaces->mounted_surfaces();
+        for (const auto& entry : rynui::example::ant_design_reference_entries()) {
+            const auto reference = std::ranges::find_if(surfaces, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == entry.identity;
+            });
+            require(reference != surfaces.end(), "Gallery navigation lost an existing reference card");
+            const auto anchor = rynui::example::gallery_component_navigation_anchor(
+                entry.identity, reference->node, f.host->text(), f.nodes, scroll_root);
+            if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result") {
+                require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
+                                                               f.nodes.require(scroll_root).bounds.y)),
+                        "Empty/Result navigation changed another component's reference-card target");
+            }
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(navigation_document.replace_component_anchors(anchors));
+        static_cast<void>(
+            navigation_document.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == rynui::example::GalleryNavigationTargetKind::component,
+                    "Gallery catalog Button did not issue a component request");
+            static_cast<void>(navigation_document.jump_to_component(request->component_identity));
+        }
+        translate();
+        layout();
+    };
+    const std::array catalog_buttons{button_with_label(f, "Empty"), button_with_label(f, "Result"),
+                                     button_with_label(f, "Button")};
+    const auto navigate = [&](std::size_t index, std::string_view identity) {
+        const auto button = catalog_buttons[index];
+        auto parent = f.nodes.require(button.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "Gallery catalog test selected a Button outside navigation");
+        const auto metrics = rynui::example::gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(button.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_document.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile_navigation();
+        const auto target = bounds(button.component);
+        require(target.y >= metrics.navigation_lane.y - .02F &&
+                    target.y + target.height <= metrics.navigation_lane.y + metrics.navigation_lane.height + .02F &&
+                    visible_glyphs(first_text(button.component).scene, target) > 0,
+                "Gallery catalog Button is not actually visible in its navigation lane");
+        require(!definition.take_navigation_request(), "Gallery catalog fixture retained an unconsumed request");
+        click(button.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == rynui::example::GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Gallery native catalog Button emitted the wrong stable component identity");
+        reconcile_navigation(request);
+        require(std::ranges::any_of(f.host->mounted_buttons(),
+                                    [&](const auto& current) {
+                                        return current.component == button.component &&
+                                               current.interaction == button.interaction;
+                                    }),
+                "Gallery catalog navigation replaced an existing navigation Button");
+    };
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile_navigation();
+            navigate(0, "ant.component.empty");
+            require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
+                    "Gallery Empty catalog navigation did not reveal its actual sample Icon");
+            require_visible_text(original[0].label, u8"已创建示例任务，可继续编辑详情");
+            click(buttons[1].component);
+            reconcile_navigation();
+            require(presentations.snapshot(empties[0]).empty_image == EmptyImage::None &&
+                        visible_glyphs(empty_icon.scene, bounds(empties[0])) == 0,
+                    "Gallery Empty catalog destination did not expose its actual image action");
+            click(buttons[1].component);
+            reconcile_navigation();
+            require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
+                    "Gallery Empty catalog destination could not recover its actual image");
+            navigate(1, "ant.component.result");
+            require_visible_text(original[3].label, titles[status_index]);
+            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0 &&
+                        visible_glyphs(layers.base, bounds(editor.component)) > 0,
+                    "Gallery Result catalog navigation did not reveal its Icon and retained native draft");
+            click(buttons[2].component);
+            reconcile_navigation();
+            status_index = (status_index + 1) % statuses.size();
+            require(presentations.snapshot(results[0]).status == statuses[status_index] &&
+                        f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[status_index]},
+                    "Gallery Result catalog destination did not expose the actual status control");
+            require_visible_text(original[3].label, titles[status_index]);
+            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0,
+                    "Gallery Result catalog action lost the actual status Icon glyph");
+            click(editor.component);
+            require(f.host->focus().state().focused == editor.interaction && f.inputs->sessions().active().valid(),
+                    "Gallery Result catalog destination did not expose its native editable Input");
+            require_retained();
+            navigate(2, "ant.component.button");
+            const auto references = f.surfaces->mounted_surfaces();
+            const auto button_reference = std::ranges::find_if(references, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == "ant.component.button";
+            });
+            require(button_reference != references.end() &&
+                        visible_glyphs(first_text(button_reference->component).scene,
+                                       bounds(button_reference->component)) > 0,
+                    "Gallery existing Button catalog entry no longer reaches its reference card");
+            require_retained();
+        }
+    }
 }
 
 void print_gallery_inventory() {
