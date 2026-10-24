@@ -504,6 +504,22 @@ void DatePickerComponentHost::mount(const DatePickerProps& props, const std::opt
                       s.input = input.component;
                       s.input_hit = input.interaction;
                       s.editor = input.editor;
+                      inputs->configure_form_reset(input.component, [this, id, editor = input.editor,
+                                                                     controlled = props.value_] {
+                          auto* current = services_->components().state<DateState>(id);
+                          if (!current || current->editor != editor || !services_->components().scope(id).active()) {
+                              return;
+                          }
+                          const auto accepted = controlled ? read_prop(*controlled) : current->model.value();
+                          current = services_->components().state<DateState>(id);
+                          if (!current || current->editor != editor || !services_->components().scope(id).active()) {
+                              return;
+                          }
+                          current->model.reconcile(accepted);
+                          current->dirty_draft = false;
+                          current->display.set(display(current->model.value()));
+                          refresh(id);
+                      });
                   }});
             s.popup = group(services);
             const auto popup_node = build.root(s.popup);

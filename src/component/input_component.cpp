@@ -111,6 +111,7 @@ struct InputState {
     std::function<void(String)> on_internal_commit;
     std::function<void(String)> on_internal_blur;
     std::function<void()> on_internal_cancel;
+    std::function<void()> on_owner_form_reset;
     bool password{};
     bool visible{};
     std::optional<input::TextInputProperties> session_properties;
@@ -2893,16 +2894,33 @@ void InputComponentHost::publish_number(runtime::ComponentId component, InputNum
     }
 }
 
+void InputComponentHost::configure_form_reset(runtime::ComponentId component, std::function<void()> callback) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state) {
+        throw std::invalid_argument("Form reset owner requires a mounted Input");
+    }
+    state->on_owner_form_reset = std::move(callback);
+}
+
 bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
     auto* state = host_->components().state<InputState>(component);
     if (!state || !host_->components().scope(component).active()) {
         return false;
     }
-    if (editors_.require(state->mounted.editor).composition().active) {
+    const auto editor = state->mounted.editor;
+    if (editors_.require(editor).composition().active) {
         static_cast<void>(sessions_.cancel_composition());
     }
     state = host_->components().state<InputState>(component);
-    if (!state) {
+    if (!state || state->mounted.editor != editor || !host_->components().scope(component).active()) {
+        return false;
+    }
+    const auto owner_reset = state->on_owner_form_reset;
+    if (owner_reset) {
+        owner_reset();
+    }
+    state = host_->components().state<InputState>(component);
+    if (!state || state->mounted.editor != editor || !host_->components().scope(component).active()) {
         return false;
     }
     if (state->number) {

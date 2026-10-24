@@ -16,7 +16,7 @@ foreach(date_test IN ITEMS date_picker_component date_picker_theme date_picker_r
         "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
     if(date_test STREQUAL "date_picker_review")
-        foreach(review_case IN ITEMS wheel metrics inheritance preflight)
+        foreach(review_case IN ITEMS wheel metrics inheritance preflight form_reset)
             add_test(NAME rynui.date_picker_review_${review_case} COMMAND rynui_date_picker_review_tests ${review_case})
         endforeach()
     else()

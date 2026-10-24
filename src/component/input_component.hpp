@@ -101,6 +101,8 @@ public:
     void configure_typography_editor(runtime::ComponentId, Prop<runtime::SemanticTypography>, Prop<bool> active,
                                      std::function<void(String)> commit, std::function<void()> cancel,
                                      std::function<void(String)> blur);
+    // Compound controls restore their accepted display before the editor rereads it on Form reset.
+    void configure_form_reset(runtime::ComponentId, std::function<void()>);
     void set_active(runtime::ComponentId, bool);
     [[nodiscard]] InputLayoutSnapshot layout_snapshot(runtime::ComponentId) const;
     void set_horizontal_scroll(runtime::ComponentId, float offset);

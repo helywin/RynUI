@@ -18,6 +18,7 @@
 4. 复用现有窗口层/布局定位、Input/ref 与 Theme 服务，单独 DatePicker host/model。保持 Modal → 内容容器 → popup 定位和内容滚轮优先于边界兜底的合同；更高 popup 归属由实际命中链决定，不用矩形范围强吞其他弹层。短/零可用高度设置实际 clip 和不可命中状态，保留子控件本身身份。
 5. 新增 typed Component Token 的默认、派生/继承、algorithm、hash/equality、diagnostic 和 dirty 链路；复杂 Theme 解析继续使用 reference IIFE 控制栈使用。复用 Input 视觉入口，LayoutStyle 仅控制外部布局。五份 golden 由新可执行文件生成，按路径证明旧字段除 identity 外不变。
 6. 平台通用验证使用 Windows MSVC、windows-msvc-headless preset 与 Ninja Multi-Config 的 Debug/Release。模型与实际节点/glyph/interaction 测试覆盖首版；平台窗口/GPU/DPI/系统 IME 与 Linux 证据独立，后续 Gallery 才提供用户入口和原生 smoke。本 change 不把 headless 结果描述成原生平台验收。
+7. FormItem 通过 `control(DatePickerRef)` 显式连接 String 适配时，程序 reset 必须在聚焦且 field 值没有变化时同样清除未提交草稿。Input host 提供仅内部的 `configure_form_reset(ComponentId, std::function<void()>)`：先取消 preedit，再复制并调用复合 owner hook，随后重取相同 component/editor 代际及 active scope，继续既有数字/字符串 authority reconcile。DatePicker hook 重读受控 Prop 或保留非受控已接受值，清除 dirty draft 并格式化 display，不发 onChange/onOpenChange，不递归调用 Input reset。普通同值 Prop、校验/help/Theme 更新不调用此 hook；Form 现有 ref registration 代际和 component/editor 代际共同防止旧适配操作重绑控件，回调造成卸载后立即停止。
 
 ## Risks / Trade-offs
 

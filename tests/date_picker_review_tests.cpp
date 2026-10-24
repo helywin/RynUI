@@ -1,5 +1,6 @@
 #include "component/date_picker_component.hpp"
 #include "component/dropdown_component.hpp"
+#include "component/form_component.hpp"
 #include "component/menu_component.hpp"
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
@@ -9,6 +10,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <utility>
 
 namespace {
 using namespace ryn;
@@ -450,6 +452,229 @@ void descendant_preflight() {
     check(f.services.date_picker().snapshot(date).visible && leaf->snapshot().date_picker().metrics.cell_height > 1,
           "default parent recovery failed");
 }
+
+void type_date(Fixture& f, const DatePickerRef& ref, String draft) {
+    check(ref.focus({InputFocusCursor::All}), "Form DatePicker focus failed");
+    check(bool(f.inputs.dispatch(TextCommitted{std::move(draft), f.inputs.sessions().active()})),
+          "Form DatePicker text event failed");
+    sync(f);
+}
+
+void equal_value_form_reset(String initial, String draft, bool preedit = true) {
+    Fixture f;
+    FormRef form;
+    FormField<String> field{initial};
+    field.required();
+    DatePickerRef ref;
+    Signal<String> help{String{u8"A date"}};
+    Signal<ThemeConfig> theme{ThemeConfig{}};
+    int mounts{};
+    int changes{};
+    int open_requests{};
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                  Form(FormProps{}.ref(form), FormContent{[&] {
+                           FormItem(FormItemProps{}.field(String{u8"date"}, field).help(help).control(ref),
+                                    FormItemContent{[&] {
+                                        ++mounts;
+                                        DatePicker(
+                                            DatePickerProps{}
+                                                .value(bind([field] { return parse_iso_date(field.get().bytes()); }))
+                                                .defaultPanelDate({2026, 10, 1})
+                                                .status(field.status())
+                                                .ref(ref)
+                                                .onChange([&, change = field.onChange()](DatePickerValue value) {
+                                                    ++changes;
+                                                    change(value ? format_iso_date(*value) : String{});
+                                                })
+                                                .onOpenChange([&](bool) { ++open_requests; }));
+                                    }});
+                       }});
+              }});
+    }});
+    sync(f);
+    const auto date = f.services.date_picker().mounted().front();
+    const auto before = f.services.date_picker().snapshot(date);
+    const auto input = f.inputs.mounted_inputs().front();
+    const auto count = f.services.components().component_count();
+    type_date(f, ref, draft);
+    const auto focused = f.services.focus().state().focused;
+    check(focused == input.interaction && field.get() == initial && changes == 0 &&
+              f.services.date_picker().snapshot(date).draft == draft &&
+              f.inputs.editors().require(input.editor).value() == draft.bytes(),
+          "unsubmitted Form DatePicker draft fixture failed");
+
+    if (preedit) {
+        check(form.validate().has_value(), "Form DatePicker validate failed");
+        help.set(String{u8"Updated help"});
+        const auto session = f.inputs.sessions().active();
+        check(bool(f.inputs.dispatch(CompositionChanged{String{u8"候选"}, {}, session})),
+              "Form DatePicker preedit fixture failed");
+        check(form.validate().has_value(), "Form DatePicker preedit validate failed");
+        ThemeConfig compact;
+        compact.algorithms = {ThemeAlgorithm::Compact};
+        set_config(theme, compact);
+        sync(f);
+        check(f.services.date_picker().snapshot(date).draft == draft &&
+                  f.inputs.editors().require(input.editor).value() == draft.bytes() &&
+                  f.inputs.editors().require(input.editor).composition().active && field.get() == initial,
+              "ordinary validate/help/Theme update discarded Form DatePicker draft/preedit");
+    }
+
+    // Direct public reset retains focus: pointer blur must not repair the fixture first.
+    check(form.reset(), "focused equal-value DatePicker Form reset rejected");
+    sync(f);
+    const auto after = f.services.date_picker().snapshot(date);
+    check(after.draft == initial && f.inputs.editors().require(input.editor).value() == initial.bytes(),
+          "DatePicker same-value String Form reset retained draft before blur");
+    check(!f.inputs.editors().require(input.editor).composition().active && (!preedit || f.platform.cancels > 0) &&
+              f.services.focus().state().focused == focused && changes == 0 && open_requests == 0 &&
+              field.get() == initial && field.error().empty(),
+          "DatePicker reset changed authority/focus, published requests or retained preedit");
+    check(mounts == 1 && f.services.components().component_count() == count &&
+              f.services.date_picker().mounted().front() == date && after.input == before.input &&
+              after.popup == before.popup && after.cells == before.cells &&
+              f.inputs.mounted_inputs().front().editor == input.editor,
+          "DatePicker Form reset remounted editor/date/calendar cells");
+    f.services.focus().dispatch({Key::enter, KeyAction::down});
+    sync(f);
+    check(field.get() == initial && changes == 0 && f.services.date_picker().snapshot(date).draft == initial,
+          "Enter resurrected a reset DatePicker draft");
+}
+
+void controlled_form_reset() {
+    Fixture f;
+    FormRef form;
+    const String initial{u8"2026-08-07"};
+    Signal<String> authority{String{u8"2026-09-10"}};
+    std::vector<String> proposals;
+    bool accept{};
+    FormField<String> field{initial, authority, [&](String value) {
+                                proposals.push_back(value);
+                                if (accept) {
+                                    authority.set(value);
+                                }
+                            }};
+    DatePickerRef ref;
+    int changes{};
+    int open_requests{};
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"date"}, field).control(ref), FormItemContent{[&] {
+                              DatePicker(DatePickerProps{}
+                                             .value(bind([field] { return parse_iso_date(field.get().bytes()); }))
+                                             .defaultPanelDate({2026, 10, 1})
+                                             .ref(ref)
+                                             .onChange([&, change = field.onChange()](DatePickerValue value) {
+                                                 ++changes;
+                                                 change(value ? format_iso_date(*value) : String{});
+                                             })
+                                             .onOpenChange([&](bool) { ++open_requests; }));
+                          }});
+             }});
+    }});
+    sync(f);
+    const auto date = f.services.date_picker().mounted().front();
+    const auto input = f.inputs.mounted_inputs().front();
+    for (const bool accepted : {false, true}) {
+        accept = accepted;
+        type_date(f, ref, String{u8"2026-10-20"});
+        if (accepted) {
+            f.services.focus().dispatch({Key::down, KeyAction::down});
+            sync(f);
+        }
+        const auto visible = f.services.date_picker().snapshot(date).visible;
+        const auto requests = open_requests;
+        check(form.reset(), "controlled DatePicker reset rejected");
+        sync(f);
+        const auto expected = accepted ? initial : String{u8"2026-09-10"};
+        check(proposals.back() == initial && field.get() == expected && changes == 0 && open_requests == requests &&
+                  f.inputs.editors().require(input.editor).value() == expected.bytes() &&
+                  f.services.date_picker().snapshot(date).draft == expected &&
+                  f.services.date_picker().snapshot(date).visible == visible &&
+                  f.services.date_picker().snapshot(date).value == parse_iso_date(expected.bytes()) &&
+                  f.services.focus().state().focused == input.interaction,
+              "DatePicker reset forged rejected authority or retained unsubmitted text");
+        if (visible) {
+            f.services.focus().dispatch({Key::escape, KeyAction::down});
+        }
+        f.services.focus().dispatch({Key::enter, KeyAction::down});
+        check(changes == 0 && field.get() == expected, "controlled reset resurrected superseded date");
+        f.services.focus().dispatch({Key::escape, KeyAction::down});
+    }
+}
+
+void form_reset_lifetime() {
+    Fixture f;
+    FormRef form;
+    FormField<String> field;
+    DatePickerRef ref;
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"date"}, field).control(ref), FormItemContent{[&] {
+                              DatePicker(DatePickerProps{}
+                                             .value(bind([field] { return parse_iso_date(field.get().bytes()); }))
+                                             .defaultPanelDate({2026, 10, 1})
+                                             .ref(ref));
+                          }});
+             }});
+    }});
+    sync(f);
+    const auto form_id = f.services.form().mounted().front();
+    const auto old_date = f.services.date_picker().mounted().front();
+    check(f.services.destroy(old_date) && !ref.bound(), "DatePicker disposal failed");
+    f.services.append_slot(form_id,
+                           Content{[&] { DatePicker(DatePickerProps{}.defaultPanelDate({2026, 10, 1}).ref(ref)); }});
+    sync(f);
+    const auto replacement = f.services.date_picker().mounted().front();
+    const auto input = f.inputs.mounted_inputs().front();
+    type_date(f, ref, String{u8"2026-11-12"});
+    check(form.reset() && f.inputs.editors().require(input.editor).value() == "2026-11-12" &&
+              f.services.date_picker().snapshot(replacement).draft == String{u8"2026-11-12"},
+          "stale Form registration reset a rebound DatePickerRef");
+    check(f.services.destroy(form_id) && !ref.bound() && !form.reset(), "disposed Form reset remained bound");
+}
+
+void reset_authority_disposal() {
+    Fixture f;
+    FormRef form;
+    FormField<String> field;
+    DatePickerRef ref;
+    std::optional<runtime::ComponentId> date;
+    bool dispose_on_read{};
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"date"}, field).control(ref), FormItemContent{[&] {
+                              DatePicker(DatePickerProps{}
+                                             .value(bind([&] {
+                                                 const auto value = field.get();
+                                                 if (std::exchange(dispose_on_read, false)) {
+                                                     check(f.services.destroy(*date), "authority disposal failed");
+                                                 }
+                                                 return parse_iso_date(value.bytes());
+                                             }))
+                                             .defaultPanelDate({2026, 10, 1})
+                                             .ref(ref));
+                          }});
+             }});
+    }});
+    sync(f);
+    date = f.services.date_picker().mounted().front();
+    type_date(f, ref, String{u8"2026-10-20"});
+    dispose_on_read = true;
+    check(form.reset() && !ref.bound() && !f.services.components().contains(*date) && f.inputs.mounted_inputs().empty(),
+          "reset continued through disposed owner/editor");
+}
+
+void form_reset() {
+    equal_value_form_reset(String{}, String{u8"2026-10-"}, false);
+    equal_value_form_reset(String{}, String{u8"2026-10-"});
+    equal_value_form_reset(String{}, String{u8"2026-10-20"});
+    equal_value_form_reset(String{u8"2026-08-07"}, String{u8"2026-09-10"});
+    controlled_form_reset();
+    form_reset_lifetime();
+    reset_authority_disposal();
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -464,6 +689,8 @@ int main(int argc, char** argv) {
             inactive_algorithm_inheritance();
         } else if (test == "preflight") {
             descendant_preflight();
+        } else if (test == "form_reset") {
+            form_reset();
         } else {
             throw std::runtime_error("unknown review case");
         }
