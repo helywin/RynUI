@@ -10,6 +10,7 @@ add_library(rynui_theme STATIC
     theme/segmented_theme.cpp
     theme/date_picker_theme.cpp
     theme/form_theme.cpp
+    theme/descriptions_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -196,6 +197,7 @@ add_library(rynui_components STATIC
     component/date_picker_component.cpp
     component/form_model.cpp
     component/descriptions_model.cpp
+    component/descriptions_component.cpp
     component/form_component.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp

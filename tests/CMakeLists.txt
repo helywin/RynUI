@@ -31,7 +31,7 @@ foreach(form_test IN ITEMS form_model form_public_api descriptions_model descrip
     add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
 endforeach()
 
-foreach(form_integration IN ITEMS form_component form_theme)
+foreach(form_integration IN ITEMS form_component form_theme descriptions_component descriptions_theme)
     add_executable(rynui_${form_integration}_tests ${form_integration}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_integration}_tests)
     target_link_libraries(rynui_${form_integration}_tests PRIVATE rynui_components)

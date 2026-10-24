@@ -9,6 +9,7 @@
 #include <ryn/segmented_tokens.hpp>
 #include <ryn/date_picker_tokens.hpp>
 #include <ryn/form_tokens.hpp>
+#include <ryn/descriptions_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -979,6 +980,13 @@ struct FormThemeConfig final {
     friend bool operator==(const FormThemeConfig&, const FormThemeConfig&) = default;
 };
 
+struct DescriptionsThemeConfig final {
+    DescriptionsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DescriptionsThemeConfig&, const DescriptionsThemeConfig&) = default;
+};
+
 struct TabsThemeConfig final {
     TabsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1502,6 +1510,7 @@ struct ThemeConfig final {
     TabsThemeConfig tabs;
     SegmentedThemeConfig segmented;
     FormThemeConfig form;
+    DescriptionsThemeConfig descriptions;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -2077,6 +2086,10 @@ public:
         return form_;
     }
 
+    [[nodiscard]] const DescriptionsThemeToken& descriptions() const noexcept {
+        return descriptions_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2141,7 +2154,8 @@ private:
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form);
+                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
+                  DescriptionsThemeToken descriptions);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2161,6 +2175,7 @@ private:
     SegmentedThemeToken segmented_;
     DatePickerThemeToken date_picker_;
     FormThemeToken form_;
+    DescriptionsThemeToken descriptions_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

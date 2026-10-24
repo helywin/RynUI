@@ -6,8 +6,8 @@
 
 ## 2. 平台通用 retained host 与 Theme
 
-- [ ] 2.1 实现保留 slot、title/extra、有限测量/摆放/绘制、三种 size、colon、border 与隐藏边界清理；增加实际行/标签/值/边框、富内容身份和 glyph/geometry 验证并更新组件文档。
-- [ ] 2.2 完整接入 Descriptions Theme chain 和 colors/metrics dirty，验证 inactive seed、最终字体、后代 preflight 拒绝/恢复；用当前可执行文件重生五组 golden，深比较基线全部旧 typed values 和 28 个 IIFE 文本/顺序，Debug 定向测试通过后本地提交。
+- [x] 2.1 实现保留 slot、title/extra、有限测量/摆放/绘制、三种 size、colon、border 与隐藏边界清理；增加实际行/标签/值/边框、富内容身份和 glyph/geometry 验证并更新组件文档。
+- [x] 2.2 完整接入 Descriptions Theme chain 和 colors/metrics dirty，验证 inactive seed、最终字体、后代 preflight 拒绝/恢复；用当前可执行文件重生五组 golden，深比较基线全部旧 typed values 和 28 个 IIFE 文本/顺序，Debug 定向测试通过后本地提交。
 
 ## 3. 平台通用集成与证据
 

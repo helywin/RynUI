@@ -174,6 +174,8 @@ enum class TokenIdentity : std::uint8_t {
     date_picker_order,
     form_colors,
     form_metrics,
+    descriptions_colors,
+    descriptions_metrics,
     count,
 };
 
