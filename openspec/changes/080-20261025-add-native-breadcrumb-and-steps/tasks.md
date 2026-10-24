@@ -15,3 +15,9 @@
 ## 4. 平台通用：组合验收
 
 - [x] 4.1 执行受影响 Theme/Button/Focus/Modal/Spin/Segmented/Collapse 等共同回归和实际 headless 边界构建，验证两个导航组件空闲无持续帧；完成五份 fresh golden 旧字段/IIFE 比较、可编译 API 示例和准确证据，通过 clang-format 22.x、doctor、strict、diff。交父线程独立 Astra xhigh 审查，未执行的 Gallery/原生 GPU/Linux/系统 IME/辅助技术不记为通过。
+
+## 5. 父线程 main 集成
+
+- [x] 5.1 经全新 Astra R3 通过后，将 worker `7db4123` 显式合入已验收 Date/Form Gallery 的 main，确认已审查导航实现和父 Date/Form reset、目录/样例保持；引用 worker 实际 Debug/Release 定向验收，在父树重建 Debug 导航/Theme/Focus/Date/Form 组合回归和日期 Gallery 聚焦场景、inventory/目录 contracts。生成 fresh goldens 比较旧字段与原 IIFE，准确更新 partial 范围和证据，通过格式、doctor、strict、diff 后提交推送 main 并核对远端 SHA，不推送 t3 分支。
+
+合并来源、独立 R3、父 Debug 36/36、日期 Gallery/inventory、八项 contracts 和平台边界见 [main-integration.md](evidence/main-integration.md)。
