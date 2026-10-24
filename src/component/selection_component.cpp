@@ -1,4 +1,5 @@
 #include "component/selection_component.hpp"
+#include "component/form_focus_context.hpp"
 #include "component/space_compact.hpp"
 
 #include "runtime/layout_style_adapter.hpp"
@@ -34,6 +35,7 @@ struct CheckboxRefState final {
     bool binding{};
     std::uint64_t generation{};
     std::function<bool()> focus;
+    std::function<bool(const FormFocusContext&)> form_focus;
     std::function<bool()> blur;
 
     void ensure_owner() const {
@@ -605,6 +607,7 @@ void SelectionComponentHost::release_selection(SelectionState& state) {
     if (state.checkbox_ref) {
         state.checkbox_ref->binding = false;
         state.checkbox_ref->focus = {};
+        state.checkbox_ref->form_focus = {};
         state.checkbox_ref->blur = {};
     }
     if (state.radio_ref) {
@@ -2373,6 +2376,9 @@ struct CheckboxPropsAccess {
         };
         if (reference) {
             reference->focus = focus;
+            reference->form_focus = [&host, component, focus](const FormFocusContext& context) {
+                return context.visible(*host.services_, component) && focus();
+            };
             reference->blur = [&host, component] {
                 const auto* state = host.find(component);
                 if (!state || host.services_->focus().state().focused != state->interaction) {
@@ -3039,19 +3045,20 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     services_->mark_scene_structure_dirty();
 }
 
-std::function<bool()> capture_form_checkbox(const CheckboxRef& reference) {
+std::function<bool(const FormFocusContext&)> capture_form_checkbox(const CheckboxRef& reference) {
     if (!reference.state_ || !reference.state_->binding) {
         return {};
     }
     reference.state_->ensure_owner();
-    return [weak = std::weak_ptr{reference.state_}, generation = reference.state_->generation] {
+    return [weak = std::weak_ptr{reference.state_},
+            generation = reference.state_->generation](const FormFocusContext& context) {
         const auto state = weak.lock();
         if (!state || !state->binding || state->generation != generation) {
             return false;
         }
         state->ensure_owner();
-        const auto callback = state->focus;
-        return callback && callback();
+        const auto callback = state->form_focus;
+        return callback && callback(context);
     };
 }
 

@@ -19,7 +19,8 @@ namespace ryn {
 class InputRef;
 
 namespace detail {
-std::pair<std::function<bool()>, std::function<void()>> capture_form_input(const InputRef&);
+struct FormFocusContext;
+std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>> capture_form_input(const InputRef&);
 struct InputPropsAccess;
 struct PasswordPropsAccess;
 struct SearchPropsAccess;
@@ -78,7 +79,8 @@ public:
 
 private:
     template <class> friend class InputPropsBase;
-    friend std::pair<std::function<bool()>, std::function<void()>> detail::capture_form_input(const InputRef&);
+    friend std::pair<std::function<bool(const detail::FormFocusContext&)>, std::function<void()>>
+    detail::capture_form_input(const InputRef&);
     std::shared_ptr<detail::InputRefState> state_;
 };
 

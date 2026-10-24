@@ -62,7 +62,7 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 
 `field(name, handle)` 负责注册；`.value()` / `.onChange()` 负责真实采值。Checkbox 用 `.checked()`。FormItem 不改写任意 slot 的 props；未显式绑定的控件不会加入结果，也不会自动继承 disabled/readOnly/status。`onChange()` 必须在 FormItem 的 content 中取得，它绑定当前注册代际；卸载后旧回调失效。
 
-`control(ref)` 捕获本次挂载的真实 ref，用于失败焦点及 Input reset；控件重新绑定同一个 ref 后，旧 FormItem 不会操作新控件。替换控件时应同时重新挂载 FormItem。也可用 `.focus(function<bool()>)` 接入自定义控件；返回 false 会继续尝试后续无效字段。自定义 focus 回调须遵守自身控件的资格合同，未提供 control 时 reset 只恢复 typed 值。
+`control(ref)` 捕获本次挂载的真实 ref，用于失败焦点及 Input reset；控件重新绑定同一个 ref 后，旧 FormItem 不会操作新控件。失败聚焦检查捕获代际对应控件在同一窗口中的实际 bounds、祖先 clip 与输入资格；全裁剪或零尺寸控件不会因 FormItem 的全宽 wrapper 可见而获得焦点，部分可见仍可聚焦。替换控件时应同时重新挂载 FormItem。也可用 `.focus(function<bool()>)` 接入自定义控件；返回 false 会继续尝试后续无效字段。自定义 focus 回调须自行检查真实目标的资格及可见性，Form 只能检查其 control region；未提供 control 时 reset 只恢复 typed 值。
 
 ## 值、验证与命令
 
@@ -85,6 +85,6 @@ Form 被 Modal 排除、Spin 阻止或祖先隐藏时，validate/submit 不执�
 
 标签、必填标记、帮助及错误使用 retained Text，错误优先于 help。空 label/help/error 不占布局流；宽度与祖先 clip 使用实际节点约束。Form token 只影响表单标签/反馈及间距，既有控件继续使用自己的 Theme token。外部尺寸、margin、flex 等使用 LayoutStyle。
 
-`ThemeConfig::form` 支持 colors（label、required、help、error）及 metrics（item_margin_bottom、label_gap、required_gap、font_size、line_height、font_family）typed override；支持继承、inherit=false 与独立 component algorithm/seed。纯颜色更新只失效 material，metrics 更新相应文字/测量/布局，均不重执行控件 slot。
+`ThemeConfig::form` 支持 colors（label、required、help、error）及 metrics（item_margin_bottom、label_gap、required_gap、font_size、line_height、font_family）typed override；支持继承、inherit=false 与独立 component algorithm/seed。最终派生的 font_size 必须有限且至少为 0.5 logical dp，保证 Text 在 DPI 换算前取整后仍可表示；非法值在 Theme 发布前拒绝。纯颜色更新只失效 material，metrics 更新相应文字/测量/布局，均不重执行控件 slot。
 
 首版不含嵌套 Form、横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)；Gallery/support overlay 由父线程单独整合。

@@ -24,7 +24,7 @@
 ## 6. Astra R1 审查修复
 
 - [x] 6.1 先复现 Form font_size 小于 0.5 logical dp 被解析接受但 Text 无法表示的问题；在最终派生值处覆盖 override/component algorithm 路径，验证初始/响应更新、阈值、小正数/非有限、旧 Theme 与实际 Text 状态原子性、恢复及 DPI，MSVC headless Debug/Release 定向测试通过后本地提交。
-- [ ] 6.2 先复现全宽 control wrapper 可见但捕获的窄 Input 全裁剪时抢焦点的问题；ref 内部代际适配使用真实控件 target/node/clip/共同窗口资格，验证全裁剪/部分可见/零高/ref 销毁与身份保留、IME 及 Modal/Spin/hidden，MSVC headless Debug/Release 定向测试通过后本地提交。
+- [x] 6.2 先复现全宽 control wrapper 可见但捕获的窄 Input 全裁剪时抢焦点的问题；ref 内部代际适配使用真实控件 target/node/clip/共同窗口资格，验证全裁剪/部分可见/零高/ref 销毁与身份保留、IME 及 Modal/Spin/hidden，MSVC headless Debug/Release 定向测试通过后本地提交。
 - [ ] 6.3 两项 Form R1 修复验证并本地提交干净后，显式合并已验证父基线 6f1b38a53486907bfc890939335180e8ac2df4b7，保留父线程的 Theme descendant preflight/helper/既有通知顺序、Gallery 076、全部 hosts/Form token plumbing；定向组合 Debug/Release 和五份金样/IIFE 比较通过，不接入其他 WIP 或 DatePicker 分支。
 - [ ] 6.4 更新 Form 文档、设计与 R1 证据，运行格式、doctor、strict all、diff 和五份既有金样不变比较；保持工作树干净，仅交父线程 R2 审核，不合并父线程 WIP 或重做通用 ThemeScope preflight。
 

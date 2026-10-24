@@ -1,4 +1,5 @@
 #include "component/form_component.hpp"
+#include "component/form_focus_context.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 
@@ -27,7 +28,7 @@ struct FormItemState final {
     Signal<runtime::SemanticForeground> feedback_color{{0, 0, 0, 1}};
     Signal<runtime::SemanticTypography> font{runtime::SemanticTypography{}};
     std::array<theme_runtime::Subscription, 2> subscriptions;
-    std::function<bool()> focus;
+    std::function<bool(const FormFocusContext&)> focus;
     std::function<void()> reset;
 };
 
@@ -64,21 +65,8 @@ void FormComponentHost::on_dispose() noexcept {
     items_.clear();
 }
 
-bool FormComponentHost::interactive(runtime::ComponentId id, bool visible) const {
-    if (!services_->components().contains(id) || !services_->interactions().component_active(id)) {
-        return false;
-    }
-    if (!visible) {
-        return true;
-    }
-    const auto node = services_->components().root(id);
-    const auto& value = services_->nodes().require(node);
-    const auto clip = services_->nodes().content_clip(node, services_->component_clip(id, viewport_, clip_));
-    const runtime::Rect bounds{value.bounds.x + value.translation.x, value.bounds.y + value.translation.y,
-                               value.bounds.width, value.bounds.height};
-    return bounds.width > 0 && bounds.height > 0 && clip.width > 0 && clip.height > 0 &&
-           bounds.x < clip.x + clip.width && bounds.x + bounds.width > clip.x && bounds.y < clip.y + clip.height &&
-           bounds.y + bounds.height > clip.y;
+bool FormComponentHost::interactive(runtime::ComponentId id) const {
+    return services_->components().contains(id) && services_->interactions().component_active(id);
 }
 
 void FormComponentHost::mount(const FormProps& props, const FormContent& content) {
@@ -137,11 +125,11 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
         props.name_, field, [this, id] { return interactive(id); },
         [this, id] {
             const auto* item = services_->components().state<FormItemState>(id);
-            if (!item || !interactive(item->regions.control, true)) {
+            if (!item || !interactive(id)) {
                 return false;
             }
             const auto callback = item->focus;
-            return callback && callback();
+            return callback && callback(FormFocusContext{*services_, viewport_, clip_});
         },
         [this, id] {
             if (const auto* item = services_->components().state<FormItemState>(id)) {
@@ -205,7 +193,9 @@ void FormComponentHost::mount_item(const FormItemProps& props, const FormItemCon
         state.focus = std::move(callbacks.first);
         state.reset = std::move(callbacks.second);
     } else {
-        state.focus = props.focus_;
+        state.focus = [callback = props.focus_, control = state.regions.control](const FormFocusContext& context) {
+            return callback && context.visible(context.window, control) && callback();
+        };
     }
     items_.push_back(id);
     auto& scope = build.scope(id);

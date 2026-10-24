@@ -35,7 +35,7 @@ public:
     [[nodiscard]] FormItemSnapshot snapshot(runtime::ComponentId) const;
 
 private:
-    bool interactive(runtime::ComponentId, bool visible = false) const;
+    bool interactive(runtime::ComponentId) const;
     void refresh(runtime::ComponentId, bool geometry);
     WindowComponentServices* services_;
     std::vector<runtime::ComponentId> forms_;

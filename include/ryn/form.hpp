@@ -250,7 +250,8 @@ public:
 
     FormItemProps& control(const CheckboxRef& value) {
         control_ = [value] {
-            return std::pair<std::function<bool()>, std::function<void()>>{detail::capture_form_checkbox(value), {}};
+            return std::pair<std::function<bool(const detail::FormFocusContext&)>, std::function<void()>>{
+                detail::capture_form_checkbox(value), {}};
         };
         return *this;
     }
@@ -269,7 +270,7 @@ private:
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
     std::function<bool()> focus_;
-    std::function<std::pair<std::function<bool()>, std::function<void()>>()> control_;
+    std::function<std::pair<std::function<bool(const detail::FormFocusContext&)>, std::function<void()>>()> control_;
     LayoutStyle layout_;
 };
 

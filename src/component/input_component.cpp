@@ -1,4 +1,5 @@
 #include "component/input_component.hpp"
+#include "component/form_focus_context.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/input_material_transition.hpp"
 #include "component/input_caret_blink.hpp"
@@ -26,6 +27,7 @@ struct InputRefState final {
     std::optional<runtime::ComponentId> binding;
     std::uint64_t generation{};
     std::function<bool(InputFocusOptions)> focus;
+    std::function<bool(const FormFocusContext&)> form_focus;
     std::function<bool()> blur;
     std::function<bool(std::size_t, std::size_t)> select;
     std::function<bool()> reset_form_draft;
@@ -499,6 +501,7 @@ struct InputPropsAccess {
                 if (const auto reference = current->reference; reference && reference->binding == component) {
                     reference->binding.reset();
                     reference->focus = {};
+                    reference->form_focus = {};
                     reference->blur = {};
                     reference->select = {};
                     reference->reset_form_draft = {};
@@ -1030,6 +1033,9 @@ struct InputPropsAccess {
             state.reference->binding = component;
             state.reference->focus = [&owner, component](InputFocusOptions options) {
                 return owner.focus(component, options);
+            };
+            state.reference->form_focus = [&owner, component](const FormFocusContext& context) {
+                return context.visible(*owner.host_, component) && owner.focus(component, {});
             };
             state.reference->blur = [&owner, component] {
                 return owner.blur(component);
@@ -2919,7 +2925,8 @@ bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
     return true;
 }
 
-std::pair<std::function<bool()>, std::function<void()>> capture_form_input(const InputRef& reference) {
+std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>>
+capture_form_input(const InputRef& reference) {
     if (!reference.state_ || !reference.state_->binding) {
         return {};
     }
@@ -2927,14 +2934,14 @@ std::pair<std::function<bool()>, std::function<void()>> capture_form_input(const
     const auto binding = reference.state_->binding;
     const auto generation = reference.state_->generation;
     const auto weak = std::weak_ptr{reference.state_};
-    return {[weak, binding, generation] {
+    return {[weak, binding, generation](const FormFocusContext& context) {
                 const auto state = weak.lock();
                 if (!state || state->binding != binding || state->generation != generation) {
                     return false;
                 }
                 state->ensure_owner();
-                const auto callback = state->focus;
-                return callback && callback({});
+                const auto callback = state->form_focus;
+                return callback && callback(context);
             },
             [weak, binding, generation] {
                 const auto state = weak.lock();

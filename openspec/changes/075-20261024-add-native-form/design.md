@@ -23,7 +23,7 @@
 
 7. 真实 InputNumber 的相同数值回写会保留未完成草稿，因此 FormItem 提供 `control(InputRef/CheckboxRef)` 显式适配；InputRef 适配额外使用带现有 ref 生命周期的内部 reset hook，reset 取消 preedit 并将数字草稿格式化为当前 authority。普通 validate/render 不调用此 hook。未提供 control 的自定义 slot 只重置 typed 值；不虚构对任意 control 的草稿控制。
 
-适配在 content 挂载结束后捕获 ref 的具体代际，避免重绑后的旧 FormItem 操作新控件；聚焦前检查 control region 的真实 clip，而编辑回调只依赖逻辑输入边界。String reset 同样重读既有受控 Prop authority，以正确处理应用拒绝回写的文本草稿。Form token 的语义字体/颜色只传给标签和反馈，control slot 保持既有控件的 Theme。
+适配在 content 挂载结束后捕获 ref 的具体代际，避免重绑后的旧 FormItem 操作新控件；失败聚焦通过内部 FormFocusContext 把当前窗口/viewport/document clip 传给 ref 所属 host，检查该代际真实控件 root node 的 bounds、ancestor clip 与 input boundary，不以全宽 control region 代理窄控件。普通 InputRef/CheckboxRef 的逻辑 focus 合同保持不变。自定义 focus 回调仍须负责真实目标资格，Form 只检查 control region。编辑回调只依赖逻辑输入边界。String reset 同样重读既有受控 Prop authority，以正确处理应用拒绝回写的文本草稿。Form token 的语义字体/颜色只传给标签和反馈，control slot 保持既有控件的 Theme；最终派生 font_size 统一要求有限且 >= 0.5 logical dp，覆盖 override、继承及 component algorithm，防止 Text 在 DPI 换算前取整为零。
 
 ## Risks / Trade-offs
 

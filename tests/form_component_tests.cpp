@@ -273,8 +273,9 @@ void multiline_and_input_boundaries() {
           "Spin blocked Form accepted command or retained input session");
     spinning.set(false);
     open.set(true);
-    sync(f);
-    check(!background.submit() && !background.validate() && !ref.focus() && modal_form.submit(),
+    sync(f, 400, {0, 0, 1, 1});
+    check(!background.submit() && !background.validate() && !ref.focus() && modal_form.submit() &&
+              f.services.focus().state().focused == f.inputs.mounted_inputs().back().interaction,
           "Form crossed Modal input boundary");
     open.set(false);
     sync(f);
@@ -676,6 +677,140 @@ void controlled_authority_and_checkbox_generation() {
     }
 }
 
+void actual_control_focus_geometry() {
+    Fixture f;
+    FormRef form;
+    FormField<String> first;
+    FormField<String> second;
+    first.required();
+    second.required();
+    InputRef one;
+    InputRef two;
+    Signal<LogicalLength> height{auto_length};
+    Signal<bool> spinning{false};
+    int mounts{};
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"first"}, first).control(one), FormItemContent{[&] {
+                              ++mounts;
+                              Spin(SpinProps{}.spinning(spinning), SpinContent{[&] {
+                                       Input(InputProps{}
+                                                 .value(first.value())
+                                                 .onChange(first.onChange())
+                                                 .ref(one)
+                                                 .layout(LayoutStyle{}.width(dp(80)).height(height)));
+                                   }});
+                          }});
+                 FormItem(FormItemProps{}.field(String{u8"second"}, second).control(two), FormItemContent{[&] {
+                              ++mounts;
+                              Input(InputProps{}.value(second.value()).onChange(second.onChange()).ref(two));
+                          }});
+             }});
+    }});
+    sync(f, 400, {100, 0, 300, 900});
+    const auto a = f.inputs.mounted_inputs().front();
+    const auto b = f.inputs.mounted_inputs().back();
+    const auto wrapper = f.services.form().snapshot(f.services.form().items().front()).control;
+    check(bounds(f, a.component).width == 80 && bounds(f, wrapper).width == 400,
+          "narrow actual control fixture did not retain the fill-width wrapper");
+    check(form.submit() && f.services.focus().state().focused == b.interaction,
+          "fully clipped actual Input stole focus through its visible wrapper");
+    const auto session = f.inputs.sessions().active();
+    check(bool(f.inputs.dispatch(CompositionChanged{String{u8"候选"}, {0, 0}, session})),
+          "clipped focus preedit fixture failed");
+    check(form.submit() && f.inputs.sessions().active() == session &&
+              f.inputs.editors().require(b.editor).composition().active,
+          "skipping a clipped Input interrupted the visible target's preedit/session");
+    sync(f, 400, {79, 0, 321, 900});
+    check(form.submit() && f.services.focus().state().focused == a.interaction,
+          "partially visible actual Input was skipped");
+    height.set(dp(0));
+    sync(f);
+    check(bounds(f, a.component).height == 0 && form.submit() && f.services.focus().state().focused == b.interaction,
+          "zero-height actual Input stole failure focus");
+    height.set(auto_length);
+    sync(f);
+    check(form.submit() && f.services.focus().state().focused == a.interaction && mounts == 2 &&
+              f.inputs.mounted_inputs().front().editor == a.editor,
+          "actual control focus did not recover with retained editor identity");
+    spinning.set(true);
+    sync(f);
+    check(form.submit() && f.services.focus().state().focused == b.interaction,
+          "Spin-blocked actual Input stole focus through a visible FormItem");
+    spinning.set(false);
+    sync(f);
+    f.services.components().set_branch_active(a.component, false);
+    f.services.mark_scene_structure_dirty();
+    sync(f);
+    check(form.submit() && f.services.focus().state().focused == b.interaction,
+          "hidden actual Input stole focus through a visible FormItem");
+    f.services.components().set_branch_active(a.component, true);
+    f.services.mark_scene_structure_dirty();
+    sync(f);
+    const auto root = f.services.components().root(a.component);
+    const auto parent = *f.nodes.require(root).parent;
+    f.nodes.require(parent).clip_content = true;
+    const auto old_bounds = f.nodes.require(parent).bounds;
+    f.nodes.require(parent).bounds.width = 0;
+    check(form.submit() && f.services.focus().state().focused == b.interaction,
+          "actual Input escaped its ancestor clip");
+    f.nodes.require(parent).bounds = old_bounds;
+    check(form.submit() && f.services.focus().state().focused == a.interaction,
+          "actual Input did not recover after ancestor clip removal");
+    check(f.services.destroy(a.component) && !one.bound() && form.submit() &&
+              f.services.focus().state().focused == b.interaction,
+          "destroyed ref target prevented the next invalid control from focusing");
+}
+
+void checkbox_and_window_focus_geometry() {
+    Fixture f;
+    detail::SelectionComponentHost selection{f.services};
+    FormRef form;
+    FormField<bool> first;
+    FormField<String> second;
+    first.required();
+    second.required();
+    CheckboxRef one;
+    InputRef two;
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"agree"}, first).control(one), FormItemContent{[&] {
+                              Checkbox(CheckboxProps{}.checked(first.value()).onChange(first.onChange()).ref(one));
+                          }});
+                 FormItem(FormItemProps{}.field(String{u8"second"}, second).control(two), FormItemContent{[&] {
+                              Input(InputProps{}.value(second.value()).onChange(second.onChange()).ref(two));
+                          }});
+             }});
+    }});
+    sync(f, 400, {100, 0, 300, 900});
+    const auto checkbox = selection.mounted().front();
+    const auto input = f.inputs.mounted_inputs().front();
+    const auto box = bounds(f, checkbox.component);
+    check(box.x + box.width <= 100 && form.submit() && f.services.focus().state().focused == input.interaction,
+          "clipped actual Checkbox stole focus through its fill-width wrapper");
+    sync(f, 400, {box.width - 1, 0, 400 - box.width + 1, 900});
+    check(form.submit() && f.services.focus().state().focused == checkbox.interaction,
+          "partially visible actual Checkbox was skipped");
+
+    // Component/interaction ids can coincide across windows. The adapter must
+    // resolve its captured ref in the Form's window, not only compare ids.
+    Fixture other;
+    FormRef foreign_form;
+    FormField<String> foreign_field;
+    foreign_field.required();
+    InputRef local;
+    other.services.mount(Content{[&] {
+        Form(FormProps{}.ref(foreign_form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"foreign"}, foreign_field).control(two),
+                          FormItemContent{[&] { Input(InputProps{}.ref(local)); }});
+             }});
+    }});
+    sync(other);
+    check(one.blur() && foreign_form.submit() && !f.services.focus().state().focused &&
+              !other.services.focus().state().focused,
+          "Form failure focused a captured ref belonging to another window");
+}
+
 void form_font_publication_and_dpi() {
     for (bool algorithm : {false, true}) {
         for (float initial_scale : {1.0F, 2.0F}) {
@@ -819,6 +954,8 @@ int main() {
         live_theme_and_clipped_focus();
         callbacks_and_control_generation();
         controlled_authority_and_checkbox_generation();
+        actual_control_focus_geometry();
+        checkbox_and_window_focus_geometry();
         form_font_publication_and_dpi();
         std::cout << "Form retained component flows passed\n";
         return 0;
