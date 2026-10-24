@@ -72,7 +72,7 @@ rynui_configure_cpp_target(rynui_navigation_model_tests)
 target_link_libraries(rynui_navigation_model_tests PRIVATE rynui_components)
 add_test(NAME rynui.navigation_model COMMAND rynui_navigation_model_tests)
 
-foreach(nav_test IN ITEMS breadcrumb_component breadcrumb_theme steps_component steps_theme)
+foreach(nav_test IN ITEMS breadcrumb_component breadcrumb_theme steps_component steps_theme navigation_examples)
     add_executable(rynui_${nav_test}_tests ${nav_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${nav_test}_tests)
     target_link_libraries(rynui_${nav_test}_tests PRIVATE rynui_components)
@@ -81,6 +81,9 @@ foreach(nav_test IN ITEMS breadcrumb_component breadcrumb_theme steps_component 
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
     add_test(NAME rynui.${nav_test} COMMAND rynui_${nav_test}_tests)
 endforeach()
+
+add_test(NAME rynui.navigation_docs_examples
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_navigation_examples.py")
 
 foreach(segmented_test IN ITEMS segmented_public_api segmented_theme segmented_component)
     add_executable(rynui_${segmented_test}_tests ${segmented_test}_tests.cpp)

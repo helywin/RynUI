@@ -14,4 +14,4 @@
 
 ## 4. 平台通用：组合验收
 
-- [ ] 4.1 执行受影响 Theme/Button/Focus/Modal/Spin/Segmented/Collapse 等共同回归和实际 headless 边界构建，验证两个导航组件空闲无持续帧；完成五份 fresh golden 旧字段/IIFE 比较、可编译 API 示例和准确证据，通过 clang-format 22.x、doctor、strict、diff。交父线程独立 Astra xhigh 审查，未执行的 Gallery/原生 GPU/Linux/系统 IME/辅助技术不记为通过。
+- [x] 4.1 执行受影响 Theme/Button/Focus/Modal/Spin/Segmented/Collapse 等共同回归和实际 headless 边界构建，验证两个导航组件空闲无持续帧；完成五份 fresh golden 旧字段/IIFE 比较、可编译 API 示例和准确证据，通过 clang-format 22.x、doctor、strict、diff。交父线程独立 Astra xhigh 审查，未执行的 Gallery/原生 GPU/Linux/系统 IME/辅助技术不记为通过。
