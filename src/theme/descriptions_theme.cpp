@@ -1,15 +1,17 @@
 #include "theme/descriptions_theme.hpp"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
 namespace ryn::detail {
 DescriptionsThemeToken derive_descriptions(const AntDesignDefaultSeed& seed, const ThemeMapToken& map,
-                                           const ThemeAliasToken& alias) {
+                                           const ThemeAliasToken& alias, std::span<const ThemeAlgorithm> algorithms) {
     DescriptionsThemeToken token;
     const auto base = map.color_text_base;
     // Locked 6.6.5 descriptions/style/index.ts prepareComponentToken and size recipes.
-    token.colors = {Color(base.red(), base.green(), base.blue(), .02F),
+    const bool dark = std::ranges::find(algorithms, ThemeAlgorithm::Dark) != algorithms.end();
+    token.colors = {Color(base.red(), base.green(), base.blue(), dark ? .04F : .02F),
                     Color(base.red(), base.green(), base.blue(), .45F),
                     alias.color_text_secondary,
                     alias.color_text,
@@ -105,6 +107,8 @@ void apply_descriptions_override(DescriptionsThemeToken& token, const Descriptio
     if (!std::isfinite(sum) || m.line_height <= 0 || m.title_line_height <= 0 || m.font_size < .5F ||
         m.title_font_size < .5F || static_cast<double>(m.font_size) >= std::numeric_limits<long>::max() ||
         static_cast<double>(m.title_font_size) >= std::numeric_limits<long>::max() ||
+        static_cast<double>(m.font_size) >= std::numeric_limits<std::uint32_t>::max() ||
+        static_cast<double>(m.title_font_size) >= std::numeric_limits<std::uint32_t>::max() ||
         (m.font_family != SystemFontFamily::ui_sans && m.font_family != SystemFontFamily::ui_monospace) ||
         m.title_font_weight < 1 || m.title_font_weight > 1000) {
         throw std::invalid_argument("Descriptions final typography or combined extents are invalid");

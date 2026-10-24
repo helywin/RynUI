@@ -44,6 +44,9 @@ void recipe_and_inheritance() {
         ThemeConfig config;
         config.algorithms = {algorithm};
         const auto variant = resolve_theme(config);
+        check(variant.descriptions().colors.label_background.alpha() ==
+                  (algorithm == ThemeAlgorithm::Dark ? .04F : .02F),
+              "Descriptions fillAlter alpha drifted");
         check(variant.descriptions().colors.content == variant.alias().color_text &&
                   variant.descriptions().metrics.font_size == variant.map().font_size,
               "Descriptions did not follow global algorithm");

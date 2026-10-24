@@ -23,5 +23,11 @@ int main() {
     ryn::DescriptionsItem item{u8"name", ryn::DescriptionsLabel{[] { ryn::Text(u8"Name"); }},
                                ryn::DescriptionsContent{[] { ryn::Input(ryn::InputProps{}); }}};
     item.span(span).visible(visible);
-    return 0;
+    bool rejected{};
+    try {
+        ryn::Descriptions(props, {item});
+    } catch (const std::logic_error&) {
+        rejected = true;
+    }
+    return rejected ? 0 : 1;
 }

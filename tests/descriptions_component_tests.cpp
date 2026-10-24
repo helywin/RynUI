@@ -87,6 +87,24 @@ void layout_and_retention() {
           "title/extra layout missing");
     check(f.services.surfaces().instances().size() > 0 && f.scene.glyph_scene().instances().size() > 0,
           "Descriptions did not publish actual surfaces and glyphs");
+    const auto frame = bounds(f, initial.items[0].viewport);
+    const float separator_x = frame.x + initial.items[0].label_cell.width;
+    check(std::ranges::any_of(f.services.surfaces().instances().instances(),
+                              [&](const auto& quad) {
+                                  return quad.bounds[0] == separator_x && quad.bounds[2] == 1 &&
+                                         quad.bounds[3] == frame.height;
+                              }),
+          "Descriptions actual label/value separator missing");
+    size.set(DescriptionsSize::Middle);
+    sync(f);
+    check(bounds(f, initial.items[0].viewport).height == frame.height - 8,
+          "Middle row padding did not change geometry");
+    size.set(DescriptionsSize::Small);
+    sync(f);
+    check(bounds(f, initial.items[0].viewport).height == frame.height - 16,
+          "Small row padding did not change geometry");
+    size.set(DescriptionsSize::Default);
+    sync(f);
     click(f, f.buttons.mounted_buttons()[0].component);
     check(clicks == 1, "noninteractive wrapper blocked Button");
     check(ref.focus({InputFocusCursor::All}), "rich Input cannot focus");
@@ -116,6 +134,18 @@ void layout_and_retention() {
     check(f.services.components().component_count() == count && f.inputs.mounted_inputs()[0].editor == input.editor &&
               f.inputs.editors().require(input.editor).value() == "retained draft" && labels == 1 && contents == 1,
           "reactive props remounted rich slots or lost editor");
+    const auto valid_rows = f.services.descriptions().snapshot(id).rows;
+    bool rejected{};
+    try {
+        columns.set(0);
+        sync(f);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.descriptions().snapshot(id).rows == valid_rows,
+          "invalid reactive column partially published layout");
+    columns.set(2);
+    sync(f);
     check(f.services.destroy(id), "Descriptions teardown failed");
     sync(f);
     check(f.services.components().component_count() == 0 && f.services.surfaces().size() == 0 &&

@@ -41,6 +41,16 @@ foreach(form_integration IN ITEMS form_component form_theme descriptions_compone
     add_test(NAME rynui.${form_integration} COMMAND rynui_${form_integration}_tests)
 endforeach()
 
+add_executable(rynui_descriptions_integration_tests descriptions_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_descriptions_integration_tests)
+target_link_libraries(rynui_descriptions_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_descriptions_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS popup cleanup boundary scene)
+    add_test(NAME rynui.descriptions_integration_${case} COMMAND rynui_descriptions_integration_tests ${case})
+endforeach()
+
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${presentation_test}_tests)

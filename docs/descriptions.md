@@ -7,8 +7,8 @@
 #include <ryn/descriptions.hpp>
 
 void AccountDetails() {
-    auto columns = ryn::state(3);
-    auto shown = ryn::state(true);
+    ryn::Signal<int> columns{3};
+    ryn::Signal<bool> shown{true};
     ryn::Descriptions(
         ryn::DescriptionsProps{}.column(columns).bordered()
             .title(ryn::DescriptionsTitle{[] { ryn::Text(u8"账户详情"); }}),

@@ -5281,9 +5281,9 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
             apply_seed_override(component_seed, config.descriptions.seed);
             const auto component_map = derive_map(component_seed, algorithms);
             token = detail::derive_descriptions(component_seed, component_map,
-                                                derive_alias(component_seed, component_map, algorithms));
+                                                derive_alias(component_seed, component_map, algorithms), algorithms);
         } else {
-            token = detail::derive_descriptions(seed, map, alias);
+            token = detail::derive_descriptions(seed, map, alias, algorithms);
         }
         detail::apply_descriptions_override(token, config.descriptions.tokens);
         return token;
