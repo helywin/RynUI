@@ -26,6 +26,10 @@ void steps_example(ryn::Signal<std::size_t>& current, ryn::Signal<bool>& review_
 
 `vertical(true)` 纵向排列，默认横向；`StepsSize::Default` 与 `Small` 两尺寸。横向均分可用宽度，纵向按内容排列；编号、check/error、状态圆和连接线是原生 logical scene。`richTitle`、`richSubtitle`、`richDescription`、`icon` 都是独立 typed slots。原生子 Button/Input 保留自己的激活、编辑及输入会话。
 
+未提供 `onChange` 时只有步骤自身不参与导航/Tab，富 slots 中启用的原生 Button/Input 仍可点击、聚焦和编辑。项的显式 `disabled`、隐藏，以及 Modal/Spin/窗口失活边界屏蔽整支输入；恢复保留子控件身份。
+
+外扩焦点轮廓使用有效的外部祖先裁剪，留有空间时四周可见；编号、状态圆、连接线、富内容和命中仍严格受内容分配范围限制。零宽或零高不绘制焦点轮廓。
+
 只有一个可见启用步骤作为 roving Tab stop。方向键（横向 Left/Right、纵向 Up/Down）及 Home/End 仅移动焦点；Enter/Space 和主指针显式请求切换。repeat/keyup 不额外激活，激活当前索引不重复回调。Modal、Spin、隐藏项和失活边界清理不可用交互；全隐藏或空 items 时不占普通布局位置，恢复保留身份。
 
 Theme 使用 `ThemeConfig::steps` 的独立 `tokens`、`seed`、`algorithm`；颜色更新不重测量，最终派生度量先校验再发布。`LayoutStyle` 只控制外部布局。有限宽高下裁剪实际文字、富内容、表面与命中。

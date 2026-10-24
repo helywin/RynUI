@@ -138,15 +138,19 @@ void BreadcrumbComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             services_->nodes().require(services_->components().root(component)).out_of_flow = !active;
         }
         const bool eligible = s->callback && s->model.eligible(i);
-        if (services_->interactions().set_eligible(row.interaction, eligible)) {
+        // Descendant interactions inherit this eligibility; navigation availability only controls this row's focus.
+        if (services_->interactions().set_eligible(row.interaction, visible && !s->model.items[i].disabled)) {
             services_->dirty().invalidate(row.node, runtime::DirtyFlags::HitTest);
         }
+        services_->interactions().set_focusable(row.interaction, eligible);
+        services_->interactions().set_tab_stop(row.interaction, eligible);
         row.color.set(fg(s->model.items[i].disabled    ? t.colors.disabled
                          : current == i                ? t.colors.current
                          : s->hovered == i && eligible ? t.colors.hover
                          : s->callback                 ? t.colors.link
                                                        : t.colors.item));
-        branches.emplace_back(row.component, !visible);
+        branches.emplace_back(row.component,
+                              !visible || s->model.items[i].disabled || !services_->focus().state().window_active);
     }
     services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
@@ -167,7 +171,7 @@ void BreadcrumbComponentHost::reconcile(runtime::ComponentId id) {
     }
     std::vector<input::InteractionId> cancelled;
     for (std::size_t i = 0; i < s->rows.size(); ++i) {
-        if (!s->model.eligible(i) || !services_->interactions().branch_active(s->rows[i].interaction)) {
+        if (!s->callback || !s->model.eligible(i) || !services_->interactions().branch_active(s->rows[i].interaction)) {
             cancelled.push_back(s->rows[i].interaction);
         }
     }
@@ -490,14 +494,14 @@ void BreadcrumbComponentHost::on_input_boundary_changed() {
 }
 
 void BreadcrumbComponentHost::on_window_active(bool active) {
-    if (!active) {
-        const auto ids = mounted_;
-        for (auto id : ids) {
-            if (auto* s = services_->components().state<BreadcrumbState>(id)) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        if (auto* s = services_->components().state<BreadcrumbState>(id)) {
+            if (!active) {
                 s->pressed.reset();
                 s->hovered.reset();
-                refresh(id, false);
             }
+            refresh(id, false);
         }
     }
 }
@@ -515,6 +519,7 @@ void BreadcrumbComponentHost::synchronize_auxiliary_geometry(runtime::Size viewp
             const auto& row = s->rows[i];
             const auto& node = services_->nodes().require(row.node);
             const graphics::EffectClip clip{1, services_->nodes().content_clip(row.node, s->clip)};
+            const graphics::EffectClip decoration_clip{2, s->clip};
             const float opacity = services_->nodes().content_opacity(row.node);
             const float radius = std::min(t.metrics.radius, std::min(node.bounds.width, node.bounds.height) / 2);
             const bool eligible =
@@ -526,10 +531,11 @@ void BreadcrumbComponentHost::synchronize_auxiliary_geometry(runtime::Size viewp
             effects.push_back(graphics::make_outline_effect(
                 {node.bounds, radius}, t.effects.focus_width > 0 ? t.effects.focus_width : 1, t.effects.focus_offset,
                 t.colors.focus,
-                eligible && focus.focused == row.interaction && focus.focus_visible && t.effects.focus_width > 0
+                eligible && focus.focused == row.interaction && focus.focus_visible && t.effects.focus_width > 0 &&
+                        node.bounds.width > 0 && node.bounds.height > 0
                     ? opacity
                     : 0,
-                node.translation, clip));
+                node.translation, decoration_clip));
             static_cast<void>(services_->surfaces().update_content_effects(row.surface, effects));
         }
     }

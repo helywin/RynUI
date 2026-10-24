@@ -85,6 +85,16 @@ endforeach()
 add_test(NAME rynui.navigation_docs_examples
     COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tests/verify_navigation_examples.py")
 
+add_executable(rynui_navigation_review_tests navigation_review_tests.cpp)
+rynui_configure_cpp_target(rynui_navigation_review_tests)
+target_link_libraries(rynui_navigation_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_navigation_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(review_case IN ITEMS children_steps children_breadcrumb_current children_breadcrumb_display focus_steps focus_breadcrumb)
+    add_test(NAME rynui.navigation_review_${review_case} COMMAND rynui_navigation_review_tests ${review_case})
+endforeach()
+
 foreach(segmented_test IN ITEMS segmented_public_api segmented_theme segmented_component)
     add_executable(rynui_${segmented_test}_tests ${segmented_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${segmented_test}_tests)

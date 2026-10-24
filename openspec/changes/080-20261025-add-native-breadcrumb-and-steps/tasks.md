@@ -6,12 +6,12 @@
 
 ## 2. 平台通用：Breadcrumb
 
-- [x] 2.1 实现真实 Breadcrumb host、富标题/图标/separator、当前项和 pointer/keyboard 激活、可见/禁用布局及生命周期、独立 Theme 全链路；补全 docs/breadcrumb.md 真实示例与首版限制，Debug/Release component/Theme tests 验证实际激活/HitTest 恢复、flow 重排、保留身份、有限 glyph/surface/hit clip、父覆盖/inactive seed 和最终派生非法值原子拒绝，fresh goldens 保留旧字段。
+- [ ] 2.1 实现真实 Breadcrumb host、富标题/图标/separator、当前项和 pointer/keyboard 激活、可见/禁用布局及生命周期、独立 Theme 全链路；补全 docs/breadcrumb.md 真实示例与首版限制，Debug/Release component/Theme tests 验证实际激活/HitTest 恢复、flow 重排、保留身份、有限 glyph/surface/hit clip、父覆盖/inactive seed 和最终派生非法值原子拒绝，fresh goldens 保留旧字段。
 
 ## 3. 平台通用：Steps
 
-- [x] 3.1 实现真实 Steps host、四状态/连接线/编号及富 slots、横纵/两尺寸、controlled/default current、roving focus 和正确键盘/指针激活；补全 docs/steps.md 与 Theme，Debug/Release component/Theme tests 覆盖 current/状态推导、拒绝/重试、隐藏/重新启用、实际子控件激活、焦点来源、短/零几何 clip、Modal/Spin/回调销毁、身份与 dirty 局部性，fresh goldens 证明旧值保持。
+- [ ] 3.1 实现真实 Steps host、四状态/连接线/编号及富 slots、横纵/两尺寸、controlled/default current、roving focus 和正确键盘/指针激活；补全 docs/steps.md 与 Theme，Debug/Release component/Theme tests 覆盖 current/状态推导、拒绝/重试、隐藏/重新启用、实际子控件激活、焦点来源、短/零几何 clip、Modal/Spin/回调销毁、身份与 dirty 局部性，fresh goldens 证明旧值保持。
 
 ## 4. 平台通用：组合验收
 
-- [x] 4.1 执行受影响 Theme/Button/Focus/Modal/Spin/Segmented/Collapse 等共同回归和实际 headless 边界构建，验证两个导航组件空闲无持续帧；完成五份 fresh golden 旧字段/IIFE 比较、可编译 API 示例和准确证据，通过 clang-format 22.x、doctor、strict、diff。交父线程独立 Astra xhigh 审查，未执行的 Gallery/原生 GPU/Linux/系统 IME/辅助技术不记为通过。
+- [ ] 4.1 执行受影响 Theme/Button/Focus/Modal/Spin/Segmented/Collapse 等共同回归和实际 headless 边界构建，验证两个导航组件空闲无持续帧；完成五份 fresh golden 旧字段/IIFE 比较、可编译 API 示例和准确证据，通过 clang-format 22.x、doctor、strict、diff。交父线程独立 Astra xhigh 审查，未执行的 Gallery/原生 GPU/Linux/系统 IME/辅助技术不记为通过。

@@ -194,9 +194,11 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             geometry = true;
         }
         services_->nodes().require(row.node).out_of_flow = !item.visible;
-        if (services_->interactions().set_eligible(row.interaction, s->model.eligible(i))) {
+        // A display-only row still hosts native child input; only true disabled/hidden state gates descendants.
+        if (services_->interactions().set_eligible(row.interaction, item.visible && !item.disabled)) {
             services_->dirty().invalidate(row.node, runtime::DirtyFlags::HitTest);
         }
+        services_->interactions().set_focusable(row.interaction, s->model.eligible(i));
         services_->interactions().set_tab_stop(row.interaction, entry == i);
         const Color title = item.disabled                             ? t.colors.disabled
                             : status == StepsStatus::Error            ? t.colors.error
@@ -228,7 +230,8 @@ void StepsComponentHost::refresh(runtime::ComponentId id, bool geometry) {
             branch(row.status_component, !number);
             row.status_icon.set(status == StepsStatus::Error ? IconName::CloseOutlined : IconName::CheckOutlined);
         }
-        boundaries.emplace_back(row.component, !item.visible);
+        boundaries.emplace_back(row.component,
+                                !item.visible || item.disabled || !services_->focus().state().window_active);
     }
     services_->dirty().invalidate(s->node, geometry ? runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                           runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest
@@ -751,14 +754,14 @@ void StepsComponentHost::on_input_boundary_changed() {
 }
 
 void StepsComponentHost::on_window_active(bool active) {
-    if (!active) {
-        const auto ids = mounted_;
-        for (auto id : ids) {
-            if (auto* s = services_->components().state<StepsState>(id)) {
+    const auto ids = mounted_;
+    for (auto id : ids) {
+        if (auto* s = services_->components().state<StepsState>(id)) {
+            if (!active) {
                 s->pressed.reset();
                 s->hovered.reset();
-                refresh(id, false);
             }
+            refresh(id, false);
         }
     }
 }
@@ -782,6 +785,7 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
             const auto status = s->model.status(i);
             const float opacity = services_->nodes().content_opacity(row.node);
             const graphics::EffectClip clip{1, services_->nodes().content_clip(row.node, s->clip)};
+            const graphics::EffectClip decoration_clip{2, s->clip};
             std::vector<graphics::RoundedEffectInstance> effects;
             if (!row.custom_icon) {
                 const auto color = status == StepsStatus::Error     ? t.colors.error_background
@@ -822,10 +826,11 @@ void StepsComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport, 
                 effects.insert(effects.end(), rail.begin(), rail.end());
             }
             const bool visible = s->model.eligible(i) && services_->interactions().branch_active(row.interaction) &&
-                                 focus.focused == row.interaction && focus.focus_visible && t.effects.focus_width > 0;
+                                 focus.focused == row.interaction && focus.focus_visible && t.effects.focus_width > 0 &&
+                                 node.bounds.width > 0 && node.bounds.height > 0;
             effects.push_back(graphics::make_outline_effect(
                 {node.bounds, 0}, t.effects.focus_width > 0 ? t.effects.focus_width : 1, t.effects.focus_offset,
-                t.colors.focus, visible ? opacity : 0, node.translation, clip));
+                t.colors.focus, visible ? opacity : 0, node.translation, decoration_clip));
             static_cast<void>(services_->surfaces().update_content_effects(row.surface, effects));
         }
     }

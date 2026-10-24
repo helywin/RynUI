@@ -137,7 +137,8 @@ void states_and_native_scene() {
               f.services.steps().snapshot(id).items == original.items,
           "Small Steps icon size/remount wrong");
     for (auto hit : f.services.interactions().declaration_order()) {
-        check(!f.services.interactions().require(hit).eligible, "Steps without onChange became interactive");
+        const auto& record = f.services.interactions().require(hit);
+        check(!record.focusable && !record.tab_stop, "Steps without onChange became focusable navigation");
     }
 }
 
