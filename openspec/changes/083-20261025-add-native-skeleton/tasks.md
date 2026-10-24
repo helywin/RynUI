@@ -6,8 +6,8 @@
 
 ## 2. 平台通用 Theme、retained host 与 scene
 
-- [ ] 2.1 实现 Skeleton 完整 Theme 链及最终派生验证，保持旧 31 IIFE 原文顺序和旧 typed goldens；用新 binary 生成五份 goldens并深比较父 580a8c3，Theme focused 测试验证 inactive seed、继承、dirty、identity 和父后代原子拒绝恢复。
-- [ ] 2.2 接入独立 retained host/窗口服务、实际 logical scene quads、有限分配与 content clip；实现 loading 身份恢复、空内容隐藏布局、无占位交互及 idle；在同一正式 preset Debug/Release 的 component focused 测试中验证真实 scene、三 Theme、slot 次数并记录证据。
+- [x] 2.1 实现 Skeleton 完整 Theme 链及最终派生验证，保持旧 31 IIFE 原文顺序和旧 typed goldens；用新 binary 生成五份 goldens并深比较父 580a8c3，Theme focused 测试验证 inactive seed、继承、dirty、identity 和父后代原子拒绝恢复。
+- [x] 2.2 接入独立 retained host/窗口服务、实际 logical scene quads、有限分配与 content clip；实现 loading 身份恢复、空内容隐藏布局、无占位交互及 idle；在同一正式 preset Debug/Release 的 component focused 测试中验证真实 scene、三 Theme、slot 次数并记录证据。
 
 ## 3. 平台通用输入组合与最终集成
 

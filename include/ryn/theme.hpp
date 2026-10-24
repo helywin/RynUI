@@ -12,6 +12,7 @@
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
 #include <ryn/time_picker_tokens.hpp>
+#include <ryn/skeleton_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1506,6 +1507,13 @@ struct TimePickerThemeConfig final {
     friend bool operator==(const TimePickerThemeConfig&, const TimePickerThemeConfig&) = default;
 };
 
+struct SkeletonThemeConfig final {
+    SkeletonTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const SkeletonThemeConfig&, const SkeletonThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1544,6 +1552,7 @@ struct ThemeConfig final {
     EmptyThemeConfig empty;
     ResultThemeConfig result;
     CollapseThemeConfig collapse;
+    SkeletonThemeConfig skeleton;
     std::vector<ThemeAlgorithm> algorithms;
     bool inherit{true};
 
@@ -2167,6 +2176,10 @@ public:
 
     friend bool operator==(const ThemeSnapshot&, const ThemeSnapshot&);
 
+    [[nodiscard]] const SkeletonThemeToken& skeleton() const noexcept {
+        return *skeleton_;
+    }
+
 private:
     friend struct detail::InputTokenAccess;
     friend ThemeSnapshot resolve_theme(const ThemeConfig&, const ThemeSnapshot*);
@@ -2183,7 +2196,8 @@ private:
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
                   BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
-                  std::shared_ptr<const TimePickerThemeToken> time_picker);
+                  std::shared_ptr<const TimePickerThemeToken> time_picker,
+                  std::shared_ptr<const SkeletonThemeToken> skeleton);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2206,6 +2220,7 @@ private:
     BreadcrumbThemeToken breadcrumb_;
     StepsThemeToken steps_;
     std::shared_ptr<const TimePickerThemeToken> time_picker_;
+    std::shared_ptr<const SkeletonThemeToken> skeleton_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

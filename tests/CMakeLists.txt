@@ -8,6 +8,16 @@ foreach(skeleton_test IN ITEMS skeleton_public_api skeleton_model)
     add_test(NAME rynui.${skeleton_test} COMMAND rynui_${skeleton_test}_tests)
 endforeach()
 
+foreach(skeleton_test IN ITEMS skeleton_theme skeleton_component)
+    add_executable(rynui_${skeleton_test}_tests ${skeleton_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${skeleton_test}_tests)
+    target_link_libraries(rynui_${skeleton_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${skeleton_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${skeleton_test} COMMAND rynui_${skeleton_test}_tests)
+endforeach()
+
 add_executable(rynui_time_picker_review_tests time_picker_review_tests.cpp)
 rynui_configure_cpp_target(rynui_time_picker_review_tests)
 target_link_libraries(rynui_time_picker_review_tests PRIVATE rynui_components)

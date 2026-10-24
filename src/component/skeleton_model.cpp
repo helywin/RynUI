@@ -66,6 +66,14 @@ std::vector<SkeletonShape> arrange_skeleton(const SkeletonModel& s, const Skelet
         result.push_back({bounds, std::min(radius, std::min(bounds.width, bounds.height) / 2)});
     };
     if (s.kind != SkeletonKind::Content) {
+        const auto size = measure_skeleton(s, m, {0, r.width, 0, r.height});
+        r.width = size.width;
+        r.height = size.height;
+        if (s.kind == SkeletonKind::Avatar ||
+            (s.kind == SkeletonKind::Button && s.button_shape == SkeletonButtonShape::Circle && !s.block)) {
+            r.width = std::min(r.width, r.height);
+            r.height = r.width;
+        }
         const bool capsule = (s.kind == SkeletonKind::Avatar && s.avatar_shape == SkeletonAvatarShape::Circle) ||
                              (s.kind == SkeletonKind::Button && (s.button_shape == SkeletonButtonShape::Circle ||
                                                                  s.button_shape == SkeletonButtonShape::Round));
