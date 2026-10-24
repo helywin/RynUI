@@ -72,3 +72,8 @@ stable_ids=334 navigation=93 buttons=350 interactions=1380 visible_interactions=
 本阶段不运行完整 Gallery frame/native smoke，不修改 task 4.1 或 completion 清单，不把平台通用 Recording 与组件核心的前置验收合并计数。
 
 task 3.1 完成；079 整体 **3/4**，task 4.1 保持未完成。
+## 父线程独立 R4 与阶段集成
+
+全新 Astra xhigh R4 固定审查 `6ceff51b02f159202e94fd5be4f710ac13c3c436`，覆盖完整 079 合同、三个已实现阶段及 082 共存，结论 CLEAN、无可行动 P1/P2。独立实际运行 worker 自有 Debug `--time-picker-only` **249.975 秒**、`--inventory-only` **15.206 秒**、`--states-only` **87.938 秒**，均退出 0；reference catalog、generator check/self-test 与五项源码合同也通过。navigation/date/forms/panels 的状态来自 worker 记录和源码复核，未写作本轮独立重跑；panels 的历史原始日志为空。reviewer 核对 CMake cache、Ninja/构建记录、源码→obj→exe 时间顺序和哈希；frame executable SHA-256 为 `0FC156BB8E48DD0DA0C1382DE8350FD27A9E2E997A647490E08BD6BA81AE7C2A`。这是已有二进制复验，不是独立重新构建。
+
+父树在已推送 `580a8c3d235c22eb95b11688b509ee1e2ea65e44` 上 `git merge --ff-only 6ceff51b`，导入原阶段提交；已审查的 src/include/tests/examples/gallery/design-tokens 与 worker 完全相同，Core/Theme/CMake/golden 不变，保留原未跟踪截图。阶段 3.1 单独交付 main，整体仍为 **3/4**；4.1 完整 frame/native smoke 在父树随后统一执行，不能由本次 scoped 或审查结论勾选。仅父线程推送 main 并核对远端 SHA，不推送 t3 分支、PR 或 archive。
