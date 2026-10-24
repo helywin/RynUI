@@ -1,4 +1,6 @@
 #pragma once
+
+#include <ryn/descriptions.hpp>
 #include <ryn/form.hpp>
 #include <ryn/empty.hpp>
 #include <ryn/result.hpp>

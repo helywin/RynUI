@@ -24,7 +24,7 @@ foreach(date_test IN ITEMS date_picker_component date_picker_theme date_picker_r
     endif()
 endforeach()
 
-foreach(form_test IN ITEMS form_model form_public_api)
+foreach(form_test IN ITEMS form_model form_public_api descriptions_model descriptions_public_api)
     add_executable(rynui_${form_test}_tests ${form_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_test}_tests)
     target_link_libraries(rynui_${form_test}_tests PRIVATE rynui_components)

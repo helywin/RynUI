@@ -2,7 +2,7 @@
 
 ## 1. 平台通用 API 与 packing model
 
-- [ ] 1.1 实现 typed API、固定 key 校验和独立 packing model，增加 public usage 编译、span/columns/hidden/非法配置测试及 docs/descriptions.md 用法；Windows MSVC windows-msvc-headless Debug 定向 build/CTest 通过后本地提交。
+- [x] 1.1 实现 typed API、固定 key 校验和独立 packing model，增加 public usage 编译、span/columns/hidden/非法配置测试及 docs/descriptions.md 用法；Windows MSVC windows-msvc-headless Debug 定向 build/CTest 通过后本地提交。
 
 ## 2. 平台通用 retained host 与 Theme
 

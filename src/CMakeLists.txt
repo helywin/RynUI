@@ -195,6 +195,7 @@ add_library(rynui_components STATIC
     component/date_picker_model.cpp
     component/date_picker_component.cpp
     component/form_model.cpp
+    component/descriptions_model.cpp
     component/form_component.cpp
     component/feedback_component.cpp
     component/tag_badge_component.cpp
