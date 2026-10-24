@@ -18,6 +18,7 @@
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
 #include "component/empty_result_component.hpp"
+#include "component/form_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -848,7 +849,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 273, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 285, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -861,17 +862,17 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 215,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 221,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
                     rynui::example::ReferenceSurfaceRole::site_header,
             "Token Gallery document and header surface count drifted");
-    require(fixture.selections->mounted().size() == 45 && fixture.selections->checkbox_groups().size() == 2 &&
+    require(fixture.selections->mounted().size() == 46 && fixture.selections->checkbox_groups().size() == 2 &&
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 813) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 830) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -890,7 +891,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 490) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 503) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -899,7 +900,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 279,
+                initial.reference_content_runs == 126 && initial.live_samples == 280,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1042,9 +1043,9 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // Collapse retains its editors/Select; Result appends one independent draft.
-    require(fixture.inputs->mounted_inputs().size() == 135 &&
-                fixture.host->services().select().mounted().size() == 21 &&
+    // Form appends its name, selector editor and numeric editor after Empty/Result.
+    require(fixture.inputs->mounted_inputs().size() == 138 &&
+                fixture.host->services().select().mounted().size() == 22 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
                 fixture.host->services().modal().mounted().size() == 13,
@@ -1935,7 +1936,11 @@ void test_panel_and_selection_gallery_after_document_scroll() {
             "Collapse Gallery initial controlled/disabled state differs");
     const auto draft = editor("gallery.collapse.draft");
     const auto advanced = editor("gallery.collapse.advanced");
-    const auto select = services.select().mounted().back();
+    const auto selectors = services.select().mounted();
+    const auto child_select = std::ranges::find_if(
+        selectors, [&](const auto candidate) { return descendant(candidate, original.panels[0].body); });
+    require(child_select != selectors.end(), "Collapse Gallery child Select is absent");
+    const auto select = *child_select;
     require(descendant(select, original.panels[0].body), "Collapse Gallery child Select belongs to another sample");
     const auto original_select = services.select().snapshot(select);
     const auto horizontal = segmented.mounted()[0];
@@ -2559,7 +2564,8 @@ void test_empty_and_result_gallery_after_document_scroll() {
             require(reference != surfaces.end(), "Gallery navigation lost an existing reference card");
             const auto anchor = rynui::example::gallery_component_navigation_anchor(
                 entry.identity, reference->node, f.host->text(), f.nodes, scroll_root);
-            if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result") {
+            if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
+                entry.identity != "ant.component.form") {
                 require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
                                                                f.nodes.require(scroll_root).bounds.y)),
                         "Empty/Result navigation changed another component's reference-card target");
@@ -2667,6 +2673,499 @@ void test_empty_and_result_gallery_after_document_scroll() {
     }
 }
 
+void test_form_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                    "Form Gallery finite layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Form Gallery document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Form Gallery navigation translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(surfaces, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == entry.identity;
+            });
+            require(reference != surfaces.end(), "Form Gallery lost an old reference card");
+            const auto anchor = gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                    f.nodes, scroll_root);
+            if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
+                entry.identity != "ant.component.form") {
+                require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
+                                                               f.nodes.require(scroll_root).bounds.y)),
+                        "Form Gallery changed another catalog destination");
+            }
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == GalleryNavigationTargetKind::component, "Form catalog request kind differs");
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text_with_prefix = [&](std::string_view prefix) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
+                return text;
+            }
+        }
+        throw std::runtime_error("Form Gallery actual Text absent: " + std::string{prefix});
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allocation) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto instance = range.first + index;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& glyph = f.text_scene.glyph_scene().instances().at(instance);
+            const auto& p = glyph.position_size;
+            const auto& t = glyph.translation_opacity;
+            const auto& c = glyph.clip_bounds;
+            for (const auto& values : {p, t, c}) {
+                for (const float value : values) {
+                    require(std::isfinite(value), "Form Gallery actual glyph geometry/clip is not finite");
+                }
+            }
+            const float left = std::max(p[0] + t[0], c[0]);
+            const float top = std::max(p[1] + t[1], c[1]);
+            const float right = std::min(p[0] + t[0] + p[2], c[2]);
+            const float bottom = std::min(p[1] + t[1] + p[3], c[3]);
+            if (right > left && bottom > top && t[2] > 0 && glyph.color[3] > 0) {
+                if (!(left >= allocation.x - .02F && right <= allocation.x + allocation.width + .02F &&
+                      top >= allocation.y - .02F && bottom <= allocation.y + allocation.height + .02F &&
+                      left >= 15.98F && right <= width - 15.98F && top >= 11.98F && bottom <= 888.02F)) {
+                    throw std::runtime_error(
+                        "Form Gallery glyph escaped: " + std::string{f.text_scene.text_state(scene).content().bytes()} +
+                        " visible=" + std::to_string(left) + "," + std::to_string(top) + "," + std::to_string(right) +
+                        "," + std::to_string(bottom) + " allocation=" + std::to_string(allocation.x) + "," +
+                        std::to_string(allocation.y) + "," + std::to_string(allocation.width) + "," +
+                        std::to_string(allocation.height));
+                }
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                    f.nodes.require(scroll_root).bounds.y - 80));
+        reconcile();
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        f.host->focus().dispatch({value, input::KeyAction::down, modifiers});
+        f.host->focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id, bool hittable = true) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 16 && point.x < width - 16 && point.y >= 12 &&
+                    point.y < 888 && (!hittable || f.host->hit_test().hit_test(point).has_value()),
+                "Form Gallery target is not actually hittable in finite viewport");
+        for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto action = [&](std::string_view label) {
+        const auto button = button_with_label(f, label);
+        reveal(button.component);
+        require(glyphs(text_with_prefix(label).scene, bounds(button.component)) > 0,
+                "Form native action label has no actual visible glyph");
+        click(button.component);
+    };
+    // Supplemental command regression: invoke the same mounted Button handler
+    // while keeping the editor focused, so blur cannot hide a draft/reset bug.
+    const auto command_without_blur = [&](std::string_view label) {
+        const auto button = button_with_label(f, label);
+        const auto handlers = f.host->interactions().require(button.interaction).focus_handlers;
+        require(handlers && handlers->activate, "Form Gallery native command handler absent");
+        handlers->activate();
+        sync();
+    };
+    auto& forms = services.form();
+    require(forms.mounted().size() == 1 && forms.items().size() == 4,
+            "Form Gallery real Form/four typed fields absent");
+    const auto form = forms.mounted().front();
+    const std::vector items(forms.items().begin(), forms.items().end());
+    std::vector<ryn::detail::FormItemSnapshot> parts;
+    for (const auto item : items) {
+        parts.push_back(forms.snapshot(item));
+    }
+    const auto editor_in = [&](runtime::ComponentId ancestor) {
+        for (const auto& editor : f.inputs->mounted_inputs()) {
+            if (descendant(editor.component, ancestor)) {
+                return editor;
+            }
+        }
+        throw std::runtime_error("Form Gallery native editor absent");
+    };
+    const auto name = editor_in(parts[0].control);
+    const auto role_input = editor_in(parts[1].control);
+    const auto role = services.select().mounted().back();
+    const auto count = editor_in(parts[2].control);
+    const auto consent = f.selections->mounted().back();
+    require(descendant(role, parts[1].control) && descendant(consent.component, parts[3].control),
+            "Form Gallery real refs selected another sample");
+    const auto name_layers = f.inputs->text_layers(name.component);
+    const auto count_layers = f.inputs->text_layers(count.component);
+    const auto original_inputs = std::vector(f.inputs->mounted_inputs().begin(), f.inputs->mounted_inputs().end());
+    const auto original_texts =
+        std::vector(f.host->text().mounted_texts().begin(), f.host->text().mounted_texts().end());
+    const auto original_buttons = std::vector(f.host->mounted_buttons().begin(), f.host->mounted_buttons().end());
+    const auto component_count = services.components().component_count();
+    const auto mounts = services.components().mount_runs();
+    const auto telemetry = definition.telemetry();
+    const auto retained = [&] {
+        require(services.components().component_count() == component_count &&
+                    services.components().mount_runs() == mounts &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Form Gallery update remounted retained content");
+        const auto inputs = f.inputs->mounted_inputs();
+        require(inputs.size() == original_inputs.size(), "Form Gallery changed old input inventory");
+        for (std::size_t index = 0; index < inputs.size(); ++index) {
+            require(inputs[index].component == original_inputs[index].component &&
+                        inputs[index].editor == original_inputs[index].editor &&
+                        inputs[index].interaction == original_inputs[index].interaction,
+                    "Form Gallery replaced or reordered an existing editor");
+        }
+        const auto texts = f.host->text().mounted_texts();
+        require(texts.size() == original_texts.size(), "Form Gallery changed retained Text count");
+        for (std::size_t index = 0; index < texts.size(); ++index) {
+            require(texts[index].component == original_texts[index].component &&
+                        texts[index].scene == original_texts[index].scene,
+                    "Form Gallery replaced/reordered a retained Text scene");
+        }
+        const auto buttons = f.host->mounted_buttons();
+        require(buttons.size() == original_buttons.size(), "Form Gallery changed old Button inventory");
+        for (std::size_t index = 0; index < buttons.size(); ++index) {
+            require(buttons[index].component == original_buttons[index].component &&
+                        buttons[index].interaction == original_buttons[index].interaction &&
+                        buttons[index].scene == original_buttons[index].scene,
+                    "Form Gallery replaced/reordered a native Button");
+        }
+        for (std::size_t index = 0; index < items.size(); ++index) {
+            const auto current = forms.snapshot(items[index]);
+            require(current.control == parts[index].control && current.label == parts[index].label &&
+                        current.feedback == parts[index].feedback,
+                    "Form Gallery replaced a mounted FormItem slot");
+        }
+        require(f.inputs->text_layers(name.component).base == name_layers.base &&
+                    f.inputs->text_layers(count.component).base == count_layers.base &&
+                    f.selections->mounted().back().interaction == consent.interaction &&
+                    services.select().mounted().back() == role,
+                "Form Gallery replaced field identity");
+    };
+    const auto navigate_form = [&] {
+        const auto button = button_with_label(f, "Form");
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        auto parent = f.nodes.require(button.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "Form catalog Button is outside navigation");
+        const float offset = f.nodes.require(button.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        const auto target = bounds(button.component);
+        require(target.y >= metrics.navigation_lane.y - .02F &&
+                    target.y + target.height <= metrics.navigation_lane.y + metrics.navigation_lane.height + .02F &&
+                    glyphs(text_with_prefix("Form").scene, target) > 0,
+                "Form real catalog Button is not visible");
+        require(!definition.take_navigation_request(), "Form catalog retained an unconsumed request");
+        click(button.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == "ant.component.form",
+                "Form real catalog Button emitted wrong identity");
+        reconcile(request);
+        const auto heading = text_with_prefix("gallery.form.workflow");
+        require(glyphs(heading.scene, bounds(*services.components().parent(heading.component))) > 0 &&
+                    bounds(name.component).y >= metrics.document_lane.y &&
+                    bounds(name.component).y + bounds(name.component).height <= 888,
+                "Form production anchor/jump did not reach the actual heading and Input");
+        click(name.component);
+        require(f.host->focus().state().focused == name.interaction && f.inputs->sessions().active().valid(),
+                "Form catalog destination did not expose the native editable Input");
+    };
+    const auto type = [&](const auto& editor, String value) {
+        reveal(editor.component);
+        click(editor.component);
+        require(f.host->focus().state().focused == editor.interaction, "Form native editor focus failed");
+        key(input::Key::a, input::KeyModifier::control);
+        if (value.empty()) {
+            key(input::Key::backspace);
+        } else {
+            const auto result = f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()});
+            require(bool(result) || f.inputs->editors().require(editor.editor).read_only(),
+                    "Form native text event was rejected while editable");
+        }
+        sync();
+    };
+    const auto feedback = [&](std::string_view text) {
+        const auto status = text_with_prefix("gallery.form.status");
+        require(f.text_scene.text_state(status.scene).content().bytes().find(text) != std::string_view::npos,
+                "Form actual result/status feedback differs");
+    };
+    const auto require_error = [&](std::size_t index, String error) {
+        require(forms.snapshot(items[index]).error == error, "Form actual field error differs");
+        reveal(items[index]);
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, parts[index].feedback) &&
+                f.text_scene.text_state(text.scene).content().bytes() == error.bytes()) {
+                require(glyphs(text.scene, bounds(parts[index].feedback)) > 0, "Form error glyph did not render");
+                return;
+            }
+        }
+        throw std::runtime_error("Form retained error Text absent");
+    };
+    navigate_form();
+    action("gallery.form.submit");
+    feedback("3");
+    require(f.host->focus().state().focused == name.interaction,
+            "Form failure did not focus first visible invalid Input");
+    require_error(0, u8"请输入名称");
+    require_error(1, u8"请选择角色");
+    require_error(3, u8"请确认保存");
+    require(f.inputs->status(name.component) == InputStatus::Error, "Form did not bind Input error status");
+    type(name, u8"Gallery Operator");
+    action("gallery.form.submit");
+    require(f.host->focus().state().focused == role_input.interaction &&
+                f.inputs->status(role_input.component) == InputStatus::Error,
+            "Form failure did not focus/status the first eligible invalid Select ref");
+    reveal(role);
+    click(services.select().snapshot(role).selector);
+    require(services.select().snapshot(role).visible, "Form actual Select popup did not open");
+    const auto role_row = services.select().snapshot(role).rows[1];
+    click(role_row);
+    require(services.select().snapshot(role).value == SelectSelection{u8"reviewer"},
+            "Form actual Select pointer event did not write back");
+    type(count, u8"");
+    action("gallery.form.submit");
+    require(!f.inputs->number_value(count.component) && f.host->focus().state().focused == count.interaction,
+            "Form required number did not capture empty native input/focus");
+    require_error(2, u8"请输入数量");
+    type(count, u8"0");
+    action("gallery.form.submit");
+    require(f.host->focus().state().focused == count.interaction, "Form custom failure did not focus numeric ref");
+    require_error(2, u8"数量至少为 1");
+    require(f.inputs->status(count.component) == InputStatus::Error, "Form did not bind numeric error status");
+    type(count, u8"3");
+    action("gallery.form.submit");
+    require(f.host->focus().state().focused == consent.interaction,
+            "Form bool failure did not focus actual Checkbox ref");
+    reveal(consent.component);
+    key(input::Key::space);
+    require(f.selections->snapshot(consent.component).checked,
+            "Form actual Checkbox keyboard event did not write back");
+    action("gallery.form.submit");
+    feedback("保存成功 · name=Gallery Operator · role=reviewer · count=3 · consent=true");
+    const auto saved_status = text_with_prefix("gallery.form.status");
+    reveal(saved_status.component);
+    require(glyphs(saved_status.scene, bounds(*services.components().parent(saved_status.component))) > 0,
+            "Form saved values did not render as actual feedback glyphs");
+    type(count, u8"1.0000004");
+    action("gallery.form.submit");
+    require(f.inputs->number_value(count.component) == InputNumberValue{1.0000004},
+            "Form fractional submission changed numeric authority");
+    feedback("count=1.0000004 · consent=true");
+    type(count, u8"1.234567891234");
+    action("gallery.form.submit");
+    require(f.inputs->number_value(count.component) == InputNumberValue{1.234567891234},
+            "Form twelve-decimal submission changed numeric authority");
+    feedback("count=1.234567891234 · consent=true");
+    action("gallery.form.reset");
+    require(f.inputs->editors().require(name.editor).value().empty() && !services.select().snapshot(role).value &&
+                f.inputs->number_value(count.component) == 1 &&
+                f.inputs->editors().require(count.editor).value() == "1" &&
+                !f.selections->snapshot(consent.component).checked,
+            "Form real reset did not restore all four initial values/displays");
+    for (const auto item : items) {
+        require(forms.snapshot(item).error.empty(), "Form reset retained field error");
+    }
+    feedback("已重置");
+    std::cout << "Form real navigation, required/custom focus, typed events, success values and pointer reset passed\n";
+    // A native text event creates an unfinished display with unchanged authority.
+    type(count, u8"1.");
+    require(f.inputs->number_value(count.component) == 1 && f.inputs->editors().require(count.editor).value() == "1.",
+            "Form same-value numeric draft fixture failed");
+    command_without_blur("gallery.form.validate");
+    command_without_blur("gallery.form.help");
+    require(f.inputs->editors().require(count.editor).value() == "1.",
+            "Form error/help update discarded numeric draft");
+    const auto stamp = f.inputs->sessions().active();
+    require(bool(f.inputs->dispatch(input::CompositionChanged{String{u8"候选"}, {0, 0}, stamp})),
+            "Form native composition event failed");
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            reveal(count.component);
+            command_without_blur("gallery.form.validate");
+            command_without_blur("gallery.form.help");
+            const auto& editor = f.inputs->editors().require(count.editor);
+            require(editor.value() == "1." && editor.composition().active &&
+                        f.inputs->number_value(count.component) == 1,
+                    "Form ordinary errors/help/Theme/width update lost draft/preedit or published composition");
+            require(glyphs(count_layers.base, bounds(count.component)) > 0, "Form numeric draft actual glyph absent");
+            retained();
+        }
+    }
+    command_without_blur("gallery.form.reset");
+    require(f.inputs->number_value(count.component) == 1 && f.inputs->editors().require(count.editor).value() == "1" &&
+                !f.inputs->editors().require(count.editor).composition().active &&
+                f.text_scene.text_state(count_layers.base).content().bytes() == "1",
+            "Form same-value reset failed to clear unfinished display/preedit before any blur");
+    std::cout << "Form same-value numeric draft and preedit matrix/reset passed\n";
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            navigate_form();
+            type(name, u8"Retained Form draft");
+            action("gallery.form.validate");
+            constexpr std::array field_labels{"gallery.form.name", "gallery.form.role", "gallery.form.count",
+                                              "gallery.form.consent"};
+            for (std::size_t index = 0; index < items.size(); ++index) {
+                reveal(items[index]);
+                std::size_t visible = 0;
+                const auto item_bounds = bounds(items[index]);
+                const auto document_bounds = f.nodes.require(document).bounds;
+                const runtime::Rect allocation{document_bounds.x, item_bounds.y, document_bounds.width,
+                                               item_bounds.height};
+                require(glyphs(text_with_prefix(field_labels[index]).scene, allocation) > 0,
+                        "Form actual field label vanished under Theme/width changes");
+                for (const auto& text : f.host->text().mounted_texts()) {
+                    if (descendant(text.component, items[index])) {
+                        // Text ink may overhang its advance (notably '*'). The
+                        // containing item owns vertical flow; the document lane
+                        // owns horizontal allocation, including the sample inset.
+                        visible += glyphs(text.scene, allocation);
+                    }
+                }
+                require(visible > 0, "Form field lost actual label/control/help/error glyphs");
+            }
+            action("gallery.form.disabled");
+            require(f.inputs->editors().require(name.editor).disabled() &&
+                        f.inputs->editors().require(count.editor).disabled() &&
+                        f.selections->snapshot(consent.component).disabled,
+                    "Form disabled gate did not reach real controls");
+            reveal(role);
+            click(services.select().snapshot(role).selector, false);
+            require(!services.select().snapshot(role).visible, "Form disabled Select opened");
+            action("gallery.form.submit");
+            feedback("当前禁用，提交未执行");
+            action("gallery.form.disabled");
+            action("gallery.form.readonly");
+            require(f.inputs->editors().require(name.editor).read_only() &&
+                        f.inputs->editors().require(count.editor).read_only() &&
+                        f.selections->snapshot(consent.component).disabled,
+                    "Form readOnly gate did not reach real controls");
+            type(name, u8"Rejected");
+            require(f.inputs->editors().require(name.editor).value() == "Retained Form draft",
+                    "Form readOnly Input accepted actual text");
+            reveal(role);
+            click(services.select().snapshot(role).selector, false);
+            require(!services.select().snapshot(role).visible, "Form readOnly Select opened");
+            reveal(consent.component);
+            click(consent.component, false);
+            require(!f.selections->snapshot(consent.component).checked, "Form readOnly Checkbox toggled");
+            action("gallery.form.submit");
+            feedback("校验失败");
+            require(f.host->focus().state().focused == button_with_label(f, "gallery.form.submit").interaction,
+                    "Form readOnly failure focused an ineligible invalid control");
+            action("gallery.form.readonly");
+            require(!f.inputs->editors().require(name.editor).read_only() &&
+                        !f.inputs->editors().require(name.editor).disabled() &&
+                        !f.selections->snapshot(consent.component).disabled,
+                    "Form outside actions could not restore editing");
+            const auto status = text_with_prefix("gallery.form.status");
+            reveal(status.component);
+            require(glyphs(status.scene, bounds(*services.components().parent(status.component))) > 0,
+                    "Form actual status feedback did not render in finite viewport");
+            retained();
+        }
+    }
+    action("gallery.form.reset");
+    retained();
+    std::cout << "Form Gallery: real directory/input/select/checkbox/submit/reset/gates, same-value 1. draft, "
+                 "preedit, retained identity and Default/Dark/Compact x 1200/560 x 900 passed\n";
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -2689,7 +3188,9 @@ void print_gallery_inventory() {
               << " collapse=" << f.host->services().collapse().mounted().size()
               << " segmented=" << f.host->services().segmented().mounted().size()
               << " empties=" << f.host->services().empty_result().empties().size()
-              << " results=" << f.host->services().empty_result().results().size() << '\n';
+              << " results=" << f.host->services().empty_result().results().size()
+              << " forms=" << f.host->services().form().mounted().size()
+              << " form_items=" << f.host->services().form().items().size() << '\n';
 }
 } // namespace
 
@@ -2715,6 +3216,10 @@ int main(int argc, char** argv) {
             test_empty_and_result_gallery_after_document_scroll();
             return 0;
         }
+        if (argc == 2 && std::string_view{argv[1]} == "--forms-only") {
+            test_form_gallery_after_document_scroll();
+            return 0;
+        }
         if (argc == 2 && std::string_view{argv[1]} == "--frame-only") {
             test_token_gallery_frame_contract();
             return 0;
@@ -2737,6 +3242,7 @@ int main(int argc, char** argv) {
         test_modal_gallery_after_document_scroll();
         test_common_component_gallery_after_document_scroll();
         test_data_and_selection_gallery_after_document_scroll();
+        test_form_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
     } catch (const std::exception& error) {

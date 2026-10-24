@@ -22,6 +22,14 @@ DatePicker SHALL 提供固定 ISO `YYYY-MM-DD` 输入、清空、disabled、inpu
 - **WHEN** 用户先输入非法日期，再提交合法日期或执行清空
 - **THEN** 非法草稿不改变选择值，合法提交或清空产生正确请求，普通主题/状态更新保留编辑身份；blur 后无效草稿恢复当前选择显示
 
+#### Scenario: 聚焦 String Form 的同值 reset
+- **WHEN** FormItem 通过 `control(DatePickerRef)` 显式适配 String 字段，用户保留焦点输入合法或不完整日期但未提交，随后程序直接调用 FormRef.reset
+- **THEN** 即使字段初值与当前 authority 相同而没有 Prop 通知，日期草稿和真实 editor 也恢复已接受 authority，取消 preedit 并清除旧提交状态；reset 不发日期或开合请求，不改变控件/单元格身份和焦点，后续 Enter 不发布被重置的草稿；外部拒绝受控初值请求时显示当前外部 authority
+
+#### Scenario: 普通更新与旧 ref 生命周期
+- **WHEN** 草稿/preedit 期间仅校验或更新 help/Theme，或旧 FormItem 持有的 ref 已卸载再绑定另一 DatePicker
+- **THEN** 普通更新保留草稿/preedit，旧 registration 的 reset 不操作新控件；reset 回调中卸载控件后不继续访问其状态
+
 ### Requirement: 月历浏览和日期限制
 
 DatePicker SHALL 提供可操作的月历、跨月/跨年导航、键盘方向键/PageUp/PageDown/Home/End/Enter 选择，限制 minDate/maxDate 和 disabledDate；限制全部日期时不得无限搜索或提交禁用日期。

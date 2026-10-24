@@ -29,6 +29,7 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                                            ryn::runtime::NodeId scroll_root) {
     const std::string_view sample = identity == "ant.component.empty"    ? "gallery.empty.default "
                                     : identity == "ant.component.result" ? "gallery.result.controlled "
+                                    : identity == "ant.component.form"   ? "gallery.form.workflow "
                                                                          : "";
     auto node = reference_node;
     if (!sample.empty()) {

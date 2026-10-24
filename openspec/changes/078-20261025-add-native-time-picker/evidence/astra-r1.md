@@ -41,9 +41,9 @@ ctest --preset windows-msvc-headless-debug -R '^rynui.time_picker_review_' --out
 - clang-format 22.1.3：**623 文件，0 failures**。
 - `openspec doctor --json`：healthy；`openspec validate --all --strict --no-interactive`：**79/79**。
 
-本阶段保持 TimePicker 公开 API、FormValue 值域、Theme/IIFE/identity、host registration 与 popup 边界顺序。`InputComponentHost::focused` 仅内部诊断，用于实际 footer Input 焦点断言。共享 reset hook 保持与父任务约定的 API；父任务将独立落地 DatePicker 同值 reset，待干净 SHA 后合入，不从父任务脏树复制。
+本阶段保持 TimePicker 公开 API、FormValue 值域、Theme/IIFE/identity、host registration 与 popup 边界顺序。`InputComponentHost::focused` 仅内部诊断，用于实际 footer Input 焦点断言。共享 reset hook 保持与父任务约定的 API；该阶段父任务仍在独立落地 DatePicker 同值 reset，后续干净提交的显式合并见下文，不从父任务脏树复制。
 
-原 tasks 2–4 暂不恢复完成，等待最终受影响 scoped combined 和双基线 fresh goldens。尚未运行 fresh Astra R2、原生 GPU、Gallery、Linux 或系统 IME；这些不算本记录的通过项。
+该阶段原 tasks 2–4 尚未恢复完成；最终受影响 scoped combined 与双基线 fresh goldens 的复验见下文。尚未运行 Time fresh Astra R2、原生 GPU、Gallery、Linux 或系统 IME；这些不算本记录的通过项。
 
 ## Authority 读取期间销毁 owner 的补充修复
 
@@ -52,3 +52,40 @@ ctest --preset windows-msvc-headless-debug -R '^rynui.time_picker_review_' --out
 修复先将 authority 读入局部值，随后重新查找同一 component generation，并检查 active scope 和所捕获 editor id，才 reconcile/refresh。回归同时断言旧 Time owner、InputRef、session 均失效，随后调用捕获的旧 reset 安全返回；原新 generation 草稿不被旧 reset 修改的用例继续保留。共享 Input hook API/字段/实现没有在此阶段改变。
 
 加入此用例后的完整 Time focused 结果：Debug **10/10，8.83 s**；Release **10/10，2.59 s**。clang-format 22.1.3 仍为 **623 文件，0 failures**。
+
+## 显式合并独立 Date reset worker
+
+R1 修复与 authority lifetime 修复分别保存为干净本地提交 `d4c3307fa87eeb9e46beb00d8329f5ed8ec91aec`、`21c863c5fad5ce112967321584c8a378de334479`。随后从后者的干净工作树执行 `git merge --no-ff --no-commit 0e0f11f7cb903f6b629ce02d5561621fbdb5cee4`，该 worker 直接基于父 `b28bd952`。保留原 `777f905` → `0fdefbae` 的显式合并历史；最终历史使用 merge，不以 cherry-pick 代替。
+
+自动合并在不同位置重复引入 generic hook，已在验证前统一为父 `0e0f11f7` 的 Input 实现：整个 `.cpp/.hpp` 除单个 `focused()` 诊断外与父提交逐字一致。源计数确认 `on_owner_form_reset` 字段、`configure_form_reset` 声明与定义分别恰好 **1 个**。Date 实现、review tests 和公开文档与该父提交逐字一致；Time 读取局部 authority 后重新查找 owner/editor/scope 的修复保留。
+
+父 Gallery、完成目录、079/080 产物和 Gallery test 仅通过该干净提交进入，与 `0e0f11f7` 逐文件比较无差异，没有导入其他 worktree 的脏改动或在本树重写这些文件。父任务另行报告 Date reset 扩展已独立 Astra CLEAN；本记录不把它作为 Time fresh review 的结论。
+
+重新生成五份 fresh goldens 并实际解析比较：相对 `78c4adf`，**37 个旧顶层字段及所有嵌套值相等**（排除 identity），新增恰为 Date/Form；相对 `0fdefbae`，**38 个旧字段及所有嵌套值相等**，新增恰为 Time，旧 Date/Form 字段完整保留。五份文件包含 identity 的 SHA-256 仍与 [parent-integration.md](parent-integration.md) 表格全部相同，生成后无 Git 差异。
+
+源比较再次确认父版 **26 个 sequential IIFE 逐字一致**、`ThemeScope::create_default()` 的静态默认配置逐字一致、既有 `TokenIdentity` 顺序不变且 Time 只追加。保留 heap preflight/binding bridge、host registration 与内容先行的 Time → Date → Dropdown boundary fallback/nearest popup ownership。
+
+## 最终 merge 状态的实际检查
+
+官方 `windows-msvc-headless`、MSVC、Ninja Multi-Config，重新 configure 成功，构建最大 `--parallel 4`。下列两组在 Debug 与 Release 各执行一次；两组互不重复，共 **41 个用例/配置**。
+
+| CTest 范围 | Debug | Release |
+| --- | --- | --- |
+| Time 五项 review + Date form_reset | **6/6，4.81 s** | **6/6，1.48 s** |
+| 受影响 scoped combined | **35/35，49.22 s** | **35/35，17.50 s** |
+
+在对应 test preset 使用 `--output-on-failure`，两组精确 `-R` 分别为：
+
+```text
+^rynui\.(time_picker_review_.*|date_picker_review_form_reset)$
+```
+
+```text
+^(rynui\.(time_picker_(model|public_api|component|theme|integration)|date_picker_(model|public_api|component|theme|review_(wheel|metrics|inheritance|preflight))|form_(model|public_api|component|theme)|table_component|table_theme|feedback_component)|rynui\.portable\.(input_component|input_variant|input_actions|input_public_api|input_caret_blink|button_component|theme_algorithm|theme_runtime|select_component|select_theme|popconfirm_component|dropdown_component|modal_boundary|modal_component|backend_boundaries))$
+```
+
+范围包括真实 String Form adapter、两个 picker 的 model/API/component/Theme、Input 编辑与 caret、Button、Table、Select、Popconfirm、Dropdown、Modal/Spin、嵌套与重叠 popup、混合 Date/Time footer 首帧定位/滚轮/Escape、nearest owner 与 boundary fallback、NORMAL motion blur、受控拒绝、owner/ref generation 和销毁。`time_picker_public_api` 编译并链接文档 API 示例；component/Theme 原有实际 glyph/surface/hit clip、草稿/身份、规则与无持续空闲帧断言继续通过。
+
+最终 clang-format **22.1.3：623 文件，0 failures**；doctor healthy；strict validation **80/80**；Core/renderer configure/link 守卫、两个配置的 `portable.backend_boundaries` 和 diff check 通过。最终通过后不继续运行无关完整矩阵。
+
+R1 五项 P2 以及 authority 读取销毁的补充问题均已修复并有先失败后通过证据。未运行本 Time 分支的 fresh Astra R2、原生 GPU、Gallery 窗口、Linux 或系统 IME；父线程安排后续 review/平台验收。仅创建本地提交，没有 push、PR、archive 或子任务。

@@ -6,15 +6,15 @@
 
 ## 2. 平台通用：保留面板与 Theme
 
-- [ ] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
+- [x] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
 
 ## 3. 平台通用：集成收口
 
-- [ ] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
+- [x] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
 
 ## 4. 平台通用：合并已验收 DatePicker / Form 基线
 
-- [ ] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，保留 Date/Form/Time 的 API、Theme/IIFE/identity 与宿主及内容先行的 Date/Time/Dropdown 边界链；以本分支 `78c4adf` 和父基线双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests（含真实 Form 与 Date/Time 混合 footer/popup ownership），记录实际缺陷复现和修复、工具检查及独立本地 merge commit，不 push 或修改 Gallery。
+- [x] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，并在 R1 已验证提交 `21c863c` 后显式 merge Date reset worker `0e0f11f7cb903f6b629ce02d5561621fbdb5cee4`；保留 Date/Form/Time 的 API、Theme/IIFE/identity、宿主与内容先行的 Date/Time/Dropdown 边界链，合并后只有一个共享 reset hook，保留 focused 诊断。以 `78c4adf` 和 `0fdefbae` 双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests 与新增 Date/Time review tests，记录实际复现、工具检查和独立本地 merge commit；不 push，Gallery 仅随干净父提交进入，不自行修改。
 
 ## 5. 平台通用：Astra R1 五项 P2 修复
 

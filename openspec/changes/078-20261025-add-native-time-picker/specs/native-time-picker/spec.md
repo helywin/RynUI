@@ -56,7 +56,7 @@
 
 #### Scenario: 同值 Form reset 与 retained 草稿
 - **WHEN** String field adapter 的接受值仍为 08:00:00，而用户留下完整/未完成输入、preedit 或被受控父级拒绝的面板待选值后执行 Form reset
-- **THEN** TimePicker SHALL 无值回调地重置自身 model、文本与待确认值；随后 Enter 不复活旧草稿；普通 validation/help/Theme 更新仍保留编辑草稿，过期 reset generation 不作用于新控件
+- **THEN** TimePicker SHALL 无值回调地重置自身 model、文本与待确认值；随后 Enter 不复活旧草稿；普通 validation/help/Theme 更新仍保留编辑草稿，过期 reset generation 不作用于新控件；authority Binding 读取时同步销毁 owner SHALL 安全返回
 
 #### Scenario: 关闭 footer 的焦点交付
 - **WHEN** NORMAL motion 下聚焦的 footer Input 因 Escape 关闭弹层

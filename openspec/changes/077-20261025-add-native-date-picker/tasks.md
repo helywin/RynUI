@@ -14,4 +14,12 @@
 
 ## 4. 父线程 main 集成
 
-- [ ] 4.1 将 worker 1ca5416 显式合并到当前 main，保留 Form 与 076 导航/079 规划；在父构建树通过组合 Debug/Release 39 项、fresh golden 双基线旧字段与既有 IIFE 比较、目录 generator/contracts/inventory 和新构建 Gallery 启动 smoke，更新 partial 支持清单与准确证据，记录独立 Astra R2 的真实结论，通过格式/doctor/strict/diff 后提交推送 main 并核对远端 SHA，不推送 t3 分支。
+- [x] 4.1 将 worker 1ca5416 显式合并到当前 main，保留 Form 与 076 导航/079 规划；在父构建树通过组合 Debug/Release 39 项、fresh golden 双基线旧字段与既有 IIFE 比较、目录 generator/contracts/inventory 和新构建 Gallery 启动 smoke，更新 partial 支持清单与准确证据，记录独立 Astra R2 的真实结论，通过格式/doctor/strict/diff 后提交推送 main 并核对远端 SHA，不推送 t3 分支。
+
+父集成提交 `0fdefbae9d5fb67422d6a67471019d5e3227dac1` 已推送，`git ls-remote origin refs/heads/main` 与本地 HEAD 相等，`t3/*` 远端查询为空。Astra R2 CLEAN、父 Debug/Release 各 39/39 与目录/启动证据见 [main-integration.md](evidence/main-integration.md)。该轮原有四项已完成；079 日期 Gallery 发现的聚焦 reset 问题由下列增量任务跟踪。
+
+## 5. 平台通用：聚焦 Form reset 的复合草稿
+
+- [x] 5.1 在 verified main `b28bd952` 的独立 worktree 中先复现 String Form 同值 reset 保留 DatePicker 草稿的问题；实现内部 Input owner reset hook，在 editor 重读 authority 前恢复 DatePicker 已接受值并清除 dirty draft。覆盖直接聚焦 reset、合法/不完整未提交草稿、非空初值、受控拒绝、preedit 与普通更新、身份/焦点、旧 ref 代际和销毁；通过官方 MSVC headless Debug/Release 的 Date/Form/Input/InputNumber/TextArea/Selection/Focus/Modal/Spin 定向回归、五份 fresh golden 不变、format 22/doctor/strict/diff，记录真实失败与通过证据后本地提交，不修改 Gallery 或导入 TimePicker WIP。
+
+聚焦 reset 的真实失败、修复与最终 Debug/Release 各 33/33、五份金样完全不变及平台边界见 [form-reset.md](evidence/form-reset.md)。本增量不勾选 079 Gallery 任务；由父线程与独立 Gallery worker 复验交付。

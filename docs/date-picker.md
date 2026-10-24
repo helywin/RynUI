@@ -25,6 +25,27 @@ void date_field(ryn::Signal<ryn::DatePickerValue>& selected) {
 
 支持 `allowClear`（默认 true）、`disabled`、`inputReadOnly`、`placeholder`、三种 `ControlSize`、四种 `InputVariant` 和三种 `InputStatus`、`DatePickerRef`（InputRef）、`autoFocus`、`onFocus/onBlur`、受控开合及 retained typed `DatePickerFooter`。`inputReadOnly` 只禁用手工编辑，仍可选择和清空。
 
+接入 Form 时使用 `FormField<String>` 显式转换 ISO 字符串，并通过 `FormItemProps::control(DatePickerRef)` 连接真实控件。即使字段仍为空或与初值相同而没有值通知，聚焦期间直接 `FormRef.reset()` 也会取消 preedit、丢弃未提交日期草稿并恢复已接受值；不需要先失焦，不重建 Input/月历，也不发日期或开合请求。受控字段的 reset 是初值请求，外部拒绝回写时显示当前外部 authority。普通 validate、help、status、Theme 更新继续保留草稿与 preedit；没有 `control(ref)` 的自定义 slot 只重置字段值。
+
+```cpp
+void form_date_field(const ryn::FormRef& form, ryn::FormField<ryn::String> field,
+                     const ryn::DatePickerRef& picker) {
+    using namespace ryn;
+    Form(FormProps{}.ref(form), FormContent{[field, picker] {
+        FormItem(FormItemProps{}.field(String{u8"date"}, field).control(picker),
+                 FormItemContent{[field, picker] {
+            DatePicker(DatePickerProps{}
+                .value(bind([field] { return parse_iso_date(field.get().bytes()); }))
+                .defaultPanelDate(CivilDate{2026, 10, 1})
+                .status(field.status()).ref(picker)
+                .onChange([change = field.onChange()](DatePickerValue date) {
+                    change(date ? format_iso_date(*date) : String{});
+                }));
+        }});
+    }});
+}
+```
+
 `DisabledDate` 是按共享谓词身份比较的轻量值，可直接传 lambda，也可使用 `Signal<DisabledDate>` 或 `bind(...)` 动态替换规则。更新范围和规则保留选择值；即使该选择现在不允许再次提交，也不会隐式回写调用方。禁用或隐藏控件会丢弃草稿，不把失活过程当作用户提交。
 
 Theme 的 `date_picker` 提供 typed `colors/metrics/shadow/z_index_popup` 派生结果；使用 `ThemeConfig::date_picker.tokens` 覆盖颜色、面板/单元格尺寸、字体、阴影和层级。`date_picker.algorithm = true` 才应用该组件的局部 `seed`，默认继承父 Theme。颜色更新只失效材质；字体/度量更新重新布局，Input 与 footer 的真实节点及编辑会话保留。选择框沿用 Input 的变体/状态合同；DatePicker 的 selector 背景与 hover/active border 通过局部 Input Theme 接入。
