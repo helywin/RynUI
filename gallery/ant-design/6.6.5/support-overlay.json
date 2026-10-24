@@ -433,30 +433,57 @@
     },
     {
       "identity": "ant.component.date-picker",
-      "status": "planned",
-      "summary": "日期选择框（DatePicker）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 DatePicker 首版提供 typed 公历单日期、严格 ISO 输入、真实 42 格月历、范围/禁用规则和保留 footer；支持受控开合、键盘选择与 Theme，复杂格式及范围选择后续扩展。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed Gregorian CivilDate 0001-01-01 through 9999-12-31 and optional selection",
+        "strict YYYY-MM-DD input, clear, disabled, inputReadOnly, three sizes and four Input variants/status",
+        "retained six-week calendar, month/year navigation, pointer and keyboard selection",
+        "controlled/default value and open state, min/max dates and finite disabled-date navigation",
+        "typed retained footer/ref, child popup and Table wheel ownership, Modal/Spin/hidden suppression",
+        "component Theme inheritance/algorithm/overrides with final metric and publication validation"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "RangePicker, multiple/time/week/month/quarter/year modes, locale/RTL and free date formats",
+        "presets, custom cells/panels, animations and full Ant Design Web/DOM/CSS API",
+        "interactive DatePicker Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent"
       ],
       "evidence_identifiers": [
-        "source:components/date-picker/index.en-US.md"
+        "source:components/date-picker/index.en-US.md",
+        "openspec:077-20261025-add-native-date-picker",
+        "api:include/ryn/date_picker.hpp",
+        "runtime:src/component/date_picker_component.cpp",
+        "test:rynui.date_picker_model",
+        "test:rynui.date_picker_public_api",
+        "test:rynui.date_picker_component",
+        "test:rynui.date_picker_theme"
       ]
     },
     {
       "identity": "ant.component.form",
-      "status": "planned",
-      "summary": "表单（Form）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Form/FormItem 首版支持纵向布局、typed 字段与显式控件绑定、同步校验、提交/重置、保留错误反馈和真实 ref 失败焦点；异步、动态列表及嵌套字段后续扩展。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed String, optional number, bool and SelectSelection fields with flat names",
+        "explicit Input/InputNumber/Select/Checkbox bindings and retained control slots",
+        "synchronous required/custom validation, values/errors snapshots and controlled authority",
+        "FormRef validate/submit/reset, first visible eligible invalid ref focus and same-value numeric draft reset",
+        "reactive labels/help/errors, disabled/readOnly and Modal/Spin/hidden gates",
+        "component Theme inheritance, local algorithms, overrides and prepublication font validation"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "horizontal/inline layouts, nested Form, Form.List, deep field paths and automatic arbitrary-control binding",
+        "async validation, dependencies, automatic Enter submission and automatic scrolling",
+        "interactive Form Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/form/index.en-US.md"
+        "source:components/form/index.en-US.md",
+        "openspec:075-20261024-add-native-form",
+        "test:rynui.form_model",
+        "test:rynui.form_public_api",
+        "test:rynui.form_component",
+        "test:rynui.form_theme"
       ]
     },
     {

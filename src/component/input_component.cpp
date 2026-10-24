@@ -1,4 +1,5 @@
 #include "component/input_component.hpp"
+#include "component/form_focus_context.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/input_material_transition.hpp"
 #include "component/input_caret_blink.hpp"
@@ -24,9 +25,12 @@ namespace ryn::detail {
 struct InputRefState final {
     std::thread::id owner{std::this_thread::get_id()};
     std::optional<runtime::ComponentId> binding;
+    std::uint64_t generation{};
     std::function<bool(InputFocusOptions)> focus;
+    std::function<bool(const FormFocusContext&)> form_focus;
     std::function<bool()> blur;
     std::function<bool(std::size_t, std::size_t)> select;
+    std::function<bool()> reset_form_draft;
 
     void ensure_owner() const {
         if (owner != std::this_thread::get_id()) {
@@ -96,6 +100,7 @@ struct InputNumberState final {
 struct InputState {
     MountedInputComponent mounted;
     bool controlled{};
+    std::optional<Prop<String>> authoritative_value;
     bool disabled{};
     bool read_only{};
     bool focused{};
@@ -452,6 +457,7 @@ struct InputPropsAccess {
             build.on_resource_cleanup(component, [compact, component] { compact->detach(component); });
         }
         state.controlled = props.common_.value_.has_value();
+        state.authoritative_value = props.common_.value_;
         state.direction = direction;
         state.size = size;
         state.status = status;
@@ -495,8 +501,10 @@ struct InputPropsAccess {
                 if (const auto reference = current->reference; reference && reference->binding == component) {
                     reference->binding.reset();
                     reference->focus = {};
+                    reference->form_focus = {};
                     reference->blur = {};
                     reference->select = {};
+                    reference->reset_form_draft = {};
                 }
                 std::erase(owner.auto_focus_requests_, component);
                 current->transition.reset();
@@ -526,6 +534,7 @@ struct InputPropsAccess {
         if (state.reference) {
             // Reserve before prefix/suffix content can reuse the same reference.
             state.reference->binding = component;
+            ++state.reference->generation;
         }
         state.mounted.editor = owner.editors_.create(
             initial.bytes(), limits, state.textarea ? input::TextEditMode::MultiLine : input::TextEditMode::SingleLine);
@@ -1025,11 +1034,17 @@ struct InputPropsAccess {
             state.reference->focus = [&owner, component](InputFocusOptions options) {
                 return owner.focus(component, options);
             };
+            state.reference->form_focus = [&owner, component](const FormFocusContext& context) {
+                return context.visible(*owner.host_, component) && owner.focus(component, {});
+            };
             state.reference->blur = [&owner, component] {
                 return owner.blur(component);
             };
             state.reference->select = [&owner, component](std::size_t anchor, std::size_t caret) {
                 return owner.select(component, anchor, caret);
+            };
+            state.reference->reset_form_draft = [&owner, component] {
+                return owner.reset_form_draft(component);
             };
         }
         if (props.common_.auto_focus_) {
@@ -2876,6 +2891,68 @@ void InputComponentHost::publish_number(runtime::ComponentId component, InputNum
     if (callback) {
         callback(candidate);
     }
+}
+
+bool InputComponentHost::reset_form_draft(runtime::ComponentId component) {
+    auto* state = host_->components().state<InputState>(component);
+    if (!state || !host_->components().scope(component).active()) {
+        return false;
+    }
+    if (editors_.require(state->mounted.editor).composition().active) {
+        static_cast<void>(sessions_.cancel_composition());
+    }
+    state = host_->components().state<InputState>(component);
+    if (!state) {
+        return false;
+    }
+    if (state->number) {
+        auto& number = *state->number;
+        number.edited = false;
+        number.emitted.reset();
+        if (number.config->value) {
+            number.model.reconcile(read_prop(*number.config->value));
+        }
+        check(editors_.require(state->mounted.editor)
+                  .reconcile(InputNumberModel::format(number.model.value()).bytes())
+                  .edit);
+        refresh_number(component);
+    }
+    if (!state->number && state->authoritative_value) {
+        const auto value = read_prop(*state->authoritative_value);
+        check(editors_.require(state->mounted.editor).reconcile(value.bytes()).edit);
+    }
+    update_text(component);
+    return true;
+}
+
+std::pair<std::function<bool(const FormFocusContext&)>, std::function<void()>>
+capture_form_input(const InputRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    const auto binding = reference.state_->binding;
+    const auto generation = reference.state_->generation;
+    const auto weak = std::weak_ptr{reference.state_};
+    return {[weak, binding, generation](const FormFocusContext& context) {
+                const auto state = weak.lock();
+                if (!state || state->binding != binding || state->generation != generation) {
+                    return false;
+                }
+                state->ensure_owner();
+                const auto callback = state->form_focus;
+                return callback && callback(context);
+            },
+            [weak, binding, generation] {
+                const auto state = weak.lock();
+                if (state && state->binding == binding && state->generation == generation) {
+                    state->ensure_owner();
+                    const auto callback = state->reset_form_draft;
+                    if (callback) {
+                        static_cast<void>(callback());
+                    }
+                }
+            }};
 }
 
 void InputComponentHost::finish_number(runtime::ComponentId component) {

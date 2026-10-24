@@ -25,6 +25,7 @@ class SliderComponentHost;
 class TooltipComponentHost;
 class OTPComponentHost;
 class SelectComponentHost;
+class DatePickerComponentHost;
 class TimePickerComponentHost;
 class CardComponentHost;
 class TabsComponentHost;
@@ -39,6 +40,7 @@ class PaginationComponentHost;
 class TableComponentHost;
 class EmptyResultComponentHost;
 class CollapseComponentHost;
+class FormComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -220,6 +222,10 @@ public:
         return *select_;
     }
 
+    [[nodiscard]] DatePickerComponentHost& date_picker() noexcept {
+        return *date_picker_;
+    }
+
     [[nodiscard]] TimePickerComponentHost& time_picker() noexcept {
         return *time_picker_;
     }
@@ -238,6 +244,10 @@ public:
 
     [[nodiscard]] SegmentedComponentHost& segmented() noexcept {
         return *segmented_;
+    }
+
+    [[nodiscard]] FormComponentHost& form() noexcept {
+        return *form_;
     }
 
     [[nodiscard]] ModalComponentHost& modal() noexcept {
@@ -377,12 +387,14 @@ private:
     std::unique_ptr<TooltipComponentHost> tooltip_;
     std::unique_ptr<OTPComponentHost> otp_;
     std::unique_ptr<SelectComponentHost> select_;
+    std::unique_ptr<DatePickerComponentHost> date_picker_;
     std::unique_ptr<TimePickerComponentHost> time_picker_;
     std::unique_ptr<CardComponentHost> card_;
     std::unique_ptr<EmptyResultComponentHost> empty_result_;
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<CollapseComponentHost> collapse_;
     std::unique_ptr<SegmentedComponentHost> segmented_;
+    std::unique_ptr<FormComponentHost> form_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

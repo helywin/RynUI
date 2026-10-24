@@ -11,3 +11,7 @@
 ## 3. 平台通用：集成收口
 
 - [x] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
+
+## 4. 平台通用：合并已验收 DatePicker / Form 基线
+
+- [x] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，保留 Date/Form/Time 的 API、Theme/IIFE/identity 与宿主及内容先行的 Date/Time/Dropdown 边界链；以本分支 `78c4adf` 和父基线双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests（含真实 Form 与 Date/Time 混合 footer/popup ownership），记录实际缺陷复现和修复、工具检查及独立本地 merge commit，不 push 或修改 Gallery。

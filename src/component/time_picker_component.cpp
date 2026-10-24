@@ -2,6 +2,7 @@
 #include "component/input_component.hpp"
 #include "component/input_affix_action.hpp"
 #include "component/table_component.hpp"
+#include "component/date_picker_component.hpp"
 #include "runtime/layout_style_adapter.hpp"
 #include "runtime/prop_connection.hpp"
 #include "theme/input_tokens.hpp"
@@ -663,6 +664,12 @@ bool TimePickerComponentHost::on_keyboard_input(const input::KeyboardInputEvent&
             owner = current;
             break;
         }
+        // A Date selector lives in the parent's layer, but its open picker
+        // owns Escape before the enclosing Time footer does.
+        const auto dates = services_->date_picker().mounted();
+        if (std::ranges::find(dates, *current) != dates.end() && services_->date_picker().snapshot(*current).visible) {
+            return false;
+        }
     }
     if (!owner) {
         return false;
@@ -899,6 +906,12 @@ void TimePickerComponentHost::position_window_layers(runtime::Size viewport, run
         s->anchor = anchor;
         s->clip = clip;
         positioned = true;
+        // Date's normal pass precedes Time's. Refresh this footer's final Date
+        // anchors before placing any deeper retained Time children.
+        if (std::ranges::any_of(services_->date_picker().mounted(),
+                                [&](auto date) { return descendant(*services_, date, s->view.footer); })) {
+            services_->date_picker().position_window_layers(viewport, clip);
+        }
     }
     // Footer placement can change a retained Table's ancestor clip after the
     // normal Modal -> Table pass. Refresh its cached clip/scroll translations

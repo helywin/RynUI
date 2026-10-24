@@ -7,6 +7,8 @@
 #include <ryn/feedback_tokens.hpp>
 #include <ryn/empty_result_tokens.hpp>
 #include <ryn/segmented_tokens.hpp>
+#include <ryn/date_picker_tokens.hpp>
+#include <ryn/form_tokens.hpp>
 #include <ryn/time_picker_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
@@ -598,13 +600,6 @@ struct SelectThemeConfig final {
     friend bool operator==(const SelectThemeConfig&, const SelectThemeConfig&) = default;
 };
 
-struct TimePickerThemeConfig final {
-    TimePickerTokenOverride tokens;
-    SeedTokenOverride seed;
-    bool algorithm{};
-    friend bool operator==(const TimePickerThemeConfig&, const TimePickerThemeConfig&) = default;
-};
-
 struct CardColorToken final {
     Color background;
     Color header_background;
@@ -976,6 +971,13 @@ struct SegmentedThemeConfig final {
     SeedTokenOverride seed;
     bool algorithm{};
     friend bool operator==(const SegmentedThemeConfig&, const SegmentedThemeConfig&) = default;
+};
+
+struct FormThemeConfig final {
+    FormTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const FormThemeConfig&, const FormThemeConfig&) = default;
 };
 
 struct TabsThemeConfig final {
@@ -1474,7 +1476,22 @@ struct ResultThemeConfig final {
     friend bool operator==(const ResultThemeConfig&, const ResultThemeConfig&) = default;
 };
 
+struct DatePickerThemeConfig final {
+    DatePickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DatePickerThemeConfig&, const DatePickerThemeConfig&) = default;
+};
+
+struct TimePickerThemeConfig final {
+    TimePickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TimePickerThemeConfig&, const TimePickerThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
+    DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
     AliasTokenOverride alias;
     ButtonThemeConfig button;
@@ -1489,10 +1506,11 @@ struct ThemeConfig final {
     SliderThemeConfig slider;
     TooltipThemeConfig tooltip;
     SelectThemeConfig select;
-    TimePickerThemeConfig time_picker;
     CardThemeConfig card;
     TabsThemeConfig tabs;
     SegmentedThemeConfig segmented;
+    FormThemeConfig form;
+    TimePickerThemeConfig time_picker;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -2065,6 +2083,14 @@ public:
         return segmented_;
     }
 
+    [[nodiscard]] const DatePickerThemeToken& date_picker() const noexcept {
+        return date_picker_;
+    }
+
+    [[nodiscard]] const FormThemeToken& form() const noexcept {
+        return form_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2129,7 +2155,8 @@ private:
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result, std::shared_ptr<const TimePickerThemeToken> time_picker);
+                  ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
+                  std::shared_ptr<const TimePickerThemeToken> time_picker);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2144,10 +2171,12 @@ private:
     SliderThemeToken slider_;
     TooltipThemeToken tooltip_;
     SelectThemeToken select_;
-    std::shared_ptr<const TimePickerThemeToken> time_picker_;
     CardThemeToken card_;
     TabsThemeToken tabs_;
     SegmentedThemeToken segmented_;
+    DatePickerThemeToken date_picker_;
+    FormThemeToken form_;
+    std::shared_ptr<const TimePickerThemeToken> time_picker_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;
@@ -2171,9 +2200,8 @@ private:
 };
 
 namespace detail {
-// Avoid a full ThemeConfig temporary at every call site in Debug builds.
 [[nodiscard]] const ThemeConfig& default_theme_config();
-} // namespace detail
+}
 
 [[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = detail::default_theme_config(),
                                           const ThemeSnapshot* parent = nullptr);

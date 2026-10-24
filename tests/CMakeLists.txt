@@ -18,6 +18,46 @@ foreach(time_test IN ITEMS time_picker_component time_picker_theme time_picker_i
     add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
 endforeach()
 
+foreach(date_test IN ITEMS date_picker_model date_picker_public_api)
+    add_executable(rynui_${date_test}_tests ${date_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${date_test}_tests)
+    target_link_libraries(rynui_${date_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${date_test} COMMAND rynui_${date_test}_tests)
+endforeach()
+
+foreach(date_test IN ITEMS date_picker_component date_picker_theme date_picker_review)
+    add_executable(rynui_${date_test}_tests ${date_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${date_test}_tests)
+    target_link_libraries(rynui_${date_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${date_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    if(date_test STREQUAL "date_picker_review")
+        foreach(review_case IN ITEMS wheel metrics inheritance preflight)
+            add_test(NAME rynui.date_picker_review_${review_case} COMMAND rynui_date_picker_review_tests ${review_case})
+        endforeach()
+    else()
+        add_test(NAME rynui.${date_test} COMMAND rynui_${date_test}_tests)
+    endif()
+endforeach()
+
+foreach(form_test IN ITEMS form_model form_public_api)
+    add_executable(rynui_${form_test}_tests ${form_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${form_test}_tests)
+    target_link_libraries(rynui_${form_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
+endforeach()
+
+foreach(form_integration IN ITEMS form_component form_theme)
+    add_executable(rynui_${form_integration}_tests ${form_integration}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${form_integration}_tests)
+    target_link_libraries(rynui_${form_integration}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${form_integration}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${form_integration} COMMAND rynui_${form_integration}_tests)
+endforeach()
+
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${presentation_test}_tests)

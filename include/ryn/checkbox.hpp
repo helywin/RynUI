@@ -13,7 +13,11 @@
 #include <vector>
 
 namespace ryn {
+class CheckboxRef;
+
 namespace detail {
+struct FormFocusContext;
+std::function<bool(const FormFocusContext&)> capture_form_checkbox(const CheckboxRef&);
 struct CheckboxPropsAccess;
 struct CheckboxGroupPropsAccess;
 struct CheckboxRefState;
@@ -43,6 +47,7 @@ public:
 
 private:
     friend struct detail::CheckboxPropsAccess;
+    friend std::function<bool(const detail::FormFocusContext&)> detail::capture_form_checkbox(const CheckboxRef&);
     std::shared_ptr<detail::CheckboxRefState> state_;
 };
 

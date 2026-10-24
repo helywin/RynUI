@@ -13,6 +13,7 @@ namespace detail {
 
 struct PropAccess;
 struct TablePropBridge;
+struct FormPropBridge;
 
 } // namespace detail
 
@@ -37,6 +38,7 @@ public:
 private:
     friend struct detail::PropAccess;
     friend struct detail::TablePropBridge;
+    friend struct detail::FormPropBridge;
 
     static StaticValue store_value(T value) {
         if constexpr (indirect_static_value) {

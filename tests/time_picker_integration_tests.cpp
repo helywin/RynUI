@@ -2,8 +2,12 @@
 #include "component/select_component.hpp"
 #include "component/table_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/date_picker_component.hpp"
+#include "component/form_component.hpp"
+#include "component/dropdown_component.hpp"
 #include "support/input_fixture.hpp"
 #include <iostream>
+#include <cmath>
 #if defined(_MSC_VER) && defined(_DEBUG)
 #include <crtdbg.h>
 #endif
@@ -299,6 +303,156 @@ void inside_modal_and_read_only() {
     sync(f);
     check(!f.services.time_picker().snapshot(id).visible, "re-enabling resurrected popup");
 }
+
+void mixed_date_time_footer_ownership() {
+    for (bool date_parent : {false, true}) {
+        Fixture f;
+        DatePickerRef date_ref;
+        TimePickerRef time_ref;
+        Signal<bool> dropdown_open{false};
+        ThemeConfig config;
+        config.time_picker.tokens.column_height = dp(84);
+        f.services.mount(Content{[&] {
+            Theme(ThemeProps{}.config(config), ThemeContent{[&] {
+                      if (date_parent) {
+                          DatePicker(
+                              DatePickerProps{}.defaultOpen().ref(date_ref).defaultPanelDate(CivilDate{2026, 10, 25}),
+                              DatePickerFooter{[&] { TimePicker(TimePickerProps{}.defaultOpen().ref(time_ref)); }});
+                      } else {
+                          TimePicker(TimePickerProps{}.defaultOpen().ref(time_ref), TimePickerFooter{[&] {
+                                         DatePicker(DatePickerProps{}.defaultOpen().ref(date_ref).defaultPanelDate(
+                                                        CivilDate{2026, 10, 25}),
+                                                    DatePickerFooter{[&] {
+                                                        Dropdown(DropdownProps{}
+                                                                     .open(dropdown_open)
+                                                                     .menu(MenuProps{}.items({{u8"one", u8"One"}})),
+                                                                 DropdownTrigger{[] {
+                                                                     Button(ButtonProps{}, [] { Text(u8"Actions"); });
+                                                                 }});
+                                                    }});
+                                     }});
+                      }
+                  }});
+        }});
+        sync(f);
+        const auto time = f.services.time_picker().mounted()[0];
+        const auto date = f.services.date_picker().mounted()[0];
+        const auto t = f.services.time_picker().snapshot(time);
+        const auto d = f.services.date_picker().snapshot(date);
+        const auto input = bounds(f, date_parent ? t.selector : d.input);
+        const auto popup = date_parent ? t.bounds : d.bounds;
+        const auto gap = date_parent ? config.time_picker.tokens.gap.value_or(dp(4)).value()
+                                     : f.services.components().theme_scope(date)->snapshot().date_picker().metrics.gap;
+        check(t.visible && d.visible && std::abs(popup.y - (input.y + input.height + gap)) < .01F,
+              "mixed footer popup did not use the final parent anchor on its first frame");
+        if (date_parent) {
+            check(time_ref.focus(), "mixed child Time focus");
+            key(f, Key::escape);
+            check(!f.services.time_picker().snapshot(time).visible && f.services.date_picker().snapshot(date).visible,
+                  "child Time Escape closed parent Date");
+            click(f, t.selector);
+            const auto c = t.column_clips[0];
+            check(f.services.dispatch_scroll({0, -2, c.x + 4, c.y + 4}), "Date footer Time wheel unhandled");
+            sync(f);
+            check(f.services.time_picker().snapshot(time).scroll[0] > t.scroll[0] &&
+                      f.services.date_picker().snapshot(date).bounds == d.bounds,
+                  "Date boundary consumed child Time column wheel");
+        } else {
+            check(date_ref.focus(), "mixed child Date focus");
+            key(f, Key::escape);
+            check(!f.services.date_picker().snapshot(date).visible && f.services.time_picker().snapshot(time).visible,
+                  "child Date Escape closed parent Time");
+            click(f, d.input);
+            check(f.services.dispatch_scroll({0, -2, d.bounds.x + 2, d.bounds.y + 2}),
+                  "Time footer Date boundary unhandled");
+            sync(f);
+            check(f.services.time_picker().snapshot(time).scroll == t.scroll,
+                  "Time column scrolled through its Date child popup");
+            dropdown_open.set(true);
+            sync(f);
+            const auto dropdown = f.services.dropdown().snapshot(f.services.dropdown().mounted()[0]);
+            check(dropdown.geometry.visible && f.services.dispatch_scroll({0, -2, dropdown.geometry.bounds.x + 2,
+                                                                           dropdown.geometry.bounds.y + 2}),
+                  "mixed Dropdown boundary unhandled");
+            sync(f);
+            check(f.services.time_picker().snapshot(time).scroll == t.scroll &&
+                      f.services.date_picker().snapshot(date).bounds == d.bounds,
+                  "mixed boundary chain leaked child Dropdown wheel");
+        }
+    }
+}
+
+void form_with_typed_picker_adapters() {
+    Fixture f;
+    FormRef form;
+    FormField<String> date_text;
+    FormField<String> time_text;
+    date_text.required();
+    time_text.required();
+    DatePickerRef date_ref;
+    TimePickerRef time_ref;
+    Signal<bool> disabled{false};
+    int submits = 0;
+    f.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form).disabled(disabled).onFinish([&](FormResult r) {
+            check(r.valid(), "Form submitted invalid pickers");
+            ++submits;
+        }),
+             FormContent{[&] {
+                 // Form075 has a finite String field type. The application adapter
+                 // keeps both picker APIs typed; no new built-in Form value kind.
+                 FormItem(FormItemProps{}.field(String{u8"date"}, date_text).control(date_ref), FormItemContent{[&] {
+                              DatePicker(
+                                  DatePickerProps{}
+                                      .value(bind([=] { return parse_iso_date(date_text.get().view().bytes()); }))
+                                      .onChange([change = date_text.onChange()](DatePickerValue v) {
+                                          change(v ? format_iso_date(*v) : String{});
+                                      })
+                                      .disabled(date_text.uneditable())
+                                      .status(date_text.status())
+                                      .ref(date_ref));
+                          }});
+                 FormItem(FormItemProps{}.field(String{u8"time"}, time_text).control(time_ref), FormItemContent{[&] {
+                              TimePicker(
+                                  TimePickerProps{}
+                                      .value(bind([=] { return parse_time_of_day(time_text.get().view().bytes()); }))
+                                      .onChange([change = time_text.onChange()](TimePickerValue v) {
+                                          change(v ? format_time_of_day(*v) : String{});
+                                      })
+                                      .disabled(time_text.uneditable())
+                                      .status(time_text.status())
+                                      .ref(time_ref));
+                          }});
+             }});
+    }});
+    sync(f);
+    const auto time = f.services.time_picker().mounted()[0];
+    const auto date = f.services.date_picker().mounted()[0];
+    const auto original_time = f.services.time_picker().snapshot(time);
+    const auto original_date = f.services.date_picker().snapshot(date);
+    check(form.submit() && submits == 0 && f.inputs.status(original_time.selector) == InputStatus::Error,
+          "Form required/status adapter failed");
+    check(date_ref.focus({InputFocusCursor::All}), "Form Date focus");
+    check(bool(f.inputs.dispatch(TextCommitted{String{u8"2026-10-25"}, f.inputs.sessions().active()})),
+          "Form Date text");
+    key(f, Key::enter);
+    check(time_ref.focus({InputFocusCursor::All}), "Form Time focus");
+    check(bool(f.inputs.dispatch(TextCommitted{String{u8"09:30:00"}, f.inputs.sessions().active()})), "Form Time text");
+    key(f, Key::enter);
+    check(form.submit() && submits == 1 && date_text.get() == String{u8"2026-10-25"} &&
+              time_text.get() == String{u8"09:30:00"},
+          "Form typed picker adapter submit");
+    disabled.set(true);
+    sync(f);
+    check(!time_ref.focus() && !date_ref.focus(), "Form disabled did not reach picker Inputs");
+    disabled.set(false);
+    check(form.reset(), "Form reset");
+    sync(f);
+    check(!f.services.time_picker().snapshot(time).value && !f.services.date_picker().snapshot(date).value &&
+              f.services.time_picker().snapshot(time).selector == original_time.selector &&
+              f.services.date_picker().snapshot(date).input == original_date.input,
+          "Form reset changed picker identities or retained accepted values");
+}
 } // namespace
 
 int main() {
@@ -311,6 +465,8 @@ int main() {
         nested_and_overlapping_popups();
         suppression_and_lifetime();
         inside_modal_and_read_only();
+        mixed_date_time_footer_ownership();
+        form_with_typed_picker_adapters();
         std::cout << "TimePicker integration contracts passed\n";
         return 0;
     } catch (const std::exception& e) {
