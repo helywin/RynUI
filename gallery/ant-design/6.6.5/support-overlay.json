@@ -448,19 +448,21 @@
     {
       "identity": "ant.component.form",
       "status": "partial",
-      "summary": "原生 Form/FormItem 首版支持纵向布局、typed 字段与显式控件绑定、同步校验、提交/重置、保留错误反馈和真实 ref 失败焦点；异步、动态列表及嵌套字段后续扩展。",
+      "summary": "原生 Form/FormItem 首版支持纵向布局、typed 字段与显式控件绑定、同步校验、提交/重置、保留错误反馈和真实 ref 失败焦点；Gallery 提供目录直达的真实四字段录入流程，异步、动态列表及嵌套字段后续扩展。",
       "supported_scope": [
         "typed String, optional number, bool and SelectSelection fields with flat names",
         "explicit Input/InputNumber/Select/Checkbox bindings and retained control slots",
         "synchronous required/custom validation, values/errors snapshots and controlled authority",
         "FormRef validate/submit/reset, first visible eligible invalid ref focus and same-value numeric draft reset",
         "reactive labels/help/errors, disabled/readOnly and Modal/Spin/hidden gates",
-        "component Theme inheritance, local algorithms, overrides and prepublication font validation"
+        "component Theme inheritance, local algorithms, overrides and prepublication font validation",
+        "interactive four-field Gallery with real input/selection, submit results, reset and disabled/readOnly actions",
+        "Gallery catalog navigation and retained drafts/identity with finite glyph clips across Default/Dark/Compact and 1200/560 widths"
       ],
       "missing_scope": [
         "horizontal/inline layouts, nested Form, Form.List, deep field paths and automatic arbitrary-control binding",
         "async validation, dependencies, automatic Enter submission and automatic scrolling",
-        "interactive Form Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "native GPU/Linux/system IME and assistive technology acceptance remain independent",
         "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -469,7 +471,9 @@
         "test:rynui.form_model",
         "test:rynui.form_public_api",
         "test:rynui.form_component",
-        "test:rynui.form_theme"
+        "test:rynui.form_theme",
+        "openspec:079-20261025-add-form-and-picker-gallery",
+        "test:tests/token_gallery_frame_tests.cpp#test_form_gallery_after_document_scroll"
       ]
     },
     {

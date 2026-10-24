@@ -89,4 +89,12 @@ Form 被 Modal 排除、Spin 阻止或祖先隐藏时，validate/submit 不执�
 
 `form.algorithm=false` 时局部 `form.seed` 不生效，也不阻断父级 Form token 覆盖；子级显式 token override 仍叠加在继承值上。开启组件算法才使用局部 seed，关闭后恢复正常继承。
 
-首版不含嵌套 Form、横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)；Gallery/support overlay 由父线程单独整合。
+首版不含嵌套 Form、横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)。
+
+## Gallery 录入流程
+
+Gallery 目录的 **Form** 直接进入 Empty/Result 之后的真实样例。`name` 使用必填 String + Input，`role` 使用必填 SelectSelection + Select，`count` 使用初值 1 的 InputNumberValue + InputNumber（必填且至少为 1），`consent` 使用必填 bool + Checkbox。每个 FormItem 的 `control(ref)` 连接对应控件，失败提交聚焦首个可见且可编辑的无效控件；本例不自动滚动。
+
+通过保存、校验、重置、切换禁用、切换只读和更新帮助按钮操作同一份表单。成功文字来自 `onFinish` 的实际 `FormResult.values`。操作按钮位于 Form 外，禁用后仍可重新启用；只读时可校验/提交，但不能修改字段。重置恢复空名称、空角色、数量 1 和未确认，并清除错误与未完成的数字显示，例如 authority 同为 1 的 `1.` 草稿。
+
+`rynui_token_gallery_frame_tests --forms-only` 提供聚焦 Recording 回归，也包含在完整 frame 入口中；覆盖真实目录请求、输入/选项/勾选事件、结果、失败焦点、重置、编辑 gate、保留身份，以及 Default/Dark/Compact × 1200×900 / 560×900 的实际文字和 glyph clip。额外直接调用同一原生按钮命令检查无失焦时的草稿/preedit 保留及同值重置，避免失焦格式化掩盖问题。该阶段未集成日期/时间字段，也不替代原生 GPU、人工视觉、系统 IME、Linux 或辅助技术验收；详见 [079 Form 阶段证据](../openspec/changes/079-20261025-add-form-and-picker-gallery/evidence/stage1-form-msvc-recording.md)。

@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace rynui::example {
@@ -141,6 +142,19 @@ struct GalleryState final {
     ryn::Signal<ryn::String> result_title{ryn::String{u8"任务已保存"}};
     ryn::Signal<ryn::String> result_feedback{ryn::String{u8"状态更新保留详情中的编辑草稿"}};
     std::size_t result_status_step{};
+    ryn::FormRef form_ref;
+    ryn::FormField<ryn::String> form_name;
+    ryn::FormField<ryn::SelectSelection> form_role;
+    ryn::FormField<ryn::InputNumberValue> form_count{1.0};
+    ryn::FormField<bool> form_consent;
+    ryn::InputRef form_name_ref;
+    ryn::SelectRef form_role_ref;
+    ryn::InputRef form_count_ref;
+    ryn::CheckboxRef form_consent_ref;
+    ryn::Signal<bool> form_disabled{false};
+    ryn::Signal<bool> form_read_only{false};
+    ryn::Signal<ryn::String> form_help{ryn::String{u8"填写用于保存的名称"}};
+    ryn::Signal<ryn::String> form_feedback{ryn::String{u8"尚未提交"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -151,6 +165,15 @@ struct GalleryState final {
         GalleryNavigationTarget::to_section(GalleryDocumentSectionKind::header_source)};
     std::optional<GalleryNavigationTarget> navigation_request;
     TokenGalleryTelemetry telemetry;
+
+    GalleryState() {
+        form_name.required(ryn::String{u8"请输入名称"});
+        form_role.required(ryn::String{u8"请选择角色"});
+        form_count.required(ryn::String{u8"请输入数量"}).validator([](ryn::InputNumberValue value) {
+            return value && *value < 1 ? ryn::String{u8"数量至少为 1"} : ryn::String{};
+        });
+        form_consent.required(ryn::String{u8"请确认保存"});
+    }
 
     void set_theme(ryn::ThemeConfig config, bool brand = false) {
         background_color = ryn::resolve_theme(config).alias().color_background_container;
@@ -438,6 +461,18 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.result.custom",
     "gallery.result.action",
     "gallery.result.draft",
+    "gallery.form.workflow",
+    "gallery.form.name",
+    "gallery.form.role",
+    "gallery.form.count",
+    "gallery.form.consent",
+    "gallery.form.submit",
+    "gallery.form.validate",
+    "gallery.form.reset",
+    "gallery.form.disabled",
+    "gallery.form.readonly",
+    "gallery.form.help",
+    "gallery.form.status",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -2393,6 +2428,141 @@ void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 6;
 }
 
+void add_form_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    const auto form_width = bind([state] { return dp(state->document_width.get().value() - 2); });
+    Text(TextProps{}
+             .content(String{u8"gallery.form.workflow · Form · 填写、校验与保存"})
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Text(TextProps{}
+             .content(bind([state] {
+                 return utf8("gallery.form.status · " + std::string{state->form_feedback.get().bytes()} +
+                             (state->form_disabled.get() ? " · 已禁用" : " · 已启用") +
+                             (state->form_read_only.get() ? " · 只读" : " · 可编辑"));
+             }))
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Form(FormProps{}
+             .ref(state->form_ref)
+             .disabled(state->form_disabled)
+             .readOnly(state->form_read_only)
+             .layout(LayoutStyle{}.width(form_width).margin_left(dp(1)).margin_right(dp(1)))
+             .onFinish([state](FormResult result) {
+                 std::string values = "保存成功";
+                 for (const auto& field : result.values) {
+                     values += " · " + std::string{field.name.bytes()} + "=";
+                     std::visit(
+                         [&values](const auto& value) {
+                             using T = std::decay_t<decltype(value)>;
+                             if constexpr (std::same_as<T, String>) {
+                                 values += value.bytes();
+                             } else if constexpr (std::same_as<T, InputNumberValue>) {
+                                 values += value ? std::to_string(*value) : "empty";
+                             } else if constexpr (std::same_as<T, bool>) {
+                                 values += value ? "true" : "false";
+                             } else if (value) {
+                                 values += std::get<String>(value->storage()).bytes();
+                             }
+                         },
+                         field.value);
+                 }
+                 state->form_feedback.set(utf8(values));
+             })
+             .onFinishFailed([state](FormResult result) {
+                 state->form_feedback.set(utf8("校验失败 · " + std::to_string(result.errors.size()) + " 项错误"));
+             }),
+         FormContent{[state, form_width] {
+             FormItem(FormItemProps{}
+                          .field(u8"name", state->form_name)
+                          .label(String{u8"gallery.form.name · 名称"})
+                          .help(state->form_help)
+                          .control(state->form_name_ref),
+                      FormItemContent{[state, form_width] {
+                          Input(InputProps{}
+                                    .value(state->form_name.value())
+                                    .onChange(state->form_name.onChange())
+                                    .status(state->form_name.status())
+                                    .disabled(state->form_name.disabled())
+                                    .readOnly(state->form_name.readOnly())
+                                    .ref(state->form_name_ref)
+                                    .layout(LayoutStyle{}.width(form_width)));
+                      }});
+             FormItem(FormItemProps{}
+                          .field(u8"role", state->form_role)
+                          .label(String{u8"gallery.form.role · 角色"})
+                          .control(state->form_role_ref),
+                      FormItemContent{[state, form_width] {
+                          Select(SelectProps{}
+                                     .options({{u8"operator", u8"操作员"}, {u8"reviewer", u8"审核员"}})
+                                     .value(state->form_role.value())
+                                     .onChange(state->form_role.onChange())
+                                     .status(state->form_role.status())
+                                     .disabled(state->form_role.uneditable())
+                                     .ref(state->form_role_ref)
+                                     .layout(LayoutStyle{}.width(form_width)));
+                      }});
+             FormItem(FormItemProps{}
+                          .field(u8"count", state->form_count)
+                          .label(String{u8"gallery.form.count · 数量"})
+                          .help(String{u8"必填，且至少为 1；重置会清除未完成数字草稿"})
+                          .control(state->form_count_ref),
+                      FormItemContent{[state, form_width] {
+                          InputNumber(InputNumberProps{}
+                                          .value(state->form_count.value())
+                                          .onChange(state->form_count.onChange())
+                                          .status(state->form_count.status())
+                                          .disabled(state->form_count.disabled())
+                                          .readOnly(state->form_count.readOnly())
+                                          .ref(state->form_count_ref)
+                                          .layout(LayoutStyle{}.width(form_width)));
+                      }});
+             FormItem(FormItemProps{}
+                          .field(u8"consent", state->form_consent)
+                          .label(String{u8"gallery.form.consent · 确认"})
+                          .control(state->form_consent_ref),
+                      FormItemContent{[state] {
+                          Checkbox(CheckboxProps{}
+                                       .checked(state->form_consent.value())
+                                       .onChange(state->form_consent.onChange())
+                                       .disabled(state->form_consent.uneditable())
+                                       .ref(state->form_consent_ref),
+                                   CheckboxLabel{[] { Text(u8"同意保存本次填写内容"); }});
+                      }});
+         }});
+    // These actions stay reachable when Form disables its registered controls.
+    Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[state] {
+              Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                  if (!state->form_ref.submit()) {
+                      state->form_feedback.set(String{u8"当前禁用，提交未执行"});
+                  }
+              }),
+                     [] { Text(u8"gallery.form.submit · 保存"); });
+              Button(ButtonProps{}.onClick([state] {
+                  if (const auto result = state->form_ref.validate()) {
+                      state->form_feedback.set(result->valid() ? String{u8"校验通过，尚未保存"}
+                                                               : String{u8"校验失败，请查看字段错误"});
+                  }
+              }),
+                     [] { Text(u8"gallery.form.validate · 校验"); });
+              Button(ButtonProps{}.onClick([state] {
+                  if (state->form_ref.reset()) {
+                      state->form_feedback.set(String{u8"已重置"});
+                  }
+              }),
+                     [] { Text(u8"gallery.form.reset · 重置"); });
+              Button(ButtonProps{}.onClick([state] { state->form_disabled.set(!state->form_disabled.get()); }),
+                     [] { Text(u8"gallery.form.disabled · 切换禁用"); });
+              Button(ButtonProps{}.onClick([state] { state->form_read_only.set(!state->form_read_only.get()); }),
+                     [] { Text(u8"gallery.form.readonly · 切换只读"); });
+              Button(ButtonProps{}.onClick([state] {
+                  state->form_help.set(state->form_help.get() == String{u8"填写用于保存的名称"}
+                                           ? String{u8"名称与其他字段一起保存"}
+                                           : String{u8"填写用于保存的名称"});
+              }),
+                     [] { Text(u8"gallery.form.help · 更新帮助"); });
+          }});
+    state->telemetry.live_samples += 1;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2921,6 +3091,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_data_and_selection_samples(state);
                                                         add_panel_and_selection_samples(state);
                                                         add_empty_and_result_samples(state);
+                                                        add_form_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
