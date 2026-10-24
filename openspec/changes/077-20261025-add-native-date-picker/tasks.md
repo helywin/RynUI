@@ -14,4 +14,6 @@
 
 ## 4. 父线程 main 集成
 
-- [ ] 4.1 将 worker 1ca5416 显式合并到当前 main，保留 Form 与 076 导航/079 规划；在父构建树通过组合 Debug/Release 39 项、fresh golden 双基线旧字段与既有 IIFE 比较、目录 generator/contracts/inventory 和新构建 Gallery 启动 smoke，更新 partial 支持清单与准确证据，记录独立 Astra R2 的真实结论，通过格式/doctor/strict/diff 后提交推送 main 并核对远端 SHA，不推送 t3 分支。
+- [x] 4.1 将 worker 1ca5416 显式合并到当前 main，保留 Form 与 076 导航/079 规划；在父构建树通过组合 Debug/Release 39 项、fresh golden 双基线旧字段与既有 IIFE 比较、目录 generator/contracts/inventory 和新构建 Gallery 启动 smoke，更新 partial 支持清单与准确证据，记录独立 Astra R2 的真实结论，通过格式/doctor/strict/diff 后提交推送 main 并核对远端 SHA，不推送 t3 分支。
+
+父集成提交 `0fdefbae9d5fb67422d6a67471019d5e3227dac1` 已推送，`git ls-remote origin refs/heads/main` 与本地 HEAD 相等，`t3/*` 远端查询为空。Astra R2 CLEAN、父 Debug/Release 各 39/39 与目录/启动证据见 [main-integration.md](evidence/main-integration.md)。077 为 **4/4 完成**，079 日期 Gallery 保持独立未完成。
