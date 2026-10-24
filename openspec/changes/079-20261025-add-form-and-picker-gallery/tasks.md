@@ -20,4 +20,6 @@
 
 ## 4. 集成验收
 
-- [ ] 4.1 全部样例齐备后，在 Windows MSVC windows-msvc / Ninja Multi-Config 实际构建 Gallery，统一通过完整 token_gallery_frame 与八项 contracts 及原生 --smoke；由 Astra xhigh 复核完整阶段与已知问题修复，记录准确命令、实际 inventory 和平台边界，更新完成清单。Recording/启动 smoke 不替代组件人工视觉、系统 IME、Linux 或辅助技术验收。
+- [x] 4.1 全部样例齐备后，在 Windows MSVC windows-msvc / Ninja Multi-Config 实际构建 Gallery，统一通过完整 token_gallery_frame 与八项 contracts 及原生 --smoke；由 Astra xhigh 复核完整阶段与已知问题修复，记录准确命令、实际 inventory 和平台边界，更新完成清单。Recording/启动 smoke 不替代组件人工视觉、系统 IME、Linux 或辅助技术验收。
+
+固定 main `22ee615` 的实际三目标重建、完整 **9/9**、Direct3D 12 / DXIL 七帧原生启动、独立 Astra R4 和源版本/产物核对见 [final-main-acceptance.md](evidence/final-main-acceptance.md)。079 当前 **4/4**；最终父记录提交保持所验实现不变。

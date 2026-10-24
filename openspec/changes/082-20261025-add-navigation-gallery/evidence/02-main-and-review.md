@@ -13,3 +13,7 @@ reviewer 另运行 reference catalog、document/model 与 viewport 源码合同�
 父树 `windows-msvc-debug` 的 `rynui_token_gallery` 重新构建退出 0，日志 `out/navigation-gallery-main-executable-build.log`；generator check/self-test、clang-format 22.1.3 的 **631** 个源码检查、doctor healthy、strict **81/81** 和 diff check 通过。
 
 父线程只提交推送 main，安全 fetch 后比较远端 `refs/heads/main` 与本地 HEAD；SHA 核对结果记录在交付消息。不推送 `t3/*`，不创建 PR 或 archive。完整 frame/native 统一验收仍待 TimePicker Gallery 齐备后完成，不把本阶段 Recording 或本地构建记为 GPU、原生窗口、Linux、系统 IME 或辅助技术完成。
+
+## 后续统一验收
+
+079 在固定 main `22ee615` 上实际重建后通过完整 frame 与八项 contracts **9/9**（frame 1001.43 秒），新构建 Gallery 的原生 `--smoke` 实际为 Direct3D 12 / DXIL、七帧、exit 0；源码 guard 与二进制身份保持。该轮覆盖已发布的本组导航样例，准确命令、inventory 和独立平台边界见 [079 最终记录](../../079-20261025-add-form-and-picker-gallery/evidence/final-main-acceptance.md)。该后续记录不将本组组件人工视觉、完整 GPU/DPI、Linux 或系统 IME/AT 自动记为完成。
