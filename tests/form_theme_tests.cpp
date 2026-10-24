@@ -118,12 +118,49 @@ void dirty_domains_and_atomic_rejection() {
     invalid.form.tokens.required_gap = LogicalLength{};
     reject(invalid);
 }
+
+void logical_font_representation() {
+    for (bool algorithm : {false, true}) {
+        ThemeConfig config;
+        config.form.algorithm = algorithm;
+        config.form.seed.font_size = dp(18);
+        for (float size : {.49F, .1F, std::numeric_limits<float>::denorm_min(), std::nextafter(.5F, 0.0F),
+                           std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+            config.form.tokens.font_size = dp(size);
+            bool rejected{};
+            try {
+                static_cast<void>(resolve_theme(config));
+            } catch (const std::invalid_argument&) {
+                rejected = true;
+            }
+            check(rejected, "Form resolver accepted a font that rounds to zero logical pixels");
+        }
+        for (float size : {.5F, std::nextafter(.5F, 1.0F), 1.0F, 14.0F}) {
+            config.form.tokens.font_size = dp(size);
+            check(resolve_theme(config).form().metrics.font_size == size,
+                  "representable Form font was changed/rejected");
+        }
+    }
+    ThemeConfig derived;
+    derived.form.algorithm = true;
+    derived.form.seed.font_size = dp(.49F);
+    bool rejected{};
+    try {
+        static_cast<void>(resolve_theme(derived));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected, "Form component algorithm accepted a final unrepresentable font");
+    derived.form.seed.font_size = dp(.5F);
+    check(resolve_theme(derived).form().metrics.font_size == 1, "Form component seed rounding changed");
+}
 } // namespace
 
 int main() {
     try {
         defaults_inheritance_and_local_algorithm();
         dirty_domains_and_atomic_rejection();
+        logical_font_representation();
         std::cout << "Form Theme contracts passed\n";
         return 0;
     } catch (const std::exception& error) {

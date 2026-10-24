@@ -46,6 +46,11 @@ void apply_form_override(FormThemeToken& token, const FormTokenOverride& value) 
     if (value.font_family) {
         token.metrics.font_family = *value.font_family;
     }
+    // Text rounds logical font size before its resolver applies display scale.
+    // Validate the final value, including inheritance and component algorithms.
+    if (!std::isfinite(token.metrics.font_size) || token.metrics.font_size < .5F) {
+        throw std::invalid_argument("Form font_size must round to at least one logical pixel");
+    }
     float extent = 0;
     for (auto metric : token.metrics.values()) {
         extent += metric * 2;

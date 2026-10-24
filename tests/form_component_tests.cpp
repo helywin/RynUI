@@ -5,6 +5,8 @@
 #include "support/input_fixture.hpp"
 
 #include <iostream>
+#include <cmath>
+#include <limits>
 
 namespace {
 using namespace ryn;
@@ -673,6 +675,138 @@ void controlled_authority_and_checkbox_generation() {
         check(form.submit() && !f.services.focus().state().focused, "old FormItem focused a rebound CheckboxRef");
     }
 }
+
+void form_font_publication_and_dpi() {
+    for (bool algorithm : {false, true}) {
+        for (float initial_scale : {1.0F, 2.0F}) {
+            Fixture f;
+            float scale = initial_scale;
+            std::vector<std::uint32_t> requests;
+            const auto resolver = [&](SystemFontFamily, std::uint32_t, bool, std::uint32_t logical_pixels) {
+                requests.push_back(logical_pixels);
+                f.font_scale = scale;
+                return f.resolve(static_cast<std::uint32_t>(std::lround(logical_pixels * scale)));
+            };
+            static_cast<void>(f.services.text().set_font_resolver(resolver));
+            f.inputs.set_display_scale(scale);
+            ThemeConfig config;
+            config.form.algorithm = algorithm;
+            config.form.seed.font_size = dp(18);
+            config.form.tokens.font_size = dp(14);
+            config.form.tokens.line_height = dp(22);
+            Signal<ThemeConfig> theme{config};
+            FormRef form;
+            FormField<String> field;
+            field.required();
+            InputRef ref;
+            int mounts{};
+            f.services.mount(Content{[&] {
+                Theme(ThemeProps{}.config(theme), ThemeContent{[&] {
+                          Form(FormProps{}.ref(form), FormContent{[&] {
+                                   FormItem(
+                                       FormItemProps{}
+                                           .field(String{u8"name"}, field)
+                                           .label(String{u8"Label"})
+                                           .help(String{u8"Help"})
+                                           .control(ref),
+                                       FormItemContent{[&] {
+                                           ++mounts;
+                                           Input(InputProps{}.value(field.value()).onChange(field.onChange()).ref(ref));
+                                       }});
+                               }});
+                      }});
+            }});
+            sync(f);
+            const auto id = f.services.form().mounted().front();
+            const auto scope = f.services.components().theme_scope(id);
+            const auto parts = f.services.form().snapshot(f.services.form().items().front());
+            const auto texts = f.services.text().mounted_texts();
+            const auto label = *std::find_if(texts.begin(), texts.end(), [&](const auto& text) {
+                return f.services.components().parent(text.component) == parts.label;
+            });
+            const auto feedback = *std::find_if(texts.begin(), texts.end(), [&](const auto& text) {
+                return f.services.components().parent(text.component) == parts.feedback;
+            });
+            const auto input = f.inputs.mounted_inputs().front();
+            const auto count = f.services.components().component_count();
+            check(ref.focus(), "Form font fixture input focus failed");
+            const auto session = f.inputs.sessions().active();
+            for (float size : {.49F, .1F, std::numeric_limits<float>::denorm_min(), std::nextafter(.5F, 0.0F),
+                               std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+                const auto snapshot = scope->snapshot().diagnostic_json();
+                const auto generation = scope->generation();
+                const auto label_font = f.services.text().resolved_typography(label.component);
+                const auto feedback_font = f.services.text().resolved_typography(feedback.component);
+                const auto label_revision = f.scene.revisions(label.scene);
+                const auto feedback_revision = f.scene.revisions(feedback.scene);
+                const auto geometry = bounds(f, parts.label);
+                const auto request_count = requests.size();
+                auto invalid = config;
+                invalid.form.tokens.font_size = dp(size);
+                bool rejected{};
+                try {
+                    theme.set(invalid);
+                } catch (const std::exception&) {
+                    rejected = true;
+                }
+                check(rejected && scope->snapshot().diagnostic_json() == snapshot &&
+                          scope->generation() == generation &&
+                          f.services.text().resolved_typography(label.component) == label_font &&
+                          f.services.text().resolved_typography(feedback.component) == feedback_font &&
+                          f.scene.revisions(label.scene) == label_revision &&
+                          f.scene.revisions(feedback.scene) == feedback_revision && requests.size() == request_count &&
+                          bounds(f, parts.label) == geometry && f.inputs.sessions().active() == session,
+                      "invalid Form font partially published Theme or mutated actual Text/input state");
+            }
+            config.form.tokens.font_size = dp(.5F);
+            theme.set(config);
+            sync(f);
+            check(f.services.text().resolved_typography(label.component).font_size == .5F &&
+                      f.scene.primitive(label.scene).instances.count > 0 &&
+                      !f.scene.text_state(label.scene).shaped().glyphs.empty(),
+                  "threshold Form font did not produce actual text glyphs");
+            scale = initial_scale == 1 ? 2.0F : 1.0F;
+            f.chains.clear();
+            check(f.services.text().set_font_resolver(resolver), "Form threshold font DPI did not refresh");
+            f.inputs.set_display_scale(scale);
+            sync(f);
+            const auto font = f.scene.text_state(label.scene).shaped().glyphs.front().font;
+            check(f.fonts->metrics(font).metrics.display_scale == scale &&
+                      std::none_of(requests.begin(), requests.end(), [](auto pixels) { return pixels == 0; }),
+                  "Form threshold rounded after DPI or requested a zero-size font");
+            config.form.tokens.font_size = dp(18);
+            theme.set(config);
+            sync(f);
+            check(scope->snapshot().form().metrics.font_size == 18 &&
+                      f.services.text().resolved_typography(label.component).font_size == 18 && mounts == 1 &&
+                      f.services.components().component_count() == count &&
+                      f.inputs.mounted_inputs().front().editor == input.editor,
+                  "Form font failed recovery or remounted native controls");
+        }
+        Fixture initial;
+        FormRef form;
+        FormField<String> field;
+        ThemeConfig invalid;
+        invalid.form.algorithm = algorithm;
+        invalid.form.tokens.font_size = dp(.49F);
+        bool rejected{};
+        try {
+            initial.services.mount(Content{[&] {
+                Theme(ThemeProps{}.config(invalid), ThemeContent{[&] {
+                          Form(FormProps{}.ref(form), FormContent{[&] {
+                                   FormItem(FormItemProps{}.field(String{u8"name"}, field).label(String{u8"Label"}),
+                                            FormItemContent{[] { Input(InputProps{}); }});
+                               }});
+                      }});
+            }});
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        check(rejected && !form.bound() && initial.inputs.mounted_inputs().empty() &&
+                  initial.services.text().mounted_texts().empty(),
+              "initial Form font failure left partial Text/control state");
+    }
+}
 } // namespace
 
 int main() {
@@ -685,6 +819,7 @@ int main() {
         live_theme_and_clipped_focus();
         callbacks_and_control_generation();
         controlled_authority_and_checkbox_generation();
+        form_font_publication_and_dpi();
         std::cout << "Form retained component flows passed\n";
         return 0;
     } catch (const std::exception& error) {
