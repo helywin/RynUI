@@ -334,15 +334,17 @@ void StepsComponentHost::mount(const StepsProps& props, const std::vector<StepsI
                 const auto fragment =
                     children.register_scene_fragment(row.component, runtime::SceneFragmentPlacement::before_children);
                 row.surface = services.surfaces().create_content_range(fragment, {});
-                children.on_resource_cleanup(row.component, [&services, node = row.node, hit,
-                                                             interaction = row.interaction, surface = row.surface] {
-                    services.pointer().cancel_interaction(interaction);
-                    services.focus().cancel_interaction(interaction);
-                    services.interactions().remove(interaction);
-                    services.scene_composer().remove_fragment(hit);
-                    services.surfaces().destroy_content_range(surface);
-                    services.layout().remove_layout(node);
-                });
+                children.on_resource_cleanup(row.component,
+                                             [&services, row_component = row.component, node = row.node, hit,
+                                              interaction = row.interaction, surface = row.surface] {
+                                                 services.interactions().set_input_blocked(row_component, false);
+                                                 services.pointer().cancel_interaction(interaction);
+                                                 services.focus().cancel_interaction(interaction);
+                                                 services.interactions().remove(interaction);
+                                                 services.scene_composer().remove_fragment(hit);
+                                                 services.surfaces().destroy_content_range(surface);
+                                                 services.layout().remove_layout(node);
+                                             });
                 services.layout().set_layout(
                     row.node,
                     layout::ComponentLayout{[this, id, i](layout::LayoutEngine& e, runtime::NodeId,

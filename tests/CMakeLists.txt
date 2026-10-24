@@ -95,6 +95,19 @@ foreach(review_case IN ITEMS children_steps children_breadcrumb_current children
     add_test(NAME rynui.navigation_review_${review_case} COMMAND rynui_navigation_review_tests ${review_case})
 endforeach()
 
+add_executable(rynui_navigation_block_lifetime_tests navigation_block_lifetime_tests.cpp)
+rynui_configure_cpp_target(rynui_navigation_block_lifetime_tests)
+target_link_libraries(rynui_navigation_block_lifetime_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_navigation_block_lifetime_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(widget IN ITEMS breadcrumb steps)
+    foreach(lifetime_mode IN ITEMS hidden disabled inactive hidden_blur disabled_blur)
+        add_test(NAME rynui.navigation_block_lifetime_${widget}_${lifetime_mode}
+            COMMAND rynui_navigation_block_lifetime_tests ${widget} ${lifetime_mode})
+    endforeach()
+endforeach()
+
 foreach(segmented_test IN ITEMS segmented_public_api segmented_theme segmented_component)
     add_executable(rynui_${segmented_test}_tests ${segmented_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${segmented_test}_tests)
