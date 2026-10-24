@@ -295,6 +295,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
+    append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
+    append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
     append_if_changed(before.empty().colors, after.empty().colors, TokenIdentity::empty_colors, changed, count);
     append_if_changed(before.empty().metrics, after.empty().metrics, TokenIdentity::empty_metrics, changed, count);
     append_if_changed(before.result().colors, after.result().colors, TokenIdentity::result_colors, changed, count);
@@ -1331,6 +1333,18 @@ const TableThemeToken& ThemeScope::table_metrics() const {
     return snapshot_->table();
 }
 
+const FormThemeToken& ThemeScope::form_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::form_colors);
+    return snapshot_->form();
+}
+
+const FormThemeToken& ThemeScope::form_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::form_metrics);
+    return snapshot_->form();
+}
+
 const EmptyThemeToken& ThemeScope::empty_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::empty_colors);
@@ -1635,6 +1649,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Collapse.metrics",
         "Collapse.typography",
         "Collapse.effects",
+        "Form.colors",
+        "Form.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1693,6 +1709,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_colors:
     case TokenIdentity::collapse_colors:
     case TokenIdentity::segmented_colors:
+    case TokenIdentity::form_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::input_number_colors:
@@ -1763,6 +1780,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::tag_metrics:
     case TokenIdentity::segmented_metrics:
+    case TokenIdentity::form_metrics:
     case TokenIdentity::alert_metrics:
     case TokenIdentity::spin_metrics:
     case TokenIdentity::progress_metrics:

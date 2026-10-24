@@ -38,6 +38,7 @@ class PaginationComponentHost;
 class TableComponentHost;
 class EmptyResultComponentHost;
 class CollapseComponentHost;
+class FormComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -235,6 +236,10 @@ public:
         return *segmented_;
     }
 
+    [[nodiscard]] FormComponentHost& form() noexcept {
+        return *form_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -377,6 +382,7 @@ private:
     std::unique_ptr<TabsComponentHost> tabs_;
     std::unique_ptr<CollapseComponentHost> collapse_;
     std::unique_ptr<SegmentedComponentHost> segmented_;
+    std::unique_ptr<FormComponentHost> form_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;
