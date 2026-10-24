@@ -62,6 +62,10 @@
 - **WHEN** NORMAL motion 下聚焦的 footer Input 因 Escape 关闭弹层
 - **THEN** 正常 deferred focus/blur 交付 SHALL 使 onBlur 恰好一次、Input 内部焦点与 text session 一致，结束隐藏 caret deadline 并恢复 selector；同步销毁或重新打开不得复用过期焦点 generation
 
+#### Scenario: 行点击期间 footer 失焦改变面板
+- **WHEN** 用户编辑 footer Input 后点击可见小时行，而 onBlur 卸载、重建、隐藏或禁用 TimePicker，或更新受控值、rules、needConfirm
+- **THEN** 行激活 SHALL 在焦点交付后重新检查同一 generation 的有效状态；卸载或不可交互时不提交，复用 ref 的新组件不受旧事件影响；有效面板只使用回调后的 model 与确认方式
+
 ### Requirement: Theme 与有限可见范围
 
 系统 SHALL 提供完整的 TimePicker Theme 配置/继承/派生更新；最终字号和尺寸 SHALL 在发布前校验。实际 glyph、surface 和命中范围 SHALL 遵守分配的列/面板及祖先 clip；主题或尺寸更新不重建无关内容。

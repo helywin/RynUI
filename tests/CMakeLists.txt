@@ -7,7 +7,7 @@ target_link_libraries(rynui_time_picker_review_tests PRIVATE rynui_components)
 target_compile_definitions(rynui_time_picker_review_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(review_case IN ITEMS open activation reset cycles focus)
+foreach(review_case IN ITEMS open activation reset cycles focus row_focus)
     add_test(NAME rynui.time_picker_review_${review_case} COMMAND rynui_time_picker_review_tests ${review_case})
 endforeach()
 

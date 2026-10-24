@@ -504,6 +504,173 @@ void footer_blur_delivery() {
         check(!f.inputs.next_caret_deadline() && blurred == 1, "reopen/close leaked hidden caret or repeated blur");
     }
 }
+
+void row_focus_callbacks() {
+    for (bool confirm : {false, true}) {
+        for (bool replace_in_blur : {false, true}) {
+            Fixture f;
+            TimePickerRef selector_ref;
+            InputRef footer_ref;
+            std::optional<runtime::ComponentId> owner;
+            runtime::ComponentId container;
+            bool original = true;
+            int blurred = 0;
+            int old_changes = 0;
+            int new_changes = 0;
+            std::function<void()> render;
+            render = [&] {
+                const bool old = original;
+                TimePicker(TimePickerProps{}
+                               .defaultOpen()
+                               .needConfirm(old && confirm)
+                               .defaultValue(TimeOfDay{old ? 8 : 3})
+                               .ref(selector_ref)
+                               .onChange([&, old](TimePickerValue) { ++(old ? old_changes : new_changes); }),
+                           TimePickerFooter{[&, old] {
+                               Input(InputProps{}.ref(footer_ref).onBlur([&, old] {
+                                   if (!old) {
+                                       return;
+                                   }
+                                   ++blurred;
+                                   check(f.services.destroy(*owner), "row blur destroy");
+                                   if (replace_in_blur) {
+                                       original = false;
+                                       f.services.append_slot(container, Content{render});
+                                   }
+                               }));
+                           }});
+            };
+            f.services.mount(Content{[&] { Flex(FlexProps{}, FlexContent{render}); }});
+            sync(f);
+            container = f.services.components().root_components()[0];
+            owner = f.services.time_picker().mounted()[0];
+            const auto old = *owner;
+            const auto before = f.services.time_picker().snapshot(old);
+            const auto old_footer = f.inputs.mounted_inputs().back();
+            type(f, footer_ref, String{u8"Footer draft"});
+            const auto old_session = f.inputs.sessions().active();
+            const auto row = before.rows[0][1];
+            const auto b = bounds(f, row);
+            const auto hit = f.services.hit_test().hit_test({b.x + b.width / 2, b.y + b.height / 2});
+            check(hit && f.services.interactions().require(*hit).component == row &&
+                      f.inputs.focused(old_footer.component),
+                  "row focus pointer/footer fixture");
+            std::cout << "row blur destroy confirm=" << confirm << " rebind=" << replace_in_blur << std::endl;
+            click(f, row);
+            check(blurred == 1 && old_changes == 0 && !f.services.components().contains(old) &&
+                      !f.services.interactions().find(*hit) && !f.services.focus().state().focused &&
+                      !f.inputs.sessions().active().owner.valid() && !f.inputs.next_caret_deadline(),
+                  "row blur destruction retained old value/focus/session/caret");
+            if (!replace_in_blur) {
+                check(!selector_ref.bound() && !footer_ref.bound(), "destroyed row refs stayed bound");
+                original = false;
+                f.services.append_slot(container, Content{render});
+                sync(f);
+            }
+            const auto fresh = f.services.time_picker().mounted()[0];
+            const auto next = f.services.time_picker().snapshot(fresh);
+            check(fresh != old && next.value == TimeOfDay{3} && next.pending == TimeOfDay{3} && new_changes == 0 &&
+                      f.inputs.display_snapshot(next.selector).text == "03:00:00",
+                  "old row activation changed replacement generation");
+            check(!bool(f.inputs.dispatch(TextCommitted{String{u8"Stale footer"}, old_session})),
+                  "disposed footer session edited replacement");
+            click(f, next.rows[0][4]);
+            check(new_changes == 1 && old_changes == 0 &&
+                      f.services.time_picker().snapshot(fresh).value == TimeOfDay{4},
+                  "surviving services or replacement row activation failed");
+        }
+    }
+    for (int action = 0; action < 9; ++action) {
+        Fixture f;
+        InputRef footer_ref;
+        Signal<bool> open{true};
+        Signal<bool> disabled{false};
+        Signal<bool> busy{false};
+        Signal<bool> modal{false};
+        Signal<bool> confirm{false};
+        Signal<TimePickerValue> value{action < 6 ? TimePickerValue{} : TimePickerValue{TimeOfDay{8}}};
+        Signal<TimePickerRules> rules{TimePickerRules{}};
+        std::optional<runtime::ComponentId> owner;
+        std::vector<TimePickerValue> changes;
+        int blurred = 0;
+        f.services.mount(Content{[&] {
+            Spin(SpinProps{}.spinning(busy), SpinContent{[&] {
+                     TimePicker(TimePickerProps{}
+                                    .open(open)
+                                    .disabled(disabled)
+                                    .needConfirm(confirm)
+                                    .value(value)
+                                    .rules(rules)
+                                    .onChange([&](TimePickerValue v) { changes.push_back(v); }),
+                                TimePickerFooter{[&] {
+                                    Input(InputProps{}.ref(footer_ref).onBlur([&] {
+                                        if (++blurred != 1) {
+                                            return;
+                                        }
+                                        switch (action) {
+                                        case 0:
+                                            open.set(false);
+                                            break;
+                                        case 1:
+                                            disabled.set(true);
+                                            break;
+                                        case 2:
+                                            busy.set(true);
+                                            break;
+                                        case 3:
+                                            modal.set(true);
+                                            break;
+                                        case 4:
+                                            // Deliver the host notification without
+                                            // reentering global FocusManager dispatch.
+                                            f.services.time_picker().on_window_active(false);
+                                            break;
+                                        case 5:
+                                            f.services.components().set_branch_active(*owner, false);
+                                            f.services.mark_scene_structure_dirty();
+                                            break;
+                                        case 6:
+                                            value.set(TimeOfDay{4});
+                                            break;
+                                        case 7: {
+                                            TimePickerRules next;
+                                            next.disabled = [](TimeOfDay v) {
+                                                return v.hour() == 1;
+                                            };
+                                            rules.set(next);
+                                            break;
+                                        }
+                                        case 8:
+                                            confirm.set(true);
+                                            break;
+                                        }
+                                    }));
+                                }});
+                 }});
+            Modal(ModalProps{}.open(modal).footer(ModalFooterMode::None), ModalContent{[] { Text(u8"Boundary"); }});
+        }});
+        sync(f);
+        owner = f.services.time_picker().mounted()[0];
+        const auto before = f.services.time_picker().snapshot(*owner);
+        type(f, footer_ref, String{u8"Footer draft"});
+        std::cout << "row blur surviving action=" << action << std::endl;
+        click(f, before.rows[0][1]);
+        const auto after = f.services.time_picker().snapshot(*owner);
+        check(blurred == 1 && changes.empty() && after.value == value.get(),
+              "R2: row activation published after footer blur changed owner state");
+        if (action < 6) {
+            check(!after.visible, "row blur boundary left popup visible");
+        } else if (action == 6) {
+            check(after.pending == TimeOfDay{4}, "row used pre-focus controlled pending value");
+        } else if (action == 8) {
+            check(after.pending == TimeOfDay{1}, "new confirmation mode lost pending row");
+            key(f, Key::enter);
+            check(changes == std::vector<TimePickerValue>{TimeOfDay{1}} &&
+                      f.services.time_picker().snapshot(*owner).value == TimeOfDay{8},
+                  "new confirmation mode or controlled authority was ignored");
+        }
+    }
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -523,6 +690,8 @@ int main(int argc, char** argv) {
             fresh_open_cycles();
         } else if (name == "focus") {
             footer_blur_delivery();
+        } else if (name == "row_focus") {
+            row_focus_callbacks();
         } else {
             throw std::runtime_error("unknown TimePicker review case");
         }

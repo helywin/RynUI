@@ -321,6 +321,17 @@ void TimePickerComponentHost::choose(runtime::ComponentId id, TimeColumn column,
     s->view.active_column = static_cast<int>(column);
     refresh(id);
     services_->focus().defer_focus(s->selector_hit, input::FocusModality::pointer);
+    // Pointer focus may synchronously run footer onBlur, including unmounting
+    // or updating this picker. Continue only with the same live generation.
+    s = services_->components().state<TimePickerState>(id);
+    if (!s || !services_->components().scope(id).active() || !s->view.visible || s->disabled || !window_active_ ||
+        !services_->interactions().component_active(id)) {
+        return;
+    }
+    const auto* selector = services_->interactions().find(s->selector_hit);
+    if (!selector || !selector->eligible || !services_->interactions().component_active(selector->component)) {
+        return;
+    }
     if (!s->need_confirm) {
         publish(id, s->model.panel(), false);
     }

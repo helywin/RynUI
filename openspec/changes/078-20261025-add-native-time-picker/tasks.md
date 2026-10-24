@@ -23,3 +23,7 @@
 - [x] 5.3 先复现同一接受值的实际 String Form adapter reset 保留未提交草稿；通过最小内部 owner reset hook 清理 model/显示/preedit/待确认值，保留普通 validation/help/Theme 更新的草稿与失效 generation 安全；验证读取 authority 时同步销毁 owner 后安全返回。
 - [x] 5.4 先复现关闭后 stale focus tracking 使程序化新 open 周期立即关闭；验证重复程序化打开、defaultOpen 与边界恢复。
 - [x] 5.5 先复现 footer Input Escape 缺失 onBlur；保留正常 deferred focus/blur 交付，验证 NORMAL motion 的内部焦点、session/caret 清理、selector restore、同步销毁/重新打开与 generation。
+
+## 6. 平台通用：Astra R2 行激活焦点回调生命周期
+
+- [x] 6.1 先用真实 pointer 行点击与 footer Input onBlur 复现 focus 转移后访问旧 owner/失效提交；在 choose 的 focus 回调后重取同一 generation，校验当前 scope、visible、disabled、窗口和输入边界，使用新的 model/needConfirm。覆盖即时/确认模式销毁、复用 ref 创建新 generation，以及存活 owner 的关闭、禁用、Spin/Modal/窗口/祖先阻断、受控值/rules/needConfirm 更新；保留全部 R1/Date reset 回归，定向 Debug/Release、fresh goldens 与工具检查通过后本地提交，不运行无关完整矩阵或合入新 main。
