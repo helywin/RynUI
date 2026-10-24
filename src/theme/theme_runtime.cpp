@@ -504,7 +504,9 @@ bool Subscription::active() const noexcept {
 }
 
 std::shared_ptr<ThemeScope> ThemeScope::create_default() {
-    return std::shared_ptr<ThemeScope>(new ThemeScope(nullptr, ThemeConfig{}));
+    // Avoid a full component-token configuration temporary on the root-mount stack.
+    static const ThemeConfig config;
+    return std::shared_ptr<ThemeScope>(new ThemeScope(nullptr, config));
 }
 
 std::shared_ptr<ThemeScope> ThemeScope::create(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config) {

@@ -10,4 +10,4 @@
 
 ## 3. 平台通用：集成收口
 
-- [ ] 3.1 运行受影响的 Input、Button、Theme、popup/Modal/Spin 共同回归和 Core/renderer 边界检查所需的实际 headless 构建，确认新增组件没有持续空闲帧/无界搜索；完成 API 文档、验收证据及首版限制，通过 clang-format 22.x、doctor、strict validation、git diff --check 后收口。不得把共同测试或未执行的 Gallery/GPU/Linux/系统 IME 写为平台验收通过。
+- [x] 3.1 运行受影响的 Input、Button、Theme、popup/Modal/Spin 共同回归和 Core/renderer 边界检查所需的实际 headless 构建，确认新增组件没有持续空闲帧/无界搜索；完成 API 文档、验收证据及首版限制，通过 clang-format 22.x、doctor、strict validation、git diff --check 后收口。不得把共同测试或未执行的 Gallery/GPU/Linux/系统 IME 写为平台验收通过。
