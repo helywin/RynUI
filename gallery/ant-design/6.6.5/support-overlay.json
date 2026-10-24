@@ -748,12 +748,14 @@
         "finite step/range/disabled rules, clear, inputReadOnly, three sizes and four Input variants/status",
         "typed retained footer/ref, explicit String Form adapter reset and ordinary-update draft preservation",
         "child DatePicker/Select/Dropdown/Table ownership, Modal/Spin/hidden suppression and footer blur/session cleanup",
-        "component Theme inheritance/algorithm/overrides with final metric and descendant publication validation"
+        "component Theme inheritance/algorithm/overrides with final metric and descendant publication validation",
+        "interactive Gallery catalog jump, controlled minute input/columns/confirm/cancel/clear and fixed range/step/disabled rules",
+        "separate seconds String Form with actual submit/ref failure focus/reset, whole-picker gates and retained drafts/identity across Default/Dark/Compact at 1200/560 widths"
       ],
       "missing_scope": [
         "RangePicker, 12-hour/millisecond modes, locale/free formats, Now/presets and changeOnScroll",
         "animations and full Ant Design Web/DOM/CSS API",
-        "interactive TimePicker Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent"
+        "native GPU/Linux/system IME and assistive technology acceptance remain independent"
       ],
       "evidence_identifiers": [
         "source:components/time-picker/index.en-US.md",
@@ -765,7 +767,9 @@
         "test:rynui.time_picker_component",
         "test:rynui.time_picker_theme",
         "test:rynui.time_picker_integration",
-        "test:rynui.time_picker_review_reset"
+        "test:rynui.time_picker_review_reset",
+        "openspec:079-20261025-add-form-and-picker-gallery",
+        "test:tests/token_gallery_frame_tests.cpp#test_time_picker_gallery_after_document_scroll"
       ]
     },
     {

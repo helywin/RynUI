@@ -50,4 +50,30 @@ void time_picker_example(ryn::Signal<ryn::TimePickerValue> value, ryn::TimePicke
 
 保留 Input、时/分/可选秒列和 typed `TimePickerFooter`，安全 `TimePickerRef` 复用 Input 的 focus/blur/select/bound 生命周期。支持 clear、disabled、inputReadOnly、三尺寸、Input 四变体及状态。footer 只挂载一次，普通更新保持编辑器及子内容身份。
 
-不包含 RangePicker、12 小时制、毫秒、自由格式/locale、Now、预设、滚轮即提交、动画、Web 或屏幕阅读器桥接。Gallery、原生 GPU、Linux、系统 IME 验收独立推进，headless 合同不替代这些证据。
+不包含 RangePicker、12 小时制、毫秒、自由格式/locale、Now、预设、滚轮即提交、动画、Web 或屏幕阅读器桥接。原生 GPU、Linux、系统 IME 与辅助技术验收独立推进，Recording/headless 合同不替代这些证据。
+
+## Gallery 与 Form String 适配
+
+Gallery 的 **TimePicker** 目录直接进入导航样例之后的真实时间选择流程。独立样例固定分钟精度、初值与空值面板 `08:00`，允许 `08:00` 至 `18:00`、15 分钟步长，排除 12 时。确认/即时模式按钮改变列选择的提交方式；锁定已保存值按钮拒绝回写选择请求，反馈同时显示实际接受值和最后请求。文本只读按钮只禁止键入，仍允许列选择及清空。面板保留备注 Input，滚轮只滚动对应列。
+
+另一个独立 Form 固定秒精度、String 初值 `08:00:00`，允许 `08:00:00` 至 `18:00:00`，排除 12 时。字段 required，非空程序值也由 validator 检查严格 `HH:mm:ss` 与声明范围。只在 TimePicker 发布合法接受请求时写回字段；输入草稿与待确认列值不会直接进入 FormResult。
+
+```cpp
+// field、reference 由页面持有；在 FormItem 的 content 内取得注册代际回调。
+const auto change = field.onChange();
+TimePicker(TimePickerProps{}
+    .value(bind([field] { return parse_time_of_day(field.get().bytes()); }))
+    .onChange([change](TimePickerValue value) {
+        change(value ? format_time_of_day(*value) : String{});
+    })
+    .defaultPanelValue(TimeOfDay{8})
+    .precision(TimePickerPrecision::Second)
+    .status(field.status())
+    .disabled(field.uneditable())
+    .inputReadOnly(field.readOnly())
+    .ref(reference));
+```
+
+FormItem 使用 `.control(reference)` 连接实际 `TimePickerRef`，失败提交聚焦该 picker；Form 只读/禁用通过 `uneditable()` 阻止整个选择器，不能仅使用 `inputReadOnly`。保存、重置、编辑门禁及帮助按钮均在 Form 外，禁用后仍可恢复。保存结果来自实际 `FormResult.values`，reset 恢复初值并丢弃完整/未完成草稿及 preedit，包括接受值未变且输入仍聚焦的情况；普通帮助、验证和 Theme 更新保留编辑状态。Form 的四类 typed 值没有扩展。
+
+聚焦入口为 `rynui_token_gallery_frame_tests --time-picker-only`，并纳入完整 frame。平台通用 Recording 验证与最终原生验收分别记录在 [079](../openspec/changes/079-20261025-add-form-and-picker-gallery/tasks.md)，不将启动 smoke 或合成 Composition 事件记为系统 IME 验收。

@@ -100,3 +100,5 @@ Gallery 目录的 **Form** 直接进入 Empty/Result 之后的真实样例。`na
 `rynui_token_gallery_frame_tests --forms-only` 提供聚焦 Recording 回归，也包含在完整 frame 入口中；覆盖真实目录请求、输入/选项/勾选事件、结果、失败焦点、重置、编辑 gate、保留身份，以及 Default/Dark/Compact × 1200×900 / 560×900 的实际文字和 glyph clip。额外直接调用同一原生按钮命令检查无失焦时的草稿/preedit 保留及同值重置，避免失焦格式化掩盖问题。该阶段未集成日期/时间字段，也不替代原生 GPU、人工视觉、系统 IME、Linux 或辅助技术验收；详见 [079 Form 阶段证据](../openspec/changes/079-20261025-add-form-and-picker-gallery/evidence/stage1-form-msvc-recording.md)。
 
 后续 DatePicker 样例使用独立的 String Form；它通过公开 `parse_iso_date` / `format_iso_date` 显式适配，Form 支持的四类 typed 值保持不变。回调须在该 FormItem content 内捕获注册代际，`control(date_ref)` 连接实际 InputRef alias。Form 只读映射到 `field.uneditable()` 以阻止整个选择器编辑，不能仅设置 `inputReadOnly`。完整接线与日期范围见 [DatePicker](date-picker.md#gallery-与-form-string-适配)。
+
+TimePicker 使用第三个独立 String Form，固定秒精度与初值 `08:00:00`。`parse_time_of_day` / `format_time_of_day` 显式适配，`control(time_ref)` 连接实际 picker；只读/禁用同样使用 `field.uneditable()` gate 整个选择器。未确认草稿不进入字段，reset 即使 authority 相同也恢复 accepted/pending/显示并取消 preedit。完整接线与范围见 [TimePicker](time-picker.md#gallery-与-form-string-适配)。

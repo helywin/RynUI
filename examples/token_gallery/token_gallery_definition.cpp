@@ -182,6 +182,20 @@ struct GalleryState final {
     ryn::Signal<ryn::String> steps_draft{ryn::String{u8"Steps draft"}};
     ryn::Signal<ryn::String> steps_feedback{ryn::String{u8"填写资料后继续"}};
     ryn::InputRef steps_ref;
+    ryn::Signal<ryn::TimePickerValue> time_value{ryn::TimeOfDay{8}};
+    ryn::Signal<bool> time_open{false};
+    ryn::Signal<bool> time_confirm{true};
+    ryn::Signal<bool> time_accept{true};
+    ryn::Signal<bool> time_input_read_only{false};
+    ryn::Signal<ryn::String> time_request{ryn::String{u8"尚未选择"}};
+    ryn::TimePickerRef time_ref;
+    ryn::FormRef time_form_ref;
+    ryn::FormField<ryn::String> time_field{ryn::String{u8"08:00:00"}};
+    ryn::TimePickerRef time_field_ref;
+    ryn::Signal<bool> time_form_disabled{false};
+    ryn::Signal<bool> time_form_read_only{false};
+    ryn::Signal<ryn::String> time_help{ryn::String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"}};
+    ryn::Signal<ryn::String> time_feedback{ryn::String{u8"尚未保存时间"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -210,6 +224,18 @@ struct GalleryState final {
             }
             return *date < ryn::CivilDate{2026, 10, 5} || *date > ryn::CivilDate{2026, 11, 25} || date->day() == 13
                        ? ryn::String{u8"日期不在允许范围"}
+                       : ryn::String{};
+        });
+        time_field.required(ryn::String{u8"请选择时间"}).validator([](ryn::String value) {
+            if (value.empty()) {
+                return ryn::String{};
+            }
+            const auto time = ryn::parse_time_of_day(value.bytes());
+            if (!time) {
+                return ryn::String{u8"时间须为有效的 HH:mm:ss"};
+            }
+            return *time < ryn::TimeOfDay{8} || *time > ryn::TimeOfDay{18} || time->hour() == 12
+                       ? ryn::String{u8"时间不在允许范围"}
                        : ryn::String{};
         });
     }
@@ -546,6 +572,21 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.steps.visible",
     "gallery.steps.disabled",
     "gallery.steps.focus",
+    "gallery.time-picker.controlled",
+    "gallery.time-picker.value",
+    "gallery.time-picker.footer",
+    "gallery.time-picker.restore",
+    "gallery.time-picker.mode",
+    "gallery.time-picker.authority",
+    "gallery.time-picker.input-readonly",
+    "gallery.time-picker.form",
+    "gallery.time-picker.field",
+    "gallery.time-picker.submit",
+    "gallery.time-picker.reset",
+    "gallery.time-picker.disabled",
+    "gallery.time-picker.readonly",
+    "gallery.time-picker.help",
+    "gallery.time-picker.status",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -3397,6 +3438,173 @@ void add_steps_samples(const std::shared_ptr<GalleryState>& state) {
          }});
     ++state->telemetry.live_samples;
 }
+
+void add_time_picker_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    TimePickerRules rules;
+    rules.minute_step = 15;
+    rules.min = TimeOfDay{8};
+    rules.max = TimeOfDay{18};
+    rules.disabled = [](TimeOfDay value) {
+        return value.hour() == 12;
+    };
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state, rules] {
+             Text(TextProps{}
+                      .content(String{u8"gallery.time-picker.controlled · TimePicker · 时间选择"})
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          const auto value = state->time_value.get();
+                          return utf8(
+                              "gallery.time-picker.value · " +
+                              (value ? std::string{format_time_of_day(*value, TimePickerPrecision::Minute).bytes()}
+                                     : "未选择时间") +
+                              (state->time_confirm.get() ? " · 确认模式" : " · 即时模式") +
+                              (state->time_accept.get() ? " · 接受选择" : " · 锁定已保存值") +
+                              (state->time_input_read_only.get() ? " · 文本只读" : " · 可输入") + " · " +
+                              std::string{state->time_request.get().bytes()});
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(u8"08:00–18:00，每 15 分钟，12 时不可选；滚轮只滚动列");
+             TimePicker(
+                 TimePickerProps{}
+                     .value(state->time_value)
+                     .open(state->time_open)
+                     .onChange([state](TimePickerValue value) {
+                         state->time_request.set(
+                             utf8(std::string{state->time_accept.get() ? "已接受 " : "已拒绝 "} +
+                                  (value ? std::string{format_time_of_day(*value, TimePickerPrecision::Minute).bytes()}
+                                         : "清空")));
+                         if (state->time_accept.get()) {
+                             state->time_value.set(value);
+                         }
+                     })
+                     .onOpenChange([state](bool value) { state->time_open.set(value); })
+                     .defaultPanelValue(TimeOfDay{8})
+                     .precision(TimePickerPrecision::Minute)
+                     .rules(rules)
+                     .needConfirm(state->time_confirm)
+                     .allowClear(true)
+                     .status(InputStatus::Default)
+                     .disabled(false)
+                     .inputReadOnly(state->time_input_read_only)
+                     .ref(state->time_ref)
+                     .layout(LayoutStyle{}.width(dp(280))),
+                 TimePickerFooter{[] {
+                     Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
+                              Text(u8"gallery.time-picker.footer · 选择备注");
+                              Input(InputProps{}.defaultValue(u8"保留的时间备注").layout(LayoutStyle{}.width(dp(220))));
+                          }});
+                 }});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick([state] {
+                           state->time_value.set(TimeOfDay{8});
+                           state->time_open.set(false);
+                           state->time_confirm.set(true);
+                           state->time_accept.set(true);
+                           state->time_input_read_only.set(false);
+                           state->time_request.set(String{u8"已恢复示例"});
+                       }),
+                              [] { Text(u8"gallery.time-picker.restore · 恢复时间示例"); });
+                       Button(ButtonProps{}.onClick([state] { state->time_confirm.set(!state->time_confirm.get()); }),
+                              [] { Text(u8"gallery.time-picker.mode · 确认/即时模式"); });
+                       Button(ButtonProps{}.onClick([state] { state->time_accept.set(!state->time_accept.get()); }),
+                              [] { Text(u8"gallery.time-picker.authority · 切换锁定已保存值"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->time_input_read_only.set(!state->time_input_read_only.get()); }),
+                              [] { Text(u8"gallery.time-picker.input-readonly · 切换文本只读"); });
+                   }});
+         }});
+    Text(TextProps{}
+             .content(String{u8"gallery.time-picker.form · Form String 时间适配"})
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Text(TextProps{}
+             .content(bind([state] {
+                 return utf8("gallery.time-picker.status · " + std::string{state->time_feedback.get().bytes()} +
+                             (state->time_form_disabled.get() ? " · 已禁用" : " · 已启用") +
+                             (state->time_form_read_only.get() ? " · 只读" : " · 可编辑"));
+             }))
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Form(FormProps{}
+             .ref(state->time_form_ref)
+             .disabled(state->time_form_disabled)
+             .readOnly(state->time_form_read_only)
+             .layout(LayoutStyle{}
+                         .width(bind([state] { return dp(state->document_width.get().value() - 2); }))
+                         .margin_left(dp(1))
+                         .margin_right(dp(1)))
+             .onFinish([state](FormResult result) {
+                 state->time_feedback.set(
+                     utf8("时间保存成功 · " + std::string{std::get<String>(result.values.front().value).bytes()}));
+             })
+             .onFinishFailed([state](FormResult) { state->time_feedback.set(String{u8"时间校验失败"}); }),
+         FormContent{[state] {
+             FormItem(FormItemProps{}
+                          .field(u8"time", state->time_field)
+                          .label(String{u8"gallery.time-picker.field · 时间"})
+                          .help(state->time_help)
+                          .control(state->time_field_ref),
+                      FormItemContent{[state] {
+                          const auto change = state->time_field.onChange();
+                          TimePickerRules form_rules;
+                          form_rules.min = TimeOfDay{8};
+                          form_rules.max = TimeOfDay{18};
+                          form_rules.disabled = [](TimeOfDay value) {
+                              return value.hour() == 12;
+                          };
+                          TimePicker(TimePickerProps{}
+                                         .value(bind([field = state->time_field] {
+                                             return parse_time_of_day(field.get().bytes());
+                                         }))
+                                         .onChange([change](TimePickerValue value) {
+                                             change(value ? format_time_of_day(*value) : String{});
+                                         })
+                                         .defaultPanelValue(TimeOfDay{8})
+                                         .precision(TimePickerPrecision::Second)
+                                         .rules(form_rules)
+                                         .needConfirm(true)
+                                         .allowClear(true)
+                                         .status(state->time_field.status())
+                                         .disabled(state->time_field.uneditable())
+                                         .inputReadOnly(state->time_field.readOnly())
+                                         .ref(state->time_field_ref)
+                                         .layout(LayoutStyle{}.width(dp(280))));
+                      }});
+         }});
+    Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[state] {
+              Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                  if (!state->time_form_ref.submit()) {
+                      state->time_feedback.set(String{u8"当前禁用，时间提交未执行"});
+                  }
+              }),
+                     [] { Text(u8"gallery.time-picker.submit · 保存时间"); });
+              Button(ButtonProps{}.onClick([state] {
+                  if (state->time_form_ref.reset()) {
+                      state->time_feedback.set(String{u8"时间已重置"});
+                  }
+              }),
+                     [] { Text(u8"gallery.time-picker.reset · 重置时间"); });
+              Button(
+                  ButtonProps{}.onClick([state] { state->time_form_disabled.set(!state->time_form_disabled.get()); }),
+                  [] { Text(u8"gallery.time-picker.disabled · 切换禁用"); });
+              Button(
+                  ButtonProps{}.onClick([state] { state->time_form_read_only.set(!state->time_form_read_only.get()); }),
+                  [] { Text(u8"gallery.time-picker.readonly · 切换只读"); });
+              Button(ButtonProps{}.onClick([state] {
+                  state->time_help.set(state->time_help.get() == String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"}
+                                           ? String{u8"仅确认后的 HH:mm:ss 字符串进入保存结果"}
+                                           : String{u8"HH:mm:ss，08:00:00 至 18:00:00，12 时不可选"});
+              }),
+                     [] { Text(u8"gallery.time-picker.help · 更新时间帮助"); });
+          }});
+    state->telemetry.live_samples += 2;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -3492,6 +3700,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_date_picker_samples(state);
                                                         add_breadcrumb_samples(state);
                                                         add_steps_samples(state);
+                                                        add_time_picker_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

@@ -33,6 +33,7 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                     : identity == "ant.component.date-picker" ? "gallery.date-picker.controlled "
                                     : identity == "ant.component.breadcrumb"  ? "gallery.breadcrumb.trail "
                                     : identity == "ant.component.steps"       ? "gallery.steps.workflow "
+                                    : identity == "ant.component.time-picker" ? "gallery.time-picker.controlled "
                                                                               : "";
     auto node = reference_node;
     if (!sample.empty()) {
