@@ -6,6 +6,7 @@
 #include <ryn/result.hpp>
 #include <ryn/alert.hpp>
 #include <ryn/spin.hpp>
+#include <ryn/skeleton.hpp>
 #include <ryn/progress.hpp>
 
 #include <ryn/menu.hpp>

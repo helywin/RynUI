@@ -2,7 +2,7 @@
 
 ## 1. 平台通用 API 与静态布局模型
 
-- [ ] 1.1 新增 typed reactive Skeleton/standalone Props、typed content、比例宽度与组合布局模型；用 MSVC windows-msvc-headless Debug/Release 的 public API 和 model focused 测试验证默认/形态/有限短零恢复，提交可编译示例及 docs/skeleton.md 的 API 与 packing 合同。
+- [x] 1.1 新增 typed reactive Skeleton/standalone Props、typed content、比例宽度与组合布局模型；用 MSVC windows-msvc-headless Debug/Release 的 public API 和 model focused 测试验证默认/形态/有限短零恢复，提交可编译示例及 docs/skeleton.md 的 API 与 packing 合同。
 
 ## 2. 平台通用 Theme、retained host 与 scene
 
