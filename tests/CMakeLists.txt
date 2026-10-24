@@ -18,6 +18,17 @@ foreach(skeleton_test IN ITEMS skeleton_theme skeleton_component)
     add_test(NAME rynui.${skeleton_test} COMMAND rynui_${skeleton_test}_tests)
 endforeach()
 
+add_executable(rynui_skeleton_integration_tests skeleton_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_skeleton_integration_tests)
+target_link_libraries(rynui_skeleton_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_skeleton_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(skeleton_case IN ITEMS editor select retirement boundaries motion example)
+    add_test(NAME rynui.skeleton_integration_${skeleton_case} COMMAND rynui_skeleton_integration_tests ${skeleton_case})
+endforeach()
+add_test(NAME rynui.skeleton_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_skeleton_examples.py")
+
 add_executable(rynui_time_picker_review_tests time_picker_review_tests.cpp)
 rynui_configure_cpp_target(rynui_time_picker_review_tests)
 target_link_libraries(rynui_time_picker_review_tests PRIVATE rynui_components)

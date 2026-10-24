@@ -24,7 +24,7 @@ ryn::SkeletonInput(ryn::SkeletonInputProps{}.block(true));
 
 首版无 active/shimmer 动画、SkeletonImage/Node、网络加载或 Web/AT 适配；没有接受却无效果的 active 属性，占位自身不注册焦点或点击目标。平台实际验收状态见 083 evidence，headless 不等于 GPU、原生窗口、Linux、系统 IME、AT 或 Gallery 已通过。
 
-loading=true 时真实 content 仅挂载一次，分支绘制/输入/焦点/popup/IME 受既有门禁管理；loading=false 恢复原组件、编辑器、普通 draft 和 refs，preedit 与旧输入会话在隐藏时清除。空 content 且 loading=false 的根节点退出正常布局流，因此 Flex/Space 不保留空项 gap。根节点始终可处理 loading 更新；输入门禁只归属于自身 retained content 的完整 generational ID。
+loading=true 时真实 content 仅挂载一次，分支绘制/输入/焦点/popup/IME 受既有门禁管理；loading=false 恢复原组件、编辑器、普通 draft 和 refs，preedit 与旧输入会话在隐藏时清除。未提供 content 或 content slot 没有挂载任何直接子组件，且 loading=false 时，根节点退出正常布局流，因此 Flex/Space 不保留空项 gap；retained region 后续增删子组件会在布局前恢复/退出正常流。非空子组件自身的空白或隐藏语义仍由该组件负责。根节点始终可处理 loading 更新；输入门禁只归属于自身 retained content 的完整 generational ID。
 
 content 区域沿外部 LayoutStyle 布局，并把 glyph、hit 与子控件视觉限制在分配区域。子控件自己的 editable viewport 保持其职责；focus decoration 在子控件外扩、但仍受 Skeleton 内容区域及更外层 clip 限制。需要保留完整 focus ring 时，应像普通受限布局一样给控件留出外部 margin。非 block standalone 在父 Flex 拉伸其外部占位时，内部形状仍保持 Theme 的自然尺寸；block 优先填满宽度（包括 Circle+block 组合的宽度），高度仍来自 size。
 

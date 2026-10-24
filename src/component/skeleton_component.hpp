@@ -28,6 +28,7 @@ public:
     void end_mount(void*) noexcept override;
     void on_destroy() noexcept override;
     void on_dispose() noexcept override;
+    void prepare_auxiliary_layout() override;
     void synchronize_auxiliary_geometry(runtime::Size, runtime::Rect) override;
 
 private:

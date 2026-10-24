@@ -11,5 +11,5 @@
 
 ## 3. 平台通用输入组合与最终集成
 
-- [ ] 3.1 增加真实 Input/Button/Select、controlled open 抑制、preedit/refs/draft、同步卸载重建、其他 owner block、Modal/Spin/隐藏动画组合验收；focused Debug/Release 测试通过，完善文档 C++ 可编译例与本 change 实际证据。
-- [ ] 3.2 运行一次去重 affected union（Skeleton、Theme/runtime/scope、Spin/Collapse/Modal、相关输入/Select、scene/Core/backend guards），保留 fresh goldens 深比较证据；运行 clang-format 22 check、OpenSpec doctor/strict 与 git diff --check，记录精确命令、结果和未覆盖平台边界后本地提交。
+- [x] 3.1 增加真实 Input/Button/Select、controlled open 抑制、preedit/refs/draft、同步卸载重建、其他 owner block、Modal/Spin/隐藏动画组合验收；focused Debug/Release 测试通过，完善文档 C++ 可编译例与本 change 实际证据。
+- [x] 3.2 运行一次去重 affected union（Skeleton、Theme/runtime/scope、Spin/Collapse/Modal、相关输入/Select、scene/Core/backend guards），保留 fresh goldens 深比较证据；运行 clang-format 22 check、OpenSpec doctor/strict 与 git diff --check，记录精确命令、结果和未覆盖平台边界后本地提交。

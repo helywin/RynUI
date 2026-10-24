@@ -146,6 +146,39 @@ void three_themes_finite_and_clip() {
     f.synchronize();
     check(quads(f, id)[0].opacity == 1, "Skeleton clipped scene did not recover");
 }
+
+void empty_slot_dynamic_recovery() {
+    Fixture f;
+    Signal<bool> loading{false};
+    f.services.mount(Content{[&] {
+        Flex(FlexProps{}.vertical(true).gap(dp(10)), FlexContent{[&] {
+                 Skeleton(SkeletonProps{}.loading(loading), SkeletonContent{[] {}});
+                 Button(ButtonProps{}, [] { Text(u8"Following"); });
+             }});
+    }});
+    f.synchronize();
+    const auto id = f.services.skeleton().mounted()[0];
+    const auto content = f.services.skeleton().snapshot(id).content;
+    const auto sibling = f.buttons.mounted_buttons()[0].component;
+    const auto top = bounds(f, sibling).y;
+    check(f.nodes.require(f.services.components().root(id)).out_of_flow && top == 0,
+          "empty typed content slot retained a Flex gap");
+    f.services.append_slot(content, Content{[] { Input(InputProps{}.defaultValue(u8"Added")); }});
+    f.synchronize();
+    check(!f.nodes.require(f.services.components().root(id)).out_of_flow && bounds(f, sibling).y > top + 10,
+          "empty retained content region did not resume after append");
+    check(f.services.destroy(f.inputs.mounted_inputs()[0].component), "dynamic input removal failed");
+    f.synchronize();
+    check(bounds(f, sibling).y == top && f.nodes.require(f.services.components().root(id)).out_of_flow,
+          "emptied retained content region kept space");
+    loading.set(true);
+    f.synchronize();
+    check(bounds(f, sibling).y > top, "empty content cannot show Skeleton again");
+    loading.set(false);
+    f.synchronize();
+    check(bounds(f, sibling).y == top && f.services.skeleton().snapshot(id).content == content,
+          "empty content loading round trip lost region identity");
+}
 } // namespace
 
 int main() {
@@ -153,6 +186,7 @@ int main() {
         scene_and_retained_content();
         standalone_and_empty_layout();
         three_themes_finite_and_clip();
+        empty_slot_dynamic_recovery();
         std::cout << "Skeleton retained scene contracts passed\n";
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';

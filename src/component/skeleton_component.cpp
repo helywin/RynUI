@@ -42,6 +42,24 @@ void SkeletonComponentHost::on_dispose() noexcept {
     mounted_.clear();
 }
 
+void SkeletonComponentHost::prepare_auxiliary_layout() {
+    for (const auto id : mounted_) {
+        auto* s = services_->components().state<SkeletonState>(id);
+        if (!s) {
+            continue;
+        }
+        const bool present =
+            s->snapshot.content.valid() && !services_->components().children(s->snapshot.content).empty();
+        if (present == s->has_content) {
+            continue;
+        }
+        s->has_content = present;
+        services_->nodes().require(s->node).out_of_flow = !s->snapshot.loading && !present;
+        services_->dirty().invalidate(s->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
+                                                   runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+    }
+}
+
 SkeletonSnapshot SkeletonComponentHost::snapshot(runtime::ComponentId id) const {
     const auto* s = services_->components().state<SkeletonState>(id);
     if (!s) {
@@ -82,7 +100,6 @@ runtime::ComponentId SkeletonComponentHost::create(SkeletonModel model, const La
     s.model = std::move(model);
     s.snapshot.kind = s.model.kind;
     s.snapshot.loading = loading;
-    s.has_content = content.has_value();
     services.nodes().require(s.node).clip_content = true;
     runtime::connect_layout_style(build.scope(id), style, s.node, services.nodes(), services.dirty());
     if (content) {
@@ -101,6 +118,7 @@ runtime::ComponentId SkeletonComponentHost::create(SkeletonModel model, const La
                              services.components().set_branch_active(child, !loading);
                              services.set_input_blocked(child, loading);
                              context.mount_slot(child, *content);
+                             s.has_content = !services.components().children(child).empty();
                          }});
     }
     const auto fragment = build.register_scene_fragment(id, runtime::SceneFragmentPlacement::before_children);
