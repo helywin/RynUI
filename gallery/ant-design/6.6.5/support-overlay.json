@@ -259,11 +259,12 @@
         "retained rich title/icon/separator slots with independent native child input",
         "pointer and Enter/Space navigation, disabled/hidden/Modal/Spin/window input gates",
         "hidden-item flow removal and identity restoration, finite glyph/surface/hit clipping and external focus outlines",
-        "component Theme inheritance/algorithm/overrides, final validation and owned input-block teardown"
+        "component Theme inheritance/algorithm/overrides, final validation and owned input-block teardown",
+        "interactive Gallery trail and production catalog anchor, original key/index feedback, reactive rename/visibility/disabled/restore, retained current and no-handler native child editing; Recording Default/Dark/Compact at 1200/560 x 900"
       ],
       "missing_scope": [
         "dynamic topology, automatic wrapping/responsive/RTL, router/href/params and built-in dropdown",
-        "interactive Breadcrumb Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "native GPU/native-window/Linux/system IME and assistive technology acceptance remain independent",
         "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -272,7 +273,10 @@
         "api:include/ryn/breadcrumb.hpp",
         "test:rynui.breadcrumb_component",
         "test:rynui.breadcrumb_theme",
-        "test:rynui.navigation_block_lifetime_breadcrumb_hidden_blur"
+        "test:rynui.navigation_block_lifetime_breadcrumb_hidden_blur",
+        "openspec:082-20261025-add-navigation-gallery",
+        "evidence:openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md",
+        "test:rynui_token_gallery_frame_tests --navigation-only"
       ]
     },
     {
@@ -342,11 +346,12 @@
         "horizontal/vertical layouts and Default/Small sizes with retained rich title/subtitle/description/icon slots",
         "roving Tab and directional/Home/End focus, explicit Enter/Space/pointer activation and controlled rejection/retry",
         "independent native child input, disabled/hidden/Modal/Spin/window gates and owned input-block teardown",
-        "finite glyph/surface/hit clipping, visible external focus outlines and complete component Theme resolution"
+        "finite glyph/surface/hit clipping, visible external focus outlines and complete component Theme resolution",
+        "interactive controlled Gallery workflow and production catalog anchor, next/previous/reset, direction/size/status/visibility/disabled controls, native retained description editor and keyboard requests; Recording Default/Dark/Compact at 1200/560 x 900"
       ],
       "missing_scope": [
         "dynamic topology, dot/inline/navigation/panel/percent/maxCount variants, automatic responsive/RTL and animation",
-        "interactive Steps Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "native GPU/native-window/Linux/system IME and assistive technology acceptance remain independent",
         "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
@@ -355,7 +360,10 @@
         "api:include/ryn/steps.hpp",
         "test:rynui.steps_component",
         "test:rynui.steps_theme",
-        "test:rynui.navigation_block_lifetime_steps_hidden_blur"
+        "test:rynui.navigation_block_lifetime_steps_hidden_blur",
+        "openspec:082-20261025-add-navigation-gallery",
+        "evidence:openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md",
+        "test:rynui_token_gallery_frame_tests --navigation-only"
       ]
     },
     {

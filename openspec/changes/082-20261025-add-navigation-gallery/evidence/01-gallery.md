@@ -41,6 +41,26 @@ stable_ids=319 navigation=93 buttons=337 interactions=1072 visible_interactions=
 
 旧 297 个 ID 保持原顺序；实际旧 `add_*` 函数为 28 个，函数体逐字相同、声明与调用顺序相同。`compare-baseline.py` 复核这些边界及全部 71 个非 Breadcrumb/Steps overlay 条目。
 
+## main 合并与最终收口
+
+已验证实现提交 `293e82abed524cac3b62a7b01c79aa0e27c544c0` 后工作树干净，显式 merge 父 main `c083fed5a72f644b491118c6440908e0354d241e`，合并提交 `cf341b7bcbd7c17e223e4308cfa9422f95cce6ab`。保留父 README、完成记录和 080 集成证据。随后仅在合并后的 overlay 两个目标条目追加 Gallery 范围/证据，保留 partial 和 Core 原有支持/缺口，重新生成 `.inc`。
+
+最终 metadata build 的两个 target 退出 0；八项 contracts **8/8**（0.50 秒），包括 generator check/self-test。最终 inventory 再次退出 0，数值与上表一致。clang-format 22.1.3 检查 **631** 个自有源文件、**0 failures**；doctor healthy，strict validate **81/81**，generator consistency、diff check 均通过。
+
+```text
+python tools/update_ant_design_gallery_catalog.py --write
+cmake --build --preset windows-msvc-debug --target rynui_token_gallery_frame_tests rynui_ant_design_reference_catalog_tests --parallel 4
+ctest --preset windows-msvc-debug --output-on-failure -R "^rynui\.(ant_design_gallery_catalog_generator|ant_design_gallery_catalog_contract|ant_design_reference_catalog|gallery_document_contract|gallery_document_viewport_contract|token_gallery_contract|token_gallery_evidence_schema|windows_gallery_acceptance_runner_contract)$"
+python tools/update_ant_design_gallery_catalog.py --check
+python openspec/changes/082-20261025-add-navigation-gallery/evidence/compare-baseline.py
+python scripts/format-code.py --check --clang-format "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/Llvm/x64/bin/clang-format.exe"
+openspec doctor --json
+openspec validate --all --strict --no-interactive
+git diff --check
+```
+
+Python 实际路径为 `C:/Users/jiang/AppData/Local/Programs/Python/Python310/python.exe`，OpenSpec 实际路径为 `C:/Users/jiang/AppData/Local/pnpm/bin/openspec.cmd`。基线脚本确认旧 297 IDs/28 函数、全部 71 非目标条目分别与起点及父 main 一致；Core/API/Theme/goldens/CMake 和父 README/完成记录与 c083fed 完全一致。无未解决的新增 Core 缺陷；中间失败为新 fixture 和有限视口定位问题，均已修复并实际重跑。
+
 ## 验收边界
 
 完整 frame/native 矩阵由父线程统一执行，本 worker 不重复。固定拓扑、无 RTL/router、复杂 Steps 变体未覆盖，仍为 partial；不声明 GPU、原生窗口、Linux、系统 IME 或辅助技术通过。父线程还需新一轮 Astra 独立审查。

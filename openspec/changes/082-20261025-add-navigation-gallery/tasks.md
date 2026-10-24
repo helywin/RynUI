@@ -10,6 +10,6 @@
 
 ## 3. 平台通用集成收口
 
-- [ ] 3.1 执行一次受影响 --date-picker-only、--forms-only、--panels-only、--inventory-only 和八项 catalog contracts；核对原 297 ID 顺序、实际旧 add_* 函数体/顺序及全部非目标 overlay 不变，更新两项目标 partial 范围与生成文件，通过 generator consistency、clang-format 22.1.3 check、doctor、strict validate、diff check，记录证据并本地提交。
+- [x] 3.1 执行一次受影响 --date-picker-only、--forms-only、--panels-only、--inventory-only 和八项 catalog contracts；核对原 297 ID 顺序、实际旧 add_* 函数体/顺序及全部非目标 overlay 不变，更新两项目标 partial 范围与生成文件，通过 generator consistency、clang-format 22.1.3 check、doctor、strict validate、diff check，记录证据并本地提交。
 
 完整 frame/native/GPU 矩阵由父线程统一执行；本 change 不把 Recording 视为 Windows 原生、Linux、IME 或辅助技术验收。父线程还需新一轮 Astra 独立审查；本 worker 不创建子任务、远端操作、PR 或 archive。
