@@ -57,4 +57,4 @@ Empty 的 `font_size`、Result 的 `title_font_size` / `font_size` 必须为有�
 
 样例通过现有 Theme 和 typed slots 组合组件；`LayoutStyle` 只设置外部宽度和 margin。内置与自定义图示仍使用原生 Icon，不提供上游大型插画、图片下载、网络状态或动画。
 
-`rynui_token_gallery_frame_tests --states-only` 已通过真实指针/键盘和文本输入，在平移后的 1200×900、560×900 有限视口检查实际 glyph、图示、操作和保留身份，也纳入完整 frame 入口。076 的聚焦 Recording、目录 contracts 8/8 和 Windows D3D12/DXIL 启动 smoke 已通过，完整 Gallery frame 仍待最终收口，见 [076 证据](../openspec/changes/076-20261024-add-empty-and-result-gallery/evidence/states-gallery.md)。人工逐组件视觉、系统 IME、屏幕阅读器与 Linux 验收独立记录。
+点击目录中的 Empty 或 Result 可直接定位相应交互样例。`rynui_token_gallery_frame_tests --states-only` 通过真实目录点击、指针/键盘和文本输入，在 1200×900、560×900 有限视口检查实际 glyph、图示、操作和保留身份，也纳入完整 frame 入口。076 完整 Gallery 与八项 contracts **9/9**、文档 model/viewport、Windows D3D12/DXIL 启动 smoke 及 Astra R2 复核均已通过，见 [076 证据](../openspec/changes/076-20261024-add-empty-and-result-gallery/evidence/states-gallery.md)。人工逐组件视觉、系统 IME、屏幕阅读器与 Linux 验收独立记录。

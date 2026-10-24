@@ -23,7 +23,7 @@
 
 ## 集成验收
 
-完整 Gallery frame 与八项合同尚待最终运行收口，不提前勾选 2.1。
+以下早期 smoke 与旧完整 frame 记录保留；导航修复后的最终结果见文末，2.1 只按最终结果完成。
 
 Windows 原生 `rynui_token_gallery --smoke` 已实际执行：**D3D12/DXIL，display scale 1.5，273 IDs、279 live，7 frames，exit 0**。日志为 ignored `out/states-gallery-native-smoke.log`。这只证明实际窗口启动、自动主题切换与退出；不代表新增组件逐项 GPU/人工视觉、系统 IME、Linux 或屏幕阅读器验收。
 
@@ -34,3 +34,16 @@ Windows 原生 `rynui_token_gallery --smoke` 已实际执行：**D3D12/DXIL，di
 Empty/Result 保留原目录按钮和 identity，组件锚点改为实际交互样例的稳定标题；其他组件、分类及章节保留原参考目标。运行时与测试共用组件锚点解析和跳转。聚焦测试实际点击可见目录 Button，消费其生产导航请求，到达样例后操作图示/状态按钮及真实 Input，并检查草稿、身份和可见 glyph；覆盖 Default/Dark/Compact × 1200/560 宽。另通过原 Button 目录验证既有参考卡片定位。
 
 基于已集成 `6f1b38a` 的源代码重新构建 Gallery、frame、reference catalog 及 document model/viewport targets；`--states-only` **退出 0**，document model/viewport 加原八项 Gallery 合同 **10/10，0.52 秒**。clang-format 22.1.3 检查 **583 文件零失败**，doctor、strict **76/76** 和 diff check 通过。ignored 输出：`out/states-gallery-navigation-{build,model-build,focused,contracts}.log`。本修复不增加控件或稳定标识，inventory 计数保持不变；本次最终完整 Gallery、原生 smoke 与 Astra R2 仍待收口。
+
+## 最终收口
+
+最终生产源代码为 `5dc9a220d2edb1c579b589b12e51415a9e285c74`；后续 `0bda6f0` 只增加 078 规划。完整执行：
+
+```text
+ctest --test-dir out/build/windows-msvc -C Debug --output-on-failure -R "^rynui\.(token_gallery_frame|ant_design_gallery_catalog_generator|ant_design_gallery_catalog_contract|ant_design_reference_catalog|gallery_document_contract|gallery_document_viewport_contract|token_gallery_contract|token_gallery_evidence_schema|windows_gallery_acceptance_runner_contract)$"
+out/build/windows-msvc/examples/Debug/rynui_token_gallery.exe --smoke
+```
+
+完整 **9/9，337.39 秒**（frame **336.91 秒**）通过，包含真实目录进入后的交互回归。最终原生 smoke 使用同批新构建二进制，实际 **D3D12/DXIL、display scale 1.5、273 IDs、279 live、7 frames、exit 0**。ignored 日志为 `out/states-gallery-navigation-full.log` 和 `out/states-gallery-navigation-native-smoke.log`。这是 Windows 实际窗口启动/自动主题切换/退出证据，仍不等于逐组件 GPU/人工视觉、系统 IME、Linux 或屏幕阅读器验收。
+
+独立 Astra R2 固定 `5dc9a22` 复核全部 076 产物、样例和 R1 修复，**无可操作 P1/P2**，确认目录异议已解决、partial 边界准确。实际复跑现有 `--states-only` **exit 0，77.10 秒**、`--inventory-only`、document model/viewport 各 exit 0；inventory 与本文一致。未修改或构建，未重复完整 frame。076 tasks **2/2** 按以上实际结果完成。
