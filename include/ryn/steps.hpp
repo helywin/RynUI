@@ -37,14 +37,26 @@ public:
         return *this;
     }
 
+    template <std::size_t N> StepsItem& title(const char8_t (&value)[N]) {
+        return title(String{value});
+    }
+
     StepsItem& subtitle(Prop<String> value) {
         subtitle_ = std::move(value);
         return *this;
     }
 
+    template <std::size_t N> StepsItem& subtitle(const char8_t (&value)[N]) {
+        return subtitle(String{value});
+    }
+
     StepsItem& description(Prop<String> value) {
         description_ = std::move(value);
         return *this;
+    }
+
+    template <std::size_t N> StepsItem& description(const char8_t (&value)[N]) {
+        return description(String{value});
     }
 
     StepsItem& richTitle(StepsTitle value) {

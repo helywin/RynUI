@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：Breadcrumb
 
-- [ ] 2.1 实现真实 Breadcrumb host、富标题/图标/separator、当前项和 pointer/keyboard 激活、可见/禁用布局及生命周期、独立 Theme 全链路；补全 docs/breadcrumb.md 真实示例与首版限制，Debug/Release component/Theme tests 验证实际激活/HitTest 恢复、flow 重排、保留身份、有限 glyph/surface/hit clip、父覆盖/inactive seed 和最终派生非法值原子拒绝，fresh goldens 保留旧字段。
+- [x] 2.1 实现真实 Breadcrumb host、富标题/图标/separator、当前项和 pointer/keyboard 激活、可见/禁用布局及生命周期、独立 Theme 全链路；补全 docs/breadcrumb.md 真实示例与首版限制，Debug/Release component/Theme tests 验证实际激活/HitTest 恢复、flow 重排、保留身份、有限 glyph/surface/hit clip、父覆盖/inactive seed 和最终派生非法值原子拒绝，fresh goldens 保留旧字段。
 
 ## 3. 平台通用：Steps
 

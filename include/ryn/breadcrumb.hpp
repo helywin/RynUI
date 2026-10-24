@@ -36,6 +36,10 @@ public:
         return *this;
     }
 
+    template <std::size_t N> BreadcrumbItem& title(const char8_t (&value)[N]) {
+        return title(String{value});
+    }
+
     BreadcrumbItem& richTitle(BreadcrumbTitle value) {
         rich_title_ = std::move(value);
         return *this;
