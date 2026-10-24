@@ -2,6 +2,8 @@
 
 #include <ryn/descriptions.hpp>
 #include <ryn/form.hpp>
+#include <ryn/breadcrumb.hpp>
+#include <ryn/steps.hpp>
 #include <ryn/empty.hpp>
 #include <ryn/result.hpp>
 #include <ryn/alert.hpp>

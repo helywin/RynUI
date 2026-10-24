@@ -252,16 +252,27 @@
     },
     {
       "identity": "ant.component.breadcrumb",
-      "status": "planned",
-      "summary": "面包屑（Breadcrumb）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Breadcrumb 首版提供固定 keyed 层级、当前项投影、富标题/图标/分隔符、原生键盘和指针激活；保留子控件与隐藏恢复，router 与响应式布局后续扩展。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive items with unique keys, current last-visible item and original-index activation",
+        "retained rich title/icon/separator slots with independent native child input",
+        "pointer and Enter/Space navigation, disabled/hidden/Modal/Spin/window input gates",
+        "hidden-item flow removal and identity restoration, finite glyph/surface/hit clipping and external focus outlines",
+        "component Theme inheritance/algorithm/overrides, final validation and owned input-block teardown"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "dynamic topology, automatic wrapping/responsive/RTL, router/href/params and built-in dropdown",
+        "interactive Breadcrumb Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/breadcrumb/index.en-US.md"
+        "source:components/breadcrumb/index.en-US.md",
+        "openspec:080-20261025-add-native-breadcrumb-and-steps",
+        "api:include/ryn/breadcrumb.hpp",
+        "test:rynui.breadcrumb_component",
+        "test:rynui.breadcrumb_theme",
+        "test:rynui.navigation_block_lifetime_breadcrumb_hidden_blur"
       ]
     },
     {
@@ -323,16 +334,28 @@
     },
     {
       "identity": "ant.component.steps",
-      "status": "planned",
-      "summary": "步骤条（Steps）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Steps 首版提供保留 keyed 步骤、横纵两向/两尺寸、四状态与原生连接线、受控 current 和键盘导航；富 slots 保留原生子控件，复杂展示变体后续扩展。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive fixed keyed items, controlled/default current and original-index callbacks",
+        "Wait/Process/Finish/Error state projection, item overrides, native number/check/error and connectors",
+        "horizontal/vertical layouts and Default/Small sizes with retained rich title/subtitle/description/icon slots",
+        "roving Tab and directional/Home/End focus, explicit Enter/Space/pointer activation and controlled rejection/retry",
+        "independent native child input, disabled/hidden/Modal/Spin/window gates and owned input-block teardown",
+        "finite glyph/surface/hit clipping, visible external focus outlines and complete component Theme resolution"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "dynamic topology, dot/inline/navigation/panel/percent/maxCount variants, automatic responsive/RTL and animation",
+        "interactive Steps Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent",
+        "complete Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/steps/index.en-US.md"
+        "source:components/steps/index.en-US.md",
+        "openspec:080-20261025-add-native-breadcrumb-and-steps",
+        "api:include/ryn/steps.hpp",
+        "test:rynui.steps_component",
+        "test:rynui.steps_theme",
+        "test:rynui.navigation_block_lifetime_steps_hidden_blur"
       ]
     },
     {

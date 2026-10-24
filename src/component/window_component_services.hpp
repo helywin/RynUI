@@ -41,6 +41,8 @@ class EmptyResultComponentHost;
 class CollapseComponentHost;
 class FormComponentHost;
 class DescriptionsComponentHost;
+class BreadcrumbComponentHost;
+class StepsComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -250,6 +252,14 @@ public:
         return *descriptions_;
     }
 
+    [[nodiscard]] BreadcrumbComponentHost& breadcrumb() noexcept {
+        return *breadcrumb_;
+    }
+
+    [[nodiscard]] StepsComponentHost& steps() noexcept {
+        return *steps_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -395,6 +405,8 @@ private:
     std::unique_ptr<SegmentedComponentHost> segmented_;
     std::unique_ptr<FormComponentHost> form_;
     std::unique_ptr<DescriptionsComponentHost> descriptions_;
+    std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
+    std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

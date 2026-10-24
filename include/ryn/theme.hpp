@@ -9,6 +9,8 @@
 #include <ryn/segmented_tokens.hpp>
 #include <ryn/date_picker_tokens.hpp>
 #include <ryn/form_tokens.hpp>
+#include <ryn/breadcrumb_tokens.hpp>
+#include <ryn/steps_tokens.hpp>
 #include <ryn/descriptions_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
@@ -1490,7 +1492,23 @@ struct DatePickerThemeConfig final {
     friend bool operator==(const DatePickerThemeConfig&, const DatePickerThemeConfig&) = default;
 };
 
+struct BreadcrumbThemeConfig final {
+    BreadcrumbTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const BreadcrumbThemeConfig&, const BreadcrumbThemeConfig&) = default;
+};
+
+struct StepsThemeConfig final {
+    StepsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const StepsThemeConfig&, const StepsThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
+    StepsThemeConfig steps;
+    BreadcrumbThemeConfig breadcrumb;
     DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
     AliasTokenOverride alias;
@@ -2078,6 +2096,14 @@ public:
         return segmented_;
     }
 
+    [[nodiscard]] const BreadcrumbThemeToken& breadcrumb() const noexcept {
+        return breadcrumb_;
+    }
+
+    [[nodiscard]] const StepsThemeToken& steps() const noexcept {
+        return steps_;
+    }
+
     [[nodiscard]] const DatePickerThemeToken& date_picker() const noexcept {
         return date_picker_;
     }
@@ -2155,7 +2181,7 @@ private:
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  DescriptionsThemeToken descriptions);
+                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps, DescriptionsThemeToken descriptions);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2175,6 +2201,8 @@ private:
     SegmentedThemeToken segmented_;
     DatePickerThemeToken date_picker_;
     FormThemeToken form_;
+    BreadcrumbThemeToken breadcrumb_;
+    StepsThemeToken steps_;
     DescriptionsThemeToken descriptions_;
     ModalThemeToken modal_;
     TagThemeToken tag_;

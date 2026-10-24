@@ -112,6 +112,12 @@ public:
     [[nodiscard]] const FormThemeToken& form_metrics() const;
     [[nodiscard]] const DescriptionsThemeToken& descriptions_colors() const;
     [[nodiscard]] const DescriptionsThemeToken& descriptions_metrics() const;
+    [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
+    [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
+    [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;
+    [[nodiscard]] const StepsThemeToken& steps_colors() const;
+    [[nodiscard]] const StepsThemeToken& steps_metrics() const;
+    [[nodiscard]] const StepsThemeToken& steps_effects() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;

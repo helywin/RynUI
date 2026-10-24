@@ -23,3 +23,9 @@ ctest --preset windows-msvc-headless-debug -R '^(rynui.descriptions_(component|t
 初次测试发现 slot 容器使用外层 build context，隐藏分支未包含实际子控件；已改为读取当前 slot 的 build context，专项测试确认隐藏输入焦点/会话/引用均失效。没有将失败测试记为通过。
 
 后续按用户追加指令，在干净本地阶段提交后显式 merge `c083fed5a72f644b491118c6440908e0354d241e`，再做共享 Theme/配置和最终专项验收，不 rebase。独立 Astra 复核由父代理执行；此文件不是独立 review 结论。无 GPU/Linux/系统 IME/AT/Gallery 验收声明。
+
+## 显式合并新 main
+
+当前阶段先保存为 `2bdf090`，确认 `git status --short` 为空，再执行 `git merge --no-ff c083fed5a72f644b491118c6440908e0354d241e`。共享 Theme/service/CMake 及 golden 出现预期冲突；以新 main 的共享文件为基础重新附加 Descriptions，保留其 30 个 resolver IIFE 原文/顺序；Descriptions token identity 位于 Breadcrumb/Steps 之后。没有 fetch、rebase 或远端操作。
+
+重建上述五个目标及 `rynui_breadcrumb_component_tests rynui_breadcrumb_theme_tests rynui_steps_component_tests rynui_steps_theme_tests rynui_portable_theme_runtime`，Debug 定向 CTest **10/10**（3.05 秒）。新 Debug Theme algorithm 再次 `--write-goldens`，双基线脚本验证：`62c990a` 14032、`c083fed` 14632 个旧 typed values 保持；分别保留 28 和 30 个旧 IIFE，最终只有 31 个。五组 golden 只新增本分支对应组件字段并更新全局 identity。
