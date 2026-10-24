@@ -1,4 +1,5 @@
 #include "component/button_component.hpp"
+#include "component/default_theme.hpp"
 #include "renderer/common/rounded_effect_packing.hpp"
 
 #include <ryn/rynui.hpp>
@@ -247,16 +248,16 @@ void test_mount_scene_composition_and_lifecycle() {
                         .parent == first.node,
             "Button content did not mount as a persistent child subtree");
     require(fixture.bounds(0).height == 32.0F && fixture.bounds(1).height == 32.0F &&
-                fixture.text_color(0) == channels(ryn::resolve_theme().button().default_color) &&
-                fixture.text_color(1) == channels(ryn::resolve_theme().button().primary_color),
+                fixture.text_color(0) == channels(ryn::detail::default_theme_snapshot().button().default_color) &&
+                fixture.text_color(1) == channels(ryn::detail::default_theme_snapshot().button().primary_color),
             "Button layout or inherited foreground did not use Theme tokens");
     const auto first_shadows = fixture.host->button_scene().shadow_effects(first.scene);
     const auto second_shadows = fixture.host->button_scene().shadow_effects(second.scene);
     require(first_shadows.size() == 1 && second_shadows.size() == 1 &&
                 fixture.host->rounded_effects().at(first_shadows.front()).material.color ==
-                    ryn::resolve_theme().button().default_shadow[0].color &&
+                    ryn::detail::default_theme_snapshot().button().default_shadow[0].color &&
                 fixture.host->rounded_effects().at(second_shadows.front()).material.color ==
-                    ryn::resolve_theme().button().primary_shadow[0].color,
+                    ryn::detail::default_theme_snapshot().button().primary_shadow[0].color,
             "Default and Primary Button shadows did not resolve component tokens");
     const auto commands = fixture.host->scene_composer().ordered_scene().commands();
     require(commands.size() == 6 && commands[0].kind == ryn::graphics::SceneDrawKind::rounded_effect &&
@@ -352,8 +353,8 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     require(fixture.synchronize(), "Button hover did not synchronize");
     require(
         fixture.layer(0, ryn::component::ButtonVisualLayer::border).color ==
-                channels(ryn::resolve_theme().button().default_hover_color) &&
-            fixture.text_color(0) == channels(ryn::resolve_theme().button().default_hover_color) &&
+                channels(ryn::detail::default_theme_snapshot().button().default_hover_color) &&
+            fixture.text_color(0) == channels(ryn::detail::default_theme_snapshot().button().default_hover_color) &&
             fixture.nodes.require(target.node).measure_count == target_measure_count &&
             fixture.host->scene_composer().diagnostics().rebuilds == scene_rebuilds &&
             fixture.text_scene.text_state(target_text).counters().shape_count == target_text_counters.shape_count &&
@@ -366,7 +367,7 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
         pointer_event(ryn::input::PointerAction::down, point, ryn::input::PointerButton::primary));
     require(fixture.host->snapshot(target.component).pointer_pressed &&
                 fixture.layer(0, ryn::component::ButtonVisualLayer::border).color ==
-                    channels(ryn::resolve_theme().button().default_active_color),
+                    channels(ryn::detail::default_theme_snapshot().button().default_active_color),
             "Button pointer press did not resolve active visual state");
     disabled.set(true);
     const auto pointer = fixture.host->pointer().state(ryn::input::PointerIdentity::mouse());
@@ -374,18 +375,18 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
                 !fixture.host->snapshot(target.component).pointer_pressed && pointer.has_value() &&
                 !pointer->capture.has_value() && !fixture.host->interactions().require(target.interaction).eligible &&
                 fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().disabled_background),
+                    channels(ryn::detail::default_theme_snapshot().button().disabled_background),
             "disabled state did not win atomically over hover/pressed");
     type.set(ryn::ButtonType::Primary);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().disabled_background),
+                channels(ryn::detail::default_theme_snapshot().button().disabled_background),
             "type update escaped disabled visual priority");
 
     disabled.set(false);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().primary_background) &&
+                    channels(ryn::detail::default_theme_snapshot().button().primary_background) &&
                 fixture.host->rounded_effects().at(target_shadow).material.color ==
-                    ryn::resolve_theme().button().primary_shadow[0].color,
+                    ryn::detail::default_theme_snapshot().button().primary_shadow[0].color,
             "Primary Button normal state did not use the locked token");
     size.set(ryn::ControlSize::Large);
     const auto sibling_identity = sibling.component;
@@ -438,50 +439,50 @@ void test_reactive_state_matrix_and_minimal_dirty_ranges() {
     require(fixture.synchronize(), "loading Button did not synchronize");
     const auto loading_layer = fixture.layer(0, ryn::component::ButtonVisualLayer::loading_indicator);
     require(fixture.host->snapshot(target.component).loading &&
-                loading_layer.opacity == ryn::resolve_theme().button().loading_opacity &&
+                loading_layer.opacity == ryn::detail::default_theme_snapshot().button().loading_opacity &&
                 loading_layer.bounds[2] > 0.0F && loading_layer.bounds[3] > 0.0F &&
-                fixture.text_color(0)[3] == ryn::resolve_theme().button().loading_opacity,
+                fixture.text_color(0)[3] == ryn::detail::default_theme_snapshot().button().loading_opacity,
             "loading state missed indicator geometry, opacity, or Text context");
     loading.set(false);
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, {500.0F, 300.0F}));
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().primary_hover_background),
+                channels(ryn::detail::default_theme_snapshot().button().primary_hover_background),
             "Primary Button hover did not use the locked state token");
     fixture.host->pointer().dispatch(
         pointer_event(ryn::input::PointerAction::down, fixture.center(0), ryn::input::PointerButton::primary));
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().primary_active_background),
+                channels(ryn::detail::default_theme_snapshot().button().primary_active_background),
             "Primary Button pressed did not use the locked state token");
     fixture.host->pointer().cancel_all();
 
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, {500.0F, 300.0F}));
     type.set(ryn::ButtonType::Danger);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().danger_background),
+                channels(ryn::detail::default_theme_snapshot().button().danger_background),
             "Danger Button normal state did not use its component token");
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
     require(fixture.synchronize(), "Default hover did not synchronize");
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().danger_hover_background),
+                channels(ryn::detail::default_theme_snapshot().button().danger_hover_background),
             "Danger Button hover state did not use its component token");
     fixture.host->pointer().dispatch(
         pointer_event(ryn::input::PointerAction::down, fixture.center(0), ryn::input::PointerButton::primary));
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                channels(ryn::resolve_theme().button().danger_active_background),
+                channels(ryn::detail::default_theme_snapshot().button().danger_active_background),
             "Danger Button active state did not use its component token");
     loading.set(true);
     const auto danger_shadow = fixture.host->button_scene().shadow_effects(target.scene);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().danger_background) &&
+                    channels(ryn::detail::default_theme_snapshot().button().danger_background) &&
                 danger_shadow.size() == 1 &&
                 fixture.host->rounded_effects().at(danger_shadow.front()).material.opacity ==
-                    ryn::resolve_theme().button().loading_opacity,
+                    ryn::detail::default_theme_snapshot().button().loading_opacity,
             "Danger loading precedence lost its normal color or faded shadow");
     loading.set(false);
     disabled.set(true);
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().disabled_background) &&
+                    channels(ryn::detail::default_theme_snapshot().button().disabled_background) &&
                 fixture.host->rounded_effects().at(danger_shadow.front()).material.opacity == 0.0F,
             "disabled state did not win over Danger interaction and shadow");
 }
@@ -530,7 +531,7 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
 
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
     require(fixture.layer(0, ryn::component::ButtonVisualLayer::border).color ==
-                channels(ryn::resolve_theme().button().default_hover_color),
+                channels(ryn::detail::default_theme_snapshot().button().default_hover_color),
             "Default hover missed its existing 1px border");
     require(fixture.host->button_scene().focus_effect(default_button.scene).material.opacity == 0.0F,
             "Default hover incorrectly created a focus ring");
@@ -538,7 +539,7 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(1)));
     require(fixture.synchronize(), "Primary hover did not synchronize");
     require(fixture.layer(1, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().primary_hover_background) &&
+                    channels(ryn::detail::default_theme_snapshot().button().primary_hover_background) &&
                 fixture.layer(1, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F &&
                 fixture.host->button_scene().focus_effect(primary_button.scene).material.opacity == 0.0F &&
                 near_rect(quad_bounds(fixture.layer(1, ryn::component::ButtonVisualLayer::background)), primary_root),
@@ -547,7 +548,7 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(2)));
     require(fixture.synchronize(), "Danger hover did not synchronize");
     require(fixture.layer(2, ryn::component::ButtonVisualLayer::background).color ==
-                    channels(ryn::resolve_theme().button().danger_hover_background) &&
+                    channels(ryn::detail::default_theme_snapshot().button().danger_hover_background) &&
                 fixture.layer(2, ryn::component::ButtonVisualLayer::border).color[3] == 0.0F &&
                 fixture.host->button_scene().focus_effect(danger_button.scene).material.opacity == 0.0F &&
                 near_rect(quad_bounds(fixture.layer(2, ryn::component::ButtonVisualLayer::background)), danger_root),
@@ -569,7 +570,7 @@ void test_solid_border_box_and_focus_modalities_at_simulated_dpi() {
     const float mid_y = shape.y + shape.height * 0.5F;
     require(fixture.host->focus().state().focused == danger_button.interaction &&
                 fixture.host->snapshot(danger_button.component).focus.focus_visible && focus.material.opacity == 1.0F &&
-                focus.material.color == ryn::resolve_theme().map().color_primary_border &&
+                focus.material.color == ryn::detail::default_theme_snapshot().map().color_primary_border &&
                 focus.geometry.outline_width == 3.0F && focus.geometry.outline_offset == 1.0F,
             "keyboard focus did not use the locked hollow focus outline");
 
@@ -630,7 +631,7 @@ void test_animated_presentation_retarget_and_motion_policy() {
 
     static_cast<void>(fixture.tick(100'000));
     const auto hover_mid = fixture.host->snapshot(mounted.component);
-    const auto hover_target = ryn::resolve_theme().button().default_hover_color;
+    const auto hover_target = ryn::detail::default_theme_snapshot().button().default_hover_color;
     require(hover_mid.presentation_border != initial.presentation_border &&
                 hover_mid.presentation_border != hover_target && fixture.dirty.material_nodes().size() == 2 &&
                 fixture.dirty.animation_nodes().size() == 1 && fixture.dirty.layout_roots().empty() &&
@@ -649,7 +650,7 @@ void test_animated_presentation_retarget_and_motion_policy() {
     static_cast<void>(fixture.tick(200'000));
     const auto active_mid = fixture.host->snapshot(mounted.component);
     require(active_mid.presentation_border != before_retarget &&
-                active_mid.presentation_border != ryn::resolve_theme().button().default_active_color,
+                active_mid.presentation_border != ryn::detail::default_theme_snapshot().button().default_active_color,
             "active retarget did not interpolate from the hover midpoint");
 
     auto dark = theme;
@@ -677,7 +678,7 @@ void test_animated_presentation_retarget_and_motion_policy() {
     const auto reduced = fixture.host->snapshot(mounted.component);
     require(fixture.host->animations().size() == 0 && !fixture.host->animations().next_deadline().has_value() &&
                 reduced.presentation_loading_mix == 1.0F &&
-                reduced.presentation_background == ryn::resolve_theme().button().default_background &&
+                reduced.presentation_background == ryn::detail::default_theme_snapshot().button().default_background &&
                 fixture.nodes.require(mounted.node).measure_count == measure_count &&
                 fixture.host->mounted_buttons().front().scene == scene,
             "reduced motion did not snap to final retained Button presentation");
@@ -985,7 +986,7 @@ void test_text_button_hover_and_theme_keep_foreground_visible() {
     const auto component = fixture.host->mounted_buttons().front().component;
     const auto before = fixture.host->snapshot(component);
     require(before.presentation_background.alpha() == 0.0F && before.presentation_border.alpha() == 0.0F &&
-                before.presentation_foreground == ryn::resolve_theme().alias().color_text &&
+                before.presentation_foreground == ryn::detail::default_theme_snapshot().alias().color_text &&
                 fixture.host->button_scene().shadow_effects(fixture.host->mounted_buttons().front().scene).empty(),
             "Text Button resting visual has a border, shadow, or wrong foreground");
     fixture.host->pointer().dispatch(pointer_event(ryn::input::PointerAction::move, fixture.center(0)));
@@ -1116,7 +1117,7 @@ void test_native_color_variant_matrix_and_precedence() {
     const auto id = fixture.host->mounted_buttons()[0].component;
     const auto text = fixture.host->text().mounted_texts()[0].scene;
     const auto shape_count = fixture.text_scene.text_state(text).counters().shape_count;
-    const auto token = ryn::resolve_theme().button();
+    const auto token = ryn::detail::default_theme_snapshot().button();
     for (std::size_t index = 0; index < ryn::button_color_count; ++index) {
         color.set(static_cast<ryn::ButtonColor>(index));
         for (auto value : {ryn::ButtonVariant::Outlined, ryn::ButtonVariant::Dashed, ryn::ButtonVariant::Solid,
@@ -1228,7 +1229,8 @@ void test_native_sugar_props_and_theme_palette_inheritance() {
     ghost.set(false);
     type.set(ryn::ButtonType::Link);
     require(fixture.synchronize() && fixture.host->snapshot(id).variant == ryn::ButtonVariant::Link &&
-                fixture.host->snapshot(id).presentation_foreground == ryn::resolve_theme().button().variants.link_color,
+                fixture.host->snapshot(id).presentation_foreground ==
+                    ryn::detail::default_theme_snapshot().button().variants.link_color,
             "Button link type did not select link token");
     const auto blue = static_cast<std::size_t>(ryn::ButtonColor::Blue);
     ryn::ThemeConfig config;
@@ -1240,7 +1242,7 @@ void test_native_sugar_props_and_theme_palette_inheritance() {
     require(inherited.button().variants.colors[blue] == parent.button().variants.colors[blue] &&
                 inherited.identity() == parent.identity(),
             "Button palette override was lost in inherited Theme");
-    require(parent.identity() != ryn::resolve_theme().identity() &&
+    require(parent.identity() != ryn::detail::default_theme_snapshot().identity() &&
                 parent.diagnostic_json().find("variantColors") != std::string::npos,
             "Button palette values missing from identity/serialization");
     auto changed = config;
@@ -1252,13 +1254,17 @@ void test_native_sugar_props_and_theme_palette_inheritance() {
     ryn::ThemeConfig dark;
     dark.algorithms = {ryn::ThemeAlgorithm::Dark};
     const auto darker = ryn::resolve_theme(dark);
-    require(darker.button().variants.colors[blue] != ryn::resolve_theme().button().variants.colors[blue] &&
+    require(darker.button().variants.colors[blue] !=
+                    ryn::detail::default_theme_snapshot().button().variants.colors[blue] &&
                 darker.button().variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Magenta)] ==
                     darker.button().variants.colors[static_cast<std::size_t>(ryn::ButtonColor::Pink)],
             "Button dark preset or pink alias palette differs");
-    require(ryn::resolve_theme().button().variants.colors[blue].base == ryn::Color::rgba8(22, 119, 255) &&
-                ryn::resolve_theme().button().variants.colors[blue].hover == ryn::Color::rgba8(64, 150, 255) &&
-                ryn::resolve_theme().button().variants.colors[blue].active == ryn::Color::rgba8(9, 88, 217),
+    require(ryn::detail::default_theme_snapshot().button().variants.colors[blue].base ==
+                    ryn::Color::rgba8(22, 119, 255) &&
+                ryn::detail::default_theme_snapshot().button().variants.colors[blue].hover ==
+                    ryn::Color::rgba8(64, 150, 255) &&
+                ryn::detail::default_theme_snapshot().button().variants.colors[blue].active ==
+                    ryn::Color::rgba8(9, 88, 217),
             "Button locked blue preset differs from Ant palette");
 }
 
@@ -1453,7 +1459,7 @@ void test_retained_icon_loading_slots_and_end_placement() {
     const auto content_node = fixture.host->components().root(fixture.host->text().mounted_texts()[2].component);
     const auto icon_node = fixture.host->components().root(original.icon);
     const auto loading_node = fixture.host->components().root(original.loading_icon);
-    const auto gap = ryn::resolve_theme().button().icon_gap;
+    const auto gap = ryn::detail::default_theme_snapshot().button().icon_gap;
     auto content = fixture.nodes.require(content_node).bounds;
     auto image = fixture.nodes.require(icon_node).bounds;
     require(near(content.x - image.x - image.width, gap) && fixture.host->components().branch_active(original.icon) &&
@@ -1520,7 +1526,7 @@ void test_builtin_loading_at_end_without_reordering_content_and_icon_only() {
     const auto indicator =
         fixture.layout.horizontal_content_geometry(fixture.host->mounted_buttons()[0].node).loading_indicator_bounds;
     require(first.x < second.x && indicator &&
-                near(indicator->x - second.x - second.width, ryn::resolve_theme().button().icon_gap),
+                near(indicator->x - second.x - second.width, ryn::detail::default_theme_snapshot().button().icon_gap),
             "Button end builtin spinner reordered content or lost its final gap");
 }
 
@@ -1754,7 +1760,7 @@ void test_button_wave_finite_feedback_restarts_and_cleanup() {
                 fixture.bounds(0) == bounds && fixture.nodes.require(mounted.node).measure_count == measures &&
                 fixture.host->button_scene().focus_effect(mounted.scene) == focus && runs == 1,
             "Button wave failed to progress without measure/focus/content changes");
-    const auto& token = ryn::resolve_theme().button();
+    const auto& token = ryn::detail::default_theme_snapshot().button();
     const auto easing = ryn::animation::ant_easing(ryn::animation::AntEasingPreset::ease_out_circ);
     require(near(middle.wave_progress, easing.sample(0.25F)) && near(middle.wave_fade, easing.sample(0.05F)),
             "Button wave did not use independent 400ms/2000ms motionEaseOutCirc channels");
@@ -1873,7 +1879,7 @@ void test_button_wave_reactive_policy_and_theme_identity() {
     changed.button.tokens.wave_width = ryn::dp(4);
     changed.button.tokens.wave_spread = ryn::dp(10);
     changed.button.tokens.wave_opacity = 0.4F;
-    require(ryn::resolve_theme(changed).identity() != ryn::resolve_theme().identity() &&
+    require(ryn::resolve_theme(changed).identity() != ryn::detail::default_theme_snapshot().identity() &&
                 ryn::resolve_theme(changed).diagnostic_json().find("waveSpread") != std::string::npos,
             "Button wave tokens missing from hash/diagnostics");
     config.set(changed);
