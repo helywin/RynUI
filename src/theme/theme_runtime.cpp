@@ -297,6 +297,15 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
     append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
     append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
+    append_if_changed(before.steps().colors, after.steps().colors, TokenIdentity::steps_colors, changed, count);
+    append_if_changed(before.steps().metrics, after.steps().metrics, TokenIdentity::steps_metrics, changed, count);
+    append_if_changed(before.steps().effects, after.steps().effects, TokenIdentity::steps_effects, changed, count);
+    append_if_changed(before.breadcrumb().colors, after.breadcrumb().colors, TokenIdentity::breadcrumb_colors, changed,
+                      count);
+    append_if_changed(before.breadcrumb().metrics, after.breadcrumb().metrics, TokenIdentity::breadcrumb_metrics,
+                      changed, count);
+    append_if_changed(before.breadcrumb().effects, after.breadcrumb().effects, TokenIdentity::breadcrumb_effects,
+                      changed, count);
     append_if_changed(before.empty().colors, after.empty().colors, TokenIdentity::empty_colors, changed, count);
     append_if_changed(before.time_picker().colors, after.time_picker().colors, TokenIdentity::time_picker_colors,
                       changed, count);
@@ -1351,6 +1360,42 @@ const TableThemeToken& ThemeScope::table_metrics() const {
     return snapshot_->table();
 }
 
+const StepsThemeToken& ThemeScope::steps_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::steps_colors);
+    return snapshot_->steps();
+}
+
+const StepsThemeToken& ThemeScope::steps_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::steps_metrics);
+    return snapshot_->steps();
+}
+
+const StepsThemeToken& ThemeScope::steps_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::steps_effects);
+    return snapshot_->steps();
+}
+
+const BreadcrumbThemeToken& ThemeScope::breadcrumb_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::breadcrumb_colors);
+    return snapshot_->breadcrumb();
+}
+
+const BreadcrumbThemeToken& ThemeScope::breadcrumb_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::breadcrumb_metrics);
+    return snapshot_->breadcrumb();
+}
+
+const BreadcrumbThemeToken& ThemeScope::breadcrumb_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::breadcrumb_effects);
+    return snapshot_->breadcrumb();
+}
+
 const FormThemeToken& ThemeScope::form_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::form_colors);
@@ -1721,6 +1766,12 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "DatePicker.order",
         "Form.colors",
         "Form.metrics",
+        "Breadcrumb.colors",
+        "Breadcrumb.metrics",
+        "Breadcrumb.effects",
+        "Steps.colors",
+        "Steps.metrics",
+        "Steps.effects",
         "TimePicker.colors",
         "TimePicker.metrics",
         "TimePicker.effects",
@@ -1787,6 +1838,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::segmented_colors:
     case TokenIdentity::date_picker_colors:
     case TokenIdentity::form_colors:
+    case TokenIdentity::breadcrumb_colors:
+    case TokenIdentity::steps_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::input_number_colors:
@@ -1827,6 +1880,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
     case TokenIdentity::segmented_effects:
+    case TokenIdentity::breadcrumb_effects:
+    case TokenIdentity::steps_effects:
     case TokenIdentity::date_picker_effects:
     case TokenIdentity::time_picker_effects:
     case TokenIdentity::modal_effects:
@@ -1863,6 +1918,8 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::segmented_metrics:
     case TokenIdentity::date_picker_metrics:
     case TokenIdentity::form_metrics:
+    case TokenIdentity::breadcrumb_metrics:
+    case TokenIdentity::steps_metrics:
     case TokenIdentity::alert_metrics:
     case TokenIdentity::spin_metrics:
     case TokenIdentity::progress_metrics:

@@ -27,3 +27,9 @@
 ## 6. 平台通用：Astra R2 行激活焦点回调生命周期
 
 - [x] 6.1 先用真实 pointer 行点击与 footer Input onBlur 复现 focus 转移后访问旧 owner/失效提交；在 choose 的 focus 回调后重取同一 generation，校验当前 scope、visible、disabled、窗口和输入边界，使用新的 model/needConfirm。覆盖即时/确认模式销毁、复用 ref 创建新 generation，以及存活 owner 的关闭、禁用、Spin/Modal/窗口/祖先阻断、受控值/rules/needConfirm 更新；保留全部 R1/Date reset 回归，定向 Debug/Release、fresh goldens 与工具检查通过后本地提交，不运行无关完整矩阵或合入新 main。
+
+## 7. 平台通用：已发布 Nav 与 Time 的独立合并验收
+
+- [x] 7.1 从干净 `1116a99` 显式 merge `c083fed5a72f644b491118c6440908e0354d241e`，保留双方 API/host/测试与父 Gallery 原文；语义合并完整 Theme 链和 main 既有 TokenIdentity，Time 只追加在 Breadcrumb/Steps 之后，保留 main 30 个 IIFE 原文/顺序及静态默认参数、heap preflight/self guard/binding bridge、唯一 Input reset hook、popup 相对合同。官方 MSVC windows-msvc-headless Ninja Multi-Config、max4jobs 实际构建 Debug/Release，共同的去重定向 union 各跑一次，含 Time 全集、Date/Form、Nav component/Theme/R1 富子控件与 focus、两种 hidden_blur lifetime、Theme/默认scope/Button/Modal/Spin/backend guard；从新 binary 生成五份 goldens，深比较 main 全部旧值与 Time 基线全部旧值（只允许 identity 和各自新组件），完成源/API 保留检查、format/doctor/strict/diff 和冲突证据后创建本地 merge commit。旧独立 Astra 结论不代替新合并审查；不重跑 Gallery 长用例、无关完整矩阵，不 push 或修改父树。
+
+实际 44 项清单、双配置构建/执行、同窗口共存例、双基线 typed values 与源/API 保留证据见 [nav-merge.md](evidence/nav-merge.md)。新合并独立审查仍由父线程安排。

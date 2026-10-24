@@ -4,6 +4,8 @@
 #include "theme/segmented_theme.hpp"
 #include "theme/date_picker_theme.hpp"
 #include "theme/form_theme.hpp"
+#include "theme/breadcrumb_theme.hpp"
+#include "theme/steps_theme.hpp"
 #include "theme/time_picker_theme.hpp"
 
 #include <algorithm>
@@ -4087,18 +4089,20 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                              CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
                              ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
+                             BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
                              std::shared_ptr<const TimePickerThemeToken> time_picker)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
-      form_(std::move(form)), time_picker_(std::move(time_picker)), modal_(std::move(modal)), tag_(std::move(tag)),
-      badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
-      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
-      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
-      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), steps_(std::move(steps)),
+      time_picker_(std::move(time_picker)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
+      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4350,6 +4354,38 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     }
     hash_integer(identity_, form_.metrics.font_family);
     status_json << "],\"fontFamily\":" << static_cast<int>(form_.metrics.font_family) << '}';
+    status_json << ",\"breadcrumb\":{\"colors\":[";
+    first = true;
+    for (auto v : breadcrumb_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : breadcrumb_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, breadcrumb_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(breadcrumb_.metrics.font_family) << ",\"effects\":[";
+    first = true;
+    metric(breadcrumb_.effects.focus_width);
+    metric(breadcrumb_.effects.focus_offset);
+    status_json << "]}";
+    status_json << ",\"steps\":{\"colors\":[";
+    first = true;
+    for (auto v : steps_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : steps_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, steps_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(steps_.metrics.font_family) << ",\"effects\":[";
+    first = true;
+    metric(steps_.effects.focus_width);
+    metric(steps_.effects.focus_offset);
+    status_json << "]}";
     status_json << ",\"timePicker\":{\"colors\":[";
     first = true;
     for (const auto value : time_picker_->colors.values()) {
@@ -4504,6 +4540,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.empty_ == right.empty_ &&
            left.result_ == right.result_ && left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ &&
+           left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
            *left.time_picker_ == *right.time_picker_;
 }
 
@@ -5213,6 +5250,44 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_form_override(form, config.form.tokens);
         return form;
     }();
+    auto breadcrumb = [&] {
+        BreadcrumbThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.breadcrumb.algorithm;
+        if (inherit) {
+            token = parent->breadcrumb();
+        } else if (config.breadcrumb.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.breadcrumb.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_breadcrumb(component_seed, component_map,
+                                              derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_breadcrumb(seed, map, alias);
+        }
+        detail::apply_breadcrumb_override(token, config.breadcrumb.tokens);
+        return token;
+    }();
+    auto steps = [&] {
+        StepsThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.steps.algorithm;
+        if (inherit) {
+            token = parent->steps();
+        } else if (config.steps.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.steps.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_steps(component_seed, component_map,
+                                         derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_steps(seed, map, alias);
+        }
+        detail::apply_steps_override(token, config.steps.tokens);
+        return token;
+    }();
     auto time_picker = [&] {
         auto token = std::make_shared<TimePickerThemeToken>();
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
@@ -5240,7 +5315,8 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
                          std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
                          std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
-                         std::move(date_picker), std::move(form), std::move(time_picker));
+                         std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
+                         std::move(time_picker));
 }
 
 } // namespace ryn
