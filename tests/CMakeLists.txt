@@ -1,6 +1,13 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(date_test IN ITEMS date_picker_model date_picker_public_api)
+    add_executable(rynui_${date_test}_tests ${date_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${date_test}_tests)
+    target_link_libraries(rynui_${date_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${date_test} COMMAND rynui_${date_test}_tests)
+endforeach()
+
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${presentation_test}_tests)

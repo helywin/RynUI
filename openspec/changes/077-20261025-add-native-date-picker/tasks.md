@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：日期值、模型与 API
 
-- [ ] 1.1 实现有效公历日期/可空选择、ISO 解析与格式、范围及月历导航模型、typed Props/ref/footer API，并在 docs/date-picker.md 记录支持范围、UTC 缺省面板及限制；使用 windows-msvc-headless 的 MSVC Ninja Multi-Config 构建并通过 Debug/Release model/public API 测试，覆盖世纪闰年、1/9999 年边界、非法输入、禁用规则、受控拒绝与更新。
+- [x] 1.1 实现有效公历日期/可空选择、ISO 解析与格式、范围及月历导航模型、typed Props/ref/footer API，并在 docs/date-picker.md 记录支持范围、UTC 缺省面板及限制；使用 windows-msvc-headless 的 MSVC Ninja Multi-Config 构建并通过 Debug/Release model/public API 测试，覆盖世纪闰年、1/9999 年边界、非法输入、禁用规则、受控拒绝与更新。
 
 ## 2. 平台通用：Theme 与原生保留控件
 
