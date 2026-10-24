@@ -17,6 +17,7 @@
 - 每个区域固定挂载一次，空标签只切换 branch active；image/icon slot 优先于默认图标；Empty 的 None 关闭整个 image 区域。extra 区域使用带 gap 的居中、可换行 Flex，支持多个原生控件；content 左对齐并带 token padding/background。拒绝在响应式更新中重跑 callback。
 - 组件内使用直接 ComponentLayout 纵向测量和放置，有限宽度占满可用宽度，区域内容居中；图标分配限制于可用宽高，实际 glyph 由区域 clip 限制。每个内容区域有独立 passive clip viewport，extra 使用独立外层 viewport，留出正常 focus 装饰余量；实际短高分配不依赖 root 无限 clip。Text 使用现有自动换行。
 - Empty/Result 各自提供 colors/metrics tokens 与 override，复用 Theme component seed/algorithm 配置惯例。新增 snapshot、诊断序列化、runtime token identities 与颜色/度量订阅；新 token 不改变旧字段。
+- Empty `font_size` 与 Result `title_font_size` / `font_size` 的最终解析值必须为有限固定长度且至少 0.5 dp，匹配 Text 在 DPI 缩放前按逻辑字号 `lround` 到正整数的合同。局部 Theme 验证在 snapshot 发布前拒绝无效字号，不捕获发布后字体异常，也不改共享 Text 或字体量化规则。图示尺寸零与极小正值仍由独立的 retained Icon 逻辑处理。
 - 由官方 `windows-msvc-headless` preset 配置独立 `out/build/empty-result-headless`，Ninja Multi-Config/MSVC，最多 4 jobs。平台通用行为在本 Windows 机器验证一次，Debug/Release CTest 为工具链和优化模式回归。
 
 ## Risks / Trade-offs

@@ -29,3 +29,7 @@ RynUI SHALL 提供 typed Props、typed slots 和 reactive Prop<T> 的 Empty/Resu
 #### Scenario: Theme updates and idle
 - **WHEN** 更新组件颜色或尺寸 token 后再次同步到空闲
 - **THEN** 颜色只触发材质相关工作、尺寸触发必要布局，slot 身份保留，组件不请求动画帧或服务
+
+#### Scenario: Font validation before publication
+- **WHEN** 初始或响应式 Theme 的 Empty font_size、Result title_font_size 或 font_size 为非法固定长度、非有限值或小于 0.5 dp
+- **THEN** Theme SHALL 在发布新 snapshot 或改变旧 Text/glyph 前拒绝配置；0.5 dp 及以上有效字号 SHALL 保持现有先量化逻辑字号再按 DPI 栅格化的行为，独立图示的零尺寸合同保持
