@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ryn/select.hpp>
+#include <ryn/checkbox.hpp>
 
 #include <concepts>
 #include <cstdint>
@@ -236,6 +237,21 @@ public:
 
     FormItemProps& focus(std::function<bool()> callback) {
         focus_ = std::move(callback);
+        control_ = {};
+        return *this;
+    }
+
+    FormItemProps& control(const InputRef& value) {
+        control_ = [value] {
+            return detail::capture_form_input(value);
+        };
+        return *this;
+    }
+
+    FormItemProps& control(const CheckboxRef& value) {
+        control_ = [value] {
+            return std::pair<std::function<bool()>, std::function<void()>>{detail::capture_form_checkbox(value), {}};
+        };
         return *this;
     }
 
@@ -253,6 +269,7 @@ private:
     Prop<bool> disabled_{false};
     Prop<bool> read_only_{false};
     std::function<bool()> focus_;
+    std::function<std::pair<std::function<bool()>, std::function<void()>>()> control_;
     LayoutStyle layout_;
 };
 

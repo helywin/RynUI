@@ -32,6 +32,7 @@ struct SwitchRefState final {
 struct CheckboxRefState final {
     std::thread::id owner{std::this_thread::get_id()};
     bool binding{};
+    std::uint64_t generation{};
     std::function<bool()> focus;
     std::function<bool()> blur;
 
@@ -2295,6 +2296,7 @@ struct CheckboxPropsAccess {
         });
         if (reference) {
             reference->binding = true;
+            ++reference->generation;
         }
         host.update_layout(state);
         runtime::connect_layout_style(build.scope(component), props.layout_, state.node, host.services_->nodes(),
@@ -3035,6 +3037,22 @@ void SelectionComponentHost::apply_radio_options(runtime::ComponentId id, std::v
     services_->dirty().invalidate(group->node, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Layout |
                                                    runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
     services_->mark_scene_structure_dirty();
+}
+
+std::function<bool()> capture_form_checkbox(const CheckboxRef& reference) {
+    if (!reference.state_ || !reference.state_->binding) {
+        return {};
+    }
+    reference.state_->ensure_owner();
+    return [weak = std::weak_ptr{reference.state_}, generation = reference.state_->generation] {
+        const auto state = weak.lock();
+        if (!state || !state->binding || state->generation != generation) {
+            return false;
+        }
+        state->ensure_owner();
+        const auto callback = state->focus;
+        return callback && callback();
+    };
 }
 
 } // namespace ryn::detail

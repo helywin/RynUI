@@ -164,6 +164,8 @@ enum class TokenIdentity : std::uint8_t {
     collapse_metrics,
     collapse_typography,
     collapse_effects,
+    form_colors,
+    form_metrics,
     count,
 };
 

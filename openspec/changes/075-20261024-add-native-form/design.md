@@ -21,6 +21,10 @@
 5. Form/FormItem 使用 retained wrapper 和原生 Text；标签、必填标记、help/error 通过 Signal/Prop 更新，不重执行 content slots。空标签/反馈行退出布局流，真实 node 的 layout_size/out_of_flow、branch visibility 与 ancestor clip 一致。只实现纵向布局；外部尺寸由 LayoutStyle 控制。
 6. 新增 typed Form Theme colors/metrics、override/algorithm、subscription/serialization，新增 snapshot 解析块使用引用捕获 IIFE，保留既有 24 顺序块及 Theme bridge/commit_snapshot 栈修复。金样除 identity 和新 Form keys 外所有值语义相等。
 
+7. 真实 InputNumber 的相同数值回写会保留未完成草稿，因此 FormItem 提供 `control(InputRef/CheckboxRef)` 显式适配；InputRef 适配额外使用带现有 ref 生命周期的内部 reset hook，reset 取消 preedit 并将数字草稿格式化为当前 authority。普通 validate/render 不调用此 hook。未提供 control 的自定义 slot 只重置 typed 值；不虚构对任意 control 的草稿控制。
+
+适配在 content 挂载结束后捕获 ref 的具体代际，避免重绑后的旧 FormItem 操作新控件；聚焦前检查 control region 的真实 clip，而编辑回调只依赖逻辑输入边界。String reset 同样重读既有受控 Prop authority，以正确处理应用拒绝回写的文本草稿。Form token 的语义字体/颜色只传给标签和反馈，control slot 保持既有控件的 Theme。
+
 ## Risks / Trade-offs
 
 - 用户回调可重入及同步销毁 → 复制 callback/value snapshot，shared model + weak host lifetime、registration generation 和 revision 校验；销毁后 held refs/旧 change callbacks 惰性失效。
@@ -29,5 +33,7 @@
 - 首版布局覆盖有限 → 明确纵向与无自动滚动边界；仍验证实际节点/glyph clip、窄宽及 token 更新。
 
 ## Migration Plan
+
+恢复执行后用户指定：host 阶段验证并提交干净后，显式本地 merge `4efa310a256019192e01f0738ee226d16ad44396`，不 rebase；保留父基线新增的 Empty/Result、26 个既有 Theme IIFE、Theme binding 栈修复、各 host 及 wheel/Table 修复，再做定向组合验证。审核由父线程安排，不在此工作树创建 children。
 
 纯新增 API，无依赖/ABI 后端修改。按规划、模型、集成验收分阶段本地英文 Conventional Commits；用户明确禁止 push/远端分支/PR/archive，父线程负责合并。独立构建树使用官方 windows-msvc-headless、MSVC、Ninja Multi-Config，Debug/Release 定向 CTest，最多 4 jobs；只可复用依赖源缓存，不复用其他构建树二进制。无 native GPU/Linux/系统 IME 验收声明。

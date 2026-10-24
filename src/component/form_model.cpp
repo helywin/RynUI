@@ -74,10 +74,12 @@ void write_form_field(const std::shared_ptr<FormFieldState>& state, FormValue va
             return;
         }
         // Invalidate the transaction before observers or consumer callbacks can run.
-        if (const auto owner = state->owner.lock()) {
-            owner->value_changed(state);
-        }
-        state->value.set(std::move(value));
+        batch([&] {
+            if (const auto owner = state->owner.lock()) {
+                owner->value_changed(state);
+            }
+            state->value.set(std::move(value));
+        });
     }
 }
 
@@ -133,13 +135,14 @@ bool form_field_read_only(const std::shared_ptr<FormFieldState>& state) {
 }
 
 std::uint64_t FormModel::add(String name, const std::shared_ptr<FormFieldState>& field,
-                             std::function<bool()> eligibility, std::function<bool()> focus) {
+                             std::function<bool()> eligibility, std::function<bool()> focus,
+                             std::function<void()> reset) {
     if (!alive || !field || name.empty() || field->registered ||
         std::any_of(fields_.begin(), fields_.end(), [&](const auto& item) { return item.name == name; })) {
         throw std::invalid_argument("Form field/name must be nonempty and uniquely registered");
     }
     const auto generation = ++field->generation;
-    fields_.push_back({std::move(name), field, generation, eligibility, std::move(focus)});
+    fields_.push_back({std::move(name), field, generation, eligibility, std::move(focus), std::move(reset)});
     field->owner = shared_from_this();
     field->registered = true;
     field->eligible = std::move(eligibility);
@@ -243,6 +246,7 @@ bool FormModel::submit() {
         return false;
     }
     if (!result.valid() && !result.out_of_date && focus_first_invalid) {
+        const auto revision = revision_;
         const auto fields = fields_;
         for (const auto& item : fields) {
             if (std::none_of(result.errors.begin(), result.errors.end(),
@@ -255,7 +259,7 @@ bool FormModel::submit() {
             if (!alive || !available()) {
                 return false;
             }
-            if (values() != result.values) {
+            if (revision != revision_ || values() != result.values) {
                 result.out_of_date = true;
                 break;
             }
@@ -286,7 +290,16 @@ bool FormModel::reset() {
             continue;
         }
         item.field->error.set(String{});
+        if (!alive) {
+            return false;
+        }
+        if (!item.field->registered || item.field->generation != item.generation) {
+            continue;
+        }
         write_form_field(item.field, item.field->initial);
+        if (alive && item.field->registered && item.field->generation == item.generation && item.reset) {
+            item.reset();
+        }
     }
     return alive;
 }
@@ -296,21 +309,33 @@ namespace ryn {
 FormRef::FormRef() : state_(std::make_shared<detail::FormRefState>()) {}
 
 bool FormRef::bound() const {
+    if (!state_) {
+        return false;
+    }
     const auto model = state_->model.lock();
     return model && model->alive;
 }
 
 std::optional<FormResult> FormRef::validate() const {
+    if (!state_) {
+        return {};
+    }
     const auto model = state_->model.lock();
     return model ? model->validate() : std::nullopt;
 }
 
 bool FormRef::submit() const {
+    if (!state_) {
+        return false;
+    }
     const auto model = state_->model.lock();
     return model && model->submit();
 }
 
 bool FormRef::reset() const {
+    if (!state_) {
+        return false;
+    }
     const auto model = state_->model.lock();
     return model && model->reset();
 }

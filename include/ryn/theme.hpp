@@ -6,6 +6,7 @@
 #include <ryn/tag_badge_tokens.hpp>
 #include <ryn/feedback_tokens.hpp>
 #include <ryn/segmented_tokens.hpp>
+#include <ryn/form_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -969,6 +970,13 @@ struct SegmentedThemeConfig final {
     friend bool operator==(const SegmentedThemeConfig&, const SegmentedThemeConfig&) = default;
 };
 
+struct FormThemeConfig final {
+    FormTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const FormThemeConfig&, const FormThemeConfig&) = default;
+};
+
 struct TabsThemeConfig final {
     TabsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1469,6 +1477,7 @@ struct ThemeConfig final {
     CardThemeConfig card;
     TabsThemeConfig tabs;
     SegmentedThemeConfig segmented;
+    FormThemeConfig form;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -2034,6 +2043,10 @@ public:
         return segmented_;
     }
 
+    [[nodiscard]] const FormThemeToken& form() const noexcept {
+        return form_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2088,7 +2101,7 @@ private:
                   std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                  CollapseThemeToken collapse, SegmentedThemeToken segmented);
+                  CollapseThemeToken collapse, SegmentedThemeToken segmented, FormThemeToken form);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2106,6 +2119,7 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     SegmentedThemeToken segmented_;
+    FormThemeToken form_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

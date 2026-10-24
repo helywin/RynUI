@@ -37,6 +37,7 @@ public:
         std::uint64_t generation{};
         std::function<bool()> eligible;
         std::function<bool()> focus;
+        std::function<void()> reset;
     };
 
     bool alive{true};
@@ -49,7 +50,7 @@ public:
     std::function<void(FormResult)> failed;
 
     std::uint64_t add(String name, const std::shared_ptr<FormFieldState>& field, std::function<bool()> eligible = {},
-                      std::function<bool()> focus = {});
+                      std::function<bool()> focus = {}, std::function<void()> reset = {});
     void remove(const std::shared_ptr<FormFieldState>& field, std::uint64_t generation);
     void dispose();
     void value_changed(const std::shared_ptr<FormFieldState>& field);

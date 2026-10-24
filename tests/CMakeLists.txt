@@ -8,6 +8,16 @@ foreach(form_test IN ITEMS form_model form_public_api)
     add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
 endforeach()
 
+foreach(form_integration IN ITEMS form_component form_theme)
+    add_executable(rynui_${form_integration}_tests ${form_integration}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${form_integration}_tests)
+    target_link_libraries(rynui_${form_integration}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${form_integration}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    add_test(NAME rynui.${form_integration} COMMAND rynui_${form_integration}_tests)
+endforeach()
+
 foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_component)
     add_executable(rynui_${collapse_test}_tests ${collapse_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${collapse_test}_tests)
