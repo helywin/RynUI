@@ -15,4 +15,6 @@
 
 精确命令使用 `out/typography-dev.ps1 -Preset windows-msvc-headless`、对应 Debug/Release targets 和 `^rynui\.(empty_result_(component|theme|public_api)|collapse_component|segmented_component|portable\.(theme_runtime|theme_algorithm|button_component|switch_features|input_component|popconfirm_component|input_scene_allocation))$`。Release 在独立配置构建完成后单独执行 CTest。原始 ignored 输出：`out/theme-descendant-{debug,release,release-build,allocation}.log`，allocation 细节在对应 CTest LastTest.log 中。
 
-五份 golden 没有修改，两个配置的 Theme algorithm 检查通过。没有重复旧 148 项矩阵，没有新增 GPU、Linux 或系统 IME 验收。独立 Astra R5 随后复核此父任务补丁；此记录不提前声称 clean review。
+五份 golden 没有修改，两个配置的 Theme algorithm 检查通过。没有重复旧 148 项矩阵，没有新增 GPU、Linux 或系统 IME 验收。
+
+独立 Astra R5 已只读复核 `15c356c..6f1b38a`，未发现可操作的 P1/P2，确认 R4 已修复。复核覆盖发布前顺序、失败重试、恢复通知、继承截断、失效 weak child、堆上临时 snapshot 及单次子树预校验；R1/R3 修复保留，073 符合声明的原生静态首版范围。复跑现有 Theme runtime/algorithm 与 Empty/Result Theme、component、public API：Debug **5/5**、Release **5/5**，组件各 **86 PASS**。审查未编辑或构建，没有重跑完整矩阵及 203 秒 allocation 测试，也不增加平台验收声明。
