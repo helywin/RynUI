@@ -36,4 +36,21 @@ description、title、subtitle、image、status 和 Theme 更新不重新执行�
 
 参考为本地锁定 Ant Design **6.6.5**，commit `4a39f54842eade4e565ab336ef6097cd7e723cdd` 的 Empty/Result style 与 index。遵循原生语义及主要 token 默认值；内置图示使用现有 Icon，不复刻上游 Empty/exception 大型 SVG 插画。没有图片 URL、栅格资源、网络请求、动画、状态服务、动态 slot 拓扑、DOM/CSS/Web aliases 或屏幕阅读器语义桥接。
 
-本次通过 Windows MSVC headless 的平台通用场景与交互验证。真实 GPU、Linux 和系统 IME 没有在此 change 验证；测试中的输入会话来自现有 headless fixture，不能替代系统 IME 证据。
+073 已通过 Windows MSVC headless 的平台通用场景与交互验证，集成后的完整 Debug/Release 均为 148/148，详见 [073 集成证据](../openspec/changes/073-20261024-add-native-empty-and-result/evidence/integration-c3190b0/closure.md)。真实 GPU、Linux 和系统 IME 没有在 073 验证；测试中的输入会话来自现有 headless fixture，不能替代系统 IME 证据。
+
+## Gallery 样例
+
+076 在完整 token Gallery 的 Collapse/Segmented 样例之后追加以下入口，保留此前样例的顺序和标识。
+
+| 入口 | 使用方式 |
+| --- | --- |
+| `gallery.empty.default` | 点击 `gallery.empty.create` 创建示例任务并更新说明；`gallery.empty.image` 在 Default 与 None 之间切换图示，隐藏时说明和操作向上收拢 |
+| `gallery.empty.compact` | 使用 Compact 图示与紧凑留白展示暂无筛选结果 |
+| `gallery.empty.custom` | image slot 放置原生 Search Icon，外部宽度 100 dp、左右各 50 dp margin，含 margin 的外框居中 |
+| `gallery.result.controlled` | `gallery.result.status` 依次切换 Success、Warning、Error、Default/info、403、404、500 并回到 Success；`gallery.result.action` 更新继续操作反馈 |
+| `gallery.result.draft` | Result content 中的真实 Input，可先编辑草稿，再操作 Empty 图示/说明、Result 状态或 Gallery Theme，内容和控件身份应保持 |
+| `gallery.result.exception` / `gallery.result.custom` | 分别展示静态 404，以及由原生 Icon 和 READY Text 组成的自定义 Flex 图示 |
+
+样例通过现有 Theme 和 typed slots 组合组件；`LayoutStyle` 只设置外部宽度和 margin。内置与自定义图示仍使用原生 Icon，不提供上游大型插画、图片下载、网络状态或动画。
+
+`rynui_token_gallery_frame_tests --states-only` 已通过真实指针/键盘和文本输入，在平移后的 1200×900、560×900 有限视口检查实际 glyph、图示、操作和保留身份，也纳入完整 frame 入口。076 的聚焦 Recording、目录 contracts 8/8 和 Windows D3D12/DXIL 启动 smoke 已通过，完整 Gallery frame 仍待最终收口，见 [076 证据](../openspec/changes/076-20261024-add-empty-and-result-gallery/evidence/states-gallery.md)。人工逐组件视觉、系统 IME、屏幕阅读器与 Linux 验收独立记录。

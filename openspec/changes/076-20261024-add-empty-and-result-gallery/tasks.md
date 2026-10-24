@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：可操作样例
 
-- [ ] 1.1 在已集成的 073 上追加 Empty/Result 原生样例、稳定标识、目录与 API 文档；增加聚焦 Recording 测试并验证按钮驱动描述/图示/状态、实际 Input 草稿保留、身份和默认/Dark/Compact 宽窄视口 glyph/图示裁剪，运行 generator/contract、格式检查、doctor、strict validation 与 diff check。
+- [x] 1.1 在已集成的 073 上追加 Empty/Result 原生样例、稳定标识、目录与 API 文档；增加聚焦 Recording 测试并验证按钮驱动描述/图示/状态、实际 Input 草稿保留、身份和默认/Dark/Compact 宽窄视口 glyph/图示裁剪，运行 generator/contract、格式检查、doctor、strict validation 与 diff check。
 
 ## 2. 集成验收
 
