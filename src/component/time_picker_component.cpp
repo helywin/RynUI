@@ -502,18 +502,22 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                       s.view.selector = input.component;
                       s.selector_hit = input.interaction;
                       s.editor = input.editor;
-                      inputs->configure_form_reset(input.component, [this, id, value = props.value_] {
-                          auto* live = services_->components().state<TimePickerState>(id);
-                          if (!live || !services_->components().scope(id).active()) {
-                              return;
-                          }
-                          if (value) {
-                              live->model.reconcile(read_prop(*value));
-                          } else {
-                              live->model.cancel();
-                          }
-                          refresh(id);
-                      });
+                      inputs->configure_form_reset(
+                          input.component, [this, id, editor = input.editor, value = props.value_] {
+                              // Reading a Binding invokes user code and may destroy
+                              // this owner. Never keep its state across that read.
+                              const auto accepted = value ? read_prop(*value) : TimePickerValue{};
+                              auto* live = services_->components().state<TimePickerState>(id);
+                              if (!live || live->editor != editor || !services_->components().scope(id).active()) {
+                                  return;
+                              }
+                              if (value) {
+                                  live->model.reconcile(accepted);
+                              } else {
+                                  live->model.cancel();
+                              }
+                              refresh(id);
+                          });
                   }});
             s.view.popup = group(services, layout::LeafLayout{}, true);
             const auto popup_node = build.root(s.view.popup);

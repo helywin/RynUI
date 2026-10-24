@@ -20,6 +20,6 @@
 
 - [x] 5.1 先复现受控 open 关闭请求被私自隐藏；区分普通关闭与强制边界 suppression，验证 Escape/OK/Cancel/outside 的接受、拒绝及重试。
 - [x] 5.2 先复现空值即时模式激活合法 00 行未发布、已选分钟行未切换 active column；验证真实 pointer、后续键盘、禁用行与受控拒绝。
-- [x] 5.3 先复现同一接受值的实际 String Form adapter reset 保留未提交草稿；通过最小内部 owner reset hook 清理 model/显示/preedit/待确认值，保留普通 validation/help/Theme 更新的草稿与失效 generation 安全。
+- [x] 5.3 先复现同一接受值的实际 String Form adapter reset 保留未提交草稿；通过最小内部 owner reset hook 清理 model/显示/preedit/待确认值，保留普通 validation/help/Theme 更新的草稿与失效 generation 安全；验证读取 authority 时同步销毁 owner 后安全返回。
 - [x] 5.4 先复现关闭后 stale focus tracking 使程序化新 open 周期立即关闭；验证重复程序化打开、defaultOpen 与边界恢复。
 - [x] 5.5 先复现 footer Input Escape 缺失 onBlur；保留正常 deferred focus/blur 交付，验证 NORMAL motion 的内部焦点、session/caret 清理、selector restore、同步销毁/重新打开与 generation。

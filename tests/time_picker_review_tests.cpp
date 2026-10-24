@@ -331,6 +331,40 @@ void reset_owner_draft() {
     life.services.dispose();
     stale_reset();
     current_reset();
+
+    Fixture authority;
+    FormRef form;
+    FormField<String> field{String{u8"08:00:00"}};
+    InputRef reference;
+    std::optional<runtime::ComponentId> owner;
+    bool destroy_on_read = false;
+    int destroyed = 0;
+    authority.services.mount(Content{[&] {
+        Form(FormProps{}.ref(form), FormContent{[&] {
+                 FormItem(FormItemProps{}.field(String{u8"time"}, field).control(reference), FormItemContent{[&] {
+                              TimePicker(TimePickerProps{}.ref(reference).value(bind([&]() -> TimePickerValue {
+                                  const auto accepted = parse_time_of_day(field.get().view().bytes());
+                                  if (std::exchange(destroy_on_read, false)) {
+                                      check(authority.services.destroy(*owner), "authority read destroy");
+                                      ++destroyed;
+                                  }
+                                  return accepted;
+                              })));
+                          }});
+             }});
+    }});
+    sync(authority);
+    owner = authority.services.time_picker().mounted()[0];
+    const auto detached_reset = detail::capture_form_input(reference).second;
+    type(authority, reference, String{u8"09:30:00"});
+    destroy_on_read = true;
+    check(form.reset(), "authority destruction Form reset");
+    check(destroyed == 1 && !authority.services.components().contains(*owner) && !reference.bound() &&
+              !reference.focus() && !authority.inputs.sessions().active().owner.valid(),
+          "authority destruction kept owner/ref/session alive");
+    detached_reset();
+    sync(authority);
+    check(destroyed == 1 && authority.services.time_picker().mounted().empty(), "stale reset read destroyed authority");
 }
 
 void fresh_open_cycles() {

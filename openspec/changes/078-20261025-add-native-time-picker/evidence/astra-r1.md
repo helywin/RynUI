@@ -44,3 +44,11 @@ ctest --preset windows-msvc-headless-debug -R '^rynui.time_picker_review_' --out
 本阶段保持 TimePicker 公开 API、FormValue 值域、Theme/IIFE/identity、host registration 与 popup 边界顺序。`InputComponentHost::focused` 仅内部诊断，用于实际 footer Input 焦点断言。共享 reset hook 保持与父任务约定的 API；父任务将独立落地 DatePicker 同值 reset，待干净 SHA 后合入，不从父任务脏树复制。
 
 原 tasks 2–4 暂不恢复完成，等待最终受影响 scoped combined 和双基线 fresh goldens。尚未运行 fresh Astra R2、原生 GPU、Gallery、Linux 或系统 IME；这些不算本记录的通过项。
+
+## Authority 读取期间销毁 owner 的补充修复
+
+父任务指出 Time reset callback 在 `read_prop` 调用用户 Binding 前持有 `TimePickerState*`。先在真实 String Form adapter 加入 authority 读取时同步 `destroy(owner)` 的用例、保持 production code 为 `d4c3307`：Debug `rynui.time_picker_review_reset` **0/1，1.00 s**，实际报 `TimePicker precision is invalid`，证明 owner 已销毁后仍使用旧 model。
+
+修复先将 authority 读入局部值，随后重新查找同一 component generation，并检查 active scope 和所捕获 editor id，才 reconcile/refresh。回归同时断言旧 Time owner、InputRef、session 均失效，随后调用捕获的旧 reset 安全返回；原新 generation 草稿不被旧 reset 修改的用例继续保留。共享 Input hook API/字段/实现没有在此阶段改变。
+
+加入此用例后的完整 Time focused 结果：Debug **10/10，8.83 s**；Release **10/10，2.59 s**。clang-format 22.1.3 仍为 **623 文件，0 failures**。
