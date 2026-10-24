@@ -8,6 +8,7 @@ add_library(rynui_theme STATIC
     theme/theme_runtime.cpp
     theme/theme_snapshot.cpp
     theme/segmented_theme.cpp
+    theme/date_picker_theme.cpp
     theme/form_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
@@ -191,6 +192,8 @@ target_link_libraries(rynui_text_scene PRIVATE
 )
 
 add_library(rynui_components STATIC
+    component/date_picker_model.cpp
+    component/date_picker_component.cpp
     component/form_model.cpp
     component/form_component.cpp
     component/feedback_component.cpp

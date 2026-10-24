@@ -2,6 +2,7 @@
 #include "theme/input_tokens.hpp"
 #include "theme/semantic_background.hpp"
 #include "theme/segmented_theme.hpp"
+#include "theme/date_picker_theme.hpp"
 #include "theme/form_theme.hpp"
 
 #include <algorithm>
@@ -4084,17 +4085,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                              InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                              CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                             ResultThemeToken result, FormThemeToken form)
+                             ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
-      tabs_(std::move(tabs)), segmented_(std::move(segmented)), form_(std::move(form)), modal_(std::move(modal)),
-      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
-      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
-      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
-      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
-      input_(std::move(input)), algorithms_(std::move(algorithms)) {
+      tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
+      form_(std::move(form)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
+      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
+      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
+      algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4307,6 +4309,33 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     }
     status_json << "]}";
     hash_shadow(identity_, segmented_.effects.selected_shadow);
+    status_json << ",\"datePicker\":{\"colors\":[";
+    first = true;
+    for (auto v : date_picker_.colors.values()) {
+        color(v);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto v : date_picker_.metrics.values()) {
+        metric(v);
+    }
+    hash_integer(identity_, date_picker_.metrics.font_family);
+    hash_integer(identity_, date_picker_.z_index_popup);
+    hash_shadow(identity_, date_picker_.shadow);
+    status_json << "],\"fontFamily\":" << static_cast<int>(date_picker_.metrics.font_family)
+                << ",\"zIndexPopup\":" << date_picker_.z_index_popup << ",\"shadow\":[";
+    for (std::size_t i = 0; i < date_picker_.shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = date_picker_.shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        first = true;
+        color(shadow.color);
+        status_json << ']';
+    }
+    status_json << "]}";
     status_json << ",\"form\":{\"colors\":[";
     first = true;
     for (auto value : form_.colors.values()) {
@@ -4446,7 +4475,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_ &&
            left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.empty_ == right.empty_ &&
            left.result_ == right.result_ && left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
-           left.form_ == right.form_;
+           left.date_picker_ == right.date_picker_ && left.form_ == right.form_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -5110,6 +5139,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_segmented_override(segmented, config.segmented.tokens);
         return segmented;
     }();
+    auto date_picker = [&] {
+        DatePickerThemeToken token;
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.date_picker.algorithm;
+        if (inherit) {
+            token = parent->date_picker();
+        } else if (config.date_picker.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.date_picker.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            token = detail::derive_date_picker(component_seed, component_map,
+                                               derive_alias(component_seed, component_map, algorithms));
+        } else {
+            token = detail::derive_date_picker(seed, map, alias);
+        }
+        detail::apply_date_picker_override(token, config.date_picker.tokens);
+        return token;
+    }();
     auto form = [&] {
         FormThemeToken form;
         const bool inherit_form = parent && config.inherit && config.seed == SeedTokenOverride{} &&
@@ -5137,7 +5185,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
                          std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
                          std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
-                         std::move(form));
+                         std::move(date_picker), std::move(form));
 }
 
 } // namespace ryn
