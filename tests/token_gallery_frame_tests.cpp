@@ -19,6 +19,7 @@
 #include "component/segmented_component.hpp"
 #include "component/empty_result_component.hpp"
 #include "component/form_component.hpp"
+#include "component/date_picker_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -849,7 +850,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 285, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 297, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -862,7 +863,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 221,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 227,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -872,7 +873,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 830) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 951) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -891,7 +892,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 503) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 513) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -900,7 +901,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 280,
+                initial.reference_content_runs == 126 && initial.live_samples == 282,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1043,8 +1044,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // Form appends its name, selector editor and numeric editor after Empty/Result.
-    require(fixture.inputs->mounted_inputs().size() == 138 &&
+    // DatePicker appends two selector editors and its retained footer editor after Form.
+    require(fixture.inputs->mounted_inputs().size() == 141 &&
                 fixture.host->services().select().mounted().size() == 22 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -2565,7 +2566,7 @@ void test_empty_and_result_gallery_after_document_scroll() {
             const auto anchor = rynui::example::gallery_component_navigation_anchor(
                 entry.identity, reference->node, f.host->text(), f.nodes, scroll_root);
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
-                entry.identity != "ant.component.form") {
+                entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
                                                                f.nodes.require(scroll_root).bounds.y)),
                         "Empty/Result navigation changed another component's reference-card target");
@@ -2727,7 +2728,7 @@ void test_form_gallery_after_document_scroll() {
             const auto anchor = gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
                                                                     f.nodes, scroll_root);
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
-                entry.identity != "ant.component.form") {
+                entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
                 require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
                                                                f.nodes.require(scroll_root).bounds.y)),
                         "Form Gallery changed another catalog destination");
@@ -2831,9 +2832,14 @@ void test_form_gallery_after_document_scroll() {
         }
         sync();
     };
+    std::optional<runtime::ComponentId> form_context;
     const auto action = [&](std::string_view label) {
         const auto button = button_with_label(f, label);
-        reveal(button.component);
+        reveal(form_context.value_or(button.component));
+        const auto target = bounds(button.component);
+        if (target.y < 12 || target.y + target.height > 888) {
+            reveal(button.component);
+        }
         require(glyphs(text_with_prefix(label).scene, bounds(button.component)) > 0,
                 "Form native action label has no actual visible glyph");
         click(button.component);
@@ -2848,10 +2854,19 @@ void test_form_gallery_after_document_scroll() {
         sync();
     };
     auto& forms = services.form();
-    require(forms.mounted().size() == 1 && forms.items().size() == 4,
-            "Form Gallery real Form/four typed fields absent");
-    const auto form = forms.mounted().front();
-    const std::vector items(forms.items().begin(), forms.items().end());
+    const auto name_label = text_with_prefix("gallery.form.name");
+    const auto form_owner = std::ranges::find_if(
+        forms.mounted(), [&](const auto candidate) { return descendant(name_label.component, candidate); });
+    require(form_owner != forms.mounted().end(), "Form Gallery four-field Form is absent");
+    const auto form = *form_owner;
+    form_context = form;
+    std::vector<runtime::ComponentId> items;
+    for (const auto item : forms.items()) {
+        if (descendant(item, form)) {
+            items.push_back(item);
+        }
+    }
+    require(items.size() == 4, "Form Gallery real Form/four typed fields absent");
     std::vector<ryn::detail::FormItemSnapshot> parts;
     for (const auto item : items) {
         parts.push_back(forms.snapshot(item));
@@ -2866,9 +2881,17 @@ void test_form_gallery_after_document_scroll() {
     };
     const auto name = editor_in(parts[0].control);
     const auto role_input = editor_in(parts[1].control);
-    const auto role = services.select().mounted().back();
+    const auto selectors = services.select().mounted();
+    const auto role_owner =
+        std::ranges::find_if(selectors, [&](const auto candidate) { return descendant(candidate, parts[1].control); });
+    require(role_owner != selectors.end(), "Form Gallery role Select is absent");
+    const auto role = *role_owner;
     const auto count = editor_in(parts[2].control);
-    const auto consent = f.selections->mounted().back();
+    const auto checks = f.selections->mounted();
+    const auto consent_owner = std::ranges::find_if(
+        checks, [&](const auto& candidate) { return descendant(candidate.component, parts[3].control); });
+    require(consent_owner != checks.end(), "Form Gallery consent Checkbox is absent");
+    const auto consent = *consent_owner;
     require(descendant(role, parts[1].control) && descendant(consent.component, parts[3].control),
             "Form Gallery real refs selected another sample");
     const auto name_layers = f.inputs->text_layers(name.component);
@@ -2917,8 +2940,12 @@ void test_form_gallery_after_document_scroll() {
         }
         require(f.inputs->text_layers(name.component).base == name_layers.base &&
                     f.inputs->text_layers(count.component).base == count_layers.base &&
-                    f.selections->mounted().back().interaction == consent.interaction &&
-                    services.select().mounted().back() == role,
+                    std::ranges::any_of(f.selections->mounted(),
+                                        [&](const auto& candidate) {
+                                            return candidate.component == consent.component &&
+                                                   candidate.interaction == consent.interaction;
+                                        }) &&
+                    std::ranges::find(services.select().mounted(), role) != services.select().mounted().end(),
                 "Form Gallery replaced field identity");
     };
     const auto navigate_form = [&] {
@@ -3166,6 +3193,541 @@ void test_form_gallery_after_document_scroll() {
                  "preedit, retained identity and Default/Dark/Compact x 1200/560 x 900 passed\n";
 }
 
+void test_date_picker_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    auto& dates = services.date_picker();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                    "DatePicker Gallery finite layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text_with_prefix = [&](std::string_view prefix) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(text.scene).content().bytes().starts_with(prefix)) {
+                return text;
+            }
+        }
+        throw std::runtime_error("DatePicker Gallery actual Text absent: " + std::string{prefix});
+    };
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "DatePicker Gallery document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "DatePicker Gallery navigation translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(surfaces, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == entry.identity;
+            });
+            require(reference != surfaces.end(), "DatePicker Gallery lost an existing reference card");
+            const auto anchor = gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                    f.nodes, scroll_root);
+            std::string_view heading;
+            if (entry.identity == "ant.component.empty") {
+                heading = "gallery.empty.default";
+            } else if (entry.identity == "ant.component.result") {
+                heading = "gallery.result.controlled";
+            } else if (entry.identity == "ant.component.form") {
+                heading = "gallery.form.workflow";
+            } else if (entry.identity == "ant.component.date-picker") {
+                heading = "gallery.date-picker.controlled";
+            }
+            const auto expected =
+                heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
+            require(near(anchor.offset,
+                         std::max(0.0F, f.nodes.require(expected).bounds.y - f.nodes.require(scroll_root).bounds.y)),
+                    "DatePicker Gallery changed an existing anchor or missed its actual heading");
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == GalleryNavigationTargetKind::component,
+                    "DatePicker real catalog request kind differs");
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                    f.nodes.require(scroll_root).bounds.y - 80));
+        reconcile();
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        f.host->focus().dispatch({value, input::KeyAction::down, modifiers});
+        f.host->focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 16 && point.x < width - 16 && point.y >= 12 && point.y < 888,
+                "DatePicker Gallery pointer target is outside its finite viewport");
+        for (const auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+               a.y + a.height <= b.y + b.height + .02F;
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allocation) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto instance = range.first + index;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(instance);
+            for (const auto& values : {g.position_size, g.translation_opacity, g.clip_bounds}) {
+                for (const auto value : values) {
+                    require(std::isfinite(value), "DatePicker Gallery nonfinite actual glyph/clip");
+                }
+            }
+            const float left = std::max(g.position_size[0] + g.translation_opacity[0], g.clip_bounds[0]);
+            const float top = std::max(g.position_size[1] + g.translation_opacity[1], g.clip_bounds[1]);
+            const float right =
+                std::min(g.position_size[0] + g.translation_opacity[0] + g.position_size[2], g.clip_bounds[2]);
+            const float bottom =
+                std::min(g.position_size[1] + g.translation_opacity[1] + g.position_size[3], g.clip_bounds[3]);
+            if (right > left && bottom > top && g.translation_opacity[2] > 0 && g.color[3] > 0) {
+                require(within({left, top, right - left, bottom - top}, allocation) &&
+                            within({left, top, right - left, bottom - top}, {16, 12, width - 32, 876}),
+                        "DatePicker Gallery actual glyph escaped its allocation/finite viewport");
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto editor_in = [&](runtime::ComponentId owner) {
+        for (const auto& editor : f.inputs->mounted_inputs()) {
+            if (descendant(editor.component, owner)) {
+                return editor;
+            }
+        }
+        throw std::runtime_error("DatePicker Gallery actual editor absent");
+    };
+    const auto heading = text_with_prefix("gallery.date-picker.controlled");
+    const auto demo_owner = services.components().parent(heading.component);
+    require(demo_owner.has_value(), "DatePicker sample owner absent");
+    const auto demo_match =
+        std::ranges::find_if(dates.mounted(), [&](const auto candidate) { return descendant(candidate, *demo_owner); });
+    require(demo_match != dates.mounted().end(), "DatePicker controlled sample absent");
+    const auto demo = *demo_match;
+    const auto date_label = text_with_prefix("gallery.date-picker.field");
+    const auto item_match = std::ranges::find_if(
+        services.form().items(), [&](const auto candidate) { return descendant(date_label.component, candidate); });
+    require(item_match != services.form().items().end(), "DatePicker String FormItem absent");
+    const auto item = *item_match;
+    const auto parts = services.form().snapshot(item);
+    const auto bound_match = std::ranges::find_if(
+        dates.mounted(), [&](const auto candidate) { return descendant(candidate, parts.control); });
+    require(bound_match != dates.mounted().end(), "DatePicker String adapter control absent");
+    const auto bound = *bound_match;
+    const auto demo_editor = editor_in(dates.snapshot(demo).input);
+    const auto bound_editor = editor_in(dates.snapshot(bound).input);
+    const auto footer_editor = editor_in(dates.snapshot(demo).footer);
+    const auto original_demo = dates.snapshot(demo);
+    const auto original_bound = dates.snapshot(bound);
+    const auto input_layers = f.inputs->text_layers(bound_editor.component);
+    const auto footer_layers = f.inputs->text_layers(footer_editor.component);
+    const auto old_input = f.inputs->mounted_inputs().front();
+    const auto mounts = services.components().mount_runs();
+    const auto count = services.components().component_count();
+    const auto telemetry = definition.telemetry();
+    const auto retained = [&] {
+        const auto current = dates.snapshot(demo);
+        const auto adapted = dates.snapshot(bound);
+        require(current.input == original_demo.input && current.popup == original_demo.popup &&
+                    current.footer == original_demo.footer && current.cells == original_demo.cells &&
+                    current.navigation == original_demo.navigation && current.surfaces == original_demo.surfaces &&
+                    adapted.input == original_bound.input && adapted.popup == original_bound.popup &&
+                    adapted.footer == original_bound.footer && adapted.cells == original_bound.cells &&
+                    adapted.surfaces == original_bound.surfaces &&
+                    services.form().snapshot(item).control == parts.control &&
+                    services.form().snapshot(item).label == parts.label &&
+                    services.form().snapshot(item).feedback == parts.feedback &&
+                    editor_in(current.input).editor == demo_editor.editor &&
+                    editor_in(adapted.input).editor == bound_editor.editor &&
+                    editor_in(current.footer).editor == footer_editor.editor &&
+                    f.inputs->text_layers(bound_editor.component).base == input_layers.base &&
+                    f.inputs->text_layers(footer_editor.component).base == footer_layers.base &&
+                    f.inputs->mounted_inputs().front().editor == old_input.editor &&
+                    services.components().mount_runs() == mounts && services.components().component_count() == count &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "DatePicker Gallery replaced mounted control/slot/editor/scene identity");
+    };
+    const auto action = [&](std::string_view prefix) {
+        const auto button = button_with_label(f, prefix);
+        reveal(button.component);
+        require(glyphs(text_with_prefix(prefix).scene, bounds(button.component)) > 0,
+                "DatePicker real Button label did not render");
+        click(button.component);
+    };
+    const auto command_without_blur = [&](std::string_view prefix) {
+        const auto button = button_with_label(f, prefix);
+        const auto handler = services.interactions().require(button.interaction).focus_handlers;
+        require(handler && handler->activate, "DatePicker native command handler absent");
+        handler->activate();
+        sync();
+    };
+    const auto type = [&](const auto& editor, String value) {
+        if (!descendant(editor.component, original_demo.popup) && !descendant(editor.component, original_bound.popup)) {
+            reveal(editor.component);
+        }
+        click(editor.component);
+        require(f.host->focus().state().focused == editor.interaction, "DatePicker actual input did not focus");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "DatePicker actual text event failed");
+        sync();
+    };
+    const auto open = [&](runtime::ComponentId picker) {
+        reveal(picker);
+        if (!dates.snapshot(picker).visible) {
+            click(dates.snapshot(picker).input);
+        }
+        require(dates.snapshot(picker).visible, "DatePicker real calendar did not open");
+    };
+    const auto day_cell = [&](runtime::ComponentId picker, String day) {
+        std::vector<runtime::ComponentId> matches;
+        for (const auto cell : dates.snapshot(picker).cells) {
+            for (const auto& text : f.host->text().mounted_texts()) {
+                if (descendant(text.component, cell) &&
+                    f.text_scene.text_state(text.scene).content().bytes() == day.bytes()) {
+                    matches.push_back(cell);
+                }
+            }
+        }
+        require(matches.size() == 1, "DatePicker fixture day label is ambiguous in the displayed month");
+        return matches.front();
+    };
+    const auto clear = [&](runtime::ComponentId picker) {
+        reveal(picker);
+        for (const auto hit : services.interactions().declaration_order()) {
+            const auto* record = services.interactions().find(hit);
+            if (record && record->eligible && !record->focusable &&
+                descendant(record->component, dates.snapshot(picker).input)) {
+                click(record->component);
+                require(!dates.snapshot(picker).value && dates.snapshot(picker).draft.empty(),
+                        "DatePicker native clear did not update controlled value/display");
+                return;
+            }
+        }
+        throw std::runtime_error("DatePicker actual clear affordance absent");
+    };
+    const auto feedback = [&](std::string_view expected) {
+        const auto status = text_with_prefix("gallery.date-picker.status");
+        require(f.text_scene.text_state(status.scene).content().bytes().find(expected) != std::string_view::npos,
+                "DatePicker String Form actual feedback differs");
+    };
+    const auto navigate = [&] {
+        const auto button = button_with_label(f, "DatePicker");
+        auto parent = f.nodes.require(button.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "DatePicker catalog target is outside navigation");
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(button.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(button.component), metrics.navigation_lane) &&
+                    glyphs(text_with_prefix("DatePicker").scene, bounds(button.component)) > 0,
+                "DatePicker real catalog Button is not visible in its lane");
+        require(!definition.take_navigation_request(), "DatePicker stale navigation request");
+        click(button.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == "ant.component.date-picker",
+                "DatePicker real catalog identity differs");
+        reconcile(request);
+        require(glyphs(heading.scene, bounds(*demo_owner)) > 0 &&
+                    within(bounds(dates.snapshot(demo).input), metrics.document_lane),
+                "DatePicker production request/anchor/jump did not reach actual heading/control");
+        click(dates.snapshot(demo).input);
+        require(dates.snapshot(demo).visible && f.host->focus().state().focused == demo_editor.interaction,
+                "DatePicker real catalog destination did not expose a functioning calendar");
+    };
+    const auto popup_clip = [&](runtime::ComponentId picker) {
+        const auto snapshot = dates.snapshot(picker);
+        require(snapshot.visible && within(snapshot.bounds, {16, 12, width - 32, 876}),
+                "DatePicker popup escaped actual finite window clip");
+        std::size_t visible = 0;
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, snapshot.popup)) {
+                visible += glyphs(text.scene, snapshot.bounds);
+            }
+        }
+        require(visible > 42, "DatePicker actual month grid/footer glyphs absent");
+        if (picker == demo) {
+            require(glyphs(footer_layers.base, bounds(footer_editor.component)) > 0,
+                    "DatePicker retained footer editor actual glyph/clip absent");
+        }
+        std::size_t painted = 0;
+        for (const auto surface : snapshot.surfaces) {
+            const auto range = services.surfaces().visual_range(surface);
+            for (std::uint32_t index = 0; index < range.count; ++index) {
+                const auto& q = services.surfaces().instances().at(range.first + index);
+                for (const auto value : q.bounds) {
+                    require(std::isfinite(value), "DatePicker nonfinite actual surface");
+                }
+                for (const auto value : q.translation) {
+                    require(std::isfinite(value), "DatePicker nonfinite actual surface translation");
+                }
+                if (q.opacity > 0 && q.color[3] > 0 && q.bounds[2] > 0 && q.bounds[3] > 0) {
+                    require(within({q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                    q.bounds[3]},
+                                   snapshot.bounds),
+                            "DatePicker actual surface escaped its popup");
+                    ++painted;
+                }
+            }
+        }
+        require(painted > 0, "DatePicker actual popup surfaces absent");
+        for (const auto& record : services.hit_test().records()) {
+            const auto* interaction = services.interactions().find(record.interaction);
+            if (interaction && descendant(interaction->component, snapshot.popup) && record.effective_eligible) {
+                const auto a = record.translated_bounds;
+                const auto b = record.effective_clip;
+                const float left = std::max(a.x, b.x);
+                const float top = std::max(a.y, b.y);
+                const float right = std::min(a.x + a.width, b.x + b.width);
+                const float bottom = std::min(a.y + a.height, b.y + b.height);
+                require(right <= left || bottom <= top ||
+                            within({left, top, right - left, bottom - top}, snapshot.bounds),
+                        "DatePicker actual hit region escaped its popup clip");
+            }
+        }
+    };
+    navigate();
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 12}},
+            "DatePicker deterministic initial value differs");
+    key(input::Key::right);
+    key(input::Key::enter);
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 12}} && dates.snapshot(demo).visible,
+            "DatePicker keyboard accepted disabled day 13");
+    key(input::Key::right);
+    key(input::Key::enter);
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 14}} && !dates.snapshot(demo).visible,
+            "DatePicker keyboard day selection did not write controlled value");
+    open(demo);
+    click(day_cell(demo, u8"13"));
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 14}} && dates.snapshot(demo).visible,
+            "DatePicker pointer accepted disabled day 13");
+    click(day_cell(demo, u8"16"));
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 16}},
+            "DatePicker actual day pointer selection failed");
+    open(demo);
+    click(dates.snapshot(demo).navigation[2]);
+    require(dates.snapshot(demo).active.month() == 11, "DatePicker actual next-month navigation failed");
+    popup_clip(demo);
+    click(day_cell(demo, u8"16"));
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 11, 16}},
+            "DatePicker next month grid did not select November");
+    for (const auto invalid :
+         {String{u8"2026-10-04"}, String{u8"2026-11-26"}, String{u8"2026-10-13"}, String{u8"2026-02-30"}}) {
+        type(demo_editor, invalid);
+        key(input::Key::enter);
+        require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 11, 16}},
+                "DatePicker ISO input accepted min/max/predicate/invalid date");
+    }
+    type(demo_editor, u8"2026-10-20");
+    key(input::Key::enter);
+    require(dates.snapshot(demo).value == DatePickerValue{CivilDate{2026, 10, 20}} &&
+                f.inputs->editors().require(demo_editor.editor).value() == "2026-10-20",
+            "DatePicker actual ISO input did not update value/display");
+    clear(demo);
+    action("gallery.date-picker.restore");
+    action("gallery.date-picker.submit");
+    require(services.form().snapshot(item).error == String{u8"请选择日期"} &&
+                f.host->focus().state().focused == bound_editor.interaction &&
+                f.inputs->status(bound_editor.component) == InputStatus::Error,
+            "DatePicker String required binding/status/failure ref focus differs");
+    type(bound_editor, u8"2026-10-20");
+    key(input::Key::enter);
+    action("gallery.date-picker.submit");
+    feedback("日期保存成功 · 2026-10-20");
+    clear(bound);
+    action("gallery.date-picker.submit");
+    feedback("日期校验失败");
+    action("gallery.date-picker.reset");
+    require(!dates.snapshot(bound).value && dates.snapshot(bound).draft.empty() &&
+                services.form().snapshot(item).error.empty(),
+            "DatePicker String Form actual reset failed");
+    std::cout << "DatePicker real catalog/calendar/ISO/restrictions/clear/String Form submit/reset passed\n";
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            navigate();
+            popup_clip(demo);
+            type(footer_editor, u8"Retained date note");
+            click(dates.snapshot(demo).navigation[2]);
+            require(f.inputs->editors().require(footer_editor.editor).value() == "Retained date note",
+                    "DatePicker month update lost retained footer draft");
+            popup_clip(demo);
+            key(input::Key::escape);
+            type(bound_editor, u8"2026-10-");
+            require(bool(f.inputs->dispatch(
+                        input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+                    "DatePicker actual preedit event failed");
+            command_without_blur("gallery.date-picker.help");
+            command_without_blur("gallery.date-picker.submit");
+            require(dates.snapshot(bound).draft == String{u8"2026-10-"} &&
+                        f.inputs->editors().require(bound_editor.editor).composition().active &&
+                        !dates.snapshot(bound).value,
+                    "DatePicker ordinary help/error update lost draft/preedit or published it");
+            const auto item_bounds = bounds(item);
+            const auto document_bounds = f.nodes.require(document).bounds;
+            const runtime::Rect item_allocation{document_bounds.x, item_bounds.y, document_bounds.width,
+                                                item_bounds.height};
+            require(glyphs(input_layers.base, bounds(bound_editor.component)) > 0 &&
+                        glyphs(date_label.scene, item_allocation) > 0,
+                    "DatePicker String field draft/label actual glyph/clip absent");
+            bool error_glyph = false;
+            for (const auto& text : f.host->text().mounted_texts()) {
+                if (descendant(text.component, parts.feedback) &&
+                    f.text_scene.text_state(text.scene).content().bytes() ==
+                        services.form().snapshot(item).error.bytes()) {
+                    error_glyph |= glyphs(text.scene, item_allocation) > 0;
+                }
+            }
+            require(error_glyph, "DatePicker String required error actual glyph absent");
+            definition.smoke_step(theme_step == 0U ? 1U : 0U);
+            sync();
+            width = viewport_width == 1200.0F ? 560.0F : 1200.0F;
+            definition.set_viewport_width(width);
+            reconcile();
+            reveal(bound);
+            require(dates.snapshot(bound).draft == String{u8"2026-10-"} &&
+                        f.inputs->editors().require(bound_editor.editor).composition().active,
+                    "DatePicker actual Theme/width update discarded draft/preedit");
+            definition.smoke_step(theme_step);
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            reveal(bound);
+            retained();
+            action("gallery.date-picker.reset");
+            require(!dates.snapshot(bound).value && dates.snapshot(bound).draft.empty() &&
+                        f.inputs->editors().require(bound_editor.editor).value().empty() &&
+                        !f.inputs->editors().require(bound_editor.editor).composition().active &&
+                        services.form().snapshot(item).error.empty(),
+                    "DatePicker reset did not clear actual draft/error/preedit");
+            action("gallery.date-picker.disabled");
+            reveal(bound);
+            click(dates.snapshot(bound).input);
+            require(!dates.snapshot(bound).visible && f.inputs->editors().require(bound_editor.editor).disabled(),
+                    "DatePicker Form disabled gate did not block whole picker");
+            action("gallery.date-picker.submit");
+            feedback("当前禁用，日期提交未执行");
+            action("gallery.date-picker.disabled");
+            action("gallery.date-picker.readonly");
+            reveal(bound);
+            click(dates.snapshot(bound).input);
+            require(!dates.snapshot(bound).visible && f.inputs->editors().require(bound_editor.editor).disabled(),
+                    "DatePicker Form readOnly incorrectly allowed calendar edits");
+            action("gallery.date-picker.readonly");
+            type(bound_editor, u8"2026-10-20");
+            key(input::Key::enter);
+            action("gallery.date-picker.submit");
+            feedback("日期保存成功 · 2026-10-20");
+            const auto status = text_with_prefix("gallery.date-picker.status");
+            reveal(status.component);
+            require(glyphs(status.scene, bounds(*services.components().parent(status.component))) > 0,
+                    "DatePicker actual saved String feedback glyph absent");
+            action("gallery.date-picker.reset");
+            retained();
+        }
+    }
+    std::cout << "DatePicker Default/Dark/Compact x 1200/560 x 900 actual glyph/surface/hit clip, gates and retained "
+                 "identity passed\n";
+    type(bound_editor, u8"2026-10-");
+    require(bool(f.inputs->dispatch(input::CompositionChanged{String{u8"候选"}, {}, f.inputs->sessions().active()})),
+            "DatePicker same-value reset preedit fixture failed");
+    const auto before_reset = dates.snapshot(bound);
+    command_without_blur("gallery.date-picker.reset");
+    if (!dates.snapshot(bound).draft.empty() || !f.inputs->editors().require(bound_editor.editor).value().empty()) {
+        throw std::runtime_error("DatePicker same-value String Form reset retained draft before blur: picker=" +
+                                 std::string{dates.snapshot(bound).draft.bytes()} +
+                                 " editor=" + std::string{f.inputs->editors().require(bound_editor.editor).value()});
+    }
+    require(!dates.snapshot(bound).value && !f.inputs->editors().require(bound_editor.editor).composition().active &&
+                f.host->focus().state().focused == bound_editor.interaction &&
+                dates.snapshot(bound).visible == before_reset.visible && services.form().snapshot(item).error.empty(),
+            "DatePicker same-value reset retained preedit/value/error or changed focus/open state");
+    retained();
+    std::cout << "DatePicker same-value String Form reset before blur cleared draft/preedit and retained "
+                 "focus/open/identity\n";
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -3190,7 +3752,8 @@ void print_gallery_inventory() {
               << " empties=" << f.host->services().empty_result().empties().size()
               << " results=" << f.host->services().empty_result().results().size()
               << " forms=" << f.host->services().form().mounted().size()
-              << " form_items=" << f.host->services().form().items().size() << '\n';
+              << " form_items=" << f.host->services().form().items().size()
+              << " date_pickers=" << f.host->services().date_picker().mounted().size() << '\n';
 }
 } // namespace
 
@@ -3220,6 +3783,10 @@ int main(int argc, char** argv) {
             test_form_gallery_after_document_scroll();
             return 0;
         }
+        if (argc == 2 && std::string_view{argv[1]} == "--date-picker-only") {
+            test_date_picker_gallery_after_document_scroll();
+            return 0;
+        }
         if (argc == 2 && std::string_view{argv[1]} == "--frame-only") {
             test_token_gallery_frame_contract();
             return 0;
@@ -3243,6 +3810,7 @@ int main(int argc, char** argv) {
         test_common_component_gallery_after_document_scroll();
         test_data_and_selection_gallery_after_document_scroll();
         test_form_gallery_after_document_scroll();
+        test_date_picker_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
     } catch (const std::exception& error) {

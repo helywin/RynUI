@@ -156,6 +156,16 @@ struct GalleryState final {
     ryn::Signal<bool> form_read_only{false};
     ryn::Signal<ryn::String> form_help{ryn::String{u8"填写用于保存的名称"}};
     ryn::Signal<ryn::String> form_feedback{ryn::String{u8"尚未提交"}};
+    ryn::Signal<ryn::DatePickerValue> date_value{ryn::CivilDate{2026, 10, 12}};
+    ryn::Signal<bool> date_open{false};
+    ryn::DatePickerRef date_ref;
+    ryn::FormRef date_form_ref;
+    ryn::FormField<ryn::String> date_field;
+    ryn::DatePickerRef date_field_ref;
+    ryn::Signal<bool> date_form_disabled{false};
+    ryn::Signal<bool> date_form_read_only{false};
+    ryn::Signal<ryn::String> date_help{ryn::String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"}};
+    ryn::Signal<ryn::String> date_feedback{ryn::String{u8"尚未保存日期"}};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -174,6 +184,18 @@ struct GalleryState final {
             return value && *value < 1 ? ryn::String{u8"数量至少为 1"} : ryn::String{};
         });
         form_consent.required(ryn::String{u8"请确认保存"});
+        date_field.required(ryn::String{u8"请选择日期"}).validator([](ryn::String value) {
+            if (value.empty()) {
+                return ryn::String{};
+            }
+            const auto date = ryn::parse_iso_date(value.bytes());
+            if (!date) {
+                return ryn::String{u8"日期须为有效的 YYYY-MM-DD"};
+            }
+            return *date < ryn::CivilDate{2026, 10, 5} || *date > ryn::CivilDate{2026, 11, 25} || date->day() == 13
+                       ? ryn::String{u8"日期不在允许范围"}
+                       : ryn::String{};
+        });
     }
 
     void set_theme(ryn::ThemeConfig config, bool brand = false) {
@@ -474,6 +496,18 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.form.readonly",
     "gallery.form.help",
     "gallery.form.status",
+    "gallery.date-picker.controlled",
+    "gallery.date-picker.value",
+    "gallery.date-picker.footer",
+    "gallery.date-picker.restore",
+    "gallery.date-picker.form",
+    "gallery.date-picker.field",
+    "gallery.date-picker.submit",
+    "gallery.date-picker.reset",
+    "gallery.date-picker.disabled",
+    "gallery.date-picker.readonly",
+    "gallery.date-picker.help",
+    "gallery.date-picker.status",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -2574,6 +2608,133 @@ void add_form_samples(const std::shared_ptr<GalleryState>& state) {
     state->telemetry.live_samples += 1;
 }
 
+void add_date_picker_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(8))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(String{u8"gallery.date-picker.controlled · DatePicker · 日期选择"})
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}
+                      .content(bind([state] {
+                          const auto value = state->date_value.get();
+                          return utf8("gallery.date-picker.value · " +
+                                      (value ? std::string{format_iso_date(*value).bytes()} : "未选择日期"));
+                      }))
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             DatePicker(
+                 DatePickerProps{}
+                     .value(state->date_value)
+                     .open(state->date_open)
+                     .onChange([state](DatePickerValue value) { state->date_value.set(value); })
+                     .onOpenChange([state](bool value) { state->date_open.set(value); })
+                     .defaultPanelDate(CivilDate{2026, 10, 1})
+                     .minDate(CivilDate{2026, 10, 5})
+                     .maxDate(CivilDate{2026, 11, 25})
+                     .disabledDate([](CivilDate date) { return date.day() == 13; })
+                     .allowClear(true)
+                     .status(InputStatus::Default)
+                     .disabled(false)
+                     .inputReadOnly(false)
+                     .ref(state->date_ref)
+                     .layout(LayoutStyle{}.width(dp(280))),
+                 DatePickerFooter{[] {
+                     Flex(FlexProps{}.vertical(true).gap(dp(4)), FlexContent{[] {
+                              Text(u8"gallery.date-picker.footer · 选择备注");
+                              Input(InputProps{}.defaultValue(u8"保留的日期备注").layout(LayoutStyle{}.width(dp(220))));
+                          }});
+                 }});
+             Button(ButtonProps{}.onClick([state] {
+                 state->date_value.set(CivilDate{2026, 10, 12});
+                 state->date_open.set(false);
+             }),
+                    [] { Text(u8"gallery.date-picker.restore · 恢复示例日期"); });
+         }});
+    Text(TextProps{}
+             .content(String{u8"gallery.date-picker.form · Form String 日期适配"})
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Text(TextProps{}
+             .content(bind([state] {
+                 return utf8("gallery.date-picker.status · " + std::string{state->date_feedback.get().bytes()} +
+                             (state->date_form_disabled.get() ? " · 已禁用" : " · 已启用") +
+                             (state->date_form_read_only.get() ? " · 只读" : " · 可编辑"));
+             }))
+             .layout(LayoutStyle{}.margin_left(dp(1))));
+    Form(FormProps{}
+             .ref(state->date_form_ref)
+             .disabled(state->date_form_disabled)
+             .readOnly(state->date_form_read_only)
+             .layout(LayoutStyle{}
+                         .width(bind([state] { return dp(state->document_width.get().value() - 2); }))
+                         .margin_left(dp(1))
+                         .margin_right(dp(1)))
+             .onFinish([state](FormResult result) {
+                 state->date_feedback.set(
+                     utf8("日期保存成功 · " + std::string{std::get<String>(result.values.front().value).bytes()}));
+             })
+             .onFinishFailed([state](FormResult) { state->date_feedback.set(String{u8"日期校验失败"}); }),
+         FormContent{[state] {
+             FormItem(FormItemProps{}
+                          .field(u8"date", state->date_field)
+                          .label(String{u8"gallery.date-picker.field · 日期"})
+                          .help(state->date_help)
+                          .control(state->date_field_ref),
+                      FormItemContent{[state] {
+                          // Capture the registration's onChange, not a later field generation.
+                          const auto change = state->date_field.onChange();
+                          DatePicker(DatePickerProps{}
+                                         .value(bind([field = state->date_field] {
+                                             return parse_iso_date(field.get().bytes());
+                                         }))
+                                         .onChange([change](DatePickerValue value) {
+                                             change(value ? format_iso_date(*value) : String{});
+                                         })
+                                         .defaultPanelDate(CivilDate{2026, 10, 1})
+                                         .minDate(CivilDate{2026, 10, 5})
+                                         .maxDate(CivilDate{2026, 11, 25})
+                                         .disabledDate([](CivilDate date) { return date.day() == 13; })
+                                         .allowClear(true)
+                                         .status(state->date_field.status())
+                                         .disabled(state->date_field.uneditable())
+                                         .inputReadOnly(state->date_field.readOnly())
+                                         .ref(state->date_field_ref)
+                                         .layout(LayoutStyle{}.width(dp(280))));
+                      }});
+         }});
+    Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)), SpaceContent{[state] {
+              Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                  if (!state->date_form_ref.submit()) {
+                      state->date_feedback.set(String{u8"当前禁用，日期提交未执行"});
+                  }
+              }),
+                     [] { Text(u8"gallery.date-picker.submit · 保存日期"); });
+              Button(ButtonProps{}.onClick([state] {
+                  if (state->date_form_ref.reset()) {
+                      state->date_feedback.set(String{u8"日期已重置"});
+                  }
+              }),
+                     [] { Text(u8"gallery.date-picker.reset · 重置日期"); });
+              Button(
+                  ButtonProps{}.onClick([state] { state->date_form_disabled.set(!state->date_form_disabled.get()); }),
+                  [] { Text(u8"gallery.date-picker.disabled · 切换禁用"); });
+              Button(
+                  ButtonProps{}.onClick([state] { state->date_form_read_only.set(!state->date_form_read_only.get()); }),
+                  [] { Text(u8"gallery.date-picker.readonly · 切换只读"); });
+              Button(ButtonProps{}.onClick([state] {
+                  state->date_help.set(state->date_help.get() ==
+                                               String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"}
+                                           ? String{u8"日期以 YYYY-MM-DD 字符串保存"}
+                                           : String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"});
+              }),
+                     [] { Text(u8"gallery.date-picker.help · 更新日期帮助"); });
+          }});
+    state->telemetry.live_samples += 2;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -3103,6 +3264,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_panel_and_selection_samples(state);
                                                         add_empty_and_result_samples(state);
                                                         add_form_samples(state);
+                                                        add_date_picker_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
