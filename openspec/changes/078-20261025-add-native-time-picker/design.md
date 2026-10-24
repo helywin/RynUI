@@ -20,6 +20,9 @@ Input 支持真实编辑/IME、Button 支持原生激活，已有 Select/Menu/Ta
 4. Theme 使用独立 component tokens 及完整 seed/algorithm/override/inherit/hash/dirty/serialization 链路。校验所有最终派生度量，忽略未启用算法的局部 seed；沿用 main 的子树发布前预校验和堆上大 snapshot 处理。五份 fresh goldens 对照合入基线保留旧字段，避免把仅生成成功当语义兼容。
 5. 使用 CMake `windows-msvc-headless`、Ninja Multi-Config、MSVC 完成平台通用 Debug/Release 合同；实际组件/Theme/input/popup 回归验证。只有实际运行对应原生环境后才新增 GPU、系统 IME 或 Linux 验收，不由共同测试替代。
 
+6. Astra R1 收口：普通关闭仅请求受控 open，强制边界通过独立 suppression 隐藏；每次实际开合重置焦点周期。行的可激活性与待选值差异分开，真实行选择保留列身份并 deferred focus selector。关闭只取消 pointer 状态，由原 FocusManager sanitize/deferred 路径交付 blur；不修改其通用语义。
+7. Form reset 沿已有 generational InputRef reset 命令调用内部 `configure_form_reset(ComponentId, std::function<void()>)` owner hook：取消 preedit 后先恢复 TimePicker 的接受值/待选值，再重取同一 generation 的存活 Input 并 reconcile 其显示。普通样式/验证更新不调用该 hook；不扩展 FormValue 或公开 TimePicker API。
+
 ## Risks / Trade-offs
 
 - [全禁用/动态规则导致搜索或重复提交] → 限定一天内域，测试全禁用、边界和回调销毁；去重请求与 suppression 分离。

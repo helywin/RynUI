@@ -10,6 +10,10 @@
 
 `value(Prop<TimePickerValue>)` 与 `open(Prop<bool>)` 受控，不能分别和 `defaultValue` / `defaultOpen` 混用。回调是请求，父级未回写时已接受值与关闭后的显示仍遵守父级 authority。外部受控值即使不符合当前步长/范围/禁用规则也保留，不静默钳位。分钟模式显示省略秒，外部非零秒仍保存在公开值中；所有新的分钟精度提交均为零秒。无值面板从 `defaultPanelValue` 或 00:00:00 开始，不读取系统时间。
 
+受控 `open=true` 时，Escape、OK、Cancel 和外部点击只发关闭请求；父级拒绝则保持打开，用户可重试。Modal/Spin、祖先隐藏、disabled 和窗口失活属于强制边界，独立抑制旧弹层；边界解除后需点击/键盘打开，或父级显式 false→true，才恢复。每个新打开周期重新跟踪焦点，程序化打开不要求先聚焦 Input。
+
+通过 String field adapter 与 Form 组合时，显式 reset 同时恢复 TimePicker model、待确认值、输入文本并取消 preedit，即使 field 的接受值没有变化也生效；不会发布未提交草稿。普通 validation/help/Theme 更新保持正在编辑的草稿。reset 命令与 ref 都受组件 generation 保护。
+
 ## 规则与列
 
 `TimePickerRules` 包含 `hour_step`（1–24）、`minute_step` / `second_step`（1–60），各列从零开始按模数筛选。`min` / `max` 为含端点、不跨午夜的范围，要求 min ≤ max。`disabled(TimeOfDay)` 为纯判定函数，返回 true 表示不可选；规则可通过 `Prop` 更新。禁止函数内修改组件状态或执行 I/O。

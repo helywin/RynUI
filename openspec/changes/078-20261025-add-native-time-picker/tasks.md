@@ -6,12 +6,20 @@
 
 ## 2. 平台通用：保留面板与 Theme
 
-- [x] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
+- [ ] 2.1 实现保留 Input、真实滚动时间列、确认/即时模式、键盘/pointer/wheel/clear、typed footer、完整 Theme 链路与实际 API 示例；Debug、Release component/Theme focused tests 验证真实值/草稿/身份、三尺寸/变体、有限 glyph/surface/hit clip、普通和算法派生非法 token 发布前拒绝、关闭算法忽略局部 seed；生成五份 fresh goldens 并对基线证明旧字段除 identity 外保持。
 
 ## 3. 平台通用：集成收口
 
-- [x] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
+- [ ] 3.1 运行受影响 Input、Button、Theme、Modal/Spin 与 popup 共同回归，包含真实 footer Table/Select、父子/重叠 popup、隐藏抑制、初始开合、回调销毁和失效 ref，确认 Core/renderer 守卫及实际 headless 构建通过、空闲无持续帧/无界搜索；完成 API 文档和准确证据，通过 clang-format 22.x、doctor、strict validation、diff check。未运行的 Gallery、原生 GPU、Linux 和系统 IME 不记为通过。
 
 ## 4. 平台通用：合并已验收 DatePicker / Form 基线
 
-- [x] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，保留 Date/Form/Time 的 API、Theme/IIFE/identity 与宿主及内容先行的 Date/Time/Dropdown 边界链；以本分支 `78c4adf` 和父基线双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests（含真实 Form 与 Date/Time 混合 footer/popup ownership），记录实际缺陷复现和修复、工具检查及独立本地 merge commit，不 push 或修改 Gallery。
+- [ ] 4.1 在本阶段干净提交后显式 merge `0fdefbae9d5fb67422d6a67471019d5e3227dac1`，保留 Date/Form/Time 的 API、Theme/IIFE/identity 与宿主及内容先行的 Date/Time/Dropdown 边界链；以本分支 `78c4adf` 和父基线双向比较五份 fresh goldens 的既有字段，运行 Debug/Release scoped combined tests（含真实 Form 与 Date/Time 混合 footer/popup ownership），记录实际缺陷复现和修复、工具检查及独立本地 merge commit，不 push 或修改 Gallery。
+
+## 5. 平台通用：Astra R1 五项 P2 修复
+
+- [x] 5.1 先复现受控 open 关闭请求被私自隐藏；区分普通关闭与强制边界 suppression，验证 Escape/OK/Cancel/outside 的接受、拒绝及重试。
+- [x] 5.2 先复现空值即时模式激活合法 00 行未发布、已选分钟行未切换 active column；验证真实 pointer、后续键盘、禁用行与受控拒绝。
+- [x] 5.3 先复现同一接受值的实际 String Form adapter reset 保留未提交草稿；通过最小内部 owner reset hook 清理 model/显示/preedit/待确认值，保留普通 validation/help/Theme 更新的草稿与失效 generation 安全。
+- [x] 5.4 先复现关闭后 stale focus tracking 使程序化新 open 周期立即关闭；验证重复程序化打开、defaultOpen 与边界恢复。
+- [x] 5.5 先复现 footer Input Escape 缺失 onBlur；保留正常 deferred focus/blur 交付，验证 NORMAL motion 的内部焦点、session/caret 清理、selector restore、同步销毁/重新打开与 generation。

@@ -57,6 +57,7 @@ private:
     void refresh(runtime::ComponentId, bool geometry = true);
     void update_theme(runtime::ComponentId, bool geometry);
     void request_open(runtime::ComponentId, bool, bool restore = false);
+    void suppress(runtime::ComponentId);
     void publish(runtime::ComponentId, TimePickerValue, bool close);
     void confirm(runtime::ComponentId);
     void choose(runtime::ComponentId, TimeColumn, int);

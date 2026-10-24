@@ -163,6 +163,11 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         s->open && !s->suppressed && !s->disabled && window_active_ && services_->interactions().component_active(id);
     const bool changed = visible != s->view.visible;
     s->view.visible = visible;
+    if (changed || !visible) {
+        const auto focused = services_->focus().state().focused;
+        const auto* target = focused ? services_->interactions().find(*focused) : nullptr;
+        s->focus_within = visible && target && descendant(*services_, target->component, id);
+    }
     bool structure = services_->components().set_branch_active(s->view.popup, visible);
     structure |= services_->components().set_branch_active(s->actions, s->need_confirm);
     const bool seconds = s->model.precision() == TimePickerPrecision::Second;
@@ -208,7 +213,9 @@ void TimePickerComponentHost::refresh(runtime::ComponentId id, bool geometry) {
         for (auto hit : hits) {
             const auto* record = services_->interactions().find(hit);
             if (record && services_->components().contains(popup) && descendant(*services_, record->component, popup)) {
-                services_->pointer().cancel_interaction(hit);
+                // FocusManager must deliver blur/sanitize and deferred focus
+                // after the current command; only pointer state is cancelled.
+                services_->pointer().cancel_pointer_interaction(hit);
             }
         }
     }
@@ -225,20 +232,45 @@ void TimePickerComponentHost::request_open(runtime::ComponentId id, bool open, b
     const auto focused = services_->focus().state().focused;
     const auto* record = focused ? services_->interactions().find(*focused) : nullptr;
     const bool in_popup = record && descendant(*services_, record->component, s->view.popup);
+    const auto selector = s->selector_hit;
     if (!s->controlled_open) {
         s->open = open;
     }
-    s->suppressed = !open;
+    if (open) {
+        s->suppressed = false;
+    }
     if (!open || changed) {
         s->model.cancel();
+        s->focus_within = false;
     }
     refresh(id);
-    if (!open && in_popup) {
-        services_->focus().defer_focus(restore ? std::optional{s->selector_hit} : std::nullopt,
-                                       input::FocusModality::keyboard);
-    }
     if (changed && callback) {
         callback(open);
+    }
+    // A controlled parent may accept, reject, destroy or reopen synchronously.
+    // Restore only for an actual close of this same component/focus owner.
+    s = services_->components().state<TimePickerState>(id);
+    if (!open && in_popup && s && !s->view.visible && services_->focus().state().focused == focused) {
+        services_->focus().defer_focus(restore ? std::optional{selector} : std::nullopt,
+                                       input::FocusModality::keyboard);
+    }
+}
+
+void TimePickerComponentHost::suppress(runtime::ComponentId id) {
+    auto* s = services_->components().state<TimePickerState>(id);
+    if (!s || !s->open || s->suppressed) {
+        return;
+    }
+    const auto callback = s->on_open;
+    s->suppressed = true;
+    s->focus_within = false;
+    if (!s->controlled_open) {
+        s->open = false;
+    }
+    s->model.cancel();
+    refresh(id);
+    if (callback) {
+        callback(false);
     }
 }
 
@@ -282,11 +314,13 @@ void TimePickerComponentHost::confirm(runtime::ComponentId id) {
 
 void TimePickerComponentHost::choose(runtime::ComponentId id, TimeColumn column, int value) {
     auto* s = services_->components().state<TimePickerState>(id);
-    if (!s || !s->view.visible || !s->model.select(column, value)) {
+    if (!s || !s->view.visible || !s->model.candidate(column, value)) {
         return;
     }
+    s->model.select(column, value);
     s->view.active_column = static_cast<int>(column);
     refresh(id);
+    services_->focus().defer_focus(s->selector_hit, input::FocusModality::pointer);
     if (!s->need_confirm) {
         publish(id, s->model.panel(), false);
     }
@@ -448,7 +482,9 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                                         return;
                                     }
                                     s->model.cancel();
-                                    request_open(id, false);
+                                    // Pointer outside and prepare's actual focus leave
+                                    // issue the close request once, after focus transfer.
+                                    refresh(id, false);
                                 }),
                             {}, InputSuffix{[&] {
                                 s.view.clear = group(services, layout::BoxLayout{});
@@ -466,6 +502,18 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
                       s.view.selector = input.component;
                       s.selector_hit = input.interaction;
                       s.editor = input.editor;
+                      inputs->configure_form_reset(input.component, [this, id, value = props.value_] {
+                          auto* live = services_->components().state<TimePickerState>(id);
+                          if (!live || !services_->components().scope(id).active()) {
+                              return;
+                          }
+                          if (value) {
+                              live->model.reconcile(read_prop(*value));
+                          } else {
+                              live->model.cancel();
+                          }
+                          refresh(id);
+                      });
                   }});
             s.view.popup = group(services, layout::LeafLayout{}, true);
             const auto popup_node = build.root(s.view.popup);
@@ -574,7 +622,7 @@ void TimePickerComponentHost::mount(const TimePickerProps& props, const std::opt
         if (auto* s = services_->components().state<TimePickerState>(id)) {
             s->disabled = value;
             if (value) {
-                request_open(id, false);
+                suppress(id);
             }
             refresh(id);
         }
@@ -612,7 +660,7 @@ void TimePickerComponentHost::on_window_active(bool active) {
     const auto ids = mounted_;
     for (auto id : ids) {
         if (!active) {
-            request_open(id, false);
+            suppress(id);
         }
         refresh(id);
     }
@@ -623,7 +671,7 @@ void TimePickerComponentHost::on_input_boundary_changed() {
     for (auto id : ids) {
         const auto* s = services_->components().state<TimePickerState>(id);
         if (s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
-            request_open(id, false);
+            suppress(id);
         } else {
             refresh(id, false);
         }
@@ -635,7 +683,7 @@ void TimePickerComponentHost::prepare_auxiliary_layout() {
     for (auto id : ids) {
         auto* s = services_->components().state<TimePickerState>(id);
         if (s && s->open && !s->suppressed && !services_->interactions().component_active(id)) {
-            request_open(id, false);
+            suppress(id);
         } else if (s && s->view.visible) {
             const auto focused = services_->focus().state().focused;
             const auto* target = focused ? services_->interactions().find(*focused) : nullptr;
