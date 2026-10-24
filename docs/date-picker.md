@@ -29,6 +29,8 @@ void date_field(ryn::Signal<ryn::DatePickerValue>& selected) {
 
 Theme 的 `date_picker` 提供 typed `colors/metrics/shadow/z_index_popup` 派生结果；使用 `ThemeConfig::date_picker.tokens` 覆盖颜色、面板/单元格尺寸、字体、阴影和层级。`date_picker.algorithm = true` 才应用该组件的局部 `seed`，默认继承父 Theme。颜色更新只失效材质；字体/度量更新重新布局，Input 与 footer 的真实节点及编辑会话保留。选择框沿用 Input 的变体/状态合同；DatePicker 的 selector 背景与 hover/active border 通过局部 Input Theme 接入。
 
+未启用 `date_picker.algorithm` 时，局部 seed 完全忽略，也不会阻断父级 token 的继承。所有最终度量在派生及 override 后逐项校验；面板宽度、header/row/cell 高度及字体/行高至少为 1，padding/radius/gap 非负，全部有限。非法派生值会在 Theme snapshot 发布前拒绝；可以显式提供合法的最终 token override 修复局部 seed 派生出的度量。
+
 ```cpp
 ryn::ThemeConfig calendar_theme() {
     ryn::ThemeConfig config;
@@ -39,6 +41,8 @@ ryn::ThemeConfig calendar_theme() {
 ```
 
 Footer 内容只挂载一次，允许普通 Input、Button、TextArea 和拥有子 popup 的控件。日历 Escape 会恢复选择框焦点，子 popup 或当前编辑器的 IME 先处理自己的 Escape。外部点击、选择和 Escape 发出关闭请求；受控调用方拒绝普通关闭时保持打开。窗口失活、Modal/Spin 或隐藏祖先会独立 suppress 实际弹层，即使受控 `open` 仍为 true，恢复祖先也不会自动重开；显式打开动作或受控 false→true 才解除 suppression。
+
+Footer 中的 Table 可使用 `scrollY` 提供有限滚动视口；滚轮先交给实际命中的内容控件及较高子 popup。内容到达滚动边界或命中日历 padding 时，日历会保留该滚轮，避免滚动被覆盖的 sibling 或弹层外祖先。日历外未被覆盖的内容维持原有滚动行为。
 
 弹层遵循窗口层规则，脱离触发器外部布局及其内容裁剪，在窗口内定位；月历自身、footer 后代、实际 glyph/表面/命中使用面板内有效裁剪。窗口过短时只显示可用区域；没有滚动月历或缩放日期网格以容纳全部内容的隐式行为。缺少空间而得到零可用高度时不留下可见或可命中的日历内容。
 

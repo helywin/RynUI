@@ -65,13 +65,11 @@ void apply_date_picker_override(DatePickerThemeToken& t, const DatePickerTokenOv
         t.colors.active_border = *o.active_border;
     }
     const auto length = [](const std::optional<LogicalLength>& v, float fallback, float minimum = 0) {
-        if (!v) {
-            return fallback;
-        }
-        if (v->is_auto() || !std::isfinite(v->value()) || v->value() < minimum) {
+        const float result = v ? v->value() : fallback;
+        if ((v && v->is_auto()) || !std::isfinite(result) || result < minimum) {
             throw std::invalid_argument("DatePicker token length is invalid");
         }
-        return v->value();
+        return result;
     };
     t.metrics.panel_width = length(o.panel_width, t.metrics.panel_width, 1);
     t.metrics.padding = length(o.padding, t.metrics.padding);

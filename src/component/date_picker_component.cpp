@@ -778,7 +778,7 @@ void DatePickerComponentHost::on_pointer_input(const input::PointerInputEvent& e
     }
 }
 
-bool DatePickerComponentHost::on_scroll_input(const input::ScrollInputEvent& event) {
+bool DatePickerComponentHost::consume_scroll_boundary(const input::ScrollInputEvent& event) {
     const auto hit = services_->hit_test().hit_test({event.x, event.y});
     const auto* record = hit ? services_->interactions().find(*hit) : nullptr;
     if (!record) {

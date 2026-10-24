@@ -5124,7 +5124,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         DatePickerThemeToken token;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
                              config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
-                             !config.date_picker.algorithm && config.date_picker.seed == SeedTokenOverride{};
+                             !config.date_picker.algorithm;
         if (inherit) {
             token = parent->date_picker();
         } else if (config.date_picker.algorithm) {

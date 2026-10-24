@@ -1,5 +1,7 @@
 # 077 平台通用实施证据
 
+本文件记录首轮实施的历史结果。Astra R1 暴露的未覆盖合同、重新打开的任务及本轮修复/指定父提交合并验收见 [r1.md](r1.md)；不能将下面的首轮 30/30 当作这三项 R1 的通过证据。
+
 ## 环境与边界
 
 2026-10-25，Windows x64，MSVC 19.51.36256.0，CMake `windows-msvc-headless` preset、Ninja Multi-Config，Debug/Release。独立工作树从 `0bc5c97b99520549576b2d9028c943f2450d69a2` 开始，构建目录为本树 `out/build/windows-msvc-headless`，依赖源码和构建目录均为本树 `out/deps`，未复用其他工作树二进制。所有 build 使用 `--parallel 4`。

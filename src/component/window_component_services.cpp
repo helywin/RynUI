@@ -182,7 +182,8 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
             return true;
         }
     }
-    return dropdown_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
+    return date_picker_->consume_scroll_boundary(event) || dropdown_->consume_scroll_boundary(event) ||
+           interactions_.input_boundary().has_value();
 }
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {

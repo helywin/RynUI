@@ -363,7 +363,7 @@ void spin_modal_and_child_popup() {
           "child popup open closed owner");
     const auto child_popup = f.services.select().snapshot(child_id).popup;
     const ScrollInputEvent wheel{0, -1, child_popup.x + 5, child_popup.y + 5};
-    check(!f.services.date_picker().on_scroll_input(wheel) && f.inputs.dispatch(wheel),
+    check(!f.services.date_picker().consume_scroll_boundary(wheel) && f.inputs.dispatch(wheel),
           "nearest child popup wheel ownership");
     key(f, Key::escape);
     check(!f.services.select().snapshot(child_id).visible && f.services.date_picker().snapshot(id).visible,
