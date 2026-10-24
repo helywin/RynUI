@@ -1,6 +1,13 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(time_test IN ITEMS time_picker_model time_picker_public_api)
+    add_executable(rynui_${time_test}_tests ${time_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${time_test}_tests)
+    target_link_libraries(rynui_${time_test}_tests PRIVATE rynui_components)
+    add_test(NAME rynui.${time_test} COMMAND rynui_${time_test}_tests)
+endforeach()
+
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${presentation_test}_tests)

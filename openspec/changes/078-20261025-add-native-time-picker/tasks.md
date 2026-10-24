@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：时间值、模型与 API
 
-- [ ] 1.1 实现有效时间值、可空选择、严格两种格式、有限步长/范围/禁用、待提交与受控模型、typed Props/ref/footer API；编写 docs/time-picker.md 的模型合同与首版限制，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug、Release 通过 model/public API tests，覆盖 00/23:59:59、非法/未完成输入、分钟精度、全禁用、受控拒绝和取消。
+- [x] 1.1 实现有效时间值、可空选择、严格两种格式、有限步长/范围/禁用、待提交与受控模型、typed Props/ref/footer API；编写 docs/time-picker.md 的模型合同与首版限制，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug、Release 通过 model/public API tests，覆盖 00/23:59:59、非法/未完成输入、分钟精度、全禁用、受控拒绝和取消。
 
 ## 2. 平台通用：保留面板与 Theme
 

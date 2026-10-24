@@ -203,6 +203,7 @@ add_library(rynui_components STATIC
     component/otp_model.cpp
     component/select_model.cpp
     component/select_component.cpp
+    component/time_picker_model.cpp
     component/menu_component.cpp
     component/dropdown_component.cpp
     component/card_component.cpp
