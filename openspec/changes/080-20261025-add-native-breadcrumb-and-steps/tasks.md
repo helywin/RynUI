@@ -2,7 +2,7 @@
 
 ## 1. 平台通用：typed API 与状态模型
 
-- [ ] 1.1 实现 Breadcrumb/Steps typed Props/items/slots 和实际状态模型，记录固定 topology、唯一 key、current/状态及激活合同；提供初始 API 文档，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug/Release 通过 model/public API 检查，覆盖空/隐藏项、current 极值、状态覆盖、受控拒绝及禁用投影，不把此阶段当作可运行组件交付。
+- [x] 1.1 实现 Breadcrumb/Steps typed Props/items/slots 和实际状态模型，记录固定 topology、唯一 key、current/状态及激活合同；提供初始 API 文档，在 windows-msvc-headless / MSVC / Ninja Multi-Config 的 Debug/Release 通过 model/public API 检查，覆盖空/隐藏项、current 极值、状态覆盖、受控拒绝及禁用投影，不把此阶段当作可运行组件交付。
 
 ## 2. 平台通用：Breadcrumb
 

@@ -67,6 +67,11 @@ foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_compo
     add_test(NAME rynui.${collapse_test} COMMAND rynui_${collapse_test}_tests)
 endforeach()
 
+add_executable(rynui_navigation_model_tests navigation_model_tests.cpp)
+rynui_configure_cpp_target(rynui_navigation_model_tests)
+target_link_libraries(rynui_navigation_model_tests PRIVATE rynui_components)
+add_test(NAME rynui.navigation_model COMMAND rynui_navigation_model_tests)
+
 foreach(segmented_test IN ITEMS segmented_public_api segmented_theme segmented_component)
     add_executable(rynui_${segmented_test}_tests ${segmented_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${segmented_test}_tests)
