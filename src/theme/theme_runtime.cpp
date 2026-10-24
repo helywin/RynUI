@@ -295,6 +295,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
+    append_if_changed(before.skeleton().colors, after.skeleton().colors, TokenIdentity::skeleton_colors, changed,
+                      count);
+    append_if_changed(before.skeleton().metrics, after.skeleton().metrics, TokenIdentity::skeleton_metrics, changed,
+                      count);
     append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
     append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
     append_if_changed(before.steps().colors, after.steps().colors, TokenIdentity::steps_colors, changed, count);
@@ -1594,6 +1598,18 @@ const SelectThemeToken& ThemeScope::select_order() const {
     return snapshot_->select();
 }
 
+const SkeletonThemeToken& ThemeScope::skeleton_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::skeleton_colors);
+    return snapshot_->skeleton();
+}
+
+const SkeletonThemeToken& ThemeScope::skeleton_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::skeleton_metrics);
+    return snapshot_->skeleton();
+}
+
 std::string_view token_identity_name(TokenIdentity identity) noexcept {
     // Order MUST match the TokenIdentity declaration: several readers walk the
     // enum by contiguous range, and the count assert guards the pairing.
@@ -1776,6 +1792,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "TimePicker.metrics",
         "TimePicker.effects",
         "TimePicker.order",
+        "Skeleton.colors",
+        "Skeleton.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1784,6 +1802,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::skeleton_metrics:
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
+    case TokenIdentity::skeleton_colors:
+        return DirtyPhase::paint_material;
     case TokenIdentity::empty_metrics:
     case TokenIdentity::result_metrics:
     case TokenIdentity::time_picker_metrics:

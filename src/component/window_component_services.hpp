@@ -43,6 +43,7 @@ class CollapseComponentHost;
 class FormComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
+class SkeletonComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -260,6 +261,10 @@ public:
         return *steps_;
     }
 
+    [[nodiscard]] SkeletonComponentHost& skeleton() noexcept {
+        return *skeleton_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -407,6 +412,7 @@ private:
     std::unique_ptr<FormComponentHost> form_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
+    std::unique_ptr<SkeletonComponentHost> skeleton_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

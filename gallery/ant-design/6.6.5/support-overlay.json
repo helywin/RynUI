@@ -1336,16 +1336,27 @@
     },
     {
       "identity": "ant.component.skeleton",
-      "status": "planned",
-      "summary": "骨架屏（Skeleton）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生静态 Skeleton 提供标题、段落、avatar 和独立 Avatar/Button/Input 占位；loading 往返保留真实内容与编辑状态，动画和交互 Gallery 尚未提供。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive static title/paragraph/avatar composition and proportional row widths",
+        "standalone SkeletonAvatar/SkeletonButton/SkeletonInput with size, shape and block semantics",
+        "retained loading content with input, focus, popup and preedit cleanup plus identity/draft restoration",
+        "finite and zero-size recovery, logical scene clipping, Theme inheritance and idle behavior"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "active/shimmer animation, SkeletonImage and SkeletonNode",
+        "interactive Gallery samples, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "network loading and full Ant Design Web/DOM/CSS API"
       ],
       "evidence_identifiers": [
-        "source:components/skeleton/index.en-US.md"
+        "source:components/skeleton/index.en-US.md",
+        "openspec:083-20261025-add-native-skeleton",
+        "api:include/ryn/skeleton.hpp",
+        "runtime:src/component/skeleton_component.cpp",
+        "test:rynui.skeleton_model",
+        "test:rynui.skeleton_component",
+        "test:rynui.skeleton_theme"
       ]
     },
     {

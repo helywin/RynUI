@@ -13,6 +13,7 @@ add_library(rynui_theme STATIC
     theme/breadcrumb_theme.cpp
     theme/steps_theme.cpp
     theme/time_picker_theme.cpp
+    theme/skeleton_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -218,6 +219,8 @@ add_library(rynui_components STATIC
     component/dropdown_component.cpp
     component/card_component.cpp
     component/empty_result_component.cpp
+    component/skeleton_model.cpp
+    component/skeleton_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp
     component/drawer_model.cpp
