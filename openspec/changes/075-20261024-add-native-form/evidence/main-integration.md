@@ -22,4 +22,6 @@ Form 目录从 planned 更新为有证据的 partial，明确首版和未覆盖�
 
 Astra R2 固定 worker `275707a` 审阅原始完整 075 范围与全部 R1 修复，**未发现可操作 P1/P2**；独立运行 worker 既有 Debug **20/20**、Release **20/20**。注册代际、authority/reset/重入/销毁、真实 ref 目标和字体校验均确认符合首版合同。父线程新增的 seed 继承差异不在其固定提交内，将独立复核后记录，不提前声称已审查。
 
+独立 Astra R3 已固定 main `7ff4deb3f9a61c8de08565ec3d67dc58382a5c49` 复核完整 075 与父差异，**CLEAN，无可操作 P1/P2**。确认关闭 seed 的继承修复、静态/响应覆盖、merge 两个父提交及既有 host/wheel/Gallery 路径保留。实际直接运行 ROOT 既有 Form model/public API/component/Theme 和 portable Theme algorithm/runtime，Debug **6/6**、Release **6/6**；12 个二进制 SHA-256、大小、时间戳前后相同。五份 golden 与 worker 字节相等、旧字段及 26 个旧 IIFE 保留，partial 与未完成 Gallery/平台边界准确。未编辑、构建或运行全套。075 最终 **11/11**，079 的交互 Gallery 不混记为已完成。
+
 没有运行全套 CTest，不将 headless 结果作为 GPU、Linux、系统 IME 或人工视觉验收。父线程只推送 main，禁止推送 worker/t3 分支；不创建 PR 或 archive。

@@ -32,4 +32,6 @@
 
 ## 7. 父线程集成
 
-- [ ] 7.1 显式合并已验证 worker 275707a 到 main，保留 076 导航与主线程改动；复现并修复关闭组件算法但存在局部 seed 时丢失父 Form token 覆盖的问题，验证静态/响应继承、局部 override、启用/关闭算法及 inherit=false；通过最终组合 Debug/Release 20 项、五份 fresh golden 旧值/IIFE 比较、格式/doctor/strict/diff，并记录 Astra R2 和父线程独立后续复核的真实结论，不提前声明 clean。
+- [x] 7.1 显式合并已验证 worker 275707a 到 main，保留 076 导航与主线程改动；复现并修复关闭组件算法但存在局部 seed 时丢失父 Form token 覆盖的问题，验证静态/响应继承、局部 override、启用/关闭算法及 inherit=false；通过最终组合 Debug/Release 20 项、五份 fresh golden 旧值/IIFE 比较、格式/doctor/strict/diff，并记录 Astra R2 和父线程独立后续复核的真实结论，不提前声明 clean。
+
+父线程 `7ff4deb` 已推送并核对远端 SHA；Astra R3 固定该提交复核完整范围和新增继承差异，未发现可操作 P1/P2，实际复跑现有 Form 四项及 Theme algorithm/runtime，Debug 6/6、Release 6/6。075 为 **11/11 完成**；079 Gallery 独立推进，平台边界不变。
