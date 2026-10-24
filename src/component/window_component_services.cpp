@@ -13,6 +13,7 @@
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
 #include "component/form_component.hpp"
+#include "component/descriptions_component.hpp"
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
@@ -118,6 +119,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     collapse_ = std::make_unique<CollapseComponentHost>(*this);
     segmented_ = std::make_unique<SegmentedComponentHost>(*this);
     form_ = std::make_unique<FormComponentHost>(*this);
+    descriptions_ = std::make_unique<DescriptionsComponentHost>(*this);
     breadcrumb_ = std::make_unique<BreadcrumbComponentHost>(*this);
     steps_ = std::make_unique<StepsComponentHost>(*this);
     skeleton_ = std::make_unique<SkeletonComponentHost>(*this);
@@ -211,11 +213,11 @@ void WindowComponentServices::request_frame() noexcept {
 }
 
 runtime::Rect WindowComponentServices::component_clip(runtime::ComponentId id, runtime::Size viewport,
-                                                      runtime::Rect document_clip) const {
+                                                      runtime::Rect document_clip, runtime::ClipPurpose purpose) const {
     auto clip = components().in_window_layer(id) ? runtime::Rect{0, 0, viewport.width, viewport.height} : document_clip;
     const auto& root = nodes_->require(components().root(id));
     if (!root.clip_boundary && root.parent) {
-        clip = nodes_->content_clip(*root.parent, clip);
+        clip = nodes_->content_clip(*root.parent, clip, purpose);
     }
     return clip;
 }

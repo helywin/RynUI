@@ -13,6 +13,7 @@
 #include <ryn/steps_tokens.hpp>
 #include <ryn/time_picker_tokens.hpp>
 #include <ryn/skeleton_tokens.hpp>
+#include <ryn/descriptions_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -983,6 +984,13 @@ struct FormThemeConfig final {
     friend bool operator==(const FormThemeConfig&, const FormThemeConfig&) = default;
 };
 
+struct DescriptionsThemeConfig final {
+    DescriptionsTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DescriptionsThemeConfig&, const DescriptionsThemeConfig&) = default;
+};
+
 struct TabsThemeConfig final {
     TabsTokenOverride tokens;
     SeedTokenOverride seed;
@@ -1537,6 +1545,7 @@ struct ThemeConfig final {
     SegmentedThemeConfig segmented;
     FormThemeConfig form;
     TimePickerThemeConfig time_picker;
+    DescriptionsThemeConfig descriptions;
     ModalThemeConfig modal;
     TagThemeConfig tag;
     BadgeThemeConfig badge;
@@ -2126,6 +2135,10 @@ public:
         return form_;
     }
 
+    [[nodiscard]] const DescriptionsThemeToken& descriptions() const noexcept {
+        return descriptions_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2197,7 +2210,7 @@ private:
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
                   BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
                   std::shared_ptr<const TimePickerThemeToken> time_picker,
-                  std::shared_ptr<const SkeletonThemeToken> skeleton);
+                  std::shared_ptr<const SkeletonThemeToken> skeleton, DescriptionsThemeToken descriptions);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2221,6 +2234,7 @@ private:
     StepsThemeToken steps_;
     std::shared_ptr<const TimePickerThemeToken> time_picker_;
     std::shared_ptr<const SkeletonThemeToken> skeleton_;
+    DescriptionsThemeToken descriptions_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

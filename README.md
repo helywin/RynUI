@@ -39,6 +39,7 @@ RynUI 是一个面向 Windows 和 Linux 的 C++20 桌面 UI 框架，以 Ant Des
 | 状态与进度 | Alert 受控关闭与内容插槽、Spin 保留内容及加载屏蔽、Progress 条形/圆形/仪表盘进度；见 [反馈组件](docs/feedback.md) |
 | 加载骨架 | 静态 Skeleton 标题/段落/avatar 和独立 Avatar/Button/Input 占位，保留加载前后的内容与编辑状态；见 [Skeleton](docs/skeleton.md) |
 | 数据浏览 | Table 保留键控行、typed 列/插槽、受控排序/选择及有限滚动，搭配受控或默认 Pagination；见 [Table](docs/table.md) 和 [Pagination](docs/pagination.md) |
+| 详情展示 | Descriptions 固定键控多列、span、横纵标签、边框和保留富内容；见 [Descriptions](docs/descriptions.md) |
 | 菜单与命令 | Menu 受控选择、Inline 子菜单和键盘导航；Dropdown 点击/右键触发、窗口层与焦点恢复；见 [Menu / Dropdown](docs/menu-dropdown.md) |
 | 数值输入 | InputNumber 保留数值草稿、受控回写、范围/精度/步长、键盘与步进按钮，复用 Input 的选区和 IME；见 [InputNumber](docs/input-number.md) |
 | 滑动输入 | 单值 Slider、双端 RangeSlider、受控值/步长、mouse/touch 拖动、独立 thumb 焦点、键盘、横纵向与反向；范围与验收见 [Slider](docs/slider.md) |

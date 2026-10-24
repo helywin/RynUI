@@ -114,6 +114,8 @@ public:
     [[nodiscard]] const DatePickerThemeToken& date_picker_order() const;
     [[nodiscard]] const FormThemeToken& form_colors() const;
     [[nodiscard]] const FormThemeToken& form_metrics() const;
+    [[nodiscard]] const DescriptionsThemeToken& descriptions_colors() const;
+    [[nodiscard]] const DescriptionsThemeToken& descriptions_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_colors() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_metrics() const;
     [[nodiscard]] const BreadcrumbThemeToken& breadcrumb_effects() const;

@@ -41,6 +41,7 @@ class TableComponentHost;
 class EmptyResultComponentHost;
 class CollapseComponentHost;
 class FormComponentHost;
+class DescriptionsComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
@@ -141,7 +142,8 @@ public:
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
     [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
-                                               runtime::Rect document_clip) const;
+                                               runtime::Rect document_clip,
+                                               runtime::ClipPurpose purpose = runtime::ClipPurpose::content) const;
 
     void set_animation_time(animation::AnimationTime time) noexcept {
         animation_time_ = time;
@@ -251,6 +253,10 @@ public:
 
     [[nodiscard]] FormComponentHost& form() noexcept {
         return *form_;
+    }
+
+    [[nodiscard]] DescriptionsComponentHost& descriptions() noexcept {
+        return *descriptions_;
     }
 
     [[nodiscard]] BreadcrumbComponentHost& breadcrumb() noexcept {
@@ -410,6 +416,7 @@ private:
     std::unique_ptr<CollapseComponentHost> collapse_;
     std::unique_ptr<SegmentedComponentHost> segmented_;
     std::unique_ptr<FormComponentHost> form_;
+    std::unique_ptr<DescriptionsComponentHost> descriptions_;
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;

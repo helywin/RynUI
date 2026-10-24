@@ -204,6 +204,11 @@ void invalid_content_and_reference() {
     }
 }
 
+// Keep repeated by-value ThemeConfig arguments out of the fixture's MSVC Debug stack frame.
+void publish_theme(Signal<ThemeConfig>& theme, const ThemeConfig& next) {
+    theme.set(next);
+}
+
 void theme_and_handle_feedback() {
     const auto defaults = resolve_theme();
     const auto& token = defaults.switch_token();
@@ -294,7 +299,7 @@ void theme_and_handle_feedback() {
     f.dirty.clear();
     auto config = theme.get();
     config.alias.opacity_loading = 0.3F;
-    theme.set(config);
+    publish_theme(theme, config);
     f.synchronize();
     const auto glyph = f.scene.primitive(scene).instances;
     require(near(f.services.surfaces().instances().at(range.first).opacity, 0.3F) && glyph.count > 0 &&
@@ -305,7 +310,7 @@ void theme_and_handle_feedback() {
             "opacityLoading did not fade track/content/shadow locally");
     f.dirty.clear();
     config.switch_.tokens.handle_shadow = ShadowList{{ShadowKind::outer, {1, 3}, 6, 0, Color::rgba8(5, 6, 7, 70)}};
-    theme.set(config);
+    publish_theme(theme, config);
     f.synchronize();
     require(f.services.surfaces().shadow_effects(sw.surface)[0] == shadow_id &&
                 f.services.surfaces().effects().at(shadow_id).geometry.offset == LogicalOffset{1, 3} &&
@@ -313,7 +318,7 @@ void theme_and_handle_feedback() {
             "Switch shadow override remounted or measured content");
     config.switch_.algorithm = true;
     config.switch_.seed.color_primary = Color::rgba8(120, 40, 180);
-    theme.set(config);
+    publish_theme(theme, config);
     f.synchronize();
     const auto isolated = resolve_theme(config).switch_token();
     auto reference_theme = ThemeConfig{};
@@ -322,14 +327,14 @@ void theme_and_handle_feedback() {
                 f.nodes.require(sw.node).measure_count == measures,
             "Switch component algorithm ignored local primary color or measured content");
     config.switch_.seed.focus_outline = false;
-    theme.set(config);
+    publish_theme(theme, config);
     f.synchronize();
     require(near(resolve_theme(config).switch_token().focus_width, 0) &&
                 f.services.surfaces().effects().live_count() == 1 && f.nodes.require(sw.node).measure_count == measures,
             "Switch component focusOutline=false left a ring or measured content");
     config.switch_.tokens.inner_min_margin = dp(20);
     config.switch_.tokens.inner_max_margin = dp(40);
-    theme.set(config);
+    publish_theme(theme, config);
     f.synchronize();
     require(f.nodes.require(sw.node).bounds.width > 60 && runs == 2, "Switch content token did not update width");
     loading.set(false);
@@ -417,11 +422,11 @@ void wave_restarts_cancellation_and_idle() {
         } else {
             auto config = theme.get();
             config.seed.motion = false;
-            theme.set(config);
+            publish_theme(theme, config);
             require(!host.snapshot(sw.component).wave_active && !f.services.next_frame_deadline(),
                     "Theme motion=false left animation deadlines");
             config.seed.motion = true;
-            theme.set(config);
+            publish_theme(theme, config);
         }
     }
     activate(f, sw.interaction);
@@ -582,7 +587,7 @@ void controlled_handle_and_press_cancellation() {
         } else {
             auto config = theme.get();
             config.seed.motion = false;
-            theme.set(config);
+            publish_theme(theme, config);
             f.services.focus().dispatch({input::Key::space, input::KeyAction::up});
         }
         static_cast<void>(f.services.tick_animations(animation::AnimationTime::microseconds(1000000)));

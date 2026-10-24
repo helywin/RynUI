@@ -186,6 +186,8 @@ enum class TokenIdentity : std::uint8_t {
     time_picker_order,
     skeleton_colors,
     skeleton_metrics,
+    descriptions_colors,
+    descriptions_metrics,
     count,
 };
 

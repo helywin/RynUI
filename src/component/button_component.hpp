@@ -192,7 +192,8 @@ private:
     void update_typography(ButtonComponentState& state);
     void update_layout(ButtonComponentState& state);
     void subscribe_theme(ButtonComponentState& state);
-    void synchronize_geometry(ButtonComponentState& state, runtime::Size viewport, runtime::Rect clip);
+    void synchronize_geometry(ButtonComponentState& state, runtime::Size viewport, runtime::Rect clip,
+                              runtime::Rect decoration_clip);
     void* begin_mount() noexcept override;
     void end_mount(void* previous) noexcept override;
     void on_destroy() noexcept override;

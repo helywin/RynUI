@@ -301,6 +301,10 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
     append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
+    append_if_changed(before.descriptions().colors, after.descriptions().colors, TokenIdentity::descriptions_colors,
+                      changed, count);
+    append_if_changed(before.descriptions().metrics, after.descriptions().metrics, TokenIdentity::descriptions_metrics,
+                      changed, count);
     append_if_changed(before.steps().colors, after.steps().colors, TokenIdentity::steps_colors, changed, count);
     append_if_changed(before.steps().metrics, after.steps().metrics, TokenIdentity::steps_metrics, changed, count);
     append_if_changed(before.steps().effects, after.steps().effects, TokenIdentity::steps_effects, changed, count);
@@ -1406,6 +1410,18 @@ const FormThemeToken& ThemeScope::form_colors() const {
     return snapshot_->form();
 }
 
+const DescriptionsThemeToken& ThemeScope::descriptions_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::descriptions_colors);
+    return snapshot_->descriptions();
+}
+
+const DescriptionsThemeToken& ThemeScope::descriptions_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::descriptions_metrics);
+    return snapshot_->descriptions();
+}
+
 const FormThemeToken& ThemeScope::form_metrics() const {
     ensure_owner_thread();
     record(TokenIdentity::form_metrics);
@@ -1794,6 +1810,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "TimePicker.order",
         "Skeleton.colors",
         "Skeleton.metrics",
+        "Descriptions.colors",
+        "Descriptions.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1860,6 +1878,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::segmented_colors:
     case TokenIdentity::date_picker_colors:
     case TokenIdentity::form_colors:
+    case TokenIdentity::descriptions_colors:
     case TokenIdentity::breadcrumb_colors:
     case TokenIdentity::steps_colors:
     case TokenIdentity::modal_colors:
@@ -1940,6 +1959,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::segmented_metrics:
     case TokenIdentity::date_picker_metrics:
     case TokenIdentity::form_metrics:
+    case TokenIdentity::descriptions_metrics:
     case TokenIdentity::breadcrumb_metrics:
     case TokenIdentity::steps_metrics:
     case TokenIdentity::alert_metrics:

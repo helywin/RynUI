@@ -924,16 +924,27 @@
     },
     {
       "identity": "ant.component.descriptions",
-      "status": "planned",
-      "summary": "描述列表（Descriptions）的 Ant Design 6.6.5 参考条目；RynUI 尚未提供对应的稳定公开组件。",
+      "status": "partial",
+      "summary": "原生 Descriptions 提供固定键控的多列详情、span、横纵标签、边框和三种尺寸；富内容保留编辑状态，交互 Gallery 与平台验收尚未提供。",
       "supported_scope": [
-        "仅保留锁定版本的离线参考元数据"
+        "typed reactive keyed items, columns and positive spans with retained label/content/title/extra slots",
+        "horizontal/vertical labels, bordered/unbordered variants, three sizes, colon and visibility reflow",
+        "retained native controls, partition content/hit clips and ancestor-clipped focus decorations",
+        "finite and zero-size recovery, Theme inheritance, final metric validation and idle behavior"
       ],
       "missing_scope": [
-        "对应 RynUI 稳定公开组件与交互合同"
+        "dynamic item topology, automatic responsive breakpoints and locale/RTL",
+        "interactive Gallery, native GPU/manual visual/Linux/system IME and assistive technology acceptance",
+        "full Ant Design Web/DOM/CSS API and HTML auto-table sizing"
       ],
       "evidence_identifiers": [
-        "source:components/descriptions/index.en-US.md"
+        "source:components/descriptions/index.en-US.md",
+        "openspec:081-20261025-add-native-descriptions",
+        "api:include/ryn/descriptions.hpp",
+        "runtime:src/component/descriptions_component.cpp",
+        "test:rynui.descriptions_model",
+        "test:rynui.descriptions_component",
+        "test:rynui.descriptions_theme"
       ]
     },
     {

@@ -87,14 +87,14 @@ foreach(date_test IN ITEMS date_picker_component date_picker_theme date_picker_r
     endif()
 endforeach()
 
-foreach(form_test IN ITEMS form_model form_public_api)
+foreach(form_test IN ITEMS form_model form_public_api descriptions_model descriptions_public_api)
     add_executable(rynui_${form_test}_tests ${form_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_test}_tests)
     target_link_libraries(rynui_${form_test}_tests PRIVATE rynui_components)
     add_test(NAME rynui.${form_test} COMMAND rynui_${form_test}_tests)
 endforeach()
 
-foreach(form_integration IN ITEMS form_component form_theme)
+foreach(form_integration IN ITEMS form_component form_theme descriptions_component descriptions_theme)
     add_executable(rynui_${form_integration}_tests ${form_integration}_tests.cpp)
     rynui_configure_cpp_target(rynui_${form_integration}_tests)
     target_link_libraries(rynui_${form_integration}_tests PRIVATE rynui_components)
@@ -103,6 +103,34 @@ foreach(form_integration IN ITEMS form_component form_theme)
         "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
     add_test(NAME rynui.${form_integration} COMMAND rynui_${form_integration}_tests)
 endforeach()
+
+add_executable(rynui_descriptions_integration_tests descriptions_integration_tests.cpp)
+rynui_configure_cpp_target(rynui_descriptions_integration_tests)
+target_link_libraries(rynui_descriptions_integration_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_descriptions_integration_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS popup cleanup boundary scene)
+    add_test(NAME rynui.descriptions_integration_${case} COMMAND rynui_descriptions_integration_tests ${case})
+endforeach()
+
+add_executable(rynui_descriptions_region_clip_tests descriptions_region_clip_tests.cpp)
+rynui_configure_cpp_target(rynui_descriptions_region_clip_tests)
+target_link_libraries(rynui_descriptions_region_clip_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_descriptions_region_clip_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(case IN ITEMS horizontal bordered vertical vertical_bordered rich selection selection_modal)
+    add_test(NAME rynui.descriptions_region_clip_${case} COMMAND rynui_descriptions_region_clip_tests ${case})
+endforeach()
+
+add_executable(rynui_descriptions_shared_theme_tests descriptions_shared_theme_tests.cpp)
+rynui_configure_cpp_target(rynui_descriptions_shared_theme_tests)
+target_link_libraries(rynui_descriptions_shared_theme_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_descriptions_shared_theme_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.descriptions_shared_theme COMMAND rynui_descriptions_shared_theme_tests)
 
 foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
     add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)

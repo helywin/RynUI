@@ -37,6 +37,7 @@ The project targets desktop tools, industrial control interfaces, robotics appli
 | Status and progress | Alert with controlled close and content slots, Spin with retained contents and a loading shield, and line/circle/dashboard Progress; see [Feedback components](docs/feedback.md) |
 | Loading placeholders | Static Skeleton title/paragraph/avatar and standalone Avatar/Button/Input shapes, retaining contents and editor state across loading changes; see [Skeleton](docs/skeleton.md) |
 | Data browsing | Table with retained keyed rows, typed columns/slots, controlled sorting/selection and finite scrolling, composed with controlled or default Pagination; see [Table](docs/table.md) and [Pagination](docs/pagination.md) |
+| Detail panels | Descriptions with fixed keyed columns, spans, horizontal/vertical labels, borders and retained rich contents; see [Descriptions](docs/descriptions.md) |
 | Menus and commands | Menu with controlled selection, inline submenus and keyboard navigation; Dropdown with click/context-menu triggers, window layers and focus restoration; see [Menu / Dropdown](docs/menu-dropdown.md) |
 | Numeric editing | InputNumber with retained drafts, controlled values, bounds/precision/steps, keyboard and step buttons, using Input selection and IME; see [InputNumber](docs/input-number.md) |
 | Examples and reference | Interactive component examples, an offline component catalog, and a Token Gallery based on Ant Design 6.6.5 |
