@@ -1,5 +1,6 @@
 #include "component/descriptions_component.hpp"
 #include "component/modal_component.hpp"
+#include "component/selection_component.hpp"
 #include "support/input_fixture.hpp"
 #include <algorithm>
 #include <cmath>
@@ -354,6 +355,131 @@ void rich_regions_and_decorations() {
               f.inputs.editors().require(input.editor).value() == "汉 retained draft",
           "rich region recovery lost identity/draft");
 }
+
+void selection_decorations(bool modal) {
+    bool passed = true;
+    for (int kind = 0; kind < 4; ++kind) {
+        Fixture f;
+        detail::SelectionComponentHost selection{f.services};
+        f.services.set_motion_preference(animation::MotionPreference::reduced);
+        int mounts = 0;
+        int changes = 0;
+        const auto body = [&] {
+            Flex(FlexProps{}
+                     .vertical(true)
+                     .align(FlexAlign::Center)
+                     .justify(FlexJustify::Center)
+                     .layout(LayoutStyle{}.width(dp(240)).height(dp(120))),
+                 FlexContent{[&] {
+                     Flex(
+                         FlexProps{}.vertical(true).layout(LayoutStyle{}.width(dp(180)).height(dp(80))),
+                         FlexContent{[&] {
+                             Descriptions(
+                                 DescriptionsProps{}.column(1).colon(false).layout(LayoutStyle{}.width(dp(180))),
+                                 {DescriptionsItem{u8"selection", DescriptionsLabel{[] { Text(u8"Label"); }},
+                                                   DescriptionsContent{[&] {
+                                                       ++mounts;
+                                                       if (kind == 0) {
+                                                           Switch(SwitchProps{}.onChange([&](bool) { ++changes; }));
+                                                       } else if (kind == 1) {
+                                                           Checkbox(CheckboxProps{}.onChange([&](bool) { ++changes; }));
+                                                       } else if (kind == 2) {
+                                                           Radio(RadioProps{}.onChange([&](bool) { ++changes; }));
+                                                       } else {
+                                                           RadioButton(RadioProps{}.onChange([&](bool) { ++changes; }));
+                                                       }
+                                                   }}}});
+                         }});
+                 }});
+        };
+        f.services.mount(Content{[&] {
+            if (modal) {
+                Modal(ModalProps{}.open(true).width(400).title(u8"Selection clip"), ModalContent{body});
+            } else {
+                body();
+            }
+        }});
+        const auto synchronize = [&] {
+            check(f.services.layout_and_synchronize({500, 600}, {0, 0, 500, 600}, {40, 40}),
+                  "selection region layout failed");
+        };
+        synchronize();
+        const auto owner = f.services.descriptions().mounted()[0];
+        const auto original = f.services.descriptions().snapshot(owner);
+        const auto control = selection.mounted()[0];
+        const auto panel = f.services.components().root(owner);
+        const auto external = *f.nodes.require(panel).parent;
+        const auto value = bounds(f, original.items[0].content);
+        const float offset = value.x - f.nodes.require(external).bounds.x;
+        runtime::Size panel_size;
+        // Place an overflowing child at a real ancestor's left edge without resizing the control.
+        f.layout.set_layout(
+            external, layout::ComponentLayout{
+                          [&](layout::LayoutEngine& engine, runtime::NodeId, layout::Constraints limits) {
+                              panel_size = engine.measure_child(panel, {0, 180, 0, 80});
+                              return limits.constrain({180, 80});
+                          },
+                          [&](layout::LayoutEngine& engine, runtime::NodeId, runtime::Rect b) {
+                              engine.place_child(panel, {b.x - offset, b.y + 20, panel_size.width, panel_size.height});
+                          }});
+        f.dirty.invalidate(external, runtime::DirtyFlags::Measure | runtime::DirtyFlags::Geometry);
+        synchronize();
+        static_cast<void>(f.services.focus().request_focus(control.interaction, FocusModality::keyboard));
+        synchronize();
+        check(f.services.focus().state().focused == control.interaction &&
+                  selection.snapshot(control.component).focus.focus_visible,
+              "selection did not acquire real keyboard focus");
+        const auto before = bounds(f, control.component);
+        const auto focus = f.services.surfaces().focus_effect(control.surface);
+        const auto shape = focus.geometry.shape.rect;
+        const float outset = focus.geometry.outline_offset + focus.geometry.outline_width / 2;
+        const runtime::Point point{shape.x - outset + focus.geometry.translation.x,
+                                   shape.y + shape.height * .4F + focus.geometry.translation.y};
+        const auto coverage = [&] {
+            float result = 0;
+            for (const auto& effect : f.services.rounded_effects().packed_instances()) {
+                if (effect.geometry.kind == graphics::RoundedEffectKind::outline &&
+                    effect.geometry.outline_width == focus.geometry.outline_width && effect.material.visible) {
+                    result = std::max(result, effect_coverage(point, effect));
+                }
+            }
+            return result;
+        };
+        const auto allocated = bounds(f, original.items[0].content);
+        check(!contains(allocated, point) && point.x < f.nodes.require(external).bounds.x,
+              "selection regression did not sample outside the tight slot and ancestor");
+        auto raw = focus;
+        raw.geometry.ancestor_clip.reset();
+        const float raw_coverage = effect_coverage(point, raw);
+        const float available = coverage();
+        f.nodes.require(external).clip_content = true;
+        f.dirty.invalidate(external, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+        synchronize();
+        const float hard_clipped = coverage();
+        f.nodes.require(external).clip_content = false;
+        f.dirty.invalidate(external, runtime::DirtyFlags::Geometry | runtime::DirtyFlags::HitTest);
+        synchronize();
+        const float restored = coverage();
+        std::cout << "selection=" << kind << " modal=" << modal << " raw=" << raw_coverage << " available=" << available
+                  << " hard=" << hard_clipped << " restored=" << restored << '\n';
+        passed = passed && raw_coverage > .1F && available > .1F && hard_clipped == 0 && restored > .1F;
+        check(bounds(f, control.component) == before && mounts == 1 &&
+                  selection.mounted()[0].component == control.component,
+              "selection clip update resized or remounted the control");
+        const runtime::Point center{before.x + before.width / 2, before.y + before.height / 2};
+        check(f.services.hit_test().hit_test(center) == control.interaction, "selection hit did not recover");
+        for (const auto& hit : f.services.hit_test().records()) {
+            if (hit.interaction == control.interaction) {
+                check(hit.effective_clip == f.services.component_clip(control.component, {500, 600}, {0, 0, 500, 600}),
+                      "selection decoration query changed the content/hit clip");
+            }
+        }
+        f.services.focus().dispatch({Key::space, KeyAction::down});
+        f.services.focus().dispatch({Key::space, KeyAction::up});
+        check(changes == 1, "selection keyboard event changed");
+    }
+    check(passed, "selection outward ring coverage or external hard clip failed");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -365,6 +491,8 @@ int main(int argc, char** argv) {
         const auto which = argc > 1 ? std::string_view{argv[1]} : std::string_view{"horizontal"};
         if (which == "rich") {
             rich_regions_and_decorations();
+        } else if (which == "selection" || which == "selection_modal") {
+            selection_decorations(which == "selection_modal");
         } else {
             text_regions(which == "bordered" || which == "vertical_bordered",
                          which == "vertical" || which == "vertical_bordered");

@@ -1937,8 +1937,8 @@ void SelectionComponentHost::update_geometry(SelectionState& state, runtime::Siz
         effects.shadow_shape = graphics::LogicalRoundedRect{{state.visuals[1].bounds[0], state.visuals[1].bounds[1],
                                                              state.visuals[1].bounds[2], state.visuals[1].bounds[3]},
                                                             state.visuals[1].corner_radius};
-        effects.ancestor_clip = resolved_clip(state);
     }
+    effects.ancestor_clip = resolved_clip(state, runtime::ClipPurpose::decoration);
     const float indicator_size = state.radio ? theme.radio().size : theme.checkbox().size;
     const float indicator_x =
         state.checkbox || state.radio ? services_->nodes().require(state.spacer).bounds.x : rect.x;
@@ -2052,11 +2052,12 @@ void SelectionComponentHost::synchronize_auxiliary_geometry(runtime::Size viewpo
     }
 }
 
-std::optional<graphics::EffectClip> SelectionComponentHost::resolved_clip(const SelectionState& state) const {
+std::optional<graphics::EffectClip> SelectionComponentHost::resolved_clip(const SelectionState& state,
+                                                                          runtime::ClipPurpose purpose) const {
     if (!window_clip_) {
         return {};
     }
-    return graphics::EffectClip{1, services_->component_clip(state.component, viewport_, *window_clip_)};
+    return graphics::EffectClip{1, services_->component_clip(state.component, viewport_, *window_clip_, purpose)};
 }
 
 struct SwitchPropsAccess {

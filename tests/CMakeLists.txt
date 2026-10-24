@@ -92,7 +92,7 @@ target_link_libraries(rynui_descriptions_region_clip_tests PRIVATE rynui_compone
 target_compile_definitions(rynui_descriptions_region_clip_tests PRIVATE
     "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
     "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
-foreach(case IN ITEMS horizontal bordered vertical vertical_bordered rich)
+foreach(case IN ITEMS horizontal bordered vertical vertical_bordered rich selection selection_modal)
     add_test(NAME rynui.descriptions_region_clip_${case} COMMAND rynui_descriptions_region_clip_tests ${case})
 endforeach()
 
