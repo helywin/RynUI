@@ -75,6 +75,9 @@ struct Node {
     ExternalLayoutStyle external_layout;
     // Internal passive content viewports, resolved in logical window space.
     bool clip_content{};
+    // Passive allocated slots crop content/hits while allowing a child's own
+    // outward decoration to reach the enclosing item viewport.
+    bool clip_decorations{true};
     // Window layers retain component ancestry but start a separate clip chain.
     bool clip_boundary{};
     // Retained window-layer owners do not consume parent Box/Flex space or gaps.
@@ -86,6 +89,8 @@ struct Node {
     std::uint64_t place_generation{0};
 };
 
+enum class ClipPurpose { content, decoration };
+
 class NodeStore final {
 public:
     [[nodiscard]] NodeId create_root();
@@ -95,7 +100,7 @@ public:
     [[nodiscard]] const Node* find(NodeId id) const noexcept;
     [[nodiscard]] Node& require(NodeId id);
     [[nodiscard]] const Node& require(NodeId id) const;
-    [[nodiscard]] Rect content_clip(NodeId id, Rect window_clip) const;
+    [[nodiscard]] Rect content_clip(NodeId id, Rect window_clip, ClipPurpose purpose = ClipPurpose::content) const;
     [[nodiscard]] float content_opacity(NodeId id) const;
 
     bool destroy(NodeId id) noexcept;

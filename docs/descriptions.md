@@ -30,6 +30,8 @@ void AccountDetails() {
 
 列宽以可用宽度等分，span 合并对应列。水平 bordered 标签占一个半列单位，值占 `2 * span - 1` 个半列单位；水平 unbordered 标签最多分配 item 的一半宽度，按内在尺寸为值留下其余空间。垂直布局在每个逻辑行内分别对齐标签和值的最大高度。有限宽度参与真实文字测量与换行，短/零高度会裁剪实际绘制与命中，尺寸恢复不重挂子树。
 
+label/value 的文字、内容 surface 和命中分别受各自分配区裁剪，超宽单字也不能画入相邻区域。原生 Input/Button 的外扩焦点装饰保留 item/祖先边界，不以缩小控件或重挂 slot 处理溢出；Modal 中的内容 surface 与外扩装饰也使用各自的 clip。
+
 隐藏 item 会退出 flow、取消其输入捕获与焦点、结束旧输入会话并关闭 Select popup；显式恢复后保留 Input 草稿和 slot 身份。容器不注册交互禁用祖先。slot 内的控件遵循各自的原生 Props 和 Theme。
 
 ```cpp

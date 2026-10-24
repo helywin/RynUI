@@ -218,7 +218,8 @@ void DescriptionsComponentHost::mount(const DescriptionsProps& props, const std:
             const auto region = [&](runtime::ComponentId parent, Content body,
                                     const Signal<runtime::SemanticForeground>& color,
                                     const Signal<runtime::SemanticTypography>& font) {
-                const auto child = container(parent, false);
+                const auto child = container(parent, true);
+                services.nodes().require(context.root(child)).clip_decorations = false;
                 services.layout().set_layout(context.root(child), layout::BoxLayout{});
                 context.mount_slot_with_semantic_text_style(child, body, Prop<runtime::SemanticForeground>{color},
                                                             Prop<runtime::SemanticTypography>{font});

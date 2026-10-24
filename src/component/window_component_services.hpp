@@ -140,7 +140,8 @@ public:
     bool set_input_blocked(runtime::ComponentId root, bool blocked);
     void request_frame() noexcept;
     [[nodiscard]] runtime::Rect component_clip(runtime::ComponentId id, runtime::Size viewport,
-                                               runtime::Rect document_clip) const;
+                                               runtime::Rect document_clip,
+                                               runtime::ClipPurpose purpose = runtime::ClipPurpose::content) const;
 
     void set_animation_time(animation::AnimationTime time) noexcept {
         animation_time_ = time;

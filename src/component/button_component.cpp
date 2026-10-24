@@ -711,7 +711,9 @@ void ButtonComponentHost::synchronize_auxiliary_geometry(runtime::Size viewport,
             update_spinner(*state,
                            animation::resolve_motion_policy(components().theme_scope(state->component)->snapshot(),
                                                             services_->motion_preference()));
-            synchronize_geometry(*state, viewport, services_->component_clip(mounted.component, viewport, clip));
+            synchronize_geometry(
+                *state, viewport, services_->component_clip(mounted.component, viewport, clip),
+                services_->component_clip(mounted.component, viewport, clip, runtime::ClipPurpose::decoration));
         }
     }
 }
@@ -1773,8 +1775,8 @@ void ButtonComponentHost::synchronize_compact(ButtonComponentState& state) {
     button_scene_.update_content_range(state.compact_spinner_range, std::span{state.visuals}.subspan(2));
 }
 
-void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport,
-                                               runtime::Rect clip) {
+void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runtime::Size viewport, runtime::Rect clip,
+                                               runtime::Rect decoration_clip) {
     state.wave_clip = clip;
     const auto& theme = components().theme_scope(state.component)->snapshot();
     const auto& button = theme.button();
@@ -1813,7 +1815,7 @@ void ButtonComponentHost::synchronize_geometry(ButtonComponentState& state, runt
     auto effects = state.effects;
     effects.shape = {node.bounds, logical_radius(node.bounds, radius)};
     effects.translation = node.translation;
-    effects.ancestor_clip = graphics::EffectClip{1, clip};
+    effects.ancestor_clip = graphics::EffectClip{1, decoration_clip};
     if (effects != state.effects) {
         state.effects = std::move(effects);
         static_cast<void>(button_scene_.update_effects(state.scene, state.effects));

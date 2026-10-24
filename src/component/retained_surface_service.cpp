@@ -510,10 +510,11 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         const auto clip = nodes_->content_clip(*node.parent, window_clip);
         const auto clipping = graphics::EffectClip{1, clip};
         auto effects = record.effects;
-        effects.ancestor_clip = clipping;
+        effects.ancestor_clip =
+            graphics::EffectClip{1, nodes_->content_clip(*node.parent, window_clip, runtime::ClipPurpose::decoration)};
         if (record.effects.ancestor_clip) {
             effects.ancestor_clip->bounds =
-                graphics::intersect_effect_bounds(clip, record.effects.ancestor_clip->bounds);
+                graphics::intersect_effect_bounds(effects.ancestor_clip->bounds, record.effects.ancestor_clip->bounds);
         }
         static_cast<void>(synchronize_effects(record, effects));
         const auto count = static_cast<std::size_t>(record.range.count) * 4;

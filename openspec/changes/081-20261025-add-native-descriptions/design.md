@@ -13,7 +13,7 @@
 1. 固定 `std::vector<DescriptionsItem>`，构造时检查 key。item 持有 typed label/content，Props 持有可选 title/extra；`column`、span、visible、labelPlacement、bordered、size、colon 使用 `Prop<T>`。`DescriptionsSize::Default/Middle/Small` 对应上游 large/medium/small。`layout` 仅供外部 LayoutStyle。不采用动态列表 diff，避免无当前需求的结构框架。
 2. 独立小 packing model 接受正列数、正 span 和显隐状态，按声明顺序填行；超过剩余列数时截断并结束当前行，最后一行末项扩展至行尾。隐藏项不占列，恢复沿用原 key/子树。数值非法时拒绝更新，不发布半成品配置。
 3. 每个 item 是非交互容器，label/content/colon 分开保留，外层 ComponentLayout 测量和摆放。列宽为可用宽度的等分，span 合并；水平 bordered 标签占一个半列单位，值占余下 `2*span-1` 单位；水平 unbordered 标签以内在宽度且最多半个 item 宽度分配，其余给值；vertical 每个逻辑行的标签和值分别对齐最大高度。有限宽度二次测量以获得真实换行。无界宽度先求自然列宽再在有限宽度测量，不向 scene 发布无穷。
-4. 保留 item 外层 clip 边界，内部 slot 不裁剪自身 outward focus decoration。根裁剪整面板有限范围；隐藏分支通过现有 shared boundary helpers 取消输入、关闭 popup，独立于焦点。所有 owned input block 在 resource cleanup 注销。callback/focus 可能卸载组件，跨调用后使用 id 重新查询。普通 Theme 更新不重设 draft。
+4. label/content/title/extra slot 对自身分配区启用 content/hit clip，item 和根保留外层有限 clip。内部 `ClipPurpose` 区分内容与外扩装饰，节点默认同时裁剪两者，仅 Descriptions 的被动 slot 不限制 outward decoration；Input/Button 通过同一祖先链的 decoration 查询保留焦点环，Modal 的 fill 与 decoration 也分开查询。不改变子控件测量、摆放或 GPU ABI。隐藏分支通过现有 shared boundary helpers 取消输入、关闭 popup，独立于焦点。所有 owned input block 在 resource cleanup 注销。callback/focus 可能卸载组件，跨调用后使用 id 重新查询。普通 Theme 更新不重设 draft。
 5. Descriptions 独立 colors/metrics token，包括三种 padding、字型、标题、间距、边框；Theme 算法关闭时忽略 component seed。最终字体和 metrics 在 snapshot 发布前验证：有限、非负，字体至少 0.5 logical dp 且可 lround；组合尺寸无溢出。新增 identity 只附加；保留旧 28 段 IIFE 顺序/文本和全部旧 golden typed values，沿用 heap/segregated resolve，不增加 stack。
 6. surface 只写共同 logical CPU scene。颜色订阅只触发 material，metrics/属性布局变化通过 DirtyQueues 唤醒，idle 无自主帧或动画。丰富子内容按原生输入合同工作，不给容器注册禁用交互祖先。
 

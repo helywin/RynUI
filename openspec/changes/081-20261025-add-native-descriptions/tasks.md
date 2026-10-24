@@ -14,3 +14,7 @@
 - [x] 3.1 完成富 Input 草稿、Button/Select 事件、显隐/重排/恢复、焦点/捕获/Modal/Spin、默认/暗色/紧凑和有限/零/短约束的实际 glyph/surface/hit 测试及 teardown/idle；完成 docs 与本 change evidence，正式 windows-msvc-headless Debug/Release 受影响测试、clang-format 22.1.3 check、文档 C++ 示例检查、doctor/strict/diff 通过后本地提交。
 
 本 change 只记录本机平台通用证据，不设置 GPU/Linux/系统 IME/AT/Gallery 完成项。独立 Astra review 由父代理负责；无子代理、远端、PR 或 archive 操作。
+
+## 4. 已发布 main 共存验收
+
+- [ ] 4.1 R1 分区裁剪修复独立验证并保存干净本地提交后，显式 merge 已发布 `580a8c3d235c22eb95b11688b509ee1e2ea65e44`，保留其 31 段 IIFE、TokenIdentity 数值/顺序、Time 静态配置与 heap/preflight/selfguard/binding bridge，Descriptions 附加 Time 后；仅在受合并影响的去重 Debug/Release 集合、fresh golden 双基线深比较及 doctor/strict/diff 通过后勾选并本地提交。

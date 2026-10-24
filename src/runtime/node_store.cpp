@@ -7,10 +7,10 @@
 
 namespace ryn::runtime {
 
-Rect NodeStore::content_clip(NodeId id, Rect clip) const {
+Rect NodeStore::content_clip(NodeId id, Rect clip, ClipPurpose purpose) const {
     for (auto current = std::optional{id}; current; current = require(*current).parent) {
         const auto& node = require(*current);
-        if (node.clip_content) {
+        if (node.clip_content && (purpose == ClipPurpose::content || node.clip_decorations)) {
             const auto& bounds = node.bounds;
             const float left = std::max(clip.x, bounds.x + node.translation.x);
             const float top = std::max(clip.y, bounds.y + node.translation.y);

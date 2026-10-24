@@ -47,6 +47,7 @@ constexpr auto text_dirty = runtime::DirtyFlags::Text | runtime::DirtyFlags::Mea
 struct InputContainerPresentation {
     runtime::Rect bounds;
     runtime::Rect clip;
+    runtime::Rect decoration_clip;
     float radius{};
     float border_width{};
     Color background;
@@ -2410,6 +2411,8 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
             continue;
         }
         const auto clip = host_->component_clip(mounted.component, window, document_clip);
+        const auto decoration_clip =
+            host_->component_clip(mounted.component, window, document_clip, runtime::ClipPurpose::decoration);
         const auto update_started =
             sync_profiling_enabled_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         update_text(mounted.component, false, false);
@@ -2539,6 +2542,7 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
         std::copy_n(presentation.colors.begin() + 8, input_shadow_layer_capacity, shadow_colors.begin());
         const InputContainerPresentation next_container{root_bounds,
                                                         clip,
+                                                        decoration_clip,
                                                         radius,
                                                         border,
                                                         presentation.colors[0],
@@ -2566,7 +2570,8 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                 graphics::RoundedEffectInstance effect;
                 effect.geometry.shape = {
                     bounds, std::clamp(radius - inset, 0.0F, 0.5F * std::min(bounds.width, bounds.height))};
-                effect.geometry.ancestor_clip = graphics::EffectClip{1, clip};
+                effect.geometry.ancestor_clip =
+                    graphics::EffectClip{1, outer || layer == input_focus_layer ? decoration_clip : clip};
                 effect.material = {layer == input_background_layer ? presentation.colors[0] : presentation.colors[1],
                                    layer == input_border_layer || layer == input_background_layer ? 1.0F : 0.0F, true};
                 if (layer == input_border_layer && state->variant == InputVariant::Borderless) {
@@ -2598,8 +2603,9 @@ void InputComponentHost::synchronize_auxiliary_geometry(runtime::Size window, ru
                     if (source < visual.shadow->size()) {
                         const auto& shadow = (*visual.shadow)[source];
                         if ((shadow.kind == ShadowKind::outer) == outer) {
-                            effect = graphics::make_shadow_effect(effect.geometry.shape, shadow, {},
-                                                                  graphics::EffectClip{1, clip});
+                            effect =
+                                graphics::make_shadow_effect(effect.geometry.shape, shadow, {},
+                                                             graphics::EffectClip{1, outer ? decoration_clip : clip});
                             effect.material.color = shadow_colors[source];
                             effect.material.opacity = presentation.shadow_opacity;
                         }
