@@ -1936,7 +1936,11 @@ void test_panel_and_selection_gallery_after_document_scroll() {
             "Collapse Gallery initial controlled/disabled state differs");
     const auto draft = editor("gallery.collapse.draft");
     const auto advanced = editor("gallery.collapse.advanced");
-    const auto select = services.select().mounted().back();
+    const auto selectors = services.select().mounted();
+    const auto child_select = std::ranges::find_if(
+        selectors, [&](const auto candidate) { return descendant(candidate, original.panels[0].body); });
+    require(child_select != selectors.end(), "Collapse Gallery child Select is absent");
+    const auto select = *child_select;
     require(descendant(select, original.panels[0].body), "Collapse Gallery child Select belongs to another sample");
     const auto original_select = services.select().snapshot(select);
     const auto horizontal = segmented.mounted()[0];
