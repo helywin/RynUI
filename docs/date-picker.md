@@ -70,3 +70,29 @@ Footer 中的 Table 可使用 `scrollY` 提供有限滚动视口；滚轮先交�
 月历固定六周、每周从周日开始。方向键按日/周移动，PageUp/PageDown 按月，Shift+PageUp/PageDown 按年，Home/End 到本月首末日，Enter 选择；关闭时 Down 打开。输入草稿 Enter 提交。Escape 关闭，Tab 正常离开，不创建 42 个 Tab stop。月历标题及工作日为固定数字/英文，首版没有 locale 配置。
 
 首版不提供 RangePicker、多选、时间、周/月/季/年 picker、自由格式、locale/RTL、时区转换、预设、自定义 cell/panel、动画或辅助技术桥接；不声称完整覆盖 Ant Design DatePicker。Gallery、GPU、原生窗口/DPI、Linux 和系统 IME 的实际验收独立于本 change 的 Windows MSVC headless 合同测试。
+
+## Gallery 与 Form String 适配
+
+Gallery 的 DatePicker 目录进入 Form 之后的真实日期样例。受控选择初值固定为 `2026-10-12`，`defaultPanelDate` 固定为 `2026-10-01`，范围为 `2026-10-05` 至 `2026-11-25`，每月 13 日禁用。可通过月历、键盘和严格 ISO 输入选择，使用原生清空操作；footer 的备注 Input 在月历、Theme 和宽度更新后保留。
+
+另一个独立 Form 使用已有 `FormField<String>` 保存日期，空值为 `String{}`。适配依赖公开解析/格式化函数，不向 FormValue 添加 CivilDate 类型：
+
+```cpp
+// date 为已配置 required/ISO/范围 validator 的 FormField<String>。
+// 在 FormItem content 中执行，确保 change 捕获当前注册代际。
+const auto change = date.onChange();
+DatePicker(DatePickerProps{}
+    .value(bind([date] { return parse_iso_date(date.get().bytes()); }))
+    .onChange([change](DatePickerValue value) {
+        change(value ? format_iso_date(*value) : String{});
+    })
+    .defaultPanelDate(CivilDate{2026, 10, 1})
+    .status(date.status())
+    .disabled(date.uneditable())
+    .inputReadOnly(date.readOnly())
+    .ref(date_ref));
+```
+
+外层 `FormItemProps{}.field(String{u8"date"}, date).control(date_ref)` 连接同一个真实 DatePickerRef。`inputReadOnly` 仅限制键入；Form 的只读语义通过 `date.uneditable()` 禁用整个选择器，保证月历和清空也不能改值。程序写入的非空 String 必须通过有效十字节 ISO、范围和禁用日校验；未提交或非法编辑草稿不进入成功结果。成功文字取实际 FormResult 的 String 快照，重置恢复空初值，禁用/只读恢复按钮位于 Form 外。
+
+聚焦 Recording 入口为 `rynui_token_gallery_frame_tests --date-picker-only`，也接入完整 frame。阶段验收和平台边界由 [079](../openspec/changes/079-20261025-add-form-and-picker-gallery/tasks.md) 独立记录；本页不将组件 headless 或 Gallery Recording 结果视为原生 GPU、人工视觉、系统 IME、Linux 或辅助技术验收。

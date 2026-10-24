@@ -441,12 +441,14 @@
         "retained six-week calendar, month/year navigation, pointer and keyboard selection",
         "controlled/default value and open state, min/max dates and finite disabled-date navigation",
         "typed retained footer/ref, child popup and Table wheel ownership, Modal/Spin/hidden suppression",
-        "component Theme inheritance/algorithm/overrides with final metric and publication validation"
+        "component Theme inheritance/algorithm/overrides with final metric and publication validation",
+        "interactive Gallery with deterministic controlled calendar/ISO input, clear, range/disabled rules and retained footer",
+        "explicit Form String adapter with real submit/reset/ref focus and whole-picker disabled/readOnly gates"
       ],
       "missing_scope": [
         "RangePicker, multiple/time/week/month/quarter/year modes, locale/RTL and free date formats",
         "presets, custom cells/panels, animations and full Ant Design Web/DOM/CSS API",
-        "interactive DatePicker Gallery, native GPU/Linux/system IME and assistive technology acceptance remain independent"
+        "native GPU/Linux/system IME and assistive technology acceptance remain independent"
       ],
       "evidence_identifiers": [
         "source:components/date-picker/index.en-US.md",
@@ -456,7 +458,9 @@
         "test:rynui.date_picker_model",
         "test:rynui.date_picker_public_api",
         "test:rynui.date_picker_component",
-        "test:rynui.date_picker_theme"
+        "test:rynui.date_picker_theme",
+        "openspec:079-20261025-add-form-and-picker-gallery",
+        "test:tests/token_gallery_frame_tests.cpp#test_date_picker_gallery_after_document_scroll"
       ]
     },
     {

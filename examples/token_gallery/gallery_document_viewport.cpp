@@ -27,10 +27,11 @@ GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view iden
                                                            const ryn::detail::TextComponentHost& text,
                                                            const ryn::runtime::NodeStore& nodes,
                                                            ryn::runtime::NodeId scroll_root) {
-    const std::string_view sample = identity == "ant.component.empty"    ? "gallery.empty.default "
-                                    : identity == "ant.component.result" ? "gallery.result.controlled "
-                                    : identity == "ant.component.form"   ? "gallery.form.workflow "
-                                                                         : "";
+    const std::string_view sample = identity == "ant.component.empty"         ? "gallery.empty.default "
+                                    : identity == "ant.component.result"      ? "gallery.result.controlled "
+                                    : identity == "ant.component.form"        ? "gallery.form.workflow "
+                                    : identity == "ant.component.date-picker" ? "gallery.date-picker.controlled "
+                                                                              : "";
     auto node = reference_node;
     if (!sample.empty()) {
         const auto mounted = text.mounted_texts();
