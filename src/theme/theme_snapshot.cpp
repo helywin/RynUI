@@ -3,6 +3,7 @@
 #include "theme/semantic_background.hpp"
 #include "theme/segmented_theme.hpp"
 #include "theme/date_picker_theme.hpp"
+#include "theme/form_theme.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1758,6 +1759,9 @@ void apply_empty_override(EmptyThemeToken& token, const EmptyTokenOverride& o) {
                                                     "Empty decoration_padding must be non-negative");
     token.metrics.font_size =
         fixed_length(o.font_size, token.metrics.font_size, "Empty font_size must be positive", true);
+    if (token.metrics.font_size < 0.5F) {
+        throw std::invalid_argument("Empty font_size must round to at least one logical pixel (>= 0.5)");
+    }
     token.metrics.line_height =
         fixed_length(o.line_height, token.metrics.line_height, "Empty line_height must be positive", true);
     float extent = 0;
@@ -1824,6 +1828,9 @@ void apply_result_override(ResultThemeToken& token, const ResultTokenOverride& o
                                                    "Result title_line_height must be positive", true);
     token.metrics.font_size =
         fixed_length(o.font_size, token.metrics.font_size, "Result font_size must be positive", true);
+    if (token.metrics.title_font_size < 0.5F || token.metrics.font_size < 0.5F) {
+        throw std::invalid_argument("Result font sizes must round to at least one logical pixel (>= 0.5)");
+    }
     token.metrics.line_height =
         fixed_length(o.line_height, token.metrics.line_height, "Result line_height must be positive", true);
     float extent = 0;
@@ -4078,14 +4085,14 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
                              AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                              InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                              CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                             ResultThemeToken result, DatePickerThemeToken date_picker)
+                             ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
-      modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)),
-      popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
+      form_(std::move(form)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
+      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
       progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
       input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
       collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
@@ -4329,6 +4336,18 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
         status_json << ']';
     }
     status_json << "]}";
+    status_json << ",\"form\":{\"colors\":[";
+    first = true;
+    for (auto value : form_.colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (auto value : form_.metrics.values()) {
+        metric(value);
+    }
+    hash_integer(identity_, form_.metrics.font_family);
+    status_json << "],\"fontFamily\":" << static_cast<int>(form_.metrics.font_family) << '}';
     diagnostic_json_ = serialize_snapshot(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_,
                                           typography_, divider_, slider_, tooltip_, select_, card_, tabs_, modal_,
                                           drawer_, popconfirm_, menu_, dropdown_, *input_, algorithms_, identity_);
@@ -4456,7 +4475,7 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.algorithms_ == right.algorithms_ && left.input_number_ == right.input_number_ &&
            left.pagination_ == right.pagination_ && left.table_ == right.table_ && left.empty_ == right.empty_ &&
            left.result_ == right.result_ && left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
-           left.date_picker_ == right.date_picker_;
+           left.date_picker_ == right.date_picker_ && left.form_ == right.form_;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -5139,6 +5158,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_date_picker_override(token, config.date_picker.tokens);
         return token;
     }();
+    auto form = [&] {
+        FormThemeToken form;
+        const bool inherit_form = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                                  config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                                  !config.form.algorithm;
+        if (inherit_form) {
+            form = parent->form();
+        } else if (config.form.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.form.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            form = detail::derive_form(component_seed, component_map,
+                                       derive_alias(component_seed, component_map, algorithms));
+        } else {
+            form = detail::derive_form(seed, map, alias);
+        }
+        detail::apply_form_override(form, config.form.tokens);
+        return form;
+    }();
     return ThemeSnapshot(std::move(seed), std::move(map), std::move(alias), std::move(button), std::move(text),
                          std::move(switch_token), std::move(checkbox), std::move(radio), std::move(typography),
                          std::move(divider), std::move(slider), std::move(tooltip), std::move(select), std::move(card),
@@ -5147,7 +5185,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(algorithms), std::move(tag), std::move(badge), std::move(alert), std::move(spin),
                          std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
                          std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
-                         std::move(date_picker));
+                         std::move(date_picker), std::move(form));
 }
 
 } // namespace ryn

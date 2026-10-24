@@ -81,7 +81,7 @@ ctest --preset windows-msvc-headless-release -R $pattern --output-on-failure
 
 `backend_boundaries` 实际检查了本树 compile_commands/Ninja graph，执行非法 backend 组合、Core/renderer/OS SDK include 与直接/传递 renderer link 的负例 configure，并验证合法 common 依赖。`rynui_renderer_common` 和 `rynui_renderer_recording` 在本树两个配置实际编译；这不代表原生 GPU 验收。
 
-首次 Debug 回归为 25/26，Button component 出现 `c00000fd`。CDB 实际栈显示大 Button 测试帧下的 root `ThemeScope::create_default → ThemeScope → resolve_theme → derive_button` 栈溢出。根初始化原先在栈上构造整份 `ThemeConfig{}`；改为读取静态只读默认配置后，Button/Theme runtime/DatePicker 三项复现测试通过，再完成上述两配置 30/30。没有增加测试栈大小，没有改写 Button 测试或删除合同，没有改动原有 26 个 reference IIFE、Theme binding heap bridge、commit_snapshot 的共享快照 guard。
+首次 Debug 回归为 25/26，Button component 出现 `c00000fd`。CDB 实际栈显示大 Button 测试帧下的 root `ThemeScope::create_default → ThemeScope → resolve_theme → derive_button` 栈溢出。根初始化原先在栈上构造整份 `ThemeConfig{}`；改为读取静态只读默认配置后，Button/Theme runtime/DatePicker 三项复现测试通过，再完成上述两配置 30/30。没有增加测试栈大小，没有改写 Button 测试或删除合同，没有改动原有 26 个 reference IIFE、Theme binding heap bridge、commit_snapshot 的配置自引用 guard。
 
 最终新构建的 Debug Theme executable 再次生成五份 golden，仍与阶段 2 完全相同；与 `e515841` 的逐字段比较继续满足“只新增 datePicker、旧字段仅 identity 改变”。
 

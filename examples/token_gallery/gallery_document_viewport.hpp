@@ -10,6 +10,10 @@
 #include <string_view>
 #include <vector>
 
+namespace ryn::detail {
+class TextComponentHost;
+}
+
 namespace rynui::example {
 
 struct GalleryDocumentAnchorId final {
@@ -29,6 +33,12 @@ struct GalleryComponentAnchor final {
 
     friend constexpr bool operator==(GalleryComponentAnchor, GalleryComponentAnchor) = default;
 };
+
+[[nodiscard]] GalleryComponentAnchor gallery_component_navigation_anchor(std::string_view identity,
+                                                                         ryn::runtime::NodeId reference_node,
+                                                                         const ryn::detail::TextComponentHost& text,
+                                                                         const ryn::runtime::NodeStore& nodes,
+                                                                         ryn::runtime::NodeId scroll_root);
 
 struct GalleryDocumentResizeAnchor final {
     GalleryDocumentSectionKind section{GalleryDocumentSectionKind::header_source};
@@ -69,6 +79,7 @@ public:
     bool replace_component_anchors(std::span<const GalleryComponentAnchor> anchors);
     [[nodiscard]] std::optional<GalleryDocumentAnchorId> component_anchor(std::string_view identity) const noexcept;
     bool jump_to(GalleryDocumentAnchorId anchor);
+    bool jump_to_component(std::string_view identity);
     [[nodiscard]] GalleryDocumentResizeAnchor capture_resize_anchor() const;
     bool restore_resize_anchor(const GalleryDocumentResizeAnchor& anchor);
 

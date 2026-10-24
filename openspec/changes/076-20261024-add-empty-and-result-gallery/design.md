@@ -16,6 +16,7 @@
 2. 默认 Empty 提供创建按钮改变说明，紧凑 Empty 展示说明切换，自定义 Empty 使用带 margin 的原生 Icon。Result 提供受控状态及状态切换按钮、异常展示、富 icon 和详情/草稿。有限但互补的样例控制完整文档长度。
 3. 在 frame test 中添加聚焦入口并纳入完整 frame 流程；通过实际 input event 和 Text scene 验证描述/状态、草稿、身份及默认/Dark/Compact 1200/560 宽布局。更新 inventory 断言采用实际运行计数，不删除旧断言来掩盖变化。
 4. build 使用 CMakePresets.json 的 windows-msvc / Ninja Multi-Config / MSVC。组件共同合同由 073 的 windows-msvc-headless 验收；本 change 运行 Gallery 相关 Recording/contract 测试和 Windows 原生 --smoke，证据分别标明范围。
+5. 保留现有 Empty/Result 组件目录按钮及 identity，将这两个组件的跳转锚点解析到实际交互样例的稳定标题；其他组件、分类与章节仍使用原参考锚点，组件总览继续保留全部参考卡片。运行时与 Recording 测试共用锚点解析和组件请求跳转函数，测试通过真实目录按钮进入样例，不用手工平移替代该入口。
 
 ## Risks / Trade-offs
 

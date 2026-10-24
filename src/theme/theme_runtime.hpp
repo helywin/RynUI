@@ -108,6 +108,8 @@ public:
     [[nodiscard]] const DatePickerThemeToken& date_picker_metrics() const;
     [[nodiscard]] const DatePickerThemeToken& date_picker_effects() const;
     [[nodiscard]] const DatePickerThemeToken& date_picker_order() const;
+    [[nodiscard]] const FormThemeToken& form_colors() const;
+    [[nodiscard]] const FormThemeToken& form_metrics() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;
@@ -197,6 +199,7 @@ private:
     ThemeScope(std::shared_ptr<ThemeScope> parent, const ThemeConfig& config);
     void ensure_owner_thread() const;
     void record(TokenIdentity identity) const;
+    void validate_children(const ThemeSnapshot& parent_snapshot) const;
     void recompute_from_parent();
     void commit_snapshot(const ThemeConfig& config, ThemeSnapshot&& next);
     void notify_subscribers();

@@ -229,6 +229,11 @@ ThemeConfig compact_height(float height) {
     return config;
 }
 
+// Keep Signal's by-value configuration temporary outside the large integration fixture frame.
+void set_config(Signal<ThemeConfig>& source, const ThemeConfig& config) {
+    source.set(config);
+}
+
 void final_metrics() {
     rejects([] { (void)resolve_theme(compact_height(1)); }, "R1: negative derived DatePicker metrics published");
     const auto base = resolve_theme().date_picker();
@@ -380,6 +385,71 @@ void inactive_algorithm_inheritance() {
     selected_color(blue);
     check(f.services.date_picker().snapshot(date).cells == before.cells, "algorithm recovery remounted calendar");
 }
+
+void descendant_preflight() {
+    const ThemeConfig defaults;
+    Signal<ThemeConfig> outside{defaults};
+    ThemeConfig ignored;
+    ignored.date_picker.seed.control_height = dp(1);
+    ignored.date_picker.seed.color_primary = Color::rgba8(20, 110, 60);
+    ThemeConfig local;
+    local.date_picker.algorithm = true;
+    local.date_picker.seed.control_height = dp(5.25F);
+    Signal<ThemeConfig> inside{local};
+    std::shared_ptr<ThemeScope> root;
+    std::shared_ptr<ThemeScope> middle;
+    std::shared_ptr<ThemeScope> leaf;
+    Fixture f;
+    f.services.mount(Content{[&] {
+        Theme(ThemeProps{}.config(outside), ThemeContent{[&] {
+                  root = runtime::require_component_build_context().theme_scope();
+                  Theme(ThemeProps{}.config(ignored), ThemeContent{[&] {
+                            middle = runtime::require_component_build_context().theme_scope();
+                            Theme(ThemeProps{}.config(inside), ThemeContent{[&] {
+                                      leaf = runtime::require_component_build_context().theme_scope();
+                                      DatePicker(DatePickerProps{}.defaultPanelDate({2024, 2, 1}).defaultOpen());
+                                  }});
+                        }});
+              }});
+    }});
+    sync(f);
+    const auto date = f.services.date_picker().mounted()[0];
+    const auto before = f.services.date_picker().snapshot(date);
+    const std::array identities{root->snapshot().identity(), middle->snapshot().identity(),
+                                leaf->snapshot().identity()};
+    const std::array generations{root->generation(), middle->generation(), leaf->generation()};
+    int notifications = 0;
+    auto root_sub = root->capture([&](DirtyPhase) { ++notifications; }, [&] { (void)root->date_picker_metrics(); });
+    auto middle_sub =
+        middle->capture([&](DirtyPhase) { ++notifications; }, [&] { (void)middle->date_picker_metrics(); });
+    auto leaf_sub = leaf->capture([&](DirtyPhase) { ++notifications; }, [&] { (void)leaf->date_picker_metrics(); });
+    ThemeConfig compact;
+    compact.algorithms = {ThemeAlgorithm::Compact};
+    rejects([&] { set_config(outside, compact); }, "ancestor published before validating DatePicker grandchild");
+    check(std::array{root->snapshot().identity(), middle->snapshot().identity(), leaf->snapshot().identity()} ==
+                  identities &&
+              std::array{root->generation(), middle->generation(), leaf->generation()} == generations &&
+              notifications == 0,
+          "descendant preflight partially published Theme tree");
+    sync(f);
+    check(f.services.date_picker().snapshot(date).bounds == before.bounds,
+          "rejected parent Theme altered opened calendar");
+    set_config(outside, defaults);
+    local.date_picker.tokens.cell_height = dp(1);
+    set_config(inside, local);
+    set_config(outside, compact);
+    sync(f);
+    const auto after = f.services.date_picker().snapshot(date);
+    check(after.visible && after.cells == before.cells && after.input == before.input &&
+              leaf->snapshot().date_picker().metrics.cell_height == 1 && notifications > 0,
+          "valid descendant recovery failed after parent preflight rejection");
+    set_config(outside, defaults);
+    local.date_picker.tokens.cell_height.reset();
+    set_config(inside, local);
+    sync(f);
+    check(f.services.date_picker().snapshot(date).visible && leaf->snapshot().date_picker().metrics.cell_height > 1,
+          "default parent recovery failed");
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -392,6 +462,8 @@ int main(int argc, char** argv) {
             final_metrics();
         } else if (test == "inheritance") {
             inactive_algorithm_inheritance();
+        } else if (test == "preflight") {
+            descendant_preflight();
         } else {
             throw std::runtime_error("unknown review case");
         }

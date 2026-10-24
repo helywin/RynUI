@@ -501,7 +501,9 @@ public:
             for (std::size_t index = 0; index < catalog.size(); ++index) {
                 const auto& node = application_->nodes().require(component_nodes_[index]);
                 const auto offset = std::max(0.0F, node.bounds.y - root.bounds.y);
-                component_anchors_[index].offset = offset;
+                component_anchors_[index] =
+                    gallery_component_navigation_anchor(catalog[index].identity, component_nodes_[index],
+                                                        application_->text(), application_->nodes(), scroll_root);
                 const auto category = static_cast<std::size_t>(catalog[index].category);
                 if (category >= category_anchors.size()) {
                     throw std::logic_error("Token Gallery component category is invalid");
@@ -529,12 +531,8 @@ public:
                 static_cast<void>(document_viewport_->restore_resize_anchor(resize_anchor));
             }
             if (deferred_navigation_->has_value()) {
-                const auto anchor =
-                    document_viewport_->component_anchor(deferred_navigation_->value().component_identity);
-                if (!anchor) {
-                    throw std::logic_error("Token Gallery component anchor is missing");
-                }
-                static_cast<void>(document_viewport_->jump_to(*anchor));
+                static_cast<void>(
+                    document_viewport_->jump_to_component(deferred_navigation_->value().component_identity));
                 deferred_navigation_->reset();
             }
             // Ordinary wheel translation is flushed by the first sync. A resize

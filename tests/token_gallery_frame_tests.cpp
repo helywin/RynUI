@@ -17,6 +17,7 @@
 #include "component/dropdown_component.hpp"
 #include "component/collapse_component.hpp"
 #include "component/segmented_component.hpp"
+#include "component/empty_result_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -31,6 +32,7 @@
 #include <ryn/rynui.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -846,7 +848,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 262, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 273, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -859,7 +861,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 211,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 215,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -869,7 +871,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 807) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 813) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -888,7 +890,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 484) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 490) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -897,7 +899,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 273,
+                initial.reference_content_runs == 126 && initial.live_samples == 279,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1040,8 +1042,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // Collapse adds two draft editors plus the Select's retained Input selector.
-    require(fixture.inputs->mounted_inputs().size() == 134 &&
+    // Collapse retains its editors/Select; Result appends one independent draft.
+    require(fixture.inputs->mounted_inputs().size() == 135 &&
                 fixture.host->services().select().mounted().size() == 21 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -2129,6 +2131,542 @@ void test_panel_and_selection_gallery_after_document_scroll() {
             "panel Gallery interactions/theme/width changes remounted existing content or lost drafts");
 }
 
+void test_empty_and_result_gallery_after_document_scroll() {
+    using namespace ryn;
+    auto definition = rynui::example::make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {0, 0, width, 900}, {24, 20}, 0, true),
+                    "Empty/Result Gallery layout failed");
+        }
+    };
+    sync();
+    const auto root_component = services.components().root_components().front();
+    const auto root = services.components().root(root_component);
+    const auto document = f.nodes.require(f.nodes.require(root).children.front()).children[1];
+    rynui::example::GalleryScrollTranslation scroll;
+    const auto reveal = [&](runtime::ComponentId id) {
+        require(scroll.apply(document, f.nodes.require(services.components().root(id)).bounds.y - 120, f.nodes, f.dirty)
+                    .valid,
+                "Empty/Result Gallery document translation failed");
+        sync();
+    };
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& node = f.nodes.require(services.components().root(id));
+        return runtime::Rect{node.bounds.x + node.translation.x, node.bounds.y + node.translation.y, node.bounds.width,
+                             node.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId ancestor) {
+        for (auto current = std::optional{child}; current; current = services.components().parent(*current)) {
+            if (*current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto first_text = [&](runtime::ComponentId owner) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, owner)) {
+                return text;
+            }
+        }
+        throw std::runtime_error("Empty/Result Gallery native Text/Icon absent");
+    };
+    const auto label_text = [&](runtime::ComponentId owner, String label) {
+        for (const auto& text : f.host->text().mounted_texts()) {
+            if (descendant(text.component, owner) &&
+                f.text_scene.text_state(text.scene).content().bytes() == label.bytes()) {
+                return text;
+            }
+        }
+        throw std::runtime_error("Empty/Result Gallery actual label absent");
+    };
+    const auto visible_glyphs = [&](auto scene, runtime::Rect allocated) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto instance = range.first + index;
+            const auto& commands = services.scene_composer().ordered_scene().commands();
+            if (!std::ranges::any_of(commands, [instance](const auto& command) {
+                    return command.kind == graphics::SceneDrawKind::glyph && instance >= command.first_instance &&
+                           instance - command.first_instance < command.instance_count;
+                })) {
+                continue;
+            }
+            const auto& glyph = f.text_scene.glyph_scene().instances().at(instance);
+            const auto& p = glyph.position_size;
+            const auto& t = glyph.translation_opacity;
+            const auto& c = glyph.clip_bounds;
+            for (float value : p) {
+                require(std::isfinite(value), "Empty/Result Gallery glyph geometry is not finite");
+            }
+            for (float value : t) {
+                require(std::isfinite(value), "Empty/Result Gallery glyph translation is not finite");
+            }
+            for (float value : c) {
+                require(std::isfinite(value), "Empty/Result Gallery glyph clip is not finite");
+            }
+            const float left = std::max(p[0] + t[0], c[0]);
+            const float top = std::max(p[1] + t[1], c[1]);
+            const float right = std::min(p[0] + t[0] + p[2], c[2]);
+            const float bottom = std::min(p[1] + t[1] + p[3], c[3]);
+            if (right > left && bottom > top && t[2] > 0 && glyph.color[3] > 0) {
+                if (!(left >= allocated.x - .02F && right <= allocated.x + allocated.width + .02F &&
+                      top >= allocated.y - .02F && bottom <= allocated.y + allocated.height + .02F && left >= -.02F &&
+                      right <= width + .02F && top >= -.02F && bottom <= 900.02F)) {
+                    throw std::runtime_error(
+                        "Empty/Result Gallery actual glyph escaped: content=" +
+                        std::string{f.text_scene.text_state(scene).content().bytes()} +
+                        " visible=" + std::to_string(left) + "," + std::to_string(top) + "," + std::to_string(right) +
+                        "," + std::to_string(bottom) + " allocated=" + std::to_string(allocated.x) + "," +
+                        std::to_string(allocated.y) + "," + std::to_string(allocated.width) + "," +
+                        std::to_string(allocated.height) + " viewport_width=" + std::to_string(width));
+                }
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto require_visible_text = [&](runtime::ComponentId owner, String label) {
+        const auto text = label_text(owner, std::move(label));
+        require(visible_glyphs(text.scene, bounds(owner)) > 0,
+                "Empty/Result Gallery text has no visible glyph after document translation");
+    };
+    const auto key = [&](input::Key value, input::KeyModifier modifiers = input::KeyModifier::none) {
+        f.host->focus().dispatch({value, input::KeyAction::down, modifiers});
+        f.host->focus().dispatch({value, input::KeyAction::up, modifiers});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point point{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && point.x >= 0 && point.x < width && point.y >= 0 && point.y < 900,
+                "Empty/Result Gallery pointer target is outside the translated viewport");
+        for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, point, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto activate = [&](std::string_view label, bool keyboard = false) {
+        const auto button = button_with_label(f, label);
+        reveal(button.component);
+        const auto text = first_text(button.component);
+        require(visible_glyphs(text.scene, bounds(button.component)) > 0,
+                "Empty/Result Gallery native Button label did not render");
+        const auto range = f.host->button_scene().visual_range(button.scene);
+        bool painted = false;
+        for (std::uint32_t index = 0; index < range.count; ++index) {
+            const auto& quad = f.host->button_scene().instances().at(range.first + index);
+            painted |= quad.bounds[2] > 0 && quad.bounds[3] > 0 && quad.opacity > 0 && quad.color[3] > 0;
+        }
+        require(painted, "Empty/Result Gallery native Button surface did not render");
+        if (keyboard) {
+            static_cast<void>(f.host->focus().request_focus(button.interaction, input::FocusModality::keyboard));
+            require(f.host->focus().state().focused == button.interaction,
+                    "Empty/Result Gallery native Button could not focus");
+            key(input::Key::space);
+        } else {
+            click(button.component);
+        }
+    };
+
+    auto& presentations = services.empty_result();
+    require(presentations.empties().size() == 3 && presentations.results().size() == 3,
+            "Empty/Result Gallery native sample inventory differs");
+    const std::array empties{presentations.empties()[0], presentations.empties()[1], presentations.empties()[2]};
+    const std::array results{presentations.results()[0], presentations.results()[1], presentations.results()[2]};
+    const std::array owners{empties[0], empties[1], empties[2], results[0], results[1], results[2]};
+    std::array<detail::EmptyResultSnapshot, 6> original;
+    for (std::size_t index = 0; index < owners.size(); ++index) {
+        original[index] = presentations.snapshot(owners[index]);
+    }
+    const auto empty_icon = first_text(original[0].image);
+    const auto empty_label = first_text(original[0].label);
+    const auto result_icon = first_text(original[3].image);
+    const auto result_title = first_text(original[3].label);
+    const auto custom_image = first_text(original[2].image);
+    const auto custom_result_icon = first_text(original[5].image);
+    const auto ready = label_text(original[5].image, u8"READY");
+    const auto editor = [&] {
+        for (const auto& mounted : f.inputs->mounted_inputs()) {
+            if (f.inputs->editors().require(mounted.editor).value().starts_with("gallery.result.draft")) {
+                return mounted;
+            }
+        }
+        throw std::runtime_error("Result Gallery retained draft absent");
+    }();
+    require(descendant(editor.component, original[3].content), "Result Gallery draft belongs to another sample");
+    const auto layers = f.inputs->text_layers(editor.component);
+    const auto old_editor = f.inputs->mounted_inputs().front();
+    const auto count = services.components().component_count();
+    const auto mounts = services.components().mount_runs();
+    const auto telemetry = definition.telemetry();
+    const std::array buttons{button_with_label(f, "gallery.empty.create"), button_with_label(f, "gallery.empty.image"),
+                             button_with_label(f, "gallery.result.status"),
+                             button_with_label(f, "gallery.result.action")};
+    const String draft{u8"保留的结果草稿 / Saved result draft"};
+    const auto require_retained = [&] {
+        const auto found = std::ranges::find_if(
+            f.inputs->mounted_inputs(), [&](const auto& mounted) { return mounted.component == editor.component; });
+        require(found != f.inputs->mounted_inputs().end() && found->editor == editor.editor &&
+                    found->interaction == editor.interaction &&
+                    f.inputs->text_layers(editor.component).base == layers.base &&
+                    f.inputs->text_layers(editor.component).selected == layers.selected &&
+                    f.inputs->text_layers(editor.component).placeholder == layers.placeholder &&
+                    f.inputs->editors().require(editor.editor).value() == draft.bytes() &&
+                    f.text_scene.text_state(layers.base).content().bytes() == draft.bytes(),
+                "Result Gallery update replaced the native editor/interaction/Text scene or lost the draft");
+        for (std::size_t index = 0; index < owners.size(); ++index) {
+            const auto current = presentations.snapshot(owners[index]);
+            require(current.image == original[index].image && current.label == original[index].label &&
+                        current.subtitle == original[index].subtitle && current.extra == original[index].extra &&
+                        current.content == original[index].content,
+                    "Empty/Result Gallery update replaced a retained slot");
+        }
+        for (const auto& button : buttons) {
+            require(std::ranges::any_of(f.host->mounted_buttons(),
+                                        [&](const auto& current) {
+                                            return current.component == button.component &&
+                                                   current.interaction == button.interaction &&
+                                                   current.scene == button.scene;
+                                        }),
+                    "Empty/Result Gallery update replaced a native Button");
+        }
+        require(first_text(original[0].image).component == empty_icon.component &&
+                    first_text(original[0].image).scene == empty_icon.scene &&
+                    first_text(original[0].label).component == empty_label.component &&
+                    first_text(original[0].label).scene == empty_label.scene &&
+                    first_text(original[3].image).component == result_icon.component &&
+                    first_text(original[3].image).scene == result_icon.scene &&
+                    first_text(original[3].label).component == result_title.component &&
+                    first_text(original[3].label).scene == result_title.scene &&
+                    f.inputs->mounted_inputs().front().component == old_editor.component &&
+                    f.inputs->mounted_inputs().front().editor == old_editor.editor &&
+                    services.components().component_count() == count && services.components().mount_runs() == mounts &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Empty/Result Gallery interaction/theme/width update remounted existing content");
+    };
+
+    reveal(editor.component);
+    require(f.nodes.require(editor.node).translation.y < -900,
+            "Result Gallery fixture did not translate the actual long document");
+    click(editor.component);
+    require(f.host->focus().state().focused == editor.interaction && f.inputs->sessions().active().valid(),
+            "Result Gallery pointer did not focus the native editor");
+    key(input::Key::a, input::KeyModifier::control);
+    require(bool(f.inputs->dispatch(input::TextCommitted{draft, f.inputs->sessions().active()})),
+            "Result Gallery native draft edit failed");
+    sync();
+    key(input::Key::end);
+    require(visible_glyphs(layers.base, bounds(editor.component)) > 0,
+            "Result Gallery native Input did not render its edited text");
+    require_retained();
+
+    reveal(empties[0]);
+    require(original[0].empty_image == EmptyImage::Default && near(original[0].image_bounds.width, 100) &&
+                near(original[0].image_bounds.height, 100) && near(bounds(empty_icon.component).width, 100) &&
+                visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0 &&
+                f.host->text().icon_snapshot(empty_icon.component).source == IconSource{IconName::InboxOutlined},
+            "Empty Gallery default native Icon bounds/glyph differ");
+    require_visible_text(original[0].label, u8"暂无任务，创建第一条记录开始使用");
+    activate("gallery.empty.create");
+    reveal(empties[0]);
+    require_visible_text(original[0].label, u8"已创建示例任务，可继续编辑详情");
+    const auto shown = presentations.snapshot(empties[0]);
+    const auto shown_height = bounds(empties[0]).height;
+    activate("gallery.empty.image");
+    reveal(empties[0]);
+    const auto hidden = presentations.snapshot(empties[0]);
+    require(hidden.empty_image == EmptyImage::None && !services.components().branch_active(hidden.image) &&
+                hidden.image_bounds.width == 0 && hidden.image_bounds.height == 0 &&
+                visible_glyphs(empty_icon.scene, bounds(empties[0])) == 0 && bounds(empties[0]).height < shown_height &&
+                hidden.label_bounds.y < shown.label_bounds.y,
+            "Empty Gallery None image retained actual glyphs or occupied flow space");
+    require_visible_text(hidden.label, u8"已创建示例任务，可继续编辑详情");
+    require_retained();
+    activate("gallery.empty.image", true);
+    reveal(empties[0]);
+    const auto recovered = presentations.snapshot(empties[0]);
+    require(recovered.empty_image == EmptyImage::Default && near(recovered.image_bounds.width, 100) &&
+                near(recovered.image_bounds.height, 100) && near(bounds(empties[0]).height, shown_height) &&
+                visible_glyphs(empty_icon.scene, bounds(recovered.image)) > 0,
+            "Empty Gallery image did not recover its native geometry/glyph/flow");
+    require_retained();
+
+    const std::array statuses{ResultStatus{Status::Success},
+                              ResultStatus{Status::Warning},
+                              ResultStatus{Status::Error},
+                              ResultStatus{Status::Default},
+                              ResultStatus{ResultException::Forbidden},
+                              ResultStatus{ResultException::NotFound},
+                              ResultStatus{ResultException::ServerError}};
+    const std::array titles{String{u8"任务已保存"},        String{u8"任务需要确认"},       String{u8"任务保存失败"},
+                            String{u8"任务处理中"},        String{u8"403 · 暂无访问权限"}, String{u8"404 · 未找到任务"},
+                            String{u8"500 · 服务暂不可用"}};
+    constexpr std::array icons{IconName::CheckCircleFilled,       IconName::WarningFilled, IconName::CloseCircleFilled,
+                               IconName::ExclamationCircleFilled, IconName::LockOutlined,  IconName::FileSearchOutlined,
+                               IconName::CloudServerOutlined};
+    const auto require_result = [&](std::size_t index) {
+        reveal(results[0]);
+        const auto snapshot = presentations.snapshot(results[0]);
+        require(snapshot.is_result && snapshot.status == statuses[index] && snapshot.image_bounds.width > 0 &&
+                    snapshot.image_bounds.height > 0 && bounds(result_icon.component).width > 0 &&
+                    f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[index]} &&
+                    visible_glyphs(result_icon.scene, bounds(snapshot.image)) > 0,
+                "Result Gallery controlled status did not update its actual native Icon");
+        require_visible_text(snapshot.label, titles[index]);
+        require_visible_text(snapshot.subtitle, u8"切换状态后继续编辑同一份草稿");
+        require_retained();
+    };
+    require_result(0);
+    for (std::size_t step = 1; step <= statuses.size(); ++step) {
+        activate("gallery.result.status", step % 2 == 0);
+        require_result(step % statuses.size());
+    }
+    activate("gallery.result.action", true);
+    const auto feedback = label_text(root_component, u8"已执行结果页继续操作");
+    reveal(feedback.component);
+    // Plain Text ink can overhang its advance bounds; its containing lane owns the clip.
+    const auto feedback_parent = services.components().parent(feedback.component);
+    require(feedback_parent.has_value() && visible_glyphs(feedback.scene, bounds(*feedback_parent)) > 0,
+            "Result Gallery action feedback did not render within its containing lane");
+    require_retained();
+
+    std::size_t status_index = 0;
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step); // Default, Dark, Compact.
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            sync();
+            for (std::size_t index = 0; index < empties.size(); ++index) {
+                reveal(empties[index]);
+                const auto snapshot = presentations.snapshot(empties[index]);
+                const auto icon = first_text(snapshot.image);
+                require(bounds(icon.component).width > 0 && bounds(icon.component).height > 0 &&
+                            visible_glyphs(icon.scene, bounds(snapshot.image)) > 0,
+                        "Empty Gallery actual image disappeared under Theme/width changes");
+                const auto label = first_text(snapshot.label);
+                require(visible_glyphs(label.scene, bounds(snapshot.label)) > 0,
+                        "Empty Gallery actual description escaped its finite viewport");
+            }
+            reveal(empties[1]);
+            const auto compact_image_size =
+                services.components().theme_scope(empties[1])->snapshot().empty().metrics.compact_image_size;
+            require(presentations.snapshot(empties[1]).empty_image == EmptyImage::Compact &&
+                        near(bounds(first_text(original[1].image).component).width, compact_image_size),
+                    "Empty Gallery compact sample lost its native size");
+            reveal(empties[2]);
+            const auto custom = presentations.snapshot(empties[2]);
+            const auto image_bounds = bounds(custom.image);
+            const auto icon_bounds = bounds(custom_image.component);
+            require(near(icon_bounds.width, 100) && near(image_bounds.width, 200) &&
+                        near(icon_bounds.x - image_bounds.x, 50, .02F) &&
+                        near(icon_bounds.x + icon_bounds.width / 2, bounds(empties[2]).x + bounds(empties[2]).width / 2,
+                             .02F) &&
+                        f.host->text().icon_snapshot(custom_image.component).source ==
+                            IconSource{IconName::SearchOutlined} &&
+                        visible_glyphs(custom_image.scene, image_bounds) > 0,
+                    "Empty Gallery custom width/margins hid or misplaced the actual Icon");
+            require_result(status_index);
+            reveal(results[1]);
+            const auto exception = presentations.snapshot(results[1]);
+            const auto exception_icon = first_text(exception.image);
+            require(exception.status == ResultStatus{ResultException::NotFound} &&
+                        f.host->text().icon_snapshot(exception_icon.component).source ==
+                            IconSource{IconName::FileSearchOutlined} &&
+                        visible_glyphs(exception_icon.scene, bounds(exception.image)) > 0,
+                    "Result Gallery static 404 lost its native exception Icon");
+            require_visible_text(exception.label, u8"404 · 页面未找到");
+            reveal(results[2]);
+            const auto rich = presentations.snapshot(results[2]);
+            const auto flex = services.components().parent(custom_result_icon.component);
+            require(flex.has_value() && services.components().parent(*flex) == rich.image &&
+                        services.components().parent(ready.component) == flex &&
+                        bounds(custom_result_icon.component).width > 0 &&
+                        bounds(custom_result_icon.component).height > 0 &&
+                        f.host->text().icon_snapshot(custom_result_icon.component).source ==
+                            IconSource{IconName::CheckCircleFilled} &&
+                        visible_glyphs(custom_result_icon.scene, bounds(rich.image)) > 0 &&
+                        visible_glyphs(ready.scene, bounds(rich.image)) > 0,
+                    "Result Gallery custom Flex did not render both native Icon and READY text");
+            require_visible_text(rich.label, u8"自定义结果展示");
+            reveal(editor.component);
+            require(visible_glyphs(layers.base, bounds(editor.component)) > 0,
+                    "Result Gallery draft glyphs disappeared after Theme/width changes");
+            require_retained();
+        }
+        activate("gallery.result.status", true);
+        status_index = (status_index + 1) % statuses.size();
+        require_result(status_index);
+    }
+    activate("gallery.empty.image");
+    require(presentations.snapshot(empties[0]).empty_image == EmptyImage::None,
+            "Empty Gallery image action stopped working after Theme changes");
+    activate("gallery.empty.image");
+    reveal(empties[0]);
+    require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
+            "Empty Gallery actual image did not recover after Theme changes");
+    require_retained();
+
+    // Exercise the same component-anchor resolution and deferred jump as the
+    // native runtime. Only scroll the navigation lane to expose its real Button;
+    // the destination must be reached by the emitted component request.
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    rynui::example::GalleryDocumentViewport navigation_document;
+    rynui::example::GalleryScrollRange navigation_scroll;
+    rynui::example::GalleryScrollTranslation navigation_translation;
+    const auto reconcile_navigation = [&](std::optional<rynui::example::GalleryNavigationTarget> request = {}) {
+        const auto metrics = rynui::example::gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        const auto translate = [&] {
+            require(navigation_document.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Gallery navigation document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Gallery navigation lane translation failed");
+            }
+        };
+        const auto layout = [&] {
+            for (int frame = 0; frame < 3; ++frame) {
+                require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                        "Gallery production navigation layout failed");
+            }
+        };
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        translate();
+        layout();
+        std::vector<rynui::example::GalleryComponentAnchor> anchors;
+        const auto surfaces = f.surfaces->mounted_surfaces();
+        for (const auto& entry : rynui::example::ant_design_reference_entries()) {
+            const auto reference = std::ranges::find_if(surfaces, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == entry.identity;
+            });
+            require(reference != surfaces.end(), "Gallery navigation lost an existing reference card");
+            const auto anchor = rynui::example::gallery_component_navigation_anchor(
+                entry.identity, reference->node, f.host->text(), f.nodes, scroll_root);
+            if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result") {
+                require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
+                                                               f.nodes.require(scroll_root).bounds.y)),
+                        "Empty/Result navigation changed another component's reference-card target");
+            }
+            anchors.push_back(anchor);
+        }
+        static_cast<void>(navigation_document.replace_component_anchors(anchors));
+        static_cast<void>(
+            navigation_document.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(request->kind == rynui::example::GalleryNavigationTargetKind::component,
+                    "Gallery catalog Button did not issue a component request");
+            static_cast<void>(navigation_document.jump_to_component(request->component_identity));
+        }
+        translate();
+        layout();
+    };
+    const std::array catalog_buttons{button_with_label(f, "Empty"), button_with_label(f, "Result"),
+                                     button_with_label(f, "Button")};
+    const auto navigate = [&](std::size_t index, std::string_view identity) {
+        const auto button = catalog_buttons[index];
+        auto parent = f.nodes.require(button.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "Gallery catalog test selected a Button outside navigation");
+        const auto metrics = rynui::example::gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(button.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_document.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile_navigation();
+        const auto target = bounds(button.component);
+        require(target.y >= metrics.navigation_lane.y - .02F &&
+                    target.y + target.height <= metrics.navigation_lane.y + metrics.navigation_lane.height + .02F &&
+                    visible_glyphs(first_text(button.component).scene, target) > 0,
+                "Gallery catalog Button is not actually visible in its navigation lane");
+        require(!definition.take_navigation_request(), "Gallery catalog fixture retained an unconsumed request");
+        click(button.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == rynui::example::GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Gallery native catalog Button emitted the wrong stable component identity");
+        reconcile_navigation(request);
+        require(std::ranges::any_of(f.host->mounted_buttons(),
+                                    [&](const auto& current) {
+                                        return current.component == button.component &&
+                                               current.interaction == button.interaction;
+                                    }),
+                "Gallery catalog navigation replaced an existing navigation Button");
+    };
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float viewport_width : {1200.0F, 560.0F}) {
+            width = viewport_width;
+            definition.set_viewport_width(width);
+            reconcile_navigation();
+            navigate(0, "ant.component.empty");
+            require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
+                    "Gallery Empty catalog navigation did not reveal its actual sample Icon");
+            require_visible_text(original[0].label, u8"已创建示例任务，可继续编辑详情");
+            click(buttons[1].component);
+            reconcile_navigation();
+            require(presentations.snapshot(empties[0]).empty_image == EmptyImage::None &&
+                        visible_glyphs(empty_icon.scene, bounds(empties[0])) == 0,
+                    "Gallery Empty catalog destination did not expose its actual image action");
+            click(buttons[1].component);
+            reconcile_navigation();
+            require(visible_glyphs(empty_icon.scene, bounds(original[0].image)) > 0,
+                    "Gallery Empty catalog destination could not recover its actual image");
+            navigate(1, "ant.component.result");
+            require_visible_text(original[3].label, titles[status_index]);
+            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0 &&
+                        visible_glyphs(layers.base, bounds(editor.component)) > 0,
+                    "Gallery Result catalog navigation did not reveal its Icon and retained native draft");
+            click(buttons[2].component);
+            reconcile_navigation();
+            status_index = (status_index + 1) % statuses.size();
+            require(presentations.snapshot(results[0]).status == statuses[status_index] &&
+                        f.host->text().icon_snapshot(result_icon.component).source == IconSource{icons[status_index]},
+                    "Gallery Result catalog destination did not expose the actual status control");
+            require_visible_text(original[3].label, titles[status_index]);
+            require(visible_glyphs(result_icon.scene, bounds(original[3].image)) > 0,
+                    "Gallery Result catalog action lost the actual status Icon glyph");
+            click(editor.component);
+            require(f.host->focus().state().focused == editor.interaction && f.inputs->sessions().active().valid(),
+                    "Gallery Result catalog destination did not expose its native editable Input");
+            require_retained();
+            navigate(2, "ant.component.button");
+            const auto references = f.surfaces->mounted_surfaces();
+            const auto button_reference = std::ranges::find_if(references, [&](const auto& surface) {
+                return f.surfaces->snapshot(surface.component).identity == "ant.component.button";
+            });
+            require(button_reference != references.end() &&
+                        visible_glyphs(first_text(button_reference->component).scene,
+                                       bounds(button_reference->component)) > 0,
+                    "Gallery existing Button catalog entry no longer reaches its reference card");
+            require_retained();
+        }
+    }
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -2149,7 +2687,9 @@ void print_gallery_inventory() {
               << " menu=" << f.host->services().menu().mounted().size()
               << " dropdown=" << f.host->services().dropdown().mounted().size()
               << " collapse=" << f.host->services().collapse().mounted().size()
-              << " segmented=" << f.host->services().segmented().mounted().size() << '\n';
+              << " segmented=" << f.host->services().segmented().mounted().size()
+              << " empties=" << f.host->services().empty_result().empties().size()
+              << " results=" << f.host->services().empty_result().results().size() << '\n';
 }
 } // namespace
 
@@ -2169,6 +2709,10 @@ int main(int argc, char** argv) {
         }
         if (argc == 2 && std::string_view{argv[1]} == "--panels-only") {
             test_panel_and_selection_gallery_after_document_scroll();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--states-only") {
+            test_empty_and_result_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--frame-only") {
@@ -2194,6 +2738,7 @@ int main(int argc, char** argv) {
         test_common_component_gallery_after_document_scroll();
         test_data_and_selection_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
+        test_empty_and_result_gallery_after_document_scroll();
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
         return 1;

@@ -135,6 +135,12 @@ struct GalleryState final {
     ryn::Signal<ryn::String> segment_label{ryn::String{u8"日视图"}};
     ryn::Signal<bool> segment_disabled{false};
     ryn::Signal<ryn::String> panel_feedback{ryn::String{u8"展开面板或选择视图"}};
+    ryn::Signal<ryn::String> empty_description{ryn::String{u8"暂无任务，创建第一条记录开始使用"}};
+    ryn::Signal<ryn::EmptyImage> empty_image{ryn::EmptyImage::Default};
+    ryn::Signal<ryn::ResultStatus> result_status{ryn::ResultStatus{ryn::Status::Success}};
+    ryn::Signal<ryn::String> result_title{ryn::String{u8"任务已保存"}};
+    ryn::Signal<ryn::String> result_feedback{ryn::String{u8"状态更新保留详情中的编辑草稿"}};
+    std::size_t result_status_step{};
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -421,6 +427,17 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.segmented.rich",
     "gallery.segmented.label",
     "gallery.segmented.disabled",
+    "gallery.empty.default",
+    "gallery.empty.compact",
+    "gallery.empty.custom",
+    "gallery.empty.create",
+    "gallery.empty.image",
+    "gallery.result.controlled",
+    "gallery.result.status",
+    "gallery.result.exception",
+    "gallery.result.custom",
+    "gallery.result.action",
+    "gallery.result.draft",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -2302,6 +2319,80 @@ void add_panel_and_selection_samples(const std::shared_ptr<GalleryState>& state)
     state->telemetry.live_samples += 4;
 }
 
+void add_empty_and_result_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Text(u8"gallery.empty.default · Empty · 空状态与创建操作");
+    Empty(EmptyProps{}.description(state->empty_description).image(state->empty_image),
+          {.extra = EmptyExtra{[state] {
+               Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                   state->empty_description.set(String{u8"已创建示例任务，可继续编辑详情"});
+               }),
+                      [] { Text(u8"gallery.empty.create · 创建示例任务"); });
+           }}});
+    Button(ButtonProps{}.onClick([state] {
+        state->empty_image.set(state->empty_image.get() == EmptyImage::None ? EmptyImage::Default : EmptyImage::None);
+    }),
+           [] { Text(u8"gallery.empty.image · 切换空状态图示"); });
+    Text(u8"gallery.empty.compact · 紧凑空状态");
+    Empty(EmptyProps{}.image(EmptyImage::Compact).description(u8"暂无筛选结果，请调整查询条件"));
+    Text(u8"gallery.empty.custom · 自定义图示与外边距");
+    Empty(EmptyProps{}.description(u8"自定义图示使用原生 Icon"),
+          {.image = EmptyImageContent{[] {
+               Icon(IconProps{}
+                        .name(IconName::SearchOutlined)
+                        .layout(LayoutStyle{}.width(dp(100)).margin_left(dp(50)).margin_right(dp(50))));
+           }}});
+
+    Text(u8"gallery.result.controlled · Result · 状态、详情与保留草稿");
+    Text(TextProps{}.content(state->result_feedback));
+    Result(ResultProps{}
+               .status(state->result_status)
+               .title(state->result_title)
+               .subtitle(u8"切换状态后继续编辑同一份草稿"),
+           {.content = ResultContent{[] {
+                Text(u8"任务详情：编辑草稿后可切换上方结果状态。");
+                Input(InputProps{}
+                          .defaultValue(u8"gallery.result.draft · 保留的结果详情草稿")
+                          .layout(LayoutStyle{}.width(dp(280))));
+            }},
+            .extra = ResultExtra{[state] {
+                Button(ButtonProps{}.onClick([state] {
+                    constexpr std::array statuses{ResultStatus{Status::Success},
+                                                  ResultStatus{Status::Warning},
+                                                  ResultStatus{Status::Error},
+                                                  ResultStatus{Status::Default},
+                                                  ResultStatus{ResultException::Forbidden},
+                                                  ResultStatus{ResultException::NotFound},
+                                                  ResultStatus{ResultException::ServerError}};
+                    constexpr std::array titles{u8"任务已保存",        u8"任务需要确认",       u8"任务保存失败",
+                                                u8"任务处理中",        u8"403 · 暂无访问权限", u8"404 · 未找到任务",
+                                                u8"500 · 服务暂不可用"};
+                    state->result_status_step = (state->result_status_step + 1) % statuses.size();
+                    state->result_status.set(statuses[state->result_status_step]);
+                    state->result_title.set(String::from_utf8(titles[state->result_status_step]).value());
+                }),
+                       [] { Text(u8"gallery.result.status · 切换结果状态"); });
+                Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                    state->result_feedback.set(String{u8"已执行结果页继续操作"});
+                }),
+                       [] { Text(u8"gallery.result.action · 继续操作"); });
+            }}});
+    Text(u8"gallery.result.exception · 404 异常结果");
+    Result(ResultProps{}
+               .status(ResultException::NotFound)
+               .title(u8"404 · 页面未找到")
+               .subtitle(u8"请检查任务地址或返回列表"));
+    Text(u8"gallery.result.custom · 自定义结果图标");
+    Result(ResultProps{}.title(u8"自定义结果展示").subtitle(u8"图示可通过 typed slot 组合现有控件"),
+           {.icon = ResultIcon{[] {
+                Flex(FlexProps{}.gap(dp(8)).align(FlexAlign::Center), FlexContent{[] {
+                         Icon(IconProps{}.name(IconName::CheckCircleFilled));
+                         Text(u8"READY");
+                     }});
+            }}});
+    state->telemetry.live_samples += 6;
+}
+
 void add_input_feature_samples(const std::shared_ptr<GalleryState>& state) {
     using namespace ryn;
     Text(u8"Input 单行收尾：变体 / 统计 / 焦点 / 清空 / Password / Search");
@@ -2829,6 +2920,7 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_common_component_samples(state);
                                                         add_data_and_selection_samples(state);
                                                         add_panel_and_selection_samples(state);
+                                                        add_empty_and_result_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,

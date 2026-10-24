@@ -295,6 +295,8 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.slider().metrics, after.slider().metrics, TokenIdentity::slider_metrics, changed, count);
     append_if_changed(before.table().colors, after.table().colors, TokenIdentity::table_colors, changed, count);
     append_if_changed(before.table().metrics, after.table().metrics, TokenIdentity::table_metrics, changed, count);
+    append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
+    append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
     append_if_changed(before.empty().colors, after.empty().colors, TokenIdentity::empty_colors, changed, count);
     append_if_changed(before.empty().metrics, after.empty().metrics, TokenIdentity::empty_metrics, changed, count);
     append_if_changed(before.result().colors, after.result().colors, TokenIdentity::result_colors, changed, count);
@@ -464,6 +466,12 @@ bool contains(std::span<const TokenIdentity> identities, TokenIdentity identity)
     return std::find(identities.begin(), identities.end(), identity) != identities.end();
 }
 
+// Keep the large resolved snapshot temporary out of the recursive validation frame.
+std::shared_ptr<const ThemeSnapshot> resolve_validation_snapshot(const ThemeConfig& config,
+                                                                 const ThemeSnapshot& parent) {
+    return std::make_shared<ThemeSnapshot>(resolve_theme(config, &parent));
+}
+
 } // namespace
 
 struct Subscription::State final {
@@ -535,6 +543,9 @@ bool ThemeScope::update(const ThemeConfig& config) {
         return false;
     }
     ThemeSnapshot next = resolve_theme(config, config.inherit && parent_ ? &parent_->snapshot() : nullptr);
+    if (next != *snapshot_) {
+        validate_children(next);
+    }
     commit_snapshot(config, std::move(next));
     return true;
 }
@@ -961,6 +972,19 @@ void ThemeScope::record(TokenIdentity identity) const {
     }
 }
 
+void ThemeScope::validate_children(const ThemeSnapshot& parent_snapshot) const {
+    for (const auto& weak_child : children_) {
+        const auto child = weak_child.lock();
+        if (!child || !child->config_.inherit) {
+            continue;
+        }
+        const auto next = resolve_validation_snapshot(child->config_, parent_snapshot);
+        if (*next != *child->snapshot_) {
+            child->validate_children(*next);
+        }
+    }
+}
+
 void ThemeScope::recompute_from_parent() {
     ensure_owner_thread();
     if (!config_.inherit) {
@@ -1319,6 +1343,18 @@ const TableThemeToken& ThemeScope::table_metrics() const {
     return snapshot_->table();
 }
 
+const FormThemeToken& ThemeScope::form_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::form_colors);
+    return snapshot_->form();
+}
+
+const FormThemeToken& ThemeScope::form_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::form_metrics);
+    return snapshot_->form();
+}
+
 const EmptyThemeToken& ThemeScope::empty_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::empty_colors);
@@ -1651,6 +1687,8 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "DatePicker.metrics",
         "DatePicker.effects",
         "DatePicker.order",
+        "Form.colors",
+        "Form.metrics",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1711,6 +1749,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::collapse_colors:
     case TokenIdentity::segmented_colors:
     case TokenIdentity::date_picker_colors:
+    case TokenIdentity::form_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::input_number_colors:
@@ -1783,6 +1822,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tag_metrics:
     case TokenIdentity::segmented_metrics:
     case TokenIdentity::date_picker_metrics:
+    case TokenIdentity::form_metrics:
     case TokenIdentity::alert_metrics:
     case TokenIdentity::spin_metrics:
     case TokenIdentity::progress_metrics:

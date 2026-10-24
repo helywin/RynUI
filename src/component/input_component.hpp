@@ -123,6 +123,7 @@ public:
 private:
     friend struct InputPropsAccess;
     friend struct PasswordPropsAccess;
+    bool reset_form_draft(runtime::ComponentId);
     void notify_change(input::TextInputOwnerId);
     void refresh_number(runtime::ComponentId);
     void finish_number(runtime::ComponentId);

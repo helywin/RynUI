@@ -2,6 +2,7 @@
 #include "support/input_fixture.hpp"
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #if defined(_MSC_VER) && defined(_DEBUG)
@@ -509,6 +510,152 @@ void zero_and_subpixel_visual(bool result, bool initial, float size, bool compac
               visible_glyphs_inside(f, bounds(f, id)) > 0,
           "zero/subpixel visual failed retained glyph recovery at new DPI");
 }
+
+std::optional<LogicalLength>& presentation_font(ThemeConfig& config, std::size_t kind) {
+    if (kind == 0) {
+        return config.empty.tokens.font_size;
+    }
+    return kind == 1 ? config.result.tokens.title_font_size : config.result.tokens.font_size;
+}
+
+ThemeConfig font_config(std::size_t kind, float size) {
+    ThemeConfig config;
+    presentation_font(config, kind) = dp(size);
+    return config;
+}
+
+void mount_font_presentations(Fixture& f, const Signal<ThemeConfig>& theme, bool hidden, int& slot_runs) {
+    f.services.mount(Content{[theme, hidden, &slot_runs] {
+        Theme(ThemeProps{}.config(theme), ThemeContent{[hidden, &slot_runs] {
+                  ++slot_runs;
+                  Empty(EmptyProps{}.description(hidden ? String{} : String{u8"Visible Empty text"}));
+                  Result(ResultProps{}
+                             .title(hidden ? String{} : String{u8"Visible Result title"})
+                             .subtitle(hidden ? String{} : String{u8"Visible Result body"}));
+              }});
+    }});
+}
+
+void rejected_font_publication(std::size_t kind, float size, bool initial, bool hidden) {
+    Signal<ThemeConfig> theme{initial ? font_config(kind, size) : ThemeConfig{}};
+    Fixture f;
+    int slot_runs = 0;
+    bool rejected = false;
+    std::string failure;
+    const auto attempt = [&](const auto& update) {
+        try {
+            update();
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        } catch (const std::exception& error) {
+            failure = error.what();
+        }
+    };
+    if (initial) {
+        attempt([&] { mount_font_presentations(f, theme, hidden, slot_runs); });
+        std::cout << "initial rejected=" << rejected << " slot_runs=" << slot_runs << " error=" << failure << '\n';
+        check(rejected && slot_runs == 0 && f.nodes.size() == 0 && f.scene.size() == 0,
+              "unusable initial font reached child mounting instead of rejecting Theme resolution");
+        return;
+    }
+    mount_font_presentations(f, theme, hidden, slot_runs);
+    synchronize(f);
+    const auto id = f.services.empty_result().empties()[0];
+    const auto scope = f.services.components().theme_scope(id);
+    const auto identity = scope->snapshot().identity();
+
+    struct TextBefore {
+        detail::TextSceneId scene;
+        std::uint64_t revision;
+        detail::TextSceneRevisions revisions;
+        text::ShapedText shaped;
+        text::TextMeasurement measurement;
+        text::TextMaterial material;
+    };
+
+    std::vector<TextBefore> old_texts;
+    for (const auto& text : f.services.text().mounted_texts()) {
+        const auto& state = f.scene.text_state(text.scene);
+        old_texts.push_back({text.scene, state.revision(), f.scene.revisions(text.scene), state.shaped(),
+                             state.measurement(), state.material()});
+    }
+    const auto instances = f.scene.glyph_scene().instances().instances();
+    const std::vector<graphics::GlyphInstance> old_glyphs(instances.begin(), instances.end());
+    auto config = font_config(kind, size);
+    config.empty.tokens.description = Color::rgba8(200, 10, 20);
+    config.result.tokens.title = Color::rgba8(200, 10, 20);
+    attempt([&] { theme.set(config); });
+    std::cout << "reactive rejected=" << rejected << " published_changed=" << (scope->snapshot().identity() != identity)
+              << " error=" << failure << '\n';
+    const auto unchanged = [&] {
+        check(scope->snapshot().identity() == identity, "unusable font changed ThemeSnapshot before rejection");
+        for (const auto& old : old_texts) {
+            const auto& state = f.scene.text_state(old.scene);
+            check(state.revision() == old.revision && f.scene.revisions(old.scene) == old.revisions &&
+                      state.shaped() == old.shaped && state.measurement() == old.measurement &&
+                      state.material() == old.material,
+                  "unusable font changed old Text state before rejection");
+        }
+        check(std::ranges::equal(old_glyphs, f.scene.glyph_scene().instances().instances()),
+              "unusable font changed actual glyph instances before rejection");
+    };
+    check(rejected, "unusable font was not rejected during Theme resolution");
+    unchanged();
+    synchronize(f);
+    unchanged();
+    check(slot_runs == 1 && visible_glyphs_inside(f, {0, 0, 480, 900}) > 0,
+          "rejected Theme changed retained slots or actual visible glyphs");
+}
+
+void usable_font_threshold_and_dpi(std::size_t kind) {
+    Signal<ThemeConfig> theme{font_config(kind, .5F)};
+    Fixture f;
+    int slot_runs = 0;
+    mount_font_presentations(f, theme, false, slot_runs);
+    synchronize(f);
+    const auto id = kind == 0 ? f.services.empty_result().empties()[0] : f.services.empty_result().results()[0];
+    const auto snapshot = f.services.empty_result().snapshot(id);
+    const auto target = text_child(f, kind == 2 ? snapshot.subtitle : snapshot.label);
+    const auto count = f.services.components().component_count();
+    const auto actual_font = [&](float size, float scale) {
+        const auto& glyphs = f.scene.text_state(target.scene).shaped().glyphs;
+        check(!glyphs.empty() && f.scene.primitive(target.scene).instances.count > 0,
+              "usable font produced no actual Text glyphs");
+        const auto metrics = f.fonts->metrics(glyphs.front().font).metrics;
+        check(metrics.logical_pixel_size == static_cast<std::uint32_t>(std::lround(size)) &&
+                  metrics.display_scale == scale && visible_glyphs_inside(f, {0, 0, 480, 900}) > 0,
+              "font threshold or DPI changed the existing logical raster contract");
+    };
+    actual_font(.5F, 1);
+    for (float size : {std::nextafter(.5F, 1.0F), .99F, 1.0F, 1.5F, 14.0F, .5F}) {
+        theme.set(font_config(kind, size));
+        synchronize(f);
+        actual_font(size, 1);
+    }
+    f.font_scale = 2;
+    f.chains.clear();
+    check(f.services.text().set_font_resolver(
+              [&](SystemFontFamily, std::uint32_t, bool, std::uint32_t pixels) { return f.resolve(pixels); }),
+          "font threshold DPI refresh did not update retained fonts");
+    synchronize(f);
+    actual_font(.5F, 2);
+    const auto identity = f.services.components().theme_scope(id)->snapshot().identity();
+    bool rejected = false;
+    try {
+        theme.set(font_config(kind, std::nextafter(.5F, 0.0F)));
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    check(rejected && f.services.components().theme_scope(id)->snapshot().identity() == identity,
+          "DPI change made an unusable logical font publishable");
+    actual_font(.5F, 2);
+    theme.set(font_config(kind, 14));
+    synchronize(f);
+    actual_font(14, 2);
+    check(slot_runs == 1 && f.services.components().component_count() == count &&
+              text_child(f, kind == 2 ? snapshot.subtitle : snapshot.label).component == target.component,
+          "font rejection/recovery replaced retained Text identity");
+}
 } // namespace
 
 int main() {
@@ -516,6 +663,7 @@ int main() {
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif
+    std::cout << std::setprecision(std::numeric_limits<float>::max_digits10);
     int failures = 0;
     const auto run = [&](const char* name, const auto& test) {
         try {
@@ -546,5 +694,19 @@ int main() {
     }
     run("compact Empty initial zero visual", [&] { zero_and_subpixel_visual(false, true, 0, true); });
     run("compact Empty reactive zero visual", [&] { zero_and_subpixel_visual(false, false, 0, true); });
+    for (std::size_t kind = 0; kind < 3; ++kind) {
+        for (bool initial : {true, false}) {
+            for (float size :
+                 {0.0F, -1.0F, std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
+                  std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::denorm_min(),
+                  std::numeric_limits<float>::min(), .01F, .49F, std::nextafter(.5F, 0.0F)}) {
+                std::cout << "CASE font=" << kind << " initial=" << initial << " size=" << size << '\n';
+                run("font publication rejects unusable size",
+                    [&] { rejected_font_publication(kind, size, initial, false); });
+            }
+            run("hidden label rejects unusable font", [&] { rejected_font_publication(kind, .49F, initial, true); });
+        }
+        run("usable font threshold and DPI recovery", [&] { usable_font_threshold_and_dpi(kind); });
+    }
     return failures == 0 ? 0 : 1;
 }
