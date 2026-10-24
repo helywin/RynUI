@@ -20,6 +20,8 @@
 #include "component/empty_result_component.hpp"
 #include "component/form_component.hpp"
 #include "component/date_picker_component.hpp"
+#include "component/breadcrumb_component.hpp"
+#include "component/steps_component.hpp"
 #include "renderer/common/glyph_gpu_resources.hpp"
 #include "renderer/common/rounded_effect_gpu_resources.hpp"
 #include "runtime/frame_scheduler.hpp"
@@ -850,7 +852,7 @@ void test_token_gallery_frame_contract() {
     require(palette.background_color() == ryn::Color::rgba8(255, 255, 255),
             "Token Gallery compact clear color did not restore Theme");
     auto definition = rynui::example::make_token_gallery_definition();
-    require(definition.stable_test_ids.size() == 297, "Token Gallery stable test-id inventory is incomplete");
+    require(definition.stable_test_ids.size() == 319, "Token Gallery stable test-id inventory is incomplete");
     for (const auto id : definition.stable_test_ids) {
         if (id.starts_with("ant.")) {
             if (ryn::find_ant_design_token(id) == nullptr) {
@@ -863,7 +865,7 @@ void test_token_gallery_frame_contract() {
     Fixture fixture;
     definition.set_viewport_width(1200.0F);
     fixture.surfaces->mount(definition.content, fixture.inputs.get());
-    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 227,
+    require(fixture.host->mounted_buttons().size() == definition.navigation_control_count + 244,
             "Token Gallery live sample count drifted");
     require(fixture.surfaces->mounted_surfaces().size() == 131 &&
                 fixture.surfaces->snapshot(fixture.surfaces->mounted_surfaces().back().component).role ==
@@ -873,7 +875,7 @@ void test_token_gallery_frame_contract() {
                 fixture.selections->radio_groups().size() == 4,
             "Token Gallery selection and Group samples did not mount");
     // Headers/arrows and hidden panel controls stay retained; only the active branches paint.
-    if (fixture.host->interactions().size() != definition.navigation_control_count + 951) {
+    if (fixture.host->interactions().size() != definition.navigation_control_count + 979) {
         throw std::runtime_error(
             "Token Gallery interaction inventory: actual=" + std::to_string(fixture.host->interactions().size()) +
             " navigation=" + std::to_string(definition.navigation_control_count));
@@ -892,7 +894,7 @@ void test_token_gallery_frame_contract() {
             "Token Gallery initial wide frame was not submitted");
     require_all_cells_reachable(fixture, {1200.0F, 60000.0F});
     // Closed popup subtrees stay out of the visible scene; selectors/actions remain.
-    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 513) {
+    if (fixture.host->scene_composer().interaction_order().size() != definition.navigation_control_count + 541) {
         throw std::runtime_error("Token Gallery visible action inventory drifted: actual=" +
                                  std::to_string(fixture.host->scene_composer().interaction_order().size()) +
                                  " navigation=" + std::to_string(definition.navigation_control_count));
@@ -901,7 +903,7 @@ void test_token_gallery_frame_contract() {
     const auto initial = definition.telemetry();
     require(initial.content_runs == 1 && initial.theme_content_runs == 67 && initial.document_sections == 6 &&
                 initial.component_entries == 73 && initial.reference_surfaces == 126 &&
-                initial.reference_content_runs == 126 && initial.live_samples == 282,
+                initial.reference_content_runs == 126 && initial.live_samples == 284,
             "Token Gallery Theme content did not mount exactly once");
     require(gpu.quad_uploads == 1 && gpu.glyph_buffer_uploads == 1 && gpu.effect_uploads == 1 && draw.quad_draws > 0 &&
                 draw.glyph_draws > 0 && draw.effect_draws > 0,
@@ -1044,8 +1046,8 @@ void test_live_input_samples() {
         }
         require(step == ryn::runtime::FrameLoopStep::submitted, "Input Gallery warmup frame failed");
     }
-    // DatePicker appends two selector editors and its retained footer editor after Form.
-    require(fixture.inputs->mounted_inputs().size() == 141 &&
+    // DatePicker and the appended navigation slots retain their own editors after Form.
+    require(fixture.inputs->mounted_inputs().size() == 144 &&
                 fixture.host->services().select().mounted().size() == 22 &&
                 fixture.host->services().card().mounted().size() == 7 &&
                 fixture.host->services().tabs().mounted().size() == 14 &&
@@ -2567,7 +2569,19 @@ void test_empty_and_result_gallery_after_document_scroll() {
                 entry.identity, reference->node, f.host->text(), f.nodes, scroll_root);
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
-                require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
+                auto expected = reference->node;
+                const auto heading = entry.identity == "ant.component.breadcrumb" ? "gallery.breadcrumb.trail "
+                                     : entry.identity == "ant.component.steps"    ? "gallery.steps.workflow "
+                                                                                  : "";
+                if (std::string_view{heading}.size() > 0) {
+                    const auto texts = f.host->text().mounted_texts();
+                    const auto target = std::ranges::find_if(texts, [&](const auto& t) {
+                        return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
+                    });
+                    require(target != texts.end(), "Gallery navigation actual sample heading absent");
+                    expected = f.host->components().root(target->component);
+                }
+                require(near(anchor.offset, std::max(0.0F, f.nodes.require(expected).bounds.y -
                                                                f.nodes.require(scroll_root).bounds.y)),
                         "Empty/Result navigation changed another component's reference-card target");
             }
@@ -2729,7 +2743,18 @@ void test_form_gallery_after_document_scroll() {
                                                                     f.nodes, scroll_root);
             if (entry.identity != "ant.component.empty" && entry.identity != "ant.component.result" &&
                 entry.identity != "ant.component.form" && entry.identity != "ant.component.date-picker") {
-                require(near(anchor.offset, std::max(0.0F, f.nodes.require(reference->node).bounds.y -
+                auto expected = reference->node;
+                if (entry.identity == "ant.component.breadcrumb" || entry.identity == "ant.component.steps") {
+                    const auto heading = entry.identity == "ant.component.breadcrumb" ? "gallery.breadcrumb.trail "
+                                                                                      : "gallery.steps.workflow ";
+                    const auto texts = f.host->text().mounted_texts();
+                    const auto target = std::ranges::find_if(texts, [&](const auto& t) {
+                        return f.text_scene.text_state(t.scene).content().bytes().starts_with(heading);
+                    });
+                    require(target != texts.end(), "Form Gallery navigation actual sample heading absent");
+                    expected = services.components().root(target->component);
+                }
+                require(near(anchor.offset, std::max(0.0F, f.nodes.require(expected).bounds.y -
                                                                f.nodes.require(scroll_root).bounds.y)),
                         "Form Gallery changed another catalog destination");
             }
@@ -3277,6 +3302,10 @@ void test_date_picker_gallery_after_document_scroll() {
                 heading = "gallery.form.workflow";
             } else if (entry.identity == "ant.component.date-picker") {
                 heading = "gallery.date-picker.controlled";
+            } else if (entry.identity == "ant.component.breadcrumb") {
+                heading = "gallery.breadcrumb.trail";
+            } else if (entry.identity == "ant.component.steps") {
+                heading = "gallery.steps.workflow";
             }
             const auto expected =
                 heading.empty() ? reference->node : services.components().root(text_with_prefix(heading).component);
@@ -3418,9 +3447,20 @@ void test_date_picker_gallery_after_document_scroll() {
     };
     const auto action = [&](std::string_view prefix) {
         const auto button = button_with_label(f, prefix);
-        reveal(button.component);
-        require(glyphs(text_with_prefix(prefix).scene, bounds(button.component)) > 0,
-                "DatePicker real Button label did not render");
+        // Leave room above the owned action for an open calendar. Appended
+        // samples allow scrolling farther than the old tail clamp did.
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(button.node).bounds.y - 780));
+        reconcile();
+        if (glyphs(text_with_prefix(prefix).scene, bounds(button.component)) == 0) {
+            const auto b = bounds(button.component);
+            throw std::runtime_error("DatePicker real Button label did not render: " + std::string{prefix} +
+                                     " bounds=" + std::to_string(b.x) + "," + std::to_string(b.y) + "," +
+                                     std::to_string(b.width) + "," + std::to_string(b.height));
+        }
+        const auto target = bounds(button.component);
+        require(services.hit_test().hit_test({target.x + target.width / 2, target.y + target.height / 2}) ==
+                    button.interaction,
+                "DatePicker owned action is obscured by another actual hit region");
         click(button.component);
     };
     const auto command_without_blur = [&](std::string_view prefix) {
@@ -3728,6 +3768,513 @@ void test_date_picker_gallery_after_document_scroll() {
                  "focus/open/identity\n";
 }
 
+void test_navigation_gallery_after_document_scroll() {
+    using namespace ryn;
+    using namespace rynui::example;
+    auto definition = make_token_gallery_definition();
+    definition.set_viewport_width(1200);
+    definition.set_motion_enabled(false);
+    Fixture f;
+    f.host->set_motion_preference(animation::MotionPreference::reduced);
+    f.surfaces->mount(definition.content, f.inputs.get());
+    auto& services = f.host->services();
+    float width = 1200;
+    const auto sync = [&] {
+        for (int frame = 0; frame < 3; ++frame) {
+            require(f.host->layout_and_synchronize({width, 900}, {16, 12, width - 32, 876}, {24, 20}, 0, true),
+                    "Navigation Gallery finite layout failed");
+        }
+    };
+    sync();
+    const auto root = services.components().root(services.components().root_components().front());
+    const auto body = f.nodes.require(root).children.front();
+    const auto navigation_root = f.nodes.require(body).children.front();
+    const auto document = f.nodes.require(body).children[1];
+    const auto bounds = [&](runtime::ComponentId id) {
+        const auto& n = f.nodes.require(services.components().root(id));
+        return runtime::Rect{n.bounds.x + n.translation.x, n.bounds.y + n.translation.y, n.bounds.width,
+                             n.bounds.height};
+    };
+    const auto descendant = [&](runtime::ComponentId child, runtime::ComponentId owner) {
+        for (auto id = std::optional{child}; id; id = services.components().parent(*id)) {
+            if (*id == owner) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto text = [&](std::string_view prefix) {
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (f.text_scene.text_state(t.scene).content().bytes().starts_with(prefix)) {
+                return t;
+            }
+        }
+        throw std::runtime_error("Navigation Gallery Text absent: " + std::string{prefix});
+    };
+    const auto owner_of = [&](std::string_view prefix) {
+        const auto owner = services.components().parent(text(prefix).component);
+        require(owner.has_value(), "Navigation sample ownership absent");
+        return *owner;
+    };
+    const auto breadcrumb_owner = owner_of("gallery.breadcrumb.trail");
+    const auto steps_owner = owner_of("gallery.steps.workflow");
+    const auto owned = [&](auto mounted, runtime::ComponentId owner, std::size_t index = 0) {
+        for (auto id : mounted) {
+            if (descendant(id, owner)) {
+                if (index == 0) {
+                    return id;
+                }
+                --index;
+            }
+        }
+        throw std::runtime_error("Navigation owned component absent");
+    };
+    const auto breadcrumb = owned(services.breadcrumb().mounted(), breadcrumb_owner);
+    const auto display = owned(services.breadcrumb().mounted(), breadcrumb_owner, 1);
+    const auto steps = owned(services.steps().mounted(), steps_owner);
+    const auto trail = services.breadcrumb().snapshot(breadcrumb);
+    const auto display_trail = services.breadcrumb().snapshot(display);
+    const auto workflow = services.steps().snapshot(steps);
+    const auto editor_in = [&](runtime::ComponentId owner) {
+        for (const auto& e : f.inputs->mounted_inputs()) {
+            if (descendant(e.component, owner)) {
+                return e;
+            }
+        }
+        throw std::runtime_error("Navigation owned Input absent");
+    };
+    const auto draft = editor_in(trail.items[2]);
+    const auto display_draft = editor_in(display_trail.items[0]);
+    const auto note = editor_in(workflow.items[0]);
+    const auto draft_layers = f.inputs->text_layers(draft.component);
+    const auto note_layers = f.inputs->text_layers(note.component);
+    const auto owned_button = [&](runtime::ComponentId owner) {
+        for (const auto& b : f.host->mounted_buttons()) {
+            if (descendant(b.component, owner)) {
+                return b;
+            }
+        }
+        throw std::runtime_error("Navigation owned Button absent");
+    };
+    const auto child = owned_button(trail.items[2]);
+    const auto save = owned_button(workflow.items[0]);
+    const auto interaction = [&](runtime::ComponentId id) {
+        for (auto hit : services.interactions().declaration_order()) {
+            if (services.interactions().require(hit).component == id) {
+                return hit;
+            }
+        }
+        throw std::runtime_error("Navigation item interaction absent");
+    };
+    GalleryDocumentViewport document_scroll;
+    GalleryScrollRange navigation_scroll;
+    GalleryScrollTranslation navigation_translation;
+    const auto reconcile = [&](std::optional<GalleryNavigationTarget> request = {}) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        if (metrics.narrow) {
+            static_cast<void>(navigation_scroll.scroll_to(0));
+            navigation_translation.invalidate();
+        }
+        const auto translate = [&] {
+            require(document_scroll.apply_subtree_translation(scroll_root, f.nodes, f.dirty),
+                    "Navigation document translation failed");
+            if (!metrics.narrow) {
+                require(
+                    navigation_translation.apply(navigation_root, navigation_scroll.snapshot().offset, f.nodes, f.dirty)
+                        .valid,
+                    "Navigation sidebar translation failed");
+            }
+        };
+        translate();
+        sync();
+        std::vector<GalleryComponentAnchor> anchors;
+        for (const auto& entry : ant_design_reference_entries()) {
+            const auto surfaces = f.surfaces->mounted_surfaces();
+            const auto reference = std::ranges::find_if(
+                surfaces, [&](const auto& s) { return f.surfaces->snapshot(s.component).identity == entry.identity; });
+            require(reference != surfaces.end(), "Navigation lost existing reference card");
+            anchors.push_back(gallery_component_navigation_anchor(entry.identity, reference->node, f.host->text(),
+                                                                  f.nodes, scroll_root));
+        }
+        static_cast<void>(document_scroll.replace_component_anchors(anchors));
+        static_cast<void>(
+            document_scroll.set_extents(metrics.document_track.height, f.nodes.require(scroll_root).bounds.height));
+        static_cast<void>(navigation_scroll.set_extents(metrics.navigation_track.height,
+                                                        f.nodes.require(navigation_root).bounds.height));
+        if (request) {
+            require(std::ranges::any_of(
+                        anchors, [&](const auto& anchor) { return anchor.identity == request->component_identity; }),
+                    "Navigation sample anchor absent");
+            static_cast<void>(document_scroll.jump_to_component(request->component_identity));
+        }
+        translate();
+        sync();
+    };
+    reconcile();
+    const auto reveal = [&](runtime::ComponentId id) {
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : document;
+        static_cast<void>(document_scroll.scroll_to(f.nodes.require(services.components().root(id)).bounds.y -
+                                                    f.nodes.require(scroll_root).bounds.y - 80));
+        reconcile();
+    };
+    const auto key = [&](input::Key k, input::KeyModifier mods = input::KeyModifier::none) {
+        f.host->focus().dispatch({k, input::KeyAction::down, mods});
+        f.host->focus().dispatch({k, input::KeyAction::up, mods});
+        sync();
+    };
+    const auto click = [&](runtime::ComponentId id) {
+        const auto r = bounds(id);
+        const runtime::Point p{r.x + r.width / 2, r.y + r.height / 2};
+        require(r.width > 0 && r.height > 0 && p.x >= 16 && p.x < width - 16 && p.y >= 12 && p.y < 888,
+                "Navigation pointer target outside finite viewport");
+        for (auto action : {input::PointerAction::down, input::PointerAction::up}) {
+            f.host->pointer().dispatch(pointer_event(action, p, input::PointerButton::primary));
+        }
+        sync();
+    };
+    const auto action = [&](std::string_view prefix) {
+        const auto b = button_with_label(f, prefix);
+        reveal(b.component);
+        click(b.component);
+        reconcile();
+    };
+    const auto feedback = [&](std::string_view prefix, std::string_view value) {
+        require(f.text_scene.text_state(text(prefix).scene).content().bytes().find(value) != std::string_view::npos,
+                "Navigation actual feedback differs");
+    };
+    const auto type = [&](const auto& e, String value) {
+        reveal(e.component);
+        click(e.component);
+        require(f.host->focus().state().focused == e.interaction && f.inputs->sessions().active().valid(),
+                "Navigation native Input focus/session absent");
+        key(input::Key::a, input::KeyModifier::control);
+        require(bool(f.inputs->dispatch(input::TextCommitted{value, f.inputs->sessions().active()})),
+                "Navigation native Text event failed");
+        sync();
+    };
+    const auto within = [](runtime::Rect a, runtime::Rect b) {
+        return a.width <= 0 || a.height <= 0 ||
+               (a.x >= b.x - .02F && a.y >= b.y - .02F && a.x + a.width <= b.x + b.width + .02F &&
+                a.y + a.height <= b.y + b.height + .02F);
+    };
+    const auto glyphs = [&](auto scene, runtime::Rect allowed) {
+        const auto range = f.text_scene.primitive(scene).instances;
+        std::size_t visible = 0;
+        for (std::uint32_t i = 0; i < range.count; ++i) {
+            const auto instance = range.first + i;
+            if (!std::ranges::any_of(services.scene_composer().ordered_scene().commands(), [instance](const auto& c) {
+                    return c.kind == graphics::SceneDrawKind::glyph && instance >= c.first_instance &&
+                           instance - c.first_instance < c.instance_count;
+                })) {
+                continue;
+            }
+            const auto& g = f.text_scene.glyph_scene().instances().at(instance);
+            const auto& p = g.position_size;
+            const auto& tr = g.translation_opacity;
+            const auto& c = g.clip_bounds;
+            const auto r = graphics::intersect_effect_bounds({p[0] + tr[0], p[1] + tr[1], p[2], p[3]},
+                                                             {c[0], c[1], c[2] - c[0], c[3] - c[1]});
+            if (r.width > 0 && r.height > 0 && tr[2] > 0 && g.color[3] > 0) {
+                if (!within(r, allowed) || !within(r, {16, 12, width - 32, 876})) {
+                    std::cerr << "Navigation escaped glyph text=" << f.text_scene.text_state(scene).content().bytes()
+                              << " visible=" << r.x << ',' << r.y << ',' << r.width << ',' << r.height
+                              << " allocation=" << allowed.x << ',' << allowed.y << ',' << allowed.width << ','
+                              << allowed.height << '\n';
+                }
+                require(std::isfinite(r.x) && std::isfinite(r.y) && within(r, allowed) &&
+                            within(r, {16, 12, width - 32, 876}),
+                        "Navigation actual glyph escaped allocation/viewport");
+                ++visible;
+            }
+        }
+        return visible;
+    };
+    const auto visuals = [&](runtime::ComponentId owner) {
+        const auto allowed = bounds(owner);
+        const auto allocation = [&](runtime::ComponentId id) {
+            const auto& items = owner == breadcrumb ? trail.items : workflow.items;
+            for (auto row : items) {
+                if (descendant(id, row)) {
+                    return bounds(row);
+                }
+            }
+            return allowed;
+        };
+        std::size_t painted = 0;
+        for (const auto& t : f.host->text().mounted_texts()) {
+            if (descendant(t.component, owner) && services.components().branch_active(t.component)) {
+                painted += glyphs(t.scene, allocation(t.component));
+                try {
+                    for (auto scene : f.host->text().icon_snapshot(t.component).layers) {
+                        if (scene != t.scene) {
+                            painted += glyphs(scene, allocation(t.component));
+                        }
+                    }
+                } catch (const std::out_of_range&) {
+                }
+            }
+        }
+        for (const auto& editor : f.inputs->mounted_inputs()) {
+            if (descendant(editor.component, owner) && services.components().branch_active(editor.component)) {
+                const auto layers = f.inputs->text_layers(editor.component);
+                require(glyphs(layers.base, allocation(editor.component)) +
+                                glyphs(layers.selected, allocation(editor.component)) >
+                            0,
+                        "Navigation retained native editor actual glyphs absent");
+            }
+        }
+        require(painted > 0, "Navigation actual content glyphs absent");
+        for (const auto& hit : services.hit_test().records()) {
+            const auto* record = services.interactions().find(hit.interaction);
+            if (record && descendant(record->component, owner) && hit.effective_eligible) {
+                require(within(graphics::intersect_effect_bounds(hit.translated_bounds, hit.effective_clip),
+                               allocation(record->component)),
+                        "Navigation actual hit escaped allocation");
+            }
+        }
+        std::size_t quads = 0;
+        for (const auto& q : services.surfaces().instances().instances()) {
+            const runtime::Rect shape{q.bounds[0] + q.translation[0], q.bounds[1] + q.translation[1], q.bounds[2],
+                                      q.bounds[3]};
+            if (q.opacity > 0 && q.color[3] > 0 && shape.width > 0 && shape.height > 0 && within(shape, allowed)) {
+                require(within(shape, {16, 12, width - 32, 876}), "Navigation actual quad clip escaped");
+                ++quads;
+            }
+        }
+        require(quads > 0, "Navigation native child actual quad absent");
+    };
+    const auto focus_edges = [&](runtime::ComponentId item) {
+        const auto b = bounds(item);
+        std::array<float, 4> edges{};
+        for (const auto& effect : services.rounded_effects().packed_instances()) {
+            const auto& g = effect.geometry;
+            const runtime::Rect shape{g.shape.rect.x + g.translation.x, g.shape.rect.y + g.translation.y,
+                                      g.shape.rect.width, g.shape.rect.height};
+            if (g.kind != graphics::RoundedEffectKind::outline || shape != b || !effect.material.visible ||
+                effect.material.opacity <= 0) {
+                continue;
+            }
+            const float offset = g.outline_offset + g.outline_width / 2;
+            const std::array<runtime::Point, 4> points{{{b.x - offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y - offset},
+                                                        {b.x + b.width + offset, b.y + b.height / 2},
+                                                        {b.x + b.width / 2, b.y + b.height + offset}}};
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                const auto p = points[i];
+                if (!g.ancestor_clip || (p.x >= g.ancestor_clip->bounds.x && p.y >= g.ancestor_clip->bounds.y &&
+                                         p.x < g.ancestor_clip->bounds.x + g.ancestor_clip->bounds.width &&
+                                         p.y < g.ancestor_clip->bounds.y + g.ancestor_clip->bounds.height)) {
+                    edges[i] = std::max(edges[i], graphics::rounded_effect_coverage(p, effect) *
+                                                      effect.material.opacity * effect.material.color.alpha());
+                }
+            }
+        }
+        require(std::ranges::all_of(edges, [](float value) { return value > .8F; }),
+                "Navigation outward focus edge absent in roomy sample");
+    };
+    const auto navigate = [&](std::string_view name, std::string_view identity, std::string_view heading,
+                              runtime::ComponentId owner) {
+        const auto b = button_with_label(f, name);
+        auto parent = f.nodes.require(b.node).parent;
+        while (parent && *parent != navigation_root) {
+            parent = f.nodes.require(*parent).parent;
+        }
+        require(parent.has_value(), "Navigation catalog Button outside sidebar");
+        const auto metrics = gallery_layout_metrics({width, 900});
+        const auto scroll_root = metrics.narrow ? body : navigation_root;
+        const float offset = f.nodes.require(b.node).bounds.y - f.nodes.require(scroll_root).bounds.y;
+        if (metrics.narrow) {
+            static_cast<void>(document_scroll.scroll_to(offset));
+        } else {
+            static_cast<void>(navigation_scroll.scroll_to(offset));
+        }
+        reconcile();
+        require(within(bounds(b.component), metrics.navigation_lane) &&
+                    glyphs(text(name).scene, bounds(b.component)) > 0,
+                "Navigation catalog Button not visible in lane");
+        require(!definition.take_navigation_request(), "Navigation stale catalog request");
+        click(b.component);
+        const auto request = definition.take_navigation_request();
+        require(request && request->kind == GalleryNavigationTargetKind::component &&
+                    request->component_identity == identity,
+                "Navigation real catalog identity differs");
+        reconcile(request);
+        require(glyphs(text(heading).scene, bounds(owner)) > 0, "Navigation production anchor did not reach sample");
+    };
+    const auto mounts = services.components().mount_runs();
+    const auto count = services.components().component_count();
+    const auto telemetry = definition.telemetry();
+    const auto retained = [&] {
+        require(services.breadcrumb().snapshot(breadcrumb).items == trail.items &&
+                    services.breadcrumb().snapshot(breadcrumb).separators == trail.separators &&
+                    services.breadcrumb().snapshot(display).items == display_trail.items &&
+                    services.steps().snapshot(steps).items == workflow.items &&
+                    services.steps().snapshot(steps).icons == workflow.icons &&
+                    editor_in(trail.items[2]).editor == draft.editor &&
+                    editor_in(display_trail.items[0]).editor == display_draft.editor &&
+                    editor_in(workflow.items[0]).editor == note.editor &&
+                    f.inputs->text_layers(draft.component).base == draft_layers.base &&
+                    f.inputs->text_layers(note.component).base == note_layers.base &&
+                    owned_button(trail.items[2]).interaction == child.interaction &&
+                    owned_button(workflow.items[0]).interaction == save.interaction &&
+                    services.components().mount_runs() == mounts && services.components().component_count() == count &&
+                    definition.telemetry().content_runs == telemetry.content_runs &&
+                    definition.telemetry().theme_content_runs == telemetry.theme_content_runs,
+                "Navigation ordinary update replaced component/editor/scene/interaction identity");
+    };
+    for (const auto theme_step : {4U, 0U, 1U}) {
+        definition.smoke_step(theme_step);
+        for (const float next_width : {1200.0F, 560.0F}) {
+            width = next_width;
+            definition.set_viewport_width(width);
+            reconcile();
+            action("gallery.breadcrumb.restore");
+            navigate("Breadcrumb", "ant.component.breadcrumb", "gallery.breadcrumb.trail", breadcrumb_owner);
+            type(draft, u8"Retained breadcrumb");
+            key(input::Key::home);
+            key(input::Key::right, input::KeyModifier::shift);
+            require(f.inputs->editors().require(draft.editor).selection().anchor !=
+                        f.inputs->editors().require(draft.editor).selection().caret,
+                    "Navigation native selection did not change");
+            click(child.component);
+            feedback("gallery.breadcrumb.feedback", "应用 Retained breadcrumb");
+            require(services.breadcrumb().snapshot(breadcrumb).current == 2,
+                    "Breadcrumb current changed through child click");
+            reveal(breadcrumb);
+            click(trail.items[0]);
+            feedback("gallery.breadcrumb.feedback", "home / 0");
+            key(input::Key::tab);
+            require(f.host->focus().state().focused == interaction(trail.items[1]),
+                    "Breadcrumb Tab did not reach ancestor");
+            focus_edges(trail.items[1]);
+            key(input::Key::enter);
+            feedback("gallery.breadcrumb.feedback", "projects / 1");
+            action("gallery.breadcrumb.rename");
+            action("gallery.breadcrumb.visible");
+            reveal(breadcrumb);
+            require(services.breadcrumb().snapshot(breadcrumb).current == 2 &&
+                        !services.components().branch_active(trail.items[1]),
+                    "Breadcrumb hidden original index differs");
+            visuals(breadcrumb);
+            action("gallery.breadcrumb.draft-visible");
+            require(services.breadcrumb().snapshot(breadcrumb).current == 0 &&
+                        !services.components().branch_active(trail.items[2]),
+                    "Breadcrumb hidden draft did not update current");
+            require(glyphs(draft_layers.base, bounds(breadcrumb)) == 0,
+                    "Breadcrumb hidden draft retained actual glyphs");
+            action("gallery.breadcrumb.restore");
+            action("gallery.breadcrumb.disabled");
+            reveal(draft.component);
+            const auto draft_bounds = bounds(draft.component);
+            require(services.hit_test().hit_test({draft_bounds.x + draft_bounds.width / 2,
+                                                  draft_bounds.y + draft_bounds.height / 2}) != draft.interaction &&
+                        !services.focus().request_focus(draft.interaction, input::FocusModality::keyboard),
+                    "Breadcrumb explicit gate missed actual child hit/focus eligibility");
+            reveal(breadcrumb);
+            const auto before = f.text_scene.text_state(text("gallery.breadcrumb.feedback").scene).content();
+            click(trail.items[0]);
+            click(child.component);
+            require(f.text_scene.text_state(text("gallery.breadcrumb.feedback").scene).content() == before,
+                    "Breadcrumb disabled ancestor activated");
+            action("gallery.breadcrumb.restore");
+            action("gallery.breadcrumb.focus");
+            require(f.host->focus().state().focused == draft.interaction &&
+                        !f.inputs->editors().require(draft.editor).disabled(),
+                    "Breadcrumb retained public InputRef did not recover focus");
+            type(display_draft, u8"Display retained");
+            require(f.inputs->editors().require(display_draft.editor).value() == "Display retained",
+                    "Breadcrumb no-handler wrapper blocked native editing");
+            require(f.inputs->editors().require(draft.editor).value() == "Retained breadcrumb",
+                    "Breadcrumb restore discarded draft");
+            retained();
+            action("gallery.steps.reset");
+            navigate("Steps", "ant.component.steps", "gallery.steps.workflow", steps_owner);
+            type(note, u8"Retained steps");
+            click(save.component);
+            feedback("gallery.steps.feedback", "保存 Retained steps");
+            require(services.steps().snapshot(steps).current == 0, "Steps child Button accidentally navigated");
+            for (int orientation = 0; orientation < 2; ++orientation) {
+                reveal(steps);
+                click(workflow.items[2]);
+                require(services.steps().snapshot(steps).current == 2,
+                        "Steps controlled pointer onChange did not accept original index");
+                key(input::Key::home);
+                require(f.host->focus().state().focused == interaction(workflow.items[0]) &&
+                            services.steps().snapshot(steps).current == 2,
+                        "Steps Home committed instead of moving focus");
+                focus_edges(workflow.items[0]);
+                key(input::Key::enter);
+                require(services.steps().snapshot(steps).current == 0, "Steps Enter failed to commit");
+                key(orientation == 0 ? input::Key::right : input::Key::down);
+                require(f.host->focus().state().focused == interaction(workflow.items[1]) &&
+                            services.steps().snapshot(steps).current == 0,
+                        "Steps arrow committed or missed original item");
+                key(input::Key::space);
+                require(services.steps().snapshot(steps).current == 1, "Steps Space failed to commit");
+                key(input::Key::end);
+                require(f.host->focus().state().focused == interaction(workflow.items[2]) &&
+                            services.steps().snapshot(steps).current == 1,
+                        "Steps End committed instead of moving focus");
+                action("gallery.steps.status");
+                require(services.steps().snapshot(steps).statuses[1] == StepsStatus::Error,
+                        "Steps reactive Error status absent");
+                action("gallery.steps.status");
+                action("gallery.steps.size");
+                reveal(steps);
+                visuals(steps);
+                action("gallery.steps.size");
+                action("gallery.steps.vertical");
+            }
+            action("gallery.steps.visible");
+            require(!services.components().branch_active(workflow.items[1]), "Steps hidden item remained active");
+            reveal(steps);
+            click(workflow.items[2]);
+            feedback("gallery.steps.feedback", "切换 / 2");
+            key(input::Key::home);
+            key(input::Key::right);
+            require(f.host->focus().state().focused == interaction(workflow.items[2]) &&
+                        services.steps().snapshot(steps).current == 2,
+                    "Steps hidden item changed original index or arrow committed");
+            action("gallery.steps.disabled");
+            reveal(note.component);
+            const auto note_bounds = bounds(note.component);
+            require(services.hit_test().hit_test({note_bounds.x + note_bounds.width / 2,
+                                                  note_bounds.y + note_bounds.height / 2}) != note.interaction &&
+                        !services.focus().request_focus(note.interaction, input::FocusModality::keyboard),
+                    "Steps explicit disabled gate missed actual child hit/focus eligibility");
+            reveal(steps);
+            click(workflow.items[0]);
+            require(services.steps().snapshot(steps).current == 2, "Steps disabled item navigated");
+            const auto blocked_feedback = f.text_scene.text_state(text("gallery.steps.feedback").scene).content();
+            click(save.component);
+            require(f.text_scene.text_state(text("gallery.steps.feedback").scene).content() == blocked_feedback,
+                    "Steps disabled child Button activated");
+            action("gallery.steps.reset");
+            action("gallery.steps.focus");
+            require(f.host->focus().state().focused == note.interaction &&
+                        f.inputs->editors().require(note.editor).value() == "Retained steps",
+                    "Steps restore lost draft/public ref");
+            action("gallery.steps.next");
+            action("gallery.steps.previous");
+            require(services.steps().snapshot(steps).current == 0, "Steps workflow previous/next failed");
+            for (int i = 0; i < 3; ++i) {
+                action("gallery.steps.next");
+            }
+            feedback("gallery.steps.feedback", "发布完成");
+            require(services.steps().snapshot(steps).current == 3 &&
+                        std::ranges::all_of(services.steps().snapshot(steps).statuses,
+                                            [](auto value) { return value == StepsStatus::Finish; }),
+                    "Steps all-finished workflow differs");
+            action("gallery.steps.reset");
+            retained();
+            std::cout << "Navigation theme_step=" << theme_step << " viewport=" << width
+                      << "x900 real catalog/input/selection/keyboard/gates/scene/identity passed\n";
+        }
+    }
+}
+
 void print_gallery_inventory() {
     auto definition = rynui::example::make_token_gallery_definition();
     definition.set_viewport_width(1200);
@@ -3753,7 +4300,9 @@ void print_gallery_inventory() {
               << " results=" << f.host->services().empty_result().results().size()
               << " forms=" << f.host->services().form().mounted().size()
               << " form_items=" << f.host->services().form().items().size()
-              << " date_pickers=" << f.host->services().date_picker().mounted().size() << '\n';
+              << " date_pickers=" << f.host->services().date_picker().mounted().size()
+              << " breadcrumbs=" << f.host->services().breadcrumb().mounted().size()
+              << " steps=" << f.host->services().steps().mounted().size() << '\n';
 }
 } // namespace
 
@@ -3761,6 +4310,10 @@ int main(int argc, char** argv) {
     try {
         if (argc == 2 && std::string_view{argv[1]} == "--inventory-only") {
             print_gallery_inventory();
+            return 0;
+        }
+        if (argc == 2 && std::string_view{argv[1]} == "--navigation-only") {
+            test_navigation_gallery_after_document_scroll();
             return 0;
         }
         if (argc == 2 && std::string_view{argv[1]} == "--common-only") {
@@ -3811,6 +4364,7 @@ int main(int argc, char** argv) {
         test_data_and_selection_gallery_after_document_scroll();
         test_form_gallery_after_document_scroll();
         test_date_picker_gallery_after_document_scroll();
+        test_navigation_gallery_after_document_scroll();
         test_panel_and_selection_gallery_after_document_scroll();
         test_empty_and_result_gallery_after_document_scroll();
     } catch (const std::exception& error) {

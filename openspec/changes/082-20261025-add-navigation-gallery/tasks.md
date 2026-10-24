@@ -6,7 +6,7 @@
 
 ## 2. 平台通用 Gallery 实施与验证
 
-- [ ] 2.1 追加 Breadcrumb/Steps 真实样例、生产目录 anchor、owned Recording fixture 与组件 Gallery 文档；使用 Windows MSVC windows-msvc / windows-msvc-debug、Ninja Multi-Config、最多 4 jobs 构建 frame/reference targets，通过 --navigation-only 三主题双宽有限视口验证，记录实际输入、裁剪、外扩焦点与 retained 身份证据后提交。
+- [x] 2.1 追加 Breadcrumb/Steps 真实样例、生产目录 anchor、owned Recording fixture 与组件 Gallery 文档；使用 Windows MSVC windows-msvc / windows-msvc-debug、Ninja Multi-Config、最多 4 jobs 构建 frame/reference targets，通过 --navigation-only 三主题双宽有限视口验证，记录实际输入、裁剪、外扩焦点与 retained 身份证据后提交。
 
 ## 3. 平台通用集成收口
 

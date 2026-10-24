@@ -166,6 +166,22 @@ struct GalleryState final {
     ryn::Signal<bool> date_form_read_only{false};
     ryn::Signal<ryn::String> date_help{ryn::String{u8"允许 2026-10-05 至 2026-11-25，每月 13 日不可选"}};
     ryn::Signal<ryn::String> date_feedback{ryn::String{u8"尚未保存日期"}};
+    ryn::Signal<ryn::String> breadcrumb_title{ryn::String{u8"项目"}};
+    ryn::Signal<bool> breadcrumb_visible{true};
+    ryn::Signal<bool> breadcrumb_draft_visible{true};
+    ryn::Signal<bool> breadcrumb_disabled{false};
+    ryn::Signal<ryn::String> breadcrumb_draft{ryn::String{u8"Breadcrumb draft"}};
+    ryn::Signal<ryn::String> breadcrumb_feedback{ryn::String{u8"选择祖先或编辑当前草稿"}};
+    ryn::InputRef breadcrumb_ref;
+    ryn::Signal<std::size_t> steps_current{0};
+    ryn::Signal<bool> steps_vertical{false};
+    ryn::Signal<ryn::StepsSize> steps_size{ryn::StepsSize::Default};
+    ryn::Signal<ryn::StepsStatus> steps_status{ryn::StepsStatus::Process};
+    ryn::Signal<bool> steps_visible{true};
+    ryn::Signal<bool> steps_disabled{false};
+    ryn::Signal<ryn::String> steps_draft{ryn::String{u8"Steps draft"}};
+    ryn::Signal<ryn::String> steps_feedback{ryn::String{u8"填写资料后继续"}};
+    ryn::InputRef steps_ref;
     ryn::Signal<ryn::SliderRange> slider_range{ryn::SliderRange{20, 80}};
     ryn::Signal<ryn::IconSource> icon_source{ryn::IconSource{ryn::IconName::HeartTwoTone}};
     ryn::Signal<float> icon_angle{0};
@@ -508,6 +524,28 @@ constexpr auto stable_test_ids = std::to_array<std::string_view>({
     "gallery.date-picker.readonly",
     "gallery.date-picker.help",
     "gallery.date-picker.status",
+    "gallery.breadcrumb.trail",
+    "gallery.breadcrumb.feedback",
+    "gallery.breadcrumb.draft",
+    "gallery.breadcrumb.display",
+    "gallery.breadcrumb.rename",
+    "gallery.breadcrumb.visible",
+    "gallery.breadcrumb.draft-visible",
+    "gallery.breadcrumb.disabled",
+    "gallery.breadcrumb.restore",
+    "gallery.breadcrumb.focus",
+    "gallery.steps.workflow",
+    "gallery.steps.feedback",
+    "gallery.steps.draft",
+    "gallery.steps.previous",
+    "gallery.steps.next",
+    "gallery.steps.reset",
+    "gallery.steps.vertical",
+    "gallery.steps.size",
+    "gallery.steps.status",
+    "gallery.steps.visible",
+    "gallery.steps.disabled",
+    "gallery.steps.focus",
 });
 
 ryn::String utf8(std::string_view value) {
@@ -3172,6 +3210,193 @@ void add_card_samples(const std::shared_ptr<GalleryState>& state) {
            [] { Text(u8"gallery.card.toggle-loading · 切换账户卡片加载"); });
     state->telemetry.live_samples += 8;
 }
+
+void add_breadcrumb_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(String{u8"gallery.breadcrumb.trail · Breadcrumb · 项目层级"})
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}.content(bind([state] {
+                 return utf8("gallery.breadcrumb.feedback · " + std::string{state->breadcrumb_feedback.get().bytes()});
+             })));
+             Breadcrumb(
+                 BreadcrumbProps{}
+                     .onActivate([state](BreadcrumbActivation event) {
+                         state->breadcrumb_feedback.set(
+                             utf8("打开 " + std::string{event.key.bytes()} + " / " + std::to_string(event.index)));
+                     })
+                     .separator(BreadcrumbSeparator{[] { Text(u8"›"); }})
+                     .layout(LayoutStyle{}
+                                 .width(bind([state] { return dp(state->document_width.get().value() - 16); }))
+                                 .margin_left(dp(8))
+                                 .margin_top(dp(4))
+                                 .margin_bottom(dp(4))),
+                 {BreadcrumbItem{u8"home", u8"首页"}.disabled(state->breadcrumb_disabled).icon(BreadcrumbIcon{[] {
+                      Icon(IconProps{}.name(IconName::HomeOutlined));
+                  }}),
+                  BreadcrumbItem{u8"projects", u8"项目"}
+                      .title(state->breadcrumb_title)
+                      .visible(state->breadcrumb_visible)
+                      .disabled(state->breadcrumb_disabled),
+                  BreadcrumbItem{u8"draft", u8"草稿"}
+                      .visible(state->breadcrumb_draft_visible)
+                      .disabled(state->breadcrumb_disabled)
+                      .richTitle(BreadcrumbTitle{[state] {
+                          Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
+                                   Input(InputProps{}
+                                             .defaultValue(u8"Breadcrumb draft")
+                                             .placeholder(u8"gallery.breadcrumb.draft")
+                                             .ref(state->breadcrumb_ref)
+                                             .onChange([state](String value) { state->breadcrumb_draft.set(value); })
+                                             .layout(LayoutStyle{}.width(dp(150))));
+                                   Button(ButtonProps{}.onClick([state] {
+                                       state->breadcrumb_feedback.set(
+                                           utf8("应用 " + std::string{state->breadcrumb_draft.get().bytes()}));
+                                   }),
+                                          [] { Text(u8"应用草稿"); });
+                               }});
+                      }})});
+             Text(u8"gallery.breadcrumb.display · 展示层级中的独立编辑");
+             Breadcrumb(BreadcrumbProps{}.layout(LayoutStyle{}.margin_left(dp(8))),
+                        {BreadcrumbItem{u8"preview", u8"预览"}.richTitle(BreadcrumbTitle{[] {
+                             Input(InputProps{}.defaultValue(u8"Display draft").layout(LayoutStyle{}.width(dp(150))));
+                         }}),
+                         BreadcrumbItem{u8"read", u8"只展示层级"}});
+             Space(SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                   SpaceContent{[state] {
+                       Button(ButtonProps{}.onClick([state] {
+                           state->breadcrumb_title.set(
+                               state->breadcrumb_title.get() == String{u8"项目"} ? String{u8"归档"} : String{u8"项目"});
+                       }),
+                              [] { Text(u8"gallery.breadcrumb.rename · 改名"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->breadcrumb_visible.set(!state->breadcrumb_visible.get()); }),
+                              [] { Text(u8"gallery.breadcrumb.visible · 显隐祖先"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->breadcrumb_draft_visible.set(!state->breadcrumb_draft_visible.get());
+                       }),
+                              [] { Text(u8"gallery.breadcrumb.draft-visible · 显隐草稿"); });
+                       Button(ButtonProps{}.onClick(
+                                  [state] { state->breadcrumb_disabled.set(!state->breadcrumb_disabled.get()); }),
+                              [] { Text(u8"gallery.breadcrumb.disabled · 锁定层级"); });
+                       Button(ButtonProps{}.onClick([state] {
+                           state->breadcrumb_title.set(String{u8"项目"});
+                           state->breadcrumb_visible.set(true);
+                           state->breadcrumb_draft_visible.set(true);
+                           state->breadcrumb_disabled.set(false);
+                       }),
+                              [] { Text(u8"gallery.breadcrumb.restore · 恢复层级"); });
+                       Button(ButtonProps{}.onClick([state] { static_cast<void>(state->breadcrumb_ref.focus()); }),
+                              [] { Text(u8"gallery.breadcrumb.focus · 编辑草稿"); });
+                   }});
+         }});
+    ++state->telemetry.live_samples;
+}
+
+void add_steps_samples(const std::shared_ptr<GalleryState>& state) {
+    using namespace ryn;
+    Flex(FlexProps{}
+             .vertical(true)
+             .align(FlexAlign::Start)
+             .gap(dp(12))
+             .layout(LayoutStyle{}.width(state->document_width)),
+         FlexContent{[state] {
+             Text(TextProps{}
+                      .content(String{u8"gallery.steps.workflow · Steps · 发布流程"})
+                      .layout(LayoutStyle{}.margin_left(dp(1))));
+             Text(TextProps{}.content(bind([state] {
+                 return utf8("gallery.steps.feedback · current=" + std::to_string(state->steps_current.get()) + " · " +
+                             std::string{state->steps_feedback.get().bytes()});
+             })));
+             Steps(StepsProps{}
+                       .current(state->steps_current)
+                       .vertical(state->steps_vertical)
+                       .size(state->steps_size)
+                       .status(state->steps_status)
+                       .onChange([state](std::size_t index) {
+                           state->steps_current.set(index);
+                           state->steps_feedback.set(utf8("切换 / " + std::to_string(index)));
+                       })
+                       .layout(LayoutStyle{}
+                                   .width(bind([state] { return dp(state->document_width.get().value() - 16); }))
+                                   .margin_left(dp(8))
+                                   .margin_top(dp(4))
+                                   .margin_bottom(dp(4))),
+                   {StepsItem{u8"details", u8"资料"}
+                        .subtitle(u8"编辑备注")
+                        .disabled(state->steps_disabled)
+                        .richDescription(StepsDescription{[state] {
+                            Flex(FlexProps{}.vertical(true).align(FlexAlign::Start).gap(dp(4)), FlexContent{[state] {
+                                     Input(InputProps{}
+                                               .defaultValue(u8"Steps draft")
+                                               .placeholder(u8"gallery.steps.draft")
+                                               .ref(state->steps_ref)
+                                               .onChange([state](String value) { state->steps_draft.set(value); })
+                                               .layout(LayoutStyle{}.width(dp(120))));
+                                     Button(ButtonProps{}.onClick([state] {
+                                         state->steps_feedback.set(
+                                             utf8("保存 " + std::string{state->steps_draft.get().bytes()}));
+                                     }),
+                                            [] { Text(u8"保存备注"); });
+                                 }});
+                        }}),
+                    StepsItem{u8"review", u8"审核"}
+                        .description(u8"核对资料")
+                        .visible(state->steps_visible)
+                        .disabled(state->steps_disabled)
+                        .icon(StepsIcon{[] { Icon(IconProps{}.name(IconName::SearchOutlined)); }}),
+                    StepsItem{u8"publish", u8"发布"}.description(u8"确认后发布")});
+             Space(
+                 SpaceProps{}.wrap(true).size(dp(8)).layout(LayoutStyle{}.width(state->document_width)),
+                 SpaceContent{[state] {
+                     Button(ButtonProps{}.onClick([state] {
+                         state->steps_current.set(state->steps_current.get() > 0 ? state->steps_current.get() - 1 : 0);
+                         state->steps_feedback.set(String{u8"上一步"});
+                     }),
+                            [] { Text(u8"gallery.steps.previous · 上一步"); });
+                     Button(ButtonProps{}.type(ButtonType::Primary).onClick([state] {
+                         state->steps_current.set(std::min<std::size_t>(3, state->steps_current.get() + 1));
+                         state->steps_feedback.set(state->steps_current.get() == 3 ? String{u8"发布完成"}
+                                                                                   : String{u8"下一步"});
+                     }),
+                            [] { Text(u8"gallery.steps.next · 下一步"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->steps_current.set(0);
+                         state->steps_visible.set(true);
+                         state->steps_disabled.set(false);
+                         state->steps_status.set(StepsStatus::Process);
+                         state->steps_feedback.set(String{u8"流程已重置，备注保留"});
+                     }),
+                            [] { Text(u8"gallery.steps.reset · 重置流程"); });
+                     Button(ButtonProps{}.onClick([state] { state->steps_vertical.set(!state->steps_vertical.get()); }),
+                            [] { Text(u8"gallery.steps.vertical · 横纵切换"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->steps_size.set(state->steps_size.get() == StepsSize::Default ? StepsSize::Small
+                                                                                             : StepsSize::Default);
+                     }),
+                            [] { Text(u8"gallery.steps.size · 切换尺寸"); });
+                     Button(ButtonProps{}.onClick([state] {
+                         state->steps_status.set(state->steps_status.get() == StepsStatus::Process
+                                                     ? StepsStatus::Error
+                                                     : StepsStatus::Process);
+                     }),
+                            [] { Text(u8"gallery.steps.status · 切换错误状态"); });
+                     Button(ButtonProps{}.onClick([state] { state->steps_visible.set(!state->steps_visible.get()); }),
+                            [] { Text(u8"gallery.steps.visible · 显隐审核"); });
+                     Button(ButtonProps{}.onClick([state] { state->steps_disabled.set(!state->steps_disabled.get()); }),
+                            [] { Text(u8"gallery.steps.disabled · 锁定资料与审核"); });
+                     Button(ButtonProps{}.onClick([state] { static_cast<void>(state->steps_ref.focus()); }),
+                            [] { Text(u8"gallery.steps.focus · 编辑备注"); });
+                 }});
+         }});
+    ++state->telemetry.live_samples;
+}
 } // namespace
 
 TokenGalleryViewport token_gallery_logical_viewport(int pixel_width, int pixel_height, float render_scale) {
@@ -3265,6 +3490,8 @@ TokenGalleryDefinition make_token_gallery_definition() {
                                                         add_empty_and_result_samples(state);
                                                         add_form_samples(state);
                                                         add_date_picker_samples(state);
+                                                        add_breadcrumb_samples(state);
+                                                        add_steps_samples(state);
                                                     });
                                       });
                             scrollbar_surface(ReferenceSurfaceRole::scrollbar_track, state->navigation_track_height,
