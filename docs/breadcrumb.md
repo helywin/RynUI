@@ -29,3 +29,9 @@ void breadcrumb_example(ryn::Signal<ryn::String>& title,
 隐藏中间项不留 separator 空隙；全部隐藏或空 items 时组件移出普通布局流，恢复时保留身份。有限宽高下裁剪文字、富内容与命中，尺寸变化不会重挂载。Theme 使用 `ThemeConfig::breadcrumb` 的 `tokens`、`seed`、`algorithm`，颜色与度量分域失效；外部布局使用 `LayoutStyle`。
 
 首版提供固定水平排列，不自动换行/响应式/RTL，不提供 router/href/params 或内置 dropdown，也不建立 Web 辅助技术桥接。验证范围为 Windows MSVC headless 的逻辑场景/输入，不代表原生 GPU 或系统 IME 验收。
+
+## Gallery
+
+Gallery 目录的 Breadcrumb 跳转到 `gallery.breadcrumb.trail`。样例提供首页图标、自定义分隔符、祖先改名/显隐、层级锁定与外部恢复，激活反馈显示原始 key/index。当前项内 Input 和“应用草稿”按钮独立编辑；下方无导航处理器的展示层级也保留可编辑 Input。“恢复层级”保留草稿，“编辑草稿”通过原 InputRef 恢复焦点。
+
+平台通用 Recording 命令：`out/build/windows-msvc/tests/Debug/rynui_token_gallery_frame_tests.exe --navigation-only`。范围为真实目录点击、原生 Pointer/Key/Text/选区事件与三主题、双宽有限视口下的 logical scene/身份验证；执行结果见 [082 证据](../openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md)。这不增加固定拓扑之外的框架能力，不代表 GPU、原生窗口、Linux、系统 IME 或辅助技术验收。

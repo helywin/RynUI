@@ -6,6 +6,7 @@
 #include "theme/form_theme.hpp"
 #include "theme/breadcrumb_theme.hpp"
 #include "theme/steps_theme.hpp"
+#include "theme/time_picker_theme.hpp"
 #include "theme/descriptions_theme.hpp"
 
 #include <algorithm>
@@ -4077,32 +4078,30 @@ Color detail::semantic_status_background(const ThemeSnapshot& theme, InputStatus
                 : palette_variant(base, 5, true);
 }
 
-ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias,
-                             ButtonThemeToken button, TextThemeToken text, SwitchThemeToken switch_token,
-                             CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
-                             DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip,
-                             SelectThemeToken select, CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal,
-                             DrawerThemeToken drawer, PopconfirmThemeToken popconfirm, MenuThemeToken menu,
-                             DropdownThemeToken dropdown, std::shared_ptr<const detail::InputTokenSet> input,
-                             std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag, BadgeThemeToken badge,
-                             AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
-                             InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
-                             CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                             ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                             BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
-                             DescriptionsThemeToken descriptions)
+ThemeSnapshot::ThemeSnapshot(
+    AntDesignDefaultSeed seed, ThemeMapToken map, ThemeAliasToken alias, ButtonThemeToken button, TextThemeToken text,
+    SwitchThemeToken switch_token, CheckboxThemeToken checkbox, RadioThemeToken radio, TypographyThemeToken typography,
+    DividerThemeToken divider, SliderThemeToken slider, TooltipThemeToken tooltip, SelectThemeToken select,
+    CardThemeToken card, TabsThemeToken tabs, ModalThemeToken modal, DrawerThemeToken drawer,
+    PopconfirmThemeToken popconfirm, MenuThemeToken menu, DropdownThemeToken dropdown,
+    std::shared_ptr<const detail::InputTokenSet> input, std::vector<ThemeAlgorithm> algorithms, TagThemeToken tag,
+    BadgeThemeToken badge, AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
+    InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
+    CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty, ResultThemeToken result,
+    DatePickerThemeToken date_picker, FormThemeToken form, BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
+    std::shared_ptr<const TimePickerThemeToken> time_picker, DescriptionsThemeToken descriptions)
     : seed_(std::move(seed)), map_(std::move(map)), alias_(std::move(alias)), button_(std::move(button)),
       text_(std::move(text)), switch_token_(std::move(switch_token)), checkbox_(std::move(checkbox)),
       radio_(std::move(radio)), typography_(std::move(typography)), divider_(std::move(divider)),
       slider_(std::move(slider)), tooltip_(std::move(tooltip)), select_(std::move(select)), card_(std::move(card)),
       tabs_(std::move(tabs)), segmented_(std::move(segmented)), date_picker_(std::move(date_picker)),
       form_(std::move(form)), breadcrumb_(std::move(breadcrumb)), steps_(std::move(steps)),
-      descriptions_(std::move(descriptions)), modal_(std::move(modal)), tag_(std::move(tag)), badge_(std::move(badge)),
-      drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)), alert_(std::move(alert)), spin_(std::move(spin)),
-      progress_(std::move(progress)), menu_(std::move(menu)), dropdown_(std::move(dropdown)),
-      input_number_(std::move(input_number)), pagination_(std::move(pagination)), table_(std::move(table)),
-      collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)), input_(std::move(input)),
-      algorithms_(std::move(algorithms)) {
+      time_picker_(std::move(time_picker)), descriptions_(std::move(descriptions)), modal_(std::move(modal)),
+      tag_(std::move(tag)), badge_(std::move(badge)), drawer_(std::move(drawer)), popconfirm_(std::move(popconfirm)),
+      alert_(std::move(alert)), spin_(std::move(spin)), progress_(std::move(progress)), menu_(std::move(menu)),
+      dropdown_(std::move(dropdown)), input_number_(std::move(input_number)), pagination_(std::move(pagination)),
+      table_(std::move(table)), collapse_(std::move(collapse)), empty_(std::move(empty)), result_(std::move(result)),
+      input_(std::move(input)), algorithms_(std::move(algorithms)) {
     identity_ = snapshot_identity(seed_, map_, alias_, button_, text_, switch_token_, checkbox_, radio_, typography_,
                                   divider_, slider_, tooltip_, select_, card_, tabs_, modal_, drawer_, popconfirm_,
                                   menu_, dropdown_, *input_, algorithms_);
@@ -4386,6 +4385,32 @@ ThemeSnapshot::ThemeSnapshot(AntDesignDefaultSeed seed, ThemeMapToken map, Theme
     metric(steps_.effects.focus_width);
     metric(steps_.effects.focus_offset);
     status_json << "]}";
+    status_json << ",\"timePicker\":{\"colors\":[";
+    first = true;
+    for (const auto value : time_picker_->colors.values()) {
+        color(value);
+    }
+    status_json << "],\"metrics\":[";
+    first = true;
+    for (const auto value : time_picker_->metrics.values()) {
+        metric(value);
+    }
+    hash_integer(identity_, time_picker_->metrics.font_family);
+    hash_integer(identity_, time_picker_->z_index_popup);
+    hash_shadow(identity_, time_picker_->effects.shadow);
+    status_json << "],\"fontFamily\":" << static_cast<int>(time_picker_->metrics.font_family)
+                << ",\"zIndexPopup\":" << time_picker_->z_index_popup << ",\"shadow\":[";
+    for (std::size_t i = 0; i < time_picker_->effects.shadow.size(); ++i) {
+        if (i) {
+            status_json << ',';
+        }
+        const auto& shadow = time_picker_->effects.shadow[i];
+        status_json << '[' << static_cast<int>(shadow.kind) << ',' << shadow.offset.x << ',' << shadow.offset.y << ','
+                    << shadow.blur << ',' << shadow.spread << ',';
+        append_color(status_json, shadow.color);
+        status_json << ']';
+    }
+    status_json << "]}";
     status_json << ",\"descriptions\":{\"colors\":[";
     first = true;
     for (auto value : descriptions_.colors.values()) {
@@ -4529,7 +4554,14 @@ bool operator==(const ThemeSnapshot& left, const ThemeSnapshot& right) {
            left.result_ == right.result_ && left.collapse_ == right.collapse_ && left.segmented_ == right.segmented_ &&
            left.date_picker_ == right.date_picker_ && left.form_ == right.form_ &&
            left.breadcrumb_ == right.breadcrumb_ && left.steps_ == right.steps_ &&
-           left.descriptions_ == right.descriptions_;
+           *left.time_picker_ == *right.time_picker_ && left.descriptions_ == right.descriptions_;
+}
+
+const ThemeConfig& detail::default_theme_config() {
+    // Keep the root-mount fix independent; public no-argument calls also need
+    // to avoid a full config for every Debug caller expression.
+    static const ThemeConfig config;
+    return config;
 }
 
 ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* parent) {
@@ -5269,6 +5301,25 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
         detail::apply_steps_override(token, config.steps.tokens);
         return token;
     }();
+    auto time_picker = [&] {
+        auto token = std::make_shared<TimePickerThemeToken>();
+        const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
+                             config.alias == AliasTokenOverride{} && config.algorithms.empty() &&
+                             !config.time_picker.algorithm;
+        if (inherit) {
+            *token = parent->time_picker();
+        } else if (config.time_picker.algorithm) {
+            auto component_seed = seed;
+            apply_seed_override(component_seed, config.time_picker.seed);
+            const auto component_map = derive_map(component_seed, algorithms);
+            *token = detail::derive_time_picker(component_seed, component_map,
+                                                derive_alias(component_seed, component_map, algorithms));
+        } else {
+            *token = detail::derive_time_picker(seed, map, alias);
+        }
+        detail::apply_time_picker_override(*token, config.time_picker.tokens);
+        return token;
+    }();
     auto descriptions = [&] {
         DescriptionsThemeToken token;
         const bool inherit = parent && config.inherit && config.seed == SeedTokenOverride{} &&
@@ -5297,7 +5348,7 @@ ThemeSnapshot resolve_theme(const ThemeConfig& config, const ThemeSnapshot* pare
                          std::move(progress), std::move(input_number), std::move(pagination), std::move(table),
                          std::move(collapse), std::move(segmented), std::move(empty), std::move(result),
                          std::move(date_picker), std::move(form), std::move(breadcrumb), std::move(steps),
-                         std::move(descriptions));
+                         std::move(time_picker), std::move(descriptions));
 }
 
 } // namespace ryn

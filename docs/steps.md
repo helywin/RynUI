@@ -34,4 +34,10 @@ void steps_example(ryn::Signal<std::size_t>& current, ryn::Signal<bool>& review_
 
 Theme 使用 `ThemeConfig::steps` 的独立 `tokens`、`seed`、`algorithm`；颜色更新不重测量，最终派生度量先校验再发布。`LayoutStyle` 只控制外部布局。有限宽高下裁剪实际文字、富内容、表面与命中。
 
-首版不提供动态拓扑替换、dot/inline/navigation/panel/percent/maxCount、自动 responsive/RTL、动画或 Web 辅助技术桥接。验证范围为 Windows MSVC headless，不代表 Gallery、原生 GPU、Linux 或系统 IME 验收。
+首版不提供动态拓扑替换、dot/inline/navigation/panel/percent/maxCount、自动 responsive/RTL、动画或 Web 辅助技术桥接。核心验证范围为 Windows MSVC headless，Gallery 另见下节；不代表原生 GPU、Linux 或系统 IME 验收。
+
+## Gallery
+
+Gallery 目录的 Steps 跳转到 `gallery.steps.workflow`。发布流程由应用接受 `onChange` 并回写 current，显示原始索引与操作反馈；上一步/下一步可推进到全部完成。“横纵切换”“切换尺寸”“切换错误状态”“显隐审核”“锁定资料与审核”更新真实 Props。资料说明内 Input 与“保存备注”按钮独立操作；外部重置恢复可用状态并保留备注，“编辑备注”使用原 InputRef。
+
+方向键与 Home/End 只移动步骤焦点，Enter/Space 才请求切换；隐藏审核后发布步骤仍是原始索引 2。平台通用 Recording 命令为 `out/build/windows-msvc/tests/Debug/rynui_token_gallery_frame_tests.exe --navigation-only`，执行结果见 [082 证据](../openspec/changes/082-20261025-add-navigation-gallery/evidence/01-gallery.md)。该验证覆盖 Default/Dark/Compact × 1200/560 × 900 的 logical scene、真实事件和保留身份，不代表原生 GPU、窗口、Linux、IME 或辅助技术验收。

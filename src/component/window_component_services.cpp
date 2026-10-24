@@ -7,6 +7,7 @@
 #include "component/otp_component.hpp"
 #include "component/select_component.hpp"
 #include "component/date_picker_component.hpp"
+#include "component/time_picker_component.hpp"
 #include "component/card_component.hpp"
 #include "component/tabs_component.hpp"
 #include "component/collapse_component.hpp"
@@ -106,6 +107,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);
     date_picker_ = std::make_unique<DatePickerComponentHost>(*this);
+    time_picker_ = std::make_unique<TimePickerComponentHost>(*this);
     popconfirm_ = std::make_unique<PopconfirmComponentHost>(*this);
     dropdown_ = std::make_unique<DropdownComponentHost>(*this);
     tooltip_ = std::make_unique<TooltipComponentHost>(*this);
@@ -190,8 +192,8 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
             return true;
         }
     }
-    return date_picker_->consume_scroll_boundary(event) || dropdown_->consume_scroll_boundary(event) ||
-           interactions_.input_boundary().has_value();
+    return time_picker_->consume_scroll_boundary(event) || date_picker_->consume_scroll_boundary(event) ||
+           dropdown_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
 }
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {

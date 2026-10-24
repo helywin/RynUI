@@ -11,6 +11,7 @@
 #include <ryn/form_tokens.hpp>
 #include <ryn/breadcrumb_tokens.hpp>
 #include <ryn/steps_tokens.hpp>
+#include <ryn/time_picker_tokens.hpp>
 #include <ryn/descriptions_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
@@ -1506,6 +1507,13 @@ struct StepsThemeConfig final {
     friend bool operator==(const StepsThemeConfig&, const StepsThemeConfig&) = default;
 };
 
+struct TimePickerThemeConfig final {
+    TimePickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const TimePickerThemeConfig&, const TimePickerThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
     StepsThemeConfig steps;
     BreadcrumbThemeConfig breadcrumb;
@@ -1528,6 +1536,7 @@ struct ThemeConfig final {
     TabsThemeConfig tabs;
     SegmentedThemeConfig segmented;
     FormThemeConfig form;
+    TimePickerThemeConfig time_picker;
     DescriptionsThemeConfig descriptions;
     ModalThemeConfig modal;
     TagThemeConfig tag;
@@ -2085,6 +2094,11 @@ public:
     [[nodiscard]] const SliderThemeToken& slider() const noexcept;
     [[nodiscard]] const TooltipThemeToken& tooltip() const noexcept;
     [[nodiscard]] const SelectThemeToken& select() const noexcept;
+
+    [[nodiscard]] const TimePickerThemeToken& time_picker() const noexcept {
+        return *time_picker_;
+    }
+
     [[nodiscard]] const CardThemeToken& card() const noexcept;
     [[nodiscard]] const TabsThemeToken& tabs() const noexcept;
 
@@ -2181,7 +2195,8 @@ private:
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
                   ResultThemeToken result, DatePickerThemeToken date_picker, FormThemeToken form,
-                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps, DescriptionsThemeToken descriptions);
+                  BreadcrumbThemeToken breadcrumb, StepsThemeToken steps,
+                  std::shared_ptr<const TimePickerThemeToken> time_picker, DescriptionsThemeToken descriptions);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2203,6 +2218,7 @@ private:
     FormThemeToken form_;
     BreadcrumbThemeToken breadcrumb_;
     StepsThemeToken steps_;
+    std::shared_ptr<const TimePickerThemeToken> time_picker_;
     DescriptionsThemeToken descriptions_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
@@ -2226,7 +2242,12 @@ private:
     std::string diagnostic_json_;
 };
 
-[[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = {}, const ThemeSnapshot* parent = nullptr);
+namespace detail {
+[[nodiscard]] const ThemeConfig& default_theme_config();
+}
+
+[[nodiscard]] ThemeSnapshot resolve_theme(const ThemeConfig& config = detail::default_theme_config(),
+                                          const ThemeSnapshot* parent = nullptr);
 
 class ThemeProps final {
 public:

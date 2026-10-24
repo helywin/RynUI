@@ -17,4 +17,4 @@
 
 ## 4. 已发布 main 共存验收
 
-- [ ] 4.1 R1 分区裁剪修复独立验证并保存干净本地提交后，显式 merge 已发布 `580a8c3d235c22eb95b11688b509ee1e2ea65e44`，保留其 31 段 IIFE、TokenIdentity 数值/顺序、Time 静态配置与 heap/preflight/selfguard/binding bridge，Descriptions 附加 Time 后；仅在受合并影响的去重 Debug/Release 集合、fresh golden 双基线深比较及 doctor/strict/diff 通过后勾选并本地提交。
+- [x] 4.1 R1 分区裁剪修复独立验证并保存干净本地提交后，显式 merge 已发布 `580a8c3d235c22eb95b11688b509ee1e2ea65e44`，保留其 31 段 IIFE、TokenIdentity 数值/顺序、Time 静态配置与 heap/preflight/selfguard/binding bridge，Descriptions 附加 Time 后；仅在受合并影响的去重 Debug/Release 集合、fresh golden 双基线深比较及 doctor/strict/diff 通过后勾选并本地提交。
