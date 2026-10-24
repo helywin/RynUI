@@ -105,6 +105,9 @@ std::optional<DatePickerValue> DatePickerModel::request(DatePickerValue value) {
     if (value && !eligible(*value)) {
         return {};
     }
+    if (value) {
+        active_ = *value;
+    }
     if (!controlled_) {
         value_ = value;
     }
@@ -120,6 +123,10 @@ bool DatePickerModel::navigate(int months) {
         --day;
     }
     const auto next = clamped(CivilDate{year, month, day}, rules_);
+    if ((year != active_.year() || month != active_.month()) && next.year() == active_.year() &&
+        next.month() == active_.month()) {
+        return false;
+    }
     const bool changed = next != active_;
     active_ = next;
     return changed;

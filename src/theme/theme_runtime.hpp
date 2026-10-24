@@ -104,6 +104,10 @@ public:
     [[nodiscard]] const SegmentedThemeToken& segmented_colors() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_metrics() const;
     [[nodiscard]] const SegmentedThemeToken& segmented_effects() const;
+    [[nodiscard]] const DatePickerThemeToken& date_picker_colors() const;
+    [[nodiscard]] const DatePickerThemeToken& date_picker_metrics() const;
+    [[nodiscard]] const DatePickerThemeToken& date_picker_effects() const;
+    [[nodiscard]] const DatePickerThemeToken& date_picker_order() const;
     [[nodiscard]] const ModalThemeToken& modal_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_colors() const;
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;

@@ -7,6 +7,7 @@
 #include <ryn/feedback_tokens.hpp>
 #include <ryn/empty_result_tokens.hpp>
 #include <ryn/segmented_tokens.hpp>
+#include <ryn/date_picker_tokens.hpp>
 #include <ryn/button_types.hpp>
 #include <ryn/component.hpp>
 #include <ryn/layout_style.hpp>
@@ -1466,7 +1467,15 @@ struct ResultThemeConfig final {
     friend bool operator==(const ResultThemeConfig&, const ResultThemeConfig&) = default;
 };
 
+struct DatePickerThemeConfig final {
+    DatePickerTokenOverride tokens;
+    SeedTokenOverride seed;
+    bool algorithm{};
+    friend bool operator==(const DatePickerThemeConfig&, const DatePickerThemeConfig&) = default;
+};
+
 struct ThemeConfig final {
+    DatePickerThemeConfig date_picker;
     SeedTokenOverride seed;
     AliasTokenOverride alias;
     ButtonThemeConfig button;
@@ -2051,6 +2060,10 @@ public:
         return segmented_;
     }
 
+    [[nodiscard]] const DatePickerThemeToken& date_picker() const noexcept {
+        return date_picker_;
+    }
+
     [[nodiscard]] const ModalThemeToken& modal() const noexcept;
 
     [[nodiscard]] const TagThemeToken& tag() const noexcept {
@@ -2115,7 +2128,7 @@ private:
                   AlertThemeToken alert, SpinThemeToken spin, ProgressThemeToken progress,
                   InputNumberThemeToken input_number, PaginationThemeToken pagination, TableThemeToken table,
                   CollapseThemeToken collapse, SegmentedThemeToken segmented, EmptyThemeToken empty,
-                  ResultThemeToken result);
+                  ResultThemeToken result, DatePickerThemeToken date_picker);
 
     AntDesignDefaultSeed seed_;
     ThemeMapToken map_;
@@ -2133,6 +2146,7 @@ private:
     CardThemeToken card_;
     TabsThemeToken tabs_;
     SegmentedThemeToken segmented_;
+    DatePickerThemeToken date_picker_;
     ModalThemeToken modal_;
     TagThemeToken tag_;
     BadgeThemeToken badge_;

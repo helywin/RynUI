@@ -6,7 +6,7 @@
 
 ## 2. 平台通用：Theme 与原生保留控件
 
-- [ ] 2.1 实现 DatePicker Theme 全链路及保留 Input/月历/typed footer host，补齐 API 用例文档与实际 component/Theme 测试；通过 Debug/Release focused tests 覆盖指针/键盘/输入/清空、范围导航、普通更新保留草稿与身份、受控开合、Modal/Spin/隐藏及子 popup、有限 glyph/surface/hit clip 和回调销毁；生成五份 fresh golden 并证明旧字段除 identity 外保持。
+- [x] 2.1 实现 DatePicker Theme 全链路及保留 Input/月历/typed footer host，补齐 API 用例文档与实际 component/Theme 测试；通过 Debug/Release focused tests 覆盖指针/键盘/输入/清空、范围导航、普通更新保留草稿与身份、受控开合、Modal/Spin/隐藏及子 popup、有限 glyph/surface/hit clip 和回调销毁；生成五份 fresh golden 并证明旧字段除 identity 外保持。
 
 ## 3. 平台通用：集成收口
 

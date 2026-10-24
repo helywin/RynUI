@@ -35,7 +35,30 @@ private:
 
 using DatePickerValue = std::optional<CivilDate>;
 using DatePickerRef = InputRef;
-using DisabledDate = std::function<bool(CivilDate)>;
+
+// Predicate identity makes reactive replacement comparable without comparing closures.
+class DisabledDate final {
+public:
+    DisabledDate() = default;
+
+    template <typename F>
+        requires std::is_invocable_r_v<bool, F, CivilDate>
+    DisabledDate(F value) : function_(std::make_shared<const std::function<bool(CivilDate)>>(std::move(value))) {}
+
+    [[nodiscard]] explicit operator bool() const noexcept {
+        return bool(function_);
+    }
+
+    [[nodiscard]] bool operator()(CivilDate value) const {
+        return (*function_)(value);
+    }
+
+    friend bool operator==(const DisabledDate&, const DisabledDate&) = default;
+
+private:
+    std::shared_ptr<const std::function<bool(CivilDate)>> function_;
+};
+
 [[nodiscard]] DatePickerValue parse_iso_date(std::string_view value);
 [[nodiscard]] String format_iso_date(CivilDate value);
 
@@ -89,6 +112,12 @@ public:
     DatePickerProps& disabledDate(Prop<DisabledDate> value) {
         disabled_date_ = std::move(value);
         return *this;
+    }
+
+    template <typename F>
+        requires std::is_invocable_r_v<bool, F, CivilDate>
+    DatePickerProps& disabledDate(F value) {
+        return disabledDate(Prop<DisabledDate>{DisabledDate{std::move(value)}});
     }
 
     DatePickerProps& open(Prop<bool> value) {

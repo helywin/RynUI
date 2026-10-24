@@ -61,7 +61,7 @@ int main() {
         check(m.request(CivilDate{2024, 2, 16}) && m.value() == DatePickerValue{CivilDate{2024, 2, 16}},
               "uncontrolled selection");
         m.navigate(1000);
-        check(m.active() == CivilDate{2024, 2, 20}, "maximum range navigation");
+        check(m.active() == CivilDate{2024, 2, 16}, "maximum range navigation");
         m.configure({{}, {}, [&](CivilDate) {
                          ++calls;
                          return true;

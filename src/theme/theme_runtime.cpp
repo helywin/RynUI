@@ -344,6 +344,14 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
                       count);
     append_if_changed(before.segmented().effects, after.segmented().effects, TokenIdentity::segmented_effects, changed,
                       count);
+    append_if_changed(before.date_picker().colors, after.date_picker().colors, TokenIdentity::date_picker_colors,
+                      changed, count);
+    append_if_changed(before.date_picker().metrics, after.date_picker().metrics, TokenIdentity::date_picker_metrics,
+                      changed, count);
+    append_if_changed(before.date_picker().shadow, after.date_picker().shadow, TokenIdentity::date_picker_effects,
+                      changed, count);
+    append_if_changed(before.date_picker().z_index_popup, after.date_picker().z_index_popup,
+                      TokenIdentity::date_picker_order, changed, count);
     append_if_changed(before.modal().colors, after.modal().colors, TokenIdentity::modal_colors, changed, count);
     const auto& old_popconfirm = before.popconfirm();
     const auto& new_popconfirm = after.popconfirm();
@@ -1333,6 +1341,30 @@ const ResultThemeToken& ThemeScope::result_metrics() const {
     return snapshot_->result();
 }
 
+const DatePickerThemeToken& ThemeScope::date_picker_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::date_picker_colors);
+    return snapshot_->date_picker();
+}
+
+const DatePickerThemeToken& ThemeScope::date_picker_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::date_picker_metrics);
+    return snapshot_->date_picker();
+}
+
+const DatePickerThemeToken& ThemeScope::date_picker_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::date_picker_effects);
+    return snapshot_->date_picker();
+}
+
+const DatePickerThemeToken& ThemeScope::date_picker_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::date_picker_order);
+    return snapshot_->date_picker();
+}
+
 const SegmentedThemeToken& ThemeScope::segmented_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::segmented_colors);
@@ -1613,6 +1645,10 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Collapse.metrics",
         "Collapse.typography",
         "Collapse.effects",
+        "DatePicker.colors",
+        "DatePicker.metrics",
+        "DatePicker.effects",
+        "DatePicker.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1664,6 +1700,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::slider_colors:
     case TokenIdentity::tooltip_colors:
     case TokenIdentity::tooltip_order:
+    case TokenIdentity::date_picker_order:
     case TokenIdentity::menu_colors:
     case TokenIdentity::dropdown_colors:
     case TokenIdentity::select_colors:
@@ -1671,6 +1708,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_colors:
     case TokenIdentity::collapse_colors:
     case TokenIdentity::segmented_colors:
+    case TokenIdentity::date_picker_colors:
     case TokenIdentity::modal_colors:
     case TokenIdentity::tag_colors:
     case TokenIdentity::input_number_colors:
@@ -1709,6 +1747,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     case TokenIdentity::tabs_effects:
     case TokenIdentity::collapse_effects:
     case TokenIdentity::segmented_effects:
+    case TokenIdentity::date_picker_effects:
     case TokenIdentity::modal_effects:
     case TokenIdentity::drawer_effects:
     case TokenIdentity::popconfirm_effects:
@@ -1741,6 +1780,7 @@ DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
         return DirtyPhase::text | DirtyPhase::measure_layout;
     case TokenIdentity::tag_metrics:
     case TokenIdentity::segmented_metrics:
+    case TokenIdentity::date_picker_metrics:
     case TokenIdentity::alert_metrics:
     case TokenIdentity::spin_metrics:
     case TokenIdentity::progress_metrics:

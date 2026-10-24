@@ -168,6 +168,10 @@ enum class TokenIdentity : std::uint8_t {
     collapse_metrics,
     collapse_typography,
     collapse_effects,
+    date_picker_colors,
+    date_picker_metrics,
+    date_picker_effects,
+    date_picker_order,
     count,
 };
 
