@@ -456,6 +456,12 @@ bool contains(std::span<const TokenIdentity> identities, TokenIdentity identity)
     return std::find(identities.begin(), identities.end(), identity) != identities.end();
 }
 
+// Keep the large resolved snapshot temporary out of the recursive validation frame.
+std::shared_ptr<const ThemeSnapshot> resolve_validation_snapshot(const ThemeConfig& config,
+                                                                 const ThemeSnapshot& parent) {
+    return std::make_shared<ThemeSnapshot>(resolve_theme(config, &parent));
+}
+
 } // namespace
 
 struct Subscription::State final {
@@ -525,6 +531,9 @@ bool ThemeScope::update(const ThemeConfig& config) {
         return false;
     }
     ThemeSnapshot next = resolve_theme(config, config.inherit && parent_ ? &parent_->snapshot() : nullptr);
+    if (next != *snapshot_) {
+        validate_children(next);
+    }
     commit_snapshot(config, std::move(next));
     return true;
 }
@@ -948,6 +957,19 @@ void ThemeScope::record(TokenIdentity identity) const {
                   active_capture->identities.begin() + static_cast<std::ptrdiff_t>(active_capture->count), identity);
     if (present == active_capture->identities.begin() + static_cast<std::ptrdiff_t>(active_capture->count)) {
         active_capture->identities[active_capture->count++] = identity;
+    }
+}
+
+void ThemeScope::validate_children(const ThemeSnapshot& parent_snapshot) const {
+    for (const auto& weak_child : children_) {
+        const auto child = weak_child.lock();
+        if (!child || !child->config_.inherit) {
+            continue;
+        }
+        const auto next = resolve_validation_snapshot(child->config_, parent_snapshot);
+        if (*next != *child->snapshot_) {
+            child->validate_children(*next);
+        }
     }
 }
 

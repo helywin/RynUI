@@ -1,0 +1,127 @@
+{
+  "baseline": "4efa310a256019192e01f0738ee226d16ad44396",
+  "configure_preset": "windows-msvc-headless",
+  "build_tree": "out/build/empty-result-headless",
+  "compiler": "MSVC 19.51.36256.0",
+  "generator": "Ninja Multi-Config",
+  "build_jobs": 4,
+  "platform": "HEADLESS",
+  "renderer": "RECORDING",
+  "service_tier": "default",
+  "repro_before_fix": {
+    "exit_code": 1,
+    "failed_cases": 39,
+    "passed_cases": 47,
+    "reactive_0_49_published_then_failed": [
+      {
+        "font": "Empty.font_size",
+        "error": "Input validation fonts failed to load\r"
+      },
+      {
+        "font": "Result.title_font_size",
+        "error": "Input validation fonts failed to load\r"
+      },
+      {
+        "font": "Result.font_size",
+        "error": "Input validation fonts failed to load\r"
+      }
+    ]
+  },
+  "focused_ctest": {
+    "Debug": {
+      "passed": 12,
+      "failed": 0,
+      "elapsed_seconds": 15.82,
+      "invalid_font_rejections": 66,
+      "font_threshold_dpi_recovery_cases": 3
+    },
+    "Release": {
+      "passed": 12,
+      "failed": 0,
+      "elapsed_seconds": 9.05,
+      "invalid_font_rejections": 66,
+      "font_threshold_dpi_recovery_cases": 3
+    }
+  },
+  "selected_tests_and_targets": [
+    {
+      "name": "rynui.empty_result_public_api",
+      "target": "rynui_empty_result_public_api_tests"
+    },
+    {
+      "name": "rynui.empty_result_theme",
+      "target": "rynui_empty_result_theme_tests"
+    },
+    {
+      "name": "rynui.empty_result_component",
+      "target": "rynui_empty_result_component_tests"
+    },
+    {
+      "name": "rynui.input_number_theme",
+      "target": "rynui_input_number_theme_tests"
+    },
+    {
+      "name": "rynui.portable.theme_algorithm",
+      "target": "rynui_portable_theme_algorithm"
+    },
+    {
+      "name": "rynui.portable.theme_runtime",
+      "target": "rynui_portable_theme_runtime"
+    },
+    {
+      "name": "rynui.portable.text_component",
+      "target": "rynui_portable_text_component"
+    },
+    {
+      "name": "rynui.portable.icon_component",
+      "target": "rynui_portable_icon_component"
+    },
+    {
+      "name": "rynui.portable.button_component",
+      "target": "rynui_portable_button_component"
+    },
+    {
+      "name": "rynui.portable.input_component",
+      "target": "rynui_portable_input_component"
+    },
+    {
+      "name": "rynui.portable.switch_features",
+      "target": "rynui_portable_switch_features"
+    },
+    {
+      "name": "rynui.portable.popconfirm_theme",
+      "target": "rynui_portable_popconfirm_theme"
+    }
+  ],
+  "source_and_golden_checks": {
+    "baseline": "4efa310a256019192e01f0738ee226d16ad44396",
+    "theme_change": "two guards, six added lines only",
+    "unchanged_sources": [
+      "src/component/text_component.cpp",
+      "src/font/font_runtime.cpp",
+      "src/theme/theme_runtime.cpp",
+      "src/component/empty_result_component.cpp",
+      "src/component/popconfirm_component.cpp",
+      "src/component/window_component_services.cpp",
+      "tests/empty_result_theme_tests.cpp"
+    ],
+    "five_goldens_unchanged_including_identity": [
+      "compact-dark.json",
+      "compact.json",
+      "dark-compact.json",
+      "dark.json",
+      "default.json"
+    ],
+    "only_073_scope_changed": true
+  },
+  "validation": {
+    "doctor_healthy": true,
+    "strict_passed": 75,
+    "strict_failed": 0,
+    "format": "Checked 583 owned source files with clang-format version 22.1.3 (https://github.com/llvm/llvm-project e9846648fd6183ee6d8cbdb4502213fcf902a211); 0 failures.",
+    "git_diff_check_exit_code": 0
+  },
+  "font_contract": "finite fixed logical size >= 0.5, then existing lround before DPI raster scaling",
+  "full_148_matrix_rerun": false,
+  "shared_text_font_runtime_or_publishing_code_changed": false
+}

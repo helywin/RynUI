@@ -1757,6 +1757,9 @@ void apply_empty_override(EmptyThemeToken& token, const EmptyTokenOverride& o) {
                                                     "Empty decoration_padding must be non-negative");
     token.metrics.font_size =
         fixed_length(o.font_size, token.metrics.font_size, "Empty font_size must be positive", true);
+    if (token.metrics.font_size < 0.5F) {
+        throw std::invalid_argument("Empty font_size must round to at least one logical pixel (>= 0.5)");
+    }
     token.metrics.line_height =
         fixed_length(o.line_height, token.metrics.line_height, "Empty line_height must be positive", true);
     float extent = 0;
@@ -1823,6 +1826,9 @@ void apply_result_override(ResultThemeToken& token, const ResultTokenOverride& o
                                                    "Result title_line_height must be positive", true);
     token.metrics.font_size =
         fixed_length(o.font_size, token.metrics.font_size, "Result font_size must be positive", true);
+    if (token.metrics.title_font_size < 0.5F || token.metrics.font_size < 0.5F) {
+        throw std::invalid_argument("Result font sizes must round to at least one logical pixel (>= 0.5)");
+    }
     token.metrics.line_height =
         fixed_length(o.line_height, token.metrics.line_height, "Result line_height must be positive", true);
     float extent = 0;
