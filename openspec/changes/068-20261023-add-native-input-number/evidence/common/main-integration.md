@@ -133,3 +133,19 @@ ctest --preset windows-msvc-headless-release --parallel 4 -R "<上述 filter>" -
 - Debug：**11/11**，4.43 秒；Release：**11/11**，3.10 秒。Dropdown executable 无参数执行全部 case，包含此前八条与本轮三条回归。
 - clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
 - 本地原始记录：ignored `out/integration-r3-reproductions.json`、`out/integration-r3-deferred-reproductions.json`、`out/integration-r3-table-guard-reproductions.json`、`out/integration-r3-{debug,release}-{build,ctest}.log`。没有重跑完整套件，未验证更新 main 的组合上下文或 native/GPU/Linux；没有修改 Gallery、global docs、goldens、root 或其他 worktree，没有 push、remote 操作、PR、archive 或创建子任务。
+
+## Astra integration R4：empty Table body wheel target（2026-10-24）
+
+准确基线为本地 `63c4fa723b7d62b2103a450bf5c6ab92d77f09c3`，没有合并 parent main `0de353b` 或更新 main。先仅增加 `empty_body_horizontal_wheel`、保持生产代码不变：root Table 空 dataSource、默认 empty Text、width 300、column width 600、`scrollY(96)`；layout 后确认 `maximum_x == 300`，完整 dispatch `{1, 0, body.x + 10, body.y + 10}`，Debug exit 1：`empty Table body horizontal wheel was unhandled`（ignored `out/integration-r4-reproduction.log`）。修复后同一 wheel 将 `scroll_x` 从 0 改为 32。
+
+生产修改仅在 Table body mount 时创建一个非 focusable、非 Tab stop 的 background interaction，使用 body 自身 node，并注册 `before_children` scene fragment。其 bounds、translation、ancestor/document clip 和布局 eligibility 由现有 node/hit-test 路径负责；不恢复矩形 fallback，不修改 Table 最近 popup-layer 祖先路由或任何 host 顺序。body resource cleanup 取消相关 pointer interaction、移除 registry interaction 与 scene fragment，再移除 body layout；不新增公开 API、Theme、surface 或后台资源。
+
+`empty_body_horizontal_wheel` 同时验证：空→有数据→空保留 background interaction identity；row hit 优先于背景；document clip 外与零高度 body 没有 hit 且 wheel 不消费；恢复 clip/高度后仍是同一 interaction；键盘 focus request 被拒绝且真实 Tab 不新增 focus stop；destroy 后 interaction/surface 清零且没有残留 hit。既有 retained-row Tab order 与 callback/嵌套组件销毁测试继续通过。
+
+复用真实 Dropdown/Table fixture 新增 `wheel-child-empty-table`、`wheel-sibling-empty-table`：分别从 TableEmpty slot 或 sibling 显示覆盖空 body 的 Dropdown，确认真实 topmost menu/padding hit；水平 wheel 不改变被覆盖 Table，露出 body 的水平 wheel 仍可滚动；Menu retained rows 与全部清理合同不变。原有十一条 wheel 回归全部保留并执行，包括 R3 Popconfirm 内 Table content、boundary、padding 与同层 Table → Modal handoff，以及此前 Table/Select、child Select/nested Dropdown 和 inline Menu 优先级。
+
+使用与 R3 相同的十一项 MSVC headless targets/CTest filter，Debug 与 Release 顺序构建，`--parallel 4`：
+
+- Debug：**11/11**，4.52 秒；Release：**11/11**，3.02 秒。Table 与 Dropdown executable 均执行全部 case。
+- clang-format 22.1.3 检查 **560** 个自有源文件，0 failures；doctor healthy；strict validate **69/69**；diff check 通过。
+- ignored 原始记录：`out/integration-r4-repro-build.log`、`out/integration-r4-reproduction.log`、`out/integration-r4-{debug,release}-{build,ctest}.log`。没有重跑完整套件；未验证更新 main 的组合上下文或 native/GPU/Linux。只修改本 worktree 的 Table source、定向测试与本证据，未修改 root/Gallery/global docs/goldens，没有 push、remote 操作、PR、archive 或创建子任务。

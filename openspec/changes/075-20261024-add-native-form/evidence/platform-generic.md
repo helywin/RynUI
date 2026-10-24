@@ -54,4 +54,33 @@ Release 将上述 build/test preset 的 `debug` 换为 `release`，targets 和�
 
 ## 验收边界
 
-首版边界见 `docs/form.md`。本 change 不更新 Gallery、support overlay、global README 或完成度计数；不创建 PR、archive、子线程或远端 T3 分支，不 push。父线程负责后续 Astra 审核、合并和推送。后续父基线合并结果与最终检查将在独立收口段记录。
+首版边界见 `docs/form.md`。本 change 不更新 Gallery、support overlay、global README 或完成度计数；不创建 PR、archive、子线程或远端 T3 分支，不 push。父线程负责后续 Astra 审核、合并和推送。
+
+## 父基线合并与最终组合验收
+
+host 阶段在 `6d3faee` 本地提交后确认工作树干净，执行 `git merge --no-ff --no-commit 4efa310a256019192e01f0738ee226d16ad44396`。冲突在 facade/Theme/CMake 注册及五份单行金样中；同时保留 Form 与 Empty/Result 的 API、theme/member/equality/hash/subscription、全部 host 和 tests，未 rebase。金样取父基线为已有值参考，再用合并后的真实 theme executable 生成。
+
+在前述 13 个 targets 基础上增加：
+
+```text
+rynui_empty_result_public_api_tests rynui_empty_result_theme_tests rynui_empty_result_component_tests
+rynui_table_component_tests rynui_portable_dropdown_component rynui_portable_popconfirm_component
+rynui_portable_select_component
+```
+
+Debug/Release 均使用原来的官方 preset、当前独立 build tree 和 `--parallel 4`；最终 CTest 命令如下，两种 configuration 各 **20/20 passed**：
+
+```text
+ctest --preset windows-msvc-headless-debug --output-on-failure -R "^rynui.(form_.*|empty_result_.*|table_component|input_number_component|feedback_component|portable.(theme_algorithm|theme_runtime|selection_component|modal_component|focus_lifecycle|text_area|input_component|dropdown_component|popconfirm_component|select_component))$"
+ctest --preset windows-msvc-headless-release --output-on-failure -R "^rynui.(form_.*|empty_result_.*|table_component|input_number_component|feedback_component|portable.(theme_algorithm|theme_runtime|selection_component|modal_component|focus_lifecycle|text_area|input_component|dropdown_component|popconfirm_component|select_component))$"
+```
+
+额外 Form Theme 断言确认 Form 的 override/local algorithm 不改变 Empty/Result，Empty/Result 的配置也不改变 Form。父基线 `src/component/theme_component.cpp`、`popconfirm_component.cpp`、`table_component.cpp`、`tests/dropdown_component_tests.cpp`、`table_component_tests.cpp` 逐文件 Git diff 为零；`theme_runtime.cpp` 相对父基线只新增 Form identity/accessor/domain，`commit_snapshot` 原文未改。
+
+`python out/verify-form-goldens.py 4efa310a256019192e01f0738ee226d16ad44396` 输出：`5/5 goldens preserve every existing value except identity; 26 existing reference IIFEs preserved`。比较包含原有 Empty/Result 数据；脚本同时比较 `auto name = [&]` 和分支内 `name = [&]` 的完整 IIFE。合并后的 Form 仍为新增的独立引用捕获块。
+
+最终保留明确的 GPU/Linux/系统 IME/人工视觉及 Gallery 边界；本地 merge 验收提交保存全部 075 完成项，父线程再安排 Astra 审核。
+
+最后复核新增错误观察器改值用例，先在 MSVC Debug 定向复现 `error observer invalidated validation but left stale errors published`。修复为事务在错误发布或 focus 回调后过期时，只清除该注册代际的已发布错误；清理后再次检查生命周期，避免销毁后继续失败通知。补测观察器改值和 focus 改值两条路径，最终上述 Debug/Release 20 项组合检查包含这项回归。未增加自动重新验证或异步机制。
+
+最终检查：Debug **20/20**，Release **20/20**；clang-format 22.1.3 检查 **595** 个自有源，0 failures；doctor healthy，strict all **76/76**；staged/working `git diff --check` 通过；文档源码与交付 cpp fenced block 一致，合并后的 MSVC `/Zs` 语法检查退出码 0。五份金样与父基线的类型和值比较、26 个 IIFE 的原文和先后顺序比较均通过。

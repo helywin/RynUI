@@ -19,6 +19,7 @@
 #include "component/dropdown_component.hpp"
 #include "component/pagination_component.hpp"
 #include "component/table_component.hpp"
+#include "component/empty_result_component.hpp"
 
 #include <chrono>
 
@@ -114,6 +115,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     feedback_ = std::make_unique<FeedbackComponentHost>(*this);
     menu_ = std::make_unique<MenuComponentHost>(*this);
     pagination_ = std::make_unique<PaginationComponentHost>(*this);
+    empty_result_ = std::make_unique<EmptyResultComponentHost>(*this);
 }
 
 WindowComponentServices::~WindowComponentServices() {

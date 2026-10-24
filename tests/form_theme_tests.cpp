@@ -35,14 +35,21 @@ void defaults_inheritance_and_local_algorithm() {
     reset.inherit = false;
     check(resolve_theme(reset, &parent).form() == form, "Form inherit=false failed");
     check(parent.button() == base.button() && parent.input_number() == base.input_number() &&
-              parent.segmented() == base.segmented() && parent.modal() == base.modal(),
+              parent.segmented() == base.segmented() && parent.modal() == base.modal() &&
+              parent.empty() == base.empty() && parent.result() == base.result(),
           "Form override leaked");
     ThemeConfig local;
     local.form.algorithm = true;
     local.form.seed.font_size = dp(18);
     const auto independent = resolve_theme(local);
-    check(independent.form().metrics.font_size == 18 && independent.text() == base.text(),
+    check(independent.form().metrics.font_size == 18 && independent.text() == base.text() &&
+              independent.empty() == base.empty() && independent.result() == base.result(),
           "Form local algorithm leaked");
+    ThemeConfig presentation;
+    presentation.empty.tokens.description = Color::rgba8(20, 60, 100);
+    presentation.result.algorithm = true;
+    presentation.result.seed.font_size = dp(20);
+    check(resolve_theme(presentation).form() == form, "Empty/Result overrides leaked into Form");
     local.form.algorithm = false;
     check(resolve_theme(local).form() == form, "inactive Form seed applied");
     ThemeConfig dark;

@@ -62,10 +62,7 @@ void registration_and_focus() {
     configure_form_required(field, String{u8"Required"});
     auto generation = model->add(
         String{u8"name"}, field, [] { return false; },
-        [] {
-            throw std::runtime_error("ineligible field focused");
-            return true;
-        });
+        []() -> bool { throw std::runtime_error("ineligible field focused"); });
     auto old = form_change_handler(field);
     int focus{};
     auto second = make_form_field(false);
@@ -141,6 +138,46 @@ void controlled_and_reentrancy() {
     }
     check(!throwing->busy && item->error.get().empty(), "exception left partial validation/busy");
 }
+
+void error_observer_invalidates_publication() {
+    auto model = std::make_shared<FormModel>();
+    auto text = make_form_field(String{u8"name"});
+    auto confirmed = make_form_field(false);
+    configure_form_validator(text, [confirmed](const FormValue&) {
+        return std::get<bool>(read_form_field(confirmed)) ? String{} : String{u8"Confirm first"};
+    });
+    model->add(String{u8"name"}, text);
+    model->add(String{u8"confirmed"}, confirmed);
+    Scope observers;
+    auto observer = effect(observers, [&] {
+        const auto error = text->error.get();
+        if (!error.empty()) {
+            write_form_field(confirmed, true);
+        }
+    });
+    const auto result = model->validate();
+    check(result && result->out_of_date && std::get<bool>(read_form_field(confirmed)) && text->error.get().empty(),
+          "error observer invalidated validation but left stale errors published");
+    check(model->validate()->valid(), "validation did not recover after error observer changed a value");
+    observers.dispose();
+    model->dispose();
+    write_form_field(confirmed, false);
+    auto focus_model = std::make_shared<FormModel>();
+    focus_model->add(
+        String{u8"name"}, text, [] { return true; },
+        [confirmed] {
+            write_form_field(confirmed, true);
+            return true;
+        });
+    focus_model->add(String{u8"confirmed"}, confirmed);
+    int failures{};
+    focus_model->failed = [&](FormResult result) {
+        check(result.out_of_date, "focus mutation accepted old errors");
+        ++failures;
+    };
+    check(focus_model->submit() && failures == 1 && text->error.get().empty(),
+          "focus callback invalidated validation but left stale errors published");
+}
 } // namespace
 
 int main() {
@@ -148,6 +185,7 @@ int main() {
         values_validation_reset();
         registration_and_focus();
         controlled_and_reentrancy();
+        error_observer_invalidates_publication();
         std::cout << "Form model tests passed\n";
         return 0;
     } catch (const std::exception& error) {

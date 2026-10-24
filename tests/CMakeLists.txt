@@ -18,6 +18,22 @@ foreach(form_integration IN ITEMS form_component form_theme)
     add_test(NAME rynui.${form_integration} COMMAND rynui_${form_integration}_tests)
 endforeach()
 
+foreach(presentation_test IN ITEMS empty_result_public_api empty_result_theme)
+    add_executable(rynui_${presentation_test}_tests ${presentation_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${presentation_test}_tests)
+    target_link_libraries(rynui_${presentation_test}_tests PRIVATE rynui_theme rynui_reactive rynui_string)
+    target_include_directories(rynui_${presentation_test}_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+    add_test(NAME rynui.${presentation_test} COMMAND rynui_${presentation_test}_tests)
+endforeach()
+
+add_executable(rynui_empty_result_component_tests empty_result_component_tests.cpp)
+rynui_configure_cpp_target(rynui_empty_result_component_tests)
+target_link_libraries(rynui_empty_result_component_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_empty_result_component_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+add_test(NAME rynui.empty_result_component COMMAND rynui_empty_result_component_tests)
+
 foreach(collapse_test IN ITEMS collapse_public_api collapse_theme collapse_component)
     add_executable(rynui_${collapse_test}_tests ${collapse_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${collapse_test}_tests)

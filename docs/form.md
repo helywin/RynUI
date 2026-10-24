@@ -71,7 +71,7 @@ void DeviceForm(std::function<void(ryn::FormResult)> save) {
 - required 检查空串、空 optional，bool 要求 true；空 SelectSelection 无效。不自动 trim，不增加 whitespace、range、异步或跨字段依赖规则。
 - `validate()` 返回 `optional<FormResult>`，更新错误但不触发提交回调或改变焦点。值改变只清除自身错误；不自动重新验证。custom validator 异常向调用者传播，不发布部分错误。
 - `submit()` 同步校验后进入 `onFinish(FormResult)` 或 `onFinishFailed(FormResult)`。返回 true 表示命令被接受，包含验证失败；拒绝或执行中销毁返回 false。结果拥有 values/errors 快照，按当前注册顺序排列；`valid()` 同时检查 errors 和 `out_of_date`。
-- 验证期间改值、增删字段、切换输入边界会使事务过期；不发布旧成功结果。仍存活的过期事务进入失败回调。validate/submit/reset 的递归调用被拒绝。
+- 验证期间改值、增删字段、切换输入边界会使事务过期；不发布旧成功结果。错误发布或聚焦回调中的改值也会清除本事务已发布的错误。仍存活的过期事务进入失败回调。validate/submit/reset 的递归调用被拒绝。
 - `reset()` 清除错误并恢复初值，不重建控件。InputNumber 即使数值未变，也会通过 `control(ref)` 丢弃未完成草稿并格式化为当前 authority；Input/TextArea 的 preedit 会取消。普通 validate、help、error、Theme 更新保留草稿与 preedit。真实失焦仍遵守既有控件的格式化行为。
 - 移除 FormItem 后结果不含该字段、错误清除；handle 保留值，再注册取得新代际。Form 销毁后 held FormRef 的命令无操作，`bound()` 为 false。
 
@@ -87,4 +87,4 @@ Form 被 Modal 排除、Spin 阻止或祖先隐藏时，validate/submit 不执�
 
 `ThemeConfig::form` 支持 colors（label、required、help、error）及 metrics（item_margin_bottom、label_gap、required_gap、font_size、line_height、font_family）typed override；支持继承、inherit=false 与独立 component algorithm/seed。纯颜色更新只失效 material，metrics 更新相应文字/测量/布局，均不重执行控件 slot。
 
-首版不含横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)；Gallery/support overlay 由父线程单独整合。
+首版不含嵌套 Form、横向/inline/Grid label 布局、Form.List/数组、JSON schema、深路径、自动任意控件采值、async/debounce/dependencies、自动 Enter/滚动、Web DOM/CSS/HTML required、完整上游 API 或平台无障碍 adapter。本次 headless 验证不代表 Windows/Linux 原生 GPU、系统 IME、系统字体或人工视觉已验收。实现证据见 [075](../openspec/changes/075-20261024-add-native-form/evidence/platform-generic.md)；Gallery/support overlay 由父线程单独整合。

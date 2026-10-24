@@ -1,0 +1,73 @@
+Internal ctest changing into directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless
+UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/DartConfiguration.tcl
+Parse Config file:C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/DartConfiguration.tcl
+UpdateCTestConfiguration  from :C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/DartConfiguration.tcl
+Parse Config file:C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/DartConfiguration.tcl
+Test project C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 3
+    Start 3: rynui.empty_result_component
+
+3: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-2b08410a\out\build\empty-result-headless\tests\Debug\rynui_empty_result_component_tests.exe
+3: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/tests
+3: Test timeout computed to be: 1500
+test 2
+    Start 2: rynui.empty_result_theme
+
+2: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-2b08410a\out\build\empty-result-headless\tests\Debug\rynui_empty_result_theme_tests.exe
+2: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/tests
+2: Test timeout computed to be: 1500
+test 1
+    Start 1: rynui.empty_result_public_api
+
+1: Test command: C:\Users\jiang\.t3\worktrees\RynUI\t3-2b08410a\out\build\empty-result-headless\tests\Debug\rynui_empty_result_public_api_tests.exe
+1: Working Directory: C:/Users/jiang/.t3/worktrees/RynUI/t3-2b08410a/out/build/empty-result-headless/tests
+1: Test timeout computed to be: 1500
+1/3 Test #1: rynui.empty_result_public_api ....   Passed    0.02 sec
+2/3 Test #2: rynui.empty_result_theme .........   Passed    0.20 sec
+3: PASS existing presentation contracts
+3: Empty margin child=100x80 region=200x110
+3: PASS Empty custom margins
+3: CASE Empty initial size=0
+3: PASS zero/subpixel visual
+3: CASE Empty initial size=0.01
+3: PASS zero/subpixel visual
+3: CASE Empty initial size=0.49
+3: PASS zero/subpixel visual
+3: CASE Empty reactive size=0
+3: PASS zero/subpixel visual
+3: CASE Empty reactive size=0.01
+3: PASS zero/subpixel visual
+3: CASE Empty reactive size=0.49
+3: PASS zero/subpixel visual
+3: Result margin child=100x80 region=200x110
+3: PASS Result custom margins
+3: CASE Result initial size=0
+3: PASS zero/subpixel visual
+3: CASE Result initial size=0.01
+3: PASS zero/subpixel visual
+3: CASE Result initial size=0.49
+3: PASS zero/subpixel visual
+3: CASE Result reactive size=0
+3: PASS zero/subpixel visual
+3: CASE Result reactive size=0.01
+3: PASS zero/subpixel visual
+3: CASE Result reactive size=0.49
+3: PASS zero/subpixel visual
+3: PASS compact Empty initial zero visual
+3: PASS compact Empty reactive zero visual
+3/3 Test #3: rynui.empty_result_component .....   Passed    4.49 sec
+
+The following tests passed:
+	rynui.empty_result_public_api
+	rynui.empty_result_theme
+	rynui.empty_result_component
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =   4.50 sec

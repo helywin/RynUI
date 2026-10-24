@@ -111,6 +111,10 @@ public:
     [[nodiscard]] const PaginationThemeToken& pagination_metrics() const;
     [[nodiscard]] const TableThemeToken& table_colors() const;
     [[nodiscard]] const TableThemeToken& table_metrics() const;
+    [[nodiscard]] const EmptyThemeToken& empty_colors() const;
+    [[nodiscard]] const EmptyThemeToken& empty_metrics() const;
+    [[nodiscard]] const ResultThemeToken& result_colors() const;
+    [[nodiscard]] const ResultThemeToken& result_metrics() const;
     [[nodiscard]] const ModalThemeToken& modal_metrics() const;
     [[nodiscard]] const ModalThemeToken& modal_typography() const;
     [[nodiscard]] const ModalThemeToken& modal_effects() const;

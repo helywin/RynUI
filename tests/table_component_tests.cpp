@@ -671,10 +671,66 @@ void modal_table_scroll_and_select_anchor() {
               f.services.interactions().size() == 0,
           "Modal Table/Select cleanup leaked interactions");
 }
+
+void empty_body_horizontal_wheel() {
+    Fixture f;
+    Signal<std::vector<Row>> source{std::vector<Row>{}};
+    Signal<float> height{96};
+    f.services.mount(Content{[&] {
+        Table(TableProps<Row>{}
+                  .dataSource(source)
+                  .rowKey([](const Row& row) { return row.id; })
+                  .columns({TableColumn<Row>{u8"name", u8"Name", [](TableCell<Row>) { Text(u8"Row"); }}.width(600)})
+                  .scrollY(height)
+                  .layout(LayoutStyle{}.width(dp(300))));
+    }});
+    sync(f);
+    const auto table = f.services.table().mounted().front();
+    const auto original = f.services.table().snapshot(table);
+    const float x = original.body.x + 10;
+    const float y = original.body.y + 10;
+    check(original.maximum_x == 300 && original.rows.empty(), "empty Table horizontal wheel fixture");
+    check(f.services.dispatch_scroll({1, 0, x, y}), "empty Table body horizontal wheel was unhandled");
+    sync(f);
+    check(f.services.table().snapshot(table).scroll_x == 32, "empty Table body did not scroll horizontally");
+    const auto background = f.services.hit_test().hit_test({x, y});
+    check(background && !f.services.interactions().require(*background).focusable,
+          "empty Table body lacks a nonfocusable background");
+    check(!f.services.focus().request_focus(*background, FocusModality::keyboard),
+          "Table body background accepted keyboard focus");
+    f.services.focus().dispatch(KeyboardInputEvent{Key::tab, KeyAction::down});
+    f.services.focus().dispatch(KeyboardInputEvent{Key::tab, KeyAction::up});
+    check(!f.services.focus().state().focused, "empty Table body added a Tab stop");
+    source.set(data());
+    sync(f);
+    const auto row_hit = f.services.hit_test().hit_test({x, y});
+    check(row_hit && *row_hit != *background, "Table body background stole row hit priority");
+    source.set({});
+    sync(f);
+    check(f.services.hit_test().hit_test({x, y}) == background, "Table body background identity changed with rows");
+    f.synchronize(640, {0, 0, 640, y - 1});
+    check(!f.services.hit_test().hit_test({x, y}) && !f.services.dispatch_scroll({1, 0, x, y}),
+          "empty Table body background escaped document clipping");
+    sync(f);
+    check(f.services.hit_test().hit_test({x, y}) == background, "Table body background identity changed with clipping");
+    height.set(0);
+    sync(f);
+    check(!f.services.hit_test().hit_test({x, y}) && !f.services.dispatch_scroll({1, 0, x, y}),
+          "zero-height Table body background remained eligible");
+    height.set(96);
+    sync(f);
+    check(f.services.hit_test().hit_test({x, y}) == background, "Table body background identity changed with layout");
+    f.services.destroy(table);
+    sync(f);
+    check(!f.services.interactions().find(*background) && f.services.interactions().size() == 0 &&
+              f.services.surfaces().size() == 0 && !f.services.hit_test().hit_test({x, y}),
+          "empty Table body background cleanup leaked");
+}
 } // namespace
 
 int main() {
     try {
+        empty_body_horizontal_wheel();
         retained_business_rows();
         controlled_sort_selection_pages();
         scroll_theme_and_nested_cleanup();

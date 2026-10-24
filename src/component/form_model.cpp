@@ -39,6 +39,16 @@ struct Busy final {
 
     FormModel& model;
 };
+
+void discard_errors(const std::vector<FormModel::Registration>& fields) {
+    batch([&] {
+        for (const auto& item : fields) {
+            if (item.field->registered && item.field->generation == item.generation) {
+                item.field->error.set(String{});
+            }
+        }
+    });
+}
 } // namespace
 
 std::shared_ptr<FormFieldState> make_form_field(FormValue initial, std::optional<Binding<FormValue>> source,
@@ -223,6 +233,9 @@ FormResult FormModel::validate_transaction() {
         }
     });
     result.out_of_date = !alive || revision != revision_ || values() != result.values || !available();
+    if (result.out_of_date) {
+        discard_errors(fields);
+    }
     return result;
 }
 
@@ -261,12 +274,16 @@ bool FormModel::submit() {
             }
             if (revision != revision_ || values() != result.values) {
                 result.out_of_date = true;
+                discard_errors(fields);
                 break;
             }
             if (focused) {
                 break;
             }
         }
+    }
+    if (!alive || !available()) {
+        return false;
     }
     const auto callback = result.valid() ? finish : failed;
     if (callback) {
