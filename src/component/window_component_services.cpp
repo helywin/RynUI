@@ -17,6 +17,7 @@
 #include "component/breadcrumb_component.hpp"
 #include "component/steps_component.hpp"
 #include "component/skeleton_component.hpp"
+#include "component/notice_component.hpp"
 #include "component/modal_component.hpp"
 #include "component/tag_badge_component.hpp"
 #include "component/popconfirm_component.hpp"
@@ -105,6 +106,7 @@ WindowComponentServices::WindowComponentServices(runtime::NodeStore& nodes, layo
     divider_ = std::make_unique<DividerComponentHost>(*this);
     space_addon_ = std::make_unique<SpaceAddonHost>(*this);
     slider_ = std::make_unique<SliderComponentHost>(*this);
+    notices_ = std::make_unique<NoticeComponentHost>(*this);
     modal_ = std::make_unique<ModalComponentHost>(*this);
     table_ = std::make_unique<TableComponentHost>(*this);
     date_picker_ = std::make_unique<DatePickerComponentHost>(*this);
@@ -195,7 +197,8 @@ bool WindowComponentServices::dispatch_scroll(const input::ScrollInputEvent& eve
         }
     }
     return time_picker_->consume_scroll_boundary(event) || date_picker_->consume_scroll_boundary(event) ||
-           dropdown_->consume_scroll_boundary(event) || interactions_.input_boundary().has_value();
+           dropdown_->consume_scroll_boundary(event) || notices_->consume_scroll_boundary(event) ||
+           interactions_.input_boundary().has_value();
 }
 
 bool WindowComponentServices::set_input_boundary(std::optional<runtime::ComponentId> root) {
@@ -430,7 +433,8 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
     {
         SyncPhaseTimer timer(sync_profiling_enabled_, sync_profile_.effect_nanoseconds);
         text_scene.finish_ordered_scene_batch();
-        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height}, modal_->visible())) {
+        if (surfaces_.compact_effects({0.0F, 0.0F, viewport.width, viewport.height},
+                                      modal_->visible() || notices_->visible())) {
             scene_structure_dirty_ = true;
         }
     }
@@ -448,7 +452,8 @@ bool WindowComponentServices::layout_and_synchronize(runtime::Size viewport, run
             }
         }
     }
-    const auto hit_clip = modal_->visible() ? runtime::Rect{0, 0, viewport.width, viewport.height} : clip;
+    const auto hit_clip =
+        modal_->visible() || notices_->visible() ? runtime::Rect{0, 0, viewport.width, viewport.height} : clip;
     if (hit_clip_ != hit_clip) {
         scene_structure_dirty_ = true;
         hit_clip_ = hit_clip;

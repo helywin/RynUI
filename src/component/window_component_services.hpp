@@ -45,6 +45,7 @@ class DescriptionsComponentHost;
 class BreadcrumbComponentHost;
 class StepsComponentHost;
 class SkeletonComponentHost;
+class NoticeComponentHost;
 
 class WindowComponentParticipant {
 public:
@@ -271,6 +272,10 @@ public:
         return *skeleton_;
     }
 
+    [[nodiscard]] NoticeComponentHost& notices() noexcept {
+        return *notices_;
+    }
+
     [[nodiscard]] ModalComponentHost& modal() noexcept {
         return *modal_;
     }
@@ -420,6 +425,7 @@ private:
     std::unique_ptr<BreadcrumbComponentHost> breadcrumb_;
     std::unique_ptr<StepsComponentHost> steps_;
     std::unique_ptr<SkeletonComponentHost> skeleton_;
+    std::unique_ptr<NoticeComponentHost> notices_;
     std::unique_ptr<TagBadgeComponentHost> tag_badge_;
     std::unique_ptr<FeedbackComponentHost> feedback_;
     std::unique_ptr<MenuComponentHost> menu_;

@@ -300,6 +300,19 @@ std::size_t collect_changed(const ThemeSnapshot& before, const ThemeSnapshot& af
     append_if_changed(before.skeleton().metrics, after.skeleton().metrics, TokenIdentity::skeleton_metrics, changed,
                       count);
     append_if_changed(before.form().colors, after.form().colors, TokenIdentity::form_colors, changed, count);
+    append_if_changed(before.message().colors, after.message().colors, TokenIdentity::message_colors, changed, count);
+    append_if_changed(before.message().metrics, after.message().metrics, TokenIdentity::message_metrics, changed,
+                      count);
+    append_if_changed(before.message().shadow, after.message().shadow, TokenIdentity::message_effects, changed, count);
+    append_if_changed(before.message().z_index, after.message().z_index, TokenIdentity::message_order, changed, count);
+    append_if_changed(before.notification().colors, after.notification().colors, TokenIdentity::notification_colors,
+                      changed, count);
+    append_if_changed(before.notification().metrics, after.notification().metrics, TokenIdentity::notification_metrics,
+                      changed, count);
+    append_if_changed(before.notification().shadow, after.notification().shadow, TokenIdentity::notification_effects,
+                      changed, count);
+    append_if_changed(before.notification().z_index, after.notification().z_index, TokenIdentity::notification_order,
+                      changed, count);
     append_if_changed(before.form().metrics, after.form().metrics, TokenIdentity::form_metrics, changed, count);
     append_if_changed(before.descriptions().colors, after.descriptions().colors, TokenIdentity::descriptions_colors,
                       changed, count);
@@ -1614,6 +1627,54 @@ const SelectThemeToken& ThemeScope::select_order() const {
     return snapshot_->select();
 }
 
+const NoticeThemeToken& ThemeScope::message_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::message_colors);
+    return snapshot_->message();
+}
+
+const NoticeThemeToken& ThemeScope::message_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::message_metrics);
+    return snapshot_->message();
+}
+
+const NoticeThemeToken& ThemeScope::message_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::message_effects);
+    return snapshot_->message();
+}
+
+const NoticeThemeToken& ThemeScope::message_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::message_order);
+    return snapshot_->message();
+}
+
+const NoticeThemeToken& ThemeScope::notification_colors() const {
+    ensure_owner_thread();
+    record(TokenIdentity::notification_colors);
+    return snapshot_->notification();
+}
+
+const NoticeThemeToken& ThemeScope::notification_metrics() const {
+    ensure_owner_thread();
+    record(TokenIdentity::notification_metrics);
+    return snapshot_->notification();
+}
+
+const NoticeThemeToken& ThemeScope::notification_effects() const {
+    ensure_owner_thread();
+    record(TokenIdentity::notification_effects);
+    return snapshot_->notification();
+}
+
+const NoticeThemeToken& ThemeScope::notification_order() const {
+    ensure_owner_thread();
+    record(TokenIdentity::notification_order);
+    return snapshot_->notification();
+}
+
 const SkeletonThemeToken& ThemeScope::skeleton_colors() const {
     ensure_owner_thread();
     record(TokenIdentity::skeleton_colors);
@@ -1812,6 +1873,14 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
         "Skeleton.metrics",
         "Descriptions.colors",
         "Descriptions.metrics",
+        "Message.colors",
+        "Message.metrics",
+        "Message.effects",
+        "Message.order",
+        "Notification.colors",
+        "Notification.metrics",
+        "Notification.effects",
+        "Notification.order",
     };
     static_assert(names.size() == static_cast<std::size_t>(TokenIdentity::count));
     const auto index = static_cast<std::size_t>(identity);
@@ -1820,6 +1889,17 @@ std::string_view token_identity_name(TokenIdentity identity) noexcept {
 
 DirtyPhase dirty_phase_for(TokenIdentity identity) noexcept {
     switch (identity) {
+    case TokenIdentity::message_colors:
+    case TokenIdentity::notification_colors:
+    case TokenIdentity::message_effects:
+    case TokenIdentity::notification_effects:
+        return DirtyPhase::paint_material;
+    case TokenIdentity::message_metrics:
+    case TokenIdentity::notification_metrics:
+        return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::text | DirtyPhase::hit_test;
+    case TokenIdentity::message_order:
+    case TokenIdentity::notification_order:
+        return DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::skeleton_metrics:
         return DirtyPhase::measure_layout | DirtyPhase::geometry | DirtyPhase::hit_test;
     case TokenIdentity::skeleton_colors:

@@ -15,6 +15,7 @@ add_library(rynui_theme STATIC
     theme/time_picker_theme.cpp
     theme/skeleton_theme.cpp
     theme/descriptions_theme.cpp
+    theme/notice_theme.cpp
 )
 rynui_configure_cpp_target(rynui_theme)
 target_include_directories(rynui_theme PUBLIC
@@ -224,6 +225,8 @@ add_library(rynui_components STATIC
     component/empty_result_component.cpp
     component/skeleton_model.cpp
     component/skeleton_component.cpp
+    component/notice_model.cpp
+    component/notice_component.cpp
     component/tabs_model.cpp
     component/modal_model.cpp
     component/drawer_model.cpp

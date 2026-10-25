@@ -188,6 +188,14 @@ enum class TokenIdentity : std::uint8_t {
     skeleton_metrics,
     descriptions_colors,
     descriptions_metrics,
+    message_colors,
+    message_metrics,
+    message_effects,
+    message_order,
+    notification_colors,
+    notification_metrics,
+    notification_effects,
+    notification_order,
     count,
 };
 

@@ -1,6 +1,24 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+foreach(notice_test IN ITEMS notice_model notice_theme notice_component)
+    add_executable(rynui_${notice_test}_tests ${notice_test}_tests.cpp)
+    rynui_configure_cpp_target(rynui_${notice_test}_tests)
+    target_link_libraries(rynui_${notice_test}_tests PRIVATE rynui_components)
+    target_compile_definitions(rynui_${notice_test}_tests PRIVATE
+        "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+        "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+    if(notice_test STREQUAL "notice_component")
+        foreach(notice_case IN ITEMS event retention clock lifecycle boundaries popup clipping example)
+            add_test(NAME rynui.notice_${notice_case} COMMAND rynui_notice_component_tests ${notice_case})
+        endforeach()
+    else()
+        add_test(NAME rynui.${notice_test} COMMAND rynui_${notice_test}_tests)
+    endif()
+endforeach()
+
+add_test(NAME rynui.notice_docs_example COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/verify_notice_examples.py")
+
 foreach(skeleton_test IN ITEMS skeleton_public_api skeleton_model)
     add_executable(rynui_${skeleton_test}_tests ${skeleton_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${skeleton_test}_tests)
