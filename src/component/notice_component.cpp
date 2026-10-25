@@ -11,7 +11,7 @@ thread_local NoticeComponentHost* active_notices{};
 
 struct HolderState final {
     bool message{};
-    std::size_t max_count{8};
+    Prop<std::size_t> max_count{std::size_t{8}};
     NoticeModel model;
     std::shared_ptr<NoticeBinding> binding{std::make_shared<NoticeBinding>()};
     std::shared_ptr<Scope> max_scope{std::make_shared<Scope>()};
@@ -151,6 +151,7 @@ void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<Notic
     const auto id = build.mount_component<HolderState>();
     auto& state = build.state<HolderState>(id);
     state.message = message;
+    state.max_count = max_count;
     const auto binding = state.binding;
     const auto max_scope = state.max_scope;
     auto& services = *services_;
@@ -182,8 +183,7 @@ void NoticeComponentHost::mount_holder(bool message, const std::shared_ptr<Notic
         if (!value || value > 1024) {
             throw std::invalid_argument("Notice maxCount must be in [1, 1024]");
         }
-        if (auto* s = services_->components().state<HolderState>(id)) {
-            s->max_count = value;
+        if (services_->components().state<HolderState>(id)) {
             trim(id);
         }
     });
@@ -603,14 +603,30 @@ bool NoticeComponentHost::clear(runtime::ComponentId owner) {
 }
 
 void NoticeComponentHost::trim(runtime::ComponentId owner) {
-    const auto* holder = services_->components().state<HolderState>(owner);
-    if (!holder || holder->model.entries.size() <= holder->max_count) {
-        return;
-    }
-    const auto count = holder->model.entries.size() - holder->max_count;
-    const auto batch = holder->model.entries;
-    for (std::size_t index = 0; index < count; ++index) {
-        close(owner, batch[index].id);
+    for (;;) {
+        const auto* holder = services_->components().state<HolderState>(owner);
+        if (!holder || !holder->binding->alive || !services_->components().scope(owner).active()) {
+            return;
+        }
+        // A close callback can update this source while its reactive observer
+        // is still running. Read current authority, then reacquire the owner:
+        // the getter itself can synchronously unload or rebind the holder.
+        const auto source = holder->max_count;
+        const auto maximum = read_prop(source);
+        holder = services_->components().state<HolderState>(owner);
+        if (!holder || !holder->binding->alive || !services_->components().scope(owner).active()) {
+            return;
+        }
+        if (!maximum || maximum > 1024) {
+            throw std::invalid_argument("Notice maxCount must be in [1, 1024]");
+        }
+        if (holder->model.entries.size() <= maximum) {
+            return;
+        }
+        const auto oldest = holder->model.entries.front().id;
+        if (!close(owner, oldest)) {
+            return;
+        }
     }
 }
 

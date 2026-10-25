@@ -489,7 +489,7 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
             continue;
         }
         auto& record = *slot.record;
-        if (!components_->branch_active(record.component) || !components_->in_window_layer_stack(record.component)) {
+        if (!components_->branch_active(record.component) || !components_->in_window_layer(record.component)) {
             continue;
         }
         const auto& node = nodes_->require(record.node);
@@ -549,7 +549,7 @@ bool RetainedSurfaceService::synchronize_clipped_fills(runtime::Rect window_clip
         }
         auto& record = *slot.record;
         const auto component = components_->fragment_component(record.fragment);
-        if (!components_->branch_active(component) || !components_->in_window_layer_stack(component)) {
+        if (!components_->branch_active(component) || !components_->in_window_layer(component)) {
             continue;
         }
         const auto& node = nodes_->require(components_->root(component));

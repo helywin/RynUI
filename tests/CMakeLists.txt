@@ -1,6 +1,16 @@
 find_package(Git REQUIRED)
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+add_executable(rynui_notice_review_tests notice_review_tests.cpp)
+rynui_configure_cpp_target(rynui_notice_review_tests)
+target_link_libraries(rynui_notice_review_tests PRIVATE rynui_components)
+target_compile_definitions(rynui_notice_review_tests PRIVATE
+    "RYNUI_VALIDATION_LATIN_FONT=\"${RYNUI_VALIDATION_LATIN_FONT_FILE}\""
+    "RYNUI_VALIDATION_CJK_FONT=\"${RYNUI_VALIDATION_CJK_FONT_FILE}\"")
+foreach(notice_review_case IN ITEMS fills content_ranges clip_contract trim trim_callbacks anchor)
+    add_test(NAME rynui.notice_review_${notice_review_case} COMMAND rynui_notice_review_tests ${notice_review_case})
+endforeach()
+
 foreach(notice_test IN ITEMS notice_model notice_theme notice_component)
     add_executable(rynui_${notice_test}_tests ${notice_test}_tests.cpp)
     rynui_configure_cpp_target(rynui_${notice_test}_tests)

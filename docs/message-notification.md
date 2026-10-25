@@ -32,6 +32,8 @@ Message 支持 `content(Prop<String>)`、`status(Prop<NoticeStatus>)`、`duratio
 
 holder 的 `maxCount(Prop<std::size_t>)` 默认为 8，允许 1..1024；超限关闭最早插入的条目，包括 duration=0 条目。reactive 减小 maxCount 使用相同策略。close、clear、到期和淘汰会在销毁后调用对应 onClose 一次；holder/window 卸载只清理资源，不调用 onClose。close/clear/到期批次使用完整 entry generation，回调新建的同 key 条目不会被旧批次删除。回调可同步卸载、更新其他条目或重绑已卸载的 Ref。挂载中的 slot 遵守 Runtime 的既有约束，不能重入挂载；可同步卸载自身。slot 抛异常时保留未替换的旧 region。
 
+maxCount 淘汰在每次关闭回调后重新读取当前上限和存活条目数，满足上限就停止；回调修改上限、关闭其他条目或重绑 holder 时不继续使用旧删除数量。普通 notice 窗口层的固定 surface 和 content-range 填充都使用描述区域的实际裁剪；裁剪不压缩真实子控件尺寸，并保留外部 clip 内有效的焦点装饰。
+
 duration 单位为秒，Message 默认 3、Notification 默认 4.5；0 持久，正数到期关闭。允许有限非负值，最大十年。每次同 key open 都按更新后的当前 duration 重新计时；reactive duration 改变也重新计时。使用窗口的非阻塞单调 tick/deadline，过期时间不因时钟倒退而提前。hover 和窗口失活均继续计时；重新处理时间时关闭已到期条目。无 entry 或只有 duration=0 的静态内容时，notice 不安排持续帧。首版没有动画、进度条、pauseOnHover、全局 service 或 promise API。
 
 Message 顶部居中；Notification 四角向内堆叠，标题、描述、真实关闭 Button 和 action 区域分开保留。宽高约束到当前窗口，超长内容裁剪；内容内的 TextArea/Select 等保留已有输入与滚轮功能，首版没有额外通知滚动容器。open 不请求焦点；关闭 focused 内容安全结束输入会话并清理焦点。Modal、Spin 与隐藏祖先的输入边界仍生效。notice 仅在子控件处理后消费自己实际顶层命中的滚轮回退，不处理 Escape，不吞被覆盖 sibling 或子 popup 的事件。
